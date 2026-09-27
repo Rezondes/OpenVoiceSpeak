@@ -63,6 +63,7 @@
                   <Border.ContextMenu>
                     <ContextMenu>
                       <MenuItem Header="Betreten" Command="{Binding JoinCommand}" />
+                      <MenuItem Header="Channel anlegen ..." Command="{Binding CreateCommand}" IsVisible="{Binding CanCreate}" />
                       <MenuItem Header="Bearbeiten ..." Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}" />
                       <MenuItem Header="Löschen ..." Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
                       <MenuItem Header="Verlinken mit ..." Command="{Binding LinkCommand}" IsVisible="{Binding CanLink}" />

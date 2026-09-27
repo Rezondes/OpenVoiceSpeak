@@ -12,7 +12,9 @@ public sealed partial class AdminViewModel : ObservableObject
     readonly ServerViewModel server;
     IReadOnlyList<KnownUserInfo> knownUsers = [];
 
-    [ObservableProperty] GroupEditViewModel? selectedGroup;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveGroupCommand), nameof(DeleteGroupCommand))]
+    GroupEditViewModel? selectedGroup;
     [ObservableProperty] string serverName = "";
     [ObservableProperty] string welcomeText = "";
     [ObservableProperty] string newPassword = "";
@@ -120,7 +122,9 @@ public sealed partial class AdminViewModel : ObservableObject
         SelectedGroup = group;
     }
 
-    [RelayCommand]
+    bool CanSaveGroup => SelectedGroup is { IsReadOnly: false };
+
+    [RelayCommand(CanExecute = nameof(CanSaveGroup))]
     Task SaveGroup()
     {
         if (SelectedGroup is not { IsReadOnly: false } g) return Task.CompletedTask;
@@ -135,7 +139,9 @@ public sealed partial class AdminViewModel : ObservableObject
         await server.SendAsync(new CreateGroup(g.Name, g.Permissions));
     }
 
-    [RelayCommand]
+    bool CanDeleteGroup => SelectedGroup is { CanDelete: true };
+
+    [RelayCommand(CanExecute = nameof(CanDeleteGroup))]
     async Task DeleteGroup()
     {
         if (SelectedGroup is not { CanDelete: true } g) return;
@@ -164,7 +170,8 @@ public sealed partial class GroupEditViewModel : ObservableObject
     {
         Id = id;
         this.name = name;
-        IsReadOnly = id == WellKnownGroups.Admin;
+        // Admin is fixed; a group stronger than the actor could only be edited by escalating.
+        IsReadOnly = id == WellKnownGroups.Admin || (id is not null && !permissions.IsSubsetOf(actor));
         CanDelete = id != WellKnownGroups.Admin && id != WellKnownGroups.Guest && permissions.IsSubsetOf(actor);
         Toggles = PermissionLabels.All
             .Select(p => new PermissionToggle(p.Permission, p.Label, permissions.Has(p.Permission), !IsReadOnly && actor.Has(p.Permission)))

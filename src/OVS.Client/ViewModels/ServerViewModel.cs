@@ -9,7 +9,11 @@ using OVS.Shared.Protocol;
 namespace OVS.Client.ViewModels;
 
 public sealed record ChannelEdit(string Name, string Description);
-public sealed record BanChoice(string Reason, int? DurationMinutes, bool IncludeIp);
+public sealed record BanChoice(string Reason, int? DurationMinutes, bool IncludeIp)
+{
+    public static readonly IReadOnlyList<(string Label, int? Minutes)> Durations =
+        [("1 Stunde", 60), ("1 Tag", 1440), ("7 Tage", 10080), ("Dauerhaft", null)];
+}
 
 /// <summary>Dialogs the view provides. Unset entries mean "cancelled" (used by tests).</summary>
 public sealed class Dialogs
@@ -264,6 +268,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [ObservableProperty] string linkedNames = "";
     [ObservableProperty] bool isCurrent;
     [ObservableProperty] bool isDefault;
+    [ObservableProperty] bool canCreate;
     [ObservableProperty] bool canEdit;
     [ObservableProperty] bool canDelete;
     [ObservableProperty] bool canLink;
@@ -282,6 +287,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         LinkedNames = string.Join(", ", linked);
         IsDefault = isDefault;
         IsCurrent = isCurrent;
+        CanCreate = actor.Has(Permission.ChannelCreate);
         CanEdit = actor.Has(Permission.ChannelEdit);
         CanDelete = actor.Has(Permission.ChannelDelete) && !isDefault;
         CanLink = actor.Has(Permission.ChannelLink);
@@ -291,6 +297,9 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
 
     [RelayCommand]
     Task Join() => owner.JoinAsync(Id);
+
+    [RelayCommand]
+    Task Create() => owner.NewChannelCommand.ExecuteAsync(null);
 
     [RelayCommand]
     async Task Edit()

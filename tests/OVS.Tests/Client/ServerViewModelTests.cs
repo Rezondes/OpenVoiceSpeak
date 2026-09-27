@@ -166,6 +166,7 @@ public class ServerViewModelTests
         var f = Create(perms);
         var alpha = f.Channel(Alpha);
         Assert.Equal((edit, delete, link), (alpha.CanEdit, alpha.CanDelete, alpha.CanLink));
+        Assert.Equal(perms.Has(P.ChannelCreate), alpha.CanCreate);
         Assert.False(f.Channel(Lobby).CanDelete); // default channel never
         Assert.False(alpha.CanUnlink);
         Assert.Equal(perms.Has(P.ChannelCreate), f.Vm.CanCreateChannel);
@@ -206,6 +207,15 @@ public class ServerViewModelTests
         var f = Create(P.All, dialogs: dialogs);
         await f.Channel(Lobby).LinkCommand.ExecuteAsync(null);
         Assert.Equal(new LinkChannels(Lobby, Bravo), f.Sent[^1] with { RequestId = null });
+    }
+
+    [Fact]
+    public async Task CreateFromChannelMenu_UsesDialog()
+    {
+        var dialogs = new Dialogs { EditChannel = (_, _, _) => Task.FromResult<ChannelEdit?>(new ChannelEdit("Neu", "Beschreibung")) };
+        var f = Create(P.All, dialogs: dialogs);
+        await f.Channel(Alpha).CreateCommand.ExecuteAsync(null);
+        Assert.Equal(new CreateChannel("Neu", "Beschreibung"), f.Sent[^1] with { RequestId = null });
     }
 
     [Fact]

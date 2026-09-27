@@ -25,7 +25,8 @@ public sealed class CapturePipeline : IDisposable
     public static CapturePipeline FromDevice(MMDevice? device)
     {
         var pipeline = new CapturePipeline();
-        var capture = device is null ? new WasapiCapture() : new WasapiCapture(device);
+        // Event driven with a 20 ms buffer: the default polls a 100 ms buffer and adds up to 50 ms latency.
+        var capture = new WasapiCapture(device ?? WasapiCapture.GetDefaultCaptureDevice(), useEventSync: true, audioBufferMillisecondsLength: 20);
         capture.DataAvailable += (_, e) =>
             pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, capture.WaveFormat), capture.WaveFormat.SampleRate);
         pipeline.capture = capture;

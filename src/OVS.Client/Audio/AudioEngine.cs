@@ -48,7 +48,8 @@ public static class AudioDevices
 /// </summary>
 public sealed class AudioEngine : IDisposable
 {
-    static readonly TimeSpan TargetBuffer = TimeSpan.FromMilliseconds(60);
+    // Small buffers keep mouth-to-ear latency low; the refill loop wakes about every 15 ms.
+    static readonly TimeSpan TargetBuffer = TimeSpan.FromMilliseconds(40);
 
     readonly object gate = new();
     readonly KeyPoller keys;
@@ -160,8 +161,8 @@ public sealed class AudioEngine : IDisposable
         {
             var device = AudioDevices.Open(settings.OutputDeviceId, DataFlow.Render, warnings);
             output = device is null
-                ? new WasapiOut(AudioClientShareMode.Shared, 50)
-                : new WasapiOut(device, AudioClientShareMode.Shared, true, 50);
+                ? new WasapiOut(AudioClientShareMode.Shared, 30)
+                : new WasapiOut(device, AudioClientShareMode.Shared, true, 30);
             var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
             {
                 DiscardOnBufferOverflow = true,

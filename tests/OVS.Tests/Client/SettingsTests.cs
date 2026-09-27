@@ -104,6 +104,16 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void LevelMeter_MarksThreshold()
+    {
+        var vm = Vm(new ClientSettings { VadThresholdDb = -40 });
+        vm.InputLevelDb = -30;
+        Assert.True(vm.IsAboveThreshold);
+        vm.VadThresholdDb = -20;
+        Assert.False(vm.IsAboveThreshold);
+    }
+
+    [Fact]
     public void ToSettings_KeepsBookmarks_MapsMode()
     {
         var basis = new ClientSettings { Bookmarks = [new Bookmark("a", "h", 1, "n")] };

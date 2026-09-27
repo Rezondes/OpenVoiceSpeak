@@ -55,6 +55,31 @@ public class AdminViewModelTests
         Assert.False(Group(vm, "Gast").CanDelete);
     }
 
+    [Fact]
+    public void GroupButtons_DisabledForProtectedAndStrongerGroups()
+    {
+        var (vm, _, _) = Create(P.GroupsManage | P.Speak);
+        vm.SelectedGroup = Group(vm, "Admin");
+        Assert.False(vm.SaveGroupCommand.CanExecute(null));
+        Assert.False(vm.DeleteGroupCommand.CanExecute(null));
+
+        vm.SelectedGroup = Group(vm, "Gast");
+        Assert.True(vm.SaveGroupCommand.CanExecute(null));
+        Assert.False(vm.DeleteGroupCommand.CanExecute(null));
+
+        // Moderator can kick, the actor cannot: not editable, not deletable
+        vm.SelectedGroup = Group(vm, "Moderator");
+        Assert.True(vm.SelectedGroup.IsReadOnly);
+        Assert.False(vm.SaveGroupCommand.CanExecute(null));
+        Assert.False(vm.DeleteGroupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void BanDurations_AsPlanned()
+    {
+        Assert.Equal([("1 Stunde", (int?)60), ("1 Tag", 1440), ("7 Tage", 10080), ("Dauerhaft", null)], BanChoice.Durations);
+    }
+
     [Theory]
     [InlineData(P.GroupsManage, true, false, false, false)]
     [InlineData(P.GroupsAssign, false, true, false, false)]

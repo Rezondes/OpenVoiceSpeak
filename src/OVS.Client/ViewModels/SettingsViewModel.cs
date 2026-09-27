@@ -17,8 +17,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] double inputGainPercent;
     [ObservableProperty] double outputVolumePercent;
     [ObservableProperty] bool voiceActivation;
-    [ObservableProperty] double vadThresholdDb;
-    [ObservableProperty] double inputLevelDb = -60;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAboveThreshold))]
+    double vadThresholdDb;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAboveThreshold))]
+    double inputLevelDb = -60;
+
     [ObservableProperty] string? deviceHint;
     [ObservableProperty] string? captureHint;
 
@@ -56,6 +62,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string PttKeyName => KeyPoller.KeyName(PttKey);
     public string LinkPttKeyName => KeyPoller.KeyName(LinkPttKey);
     public bool HasKeyConflict => PttKey == LinkPttKey;
+
+    /// <summary>Would voice activation send right now?</summary>
+    public bool IsAboveThreshold => InputLevelDb >= VadThresholdDb;
     public bool CanSave => !HasKeyConflict;
     public string? Error => HasKeyConflict ? "PTT und Link-PTT brauchen unterschiedliche Tasten." : null;
 

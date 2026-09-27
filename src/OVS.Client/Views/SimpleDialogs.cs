@@ -11,7 +11,7 @@ namespace OVS.Client.Views;
 /// <summary>Small dialogs built in code; each returns null when cancelled.</summary>
 public static class SimpleDialogs
 {
-    static async Task<T?> Show<T>(Window owner, string title, Control body, Func<T?> accept, string okText = "OK") where T : class
+    static async Task<T?> Show<T>(Window owner, string title, Control body, Func<T?> accept, string okText = "OK", bool okIsDefault = true) where T : class
     {
         T? result = null;
         var window = new Window
@@ -23,8 +23,8 @@ public static class SimpleDialogs
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             MinWidth = 380,
         };
-        var ok = new Button { Content = okText, IsDefault = true };
-        var cancel = new Button { Content = "Abbrechen", IsCancel = true };
+        var ok = new Button { Content = okText, IsDefault = okIsDefault };
+        var cancel = new Button { Content = "Abbrechen", IsCancel = true, IsDefault = !okIsDefault };
         ok.Click += (_, _) =>
         {
             result = accept();
@@ -77,7 +77,7 @@ public static class SimpleDialogs
 
     public static Task<BanChoice?> Ban(Window owner, string nickname)
     {
-        (string Label, int? Minutes)[] durations = [("1 Stunde", 60), ("1 Tag", 1440), ("7 Tage", 10080), ("Dauerhaft", null)];
+        var durations = BanChoice.Durations;
         var reason = new TextBox { Watermark = "Grund" };
         var duration = new ComboBox { ItemsSource = durations.Select(d => d.Label).ToList(), SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
         var includeIp = new CheckBox { Content = "Auch die IP-Adresse sperren" };
@@ -99,7 +99,7 @@ public static class SimpleDialogs
               "Vergleiche den Fingerprint mit der Zeile 'Zertifikat-Fingerprint' im Serverlog.";
         var body = Stack(Label(text), new SelectableTextBlock { Text = fingerprint, FontFamily = new FontFamily("Consolas,monospace"), TextWrapping = TextWrapping.Wrap, MaxWidth = 480 });
         return await Show(owner, "Serverzertifikat prüfen", body, () => "ok",
-            prompt.Result == TofuResult.Mismatch ? "Trotzdem vertrauen" : "Vertrauen") is not null;
+            prompt.Result == TofuResult.Mismatch ? "Trotzdem vertrauen" : "Vertrauen", prompt.AcceptIsDefault) is not null;
     }
 
     public static Task<ConnectChoice?> Connect(Window owner, ClientSettings settings)
