@@ -1,0 +1,130 @@
+using System.Text.Json.Serialization;
+using OVS.Shared.Permissions;
+
+namespace OVS.Shared.Protocol;
+
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+// Connection
+[JsonDerivedType(typeof(Ping), "ping")]
+[JsonDerivedType(typeof(Pong), "pong")]
+[JsonDerivedType(typeof(Error), "error")]
+[JsonDerivedType(typeof(ClientHello), "clientHello")]
+[JsonDerivedType(typeof(Challenge), "challenge")]
+[JsonDerivedType(typeof(ClientProof), "clientProof")]
+[JsonDerivedType(typeof(Welcome), "welcome")]
+[JsonDerivedType(typeof(Rejected), "rejected")]
+[JsonDerivedType(typeof(Disconnected), "disconnected")]
+// Channels and users
+[JsonDerivedType(typeof(JoinChannel), "joinChannel")]
+[JsonDerivedType(typeof(CreateChannel), "createChannel")]
+[JsonDerivedType(typeof(EditChannel), "editChannel")]
+[JsonDerivedType(typeof(DeleteChannel), "deleteChannel")]
+[JsonDerivedType(typeof(MoveUser), "moveUser")]
+[JsonDerivedType(typeof(SetSelfState), "setSelfState")]
+[JsonDerivedType(typeof(ChannelAdded), "channelAdded")]
+[JsonDerivedType(typeof(ChannelUpdated), "channelUpdated")]
+[JsonDerivedType(typeof(ChannelRemoved), "channelRemoved")]
+[JsonDerivedType(typeof(UserJoined), "userJoined")]
+[JsonDerivedType(typeof(UserUpdated), "userUpdated")]
+[JsonDerivedType(typeof(UserLeft), "userLeft")]
+// Administration
+[JsonDerivedType(typeof(CreateGroup), "createGroup")]
+[JsonDerivedType(typeof(UpdateGroup), "updateGroup")]
+[JsonDerivedType(typeof(DeleteGroup), "deleteGroup")]
+[JsonDerivedType(typeof(AssignGroup), "assignGroup")]
+[JsonDerivedType(typeof(UnassignGroup), "unassignGroup")]
+[JsonDerivedType(typeof(ListUsers), "listUsers")]
+[JsonDerivedType(typeof(UserList), "userList")]
+[JsonDerivedType(typeof(RedeemAdminToken), "redeemAdminToken")]
+[JsonDerivedType(typeof(UpdateServerSettings), "updateServerSettings")]
+[JsonDerivedType(typeof(GroupsChanged), "groupsChanged")]
+[JsonDerivedType(typeof(ServerSettingsChanged), "serverSettingsChanged")]
+// Moderation
+[JsonDerivedType(typeof(Kick), "kick")]
+[JsonDerivedType(typeof(Ban), "ban")]
+[JsonDerivedType(typeof(Unban), "unban")]
+[JsonDerivedType(typeof(ListBans), "listBans")]
+[JsonDerivedType(typeof(BanList), "banList")]
+[JsonDerivedType(typeof(SetServerMute), "setServerMute")]
+// Links
+[JsonDerivedType(typeof(LinkChannels), "linkChannels")]
+[JsonDerivedType(typeof(UnlinkChannels), "unlinkChannels")]
+[JsonDerivedType(typeof(ChannelsLinked), "channelsLinked")]
+[JsonDerivedType(typeof(ChannelsUnlinked), "channelsUnlinked")]
+public abstract record Message;
+
+/// <summary>Client request. A failed request is answered with an Error carrying the same RequestId.</summary>
+public abstract record Request : Message
+{
+    public string? RequestId { get; init; }
+}
+
+// ---- Connection ----
+public sealed record Ping : Message;
+public sealed record Pong : Message;
+public sealed record Error(string? RequestId, string Code, string? Detail = null) : Message;
+public sealed record ClientHello(int ProtocolVersion, string Nickname, string PublicKey, string? Password) : Message;
+public sealed record Challenge(string Nonce) : Message;
+public sealed record ClientProof(string Signature) : Message;
+public sealed record Welcome(uint SessionId, string VoiceKey, ServerSnapshot Snapshot) : Message;
+public sealed record Rejected(string Code, string? Detail = null) : Message;
+public sealed record Disconnected(string Reason, string? Detail = null) : Message;
+
+// ---- State ----
+public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword);
+public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order);
+public sealed record LinkInfo(Guid A, Guid B);
+public sealed record GroupInfo(Guid Id, string Name, Permission Permissions);
+public sealed record UserInfo(
+    uint SessionId, string Fingerprint, string Nickname, Guid ChannelId,
+    bool SelfMuted, bool SelfDeafened, bool ServerMuted,
+    Permission Permissions, IReadOnlyList<Guid> GroupIds);
+public sealed record ServerSnapshot(
+    ServerSettingsInfo Settings, Guid DefaultChannelId,
+    IReadOnlyList<ChannelInfo> Channels, IReadOnlyList<LinkInfo> Links,
+    IReadOnlyList<GroupInfo> Groups, IReadOnlyList<UserInfo> Users);
+
+// ---- Channels and users ----
+public sealed record JoinChannel(Guid ChannelId) : Request;
+public sealed record CreateChannel(string Name, string Description) : Request;
+public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order) : Request;
+public sealed record DeleteChannel(Guid ChannelId) : Request;
+public sealed record MoveUser(uint SessionId, Guid ChannelId) : Request;
+public sealed record SetSelfState(bool Muted, bool Deafened) : Request;
+public sealed record ChannelAdded(ChannelInfo Channel) : Message;
+public sealed record ChannelUpdated(ChannelInfo Channel) : Message;
+public sealed record ChannelRemoved(Guid ChannelId) : Message;
+public sealed record UserJoined(UserInfo User) : Message;
+public sealed record UserUpdated(UserInfo User) : Message;
+public sealed record UserLeft(uint SessionId) : Message;
+
+// ---- Administration ----
+public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IReadOnlyList<Guid> GroupIds);
+public sealed record CreateGroup(string Name, Permission Permissions) : Request;
+public sealed record UpdateGroup(Guid GroupId, string Name, Permission Permissions) : Request;
+public sealed record DeleteGroup(Guid GroupId) : Request;
+public sealed record AssignGroup(string Fingerprint, Guid GroupId) : Request;
+public sealed record UnassignGroup(string Fingerprint, Guid GroupId) : Request;
+public sealed record ListUsers : Request;
+public sealed record UserList(string? RequestId, IReadOnlyList<KnownUserInfo> Users) : Message;
+public sealed record RedeemAdminToken(string Token) : Request;
+/// <param name="Password">null = unchanged, "" = remove, anything else = new password.</param>
+public sealed record UpdateServerSettings(string Name, string WelcomeText, string? Password) : Request;
+public sealed record GroupsChanged(IReadOnlyList<GroupInfo> Groups) : Message;
+public sealed record ServerSettingsChanged(ServerSettingsInfo Settings) : Message;
+
+// ---- Moderation ----
+public sealed record BanInfo(
+    Guid Id, string Fingerprint, string Nickname, string? Ip, string Reason, string CreatedBy, DateTimeOffset? ExpiresAt);
+public sealed record Kick(uint SessionId, string Reason) : Request;
+public sealed record Ban(uint SessionId, string Reason, int? DurationMinutes, bool IncludeIp) : Request;
+public sealed record Unban(Guid BanId) : Request;
+public sealed record ListBans : Request;
+public sealed record BanList(string? RequestId, IReadOnlyList<BanInfo> Bans) : Message;
+public sealed record SetServerMute(uint SessionId, bool Muted) : Request;
+
+// ---- Links ----
+public sealed record LinkChannels(Guid A, Guid B) : Request;
+public sealed record UnlinkChannels(Guid A, Guid B) : Request;
+public sealed record ChannelsLinked(Guid A, Guid B) : Message;
+public sealed record ChannelsUnlinked(Guid A, Guid B) : Message;
