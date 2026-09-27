@@ -79,6 +79,8 @@ public class AdminCommandTests
         await using var g = await TestClient.ConnectAsync(server);
 
         await a.SendAsync(new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak | Permission.SpeakLinked));
+        var groups = await g.WaitForAsync<GroupsChanged>();
+        Assert.Equal(Permission.Speak | Permission.SpeakLinked, groups.Groups.Single(x => x.Id == PermissionRules.GuestGroupId).Permissions);
         var update = await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id);
         Assert.Equal(Permission.Speak | Permission.SpeakLinked, update.User.Permissions);
     }
@@ -99,6 +101,77 @@ public class AdminCommandTests
 
         await v.SendAsync(new CreateGroup("Ok", Permission.Speak));
         await v.WaitForAsync<GroupsChanged>();
+    }
+
+    [Theory]
+    [InlineData("", Codes.InvalidName)]
+    [InlineData("123456789012345678901234567890123", Codes.InvalidName)]
+    [InlineData(" gast ", Codes.NameTaken)]
+    public async Task CreateGroup_InvalidOrDuplicateName_Error(string name, string code)
+    {
+        var admin = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await a.SendAsync(new CreateGroup(name, Permission.Speak) { RequestId = "g" });
+        Assert.Equal(code, (await a.ErrorAsync("g")).Code);
+    }
+
+    [Fact]
+    public async Task Assign_GroupStrongerThanActor_PermissionDenied()
+    {
+        var assigner = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(d =>
+        {
+            d.Groups.Add(new Group(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign | Permission.Speak));
+            TestServer.Grant(assigner, "Zuweiser")(d);
+        });
+        await using var z = await TestClient.ConnectAsync(server, identity: assigner);
+        var modGroup = z.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
+
+        await z.SendAsync(new AssignGroup(assigner.Fingerprint, modGroup) { RequestId = "a" });
+        Assert.Equal(Codes.PermissionDenied, (await z.ErrorAsync("a")).Code);
+    }
+
+    [Fact]
+    public async Task Unassign_OfflineUser_And_ListShowsNickname()
+    {
+        var admin = ClientIdentity.Create();
+        var modGroup = Guid.Empty;
+        await using var server = await TestServer.StartAsync(d =>
+        {
+            TestServer.Grant(admin, "Admin")(d);
+            modGroup = d.Groups.Single(g => g.Name == "Moderator").Id;
+            d.Users.Add(new UserRecord { Fingerprint = "offline", LastNickname = "Otto", GroupIds = [PermissionRules.GuestGroupId, modGroup] });
+        });
+        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+
+        await a.SendAsync(new UnassignGroup("offline", modGroup));
+        await a.SendAsync(new ListUsers { RequestId = "l" });
+        var otto = (await a.WaitForAsync<UserList>(l => l.RequestId == "l")).Users.Single(u => u.Fingerprint == "offline");
+        Assert.Equal("Otto", otto.LastNickname);
+        Assert.Equal([PermissionRules.GuestGroupId], otto.GroupIds);
+    }
+
+    [Fact]
+    public async Task RedeemedAdmin_And_Password_SurviveRestart()
+    {
+        var server = await TestServer.StartAsync();
+        var id = ClientIdentity.Create();
+        await using (var a = await TestClient.ConnectAsync(server, "anna", id))
+        {
+            await a.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
+            await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id && u.User.Permissions == Permission.All);
+            await a.SendAsync(new UpdateServerSettings("S", "", "geheim"));
+            await a.WaitForAsync<ServerSettingsChanged>();
+        }
+        server = await server.RestartAsync();
+        await using var _ = server;
+
+        Assert.Null(server.State.PendingAdminToken); // an admin exists now
+        await using var again = await TestClient.OpenAsync(server.Port, id);
+        var welcome = Assert.IsType<Welcome>(await again.HandshakeAsync("anna", "geheim"));
+        Assert.Equal(Permission.All, welcome.Snapshot.Users.Single(u => u.SessionId == welcome.SessionId).Permissions);
+        Assert.DoesNotContain("geheim", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
     }
 
     [Theory]

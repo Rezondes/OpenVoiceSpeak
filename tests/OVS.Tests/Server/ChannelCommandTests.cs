@@ -76,6 +76,14 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Edit_DescriptionTooLong_InvalidValue()
+    {
+        var raid = await CreateAsync("Raid");
+        await a.SendAsync(new EditChannel(raid.Id, "Raid", new string('x', 501), 1) { RequestId = "e" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("e")).Code);
+    }
+
+    [Fact]
     public async Task Delete_MovesUsersToDefaultThenRemoves()
     {
         var raid = await CreateAsync("Raid");
@@ -136,6 +144,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         await a.AssertNoMessageAsync<ChannelAdded>();
         await a.AssertNoMessageAsync<ChannelUpdated>();
         await a.AssertNoMessageAsync<ChannelRemoved>();
+        await a.AssertNoMessageAsync<UserUpdated>();
         await a.AssertNoMessageAsync<Error>();
     }
 }

@@ -29,6 +29,17 @@ public class StateSyncTests
     }
 
     [Fact]
+    public async Task NewUser_IsPersistedAsGuest()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var a = await TestClient.ConnectAsync(server, "anna");
+        var data = new OVS.Server.Data.DataStore(Path.Combine(server.DataDir, "server-data.json")).LoadOrCreate(() => throw new InvalidOperationException());
+        var user = data.Users.Single(u => u.Fingerprint == a.Identity.Fingerprint);
+        Assert.Equal("anna", user.LastNickname);
+        Assert.Equal([OVS.Server.Permissions.PermissionRules.GuestGroupId], user.GroupIds);
+    }
+
+    [Fact]
     public async Task Disconnect_OthersReceiveUserLeft()
     {
         await using var server = await TestServer.StartAsync();
