@@ -170,7 +170,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public void Deafened_Engine_IgnoresIncomingVoice()
     {
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller { PttKey = 0, LinkPttKey = 0 }; // simulated keys only
         using var engine = new AudioEngine(keys, useDevices: false) { Deafened = true };
         engine.OnVoice(7, 0, 0, new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]));
         Assert.Empty(engine.FramesReceived);
@@ -180,7 +180,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task ToneInput_ReportsInputLevel()
     {
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller { PttKey = 0, LinkPttKey = 0 }; // simulated keys only
         using var engine = new AudioEngine(keys, useDevices: false);
         var level = new TaskCompletionSource<float>();
         engine.InputLevel += db => level.TrySetResult(db);

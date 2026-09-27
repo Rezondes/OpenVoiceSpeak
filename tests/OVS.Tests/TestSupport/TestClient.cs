@@ -47,7 +47,7 @@ public sealed class TestClient : IAsyncDisposable
     {
         var client = await OpenAsync(server.Port, identity);
         var result = await client.HandshakeAsync(nickname ?? "user" + Random.Shared.Next(100_000), password);
-        Assert.IsType<Welcome>(result);
+        Assert.True(result is Welcome, $"Handshake failed: {result}");
         return client;
     }
 
@@ -184,6 +184,8 @@ public sealed class TestClient : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await OVS.Client.Net.ClientConnection.CloseGracefullyAsync(ssl);
+        // Like the real client: let the server read the close_notify and close first (see ClientConnection).
+        if (pump is not null) await Task.WhenAny(pump, Task.Delay(TimeSpan.FromSeconds(1)));
         tcp.Dispose();
         if (pump is not null) await pump;
         await ssl.DisposeAsync();

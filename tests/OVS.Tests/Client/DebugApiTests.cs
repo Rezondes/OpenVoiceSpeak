@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text.Json;
 using OVS.Client.Debug;
+using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Tests.TestSupport;
 
@@ -43,6 +44,8 @@ public sealed class DebugApiTests : IAsyncLifetime
         public static async Task<Instance> StartAsync()
         {
             var i = new Instance();
+            // Keys only through the API: a real mouse button 4 or 5 pressed while the tests run must not transmit.
+            new ClientSettings { PttKey = 0, LinkPttKey = 0 }.Save(i.dir);
             i.vm = await i.ui.InvokeAsync(() => Task.FromResult(new MainViewModel(i.dir, i.ui.Post, useAudioDevices: false)));
             var probe = new TcpListener(IPAddress.Loopback, 0);
             probe.Start();

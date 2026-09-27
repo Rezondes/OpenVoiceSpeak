@@ -238,7 +238,7 @@ public sealed class ClientLogTests : IDisposable
     [Fact]
     public async Task AudioDebug_WritesToClientLog()
     {
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller { PttKey = 0, LinkPttKey = 0 }; // simulated keys only
         using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         using (new OVS.Client.Debug.AudioDebugLog(keys, engine, new ClientLog(dir, TimeProvider.System)))
         {
