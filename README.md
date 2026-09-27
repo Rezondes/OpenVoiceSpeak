@@ -89,6 +89,36 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiert
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 
+### Kommandozeile
+
+| Option | Wirkung |
+|---|---|
+| `--profile <ordner>` | Eigener Ordner für Identität und Einstellungen, z. B. für eine zweite Instanz |
+| `--no-audio` | Ohne Mikrofon und Lautsprecher |
+| `--debug-api <port>` | Aktiviert die lokale Debug-API (siehe unten) |
+
+### Debug-API
+
+Mit der Debug-API lässt sich der Client ohne Maus und Tastatur steuern und prüfen.
+
+- Sie lauscht nur auf `localhost`.
+- Jede Anfrage braucht den Header `X-OVS-Debug: 1`. Dadurch können Webseiten im Browser sie nicht nutzen.
+- Alle Endpunkte sind in `src/OVS.Client/Debug/DebugApi.cs` beschrieben.
+
+```bash
+OVS.Client.exe --profile ./anna --debug-api 7011 --no-audio
+curl -H "X-OVS-Debug: 1" -H "Content-Type: application/json" -X POST localhost:7011/connect -d '{"host":"127.0.0.1","port":7000,"nickname":"anna"}'
+curl -H "X-OVS-Debug: 1" -H "Content-Type: application/json" -X POST localhost:7011/tone -d '{"hz":440}'
+curl -H "X-OVS-Debug: 1" -H "Content-Type: application/json" -X POST localhost:7011/linkptt -d '{"down":true}'
+curl -H "X-OVS-Debug: 1" localhost:7011/state
+```
+
+Die wichtigsten Endpunkte:
+
+- `/tone` ersetzt das Mikrofon durch einen Testton.
+- `/ptt` und `/linkptt` halten die Tasten softwareseitig gedrückt.
+- `/state` liefert den kompletten Oberflächenzustand, darunter wer spricht (auch über Link) und empfangene Frames pro Sprecher.
+
 ## Entwicklung
 
 ```bash
@@ -96,7 +126,7 @@ dotnet build
 dotnet test
 ```
 
-Die Tests laufen mit In-Process-Servern auf zufälligen lokalen Ports. Sie umfassen Protokoll, Rechte, Voice-Kryptografie, Routing und Relay über echtes UDP, die Audio-Pipeline und die ViewModels.
+Die Tests laufen mit In-Process-Servern auf zufälligen lokalen Ports. Sie umfassen Protokoll, Rechte, Voice-Kryptografie, Routing und Relay über echtes UDP, die Audio-Pipeline und die ViewModels. Dazu kommen Ende-zu-Ende-Tests mit zwei echten Clients, gesteuert über die Debug-API.
 
 Projektaufbau:
 

@@ -65,6 +65,9 @@ public sealed partial class ServerViewModel : ObservableObject
 
     partial void OnIsAdminChanged(bool value) => OnPropertyChanged(nameof(CanRedeemToken));
 
+    public UserList? LastUserList { get; private set; }
+    public BanList? LastBanList { get; private set; }
+
     public event Action<string>? Notice;
     public event Action<Message>? AdminMessage;
     public event Action? StateChanged;
@@ -76,7 +79,12 @@ public sealed partial class ServerViewModel : ObservableObject
             case Error e:
                 Notice?.Invoke(ErrorTexts.For(e.Code, e.Detail));
                 return;
-            case UserList or BanList:
+            case UserList list:
+                LastUserList = list;
+                AdminMessage?.Invoke(message);
+                return;
+            case BanList list:
+                LastBanList = list;
                 AdminMessage?.Invoke(message);
                 return;
         }

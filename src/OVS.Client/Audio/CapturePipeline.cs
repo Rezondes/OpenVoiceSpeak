@@ -1,10 +1,14 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace OVS.Client.Audio;
 
-/// <summary>Microphone -> mono 48 kHz -> 20 ms frames -> VAD -> Opus. Windows only (WASAPI).</summary>
+/// <summary>
+/// Microphone (or a synthetic test tone) -> mono 48 kHz -> 20 ms frames -> VAD -> Opus.
+/// The device source is Windows only (WASAPI); the tone source works anywhere.
+/// </summary>
 public sealed class CapturePipeline : IDisposable
 {
     readonly FrameChunker chunker = new();
@@ -13,6 +17,8 @@ public sealed class CapturePipeline : IDisposable
     LinearResampler? resampler;
     int resamplerRate;
     WasapiCapture? capture;
+    Thread? toneThread;
+    volatile bool running = true;
 
     CapturePipeline() { }
 
@@ -23,6 +29,14 @@ public sealed class CapturePipeline : IDisposable
         capture.DataAvailable += (_, e) =>
             pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, capture.WaveFormat), capture.WaveFormat.SampleRate);
         pipeline.capture = capture;
+        return pipeline;
+    }
+
+    /// <summary>Synthetic microphone for tests and the debug API: a steady sine, one frame every 20 ms.</summary>
+    public static CapturePipeline FromTone(double frequency)
+    {
+        var pipeline = new CapturePipeline();
+        pipeline.toneThread = new Thread(() => pipeline.ToneLoop(frequency)) { IsBackground = true, Name = "TestTone" };
         return pipeline;
     }
 
@@ -38,6 +52,21 @@ public sealed class CapturePipeline : IDisposable
     public void Start()
     {
         capture?.StartRecording();
+        toneThread?.Start();
+    }
+
+    void ToneLoop(double frequency)
+    {
+        var clock = Stopwatch.StartNew();
+        var frame = new float[AudioFormat.FrameSamples];
+        double phase = 0, step = 2 * Math.PI * frequency / AudioFormat.SampleRate;
+        for (long n = 0; running; n++)
+        {
+            var wait = AudioFormat.FrameDuration * n - clock.Elapsed;
+            if (wait > TimeSpan.Zero) Thread.Sleep(wait);
+            for (int i = 0; i < frame.Length; i++, phase += step) frame[i] = 0.3f * (float)Math.Sin(phase);
+            Feed(frame, AudioFormat.SampleRate);
+        }
     }
 
     public void Feed(ReadOnlySpan<float> mono, int sampleRate)
@@ -92,10 +121,12 @@ public sealed class CapturePipeline : IDisposable
 
     public void Dispose()
     {
+        running = false;
         if (capture is not null)
         {
             capture.StopRecording();
             capture.Dispose();
         }
+        toneThread?.Join(200);
     }
 }

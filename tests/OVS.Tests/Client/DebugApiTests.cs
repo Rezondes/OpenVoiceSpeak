@@ -1,0 +1,212 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Net.Sockets;
+using System.Text.Json;
+using OVS.Client.Debug;
+using OVS.Client.ViewModels;
+using OVS.Tests.TestSupport;
+
+namespace OVS.Tests.Client;
+
+/// <summary>
+/// Two real clients (no audio devices, test tone instead of a microphone) driven only through the debug API,
+/// talking through a real server over TLS and UDP.
+/// </summary>
+public sealed class DebugApiTests : IAsyncLifetime
+{
+    TestServer server = null!;
+    Instance anna = null!, bert = null!;
+
+    public async Task InitializeAsync()
+    {
+        server = await TestServer.StartAsync();
+        anna = await Instance.StartAsync();
+        bert = await Instance.StartAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await anna.DisposeAsync();
+        await bert.DisposeAsync();
+        await server.DisposeAsync();
+    }
+
+    sealed class Instance : IAsyncDisposable
+    {
+        readonly TestDispatcher ui = new();
+        readonly string dir = Directory.CreateTempSubdirectory("ovs-debug-").FullName;
+        MainViewModel vm = null!;
+        DebugApi api = null!;
+        public HttpClient Http { get; private set; } = null!;
+        public int Port { get; private set; }
+
+        public static async Task<Instance> StartAsync()
+        {
+            var i = new Instance();
+            i.vm = await i.ui.InvokeAsync(() => Task.FromResult(new MainViewModel(i.dir, i.ui.Post, useAudioDevices: false)));
+            var probe = new TcpListener(IPAddress.Loopback, 0);
+            probe.Start();
+            i.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
+            probe.Stop();
+            i.api = new DebugApi(i.vm, i.Port, work => i.ui.InvokeAsync(work));
+            i.Http = new HttpClient { BaseAddress = new Uri($"http://localhost:{i.Port}/") };
+            i.Http.DefaultRequestHeaders.Add(DebugApi.Header, "1");
+            return i;
+        }
+
+        public async Task<JsonElement> Post(string path, object? body = null)
+        {
+            var response = await Http.PostAsJsonAsync(path, body ?? new { });
+            var text = await response.Content.ReadAsStringAsync();
+            Assert.True(response.IsSuccessStatusCode, $"{path}: {text}");
+            return JsonDocument.Parse(text).RootElement;
+        }
+
+        public async Task<JsonElement> State() =>
+            JsonDocument.Parse(await Http.GetStringAsync("state")).RootElement;
+
+        public async Task<JsonElement> Until(Func<JsonElement, bool> condition, int timeoutMs = 5000)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            JsonElement state;
+            do
+            {
+                state = await State();
+                if (condition(state)) return state;
+                await Task.Delay(50);
+            } while (DateTime.UtcNow < deadline);
+            Assert.Fail("Bedingung nicht erreicht. Zustand: " + state);
+            return state;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            api.Dispose();
+            Http.Dispose();
+            await ui.InvokeAsync<object?>(async () =>
+            {
+                await vm.DisposeAsync();
+                return null;
+            });
+            ui.Dispose();
+            Directory.Delete(dir, true);
+        }
+    }
+
+    static IEnumerable<JsonElement> Channels(JsonElement state) => state.GetProperty("server").GetProperty("channels").EnumerateArray();
+
+    static JsonElement Channel(JsonElement state, string name) => Channels(state).Single(c => c.GetProperty("name").GetString() == name);
+
+    static JsonElement? User(JsonElement state, uint id) =>
+        Channels(state).SelectMany(c => c.GetProperty("users").EnumerateArray())
+            .Cast<JsonElement?>().FirstOrDefault(u => u!.Value.GetProperty("sessionId").GetUInt32() == id);
+
+    static long FramesFrom(JsonElement state, uint speaker) =>
+        state.GetProperty("audio").GetProperty("framesReceived").TryGetProperty(speaker.ToString(), out var n) ? n.GetInt64() : 0;
+
+    static uint SelfId(JsonElement state) => state.GetProperty("server").GetProperty("selfId").GetUInt32();
+
+    object ConnectBody(string nickname) => new { host = "127.0.0.1", port = server.Port, nickname };
+
+    [Fact]
+    public async Task MissingHeader_Forbidden()
+    {
+        using var plain = new HttpClient();
+        var response = await plain.GetAsync($"http://localhost:{anna.Port}/state");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UnknownChannel_IsBadRequest()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+        var response = await anna.Http.PostAsJsonAsync("join", new { channel = "gibtsnicht" });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task FullFlow_Linking_PttAndLinkPtt()
+    {
+        var a = await anna.Post("connect", ConnectBody("anna"));
+        Assert.True(a.GetProperty("connected").GetBoolean(), a.ToString());
+        var annaId = SelfId(a);
+        await bert.Post("connect", ConnectBody("bert"));
+
+        // anna becomes admin, creates Raid; bert moves there
+        await anna.Post("redeem", new { token = server.State.PendingAdminToken });
+        await anna.Until(s => s.GetProperty("server").GetProperty("isAdmin").GetBoolean());
+        await anna.Post("create-channel", new { name = "Raid" });
+        await anna.Until(s => Channels(s).Any(c => c.GetProperty("name").GetString() == "Raid"));
+        await bert.Post("join", new { channel = "Raid" });
+        await bert.Until(s => Channel(s, "Raid").GetProperty("isCurrent").GetBoolean());
+
+        // Normal PTT from the lobby does not reach Raid
+        await anna.Post("tone", new { hz = 440 });
+        await anna.Post("ptt", new { down = true });
+        await anna.Until(s => s.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
+        await Task.Delay(300);
+        Assert.Equal(0, FramesFrom(await bert.State(), annaId));
+        await anna.Post("ptt", new { down = false });
+
+        // Link Lobby and Raid: normal PTT still stays in the lobby ...
+        await anna.Post("link", new { a = "Lobby", b = "Raid" });
+        await bert.Until(s => Channel(s, "Raid").GetProperty("isLinked").GetBoolean());
+        await anna.Post("ptt", new { down = true });
+        await Task.Delay(500);
+        Assert.Equal(0, FramesFrom(await bert.State(), annaId));
+        await anna.Post("ptt", new { down = false });
+
+        // ... but link PTT reaches Raid, marked as link transmission
+        await anna.Post("linkptt", new { down = true });
+        var b = await bert.Until(s => FramesFrom(s, annaId) > 10 && User(s, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
+        Assert.Contains("Links", (await anna.State()).GetProperty("transmitText").GetString());
+        await Task.Delay(700); // the indicator must stay on while anna keeps talking
+        Assert.True(User(await bert.State(), annaId)?.GetProperty("isSpeakingViaLink").GetBoolean());
+        await anna.Post("linkptt", new { down = false });
+
+        // bert is a guest without SpeakLinked: his link PTT stays in Raid and he gets a hint
+        var bertId = SelfId(b);
+        await bert.Post("tone", new { hz = 330 });
+        await bert.Post("linkptt", new { down = true });
+        var bertState = await bert.Until(s => s.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
+        Assert.Contains("Kein Recht", bertState.GetProperty("linkHint").GetString());
+        await Task.Delay(300);
+        Assert.Equal(0, FramesFrom(await anna.State(), bertId));
+        await bert.Post("linkptt", new { down = false });
+
+        // same channel: bert joins the lobby and anna hears his plain PTT
+        await bert.Post("join", new { channel = "Lobby" });
+        await bert.Until(s => Channel(s, "Lobby").GetProperty("isCurrent").GetBoolean());
+        await bert.Post("ptt", new { down = true });
+        await anna.Until(s => FramesFrom(s, bertId) > 10 && User(s, bertId)?.GetProperty("isSpeaking").GetBoolean() == true);
+        await bert.Post("ptt", new { down = false });
+
+        // muted clients send nothing
+        await bert.Post("mute", new { value = true });
+        var sentBefore = (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
+        await bert.Post("ptt", new { down = true });
+        await Task.Delay(300);
+        Assert.Equal(sentBefore, (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64());
+    }
+
+    [Fact]
+    public async Task AdminActions_ThroughApi()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+        await bert.Post("connect", ConnectBody("bert"));
+        await anna.Post("redeem", new { token = server.State.PendingAdminToken });
+        await anna.Until(s => s.GetProperty("server").GetProperty("isAdmin").GetBoolean());
+
+        // raw protocol request: a new group
+        await anna.Post("request", new { type = "createGroup", name = "Team", permissions = "Speak, SpeakLinked" });
+        await anna.Until(s => s.GetProperty("server").GetProperty("groups").EnumerateArray().Any(g => g.GetProperty("name").GetString() == "Team"));
+
+        // server mute shows up for everyone, kick disconnects
+        await anna.Post("server-mute", new { user = "bert", value = true });
+        await bert.Until(s => Channels(s).SelectMany(c => c.GetProperty("users").EnumerateArray())
+            .Any(u => u.GetProperty("isSelf").GetBoolean() && u.GetProperty("serverMuted").GetBoolean()));
+        await anna.Post("kick", new { user = "bert", reason = "Test" });
+        var kicked = await bert.Until(s => !s.GetProperty("connected").GetBoolean());
+        Assert.Contains("gekickt", kicked.GetProperty("status").GetString());
+    }
+}

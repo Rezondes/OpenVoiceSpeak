@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -40,26 +42,34 @@ public static class AudioDevices
     }
 }
 
-/// <summary>Owns microphone, speaker, mixer and the playback clock. Recreating devices on Configure keeps the connection.</summary>
+/// <summary>
+/// Owns microphone, speaker, mixer and the playback clock. Recreating devices on Configure keeps the connection.
+/// Without devices (--no-audio) the mixer runs on its own 20 ms clock, so reception and indicators still work.
+/// </summary>
 public sealed class AudioEngine : IDisposable
 {
     static readonly TimeSpan TargetBuffer = TimeSpan.FromMilliseconds(60);
 
     readonly object gate = new();
     readonly KeyPoller keys;
+    readonly bool useDevices;
     readonly Thread playbackThread;
+    readonly ConcurrentDictionary<uint, long> framesReceived = new();
     volatile bool running = true;
     volatile bool selfMuted = true, deafened, hasSpeakLinked, connected;
+    ClientSettings settings = new();
     CapturePipeline? capture;
     WasapiOut? output;
     volatile BufferedWaveProvider? playback;
     List<ActiveSpeaker> lastActive = [];
     byte? lastTarget;
     int levelCounter, mixCount;
+    long framesSent;
 
-    public AudioEngine(KeyPoller keys)
+    public AudioEngine(KeyPoller keys, bool useDevices = true)
     {
         this.keys = keys;
+        this.useDevices = useDevices;
         playbackThread = new Thread(PlaybackLoop) { IsBackground = true, Name = "Playback" };
         playbackThread.Start();
     }
@@ -80,6 +90,13 @@ public sealed class AudioEngine : IDisposable
         }
     }
 
+    /// <summary>Test tone frequency replacing the microphone, or null for the real microphone.</summary>
+    public double? ToneHz { get; private set; }
+
+    public long FramesSent => Interlocked.Read(ref framesSent);
+    public IReadOnlyDictionary<uint, long> FramesReceived => new Dictionary<uint, long>(framesReceived);
+    public float LastOutputLevelDb { get; private set; } = -120f;
+
     /// <summary>Set to VoiceClient.SendVoice while connected.</summary>
     public Action<byte[], byte>? Send { get; set; }
 
@@ -88,56 +105,85 @@ public sealed class AudioEngine : IDisposable
     public event Action<float>? InputLevel;
 
     /// <returns>A warning for the user, or null.</returns>
-    public string? Configure(ClientSettings settings)
+    public string? Configure(ClientSettings newSettings)
     {
         lock (gate)
         {
+            settings = newSettings;
             StopDevices();
             Mode = settings.Mode;
             Mixer.Volume = settings.OutputVolume;
             var warnings = new List<string>();
-
-            try
-            {
-                capture = CapturePipeline.FromDevice(AudioDevices.Open(settings.InputDeviceId, DataFlow.Capture, warnings));
-                capture.Gain = settings.InputGain;
-                capture.DecideTarget = Decide;
-                capture.Vad.ThresholdDb = settings.VadThresholdDb;
-                capture.FrameEncoded += (opus, target) => Send?.Invoke(opus, target);
-                capture.Level += OnLevel;
-                capture.Start();
-            }
-            catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException or NotSupportedException)
-            {
-                capture?.Dispose();
-                capture = null;
-                warnings.Add($"Mikrofon konnte nicht geöffnet werden: {e.Message}");
-            }
-
-            try
-            {
-                var device = AudioDevices.Open(settings.OutputDeviceId, DataFlow.Render, warnings);
-                output = device is null
-                    ? new WasapiOut(AudioClientShareMode.Shared, 50)
-                    : new WasapiOut(device, AudioClientShareMode.Shared, true, 50);
-                var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
-                {
-                    DiscardOnBufferOverflow = true,
-                    BufferDuration = TimeSpan.FromSeconds(1),
-                };
-                output.Init(buffer);
-                output.Play();
-                playback = buffer;
-            }
-            catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException)
-            {
-                output?.Dispose();
-                output = null;
-                warnings.Add($"Lautsprecher konnte nicht geöffnet werden: {e.Message}");
-            }
-
+            StartCapture(warnings);
+            if (useDevices) StartOutput(warnings);
             return warnings.Count == 0 ? null : string.Join(" ", warnings.Distinct());
         }
+    }
+
+    public void SetTone(double? frequency)
+    {
+        lock (gate)
+        {
+            ToneHz = frequency;
+            capture?.Dispose();
+            capture = null;
+            StartCapture([]);
+        }
+    }
+
+    void StartCapture(List<string> warnings)
+    {
+        try
+        {
+            capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz)
+                : useDevices ? CapturePipeline.FromDevice(AudioDevices.Open(settings.InputDeviceId, DataFlow.Capture, warnings))
+                : null;
+            if (capture is null) return;
+            capture.Gain = settings.InputGain;
+            capture.DecideTarget = Decide;
+            capture.Vad.ThresholdDb = settings.VadThresholdDb;
+            capture.FrameEncoded += OnFrameEncoded;
+            capture.Level += OnLevel;
+            capture.Start();
+        }
+        catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException or NotSupportedException)
+        {
+            capture?.Dispose();
+            capture = null;
+            warnings.Add($"Mikrofon konnte nicht geöffnet werden: {e.Message}");
+        }
+    }
+
+    void StartOutput(List<string> warnings)
+    {
+        try
+        {
+            var device = AudioDevices.Open(settings.OutputDeviceId, DataFlow.Render, warnings);
+            output = device is null
+                ? new WasapiOut(AudioClientShareMode.Shared, 50)
+                : new WasapiOut(device, AudioClientShareMode.Shared, true, 50);
+            var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
+            {
+                DiscardOnBufferOverflow = true,
+                BufferDuration = TimeSpan.FromSeconds(1),
+            };
+            output.Init(buffer);
+            output.Play();
+            playback = buffer;
+        }
+        catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException)
+        {
+            output?.Dispose();
+            output = null;
+            warnings.Add($"Lautsprecher konnte nicht geöffnet werden: {e.Message}");
+        }
+    }
+
+    void OnFrameEncoded(byte[] opus, byte target)
+    {
+        if (Send is not { } send) return;
+        send(opus, target);
+        Interlocked.Increment(ref framesSent);
     }
 
     byte? Decide(bool voiceActive)
@@ -159,31 +205,55 @@ public sealed class AudioEngine : IDisposable
     /// <summary>VoiceClient callback, network thread.</summary>
     public void OnVoice(uint speaker, uint seq, byte target, byte[] opus)
     {
-        if (!deafened) Mixer.Push(speaker, seq, opus, target == VoiceHeader.TargetLinked);
+        if (deafened) return;
+        framesReceived.AddOrUpdate(speaker, 1, (_, n) => n + 1);
+        Mixer.Push(speaker, seq, opus, target == VoiceHeader.TargetLinked);
     }
 
     void PlaybackLoop()
     {
         var bytes = new byte[AudioFormat.FrameSamples * sizeof(float)];
+        var clock = Stopwatch.StartNew();
+        long ticks = 0;
         while (running)
         {
             var buffer = playback;
-            if (buffer is null || buffer.BufferedDuration >= TargetBuffer)
+            if (buffer is null)
+            {
+                // No speaker: keep mixing on our own clock and throw the audio away.
+                if (clock.Elapsed < AudioFormat.FrameDuration * ticks)
+                {
+                    Thread.Sleep(5);
+                    continue;
+                }
+                ticks++;
+                Mix();
+                continue;
+            }
+            if (buffer.BufferedDuration >= TargetBuffer)
             {
                 Thread.Sleep(5);
                 continue;
             }
-            var (frame, active) = Mixer.Tick();
-            if (deafened) Array.Clear(frame);
+            var frame = Mix();
             Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
             buffer.AddSamples(bytes, 0, bytes.Length);
-            // On change, and every 100 ms while someone talks: the UI holds an indicator for 300 ms after the last report.
-            if (!active.SequenceEqual(lastActive) || (++mixCount % 5 == 0 && active.Count > 0))
-            {
-                lastActive = active;
-                SpeakersChanged?.Invoke(active);
-            }
+            ticks = (long)(clock.Elapsed / AudioFormat.FrameDuration);
         }
+    }
+
+    float[] Mix()
+    {
+        var (frame, active) = Mixer.Tick();
+        if (deafened) Array.Clear(frame);
+        LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame);
+        // On change, and every 100 ms while someone talks: the UI holds an indicator for 300 ms after the last report.
+        if (!active.SequenceEqual(lastActive) || (++mixCount % 5 == 0 && active.Count > 0))
+        {
+            lastActive = active;
+            SpeakersChanged?.Invoke(active);
+        }
+        return frame;
     }
 
     void StopDevices()

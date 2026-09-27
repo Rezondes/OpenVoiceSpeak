@@ -16,6 +16,7 @@ public sealed partial class KeyPoller : IDisposable
     readonly CancellationTokenSource cts = new();
     readonly Thread thread;
     TaskCompletionSource<int>? capture;
+    volatile bool simulatedPtt, simulatedLinkPtt;
 
     public KeyPoller()
     {
@@ -29,6 +30,13 @@ public sealed partial class KeyPoller : IDisposable
     public bool LinkPttDown { get; private set; }
 
     public event Action? Changed;
+
+    /// <summary>Holds PTT keys down in software (debug API). Null leaves a key unchanged.</summary>
+    public void Simulate(bool? ptt = null, bool? linkPtt = null)
+    {
+        if (ptt is { } p) simulatedPtt = p;
+        if (linkPtt is { } l) simulatedLinkPtt = l;
+    }
 
     static bool IsDown(int vk) => vk != 0 && (GetAsyncKeyState(vk) & 0x8000) != 0;
 
@@ -58,7 +66,7 @@ public sealed partial class KeyPoller : IDisposable
                 }
             }
 
-            bool ptt = IsDown(PttKey), link = IsDown(LinkPttKey);
+            bool ptt = simulatedPtt || IsDown(PttKey), link = simulatedLinkPtt || IsDown(LinkPttKey);
             if (ptt != PttDown || link != LinkPttDown)
             {
                 PttDown = ptt;

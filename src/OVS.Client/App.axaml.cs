@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using OVS.Client.Debug;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
@@ -16,8 +17,16 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var vm = new MainViewModel(ClientStorage.DefaultDirectory, action => Dispatcher.UIThread.Post(action));
+            var options = Program.Options;
+            var vm = new MainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), options.UseAudioDevices);
             var window = new MainWindow { DataContext = vm };
+            if (options.ProfileDir != ClientStorage.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
+            DebugApi? debugApi = null;
+            if (options.DebugApiPort is { } port)
+            {
+                debugApi = new DebugApi(vm, port, work => Dispatcher.UIThread.InvokeAsync(work));
+                window.Title += $" (Debug-API :{port})";
+            }
             vm.Dialogs = new Dialogs
             {
                 EditChannel = (title, name, description) => SimpleDialogs.EditChannel(window, title, name, description),
@@ -35,6 +44,7 @@ public partial class App : Application
             desktop.Exit += (_, _) =>
             {
                 timer.Stop();
+                debugApi?.Dispose();
                 // Off the UI thread: the disposal awaits background loops.
                 Task.Run(() => vm.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
             };

@@ -34,7 +34,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] string transmitText = "";
     [ObservableProperty] string linkHint = "";
 
-    public MainViewModel(string storageDir, Action<Action> post)
+    /// <param name="useAudioDevices">False runs without microphone and speaker (tests, debug API with test tone).</param>
+    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true)
     {
         this.storageDir = storageDir;
         this.post = post;
@@ -43,7 +44,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (warning is not null) AddNotice(warning);
 
         Keys = new KeyPoller();
-        Audio = new AudioEngine(Keys);
+        Audio = new AudioEngine(Keys, useAudioDevices);
         Audio.TransmitChanged += target => post(() =>
         {
             TransmitText = target switch
