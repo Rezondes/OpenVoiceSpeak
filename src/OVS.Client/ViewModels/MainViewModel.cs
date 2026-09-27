@@ -17,6 +17,19 @@ namespace OVS.Client.ViewModels;
 
 public sealed record ConnectChoice(string Host, int Port, string Nickname, string? Password, bool SaveBookmark);
 
+public enum NoticeKind { Info, Welcome, Warning, Error }
+
+/// <summary>One entry of the activity feed. ToString keeps the old "time  text" form for the debug API.</summary>
+public sealed record Notice(DateTime Time, string Text, NoticeKind Kind)
+{
+    public string TimeText => Time.ToString("HH:mm");
+    public bool IsInfo => Kind == NoticeKind.Info;
+    public bool IsWelcome => Kind == NoticeKind.Welcome;
+    public bool IsWarning => Kind == NoticeKind.Warning;
+    public bool IsError => Kind == NoticeKind.Error;
+    public override string ToString() => $"{Time:HH:mm:ss}  {Text}";
+}
+
 /// <summary>Application shell: settings, audio, and the current connection.</summary>
 public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
@@ -33,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     ServerViewModel? server;
 
     [ObservableProperty] string status = "Nicht verbunden";
+    [ObservableProperty] bool isConnecting;
     [ObservableProperty] string pingText = "";
     [ObservableProperty] string transmitText = "";
     [ObservableProperty] string linkHint = "";
@@ -45,7 +59,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Log = log ?? new ClientLog(storageDir, TimeProvider.System);
         known = new KnownServers(Path.Combine(storageDir, "known_servers.json"));
         Settings = ClientSettings.Load(storageDir, out var warning);
-        if (warning is not null) AddNotice(warning);
+        if (warning is not null) AddNotice(warning, NoticeKind.Warning);
 
         Keys = new KeyPoller();
         Audio = new AudioEngine(Keys, useAudioDevices);
@@ -73,8 +87,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public ClientLog Log { get; }
     public KeyPoller Keys { get; }
     public AudioEngine Audio { get; }
-    public ObservableCollection<string> Notices { get; } = [];
+    public ObservableCollection<Notice> Notices { get; } = [];
     public bool IsConnected => Server is not null;
+    public IReadOnlyList<Bookmark> Bookmarks => Settings.Bookmarks.ToList();
+    public bool HasBookmarks => Settings.Bookmarks.Count > 0;
+
+    /// <summary>How to talk right now, shown under the own name while not sending.</summary>
+    public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
+        ? "Sprachaktivierung"
+        : $"PTT: {KeyPoller.KeyName(Settings.PttKey)}";
     public Dialogs Dialogs { get; set; } = new();
     public Func<TofuPrompt, Task<bool>> ConfirmTofu { get; set; } = _ => Task.FromResult(false);
 
@@ -87,7 +108,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Log.Write($"Einstellungen: Modus {Settings.Mode}, PTT {KeyPoller.KeyName(Settings.PttKey)}, Link-PTT {KeyPoller.KeyName(Settings.LinkPttKey)}, " +
                   $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
                   $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB");
-        if (Audio.Configure(Settings) is { } warning) AddNotice(warning);
+        if (Audio.Configure(Settings) is { } warning) AddNotice(warning, NoticeKind.Warning);
+        OnPropertyChanged(nameof(Settings));
+        OnPropertyChanged(nameof(TalkHint));
+        OnSettingsListsChanged();
+    }
+
+    void OnSettingsListsChanged()
+    {
+        OnPropertyChanged(nameof(Bookmarks));
+        OnPropertyChanged(nameof(HasBookmarks));
     }
 
     public async Task ConnectAsync(ConnectChoice choice)
@@ -98,9 +128,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Settings.Bookmarks.RemoveAll(b => b.Host == choice.Host && b.Port == choice.Port);
             Settings.Bookmarks.Insert(0, new Bookmark($"{choice.Host}:{choice.Port}", choice.Host, choice.Port, choice.Nickname));
             Settings.Save(storageDir);
+            OnSettingsListsChanged();
         }
 
         Status = $"Verbinde mit {choice.Host}:{choice.Port} ...";
+        IsConnecting = true;
         Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(string.IsNullOrEmpty(choice.Password) ? "" : " mit Passwort")}");
         try
         {
@@ -114,7 +146,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 Log.Write(ClientLog.Describe(request, mirror));
                 return conn.SendAsync(request);
             }, TimeProvider.System, Dialogs);
-            vm.Notice += AddNotice;
+            vm.Notice += text => AddNotice(text, NoticeKind.Error);
             vm.PropertyChanged += OnServerPropertyChanged;
             conn.MessageReceived += m => post(() =>
             {
@@ -138,7 +170,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Status = $"Verbunden mit {vm.ServerName}";
             Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
                       $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
-            if (vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText);
+            if (vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
         }
         catch (ConnectionRejectedException e)
         {
@@ -151,6 +183,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         catch (Exception e) when (e is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException)
         {
             Status = $"Verbindung fehlgeschlagen: {e.Message}";
+        }
+        finally
+        {
+            IsConnecting = false;
         }
         if (connection is null) Log.Write(Status);
     }
@@ -190,7 +226,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (conn != connection) return;
         var text = "Getrennt: " + ErrorTexts.For(reason, detail);
-        AddNotice(text);
+        AddNotice(text, NoticeKind.Warning);
         _ = DisconnectAsync(text);
     }
 
@@ -234,10 +270,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    public void AddNotice(string text)
+    public void AddNotice(string text, NoticeKind kind = NoticeKind.Info)
     {
         Log.Write("Meldung: " + text);
-        Notices.Insert(0, $"{DateTime.Now:HH:mm:ss}  {text}");
+        Notices.Insert(0, new Notice(DateTime.Now, text, kind));
         while (Notices.Count > 200) Notices.RemoveAt(Notices.Count - 1);
     }
 

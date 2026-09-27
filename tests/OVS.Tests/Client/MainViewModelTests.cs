@@ -57,7 +57,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task Connect_ShowsWelcomeText_AndPing()
     {
         await ConnectAsync(saveBookmark: false);
-        Assert.Contains(await OnUi(() => vm.Notices.ToList()), n => n.Contains("Willkommen auf dem Testserver!"));
+        Assert.Contains(await OnUi(() => vm.Notices.ToList()), n => n.Kind == NoticeKind.Welcome && n.Text == "Willkommen auf dem Testserver!");
 
         string ping = "";
         for (int i = 0; i < 40 && ping.Length == 0; i++)
@@ -70,6 +70,54 @@ public sealed class MainViewModelTests : IAsyncLifetime
             });
         }
         Assert.StartsWith("Ping ", ping);
+    }
+
+    [Fact]
+    public async Task Notices_HaveKinds_ErrorAndDisconnect()
+    {
+        await ConnectAsync(saveBookmark: false);
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.Server!.CreateChannelAsync("Raid", ""); // a guest may not
+            return null;
+        });
+        Notice? error = null;
+        for (int i = 0; i < 40 && error is null; i++)
+        {
+            await Task.Delay(50);
+            error = await OnUi(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Error));
+        }
+        Assert.Equal("Dafür fehlt dir das Recht.", error?.Text);
+
+        await server.Control.StopAsync();
+        Notice? bye = null;
+        for (int i = 0; i < 60 && bye is null; i++)
+        {
+            await Task.Delay(50);
+            bye = await OnUi(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Warning));
+        }
+        Assert.StartsWith("Getrennt: ", bye?.Text);
+        Assert.Matches(@"^\d{2}:\d{2}:\d{2}  Getrennt: ", bye!.ToString()); // the debug API keeps its "time  text" form
+    }
+
+    [Fact]
+    public async Task StartScreen_BookmarksAndConnectingState()
+    {
+        Assert.False(await OnUi(() => vm.HasBookmarks));
+        Assert.Equal("PTT: Maustaste 4", await OnUi(() => vm.TalkHint));
+        var changed = new List<string?>();
+        await OnUi(() =>
+        {
+            vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+            return 0;
+        });
+
+        await ConnectAsync(saveBookmark: true);
+        Assert.True(await OnUi(() => vm.HasBookmarks));
+        Assert.Equal("anna", (await OnUi(() => vm.Bookmarks)).Single().Nickname);
+        Assert.Contains(nameof(MainViewModel.Bookmarks), changed);
+        Assert.Contains(nameof(MainViewModel.IsConnecting), changed);
+        Assert.False(await OnUi(() => vm.IsConnecting));
     }
 
     [Fact]

@@ -117,13 +117,13 @@ dotnet publish src/OVS.Client -c Release -r win-x64 --self-contained -p:PublishS
 Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiertes .NET läuft.
 
 **Bedienung:**
-- "Verbinden ..." fragt Adresse, Port, Nickname und optional das Serverpasswort ab. Mit "Als Lesezeichen speichern" steht der Server beim nächsten Mal zur Auswahl.
-- Push-to-Talk liegt auf Maustaste 4, Link-PTT auf Maustaste 5. Beides lässt sich unter Einstellungen ändern, dort auch Sprachaktivierung und Geräte.
+- Der Startbildschirm zeigt "Verbinden ..." und deine Lesezeichen. Der Dialog fragt Adresse, Port, Nickname und optional das Serverpasswort ab. Mit "Als Lesezeichen speichern" steht der Server beim nächsten Mal als Kachel bereit.
+- Links stehen Server, Channels und Nutzer, unten dein eigener Name mit Mikrofon, Ton aus und Einstellungen.
+- Push-to-Talk liegt auf Maustaste 4, Link-PTT auf Maustaste 5. Beides lässt sich unter Einstellungen ändern, dort auch Sprachaktivierung, Geräte und das Design (wie Windows, hell oder dunkel).
 - Doppelklick auf einen Channel betritt ihn.
 - Per Rechtsklick auf Channels und Nutzer erreichst du Bearbeiten, Verlinken, Verschieben, Kicken und Bannen. Du siehst nur, wozu du berechtigt bist.
-- Grün bedeutet: jemand spricht. Blau bedeutet: jemand spricht über einen Link.
-- "Mikro aus" schaltet dein Mikrofon stumm, "Ton aus" zusätzlich den Lautsprecher.
-- "Verwaltung ..." (mit den nötigen Rechten) enthält Gruppen, Nutzer, Bans und die Servereinstellungen.
+- Ein grüner Ring um das Profilbild bedeutet: jemand spricht. Ein violetter Ring mit Link-Symbol bedeutet: jemand spricht über einen Link.
+- Rechts oben stehen Ping, "Verwaltung ..." (mit den nötigen Rechten: Gruppen, Nutzer, Bans, Servereinstellungen) und "Trennen". Darunter sammelt "Aktivität" Willkommensnachricht, Warnungen und Fehler.
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 

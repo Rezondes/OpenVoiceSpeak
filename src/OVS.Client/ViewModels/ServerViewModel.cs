@@ -44,6 +44,8 @@ public sealed partial class ServerViewModel : ObservableObject
     [ObservableProperty] bool selfMuted;
     [ObservableProperty] bool selfDeafened;
     [ObservableProperty] bool isAdmin;
+    [ObservableProperty] ChannelViewModel? currentChannel;
+    [ObservableProperty] UserViewModel? self;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanCreateChannel), nameof(CanAdminister), nameof(HasSpeakLinked))]
     Permission selfPermissions;
@@ -129,6 +131,8 @@ public sealed partial class ServerViewModel : ObservableObject
             desired.Add(channel);
         }
         Sync(Channels, desired);
+        CurrentChannel = self is null ? null : channelVms.GetValueOrDefault(self.ChannelId);
+        Self = userVms.GetValueOrDefault(Mirror.SelfId);
         RefreshSpeaking();
         StateChanged?.Invoke();
     }
@@ -338,6 +342,8 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [ObservableProperty] string groupNames = "";
     [ObservableProperty] bool isSelf;
     [ObservableProperty] bool serverMuted;
+    [ObservableProperty] bool isDeafened;
+    [ObservableProperty] bool isSelfMutedOnly;
     [ObservableProperty] bool isSpeaking;
     [ObservableProperty] bool isSpeakingViaLink;
     [ObservableProperty] bool canMove;
@@ -357,6 +363,9 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         ChannelId = info.ChannelId;
         IsSelf = isSelf;
         ServerMuted = info.ServerMuted;
+        IsDeafened = info.SelfDeafened;
+        // Deafened implies muted and a server mute has its own icon, so the plain mic-off icon only shows for a mute on its own.
+        IsSelfMutedOnly = info.SelfMuted && !info.SelfDeafened && !info.ServerMuted;
         GroupNames = string.Join(", ", info.GroupIds.Select(g => groups.GetValueOrDefault(g)).OfType<string>());
         StatusText = info switch
         {

@@ -125,6 +125,31 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Theme_DefaultSystem_SavedAndMapped()
+    {
+        Assert.Equal(AppTheme.System, ClientSettings.Load(dir, out _).Theme);
+        new ClientSettings { Theme = AppTheme.Dark }.Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal(AppTheme.Dark, loaded.Theme);
+
+        var vm = Vm(loaded);
+        Assert.Equal(AppTheme.Dark, vm.SelectedTheme.Value);
+        vm.SelectedTheme = SettingsViewModel.Themes.Single(t => t.Value == AppTheme.Light);
+        Assert.Equal(AppTheme.Light, vm.ToSettings(loaded).Theme);
+    }
+
+    [Fact]
+    public void PushToTalkRadio_IsTheOppositeOfVoiceActivation()
+    {
+        var vm = Vm(new ClientSettings());
+        Assert.True(vm.IsPushToTalk);
+        vm.IsPushToTalk = false;
+        Assert.True(vm.VoiceActivation);
+        vm.VoiceActivation = false;
+        Assert.True(vm.IsPushToTalk);
+    }
+
+    [Fact]
     public void ErrorTexts_EveryCodeHasText()
     {
         foreach (var code in Codes.All()) Assert.True(ErrorTexts.Has(code), code);

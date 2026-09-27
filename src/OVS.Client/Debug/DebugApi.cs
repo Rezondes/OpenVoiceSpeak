@@ -225,7 +225,7 @@ public sealed class DebugApi : IDisposable
             vm.TransmitText,
             vm.LinkHint,
             vm.PingText,
-            Notices = vm.Notices.Take(50).ToList(),
+            Notices = vm.Notices.Take(50).Select(n => n.ToString()).ToList(),
             Server = s is null ? null : new
             {
                 s.ServerName,

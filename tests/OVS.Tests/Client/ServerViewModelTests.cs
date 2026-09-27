@@ -54,6 +54,35 @@ public class ServerViewModelTests
     }
 
     [Fact]
+    public void CurrentChannelAndSelf_FollowOwnUser()
+    {
+        var f = Create();
+        Assert.Equal(Lobby, f.Vm.CurrentChannel!.Id);
+        Assert.Equal("ich", f.Vm.Self!.Nickname);
+
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        Assert.Equal(Bravo, f.Vm.CurrentChannel!.Id);
+        Assert.Same(f.User(1), f.Vm.Self);
+    }
+
+    [Fact]
+    public void StatusIcons_MicOffOnlyForAPlainMute()
+    {
+        var f = Create(others:
+        [
+            new UserInfo(2, "fp2", "stumm", Lobby, true, false, false, P.Speak, []),
+            new UserInfo(3, "fp3", "taub", Lobby, true, true, false, P.Speak, []),
+            new UserInfo(4, "fp4", "server", Lobby, true, false, true, P.Speak, []),
+        ]);
+        Assert.True(f.User(2).IsSelfMutedOnly);
+        Assert.False(f.User(2).IsDeafened);
+        Assert.False(f.User(3).IsSelfMutedOnly);
+        Assert.True(f.User(3).IsDeafened);
+        Assert.False(f.User(4).IsSelfMutedOnly);
+        Assert.True(f.User(4).ServerMuted);
+    }
+
+    [Fact]
     public void UserUpdated_MovesUser_KeepsInstance()
     {
         var f = Create(others: U(2, "anna", Lobby));

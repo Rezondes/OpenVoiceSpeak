@@ -1,118 +1,229 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:OVS.Client.ViewModels"
+        xmlns:v="using:OVS.Client.Views"
         x:Class="OVS.Client.Views.AdminDialog"
         x:DataType="vm:AdminViewModel"
-        Title="Verwaltung" Width="780" Height="540" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
-  <DockPanel Margin="12">
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button Content="Aktualisieren" Command="{Binding RefreshCommand}" />
-      <Button Content="Schliessen" Click="OnCloseClick" IsCancel="True" />
-    </StackPanel>
+        Title="Verwaltung" Width="860" Height="600" MinWidth="640" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource Ovs.Bg}">
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Padding="24,12" Background="{DynamicResource Ovs.Sidebar}"
+            BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Schliessen" Click="OnCloseClick" IsCancel="True" MinWidth="96" HorizontalContentAlignment="Center" />
+        <Button Command="{Binding RefreshCommand}" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+            <TextBlock Text="Aktualisieren" />
+          </StackPanel>
+        </Button>
+      </DockPanel>
+    </Border>
 
-    <TabControl x:Name="Tabs">
-      <TabItem Header="Gruppen" IsVisible="{Binding ShowGroups}">
-        <Grid ColumnDefinitions="220,*">
-          <DockPanel>
-            <Button DockPanel.Dock="Bottom" Content="Neue Gruppe" Command="{Binding NewGroupCommand}" Margin="0,6,0,0" />
-            <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:GroupEditViewModel">
-                  <TextBlock Text="{Binding DisplayName}" />
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-          </DockPanel>
-          <DockPanel Grid.Column="1" Margin="12,0,0,0">
-            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
-              <Button Content="Gruppe speichern" Command="{Binding SaveGroupCommand}" />
-              <Button Content="Gruppe löschen" Command="{Binding DeleteGroupCommand}" />
-            </StackPanel>
-            <ContentControl Content="{Binding SelectedGroup}">
-              <ContentControl.ContentTemplate>
-                <DataTemplate x:DataType="vm:GroupEditViewModel">
-                  <ScrollViewer>
-                    <StackPanel Spacing="4">
-                      <TextBox Text="{Binding Name}" IsEnabled="{Binding IsEditable}" Watermark="Gruppenname" />
-                      <TextBlock Text="Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar."
-                                 IsVisible="{Binding IsReadOnly}" Foreground="Gray" TextWrapping="Wrap" />
-                      <TextBlock Text="Ausgegraut: Rechte, die du selbst nicht hast, kannst du nicht vergeben."
-                                 IsVisible="{Binding IsEditable}" Foreground="Gray" FontSize="12" TextWrapping="Wrap" />
-                      <ItemsControl ItemsSource="{Binding Toggles}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:PermissionToggle">
-                            <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" />
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
+    <DockPanel Margin="24,20,24,16">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
+        <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
+          <PathIcon Classes="accent" Data="{StaticResource Icon.ShieldPerson}" />
+        </Border>
+        <TextBlock Classes="h2" FontSize="17" Text="Verwaltung" VerticalAlignment="Center" />
+      </StackPanel>
+
+      <TabControl x:Name="Tabs">
+        <!-- ===== Groups ===== -->
+        <TabItem Header="Gruppen" IsVisible="{Binding ShowGroups}">
+          <Grid ColumnDefinitions="240,*">
+            <Border Classes="card" Padding="6">
+              <DockPanel>
+                <Button DockPanel.Dock="Bottom" Classes="subtle" Command="{Binding NewGroupCommand}" HorizontalAlignment="Stretch" Margin="0,6,0,0">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
+                    <TextBlock Text="Neue Gruppe" />
+                  </StackPanel>
+                </Button>
+                <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GroupEditViewModel">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Classes="sm muted" Data="{StaticResource Icon.People}" />
+                        <TextBlock Text="{Binding DisplayName}" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </DockPanel>
+            </Border>
+            <Border Grid.Column="1" Classes="card" Margin="12,0,0,0">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                  <Button Classes="accent" Command="{Binding SaveGroupCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
+                      <TextBlock Text="Gruppe speichern" />
                     </StackPanel>
-                  </ScrollViewer>
-                </DataTemplate>
-              </ContentControl.ContentTemplate>
-            </ContentControl>
-          </DockPanel>
-        </Grid>
-      </TabItem>
-
-      <TabItem Header="Nutzer" IsVisible="{Binding ShowUsers}">
-        <ScrollViewer>
-          <ItemsControl ItemsSource="{Binding Users}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:KnownUserViewModel">
-                <StackPanel Margin="0,4">
-                  <TextBlock>
-                    <Run Text="{Binding Nickname}" FontWeight="SemiBold" />
-                    <Run Text="  " />
-                    <Run Text="{Binding ShortFingerprint}" Foreground="Gray" />
-                  </TextBlock>
-                  <ItemsControl ItemsSource="{Binding Toggles}">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <WrapPanel />
-                      </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:GroupToggle">
-                        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}"
-                                  Command="{Binding ToggleCommand}" Margin="0,0,12,0" />
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  </Button>
+                  <Button Classes="danger" Command="{Binding DeleteGroupCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
+                      <TextBlock Text="Gruppe löschen" />
+                    </StackPanel>
+                  </Button>
                 </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
-      </TabItem>
+                <TextBlock Classes="caption" Text="Wähle links eine Gruppe aus." IsVisible="{Binding SelectedGroup, Converter={x:Static ObjectConverters.IsNull}}" />
+                <ContentControl Content="{Binding SelectedGroup}">
+                  <ContentControl.ContentTemplate>
+                    <DataTemplate x:DataType="vm:GroupEditViewModel">
+                      <ScrollViewer>
+                        <StackPanel Spacing="8" Margin="0,0,16,0">
+                          <TextBlock Classes="label" Text="Name" />
+                          <TextBox Text="{Binding Name}" IsEnabled="{Binding IsEditable}" />
+                          <Border Classes="banner accent" IsVisible="{Binding IsReadOnly}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <PathIcon Classes="accent" Data="{StaticResource Icon.LockClosed}" />
+                              <TextBlock Classes="accent" Text="Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar." TextWrapping="Wrap" />
+                            </StackPanel>
+                          </Border>
+                          <TextBlock Classes="label" Text="Rechte" Margin="0,6,0,0" />
+                          <TextBlock Classes="caption" Text="Ausgegraut: Rechte, die du selbst nicht hast, kannst du nicht vergeben."
+                                     IsVisible="{Binding IsEditable}" TextWrapping="Wrap" />
+                          <ItemsControl ItemsSource="{Binding Toggles}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:PermissionToggle">
+                                <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </ScrollViewer>
+                    </DataTemplate>
+                  </ContentControl.ContentTemplate>
+                </ContentControl>
+              </DockPanel>
+            </Border>
+          </Grid>
+        </TabItem>
 
-      <TabItem Header="Bans" IsVisible="{Binding ShowBans}">
-        <ScrollViewer>
-          <ItemsControl ItemsSource="{Binding Bans}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:BanViewModel">
-                <DockPanel Margin="0,3">
-                  <Button DockPanel.Dock="Right" Content="Entbannen" Command="{Binding UnbanCommand}" Margin="8,0,0,0" />
-                  <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                </DockPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
-      </TabItem>
+        <!-- ===== Users ===== -->
+        <TabItem Header="Nutzer" IsVisible="{Binding ShowUsers}">
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Users}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="8" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:KnownUserViewModel">
+                  <Border Classes="card" Padding="12,10">
+                    <DockPanel>
+                      <Border DockPanel.Dock="Left" Classes="avatar" Width="32" Height="32" VerticalAlignment="Top"
+                              Background="{Binding Nickname, Converter={x:Static v:Ui.AvatarBrush}}">
+                        <TextBlock Text="{Binding Nickname, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                      </Border>
+                      <StackPanel Margin="12,0,0,0" Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" />
+                          <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
+                                     VerticalAlignment="Center" ToolTip.Tip="Fingerprint der Identität" />
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding Toggles}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                              <WrapPanel />
+                            </ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GroupToggle">
+                              <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}"
+                                        Command="{Binding ToggleCommand}" Margin="0,0,16,0" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </TabItem>
 
-      <TabItem Header="Server" IsVisible="{Binding ShowServer}">
-        <StackPanel Spacing="8" MaxWidth="480" HorizontalAlignment="Left">
-          <TextBlock Text="Servername" />
-          <TextBox Text="{Binding ServerName}" />
-          <TextBlock Text="Willkommenstext" />
-          <TextBox Text="{Binding WelcomeText}" AcceptsReturn="True" TextWrapping="Wrap" Height="80" />
-          <TextBlock Text="Der Server ist mit einem Passwort geschützt." IsVisible="{Binding HasPassword}" />
-          <TextBlock Text="Der Server hat kein Passwort." IsVisible="{Binding !HasPassword}" />
-          <TextBox Text="{Binding NewPassword}" PasswordChar="•" Watermark="Neues Passwort (leer lassen = unverändert)" />
-          <CheckBox Content="Passwort entfernen" IsChecked="{Binding RemovePassword}" />
-          <Button Content="Servereinstellungen speichern" Command="{Binding SaveServerSettingsCommand}" />
-        </StackPanel>
-      </TabItem>
-    </TabControl>
+        <!-- ===== Bans ===== -->
+        <TabItem Header="Bans" IsVisible="{Binding ShowBans}">
+          <Panel>
+            <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        IsVisible="{Binding Bans.Count, Converter={x:Static v:Ui.IsZero}}">
+              <PathIcon Classes="muted" Data="{StaticResource Icon.Prohibited}" Width="32" Height="32" />
+              <TextBlock Classes="muted" Text="Niemand ist gebannt." HorizontalAlignment="Center" />
+            </StackPanel>
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Bans}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="8" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:BanViewModel">
+                    <Border Classes="card" Padding="12,10">
+                      <DockPanel>
+                        <Button DockPanel.Dock="Right" Command="{Binding UnbanCommand}" Margin="12,0,0,0" VerticalAlignment="Center">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                            <TextBlock Text="Entbannen" />
+                          </StackPanel>
+                        </Button>
+                        <PathIcon DockPanel.Dock="Left" Classes="danger" Data="{StaticResource Icon.Prohibited}" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <TextBlock Classes="body" Text="{Binding Text}" VerticalAlignment="Center" />
+                      </DockPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Panel>
+        </TabItem>
+
+        <!-- ===== Server ===== -->
+        <TabItem Header="Server" IsVisible="{Binding ShowServer}">
+          <ScrollViewer>
+            <Border Classes="card" MaxWidth="560" HorizontalAlignment="Left">
+              <StackPanel Spacing="12">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="label" Text="Servername" />
+                  <TextBox Text="{Binding ServerName}" />
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="label" Text="Willkommenstext" />
+                  <TextBox Text="{Binding WelcomeText}" AcceptsReturn="True" TextWrapping="Wrap" Height="90" />
+                  <TextBlock Classes="caption" Text="Erscheint bei jedem Verbinden oben in der Aktivität." />
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="label" Text="Serverpasswort" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm muted" Data="{StaticResource Icon.LockClosed}" />
+                    <TextBlock Classes="caption" Text="Der Server ist mit einem Passwort geschützt." IsVisible="{Binding HasPassword}" />
+                    <TextBlock Classes="caption" Text="Der Server hat kein Passwort." IsVisible="{Binding !HasPassword}" />
+                  </StackPanel>
+                  <TextBox Text="{Binding NewPassword}" PasswordChar="•" Watermark="Neues Passwort (leer lassen = unverändert)" />
+                  <CheckBox Content="Passwort entfernen" IsChecked="{Binding RemovePassword}" />
+                </StackPanel>
+                <Button Classes="accent" Command="{Binding SaveServerSettingsCommand}" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
+                    <TextBlock Text="Servereinstellungen speichern" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
+          </ScrollViewer>
+        </TabItem>
+      </TabControl>
+    </DockPanel>
   </DockPanel>
 </Window>

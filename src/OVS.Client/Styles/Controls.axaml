@@ -1,0 +1,316 @@
+<!--
+  Shared looks on top of FluentTheme: text roles, cards, rows, avatars, chips and button variants.
+  Colors only through the tokens in Theme.axaml. Transitions stay short (at most 150 ms) and only
+  show a state change, such as hover or someone starting to speak.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ===== Text roles ===== -->
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <Style Selector="TextBlock.body">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+  </Style>
+  <Style Selector="TextBlock.caption">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+  </Style>
+  <Style Selector="TextBlock.section">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LetterSpacing" Value="0.6" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+  </Style>
+  <Style Selector="TextBlock.label">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+    <Setter Property="Margin" Value="0,0,0,2" />
+  </Style>
+  <Style Selector="TextBlock.danger">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.DangerText}" />
+  </Style>
+  <Style Selector="TextBlock.warning">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.WarningText}" />
+  </Style>
+  <Style Selector="TextBlock.speaking">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Speaking}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.accent">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
+  </Style>
+
+  <!-- ===== Icons ===== -->
+  <Style Selector="PathIcon">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+  </Style>
+  <Style Selector="PathIcon.sm">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+  </Style>
+  <Style Selector="PathIcon.muted">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+  </Style>
+  <Style Selector="PathIcon.danger">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.DangerText}" />
+  </Style>
+  <Style Selector="PathIcon.warning">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.WarningText}" />
+  </Style>
+  <Style Selector="PathIcon.accent">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
+  </Style>
+  <Style Selector="PathIcon.link">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Link}" />
+  </Style>
+
+  <!-- ===== Surfaces ===== -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+  <Style Selector="Border.card.welcome">
+    <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Accent}" />
+  </Style>
+  <Style Selector="Border.banner">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="12,8" />
+  </Style>
+  <Style Selector="Border.banner.warning">
+    <Setter Property="Background" Value="{DynamicResource Ovs.WarningSurface}" />
+  </Style>
+  <Style Selector="Border.banner.danger">
+    <Setter Property="Background" Value="{DynamicResource Ovs.DangerSurface}" />
+  </Style>
+  <Style Selector="Border.banner.accent">
+    <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
+  </Style>
+  <Style Selector="Border.divider">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.Border}" />
+  </Style>
+  <Style Selector="Border.chip">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.chip TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.keycap">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
+    <Setter Property="BorderThickness" Value="1,1,1,3" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="Border.keycap TextBlock">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <!-- Square with the first letter of the server name -->
+  <Style Selector="Border.badge">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.Accent}" />
+  </Style>
+  <Style Selector="Border.badge TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- ===== Rows in the channel tree ===== -->
+  <Style Selector="Border.row">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.row:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+  </Style>
+  <Style Selector="Border.row.current">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceSelected}" />
+  </Style>
+  <Style Selector="Border.row.current TextBlock.channelName">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
+  </Style>
+  <Style Selector="Border.row.current PathIcon.channelIcon">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
+  </Style>
+
+  <!-- ===== Avatars with speaking ring ===== -->
+  <Style Selector="Border.ring">
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="1" />
+    <Setter Property="CornerRadius" Value="99" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.ring.speaking">
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Speaking}" />
+  </Style>
+  <Style Selector="Border.ring.link">
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Link}" />
+  </Style>
+  <Style Selector="Border.avatar">
+    <Setter Property="CornerRadius" Value="99" />
+  </Style>
+  <Style Selector="Border.avatar TextBlock">
+    <Setter Property="Foreground" Value="#FFFFFF" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Ellipse.dot">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Height" Value="8" />
+    <Setter Property="Fill" Value="{DynamicResource Ovs.TextMuted}" />
+  </Style>
+  <Style Selector="Ellipse.dot.online">
+    <Setter Property="Fill" Value="{DynamicResource Ovs.Speaking}" />
+  </Style>
+
+  <!-- ===== Buttons ===== -->
+  <Style Selector="Button, ToggleButton">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button:disabled, ToggleButton:disabled">
+    <Setter Property="Cursor" Value="Arrow" />
+  </Style>
+  <Style Selector="Button.accent, Button.danger, Button.subtle">
+    <Setter Property="Padding" Value="14,7" />
+  </Style>
+
+  <!-- Icon-only buttons: 36 x 36, the name comes from AutomationProperties.Name and a tooltip. -->
+  <Style Selector="Button.icon, ToggleButton.icon">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <Style Selector="Button.icon:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.icon:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Border}" />
+  </Style>
+  <!-- A checked icon toggle means "off" (muted, deafened): red, not the accent blue. -->
+  <Style Selector="ToggleButton.icon:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.DangerSurface}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.DangerText}" />
+  </Style>
+  <Style Selector="ToggleButton.icon:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.DangerSurface}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.DangerText}" />
+  </Style>
+  <Style Selector="Button.icon:disabled /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.icon:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.icon:disabled, ToggleButton.icon:disabled">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+
+  <!-- Quiet text button with icon, for secondary header actions -->
+  <Style Selector="Button.subtle">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <Style Selector="Button.subtle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+
+  <!-- Destructive actions: red, separate from the primary accent button -->
+  <Style Selector="Button.danger">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.DangerHover}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+  </Style>
+  <Style Selector="Button.danger:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.DangerHover}" />
+  </Style>
+
+  <!-- Icons inside filled buttons take the button's text color -->
+  <Style Selector="Button.accent PathIcon, Button.danger PathIcon">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+  </Style>
+
+  <!-- Bookmark tiles on the start screen -->
+  <Style Selector="Button.tile">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Accent}" />
+  </Style>
+
+  <!-- ===== Inputs ===== -->
+  <Style Selector="TextBox, ComboBox, NumericUpDown">
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="ContextMenu">
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="TabControl">
+    <Setter Property="Padding" Value="0,12,0,0" />
+  </Style>
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="12,0" />
+  </Style>
+</Styles>

@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using NAudio.CoreAudioApi;
 using OVS.Client.Audio;
+using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;
@@ -14,9 +15,15 @@ public partial class MainWindow : Window
 
     MainViewModel Vm => (MainViewModel)DataContext!;
 
-    async void OnConnectClick(object? sender, RoutedEventArgs e)
+    async void OnConnectClick(object? sender, RoutedEventArgs e) => await ConnectAsync(null);
+
+    /// <summary>A bookmark opens the connect dialog prefilled, so a password can still be entered.</summary>
+    async void OnBookmarkClick(object? sender, RoutedEventArgs e) => await ConnectAsync((sender as Control)?.DataContext as Bookmark);
+
+    async Task ConnectAsync(Bookmark? preselect)
     {
-        if (await SimpleDialogs.Connect(this, Vm.Settings) is { } choice) await Vm.ConnectAsync(choice);
+        if (Vm.IsConnecting) return;
+        if (await SimpleDialogs.Connect(this, Vm.Settings, preselect) is { } choice) await Vm.ConnectAsync(choice);
     }
 
     async void OnSettingsClick(object? sender, RoutedEventArgs e)

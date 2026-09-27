@@ -8,6 +8,8 @@ namespace OVS.Client.Settings;
 
 public sealed record Bookmark(string Name, string Host, int Port, string Nickname);
 
+public enum AppTheme { System, Light, Dark }
+
 public sealed class ClientSettings
 {
     public const string FileName = "settings.json";
@@ -22,6 +24,7 @@ public sealed class ClientSettings
     public int PttKey { get; set; } = KeyPoller.VkXButton1;
     public int LinkPttKey { get; set; } = KeyPoller.VkXButton2;
     public float VadThresholdDb { get; set; } = -40f; // -60..-10
+    public AppTheme Theme { get; set; } = AppTheme.System;
 
     public ClientSettings Clamp()
     {

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using OVS.Client.Net;
@@ -8,48 +9,106 @@ using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;
 
-/// <summary>Small dialogs built in code; each returns null when cancelled.</summary>
+/// <summary>Small dialogs built in code; each returns null when cancelled. All share one frame: icon and title, body, button bar.</summary>
 public static class SimpleDialogs
 {
-    static async Task<T?> Show<T>(Window owner, string title, Control body, Func<T?> accept, string okText = "OK", bool okIsDefault = true) where T : class
+    enum Kind { Normal, Danger }
+
+    static async Task<T?> Show<T>(Window owner, string title, string icon, Control body, Func<T?> accept,
+        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal) where T : class
     {
         T? result = null;
         var window = new Window
         {
             Title = title,
-            SizeToContent = SizeToContent.WidthAndHeight,
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
             CanResize = false,
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            MinWidth = 380,
         };
-        var ok = new Button { Content = okText, IsDefault = okIsDefault };
-        var cancel = new Button { Content = "Abbrechen", IsCancel = true, IsDefault = !okIsDefault };
+        window.Bind(TemplatedControl.BackgroundProperty, window.GetResourceObservable("Ovs.Bg"));
+
+        var ok = new Button { Content = okText, IsDefault = okIsDefault, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
+        ok.Classes.Add(kind == Kind.Danger ? "danger" : "accent");
+        var cancel = new Button { Content = "Abbrechen", IsCancel = true, IsDefault = !okIsDefault, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Click += (_, _) =>
         {
             result = accept();
             if (result is not null) window.Close();
         };
         cancel.Click += (_, _) => window.Close();
-        window.Content = new StackPanel
+
+        var badge = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Child = Icon(icon, kind == Kind.Danger ? "danger" : "accent") };
+        badge.Bind(Border.BackgroundProperty, badge.GetResourceObservable(kind == Kind.Danger ? "Ovs.DangerSurface" : "Ovs.AccentSurface"));
+        var heading = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxWidth = 400 };
+        heading.Classes.Add("h2");
+        heading.FontSize = 17;
+
+        var buttonBar = new Border
         {
-            Margin = new Thickness(16),
-            Spacing = 10,
+            Padding = new Thickness(24, 12),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { cancel, ok } },
+        };
+        buttonBar.Bind(Border.BackgroundProperty, buttonBar.GetResourceObservable("Ovs.Sidebar"));
+        buttonBar.Bind(Border.BorderBrushProperty, buttonBar.GetResourceObservable("Ovs.Border"));
+
+        window.Content = new DockPanel
+        {
             Children =
             {
-                body,
-                new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { ok, cancel } },
+                Dock(buttonBar, Avalonia.Controls.Dock.Bottom),
+                new StackPanel
+                {
+                    Margin = new Thickness(24, 20, 24, 20),
+                    Spacing = 16,
+                    Children =
+                    {
+                        new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { badge, heading } },
+                        body,
+                    },
+                },
             },
         };
         await window.ShowDialog(owner);
         return result;
     }
 
-    static TextBlock Label(string text) => new() { Text = text, TextWrapping = TextWrapping.Wrap, MaxWidth = 480 };
+    static T Dock<T>(T control, Dock dock) where T : Control
+    {
+        DockPanel.SetDock(control, dock);
+        return control;
+    }
+
+    static PathIcon Icon(string key, string style)
+    {
+        var data = Application.Current!.FindResource("Icon." + key) as Geometry ?? throw new KeyNotFoundException($"Icon '{key}' fehlt in Styles/Icons.axaml");
+        var icon = new PathIcon { Data = data, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        icon.Classes.Add(style);
+        return icon;
+    }
+
+    static TextBlock Text(string text, string? style = null)
+    {
+        var block = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, MaxWidth = 440 };
+        block.Classes.Add(style ?? "body");
+        return block;
+    }
+
+    /// <summary>A visible label above its field, never a placeholder alone.</summary>
+    static StackPanel Field(string label, Control input, string? hint = null)
+    {
+        var panel = new StackPanel { Spacing = 4 };
+        panel.Children.Add(Text(label, "label"));
+        panel.Children.Add(input);
+        if (hint is not null) panel.Children.Add(Text(hint, "caption"));
+        return panel;
+    }
 
     static StackPanel Stack(params Control[] children)
     {
-        var panel = new StackPanel { Spacing = 6 };
+        var panel = new StackPanel { Spacing = 12 };
         panel.Children.AddRange(children);
         return panel;
     }
@@ -57,64 +116,87 @@ public static class SimpleDialogs
     public static Task<string?> AskText(Window owner, string title, string prompt)
     {
         var box = new TextBox();
-        return Show(owner, title, Stack(Label(prompt), box), () => box.Text ?? "");
+        return Show(owner, title, title.StartsWith("Admin-Token") ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
     }
 
     public static Task<ChannelEdit?> EditChannel(Window owner, string title, string name, string description)
     {
-        var nameBox = new TextBox { Text = name, Watermark = "Name" };
-        var descriptionBox = new TextBox { Text = description, Watermark = "Beschreibung (optional)", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 70 };
-        return Show(owner, title, Stack(Label("Name"), nameBox, Label("Beschreibung"), descriptionBox),
-            () => string.IsNullOrWhiteSpace(nameBox.Text) ? null : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? ""));
+        var nameBox = new TextBox { Text = name };
+        var descriptionBox = new TextBox { Text = description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 76 };
+        return Show(owner, title, "Speaker", Stack(Field("Name", nameBox), Field("Beschreibung", descriptionBox, "Optional, erscheint als Tooltip und im Kopf des Channels.")),
+            () => string.IsNullOrWhiteSpace(nameBox.Text) ? null : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? ""),
+            "Speichern");
     }
 
     public static Task<ChannelViewModel?> PickChannel(Window owner, string title, IReadOnlyList<ChannelViewModel> channels)
     {
-        if (channels.Count == 0) return Show<ChannelViewModel>(owner, title, Label("Kein passender Channel vorhanden."), () => null);
-        var list = new ListBox { ItemsSource = channels.Select(c => c.Name).ToList(), MaxHeight = 320, SelectedIndex = 0 };
-        return Show(owner, title, list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null);
+        if (channels.Count == 0) return Show<ChannelViewModel>(owner, title, "Speaker", Text("Kein passender Channel vorhanden.", "muted"), () => null);
+        var list = new ListBox { ItemsSource = channels.Select(c => c.Name).ToList(), MaxHeight = 320, SelectedIndex = 0, CornerRadius = new CornerRadius(8) };
+        return Show(owner, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, "Auswählen");
     }
 
     public static Task<BanChoice?> Ban(Window owner, string nickname)
     {
         var durations = BanChoice.Durations;
-        var reason = new TextBox { Watermark = "Grund" };
+        var reason = new TextBox();
         var duration = new ComboBox { ItemsSource = durations.Select(d => d.Label).ToList(), SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
         var includeIp = new CheckBox { Content = "Auch die IP-Adresse sperren" };
-        return Show(owner, $"{nickname} bannen", Stack(Label("Grund"), reason, Label("Dauer"), duration, includeIp),
-            () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Minutes, includeIp.IsChecked == true), "Bannen");
+        return Show(owner, $"{nickname} bannen", "Prohibited", Stack(Field("Grund", reason), Field("Dauer", duration), includeIp),
+            () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Minutes, includeIp.IsChecked == true),
+            "Bannen", kind: Kind.Danger);
     }
 
+    /// <summary>Only used for destructive actions, hence the red button.</summary>
     public static async Task<bool> Confirm(Window owner, string text) =>
-        await Show(owner, "Bestätigen", Label(text), () => "ok", "Ja") is not null;
+        await Show(owner, "Bestätigen", "Delete", Text(text), () => "ok", "Ja, löschen", kind: Kind.Danger) is not null;
 
     public static async Task<bool> Tofu(Window owner, TofuPrompt prompt)
     {
         var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(i => prompt.Fingerprint.Substring(i * 8, 8)));
-        var text = prompt.Result == TofuResult.Mismatch
-            ? $"WARNUNG: Das Zertifikat von {prompt.Host}:{prompt.Port} hat sich geändert!\n\n" +
-              "Das passiert, wenn der Server neu aufgesetzt wurde, kann aber auch ein Angriff sein. " +
-              "Frag im Zweifel den Serverbetreiber nach dem Fingerprint aus dem Serverlog."
-            : $"Erste Verbindung zu {prompt.Host}:{prompt.Port}.\n\n" +
-              "Vergleiche den Fingerprint mit der Zeile 'Zertifikat-Fingerprint' im Serverlog.";
-        var body = Stack(Label(text), new SelectableTextBlock { Text = fingerprint, FontFamily = new FontFamily("Consolas,monospace"), TextWrapping = TextWrapping.Wrap, MaxWidth = 480 });
-        return await Show(owner, "Serverzertifikat prüfen", body, () => "ok",
-            prompt.Result == TofuResult.Mismatch ? "Trotzdem vertrauen" : "Vertrauen", prompt.AcceptIsDefault) is not null;
+        bool mismatch = prompt.Result == TofuResult.Mismatch;
+        var text = mismatch
+            ? $"Das Zertifikat von {prompt.Host}:{prompt.Port} hat sich geändert. Das passiert, wenn der Server neu aufgesetzt wurde, " +
+              "kann aber auch ein Angriff sein. Frag im Zweifel den Serverbetreiber nach dem Fingerprint aus dem Serverlog."
+            : $"Erste Verbindung zu {prompt.Host}:{prompt.Port}. Vergleiche den Fingerprint mit der Zeile 'Zertifikat-Fingerprint' im Serverlog.";
+        var code = new Border
+        {
+            Padding = new Thickness(12, 10),
+            CornerRadius = new CornerRadius(8),
+            Child = new SelectableTextBlock { Text = fingerprint, FontFamily = new FontFamily("Cascadia Mono,Consolas,monospace"), TextWrapping = TextWrapping.Wrap, MaxWidth = 420 },
+        };
+        code.Bind(Border.BackgroundProperty, code.GetResourceObservable("Ovs.Surface"));
+        Control message = Text(text);
+        if (mismatch)
+        {
+            var icon = Icon("Warning", "warning");
+            icon.Margin = new Thickness(0, 1, 10, 0);
+            icon.VerticalAlignment = VerticalAlignment.Top;
+            var banner = new Border { Child = new DockPanel { Children = { Dock(icon, Avalonia.Controls.Dock.Left), Text(text, "warning") } } };
+            banner.Classes.Add("banner");
+            banner.Classes.Add("warning");
+            message = banner;
+        }
+        return await Show(owner, "Serverzertifikat prüfen", mismatch ? "Warning" : "LockClosed", Stack(message, Field("Fingerprint", code)), () => "ok",
+            mismatch ? "Trotzdem vertrauen" : "Vertrauen", prompt.AcceptIsDefault, mismatch ? Kind.Danger : Kind.Normal) is not null;
     }
 
-    public static Task<ConnectChoice?> Connect(Window owner, ClientSettings settings)
+    public static Task<ConnectChoice?> Connect(Window owner, ClientSettings settings, Bookmark? preselect = null)
     {
         var host = new TextBox { Watermark = "z. B. voice.example.org" };
-        var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = 7000, FormatString = "0", Increment = 1 };
-        var nickname = new TextBox { Watermark = "Nickname" };
-        var password = new TextBox { Watermark = "Serverpasswort (optional)", PasswordChar = '•' };
+        var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = 7000, FormatString = "0", Increment = 1, Width = 130 };
+        var nickname = new TextBox();
+        var password = new TextBox { PasswordChar = '•', RevealPassword = false };
+        var reveal = new ToggleButton { Content = Icon("Eye", "muted"), Width = 36, Margin = new Thickness(6, 0, 0, 0) };
+        ToolTip.SetTip(reveal, "Passwort anzeigen");
+        reveal.IsCheckedChanged += (_, _) => password.RevealPassword = reveal.IsChecked == true;
         var save = new CheckBox { Content = "Als Lesezeichen speichern", IsChecked = true };
+        var error = Text("", "danger");
+        error.IsVisible = false;
         var bookmarks = new ComboBox
         {
             ItemsSource = settings.Bookmarks.Select(b => $"{b.Name} ({b.Nickname})").ToList(),
-            PlaceholderText = "Lesezeichen",
+            PlaceholderText = "Gespeicherten Server wählen",
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            IsVisible = settings.Bookmarks.Count > 0,
         };
         bookmarks.SelectionChanged += (_, _) =>
         {
@@ -124,13 +206,27 @@ public static class SimpleDialogs
             port.Value = b.Port;
             nickname.Text = b.Nickname;
         };
-        if (settings.Bookmarks.Count > 0) bookmarks.SelectedIndex = 0;
+        int index = preselect is null ? 0 : settings.Bookmarks.IndexOf(preselect);
+        if (settings.Bookmarks.Count > 0) bookmarks.SelectedIndex = Math.Max(0, index);
 
-        return Show(owner, "Mit Server verbinden",
-            Stack(bookmarks, Label("Adresse"), host, Label("Port"), port, Label("Nickname"), nickname, password, save),
-            () => string.IsNullOrWhiteSpace(host.Text) || string.IsNullOrWhiteSpace(nickname.Text)
-                ? null
-                : new ConnectChoice(host.Text.Trim(), (int)(port.Value ?? 7000), nickname.Text.Trim(), password.Text, save.IsChecked == true),
+        var address = new DockPanel { Children = { Dock(Field("Port", port), Avalonia.Controls.Dock.Right), Field("Adresse", host) } };
+        ((Control)address.Children[0]).Margin = new Thickness(12, 0, 0, 0);
+        var passwordRow = new DockPanel { Children = { Dock(reveal, Avalonia.Controls.Dock.Right), password } };
+
+        var body = Stack(address, Field("Nickname", nickname), Field("Serverpasswort", passwordRow, "Nur nötig, wenn der Server eines hat."), save, error);
+        if (settings.Bookmarks.Count > 0) body.Children.Insert(0, Field("Lesezeichen", bookmarks));
+
+        return Show(owner, "Mit Server verbinden", "PlugConnected", body, () =>
+            {
+                string? problem = string.IsNullOrWhiteSpace(host.Text) ? "Bitte eine Adresse eingeben."
+                    : string.IsNullOrWhiteSpace(nickname.Text) ? "Bitte einen Nickname eingeben."
+                    : null;
+                error.Text = problem ?? "";
+                error.IsVisible = problem is not null;
+                return problem is not null
+                    ? null
+                    : new ConnectChoice(host.Text!.Trim(), (int)(port.Value ?? 7000), nickname.Text!.Trim(), password.Text, save.IsChecked == true);
+            },
             "Verbinden");
     }
 }

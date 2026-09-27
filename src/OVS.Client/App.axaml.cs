@@ -1,10 +1,12 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using OVS.Client.Debug;
 using OVS.Client.Logging;
 using OVS.Client.Net;
+using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
 
@@ -24,6 +26,11 @@ public partial class App : Application
             log.Write($"OpenVoiceSpeak-Client {typeof(App).Assembly.GetName().Version} startet, Profil {options.ProfileDir}, " +
                       $"Optionen: {(args.Length > 0 ? args : "keine")}");
             var vm = new MainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), options.UseAudioDevices, log);
+            ApplyTheme(vm.Settings.Theme);
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.Settings)) ApplyTheme(vm.Settings.Theme);
+            };
             var window = new MainWindow { DataContext = vm };
             if (options.ProfileDir != ClientStorage.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
             DebugApi? debugApi = null;
@@ -61,4 +68,11 @@ public partial class App : Application
         }
         base.OnFrameworkInitializationCompleted();
     }
+
+    void ApplyTheme(AppTheme theme) => RequestedThemeVariant = theme switch
+    {
+        AppTheme.Light => ThemeVariant.Light,
+        AppTheme.Dark => ThemeVariant.Dark,
+        _ => ThemeVariant.Default,
+    };
 }

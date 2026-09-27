@@ -43,6 +43,7 @@
 | 21 | Server- und Channel-Logs | Der Server schreibt allgemeine Ereignisse in ein Server-Log und alles Channel-bezogene in ein eigenes Log pro Channel. | 12 |
 | 22 | Client-Log | Der Client schreibt alles, was er tut und erlebt, in eine einzige Logdatei im Profil. | 16, 20 |
 | 23 | Automatischer Neustart und Log-Tageswechsel | Der Server startet auf Wunsch täglich zu einer einstellbaren Uhrzeit neu, und der Tageswechsel der Logs ist abschaltbar. | 19, 21 |
+| 24 | Moderne Oberfläche | Der Client sieht aus und bedient sich wie eine aktuelle Voice-App, hell und dunkel. | 16, 17, 18 |
 
 ## Annahmen
 
@@ -93,7 +94,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle 23 Packages sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Alle 24 Packages sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -1686,3 +1687,65 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerHostTests|FullyQuali
 - Automatisches Wiederverbinden im Client
 - Neustart per Befehl aus dem Client
 - Den Tageswechsel des Client-Logs abschalten (der Client beginnt weiter nach Mitternacht eine neue Datei)
+
+---
+
+## Package 24: Moderne Oberfläche
+
+**Ziel:** Der Client sieht aus und bedient sich wie eine aktuelle Voice-App, in einer hellen und einer dunklen Variante.
+
+**Abhängigkeiten:** Package 16, 17, 18
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Styles/Theme.axaml` (neu): Design-Tokens für hell und dunkel (ThemeDictionaries)
+- `src/OVS.Client/Styles/Controls.axaml` (neu): Textrollen, Karten, Zeilen, Avatare, Chips, Button-Varianten
+- `src/OVS.Client/Styles/Icons.axaml` (neu): Fluent UI System Icons als Pfaddaten, `THIRD-PARTY-NOTICES.md` (neu) mit der MIT-Lizenz
+- `src/OVS.Client/App.axaml`, `App.axaml.cs` (ändern): FluentTheme mit Markenfarbe, Design-Einstellung anwenden
+- `src/OVS.Client/Views/MainWindow.axaml`, `SettingsDialog.axaml`, `AdminDialog.axaml`, `SimpleDialogs.cs` (neu gestaltet), `Converters.cs` (neu)
+- `src/OVS.Client/ViewModels/MainViewModel.cs`, `ServerViewModel.cs`, `SettingsViewModel.cs`, `Settings/ClientSettings.cs` (ändern)
+- `tests/OVS.Tests/Client/UiSmokeTests.cs` (neu), `MainViewModelTests.cs`, `ServerViewModelTests.cs`, `SettingsTests.cs` (ändern), Paket `Avalonia.Headless.XUnit` nur im Testprojekt
+
+### Kontext
+
+Vorher: eine Zeile gleich aussehender Text-Buttons, ein Baum aus reinem Text, Status nur als "(stumm)" in Klammern, Meldungen als graue Liste mit Zeitstempel, ohne Verbindung eine leere Fläche.
+
+Grundlage waren die Empfehlungen des Skills ui-ux-pro-max: Palette "Chat & Messaging" (blaue Primärfarbe, Grün für aktiv), dunkler Modus mit heller Variante, FluentTheme als Basis mit ThemeDictionaries und DynamicResource, Namen für Icon-Buttons (AutomationProperties.Name). Die Stil-Empfehlung der ersten Suche (3D, Landingpage) passte nicht zu einer Desktop-App und wurde verworfen.
+
+**Aufbau:**
+- Linke Seitenleiste: Server-Kopf (Initial-Kachel, Name, Verbindungsstatus mit Punkt und Text, Channel anlegen), Channel-Baum, unten das eigene Profil mit Mikrofon, Ton aus und Einstellungen als Icon-Buttons.
+- Channels als Zeilen mit Lautsprecher-Icon, Standard-Channel-Icon, Link-Chip und Nutzerzahl, der eigene Channel hervorgehoben.
+- Nutzer mit Initial-Avatar (feste Farbe pro Nickname), Sprech-Ring grün, über Link violett plus Link-Icon (nicht nur Farbe), Status als Icons mit Tooltip.
+- Rechts: Kopf mit aktuellem Channel, Ping-Chip, Verwaltung, Admin-Token, Trennen (rot). Darunter "Aktivität" mit Icons je Art (Willkommen, Warnung, Fehler).
+- Ohne Verbindung: Startbildschirm mit Verbinden, Ladeanzeige während des Verbindens und Lesezeichen als Kacheln, die den Dialog vorbelegt öffnen.
+- Dialoge: Titel mit Icon, Beschriftung über jedem Feld, blauer Haupt-Button, roter Button für Bannen, Löschen und geänderte Zertifikate. Einstellungen in Abschnitten, Modus als Radiobuttons, Tasten als Tastenkappen, neue Einstellung "Design".
+
+**Kontrast:** Text mindestens 4.5:1, Ringe und Icons mindestens 3:1, in beiden Varianten nachgerechnet. Das Grün der hellen Variante wurde dafür auf #15803D abgedunkelt.
+
+**Icons:** Fluent UI System Icons (MIT) als Pfaddaten statt eines weiteren Pakets, passend zum Fluent-Stil.
+
+### Acceptance Criteria
+
+- [x] AC1: Hauptfenster, Einstellungen, Verwaltung und alle kleinen Dialoge laden in heller und dunkler Variante ohne Fehler, Farben nur über Tokens.
+- [x] AC2: Sprechen ist am Avatar-Ring erkennbar, Sprechen über Link zusätzlich am Link-Icon. Stumm, taub und vom Server stumm erscheinen als Icons.
+- [x] AC3: Ohne Verbindung zeigt der Client einen Startbildschirm mit Lesezeichen, während des Verbindens eine Ladeanzeige.
+- [x] AC4: Meldungen haben eine Art (Willkommen, Warnung, Fehler) und ein passendes Icon. Die Debug-API liefert sie weiter als Text.
+- [x] AC5: Das Design ist wählbar (wie Windows, hell, dunkel) und wird gespeichert.
+- [x] AC6: Icon-Buttons haben Tooltip und AutomationProperties.Name, deaktivierte Buttons sind sichtbar abgeschwächt.
+- [x] AC7 (manuell): Screenshots beider Varianten aus dem echten Client-Code geprüft (headless mit Skia gerendert), und der echte Client startet unter Windows. Geprüft am 2026-09-27.
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "Windows_LoadAndShowTheirContent"` für hell und dunkel: alle Fenster und kleinen Dialoge, Avalonia-Warnungen und Bindungsfehler lassen den Test scheitern (AC1)
+2. `UiSmokeTests > "EveryIconInXaml_Exists"`: ein fehlendes Icon wirft in Avalonia weder eine Ausnahme noch einen Logeintrag, deshalb dieser Abgleich (AC1)
+3. `ServerViewModelTests > "CurrentChannelAndSelf_FollowOwnUser"`, `"StatusIcons_MicOffOnlyForAPlainMute"` (AC2)
+4. `MainViewModelTests > "StartScreen_BookmarksAndConnectingState"` (AC3), `"Notices_HaveKinds_ErrorAndDisconnect"` (AC4)
+5. `SettingsTests > "Theme_DefaultSystem_SavedAndMapped"`, `"PushToTalkRadio_IsTheOppositeOfVoiceActivation"` (AC5)
+6. `UiSmokeTests > "Avatar_SameNicknameSameColor_InitialUpperCase"` (AC2)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~UiSmokeTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~SettingsTests"`
+
+### Out of Scope
+
+- Eigene Titelleiste und Mica-Hintergrund
+- Animationen über kurze Zustandswechsel hinaus
+- Anzeige des Client-Logs in der Oberfläche

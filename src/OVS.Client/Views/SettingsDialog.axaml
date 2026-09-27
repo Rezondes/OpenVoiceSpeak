@@ -3,58 +3,172 @@
         xmlns:vm="using:OVS.Client.ViewModels"
         x:Class="OVS.Client.Views.SettingsDialog"
         x:DataType="vm:SettingsViewModel"
-        Title="Einstellungen" Width="500" SizeToContent="Height" CanResize="False"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
-  <StackPanel Margin="16" Spacing="8">
-    <TextBlock Text="Mikrofon" FontWeight="SemiBold" />
-    <ComboBox ItemsSource="{Binding Inputs}" SelectedItem="{Binding SelectedInput}" HorizontalAlignment="Stretch">
-      <ComboBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:AudioDeviceOption">
-          <TextBlock Text="{Binding Name}" />
-        </DataTemplate>
-      </ComboBox.ItemTemplate>
-    </ComboBox>
-    <TextBlock Text="Lautsprecher" FontWeight="SemiBold" />
-    <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
-      <ComboBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:AudioDeviceOption">
-          <TextBlock Text="{Binding Name}" />
-        </DataTemplate>
-      </ComboBox.ItemTemplate>
-    </ComboBox>
-    <TextBlock Text="{Binding DeviceHint}" IsVisible="{Binding DeviceHint, Converter={x:Static ObjectConverters.IsNotNull}}"
-               Foreground="OrangeRed" TextWrapping="Wrap" />
+        Title="Einstellungen" Width="560" Height="720" MinHeight="480" CanResize="True"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource Ovs.Bg}">
+  <DockPanel>
+    <!-- Button bar -->
+    <Border DockPanel.Dock="Bottom" Padding="24,12" Background="{DynamicResource Ovs.Sidebar}"
+            BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="Abbrechen" Command="{Binding CancelCommand}" IsCancel="True" MinWidth="96" HorizontalContentAlignment="Center" />
+          <Button Classes="accent" Content="Speichern" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}" IsDefault="True"
+                  MinWidth="96" HorizontalContentAlignment="Center" />
+        </StackPanel>
+        <TextBlock Classes="danger" Text="{Binding Error}" IsVisible="{Binding HasKeyConflict}" VerticalAlignment="Center" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
 
-    <TextBlock Text="{Binding InputGainPercent, StringFormat='Mikrofonverstärkung: {0:0} %'}" />
-    <Slider Minimum="0" Maximum="200" Value="{Binding InputGainPercent}" />
-    <TextBlock Text="{Binding OutputVolumePercent, StringFormat='Lautstärke: {0:0} %'}" />
-    <Slider Minimum="0" Maximum="100" Value="{Binding OutputVolumePercent}" />
+    <ScrollViewer>
+      <StackPanel Margin="24,20" Spacing="20">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
+            <PathIcon Classes="accent" Data="{StaticResource Icon.Settings}" />
+          </Border>
+          <TextBlock Classes="h2" FontSize="17" Text="Einstellungen" VerticalAlignment="Center" />
+        </StackPanel>
 
-    <CheckBox Content="Sprachaktivierung statt Push-to-Talk" IsChecked="{Binding VoiceActivation}" />
-    <TextBlock Text="{Binding VadThresholdDb, StringFormat='Schwelle der Sprachaktivierung: {0:0} dBFS'}" />
-    <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold on the meter. -->
-    <ProgressBar Minimum="-60" Maximum="-10" Value="{Binding InputLevelDb}" Height="10" Margin="10,0" />
-    <Slider Minimum="-60" Maximum="-10" Value="{Binding VadThresholdDb}" Margin="0,-6,0,0" />
-    <StackPanel Orientation="Horizontal" Spacing="8">
-      <TextBlock Text="{Binding InputLevelDb, StringFormat='Mikrofonpegel: {0:0} dBFS'}" />
-      <TextBlock Text="über der Schwelle, würde senden" Foreground="#2ECC71" IsVisible="{Binding IsAboveThreshold}" />
-      <TextBlock Text="unter der Schwelle" Foreground="Gray" IsVisible="{Binding !IsAboveThreshold}" />
-    </StackPanel>
+        <!-- Devices -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="GERÄTE" />
+          <Border Classes="card">
+            <StackPanel Spacing="12">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="label" Text="Mikrofon" />
+                <ComboBox ItemsSource="{Binding Inputs}" SelectedItem="{Binding SelectedInput}" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AudioDeviceOption">
+                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Spacing="4">
+                <TextBlock Classes="label" Text="Lautsprecher" />
+                <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AudioDeviceOption">
+                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
+              <Border Classes="banner warning" IsVisible="{Binding DeviceHint, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" />
+                  <TextBlock Classes="warning" Text="{Binding DeviceHint}" TextWrapping="Wrap" MaxWidth="420" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Border>
+        </StackPanel>
 
-    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,6,0,0">
-      <TextBlock Grid.Row="0" Grid.Column="0" Text="Push-to-Talk:" VerticalAlignment="Center" Margin="0,0,8,4" />
-      <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding PttKeyName}" VerticalAlignment="Center" FontWeight="SemiBold" />
-      <Button Grid.Row="0" Grid.Column="2" Content="Ändern ..." Command="{Binding CapturePttKeyCommand}" Margin="0,0,0,4" />
-      <TextBlock Grid.Row="1" Grid.Column="0" Text="Link-PTT:" VerticalAlignment="Center" Margin="0,0,8,0" />
-      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LinkPttKeyName}" VerticalAlignment="Center" FontWeight="SemiBold" />
-      <Button Grid.Row="1" Grid.Column="2" Content="Ändern ..." Command="{Binding CaptureLinkPttKeyCommand}" />
-    </Grid>
-    <TextBlock Text="{Binding CaptureHint}" Foreground="#3498DB" IsVisible="{Binding CaptureHint, Converter={x:Static ObjectConverters.IsNotNull}}" />
-    <TextBlock Text="{Binding Error}" Foreground="Red" IsVisible="{Binding HasKeyConflict}" />
+        <!-- Volume -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="LAUTSTÄRKE" />
+          <Border Classes="card">
+            <StackPanel Spacing="10">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding InputGainPercent, StringFormat='{}{0:0} %'}" />
+                <TextBlock Classes="label" Text="Mikrofonverstärkung" />
+              </DockPanel>
+              <Slider Minimum="0" Maximum="200" Value="{Binding InputGainPercent}" AutomationProperties.Name="Mikrofonverstärkung" />
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding OutputVolumePercent, StringFormat='{}{0:0} %'}" />
+                <TextBlock Classes="label" Text="Lautstärke" />
+              </DockPanel>
+              <Slider Minimum="0" Maximum="100" Value="{Binding OutputVolumePercent}" AutomationProperties.Name="Lautstärke" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
 
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button Content="Speichern" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}" IsDefault="True" />
-      <Button Content="Abbrechen" Command="{Binding CancelCommand}" IsCancel="True" />
-    </StackPanel>
-  </StackPanel>
+        <!-- Transmit mode -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="ÜBERTRAGUNG" />
+          <Border Classes="card">
+            <StackPanel Spacing="10">
+              <RadioButton GroupName="mode" Content="Push-to-Talk: senden, solange die Taste gedrückt ist" IsChecked="{Binding IsPushToTalk}" />
+              <RadioButton GroupName="mode" Content="Sprachaktivierung: senden, sobald du sprichst" IsChecked="{Binding VoiceActivation}" />
+              <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding VadThresholdDb, StringFormat='{}{0:0} dBFS'}" />
+                  <TextBlock Classes="label" Text="Schwelle" />
+                </DockPanel>
+                <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold on the meter. -->
+                <ProgressBar Minimum="-60" Maximum="-10" Value="{Binding InputLevelDb}" Height="8" Margin="10,0" CornerRadius="4" />
+                <Slider Minimum="-60" Maximum="-10" Value="{Binding VadThresholdDb}" Margin="0,-6,0,0" AutomationProperties.Name="Schwelle der Sprachaktivierung" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Classes="caption" Text="{Binding InputLevelDb, StringFormat='Pegel {0:0} dBFS'}" />
+                  <TextBlock Classes="caption speaking" Text="über der Schwelle, würde senden" IsVisible="{Binding IsAboveThreshold}" />
+                  <TextBlock Classes="caption" Text="unter der Schwelle" IsVisible="{Binding !IsAboveThreshold}" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Keys -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="TASTEN" />
+          <Border Classes="card">
+            <StackPanel Spacing="12">
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Command="{Binding CapturePttKeyCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.Keyboard}" />
+                    <TextBlock Text="Ändern ..." />
+                  </StackPanel>
+                </Button>
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="label" Text="Push-to-Talk" />
+                  <Border Classes="keycap" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding PttKeyName}" />
+                  </Border>
+                </StackPanel>
+              </DockPanel>
+              <Border Classes="divider" />
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Command="{Binding CaptureLinkPttKeyCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.Keyboard}" />
+                    <TextBlock Text="Ändern ..." />
+                  </StackPanel>
+                </Button>
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="label" Text="Link-PTT (eigener Channel und verlinkte Channels)" />
+                  <Border Classes="keycap" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding LinkPttKeyName}" />
+                  </Border>
+                </StackPanel>
+              </DockPanel>
+              <Border Classes="banner accent" IsVisible="{Binding CaptureHint, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Classes="accent" Data="{StaticResource Icon.Keyboard}" />
+                  <TextBlock Classes="accent" Text="{Binding CaptureHint}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Appearance -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="DARSTELLUNG" />
+          <Border Classes="card">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="label" Text="Design" />
+              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Themes}" SelectedItem="{Binding SelectedTheme}" MinWidth="200">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ThemeOption">
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
 </Window>

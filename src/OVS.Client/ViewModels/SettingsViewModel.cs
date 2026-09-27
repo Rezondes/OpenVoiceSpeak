@@ -7,6 +7,7 @@ using OVS.Client.Settings;
 namespace OVS.Client.ViewModels;
 
 public sealed record AudioDeviceOption(string? Id, string Name);
+public sealed record ThemeOption(AppTheme Value, string Name);
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
@@ -16,7 +17,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] AudioDeviceOption selectedOutput;
     [ObservableProperty] double inputGainPercent;
     [ObservableProperty] double outputVolumePercent;
-    [ObservableProperty] bool voiceActivation;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPushToTalk))]
+    bool voiceActivation;
+    [ObservableProperty] ThemeOption selectedTheme;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAboveThreshold))]
     double vadThresholdDb;
@@ -55,6 +59,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         vadThresholdDb = current.VadThresholdDb;
         pttKey = current.PttKey;
         linkPttKey = current.LinkPttKey;
+        selectedTheme = Themes.First(t => t.Value == current.Theme);
+    }
+
+    public static IReadOnlyList<ThemeOption> Themes { get; } =
+        [new(AppTheme.System, "Wie Windows"), new(AppTheme.Light, "Hell"), new(AppTheme.Dark, "Dunkel")];
+
+    /// <summary>The other radio button of the transmit mode.</summary>
+    public bool IsPushToTalk
+    {
+        get => !VoiceActivation;
+        set => VoiceActivation = !value;
     }
 
     public IReadOnlyList<AudioDeviceOption> Inputs { get; }
@@ -113,5 +128,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         PttKey = PttKey,
         LinkPttKey = LinkPttKey,
         VadThresholdDb = (float)VadThresholdDb,
+        Theme = SelectedTheme.Value,
     }.Clamp();
 }
