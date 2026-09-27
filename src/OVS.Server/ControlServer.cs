@@ -73,6 +73,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
         bool allowed = state.TryAddConnection(ip);
         Session? session = null;
+        string reason = "Verbindung abgebrochen";
         Task? writeLoop = null;
         try
         {
@@ -86,6 +87,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
 
             if (!allowed)
             {
+                state.LogRejected(ip, Codes.TooManyConnections, null, null);
                 await writer.WriteAsync(new Rejected(Codes.TooManyConnections), handshake.Token);
                 return;
             }
@@ -94,7 +96,15 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             if (session is null) return;
 
             writeLoop = WriteLoopAsync(session, writer, tcp);
-            await ReadLoopAsync(session, reader);
+            try
+            {
+                await ReadLoopAsync(session, reader);
+                reason = "vom Client beendet";
+            }
+            catch (OperationCanceledException) when (!stopping.IsCancellationRequested)
+            {
+                reason = "Zeitüberschreitung";
+            }
         }
         catch (Exception e) when (e is IOException or OperationCanceledException or ProtocolException
                                       or AuthenticationException or SocketException or ObjectDisposedException)
@@ -102,7 +112,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         }
         finally
         {
-            if (session is not null) state.Remove(session);
+            if (session is not null) state.Remove(session, reason);
             if (writeLoop is not null) await writeLoop;
             state.ReleaseConnection(ip);
             session?.Dispose();
@@ -112,8 +122,12 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
 
     async Task<Session?> HandshakeAsync(FrameReader reader, FrameWriter writer, IPAddress ip, CancellationToken ct)
     {
+        // Only validated values go into the log: a raw nickname could carry line breaks.
+        string? logName = null, logFingerprint = null;
+
         async Task<Session?> Reject(string code, string? detail = null)
         {
+            state.LogRejected(ip, code, logName, logFingerprint);
             await writer.WriteAsync(new Rejected(code, detail), ct);
             return null;
         }
@@ -123,6 +137,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             return await Reject(Codes.VersionMismatch, $"Server spricht Protokollversion {ProtocolInfo.Version}");
         var nickname = ServerState.ValidName(hello.Nickname, 32);
         if (nickname is null) return await Reject(Codes.NicknameInvalid);
+        logName = nickname;
         if (!TryBase64(hello.PublicKey, out var publicKey)) return await Reject(Codes.ProtocolError);
 
         var nonce = RandomNumberGenerator.GetBytes(32);
@@ -133,7 +148,8 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         if (!ClientIdentity.Verify(publicKey, ClientIdentity.ProofData(nonce, certHash), signature))
             return await Reject(Codes.BadSignature);
 
-        var (session, rejection) = state.Admit(ClientIdentity.ComputeFingerprint(publicKey), nickname, ip, hello.Password);
+        logFingerprint = ClientIdentity.ComputeFingerprint(publicKey);
+        var (session, rejection) = state.Admit(logFingerprint, nickname, ip, hello.Password);
         return rejection is null ? session : await Reject(rejection.Code, rejection.Detail);
     }
 

@@ -13,6 +13,12 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
+        var from = s.ChannelId;
+        if (from != r.ChannelId)
+        {
+            ChannelLog(from, $"{s.Nickname} hat den Channel verlassen (wechselt nach {ChannelName(r.ChannelId)})");
+            ChannelLog(r.ChannelId, $"{s.Nickname} hat den Channel betreten (kommt aus {ChannelName(from)})");
+        }
         s.ChannelId = r.ChannelId;
         Broadcast(new UserUpdated(Info(s)));
     }
@@ -31,6 +37,8 @@ public sealed partial class ServerState
         };
         data.Channels.Add(channel);
         Persist();
+        ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}");
+        logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
         Broadcast(new ChannelAdded(Info(channel)));
     }
 
@@ -45,10 +53,17 @@ public sealed partial class ServerState
         }
         if (!ValidateChannel(s, r, channel.Id, r.Name, r.Description, out var name)) return;
 
+        var description = r.Description.Trim();
+        var changes = new List<string>();
+        if (channel.Name != name) changes.Add($"Name '{channel.Name}' -> '{name}'");
+        if (channel.Description != description) changes.Add("Beschreibung geändert");
+        if (channel.Order != r.Order) changes.Add($"Reihenfolge {channel.Order} -> {r.Order}");
+
         channel.Name = name;
-        channel.Description = r.Description.Trim();
+        channel.Description = description;
         channel.Order = r.Order;
         Persist();
+        if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
     }
 
@@ -69,14 +84,21 @@ public sealed partial class ServerState
 
         foreach (var user in sessions.Values.Where(u => u.ChannelId == channel.Id))
         {
+            ChannelLog(channel.Id, $"{user.Nickname} hat den Channel verlassen (Channel gelöscht)");
+            ChannelLog(data.DefaultChannelId, $"{user.Nickname} hat den Channel betreten (Channel {channel.Name} wurde gelöscht)");
             user.ChannelId = data.DefaultChannelId;
             Broadcast(new UserUpdated(Info(user)));
         }
         foreach (var link in data.Links.Where(l => l.Touches(channel.Id)).ToList())
         {
+            var other = link.Other(channel.Id);
+            ChannelLog(other, $"Link zu {channel.Name} entfernt (Channel gelöscht)");
+            ChannelLog(channel.Id, $"Link zu {ChannelName(other)} entfernt (Channel gelöscht)");
             data.Links.Remove(link);
             Broadcast(new ChannelsUnlinked(link.A, link.B));
         }
+        ChannelLog(channel.Id, $"Channel gelöscht von {s.Nickname}");
+        logs.Server($"Channel '{channel.Name}' gelöscht von {s.Nickname}");
         data.Channels.Remove(channel);
         Persist();
         Broadcast(new ChannelRemoved(channel.Id));
@@ -94,6 +116,12 @@ public sealed partial class ServerState
         {
             Fail(s, r, Codes.PermissionDenied);
             return;
+        }
+        var from = target.ChannelId;
+        if (from != r.ChannelId)
+        {
+            ChannelLog(from, $"{target.Nickname} wurde von {s.Nickname} nach {ChannelName(r.ChannelId)} verschoben");
+            ChannelLog(r.ChannelId, $"{target.Nickname} wurde von {s.Nickname} aus {ChannelName(from)} hierher verschoben");
         }
         target.ChannelId = r.ChannelId;
         Broadcast(new UserUpdated(Info(target)));

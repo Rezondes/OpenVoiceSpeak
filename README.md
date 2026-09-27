@@ -24,7 +24,7 @@ docker compose logs
 
 Im Log stehen zwei wichtige Zeilen:
 
-- `Admin-Token: ...`: Damit wird der erste Nutzer zum Admin (im Client: "Admin-Token einlösen"). Solange es keinen Admin gibt, erzeugt jeder Start ein neues Token.
+- `Admin-Token: ...`: Damit wird der erste Nutzer zum Admin (im Client: "Admin-Token einlösen"). Solange es keinen Admin gibt, erzeugt jeder Start ein neues Token. Das Token steht nur in der Konsolenausgabe, nicht in den Logdateien.
 - `Zertifikat-Fingerprint: ...`: Der Client zeigt diesen Fingerprint bei der ersten Verbindung an. Vergleiche beide, bevor du dem Server vertraust.
 
 ### Ports und Firewall
@@ -47,8 +47,20 @@ Wenn UDP hinter Docker-NAT Probleme macht, kannst du in `docker-compose.yml` `ne
 | `OVS_MAX_USERS` | 50 | Maximale Zahl gleichzeitiger Nutzer |
 | `OVS_SERVER_NAME` | `OpenVoiceSpeak Server` | Nur Startwert beim allerersten Start. Später im Client unter Verwaltung, Server ändern. |
 | `OVS_PASSWORD` | leer | Nur Startwert beim allerersten Start, wie oben |
+| `OVS_LOG_DAYS` | 30 | Wie viele Tage Logdateien aufbewahrt werden. `0` löscht nie. |
 
-Umgebungsvariablen haben Vorrang vor `server-config.json` (`{"port":7000,"maxUsers":50}`).
+Umgebungsvariablen haben Vorrang vor `server-config.json` (`{"port":7000,"maxUsers":50,"logDays":30}`).
+
+### Logs
+
+Der Server schreibt tägliche Logdateien in das Datenverzeichnis:
+
+- `logs/server/<Datum>.log`: Start, Stopp, Verbindungen, Ablehnungen, Kicks, Bans, Gruppen- und Einstellungsänderungen. Dieselben Zeilen stehen auch in `docker compose logs`.
+- `logs/channels/<Channel-ID>/<Datum>.log`: Betreten, Verlassen, Verschieben, Links und Änderungen eines Channels. Der Ordner ist nach der ID benannt, damit ein umbenannter Channel seine Historie behält. Jede Zeile nennt den aktuellen Channelnamen.
+
+```bash
+docker run --rm -v openvoicespeak_ovs-data:/data alpine sh -c 'tail -n 50 /data/logs/server/*.log'
+```
 
 ### Daten, Backup, Update
 
@@ -57,6 +69,7 @@ Ordnernamen (`openvoicespeak_ovs-data` bei einem Ordner namens `openvoicespeak`,
 
 - `server-data.json`: Channels, Links, Gruppen, Nutzer, Bans
 - `cert.pfx`: Serverzertifikat. Geht es verloren, bekommen alle Clients eine Warnung.
+- `logs/`: Server- und Channel-Logs (siehe oben)
 
 ```bash
 # Backup
@@ -94,6 +107,7 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiert
 - Grün bedeutet: jemand spricht. Blau bedeutet: jemand spricht über einen Link.
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
+
 
 ### Kommandozeile
 

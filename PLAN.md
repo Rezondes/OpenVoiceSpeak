@@ -40,6 +40,8 @@
 | 18 | Admin- und Moderations-UI | Berechtigte erledigen Channelverwaltung, Linking, Moderation und Gruppenverwaltung vollständig im Client. | 8, 9, 10, 16 |
 | 19 | Hosting-Abschluss | Multi-Arch-Server-Images und ein Windows-Client-Build sind reproduzierbar baubar und dokumentiert. | 5, 12, 18 |
 | 20 | Debug-API für den Client | Der Client lässt sich ohne Maus und Tastatur komplett steuern und prüfen. | 16, 17, 18 |
+| 21 | Server- und Channel-Logs | Der Server schreibt allgemeine Ereignisse in ein Server-Log und alles Channel-bezogene in ein eigenes Log pro Channel. | 12 |
+| 22 | Client-Log | Der Client schreibt alles, was er tut und erlebt, in eine einzige Logdatei im Profil. | 16, 20 |
 
 ## Annahmen
 
@@ -90,7 +92,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle 20 Packages sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 21 sind umgesetzt, 22 ist geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -1487,3 +1489,136 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~DebugApiTests"`
 
 - Fernzugriff von anderen Rechnern
 - Steuerung von Fenstern und Dialogen (die API spricht die ViewModels an)
+
+---
+
+## Package 21: Server- und Channel-Logs
+
+**Ziel:** Der Server schreibt allgemeine Ereignisse in ein tägliches Server-Log und alles, was einen bestimmten Channel betrifft, in ein eigenes tägliches Log dieses Channels, beides dauerhaft im Datenverzeichnis.
+
+**Abhängigkeiten:** Package 12
+
+**Betroffene Dateien:**
+- `src/OVS.Server/Logging/ServerLogs.cs` (neu): Server- und Channel-Log, Konsole
+- `src/OVS.Shared/Logging/DailyLog.cs` (neu): Tagesdateien, Tageswechsel, Aufbewahrung, Schreibfehler ohne Absturz. Liegt in Shared, weil Package 22 sie wiederverwendet.
+- `src/OVS.Client/Net/ClientConnection.cs`, `tests/OVS.Tests/TestSupport/TestClient.cs` (ändern): sauberes TLS-Ende beim Trennen, damit der Server "vom Client beendet" statt "Verbindung abgebrochen" protokolliert
+- `src/OVS.Server/ServerState.cs`, `Commands/*.cs`, `ControlServer.cs` (ändern): Ereignisse protokollieren
+- `src/OVS.Server/ServerConfig.cs` (ändern): `OVS_LOG_DAYS`
+- `src/OVS.Server/Program.cs` (ändern): Start, Stopp und Startfehler ins Server-Log
+- `tests/OVS.Tests/Server/ServerLogsTests.cs` (neu), `tests/OVS.Tests/TestSupport/TestServer.cs` (ändern)
+- `README.md` (ändern): Ablage der Logs, Aufbewahrung, neue Umgebungsvariable
+
+### Kontext
+
+Bisher schreibt der Server nur wenige Zeilen auf die Konsole (`docker compose logs`) und nichts in Dateien. Channel-Änderungen, Channel-Wechsel, Links, Gruppen und Einstellungen werden gar nicht protokolliert.
+
+**Ablage** im Volume `/data`, übersteht also Updates:
+- `<DataDir>/logs/server/2026-09-27.log`
+- `<DataDir>/logs/channels/<Channel-ID>/2026-09-27.log`. Die ID bleibt beim Umbenennen gleich, jede Zeile nennt den aktuellen Channel-Namen. Das Log eines gelöschten Channels bleibt erhalten.
+
+**Zeilenformat:** `2026-09-27 17:29:22.810 Text` in lokaler Serverzeit, wie auf der Konsole.
+
+**Server-Log (allgemein):**
+- Start und Stopp, Startfehler, Listening und Fingerprint
+- Verbinden (Nickname, Fingerprint-Anfang, IP), Trennen mit Grund (normal, Timeout, gekickt, gebannt, ersetzt), abgelehnter Handshake mit Grund und IP
+- Admin-Token eingelöst, Gruppen angelegt, geändert und gelöscht, Gruppen zugewiesen und entfernt, Servereinstellungen geändert
+- Kick, Ban (mit Dauer und IP-Option), Unban, Server-Mute an und aus
+- Anlegen und Löschen eines Channels zusätzlich als Übersichtszeile
+
+**Channel-Log (pro Channel):**
+- Channel angelegt, geändert (vorher und nachher), gelöscht
+- Nutzer betritt den Channel: Beitritt, beim Verbinden im Standard-Channel, durch Verschieben mit Akteur
+- Nutzer verlässt den Channel: Wechsel, Trennen, Kick, Bann, weil der Channel gelöscht wurde
+- Link gesetzt und entfernt, in den Logs beider beteiligten Channels
+
+**Sicherheit:** Das Admin-Token erscheint nur auf der Konsole, nie in einer Datei. Die Datei vermerkt nur, dass ein Token erzeugt wurde. Passwörter werden nie protokolliert, nur "Passwort gesetzt" oder "Passwort entfernt".
+
+**Aufbewahrung:** `OVS_LOG_DAYS` (Standard 30, `0` = unbegrenzt). Ältere Tagesdateien werden beim Start und beim Tageswechsel gelöscht.
+
+### Acceptance Criteria
+
+- [x] AC1: Jede Server-Log-Zeile erscheint auf der Konsole und in `logs/server/<Datum>.log`. Nach Mitternacht beginnt eine neue Datei.
+- [x] AC2: Jedes genannte allgemeine Ereignis erzeugt genau eine Zeile im Server-Log, mit Akteur und Ziel, wo es sie gibt.
+- [x] AC3: Jedes genannte Channel-Ereignis steht im Log des betroffenen Channels. Verschieben steht im Log des alten und des neuen Channels, ein Link in den Logs beider Channels.
+- [x] AC4: Das Admin-Token und Passwörter stehen in keiner Logdatei.
+- [x] AC5: Dateien, die älter als `OVS_LOG_DAYS` Tage sind, werden beim Start und beim Tageswechsel gelöscht. Bei `0` wird nichts gelöscht. Ungültige Werte ergeben einen Konfigurationsfehler mit Exit-Code 1.
+- [x] AC6: Ein Schreibfehler im Log, etwa bei voller Platte, bringt den Server nicht zum Absturz. Er meldet ihn einmal auf der Konsole.
+- [x] AC7: Nach Neustart und Umbenennen schreibt ein Channel weiter in denselben Ordner.
+
+### Tests (TDD)
+
+`ServerLogsTests.cs`, mit `ManualTimeProvider` und temporärem Datenverzeichnis:
+1. `"ServerLine_GoesToConsoleAndDailyFile"`, `"DayChange_StartsNewFile"` (AC1)
+2. `"ConnectDisconnectRejected_Logged"`, `"AdminActions_LoggedWithActor"` für Gruppen, Zuweisung, Einstellungen, Kick, Ban, Unban und Server-Mute (AC2)
+3. `"JoinMoveLeave_LoggedInChannelLogs"` (Beitritt, Verschieben im alten und neuen Channel, Trennen), `"Link_LoggedInBothChannels_EditDeleteLogged"` (AC3)
+4. `"TokenAndPassword_NeverInFiles"` (AC4)
+5. `"OldFiles_DeletedAfterRetention"`, `"RetentionZero_KeepsAll"` und in `ServerConfigTests` `"Load_InvalidLogDays_Throws"` (AC5)
+6. `"WriteFailure_DoesNotThrow_ReportsOnce"`, dazu `"ReaderLockingTheFile_LineIsNotLost"`: Ein Leser, der die Datei sperrt, kostet keine Zeile (AC6)
+7. `"RenamedChannel_SameFolderAfterRestart"` (AC7)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerLogsTests"`
+
+### Out of Scope
+
+- Anzeige oder Download der Logs im Client
+- Sprachaktivität (wer wann spricht) im Log
+- Versand der Logs an externe Systeme
+
+---
+
+## Package 22: Client-Log
+
+**Ziel:** Der Client schreibt alles, was er tut und erlebt, in eine einzige Logdatei im Profil.
+
+**Abhängigkeiten:** Package 16, 20
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Logging/ClientLog.cs` (neu): Datei, Grössenbegrenzung, lesbare Beschreibung von Protokollnachrichten
+- `src/OVS.Client/ViewModels/MainViewModel.cs`, `ServerViewModel.cs` (ändern): Ereignisse protokollieren
+- `src/OVS.Client/Audio/AudioEngine.cs` (ändern): Geräte, Warnungen, Sendebeginn und -ende
+- `src/OVS.Client/Debug/AudioDebugLog.cs` (ändern): `--audio-debug` schreibt in dieselbe Datei
+- `src/OVS.Client/App.axaml.cs` (ändern): Start und Ende
+- `tests/OVS.Tests/Client/ClientLogTests.cs` (neu)
+- `README.md` (ändern): Ablage des Client-Logs
+
+### Kontext
+
+Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` schreibt eine eigene Datei. Künftig schreibt der Client ein einziges allgemeines Log als Tagesdatei: `<Profil>/logs/client-2026-09-27.log`, standardmässig also unter `%APPDATA%\OpenVoiceSpeak\logs\`. Dateien, die älter als 30 Tage sind, werden beim Start und beim Tageswechsel gelöscht.
+
+**Protokolliert wird:**
+- Start und Ende mit Version und Kommandozeilen-Optionen
+- Einstellungen geladen, gespeichert und geändert (Geräte, Tasten, Modus), Warnungen zu Geräten und beschädigten Dateien
+- Verbindungsversuche (Adresse, Port, Nickname), TOFU-Entscheidung mit Fingerprint, verbunden, abgelehnt mit Grund, getrennt mit Grund, UDP erreichbar oder nicht
+- alles, was vom Server kommt: Nutzer verbunden, getrennt, verschoben, Channels angelegt, geändert, gelöscht, Links, Gruppen, Servereinstellungen, Fehlermeldungen
+- eigene Aktionen: Channel-Wechsel, Mute, Deafen, alle Verwaltungsanfragen
+- Senden beginnt und endet, mit Ziel Channel oder Links
+- mit `--audio-debug` zusätzlich PTT-Tastenwechsel und Frames pro Sekunde
+
+**Nie protokolliert:** Serverpasswort, Admin-Token, Identitätsschlüssel.
+
+### Acceptance Criteria
+
+- [ ] AC1: Jedes genannte Ereignis erzeugt eine lesbare Zeile mit Zeitstempel im Client-Log. Protokollnachrichten erscheinen mit Namen statt IDs.
+- [ ] AC2: Jeder Tag hat eine eigene Datei. Dateien, die älter als 30 Tage sind, werden beim Start und beim Tageswechsel gelöscht.
+- [ ] AC3: Serverpasswort und Admin-Token stehen nie in der Datei.
+- [ ] AC4: `--audio-debug` schreibt in das Client-Log, eine eigene `audio-debug.log` gibt es nicht mehr.
+- [ ] AC5: Ein Schreibfehler im Log bringt den Client nicht zum Absturz.
+- [ ] AC6: Die Meldungsliste im Fenster zeigt weiterhin nur Fehler, Willkommenstext, Trennungen und Warnungen.
+
+### Tests (TDD)
+
+`ClientLogTests.cs`:
+1. `[Theory] "Describe_Message"` für jede Delta-Art, mit Namen aus dem `StateMirror` (AC1)
+2. `"Connect_Disconnect_Logged"` über `MainViewModel` gegen `TestServer` (AC1)
+3. `"OwnActions_Logged"` über die Debug-API (AC1)
+4. `"DayChange_NewFile_OldFilesDeleted"` mit `ManualTimeProvider` (AC2)
+5. `"PasswordAndToken_NeverLogged"` (AC3)
+6. `"AudioDebug_WritesToClientLog"` (AC4)
+7. `"WriteFailure_DoesNotThrow"` (AC5)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientLogTests"`
+
+### Out of Scope
+
+- Anzeige des Logs im Client
+- Mehrere Logdateien oder Log-Level

@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using OVS.Server;
 using OVS.Server.Data;
+using OVS.Server.Logging;
 using OVS.Server.Tls;
 using OVS.Server.Voice;
 using OVS.Shared.Identity;
@@ -41,7 +42,8 @@ public sealed class TestServer : IAsyncDisposable
         }
 
         var log = new ConcurrentQueue<string>();
-        var state = new ServerState(config, time ?? TimeProvider.System, log.Enqueue);
+        var logs = new ServerLogs(dataDir, config.LogDays, time ?? TimeProvider.System, log.Enqueue);
+        var state = new ServerState(config, time ?? TimeProvider.System, logs);
         var certificate = ServerCertificate.LoadOrCreate(dataDir);
         // Same port number for TCP and UDP, like in production, so real clients find the voice socket.
         // Windows (Hyper-V, Docker) reserves chunks of the dynamic port range per protocol, so an ephemeral

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using OVS.Server.Data;
+using OVS.Server.Logging;
 using OVS.Server.Voice;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -19,21 +20,25 @@ public sealed partial class ServerState
     readonly DataStore store;
     readonly ServerData data;
     readonly TimeProvider time;
-    readonly Action<string> log;
+    readonly ServerLogs logs;
     readonly Dictionary<uint, Session> sessions = [];
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
     readonly AdminToken adminToken = new();
     uint lastSessionId;
 
-    public ServerState(ServerConfig config, TimeProvider time, Action<string> log)
+    public ServerState(ServerConfig config, TimeProvider time, ServerLogs logs)
     {
         this.config = config;
         this.time = time;
-        this.log = log;
+        this.logs = logs;
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
-            log($"Admin-Token: {adminToken.Generate()}  (im Client unter 'Admin-Token einlösen' eingeben)");
+        {
+            // The token is a secret: console only, never in a log file (files end up in backups).
+            logs.Server($"Admin-Token: {adminToken.Generate()}  (im Client unter 'Admin-Token einlösen' eingeben)", toFile: false);
+            logs.Server("Admin-Token erzeugt, es steht nur in der Konsolenausgabe", toConsole: false);
+        }
     }
 
     public string? PendingAdminToken => adminToken.Current;
@@ -104,33 +109,61 @@ public sealed partial class ServerState
             session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot()));
             foreach (var other in sessions.Values)
                 if (other != session) other.Send(new UserJoined(Info(session)));
-            log($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
+            logs.Server($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
+            ChannelLog(session.ChannelId, $"{nickname} hat den Channel betreten (verbunden)");
             return (session, null);
         }
     }
 
-    public void Remove(Session session)
+    /// <param name="reason">Why the connection ended, for the logs (e.g. "Zeitüberschreitung").</param>
+    public void Remove(Session session, string reason = "vom Client beendet")
     {
-        lock (gate) RemoveLocked(session, null);
+        lock (gate) RemoveLocked(session, null, reason);
     }
 
     public void CloseAll(Message final)
     {
         lock (gate)
         {
-            foreach (var s in sessions.Values) s.Close(final);
+            foreach (var s in sessions.Values)
+            {
+                s.Close(final);
+                ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen (Server fährt herunter)");
+            }
+            logs.Server($"Server fährt herunter, {sessions.Count} Nutzer getrennt");
             sessions.Clear();
         }
     }
 
-    void RemoveLocked(Session session, Message? final)
+    public void LogRejected(IPAddress ip, string code, string? nickname, string? fingerprint)
+    {
+        var who = nickname is null ? "" : fingerprint is null ? $" ({nickname})" : $" ({nickname}, {fingerprint[..12]})";
+        logs.Server($"Verbindung von {ip} abgelehnt: {code}{who}");
+    }
+
+    void RemoveLocked(Session session, Message? final, string reason = "getrennt")
     {
         session.Close(final);
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
         Broadcast(new UserLeft(session.Id));
-        log($"{session.Nickname} getrennt");
+        if (final is Disconnected d) reason = d.Reason switch
+        {
+            Codes.Kicked => "gekickt",
+            Codes.Banned => "gebannt",
+            Codes.ReplacedByNewConnection => "durch neue Verbindung ersetzt",
+            _ => d.Reason,
+        };
+        logs.Server($"{session.Nickname} getrennt ({reason})");
+        ChannelLog(session.ChannelId, $"{session.Nickname} hat den Channel verlassen ({reason})");
     }
+
+    void ChannelLog(Guid channelId, string text)
+    {
+        if (FindChannel(channelId) is { } channel) logs.Channel(channel.Id, channel.Name, text);
+    }
+
+    string ChannelName(Guid id) => FindChannel(id)?.Name ?? "?";
 
     // ---- Requests ----
 

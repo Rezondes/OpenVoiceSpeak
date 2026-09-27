@@ -73,6 +73,22 @@ public sealed class ServerConfigTests : IDisposable
         Assert.Contains(key, e.Message);
     }
 
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("abc")]
+    public void Load_InvalidLogDays_Throws(string value)
+    {
+        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env(("OVS_LOG_DAYS", value))));
+        Assert.Contains("OVS_LOG_DAYS", e.Message);
+    }
+
+    [Fact]
+    public void Load_LogDays_DefaultAndOverride()
+    {
+        Assert.Equal(30, ServerConfig.Load(Env()).LogDays);
+        Assert.Equal(0, ServerConfig.Load(Env(("OVS_LOG_DAYS", "0"))).LogDays);
+    }
+
     [Fact]
     public void Load_MissingDataDir_IsCreated()
     {

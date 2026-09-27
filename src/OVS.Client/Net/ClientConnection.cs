@@ -176,9 +176,26 @@ public sealed class ClientConnection : IAsyncDisposable
         if (Interlocked.Exchange(ref disconnectRaised, 1) == 0) Disconnected?.Invoke(reason, detail);
     }
 
+    /// <summary>
+    /// TLS close_notify, so the server sees an orderly end ("vom Client beendet") and not a dropped connection.
+    /// </summary>
+    public static async Task CloseGracefullyAsync(SslStream ssl)
+    {
+        try
+        {
+            await ssl.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(1));
+        }
+        catch (Exception e) when (e is IOException or ObjectDisposedException or NotSupportedException
+                                      or InvalidOperationException or TimeoutException)
+        {
+            // already broken or busy: the socket close below still ends the connection
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         Interlocked.Exchange(ref disconnectRaised, 1); // a deliberate disconnect is not an event
+        await CloseGracefullyAsync(ssl);
         cts.Cancel();
         tcp.Dispose();
         foreach (var loop in new[] { receiveLoop, pingLoop })

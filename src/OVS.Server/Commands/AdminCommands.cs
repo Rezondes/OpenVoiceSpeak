@@ -19,7 +19,7 @@ public sealed partial class ServerState
         if (!user.GroupIds.Contains(AdminGroupId)) user.GroupIds.Add(AdminGroupId);
         Persist();
         RecomputePermissions();
-        log($"{s.Nickname} hat das Admin-Token eingelöst");
+        logs.Server($"{s.Nickname} hat das Admin-Token eingelöst");
     }
 
     void OnCreateGroup(Session s, CreateGroup r)
@@ -31,8 +31,10 @@ public sealed partial class ServerState
             Fail(s, r, Codes.PermissionDenied);
             return;
         }
-        data.Groups.Add(new Group(Guid.NewGuid(), name, r.Permissions & Permission.All));
+        var permissions = r.Permissions & Permission.All;
+        data.Groups.Add(new Group(Guid.NewGuid(), name, permissions));
         Persist();
+        logs.Server($"Gruppe '{name}' angelegt von {s.Nickname} ({permissions})");
         Broadcast(new GroupsChanged(GroupInfos()));
     }
 
@@ -56,8 +58,13 @@ public sealed partial class ServerState
             Fail(s, r, Codes.PermissionDenied);
             return;
         }
-        data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = r.Permissions & Permission.All };
+        var permissions = r.Permissions & Permission.All;
+        var changes = new List<string>();
+        if (group.Name != name) changes.Add($"Name '{group.Name}' -> '{name}'");
+        if (group.Permissions != permissions) changes.Add($"Rechte {group.Permissions} -> {permissions}");
+        data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = permissions };
         Persist();
+        if (changes.Count > 0) logs.Server($"Gruppe '{group.Name}' geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new GroupsChanged(GroupInfos()));
         RecomputePermissions();
     }
@@ -84,6 +91,7 @@ public sealed partial class ServerState
         data.Groups.Remove(group);
         foreach (var user in data.Users) user.GroupIds.Remove(group.Id);
         Persist();
+        logs.Server($"Gruppe '{group.Name}' gelöscht von {s.Nickname}");
         Broadcast(new GroupsChanged(GroupInfos()));
         RecomputePermissions();
     }
@@ -91,17 +99,18 @@ public sealed partial class ServerState
     void OnAssignGroup(Session s, AssignGroup r)
     {
         if (!Require(s, r, Permission.GroupsAssign)) return;
-        if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out _)) return;
+        if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out var group)) return;
         if (user.GroupIds.Contains(r.GroupId)) return;
         user.GroupIds.Add(r.GroupId);
         Persist();
+        logs.Server($"Gruppe '{group.Name}' an {user.LastNickname} vergeben von {s.Nickname}");
         RecomputePermissions();
     }
 
     void OnUnassignGroup(Session s, UnassignGroup r)
     {
         if (!Require(s, r, Permission.GroupsAssign)) return;
-        if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out _)) return;
+        if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out var group)) return;
         if (WouldRemoveLastAdmin(data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds)), user.Fingerprint, r.GroupId))
         {
             Fail(s, r, Codes.LastAdmin);
@@ -109,6 +118,7 @@ public sealed partial class ServerState
         }
         if (!user.GroupIds.Remove(r.GroupId)) return;
         Persist();
+        logs.Server($"Gruppe '{group.Name}' von {user.LastNickname} entfernt von {s.Nickname}");
         RecomputePermissions();
     }
 
@@ -133,10 +143,17 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, "Willkommenstext zu lang");
             return;
         }
+        var welcome = r.WelcomeText ?? "";
+        var changes = new List<string>();
+        if (data.Settings.Name != name) changes.Add($"Name '{data.Settings.Name}' -> '{name}'");
+        if (data.Settings.WelcomeText != welcome) changes.Add("Willkommenstext geändert");
+        if (r.Password is not null) changes.Add(r.Password.Length == 0 ? "Passwort entfernt" : "Passwort gesetzt"); // never the password itself
+
         data.Settings.Name = name;
-        data.Settings.WelcomeText = r.WelcomeText ?? "";
+        data.Settings.WelcomeText = welcome;
         if (r.Password is not null) data.Settings.PasswordHash = ServerSettings.Hash(r.Password);
         Persist();
+        logs.Server($"Servereinstellungen geändert von {s.Nickname}: {(changes.Count > 0 ? string.Join(", ", changes) : "keine Änderung")}");
         Broadcast(new ServerSettingsChanged(SettingsInfo()));
     }
 

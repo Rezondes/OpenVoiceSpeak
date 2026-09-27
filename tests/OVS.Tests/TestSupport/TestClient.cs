@@ -183,6 +183,7 @@ public sealed class TestClient : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        await OVS.Client.Net.ClientConnection.CloseGracefullyAsync(ssl);
         tcp.Dispose();
         if (pump is not null) await pump;
         await ssl.DisposeAsync();

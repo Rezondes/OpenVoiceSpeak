@@ -9,8 +9,8 @@ public sealed partial class ServerState
     void OnKick(Session s, Kick r)
     {
         if (!Require(s, r, Permission.UserKick) || !FindTarget(s, r, r.SessionId, out var target)) return;
+        logs.Server($"{target.Nickname} wurde von {s.Nickname} gekickt: {r.Reason}");
         RemoveLocked(target, new Disconnected(Codes.Kicked, r.Reason));
-        log($"{target.Nickname} wurde von {s.Nickname} gekickt: {r.Reason}");
     }
 
     void OnBan(Session s, Ban r)
@@ -33,19 +33,23 @@ public sealed partial class ServerState
             ExpiresAt = r.DurationMinutes is { } minutes ? now.AddMinutes(minutes) : null,
         });
         Persist();
+        var duration = r.DurationMinutes is { } m ? $"für {m} Minuten" : "dauerhaft";
+        logs.Server($"{target.Nickname} wurde von {s.Nickname} gebannt {duration}{(r.IncludeIp ? " mit IP" : "")}: {r.Reason}");
         RemoveLocked(target, new Disconnected(Codes.Banned, r.Reason));
-        log($"{target.Nickname} wurde von {s.Nickname} gebannt: {r.Reason}");
     }
 
     void OnUnban(Session s, Unban r)
     {
         if (!Require(s, r, Permission.UserBan)) return;
-        if (data.Bans.RemoveAll(b => b.Id == r.BanId) == 0)
+        var ban = data.Bans.FirstOrDefault(b => b.Id == r.BanId);
+        if (ban is null)
         {
             Fail(s, r, Codes.NotFound);
             return;
         }
+        data.Bans.Remove(ban);
         Persist();
+        logs.Server($"Bann von {ban.Nickname} aufgehoben von {s.Nickname}");
         SendBanList(s, r.RequestId);
     }
 
@@ -59,6 +63,7 @@ public sealed partial class ServerState
     {
         if (!Require(s, r, Permission.UserMute) || !FindTarget(s, r, r.SessionId, out var target)) return;
         target.ServerMuted = r.Muted;
+        logs.Server($"{target.Nickname} serverseitig {(r.Muted ? "stummgeschaltet" : "wieder freigegeben")} von {s.Nickname}");
         Broadcast(new UserUpdated(Info(target)));
     }
 

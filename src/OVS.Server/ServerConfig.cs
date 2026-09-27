@@ -6,11 +6,11 @@ namespace OVS.Server;
 public sealed class ConfigException(string message) : Exception(message);
 
 /// <summary>Startup settings. Precedence: environment variable, then server-config.json, then default.</summary>
-public sealed record ServerConfig(int Port, string DataDir, int MaxUsers, string ServerName, string Password)
+public sealed record ServerConfig(int Port, string DataDir, int MaxUsers, string ServerName, string Password, int LogDays = 30)
 {
     public const string FileName = "server-config.json";
 
-    sealed record FileValues(int? Port, int? MaxUsers, string? ServerName, string? Password);
+    sealed record FileValues(int? Port, int? MaxUsers, string? ServerName, string? Password, int? LogDays);
 
     public static ServerConfig Load(Func<string, string?> getEnv)
     {
@@ -32,6 +32,7 @@ public sealed record ServerConfig(int Port, string DataDir, int MaxUsers, string
 
         int port = Int("OVS_PORT", getEnv("OVS_PORT"), file.Port, ProtocolInfo.DefaultPort, 1, 65535);
         int maxUsers = Int("OVS_MAX_USERS", getEnv("OVS_MAX_USERS"), file.MaxUsers, 50, 1, 100_000);
+        int logDays = Int("OVS_LOG_DAYS", getEnv("OVS_LOG_DAYS"), file.LogDays, 30, 0, 3650); // 0 = keep forever
         string name = getEnv("OVS_SERVER_NAME") ?? file.ServerName ?? "OpenVoiceSpeak Server";
         string password = getEnv("OVS_PASSWORD") ?? file.Password ?? "";
 
@@ -39,16 +40,16 @@ public sealed record ServerConfig(int Port, string DataDir, int MaxUsers, string
         if (name.Length is < 1 or > 64)
             throw new ConfigException("OVS_SERVER_NAME muss 1 bis 64 Zeichen lang sein.");
 
-        return new ServerConfig(port, dataDir, maxUsers, name, password);
+        return new ServerConfig(port, dataDir, maxUsers, name, password, logDays);
     }
 
     static FileValues ReadFile(string path)
     {
-        if (!File.Exists(path)) return new FileValues(null, null, null, null);
+        if (!File.Exists(path)) return new FileValues(null, null, null, null, null);
         try
         {
             return JsonSerializer.Deserialize<FileValues>(File.ReadAllBytes(path), ProtocolJson.Options)
-                ?? new FileValues(null, null, null, null);
+                ?? new FileValues(null, null, null, null, null);
         }
         catch (JsonException e)
         {
