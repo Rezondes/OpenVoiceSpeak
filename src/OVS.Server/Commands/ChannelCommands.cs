@@ -72,6 +72,11 @@ public sealed partial class ServerState
             user.ChannelId = data.DefaultChannelId;
             Broadcast(new UserUpdated(Info(user)));
         }
+        foreach (var link in data.Links.Where(l => l.Touches(channel.Id)).ToList())
+        {
+            data.Links.Remove(link);
+            Broadcast(new ChannelsUnlinked(link.A, link.B));
+        }
         data.Channels.Remove(channel);
         Persist();
         Broadcast(new ChannelRemoved(channel.Id));
