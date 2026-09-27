@@ -19,6 +19,22 @@ public partial class MainWindow : Window
         if (await SimpleDialogs.Connect(this, Vm.Settings) is { } choice) await Vm.ConnectAsync(choice);
     }
 
+    async void OnSettingsClick(object? sender, RoutedEventArgs e)
+    {
+        var vm = new SettingsViewModel(Vm.Settings, AudioDevices.List(DataFlow.Capture), AudioDevices.List(DataFlow.Render), Vm.Keys);
+        void OnLevel(float db) => Dispatcher.UIThread.Post(() => vm.InputLevelDb = db);
+        Vm.Audio.InputLevel += OnLevel;
+        try
+        {
+            if (await new SettingsDialog { DataContext = vm }.ShowDialog<bool>(this))
+                Vm.ApplySettings(vm.ToSettings(Vm.Settings));
+        }
+        finally
+        {
+            Vm.Audio.InputLevel -= OnLevel;
+        }
+    }
+
     void OnChannelDoubleTapped(object? sender, TappedEventArgs e)
     {
         if ((sender as Control)?.DataContext is ChannelViewModel channel) channel.JoinCommand.Execute(null);

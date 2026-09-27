@@ -61,4 +61,63 @@ public sealed class SettingsTests : IDisposable
         var s = new ClientSettings { InputGain = 5, OutputVolume = -1, VadThresholdDb = 0 }.Clamp();
         Assert.Equal((2f, 0f, -10f), (s.InputGain, s.OutputVolume, s.VadThresholdDb));
     }
+
+    static SettingsViewModel Vm(ClientSettings? s = null, params AudioDevice[] inputs) => new(s ?? new ClientSettings(), inputs, []);
+
+    [Fact]
+    public void SamePttKeys_ErrorAndSaveDisabled()
+    {
+        var vm = Vm();
+        Assert.True(vm.CanSave);
+        vm.LinkPttKey = vm.PttKey;
+        Assert.False(vm.CanSave);
+        Assert.NotNull(vm.Error);
+        bool? closed = null;
+        vm.CloseRequested += ok => closed = ok;
+        vm.SaveCommand.Execute(null);
+        Assert.Null(closed);
+    }
+
+    [Theory]
+    [InlineData(500, 200)]
+    [InlineData(-5, 0)]
+    [InlineData(150, 150)]
+    public void OutOfRange_Clamped(double input, double expected)
+    {
+        var vm = Vm();
+        vm.InputGainPercent = input;
+        Assert.Equal(expected, vm.InputGainPercent);
+        Assert.Equal((float)(expected / 100), vm.ToSettings(new ClientSettings()).InputGain);
+    }
+
+    [Fact]
+    public void MissingDevice_FallbackWithHint()
+    {
+        var vm = Vm(new ClientSettings { InputDeviceId = "weg" }, new AudioDevice("da", "Headset"));
+        Assert.NotNull(vm.DeviceHint);
+        Assert.Null(vm.SelectedInput.Id);
+        Assert.Equal(["Standardgerät", "Headset"], vm.Inputs.Select(i => i.Name));
+
+        var ok = Vm(new ClientSettings { InputDeviceId = "da" }, new AudioDevice("da", "Headset"));
+        Assert.Null(ok.DeviceHint);
+        Assert.Equal("da", ok.SelectedInput.Id);
+    }
+
+    [Fact]
+    public void ToSettings_KeepsBookmarks_MapsMode()
+    {
+        var basis = new ClientSettings { Bookmarks = [new Bookmark("a", "h", 1, "n")] };
+        var vm = Vm(basis);
+        vm.VoiceActivation = true;
+        var result = vm.ToSettings(basis);
+        Assert.Same(basis.Bookmarks, result.Bookmarks);
+        Assert.Equal(TransmitMode.VoiceActivation, result.Mode);
+    }
+
+    [Fact]
+    public void ErrorTexts_EveryCodeHasText()
+    {
+        foreach (var code in Codes.All()) Assert.True(ErrorTexts.Has(code), code);
+        Assert.Equal("Dafür fehlt dir das Recht. (x)", ErrorTexts.For(Codes.PermissionDenied, "x"));
+    }
 }
