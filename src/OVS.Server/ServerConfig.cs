@@ -18,10 +18,14 @@ public sealed record ServerConfig(int Port, string DataDir, int MaxUsers, string
         try
         {
             Directory.CreateDirectory(dataDir);
+            // Fail now with a clear message instead of later while writing the certificate or the data file.
+            var probe = Path.Combine(dataDir, ".write-test");
+            File.WriteAllText(probe, "");
+            File.Delete(probe);
         }
-        catch (Exception e)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
         {
-            throw new ConfigException($"OVS_DATA_DIR '{dataDir}' kann nicht angelegt werden: {e.Message}");
+            throw new ConfigException($"OVS_DATA_DIR '{dataDir}' ist nicht anlegbar oder nicht beschreibbar: {e.Message}");
         }
 
         var file = ReadFile(Path.Combine(dataDir, FileName));
@@ -49,6 +53,10 @@ public sealed record ServerConfig(int Port, string DataDir, int MaxUsers, string
         catch (JsonException e)
         {
             throw new ConfigException($"{path} ist kein gültiges JSON: {e.Message}");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new ConfigException($"{path} kann nicht gelesen werden: {e.Message}");
         }
     }
 

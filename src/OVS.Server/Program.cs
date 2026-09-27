@@ -1,5 +1,8 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using OVS.Server;
 using OVS.Server.Tls;
 using OVS.Server.Voice;
@@ -20,11 +23,23 @@ catch (Exception e) when (e is ConfigException or InvalidDataException)
     return 1;
 }
 
-var certificate = ServerCertificate.LoadOrCreate(config.DataDir);
 var endpoint = new IPEndPoint(IPAddress.Any, config.Port);
-var control = new ControlServer(state, certificate, endpoint);
-control.Start();
-using var voice = new UdpVoiceServer(state, endpoint);
+X509Certificate2 certificate;
+ControlServer control;
+UdpVoiceServer voice;
+try
+{
+    certificate = ServerCertificate.LoadOrCreate(config.DataDir);
+    control = new ControlServer(state, certificate, endpoint);
+    control.Start();
+    voice = new UdpVoiceServer(state, endpoint);
+}
+catch (Exception e) when (e is IOException or UnauthorizedAccessException or CryptographicException or SocketException)
+{
+    // e.g. port already in use, or a damaged cert.pfx
+    Console.Error.WriteLine($"Start fehlgeschlagen: {e.Message}");
+    return 1;
+}
 voice.Start();
 
 Log($"Listening on {endpoint} (TCP und UDP)");
@@ -37,4 +52,5 @@ await stop.Task;
 
 Log("Fahre herunter ...");
 await control.DisposeAsync();
+voice.Dispose();
 return 0;

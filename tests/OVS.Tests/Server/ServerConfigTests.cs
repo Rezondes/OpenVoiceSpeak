@@ -81,6 +81,30 @@ public sealed class ServerConfigTests : IDisposable
     }
 
     [Fact]
+    public void Load_ConfigFileUnreadable_ThrowsNamingFile()
+    {
+        WriteFile("""{"port":7100}""");
+        using var locked = new FileStream(Path.Combine(dir, ServerConfig.FileName), FileMode.Open, FileAccess.Read, FileShare.None);
+        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
+        Assert.Contains(ServerConfig.FileName, e.Message);
+    }
+
+    [Fact]
+    public void Load_DataDirIsAFile_ThrowsNamingVariable()
+    {
+        File.WriteAllText(dir, "kein Verzeichnis");
+        try
+        {
+            var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
+            Assert.Contains("OVS_DATA_DIR", e.Message);
+        }
+        finally
+        {
+            File.Delete(dir);
+        }
+    }
+
+    [Fact]
     public void Load_CorruptConfigFile_ThrowsNamingFile()
     {
         WriteFile("{ kaputt");
