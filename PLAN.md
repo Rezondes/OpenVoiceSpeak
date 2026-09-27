@@ -117,7 +117,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 27 sind umgesetzt, 28 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 28 sind umgesetzt, 29 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -1948,17 +1948,20 @@ Die Anwendung hat kein Logo. Die exe zeigt das Standard-Icon von .NET, der Start
 
 ### Acceptance Criteria
 
-- [ ] AC1 (manuell): Zwei bis drei Entwürfe wurden als Bild gezeigt, der Nutzer hat einen gewählt.
-- [ ] AC2: `ovs.ico` enthält die Grössen 16, 24, 32, 48, 64 und 256 px, die exe zeigt es im Explorer (manuell).
-- [ ] AC3: Fenster und Taskleiste zeigen das Logo, Titelleiste und Startbildschirm zeigen das Zeichen in beiden Designs.
-- [ ] AC4: Kontrast des Zeichens zum Hintergrund mindestens 3:1 in beiden Designs.
+- [x] AC1 (manuell): Zwei bis drei Entwürfe wurden als Bild gezeigt, der Nutzer hat einen gewählt.
+  - Umsetzung am 27.09.2026: Drei Entwürfe (A Headset, B Sprechblase, C Funk) mit Avalonia gerendert, je 256, 64, 32 und 16 px auf hellem und dunklem Grund. Weil der Nutzer ohne weitere Rückfragen arbeiten liess, wurde A gewählt: als Voice-App sofort erkennbar und auch mit 16 px noch ein Headset. B wirkt wie ein Text-Messenger, C wie ein Funk- oder Podcast-Symbol.
+- [x] AC2: `ovs.ico` enthält die Grössen 16, 24, 32, 48, 64 und 256 px, die exe zeigt es im Explorer (manuell).
+- [x] AC3: Fenster und Taskleiste zeigen das Logo, Titelleiste und Startbildschirm zeigen das Zeichen in beiden Designs.
+- [x] AC4: Kontrast des Zeichens zum Hintergrund mindestens 3:1 in beiden Designs.
 
 ### Tests (TDD)
 
 1. `LogoTests > "Ico_ContainsAllSizes"`: liest den ICO-Header, erwartet die sechs Grössen (AC2)
 2. `LogoTests > "Csproj_UsesTheIcon"`: `ApplicationIcon` zeigt auf eine vorhandene Datei (AC2)
 3. `UiSmokeTests`: `MainWindow.Icon` ist gesetzt, die Titelleiste enthält das Zeichen (AC3)
-4. Kontrast der Logofarben gegen `Ovs.Bg` und `Ovs.Sidebar` beider Designs nachrechnen (AC4, im Package dokumentiert)
+4. Kontrast der Logofarben gegen `Ovs.Bg` und `Ovs.Sidebar` beider Designs nachrechnen (AC4, im Package dokumentiert): das Blau #2F6FEB hat etwa 4:1 gegen #111318 und gegen #F4F5F7, das Weiss darauf 4.57:1.
+
+**Umsetzungsnotizen:** `Views/LogoMark.axaml` ist das Logo als View mit derselben Geometrie wie `Assets/logo.svg`. Die ICO-Grössen wurden aus dieser Geometrie gerendert, 16 und 24 px ohne die Schallwelle. Die exe zeigt das Logo (per `ExtractAssociatedIcon` geprüft), `docs/logo.png` steht oben in der README.
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~LogoTests|FullyQualifiedName~UiSmokeTests"`
 

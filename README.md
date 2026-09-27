@@ -1,3 +1,5 @@
+<img src="docs/logo.png" alt="OpenVoiceSpeak-Logo" width="96">
+
 # OpenVoiceSpeak
 
 Selbst hostbarer Voice-Chat in der Art von Mumble oder TeamSpeak, bewusst einfach gehalten:

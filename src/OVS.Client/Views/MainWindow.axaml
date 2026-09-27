@@ -6,7 +6,7 @@
         x:Class="OVS.Client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="OpenVoiceSpeak" Width="1100" Height="700" MinWidth="760" MinHeight="480"
-        Background="{DynamicResource Ovs.Bg}"
+        Background="{DynamicResource Ovs.Bg}" Icon="/Assets/ovs.ico"
         ExtendClientAreaToDecorationsHint="True" ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaTitleBarHeightHint="-1">
 
   <!-- Maximized, Windows hides a border off screen: OffScreenMargin keeps the content inside. -->
@@ -197,9 +197,7 @@
         <!-- Start screen while not connected -->
         <ScrollViewer IsVisible="{Binding !IsConnected}">
           <StackPanel MaxWidth="460" Margin="32" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Border Width="72" Height="72" CornerRadius="20" Background="{DynamicResource Ovs.AccentSurface}" HorizontalAlignment="Center">
-              <PathIcon Data="{StaticResource Icon.Headphones}" Width="36" Height="36" Classes="accent" />
-            </Border>
+            <v:LogoMark Width="80" Height="80" HorizontalAlignment="Center" />
             <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
             <TextBlock Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
             <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsConnecting}" Width="220" />

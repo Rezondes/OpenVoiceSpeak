@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:v="using:OVS.Client.Views"
              x:Class="OVS.Client.Views.TitleBar"
              x:DataType="vm:MainViewModel"
              Height="36">
@@ -28,7 +29,7 @@
       <!-- Everything left of the buttons is the drag area -->
       <Border x:Name="DragArea" Background="Transparent" PointerPressed="OnDragAreaPressed">
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="12,0" VerticalAlignment="Center">
-          <PathIcon x:Name="Logo" Classes="sm accent" Data="{StaticResource Icon.Headphones}" />
+          <v:LogoMark x:Name="Logo" Width="18" Height="18" ShowWave="False" />
           <TextBlock x:Name="TitleText" Classes="caption" FontWeight="SemiBold" VerticalAlignment="Center"
                      Foreground="{DynamicResource Ovs.Text}" />
           <TextBlock Classes="caption" VerticalAlignment="Center" IsVisible="{Binding IsConnected}"

@@ -204,7 +204,10 @@ public sealed class UiSmokeTests : IDisposable
         main.Show();
         Dispatcher.UIThread.RunJobs();
         Assert.True(main.ExtendClientAreaToDecorationsHint);
+        Assert.NotNull(main.Icon); // Package 28: window and taskbar show the logo
         var bar = main.GetVisualDescendants().OfType<TitleBar>().Single();
+        Assert.Single(bar.GetVisualDescendants().OfType<LogoMark>());
+        Assert.Single(main.GetVisualDescendants().OfType<LogoMark>(), l => l.Bounds.Width >= 64); // start screen
         Button ButtonNamed(string name) => bar.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == name);
         void Click(Button b)
         {
