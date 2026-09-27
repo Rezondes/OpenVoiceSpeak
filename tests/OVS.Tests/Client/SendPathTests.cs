@@ -1,5 +1,7 @@
 using NAudio.Wave;
 using OVS.Client.Audio;
+using OVS.Client.Input;
+using OVS.Client.Settings;
 using OVS.Shared.Voice;
 using static OVS.Client.Audio.TransmitMode;
 
@@ -22,12 +24,31 @@ public class SendPathTests
         { VoiceActivation, false, false, false, false, true, null },
         { PushToTalk, true, true, false, false, true, Link },         // both keys: link wins
         { VoiceActivation, false, true, true, false, true, Link },    // link ptt in vad mode
+        { VoiceActivation, true, false, false, false, true, null },   // ptt key does nothing in vad mode (Package 25)
+        { VoiceActivation, true, false, true, false, true, Ch },      // vad decides, not the key
+        { VoiceActivation, false, true, false, false, false, Ch },    // link ptt in vad mode without the right
     };
 
     [Theory]
     [MemberData(nameof(Cases))]
     public void Decide_Cases(TransmitMode mode, bool ptt, bool link, bool vad, bool muted, bool speakLinked, byte? expected) =>
         Assert.Equal(expected, TransmitController.Decide(mode, ptt, link, vad, muted, speakLinked));
+
+    /// <summary>Package 25: with voice activation only the voice opens the microphone, not the PTT key.</summary>
+    [Theory]
+    [InlineData(TransmitMode.VoiceActivation, false)]
+    [InlineData(TransmitMode.PushToTalk, true)]
+    public async Task PttKey_BelowThreshold_SendsOnlyInPttMode(TransmitMode mode, bool expectFrames)
+    {
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f }); // test tone is -13.5 dBFS: below
+        engine.SetTone(440);
+        keys.Simulate(ptt: true);
+        await Task.Delay(400);
+        keys.Simulate(ptt: false);
+        Assert.Equal(expectFrames, engine.FramesSent > 0);
+    }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
 

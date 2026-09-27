@@ -44,6 +44,15 @@
 | 22 | Client-Log | Der Client schreibt alles, was er tut und erlebt, in eine einzige Logdatei im Profil. | 16, 20 |
 | 23 | Automatischer Neustart und Log-Tageswechsel | Der Server startet auf Wunsch täglich zu einer einstellbaren Uhrzeit neu, und der Tageswechsel der Logs ist abschaltbar. | 19, 21 |
 | 24 | Moderne Oberfläche | Der Client sieht aus und bedient sich wie eine aktuelle Voice-App, hell und dunkel. | 16, 17, 18 |
+| 25 | Sprachaktivierung ohne PTT-Taste | Im Modus Sprachaktivierung schaltet die PTT-Taste das Mikrofon nicht mehr frei. | 14 |
+| 26 | Alles in einem Fenster | Einstellungen, Verwaltung und alle Dialoge erscheinen im Hauptfenster statt in eigenen Fenstern. | 24 |
+| 27 | Eigener Fensterrahmen | Das Hauptfenster hat eine eigene Titelleiste im App-Design statt des Windows-Rahmens. | 26 |
+| 28 | App-Logo | OpenVoiceSpeak hat ein eigenes Logo für Programmdatei, Taskleiste, Titelleiste und Startbildschirm. | 27 |
+| 29 | Tastenbelegungen | Beliebige Aktionen lassen sich global auf Tasten oder Tastenkombinationen legen, neue Profile starten ohne Belegung. | 25, 26 |
+| 30 | Server-Logo | Admins laden ein eigenes quadratisches Server-Logo hoch, das alle Clients statt des Buchstabens sehen. | 26 |
+| 31 | Chat-Grundlage | Der Server vermittelt serverweite, Channel- und Privatnachrichten und prüft dafür drei neue Rechte. | 8, 21 |
+| 32 | Chat-Oberfläche | Statt der Aktivität zeigt der Hauptbereich einen Chat mit den Tabs Allgemein und aktueller Channel. | 26, 31 |
+| 33 | Privatchats | Zwei Nutzer schreiben sich in einem eigenen Tab privat. | 32 |
 
 ## Annahmen
 
@@ -74,6 +83,20 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
   - Alle Pfade in diesem Plan sind neu anzulegen.
   - Der Testbefehl `dotnet test` (im Projekt-Root) existiert ab Package 1. Gefilterte Läufe nutzen `dotnet test --filter "FullyQualifiedName~<Teil>"`.
 
+**Annahmen für Package 25 bis 33** (mit dem Nutzer abgestimmt am 27.09.2026). Die Reihenfolge folgt den Abhängigkeiten, nicht der Reihenfolge der Anfrage:
+
+- **A20 Nur ein Fenster.** Der Client öffnet nie ein weiteres Fenster. Einstellungen und Verwaltung sind Seiten im Hauptbereich, kleine Dialoge sind Overlays im Fenster. Einzige Ausnahme ist der Windows-Dateidialog für das Server-Logo, daneben geht Drag-and-drop.
+- **A21 Server-Logo.** Der Client prüft die Datei (höchstens 3 MB, PNG oder JPG, genau 1:1, sonst Ablehnung mit Hinweis), verkleinert sie auf 256 x 256 PNG und lädt nur diese Version hoch. So bleibt jede Nachricht unter der Grenze von 1 MiB. Recht: `ServerConfig`. Das Logo lässt sich entfernen.
+- **A22 Fensterrahmen.** Eigene Titelleiste mit eigenen Buttons. Ränder zum Grössenändern und Aero Snap bleiben, die Snap-Layouts von Windows 11 beim Hovern über Maximieren entfallen.
+- **A23 App-Logo.** Eigener Entwurf: abgerundetes Quadrat in der Akzentfarbe mit stilisiertem Headset und Schallwelle, im kleinen Icon nur das Zeichen. Vor dem Einbau werden zwei bis drei Entwürfe als Bild gezeigt.
+- **A24 Sprachaktivierung.** Die PTT-Taste wirkt in diesem Modus nicht. Link-PTT sendet weiter an die Links. Das ändert Regel 4 aus Package 14.
+- **A25 Tasten.** Aktionen: Push-to-Talk, Link-PTT, Push-to-Mute, Mikrofon an/aus, Ton an/aus. Einzelne Tasten, Maustasten und Kombinationen mit Strg, Umschalt und Alt, eine Taste pro Aktion, global wirksam. Neue Profile haben keine Belegung, bestehende behalten Maustaste 4 und 5.
+- **A26 Chat-Aufteilung.** Drei Packages: Grundlage (Server, Protokoll, Rechte), Oberfläche (Allgemein und Channel), Privatchats. "Allgemein" zeigt serverweite Nachrichten und die bisherigen Systemmeldungen.
+- **A27 Chat-Verlauf.** Nur solange verbunden, der Server speichert nichts. Der Channel-Tab zeigt Nachrichten ab dem Betreten und beginnt beim Wechsel neu. Nachrichten gehen nicht an verlinkte Channels. Privat heisst Text zwischen genau zwei Personen, die beide online sind, kein Flüstern per Sprache.
+- **A28 Chat-Rechte.** Neu: `ChatServer`, `ChatChannel`, `ChatPrivate`. Gast bekommt Channel und privat, Moderator und Admin alle drei. Bestehende Server geben der Gast-Gruppe einmalig Channel und privat dazu. Vom Server Stummgeschaltete dürfen schreiben.
+- **A29 Chat-Grenzen und Logs.** Höchstens 2000 Zeichen, höchstens 5 Nachrichten in 5 Sekunden. Channelnachrichten ins Channel-Log, serverweite ins Server-Log, von privaten nur die Tatsache ohne Inhalt.
+- **A30 Protokollversion.** Jedes Package, das das Protokoll erweitert (30, 31), erhöht `ProtocolInfo.Version`. Alte Clients bekommen die klare Meldung zur Versionsabweichung statt unbekannter Nachrichten.
+
 ### Projektstruktur (Zielbild)
 
 ```
@@ -94,7 +117,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle 24 Packages sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 25 sind umgesetzt, 26 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -1085,7 +1108,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~OpusCodecTests|FullyQualif
 1. `selfMuted`: `null`
 2. `linkPttDown` und `hasSpeakLinked`: Target 1
 3. `linkPttDown` ohne das Recht: Target 0. Die UI zeigt dazu einen Hinweis (Package 16).
-4. `pttDown`: Target 0
+4. `pttDown`: Target 0. **Geändert in Package 25:** nur noch im PTT-Modus, bei Sprachaktivierung wirkt die PTT-Taste nicht.
 5. `mode == VoiceActivation` und `vadActive`: Target 0. Sprachaktivierung sendet nie an Links (A7).
 6. sonst: `null`
 
@@ -1749,3 +1772,479 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~UiSmokeTests|FullyQualifie
 - Eigene Titelleiste und Mica-Hintergrund
 - Animationen über kurze Zustandswechsel hinaus
 - Anzeige des Client-Logs in der Oberfläche
+
+---
+
+## Package 25: Sprachaktivierung ohne PTT-Taste
+
+**Ziel:** Im Modus Sprachaktivierung schaltet die PTT-Taste das Mikrofon nicht mehr frei, Link-PTT sendet weiterhin an die Links.
+
+**Abhängigkeiten:** Package 14
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/SendPath.cs` (ändern): `TransmitController.Decide`
+- `tests/OVS.Tests/Client/SendPathTests.cs` (ändern)
+
+### Kontext
+
+`TransmitController.Decide` prüft `pttDown` vor dem Modus (Regel 4 aus Package 14). Deshalb sendet die PTT-Taste auch bei Sprachaktivierung, sogar unter der Schwelle. Wer Sprachaktivierung wählt, erwartet aber, dass nur die Stimme entscheidet. Link-PTT bleibt erlaubt, weil die Sprachaktivierung nie an Links sendet (A7) und Link-PTT dafür der einzige Weg ist.
+
+Neue Regeln in Prioritätsreihenfolge: stumm, dann Link-PTT, dann im PTT-Modus die PTT-Taste, im Modus Sprachaktivierung die VAD.
+
+### Acceptance Criteria
+
+- [x] AC1: Sprachaktivierung, PTT gedrückt, Pegel unter der Schwelle: es wird nichts gesendet.
+- [x] AC2: Sprachaktivierung, PTT gedrückt, Pegel über der Schwelle: gesendet wird wegen der VAD an den eigenen Channel, das Loslassen der Taste ändert nichts.
+- [x] AC3: Sprachaktivierung und Link-PTT: gesendet wird an Channel und Links (mit Recht `SpeakLinked`).
+- [x] AC4: Im PTT-Modus verhalten sich PTT und Link-PTT wie bisher.
+
+### Tests (TDD)
+
+1. `SendPathTests > "Decide_Cases"`, neue Zeile `{ VoiceActivation, ptt: true, link: false, vad: false, ..., expected: null }` als Reproduktion, muss vor dem Fix rot sein (AC1)
+2. Neue Zeilen für AC2 (`vad: true` mit `ptt: true` ergibt Target 0) und AC4 (bestehende PTT-Zeilen bleiben)
+3. Bestehende Zeile `{ VoiceActivation, false, true, true, ..., Link }` bleibt grün (AC3)
+4. `SendPathTests > "PttKey_BelowThreshold_SendsOnlyInPttMode"`: `AudioEngine` ohne Geräte, Testton (-13.5 dBFS), Schwelle -10 dBFS, `keys.Simulate(ptt: true)`, nach 400 ms hat die Sprachaktivierung 0 Frames gesendet, der PTT-Modus zur Gegenprobe mehr als 0 (AC1, AC4, Ende-zu-Ende im Client)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~SendPathTests"`
+
+### Umsetzungsschritte
+
+1. Testzeilen und Engine-Test schreiben, rot sehen.
+2. In `Decide` die PTT-Regel auf `mode == TransmitMode.PushToTalk` einschränken.
+3. Package 14 im Plan mit einem Hinweis auf die geänderte Regel 4 versehen.
+
+### Out of Scope
+
+- Neue Tastenaktionen wie Push-to-Mute (Package 29)
+
+---
+
+## Package 26: Alles in einem Fenster
+
+**Ziel:** Einstellungen, Verwaltung und alle Dialoge erscheinen im Hauptfenster, der Client öffnet kein weiteres Fenster.
+
+**Abhängigkeiten:** Package 24
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/SettingsDialog.axaml(.cs)` wird zu `Views/SettingsView.axaml(.cs)` (UserControl)
+- `src/OVS.Client/Views/AdminDialog.axaml(.cs)` wird zu `Views/AdminView.axaml(.cs)` (UserControl)
+- `src/OVS.Client/Views/OverlayHost.cs` (neu): modale Ebene im Fenster
+- `src/OVS.Client/Views/SimpleDialogs.cs` (ändern): baut Inhalte für die Ebene statt Fenster
+- `src/OVS.Client/Views/MainWindow.axaml(.cs)` (ändern): Seitenwechsel, Overlay-Ebene
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): aktuelle Seite
+- `src/OVS.Client/App.axaml.cs` (ändern): `Dialogs` und `ConfirmTofu` auf die Ebene verdrahten
+- `tests/OVS.Tests/Client/UiSmokeTests.cs`, `MainViewModelTests.cs` (ändern)
+
+### Kontext
+
+Heute öffnen `MainWindow.OnSettingsClick` und `OnAdminClick` eigene Fenster per `ShowDialog`, ebenso die acht Dialoge in `SimpleDialogs` (Verbinden, Zertifikat, Bannen, Bestätigen, Channel bearbeiten, Channel wählen, Text, Admin-Token). Das widerspricht A20.
+
+**Seiten:** `MainViewModel.Page` (`Home`, `Settings`, `Admin`). Einstellungen und Verwaltung ersetzen den Hauptbereich rechts, die Seitenleiste bleibt sichtbar. Ein Kopf mit Titel und Schliessen-Button, Esc schliesst ebenfalls.
+
+**Overlay:** `OverlayHost` legt einen abgedunkelten Hintergrund über das ganze Fenster und zeigt darauf eine Karte mit Titel, Inhalt und Button-Leiste (die heutige Gestaltung aus `SimpleDialogs`). Darunter ist nichts klickbar, der Fokus bleibt in der Karte. `SimpleDialogs` behält seine Signaturen (`Task<T?>`), bekommt aber statt `Window owner` den `OverlayHost`. Mehrere Anfragen werden nacheinander gezeigt.
+
+### Acceptance Criteria
+
+- [ ] AC1: "Einstellungen" öffnet eine Seite im Hauptbereich. Speichern, Abbrechen, Schliessen und Esc kehren zurück, die Pegelanzeige läuft wie bisher.
+- [ ] AC2: "Verwaltung ..." öffnet eine Seite im Hauptbereich. Beim Trennen der Verbindung schliesst sie sich.
+- [ ] AC3: Die acht kleinen Dialoge und die Zertifikatsabfrage beim Verbinden erscheinen als Overlay mit abgedunkeltem Hintergrund. Esc bricht ab, Enter löst den Standard-Button aus, der Fokus steht im ersten Feld, Klicks auf den Hintergrund lösen nichts darunter aus.
+- [ ] AC4: Bei keinem Ablauf öffnet der Client ein zweites Fenster.
+- [ ] AC5: Beide Designs, Tastatur (Tab bleibt im Overlay) und Screenreader-Namen funktionieren wie in Package 24.
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "NoSecondWindow_EverOpens"`: ein Klassen-Handler auf `Window.WindowOpenedEvent` zählt Fenster. Gegeben das Hauptfenster, dann Einstellungen, Verwaltung und alle acht Dialoge öffnen und schliessen. Erwartet: genau ein geöffnetes Fenster (AC1 bis AC4). Vor dem Umbau rot.
+2. `UiSmokeTests > "Overlay_EscCancels_EnterConfirms"`: Bestätigen-Dialog, Esc liefert `false`, Enter `true` (AC3)
+3. `MainViewModelTests > "Pages_OpenAndClose"`: `OpenSettings` setzt `Page = Settings`, Schliessen setzt `Home`, `OpenAdmin` nur mit `CanAdminister`, Trennen führt zurück auf `Home` (AC1, AC2)
+4. Bestehende `UiSmokeTests` nutzen statt `OwnedWindows` die Overlay-Ebene (AC5)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~UiSmokeTests|FullyQualifiedName~MainViewModelTests"`
+
+### Umsetzungsschritte
+
+1. Test 1 schreiben, rot sehen.
+2. `OverlayHost` bauen, `SimpleDialogs` darauf umstellen, App-Verdrahtung anpassen.
+3. Einstellungen und Verwaltung zu UserControls machen, Seitenwechsel im `MainViewModel`.
+4. Alte Fensterklassen löschen, Tests 2 bis 4 grün.
+
+### Out of Scope
+
+- Eigene Titelleiste (Package 27)
+- Der Windows-Dateidialog für das Server-Logo (Package 30, A20)
+
+---
+
+## Package 27: Eigener Fensterrahmen
+
+**Ziel:** Das Hauptfenster hat eine eigene Titelleiste im App-Design statt des Windows-Rahmens.
+
+**Abhängigkeiten:** Package 26
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/TitleBar.axaml(.cs)` (neu)
+- `src/OVS.Client/Views/MainWindow.axaml(.cs)` (ändern): `ExtendClientAreaToDecorationsHint`, `ExtendClientAreaChromeHints="NoChrome"`
+- `src/OVS.Client/Styles/Controls.axaml` (ändern): Buttons der Titelleiste
+- `src/OVS.Client/Styles/Icons.axaml` (ändern): Minimieren, Maximieren, Wiederherstellen, Schliessen aus den Fluent UI System Icons
+- `tests/OVS.Tests/Client/UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Seit Package 24 hat der Inhalt ein eigenes Design, der Rahmen ist aber der von Windows. Avalonia erlaubt, den Inhalt in den Rahmen zu erweitern und den System-Rahmen auszublenden, die Ränder zum Grössenändern bleiben. Die Titelleiste (36 px) zeigt links das Logo (bis Package 28 ein Platzhalter), den Namen "OpenVoiceSpeak" bzw. den Servernamen und rechts die drei Buttons. Maximiert muss der Inhalt den unsichtbaren Rand ausgleichen (`OffScreenMargin`), sonst wird er abgeschnitten.
+
+### Acceptance Criteria
+
+- [ ] AC1: Der Windows-Rahmen ist nicht sichtbar, die eigene Titelleiste zeigt Logo, Titel und drei Buttons in beiden Designs.
+- [ ] AC2: Minimieren, Maximieren bzw. Wiederherstellen (das Icon wechselt) und Schliessen funktionieren. Schliessen färbt sich beim Hovern rot.
+- [ ] AC3: Ziehen an der Leiste verschiebt das Fenster, Doppelklick maximiert bzw. stellt wieder her.
+- [ ] AC4 (manuell): Aero Snap an den Bildschirmrand, Grössenändern an allen Rändern, Mindestgrösse, maximiert auf Windows 10 und 11 ohne abgeschnittenen Inhalt, zwei Monitore mit unterschiedlicher Skalierung.
+- [ ] AC5: Die Buttons haben Tooltip und `AutomationProperties.Name`.
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "TitleBar_ButtonsChangeWindowState"`: Gegeben das Hauptfenster headless. Klick auf Maximieren setzt `WindowState.Maximized` und wechselt das Icon, erneut `Normal`, Minimieren setzt `Minimized` (AC1, AC2)
+2. `UiSmokeTests > "Windows_LoadAndShowTheirContent"` prüft zusätzlich, dass die Titelleiste den Servernamen zeigt (AC1)
+3. Manueller Check AC4 mit Eintrag in der Tabelle der manuellen Checks
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. Test 1 schreiben, rot sehen.
+2. `TitleBar` bauen, Hauptfenster erweitern, Buttons und Ziehen verdrahten, Rand bei Maximiert ausgleichen.
+3. Manuelle Checks auf Windows ausführen, Screenshots beider Designs prüfen.
+
+### Out of Scope
+
+- Mica- oder Acrylic-Hintergrund
+- Snap-Layouts von Windows 11 (A22)
+
+---
+
+## Package 28: App-Logo
+
+**Ziel:** OpenVoiceSpeak hat ein eigenes Logo, das als Programm-, Taskleisten- und Fenstersymbol, in der Titelleiste und auf dem Startbildschirm erscheint.
+
+**Abhängigkeiten:** Package 27
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Assets/logo.svg` (neu): Vorlage des Logos
+- `src/OVS.Client/Assets/ovs.ico` (neu): 16, 24, 32, 48, 64 und 256 px
+- `src/OVS.Client/Styles/Icons.axaml` (ändern): `Logo.Mark` als Pfad für Titelleiste und Startbildschirm
+- `src/OVS.Client/OVS.Client.csproj` (ändern): `ApplicationIcon`, `AvaloniaResource`
+- `src/OVS.Client/Views/MainWindow.axaml`, `TitleBar.axaml` (ändern)
+- `README.md` (ändern): Logo oben
+- `tests/OVS.Tests/Client/LogoTests.cs` (neu), `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Die Anwendung hat kein Logo. Die exe zeigt das Standard-Icon von .NET, der Startbildschirm ein Headset-Icon, die Titelleiste aus Package 27 einen Platzhalter. Entwurf nach A23. Das Zeichen muss auch mit 16 px erkennbar bleiben und sich in beiden Designs vom Hintergrund abheben (mindestens 3:1).
+
+### Acceptance Criteria
+
+- [ ] AC1 (manuell): Zwei bis drei Entwürfe wurden als Bild gezeigt, der Nutzer hat einen gewählt.
+- [ ] AC2: `ovs.ico` enthält die Grössen 16, 24, 32, 48, 64 und 256 px, die exe zeigt es im Explorer (manuell).
+- [ ] AC3: Fenster und Taskleiste zeigen das Logo, Titelleiste und Startbildschirm zeigen das Zeichen in beiden Designs.
+- [ ] AC4: Kontrast des Zeichens zum Hintergrund mindestens 3:1 in beiden Designs.
+
+### Tests (TDD)
+
+1. `LogoTests > "Ico_ContainsAllSizes"`: liest den ICO-Header, erwartet die sechs Grössen (AC2)
+2. `LogoTests > "Csproj_UsesTheIcon"`: `ApplicationIcon` zeigt auf eine vorhandene Datei (AC2)
+3. `UiSmokeTests`: `MainWindow.Icon` ist gesetzt, die Titelleiste enthält das Zeichen (AC3)
+4. Kontrast der Logofarben gegen `Ovs.Bg` und `Ovs.Sidebar` beider Designs nachrechnen (AC4, im Package dokumentiert)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~LogoTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. Entwürfe als SVG erstellen, als PNG rendern und dem Nutzer zeigen.
+2. Nach der Wahl: Tests 1 bis 3 schreiben, rot sehen.
+3. ICO aus der Vorlage erzeugen, einbinden, Tests grün, Screenshots prüfen.
+
+### Out of Scope
+
+- Logo im Docker-Image oder auf einer Webseite
+
+---
+
+## Package 29: Tastenbelegungen
+
+**Ziel:** Beliebige Aktionen lassen sich global auf Tasten oder Tastenkombinationen legen, und neue Profile starten ohne Belegung.
+
+**Abhängigkeiten:** Package 25, 26
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Input/KeyBindings.cs` (neu): `KeyAction`, `KeyChord`, `KeyBinding`, Auswertung
+- `src/OVS.Client/Input/KeyPoller.cs` (ändern): fragt alle belegten Tasten und Strg, Umschalt, Alt ab
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `KeyBindings` statt `PttKey` und `LinkPttKey`, Übernahme alter Profile
+- `src/OVS.Client/Audio/SendPath.cs`, `Audio/AudioEngine.cs` (ändern): Push-to-Mute
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (ändern): Liste der Aktionen
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): Umschalt-Aktionen, Hinweis ohne PTT-Taste
+- `src/OVS.Client/Debug/DebugApi.cs`, `Debug/AudioDebugLog.cs` (ändern)
+- `README.md` (ändern): Standardbelegung, Debug-API
+- `tests/OVS.Tests/Client/KeyBindingTests.cs` (neu), `SettingsTests.cs`, `SendPathTests.cs`, `MainViewModelTests.cs`, `DebugApiTests.cs` (ändern)
+
+### Kontext
+
+Heute gibt es genau zwei Tasten (`KeyPoller.PttKey`, `LinkPttKey`) mit den Standardwerten Maustaste 4 und 5, und nur einzelne Tasten. Neu nach A25:
+
+| Aktion | Art | Wirkung |
+|---|---|---|
+| Push-to-Talk | halten | sendet an den eigenen Channel (nur im PTT-Modus, Package 25) |
+| Link-PTT | halten | sendet an Channel und Links |
+| Push-to-Mute | halten | sendet nichts, solange gedrückt, in beiden Modi, auch über PTT |
+| Mikrofon an/aus | drücken | wie der Mikrofon-Button, einmal pro Tastendruck |
+| Ton an/aus | drücken | wie der Button "Ton aus", einmal pro Tastendruck |
+
+Eine Kombination gilt, wenn Taste und alle ihre Modifikatoren gedrückt sind. Gibt es für dieselbe Taste mehrere Belegungen, gewinnt die mit den meisten passenden Modifikatoren (Strg+F1 löst nicht zusätzlich F1 aus). Alte `settings.json` mit `pttKey` und `linkPttKey` werden beim Laden in Belegungen übernommen, ohne Datei gibt es keine Belegung.
+
+### Acceptance Criteria
+
+- [ ] AC1: Ein neues Profil hat keine Belegung, die Einstellungen zeigen jede Aktion als "Nicht belegt".
+- [ ] AC2: Ein bestehendes Profil behält PTT auf Maustaste 4 und Link-PTT auf Maustaste 5.
+- [ ] AC3: Jede der fünf Aktionen lässt sich auf eine Taste, eine Maustaste oder eine Kombination mit Strg, Umschalt, Alt legen und wieder entfernen.
+- [ ] AC4: Push-to-Mute verhindert das Senden, solange gedrückt, in beiden Modi und auch bei gedrückter PTT-Taste.
+- [ ] AC5: Mikrofon an/aus und Ton an/aus schalten einmal pro Tastendruck, auch bei gehaltener Taste nur einmal, und melden den Zustand wie die Buttons an den Server.
+- [ ] AC6: Dieselbe Kombination für zwei Aktionen verhindert das Speichern mit einer Meldung.
+- [ ] AC7: Strg+F1 auf Aktion A und F1 auf Aktion B: Strg+F1 löst nur A aus.
+- [ ] AC8: Im PTT-Modus ohne PTT-Belegung steht unter dem eigenen Namen "Keine PTT-Taste belegt", ein Klick öffnet die Einstellungen.
+- [ ] AC9 (manuell): Die Tasten wirken, während ein anderes Programm im Vordergrund ist.
+- [ ] AC10: Die Debug-API kann jede Aktion simulieren.
+
+### Tests (TDD)
+
+1. `KeyBindingTests > "Resolve_ChordWithMoreModifiersWins"` (AC7), `"Resolve_RequiresAllModifiers"` (AC3)
+2. `KeyBindingTests > "Toggle_FiresOncePerPress"`: gehaltene Taste über zehn Abfragen löst genau einmal aus (AC5)
+3. `SettingsTests > "Load_NoFile_NoBindings"` (AC1), `"Load_OldFileWithPttKeys_KeepsThem"` (AC2), `"Save_DuplicateChord_Blocked"` (AC6)
+4. `SendPathTests > "Decide_Cases"` mit `pushToMute` in beiden Modi (AC4)
+5. `MainViewModelTests > "ToggleActions_SyncWithServer"` gegen `TestServer`: simulierte Aktion schaltet stumm, der Server sieht `SelfMuted` (AC5), `"TalkHint_NoPttBinding"` (AC8)
+6. `DebugApiTests > "Keys_SimulateEveryAction"` (AC10)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~KeyBindingTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~SendPathTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~DebugApiTests"`
+
+### Umsetzungsschritte
+
+1. Tests 1 bis 3 schreiben, rot sehen, `KeyBindings` und die Übernahme alter Profile bauen.
+2. `KeyPoller` auf Belegungen umstellen (Abfrage aller belegten Tasten, Modifikatoren über `VK_CONTROL`, `VK_SHIFT`, `VK_MENU`).
+3. Push-to-Mute im Sendepfad, Umschalt-Aktionen im `MainViewModel`, Tests 4 und 5.
+4. Einstellungsseite mit "Belegen" und "Entfernen" je Aktion, Debug-API, README.
+
+### Out of Scope
+
+- Mehrere Tasten pro Aktion
+- Eine Aktion zum Wechseln zwischen PTT und Sprachaktivierung (lässt sich später als weitere Zeile ergänzen)
+
+---
+
+## Package 30: Server-Logo
+
+**Ziel:** Admins mit dem Recht "Servereinstellungen ändern" laden ein eigenes quadratisches Logo hoch, das alle Clients statt des Buchstabens sehen.
+
+**Abhängigkeiten:** Package 26
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs`, `ProtocolInfo.cs` (ändern): `IconHash` in `ServerSettingsInfo`, `SetServerIcon`, `GetServerIcon`, `ServerIcon`, Version erhöhen
+- `src/OVS.Server/Data/ServerIconStore.cs` (neu): Prüfung und Ablage in `<DataDir>/server-icon.png`
+- `src/OVS.Server/Commands/AdminCommands.cs`, `ServerState.cs` (ändern)
+- `src/OVS.Client/Views/IconImport.cs` (neu): Datei prüfen, dekodieren, auf 256 x 256 PNG verkleinern
+- `src/OVS.Client/Net/ServerIconCache.cs` (neu): Logos je Host und Port im Profil unter `server-icons/`
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `ServerViewModel.cs`, `MainViewModel.cs` (ändern)
+- `src/OVS.Client/Views/AdminView.axaml`, `MainWindow.axaml` (ändern): Vorschau, Hochladen per Dateidialog und Drag-and-drop, Anzeige in Seitenleiste und Lesezeichen
+- `src/OVS.Client/Logging/ClientLog.cs`, `Debug/DebugApi.cs` (ändern)
+- `tests/OVS.Tests/Server/ServerIconTests.cs`, `tests/OVS.Tests/Client/IconImportTests.cs` (neu), `UiSmokeTests.cs`, `ClientLogTests.cs` (ändern)
+
+### Kontext
+
+Seitenleiste und Lesezeichen zeigen den ersten Buchstaben des Servernamens. Nach A21 prüft der Client die Datei und lädt eine 256 x 256 PNG hoch. Der Server hat keine Bildbibliothek, er prüft deshalb nur die Bytes: höchstens 512 KB, PNG-Signatur, Breite gleich Höhe laut IHDR, 64 bis 512 px. Das Logo reist nicht im `Welcome` mit, sondern nur sein Hash. Clients holen es per `GetServerIcon`, wenn der Hash nicht zum Cache passt. Änderungen kommen über `ServerSettingsChanged`.
+
+### Acceptance Criteria
+
+- [ ] AC1: In der Verwaltung, Tab Server, gibt es eine Vorschau, "Logo wählen ..." (Windows-Dateidialog, A20) und Drag-and-drop auf die Vorschau.
+- [ ] AC2: Dateien über 3 MB, andere Formate als PNG und JPG und nicht quadratische Bilder werden mit einer verständlichen Meldung abgelehnt, bevor etwas gesendet wird.
+- [ ] AC3: Ein gültiges Bild erscheint bei allen verbundenen Clients in der Seitenleiste, ohne Neuverbindung.
+- [ ] AC4: Das Logo übersteht einen Serverneustart und lässt sich entfernen, danach erscheint wieder der Buchstabe.
+- [ ] AC5: Der Server lehnt ungültige Daten (zu gross, kein PNG, nicht quadratisch) und fehlende Rechte ab und schreibt Änderungen ins Server-Log.
+- [ ] AC6: Lesezeichen-Kacheln zeigen das zuletzt gesehene Logo des Servers.
+
+### Tests (TDD)
+
+1. `ServerIconTests > "Set_ValidPng_StoredAndBroadcast"`: gültige 256er PNG, ein zweiter Client bekommt `ServerSettingsChanged` mit neuem Hash und kann das Bild holen (AC3)
+2. `ServerIconTests > "Set_Invalid_Rejected"` als Theory: zu gross, kein PNG, nicht quadratisch, ohne Recht (AC5)
+3. `ServerIconTests > "Icon_SurvivesRestart_AndCanBeRemoved"` (AC4)
+4. `IconImportTests > "Import_TooBigWrongFormatNotSquare_Rejected"` und `"Import_Jpg1024_Becomes256Png"`, headless mit Avalonia (AC2)
+5. `UiSmokeTests`: mit Logo zeigt die Seitenleiste ein Bild statt des Buchstabens (AC3), Kachel mit Cache-Datei zeigt es ebenfalls (AC6)
+6. `ClientLogTests > "Describe_Message"` um die neuen Nachrichten erweitert
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerIconTests|FullyQualifiedName~IconImportTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests"`
+
+### Umsetzungsschritte
+
+1. Servertests schreiben, rot sehen, Protokoll und `ServerIconStore` bauen.
+2. Import-Tests schreiben, `IconImport` mit Avalonia-Bitmaps bauen.
+3. Abruf, Cache und Anzeige im Client, Verwaltungsseite, Debug-API, Logs.
+
+### Out of Scope
+
+- Zuschneiden im Client
+- Animierte Bilder
+
+---
+
+## Package 31: Chat-Grundlage
+
+**Ziel:** Der Server vermittelt serverweite, Channel- und Privatnachrichten und prüft dafür drei neue Rechte.
+
+**Abhängigkeiten:** Package 8, 21
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Permissions/Permission.cs` (ändern): `ChatServer`, `ChatChannel`, `ChatPrivate`, `All` erweitern
+- `src/OVS.Shared/Protocol/Messages.cs`, `Codes.cs`, `ProtocolInfo.cs` (ändern): `SendChat`, `ChatMessage`, `ChatTarget`, Code `RateLimited`, Version erhöhen
+- `src/OVS.Server/Commands/ChatCommands.cs` (neu)
+- `src/OVS.Server/ServerState.cs`, `Session.cs` (ändern): Weiterleitung, eigener Nachrichtenzähler pro Sitzung
+- `src/OVS.Server/Permissions/PermissionRules.cs` (ändern): Standardgruppen
+- `src/OVS.Server/Data/ServerData.cs`, `DataStore.cs` (ändern): `DataVersion`, einmalige Rechte für Gäste
+- `src/OVS.Client/ErrorTexts.cs` (ändern): Rechtenamen und Fehlertext
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `SendChatAsync`, Ereignis `ChatReceived`
+- `src/OVS.Client/Logging/ClientLog.cs`, `Debug/DebugApi.cs` (ändern): Beschreibung, `/chat` und empfangene Nachrichten in `/state`
+- `tests/OVS.Tests/Server/ChatTests.cs` (neu), `PermissionRulesTests.cs`, `DataStoreTests.cs`, `ServerLogsTests.cs`, `Client/DebugApiTests.cs`, `ClientLogTests.cs`, `SettingsTests.cs` (ändern)
+
+### Kontext
+
+Es gibt heute keinen Text-Chat. Die Rechte belegen die Bits 0 bis 12, die neuen werden 13 bis 15. Admin hat über `PermissionRules.Effective` automatisch alle. `ServerData` hat keine Versionsnummer, fehlt sie, gilt Version 1. Beim Laden von Version 1 bekommt die Gast-Gruppe `ChatChannel` und `ChatPrivate` (A28), danach wird Version 2 gespeichert. Die Moderator-Gruppe hat keine feste ID und wird deshalb nicht angepasst.
+
+**Protokoll:** `SendChat(ChatTarget Target, uint? ToSessionId, string Text)`, Antwort und Zustellung als `ChatMessage(Target, FromSessionId, FromNickname, ChannelId, ToSessionId, Text, SentAt)`. Empfänger: serverweit alle, Channel alle im aktuellen Channel des Absenders (nicht verlinkte), privat Empfänger und Absender. Der Absender bekommt seine eigene Nachricht mit Serverzeit zurück.
+
+### Acceptance Criteria
+
+- [ ] AC1: Serverweite Nachrichten erreichen alle, Channelnachrichten nur den eigenen Channel, private nur Empfänger und Absender.
+- [ ] AC2: Ohne das passende Recht antwortet der Server mit `PermissionDenied`, niemand bekommt die Nachricht.
+- [ ] AC3: Leere Nachrichten und solche über 2000 Zeichen ergeben `InvalidValue`, private an Offline-Nutzer oder an sich selbst `NotFound` bzw. `InvalidValue`.
+- [ ] AC4: Die sechste Nachricht innerhalb von 5 Sekunden ergibt `RateLimited`.
+- [ ] AC5: Vom Server Stummgeschaltete können schreiben.
+- [ ] AC6: Neue Server: Gast hat Channel und privat, Moderator und Admin alle drei. Bestehende Server: Gast bekommt Channel und privat einmalig dazu.
+- [ ] AC7: Logs nach A29, der Inhalt privater Nachrichten steht in keinem Log.
+- [ ] AC8: Die Debug-API kann Nachrichten senden und zeigt empfangene in `/state`.
+
+### Tests (TDD)
+
+1. `ChatTests > "Deliver_ServerChannelPrivate"` mit drei `TestClient`s in zwei Channels (AC1)
+2. `ChatTests > "NoRight_PermissionDenied"` als Theory je Ziel (AC2)
+3. `ChatTests > "Invalid_EmptyTooLongOfflineSelf"` (AC3), `"RateLimit_SixthInFiveSeconds"` mit `ManualTimeProvider` (AC4), `"ServerMuted_CanWrite"` (AC5)
+4. `PermissionRulesTests > "DefaultGroups_ChatRights"` und `DataStoreTests > "LoadVersion1_GuestGetsChatRights_Once"` (AC6)
+5. `ServerLogsTests > "Chat_Logged_PrivateWithoutContent"` (AC7)
+6. `DebugApiTests > "Chat_RoundTrip"` zwischen zwei echten Clients (AC8), `ClientLogTests` für `ChatMessage` und `SendChat`
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~DataStoreTests|FullyQualifiedName~ServerLogsTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~ClientLogTests"`
+
+### Umsetzungsschritte
+
+1. Rechte, Standardgruppen und Migration mit Tests.
+2. Protokoll und `ChatCommands` mit den Server-Tests.
+3. Logs, Client-Anbindung ohne Oberfläche, Debug-API, Client-Log.
+
+### Out of Scope
+
+- Oberfläche (Package 32, 33)
+- Verlauf auf dem Server (A27)
+
+---
+
+## Package 32: Chat-Oberfläche
+
+**Ziel:** Statt der Aktivitätsliste zeigt der Hauptbereich einen Chat mit den Tabs "Allgemein" und dem aktuellen Channel.
+
+**Abhängigkeiten:** Package 26, 31
+
+**Betroffene Dateien:**
+- `src/OVS.Client/ViewModels/ChatViewModel.cs` (neu): Tabs, Einträge, Entwurf, Senden, Ungelesen
+- `src/OVS.Client/Views/ChatView.axaml(.cs)` (neu)
+- `src/OVS.Client/ViewModels/MainViewModel.cs`, `ServerViewModel.cs` (ändern): Systemmeldungen und Chat zusammenführen
+- `src/OVS.Client/Views/MainWindow.axaml` (ändern): Chat statt Aktivität
+- `src/OVS.Client/Styles/Controls.axaml` (ändern)
+- `tests/OVS.Tests/Client/ChatViewModelTests.cs` (neu), `UiSmokeTests.cs`, `MainViewModelTests.cs` (ändern)
+
+### Kontext
+
+Der Hauptbereich zeigt seit Package 24 die "Aktivität" (`MainViewModel.Notices`). Nach A26 wird daraus der Tab "Allgemein": serverweite Nachrichten und Systemmeldungen chronologisch gemischt, Systemmeldungen mit ihrem Icon wie bisher. Daneben der Tab des aktuellen Channels. Unten eine Eingabezeile: Enter sendet, Umschalt+Enter macht eine neue Zeile, ab 1800 Zeichen erscheint ein Zähler.
+
+### Acceptance Criteria
+
+- [ ] AC1: Es gibt die Tabs "Allgemein" und den aktuellen Channel mit dessen Namen.
+- [ ] AC2: Systemmeldungen (Willkommen, Warnungen, Fehler, Trennungen) erscheinen in "Allgemein".
+- [ ] AC3: Enter sendet, Umschalt+Enter bricht um, leere Nachrichten werden nicht gesendet, über 2000 Zeichen ist Senden gesperrt.
+- [ ] AC4: Ohne das Recht für den Tab ist die Eingabe gesperrt, mit dem Hinweis, dass das Recht fehlt.
+- [ ] AC5: Der Channel-Tab zeigt Nachrichten ab dem Betreten und beginnt beim Wechsel neu, mit einer Zeile, welchen Channel man betreten hat.
+- [ ] AC6: Inaktive Tabs zeigen die Zahl ungelesener Nachrichten, beim Öffnen verschwindet sie.
+- [ ] AC7: Eigene Nachrichten sind erkennbar, Nachrichten zeigen Avatar, Name, Uhrzeit und markierbaren Text.
+- [ ] AC8: Neue Nachrichten scrollen nach unten, ausser man hat selbst nach oben gescrollt.
+- [ ] AC9: Fehler des Servers (`RateLimited`, `PermissionDenied`) erscheinen direkt unter der Eingabe.
+- [ ] AC10: Beide Designs, Tastatur und Screenreader-Namen wie in Package 24.
+
+### Tests (TDD)
+
+1. `ChatViewModelTests > "Tabs_GeneralAndCurrentChannel"` (AC1), `"Notices_AppearInGeneral"` (AC2)
+2. `ChatViewModelTests > "Send_EmptyIgnored_TooLongBlocked"` (AC3), `"Composer_DisabledWithoutRight"` (AC4)
+3. `ChatViewModelTests > "ChannelTab_ResetsOnSwitch"` (AC5), `"Unread_CountsAndClears"` (AC6)
+4. `ChatViewModelTests > "ServerError_ShownAtComposer"` (AC9)
+5. `MainViewModelTests > "Chat_EndToEnd"` gegen `TestServer` (AC1, AC3)
+6. `UiSmokeTests`: Chat in beiden Designs, eigene und fremde Nachricht sichtbar (AC7, AC10)
+7. Manueller Check AC8 (Scrollverhalten)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. `ChatViewModel` testgetrieben bauen.
+2. `ChatView` und Einbau ins Hauptfenster, Systemmeldungen umleiten.
+3. Screenshots beider Designs prüfen, manueller Scroll-Check.
+
+### Out of Scope
+
+- Privatchats (Package 33)
+- Links, Formatierung, Emojis, Dateien
+
+---
+
+## Package 33: Privatchats
+
+**Ziel:** Zwei Nutzer können sich in einem eigenen Tab privat schreiben.
+
+**Abhängigkeiten:** Package 32
+
+**Betroffene Dateien:**
+- `src/OVS.Client/ViewModels/ChatViewModel.cs`, `ServerViewModel.cs` (ändern)
+- `src/OVS.Client/Views/ChatView.axaml`, `MainWindow.axaml` (ändern): schliessbare Tabs, Kontextmenü "Privatnachricht"
+- `tests/OVS.Tests/Client/ChatViewModelTests.cs`, `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Server und Protokoll können private Nachrichten seit Package 31. Der Tab gehört zum Fingerprint des Partners, nicht zur Sitzungs-ID, damit er nach einem Neuverbinden des Partners weiter passt. Der Verlauf bleibt im Client, solange man verbunden ist (A27).
+
+### Acceptance Criteria
+
+- [ ] AC1: Rechtsklick auf einen anderen Nutzer bietet "Privatnachricht", mit dem Recht `ChatPrivate`. Das öffnet bzw. aktiviert den Tab "@Nickname".
+- [ ] AC2: Eine eingehende private Nachricht öffnet den Tab im Hintergrund mit Ungelesen-Zähler.
+- [ ] AC3: Private Tabs lassen sich schliessen, eine neue Nachricht öffnet sie wieder mit dem bisherigen Verlauf.
+- [ ] AC4: Geht der Partner offline, zeigt der Tab das an und sperrt die Eingabe. Kommt er zurück, ist sie wieder frei.
+- [ ] AC5: Ändert der Partner seinen Nickname, ändert sich der Tab-Titel.
+
+### Tests (TDD)
+
+1. `ChatViewModelTests > "Private_OpenFromUser_ActivatesTab"` (AC1), `"Private_Incoming_OpensInBackground"` (AC2)
+2. `ChatViewModelTests > "Private_CloseAndReopen_KeepsHistory"` (AC3), `"Private_PartnerOfflineAndBack"` (AC4), `"Private_NicknameChange_UpdatesTitle"` (AC5)
+3. `MainViewModelTests > "Private_EndToEnd"` mit zwei Clients gegen `TestServer` (AC1, AC2)
+4. `UiSmokeTests`: Kontextmenü enthält "Privatnachricht", privater Tab mit Schliessen-Button (AC1, AC3)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. Tests für private Tabs schreiben, rot sehen, `ChatViewModel` erweitern.
+2. Kontextmenü, schliessbare Tabs, Ende-zu-Ende-Test.
+3. Screenshots beider Designs prüfen.
+
+### Out of Scope
+
+- Flüstern per Sprache
+- Nachrichten an Offline-Nutzer
+
