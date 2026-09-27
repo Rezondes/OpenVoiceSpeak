@@ -24,7 +24,7 @@ docker compose logs
 
 Im Log stehen zwei wichtige Zeilen:
 
-- `Admin-Token: ...`: Damit wird der erste Nutzer zum Admin (im Client: "Admin-Token einlösen"). Solange es keinen Admin gibt, erzeugt jeder Start ein neues Token. Das Token steht nur in der Konsolenausgabe, nicht in den Logdateien.
+- `Admin-Token: ...`: Damit wird der erste Nutzer zum Admin (im Client: "Admin-Token einlösen"). Solange es keinen Admin gibt, erzeugt jeder Start (auch ein automatischer Neustart) ein neues Token. Das Token steht nur in der Konsolenausgabe, nicht in den Logdateien.
 - `Zertifikat-Fingerprint: ...`: Der Client zeigt diesen Fingerprint bei der ersten Verbindung an. Vergleiche beide, bevor du dem Server vertraust.
 
 ### Ports und Firewall
@@ -40,10 +40,12 @@ Wenn UDP hinter Docker-NAT Probleme macht, kannst du in `docker-compose.yml` `ne
 
 ### Umgebungsvariablen
 
+Du setzt sie in `docker-compose.yml` unter `environment:`, dort stehen alle als Kommentar. Übernommen werden Änderungen mit `docker compose up -d`. Ein ungültiger Wert beendet den Server mit einer Fehlermeldung in `docker compose logs`.
+
 | Variable | Standard | Bedeutung |
 |---|---|---|
 | `OVS_PORT` | 7000 | Port für TCP und UDP. Die Port-Mappings in der Compose-Datei mit anpassen. |
-| `OVS_DATA_DIR` | `/data` (im Container) | Speicherort für Daten, Zertifikat und optional `server-config.json` |
+| `OVS_DATA_DIR` | `/data` im Container, sonst `./data` | Speicherort für Daten, Zertifikat und optional `server-config.json` |
 | `OVS_MAX_USERS` | 50 | Maximale Zahl gleichzeitiger Nutzer |
 | `OVS_SERVER_NAME` | `OpenVoiceSpeak Server` | Nur Startwert beim allerersten Start. Später im Client unter Verwaltung, Server ändern. |
 | `OVS_PASSWORD` | leer | Nur Startwert beim allerersten Start, wie oben |
@@ -59,8 +61,10 @@ Umgebungsvariablen haben Vorrang vor `server-config.json`
 ### Automatischer Neustart
 
 Mit `OVS_AUTO_RESTART=true` startet der Server jeden Tag zur eingestellten Uhrzeit neu, ohne dass der Prozess oder Container endet.
-Verbundene Clients bekommen die Meldung "Der Server startet neu" und können sich nach wenigen Sekunden wieder verbinden.
+Die Uhrzeit gilt in der Zeitzone aus `TZ`. Die Compose-Datei setzt `Europe/Berlin`, ohne `TZ` gilt UTC.
 Beim Neustart liest der Server Konfiguration, Daten und Zertifikat neu ein und beginnt neue Logdateien.
+
+Verbundene Clients bekommen die Meldung "Der Server startet neu" und verbinden sich nach wenigen Sekunden selbst wieder über "Verbinden ...". Ein automatisches Wiederverbinden gibt es nicht.
 
 ### Logs
 
@@ -113,14 +117,17 @@ dotnet publish src/OVS.Client -c Release -r win-x64 --self-contained -p:PublishS
 Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiertes .NET läuft.
 
 **Bedienung:**
+- "Verbinden ..." fragt Adresse, Port, Nickname und optional das Serverpasswort ab. Mit "Als Lesezeichen speichern" steht der Server beim nächsten Mal zur Auswahl.
 - Push-to-Talk liegt auf Maustaste 4, Link-PTT auf Maustaste 5. Beides lässt sich unter Einstellungen ändern, dort auch Sprachaktivierung und Geräte.
 - Doppelklick auf einen Channel betritt ihn.
 - Per Rechtsklick auf Channels und Nutzer erreichst du Bearbeiten, Verlinken, Verschieben, Kicken und Bannen. Du siehst nur, wozu du berechtigt bist.
 - Grün bedeutet: jemand spricht. Blau bedeutet: jemand spricht über einen Link.
+- "Mikro aus" schaltet dein Mikrofon stumm, "Ton aus" zusätzlich den Lautsprecher.
+- "Verwaltung ..." (mit den nötigen Rechten) enthält Gruppen, Nutzer, Bans und die Servereinstellungen.
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 
-Der Client schreibt alles, was er tut, in eine neue Datei pro Start: `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>_<Uhrzeit>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.
+Der Client schreibt alles, was er tut, in eine neue Datei pro Start (und nach Mitternacht): `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>_<Uhrzeit>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.
 
 ### Kommandozeile
 
@@ -160,7 +167,13 @@ dotnet build
 dotnet test
 ```
 
-Die Tests laufen mit In-Process-Servern auf zufälligen lokalen Ports. Sie umfassen Protokoll, Rechte, Voice-Kryptografie, Routing und Relay über echtes UDP, die Audio-Pipeline und die ViewModels. Dazu kommen Ende-zu-Ende-Tests mit zwei echten Clients, gesteuert über die Debug-API.
+Die Tests laufen mit In-Process-Servern auf zufälligen lokalen Ports. Sie umfassen Protokoll, Rechte, Voice-Kryptografie, Routing und Relay über echtes UDP, die Audio-Pipeline, die ViewModels, Server-, Channel- und Client-Logs sowie den automatischen Neustart. Dazu kommen Ende-zu-Ende-Tests mit zwei echten Clients, gesteuert über die Debug-API.
+
+Server ohne Docker starten, z. B. zum Testen unter Windows (Daten landen in `./data`, Einstellungen wie oben als Umgebungsvariablen):
+
+```bash
+dotnet run --project src/OVS.Server
+```
 
 Projektaufbau:
 
