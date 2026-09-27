@@ -70,6 +70,10 @@ public sealed partial class ServerState
         lock (gate)
         {
             var now = time.GetUtcNow();
+            var ipText = ip.ToString();
+            var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint || b.Ip == ipText));
+            if (ban is not null) return (null, new Rejected(Codes.Banned, BanText(ban)));
+
             if (!data.Settings.CheckPassword(password)) return (null, new Rejected(Codes.WrongPassword));
 
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
@@ -150,6 +154,11 @@ public sealed partial class ServerState
                 case ListUsers r: OnListUsers(session, r); break;
                 case RedeemAdminToken r: OnRedeemAdminToken(session, r); break;
                 case UpdateServerSettings r: OnUpdateServerSettings(session, r); break;
+                case Kick r: OnKick(session, r); break;
+                case Ban r: OnBan(session, r); break;
+                case Unban r: OnUnban(session, r); break;
+                case ListBans r: OnListBans(session, r); break;
+                case SetServerMute r: OnSetServerMute(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }
@@ -217,4 +226,6 @@ public sealed partial class ServerState
         GroupInfos(),
         sessions.Values.Select(Info).ToList());
 
+    static string BanText(BanRecord ban) =>
+        ban.ExpiresAt is { } until ? $"{ban.Reason} (bis {until:yyyy-MM-dd HH:mm} UTC)" : $"{ban.Reason} (dauerhaft)";
 }
