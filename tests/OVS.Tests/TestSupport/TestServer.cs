@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using OVS.Server;
+using OVS.Server.Data;
 using OVS.Server.Tls;
+using OVS.Shared.Identity;
 
 namespace OVS.Tests.TestSupport;
 
@@ -19,12 +21,20 @@ public sealed class TestServer : IAsyncDisposable
     public int Port => Control.LocalEndPoint.Port;
 
     public static Task<TestServer> StartAsync(
-        string? dataDir = null, int maxUsers = 50, string password = "",
+        Action<ServerData>? seed = null, string? dataDir = null, int maxUsers = 50, string password = "",
         TimeProvider? time = null, TimeSpan? idleTimeout = null, TimeSpan? handshakeTimeout = null)
     {
         dataDir ??= Path.Combine(Path.GetTempPath(), "ovs-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dataDir);
         var config = new ServerConfig(0, dataDir, maxUsers, "Testserver", password);
+
+        if (seed is not null)
+        {
+            var store = new DataStore(Path.Combine(dataDir, DataStore.FileName));
+            var data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
+            seed(data);
+            store.Save(data);
+        }
 
         var log = new ConcurrentQueue<string>();
         var state = new ServerState(config, time ?? TimeProvider.System, log.Enqueue);
@@ -64,4 +74,15 @@ public sealed class TestServer : IAsyncDisposable
         }
     }
 
+    public static Action<ServerData> Grant(ClientIdentity identity, string groupName) => data =>
+    {
+        var groupId = data.Groups.Single(g => g.Name == groupName).Id;
+        var user = data.Users.FirstOrDefault(u => u.Fingerprint == identity.Fingerprint);
+        if (user is null)
+        {
+            user = new UserRecord { Fingerprint = identity.Fingerprint, LastNickname = groupName };
+            data.Users.Add(user);
+        }
+        user.GroupIds.Add(groupId);
+    };
 }

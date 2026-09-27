@@ -1,17 +1,23 @@
 using System.Net;
 using System.Security.Cryptography;
-using System.Text;
+using OVS.Server.Data;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using static OVS.Server.Permissions.PermissionRules;
 
 namespace OVS.Server;
 
-/// <summary>Who is connected. Every change runs under one lock.</summary>
-public sealed class ServerState
+/// <summary>All live and persisted server state. Every request handler runs under one lock.</summary>
+public sealed partial class ServerState
 {
     const int MaxConnectionsPerIp = 5;
 
+    // ponytail: one global lock for all state; fine for a few hundred users, shard per channel if it ever contends
     readonly object gate = new();
     readonly ServerConfig config;
+    readonly DataStore store;
+    readonly ServerData data;
+    readonly TimeProvider time;
     readonly Action<string> log;
     readonly Dictionary<uint, Session> sessions = [];
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
@@ -20,13 +26,18 @@ public sealed class ServerState
     public ServerState(ServerConfig config, TimeProvider time, Action<string> log)
     {
         this.config = config;
+        this.time = time;
         this.log = log;
+        store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
+        data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
     }
 
     public int SessionCount
     {
         get { lock (gate) return sessions.Count; }
     }
+
+    // ---- Connections ----
 
     /// <summary>Counts the connection. Always pair with ReleaseConnection.</summary>
     public bool TryAddConnection(IPAddress ip)
@@ -53,7 +64,8 @@ public sealed class ServerState
     {
         lock (gate)
         {
-            if (!PasswordMatches(password)) return (null, new Rejected(Codes.WrongPassword));
+            var now = time.GetUtcNow();
+            if (!data.Settings.CheckPassword(password)) return (null, new Rejected(Codes.WrongPassword));
 
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
             if (sessions.Count - (replaced is null ? 0 : 1) >= config.MaxUsers)
@@ -63,20 +75,29 @@ public sealed class ServerState
 
             if (replaced is not null) RemoveLocked(replaced, new Disconnected(Codes.ReplacedByNewConnection));
 
-            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32));
+            var user = FindUser(fingerprint);
+            if (user is null)
+            {
+                user = new UserRecord { Fingerprint = fingerprint, GroupIds = [GuestGroupId], FirstSeen = now };
+                data.Users.Add(user);
+            }
+            user.LastNickname = nickname;
+            Persist();
+
+            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32))
+            {
+                ChannelId = data.DefaultChannelId,
+                GroupIds = user.GroupIds.ToList(),
+                Permissions = Effective(user.GroupIds, data.Groups),
+            };
             sessions.Add(session.Id, session);
-            var settings = new ServerSettingsInfo(config.ServerName, "", config.Password.Length > 0);
-            session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey),
-                new ServerSnapshot(settings, Guid.Empty, [], [], [], [])));
+            session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot()));
+            foreach (var other in sessions.Values)
+                if (other != session) other.Send(new UserJoined(Info(session)));
             log($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
             return (session, null);
         }
     }
-
-    bool PasswordMatches(string? password) =>
-        config.Password.Length == 0 || CryptographicOperations.FixedTimeEquals(
-            SHA256.HashData(Encoding.UTF8.GetBytes(password ?? "")),
-            SHA256.HashData(Encoding.UTF8.GetBytes(config.Password)));
 
     public void Remove(Session session)
     {
@@ -97,13 +118,52 @@ public sealed class ServerState
         session.Close(final);
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
+        Broadcast(new UserLeft(session.Id));
         log($"{session.Nickname} getrennt");
     }
 
+    // ---- Requests ----
+
     public void Handle(Session session, Message message)
     {
-        if (message is Request r) session.Send(new Error(r.RequestId, Codes.UnknownRequest));
+        lock (gate)
+        {
+            if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
+            switch (message)
+            {
+                case JoinChannel r: OnJoinChannel(session, r); break;
+                case CreateChannel r: OnCreateChannel(session, r); break;
+                case EditChannel r: OnEditChannel(session, r); break;
+                case DeleteChannel r: OnDeleteChannel(session, r); break;
+                case MoveUser r: OnMoveUser(session, r); break;
+                case SetSelfState r: OnSetSelfState(session, r); break;
+                case Request r: Fail(session, r, Codes.UnknownRequest); break;
+            }
+        }
     }
+
+    // ---- Helpers ----
+
+    bool Require(Session session, Request request, Permission permission)
+    {
+        if (session.Permissions.Has(permission)) return true;
+        Fail(session, request, Codes.PermissionDenied);
+        return false;
+    }
+
+    static void Fail(Session session, Request request, string code, string? detail = null) =>
+        session.Send(new Error(request.RequestId, code, detail));
+
+    void Broadcast(Message message)
+    {
+        foreach (var s in sessions.Values) s.Send(message);
+    }
+
+    void Persist() => store.Save(data);
+
+    UserRecord? FindUser(string fingerprint) => data.Users.FirstOrDefault(u => u.Fingerprint == fingerprint);
+
+    ChannelRecord? FindChannel(Guid id) => data.Channels.FirstOrDefault(c => c.Id == id);
 
     /// <summary>Trimmed name of 1..max chars without control characters, else null.</summary>
     public static string? ValidName(string? name, int max)
@@ -111,4 +171,23 @@ public sealed class ServerState
         var n = name?.Trim();
         return n is { Length: > 0 } && n.Length <= max && !n.Any(char.IsControl) ? n : null;
     }
+
+    static UserInfo Info(Session s) =>
+        new(s.Id, s.Fingerprint, s.Nickname, s.ChannelId, s.SelfMuted, s.SelfDeafened, s.ServerMuted, s.Permissions, s.GroupIds);
+
+    static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order);
+
+    ServerSettingsInfo SettingsInfo() =>
+        new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.PasswordHash is not null);
+
+    List<GroupInfo> GroupInfos() => data.Groups.Select(g => new GroupInfo(g.Id, g.Name, g.Permissions)).ToList();
+
+    ServerSnapshot Snapshot() => new(
+        SettingsInfo(),
+        data.DefaultChannelId,
+        data.Channels.Select(Info).ToList(),
+        data.Links.Select(l => new LinkInfo(l.A, l.B)).ToList(),
+        GroupInfos(),
+        sessions.Values.Select(Info).ToList());
+
 }
