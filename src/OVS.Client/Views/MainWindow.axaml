@@ -1,0 +1,118 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OVS.Client.ViewModels"
+        x:Class="OVS.Client.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="OpenVoiceSpeak" Width="960" Height="640" MinWidth="560" MinHeight="400">
+  <Window.Styles>
+    <Style Selector="Ellipse.indicator">
+      <Setter Property="Fill" Value="#55808080" />
+    </Style>
+    <Style Selector="Ellipse.indicator.speaking">
+      <Setter Property="Fill" Value="#2ECC71" />
+    </Style>
+    <Style Selector="Ellipse.indicator.link">
+      <Setter Property="Fill" Value="#3498DB" />
+    </Style>
+    <Style Selector="TextBlock.current">
+      <Setter Property="Foreground" Value="#2ECC71" />
+    </Style>
+    <Style Selector="TextBlock.self">
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Padding="8" BorderThickness="0,0,0,1" BorderBrush="#40808080">
+      <WrapPanel>
+        <Button Content="Verbinden ..." Click="OnConnectClick" Margin="0,0,6,0" />
+        <Button Content="Trennen" Command="{Binding DisconnectCommand}" IsEnabled="{Binding IsConnected}" Margin="0,0,6,0" />
+        <ToggleButton Content="Mikro aus" IsChecked="{Binding Server.SelfMuted, Mode=OneWay, FallbackValue=False}"
+                      Command="{Binding Server.ToggleMuteCommand}" IsEnabled="{Binding IsConnected}" Margin="0,0,6,0" />
+        <ToggleButton Content="Ton aus" IsChecked="{Binding Server.SelfDeafened, Mode=OneWay, FallbackValue=False}"
+                      Command="{Binding Server.ToggleDeafenCommand}" IsEnabled="{Binding IsConnected}" Margin="0,0,6,0" />
+        <Button Content="Channel anlegen ..." Command="{Binding Server.NewChannelCommand}"
+                IsVisible="{Binding Server.CanCreateChannel, FallbackValue=False}" Margin="0,0,6,0" />
+        <Button Content="Admin-Token einlösen ..." Command="{Binding Server.RedeemTokenCommand}"
+                IsVisible="{Binding Server.CanRedeemToken, FallbackValue=False}" Margin="0,0,6,0" />
+      </WrapPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Padding="8,4" BorderThickness="0,1,0,0" BorderBrush="#40808080">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding PingText}" Foreground="Gray" />
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <TextBlock Text="{Binding Status}" />
+          <TextBlock Text="{Binding TransmitText}" Foreground="#2ECC71" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding LinkHint}" Foreground="OrangeRed" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid ColumnDefinitions="3*,4,2*">
+      <ScrollViewer Grid.Column="0" Padding="8">
+        <ItemsControl ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ChannelViewModel">
+              <StackPanel Margin="0,2,0,6">
+                <Border Background="Transparent" Padding="4,2" CornerRadius="4"
+                        DoubleTapped="OnChannelDoubleTapped" ToolTip.Tip="{Binding Tooltip}">
+                  <Border.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Betreten" Command="{Binding JoinCommand}" />
+                      <MenuItem Header="Bearbeiten ..." Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}" />
+                      <MenuItem Header="Löschen ..." Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
+                      <MenuItem Header="Verlinken mit ..." Command="{Binding LinkCommand}" IsVisible="{Binding CanLink}" />
+                      <MenuItem Header="Link entfernen ..." Command="{Binding UnlinkCommand}" IsVisible="{Binding CanUnlink}" />
+                    </ContextMenu>
+                  </Border.ContextMenu>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Classes.current="{Binding IsCurrent}" />
+                    <TextBlock Text="{Binding LinkedNames, StringFormat='↔ {0}'}" IsVisible="{Binding IsLinked}"
+                               Foreground="#3498DB" FontSize="12" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Border>
+                <ItemsControl ItemsSource="{Binding Users}" Margin="20,0,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:UserViewModel">
+                      <Border Background="Transparent" Padding="4,1" ToolTip.Tip="{Binding GroupNames}">
+                        <Border.ContextMenu>
+                          <ContextMenu>
+                            <MenuItem Header="Verschieben ..." Command="{Binding MoveCommand}" IsVisible="{Binding CanMove}" />
+                            <MenuItem Header="Serverseitig stummschalten an/aus" Command="{Binding ToggleServerMuteCommand}" IsVisible="{Binding CanMute}" />
+                            <MenuItem Header="Kicken ..." Command="{Binding KickCommand}" IsVisible="{Binding CanKick}" />
+                            <MenuItem Header="Bannen ..." Command="{Binding BanCommand}" IsVisible="{Binding CanBan}" />
+                          </ContextMenu>
+                        </Border.ContextMenu>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <Ellipse Width="10" Height="10" VerticalAlignment="Center" Classes="indicator"
+                                   Classes.speaking="{Binding IsSpeaking}" Classes.link="{Binding IsSpeakingViaLink}" />
+                          <TextBlock Text="{Binding Nickname}" Classes.self="{Binding IsSelf}" />
+                          <TextBlock Text="{Binding StatusText}" Foreground="Gray" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="#20808080" />
+
+      <DockPanel Grid.Column="2" Margin="8">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Server.ServerName, FallbackValue='Nicht verbunden'}"
+                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap" />
+        <ListBox ItemsSource="{Binding Notices}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>
