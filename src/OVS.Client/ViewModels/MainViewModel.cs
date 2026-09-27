@@ -30,7 +30,7 @@ public enum NoticeKind { Info, Welcome, Warning, Error }
 /// <summary>What the main area shows. Everything stays inside the one main window (A20).</summary>
 public enum Page { Home, Settings, Admin }
 
-/// <summary>One entry of the activity feed. ToString keeps the old "time  text" form for the debug API.</summary>
+/// <summary>A system notice, shown in the chat tab "Allgemein". ToString keeps the "time  text" form for the debug API.</summary>
 public sealed record Notice(DateTime Time, string Text, NoticeKind Kind)
 {
     public string TimeText => Time.ToString("HH:mm");
@@ -57,6 +57,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConnected))]
     ServerViewModel? server;
+
+    /// <summary>The chat of the current connection (Package 32), replaces the activity feed.</summary>
+    [ObservableProperty] ChatViewModel? chat;
 
     [ObservableProperty] string status = "Nicht verbunden";
     [ObservableProperty] bool isConnecting;
@@ -261,6 +264,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         _ = DisconnectAsync(text);
     }
 
+    /// <summary>Every connection starts a fresh chat (A27), with the earlier notices so none get lost.</summary>
+    partial void OnServerChanged(ServerViewModel? value) => Chat = value is null ? null : new ChatViewModel(value, Notices.Reverse());
+
     void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs e) => SyncAudioFlags();
 
     void SyncAudioFlags()
@@ -413,7 +419,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public void AddNotice(string text, NoticeKind kind = NoticeKind.Info)
     {
         Log.Write("Meldung: " + text);
-        Notices.Insert(0, new Notice(DateTime.Now, text, kind));
+        var notice = new Notice(DateTime.Now, text, kind);
+        Notices.Insert(0, notice);
+        Chat?.AddNotice(notice);
         while (Notices.Count > 200) Notices.RemoveAt(Notices.Count - 1);
     }
 

@@ -81,9 +81,12 @@ public sealed partial class ServerViewModel : ObservableObject
     public event Action<Message>? AdminMessage;
     public event Action<ServerIcon>? IconReceived;
 
-    // ---- Chat (Package 31); the tabs come in Package 32 ----
+    // ---- Chat (Package 31) ----
+    /// <summary>Chat requests get their own id prefix, so their errors can go to the composer instead of the feed.</summary>
+    const string ChatRequestPrefix = "c";
     readonly Queue<ChatMessage> recentChat = new();
     public event Action<ChatMessage>? ChatReceived;
+    public event Action<string>? ChatError;
     public IReadOnlyCollection<ChatMessage> RecentChat => recentChat;
     public bool CanChatServer => SelfPermissions.Has(Permission.ChatServer);
     public bool CanChatChannel => SelfPermissions.Has(Permission.ChatChannel);
@@ -97,7 +100,9 @@ public sealed partial class ServerViewModel : ObservableObject
         switch (message)
         {
             case Error e:
-                Notice?.Invoke(ErrorTexts.For(e.Code, e.Detail));
+                var text = ErrorTexts.For(e.Code, e.Detail);
+                if (e.RequestId?.StartsWith(ChatRequestPrefix) == true && ChatError is { } chatError) chatError(text);
+                else Notice?.Invoke(text);
                 return;
             case UserList list:
                 LastUserList = list;
@@ -219,7 +224,7 @@ public sealed partial class ServerViewModel : ObservableObject
     {
         try
         {
-            await send(request with { RequestId = $"r{++requestCounter}" });
+            await send(request with { RequestId = $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}" });
         }
         // InvalidOperationException: a request raced a disconnect that had already shut TLS down.
         catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException or InvalidOperationException)

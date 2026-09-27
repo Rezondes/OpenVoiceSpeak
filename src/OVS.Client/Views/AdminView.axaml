@@ -240,7 +240,7 @@
                 <StackPanel Spacing="4">
                   <TextBlock Classes="label" Text="Willkommenstext" />
                   <TextBox Text="{Binding WelcomeText}" AcceptsReturn="True" TextWrapping="Wrap" Height="90" />
-                  <TextBlock Classes="caption" Text="Erscheint bei jedem Verbinden oben in der Aktivität." />
+                  <TextBlock Classes="caption" Text="Erscheint bei jedem Verbinden im Chat-Tab Allgemein." />
                 </StackPanel>
                 <StackPanel Spacing="4">
                   <TextBlock Classes="label" Text="Serverpasswort" />

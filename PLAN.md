@@ -117,7 +117,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 31 sind umgesetzt, 32 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 32 sind umgesetzt, 33 ist geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2186,16 +2186,16 @@ Der Hauptbereich zeigt seit Package 24 die "Aktivität" (`MainViewModel.Notices`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Es gibt die Tabs "Allgemein" und den aktuellen Channel mit dessen Namen.
-- [ ] AC2: Systemmeldungen (Willkommen, Warnungen, Fehler, Trennungen) erscheinen in "Allgemein".
-- [ ] AC3: Enter sendet, Umschalt+Enter bricht um, leere Nachrichten werden nicht gesendet, über 2000 Zeichen ist Senden gesperrt.
-- [ ] AC4: Ohne das Recht für den Tab ist die Eingabe gesperrt, mit dem Hinweis, dass das Recht fehlt.
-- [ ] AC5: Der Channel-Tab zeigt Nachrichten ab dem Betreten und beginnt beim Wechsel neu, mit einer Zeile, welchen Channel man betreten hat.
-- [ ] AC6: Inaktive Tabs zeigen die Zahl ungelesener Nachrichten, beim Öffnen verschwindet sie.
-- [ ] AC7: Eigene Nachrichten sind erkennbar, Nachrichten zeigen Avatar, Name, Uhrzeit und markierbaren Text.
-- [ ] AC8: Neue Nachrichten scrollen nach unten, ausser man hat selbst nach oben gescrollt.
-- [ ] AC9: Fehler des Servers (`RateLimited`, `PermissionDenied`) erscheinen direkt unter der Eingabe.
-- [ ] AC10: Beide Designs, Tastatur und Screenreader-Namen wie in Package 24.
+- [x] AC1: Es gibt die Tabs "Allgemein" und den aktuellen Channel mit dessen Namen.
+- [x] AC2: Systemmeldungen (Willkommen, Warnungen, Fehler, Trennungen) erscheinen in "Allgemein".
+- [x] AC3: Enter sendet, Umschalt+Enter bricht um, leere Nachrichten werden nicht gesendet, über 2000 Zeichen ist Senden gesperrt.
+- [x] AC4: Ohne das Recht für den Tab ist die Eingabe gesperrt, mit dem Hinweis, dass das Recht fehlt.
+- [x] AC5: Der Channel-Tab zeigt Nachrichten ab dem Betreten und beginnt beim Wechsel neu, mit einer Zeile, welchen Channel man betreten hat.
+- [x] AC6: Inaktive Tabs zeigen die Zahl ungelesener Nachrichten, beim Öffnen verschwindet sie.
+- [x] AC7: Eigene Nachrichten sind erkennbar, Nachrichten zeigen Avatar, Name, Uhrzeit und markierbaren Text.
+- [x] AC8: Neue Nachrichten scrollen nach unten, ausser man hat selbst nach oben gescrollt.
+- [x] AC9: Fehler des Servers (`RateLimited`, `PermissionDenied`) erscheinen direkt unter der Eingabe.
+- [x] AC10: Beide Designs, Tastatur und Screenreader-Namen wie in Package 24.
 
 ### Tests (TDD)
 
@@ -2205,7 +2205,7 @@ Der Hauptbereich zeigt seit Package 24 die "Aktivität" (`MainViewModel.Notices`
 4. `ChatViewModelTests > "ServerError_ShownAtComposer"` (AC9)
 5. `MainViewModelTests > "Chat_EndToEnd"` gegen `TestServer` (AC1, AC3)
 6. `UiSmokeTests`: Chat in beiden Designs, eigene und fremde Nachricht sichtbar (AC7, AC10)
-7. Manueller Check AC8 (Scrollverhalten)
+7. `UiSmokeTests > "Chat_FollowsNewLines_UnlessScrolledUp"` (AC8, statt des manuellen Checks automatisiert)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
 

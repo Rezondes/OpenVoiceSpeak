@@ -127,6 +127,24 @@ public sealed class UiSmokeTests : IDisposable
         Assert.Contains("Meldung Error", texts);
         Assert.Contains("Willkommensnachricht des Servers", texts);
 
+        // Package 32: the chat replaces the activity feed, own messages are marked
+        Assert.Contains("Allgemein", texts);
+        vm.Server.Apply(new ChatMessage(ChatTarget.Server, 2, "anna", null, null, "Hallo Gilde", DateTimeOffset.Now));
+        vm.Server.Apply(new ChatMessage(ChatTarget.Server, 1, "ich", null, null, "Hallo anna", DateTimeOffset.Now));
+        Dispatcher.UIThread.RunJobs();
+        texts = Texts(main).ToList();
+        Assert.Contains("Hallo Gilde", texts);
+        Assert.Contains("Hallo anna", texts);
+        Assert.Contains("(du)", texts);
+        var composer = main.GetVisualDescendants().OfType<TextBox>().Single(t => AutomationProperties.GetName(t) == "Nachricht");
+        Assert.True(composer.IsEffectivelyEnabled);
+        Assert.Single(main.GetVisualDescendants().OfType<Button>(), b => AutomationProperties.GetName(b) == "Senden");
+        vm.Chat!.Draft = "per Enter";
+        Dispatcher.UIThread.RunJobs();
+        composer.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, Source = composer });
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("", vm.Chat.Draft); // Enter sent it
+
         vm.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("DARSTELLUNG", Texts(main));
@@ -242,6 +260,37 @@ public sealed class UiSmokeTests : IDisposable
         main.Closed += (_, _) => closed = true;
         Click(ButtonNamed("Schliessen"));
         Assert.True(closed);
+    }
+
+    /// <summary>Package 32 AC8: new lines scroll along, unless the reader scrolled up.</summary>
+    [AvaloniaFact]
+    public void Chat_FollowsNewLines_UnlessScrolledUp()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 900, Height = 500 };
+        main.Show();
+        var scroller = main.GetVisualDescendants().OfType<ChatView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First();
+        void Say(int i)
+        {
+            vm.Server!.Apply(new ChatMessage(ChatTarget.Server, 2, "anna", null, null, $"Nachricht {i}", DateTimeOffset.Now));
+            Dispatcher.UIThread.RunJobs();
+        }
+        bool AtEnd() => scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 1;
+
+        for (int i = 0; i < 40; i++) Say(i);
+        Assert.True(AtEnd(), $"{scroller.Offset} {scroller.Extent} {scroller.Viewport}");
+        Assert.True(AtEnd());
+
+        scroller.Offset = new Vector(0, 0); // the reader scrolls up
+        Dispatcher.UIThread.RunJobs();
+        Say(40);
+        Assert.Equal(0, scroller.Offset.Y);
+
+        scroller.ScrollToEnd(); // back at the end: follows again
+        Dispatcher.UIThread.RunJobs();
+        Say(41);
+        Assert.True(AtEnd());
+        main.Close();
     }
 
     [Fact]

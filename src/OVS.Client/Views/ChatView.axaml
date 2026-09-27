@@ -1,0 +1,103 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:v="using:OVS.Client.Views"
+             x:Class="OVS.Client.Views.ChatView"
+             x:DataType="vm:ChatViewModel">
+  <DockPanel>
+    <!-- Tabs: "Allgemein" and the current channel -->
+    <Border DockPanel.Dock="Top" Padding="16,0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+      <TabStrip ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="Chat-Tabs">
+        <TabStrip.ItemTemplate>
+          <DataTemplate x:DataType="vm:ChatTab">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Classes="sm" Data="{StaticResource Icon.Chat}" IsVisible="{Binding IsGeneral}" />
+              <PathIcon Classes="sm" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsChannel}" />
+              <TextBlock Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+              <Border Classes="count" IsVisible="{Binding HasUnread}" ToolTip.Tip="Ungelesen"
+                      AutomationProperties.Name="{Binding Unread, StringFormat='{}{0} ungelesen'}">
+                <TextBlock Text="{Binding Unread}" />
+              </Border>
+            </StackPanel>
+          </DataTemplate>
+        </TabStrip.ItemTemplate>
+      </TabStrip>
+    </Border>
+
+    <!-- Composer: Enter sends, Shift+Enter breaks the line -->
+    <StackPanel DockPanel.Dock="Bottom" Margin="20,8,20,16" Spacing="6">
+      <Border Classes="banner danger" IsVisible="{Binding ComposerError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <PathIcon Classes="danger" Data="{StaticResource Icon.ErrorCircle}" />
+          <TextBlock Classes="danger" Text="{Binding ComposerError}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+      <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !CanWrite}">
+        <PathIcon Classes="sm muted" Data="{StaticResource Icon.LockClosed}" />
+        <TextBlock Classes="caption" Text="{Binding NoRightHint}" VerticalAlignment="Center" />
+      </StackPanel>
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding SendCommand}" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                MinHeight="36" ToolTip.Tip="Senden (Enter)" AutomationProperties.Name="Senden">
+          <PathIcon Data="{StaticResource Icon.Send}" />
+        </Button>
+        <TextBox x:Name="Composer" Text="{Binding Draft}" Watermark="{Binding Placeholder}" IsEnabled="{Binding CanWrite}"
+                 AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="160" MinHeight="36"
+                 AutomationProperties.Name="Nachricht" />
+      </DockPanel>
+      <TextBlock Classes="caption" Classes.danger="{Binding IsTooLong}" Text="{Binding CounterText}" IsVisible="{Binding ShowCounter}"
+                 HorizontalAlignment="Right" />
+    </StackPanel>
+
+    <ScrollViewer x:Name="Scroller">
+      <ItemsControl ItemsSource="{Binding Selected.Entries}" Margin="20,12" MaxWidth="900" HorizontalAlignment="Stretch">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="10" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ChatEntry">
+            <Panel>
+              <!-- Message: avatar, name, time, selectable text -->
+              <DockPanel IsVisible="{Binding IsMessage}">
+                <Border DockPanel.Dock="Left" Classes="avatar" Width="32" Height="32" VerticalAlignment="Top"
+                        Background="{Binding From, Converter={x:Static v:Ui.AvatarBrush}}">
+                  <TextBlock Text="{Binding From, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                </Border>
+                <StackPanel Margin="12,0,0,0" Spacing="2">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Classes="author" Classes.own="{Binding IsOwn}" Text="{Binding From}" />
+                    <TextBlock Classes="caption" Text="(du)" IsVisible="{Binding IsOwn}" VerticalAlignment="Center" />
+                    <TextBlock Classes="caption" Text="{Binding TimeText}" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <SelectableTextBlock Classes="message" Text="{Binding Text}" />
+                </StackPanel>
+              </DockPanel>
+
+              <!-- System notice, as in the former activity feed -->
+              <Border Classes="card" Padding="14,10" Classes.welcome="{Binding IsWelcome}" IsVisible="{Binding IsNotice}">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Classes="caption" Text="{Binding TimeText}" Margin="12,1,0,0" VerticalAlignment="Top" />
+                  <Panel DockPanel.Dock="Left" Margin="0,1,12,0" VerticalAlignment="Top">
+                    <PathIcon Classes="accent" Data="{StaticResource Icon.Info}" IsVisible="{Binding IsInfo}" />
+                    <PathIcon Classes="accent" Data="{StaticResource Icon.Info}" IsVisible="{Binding IsWelcome}" />
+                    <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" IsVisible="{Binding IsWarning}" />
+                    <PathIcon Classes="danger" Data="{StaticResource Icon.ErrorCircle}" IsVisible="{Binding IsError}" />
+                  </Panel>
+                  <StackPanel Spacing="2">
+                    <TextBlock Classes="caption" Text="Willkommensnachricht des Servers" IsVisible="{Binding IsWelcome}" />
+                    <SelectableTextBlock Classes="message" Text="{Binding Text}" />
+                  </StackPanel>
+                </DockPanel>
+              </Border>
+
+              <!-- Marker such as "you entered the channel" -->
+              <TextBlock Classes="caption" Text="{Binding Text}" IsVisible="{Binding IsMarker}" HorizontalAlignment="Center" Margin="0,4" />
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

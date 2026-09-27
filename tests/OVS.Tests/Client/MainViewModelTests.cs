@@ -145,6 +145,36 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.StartsWith("Ping ", ping);
     }
 
+    /// <summary>Package 32: welcome in "Allgemein", the channel tab talks to the real server both ways.</summary>
+    [Fact]
+    public async Task Chat_EndToEnd()
+    {
+        await ConnectAsync(saveBookmark: false);
+        await using var bert = await TestClient.ConnectAsync(server, "bert");
+        Assert.Equal(["Allgemein", "Lobby"], await OnUi(() => vm.Chat!.Tabs.Select(t => t.Title).ToList()));
+        Assert.Contains(await OnUi(() => vm.Chat!.General.Entries.ToList()), e => e.IsWelcome && e.Text == "Willkommen auf dem Testserver!");
+
+        await bert.SendAsync(new SendChat(ChatTarget.Channel, null, "hallo anna"));
+        ChatEntry? received = null;
+        for (int i = 0; i < 60 && received is null; i++)
+        {
+            await Task.Delay(50);
+            received = await OnUi(() => vm.Chat!.ChannelTab.Entries.FirstOrDefault(e => e.IsMessage));
+        }
+        Assert.Equal(("bert", "hallo anna", false), (received?.From, received?.Text, received?.IsOwn));
+        Assert.Equal(1, await OnUi(() => vm.Chat!.ChannelTab.Unread));
+
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.Chat!.Selected = vm.Chat.ChannelTab;
+            vm.Chat.Draft = "hallo bert";
+            await vm.Chat.SendCommand.ExecuteAsync(null);
+            return null;
+        });
+        var echo = await bert.WaitForAsync<ChatMessage>(m => m.Text == "hallo bert");
+        Assert.Equal("anna", echo.FromNickname);
+    }
+
     [Fact]
     public async Task Notices_HaveKinds_ErrorAndDisconnect()
     {
