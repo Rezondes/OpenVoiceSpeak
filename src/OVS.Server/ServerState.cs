@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using OVS.Server.Data;
+using OVS.Server.Voice;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using static OVS.Server.Permissions.PermissionRules;
@@ -93,7 +94,7 @@ public sealed partial class ServerState
             user.LastNickname = nickname;
             Persist();
 
-            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32))
+            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32), time)
             {
                 ChannelId = data.DefaultChannelId,
                 GroupIds = user.GroupIds.ToList(),
@@ -163,6 +164,23 @@ public sealed partial class ServerState
                 case UnlinkChannels r: OnUnlinkChannels(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
+        }
+    }
+
+    // ---- Voice ----
+
+    public Session? FindSession(uint id)
+    {
+        lock (gate) return sessions.GetValueOrDefault(id);
+    }
+
+    public (List<Session> Recipients, byte Target) VoiceRecipients(Session sender, byte requestedTarget)
+    {
+        lock (gate)
+        {
+            if (!sessions.TryGetValue(sender.Id, out var current) || current != sender) return ([], 0);
+            return (VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels),
+                VoiceRouting.EffectiveTarget(sender, requestedTarget));
         }
     }
 

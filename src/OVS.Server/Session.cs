@@ -1,12 +1,14 @@
 using System.Net;
 using System.Threading.Channels;
+using OVS.Server.Voice;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Voice;
 
 namespace OVS.Server;
 
 /// <summary>One connected, authenticated client.</summary>
-public sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey)
+public sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey, TimeProvider time)
     : IDisposable
 {
     readonly Channel<Message> outbox = Channel.CreateBounded<Message>(new BoundedChannelOptions(1024) { SingleReader = true });
@@ -25,6 +27,13 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public Permission Permissions { get; set; }
     public IReadOnlyList<Guid> GroupIds { get; set; } = [];
 
+    // Voice state, only touched by the UDP receive loop.
+    public VoiceCrypto Crypto { get; } = new(voiceKey);
+    public IPEndPoint? UdpEndpoint { get; set; }
+    public ReplayWindow Replay { get; } = new();
+    public SeqCounter OutSeq { get; } = new();
+    public RateLimiter Limiter { get; } = new(time);
+
     public ChannelReader<Message> Outgoing => outbox.Reader;
 
     /// <summary>Never blocks. A client too slow to drain 1024 queued messages gets disconnected.</summary>
@@ -39,5 +48,5 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         outbox.Writer.TryComplete();
     }
 
-    public void Dispose() { }
+    public void Dispose() => Crypto.Dispose();
 }

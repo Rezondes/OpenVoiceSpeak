@@ -2,6 +2,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using OVS.Server;
 using OVS.Server.Tls;
+using OVS.Server.Voice;
 using OVS.Shared.Identity;
 
 static void Log(string message) => Console.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}");
@@ -23,8 +24,10 @@ var certificate = ServerCertificate.LoadOrCreate(config.DataDir);
 var endpoint = new IPEndPoint(IPAddress.Any, config.Port);
 var control = new ControlServer(state, certificate, endpoint);
 control.Start();
+using var voice = new UdpVoiceServer(state, endpoint);
+voice.Start();
 
-Log($"Listening on {endpoint}");
+Log($"Listening on {endpoint} (TCP und UDP)");
 Log($"Zertifikat-Fingerprint: {CertFingerprint.Of(certificate)}");
 
 var stop = new TaskCompletionSource();
