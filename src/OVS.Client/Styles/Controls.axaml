@@ -262,6 +262,32 @@
     <Setter Property="Opacity" Value="0.4" />
   </Style>
 
+  <!-- Window buttons in the title bar: not tab stops, close turns red -->
+  <Style Selector="Button.caption">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.caption:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+  </Style>
+  <Style Selector="Button.caption:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Border}" />
+  </Style>
+
   <!-- Quiet text button with icon, for secondary header actions -->
   <Style Selector="Button.subtle">
     <Setter Property="Background" Value="Transparent" />

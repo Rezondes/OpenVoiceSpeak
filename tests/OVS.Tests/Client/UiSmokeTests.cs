@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Automation;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -191,6 +193,42 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.True(vm.IsHomePage);
         main.Close();
+    }
+
+    /// <summary>Package 27: own title bar with the three window buttons instead of the Windows frame.</summary>
+    [AvaloniaFact]
+    public void TitleBar_ButtonsChangeWindowState_ShowsTitleAndServer()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Title = "OpenVoiceSpeak [zweit]" };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(main.ExtendClientAreaToDecorationsHint);
+        var bar = main.GetVisualDescendants().OfType<TitleBar>().Single();
+        Button ButtonNamed(string name) => bar.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == name);
+        void Click(Button b)
+        {
+            b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        Assert.Contains("OpenVoiceSpeak [zweit]", Texts(bar));
+        vm.Server = FakeServers.Admin();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("· Gilde", Texts(bar));
+
+        Click(ButtonNamed("Maximieren"));
+        Assert.Equal(WindowState.Maximized, main.WindowState);
+        Click(ButtonNamed("Wiederherstellen")); // the same button, relabelled
+        Assert.Equal(WindowState.Normal, main.WindowState);
+        Click(ButtonNamed("Minimieren"));
+        Assert.Equal(WindowState.Minimized, main.WindowState);
+        main.WindowState = WindowState.Normal;
+
+        bool closed = false;
+        main.Closed += (_, _) => closed = true;
+        Click(ButtonNamed("Schliessen"));
+        Assert.True(closed);
     }
 
     [Fact]

@@ -6,8 +6,12 @@
         x:Class="OVS.Client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="OpenVoiceSpeak" Width="1100" Height="700" MinWidth="760" MinHeight="480"
-        Background="{DynamicResource Ovs.Bg}">
+        Background="{DynamicResource Ovs.Bg}"
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaTitleBarHeightHint="-1">
 
+  <!-- Maximized, Windows hides a border off screen: OffScreenMargin keeps the content inside. -->
+  <DockPanel Margin="{Binding $parent[Window].OffScreenMargin}">
+  <v:TitleBar DockPanel.Dock="Top" />
   <Grid ColumnDefinitions="300,Auto,*">
     <!-- ================= Sidebar: server, channels, own user ================= -->
     <Border Grid.Column="0" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
@@ -331,4 +335,5 @@
     <!-- Dialogs: a modal layer over the whole window -->
     <v:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" />
   </Grid>
+  </DockPanel>
 </Window>

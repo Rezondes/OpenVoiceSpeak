@@ -117,7 +117,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 26 sind umgesetzt, 27 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 27 sind umgesetzt, 28 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -1898,15 +1898,17 @@ Seit Package 24 hat der Inhalt ein eigenes Design, der Rahmen ist aber der von W
 
 ### Acceptance Criteria
 
-- [ ] AC1: Der Windows-Rahmen ist nicht sichtbar, die eigene Titelleiste zeigt Logo, Titel und drei Buttons in beiden Designs.
-- [ ] AC2: Minimieren, Maximieren bzw. Wiederherstellen (das Icon wechselt) und Schliessen funktionieren. Schliessen färbt sich beim Hovern rot.
-- [ ] AC3: Ziehen an der Leiste verschiebt das Fenster, Doppelklick maximiert bzw. stellt wieder her.
+- [x] AC1: Der Windows-Rahmen ist nicht sichtbar, die eigene Titelleiste zeigt Logo, Titel und drei Buttons in beiden Designs.
+- [x] AC2: Minimieren, Maximieren bzw. Wiederherstellen (das Icon wechselt) und Schliessen funktionieren. Schliessen färbt sich beim Hovern rot.
+- [x] AC3: Ziehen an der Leiste verschiebt das Fenster, Doppelklick maximiert bzw. stellt wieder her.
 - [ ] AC4 (manuell): Aero Snap an den Bildschirmrand, Grössenändern an allen Rändern, Mindestgrösse, maximiert auf Windows 10 und 11 ohne abgeschnittenen Inhalt, zwei Monitore mit unterschiedlicher Skalierung.
-- [ ] AC5: Die Buttons haben Tooltip und `AutomationProperties.Name`.
+  - Geprüft am 27.09.2026 auf Windows 11 am echten Client: Ränder und Ecken melden per `WM_NCHITTEST` die Zonen zum Grössenändern, maximiert liegt der Inhalt dank `OffScreenMargin` vollständig im sichtbaren Bereich (per `PrintWindow` aufgenommen).
+  - **Offen:** Aero Snap per Ziehen, Windows 10, zwei Monitore mit unterschiedlicher Skalierung. Das Verschieben nutzt die native Schleife von Windows (`BeginMoveDrag`), Snap sollte deshalb funktionieren.
+- [x] AC5: Die Buttons haben Tooltip und `AutomationProperties.Name`.
 
 ### Tests (TDD)
 
-1. `UiSmokeTests > "TitleBar_ButtonsChangeWindowState"`: Gegeben das Hauptfenster headless. Klick auf Maximieren setzt `WindowState.Maximized` und wechselt das Icon, erneut `Normal`, Minimieren setzt `Minimized` (AC1, AC2)
+1. `UiSmokeTests > "TitleBar_ButtonsChangeWindowState_ShowsTitleAndServer"`: Gegeben das Hauptfenster headless. Klick auf Maximieren setzt `WindowState.Maximized` und wechselt das Icon, erneut `Normal`, Minimieren setzt `Minimized` (AC1, AC2)
 2. `UiSmokeTests > "Windows_LoadAndShowTheirContent"` prüft zusätzlich, dass die Titelleiste den Servernamen zeigt (AC1)
 3. Manueller Check AC4 mit Eintrag in der Tabelle der manuellen Checks
 

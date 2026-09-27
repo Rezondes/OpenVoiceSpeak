@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OVS.Client.ViewModels"
+             x:Class="OVS.Client.Views.TitleBar"
+             x:DataType="vm:MainViewModel"
+             Height="36">
+  <!-- Own title bar instead of the Windows frame (Package 27). Dragging moves the window, double click maximizes. -->
+  <Border Background="{DynamicResource Ovs.SidebarFooter}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button x:Name="MinimizeButton" Classes="caption" Click="OnMinimize"
+                ToolTip.Tip="Minimieren" AutomationProperties.Name="Minimieren">
+          <PathIcon Classes="sm" Data="{StaticResource Icon.Minimize}" />
+        </Button>
+        <Button x:Name="MaximizeButton" Classes="caption" Click="OnMaximize"
+                ToolTip.Tip="Maximieren" AutomationProperties.Name="Maximieren">
+          <Panel>
+            <PathIcon x:Name="MaximizeIcon" Classes="sm" Data="{StaticResource Icon.Maximize}" />
+            <PathIcon x:Name="RestoreIcon" Classes="sm" Data="{StaticResource Icon.Restore}" IsVisible="False" />
+          </Panel>
+        </Button>
+        <Button x:Name="CloseButton" Classes="caption close" Click="OnClose"
+                ToolTip.Tip="Schliessen" AutomationProperties.Name="Schliessen">
+          <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+        </Button>
+      </StackPanel>
+
+      <!-- Everything left of the buttons is the drag area -->
+      <Border x:Name="DragArea" Background="Transparent" PointerPressed="OnDragAreaPressed">
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="12,0" VerticalAlignment="Center">
+          <PathIcon x:Name="Logo" Classes="sm accent" Data="{StaticResource Icon.Headphones}" />
+          <TextBlock x:Name="TitleText" Classes="caption" FontWeight="SemiBold" VerticalAlignment="Center"
+                     Foreground="{DynamicResource Ovs.Text}" />
+          <TextBlock Classes="caption" VerticalAlignment="Center" IsVisible="{Binding IsConnected}"
+                     Text="{Binding Server.ServerName, StringFormat='· {0}', FallbackValue=''}" />
+        </StackPanel>
+      </Border>
+    </DockPanel>
+  </Border>
+</UserControl>
