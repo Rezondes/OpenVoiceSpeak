@@ -42,6 +42,12 @@ public sealed partial class AdminViewModel : ObservableObject
     public ObservableCollection<KnownUserViewModel> Users { get; } = [];
     public ObservableCollection<BanViewModel> Bans { get; } = [];
 
+    /// <summary>The page asks to be closed (close button or Esc).</summary>
+    public event Action? CloseRequested;
+
+    [RelayCommand]
+    void Close() => CloseRequested?.Invoke();
+
     public void Detach()
     {
         server.AdminMessage -= OnAdminMessage;

@@ -40,7 +40,8 @@ public class SendPathTests
     [InlineData(TransmitMode.PushToTalk, true)]
     public async Task PttKey_BelowThreshold_SendsOnlyInPttMode(TransmitMode mode, bool expectFrames)
     {
-        using var keys = new KeyPoller();
+        // No physical keys: a real mouse button 4 or 5 pressed while the tests run must not count.
+        using var keys = new KeyPoller { PttKey = 0, LinkPttKey = 0 };
         using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f }); // test tone is -13.5 dBFS: below
         engine.SetTone(440);

@@ -120,6 +120,53 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUi(() => vm.IsConnecting));
     }
 
+    /// <summary>A20: settings and administration are pages of the main window, not windows.</summary>
+    [Fact]
+    public async Task Pages_OpenAndClose_LevelMeterRuns()
+    {
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.OpenSettings();
+            Assert.Equal(Page.Settings, vm.Page);
+            vm.SettingsPage!.CancelCommand.Execute(null);
+            Assert.Equal(Page.Home, vm.Page);
+            Assert.Null(vm.SettingsPage);
+
+            await vm.OpenAdminAsync(); // not connected: nothing to administer
+            Assert.Equal(Page.Home, vm.Page);
+            vm.Server = FakeServers.Admin();
+            await vm.OpenAdminAsync();
+            Assert.Equal(Page.Admin, vm.Page);
+            await vm.DisconnectAsync(); // the administration needs a server
+            Assert.Equal(Page.Home, vm.Page);
+            Assert.Null(vm.AdminPage);
+            return null;
+        });
+
+        await OnUi(() =>
+        {
+            vm.OpenSettings();
+            vm.Audio.SetTone(440);
+            return 0;
+        });
+        double level = -60;
+        for (int i = 0; i < 60 && level < -30; i++)
+        {
+            await Task.Delay(50);
+            level = await OnUi(() => vm.SettingsPage!.InputLevelDb);
+        }
+        Assert.InRange(level, -15, -12); // 0.3 amplitude sine: -13.5 dBFS
+
+        await OnUi(() =>
+        {
+            vm.SettingsPage!.SelectedTheme = SettingsViewModel.Themes.Single(t => t.Value == AppTheme.Dark);
+            vm.SettingsPage.SaveCommand.Execute(null);
+            return 0;
+        });
+        Assert.Equal(Page.Home, await OnUi(() => vm.Page));
+        Assert.Equal(AppTheme.Dark, ClientSettings.Load(dir, out _).Theme);
+    }
+
     [Fact]
     public void Deafened_Engine_IgnoresIncomingVoice()
     {

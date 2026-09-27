@@ -1,19 +1,31 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:OVS.Client.ViewModels"
-        x:Class="OVS.Client.Views.SettingsDialog"
-        x:DataType="vm:SettingsViewModel"
-        Title="Einstellungen" Width="560" Height="720" MinHeight="480" CanResize="True"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="{DynamicResource Ovs.Bg}">
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OVS.Client.ViewModels"
+             x:Class="OVS.Client.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
   <DockPanel>
+    <!-- Page header: title and close (Esc closes as well) -->
+    <Border DockPanel.Dock="Top" Padding="24,12,16,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CancelCommand}"
+                ToolTip.Tip="Schliessen (Esc)" AutomationProperties.Name="Einstellungen schliessen">
+          <PathIcon Data="{StaticResource Icon.Dismiss}" />
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
+            <PathIcon Classes="accent" Data="{StaticResource Icon.Settings}" />
+          </Border>
+          <TextBlock Classes="h2" FontSize="17" Text="Einstellungen" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
     <!-- Button bar -->
     <Border DockPanel.Dock="Bottom" Padding="24,12" Background="{DynamicResource Ovs.Sidebar}"
             BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-          <Button Content="Abbrechen" Command="{Binding CancelCommand}" IsCancel="True" MinWidth="96" HorizontalContentAlignment="Center" />
-          <Button Classes="accent" Content="Speichern" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}" IsDefault="True"
+          <Button Content="Abbrechen" Command="{Binding CancelCommand}" MinWidth="96" HorizontalContentAlignment="Center" />
+          <Button Classes="accent" Content="Speichern" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
                   MinWidth="96" HorizontalContentAlignment="Center" />
         </StackPanel>
         <TextBlock Classes="danger" Text="{Binding Error}" IsVisible="{Binding HasKeyConflict}" VerticalAlignment="Center" TextWrapping="Wrap" />
@@ -21,13 +33,7 @@
     </Border>
 
     <ScrollViewer>
-      <StackPanel Margin="24,20" Spacing="20">
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
-            <PathIcon Classes="accent" Data="{StaticResource Icon.Settings}" />
-          </Border>
-          <TextBlock Classes="h2" FontSize="17" Text="Einstellungen" VerticalAlignment="Center" />
-        </StackPanel>
+      <StackPanel Margin="24,20" Spacing="20" MaxWidth="720" HorizontalAlignment="Stretch">
 
         <!-- Devices -->
         <StackPanel Spacing="8">
@@ -88,8 +94,8 @@
           <TextBlock Classes="section" Text="ÜBERTRAGUNG" />
           <Border Classes="card">
             <StackPanel Spacing="10">
-              <RadioButton GroupName="mode" Content="Push-to-Talk: senden, solange die Taste gedrückt ist" IsChecked="{Binding IsPushToTalk}" />
-              <RadioButton GroupName="mode" Content="Sprachaktivierung: senden, sobald du sprichst" IsChecked="{Binding VoiceActivation}" />
+              <RadioButton Content="Push-to-Talk: senden, solange die Taste gedrückt ist" IsChecked="{Binding IsPushToTalk}" />
+              <RadioButton Content="Sprachaktivierung: senden, sobald du sprichst" IsChecked="{Binding VoiceActivation}" />
               <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
                 <DockPanel>
                   <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding VadThresholdDb, StringFormat='{}{0:0} dBFS'}" />
@@ -171,4 +177,4 @@
       </StackPanel>
     </ScrollViewer>
   </DockPanel>
-</Window>
+</UserControl>

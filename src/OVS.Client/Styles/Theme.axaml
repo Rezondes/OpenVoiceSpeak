@@ -29,6 +29,7 @@
       <SolidColorBrush x:Key="Ovs.DangerSurface" Color="#3A1A1D" />
       <SolidColorBrush x:Key="Ovs.WarningText" Color="#FBBF24" />
       <SolidColorBrush x:Key="Ovs.WarningSurface" Color="#33290F" />
+      <SolidColorBrush x:Key="Ovs.Scrim" Color="#B3000000" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="Ovs.Bg" Color="#F4F5F7" />
@@ -53,6 +54,7 @@
       <SolidColorBrush x:Key="Ovs.DangerSurface" Color="#FDE8E8" />
       <SolidColorBrush x:Key="Ovs.WarningText" Color="#92400E" />
       <SolidColorBrush x:Key="Ovs.WarningSurface" Color="#FEF3C7" />
+      <SolidColorBrush x:Key="Ovs.Scrim" Color="#80101418" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

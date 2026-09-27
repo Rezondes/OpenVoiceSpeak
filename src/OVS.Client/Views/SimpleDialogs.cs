@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using OVS.Client.Net;
 using OVS.Client.Settings;
@@ -9,35 +11,29 @@ using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;
 
-/// <summary>Small dialogs built in code; each returns null when cancelled. All share one frame: icon and title, body, button bar.</summary>
+/// <summary>
+/// Small dialogs built in code, shown as a card on the main window's overlay, never as a window of their own (A20).
+/// Each returns null when cancelled. All share one frame: icon and title, body, button bar.
+/// </summary>
 public static class SimpleDialogs
 {
     enum Kind { Normal, Danger }
 
-    static async Task<T?> Show<T>(Window owner, string title, string icon, Control body, Func<T?> accept,
+    static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
         string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal) where T : class
     {
         T? result = null;
-        var window = new Window
-        {
-            Title = title,
-            Width = 460,
-            SizeToContent = SizeToContent.Height,
-            CanResize = false,
-            ShowInTaskbar = false,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-        };
-        window.Bind(TemplatedControl.BackgroundProperty, window.GetResourceObservable("Ovs.Bg"));
-
-        var ok = new Button { Content = okText, IsDefault = okIsDefault, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
-        ok.Classes.Add(kind == Kind.Danger ? "danger" : "accent");
-        var cancel = new Button { Content = "Abbrechen", IsCancel = true, IsDefault = !okIsDefault, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
-        ok.Click += (_, _) =>
+        void Accept()
         {
             result = accept();
-            if (result is not null) window.Close();
-        };
-        cancel.Click += (_, _) => window.Close();
+            if (result is not null) host.Close();
+        }
+
+        var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
+        ok.Classes.Add(kind == Kind.Danger ? "danger" : "accent");
+        var cancel = new Button { Content = "Abbrechen", MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
+        ok.Click += (_, _) => Accept();
+        cancel.Click += (_, _) => host.Close();
 
         var badge = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Child = Icon(icon, kind == Kind.Danger ? "danger" : "accent") };
         badge.Bind(Border.BackgroundProperty, badge.GetResourceObservable(kind == Kind.Danger ? "Ovs.DangerSurface" : "Ovs.AccentSurface"));
@@ -54,7 +50,7 @@ public static class SimpleDialogs
         buttonBar.Bind(Border.BackgroundProperty, buttonBar.GetResourceObservable("Ovs.Sidebar"));
         buttonBar.Bind(Border.BorderBrushProperty, buttonBar.GetResourceObservable("Ovs.Border"));
 
-        window.Content = new DockPanel
+        var frame = new DockPanel
         {
             Children =
             {
@@ -71,7 +67,10 @@ public static class SimpleDialogs
                 },
             },
         };
-        await window.ShowDialog(owner);
+        // The default button decides what Enter does; a risky choice (changed certificate) defaults to cancel.
+        var firstInput = body.GetLogicalDescendants().Prepend(body).OfType<InputElement>()
+            .FirstOrDefault(c => c is TextBox or ComboBox or ListBox or NumericUpDown);
+        await host.ShowAsync(frame, okIsDefault ? Accept : host.Close, (Control?)firstInput ?? (okIsDefault ? ok : cancel));
         return result;
     }
 
@@ -113,44 +112,44 @@ public static class SimpleDialogs
         return panel;
     }
 
-    public static Task<string?> AskText(Window owner, string title, string prompt)
+    public static Task<string?> AskText(OverlayHost overlay, string title, string prompt)
     {
         var box = new TextBox();
-        return Show(owner, title, title.StartsWith("Admin-Token") ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
+        return Show(overlay, title, title.StartsWith("Admin-Token") ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
     }
 
-    public static Task<ChannelEdit?> EditChannel(Window owner, string title, string name, string description)
+    public static Task<ChannelEdit?> EditChannel(OverlayHost overlay, string title, string name, string description)
     {
         var nameBox = new TextBox { Text = name };
         var descriptionBox = new TextBox { Text = description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 76 };
-        return Show(owner, title, "Speaker", Stack(Field("Name", nameBox), Field("Beschreibung", descriptionBox, "Optional, erscheint als Tooltip und im Kopf des Channels.")),
+        return Show(overlay, title, "Speaker", Stack(Field("Name", nameBox), Field("Beschreibung", descriptionBox, "Optional, erscheint als Tooltip und im Kopf des Channels.")),
             () => string.IsNullOrWhiteSpace(nameBox.Text) ? null : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? ""),
             "Speichern");
     }
 
-    public static Task<ChannelViewModel?> PickChannel(Window owner, string title, IReadOnlyList<ChannelViewModel> channels)
+    public static Task<ChannelViewModel?> PickChannel(OverlayHost overlay, string title, IReadOnlyList<ChannelViewModel> channels)
     {
-        if (channels.Count == 0) return Show<ChannelViewModel>(owner, title, "Speaker", Text("Kein passender Channel vorhanden.", "muted"), () => null);
+        if (channels.Count == 0) return Show<ChannelViewModel>(overlay, title, "Speaker", Text("Kein passender Channel vorhanden.", "muted"), () => null);
         var list = new ListBox { ItemsSource = channels.Select(c => c.Name).ToList(), MaxHeight = 320, SelectedIndex = 0, CornerRadius = new CornerRadius(8) };
-        return Show(owner, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, "Auswählen");
+        return Show(overlay, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, "Auswählen");
     }
 
-    public static Task<BanChoice?> Ban(Window owner, string nickname)
+    public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname)
     {
         var durations = BanChoice.Durations;
         var reason = new TextBox();
         var duration = new ComboBox { ItemsSource = durations.Select(d => d.Label).ToList(), SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
         var includeIp = new CheckBox { Content = "Auch die IP-Adresse sperren" };
-        return Show(owner, $"{nickname} bannen", "Prohibited", Stack(Field("Grund", reason), Field("Dauer", duration), includeIp),
+        return Show(overlay, $"{nickname} bannen", "Prohibited", Stack(Field("Grund", reason), Field("Dauer", duration), includeIp),
             () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Minutes, includeIp.IsChecked == true),
             "Bannen", kind: Kind.Danger);
     }
 
     /// <summary>Only used for destructive actions, hence the red button.</summary>
-    public static async Task<bool> Confirm(Window owner, string text) =>
-        await Show(owner, "Bestätigen", "Delete", Text(text), () => "ok", "Ja, löschen", kind: Kind.Danger) is not null;
+    public static async Task<bool> Confirm(OverlayHost overlay, string text) =>
+        await Show(overlay, "Bestätigen", "Delete", Text(text), () => "ok", "Ja, löschen", kind: Kind.Danger) is not null;
 
-    public static async Task<bool> Tofu(Window owner, TofuPrompt prompt)
+    public static async Task<bool> Tofu(OverlayHost overlay, TofuPrompt prompt)
     {
         var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(i => prompt.Fingerprint.Substring(i * 8, 8)));
         bool mismatch = prompt.Result == TofuResult.Mismatch;
@@ -176,11 +175,11 @@ public static class SimpleDialogs
             banner.Classes.Add("warning");
             message = banner;
         }
-        return await Show(owner, "Serverzertifikat prüfen", mismatch ? "Warning" : "LockClosed", Stack(message, Field("Fingerprint", code)), () => "ok",
+        return await Show(overlay, "Serverzertifikat prüfen", mismatch ? "Warning" : "LockClosed", Stack(message, Field("Fingerprint", code)), () => "ok",
             mismatch ? "Trotzdem vertrauen" : "Vertrauen", prompt.AcceptIsDefault, mismatch ? Kind.Danger : Kind.Normal) is not null;
     }
 
-    public static Task<ConnectChoice?> Connect(Window owner, ClientSettings settings, Bookmark? preselect = null)
+    public static Task<ConnectChoice?> Connect(OverlayHost overlay, ClientSettings settings, Bookmark? preselect = null)
     {
         var host = new TextBox { Watermark = "z. B. voice.example.org" };
         var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = 7000, FormatString = "0", Increment = 1, Width = 130 };
@@ -216,7 +215,7 @@ public static class SimpleDialogs
         var body = Stack(address, Field("Nickname", nickname), Field("Serverpasswort", passwordRow, "Nur nötig, wenn der Server eines hat."), save, error);
         if (settings.Bookmarks.Count > 0) body.Children.Insert(0, Field("Lesezeichen", bookmarks));
 
-        return Show(owner, "Mit Server verbinden", "PlugConnected", body, () =>
+        return Show(overlay, "Mit Server verbinden", "PlugConnected", body, () =>
             {
                 string? problem = string.IsNullOrWhiteSpace(host.Text) ? "Bitte eine Adresse eingeben."
                     : string.IsNullOrWhiteSpace(nickname.Text) ? "Bitte einen Nickname eingeben."

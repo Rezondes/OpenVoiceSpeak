@@ -88,6 +88,15 @@
     <Setter Property="CornerRadius" Value="10" />
     <Setter Property="Padding" Value="16" />
   </Style>
+  <!-- Dialog card on the overlay layer -->
+  <Style Selector="Border.dialog">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Bg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="BoxShadow" Value="0 12 40 0 #66000000" />
+  </Style>
   <Style Selector="Border.card.welcome">
     <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Accent}" />

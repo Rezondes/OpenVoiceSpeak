@@ -1,17 +1,28 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:OVS.Client.ViewModels"
-        xmlns:v="using:OVS.Client.Views"
-        x:Class="OVS.Client.Views.AdminDialog"
-        x:DataType="vm:AdminViewModel"
-        Title="Verwaltung" Width="860" Height="600" MinWidth="640" MinHeight="420"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
-        Background="{DynamicResource Ovs.Bg}">
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:v="using:OVS.Client.Views"
+             x:Class="OVS.Client.Views.AdminView"
+             x:DataType="vm:AdminViewModel">
   <DockPanel>
+    <!-- Page header: title and close (Esc closes as well) -->
+    <Border DockPanel.Dock="Top" Padding="24,12,16,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CloseCommand}"
+                ToolTip.Tip="Schliessen (Esc)" AutomationProperties.Name="Verwaltung schliessen">
+          <PathIcon Data="{StaticResource Icon.Dismiss}" />
+        </Button>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
+            <PathIcon Classes="accent" Data="{StaticResource Icon.ShieldPerson}" />
+          </Border>
+          <TextBlock Classes="h2" FontSize="17" Text="Verwaltung" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
     <Border DockPanel.Dock="Bottom" Padding="24,12" Background="{DynamicResource Ovs.Sidebar}"
             BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
-        <Button DockPanel.Dock="Right" Content="Schliessen" Click="OnCloseClick" IsCancel="True" MinWidth="96" HorizontalContentAlignment="Center" />
         <Button Command="{Binding RefreshCommand}" HorizontalAlignment="Left">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
@@ -21,14 +32,7 @@
       </DockPanel>
     </Border>
 
-    <DockPanel Margin="24,20,24,16">
-      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
-        <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
-          <PathIcon Classes="accent" Data="{StaticResource Icon.ShieldPerson}" />
-        </Border>
-        <TextBlock Classes="h2" FontSize="17" Text="Verwaltung" VerticalAlignment="Center" />
-      </StackPanel>
-
+    <DockPanel Margin="24,12,24,16">
       <TabControl x:Name="Tabs">
         <!-- ===== Groups ===== -->
         <TabItem Header="Gruppen" IsVisible="{Binding ShowGroups}">
@@ -226,4 +230,4 @@
       </TabControl>
     </DockPanel>
   </DockPanel>
-</Window>
+</UserControl>

@@ -55,7 +55,7 @@
                   <PathIcon Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
-              <Button Classes="icon" Click="OnSettingsClick" ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
+              <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
                 <PathIcon Data="{StaticResource Icon.Settings}" />
               </Button>
             </StackPanel>
@@ -187,137 +187,148 @@
 
     <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" />
 
-    <!-- ================= Main area ================= -->
+    <!-- ================= Main area: home, settings or administration, all inside this window (A20) ================= -->
     <Panel Grid.Column="2">
-      <!-- Start screen while not connected -->
-      <ScrollViewer IsVisible="{Binding !IsConnected}">
-        <StackPanel MaxWidth="460" Margin="32" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
-          <Border Width="72" Height="72" CornerRadius="20" Background="{DynamicResource Ovs.AccentSurface}" HorizontalAlignment="Center">
-            <PathIcon Data="{StaticResource Icon.Headphones}" Width="36" Height="36" Classes="accent" />
-          </Border>
-          <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
-          <TextBlock Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
-          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsConnecting}" Width="220" />
-          <Button Classes="accent" HorizontalAlignment="Center" Click="OnConnectClick" IsEnabled="{Binding !IsConnecting}"
-                  Margin="0,4,0,0">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <PathIcon Data="{StaticResource Icon.PlugConnected}" />
-              <TextBlock Text="Verbinden ..." VerticalAlignment="Center" />
+      <Panel IsVisible="{Binding IsHomePage}">
+        <!-- Start screen while not connected -->
+        <ScrollViewer IsVisible="{Binding !IsConnected}">
+          <StackPanel MaxWidth="460" Margin="32" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Width="72" Height="72" CornerRadius="20" Background="{DynamicResource Ovs.AccentSurface}" HorizontalAlignment="Center">
+              <PathIcon Data="{StaticResource Icon.Headphones}" Width="36" Height="36" Classes="accent" />
+            </Border>
+            <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
+            <TextBlock Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsConnecting}" Width="220" />
+            <Button Classes="accent" HorizontalAlignment="Center" Click="OnConnectClick" IsEnabled="{Binding !IsConnecting}"
+                    Margin="0,4,0,0">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <PathIcon Data="{StaticResource Icon.PlugConnected}" />
+                <TextBlock Text="Verbinden ..." VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+
+            <StackPanel Spacing="8" Margin="0,18,0,0" IsVisible="{Binding HasBookmarks}">
+              <TextBlock Classes="section" Text="LESEZEICHEN" />
+              <ItemsControl ItemsSource="{Binding Bookmarks}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="8" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="s:Bookmark">
+                    <Button Classes="tile" Click="OnBookmarkClick"
+                            AutomationProperties.Name="{Binding Name, StringFormat='Mit {0} verbinden'}">
+                      <DockPanel>
+                        <PathIcon DockPanel.Dock="Right" Classes="muted" Data="{StaticResource Icon.ChevronRight}" />
+                        <Border DockPanel.Dock="Left" Classes="badge" Width="32" Height="32" CornerRadius="8">
+                          <TextBlock Text="{Binding Host, Converter={x:Static v:Ui.Initials}}" FontSize="14" />
+                        </Border>
+                        <StackPanel Margin="12,0" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="caption" Text="{Binding Nickname, StringFormat='als {0}'}" />
+                        </StackPanel>
+                      </DockPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </StackPanel>
-          </Button>
-
-          <StackPanel Spacing="8" Margin="0,18,0,0" IsVisible="{Binding HasBookmarks}">
-            <TextBlock Classes="section" Text="LESEZEICHEN" />
-            <ItemsControl ItemsSource="{Binding Bookmarks}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Spacing="8" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="s:Bookmark">
-                  <Button Classes="tile" Click="OnBookmarkClick"
-                          AutomationProperties.Name="{Binding Name, StringFormat='Mit {0} verbinden'}">
-                    <DockPanel>
-                      <PathIcon DockPanel.Dock="Right" Classes="muted" Data="{StaticResource Icon.ChevronRight}" />
-                      <Border DockPanel.Dock="Left" Classes="badge" Width="32" Height="32" CornerRadius="8">
-                        <TextBlock Text="{Binding Host, Converter={x:Static v:Ui.Initials}}" FontSize="14" />
-                      </Border>
-                      <StackPanel Margin="12,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Classes="caption" Text="{Binding Nickname, StringFormat='als {0}'}" />
-                      </StackPanel>
-                    </DockPanel>
-                  </Button>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </StackPanel>
-      </ScrollViewer>
-
-      <!-- Connected: channel header and activity -->
-      <DockPanel IsVisible="{Binding IsConnected}">
-        <Border DockPanel.Dock="Top" Padding="20,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
-          <DockPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-              <Border Classes="chip" IsVisible="{Binding PingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                      ToolTip.Tip="Antwortzeit des Servers">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                  <PathIcon Classes="sm muted" Data="{StaticResource Icon.WifiSignal}" />
-                  <TextBlock Text="{Binding PingText}" />
-                </StackPanel>
-              </Border>
-              <Button Classes="subtle" Click="OnAdminClick" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Data="{StaticResource Icon.ShieldPerson}" />
-                  <TextBlock Text="Verwaltung ..." VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="subtle" Command="{Binding Server.RedeemTokenCommand, FallbackValue={x:Null}}"
-                      IsVisible="{Binding Server.CanRedeemToken, FallbackValue=False}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Data="{StaticResource Icon.Key}" />
-                  <TextBlock Text="Admin-Token einlösen ..." VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-              <Button Classes="danger" Command="{Binding DisconnectCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Data="{StaticResource Icon.CallEnd}" />
-                  <TextBlock Text="Trennen" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-            </StackPanel>
-            <PathIcon DockPanel.Dock="Left" Classes="muted" Data="{StaticResource Icon.Speaker}" Margin="0,0,10,0" VerticalAlignment="Center" />
-            <StackPanel VerticalAlignment="Center">
-              <TextBlock Classes="h2" Text="{Binding Server.CurrentChannel.Name, FallbackValue=''}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Classes="caption" Text="{Binding Server.CurrentChannel.Description, FallbackValue=''}" TextTrimming="CharacterEllipsis"
-                         IsVisible="{Binding Server.CurrentChannel.Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}" />
-            </StackPanel>
-          </DockPanel>
-        </Border>
-
-        <Border DockPanel.Dock="Top" Classes="banner warning" Margin="20,12,20,0"
-                IsVisible="{Binding LinkHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" />
-            <TextBlock Classes="warning" Text="{Binding LinkHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
-          </StackPanel>
-        </Border>
-
-        <ScrollViewer>
-          <StackPanel Margin="20,16" Spacing="10" MaxWidth="820" HorizontalAlignment="Stretch">
-            <TextBlock Classes="section" Text="AKTIVITÄT" />
-            <TextBlock Classes="caption" Text="Noch keine Meldungen." IsVisible="{Binding Notices.Count, Converter={x:Static v:Ui.IsZero}}" />
-            <ItemsControl ItemsSource="{Binding Notices}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Spacing="8" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:Notice">
-                  <Border Classes="card" Padding="14,10" Classes.welcome="{Binding IsWelcome}">
-                    <DockPanel>
-                      <TextBlock DockPanel.Dock="Right" Classes="caption" Text="{Binding TimeText}" Margin="12,1,0,0" VerticalAlignment="Top" />
-                      <Panel DockPanel.Dock="Left" Margin="0,1,12,0" VerticalAlignment="Top">
-                        <PathIcon Classes="accent" Data="{StaticResource Icon.Info}" IsVisible="{Binding IsInfo}" />
-                        <PathIcon Classes="accent" Data="{StaticResource Icon.Info}" IsVisible="{Binding IsWelcome}" />
-                        <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" IsVisible="{Binding IsWarning}" />
-                        <PathIcon Classes="danger" Data="{StaticResource Icon.ErrorCircle}" IsVisible="{Binding IsError}" />
-                      </Panel>
-                      <StackPanel Spacing="2">
-                        <TextBlock Classes="caption" Text="Willkommensnachricht des Servers" IsVisible="{Binding IsWelcome}" />
-                        <TextBlock Classes="body" Text="{Binding Text}" />
-                      </StackPanel>
-                    </DockPanel>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
           </StackPanel>
         </ScrollViewer>
-      </DockPanel>
+
+        <!-- Connected: channel header and activity -->
+        <DockPanel IsVisible="{Binding IsConnected}">
+          <Border DockPanel.Dock="Top" Padding="20,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Border Classes="chip" IsVisible="{Binding PingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        ToolTip.Tip="Antwortzeit des Servers">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <PathIcon Classes="sm muted" Data="{StaticResource Icon.WifiSignal}" />
+                    <TextBlock Text="{Binding PingText}" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="subtle" Command="{Binding OpenAdminCommand}" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource Icon.ShieldPerson}" />
+                    <TextBlock Text="Verwaltung ..." VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="subtle" Command="{Binding Server.RedeemTokenCommand, FallbackValue={x:Null}}"
+                        IsVisible="{Binding Server.CanRedeemToken, FallbackValue=False}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource Icon.Key}" />
+                    <TextBlock Text="Admin-Token einlösen ..." VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="danger" Command="{Binding DisconnectCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource Icon.CallEnd}" />
+                    <TextBlock Text="Trennen" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <PathIcon DockPanel.Dock="Left" Classes="muted" Data="{StaticResource Icon.Speaker}" Margin="0,0,10,0" VerticalAlignment="Center" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Classes="h2" Text="{Binding Server.CurrentChannel.Name, FallbackValue=''}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Classes="caption" Text="{Binding Server.CurrentChannel.Description, FallbackValue=''}" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding Server.CurrentChannel.Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+
+          <Border DockPanel.Dock="Top" Classes="banner warning" Margin="20,12,20,0"
+                  IsVisible="{Binding LinkHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" />
+              <TextBlock Classes="warning" Text="{Binding LinkHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+
+          <ScrollViewer>
+            <StackPanel Margin="20,16" Spacing="10" MaxWidth="820" HorizontalAlignment="Stretch">
+              <TextBlock Classes="section" Text="AKTIVITÄT" />
+              <TextBlock Classes="caption" Text="Noch keine Meldungen." IsVisible="{Binding Notices.Count, Converter={x:Static v:Ui.IsZero}}" />
+              <ItemsControl ItemsSource="{Binding Notices}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="8" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:Notice">
+                    <Border Classes="card" Padding="14,10" Classes.welcome="{Binding IsWelcome}">
+                      <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Classes="caption" Text="{Binding TimeText}" Margin="12,1,0,0" VerticalAlignment="Top" />
+                        <Panel DockPanel.Dock="Left" Margin="0,1,12,0" VerticalAlignment="Top">
+                          <PathIcon Classes="accent" Data="{StaticResource Icon.Info}" IsVisible="{Binding IsInfo}" />
+                          <PathIcon Classes="accent" Data="{StaticResource Icon.Info}" IsVisible="{Binding IsWelcome}" />
+                          <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" IsVisible="{Binding IsWarning}" />
+                          <PathIcon Classes="danger" Data="{StaticResource Icon.ErrorCircle}" IsVisible="{Binding IsError}" />
+                        </Panel>
+                        <StackPanel Spacing="2">
+                          <TextBlock Classes="caption" Text="Willkommensnachricht des Servers" IsVisible="{Binding IsWelcome}" />
+                          <TextBlock Classes="body" Text="{Binding Text}" />
+                        </StackPanel>
+                      </DockPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Panel>
+      <Panel IsVisible="{Binding IsSettingsPage}">
+        <v:SettingsView DataContext="{Binding SettingsPage}" />
+      </Panel>
+      <Panel IsVisible="{Binding IsAdminPage}">
+        <v:AdminView DataContext="{Binding AdminPage}" />
+      </Panel>
     </Panel>
+
+    <!-- Dialogs: a modal layer over the whole window -->
+    <v:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" />
   </Grid>
 </Window>

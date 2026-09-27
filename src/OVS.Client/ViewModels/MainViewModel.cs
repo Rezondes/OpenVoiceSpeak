@@ -19,6 +19,9 @@ public sealed record ConnectChoice(string Host, int Port, string Nickname, strin
 
 public enum NoticeKind { Info, Welcome, Warning, Error }
 
+/// <summary>What the main area shows. Everything stays inside the one main window (A20).</summary>
+public enum Page { Home, Settings, Admin }
+
 /// <summary>One entry of the activity feed. ToString keeps the old "time  text" form for the debug API.</summary>
 public sealed record Notice(DateTime Time, string Text, NoticeKind Kind)
 {
@@ -35,6 +38,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     readonly string storageDir;
     readonly Action<Action> post;
+    readonly bool useAudioDevices;
     readonly KnownServers known;
     ClientConnection? connection;
     VoiceClient? voice;
@@ -47,6 +51,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [ObservableProperty] string status = "Nicht verbunden";
     [ObservableProperty] bool isConnecting;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsHomePage), nameof(IsSettingsPage), nameof(IsAdminPage))]
+    Page page = Page.Home;
+    [ObservableProperty] SettingsViewModel? settingsPage;
+    [ObservableProperty] AdminViewModel? adminPage;
     [ObservableProperty] string pingText = "";
     [ObservableProperty] string transmitText = "";
     [ObservableProperty] string linkHint = "";
@@ -56,6 +66,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         this.storageDir = storageDir;
         this.post = post;
+        this.useAudioDevices = useAudioDevices;
         Log = log ?? new ClientLog(storageDir, TimeProvider.System);
         known = new KnownServers(Path.Combine(storageDir, "known_servers.json"));
         Settings = ClientSettings.Load(storageDir, out var warning);
@@ -89,6 +100,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public AudioEngine Audio { get; }
     public ObservableCollection<Notice> Notices { get; } = [];
     public bool IsConnected => Server is not null;
+    public bool IsHomePage => Page == Page.Home;
+    public bool IsSettingsPage => Page == Page.Settings;
+    public bool IsAdminPage => Page == Page.Admin;
     public IReadOnlyList<Bookmark> Bookmarks => Settings.Bookmarks.ToList();
     public bool HasBookmarks => Settings.Bookmarks.Count > 0;
 
@@ -209,6 +223,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <param name="status">Set before tearing down, so nobody ever sees "disconnected" with a stale status.</param>
     async Task DisconnectAsync(string status)
     {
+        if (Page == Page.Admin) CloseAdmin(); // administration needs a server
         var conn = connection;
         connection = null;
         if (conn is not null) Status = status;
@@ -268,6 +283,64 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Log.Write("UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)");
             udpLogged = false;
         }
+    }
+
+    // ---- Pages ----
+
+    [RelayCommand]
+    public void OpenSettings()
+    {
+        if (Page == Page.Settings) return;
+        ClosePage();
+        var inputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Capture) : [];
+        var outputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Render) : [];
+        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys);
+        vm.CloseRequested += save =>
+        {
+            if (save) ApplySettings(vm.ToSettings(Settings));
+            CloseSettings();
+        };
+        Audio.InputLevel += OnInputLevel;
+        SettingsPage = vm;
+        Page = Page.Settings;
+    }
+
+    void OnInputLevel(float db) => post(() =>
+    {
+        if (SettingsPage is { } vm) vm.InputLevelDb = db;
+    });
+
+    void CloseSettings()
+    {
+        Audio.InputLevel -= OnInputLevel;
+        SettingsPage = null;
+        if (Page == Page.Settings) Page = Page.Home;
+    }
+
+    [RelayCommand]
+    public async Task OpenAdminAsync()
+    {
+        if (Server is not { CanAdminister: true } server || Page == Page.Admin) return;
+        ClosePage();
+        var vm = new AdminViewModel(server);
+        vm.CloseRequested += CloseAdmin;
+        AdminPage = vm;
+        Page = Page.Admin;
+        await vm.RequestListsAsync();
+    }
+
+    void CloseAdmin()
+    {
+        AdminPage?.Detach();
+        AdminPage = null;
+        if (Page == Page.Admin) Page = Page.Home;
+    }
+
+    /// <summary>Esc: leaves settings without saving, or the administration.</summary>
+    public void ClosePage()
+    {
+        if (Page == Page.Settings) CloseSettings();
+        else if (Page == Page.Admin) CloseAdmin();
     }
 
     public void AddNotice(string text, NoticeKind kind = NoticeKind.Info)

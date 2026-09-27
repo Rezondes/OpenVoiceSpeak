@@ -1,9 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Threading;
-using NAudio.CoreAudioApi;
-using OVS.Client.Audio;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 
@@ -11,9 +8,16 @@ namespace OVS.Client.Views;
 
 public partial class MainWindow : Window
 {
-    public MainWindow() => InitializeComponent();
+    public MainWindow()
+    {
+        InitializeComponent();
+        AddHandler(KeyDownEvent, OnKeyDown);
+    }
 
     MainViewModel Vm => (MainViewModel)DataContext!;
+
+    /// <summary>The modal layer for all dialogs (A20: no second window).</summary>
+    public OverlayHost Overlay => OverlayLayer;
 
     async void OnConnectClick(object? sender, RoutedEventArgs e) => await ConnectAsync(null);
 
@@ -23,38 +27,15 @@ public partial class MainWindow : Window
     async Task ConnectAsync(Bookmark? preselect)
     {
         if (Vm.IsConnecting) return;
-        if (await SimpleDialogs.Connect(this, Vm.Settings, preselect) is { } choice) await Vm.ConnectAsync(choice);
+        if (await SimpleDialogs.Connect(Overlay, Vm.Settings, preselect) is { } choice) await Vm.ConnectAsync(choice);
     }
 
-    async void OnSettingsClick(object? sender, RoutedEventArgs e)
+    /// <summary>Esc leaves settings (without saving) or the administration. An open dialog handles Esc itself first.</summary>
+    void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        var vm = new SettingsViewModel(Vm.Settings, AudioDevices.List(DataFlow.Capture), AudioDevices.List(DataFlow.Render), Vm.Keys);
-        void OnLevel(float db) => Dispatcher.UIThread.Post(() => vm.InputLevelDb = db);
-        Vm.Audio.InputLevel += OnLevel;
-        try
-        {
-            if (await new SettingsDialog { DataContext = vm }.ShowDialog<bool>(this))
-                Vm.ApplySettings(vm.ToSettings(Vm.Settings));
-        }
-        finally
-        {
-            Vm.Audio.InputLevel -= OnLevel;
-        }
-    }
-
-    async void OnAdminClick(object? sender, RoutedEventArgs e)
-    {
-        if (Vm.Server is not { } server) return;
-        var vm = new AdminViewModel(server);
-        await vm.RequestListsAsync();
-        try
-        {
-            await new AdminDialog { DataContext = vm }.ShowDialog(this);
-        }
-        finally
-        {
-            vm.Detach();
-        }
+        if (e.Handled || e.Key != Key.Escape || Overlay.IsOpen || Vm.IsHomePage) return;
+        Vm.ClosePage();
+        e.Handled = true;
     }
 
     void OnChannelDoubleTapped(object? sender, TappedEventArgs e)

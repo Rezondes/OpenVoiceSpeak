@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -16,6 +17,7 @@ using OVS.Client.Views;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Tests.Client;
+using OVS.Tests.TestSupport;
 
 [assembly: AvaloniaTestApplication(typeof(UiTestApp))]
 
@@ -47,7 +49,6 @@ sealed class CollectingSink : ILogSink
 /// </summary>
 public sealed class UiSmokeTests : IDisposable
 {
-    static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid();
     readonly string dir = Directory.CreateTempSubdirectory("ovs-ui-").FullName;
 
     public void Dispose()
@@ -59,19 +60,6 @@ public sealed class UiSmokeTests : IDisposable
         catch (IOException)
         {
         }
-    }
-
-    static ServerViewModel FakeServer()
-    {
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), Lobby,
-            [new ChannelInfo(Lobby, "Lobby", "Start", 0), new ChannelInfo(Raid, "Raid", "", 1)],
-            [new LinkInfo(Lobby, Raid)],
-            [new GroupInfo(WellKnownGroups.Guest, "Gast", Permission.Speak), new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
-            [
-                new UserInfo(1, "fp1", "ich", Lobby, false, false, false, Permission.All, [WellKnownGroups.Admin]),
-                new UserInfo(2, "fp2", "anna", Raid, true, true, true, Permission.Speak, [WellKnownGroups.Guest]),
-            ]);
-        return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);
     }
 
     static IEnumerable<string?> Texts(Visual root) => root.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text);
@@ -94,44 +82,7 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("voice.example.org:7000", Texts(main)); // start screen with bookmark tile
 
-        vm.Server = FakeServer();
-        foreach (var kind in Enum.GetValues<NoticeKind>()) vm.AddNotice($"Meldung {kind}", kind);
-        Dispatcher.UIThread.RunJobs();
-        var texts = Texts(main).ToList();
-        Assert.Contains("Raid", texts);
-        Assert.Contains("anna", texts);
-        Assert.Contains("Meldung Error", texts);
-        Assert.Contains("Willkommensnachricht des Servers", texts);
-
-        var settingsDialog = new SettingsDialog { DataContext = new SettingsViewModel(settings, [new AudioDevice("a", "Mikro")], []) };
-        settingsDialog.Show();
-        Dispatcher.UIThread.RunJobs();
-        Assert.Contains("DARSTELLUNG", Texts(settingsDialog));
-        settingsDialog.Close();
-
-        var admin = new AdminDialog { DataContext = new AdminViewModel(vm.Server) };
-        admin.Show();
-        Dispatcher.UIThread.RunJobs();
-        Assert.Contains("Verwaltung", Texts(admin));
-        admin.Close();
-
-        void Dialog(Func<Window, Task> open, string title)
-        {
-            _ = open(main);
-            Dispatcher.UIThread.RunJobs();
-            var dialog = main.OwnedWindows.Single();
-            Assert.Contains(title, Texts(dialog));
-            dialog.Close();
-            Dispatcher.UIThread.RunJobs();
-        }
-        Dialog(o => SimpleDialogs.Connect(o, vm.Settings), "Mit Server verbinden");
-        Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Mismatch)), "Serverzertifikat prüfen");
-        Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
-        Dialog(o => SimpleDialogs.Ban(o, "anna"), "anna bannen");
-        Dialog(o => SimpleDialogs.Confirm(o, "Wirklich?"), "Bestätigen");
-        Dialog(o => SimpleDialogs.EditChannel(o, "Channel anlegen", "", ""), "Channel anlegen");
-        Dialog(o => SimpleDialogs.PickChannel(o, "Verschieben nach", vm.Server!.Channels), "Verschieben nach");
-        Dialog(o => SimpleDialogs.AskText(o, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
+        ExercisePagesAndDialogs(main, vm);
         main.Close();
         Logger.Sink = null;
         Assert.True(sink.Problems.Count == 0, string.Join(Environment.NewLine, sink.Problems.Distinct()));
@@ -150,6 +101,96 @@ public sealed class UiSmokeTests : IDisposable
         Assert.NotEmpty(keys);
         foreach (var key in keys)
             Assert.True(Application.Current!.TryFindResource(key, out var value) && value is Geometry, $"{key} fehlt in Styles/Icons.axaml");
+    }
+
+    /// <summary>Every page and every dialog, shown inside the main window.</summary>
+    static void ExercisePagesAndDialogs(MainWindow main, MainViewModel vm)
+    {
+        vm.Server = FakeServers.Admin();
+        foreach (var kind in Enum.GetValues<NoticeKind>()) vm.AddNotice($"Meldung {kind}", kind);
+        Dispatcher.UIThread.RunJobs();
+        var texts = Texts(main).ToList();
+        Assert.Contains("Raid", texts);
+        Assert.Contains("anna", texts);
+        Assert.Contains("Meldung Error", texts);
+        Assert.Contains("Willkommensnachricht des Servers", texts);
+
+        vm.OpenSettings();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("DARSTELLUNG", Texts(main));
+        vm.ClosePage();
+
+        _ = vm.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.IsAdminPage);
+        Assert.Contains("Gruppen", Texts(main));
+        vm.ClosePage();
+
+        void Dialog(Func<OverlayHost, Task> open, string title)
+        {
+            var shown = open(main.Overlay);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(main.Overlay.IsOpen, title);
+            Assert.Contains(title, Texts(main.Overlay));
+            main.Overlay.Close();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(shown.IsCompleted, title);
+        }
+        Dialog(o => SimpleDialogs.Connect(o, vm.Settings), "Mit Server verbinden");
+        Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Mismatch)), "Serverzertifikat prüfen");
+        Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
+        Dialog(o => SimpleDialogs.Ban(o, "anna"), "anna bannen");
+        Dialog(o => SimpleDialogs.Confirm(o, "Wirklich?"), "Bestätigen");
+        Dialog(o => SimpleDialogs.EditChannel(o, "Channel anlegen", "", ""), "Channel anlegen");
+        Dialog(o => SimpleDialogs.PickChannel(o, "Verschieben nach", vm.Server!.Channels), "Verschieben nach");
+        Dialog(o => SimpleDialogs.AskText(o, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
+    }
+
+    /// <summary>A20: settings, administration and all dialogs live inside the one main window.</summary>
+    [AvaloniaFact]
+    public void NoSecondWindow_EverOpens()
+    {
+        int opened = 0;
+        using var counting = Window.WindowOpenedEvent.AddClassHandler(typeof(Window), (_, _) => opened++);
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        ExercisePagesAndDialogs(main, vm);
+
+        main.Close();
+        Assert.Equal(1, opened);
+    }
+
+    [AvaloniaFact]
+    public void Overlay_EscCancels_EnterConfirms_EscClosesPage()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var first = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
+        Dispatcher.UIThread.RunJobs();
+        main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(first.IsCompleted);
+        Assert.False(first.Result);
+
+        var second = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
+        Dispatcher.UIThread.RunJobs();
+        main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(second.IsCompleted);
+        Assert.True(second.Result);
+
+        vm.OpenSettings();
+        Dispatcher.UIThread.RunJobs();
+        main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.IsHomePage);
+        main.Close();
     }
 
     [Fact]
