@@ -114,40 +114,48 @@
           </Border>
         </StackPanel>
 
-        <!-- Keys -->
+        <!-- Keys: every action, bound or not. Keys work globally, also while a game has the focus. -->
         <StackPanel Spacing="8">
           <TextBlock Classes="section" Text="TASTEN" />
           <Border Classes="card">
-            <StackPanel Spacing="12">
-              <DockPanel>
-                <Button DockPanel.Dock="Right" Command="{Binding CapturePttKeyCommand}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.Keyboard}" />
-                    <TextBlock Text="Ändern ..." />
-                  </StackPanel>
-                </Button>
-                <StackPanel Spacing="4">
-                  <TextBlock Classes="label" Text="Push-to-Talk" />
-                  <Border Classes="keycap" HorizontalAlignment="Left">
-                    <TextBlock Text="{Binding PttKeyName}" />
-                  </Border>
-                </StackPanel>
-              </DockPanel>
-              <Border Classes="divider" />
-              <DockPanel>
-                <Button DockPanel.Dock="Right" Command="{Binding CaptureLinkPttKeyCommand}">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.Keyboard}" />
-                    <TextBlock Text="Ändern ..." />
-                  </StackPanel>
-                </Button>
-                <StackPanel Spacing="4">
-                  <TextBlock Classes="label" Text="Link-PTT (eigener Channel und verlinkte Channels)" />
-                  <Border Classes="keycap" HorizontalAlignment="Left">
-                    <TextBlock Text="{Binding LinkPttKeyName}" />
-                  </Border>
-                </StackPanel>
-              </DockPanel>
+            <StackPanel Spacing="10">
+              <TextBlock Classes="caption" TextWrapping="Wrap"
+                         Text="Tasten wirken überall, auch während ein Spiel im Vordergrund ist. Kombinationen mit Strg, Umschalt und Alt sind möglich." />
+              <ItemsControl ItemsSource="{Binding KeyRows}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="10" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:KeyBindingRow">
+                    <DockPanel>
+                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <Button Command="{Binding AssignCommand}" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: Taste belegen'}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Classes="sm" Data="{StaticResource Icon.Keyboard}" />
+                            <TextBlock Text="{Binding AssignText}" />
+                          </StackPanel>
+                        </Button>
+                        <!-- Keeps its space when hidden, so the buttons line up in every row -->
+                        <Panel Width="36">
+                          <Button Classes="icon" Command="{Binding ClearCommand}" IsVisible="{Binding IsBound}"
+                                  ToolTip.Tip="Belegung entfernen" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: Belegung entfernen'}">
+                            <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                          </Button>
+                        </Panel>
+                      </StackPanel>
+                      <StackPanel Spacing="4">
+                        <TextBlock Classes="label" Text="{Binding Label}" />
+                        <Border Classes="keycap" HorizontalAlignment="Left" IsVisible="{Binding IsBound}">
+                          <TextBlock Text="{Binding ChordName}" />
+                        </Border>
+                        <TextBlock Classes="caption" Text="Nicht belegt" IsVisible="{Binding !IsBound}" />
+                      </StackPanel>
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
               <Border Classes="banner accent" IsVisible="{Binding CaptureHint, Converter={x:Static ObjectConverters.IsNotNull}}">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <PathIcon Classes="accent" Data="{StaticResource Icon.Keyboard}" />

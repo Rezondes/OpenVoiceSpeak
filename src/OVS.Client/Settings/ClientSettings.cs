@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Net;
@@ -21,8 +22,18 @@ public sealed class ClientSettings
     public float InputGain { get; set; } = 1f;       // 0..2
     public float OutputVolume { get; set; } = 1f;    // 0..1
     public TransmitMode Mode { get; set; } = TransmitMode.PushToTalk;
-    public int PttKey { get; set; } = KeyPoller.VkXButton1;
-    public int LinkPttKey { get; set; } = KeyPoller.VkXButton2;
+    /// <summary>No bindings by default (Package 29): a new profile starts without any key.</summary>
+    public List<KeyBinding> KeyBindings { get; set; } = [];
+
+    /// <summary>Profiles from before Package 29 stored exactly these two keys. Read once, turned into bindings, never written.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? PttKey { get; set; }
+
+    /// <inheritdoc cref="PttKey"/>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LinkPttKey { get; set; }
+
+    public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(b => b.Action == action)?.Chord;
     public float VadThresholdDb { get; set; } = -40f; // -60..-10
     public AppTheme Theme { get; set; } = AppTheme.System;
 
@@ -42,7 +53,7 @@ public sealed class ClientSettings
         if (!File.Exists(path)) return new ClientSettings();
         try
         {
-            return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), Options) ?? new ClientSettings()).Clamp();
+            return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), Options) ?? new ClientSettings()).MigrateKeys().Clamp();
         }
         catch (JsonException)
         {
@@ -50,6 +61,19 @@ public sealed class ClientSettings
             warning = $"Einstellungen waren beschädigt und wurden zurückgesetzt (Sicherung: {path}.bak).";
             return new ClientSettings();
         }
+    }
+
+    /// <summary>An existing profile keeps its two keys (A25), now as bindings.</summary>
+    ClientSettings MigrateKeys()
+    {
+        if (KeyBindings.Count == 0)
+        {
+            if (PttKey is int ptt && ptt > 0) KeyBindings.Add(new KeyBinding(KeyAction.PushToTalk, new KeyChord(ptt)));
+            if (LinkPttKey is int link && link > 0 && link != PttKey) KeyBindings.Add(new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(link)));
+        }
+        PttKey = null;
+        LinkPttKey = null;
+        return this;
     }
 
     public void Save(string directory)

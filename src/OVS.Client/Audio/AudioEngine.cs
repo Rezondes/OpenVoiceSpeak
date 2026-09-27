@@ -189,7 +189,8 @@ public sealed class AudioEngine : IDisposable
 
     byte? Decide(bool voiceActive)
     {
-        var target = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, selfMuted || !connected, hasSpeakLinked);
+        // Push-to-mute counts like the own mute: it beats every way of sending (Package 29).
+        var target = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, selfMuted || !connected || keys.MuteHeld, hasSpeakLinked);
         if (target != lastTarget)
         {
             lastTarget = target;

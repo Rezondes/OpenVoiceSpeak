@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio;
@@ -32,14 +33,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] string? deviceHint;
     [ObservableProperty] string? captureHint;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PttKeyName), nameof(HasKeyConflict), nameof(CanSave), nameof(Error))]
-    int pttKey;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(LinkPttKeyName), nameof(HasKeyConflict), nameof(CanSave), nameof(Error))]
-    int linkPttKey;
-
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice> inputs, IReadOnlyList<AudioDevice> outputs, KeyPoller? keys = null)
     {
         this.keys = keys;
@@ -57,8 +50,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         outputVolumePercent = current.OutputVolume * 100f;
         voiceActivation = current.Mode == TransmitMode.VoiceActivation;
         vadThresholdDb = current.VadThresholdDb;
-        pttKey = current.PttKey;
-        linkPttKey = current.LinkPttKey;
+        KeyRows = new(KeyActions.All.Select(a => new KeyBindingRow(a, current.ChordFor(a), CaptureAsync, OnKeysChanged)));
         selectedTheme = Themes.First(t => t.Value == current.Theme);
     }
 
@@ -74,38 +66,47 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<AudioDeviceOption> Inputs { get; }
     public IReadOnlyList<AudioDeviceOption> Outputs { get; }
-    public string PttKeyName => KeyPoller.KeyName(PttKey);
-    public string LinkPttKeyName => KeyPoller.KeyName(LinkPttKey);
-    public bool HasKeyConflict => PttKey == LinkPttKey;
+    /// <summary>One row per action, unbound ones included.</summary>
+    public ObservableCollection<KeyBindingRow> KeyRows { get; }
+
+    /// <summary>Two actions on the same key combination: the first such pair.</summary>
+    (KeyBindingRow A, KeyBindingRow B)? Conflict =>
+        KeyRows.Where(r => r.Chord is not null).GroupBy(r => r.Chord).Where(g => g.Count() > 1)
+            .Select(g => ((KeyBindingRow, KeyBindingRow)?)(g.First(), g.Skip(1).First())).FirstOrDefault();
+
+    public bool HasKeyConflict => Conflict is not null;
+
+    void OnKeysChanged()
+    {
+        OnPropertyChanged(nameof(HasKeyConflict));
+        OnPropertyChanged(nameof(CanSave));
+        OnPropertyChanged(nameof(Error));
+    }
+
+    async Task<KeyChord?> CaptureAsync(KeyAction action)
+    {
+        if (keys is null) return null;
+        CaptureHint = $"Drücke jetzt die Taste oder Kombination für \"{KeyActions.Label(action)}\" ...";
+        try
+        {
+            return await keys.CaptureNextChordAsync();
+        }
+        finally
+        {
+            CaptureHint = null;
+        }
+    }
 
     /// <summary>Would voice activation send right now?</summary>
     public bool IsAboveThreshold => InputLevelDb >= VadThresholdDb;
     public bool CanSave => !HasKeyConflict;
-    public string? Error => HasKeyConflict ? "PTT und Link-PTT brauchen unterschiedliche Tasten." : null;
+    public string? Error => Conflict is var (a, b) ? $"\"{KeyActions.Label(a.Action)}\" und \"{KeyActions.Label(b.Action)}\" liegen auf derselben Taste." : null;
 
     partial void OnInputGainPercentChanged(double value) => InputGainPercent = Math.Clamp(value, 0, 200);
     partial void OnOutputVolumePercentChanged(double value) => OutputVolumePercent = Math.Clamp(value, 0, 100);
     partial void OnVadThresholdDbChanged(double value) => VadThresholdDb = Math.Clamp(value, -60, -10);
 
     public event Action<bool>? CloseRequested;
-
-    [RelayCommand]
-    async Task CapturePttKey()
-    {
-        if (keys is null) return;
-        CaptureHint = "Drücke jetzt die gewünschte PTT-Taste ...";
-        PttKey = await keys.CaptureNextKeyAsync();
-        CaptureHint = null;
-    }
-
-    [RelayCommand]
-    async Task CaptureLinkPttKey()
-    {
-        if (keys is null) return;
-        CaptureHint = "Drücke jetzt die gewünschte Link-PTT-Taste ...";
-        LinkPttKey = await keys.CaptureNextKeyAsync();
-        CaptureHint = null;
-    }
 
     [RelayCommand]
     void Save()
@@ -125,9 +126,33 @@ public sealed partial class SettingsViewModel : ObservableObject
         InputGain = (float)(InputGainPercent / 100),
         OutputVolume = (float)(OutputVolumePercent / 100),
         Mode = VoiceActivation ? TransmitMode.VoiceActivation : TransmitMode.PushToTalk,
-        PttKey = PttKey,
-        LinkPttKey = LinkPttKey,
+        KeyBindings = KeyRows.Where(r => r.Chord is not null).Select(r => new KeyBinding(r.Action, r.Chord!)).ToList(),
         VadThresholdDb = (float)VadThresholdDb,
         Theme = SelectedTheme.Value,
     }.Clamp();
+}
+
+/// <summary>One action in the key list: its label, its key combination (or none) and the two buttons.</summary>
+public sealed partial class KeyBindingRow(KeyAction action, KeyChord? initial, Func<KeyAction, Task<KeyChord?>> capture, Action changed) : ObservableObject
+{
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChordName), nameof(IsBound), nameof(AssignText))]
+    KeyChord? chord = initial;
+
+    public KeyAction Action { get; } = action;
+    public string Label => KeyActions.Label(Action);
+    public string ChordName => Chord?.Name ?? "Nicht belegt";
+    public bool IsBound => Chord is not null;
+    public string AssignText => IsBound ? "Ändern ..." : "Belegen ...";
+
+    partial void OnChordChanged(KeyChord? value) => changed();
+
+    [RelayCommand]
+    async Task Assign()
+    {
+        if (await capture(Action) is { } captured) Chord = captured;
+    }
+
+    [RelayCommand]
+    void Clear() => Chord = null;
 }

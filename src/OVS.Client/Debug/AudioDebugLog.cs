@@ -24,11 +24,12 @@ public sealed class AudioDebugLog : IDisposable
         this.log = log;
         keys.Changed += OnKeys;
         audio.InputLevel += OnLevel;
-        Write($"gestartet, PTT = {KeyPoller.KeyName(keys.PttKey)}, Link-PTT = {KeyPoller.KeyName(keys.LinkPttKey)}");
+        Write($"gestartet, Tasten: {(keys.Bindings.Count == 0 ? "keine" : string.Join(", ", keys.Bindings.Select(b => $"{KeyActions.Label(b.Action)} = {b.Chord.Name}")))}");
         timer = new Timer(_ => OnSecond(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
-    void OnKeys() => Write($"PTT {(keys.PttDown ? "gedrückt" : "losgelassen")}, Link-PTT {(keys.LinkPttDown ? "gedrückt" : "losgelassen")}");
+    void OnKeys() => Write($"PTT {(keys.PttDown ? "gedrückt" : "losgelassen")}, Link-PTT {(keys.LinkPttDown ? "gedrückt" : "losgelassen")}, " +
+                           $"Push-to-Mute {(keys.MuteHeld ? "gedrückt" : "losgelassen")}");
 
     void OnLevel(float db) => lastLevel = db;
 

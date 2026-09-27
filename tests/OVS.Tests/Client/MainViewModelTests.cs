@@ -2,6 +2,7 @@ using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
+using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;
@@ -51,6 +52,43 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var saved = ClientSettings.Load(dir, out _);
         var bookmark = Assert.Single(saved.Bookmarks);
         Assert.Equal(("127.0.0.1", server.Port, "anna"), (bookmark.Host, bookmark.Port, bookmark.Nickname));
+    }
+
+    /// <summary>Package 29: toggle keys work like the buttons and reach the server.</summary>
+    [Fact]
+    public async Task ToggleActions_SyncWithServer()
+    {
+        await ConnectAsync(saveBookmark: false);
+        await using var bert = await TestClient.ConnectAsync(server, "bert");
+        var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
+
+        vm.Keys.Simulate(KeyAction.ToggleMute, true);
+        await Task.Delay(60);
+        vm.Keys.Simulate(KeyAction.ToggleMute, false);
+        var muted = await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfMuted);
+        Assert.False(muted.User.SelfDeafened);
+        Assert.True(await OnUi(() => vm.Server!.SelfMuted));
+
+        vm.Keys.Simulate(KeyAction.ToggleDeafen, true);
+        await Task.Delay(60);
+        vm.Keys.Simulate(KeyAction.ToggleDeafen, false);
+        await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfDeafened);
+    }
+
+    [Fact]
+    public async Task TalkHint_NoPttBinding_UntilBound()
+    {
+        Assert.True(await OnUi(() => vm.HasNoPttBinding));
+        Assert.Equal("Keine PTT-Taste belegt", await OnUi(() => vm.TalkHint));
+        await OnUi(() =>
+        {
+            var s = vm.Settings;
+            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1))];
+            vm.ApplySettings(s);
+            return 0;
+        });
+        Assert.False(await OnUi(() => vm.HasNoPttBinding));
+        Assert.Equal("PTT: Maustaste 4", await OnUi(() => vm.TalkHint));
     }
 
     [Fact]
@@ -104,7 +142,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task StartScreen_BookmarksAndConnectingState()
     {
         Assert.False(await OnUi(() => vm.HasBookmarks));
-        Assert.Equal("PTT: Maustaste 4", await OnUi(() => vm.TalkHint));
+        Assert.Equal("Keine PTT-Taste belegt", await OnUi(() => vm.TalkHint)); // new profiles have no keys (Package 29)
         var changed = new List<string?>();
         await OnUi(() =>
         {
@@ -170,7 +208,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public void Deafened_Engine_IgnoresIncomingVoice()
     {
-        using var keys = new KeyPoller { PttKey = 0, LinkPttKey = 0 }; // simulated keys only
+        using var keys = new KeyPoller(); // no bindings: only simulated keys count
         using var engine = new AudioEngine(keys, useDevices: false) { Deafened = true };
         engine.OnVoice(7, 0, 0, new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]));
         Assert.Empty(engine.FramesReceived);
@@ -180,7 +218,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task ToneInput_ReportsInputLevel()
     {
-        using var keys = new KeyPoller { PttKey = 0, LinkPttKey = 0 }; // simulated keys only
+        using var keys = new KeyPoller(); // no bindings: only simulated keys count
         using var engine = new AudioEngine(keys, useDevices: false);
         var level = new TaskCompletionSource<float>();
         engine.InputLevel += db => level.TrySetResult(db);

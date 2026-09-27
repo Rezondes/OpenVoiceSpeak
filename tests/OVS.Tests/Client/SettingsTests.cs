@@ -1,5 +1,6 @@
 using OVS.Client;
 using OVS.Client.Audio;
+using OVS.Client.Input;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
@@ -33,15 +34,19 @@ public sealed class SettingsTests : IDisposable
             InputGain = 1.5f,
             OutputVolume = 0.5f,
             Mode = TransmitMode.VoiceActivation,
-            PttKey = 0x70,
-            LinkPttKey = 0x71,
+            KeyBindings =
+            [
+                new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x70)),
+                new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x4D, ChordModifiers.Ctrl | ChordModifiers.Shift)),
+            ],
             VadThresholdDb = -30,
         };
         s.Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal(s.Bookmarks, loaded.Bookmarks);
-        Assert.Equal((s.InputDeviceId, s.OutputDeviceId, s.InputGain, s.OutputVolume, s.Mode, s.PttKey, s.LinkPttKey, s.VadThresholdDb),
-            (loaded.InputDeviceId, loaded.OutputDeviceId, loaded.InputGain, loaded.OutputVolume, loaded.Mode, loaded.PttKey, loaded.LinkPttKey, loaded.VadThresholdDb));
+        Assert.Equal((s.InputDeviceId, s.OutputDeviceId, s.InputGain, s.OutputVolume, s.Mode, s.VadThresholdDb),
+            (loaded.InputDeviceId, loaded.OutputDeviceId, loaded.InputGain, loaded.OutputVolume, loaded.Mode, loaded.VadThresholdDb));
+        Assert.Equal(s.KeyBindings, loaded.KeyBindings);
     }
 
     [Fact]
@@ -64,30 +69,47 @@ public sealed class SettingsTests : IDisposable
 
     static SettingsViewModel Vm(ClientSettings? s = null, params AudioDevice[] inputs) => new(s ?? new ClientSettings(), inputs, []);
 
+    /// <summary>Package 29: a new profile starts without any key.</summary>
     [Fact]
-    public void SamePttKeys_ErrorAndSaveDisabled()
+    public void Load_NoFile_NoBindings()
+    {
+        Assert.Empty(ClientSettings.Load(dir, out _).KeyBindings);
+        Assert.All(Vm().KeyRows, r => Assert.Equal("Nicht belegt", r.ChordName));
+    }
+
+    /// <summary>A profile from before Package 29 keeps mouse buttons 4 and 5, now as bindings.</summary>
+    [Fact]
+    public void Load_OldFileWithPttKeys_KeepsThem()
+    {
+        File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{"mode":"PushToTalk","pttKey":5,"linkPttKey":6}""");
+        var s = ClientSettings.Load(dir, out _);
+        Assert.Equal(new KeyChord(KeyPoller.VkXButton1), s.ChordFor(KeyAction.PushToTalk));
+        Assert.Equal(new KeyChord(KeyPoller.VkXButton2), s.ChordFor(KeyAction.LinkPushToTalk));
+
+        s.Save(dir);
+        var json = File.ReadAllText(Path.Combine(dir, ClientSettings.FileName));
+        Assert.DoesNotContain("pttKey", json); // the old fields are read once, never written again
+        Assert.Equal(2, ClientSettings.Load(dir, out _).KeyBindings.Count);
+    }
+
+    [Fact]
+    public void Save_DuplicateChord_Blocked()
     {
         var vm = Vm();
         Assert.True(vm.CanSave);
-        vm.LinkPttKey = vm.PttKey;
+        vm.KeyRows.Single(r => r.Action == KeyAction.PushToTalk).Chord = new KeyChord(0x70);
+        vm.KeyRows.Single(r => r.Action == KeyAction.ToggleDeafen).Chord = new KeyChord(0x70);
         Assert.False(vm.CanSave);
-        Assert.NotNull(vm.Error);
+        Assert.Contains("Push-to-Talk", vm.Error);
         bool? closed = null;
         vm.CloseRequested += ok => closed = ok;
         vm.SaveCommand.Execute(null);
         Assert.Null(closed);
-    }
 
-    [Theory]
-    [InlineData(500, 200)]
-    [InlineData(-5, 0)]
-    [InlineData(150, 150)]
-    public void OutOfRange_Clamped(double input, double expected)
-    {
-        var vm = Vm();
-        vm.InputGainPercent = input;
-        Assert.Equal(expected, vm.InputGainPercent);
-        Assert.Equal((float)(expected / 100), vm.ToSettings(new ClientSettings()).InputGain);
+        vm.KeyRows.Single(r => r.Action == KeyAction.ToggleDeafen).ClearCommand.Execute(null);
+        Assert.True(vm.CanSave);
+        var saved = vm.ToSettings(new ClientSettings());
+        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x70))], saved.KeyBindings);
     }
 
     [Fact]

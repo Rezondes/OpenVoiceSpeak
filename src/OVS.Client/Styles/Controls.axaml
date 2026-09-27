@@ -288,6 +288,20 @@
     <Setter Property="Background" Value="{DynamicResource Ovs.Border}" />
   </Style>
 
+  <!-- Text that works like a link, e.g. the "no PTT key" hint -->
+  <Style Selector="Button.hint">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="Button.hint:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.hint:pointerover TextBlock">
+    <Setter Property="TextDecorations" Value="Underline" />
+  </Style>
+
   <!-- Quiet text button with icon, for secondary header actions -->
   <Style Selector="Button.subtle">
     <Setter Property="Background" Value="Transparent" />

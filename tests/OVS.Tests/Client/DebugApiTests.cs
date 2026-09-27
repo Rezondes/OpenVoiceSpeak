@@ -44,8 +44,6 @@ public sealed class DebugApiTests : IAsyncLifetime
         public static async Task<Instance> StartAsync()
         {
             var i = new Instance();
-            // Keys only through the API: a real mouse button 4 or 5 pressed while the tests run must not transmit.
-            new ClientSettings { PttKey = 0, LinkPttKey = 0 }.Save(i.dir);
             i.vm = await i.ui.InvokeAsync(() => Task.FromResult(new MainViewModel(i.dir, i.ui.Post, useAudioDevices: false)));
             var probe = new TcpListener(IPAddress.Loopback, 0);
             probe.Start();
@@ -207,6 +205,24 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.Post("ptt", new { down = true });
         await Task.Delay(300);
         Assert.Equal(sentBefore, (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64());
+    }
+
+    /// <summary>Package 29: every key action can be simulated through the API.</summary>
+    [Fact]
+    public async Task Keys_SimulateEveryAction()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+        await anna.Post("key", new { action = "PushToMute", down = true });
+        await anna.Until(s => s.GetProperty("audio").GetProperty("pushToMute").GetBoolean());
+        await anna.Post("key", new { action = "PushToMute", down = false });
+
+        await anna.Post("key", new { action = "ToggleMute" });
+        await anna.Until(s => s.GetProperty("server").GetProperty("selfMuted").GetBoolean());
+        await anna.Post("key", new { action = "ToggleDeafen" });
+        await anna.Until(s => s.GetProperty("server").GetProperty("selfDeafened").GetBoolean());
+
+        var response = await anna.Http.PostAsJsonAsync("key", new { action = "Tanzen" });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

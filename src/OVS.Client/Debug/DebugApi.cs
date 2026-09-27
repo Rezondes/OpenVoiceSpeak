@@ -1,6 +1,7 @@
 using System.Net;
 using NAudio.CoreAudioApi;
 using OVS.Client.Audio;
+using OVS.Client.Input;
 using System.Text.Json;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -22,6 +23,8 @@ public sealed class DebugApiException(string message) : Exception(message);
 /// POST /join         {channel}                  name or id
 /// POST /ptt          {down}                     simulated push-to-talk key
 /// POST /linkptt      {down}                     simulated link push-to-talk key
+/// POST /key          {action, down?}            any key action (PushToTalk, LinkPushToTalk, PushToMute, ToggleMute, ToggleDeafen);
+///                                                without down: press and release once
 /// POST /mute         {value}    /deafen {value}
 /// POST /tone         {hz}                       test tone instead of microphone, null = microphone
 /// POST /redeem       {token}
@@ -132,6 +135,9 @@ public sealed class DebugApi : IDisposable
                 return new { ok = true };
             case "/linkptt":
                 vm.Keys.Simulate(linkPtt: body.GetProperty("down").GetBoolean());
+                return new { ok = true };
+            case "/key":
+                await SimulateKeyAsync(body);
                 return new { ok = true };
             case "/tone":
                 vm.Audio.SetTone(Optional(body, "hz")?.GetDouble());
@@ -268,8 +274,27 @@ public sealed class DebugApi : IDisposable
                 vm.Audio.ToneHz,
                 Ptt = vm.Keys.PttDown,
                 LinkPtt = vm.Keys.LinkPttDown,
+                PushToMute = vm.Keys.MuteHeld,
             },
+            KeyBindings = vm.Settings.KeyBindings.Select(b => new { b.Action, Chord = b.Chord.Name }).ToList(),
         };
+    }
+
+    /// <summary>Hold actions take "down"; without it the key is pressed and released, which fires a toggle once.</summary>
+    async Task SimulateKeyAsync(JsonElement body)
+    {
+        var name = Text(body, "action");
+        if (!Enum.TryParse<KeyAction>(name, ignoreCase: true, out var action))
+            throw new DebugApiException($"Unbekannte Aktion '{name}', erlaubt: {string.Join(", ", KeyActions.All)}");
+        if (Optional(body, "down") is { } down)
+        {
+            vm.Keys.Simulate(action, down.GetBoolean());
+            return;
+        }
+        vm.Keys.Simulate(action, true);
+        await Task.Delay(50); // a few polls of the key thread
+        vm.Keys.Simulate(action, false);
+        await Task.Delay(30);
     }
 
     static JsonElement? Optional(JsonElement body, string name) =>

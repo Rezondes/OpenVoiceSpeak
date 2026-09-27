@@ -121,7 +121,8 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiert
 **Bedienung:**
 - Der Startbildschirm zeigt "Verbinden ..." und deine Lesezeichen. Der Dialog fragt Adresse, Port, Nickname und optional das Serverpasswort ab. Mit "Als Lesezeichen speichern" steht der Server beim nächsten Mal als Kachel bereit.
 - Links stehen Server, Channels und Nutzer, unten dein eigener Name mit Mikrofon, Ton aus und Einstellungen.
-- Push-to-Talk liegt auf Maustaste 4, Link-PTT auf Maustaste 5. Beides lässt sich unter Einstellungen ändern, dort auch Sprachaktivierung, Geräte und das Design (wie Windows, hell oder dunkel).
+- Tasten legst du unter Einstellungen, Tasten fest: Push-to-Talk, Link-PTT, Push-to-Mute, Mikrofon an/aus und Ton an/aus, auch als Kombination mit Strg, Umschalt oder Alt. Ein neues Profil hat keine Belegung, bis dahin steht unter deinem Namen "Keine PTT-Taste belegt". Profile aus älteren Versionen behalten Maustaste 4 und 5. Die Tasten wirken auch, während ein Spiel im Vordergrund ist.
+- In den Einstellungen wählst du ausserdem Push-to-Talk oder Sprachaktivierung, die Geräte und das Design (wie Windows, hell oder dunkel). Bei Sprachaktivierung wirkt die PTT-Taste nicht, Link-PTT schon.
 - Doppelklick auf einen Channel betritt ihn.
 - Per Rechtsklick auf Channels und Nutzer erreichst du Bearbeiten, Verlinken, Verschieben, Kicken und Bannen. Du siehst nur, wozu du berechtigt bist.
 - Ein grüner Ring um das Profilbild bedeutet: jemand spricht. Ein violetter Ring mit Link-Symbol bedeutet: jemand spricht über einen Link.
@@ -159,7 +160,7 @@ curl -H "X-OVS-Debug: 1" localhost:7011/state
 Die wichtigsten Endpunkte:
 
 - `/tone` ersetzt das Mikrofon durch einen Testton.
-- `/ptt` und `/linkptt` halten die Tasten softwareseitig gedrückt.
+- `/ptt` und `/linkptt` halten die Tasten softwareseitig gedrückt, `/key` löst jede Tastenaktion aus (z. B. `{"action":"ToggleMute"}` oder `{"action":"PushToMute","down":true}`).
 - `/state` liefert den kompletten Oberflächenzustand, darunter wer spricht (auch über Link) und empfangene Frames pro Sprecher.
 
 ## Entwicklung

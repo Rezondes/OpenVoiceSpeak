@@ -40,8 +40,7 @@ public class SendPathTests
     [InlineData(TransmitMode.PushToTalk, true)]
     public async Task PttKey_BelowThreshold_SendsOnlyInPttMode(TransmitMode mode, bool expectFrames)
     {
-        // No physical keys: a real mouse button 4 or 5 pressed while the tests run must not count.
-        using var keys = new KeyPoller { PttKey = 0, LinkPttKey = 0 };
+        using var keys = new KeyPoller(); // no bindings: a real key pressed while the tests run does not count
         using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f }); // test tone is -13.5 dBFS: below
         engine.SetTone(440);
@@ -49,6 +48,27 @@ public class SendPathTests
         await Task.Delay(400);
         keys.Simulate(ptt: false);
         Assert.Equal(expectFrames, engine.FramesSent > 0);
+    }
+
+    /// <summary>Package 29: push-to-mute beats PTT and voice activation.</summary>
+    [Theory]
+    [InlineData(TransmitMode.PushToTalk)]
+    [InlineData(TransmitMode.VoiceActivation)]
+    public async Task PushToMute_Held_SendsNothing(TransmitMode mode)
+    {
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -40f }); // tone at -13.5 dBFS: well above
+        keys.Simulate(KeyAction.PushToMute, true);
+        keys.Simulate(ptt: true);
+        await Task.Delay(50); // the key thread polls every 10 ms
+        engine.SetTone(440);
+        await Task.Delay(400);
+        Assert.Equal(0, engine.FramesSent);
+
+        keys.Simulate(KeyAction.PushToMute, false);
+        await Task.Delay(300);
+        Assert.True(engine.FramesSent > 0); // released: sending again
     }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();

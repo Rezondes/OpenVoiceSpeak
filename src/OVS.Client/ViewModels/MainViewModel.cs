@@ -91,6 +91,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Server?.SetSelfTransmitting(target);
         });
         Audio.SpeakersChanged += active => post(() => Server?.OnSpeakers(active));
+        Keys.Pressed += action => post(() => OnKeyAction(action));
         ApplySettings(Settings);
     }
 
@@ -109,7 +110,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
     public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
         ? "Sprachaktivierung"
-        : $"PTT: {KeyPoller.KeyName(Settings.PttKey)}";
+        : Settings.ChordFor(KeyAction.PushToTalk) is { } ptt ? $"PTT: {ptt.Name}" : "Keine PTT-Taste belegt";
+
+    /// <summary>Push-to-talk without a key: nobody can talk. The hint then opens the settings.</summary>
+    public bool HasNoPttBinding => Settings.Mode == TransmitMode.PushToTalk && Settings.ChordFor(KeyAction.PushToTalk) is null;
     public Dialogs Dialogs { get; set; } = new();
     public Func<TofuPrompt, Task<bool>> ConfirmTofu { get; set; } = _ => Task.FromResult(false);
 
@@ -117,14 +121,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Settings = settings.Clamp();
         Settings.Save(storageDir);
-        Keys.PttKey = Settings.PttKey;
-        Keys.LinkPttKey = Settings.LinkPttKey;
-        Log.Write($"Einstellungen: Modus {Settings.Mode}, PTT {KeyPoller.KeyName(Settings.PttKey)}, Link-PTT {KeyPoller.KeyName(Settings.LinkPttKey)}, " +
+        Keys.Bindings = Settings.KeyBindings.ToList();
+        var keysText = Settings.KeyBindings.Count == 0 ? "keine" : string.Join(", ", Settings.KeyBindings.Select(b => $"{b.Action} {b.Chord.Name}"));
+        Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
                   $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
                   $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB");
         if (Audio.Configure(Settings) is { } warning) AddNotice(warning, NoticeKind.Warning);
         OnPropertyChanged(nameof(Settings));
         OnPropertyChanged(nameof(TalkHint));
+        OnPropertyChanged(nameof(HasNoPttBinding));
         OnSettingsListsChanged();
     }
 
@@ -282,6 +287,18 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         {
             Log.Write("UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)");
             udpLogged = false;
+        }
+    }
+
+    /// <summary>Toggle keys work like the buttons, including the report to the server.</summary>
+    void OnKeyAction(KeyAction action)
+    {
+        if (Server is not { } server) return;
+        Log.Write($"Taste: {KeyActions.Label(action)}");
+        switch (action)
+        {
+            case KeyAction.ToggleMute: server.ToggleMuteCommand.Execute(null); break;
+            case KeyAction.ToggleDeafen: server.ToggleDeafenCommand.Execute(null); break;
         }
     }
 

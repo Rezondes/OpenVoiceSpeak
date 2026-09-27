@@ -75,8 +75,17 @@
               <TextBlock Classes="h2" FontSize="14" Text="{Binding Server.Self.Nickname, FallbackValue='Nicht verbunden'}" TextTrimming="CharacterEllipsis" />
               <TextBlock Classes="caption speaking" Text="{Binding TransmitText}" TextTrimming="CharacterEllipsis"
                          IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-              <TextBlock Classes="caption" Text="{Binding TalkHint}" TextTrimming="CharacterEllipsis"
-                         IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+              <Panel IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                <TextBlock Classes="caption" Text="{Binding TalkHint}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNoPttBinding}" />
+                <!-- Without a PTT key nobody can talk: the hint leads straight to the settings. -->
+                <Button Classes="hint" Command="{Binding OpenSettingsCommand}" IsVisible="{Binding HasNoPttBinding}"
+                        ToolTip.Tip="Taste in den Einstellungen belegen">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <PathIcon Classes="sm warning" Data="{StaticResource Icon.Warning}" />
+                    <TextBlock Classes="caption warning" Text="{Binding TalkHint}" />
+                  </StackPanel>
+                </Button>
+              </Panel>
             </StackPanel>
           </DockPanel>
         </Border>
