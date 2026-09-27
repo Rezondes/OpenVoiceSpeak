@@ -1,13 +1,33 @@
+using System.Net;
 using OVS.Server;
+using OVS.Server.Tls;
+using OVS.Shared.Identity;
 
+static void Log(string message) => Console.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}");
+
+ServerConfig config;
+ServerState state;
 try
 {
-    var config = ServerConfig.Load(Environment.GetEnvironmentVariable);
-    Console.WriteLine($"Konfiguration geladen: Port {config.Port}, Daten in {config.DataDir}");
-    return 0;
+    config = ServerConfig.Load(Environment.GetEnvironmentVariable);
+    state = new ServerState(config, TimeProvider.System, Log);
 }
-catch (ConfigException e)
+catch (Exception e) when (e is ConfigException or InvalidDataException)
 {
     Console.Error.WriteLine(e.Message);
     return 1;
 }
+
+var certificate = ServerCertificate.LoadOrCreate(config.DataDir);
+var endpoint = new IPEndPoint(IPAddress.Any, config.Port);
+var control = new ControlServer(state, certificate, endpoint);
+control.Start();
+
+Log($"Listening on {endpoint}");
+Log($"Zertifikat-Fingerprint: {CertFingerprint.Of(certificate)}");
+
+await Task.Delay(Timeout.Infinite);
+
+Log("Fahre herunter ...");
+await control.DisposeAsync();
+return 0;
