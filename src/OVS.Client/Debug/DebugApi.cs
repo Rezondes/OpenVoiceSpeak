@@ -1,4 +1,6 @@
 using System.Net;
+using NAudio.CoreAudioApi;
+using OVS.Client.Audio;
 using System.Text.Json;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -14,6 +16,7 @@ public sealed class DebugApiException(string message) : Exception(message);
 /// headers cross-origin without a CORS preflight this server never approves, so web pages cannot use it.
 ///
 /// GET  /state                                   full UI state, audio statistics, notices
+/// GET  /devices                                 audio devices (ids for /settings)
 /// POST /connect      {host, port, nickname, password?, trust? = true}
 /// POST /disconnect
 /// POST /join         {channel}                  name or id
@@ -112,6 +115,8 @@ public sealed class DebugApi : IDisposable
     async Task<object?> DispatchAsync(string method, string path, JsonElement body)
     {
         if (method == "GET" && path == "/state") return State();
+        if (method == "GET" && path == "/devices")
+            return new { Inputs = AudioDevices.List(DataFlow.Capture), Outputs = AudioDevices.List(DataFlow.Render) };
         if (method != "POST") throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
 
         switch (path)

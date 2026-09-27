@@ -27,6 +27,9 @@ public partial class App : Application
                 debugApi = new DebugApi(vm, port, work => Dispatcher.UIThread.InvokeAsync(work));
                 window.Title += $" (Debug-API :{port})";
             }
+            var audioDebug = options.AudioDebug
+                ? new AudioDebugLog(vm.Keys, vm.Audio, Path.Combine(options.ProfileDir, "audio-debug.log"))
+                : null;
             vm.Dialogs = new Dialogs
             {
                 EditChannel = (title, name, description) => SimpleDialogs.EditChannel(window, title, name, description),
@@ -45,6 +48,7 @@ public partial class App : Application
             {
                 timer.Stop();
                 debugApi?.Dispose();
+                audioDebug?.Dispose();
                 // Off the UI thread: the disposal awaits background loops.
                 Task.Run(() => vm.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
             };

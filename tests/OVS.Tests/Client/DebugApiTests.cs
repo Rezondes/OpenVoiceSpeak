@@ -117,6 +117,14 @@ public sealed class DebugApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Devices_AreListed()
+    {
+        var devices = JsonDocument.Parse(await anna.Http.GetStringAsync("devices")).RootElement;
+        Assert.Equal(JsonValueKind.Array, devices.GetProperty("inputs").ValueKind);
+        Assert.Equal(JsonValueKind.Array, devices.GetProperty("outputs").ValueKind);
+    }
+
+    [Fact]
     public async Task UnknownChannel_IsBadRequest()
     {
         await anna.Post("connect", ConnectBody("anna"));
@@ -187,6 +195,25 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.Post("ptt", new { down = true });
         await Task.Delay(300);
         Assert.Equal(sentBefore, (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64());
+    }
+
+    [Fact]
+    public async Task DeafenedClient_HearsNothing_UntilUndeafened()
+    {
+        var annaId = SelfId(await anna.Post("connect", ConnectBody("anna")));
+        await bert.Post("connect", ConnectBody("bert"));
+        await bert.Post("deafen", new { value = true });
+        await anna.Until(s => User(s, SelfId(s) + 1)?.GetProperty("statusText").GetString() == "(taub)");
+
+        await anna.Post("tone", new { hz = 440 });
+        await anna.Post("ptt", new { down = true });
+        await anna.Until(s => s.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
+        var muted = await bert.State();
+        Assert.Equal(0, FramesFrom(muted, annaId));
+        Assert.Equal(-120, muted.GetProperty("audio").GetProperty("lastOutputLevelDb").GetDouble());
+
+        await bert.Post("deafen", new { value = false });
+        await bert.Until(s => FramesFrom(s, annaId) > 10 && s.GetProperty("audio").GetProperty("lastOutputLevelDb").GetDouble() > -60);
     }
 
     [Fact]

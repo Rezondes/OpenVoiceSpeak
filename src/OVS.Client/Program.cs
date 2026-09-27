@@ -5,15 +5,16 @@ namespace OVS.Client;
 
 /// <summary>
 /// Command line: --profile &lt;dir&gt; (own identity and settings, e.g. for a second instance),
-/// --debug-api &lt;port&gt; (local test API, see Debug/DebugApi.cs), --no-audio (no microphone or speaker).
+/// --debug-api &lt;port&gt; (local test API, see Debug/DebugApi.cs), --no-audio (no microphone or speaker),
+/// --audio-debug (key and frame rate log in the profile, see Debug/AudioDebugLog.cs).
 /// </summary>
-public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices)
+public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices, bool AudioDebug = false)
 {
     public static ClientOptions Parse(string[] args)
     {
         string profile = ClientStorage.DefaultDirectory;
         int? debugPort = null;
-        bool audio = true;
+        bool audio = true, audioDebug = false;
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -28,9 +29,12 @@ public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool Us
                 case "--no-audio":
                     audio = false;
                     break;
+                case "--audio-debug":
+                    audioDebug = true;
+                    break;
             }
         }
-        return new ClientOptions(profile, debugPort, audio);
+        return new ClientOptions(profile, debugPort, audio, audioDebug);
     }
 }
 
