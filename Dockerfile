@@ -1,13 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Server image for linux/amd64 and linux/arm64:
+#   docker buildx build --platform linux/amd64,linux/arm64 -t openvoicespeak/server:dev .
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG TARGETARCH
 WORKDIR /src
 COPY nuget.config Directory.Build.props ./
 COPY src/OVS.Shared/OVS.Shared.csproj src/OVS.Shared/
 COPY src/OVS.Server/OVS.Server.csproj src/OVS.Server/
-RUN dotnet restore src/OVS.Server/OVS.Server.csproj -r linux-x64 -p:SelfContained=true
+RUN dotnet restore src/OVS.Server/OVS.Server.csproj -a $TARGETARCH -p:SelfContained=true
 COPY src/OVS.Shared/ src/OVS.Shared/
 COPY src/OVS.Server/ src/OVS.Server/
-RUN dotnet publish src/OVS.Server/OVS.Server.csproj -c Release -r linux-x64 --no-restore \
+RUN dotnet publish src/OVS.Server/OVS.Server.csproj -c Release -a $TARGETARCH --no-restore \
     --self-contained -p:PublishSingleFile=true -o /app
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0

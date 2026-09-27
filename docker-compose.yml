@@ -13,6 +13,8 @@ services:
       # OVS_PASSWORD: ""      # nur Startwert beim allerersten Start
     volumes:
       - ovs-data:/data
+    # Alternative bei UDP-Problemen hinter Docker-NAT: Host-Netzwerk statt Port-Mappings
+    # network_mode: host
 
 volumes:
   ovs-data:
