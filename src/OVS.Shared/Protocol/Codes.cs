@@ -19,6 +19,7 @@ public static class Codes
     public const string ReplacedByNewConnection = nameof(ReplacedByNewConnection);
     public const string ServerShutdown = nameof(ServerShutdown);
     public const string Kicked = nameof(Kicked);
+    public const string ConnectionLost = nameof(ConnectionLost); // client side only
 
     // Error (requests)
     public const string PermissionDenied = nameof(PermissionDenied);
