@@ -1,6 +1,7 @@
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Media.Imaging;
 
 namespace OVS.Client.Views;
 
@@ -21,6 +22,10 @@ public static class Ui
 
     public static readonly IValueConverter SelfWeight =
         new FuncValueConverter<bool, FontWeight>(isSelf => isSelf ? FontWeight.SemiBold : FontWeight.Normal);
+
+    /// <summary>A server logo (PNG bytes) as image; null stays null so the letter badge shows instead.</summary>
+    public static readonly IValueConverter PngToBitmap =
+        new FuncValueConverter<byte[]?, Bitmap?>(png => png is null ? null : new Bitmap(new MemoryStream(png)));
 
     public static readonly IValueConverter IsZero = new FuncValueConverter<int, bool>(n => n == 0);
 

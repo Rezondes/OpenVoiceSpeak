@@ -64,6 +64,9 @@ public sealed class ClientLogTests : IDisposable
         Assert.Equal("Anfrage r4: Admin-Token einlösen", ClientLog.Describe(new RedeemAdminToken("geheim-token") { RequestId = "r4" }, mirror));
         Assert.Equal("Anfrage r5: Servereinstellungen ändern: Name 'S', Passwort setzen",
             ClientLog.Describe(new UpdateServerSettings("S", "", "geheim") { RequestId = "r5" }, mirror));
+        Assert.Equal("Anfrage r6: Server-Logo setzen", ClientLog.Describe(new SetServerIcon("AAAA") { RequestId = "r6" }, mirror));
+        Assert.Equal("Anfrage r7: Server-Logo entfernen", ClientLog.Describe(new SetServerIcon(null) { RequestId = "r7" }, mirror));
+        Assert.Equal("Server hat kein Logo", ClientLog.Describe(new ServerIcon(null, null, null), mirror));
     }
 
     string LogText()

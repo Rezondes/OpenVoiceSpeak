@@ -26,6 +26,7 @@ public sealed partial class AdminViewModel : ObservableObject
         this.server = server;
         server.AdminMessage += OnAdminMessage;
         server.StateChanged += OnStateChanged;
+        server.PropertyChanged += OnServerPropertyChanged;
         serverName = server.Mirror.Settings.Name;
         welcomeText = server.Mirror.Settings.WelcomeText;
         hasPassword = server.Mirror.Settings.HasPassword;
@@ -52,6 +53,35 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         server.AdminMessage -= OnAdminMessage;
         server.StateChanged -= OnStateChanged;
+        server.PropertyChanged -= OnServerPropertyChanged;
+    }
+
+    // ---- Server logo (Package 30) ----
+
+    public byte[]? IconPng => server.IconPng;
+    public bool HasIcon => server.IconHash is not null;
+    public string ServerInitial => server.ServerName;
+    [ObservableProperty] string? iconError;
+
+    void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ServerViewModel.IconPng)) return;
+        OnPropertyChanged(nameof(IconPng));
+        OnPropertyChanged(nameof(HasIcon));
+    }
+
+    /// <summary>Takes an already checked and scaled PNG (IconImport) or the reason it was refused.</summary>
+    public Task UploadIconAsync(byte[]? png, string? error)
+    {
+        IconError = error;
+        return png is null ? Task.CompletedTask : server.SendAsync(new SetServerIcon(Convert.ToBase64String(png)));
+    }
+
+    [RelayCommand]
+    Task RemoveIcon()
+    {
+        IconError = null;
+        return server.SendAsync(new SetServerIcon(null));
     }
 
     public async Task RequestListsAsync()
@@ -62,6 +92,7 @@ public sealed partial class AdminViewModel : ObservableObject
 
     void OnStateChanged()
     {
+        OnPropertyChanged(nameof(HasIcon));
         RebuildGroups();
         RebuildUsers();
         HasPassword = server.Mirror.Settings.HasPassword;

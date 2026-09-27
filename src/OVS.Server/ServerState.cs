@@ -18,6 +18,7 @@ public sealed partial class ServerState
     readonly object gate = new();
     readonly ServerConfig config;
     readonly DataStore store;
+    readonly ServerIconStore icon;
     readonly ServerData data;
     readonly TimeProvider time;
     readonly ServerLogs logs;
@@ -33,6 +34,7 @@ public sealed partial class ServerState
         this.time = time;
         this.logs = logs;
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
+        icon = new ServerIconStore(config.DataDir);
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
         {
@@ -193,6 +195,8 @@ public sealed partial class ServerState
                 case ListUsers r: OnListUsers(session, r); break;
                 case RedeemAdminToken r: OnRedeemAdminToken(session, r); break;
                 case UpdateServerSettings r: OnUpdateServerSettings(session, r); break;
+                case SetServerIcon r: OnSetServerIcon(session, r); break;
+                case GetServerIcon r: session.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64)); break;
                 case Kick r: OnKick(session, r); break;
                 case Ban r: OnBan(session, r); break;
                 case Unban r: OnUnban(session, r); break;
@@ -283,7 +287,7 @@ public sealed partial class ServerState
     static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order);
 
     ServerSettingsInfo SettingsInfo() =>
-        new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.PasswordHash is not null);
+        new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.PasswordHash is not null, icon.Hash);
 
     List<GroupInfo> GroupInfos() => data.Groups.Select(g => new GroupInfo(g.Id, g.Name, g.Permissions)).ToList();
 

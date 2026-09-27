@@ -46,6 +46,8 @@ public sealed partial class ServerViewModel : ObservableObject
     [ObservableProperty] bool isAdmin;
     [ObservableProperty] ChannelViewModel? currentChannel;
     [ObservableProperty] UserViewModel? self;
+    /// <summary>The server logo as PNG, null while the server has none or it is still loading.</summary>
+    [ObservableProperty] byte[]? iconPng;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanCreateChannel), nameof(CanAdminister), nameof(HasSpeakLinked))]
     Permission selfPermissions;
@@ -76,6 +78,8 @@ public sealed partial class ServerViewModel : ObservableObject
 
     public event Action<string>? Notice;
     public event Action<Message>? AdminMessage;
+    public event Action<ServerIcon>? IconReceived;
+    public string? IconHash => Mirror.Settings.IconHash;
     public event Action? StateChanged;
 
     public void Apply(Message message)
@@ -92,6 +96,9 @@ public sealed partial class ServerViewModel : ObservableObject
             case BanList list:
                 LastBanList = list;
                 AdminMessage?.Invoke(message);
+                return;
+            case ServerIcon icon:
+                IconReceived?.Invoke(icon);
                 return;
         }
         if (Mirror.Apply(message)) Rebuild();

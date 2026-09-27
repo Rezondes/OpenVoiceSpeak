@@ -157,6 +157,33 @@ public sealed partial class ServerState
         Broadcast(new ServerSettingsChanged(SettingsInfo()));
     }
 
+    /// <summary>Package 30: the client sends a square PNG of at most 512 KB; the server only checks the header.</summary>
+    void OnSetServerIcon(Session s, SetServerIcon r)
+    {
+        if (!Require(s, r, Permission.ServerConfig)) return;
+        byte[]? png = null;
+        if (r.PngBase64 is not null)
+        {
+            try
+            {
+                png = Convert.FromBase64String(r.PngBase64);
+            }
+            catch (FormatException)
+            {
+                Fail(s, r, Codes.InvalidValue, "Das Logo ist kein gültiges Base64.");
+                return;
+            }
+            if (ServerIconFormat.Validate(png) is { } problem)
+            {
+                Fail(s, r, Codes.InvalidValue, problem);
+                return;
+            }
+        }
+        icon.Set(png);
+        logs.Server(png is null ? $"Server-Logo entfernt von {s.Nickname}" : $"Server-Logo geändert von {s.Nickname} ({png.Length / 1024} KB)");
+        Broadcast(new ServerSettingsChanged(SettingsInfo()));
+    }
+
     bool ValidateGroupName(Session s, Request r, Guid? self, string? rawName, out string name)
     {
         name = ValidName(rawName, 32) ?? "";

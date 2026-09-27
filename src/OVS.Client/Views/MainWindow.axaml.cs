@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     async void OnConnectClick(object? sender, RoutedEventArgs e) => await ConnectAsync(null);
 
     /// <summary>A bookmark opens the connect dialog prefilled, so a password can still be entered.</summary>
-    async void OnBookmarkClick(object? sender, RoutedEventArgs e) => await ConnectAsync((sender as Control)?.DataContext as Bookmark);
+    async void OnBookmarkClick(object? sender, RoutedEventArgs e) => await ConnectAsync(((sender as Control)?.DataContext as BookmarkItem)?.Bookmark);
 
     async Task ConnectAsync(Bookmark? preselect)
     {

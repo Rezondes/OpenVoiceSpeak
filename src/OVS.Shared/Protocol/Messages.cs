@@ -39,6 +39,9 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(UpdateServerSettings), "updateServerSettings")]
 [JsonDerivedType(typeof(GroupsChanged), "groupsChanged")]
 [JsonDerivedType(typeof(ServerSettingsChanged), "serverSettingsChanged")]
+[JsonDerivedType(typeof(SetServerIcon), "setServerIcon")]
+[JsonDerivedType(typeof(GetServerIcon), "getServerIcon")]
+[JsonDerivedType(typeof(ServerIcon), "serverIcon")]
 // Moderation
 [JsonDerivedType(typeof(Kick), "kick")]
 [JsonDerivedType(typeof(Ban), "ban")]
@@ -71,7 +74,8 @@ public sealed record Rejected(string Code, string? Detail = null) : Message;
 public sealed record Disconnected(string Reason, string? Detail = null) : Message;
 
 // ---- State ----
-public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword);
+/// <param name="IconHash">Hash of the server logo (ServerIconFormat.Hash), null when the server has none.</param>
+public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword, string? IconHash = null);
 public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order);
 public sealed record LinkInfo(Guid A, Guid B);
 public sealed record GroupInfo(Guid Id, string Name, Permission Permissions);
@@ -112,6 +116,11 @@ public sealed record RedeemAdminToken(string Token) : Request;
 public sealed record UpdateServerSettings(string Name, string WelcomeText, string? Password) : Request;
 public sealed record GroupsChanged(IReadOnlyList<GroupInfo> Groups) : Message;
 public sealed record ServerSettingsChanged(ServerSettingsInfo Settings) : Message;
+/// <summary>Sets the server logo, a square PNG as base64 (see ServerIconFormat); null removes it.</summary>
+public sealed record SetServerIcon(string? PngBase64) : Request;
+/// <summary>Asks for the logo; clients only do this when the hash differs from their cache.</summary>
+public sealed record GetServerIcon : Request;
+public sealed record ServerIcon(string? RequestId, string? Hash, string? PngBase64) : Message;
 
 // ---- Moderation ----
 public sealed record BanInfo(

@@ -27,7 +27,9 @@ namespace OVS.Tests.Client;
 
 public static class UiTestApp
 {
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UseHeadless(new AvaloniaHeadlessPlatformOptions());
+    // Skia instead of the drawing stub: server logos (PNG, JPG) must really decode and scale in the tests.
+    public static AppBuilder BuildAvaloniaApp() =>
+        AppBuilder.Configure<App>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
 
 /// <summary>Collects what Avalonia reports while windows load: missing resources and broken bindings do not throw.</summary>
@@ -66,6 +68,8 @@ public sealed class UiSmokeTests : IDisposable
 
     static IEnumerable<string?> Texts(Visual root) => root.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text);
 
+    static bool ShowsImage(Visual root) => root.GetVisualDescendants().OfType<Image>().Any(i => i.Source is not null && i.IsEffectivelyVisible);
+
     [AvaloniaTheory]
     [InlineData("Dark")]
     [InlineData("Light")]
@@ -77,12 +81,14 @@ public sealed class UiSmokeTests : IDisposable
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("voice.example.org:7000", "voice.example.org", 7000, "ich"));
         settings.Save(dir);
+        new ServerIconCache(dir).Save("voice.example.org", 7000, TestImages.Encode(64, 64)); // logo seen earlier
         var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
 
         var main = new MainWindow { DataContext = vm };
         main.Show();
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("voice.example.org:7000", Texts(main)); // start screen with bookmark tile
+        Assert.True(ShowsImage(main)); // the tile shows the cached server logo
 
         ExercisePagesAndDialogs(main, vm);
         main.Close();
@@ -111,6 +117,10 @@ public sealed class UiSmokeTests : IDisposable
         vm.Server = FakeServers.Admin();
         foreach (var kind in Enum.GetValues<NoticeKind>()) vm.AddNotice($"Meldung {kind}", kind);
         Dispatcher.UIThread.RunJobs();
+        Assert.False(ShowsImage(main)); // no logo yet: the letter badge
+        vm.Server.IconPng = TestImages.Encode(64, 64);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(ShowsImage(main)); // sidebar shows the server logo
         var texts = Texts(main).ToList();
         Assert.Contains("Raid", texts);
         Assert.Contains("anna", texts);

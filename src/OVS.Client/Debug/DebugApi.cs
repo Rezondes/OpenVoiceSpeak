@@ -23,6 +23,7 @@ public sealed class DebugApiException(string message) : Exception(message);
 /// POST /join         {channel}                  name or id
 /// POST /ptt          {down}                     simulated push-to-talk key
 /// POST /linkptt      {down}                     simulated link push-to-talk key
+/// POST /server-icon  {path?}                    upload a logo file like the admin page does, without path: remove it
 /// POST /key          {action, down?}            any key action (PushToTalk, LinkPushToTalk, PushToMute, ToggleMute, ToggleDeafen);
 ///                                                without down: press and release once
 /// POST /mute         {value}    /deafen {value}
@@ -139,6 +140,9 @@ public sealed class DebugApi : IDisposable
             case "/key":
                 await SimulateKeyAsync(body);
                 return new { ok = true };
+            case "/server-icon":
+                await SetServerIconAsync(body);
+                return new { ok = true };
             case "/tone":
                 vm.Audio.SetTone(Optional(body, "hz")?.GetDouble());
                 return new { ok = true, toneHz = vm.Audio.ToneHz };
@@ -236,6 +240,8 @@ public sealed class DebugApi : IDisposable
             {
                 s.ServerName,
                 s.WelcomeText,
+                s.IconHash,
+                IconBytes = s.IconPng?.Length,
                 SelfId = s.Mirror.SelfId,
                 s.SelfMuted,
                 s.SelfDeafened,
@@ -278,6 +284,20 @@ public sealed class DebugApi : IDisposable
             },
             KeyBindings = vm.Settings.KeyBindings.Select(b => new { b.Action, Chord = b.Chord.Name }).ToList(),
         };
+    }
+
+    /// <summary>{path}: checks and scales the image like the admin page; without a path the logo is removed.</summary>
+    async Task SetServerIconAsync(JsonElement body)
+    {
+        var server = vm.Server ?? throw new DebugApiException("Nicht verbunden");
+        if (Optional(body, "path")?.GetString() is not { } path)
+        {
+            await server.SendAsync(new SetServerIcon(null));
+            return;
+        }
+        var (png, error) = Views.IconImport.Prepare(path);
+        if (png is null) throw new DebugApiException(error ?? "Bild ungültig");
+        await server.SendAsync(new SetServerIcon(Convert.ToBase64String(png)));
     }
 
     /// <summary>Hold actions take "down"; without it the key is pressed and released, which fires a toggle once.</summary>

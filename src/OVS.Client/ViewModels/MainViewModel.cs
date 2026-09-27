@@ -17,6 +17,14 @@ namespace OVS.Client.ViewModels;
 
 public sealed record ConnectChoice(string Host, int Port, string Nickname, string? Password, bool SaveBookmark);
 
+/// <summary>A bookmark tile: the bookmark and the logo last seen for that server.</summary>
+public sealed record BookmarkItem(Bookmark Bookmark, byte[]? Icon)
+{
+    public string Name => Bookmark.Name;
+    public string Host => Bookmark.Host;
+    public string Nickname => Bookmark.Nickname;
+}
+
 public enum NoticeKind { Info, Welcome, Warning, Error }
 
 /// <summary>What the main area shows. Everything stays inside the one main window (A20).</summary>
@@ -40,6 +48,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly Action<Action> post;
     readonly bool useAudioDevices;
     readonly KnownServers known;
+    readonly ServerIconCache icons;
     ClientConnection? connection;
     VoiceClient? voice;
     DateTime connectedAt;
@@ -69,6 +78,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         this.useAudioDevices = useAudioDevices;
         Log = log ?? new ClientLog(storageDir, TimeProvider.System);
         known = new KnownServers(Path.Combine(storageDir, "known_servers.json"));
+        icons = new ServerIconCache(storageDir);
         Settings = ClientSettings.Load(storageDir, out var warning);
         if (warning is not null) AddNotice(warning, NoticeKind.Warning);
 
@@ -104,7 +114,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public bool IsHomePage => Page == Page.Home;
     public bool IsSettingsPage => Page == Page.Settings;
     public bool IsAdminPage => Page == Page.Admin;
-    public IReadOnlyList<Bookmark> Bookmarks => Settings.Bookmarks.ToList();
+    public IReadOnlyList<BookmarkItem> Bookmarks => Settings.Bookmarks.Select(b => new BookmarkItem(b, icons.Load(b.Host, b.Port))).ToList();
     public bool HasBookmarks => Settings.Bookmarks.Count > 0;
 
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
@@ -166,6 +176,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 return conn.SendAsync(request);
             }, TimeProvider.System, Dialogs);
             vm.Notice += text => AddNotice(text, NoticeKind.Error);
+            TrackServerIcon(vm, choice.Host, choice.Port);
             vm.PropertyChanged += OnServerPropertyChanged;
             conn.MessageReceived += m => post(() =>
             {
@@ -300,6 +311,45 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             case KeyAction.ToggleMute: server.ToggleMuteCommand.Execute(null); break;
             case KeyAction.ToggleDeafen: server.ToggleDeafenCommand.Execute(null); break;
         }
+    }
+
+    /// <summary>
+    /// Keeps the logo in step with the server's hash (Package 30): from the cache when it matches, otherwise
+    /// downloaded once and cached for next time and for the bookmark tile.
+    /// </summary>
+    void TrackServerIcon(ServerViewModel vm, string host, int port)
+    {
+        string? requested = null;
+        void Sync()
+        {
+            var hash = vm.IconHash;
+            if (hash is null)
+            {
+                vm.IconPng = null;
+                icons.Remove(host, port);
+                return;
+            }
+            if (vm.IconPng is { } shown && ServerIconFormat.Hash(shown) == hash) return;
+            if (icons.Load(host, port) is { } cached && ServerIconFormat.Hash(cached) == hash)
+            {
+                vm.IconPng = cached;
+                return;
+            }
+            if (requested == hash) return;
+            requested = hash;
+            _ = vm.SendAsync(new GetServerIcon());
+        }
+        vm.StateChanged += Sync;
+        vm.IconReceived += icon =>
+        {
+            if (icon.PngBase64 is null || icon.Hash != vm.IconHash) return;
+            var png = Convert.FromBase64String(icon.PngBase64);
+            if (ServerIconFormat.Hash(png) != icon.Hash) return;
+            icons.Save(host, port, png);
+            vm.IconPng = png;
+            OnSettingsListsChanged(); // the bookmark tile shows it too
+        };
+        Sync();
     }
 
     // ---- Pages ----

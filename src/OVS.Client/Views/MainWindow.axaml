@@ -24,9 +24,16 @@
                     ToolTip.Tip="Channel anlegen" AutomationProperties.Name="Channel anlegen">
               <PathIcon Data="{StaticResource Icon.Add}" />
             </Button>
-            <Border DockPanel.Dock="Left" Classes="badge">
-              <TextBlock Text="{Binding Server.ServerName, Converter={x:Static v:Ui.Initials}, FallbackValue='O'}" />
-            </Border>
+            <!-- Server logo (Package 30), otherwise the first letter of the server name -->
+            <Panel DockPanel.Dock="Left">
+              <Border Classes="badge" IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
+                <TextBlock Text="{Binding Server.ServerName, Converter={x:Static v:Ui.Initials}, FallbackValue='O'}" />
+              </Border>
+              <Border Classes="badge" ClipToBounds="True" Background="Transparent"
+                      IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+                <Image Source="{Binding Server.IconPng, Converter={x:Static v:Ui.PngToBitmap}, FallbackValue={x:Null}}" Stretch="UniformToFill" />
+              </Border>
+            </Panel>
             <StackPanel Margin="10,0,4,0" VerticalAlignment="Center" Spacing="2">
               <TextBlock Classes="h2" Text="{Binding Server.ServerName, FallbackValue='OpenVoiceSpeak'}" TextTrimming="CharacterEllipsis" />
               <StackPanel Orientation="Horizontal" Spacing="6">
@@ -227,14 +234,21 @@
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="s:Bookmark">
+                  <DataTemplate x:DataType="vm:BookmarkItem">
                     <Button Classes="tile" Click="OnBookmarkClick"
                             AutomationProperties.Name="{Binding Name, StringFormat='Mit {0} verbinden'}">
                       <DockPanel>
                         <PathIcon DockPanel.Dock="Right" Classes="muted" Data="{StaticResource Icon.ChevronRight}" />
-                        <Border DockPanel.Dock="Left" Classes="badge" Width="32" Height="32" CornerRadius="8">
-                          <TextBlock Text="{Binding Host, Converter={x:Static v:Ui.Initials}}" FontSize="14" />
-                        </Border>
+                        <Panel DockPanel.Dock="Left">
+                          <Border Classes="badge" Width="32" Height="32" CornerRadius="8"
+                                  IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNull}}">
+                            <TextBlock Text="{Binding Host, Converter={x:Static v:Ui.Initials}}" FontSize="14" />
+                          </Border>
+                          <Border Classes="badge" Width="32" Height="32" CornerRadius="8" ClipToBounds="True" Background="Transparent"
+                                  IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Image Source="{Binding Icon, Converter={x:Static v:Ui.PngToBitmap}}" Stretch="UniformToFill" />
+                          </Border>
+                        </Panel>
                         <StackPanel Margin="12,0" VerticalAlignment="Center">
                           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextTrimming="CharacterEllipsis" />
                           <TextBlock Classes="caption" Text="{Binding Nickname, StringFormat='als {0}'}" />

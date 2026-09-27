@@ -54,6 +54,8 @@ public sealed class ClientLog
                 return $"Nutzerliste erhalten ({m.Users.Count} Einträge)";
             case BanList m:
                 return $"Bannliste erhalten ({m.Bans.Count} Einträge)";
+            case ServerIcon m:
+                return m.PngBase64 is null ? "Server hat kein Logo" : $"Server-Logo erhalten ({m.PngBase64.Length * 3 / 4 / 1024} KB)";
             case Error:
                 return null;
             default:
@@ -101,6 +103,8 @@ public sealed class ClientLog
             ListUsers => "Nutzerliste anfordern",
             ListBans => "Bannliste anfordern",
             RedeemAdminToken => "Admin-Token einlösen",
+            SetServerIcon r => r.PngBase64 is null ? "Server-Logo entfernen" : "Server-Logo setzen",
+            GetServerIcon => "Server-Logo anfordern",
             UpdateServerSettings r => $"Servereinstellungen ändern: Name '{r.Name}'" + r.Password switch
             {
                 null => "",

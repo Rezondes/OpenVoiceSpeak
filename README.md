@@ -87,6 +87,7 @@ Ordnernamen (`openvoicespeak_ovs-data` bei einem Ordner namens `openvoicespeak`,
 
 - `server-data.json`: Channels, Links, Gruppen, Nutzer, Bans
 - `cert.pfx`: Serverzertifikat. Geht es verloren, bekommen alle Clients eine Warnung.
+- `server-icon.png`: Server-Logo, falls eines hochgeladen wurde
 - `logs/`: Server- und Channel-Logs (siehe oben)
 
 ```bash
@@ -126,7 +127,9 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiert
 - Doppelklick auf einen Channel betritt ihn.
 - Per Rechtsklick auf Channels und Nutzer erreichst du Bearbeiten, Verlinken, Verschieben, Kicken und Bannen. Du siehst nur, wozu du berechtigt bist.
 - Ein grüner Ring um das Profilbild bedeutet: jemand spricht. Ein violetter Ring mit Link-Symbol bedeutet: jemand spricht über einen Link.
-- Rechts oben stehen Ping, "Verwaltung ..." (mit den nötigen Rechten: Gruppen, Nutzer, Bans, Servereinstellungen) und "Trennen". Darunter sammelt "Aktivität" Willkommensnachricht, Warnungen und Fehler.
+- Rechts oben stehen Ping, "Verwaltung ..." (mit den nötigen Rechten: Gruppen, Nutzer, Bans, Servereinstellungen und Server-Logo) und "Trennen". Darunter sammelt "Aktivität" Willkommensnachricht, Warnungen und Fehler.
+
+Ein Server kann ein eigenes Logo haben: Unter "Verwaltung ...", Server lädst du ein PNG oder JPG hoch (quadratisch, höchstens 3 MB, per Dateiauswahl oder durch Ziehen auf das Vorschaufeld). Der Client verkleinert es auf 256 x 256 Pixel. Alle verbundenen Clients sehen es sofort in der Seitenleiste, die Lesezeichen-Kacheln zeigen das zuletzt gesehene Logo.
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 
@@ -161,6 +164,7 @@ Die wichtigsten Endpunkte:
 
 - `/tone` ersetzt das Mikrofon durch einen Testton.
 - `/ptt` und `/linkptt` halten die Tasten softwareseitig gedrückt, `/key` löst jede Tastenaktion aus (z. B. `{"action":"ToggleMute"}` oder `{"action":"PushToMute","down":true}`).
+- `/server-icon` lädt ein Logo hoch (`{"path":"C:\bild.png"}`), ohne `path` wird es entfernt.
 - `/state` liefert den kompletten Oberflächenzustand, darunter wer spricht (auch über Link) und empfangene Frames pro Sprecher.
 
 ## Entwicklung

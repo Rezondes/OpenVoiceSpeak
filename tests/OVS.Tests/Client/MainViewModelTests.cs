@@ -91,6 +91,41 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal("PTT: Maustaste 4", await OnUi(() => vm.TalkHint));
     }
 
+    /// <summary>Package 30: the logo is downloaded once, then taken from the cache; the bookmark tile shows it.</summary>
+    [Fact]
+    public async Task ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile()
+    {
+        var data = Directory.CreateTempSubdirectory("ovs-logo-server-").FullName;
+        var png = TestImages.Encode(128, 128);
+        File.WriteAllBytes(Path.Combine(data, "server-icon.png"), png);
+        await using var logoServer = await TestServer.StartAsync(dataDir: data);
+        Task Connect() => ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.ConnectAsync(new ConnectChoice("127.0.0.1", logoServer.Port, "anna", null, SaveBookmark: true));
+            return null;
+        });
+
+        await Connect();
+        byte[]? shown = null;
+        for (int i = 0; i < 60 && shown is null; i++)
+        {
+            await Task.Delay(50);
+            shown = await OnUi(() => vm.Server?.IconPng);
+        }
+        Assert.Equal(png, shown);
+
+        await Connect(); // second time straight from the cache
+        Assert.Equal(png, await OnUi(() => vm.Server!.IconPng));
+        Assert.Equal(png, (await OnUi(() => vm.Bookmarks)).Single().Icon);
+
+        var log = string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return new StreamReader(stream).ReadToEnd();
+        }));
+        Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Server-Logo anfordern")));
+    }
+
     [Fact]
     public async Task Connect_ShowsWelcomeText_AndPing()
     {
