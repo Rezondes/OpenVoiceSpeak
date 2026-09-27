@@ -1,5 +1,8 @@
 using OVS.Server;
 using OVS.Server.Data;
+using OVS.Server.Permissions;
+using OVS.Shared.Permissions;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;
 
@@ -52,5 +55,28 @@ public sealed class DataStoreTests : IDisposable
 
         Assert.Throws<InvalidDataException>(() => new DataStore(FilePath).LoadOrCreate(() => ServerData.CreateDefault(Config)));
         Assert.Equal(before, File.ReadAllBytes(FilePath));
+    }
+    /// <summary>A file from before Package 31: guests get the chat rights once, a later removal sticks.</summary>
+    [Fact]
+    public async Task LoadVersion1_GuestGetsChatRights_Once()
+    {
+        var serverDir = Directory.CreateDirectory(Path.Combine(dir, "server")).FullName; // the test server deletes its folder
+        var store = new DataStore(Path.Combine(serverDir, DataStore.FileName));
+        var old = ServerData.CreateDefault(Config);
+        old.DataVersion = 1;
+        int guest = old.Groups.FindIndex(g => g.Id == PermissionRules.GuestGroupId);
+        old.Groups[guest] = old.Groups[guest] with { Permissions = Permission.Speak };
+        store.Save(old);
+
+        ServerData migrated;
+        await using (var server = await TestServer.StartAsync(dataDir: serverDir))
+        {
+            await using var client = await TestClient.ConnectAsync(server, "gast", password: "pw");
+            Assert.Equal(PermissionRules.GuestPermissions, client.Welcome.Snapshot.Users.Single(u => u.SessionId == client.Id).Permissions);
+            migrated = store.LoadOrCreate(() => throw new InvalidOperationException()); // saved on startup
+        }
+        Assert.Equal(ServerData.CurrentVersion, migrated.DataVersion);
+        migrated.Groups[guest] = migrated.Groups[guest] with { Permissions = Permission.Speak }; // the admin takes it back
+        Assert.False(migrated.Migrate());
     }
 }

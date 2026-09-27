@@ -16,9 +16,9 @@ public class PermissionRulesTests
     public void Effective_Cases()
     {
         Assert.Equal(P.None, Effective([], Groups));
-        Assert.Equal(P.Speak, Effective([Guest.Id], Groups));
+        Assert.Equal(GuestPermissions, Effective([Guest.Id], Groups));
         Assert.Equal(ModeratorPermissions, Effective([Guest.Id, Moderator.Id], Groups));
-        Assert.Equal(P.Speak, Effective([Guest.Id, Guid.NewGuid()], Groups));
+        Assert.Equal(GuestPermissions, Effective([Guest.Id, Guid.NewGuid()], Groups));
         Assert.Equal(P.All, Effective([Admin.Id], Groups));
         // Admin is always All, even if the stored group lost flags
         Assert.Equal(P.All, Effective([AdminGroupId], [new Group(AdminGroupId, "Admin", P.None)]));
@@ -27,9 +27,10 @@ public class PermissionRulesTests
     [Fact]
     public void DefaultGroups_HaveDocumentedPermissions()
     {
-        Assert.Equal(P.Speak, Guest.Permissions);
-        Assert.Equal(P.Speak | P.SpeakLinked | P.ChannelLink | P.UserMove | P.UserMute | P.UserKick | P.UserBan,
-            Moderator.Permissions);
+        // Package 31 (A28): guests chat in the channel and privately, moderators also server-wide.
+        Assert.Equal(P.Speak | P.ChatChannel | P.ChatPrivate, Guest.Permissions);
+        Assert.Equal(P.Speak | P.SpeakLinked | P.ChannelLink | P.UserMove | P.UserMute | P.UserKick | P.UserBan |
+            P.ChatServer | P.ChatChannel | P.ChatPrivate, Moderator.Permissions);
         Assert.Equal(P.All, Admin.Permissions);
         Assert.Equal(GuestGroupId, Guest.Id);
         Assert.Equal(AdminGroupId, Admin.Id);

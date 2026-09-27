@@ -34,6 +34,18 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public SeqCounter OutSeq { get; } = new();
     public RateLimiter Limiter { get; } = new(time);
 
+    readonly Queue<DateTimeOffset> chatTimes = new();
+
+    /// <summary>At most ChatBurst messages per ChatWindow (A29). Guarded by the ServerState lock.</summary>
+    public bool TryChat()
+    {
+        var now = time.GetUtcNow();
+        while (chatTimes.Count > 0 && now - chatTimes.Peek() >= ProtocolInfo.ChatWindow) chatTimes.Dequeue();
+        if (chatTimes.Count >= ProtocolInfo.ChatBurst) return false;
+        chatTimes.Enqueue(now);
+        return true;
+    }
+
     public ChannelReader<Message> Outgoing => outbox.Reader;
 
     /// <summary>Never blocks. A client too slow to drain 1024 queued messages gets disconnected.</summary>

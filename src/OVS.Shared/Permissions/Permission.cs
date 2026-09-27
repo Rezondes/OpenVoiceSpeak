@@ -17,7 +17,10 @@ public enum Permission
     GroupsManage = 1 << 10,
     GroupsAssign = 1 << 11,
     ServerConfig = 1 << 12,
-    All = (1 << 13) - 1,
+    ChatServer = 1 << 13,   // write in "Allgemein", to everyone on the server (Package 31)
+    ChatChannel = 1 << 14,  // write in the own channel
+    ChatPrivate = 1 << 15,  // write private messages
+    All = (1 << 16) - 1,
 }
 
 /// <summary>Fixed ids of the two protected groups, known to server and client.</summary>

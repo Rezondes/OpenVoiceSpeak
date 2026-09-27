@@ -54,6 +54,9 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(UnlinkChannels), "unlinkChannels")]
 [JsonDerivedType(typeof(ChannelsLinked), "channelsLinked")]
 [JsonDerivedType(typeof(ChannelsUnlinked), "channelsUnlinked")]
+// Chat
+[JsonDerivedType(typeof(SendChat), "sendChat")]
+[JsonDerivedType(typeof(ChatMessage), "chatMessage")]
 public abstract record Message;
 
 /// <summary>Client request. A failed request is answered with an Error carrying the same RequestId.</summary>
@@ -137,3 +140,13 @@ public sealed record LinkChannels(Guid A, Guid B) : Request;
 public sealed record UnlinkChannels(Guid A, Guid B) : Request;
 public sealed record ChannelsLinked(Guid A, Guid B) : Message;
 public sealed record ChannelsUnlinked(Guid A, Guid B) : Message;
+
+// ---- Chat (Package 31) ----
+public enum ChatTarget { Server, Channel, Private }
+
+/// <summary>Server: everyone. Channel: the sender's current channel (not linked ones). Private: exactly one online user.</summary>
+public sealed record SendChat(ChatTarget Target, uint? ToSessionId, string Text) : Request;
+
+/// <summary>A delivered chat message; the sender gets it back as well, with the server's time.</summary>
+public sealed record ChatMessage(
+    ChatTarget Target, uint FromSessionId, string FromNickname, Guid? ChannelId, uint? ToSessionId, string Text, DateTimeOffset SentAt) : Message;

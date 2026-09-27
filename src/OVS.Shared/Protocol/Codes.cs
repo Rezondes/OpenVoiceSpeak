@@ -34,6 +34,7 @@ public static class Codes
     public const string LastAdmin = nameof(LastAdmin);
     public const string InvalidLink = nameof(InvalidLink);
     public const string UnknownRequest = nameof(UnknownRequest);
+    public const string RateLimited = nameof(RateLimited);
 
     public static IEnumerable<string> All() =>
         typeof(Codes).GetFields().Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!);

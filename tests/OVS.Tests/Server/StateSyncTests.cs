@@ -22,7 +22,7 @@ public class StateSyncTests
 
         var self = snapshot.Users.Single(u => u.SessionId == b.Id);
         Assert.Equal(lobby.Id, self.ChannelId);
-        Assert.Equal(Permission.Speak, self.Permissions);
+        Assert.Equal(OVS.Server.Permissions.PermissionRules.GuestPermissions, self.Permissions);
 
         var joined = await a.WaitForAsync<UserJoined>();
         Assert.Equal("bert", joined.User.Nickname);

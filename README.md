@@ -7,6 +7,7 @@ Selbst hostbarer Voice-Chat in der Art von Mumble oder TeamSpeak, bewusst einfac
 - ein Server mit mehreren Channels
 - ein **serverweites** Rechtesystem aus Gruppen und Rechten, ohne Rechte pro Channel
 - **Channel-Linking**: Normale Sprache bleibt im eigenen Channel. Mit der Link-PTT-Taste sprichst du zusätzlich in alle direkt verlinkten Channels.
+- Text-Chat serverweit, im eigenen Channel und privat zwischen zwei Personen. Jede Art hat ein eigenes Recht: Gäste dürfen im Channel und privat schreiben, serverweit nur Moderatoren und Admins. Der Server speichert keinen Verlauf und schreibt den Inhalt privater Nachrichten in kein Log.
 - Identität per Schlüsselpaar: keine Accounts, keine Passwörter
 - Sprache als Opus über verschlüsseltes UDP (AES-GCM), Steuerung über TLS
 
@@ -164,6 +165,7 @@ Die wichtigsten Endpunkte:
 
 - `/tone` ersetzt das Mikrofon durch einen Testton.
 - `/ptt` und `/linkptt` halten die Tasten softwareseitig gedrückt, `/key` löst jede Tastenaktion aus (z. B. `{"action":"ToggleMute"}` oder `{"action":"PushToMute","down":true}`).
+- `/chat` schreibt eine Nachricht (`{"target":"channel","text":"Hallo"}`, privat mit `"target":"private","to":"bert"`), `/state` zeigt unter `server.chat` die letzten empfangenen.
 - `/server-icon` lädt ein Logo hoch (`{"path":"C:\bild.png"}`), ohne `path` wird es entfernt.
 - `/state` liefert den kompletten Oberflächenzustand, darunter wer spricht (auch über Link) und empfangene Frames pro Sprecher.
 

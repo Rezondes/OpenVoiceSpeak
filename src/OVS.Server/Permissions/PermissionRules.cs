@@ -12,11 +12,15 @@ public static class PermissionRules
 
     public const Permission ModeratorPermissions =
         Permission.Speak | Permission.SpeakLinked | Permission.ChannelLink |
-        Permission.UserMove | Permission.UserMute | Permission.UserKick | Permission.UserBan;
+        Permission.UserMove | Permission.UserMute | Permission.UserKick | Permission.UserBan |
+        Permission.ChatServer | Permission.ChatChannel | Permission.ChatPrivate;
+
+    /// <summary>What a guest may do on a new server, and what existing servers add once (A28).</summary>
+    public const Permission GuestPermissions = Permission.Speak | Permission.ChatChannel | Permission.ChatPrivate;
 
     public static List<Group> DefaultGroups() =>
     [
-        new(GuestGroupId, "Gast", Permission.Speak),
+        new(GuestGroupId, "Gast", GuestPermissions),
         new(Guid.NewGuid(), "Moderator", ModeratorPermissions),
         new(AdminGroupId, "Admin", Permission.All),
     ];

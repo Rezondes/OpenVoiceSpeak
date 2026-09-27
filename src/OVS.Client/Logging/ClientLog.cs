@@ -54,6 +54,13 @@ public sealed class ClientLog
                 return $"Nutzerliste erhalten ({m.Users.Count} Einträge)";
             case BanList m:
                 return $"Bannliste erhalten ({m.Bans.Count} Einträge)";
+            case ChatMessage m:
+                return m.Target switch
+                {
+                    ChatTarget.Server => $"Chat (Allgemein) {m.FromNickname}: {m.Text}",
+                    ChatTarget.Channel => $"Chat in {Channel(m.ChannelId ?? Guid.Empty)} {m.FromNickname}: {m.Text}",
+                    _ => $"Privat {m.FromNickname} an {Nick(m.ToSessionId ?? 0)}: {m.Text}",
+                };
             case ServerIcon m:
                 return m.PngBase64 is null ? "Server hat kein Logo" : $"Server-Logo erhalten ({m.PngBase64.Length * 3 / 4 / 1024} KB)";
             case Error:
@@ -105,6 +112,12 @@ public sealed class ClientLog
             RedeemAdminToken => "Admin-Token einlösen",
             SetServerIcon r => r.PngBase64 is null ? "Server-Logo entfernen" : "Server-Logo setzen",
             GetServerIcon => "Server-Logo anfordern",
+            SendChat r => r.Target switch
+            {
+                ChatTarget.Server => "Chat an alle",
+                ChatTarget.Channel => "Chat im Channel",
+                _ => $"Privatnachricht an {Nick(r.ToSessionId ?? 0)}",
+            },
             UpdateServerSettings r => $"Servereinstellungen ändern: Name '{r.Name}'" + r.Password switch
             {
                 null => "",

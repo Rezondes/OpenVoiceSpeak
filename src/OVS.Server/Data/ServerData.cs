@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using OVS.Server.Permissions;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 
 namespace OVS.Server.Data;
@@ -62,6 +63,12 @@ public sealed class BanRecord
 
 public sealed class ServerData
 {
+    /// <summary>
+    /// 1 = before Package 31 (files without this field), 2 = chat rights. New servers start at the current version.
+    /// </summary>
+    public const int CurrentVersion = 2;
+    public int DataVersion { get; set; } = 1;
+
     public ServerSettings Settings { get; set; } = new();
     public Guid DefaultChannelId { get; set; }
     public List<ChannelRecord> Channels { get; set; } = [];
@@ -79,7 +86,19 @@ public sealed class ServerData
             DefaultChannelId = lobby.Id,
             Channels = [lobby],
             Groups = PermissionRules.DefaultGroups(),
+            DataVersion = CurrentVersion,
         };
+    }
+
+    /// <summary>Brings an older file up to date. Returns true when something changed and must be saved.</summary>
+    public bool Migrate()
+    {
+        if (DataVersion >= CurrentVersion) return false;
+        int guest = Groups.FindIndex(g => g.Id == PermissionRules.GuestGroupId);
+        if (DataVersion < 2 && guest >= 0) // A28: guests may chat, granted once
+            Groups[guest] = Groups[guest] with { Permissions = Groups[guest].Permissions | Permission.ChatChannel | Permission.ChatPrivate };
+        DataVersion = CurrentVersion;
+        return true;
     }
 }
 

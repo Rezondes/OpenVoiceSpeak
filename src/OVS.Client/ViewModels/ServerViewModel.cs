@@ -49,7 +49,8 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>The server logo as PNG, null while the server has none or it is still loading.</summary>
     [ObservableProperty] byte[]? iconPng;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanCreateChannel), nameof(CanAdminister), nameof(HasSpeakLinked))]
+    [NotifyPropertyChangedFor(nameof(CanCreateChannel), nameof(CanAdminister), nameof(HasSpeakLinked),
+        nameof(CanChatServer), nameof(CanChatChannel), nameof(CanChatPrivate))]
     Permission selfPermissions;
 
     public ServerViewModel(StateMirror mirror, Func<Request, Task> send, TimeProvider time, Dialogs? dialogs = null)
@@ -79,6 +80,15 @@ public sealed partial class ServerViewModel : ObservableObject
     public event Action<string>? Notice;
     public event Action<Message>? AdminMessage;
     public event Action<ServerIcon>? IconReceived;
+
+    // ---- Chat (Package 31); the tabs come in Package 32 ----
+    readonly Queue<ChatMessage> recentChat = new();
+    public event Action<ChatMessage>? ChatReceived;
+    public IReadOnlyCollection<ChatMessage> RecentChat => recentChat;
+    public bool CanChatServer => SelfPermissions.Has(Permission.ChatServer);
+    public bool CanChatChannel => SelfPermissions.Has(Permission.ChatChannel);
+    public bool CanChatPrivate => SelfPermissions.Has(Permission.ChatPrivate);
+    public Task SendChatAsync(ChatTarget target, string text, uint? to = null) => SendAsync(new SendChat(target, to, text));
     public string? IconHash => Mirror.Settings.IconHash;
     public event Action? StateChanged;
 
@@ -99,6 +109,11 @@ public sealed partial class ServerViewModel : ObservableObject
                 return;
             case ServerIcon icon:
                 IconReceived?.Invoke(icon);
+                return;
+            case ChatMessage chat:
+                recentChat.Enqueue(chat);
+                while (recentChat.Count > 200) recentChat.Dequeue();
+                ChatReceived?.Invoke(chat);
                 return;
         }
         if (Mirror.Apply(message)) Rebuild();

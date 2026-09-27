@@ -117,7 +117,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 30 sind umgesetzt, 31 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 31 sind umgesetzt, 32 bis 33 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2133,22 +2133,22 @@ Es gibt heute keinen Text-Chat. Die Rechte belegen die Bits 0 bis 12, die neuen 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Serverweite Nachrichten erreichen alle, Channelnachrichten nur den eigenen Channel, private nur Empfänger und Absender.
-- [ ] AC2: Ohne das passende Recht antwortet der Server mit `PermissionDenied`, niemand bekommt die Nachricht.
-- [ ] AC3: Leere Nachrichten und solche über 2000 Zeichen ergeben `InvalidValue`, private an Offline-Nutzer oder an sich selbst `NotFound` bzw. `InvalidValue`.
-- [ ] AC4: Die sechste Nachricht innerhalb von 5 Sekunden ergibt `RateLimited`.
-- [ ] AC5: Vom Server Stummgeschaltete können schreiben.
-- [ ] AC6: Neue Server: Gast hat Channel und privat, Moderator und Admin alle drei. Bestehende Server: Gast bekommt Channel und privat einmalig dazu.
-- [ ] AC7: Logs nach A29, der Inhalt privater Nachrichten steht in keinem Log.
-- [ ] AC8: Die Debug-API kann Nachrichten senden und zeigt empfangene in `/state`.
+- [x] AC1: Serverweite Nachrichten erreichen alle, Channelnachrichten nur den eigenen Channel, private nur Empfänger und Absender.
+- [x] AC2: Ohne das passende Recht antwortet der Server mit `PermissionDenied`, niemand bekommt die Nachricht.
+- [x] AC3: Leere Nachrichten und solche über 2000 Zeichen ergeben `InvalidValue`, private an Offline-Nutzer oder an sich selbst `NotFound` bzw. `InvalidValue`.
+- [x] AC4: Die sechste Nachricht innerhalb von 5 Sekunden ergibt `RateLimited`.
+- [x] AC5: Vom Server Stummgeschaltete können schreiben.
+- [x] AC6: Neue Server: Gast hat Channel und privat, Moderator und Admin alle drei. Bestehende Server: Gast bekommt Channel und privat einmalig dazu.
+- [x] AC7: Logs nach A29, der Inhalt privater Nachrichten steht in keinem Log.
+- [x] AC8: Die Debug-API kann Nachrichten senden und zeigt empfangene in `/state`.
 
 ### Tests (TDD)
 
 1. `ChatTests > "Deliver_ServerChannelPrivate"` mit drei `TestClient`s in zwei Channels (AC1)
 2. `ChatTests > "NoRight_PermissionDenied"` als Theory je Ziel (AC2)
 3. `ChatTests > "Invalid_EmptyTooLongOfflineSelf"` (AC3), `"RateLimit_SixthInFiveSeconds"` mit `ManualTimeProvider` (AC4), `"ServerMuted_CanWrite"` (AC5)
-4. `PermissionRulesTests > "DefaultGroups_ChatRights"` und `DataStoreTests > "LoadVersion1_GuestGetsChatRights_Once"` (AC6)
-5. `ServerLogsTests > "Chat_Logged_PrivateWithoutContent"` (AC7)
+4. `PermissionRulesTests > "DefaultGroups_HaveDocumentedPermissions"` (um die Chat-Rechte erweitert) und `DataStoreTests > "LoadVersion1_GuestGetsChatRights_Once"` (AC6)
+5. `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` (AC7, beim Chat statt in `ServerLogsTests`, weil es drei verbundene Clients braucht)
 6. `DebugApiTests > "Chat_RoundTrip"` zwischen zwei echten Clients (AC8), `ClientLogTests` für `ChatMessage` und `SendChat`
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~DataStoreTests|FullyQualifiedName~ServerLogsTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~ClientLogTests"`

@@ -33,6 +33,7 @@ public sealed class DebugApiException(string message) : Exception(message);
 /// POST /link         {a, b}     /unlink {a, b}  channel names or ids
 /// POST /move         {user, channel}            user = nickname or session id
 /// POST /kick         {user, reason?}   /ban {user, reason?, minutes?, ip?}   /server-mute {user, value}
+/// POST /chat         {target, text, to?}        target: server, channel or private (to = nickname or session id)
 /// POST /request      {type, ...}                any protocol request, e.g. {"type":"createGroup",...}
 /// POST /settings     ClientSettings JSON        applied like the settings dialog
 /// </summary>
@@ -193,6 +194,12 @@ public sealed class DebugApi : IDisposable
             case "/server-mute":
                 await server.ServerMuteAsync(User(server, Text(body, "user")).SessionId, body.GetProperty("value").GetBoolean());
                 break;
+            case "/chat":
+                var target = Enum.TryParse<ChatTarget>(Text(body, "target"), ignoreCase: true, out var t)
+                    ? t : throw new DebugApiException("target ist server, channel oder private");
+                uint? to = target == ChatTarget.Private ? User(server, Text(body, "to")).SessionId : null;
+                await server.SendChatAsync(target, Text(body, "text"), to);
+                break;
             case "/request":
                 var request = body.Deserialize<Message>(ProtocolJson.Options) as Request
                               ?? throw new DebugApiException("Body ist keine Protokoll-Anfrage (Feld 'type' prüfen)");
@@ -242,6 +249,7 @@ public sealed class DebugApi : IDisposable
                 s.WelcomeText,
                 s.IconHash,
                 IconBytes = s.IconPng?.Length,
+                Chat = s.RecentChat.TakeLast(50).Select(c => new { c.Target, c.FromNickname, c.ToSessionId, c.Text }).ToList(),
                 SelfId = s.Mirror.SelfId,
                 s.SelfMuted,
                 s.SelfDeafened,

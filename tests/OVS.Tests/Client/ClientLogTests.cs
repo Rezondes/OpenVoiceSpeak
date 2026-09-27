@@ -47,6 +47,9 @@ public sealed class ClientLogTests : IDisposable
         { new ChannelsUnlinked(Lobby, Raid), "Link zwischen 'Lobby' und 'Raid' entfernt" },
         { new GroupsChanged([new GroupInfo(Mods, "Mods", Permission.Speak)]), "Gruppen geändert: Mods" },
         { new ServerSettingsChanged(new ServerSettingsInfo("Neu", "", true)), "Servereinstellungen geändert: Name 'Neu', mit Passwort" },
+        { new ChatMessage(ChatTarget.Server, 2, "bert", null, null, "Hallo", default), "Chat (Allgemein) bert: Hallo" },
+        { new ChatMessage(ChatTarget.Channel, 2, "bert", Lobby, null, "hier", default), "Chat in 'Lobby' bert: hier" },
+        { new ChatMessage(ChatTarget.Private, 2, "bert", null, 1, "psst", default), "Privat bert an ich: psst" },
     };
 
     [Theory]
@@ -67,6 +70,8 @@ public sealed class ClientLogTests : IDisposable
         Assert.Equal("Anfrage r6: Server-Logo setzen", ClientLog.Describe(new SetServerIcon("AAAA") { RequestId = "r6" }, mirror));
         Assert.Equal("Anfrage r7: Server-Logo entfernen", ClientLog.Describe(new SetServerIcon(null) { RequestId = "r7" }, mirror));
         Assert.Equal("Server hat kein Logo", ClientLog.Describe(new ServerIcon(null, null, null), mirror));
+        Assert.Equal("Anfrage r8: Privatnachricht an bert", ClientLog.Describe(new SendChat(ChatTarget.Private, 2, "psst") { RequestId = "r8" }, mirror));
+        Assert.Equal("Anfrage r9: Chat im Channel", ClientLog.Describe(new SendChat(ChatTarget.Channel, null, "x") { RequestId = "r9" }, mirror));
     }
 
     string LogText()

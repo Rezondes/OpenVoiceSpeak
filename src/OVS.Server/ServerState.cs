@@ -36,6 +36,7 @@ public sealed partial class ServerState
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
         icon = new ServerIconStore(config.DataDir);
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
+        if (data.Migrate()) store.Save(data);
         if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
@@ -204,6 +205,7 @@ public sealed partial class ServerState
                 case SetServerMute r: OnSetServerMute(session, r); break;
                 case LinkChannels r: OnLinkChannels(session, r); break;
                 case UnlinkChannels r: OnUnlinkChannels(session, r); break;
+                case SendChat r: OnSendChat(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }

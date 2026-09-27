@@ -264,4 +264,20 @@ public sealed class DebugApiTests : IAsyncLifetime
         var kicked = await bert.Until(s => !s.GetProperty("connected").GetBoolean());
         Assert.Contains("gekickt", kicked.GetProperty("status").GetString());
     }
+    [Fact]
+    public async Task Chat_RoundTrip()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+        await bert.Post("connect", ConnectBody("bert"));
+        await anna.Until(s => Channels(s).Sum(c => c.GetProperty("users").GetArrayLength()) == 2);
+
+        static bool Has(JsonElement s, string from, string text) =>
+            s.GetProperty("server").GetProperty("chat").EnumerateArray()
+                .Any(c => c.GetProperty("fromNickname").GetString() == from && c.GetProperty("text").GetString() == text);
+        await anna.Post("chat", new { target = "channel", text = "hallo Lobby" });
+        await bert.Until(s => Has(s, "anna", "hallo Lobby"));
+        await bert.Post("chat", new { target = "private", to = "anna", text = "psst" });
+        await anna.Until(s => Has(s, "bert", "psst"));
+        await bert.Until(s => Has(s, "bert", "psst")); // the sender sees the own whisper
+    }
 }
