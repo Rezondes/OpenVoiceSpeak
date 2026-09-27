@@ -108,6 +108,7 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiert
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 
+Der Client schreibt alles, was er tut, in ein Log pro Tag: `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.
 
 ### Kommandozeile
 
@@ -115,7 +116,7 @@ Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenV
 |---|---|
 | `--profile <ordner>` | Eigener Ordner für Identität und Einstellungen, z. B. für eine zweite Instanz |
 | `--no-audio` | Ohne Mikrofon und Lautsprecher |
-| `--audio-debug` | Schreibt PTT-Tastenwechsel und gesendete Frames pro Sekunde nach `audio-debug.log` im Profil |
+| `--audio-debug` | Schreibt zusätzlich PTT-Tastenwechsel und gesendete Frames pro Sekunde ins Client-Log |
 | `--debug-api <port>` | Aktiviert die lokale Debug-API (siehe unten) |
 
 ### Debug-API

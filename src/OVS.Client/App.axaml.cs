@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using OVS.Client.Debug;
+using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
@@ -18,7 +19,11 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var options = Program.Options;
-            var vm = new MainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), options.UseAudioDevices);
+            var log = new ClientLog(options.ProfileDir, TimeProvider.System);
+            var args = string.Join(' ', Environment.GetCommandLineArgs().Skip(1));
+            log.Write($"OpenVoiceSpeak-Client {typeof(App).Assembly.GetName().Version} startet, Profil {options.ProfileDir}, " +
+                      $"Optionen: {(args.Length > 0 ? args : "keine")}");
+            var vm = new MainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), options.UseAudioDevices, log);
             var window = new MainWindow { DataContext = vm };
             if (options.ProfileDir != ClientStorage.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
             DebugApi? debugApi = null;
@@ -28,7 +33,7 @@ public partial class App : Application
                 window.Title += $" (Debug-API :{port})";
             }
             var audioDebug = options.AudioDebug
-                ? new AudioDebugLog(vm.Keys, vm.Audio, Path.Combine(options.ProfileDir, "audio-debug.log"))
+                ? new AudioDebugLog(vm.Keys, vm.Audio, log)
                 : null;
             vm.Dialogs = new Dialogs
             {
@@ -51,6 +56,7 @@ public partial class App : Application
                 audioDebug?.Dispose();
                 // Off the UI thread: the disposal awaits background loops.
                 Task.Run(() => vm.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
+                log.Write("Client beendet");
             };
         }
         base.OnFrameworkInitializationCompleted();

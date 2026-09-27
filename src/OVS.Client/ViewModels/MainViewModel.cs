@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio;
 using OVS.Client.Input;
+using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Shared.Identity;
@@ -24,6 +25,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly KnownServers known;
     ClientConnection? connection;
     VoiceClient? voice;
+    DateTime connectedAt;
+    bool? udpLogged;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConnected))]
@@ -35,10 +38,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] string linkHint = "";
 
     /// <param name="useAudioDevices">False runs without microphone and speaker (tests, debug API with test tone).</param>
-    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true)
+    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true, ClientLog? log = null)
     {
         this.storageDir = storageDir;
         this.post = post;
+        Log = log ?? new ClientLog(storageDir, TimeProvider.System);
         known = new KnownServers(Path.Combine(storageDir, "known_servers.json"));
         Settings = ClientSettings.Load(storageDir, out var warning);
         if (warning is not null) AddNotice(warning);
@@ -47,6 +51,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio = new AudioEngine(Keys, useAudioDevices);
         Audio.TransmitChanged += target => post(() =>
         {
+            Log.Write(target switch
+            {
+                null => "Senden beendet",
+                Shared.Voice.VoiceHeader.TargetLinked => "Senden beginnt: eigener Channel und Links",
+                _ => "Senden beginnt: eigener Channel",
+            });
             TransmitText = target switch
             {
                 null => "",
@@ -60,6 +70,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     }
 
     public ClientSettings Settings { get; private set; }
+    public ClientLog Log { get; }
     public KeyPoller Keys { get; }
     public AudioEngine Audio { get; }
     public ObservableCollection<string> Notices { get; } = [];
@@ -73,6 +84,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings.Save(storageDir);
         Keys.PttKey = Settings.PttKey;
         Keys.LinkPttKey = Settings.LinkPttKey;
+        Log.Write($"Einstellungen: Modus {Settings.Mode}, PTT {KeyPoller.KeyName(Settings.PttKey)}, Link-PTT {KeyPoller.KeyName(Settings.LinkPttKey)}, " +
+                  $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
+                  $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB");
         if (Audio.Configure(Settings) is { } warning) AddNotice(warning);
     }
 
@@ -87,16 +101,26 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
 
         Status = $"Verbinde mit {choice.Host}:{choice.Port} ...";
+        Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(string.IsNullOrEmpty(choice.Password) ? "" : " mit Passwort")}");
         try
         {
             using var identity = ClientStorage.LoadOrCreateIdentity(storageDir);
             var conn = await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
-                string.IsNullOrEmpty(choice.Password) ? null : choice.Password, known, ConfirmTofu);
+                string.IsNullOrEmpty(choice.Password) ? null : choice.Password, known, ConfirmTofuLogged);
 
-            var vm = new ServerViewModel(new StateMirror(conn.Welcome), conn.SendAsync, TimeProvider.System, Dialogs);
+            var mirror = new StateMirror(conn.Welcome);
+            var vm = new ServerViewModel(mirror, request =>
+            {
+                Log.Write(ClientLog.Describe(request, mirror));
+                return conn.SendAsync(request);
+            }, TimeProvider.System, Dialogs);
             vm.Notice += AddNotice;
             vm.PropertyChanged += OnServerPropertyChanged;
-            conn.MessageReceived += m => post(() => vm.Apply(m));
+            conn.MessageReceived += m => post(() =>
+            {
+                if (ClientLog.Describe(m, mirror) is { } line) Log.Write(line);
+                vm.Apply(m);
+            });
             conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
 
             var udp = new VoiceClient(new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
@@ -107,9 +131,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
             connection = conn;
             voice = udp;
+            connectedAt = DateTime.UtcNow;
+            udpLogged = null;
             Server = vm;
             SyncAudioFlags();
             Status = $"Verbunden mit {vm.ServerName}";
+            Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
+                      $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
             if (vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText);
         }
         catch (ConnectionRejectedException e)
@@ -124,10 +152,23 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         {
             Status = $"Verbindung fehlgeschlagen: {e.Message}";
         }
+        if (connection is null) Log.Write(Status);
+    }
+
+    async Task<bool> ConfirmTofuLogged(TofuPrompt prompt)
+    {
+        bool accepted = await ConfirmTofu(prompt);
+        Log.Write($"Serverzertifikat {(prompt.Result == TofuResult.Mismatch ? "GEÄNDERT" : "neu")} für {prompt.Host}:{prompt.Port}, " +
+                  $"Fingerprint {prompt.Fingerprint}: {(accepted ? "akzeptiert" : "abgelehnt")}");
+        return accepted;
     }
 
     [RelayCommand]
-    public Task DisconnectAsync() => DisconnectAsync("Nicht verbunden");
+    public Task DisconnectAsync()
+    {
+        if (connection is not null) Log.Write("Verbindung getrennt (eigene Aktion)");
+        return DisconnectAsync("Nicht verbunden");
+    }
 
     /// <param name="status">Set before tearing down, so nobody ever sees "disconnected" with a stale status.</param>
     async Task DisconnectAsync(string status)
@@ -168,6 +209,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public void Tick()
     {
         Server?.RefreshSpeaking();
+        LogUdpReachability();
         PingText = connection?.LastRoundTrip is { } rtt
             ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.Reachable == false ? ", UDP nicht erreichbar" : "")
             : "";
@@ -176,8 +218,25 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             : "";
     }
 
+    /// <summary>Logs "reachable" once, or "not reachable" when nothing came back within 5 s (then "reachable" if it recovers).</summary>
+    void LogUdpReachability()
+    {
+        if (voice is not { } v || udpLogged == true) return;
+        if (v.Reachable)
+        {
+            Log.Write("UDP erreichbar");
+            udpLogged = true;
+        }
+        else if (udpLogged is null && DateTime.UtcNow - connectedAt > TimeSpan.FromSeconds(5))
+        {
+            Log.Write("UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)");
+            udpLogged = false;
+        }
+    }
+
     public void AddNotice(string text)
     {
+        Log.Write("Meldung: " + text);
         Notices.Insert(0, $"{DateTime.Now:HH:mm:ss}  {text}");
         while (Notices.Count > 200) Notices.RemoveAt(Notices.Count - 1);
     }

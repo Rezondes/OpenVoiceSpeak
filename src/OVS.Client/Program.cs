@@ -6,7 +6,7 @@ namespace OVS.Client;
 /// <summary>
 /// Command line: --profile &lt;dir&gt; (own identity and settings, e.g. for a second instance),
 /// --debug-api &lt;port&gt; (local test API, see Debug/DebugApi.cs), --no-audio (no microphone or speaker),
-/// --audio-debug (key and frame rate log in the profile, see Debug/AudioDebugLog.cs).
+/// --audio-debug (key and frame rate lines in the client log, see Debug/AudioDebugLog.cs).
 /// </summary>
 public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices, bool AudioDebug = false)
 {

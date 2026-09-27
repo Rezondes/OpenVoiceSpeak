@@ -1,30 +1,30 @@
 using OVS.Client.Audio;
 using OVS.Client.Input;
+using OVS.Client.Logging;
 
 namespace OVS.Client.Debug;
 
 /// <summary>
-/// --audio-debug: logs global PTT key changes and the sent frame rate once per second to a text file,
+/// --audio-debug: logs global PTT key changes and the sent frame rate once per second to the client log,
 /// to check key detection with another window focused and the real microphone's frame rate.
 /// </summary>
 public sealed class AudioDebugLog : IDisposable
 {
     readonly KeyPoller keys;
     readonly AudioEngine audio;
-    readonly StreamWriter writer;
+    readonly ClientLog log;
     readonly Timer timer;
-    readonly object gate = new();
     long lastFrames;
     float lastLevel = -120f;
 
-    public AudioDebugLog(KeyPoller keys, AudioEngine audio, string path)
+    public AudioDebugLog(KeyPoller keys, AudioEngine audio, ClientLog log)
     {
         this.keys = keys;
         this.audio = audio;
-        writer = new StreamWriter(path, append: true) { AutoFlush = true };
+        this.log = log;
         keys.Changed += OnKeys;
         audio.InputLevel += OnLevel;
-        Write($"Audio-Debug gestartet, PTT = {KeyPoller.KeyName(keys.PttKey)}, Link-PTT = {KeyPoller.KeyName(keys.LinkPttKey)}");
+        Write($"gestartet, PTT = {KeyPoller.KeyName(keys.PttKey)}, Link-PTT = {KeyPoller.KeyName(keys.LinkPttKey)}");
         timer = new Timer(_ => OnSecond(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
@@ -39,16 +39,12 @@ public sealed class AudioDebugLog : IDisposable
         lastFrames = frames;
     }
 
-    void Write(string line)
-    {
-        lock (gate) writer.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {line}");
-    }
+    void Write(string line) => log.Write("Audio-Debug: " + line);
 
     public void Dispose()
     {
         timer.Dispose();
         keys.Changed -= OnKeys;
         audio.InputLevel -= OnLevel;
-        lock (gate) writer.Dispose();
     }
 }

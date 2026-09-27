@@ -92,7 +92,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 21 sind umgesetzt, 22 ist geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
+Alle 22 Packages sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Zwei Acceptance Criteria sind noch offen, weil sie ein Headset bzw. einen Blick auf den Bildschirm brauchen: Package 16 AC9 und Package 17 AC7 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -1573,9 +1573,10 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerLogsTests"`
 **Abhängigkeiten:** Package 16, 20
 
 **Betroffene Dateien:**
-- `src/OVS.Client/Logging/ClientLog.cs` (neu): Datei, Grössenbegrenzung, lesbare Beschreibung von Protokollnachrichten
-- `src/OVS.Client/ViewModels/MainViewModel.cs`, `ServerViewModel.cs` (ändern): Ereignisse protokollieren
-- `src/OVS.Client/Audio/AudioEngine.cs` (ändern): Geräte, Warnungen, Sendebeginn und -ende
+- `src/OVS.Client/Logging/ClientLog.cs` (neu): Tagesdatei, lesbare Beschreibung von Protokollnachrichten und eigenen Anfragen
+- `src/OVS.Shared/Logging/DailyLog.cs` (aus Package 21, unverändert): Tagesdateien und Aufbewahrung
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): Ereignisse protokollieren. Nachrichten und Anfragen werden dort beim Empfangen bzw. Senden abgegriffen, `ServerViewModel.cs` bleibt unverändert.
+- Geräte, Warnungen, Sendebeginn und -ende kommen über die vorhandenen Events und Rückgabewerte von `AudioEngine` an, die Datei bleibt unverändert.
 - `src/OVS.Client/Debug/AudioDebugLog.cs` (ändern): `--audio-debug` schreibt in dieselbe Datei
 - `src/OVS.Client/App.axaml.cs` (ändern): Start und Ende
 - `tests/OVS.Tests/Client/ClientLogTests.cs` (neu)
@@ -1598,22 +1599,22 @@ Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` sc
 
 ### Acceptance Criteria
 
-- [ ] AC1: Jedes genannte Ereignis erzeugt eine lesbare Zeile mit Zeitstempel im Client-Log. Protokollnachrichten erscheinen mit Namen statt IDs.
-- [ ] AC2: Jeder Tag hat eine eigene Datei. Dateien, die älter als 30 Tage sind, werden beim Start und beim Tageswechsel gelöscht.
-- [ ] AC3: Serverpasswort und Admin-Token stehen nie in der Datei.
-- [ ] AC4: `--audio-debug` schreibt in das Client-Log, eine eigene `audio-debug.log` gibt es nicht mehr.
-- [ ] AC5: Ein Schreibfehler im Log bringt den Client nicht zum Absturz.
-- [ ] AC6: Die Meldungsliste im Fenster zeigt weiterhin nur Fehler, Willkommenstext, Trennungen und Warnungen.
+- [x] AC1: Jedes genannte Ereignis erzeugt eine lesbare Zeile mit Zeitstempel im Client-Log. Protokollnachrichten erscheinen mit Namen statt IDs.
+- [x] AC2: Jeder Tag hat eine eigene Datei. Dateien, die älter als 30 Tage sind, werden beim Start und beim Tageswechsel gelöscht.
+- [x] AC3: Serverpasswort und Admin-Token stehen nie in der Datei.
+- [x] AC4: `--audio-debug` schreibt in das Client-Log, eine eigene `audio-debug.log` gibt es nicht mehr.
+- [x] AC5: Ein Schreibfehler im Log bringt den Client nicht zum Absturz.
+- [x] AC6: Die Meldungsliste im Fenster zeigt weiterhin nur Fehler, Willkommenstext, Trennungen und Warnungen.
 
 ### Tests (TDD)
 
 `ClientLogTests.cs`:
 1. `[Theory] "Describe_Message"` für jede Delta-Art, mit Namen aus dem `StateMirror` (AC1)
 2. `"Connect_Disconnect_Logged"` über `MainViewModel` gegen `TestServer` (AC1)
-3. `"OwnActions_Logged"` über die Debug-API (AC1)
+3. `"OwnActions_Logged"` über `ServerViewModel`, denselben Weg, den auch die Debug-API nimmt (AC1). Dazu `"Describe_Request_UsesNames_NeverSecrets"`.
 4. `"DayChange_NewFile_OldFilesDeleted"` mit `ManualTimeProvider` (AC2)
 5. `"PasswordAndToken_NeverLogged"` (AC3)
-6. `"AudioDebug_WritesToClientLog"` (AC4)
+6. `"AudioDebug_WritesToClientLog"` (AC4), ersetzt `MainViewModelTests.AudioDebugLog_RecordsKeysAndFrameRate`
 7. `"WriteFailure_DoesNotThrow"` (AC5)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientLogTests"`

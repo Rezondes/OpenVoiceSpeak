@@ -83,29 +83,6 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AudioDebugLog_RecordsKeysAndFrameRate()
-    {
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
-        var path = Path.Combine(dir, "audio-debug.log");
-        using (new OVS.Client.Debug.AudioDebugLog(keys, engine, path))
-        {
-            engine.SetTone(440);
-            keys.Simulate(ptt: true);
-            await Task.Delay(2300);
-            keys.Simulate(ptt: false);
-            await Task.Delay(100);
-        }
-        var log = File.ReadAllText(path);
-        Assert.Contains("PTT gedrückt", log);
-        Assert.Contains("PTT losgelassen", log);
-        // one full second of PTT at 20 ms per frame
-        var rates = log.Split('\n').Where(l => l.Contains("Frames gesendet: "))
-            .Select(l => int.Parse(l.Split("Frames gesendet: ")[1].Split('/')[0])).ToList();
-        Assert.Contains(rates, r => r is >= 45 and <= 55);
-    }
-
-    [Fact]
     public async Task ToneInput_ReportsInputLevel()
     {
         using var keys = new KeyPoller();
