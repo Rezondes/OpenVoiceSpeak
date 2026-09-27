@@ -165,4 +165,10 @@ public class HandshakeTests
         foreach (var c in open) await c.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Startup_LogsAdminToken()
+    {
+        await using var server = await TestServer.StartAsync();
+        Assert.Contains(server.Log, l => l.Contains("Admin-Token: " + server.State.PendingAdminToken));
+    }
 }

@@ -21,6 +21,7 @@ public sealed partial class ServerState
     readonly Action<string> log;
     readonly Dictionary<uint, Session> sessions = [];
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
+    readonly AdminToken adminToken = new();
     uint lastSessionId;
 
     public ServerState(ServerConfig config, TimeProvider time, Action<string> log)
@@ -30,7 +31,11 @@ public sealed partial class ServerState
         this.log = log;
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
+        if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
+            log($"Admin-Token: {adminToken.Generate()}  (im Client unter 'Admin-Token einlösen' eingeben)");
     }
+
+    public string? PendingAdminToken => adminToken.Current;
 
     public int SessionCount
     {
@@ -137,6 +142,14 @@ public sealed partial class ServerState
                 case DeleteChannel r: OnDeleteChannel(session, r); break;
                 case MoveUser r: OnMoveUser(session, r); break;
                 case SetSelfState r: OnSetSelfState(session, r); break;
+                case CreateGroup r: OnCreateGroup(session, r); break;
+                case UpdateGroup r: OnUpdateGroup(session, r); break;
+                case DeleteGroup r: OnDeleteGroup(session, r); break;
+                case AssignGroup r: OnAssignGroup(session, r); break;
+                case UnassignGroup r: OnUnassignGroup(session, r); break;
+                case ListUsers r: OnListUsers(session, r); break;
+                case RedeemAdminToken r: OnRedeemAdminToken(session, r); break;
+                case UpdateServerSettings r: OnUpdateServerSettings(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }
@@ -170,6 +183,20 @@ public sealed partial class ServerState
     {
         var n = name?.Trim();
         return n is { Length: > 0 } && n.Length <= max && !n.Any(char.IsControl) ? n : null;
+    }
+
+    /// <summary>Re-reads every online user's groups and broadcasts those whose permissions changed.</summary>
+    void RecomputePermissions()
+    {
+        foreach (var s in sessions.Values)
+        {
+            var groups = FindUser(s.Fingerprint)?.GroupIds ?? [];
+            var perms = Effective(groups, data.Groups);
+            if (perms == s.Permissions && groups.SequenceEqual(s.GroupIds)) continue;
+            s.Permissions = perms;
+            s.GroupIds = groups.ToList();
+            Broadcast(new UserUpdated(Info(s)));
+        }
     }
 
     static UserInfo Info(Session s) =>
