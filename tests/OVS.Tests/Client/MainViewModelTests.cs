@@ -175,6 +175,38 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal("anna", echo.FromNickname);
     }
 
+    /// <summary>Package 33: an incoming whisper opens a tab in the background, the reply goes back only to bert.</summary>
+    [Fact]
+    public async Task Private_EndToEnd()
+    {
+        await ConnectAsync(saveBookmark: false);
+        await using var bert = await TestClient.ConnectAsync(server, "bert");
+        await using var carla = await TestClient.ConnectAsync(server, "carla");
+        var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
+
+        await bert.SendAsync(new SendChat(ChatTarget.Private, annaId, "psst"));
+        ChatTab? tab = null;
+        for (int i = 0; i < 60 && tab is null; i++)
+        {
+            await Task.Delay(50);
+            tab = await OnUi(() => vm.Chat!.Tabs.FirstOrDefault(t => t.IsPrivate));
+        }
+        Assert.Equal(("@bert", 1), (tab?.Title, tab?.Unread));
+        Assert.True(await OnUi(() => vm.Chat!.Selected.IsGeneral)); // in the background
+
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "bert").MessageCommand.Execute(null);
+            vm.Chat!.Draft = "psst zurück";
+            await vm.Chat.SendCommand.ExecuteAsync(null);
+            return null;
+        });
+        Assert.Same(tab, await OnUi(() => vm.Chat!.Selected));
+        var reply = await bert.WaitForAsync<ChatMessage>(m => m.Text == "psst zurück");
+        Assert.Equal(ChatTarget.Private, reply.Target);
+        await carla.AssertNoMessageAsync<ChatMessage>();
+    }
+
     [Fact]
     public async Task Notices_HaveKinds_ErrorAndDisconnect()
     {

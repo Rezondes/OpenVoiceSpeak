@@ -156,6 +156,9 @@
                           <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupNames}">
                             <Border.ContextMenu>
                               <ContextMenu>
+                                <MenuItem Header="Privatnachricht" Command="{Binding MessageCommand}" IsVisible="{Binding CanMessage}">
+                                  <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Chat}" Classes="sm" /></MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="Verschieben ..." Command="{Binding MoveCommand}" IsVisible="{Binding CanMove}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowMove}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>

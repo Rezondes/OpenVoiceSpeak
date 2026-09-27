@@ -87,6 +87,9 @@ public sealed partial class ServerViewModel : ObservableObject
     readonly Queue<ChatMessage> recentChat = new();
     public event Action<ChatMessage>? ChatReceived;
     public event Action<string>? ChatError;
+    /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
+    public event Action<UserViewModel>? PrivateChatRequested;
+    internal void RequestPrivateChat(UserViewModel user) => PrivateChatRequested?.Invoke(user);
     public IReadOnlyCollection<ChatMessage> RecentChat => recentChat;
     public bool CanChatServer => SelfPermissions.Has(Permission.ChatServer);
     public bool CanChatChannel => SelfPermissions.Has(Permission.ChatChannel);
@@ -378,6 +381,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [ObservableProperty] bool canMute;
     [ObservableProperty] bool canKick;
     [ObservableProperty] bool canBan;
+    [ObservableProperty] bool canMessage;
 
     public uint SessionId { get; } = sessionId;
     public Permission Permissions { get; private set; }
@@ -407,6 +411,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         CanMute = actor.Has(Permission.UserMute) && rank && !isSelf;
         CanKick = actor.Has(Permission.UserKick) && rank && !isSelf;
         CanBan = actor.Has(Permission.UserBan) && rank && !isSelf;
+        CanMessage = actor.Has(Permission.ChatPrivate) && !isSelf;
     }
 
     internal void SetSpeaking(bool on, bool viaLink)
@@ -422,6 +427,9 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         if (owner.Dialogs.PickChannel is { } pick && await pick($"{Nickname} verschieben nach", targets) is { } channel)
             await owner.MoveAsync(SessionId, channel.Id);
     }
+
+    [RelayCommand]
+    void Message() => owner.RequestPrivateChat(this);
 
     [RelayCommand]
     Task ToggleServerMute() => owner.ServerMuteAsync(SessionId, !ServerMuted);

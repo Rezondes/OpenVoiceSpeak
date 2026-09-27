@@ -145,6 +145,23 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Equal("", vm.Chat.Draft); // Enter sent it
 
+        // Package 33: "Privatnachricht" in the user menu opens a closable tab
+        var annaRow = main.GetVisualDescendants().OfType<Border>()
+            .Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel { Nickname: "anna" });
+        annaRow.ContextMenu!.Open(annaRow);
+        Dispatcher.UIThread.RunJobs();
+        var message = annaRow.ContextMenu.Items.OfType<MenuItem>().Single(m => m.Header as string == "Privatnachricht");
+        Assert.True(message.IsVisible);
+        annaRow.ContextMenu.Close();
+        message.Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("@anna", Texts(main));
+        var close = main.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "@anna schliessen");
+        Assert.True(close.IsEffectivelyVisible);
+        close.Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.DoesNotContain("@anna", Texts(main));
+
         vm.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("DARSTELLUNG", Texts(main));

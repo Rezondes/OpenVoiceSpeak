@@ -13,11 +13,17 @@
             <StackPanel Orientation="Horizontal" Spacing="6">
               <PathIcon Classes="sm" Data="{StaticResource Icon.Chat}" IsVisible="{Binding IsGeneral}" />
               <PathIcon Classes="sm" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsChannel}" />
-              <TextBlock Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis" />
+              <PathIcon Classes="sm" Data="{StaticResource Icon.Person}" IsVisible="{Binding IsPrivate}" />
+              <TextBlock Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis"
+                         Classes.offline="{Binding !IsOnline}" />
               <Border Classes="count" IsVisible="{Binding HasUnread}" ToolTip.Tip="Ungelesen"
                       AutomationProperties.Name="{Binding Unread, StringFormat='{}{0} ungelesen'}">
                 <TextBlock Text="{Binding Unread}" />
               </Border>
+              <Button Classes="icon tabClose" Command="{Binding CloseCommand}" IsVisible="{Binding IsPrivate}"
+                      ToolTip.Tip="Tab schliessen" AutomationProperties.Name="{Binding Title, StringFormat='{}{0} schliessen'}">
+                <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+              </Button>
             </StackPanel>
           </DataTemplate>
         </TabStrip.ItemTemplate>

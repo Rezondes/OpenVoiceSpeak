@@ -20,8 +20,11 @@ public class ChatViewModelTests
     sealed record Fixture(ChatViewModel Chat, ServerViewModel Server, List<Request> Sent)
     {
         public SendChat LastChat => Sent.OfType<SendChat>().Last();
-        public void Receive(ChatTarget target, uint from, string text, Guid? channel = null) =>
-            Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, null, text, DateTimeOffset.UtcNow));
+        public void Receive(ChatTarget target, uint from, string text, Guid? channel = null, uint? to = null) =>
+            Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, to, text, DateTimeOffset.UtcNow));
+
+        public UserViewModel User(uint id) => Server.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
+        public ChatTab? Private(string title) => Chat.Tabs.SingleOrDefault(t => t.IsPrivate && t.Title == title);
     }
 
     static Fixture Create(P selfPerms = Guest, IEnumerable<Notice>? earlier = null)
@@ -169,5 +172,97 @@ public class ChatViewModelTests
         Assert.Single(notices);
         f.Chat.Selected = f.Chat.General;
         Assert.Null(f.Chat.ComposerError);
+    }
+    // ---- Package 33: private tabs ----
+
+    [Fact]
+    public void Private_OpenFromUser_ActivatesTab()
+    {
+        var f = Create();
+        Assert.False(f.User(1).CanMessage); // not to oneself
+        Assert.True(f.User(2).CanMessage);
+
+        f.User(2).MessageCommand.Execute(null);
+        var tab = f.Private("@bert");
+        Assert.NotNull(tab);
+        Assert.Same(tab, f.Chat.Selected);
+        Assert.Equal("Nachricht an @bert", f.Chat.Placeholder);
+
+        f.Chat.Selected = f.Chat.General;
+        f.User(2).MessageCommand.Execute(null); // again: the same tab, no second one
+        Assert.Same(tab, f.Chat.Selected);
+        Assert.Equal(3, f.Chat.Tabs.Count);
+
+        Assert.False(Create(P.Speak | P.ChatChannel).User(2).CanMessage); // without the right
+    }
+
+    [Fact]
+    public async Task Private_Incoming_OpensInBackground()
+    {
+        var f = Create();
+        f.Receive(ChatTarget.Private, 2, "psst", to: 1);
+        var tab = f.Private("@bert")!;
+        Assert.Same(f.Chat.General, f.Chat.Selected);
+        Assert.Equal(1, tab.Unread);
+
+        f.Chat.Selected = tab;
+        f.Chat.Draft = "ja?";
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal((ChatTarget.Private, 2u, "ja?"), (f.LastChat.Target, f.LastChat.ToSessionId!.Value, f.LastChat.Text));
+        f.Receive(ChatTarget.Private, 1, "ja?", to: 2); // the server's echo lands in the same tab
+        Assert.Equal(["psst", "ja?"], tab.Entries.Select(e => e.Text));
+        Assert.True(tab.Entries[1].IsOwn);
+    }
+
+    [Fact]
+    public void Private_CloseAndReopen_KeepsHistory()
+    {
+        var f = Create();
+        f.User(2).MessageCommand.Execute(null);
+        var tab = f.Private("@bert")!;
+        f.Receive(ChatTarget.Private, 2, "eins", to: 1);
+
+        tab.CloseCommand.Execute(null);
+        Assert.DoesNotContain(tab, f.Chat.Tabs);
+        Assert.Same(f.Chat.General, f.Chat.Selected);
+        Assert.False(f.Chat.General.IsPrivate); // the fixed tabs have no close button
+
+        f.Receive(ChatTarget.Private, 2, "zwei", to: 1);
+        Assert.Same(tab, f.Private("@bert"));
+        Assert.Equal(["eins", "zwei"], tab.Entries.Select(e => e.Text));
+    }
+
+    [Fact]
+    public async Task Private_PartnerOfflineAndBack()
+    {
+        var f = Create();
+        f.User(2).MessageCommand.Execute(null);
+        var tab = f.Private("@bert")!;
+        f.Chat.Draft = "bist du da?";
+
+        f.Server.Apply(new UserLeft(2));
+        Assert.False(tab.IsOnline);
+        Assert.False(f.Chat.CanWrite);
+        Assert.Equal("@bert ist nicht online.", f.Chat.NoRightHint);
+        Assert.False(f.Chat.SendCommand.CanExecute(null));
+        Assert.Equal("@bert ist offline.", tab.Entries[^1].Text);
+
+        // back with a new session, same identity
+        f.Server.Apply(new UserJoined(new UserInfo(7, "fp2", "bert", Lobby, false, false, false, Guest, [WellKnownGroups.Guest])));
+        Assert.True(tab.IsOnline);
+        Assert.True(f.Chat.CanWrite);
+        Assert.Equal("@bert ist wieder online.", tab.Entries[^1].Text);
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal(7u, f.LastChat.ToSessionId);
+    }
+
+    [Fact]
+    public void Private_NicknameChange_UpdatesTitle()
+    {
+        var f = Create();
+        f.User(2).MessageCommand.Execute(null);
+        f.Server.Apply(new UserUpdated(new UserInfo(2, "fp2", "berta", Lobby, false, false, false, Guest, [WellKnownGroups.Guest])));
+        Assert.NotNull(f.Private("@berta"));
+        Assert.Null(f.Private("@bert"));
     }
 }

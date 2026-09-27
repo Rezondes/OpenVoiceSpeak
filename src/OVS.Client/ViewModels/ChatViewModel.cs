@@ -5,7 +5,7 @@ using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
 
-public enum ChatTabKind { General, Channel }
+public enum ChatTabKind { General, Channel, Private }
 
 /// <summary>
 /// One line in a chat tab: a message (From set), a system notice (Notice set) or a plain marker such as
@@ -23,7 +23,8 @@ public sealed record ChatEntry(DateTime Time, string Text, string? From = null, 
     public bool IsError => Notice is NoticeKind.Error;
 }
 
-public sealed partial class ChatTab(ChatTabKind kind, string title) : ObservableObject
+/// <param name="partner">Private tabs (Package 33): the partner's fingerprint, so the tab survives a reconnect.</param>
+public sealed partial class ChatTab(ChatTabKind kind, string title, string? partner = null) : ObservableObject
 {
     const int MaxEntries = 500;
 
@@ -31,12 +32,22 @@ public sealed partial class ChatTab(ChatTabKind kind, string title) : Observable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasUnread))]
     int unread;
+    /// <summary>Private tabs: whether the partner is online.</summary>
+    [ObservableProperty] bool isOnline = true;
 
     public ChatTabKind Kind { get; } = kind;
+    public string? Partner { get; } = partner;
+    public uint? PartnerSession { get; internal set; }
     public bool IsGeneral => Kind == ChatTabKind.General;
     public bool IsChannel => Kind == ChatTabKind.Channel;
+    public bool IsPrivate => Kind == ChatTabKind.Private;
     public bool HasUnread => Unread > 0;
     public ObservableCollection<ChatEntry> Entries { get; } = [];
+
+    internal Action<ChatTab>? Closing { get; init; }
+
+    [RelayCommand]
+    void Close() => Closing?.Invoke(this);
 
     internal void Add(ChatEntry entry, bool countUnread)
     {
@@ -47,14 +58,16 @@ public sealed partial class ChatTab(ChatTabKind kind, string title) : Observable
 }
 
 /// <summary>
-/// The chat in the main area (Package 32): "Allgemein" with server-wide messages and system notices, and the
-/// current channel. Lives as long as the connection, the server keeps no history (A27).
+/// The chat in the main area (Package 32): "Allgemein" with server-wide messages and system notices, the
+/// current channel and private tabs (Package 33). Lives as long as the connection, the server keeps no history (A27).
 /// </summary>
 public sealed partial class ChatViewModel : ObservableObject
 {
     public const int CounterFrom = 1800;
 
     readonly ServerViewModel server;
+    /// <summary>Private tabs by partner fingerprint, closed ones included: reopening keeps the history (A27).</summary>
+    readonly Dictionary<string, ChatTab> privateTabs = [];
     Guid? channelId;
 
     [ObservableProperty]
@@ -83,6 +96,7 @@ public sealed partial class ChatViewModel : ObservableObject
         server.ChatReceived += OnChat;
         server.ChatError += text => ComposerError = text;
         server.StateChanged += OnStateChanged;
+        server.PrivateChatRequested += user => OpenPrivate(user.Fingerprint);
         OnStateChanged();
     }
 
@@ -93,13 +107,16 @@ public sealed partial class ChatViewModel : ObservableObject
     public bool CanWrite => Selected.Kind switch
     {
         ChatTabKind.General => server.CanChatServer,
-        _ => server.CanChatChannel,
+        ChatTabKind.Channel => server.CanChatChannel,
+        _ => server.CanChatPrivate && Selected.IsOnline,
     };
 
     public string? NoRightHint => CanWrite ? null : Selected.Kind switch
     {
         ChatTabKind.General => "Dir fehlt das Recht, serverweit zu schreiben.",
-        _ => "Dir fehlt das Recht, im Channel zu schreiben.",
+        ChatTabKind.Channel => "Dir fehlt das Recht, im Channel zu schreiben.",
+        _ when !Selected.IsOnline => $"{Selected.Title} ist nicht online.",
+        _ => "Dir fehlt das Recht, privat zu schreiben.",
     };
 
     public string Placeholder => CanWrite ? $"Nachricht an {Selected.Title}" : "";
@@ -129,7 +146,45 @@ public sealed partial class ChatViewModel : ObservableObject
             case ChatTarget.Channel when m.ChannelId == channelId: // a message from the channel just left is dropped
                 Add(ChannelTab, entry);
                 break;
+            case ChatTarget.Private:
+                // The server sends a message before its sender can leave, so the partner is always known here.
+                var partnerId = entry.IsOwn ? m.ToSessionId : m.FromSessionId;
+                if (partnerId is { } id && server.Mirror.Users.GetValueOrDefault(id) is { } partner)
+                    Add(PrivateTab(partner.Fingerprint), entry); // an incoming message opens the tab in the background
+                break;
         }
+    }
+
+    /// <summary>"Privatnachricht" on a user: opens or brings back the tab and switches to it.</summary>
+    public void OpenPrivate(string fingerprint) => Selected = PrivateTab(fingerprint);
+
+    ChatTab PrivateTab(string fingerprint)
+    {
+        if (!privateTabs.TryGetValue(fingerprint, out var tab))
+        {
+            privateTabs[fingerprint] = tab = new ChatTab(ChatTabKind.Private, "", fingerprint) { Closing = CloseTab };
+            SyncPartner(tab);
+        }
+        if (!Tabs.Contains(tab)) Tabs.Add(tab);
+        return tab;
+    }
+
+    void CloseTab(ChatTab tab)
+    {
+        if (Selected == tab) Selected = General;
+        Tabs.Remove(tab);
+    }
+
+    /// <summary>The title follows the nickname, the input follows whether the partner is online.</summary>
+    void SyncPartner(ChatTab tab)
+    {
+        var user = server.Mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == tab.Partner);
+        if (user is not null) tab.Title = "@" + user.Nickname;
+        tab.PartnerSession = user?.SessionId;
+        bool online = user is not null;
+        if (online == tab.IsOnline) return;
+        tab.IsOnline = online;
+        tab.Add(new ChatEntry(DateTime.Now, online ? $"{tab.Title} ist wieder online." : $"{tab.Title} ist offline."), countUnread: false);
     }
 
     /// <summary>A new channel starts an empty tab (A27). Also picks up renames and changed rights.</summary>
@@ -144,6 +199,7 @@ public sealed partial class ChatViewModel : ObservableObject
             if (channel is not null) Add(ChannelTab, new ChatEntry(DateTime.Now, $"Du hast \"{channel.Name}\" betreten."), countUnread: false);
         }
         ChannelTab.Title = channel?.Name ?? "";
+        foreach (var tab in privateTabs.Values) SyncPartner(tab);
         OnPropertyChanged(nameof(CanWrite));
         OnPropertyChanged(nameof(NoRightHint));
         OnPropertyChanged(nameof(Placeholder));
@@ -156,9 +212,15 @@ public sealed partial class ChatViewModel : ObservableObject
     async Task Send()
     {
         var text = Draft.Trim();
-        var target = Selected.Kind == ChatTabKind.General ? ChatTarget.Server : ChatTarget.Channel;
+        var tab = Selected;
+        var target = tab.Kind switch
+        {
+            ChatTabKind.General => ChatTarget.Server,
+            ChatTabKind.Channel => ChatTarget.Channel,
+            _ => ChatTarget.Private,
+        };
         Draft = "";
         ComposerError = null;
-        await server.SendChatAsync(target, text);
+        await server.SendChatAsync(target, text, tab.PartnerSession);
     }
 }
