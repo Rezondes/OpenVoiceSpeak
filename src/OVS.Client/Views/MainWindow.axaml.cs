@@ -35,6 +35,21 @@ public partial class MainWindow : Window
         }
     }
 
+    async void OnAdminClick(object? sender, RoutedEventArgs e)
+    {
+        if (Vm.Server is not { } server) return;
+        var vm = new AdminViewModel(server);
+        await vm.RequestListsAsync();
+        try
+        {
+            await new AdminDialog { DataContext = vm }.ShowDialog(this);
+        }
+        finally
+        {
+            vm.Detach();
+        }
+    }
+
     void OnChannelDoubleTapped(object? sender, TappedEventArgs e)
     {
         if ((sender as Control)?.DataContext is ChannelViewModel channel) channel.JoinCommand.Execute(null);

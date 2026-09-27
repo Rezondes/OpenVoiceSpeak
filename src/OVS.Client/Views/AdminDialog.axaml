@@ -1,0 +1,118 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:OVS.Client.ViewModels"
+        x:Class="OVS.Client.Views.AdminDialog"
+        x:DataType="vm:AdminViewModel"
+        Title="Verwaltung" Width="780" Height="540" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button Content="Aktualisieren" Command="{Binding RefreshCommand}" />
+      <Button Content="Schliessen" Click="OnCloseClick" IsCancel="True" />
+    </StackPanel>
+
+    <TabControl x:Name="Tabs">
+      <TabItem Header="Gruppen" IsVisible="{Binding ShowGroups}">
+        <Grid ColumnDefinitions="220,*">
+          <DockPanel>
+            <Button DockPanel.Dock="Bottom" Content="Neue Gruppe" Command="{Binding NewGroupCommand}" Margin="0,6,0,0" />
+            <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:GroupEditViewModel">
+                  <TextBlock Text="{Binding DisplayName}" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+          <DockPanel Grid.Column="1" Margin="12,0,0,0">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+              <Button Content="Gruppe speichern" Command="{Binding SaveGroupCommand}" />
+              <Button Content="Gruppe löschen" Command="{Binding DeleteGroupCommand}" />
+            </StackPanel>
+            <ContentControl Content="{Binding SelectedGroup}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:GroupEditViewModel">
+                  <ScrollViewer>
+                    <StackPanel Spacing="4">
+                      <TextBox Text="{Binding Name}" IsEnabled="{Binding IsEditable}" Watermark="Gruppenname" />
+                      <TextBlock Text="Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar."
+                                 IsVisible="{Binding IsReadOnly}" Foreground="Gray" TextWrapping="Wrap" />
+                      <TextBlock Text="Ausgegraut: Rechte, die du selbst nicht hast, kannst du nicht vergeben."
+                                 IsVisible="{Binding IsEditable}" Foreground="Gray" FontSize="12" TextWrapping="Wrap" />
+                      <ItemsControl ItemsSource="{Binding Toggles}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:PermissionToggle">
+                            <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </ScrollViewer>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+          </DockPanel>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Nutzer" IsVisible="{Binding ShowUsers}">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Users}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:KnownUserViewModel">
+                <StackPanel Margin="0,4">
+                  <TextBlock>
+                    <Run Text="{Binding Nickname}" FontWeight="SemiBold" />
+                    <Run Text="  " />
+                    <Run Text="{Binding ShortFingerprint}" Foreground="Gray" />
+                  </TextBlock>
+                  <ItemsControl ItemsSource="{Binding Toggles}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:GroupToggle">
+                        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}"
+                                  Command="{Binding ToggleCommand}" Margin="0,0,12,0" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Bans" IsVisible="{Binding ShowBans}">
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Bans}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BanViewModel">
+                <DockPanel Margin="0,3">
+                  <Button DockPanel.Dock="Right" Content="Entbannen" Command="{Binding UnbanCommand}" Margin="8,0,0,0" />
+                  <TextBlock Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Server" IsVisible="{Binding ShowServer}">
+        <StackPanel Spacing="8" MaxWidth="480" HorizontalAlignment="Left">
+          <TextBlock Text="Servername" />
+          <TextBox Text="{Binding ServerName}" />
+          <TextBlock Text="Willkommenstext" />
+          <TextBox Text="{Binding WelcomeText}" AcceptsReturn="True" TextWrapping="Wrap" Height="80" />
+          <TextBlock Text="Der Server ist mit einem Passwort geschützt." IsVisible="{Binding HasPassword}" />
+          <TextBlock Text="Der Server hat kein Passwort." IsVisible="{Binding !HasPassword}" />
+          <TextBox Text="{Binding NewPassword}" PasswordChar="•" Watermark="Neues Passwort (leer lassen = unverändert)" />
+          <CheckBox Content="Passwort entfernen" IsChecked="{Binding RemovePassword}" />
+          <Button Content="Servereinstellungen speichern" Command="{Binding SaveServerSettingsCommand}" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>
