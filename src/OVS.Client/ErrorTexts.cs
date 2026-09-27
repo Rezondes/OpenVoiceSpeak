@@ -19,6 +19,7 @@ public static class ErrorTexts
         [Codes.ProtocolError] = "Protokollfehler.",
         [Codes.ReplacedByNewConnection] = "Du hast dich von woanders mit derselben Identität verbunden.",
         [Codes.ServerShutdown] = "Der Server wurde heruntergefahren.",
+        [Codes.ServerRestart] = "Der Server startet neu. Verbinde dich in ein paar Sekunden erneut.",
         [Codes.Kicked] = "Du wurdest vom Server gekickt.",
         [Codes.ConnectionLost] = "Die Verbindung zum Server ist abgebrochen.",
         [Codes.PermissionDenied] = "Dafür fehlt dir das Recht.",

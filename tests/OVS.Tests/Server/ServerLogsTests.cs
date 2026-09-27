@@ -154,6 +154,27 @@ public sealed class ServerLogsTests : IDisposable
     }
 
     [Fact]
+    public void RotateDailyOff_FileLastsUntilRestart_OldFilesStillDeleted()
+    {
+        var time = new ManualTimeProvider();
+        var server = Path.Combine(dir, "logs", "server");
+        var start = Start(time);
+        var logs = new ServerLogs(dir, 30, time, _ => { }, newFileEachDay: false);
+        logs.Server("eins");
+        Touch(server, Start(time, -29));
+
+        time.Advance(TimeSpan.FromDays(2)); // the other file is now 31 days old
+        logs.Server("zwei");
+        time.Advance(TimeSpan.FromDays(40)); // the running file is older than the retention, but still in use
+        logs.Server("drei");
+
+        Assert.Equal([start + ".log"], Directory.GetFiles(server).Select(Path.GetFileName));
+        var text = File.ReadAllText(Path.Combine(server, start + ".log"));
+        Assert.Contains("eins", text);
+        Assert.Contains("drei", text);
+    }
+
+    [Fact]
     public void RetentionZero_KeepsAll()
     {
         var time = new ManualTimeProvider();

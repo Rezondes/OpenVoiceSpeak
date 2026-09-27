@@ -25,6 +25,7 @@ public sealed partial class ServerState
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
     readonly AdminToken adminToken = new();
     uint lastSessionId;
+    string? closedWith; // set by CloseAll: the reason every later handshake is rejected with
 
     public ServerState(ServerConfig config, TimeProvider time, ServerLogs logs)
     {
@@ -75,6 +76,8 @@ public sealed partial class ServerState
     {
         lock (gate)
         {
+            // A handshake that finishes during shutdown must not join a server that is going away.
+            if (closedWith is not null) return (null, new Rejected(closedWith));
             var now = time.GetUtcNow();
             var ipText = ip.ToString();
             var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint || b.Ip == ipText));
@@ -125,12 +128,14 @@ public sealed partial class ServerState
     {
         lock (gate)
         {
+            closedWith = final is Disconnected d ? d.Reason : Codes.ServerShutdown;
+            var why = final is Disconnected { Reason: Codes.ServerRestart } ? "Server startet neu" : "Server fährt herunter";
             foreach (var s in sessions.Values)
             {
                 s.Close(final);
-                ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen (Server fährt herunter)");
+                ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
-            logs.Server($"Server fährt herunter, {sessions.Count} Nutzer getrennt");
+            logs.Server($"{why}, {sessions.Count} Nutzer getrennt");
             sessions.Clear();
         }
     }

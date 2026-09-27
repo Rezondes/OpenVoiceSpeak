@@ -90,6 +90,40 @@ public sealed class ServerConfigTests : IDisposable
     }
 
     [Fact]
+    public void Load_AutoRestart_OffByDefault_TimeDefaultsTo4am()
+    {
+        Assert.Null(ServerConfig.Load(Env(("OVS_AUTO_RESTART_TIME", "03:30:00"))).AutoRestartAt);
+        Assert.Equal(new TimeOnly(4, 0, 0), ServerConfig.Load(Env(("OVS_AUTO_RESTART", "an"))).AutoRestartAt);
+        Assert.Equal(new TimeOnly(3, 30, 15),
+            ServerConfig.Load(Env(("OVS_AUTO_RESTART", "true"), ("OVS_AUTO_RESTART_TIME", "03:30:15"))).AutoRestartAt);
+        Assert.Null(ServerConfig.Load(Env(("OVS_AUTO_RESTART", "aus"))).AutoRestartAt);
+    }
+
+    [Fact]
+    public void Load_AutoRestartAndLogRotation_FromFile_EnvWins()
+    {
+        WriteFile("""{"autoRestart":true,"autoRestartTime":"05:15:00","logRotateDaily":false}""");
+        var cfg = ServerConfig.Load(Env());
+        Assert.Equal(new TimeOnly(5, 15, 0), cfg.AutoRestartAt);
+        Assert.False(cfg.LogRotateDaily);
+        Assert.True(ServerConfig.Load(Env(("OVS_LOG_ROTATE_DAILY", "1"))).LogRotateDaily);
+    }
+
+    [Fact]
+    public void Load_LogRotateDaily_OnByDefault() => Assert.True(ServerConfig.Load(Env()).LogRotateDaily);
+
+    [Theory]
+    [InlineData("OVS_AUTO_RESTART", "ja")]
+    [InlineData("OVS_AUTO_RESTART_TIME", "25:00:00")]
+    [InlineData("OVS_AUTO_RESTART_TIME", "4:00")]
+    [InlineData("OVS_LOG_ROTATE_DAILY", "vielleicht")]
+    public void Load_InvalidRestartOrRotation_Throws(string key, string value)
+    {
+        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env((key, value))));
+        Assert.Contains(key, e.Message);
+    }
+
+    [Fact]
     public void Load_MissingDataDir_IsCreated()
     {
         ServerConfig.Load(Env());

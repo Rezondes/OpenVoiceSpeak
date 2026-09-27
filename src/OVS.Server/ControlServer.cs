@@ -30,12 +30,12 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         acceptLoop = Task.Run(AcceptLoopAsync);
     }
 
-    /// <summary>Tells every client the server is going down, then waits up to 2 s for connections to close.</summary>
-    public async Task StopAsync()
+    /// <summary>Tells every client the server is going down (or restarting), then waits up to 2 s for connections to close.</summary>
+    public async Task StopAsync(bool restart = false)
     {
         if (stopping.IsCancellationRequested) return;
-        state.CloseAll(new Disconnected(Codes.ServerShutdown));
-        listener.Stop();
+        listener.Stop(); // first, so nobody new connects to a server that is going away
+        state.CloseAll(new Disconnected(restart ? Codes.ServerRestart : Codes.ServerShutdown));
         await Task.WhenAny(Task.WhenAll(connections.Keys), Task.Delay(TimeSpan.FromSeconds(2)));
         stopping.Cancel();
         if (acceptLoop is not null) await acceptLoop;

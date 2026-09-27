@@ -6,8 +6,8 @@ namespace OVS.Shared.Logging;
 /// <summary>
 /// One log file per start: &lt;prefix&gt;&lt;yyyy-MM-dd_HH-mm-ss&gt;.log, so a problem is found in a small file.
 /// Every folder of one run uses the same name, so the server log and the channel logs of a run belong together.
-/// A run past midnight starts a new file named after that moment, so a server running for months does not grow one endless file.
-/// Files older than the retention are deleted at start and at each day change.
+/// With newFileEachDay, a run past midnight starts a new file named after that moment; otherwise the file lasts until the next start.
+/// Files older than the retention are deleted at start and at each day change, either way.
 /// Writing never throws: the first failure goes to onFailure, later ones are dropped.
 /// </summary>
 public sealed class LogFiles
@@ -18,18 +18,20 @@ public sealed class LogFiles
     readonly int keepDays;
     readonly TimeProvider time;
     readonly Action<string> onFailure;
+    readonly bool newFileEachDay;
     readonly object gate = new();
-    DateOnly fileDay;
+    DateOnly fileDay, cleanedUpFor;
     string fileName = "";
     bool failureReported;
 
     /// <param name="keepDays">0 keeps every file.</param>
-    public LogFiles(string root, int keepDays, TimeProvider time, Action<string> onFailure)
+    public LogFiles(string root, int keepDays, TimeProvider time, Action<string> onFailure, bool newFileEachDay = true)
     {
         this.root = root;
         this.keepDays = keepDays;
         this.time = time;
         this.onFailure = onFailure;
+        this.newFileEachDay = newFileEachDay;
         lock (gate) StartFile(time.GetLocalNow());
     }
 
@@ -39,7 +41,7 @@ public sealed class LogFiles
     {
         fileDay = DateOnly.FromDateTime(now.DateTime);
         fileName = now.ToString(NameFormat, CultureInfo.InvariantCulture);
-        CleanUp();
+        CleanUp(fileDay);
     }
 
     /// <param name="folder">Relative to the root, "" for the root itself.</param>
@@ -50,7 +52,9 @@ public sealed class LogFiles
             try
             {
                 var now = time.GetLocalNow();
-                if (DateOnly.FromDateTime(now.DateTime) != fileDay) StartFile(now);
+                var today = DateOnly.FromDateTime(now.DateTime);
+                if (newFileEachDay && today != fileDay) StartFile(now);
+                else if (today != cleanedUpFor) CleanUp(today);
                 var dir = Path.Combine(root, folder);
                 Directory.CreateDirectory(dir);
                 AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), line + Environment.NewLine);
@@ -86,17 +90,19 @@ public sealed class LogFiles
         }
     }
 
-    /// <summary>Age counts from the start time in the file name.</summary>
-    void CleanUp()
+    /// <summary>Age counts from the start time in the file name. The files still being written are never deleted,
+    /// even when a run without daily files lasts longer than the retention.</summary>
+    void CleanUp(DateOnly today)
     {
+        cleanedUpFor = today;
         if (keepDays <= 0 || !Directory.Exists(root)) return;
-        var oldest = fileDay.AddDays(-keepDays);
+        var oldest = today.AddDays(-keepDays);
         try
         {
             foreach (var file in Directory.EnumerateFiles(root, "*.log", SearchOption.AllDirectories).ToList())
             {
                 var name = Path.GetFileNameWithoutExtension(file);
-                if (name.Length >= NameFormat.Length
+                if (name.Length >= NameFormat.Length && !name.EndsWith(fileName, StringComparison.Ordinal)
                     && DateTime.TryParseExact(name[^NameFormat.Length..], NameFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var started)
                     && DateOnly.FromDateTime(started) < oldest)
                     File.Delete(file);

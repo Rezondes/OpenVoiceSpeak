@@ -11,6 +11,11 @@ services:
       # OVS_PORT: "7000"      # bei Änderung auch die Port-Mappings oben anpassen
       # OVS_MAX_USERS: "50"
       # OVS_PASSWORD: ""      # nur Startwert beim allerersten Start
+      # OVS_AUTO_RESTART: "false"          # täglicher automatischer Neustart an/aus
+      # OVS_AUTO_RESTART_TIME: "04:00:00"  # Uhrzeit des Neustarts (hh:mm:ss)
+      # OVS_LOG_ROTATE_DAILY: "true"       # nach 00:00:00 neue Logdateien beginnen
+      # OVS_LOG_DAYS: "30"                 # Aufbewahrung der Logs in Tagen, 0 = unbegrenzt
+      TZ: "Europe/Berlin"   # Zeitzone für Neustart-Uhrzeit, Tageswechsel und Zeitstempel (ohne: UTC)
     volumes:
       - ovs-data:/data
     # Alternative bei UDP-Problemen hinter Docker-NAT: Host-Netzwerk statt Port-Mappings
