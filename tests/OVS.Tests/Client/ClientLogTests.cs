@@ -195,30 +195,35 @@ public sealed class ClientLogTests : IDisposable
     }
 
     [Fact]
-    public void DayChange_NewFile_OldFilesDeleted()
+    public void EachStart_OwnFile_OldFilesDeleted()
     {
         var logs = Path.Combine(dir, "logs");
         Directory.CreateDirectory(logs);
         var time = new ManualTimeProvider(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero));
-        string Day(int offset) => DateOnly.FromDateTime(time.GetLocalNow().DateTime).AddDays(offset).ToString("yyyy-MM-dd");
-        var old = Path.Combine(logs, $"client-{Day(-31)}.log");
-        var recent = Path.Combine(logs, $"client-{Day(-29)}.log");
+        string Name(int offsetDays = 0) => $"client-{time.GetLocalNow().AddDays(offsetDays):yyyy-MM-dd_HH-mm-ss}.log";
+        var old = Path.Combine(logs, Name(-31));
+        var recent = Path.Combine(logs, Name(-29));
         File.WriteAllText(old, "alt");
         File.WriteAllText(recent, "neu");
 
-        var log = new ClientLog(dir, time);
+        var first = Path.Combine(logs, Name());
+        new ClientLog(dir, time).Write("erster Start");
         Assert.False(File.Exists(old));
         Assert.True(File.Exists(recent));
 
-        log.Write("eins");
-        var first = Path.Combine(logs, $"client-{Day(0)}.log");
-        time.Advance(TimeSpan.FromDays(2));
-        log.Write("zwei");
+        time.Advance(TimeSpan.FromMinutes(90));
+        var second = Path.Combine(logs, Name());
+        var log = new ClientLog(dir, time);
+        log.Write("zweiter Start");
+        Assert.Contains("erster Start", File.ReadAllText(first));
+        Assert.DoesNotContain("zweiter Start", File.ReadAllText(first));
+        Assert.Contains("zweiter Start", File.ReadAllText(second));
 
-        Assert.Contains("eins", File.ReadAllText(first));
-        Assert.DoesNotContain("zwei", File.ReadAllText(first));
-        Assert.Contains("zwei", File.ReadAllText(Path.Combine(logs, $"client-{Day(0)}.log")));
-        Assert.False(File.Exists(recent)); // now 31 days old, removed at the day change
+        time.Advance(TimeSpan.FromDays(2)); // still running two days later: new file, and cleanup at the day change
+        log.Write("übermorgen");
+        Assert.DoesNotContain("übermorgen", File.ReadAllText(second));
+        Assert.Contains("übermorgen", File.ReadAllText(Path.Combine(logs, Name())));
+        Assert.False(File.Exists(recent));
     }
 
     [Fact]

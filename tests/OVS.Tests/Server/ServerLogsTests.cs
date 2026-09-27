@@ -12,8 +12,9 @@ public sealed class ServerLogsTests : IDisposable
 
     public void Dispose() => Directory.Delete(dir, true);
 
-    static string Day(TimeProvider time, int offsetDays = 0) =>
-        DateOnly.FromDateTime(time.GetLocalNow().DateTime).AddDays(offsetDays).ToString("yyyy-MM-dd");
+    /// <summary>File name of a run started at the provider's current time (plus an offset).</summary>
+    static string Start(TimeProvider time, int offsetDays = 0) =>
+        time.GetLocalNow().AddDays(offsetDays).ToString("yyyy-MM-dd_HH-mm-ss");
 
     static string Read(string folder) =>
         Directory.Exists(folder)
@@ -61,30 +62,56 @@ public sealed class ServerLogsTests : IDisposable
     // ---- ServerLogs itself ----
 
     [Fact]
-    public void ServerLine_GoesToConsoleAndDailyFile()
+    public void ServerLine_GoesToConsoleAndFileOfThisStart()
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
         var logs = new ServerLogs(dir, 30, time, console.Add);
+        var start = Start(time);
+        time.Advance(TimeSpan.FromMinutes(5));
         logs.Server("Hallo Welt");
 
         Assert.Contains(console, l => l.EndsWith("Hallo Welt"));
-        var file = Path.Combine(dir, "logs", "server", Day(time) + ".log");
+        var file = Path.Combine(dir, "logs", "server", start + ".log");
         Assert.Matches(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} Hallo Welt", File.ReadAllText(file));
     }
 
     [Fact]
-    public void DayChange_StartsNewFile()
+    public void EachStart_OwnFile_SharedByServerAndChannelLogs()
     {
         var time = new ManualTimeProvider();
+        var channel = Guid.NewGuid();
+        var first = Start(time);
+        var logs = new ServerLogs(dir, 30, time, _ => { });
+        logs.Server("Lauf eins");
+        logs.Channel(channel, "Raid", "Lauf eins");
+
+        time.Advance(TimeSpan.FromMinutes(90));
+        var second = Start(time);
+        logs = new ServerLogs(dir, 30, time, _ => { });
+        logs.Server("Lauf zwei");
+        logs.Channel(channel, "Raid", "Lauf zwei");
+
+        foreach (var folder in new[] { Path.Combine(dir, "logs", "server"), Path.Combine(dir, "logs", "channels", channel.ToString()) })
+        {
+            Assert.Equal([first + ".log", second + ".log"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
+            Assert.DoesNotContain("zwei", File.ReadAllText(Path.Combine(folder, first + ".log")));
+            Assert.DoesNotContain("eins", File.ReadAllText(Path.Combine(folder, second + ".log")));
+        }
+    }
+
+    [Fact]
+    public void DayChange_StartsNewFile_NamedAfterThatMoment()
+    {
+        var time = new ManualTimeProvider();
+        var first = Start(time);
         var logs = new ServerLogs(dir, 30, time, _ => { });
         logs.Server("eins");
-        var first = Day(time);
         time.Advance(TimeSpan.FromDays(1));
         logs.Server("zwei");
 
         Assert.Contains("eins", File.ReadAllText(Path.Combine(dir, "logs", "server", first + ".log")));
-        Assert.Contains("zwei", File.ReadAllText(Path.Combine(dir, "logs", "server", Day(time) + ".log")));
+        Assert.Contains("zwei", File.ReadAllText(Path.Combine(dir, "logs", "server", Start(time) + ".log")));
     }
 
     [Fact]
@@ -97,13 +124,13 @@ public sealed class ServerLogsTests : IDisposable
         logs.Channel(id, "Raid", "anna hat den Channel betreten");
 
         Assert.Empty(console);
-        Assert.Contains("[Raid] anna hat den Channel betreten", File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Day(time) + ".log")));
+        Assert.Contains("[Raid] anna hat den Channel betreten", File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log")));
     }
 
-    void Touch(string folder, string day)
+    static void Touch(string folder, string name)
     {
         Directory.CreateDirectory(folder);
-        File.WriteAllText(Path.Combine(folder, day + ".log"), "alt");
+        File.WriteAllText(Path.Combine(folder, name + ".log"), "alt");
     }
 
     [Fact]
@@ -112,18 +139,18 @@ public sealed class ServerLogsTests : IDisposable
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
         var channel = Path.Combine(dir, "logs", "channels", Guid.NewGuid().ToString());
-        Touch(server, Day(time, -31));
-        Touch(server, Day(time, -5));
-        Touch(channel, Day(time, -40));
+        Touch(server, Start(time, -31));
+        Touch(server, Start(time, -5));
+        Touch(channel, Start(time, -40));
 
         var logs = new ServerLogs(dir, 30, time, _ => { }); // cleanup at start
-        Assert.False(File.Exists(Path.Combine(server, Day(time, -31) + ".log")));
-        Assert.True(File.Exists(Path.Combine(server, Day(time, -5) + ".log")));
-        Assert.False(File.Exists(Path.Combine(channel, Day(time, -40) + ".log")));
+        Assert.False(File.Exists(Path.Combine(server, Start(time, -31) + ".log")));
+        Assert.True(File.Exists(Path.Combine(server, Start(time, -5) + ".log")));
+        Assert.False(File.Exists(Path.Combine(channel, Start(time, -40) + ".log")));
 
         time.Advance(TimeSpan.FromDays(26)); // the -5 file is now 31 days old: cleanup at day change
         logs.Server("neuer Tag");
-        Assert.False(File.Exists(Path.Combine(server, Day(time, -31) + ".log")));
+        Assert.False(File.Exists(Path.Combine(server, Start(time, -31) + ".log")));
     }
 
     [Fact]
@@ -131,9 +158,9 @@ public sealed class ServerLogsTests : IDisposable
     {
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
-        Touch(server, Day(time, -400));
+        Touch(server, Start(time, -400));
         new ServerLogs(dir, 0, time, _ => { }).Server("x");
-        Assert.True(File.Exists(Path.Combine(server, Day(time, -400) + ".log")));
+        Assert.True(File.Exists(Path.Combine(server, Start(time, -400) + ".log")));
     }
 
     [Fact]

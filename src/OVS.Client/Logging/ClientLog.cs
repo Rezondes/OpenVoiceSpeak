@@ -5,16 +5,16 @@ using OVS.Shared.Protocol;
 namespace OVS.Client.Logging;
 
 /// <summary>
-/// The client's one log: &lt;profile&gt;/logs/client-&lt;day&gt;.log, kept 30 days. Never contains the server password,
+/// The client's one log: &lt;profile&gt;/logs/client-&lt;start&gt;.log, a new file per client start, kept 30 days. Never contains the server password,
 /// the admin token or the identity key. Writing never throws.
 /// </summary>
 public sealed class ClientLog
 {
     public const int KeepDays = 30;
-    readonly DailyLog files;
+    readonly LogFiles files;
 
     public ClientLog(string profileDir, TimeProvider time) =>
-        files = new DailyLog(Path.Combine(profileDir, "logs"), KeepDays, time, line => System.Diagnostics.Trace.WriteLine(line));
+        files = new LogFiles(Path.Combine(profileDir, "logs"), KeepDays, time, line => System.Diagnostics.Trace.WriteLine(line));
 
     public void Write(string text) => files.Append("", "client-", $"{files.Stamp()} {text}");
 

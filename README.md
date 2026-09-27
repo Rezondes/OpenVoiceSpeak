@@ -53,13 +53,14 @@ Umgebungsvariablen haben Vorrang vor `server-config.json` (`{"port":7000,"maxUse
 
 ### Logs
 
-Der Server schreibt tägliche Logdateien in das Datenverzeichnis:
+Der Server beginnt bei jedem Start neue Logdateien im Datenverzeichnis, benannt nach Datum und Uhrzeit des Starts (z. B. `2026-09-27_17-29-22.log`). Server-Log und Channel-Logs eines Laufs tragen denselben Namen. Läuft der Server über Mitternacht, beginnt eine neue Datei.
 
-- `logs/server/<Datum>.log`: Start, Stopp, Verbindungen, Ablehnungen, Kicks, Bans, Gruppen- und Einstellungsänderungen. Dieselben Zeilen stehen auch in `docker compose logs`.
-- `logs/channels/<Channel-ID>/<Datum>.log`: Betreten, Verlassen, Verschieben, Links und Änderungen eines Channels. Der Ordner ist nach der ID benannt, damit ein umbenannter Channel seine Historie behält. Jede Zeile nennt den aktuellen Channelnamen.
+- `logs/server/<Start>.log`: Start, Stopp, Verbindungen, Ablehnungen, Kicks, Bans, Gruppen- und Einstellungsänderungen. Dieselben Zeilen stehen auch in `docker compose logs`.
+- `logs/channels/<Channel-ID>/<Start>.log`: Betreten, Verlassen, Verschieben, Links und Änderungen eines Channels. Der Ordner ist nach der ID benannt, damit ein umbenannter Channel seine Historie behält. Jede Zeile nennt den aktuellen Channelnamen.
 
 ```bash
-docker run --rm -v openvoicespeak_ovs-data:/data alpine sh -c 'tail -n 50 /data/logs/server/*.log'
+# die letzten 50 Zeilen des neuesten Server-Logs (die Namen sortieren chronologisch)
+docker run --rm -v openvoicespeak_ovs-data:/data alpine sh -c 'tail -n 50 "$(ls /data/logs/server/*.log | tail -n 1)"'
 ```
 
 ### Daten, Backup, Update
@@ -108,7 +109,7 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiert
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 
-Der Client schreibt alles, was er tut, in ein Log pro Tag: `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.
+Der Client schreibt alles, was er tut, in eine neue Datei pro Start: `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>_<Uhrzeit>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.
 
 ### Kommandozeile
 

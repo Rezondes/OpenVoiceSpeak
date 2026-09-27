@@ -3,18 +3,19 @@ using OVS.Shared.Logging;
 namespace OVS.Server.Logging;
 
 /// <summary>
-/// Server log (console and logs/server/&lt;day&gt;.log) plus one log per channel (logs/channels/&lt;id&gt;/&lt;day&gt;.log).
+/// Server log (console and logs/server/&lt;start&gt;.log) plus one log per channel (logs/channels/&lt;id&gt;/&lt;start&gt;.log),
+/// a new file per server start, see LogFiles.
 /// A failing disk never takes the server down: the first write error is reported on the console.
 /// </summary>
 public sealed class ServerLogs
 {
-    readonly DailyLog files;
+    readonly LogFiles files;
     readonly Action<string> console;
 
     /// <param name="keepDays">0 keeps every file.</param>
     public ServerLogs(string dataDir, int keepDays, TimeProvider time, Action<string> console)
     {
-        files = new DailyLog(Path.Combine(dataDir, "logs"), keepDays, time, console);
+        files = new LogFiles(Path.Combine(dataDir, "logs"), keepDays, time, console);
         this.console = console;
     }
 

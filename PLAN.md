@@ -1494,13 +1494,13 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~DebugApiTests"`
 
 ## Package 21: Server- und Channel-Logs
 
-**Ziel:** Der Server schreibt allgemeine Ereignisse in ein tägliches Server-Log und alles, was einen bestimmten Channel betrifft, in ein eigenes tägliches Log dieses Channels, beides dauerhaft im Datenverzeichnis.
+**Ziel:** Der Server schreibt allgemeine Ereignisse in ein Server-Log und alles, was einen bestimmten Channel betrifft, in ein eigenes Log dieses Channels, mit einer neuen Datei pro Serverstart, beides dauerhaft im Datenverzeichnis.
 
 **Abhängigkeiten:** Package 12
 
 **Betroffene Dateien:**
 - `src/OVS.Server/Logging/ServerLogs.cs` (neu): Server- und Channel-Log, Konsole
-- `src/OVS.Shared/Logging/DailyLog.cs` (neu): Tagesdateien, Tageswechsel, Aufbewahrung, Schreibfehler ohne Absturz. Liegt in Shared, weil Package 22 sie wiederverwendet.
+- `src/OVS.Shared/Logging/LogFiles.cs` (neu): eine Datei pro Start, Tageswechsel, Aufbewahrung, Schreibfehler ohne Absturz. Liegt in Shared, weil Package 22 sie wiederverwendet.
 - `src/OVS.Client/Net/ClientConnection.cs`, `tests/OVS.Tests/TestSupport/TestClient.cs` (ändern): sauberes TLS-Ende beim Trennen, damit der Server "vom Client beendet" statt "Verbindung abgebrochen" protokolliert
 - `src/OVS.Server/ServerState.cs`, `Commands/*.cs`, `ControlServer.cs` (ändern): Ereignisse protokollieren
 - `src/OVS.Server/ServerConfig.cs` (ändern): `OVS_LOG_DAYS`
@@ -1513,8 +1513,10 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~DebugApiTests"`
 Bisher schreibt der Server nur wenige Zeilen auf die Konsole (`docker compose logs`) und nichts in Dateien. Channel-Änderungen, Channel-Wechsel, Links, Gruppen und Einstellungen werden gar nicht protokolliert.
 
 **Ablage** im Volume `/data`, übersteht also Updates:
-- `<DataDir>/logs/server/2026-09-27.log`
-- `<DataDir>/logs/channels/<Channel-ID>/2026-09-27.log`. Die ID bleibt beim Umbenennen gleich, jede Zeile nennt den aktuellen Channel-Namen. Das Log eines gelöschten Channels bleibt erhalten.
+- `<DataDir>/logs/server/2026-09-27_17-29-22.log`
+- `<DataDir>/logs/channels/<Channel-ID>/2026-09-27_17-29-22.log`. Die ID bleibt beim Umbenennen gleich, jede Zeile nennt den aktuellen Channel-Namen. Das Log eines gelöschten Channels bleibt erhalten.
+
+**Dateiname:** Datum und Uhrzeit des Serverstarts. Jeder Start beginnt neue Dateien, damit bei einem Problem nur die Zeilen dieses Laufs durchsucht werden müssen. Server-Log und Channel-Logs eines Laufs tragen denselben Namen. Läuft der Server über Mitternacht, beginnt eine neue Datei mit dem Zeitpunkt des Wechsels im Namen, damit ein monatelang laufender Server keine endlose Datei schreibt.
 
 **Zeilenformat:** `2026-09-27 17:29:22.810 Text` in lokaler Serverzeit, wie auf der Konsole.
 
@@ -1533,11 +1535,11 @@ Bisher schreibt der Server nur wenige Zeilen auf die Konsole (`docker compose lo
 
 **Sicherheit:** Das Admin-Token erscheint nur auf der Konsole, nie in einer Datei. Die Datei vermerkt nur, dass ein Token erzeugt wurde. Passwörter werden nie protokolliert, nur "Passwort gesetzt" oder "Passwort entfernt".
 
-**Aufbewahrung:** `OVS_LOG_DAYS` (Standard 30, `0` = unbegrenzt). Ältere Tagesdateien werden beim Start und beim Tageswechsel gelöscht.
+**Aufbewahrung:** `OVS_LOG_DAYS` (Standard 30, `0` = unbegrenzt). Dateien, deren Startdatum älter ist, werden beim Start und beim Tageswechsel gelöscht.
 
 ### Acceptance Criteria
 
-- [x] AC1: Jede Server-Log-Zeile erscheint auf der Konsole und in `logs/server/<Datum>.log`. Nach Mitternacht beginnt eine neue Datei.
+- [x] AC1: Jede Server-Log-Zeile erscheint auf der Konsole und in `logs/server/<Start>.log`. Jeder Serverstart beginnt eine neue Datei, die Channel-Logs desselben Laufs tragen denselben Namen. Nach Mitternacht beginnt eine neue Datei.
 - [x] AC2: Jedes genannte allgemeine Ereignis erzeugt genau eine Zeile im Server-Log, mit Akteur und Ziel, wo es sie gibt.
 - [x] AC3: Jedes genannte Channel-Ereignis steht im Log des betroffenen Channels. Verschieben steht im Log des alten und des neuen Channels, ein Link in den Logs beider Channels.
 - [x] AC4: Das Admin-Token und Passwörter stehen in keiner Logdatei.
@@ -1548,7 +1550,7 @@ Bisher schreibt der Server nur wenige Zeilen auf die Konsole (`docker compose lo
 ### Tests (TDD)
 
 `ServerLogsTests.cs`, mit `ManualTimeProvider` und temporärem Datenverzeichnis:
-1. `"ServerLine_GoesToConsoleAndDailyFile"`, `"DayChange_StartsNewFile"` (AC1)
+1. `"ServerLine_GoesToConsoleAndFileOfThisStart"`, `"EachStart_OwnFile_SharedByServerAndChannelLogs"`, `"DayChange_StartsNewFile_NamedAfterThatMoment"` (AC1)
 2. `"ConnectDisconnectRejected_Logged"`, `"AdminActions_LoggedWithActor"` für Gruppen, Zuweisung, Einstellungen, Kick, Ban, Unban und Server-Mute (AC2)
 3. `"JoinMoveLeave_LoggedInChannelLogs"` (Beitritt, Verschieben im alten und neuen Channel, Trennen), `"Link_LoggedInBothChannels_EditDeleteLogged"` (AC3)
 4. `"TokenAndPassword_NeverInFiles"` (AC4)
@@ -1573,8 +1575,8 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerLogsTests"`
 **Abhängigkeiten:** Package 16, 20
 
 **Betroffene Dateien:**
-- `src/OVS.Client/Logging/ClientLog.cs` (neu): Tagesdatei, lesbare Beschreibung von Protokollnachrichten und eigenen Anfragen
-- `src/OVS.Shared/Logging/DailyLog.cs` (aus Package 21, unverändert): Tagesdateien und Aufbewahrung
+- `src/OVS.Client/Logging/ClientLog.cs` (neu): eine Datei pro Start, lesbare Beschreibung von Protokollnachrichten und eigenen Anfragen
+- `src/OVS.Shared/Logging/LogFiles.cs` (aus Package 21, unverändert): Dateien pro Start und Aufbewahrung
 - `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): Ereignisse protokollieren. Nachrichten und Anfragen werden dort beim Empfangen bzw. Senden abgegriffen, `ServerViewModel.cs` bleibt unverändert.
 - Geräte, Warnungen, Sendebeginn und -ende kommen über die vorhandenen Events und Rückgabewerte von `AudioEngine` an, die Datei bleibt unverändert.
 - `src/OVS.Client/Debug/AudioDebugLog.cs` (ändern): `--audio-debug` schreibt in dieselbe Datei
@@ -1584,7 +1586,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerLogsTests"`
 
 ### Kontext
 
-Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` schreibt eine eigene Datei. Künftig schreibt der Client ein einziges allgemeines Log als Tagesdatei: `<Profil>/logs/client-2026-09-27.log`, standardmässig also unter `%APPDATA%\OpenVoiceSpeak\logs\`. Dateien, die älter als 30 Tage sind, werden beim Start und beim Tageswechsel gelöscht.
+Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` schreibt eine eigene Datei. Künftig schreibt der Client ein einziges allgemeines Log, mit einer neuen Datei pro Start: `<Profil>/logs/client-2026-09-27_18-54-43.log`, standardmässig also unter `%APPDATA%\OpenVoiceSpeak\logs\`. So lassen sich bei einem Problem die Zeilen anderer Starts direkt ausschliessen. Läuft der Client über Mitternacht, beginnt eine neue Datei. Dateien, deren Startdatum älter als 30 Tage ist, werden beim Start und beim Tageswechsel gelöscht.
 
 **Protokolliert wird:**
 - Start und Ende mit Version und Kommandozeilen-Optionen
@@ -1600,7 +1602,7 @@ Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` sc
 ### Acceptance Criteria
 
 - [x] AC1: Jedes genannte Ereignis erzeugt eine lesbare Zeile mit Zeitstempel im Client-Log. Protokollnachrichten erscheinen mit Namen statt IDs.
-- [x] AC2: Jeder Tag hat eine eigene Datei. Dateien, die älter als 30 Tage sind, werden beim Start und beim Tageswechsel gelöscht.
+- [x] AC2: Jeder Start hat eine eigene Datei mit Datum und Uhrzeit im Namen. Dateien, die älter als 30 Tage sind, werden beim Start und beim Tageswechsel gelöscht.
 - [x] AC3: Serverpasswort und Admin-Token stehen nie in der Datei.
 - [x] AC4: `--audio-debug` schreibt in das Client-Log, eine eigene `audio-debug.log` gibt es nicht mehr.
 - [x] AC5: Ein Schreibfehler im Log bringt den Client nicht zum Absturz.
@@ -1612,7 +1614,7 @@ Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` sc
 1. `[Theory] "Describe_Message"` für jede Delta-Art, mit Namen aus dem `StateMirror` (AC1)
 2. `"Connect_Disconnect_Logged"` über `MainViewModel` gegen `TestServer` (AC1)
 3. `"OwnActions_Logged"` über `ServerViewModel`, denselben Weg, den auch die Debug-API nimmt (AC1). Dazu `"Describe_Request_UsesNames_NeverSecrets"`.
-4. `"DayChange_NewFile_OldFilesDeleted"` mit `ManualTimeProvider` (AC2)
+4. `"EachStart_OwnFile_OldFilesDeleted"` mit `ManualTimeProvider`, auch über Mitternacht (AC2)
 5. `"PasswordAndToken_NeverLogged"` (AC3)
 6. `"AudioDebug_WritesToClientLog"` (AC4), ersetzt `MainViewModelTests.AudioDebugLog_RecordsKeysAndFrameRate`
 7. `"WriteFailure_DoesNotThrow"` (AC5)
