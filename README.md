@@ -12,7 +12,12 @@ Der Server l채uft im Docker-Container auf Linux (amd64 und arm64). Der Client l�
 
 ## Server mit Docker
 
+Voraussetzungen: Linux-Server (amd64 oder arm64) mit Git und Docker samt Compose-Plugin
+(z. B. `curl -fsSL https://get.docker.com | sh`).
+
 ```bash
+git clone <URL dieses Repositorys> openvoicespeak
+cd openvoicespeak
 docker compose up -d --build
 docker compose logs
 ```
@@ -47,7 +52,8 @@ Umgebungsvariablen haben Vorrang vor `server-config.json` (`{"port":7000,"maxUse
 
 ### Daten, Backup, Update
 
-Alles Dauerhafte liegt im Volume `ovs-data`:
+Alles Dauerhafte liegt im Volume `ovs-data`. Docker Compose stellt den Projektnamen voran, also den
+Ordnernamen (`openvoicespeak_ovs-data` bei einem Ordner namens `openvoicespeak`, siehe `docker volume ls`):
 
 - `server-data.json`: Channels, Links, Gruppen, Nutzer, Bans
 - `cert.pfx`: Serverzertifikat. Geht es verloren, bekommen alle Clients eine Warnung.
@@ -57,8 +63,8 @@ Alles Dauerhafte liegt im Volume `ovs-data`:
 docker run --rm -v openvoicespeak_ovs-data:/data -v "$PWD":/backup alpine tar czf /backup/ovs-data.tgz -C /data .
 # Restore
 docker run --rm -v openvoicespeak_ovs-data:/data -v "$PWD":/backup alpine tar xzf /backup/ovs-data.tgz -C /data
-# Update
-docker compose pull && docker compose up -d     # bzw. mit --build beim Bauen aus dem Quellcode
+# Update (das Image wird lokal gebaut, es gibt keine Registry)
+git pull && docker compose up -d --build
 ```
 
 Der Container l채uft als Nutzer `app` (UID 1654). Nutzt du statt des benannten Volumes einen Bind-Mount, muss dieser Nutzer darauf schreiben d체rfen:
@@ -95,6 +101,7 @@ Deine Identit채t, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenV
 |---|---|
 | `--profile <ordner>` | Eigener Ordner f체r Identit채t und Einstellungen, z. B. f체r eine zweite Instanz |
 | `--no-audio` | Ohne Mikrofon und Lautsprecher |
+| `--audio-debug` | Schreibt PTT-Tastenwechsel und gesendete Frames pro Sekunde nach `audio-debug.log` im Profil |
 | `--debug-api <port>` | Aktiviert die lokale Debug-API (siehe unten) |
 
 ### Debug-API

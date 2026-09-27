@@ -487,6 +487,5 @@ $RECYCLE.BIN/
 .swarm/
 ruvector.db
 publish/
-"publish/"  
 # Source folder, not a build output (the template ignores [Dd]ebug/)
 !src/OVS.Client/Debug/
