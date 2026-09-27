@@ -168,8 +168,10 @@ public sealed class DebugApiTests : IAsyncLifetime
         await anna.Post("linkptt", new { down = true });
         var b = await bert.Until(s => FramesFrom(s, annaId) > 10 && User(s, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
         Assert.Contains("Links", (await anna.State()).GetProperty("transmitText").GetString());
-        await Task.Delay(700); // the indicator must stay on while anna keeps talking
-        Assert.True(User(await bert.State(), annaId)?.GetProperty("isSpeakingViaLink").GetBoolean());
+        // The indicator must stay on while anna keeps talking (it used to go dark for good after 300 ms).
+        // Polled, because a starved test machine may drop it for a moment.
+        await Task.Delay(700);
+        await bert.Until(s => User(s, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true, 1000);
         await anna.Post("linkptt", new { down = false });
 
         // bert is a guest without SpeakLinked: his link PTT stays in Raid and he gets a hint

@@ -7,7 +7,7 @@ namespace OVS.Client.Audio;
 /// </summary>
 public sealed class JitterBuffer
 {
-    public const int StartDelay = 3;   // 60 ms cushion before playback starts
+    public const int StartDelay = 2;   // 40 ms cushion before playback starts
     public const int MaxFrames = 10;   // caps the latency at 200 ms
     const int MaxUnderruns = 2;        // then assume a talk pause and rebuffer
 

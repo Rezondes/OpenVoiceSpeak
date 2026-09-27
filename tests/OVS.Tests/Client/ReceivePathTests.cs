@@ -32,10 +32,9 @@ public class ReceivePathTests
     {
         var jb = new JitterBuffer();
         jb.Push(0, Frame(0), false);
-        jb.Push(1, Frame(1), false);
         Assert.Null(jb.Pull());
-        jb.Push(2, Frame(2), false);
-        Assert.NotNull(jb.Pull());
+        jb.Push(1, Frame(1), false);
+        Assert.NotNull(jb.Pull()); // 2 frames = 40 ms cushion
     }
 
     [Fact]
@@ -44,8 +43,7 @@ public class ReceivePathTests
         var jb = new JitterBuffer();
         jb.Push(0, Frame(0), false);
         Assert.Null(jb.Pull());
-        Assert.Null(jb.Pull());
-        Assert.NotNull(jb.Pull()); // waited StartDelay ticks, plays the lone frame
+        Assert.NotNull(jb.Pull()); // waited StartDelay ticks (40 ms), plays the lone frame
     }
 
     [Fact]
