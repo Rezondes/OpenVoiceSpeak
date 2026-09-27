@@ -31,6 +31,12 @@ public sealed class ClientNetTests : IDisposable
         Assert.Equal(TofuResult.Unknown, Known().Check("host", 7001, "aa"));
     }
 
+    [Theory]
+    [InlineData(TofuResult.Unknown, true)]
+    [InlineData(TofuResult.Mismatch, false)] // a changed certificate must not be accepted by just pressing Enter
+    public void TofuPrompt_DefaultButton(TofuResult result, bool acceptIsDefault) =>
+        Assert.Equal(acceptIsDefault, new TofuPrompt("h", 1, "fp", result).AcceptIsDefault);
+
     [Fact]
     public void Identity_LoadOrCreate_Twice_SameFingerprint()
     {
@@ -137,6 +143,38 @@ public sealed class ClientNetTests : IDisposable
         Assert.Equal(a.Welcome.SessionId, got.Speaker);
         Assert.Equal(VoiceHeader.TargetChannel, got.Target);
         Assert.Equal(opus, got.Opus);
+    }
+
+    [Fact]
+    public async Task Voice_PingBetweenFrames_KeepsSpeakerSeqContiguous()
+    {
+        // Regression: pings used to consume the sequence the receiver's jitter buffer orders by,
+        // so every keep-alive during speech looked like a lost frame (+20 ms latency each time).
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        await using var b = await Connect(server, "b");
+        using var va = new VoiceClient(server.VoiceEndPoint, a.Welcome.SessionId, Convert.FromBase64String(a.Welcome.VoiceKey));
+        using var vb = new VoiceClient(server.VoiceEndPoint, b.Welcome.SessionId, Convert.FromBase64String(b.Welcome.VoiceKey));
+        var seqs = new List<uint>();
+        var two = new TaskCompletionSource();
+        vb.VoiceReceived += (_, speakerSeq, _, _) =>
+        {
+            lock (seqs)
+            {
+                seqs.Add(speakerSeq);
+                if (seqs.Count == 2) two.TrySetResult();
+            }
+        };
+        va.Start();
+        vb.Start();
+        await WaitUntil(() => va.Reachable && vb.Reachable);
+
+        va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
+        va.SendPing();
+        va.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
+        await two.Task.WaitAsync(TimeSpan.FromSeconds(3));
+
+        lock (seqs) Assert.Equal(seqs[0] + 1, seqs[1]);
     }
 
     static async Task WaitUntil(Func<bool> condition)

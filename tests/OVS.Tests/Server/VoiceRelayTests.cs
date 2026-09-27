@@ -46,16 +46,14 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await vb.HelloAsync();
         await vc.HelloAsync();
 
-        var packet = va.Seal(PacketType.Voice, Opus, VoiceHeader.TargetChannel);
-        VoiceHeader.TryRead(packet, out var sent);
-        await va.SendRawAsync(packet);
+        await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetChannel); // frame 0
 
         var got = await vb.ReceiveVoiceAsync();
         Assert.NotNull(got);
         Assert.Equal(a.Id, got.Value.Header.SessionId);
         Assert.Equal(VoiceHeader.TargetChannel, got.Value.Header.Target);
         Assert.True(RelayPayload.TryParse(got.Value.Plain, out var speakerSeq, out var opus));
-        Assert.Equal(sent.Seq, speakerSeq);
+        Assert.Equal(0u, speakerSeq);
         Assert.Equal(Opus, opus);
 
         Assert.Null(await vc.ReceiveVoiceAsync(500));
@@ -119,6 +117,16 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.NotNull(await rebound.ReceiveAsync());
         await va.SendAsync(PacketType.Voice, Opus);
         Assert.NotNull(await rebound.ReceiveVoiceAsync());
+        Assert.Null(await vb.ReceiveVoiceAsync(300));
+    }
+
+    [Fact]
+    public async Task VoiceWithoutFrameNumber_Dropped()
+    {
+        await va.HelloAsync();
+        await vb.HelloAsync();
+        // 3 bytes cannot hold [frameSeq 4][opus], so the server must drop it
+        await va.SendRawAsync(va.SealRaw(PacketType.Voice, [1, 2, 3]));
         Assert.Null(await vb.ReceiveVoiceAsync(300));
     }
 

@@ -66,7 +66,7 @@ public sealed class UdpVoiceServer : IDisposable
         if (!VoiceHeader.TryRead(packet.Span, out var header)) return;
         var sender = state.FindSession(header.SessionId);
         if (sender is null) return;
-        if (!sender.Crypto.TryOpen(Direction.ClientToServer, packet.Span, out header, out var opus)) return;
+        if (!sender.Crypto.TryOpen(Direction.ClientToServer, packet.Span, out header, out var plain)) return;
         if (!sender.Replay.Accept(header.Seq) || !sender.Limiter.TryTake()) return;
 
         if (header.Type == PacketType.Hello || sender.UdpEndpoint is not null) sender.UdpEndpoint = from;
@@ -76,11 +76,11 @@ public sealed class UdpVoiceServer : IDisposable
             case PacketType.Hello or PacketType.Ping:
                 await SendAsync(sender, new VoiceHeader(PacketType.Ping, sender.Id, sender.OutSeq.Next(), 0), []);
                 break;
-            case PacketType.Voice when opus.Length is > 0 and <= VoiceHeader.MaxOpusSize:
+            // Voice plaintext is [frameSeq][opus] in both directions, so it is relayed as is.
+            case PacketType.Voice when RelayPayload.TryParse(plain, out _, out var opus) && opus.Length is > 0 and <= VoiceHeader.MaxOpusSize:
                 var (recipients, target) = state.VoiceRecipients(sender, header.Target);
-                var payload = RelayPayload.Build(header.Seq, opus);
                 foreach (var r in recipients)
-                    await SendAsync(r, new VoiceHeader(PacketType.Voice, sender.Id, r.OutSeq.Next(), target), payload);
+                    await SendAsync(r, new VoiceHeader(PacketType.Voice, sender.Id, r.OutSeq.Next(), target), plain);
                 break;
         }
     }

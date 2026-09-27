@@ -15,6 +15,7 @@ public sealed class VoiceClient : IDisposable
     readonly SeqCounter seq = new();
     readonly ReplayWindow replay = new();
     readonly object sendGate = new();
+    uint nextFrame;
     readonly CancellationTokenSource cts = new();
     Task? receiveLoop;
     Timer? pingTimer;
@@ -38,10 +39,19 @@ public sealed class VoiceClient : IDisposable
     {
         Send(PacketType.Hello, [], 0);
         receiveLoop = Task.Run(ReceiveLoopAsync);
-        pingTimer = new Timer(_ => Send(PacketType.Ping, [], 0), null, PingInterval, PingInterval);
+        pingTimer = new Timer(_ => SendPing(), null, PingInterval, PingInterval);
     }
 
-    public void SendVoice(byte[] opus, byte target) => Send(PacketType.Voice, opus, target);
+    /// <summary>
+    /// The frame number travels inside the payload: the packet sequence is the GCM nonce and is also
+    /// used by pings, so it has gaps the receiver's jitter buffer must not see.
+    /// </summary>
+    public void SendVoice(byte[] opus, byte target)
+    {
+        lock (sendGate) Send(PacketType.Voice, RelayPayload.Build(nextFrame++, opus), target);
+    }
+
+    public void SendPing() => Send(PacketType.Ping, [], 0);
 
     void Send(PacketType type, byte[] payload, byte target)
     {

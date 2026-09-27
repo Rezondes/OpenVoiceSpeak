@@ -22,8 +22,17 @@ public sealed class TestVoice : IDisposable
 
     public SeqCounter Seq { get; }
 
-    public byte[] Seal(PacketType type, byte[] payload, byte target = 0) =>
-        crypto.Seal(Direction.ClientToServer, new VoiceHeader(type, sessionId, Seq.Next(), target), payload);
+    /// <summary>Voice payloads get the frame number prefix like the real client ([frameSeq][opus]).</summary>
+    public byte[] Seal(PacketType type, byte[] payload, byte target = 0)
+    {
+        if (type == PacketType.Voice) payload = RelayPayload.Build(nextFrame++, payload);
+        return SealRaw(type, payload, target);
+    }
+
+    public byte[] SealRaw(PacketType type, byte[] plaintext, byte target = 0) =>
+        crypto.Seal(Direction.ClientToServer, new VoiceHeader(type, sessionId, Seq.Next(), target), plaintext);
+
+    uint nextFrame;
 
     public Task SendRawAsync(byte[] packet) => udp.SendAsync(packet, server).AsTask();
 
