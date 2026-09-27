@@ -22,7 +22,6 @@ public sealed partial class ServerState
             return;
         }
         var now = time.GetUtcNow();
-        data.Bans.RemoveAll(b => !b.IsActive(now));
         data.Bans.Add(new BanRecord
         {
             Id = Guid.NewGuid(),

@@ -125,6 +125,36 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExpiredBans_RemovedOnNextSave()
+    {
+        await m.SendAsync(new Ban(g.Id, "kurzweg", 10, false));
+        await g.WaitForAsync<Disconnected>();
+        time.Advance(TimeSpan.FromMinutes(11));
+
+        await a.SendAsync(new CreateChannel("Irgendwas", "")); // any change that saves
+        await a.WaitForAsync<ChannelAdded>();
+        Assert.DoesNotContain("kurzweg", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
+    }
+
+    [Fact]
+    public async Task Unban_AsGuest_PermissionDenied()
+    {
+        await g.SendAsync(new Unban(Guid.NewGuid()) { RequestId = "u" });
+        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("u")).Code);
+    }
+
+    [Fact]
+    public async Task ServerMute_NotPersisted_GoneAfterReconnect()
+    {
+        await m.SendAsync(new SetServerMute(g.Id, true));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
+        await g.DisposeAsync();
+
+        g = await TestClient.ConnectAsync(server, "gast", guestId);
+        Assert.False(g.Welcome.Snapshot.Users.Single(u => u.SessionId == g.Id).ServerMuted);
+    }
+
+    [Fact]
     public async Task Bans_SurviveRestart()
     {
         await m.SendAsync(new Ban(g.Id, "x", null, false));

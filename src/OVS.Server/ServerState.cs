@@ -206,7 +206,13 @@ public sealed partial class ServerState
         foreach (var s in sessions.Values) s.Send(message);
     }
 
-    void Persist() => store.Save(data);
+    /// <summary>Saves after every change; expired bans are dropped on the way.</summary>
+    void Persist()
+    {
+        var now = time.GetUtcNow();
+        data.Bans.RemoveAll(b => !b.IsActive(now));
+        store.Save(data);
+    }
 
     UserRecord? FindUser(string fingerprint) => data.Users.FirstOrDefault(u => u.Fingerprint == fingerprint);
 
