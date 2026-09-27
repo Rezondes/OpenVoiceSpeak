@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+.git/
+data/
+.claude-flow/
+.swarm/
+ruvector.db
+tests/
+src/OVS.Client/

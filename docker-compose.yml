@@ -1,0 +1,18 @@
+services:
+  ovs-server:
+    build: .
+    image: openvoicespeak/server:latest
+    restart: unless-stopped
+    ports:
+      - "7000:7000/tcp"
+      - "7000:7000/udp"
+    environment:
+      OVS_SERVER_NAME: "Mein Server"
+      # OVS_PORT: "7000"      # bei Änderung auch die Port-Mappings oben anpassen
+      # OVS_MAX_USERS: "50"
+      # OVS_PASSWORD: ""      # nur Startwert beim allerersten Start
+    volumes:
+      - ovs-data:/data
+
+volumes:
+  ovs-data:
