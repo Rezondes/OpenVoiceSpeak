@@ -31,6 +31,7 @@ public sealed class ClientConnection : IAsyncDisposable
     readonly FrameReader reader;
     readonly FrameWriter writer;
     readonly CancellationTokenSource cts = new();
+    readonly CancellationTokenSource pingCts = new(); // stopped first on dispose, before the TLS shutdown
     long pingSentAt;
     int disconnectRaised;
     Task? receiveLoop, pingLoop;
@@ -159,11 +160,11 @@ public sealed class ClientConnection : IAsyncDisposable
     {
         try
         {
-            while (!cts.IsCancellationRequested)
+            while (!pingCts.IsCancellationRequested)
             {
                 Interlocked.Exchange(ref pingSentAt, Stopwatch.GetTimestamp());
-                await writer.WriteAsync(new Ping(), cts.Token);
-                await Task.Delay(PingInterval, cts.Token);
+                await writer.WriteAsync(new Ping(), pingCts.Token);
+                await Task.Delay(PingInterval, pingCts.Token);
             }
         }
         catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
@@ -195,15 +196,18 @@ public sealed class ClientConnection : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         Interlocked.Exchange(ref disconnectRaised, 1); // a deliberate disconnect is not an event
+        // No more pings: writing after the TLS shutdown throws.
+        pingCts.Cancel();
+        if (pingLoop is not null) await pingLoop;
         await CloseGracefullyAsync(ssl);
         // Wait until the server has read the close_notify and closed its side. Closing the socket while its last
         // messages are still unread makes Windows send a reset, and the server logs "Verbindung abgebrochen".
         if (receiveLoop is not null) await Task.WhenAny(receiveLoop, Task.Delay(TimeSpan.FromSeconds(1)));
         cts.Cancel();
         tcp.Dispose();
-        foreach (var loop in new[] { receiveLoop, pingLoop })
-            if (loop is not null) await loop;
+        if (receiveLoop is not null) await receiveLoop;
         await ssl.DisposeAsync();
         cts.Dispose();
+        pingCts.Dispose();
     }
 }

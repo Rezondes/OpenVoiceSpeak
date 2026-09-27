@@ -43,13 +43,14 @@ public sealed class TestServer : IAsyncDisposable
 
         var log = new ConcurrentQueue<string>();
         var logs = new ServerLogs(dataDir, config.LogDays, time ?? TimeProvider.System, log.Enqueue);
-        var state = new ServerState(config, time ?? TimeProvider.System, logs);
         var certificate = ServerCertificate.LoadOrCreate(dataDir);
         // Same port number for TCP and UDP, like in production, so real clients find the voice socket.
         // Windows (Hyper-V, Docker) reserves chunks of the dynamic port range per protocol, so an ephemeral
         // TCP port is often blocked for UDP. Random ports below the dynamic range avoid that; retry on clashes.
         for (int attempt = 0; ; attempt++)
         {
+            // A fresh state per attempt: stopping a failed attempt closes its state, which then rejects everyone.
+            var state = new ServerState(config, time ?? TimeProvider.System, logs);
             var endpoint = new IPEndPoint(IPAddress.Loopback, Random.Shared.Next(20_000, 45_000));
             var control = new ControlServer(state, certificate, endpoint)
             {

@@ -199,7 +199,8 @@ public sealed partial class ServerViewModel : ObservableObject
         {
             await send(request with { RequestId = $"r{++requestCounter}" });
         }
-        catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException)
+        // InvalidOperationException: a request raced a disconnect that had already shut TLS down.
+        catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException or InvalidOperationException)
         {
             Notice?.Invoke(ErrorTexts.For(Codes.ConnectionLost));
         }

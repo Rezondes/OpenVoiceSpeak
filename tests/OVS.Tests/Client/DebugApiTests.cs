@@ -196,7 +196,14 @@ public sealed class DebugApiTests : IAsyncLifetime
 
         // muted clients send nothing
         await bert.Post("mute", new { value = true });
-        var sentBefore = (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
+        // The PTT release above may still let one 20 ms frame out: measure once the counter stands still.
+        long sentBefore = -1, now = (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
+        for (int i = 0; i < 20 && now != sentBefore; i++)
+        {
+            sentBefore = now;
+            await Task.Delay(60);
+            now = (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
+        }
         await bert.Post("ptt", new { down = true });
         await Task.Delay(300);
         Assert.Equal(sentBefore, (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64());
