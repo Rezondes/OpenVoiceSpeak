@@ -191,7 +191,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 56 sind umgesetzt, 57 bis 59 sind geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6 und 53 AC7 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Die Packages 1 bis 57 sind umgesetzt, 58 und 59 sind geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6, 53 AC7 und 57 AC5 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -3617,10 +3617,10 @@ Der Mixer meldet aktive Sprecher mit `ActiveSpeaker.ViaLink` (gesetzt, wenn das 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Beginnt ein anderer über Link zu sprechen, wird `LinkVoice` genau einmal ausgelöst, auch wenn er weiterspricht.
-- [ ] AC2: Nach einer Pause ab 300 ms löst der nächste Beginn den Ton erneut aus, kürzere Lücken nicht.
-- [ ] AC3: Sprache im eigenen Channel (ohne Link) und die eigene Link-PTT lösen keinen Ton aus. Bei "Ton aus" bleibt er stumm.
-- [ ] AC4: "Sprache über Link" hat in den Einstellungen eine eigene Zeile, der Standardton ist kurz, leise und von allen anderen verschieden. Texte auf Deutsch und Englisch.
+- [x] AC1: Beginnt ein anderer über Link zu sprechen, wird `LinkVoice` genau einmal ausgelöst, auch wenn er weiterspricht.
+- [x] AC2: Nach einer Pause ab 300 ms löst der nächste Beginn den Ton erneut aus, kürzere Lücken nicht.
+- [x] AC3: Sprache im eigenen Channel (ohne Link) und die eigene Link-PTT lösen keinen Ton aus. Bei "Ton aus" bleibt er stumm.
+- [x] AC4: "Sprache über Link" hat in den Einstellungen eine eigene Zeile, der Standardton ist kurz, leise und von allen anderen verschieden. Texte auf Deutsch und Englisch.
 - [ ] AC5 (manuell): Mit zwei Clients in verlinkten Channels ist beim Link-PTT des anderen der Ton zu hören, er stört das Verstehen nicht.
 
 ### Tests (TDD)

@@ -8,6 +8,7 @@ public enum SoundEvent
     ChannelEntered, UserJoined, UserLeft,
     ServerMuted, Moved, PrivateMessage,
     ServerMessage, ChannelMessage, // Package 56
+    LinkVoice, // Package 57
 }
 
 /// <summary>
@@ -37,7 +38,11 @@ public static class SoundSynth
         [SoundEvent.PrivateMessage] = ChatTone,
         [SoundEvent.ServerMessage] = ChatTone, // Package 56: the same tone by default, each can get its own file
         [SoundEvent.ChannelMessage] = ChatTone,
+        [SoundEvent.LinkVoice] = [(1397, 30), (0, 20), (1760, 40)], // Package 57: a short, soft double blip over the voice
     };
+
+    /// <summary>Tones that play over speech are softer.</summary>
+    static float Level(SoundEvent sound) => sound == SoundEvent.LinkVoice ? 0.5f : 1f;
 
     static readonly Dictionary<SoundEvent, float[]> Cache = [];
 
@@ -54,7 +59,7 @@ public static class SoundSynth
                 for (int i = 0; i < count; i++)
                 {
                     float envelope = Math.Min(1f, Math.Min(i, count - 1 - i) / (float)FadeSamples);
-                    samples.Add(hz == 0 ? 0 : Amplitude * envelope * MathF.Sin(2 * MathF.PI * hz * i / AudioFormat.SampleRate));
+                    samples.Add(hz == 0 ? 0 : Amplitude * Level(sound) * envelope * MathF.Sin(2 * MathF.PI * hz * i / AudioFormat.SampleRate));
                 }
             }
             return Cache[sound] = [.. samples];

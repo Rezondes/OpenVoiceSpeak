@@ -385,6 +385,41 @@ public class ServerViewModelTests
         ], heard);
     }
 
+    /// <summary>Package 57: someone talking in over a link is announced by a short tone, once per transmission.</summary>
+    [Fact]
+    public void LinkVoice_SoundOncePerTransmission()
+    {
+        var f = Create(others: [U(2, "anna", Bravo)]);
+        var heard = Sounds(f.Vm);
+        void Talk(int ms)
+        {
+            for (int t = 0; t < ms; t += 20)
+            {
+                f.Vm.OnSpeakers([new ActiveSpeaker(2, ViaLink: true)]);
+                f.Time.Advance(TimeSpan.FromMilliseconds(20));
+            }
+        }
+        Talk(1000);
+        Assert.Equal([OVS.Client.Audio.SoundEvent.LinkVoice], heard);
+        f.Time.Advance(TimeSpan.FromMilliseconds(200)); // a short breath: still the same transmission
+        Talk(300);
+        Assert.Single(heard);
+        f.Time.Advance(TimeSpan.FromMilliseconds(400)); // a real pause: a new transmission
+        Talk(300);
+        Assert.Equal(2, heard.Count);
+    }
+
+    [Fact]
+    public void LinkVoice_NotForOwnChannelOrSelf()
+    {
+        var f = Create(others: [U(2, "anna", Lobby)]);
+        var heard = Sounds(f.Vm);
+        f.Vm.OnSpeakers([new ActiveSpeaker(2, ViaLink: false)]); // in my channel
+        f.Vm.OnSpeakers([new ActiveSpeaker(1, ViaLink: true)]); // myself
+        f.Vm.OnSpeakers([new ActiveSpeaker(OVS.Client.Audio.AudioEngine.SelfTestSpeaker, ViaLink: true)]); // the self test
+        Assert.Empty(heard);
+    }
+
     /// <summary>Package 56: "Allgemein" and the channel chat have their own sound; nobody hears their own messages.</summary>
     [Fact]
     public void ChatMessages_SoundPerTarget_NotForOwn()

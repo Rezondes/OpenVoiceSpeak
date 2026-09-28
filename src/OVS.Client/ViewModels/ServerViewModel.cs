@@ -266,10 +266,22 @@ public sealed partial class ServerViewModel : ObservableObject
 
     // ---- Speaking indicators ----
 
+    /// <summary>Package 57: a pause longer than this starts a new link transmission, with a new tone.</summary>
+    public static readonly TimeSpan LinkPause = TimeSpan.FromMilliseconds(300);
+
+    readonly Dictionary<uint, DateTimeOffset> lastLinkVoice = [];
+
     public void OnSpeakers(IEnumerable<ActiveSpeaker> active)
     {
         var now = time.GetUtcNow();
-        foreach (var a in active) speaking[a.SessionId] = (now, a.ViaLink);
+        foreach (var a in active)
+        {
+            speaking[a.SessionId] = (now, a.ViaLink);
+            // Someone from another channel talks in over a link: without a tone it sounds like the own channel.
+            if (!a.ViaLink || a.SessionId == Mirror.SelfId || !Mirror.Users.ContainsKey(a.SessionId)) continue;
+            if (!lastLinkVoice.TryGetValue(a.SessionId, out var last) || now - last > LinkPause) SoundRequested?.Invoke(SoundEvent.LinkVoice);
+            lastLinkVoice[a.SessionId] = now;
+        }
         RefreshSpeaking();
     }
 

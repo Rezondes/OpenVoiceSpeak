@@ -191,6 +191,7 @@
   <data name="Sound_ChannelMessage" xml:space="preserve"><value>Nachricht im Channel</value></data>
   <data name="Sound_Connected" xml:space="preserve"><value>Verbunden</value></data>
   <data name="Sound_Disconnected" xml:space="preserve"><value>Getrennt</value></data>
+  <data name="Sound_LinkVoice" xml:space="preserve"><value>Sprache über Link</value></data>
   <data name="Sound_MicOff" xml:space="preserve"><value>Mikrofon aus</value></data>
   <data name="Sound_MicOn" xml:space="preserve"><value>Mikrofon an</value></data>
   <data name="Sound_Moved" xml:space="preserve"><value>Verschoben</value></data>

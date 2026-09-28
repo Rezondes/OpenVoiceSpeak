@@ -24,6 +24,9 @@ public class SoundTests
             foreach (var b in tones.Where(b => b.Key > a.Key && !(chat.Contains(a.Key) && chat.Contains(b.Key))))
                 Assert.False(a.Value.SequenceEqual(b.Value), $"{a.Key} = {b.Key}");
         Assert.Same(tones[SoundEvent.MicOn], SoundSynth.Render(SoundEvent.MicOn)); // rendered once
+        // Package 57: the link tone plays over speech, so it is short and softer than the others
+        Assert.True(tones[SoundEvent.LinkVoice].Length <= AudioFormat.SampleRate / 10);
+        Assert.True(tones[SoundEvent.LinkVoice].Max(Math.Abs) < tones[SoundEvent.PrivateMessage].Max(Math.Abs) * 0.7f);
     }
 
     [Fact]
@@ -84,6 +87,7 @@ public class SoundTests
         engine.Deafened = true;
         engine.PlaySound(SoundEvent.UserJoined);
         engine.PlaySound(SoundEvent.PrivateMessage);
+        engine.PlaySound(SoundEvent.LinkVoice);
         engine.PlaySound(SoundEvent.SoundOff);
         engine.PlaySound(SoundEvent.MicOn);
         Assert.Equal([SoundEvent.SoundOff, SoundEvent.MicOn], engine.RecentSounds);
