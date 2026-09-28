@@ -159,7 +159,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 48 sind umgesetzt, 49 ist geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
+Alle Packages 1 bis 49 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -184,6 +184,7 @@ Die Packages 1 bis 48 sind umgesetzt, 49 ist geplant. Die Tests laufen mit `dotn
 | 31 | `ServerLogsTests > "Chat_Logged_PrivateWithoutContent"` | `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` | Der Test braucht drei verbundene Clients, die Hilfen dafür liegen in `ChatTests`. |
 | 32 | AC8 (Scrollverhalten) als manueller Check | `UiSmokeTests > "Chat_FollowsNewLines_UnlessScrolledUp"` | Headless mit Skia lässt sich das Scrollen verlässlich prüfen. |
 | 32 | "Allgemein" zeigt Meldungen ab dem Verbinden | "Allgemein" übernimmt beim Verbinden auch die Meldungen davor | So geht z. B. eine Geräte-Warnung vom Start nicht verloren, wie früher in der Aktivität. |
+| 49 | `sections/*.tsx`, `styles.css`, Screenshots als PNG | alle Abschnitte in `App.tsx`, Stil in `index.css`, Screenshots als WebP (je Sprache hell und dunkel), Icons aus den Fluent-Pfaden des Clients (`icons.ts`) | eine kleine Seite braucht keine Aufteilung, WebP ist etwa ein Drittel so gross. In der Galerie steht der Privatchat statt einer Wiederholung des Hero-Bilds. |
 | 1 | keine `nuget.config` | `nuget.config` nur mit nuget.org | Die globale NuGet-Konfiguration des Entwicklungsrechners verweist auf einen fehlenden Ordner. Mit der Datei baut das Projekt überall gleich. |
 
 ### Ergebnisse der manuellen Checks (27.09.2026, Windows 11, Docker Desktop 29.2.1)
@@ -3087,11 +3088,11 @@ Die README richtet sich an Entwickler und Serverbetreiber. Releases heißen `dep
 
 ### Acceptance Criteria
 
-- [ ] AC1: Die Seite ist ein OnePager mit Hero (Name, Kernaussage, Download-Button, Versionsnummer), Vorteilen, "Für wen", Screenshots, Installation in drei Schritten mit SmartScreen-Hinweis, "Eigenen Server betreiben" mit Link zur README und Footer.
-- [ ] AC2: Der Download-Button lädt direkt die neueste `OVS.Client.exe`. Die angezeigte Version ist die des Releases, mit dem die Seite gebaut wurde.
-- [ ] AC3: Deutsch und Englisch mit Umschalter. Standard nach Browsersprache (Deutsch bei `de`, sonst Englisch), die Wahl bleibt im Browser gespeichert. Beide Sprachen haben dieselben Texte.
-- [ ] AC4: Die Seite funktioniert von 375 px Breite an ohne waagerechtes Scrollen, in hellem und dunklem Design nach Systemeinstellung, mit Tastatur bedienbar und sinnvollen Alt-Texten.
-- [ ] AC5: Pull Requests bauen und testen die Seite, nach jedem Release auf `main` wird sie neu auf GitHub Pages ausgeliefert.
+- [x] AC1: Die Seite ist ein OnePager mit Hero (Name, Kernaussage, Download-Button, Versionsnummer), Vorteilen, "Für wen", Screenshots, Installation in drei Schritten mit SmartScreen-Hinweis, "Eigenen Server betreiben" mit Link zur README und Footer.
+- [x] AC2: Der Download-Button lädt direkt die neueste `OVS.Client.exe`. Die angezeigte Version ist die des Releases, mit dem die Seite gebaut wurde.
+- [x] AC3: Deutsch und Englisch mit Umschalter. Standard nach Browsersprache (Deutsch bei `de`, sonst Englisch), die Wahl bleibt im Browser gespeichert. Beide Sprachen haben dieselben Texte.
+- [x] AC4: Die Seite funktioniert von 375 px Breite an ohne waagerechtes Scrollen, in hellem und dunklem Design nach Systemeinstellung, mit Tastatur bedienbar und sinnvollen Alt-Texten.
+- [x] AC5: Pull Requests bauen und testen die Seite, nach jedem Release auf `main` wird sie neu auf GitHub Pages ausgeliefert.
 - [ ] AC6 (manuell, nach dem Push): Die Seite ist unter `https://rezondes.github.io/OpenVoiceSpeak/` erreichbar, der Download funktioniert, Lighthouse zeigt bei Barrierefreiheit mindestens 90.
 
 ### Tests (TDD)

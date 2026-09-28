@@ -1,0 +1,9 @@
+<!-- OpenVoiceSpeak logo (master). Headset with a short sound wave on the accent blue.
+     The same geometry lives in Views/LogoMark.axaml; ovs.ico is rendered from it (16 and 24 px without the wave). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="56" fill="#2F6FEB"/>
+  <path d="M 60 150 A 68 68 0 0 1 196 150" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
+  <path d="M 60 140 H 72 A 14 14 0 0 1 86 154 V 182 A 14 14 0 0 1 72 196 H 60 A 14 14 0 0 1 46 182 V 154 A 14 14 0 0 1 60 140 Z" fill="#FFFFFF"/>
+  <path d="M 184 140 H 196 A 14 14 0 0 1 210 154 V 182 A 14 14 0 0 1 196 196 H 184 A 14 14 0 0 1 170 182 V 154 A 14 14 0 0 1 184 140 Z" fill="#FFFFFF"/>
+  <path d="M 108 158 V 178 M 128 146 V 190 M 148 158 V 178" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round"/>
+</svg>

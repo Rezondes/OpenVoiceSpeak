@@ -482,6 +482,7 @@ $RECYCLE.BIN/
 *.swp
 
 # OpenVoiceSpeak
+website/dist/
 /data/
 .claude-flow/
 .swarm/

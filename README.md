@@ -13,6 +13,8 @@ Selbst hostbarer Voice-Chat in der Art von Mumble oder TeamSpeak, bewusst einfac
 
 Der Server läuft im Docker-Container auf Linux (amd64 und arm64). Der Client läuft unter Windows.
 
+Für Nutzer gibt es eine eigene Seite mit Download und Anleitung: https://rezondes.github.io/OpenVoiceSpeak/ (Quelle in `website/`, ausgeliefert nach jedem Release).
+
 ## Server mit Docker
 
 Voraussetzungen: Linux-Server (amd64 oder arm64) mit Docker samt Compose-Plugin

@@ -4,6 +4,7 @@ name: Release
 # the server image to ghcr.io/rezondes/openvoicespeak-server.
 # Versioning as in PersonalEinsatzPlanung (see src/OVS.Shared/BuildInfo.cs): one UTC instant per run gives the
 # version, the release is tagged deploy-<sha7>, its notes are the commit messages since the previous release.
+# Package 49: the website (website/) is tested on every run and published to GitHub Pages after each release.
 
 on:
   push:
@@ -34,9 +35,25 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet test
 
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
   version:
     if: github.event_name != 'pull_request'
-    needs: test
+    needs: [test, website]
     runs-on: ubuntu-latest
     outputs:
       build-time: ${{ steps.version.outputs.build_time }}
@@ -139,3 +156,33 @@ jobs:
             --notes-file /tmp/notes.md \
             --target "$GITHUB_SHA" \
             dist/OVS.Client.exe dist/OVS.Client.exe.sha256
+
+  pages:
+    # The page shows the version of the release it was built with.
+    needs: [version, release]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_OVS_VERSION: ${{ needs.version.outputs.version }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+      - id: deploy
+        uses: actions/deploy-pages@v4
