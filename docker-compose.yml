@@ -1,7 +1,8 @@
 services:
   ovs-server:
-    build: .
-    image: openvoicespeak/server:latest
+    # Package 44: the finished image from the GitHub Container Registry (amd64 and arm64).
+    # Build it yourself instead: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+    image: ghcr.io/rezondes/openvoicespeak-server:latest
     restart: unless-stopped
     ports:
       - "7000:7000/tcp"

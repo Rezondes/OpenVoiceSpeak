@@ -15,15 +15,18 @@ Der Server läuft im Docker-Container auf Linux (amd64 und arm64). Der Client l�
 
 ## Server mit Docker
 
-Voraussetzungen: Linux-Server (amd64 oder arm64) mit Git und Docker samt Compose-Plugin
-(z. B. `curl -fsSL https://get.docker.com | sh`).
+Voraussetzungen: Linux-Server (amd64 oder arm64) mit Docker samt Compose-Plugin
+(z. B. `curl -fsSL https://get.docker.com | sh`). Das fertige Image liegt als Package in der GitHub Container Registry
+(`ghcr.io/rezondes/openvoicespeak-server`, Tags `latest` und die Version, siehe "Client (Windows)"). Du brauchst nur die Compose-Datei:
 
 ```bash
-git clone <URL dieses Repositorys> openvoicespeak
-cd openvoicespeak
-docker compose up -d --build
+mkdir openvoicespeak && cd openvoicespeak
+curl -fsSLO https://raw.githubusercontent.com/Rezondes/OpenVoiceSpeak/main/docker-compose.yml
+docker compose up -d
 docker compose logs
 ```
+
+Der Ordnername ist der Compose-Projektname und damit Teil des Volume-Namens. Behalte ihn, sonst beginnt der Server mit leeren Daten.
 
 Im Log stehen zwei wichtige Zeilen:
 
@@ -96,8 +99,8 @@ Ordnernamen (`openvoicespeak_ovs-data` bei einem Ordner namens `openvoicespeak`,
 docker run --rm -v openvoicespeak_ovs-data:/data -v "$PWD":/backup alpine tar czf /backup/ovs-data.tgz -C /data .
 # Restore
 docker run --rm -v openvoicespeak_ovs-data:/data -v "$PWD":/backup alpine tar xzf /backup/ovs-data.tgz -C /data
-# Update (das Image wird lokal gebaut, es gibt keine Registry)
-git pull && docker compose up -d --build
+# Update: neues Image holen und neu starten, Daten und Zertifikat bleiben im Volume
+docker compose pull && docker compose up -d
 ```
 
 Der Container läuft als Nutzer `app` (UID 1654). Nutzt du statt des benannten Volumes einen Bind-Mount, muss dieser Nutzer darauf schreiben dürfen:
@@ -106,7 +109,15 @@ Der Container läuft als Nutzer `app` (UID 1654). Nutzt du statt des benannten V
 sudo chown -R 1654:1654 ./ovs-data
 ```
 
-### Multi-Arch-Image bauen
+### Image selbst bauen
+
+Aus einem Checkout des Repositorys baut die Zusatzdatei `docker-compose.build.yml` das Image lokal, statt es zu laden:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+Multi-Arch-Image:
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t openvoicespeak/server:dev .

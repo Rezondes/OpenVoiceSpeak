@@ -85,7 +85,7 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A12 Gleiche Identität doppelt verbunden:** Die neue Verbindung ersetzt die alte.
 - **A13 PTT-Erkennung:** Die Tasten werden per Polling mit `GetAsyncKeyState` im 10-ms-Takt abgefragt. `RegisterHotKey`, wie in der Besprechung genannt, liefert kein Loslassen-Ereignis und taugt deshalb nicht für PTT. Standardtasten: Maustaste X1 für PTT, X2 für Link-PTT.
 - **A14 Server-Mute** gilt nur für die aktuelle Session und wird nicht gespeichert.
-- **A15 Keine Veröffentlichung** in einer Container-Registry. Das Image wird nur lokal gebaut.
+- **A15 Keine Veröffentlichung** in einer Container-Registry. Das Image wird nur lokal gebaut. **Ersetzt durch A41 (Package 44).**
 - **A16 Client-Identitätsschlüssel** liegt unverschlüsselt in `%APPDATA%\OpenVoiceSpeak\identity.key`, wie bei Mumble. Schutz per DPAPI kommt später.
 - **A17 Serverzustand** ist durch einen globalen Lock geschützt. Das reicht für kleine und mittlere Server.
 - **A18 Keine Echo- oder Rauschunterdrückung** im MVP.
@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 43 sind umgesetzt, 44 ist geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Alle Packages 1 bis 44 sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2815,11 +2815,11 @@ Das `Dockerfile` baut bereits für amd64 und arm64 (Cross-Compile über `$BUILDP
 
 ### Acceptance Criteria
 
-- [ ] AC1: Nach grünen Tests auf `main` baut der Workflow das Image für `linux/amd64` und `linux/arm64` und pusht es mit den Tags `latest` und der Version aus Package 42. Das Release entsteht erst, wenn exe und Image fertig sind.
-- [ ] AC2: `OVS.Server --version` im Image zeigt dieselbe Version wie die exe im selben Release.
-- [ ] AC3: `docker-compose.yml` zieht das fertige Image. `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build` baut weiter lokal.
-- [ ] AC4: Die README beschreibt die Installation nur mit der Compose-Datei und das Update mit `docker compose pull && docker compose up -d`. Daten und Zertifikat bleiben im Volume.
-- [ ] AC5 (manuell): Nach dem ersten Push und dem einmaligen Umstellen des Packages auf "public" (A39) klappt `docker pull ghcr.io/rezondes/openvoicespeak-server:latest` ohne Anmeldung auf amd64 und arm64. Der Fingerprint bleibt beim Wechsel vom lokal gebauten Image erhalten.
+- [x] AC1: Nach grünen Tests auf `main` baut der Workflow das Image für `linux/amd64` und `linux/arm64` und pusht es mit den Tags `latest` und der Version aus Package 42. Das Release entsteht erst, wenn exe und Image fertig sind.
+- [x] AC2: `OVS.Server --version` im Image zeigt dieselbe Version wie die exe im selben Release.
+- [x] AC3: `docker-compose.yml` zieht das fertige Image. `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build` baut weiter lokal.
+- [x] AC4: Die README beschreibt die Installation nur mit der Compose-Datei und das Update mit `docker compose pull && docker compose up -d`. Daten und Zertifikat bleiben im Volume.
+- [ ] AC5 (manuell, offen bis zum ersten Push): Nach dem ersten Push und dem einmaligen Umstellen des Packages auf "public" (A39) klappt `docker pull ghcr.io/rezondes/openvoicespeak-server:latest` ohne Anmeldung auf amd64 und arm64. Der Fingerprint bleibt beim Wechsel vom lokal gebauten Image erhalten.
 
 ### Tests (TDD)
 

@@ -1,0 +1,6 @@
+# Builds the server image from this checkout instead of pulling it from ghcr.io (Package 44):
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  ovs-server:
+    build: .
+    image: openvoicespeak/server:local
