@@ -84,6 +84,30 @@ public sealed partial class ServerState
         Broadcast(new ChannelUpdated(Info(channel)));
     }
 
+    /// <summary>Package 36: Order becomes the position in the list, every changed channel is broadcast.</summary>
+    void OnReorderChannels(Session s, ReorderChannels r)
+    {
+        if (!Require(s, r, Permission.ChannelEdit)) return;
+        var ids = r.ChannelIds ?? [];
+        if (ids.Count != data.Channels.Count || !ids.ToHashSet().SetEquals(data.Channels.Select(c => c.Id)))
+        {
+            Fail(s, r, Codes.InvalidValue, "Die neue Reihenfolge muss jeden Channel genau einmal enthalten.");
+            return;
+        }
+        var changed = new List<ChannelRecord>();
+        for (int i = 0; i < ids.Count; i++)
+        {
+            var channel = FindChannel(ids[i])!;
+            if (channel.Order == i) continue;
+            channel.Order = i;
+            changed.Add(channel);
+        }
+        if (changed.Count == 0) return;
+        Persist();
+        logs.Server($"Channels umsortiert von {s.Nickname}: {string.Join(", ", ids.Select(ChannelName))}");
+        foreach (var channel in changed) Broadcast(new ChannelUpdated(Info(channel)));
+    }
+
     void OnDeleteChannel(Session s, DeleteChannel r)
     {
         if (!Require(s, r, Permission.ChannelDelete)) return;

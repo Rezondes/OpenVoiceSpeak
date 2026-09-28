@@ -161,6 +161,40 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.Equal(Codes.ChannelFull, (await late.ErrorAsync("j")).Code);
     }
 
+    // ---- Package 36: reorder ----
+
+    [Fact]
+    public async Task Reorder_SetsOrder_PersistsBroadcasts()
+    {
+        var raid = await CreateAsync("Raid");
+        var afk = await CreateAsync("AFK");
+        await a.SendAsync(new ReorderChannels([afk.Id, Lobby, raid.Id]));
+        var afkNow = await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == afk.Id);
+        Assert.Equal(0, afkNow.Channel.Order);
+
+        await using var late = await TestClient.ConnectAsync(server, "spaet");
+        Assert.Equal([afk.Id, Lobby, raid.Id], late.Welcome.Snapshot.Channels.OrderBy(c => c.Order).Select(c => c.Id));
+        Assert.Contains(server.Log, l => l.Contains("Channels umsortiert von admin"));
+    }
+
+    [Fact]
+    public async Task Reorder_IncompleteDuplicateUnknown_Invalid()
+    {
+        var raid = await CreateAsync("Raid");
+        foreach (var (ids, id) in new (Guid[], string)[] { ([raid.Id], "fehlt"), ([raid.Id, raid.Id], "doppelt"), ([raid.Id, Guid.NewGuid()], "fremd") })
+        {
+            await a.SendAsync(new ReorderChannels(ids) { RequestId = id });
+            Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync(id)).Code);
+        }
+    }
+
+    [Fact]
+    public async Task Reorder_WithoutRight_Denied()
+    {
+        await g.SendAsync(new ReorderChannels([Lobby]) { RequestId = "r" });
+        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("r")).Code);
+    }
+
     [Fact]
     public async Task Edit_Muted_WithoutRight_Denied()
     {

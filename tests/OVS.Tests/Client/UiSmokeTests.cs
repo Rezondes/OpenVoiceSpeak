@@ -317,6 +317,41 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 36: a real mouse drag in the channel tree sends the new order, a short click does not.</summary>
+    [AvaloniaFact]
+    public void ChannelTree_DragRaidAboveLobby_SendsOrder()
+    {
+        var sent = new List<Request>();
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin(sent) };
+        var main = new MainWindow { DataContext = vm, Width = 900, Height = 600 };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+        Point Center(string name)
+        {
+            var row = main.GetVisualDescendants().OfType<Border>()
+                .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel c && c.Name == name);
+            return row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), main)!.Value;
+        }
+        var raid = Center("Raid");
+        var lobby = Center("Lobby");
+
+        main.MouseDown(raid, MouseButton.Left);
+        main.MouseUp(raid, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(sent.OfType<ReorderChannels>()); // a click is no drag
+
+        main.MouseDown(raid, MouseButton.Left);
+        main.MouseMove(raid + new Point(0, -10));
+        main.MouseMove(lobby + new Point(0, -8)); // upper half of the lobby row
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.Server.Channels.Single(c => c.Name == "Lobby").IsDropAbove);
+        main.MouseUp(lobby + new Point(0, -8), MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new[] { FakeServers.Raid, FakeServers.Lobby }, sent.OfType<ReorderChannels>().Single().ChannelIds);
+        Assert.False(vm.Server.Channels.Single(c => c.Name == "Lobby").IsDropAbove);
+        main.Close();
+    }
+
     [Fact]
     public void Avatar_SameNicknameSameColor_InitialUpperCase()
     {

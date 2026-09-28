@@ -165,6 +165,7 @@ public sealed partial class ServerViewModel : ObservableObject
             desired.Add(channel);
         }
         Sync(Channels, desired);
+        for (int i = 0; i < desired.Count; i++) desired[i].SetPosition(first: i == 0, last: i == desired.Count - 1);
         CurrentChannel = self is null ? null : channelVms.GetValueOrDefault(self.ChannelId);
         Self = userVms.GetValueOrDefault(Mirror.SelfId);
         RefreshSpeaking();
@@ -244,6 +245,15 @@ public sealed partial class ServerViewModel : ObservableObject
     public Task CreateChannelAsync(string name, string description) => SendAsync(new CreateChannel(name, description));
     public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) => SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers));
     public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
+
+    /// <summary>Package 36: puts source right before or after target and sends the complete new order.</summary>
+    public Task MoveChannelAsync(ChannelViewModel source, ChannelViewModel target, bool after)
+    {
+        if (source == target) return Task.CompletedTask;
+        var order = Channels.Where(c => c != source).ToList();
+        order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
+        return order.SequenceEqual(Channels) ? Task.CompletedTask : SendAsync(new ReorderChannels(order.Select(c => c.Id).ToList()));
+    }
     public Task LinkAsync(Guid a, Guid b) => SendAsync(new LinkChannels(a, b));
     public Task UnlinkAsync(Guid a, Guid b) => SendAsync(new UnlinkChannels(a, b));
     public Task MoveAsync(uint sessionId, Guid channelId) => SendAsync(new MoveUser(sessionId, channelId));
@@ -318,6 +328,11 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [ObservableProperty] bool canDelete;
     [ObservableProperty] bool canLink;
     [ObservableProperty] bool canUnlink;
+    [ObservableProperty] bool canMoveUp;
+    [ObservableProperty] bool canMoveDown;
+    /// <summary>Package 36: where a dragged channel would land, shown as a line above or below this one.</summary>
+    [ObservableProperty] bool isDropAbove;
+    [ObservableProperty] bool isDropBelow;
 
     public Guid Id { get; } = id;
     public ObservableCollection<UserViewModel> Users { get; } = [];
@@ -341,6 +356,22 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         CanUnlink = CanLink && IsLinked;
         OnPropertyChanged(nameof(Tooltip));
     }
+
+    bool first, last;
+
+    internal void SetPosition(bool first, bool last)
+    {
+        this.first = first;
+        this.last = last;
+        CanMoveUp = CanEdit && !first;
+        CanMoveDown = CanEdit && !last;
+    }
+
+    [RelayCommand]
+    Task MoveUp() => first ? Task.CompletedTask : owner.MoveChannelAsync(this, owner.Channels[owner.Channels.IndexOf(this) - 1], after: false);
+
+    [RelayCommand]
+    Task MoveDown() => last ? Task.CompletedTask : owner.MoveChannelAsync(this, owner.Channels[owner.Channels.IndexOf(this) + 1], after: true);
 
     [RelayCommand]
     Task Join() => owner.JoinAsync(Id);

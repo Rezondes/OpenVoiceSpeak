@@ -185,6 +185,7 @@ public sealed partial class ServerState
                 case JoinChannel r: OnJoinChannel(session, r); break;
                 case CreateChannel r: OnCreateChannel(session, r); break;
                 case EditChannel r: OnEditChannel(session, r); break;
+                case ReorderChannels r: OnReorderChannels(session, r); break;
                 case DeleteChannel r: OnDeleteChannel(session, r); break;
                 case MoveUser r: OnMoveUser(session, r); break;
                 case SetSelfState r: OnSetSelfState(session, r); break;

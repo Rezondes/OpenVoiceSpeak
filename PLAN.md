@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 35 sind umgesetzt, 36 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 36 sind umgesetzt, 37 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2426,11 +2426,11 @@ Channels haben ein `Order`-Feld, der Baum sortiert nach `Order`, dann nach Name.
 
 ### Acceptance Criteria
 
-- [ ] AC1: Mit `ChannelEdit` lässt sich ein Channel im Baum auf einen anderen ziehen. Eine Linie zeigt, wo er landet. Ohne das Recht startet kein Ziehen.
-- [ ] AC2: Das Kontextmenü hat "Nach oben" und "Nach unten", am Anfang bzw. Ende der Liste deaktiviert.
-- [ ] AC3: Der Server nimmt nur eine vollständige Liste aller Channel-IDs ohne Doppelte an, sonst `InvalidValue`, ohne Recht `PermissionDenied`. Danach sind die `Order`-Werte 0 bis n-1, gespeichert, und jeder geänderte Channel geht per `ChannelUpdated` an alle.
-- [ ] AC4: Alle Clients zeigen die neue Reihenfolge sofort. Das Server-Log vermerkt die Umsortierung.
-- [ ] AC5: `ProtocolInfo.Version` ist 6.
+- [x] AC1: Mit `ChannelEdit` lässt sich ein Channel im Baum auf einen anderen ziehen. Eine Linie zeigt, wo er landet. Ohne das Recht startet kein Ziehen.
+- [x] AC2: Das Kontextmenü hat "Nach oben" und "Nach unten", am Anfang bzw. Ende der Liste deaktiviert.
+- [x] AC3: Der Server nimmt nur eine vollständige Liste aller Channel-IDs ohne Doppelte an, sonst `InvalidValue`, ohne Recht `PermissionDenied`. Danach sind die `Order`-Werte 0 bis n-1, gespeichert, und jeder geänderte Channel geht per `ChannelUpdated` an alle.
+- [x] AC4: Alle Clients zeigen die neue Reihenfolge sofort. Das Server-Log vermerkt die Umsortierung.
+- [x] AC5: `ProtocolInfo.Version` ist 6.
 
 ### Tests (TDD)
 
@@ -2439,7 +2439,7 @@ Channels haben ein `Order`-Feld, der Baum sortiert nach `Order`, dann nach Name.
 3. `ServerViewModelTests > "MoveUpDown_SendFullOrder_DisabledAtEdges"` (AC2)
 4. `ServerViewModelTests > "DropOnChannel_SendsOrderWithSourceBeforeTarget"`: die Einfüge-Logik liegt im ViewModel und ist ohne Maus testbar (AC1)
 5. `UiSmokeTests`: Kontextmenü enthält beide Einträge, ohne Recht ist Ziehen aus (AC1, AC2); `ClientLogTests`, `SmokeTests` (AC5)
-6. Manueller Check: echtes Ziehen mit der Maus, Einfügemarke sichtbar, beide Designs
+6. `UiSmokeTests > "ChannelTree_DragRaidAboveLobby_SendsOrder"`: Ziehen mit echten Mausereignissen im Headless-Fenster, kurzer Klick zieht nicht. Offen bleibt nur der Blick auf die Einfügemarke am echten Bildschirm.
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~SmokeTests"`
 

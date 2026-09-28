@@ -126,6 +126,7 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiert
 - Tasten legst du unter Einstellungen, Tasten fest: Push-to-Talk, Link-PTT, Push-to-Mute, Mikrofon an/aus und Ton an/aus, auch als Kombination mit Strg, Umschalt oder Alt. Ein neues Profil hat keine Belegung, bis dahin steht unter deinem Namen "Keine PTT-Taste belegt". Profile aus älteren Versionen behalten Maustaste 4 und 5. Die Tasten wirken auch, während ein Spiel im Vordergrund ist.
 - In den Einstellungen wählst du ausserdem Push-to-Talk oder Sprachaktivierung, die Geräte und das Design (wie Windows, hell oder dunkel). Bei Sprachaktivierung wirkt die PTT-Taste nicht, Link-PTT schon.
 - Doppelklick auf einen Channel betritt ihn.
+- Mit dem Recht "Channels bearbeiten" ziehst du Channels mit der Maus an eine neue Position, oder du nimmst "Nach oben" bzw. "Nach unten" im Kontextmenü.
 - Ein Channel lässt sich unter "Bearbeiten ..." stumm schalten: Dort wird niemand gehört, auch nicht per Link-PTT. Sprache aus verlinkten Channels ist dort hörbar.
 - Ebenfalls unter "Bearbeiten ..." begrenzt "Maximale Nutzer" einen Channel (0 = unbegrenzt, der Standard-Channel bleibt immer unbegrenzt). Die Seitenleiste zeigt dann z. B. "3/5". Wer das Recht "Volle Channel betreten" hat, kommt trotzdem hinein und darf andere hineinverschieben.
 - Per Rechtsklick auf Channels und Nutzer erreichst du Bearbeiten, Verlinken, Verschieben, Kicken und Bannen. Du siehst nur, wozu du berechtigt bist.

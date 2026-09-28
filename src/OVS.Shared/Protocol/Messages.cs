@@ -18,6 +18,7 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(JoinChannel), "joinChannel")]
 [JsonDerivedType(typeof(CreateChannel), "createChannel")]
 [JsonDerivedType(typeof(EditChannel), "editChannel")]
+[JsonDerivedType(typeof(ReorderChannels), "reorderChannels")]
 [JsonDerivedType(typeof(DeleteChannel), "deleteChannel")]
 [JsonDerivedType(typeof(MoveUser), "moveUser")]
 [JsonDerivedType(typeof(SetSelfState), "setSelfState")]
@@ -97,6 +98,8 @@ public sealed record ServerSnapshot(
 public sealed record JoinChannel(Guid ChannelId) : Request;
 public sealed record CreateChannel(string Name, string Description) : Request;
 public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0) : Request;
+/// <summary>Package 36: the complete new order, every channel exactly once.</summary>
+public sealed record ReorderChannels(IReadOnlyList<Guid> ChannelIds) : Request;
 public sealed record DeleteChannel(Guid ChannelId) : Request;
 public sealed record MoveUser(uint SessionId, Guid ChannelId) : Request;
 public sealed record SetSelfState(bool Muted, bool Deafened) : Request;

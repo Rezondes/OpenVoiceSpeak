@@ -272,6 +272,38 @@ public class ServerViewModelTests
         Assert.True(f.Channel(Bravo).IsMuted);
     }
 
+    /// <summary>Package 36: up and down send the complete order, the ends are disabled.</summary>
+    [Fact]
+    public async Task MoveUpDown_SendFullOrder_DisabledAtEdges()
+    {
+        var f = Create(P.ChannelEdit);
+        Assert.Equal((false, true), (f.Channel(Lobby).CanMoveUp, f.Channel(Lobby).CanMoveDown));
+        Assert.Equal((true, false), (f.Channel(Bravo).CanMoveUp, f.Channel(Bravo).CanMoveDown));
+
+        await f.Channel(Bravo).MoveUpCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { Lobby, Bravo, Alpha }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
+        await f.Channel(Lobby).MoveDownCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { Alpha, Lobby, Bravo }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
+
+        var guest = Create();
+        Assert.False(guest.Channel(Alpha).CanMoveUp); // without "Channels bearbeiten"
+    }
+
+    [Fact]
+    public async Task DropOnChannel_SendsOrderWithSourceBeforeOrAfterTarget()
+    {
+        var f = Create(P.ChannelEdit);
+        await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
+        Assert.Equal(new[] { Bravo, Lobby, Alpha }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
+        await f.Vm.MoveChannelAsync(f.Channel(Lobby), f.Channel(Bravo), after: true);
+        Assert.Equal(new[] { Alpha, Bravo, Lobby }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
+
+        int before = f.Sent.Count;
+        await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Lobby), after: true); // already there
+        await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Alpha), after: false);
+        Assert.Equal(before, f.Sent.Count);
+    }
+
     [Fact]
     public void SlotText_LimitedAndUnlimited()
     {

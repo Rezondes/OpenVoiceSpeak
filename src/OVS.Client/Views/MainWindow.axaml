@@ -102,11 +102,14 @@
           <TextBlock Classes="caption" Margin="18" TextWrapping="Wrap" IsVisible="{Binding !IsConnected}"
                      Text="Verbinde dich mit einem Server, um seine Channels zu sehen." />
           <ScrollViewer Padding="8,10">
-            <ItemsControl ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
+            <ItemsControl x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">
+                    <Border Classes="dropLine" IsVisible="{Binding IsDropAbove}" />
                     <Border Classes="row" Classes.current="{Binding IsCurrent}" DoubleTapped="OnChannelDoubleTapped"
+                            PointerPressed="OnChannelPointerPressed" PointerMoved="OnChannelPointerMoved"
+                            PointerReleased="OnChannelPointerReleased" PointerCaptureLost="OnChannelPointerCaptureLost"
                             ToolTip.Tip="{Binding Tooltip}">
                       <Border.ContextMenu>
                         <ContextMenu>
@@ -118,6 +121,12 @@
                           </MenuItem>
                           <MenuItem Header="Bearbeiten ..." Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Edit}" Classes="sm" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="Nach oben" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanEdit}" IsEnabled="{Binding CanMoveUp}">
+                            <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowUp}" Classes="sm" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="Nach unten" Command="{Binding MoveDownCommand}" IsVisible="{Binding CanEdit}" IsEnabled="{Binding CanMoveDown}">
+                            <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowDown}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
                           <MenuItem Header="Verlinken mit ..." Command="{Binding LinkCommand}" IsVisible="{Binding CanLink}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Link}" Classes="sm" /></MenuItem.Icon>
@@ -201,6 +210,7 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <Border Classes="dropLine" IsVisible="{Binding IsDropBelow}" />
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
