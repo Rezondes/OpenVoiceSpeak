@@ -81,6 +81,7 @@
 | 57 | Ton für Sprache über Link | Beginnt jemand aus einem anderen Channel per Link-PTT zu sprechen, hört man einen kurzen eigenen Ton. | 48, 56 |
 | 58 | Reihenfolge der Einstellungen | Die Einstellungen zeigen Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung und Über in dieser Reihenfolge. | - |
 | 59 | Push-to-Talk-Taste von Anfang an | Ein neues Profil hat eine passende PTT-Taste, und die Einstellungen weisen auf eine fehlende PTT-Taste hin. | 41, 58 |
+| 60 | Ton für die eigene Link-PTT | Beginnt man selbst über Link zu sprechen, hört man einen eigenen, einzeln anpassbaren Ton, standardmässig den aus Package 57. | 57 |
 
 ## Annahmen
 
@@ -169,6 +170,7 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A68 Reihenfolge der Einstellungen.** Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung, Über.
 - **A69 Standard-PTT-Taste.** Nur ein neues Profil (keine `settings.json`) bekommt eine PTT-Taste: Maustaste 4, wenn Windows mindestens 5 Maustasten meldet (`GetSystemMetrics(SM_CMOUSEBUTTONS)`), sonst Strg rechts. Bestehende Profile ohne PTT-Taste bleiben so. Package 29 ("neues Profil ohne Belegung") wird damit für die PTT-Taste abgelöst.
 - **A70 Hinweis auf fehlende PTT-Taste.** Unter "Übertragung", solange Push-to-Talk gewählt und keine PTT-Taste belegt ist, mit einem Button "Taste festlegen", der den Tasten-Dialog mit Push-to-Talk vorausgewählt öffnet. Der Hinweis unter dem eigenen Namen bleibt.
+- **A71 Ton für die eigene Link-PTT.** Neuer Sound `OwnLinkVoice` ("Eigene Sprache über Link"), standardmässig derselbe Ton wie `LinkVoice`, mit eigener Zeile (Datei, Lautstärke, Stumm). Er spielt nur lokal, bei jedem Beginn der eigenen Link-Übertragung, mit derselben 300-ms-Pausenregel wie in Package 57. Nur wenn die Stimme wirklich über Link geht: Recht vorhanden (sonst sendet Link-PTT nur in den eigenen Channel) und der eigene Channel ist mit mindestens einem anderen verlinkt. Kein Ton, wenn nichts gesendet wird (stumm, "Ton aus", stummer Channel, Selbsttest). Das ersetzt "kein Ton für die eigene Link-PTT" aus A67.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -191,7 +193,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle Packages 1 bis 59 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6, 53 AC7 und 57 AC5 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Alle Packages 1 bis 60 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6, 53 AC7, 57 AC5 und 60 AC6 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -3748,3 +3750,60 @@ Testbefehl: `dotnet test`
 
 - Eine Taste für bestehende Profile nachträglich setzen
 - Weitere Standardbelegungen (Link-PTT, Mute)
+
+---
+
+## Package 60: Ton für die eigene Link-PTT
+
+**Ziel:** Beginnt man selbst über Link zu sprechen, hört man einen eigenen, einzeln anpassbaren Ton, standardmässig den aus Package 57.
+
+**Abhängigkeiten:** Package 57
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/Sounds.cs` (ändern): `SoundEvent.OwnLinkVoice`, Muster und Pegel wie `LinkVoice`
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): Beginn der eigenen Link-Übertragung in `SetSelfTransmitting` erkennen
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): `Sound_OwnLinkVoice`
+- `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `SoundTests.cs`, `SettingsTests.cs` (ändern)
+- `README.md` (ändern)
+
+### Kontext
+
+Das eigene Senden meldet `AudioEngine.TransmitChanged(target)`, `MainViewModel` gibt es an `ServerViewModel.SetSelfTransmitting(target)` weiter, das "Sendet" und das Link-Icon am eigenen Namen steuert. `target` ist `VoiceHeader.TargetLinked` nur, wenn Link-PTT gedrückt ist und man das Recht `SpeakLinked` hat (`TransmitController.Decide`), sonst `TargetChannel`. Ob der eigene Channel Links hat, zeigt `ChannelViewModel.IsLinked`. `ServerViewModel` hat eine `TimeProvider` (in Tests `ManualTimeProvider`) und das Ereignis `SoundRequested`, das `MainViewModel` an `AudioEngine.PlaySound` hängt. Package 57 hat `LinkVoice` für andere eingeführt und die eigene Link-PTT ausdrücklich ausgenommen (`LinkVoice_NotForOwnChannelOrSelf`). Die Sound-Zeilen entstehen aus `Enum.GetValues<SoundEvent>()`.
+
+### Acceptance Criteria
+
+- [x] AC1: Beginnt die eigene Übertragung über Link (Wechsel auf `TargetLinked`), wird `OwnLinkVoice` einmal ausgelöst, nicht wiederholt, solange sie läuft.
+- [x] AC2: Nach einer Pause ab 300 ms löst der nächste Beginn den Ton erneut aus, ein kürzeres Loslassen und Wiederdrücken nicht.
+- [x] AC3: Kein Ton, wenn der eigene Channel keine Links hat oder nur im eigenen Channel gesendet wird (`TargetChannel`, z. B. ohne Recht). Kein Ton, wenn nichts gesendet wird (stumm, "Ton aus", stummer Channel, Selbsttest).
+- [x] AC4: Standardmässig klingt `OwnLinkVoice` wie `LinkVoice`. In den Einstellungen hat "Eigene Sprache über Link" eine eigene Zeile, Datei, Lautstärke und Stumm wirken nur auf diesen Sound.
+- [x] AC5: `LinkVoice` für andere funktioniert unverändert. Texte auf Deutsch und Englisch.
+- [ ] AC6 (manuell): Mit zwei Clients in verlinkten Channels hört man beim eigenen Link-PTT den Ton, der andere hört seinen `LinkVoice`, nicht beide doppelt.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `ServerViewModelTests > "OwnLinkVoice_OnStartOfOwnLinkTransmission"` (AC1, AC2)
+   - Gegeben: eigener Channel mit einem Link, `ManualTimeProvider`
+   - Erwartet: `SetSelfTransmitting(TargetLinked)` löst einmal `OwnLinkVoice` aus, wiederholte Meldungen nicht. Nach `null`, 100 ms und erneut `TargetLinked` kein Ton, nach `null`, 400 ms und `TargetLinked` wieder einer.
+2. `ServerViewModelTests > "OwnLinkVoice_NotWithoutLinksOrForChannelOnly"` (AC3)
+   - Gegeben: eigener Channel ohne Link mit `TargetLinked`, dann verlinkt mit `TargetChannel`
+   - Erwartet: kein Ton
+3. `ServerViewModelTests > "LinkVoice_NotForOwnChannelOrSelf"` bleibt grün: `LinkVoice` weiter nie für die eigene Session (AC5)
+4. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"`: `OwnLinkVoice` gleich `LinkVoice`, sonst weiter alle verschieden. `"Deafened_OnlyOwnMicAndSoundTones_AllOffNothing"` um `OwnLinkVoice` ergänzt (AC3, AC4)
+5. `SettingsTests > "Sounds_LinkRows_Independent"` (AC4): Stumm für `OwnLinkVoice` lässt `LinkVoice` unberührt
+6. `LocalizationTests` bleiben grün (AC5)
+7. Manueller Check AC6
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 und 2 (rot), `SoundEvent.OwnLinkVoice`, Erkennung in `SetSelfTransmitting`: Wechsel auf `TargetLinked` bei verlinktem eigenen Channel, Zeitpunkt des letzten Endes merken, 300-ms-Regel mit `LinkPause`.
+2. Tests 4 und 5, Muster und Pegel von `LinkVoice` teilen, Texte in beiden `resx`.
+3. README ergänzen, manueller Check AC6.
+
+### Out of Scope
+
+- Ein Ton beim Loslassen der Link-PTT
+- Anzeige, welche Channels man gerade erreicht

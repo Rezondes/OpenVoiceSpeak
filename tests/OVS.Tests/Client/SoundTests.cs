@@ -18,10 +18,12 @@ public class SoundTests
             Assert.True(t.Value.Max(Math.Abs) <= 0.5f, t.Key.ToString()); // gentle, never at full scale
         });
         // Package 56: the three chat sounds share the tone of a private message by default, all others differ
-        SoundEvent[] chat = [SoundEvent.PrivateMessage, SoundEvent.ServerMessage, SoundEvent.ChannelMessage];
-        Assert.All(chat, c => Assert.Equal(tones[SoundEvent.PrivateMessage], tones[c]));
+        // Package 60: the own link tone sounds like the one for others by default
+        SoundEvent[][] shared = [[SoundEvent.PrivateMessage, SoundEvent.ServerMessage, SoundEvent.ChannelMessage], [SoundEvent.LinkVoice, SoundEvent.OwnLinkVoice]];
+        foreach (var group in shared) Assert.All(group, e => Assert.Equal(tones[group[0]], tones[e]));
+        bool SameGroup(SoundEvent a, SoundEvent b) => shared.Any(g => g.Contains(a) && g.Contains(b));
         foreach (var a in tones)
-            foreach (var b in tones.Where(b => b.Key > a.Key && !(chat.Contains(a.Key) && chat.Contains(b.Key))))
+            foreach (var b in tones.Where(b => b.Key > a.Key && !SameGroup(a.Key, b.Key)))
                 Assert.False(a.Value.SequenceEqual(b.Value), $"{a.Key} = {b.Key}");
         Assert.Same(tones[SoundEvent.MicOn], SoundSynth.Render(SoundEvent.MicOn)); // rendered once
         // Package 57: the link tone plays over speech, so it is short and softer than the others
@@ -88,6 +90,7 @@ public class SoundTests
         engine.PlaySound(SoundEvent.UserJoined);
         engine.PlaySound(SoundEvent.PrivateMessage);
         engine.PlaySound(SoundEvent.LinkVoice);
+        engine.PlaySound(SoundEvent.OwnLinkVoice);
         engine.PlaySound(SoundEvent.SoundOff);
         engine.PlaySound(SoundEvent.MicOn);
         Assert.Equal([SoundEvent.SoundOff, SoundEvent.MicOn], engine.RecentSounds);

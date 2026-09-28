@@ -9,6 +9,7 @@ public enum SoundEvent
     ServerMuted, Moved, PrivateMessage,
     ServerMessage, ChannelMessage, // Package 56
     LinkVoice, // Package 57
+    OwnLinkVoice, // Package 60
 }
 
 /// <summary>
@@ -21,6 +22,9 @@ public static class SoundSynth
     const int FadeSamples = AudioFormat.SampleRate / 200; // 5 ms, so no note clicks
 
     static readonly (float Hz, int Ms)[] ChatTone = [(1047, 60), (0, 40), (1319, 90)];
+
+    /// <summary>Package 57: a short, soft double blip over the voice.</summary>
+    static readonly (float Hz, int Ms)[] LinkTone = [(1397, 30), (0, 20), (1760, 40)];
 
     static readonly Dictionary<SoundEvent, (float Hz, int Ms)[]> Patterns = new()
     {
@@ -38,11 +42,12 @@ public static class SoundSynth
         [SoundEvent.PrivateMessage] = ChatTone,
         [SoundEvent.ServerMessage] = ChatTone, // Package 56: the same tone by default, each can get its own file
         [SoundEvent.ChannelMessage] = ChatTone,
-        [SoundEvent.LinkVoice] = [(1397, 30), (0, 20), (1760, 40)], // Package 57: a short, soft double blip over the voice
+        [SoundEvent.LinkVoice] = LinkTone,
+        [SoundEvent.OwnLinkVoice] = LinkTone, // Package 60: the same by default, each can get its own file
     };
 
     /// <summary>Tones that play over speech are softer.</summary>
-    static float Level(SoundEvent sound) => sound == SoundEvent.LinkVoice ? 0.5f : 1f;
+    static float Level(SoundEvent sound) => sound is SoundEvent.LinkVoice or SoundEvent.OwnLinkVoice ? 0.5f : 1f;
 
     static readonly Dictionary<SoundEvent, float[]> Cache = [];
 

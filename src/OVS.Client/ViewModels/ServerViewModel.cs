@@ -285,8 +285,17 @@ public sealed partial class ServerViewModel : ObservableObject
         RefreshSpeaking();
     }
 
+    DateTimeOffset? ownLinkEnded;
+
     public void SetSelfTransmitting(byte? target)
     {
+        const byte Linked = Shared.Voice.VoiceHeader.TargetLinked;
+        var now = time.GetUtcNow();
+        // Package 60: the own voice starts going over a link; only then do other channels really hear it
+        if (target == Linked && selfTarget != Linked && CurrentChannel is { IsLinked: true }
+            && (ownLinkEnded is not { } ended || now - ended > LinkPause))
+            SoundRequested?.Invoke(SoundEvent.OwnLinkVoice);
+        if (selfTarget == Linked && target != Linked) ownLinkEnded = now;
         selfTarget = target;
         RefreshSpeaking();
     }

@@ -135,6 +135,19 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(saved.SoundVolume, AudioEngine.GainFor(saved, SoundEvent.PrivateMessage), 3);
     }
 
+    /// <summary>Package 60: the own link tone has its own row, independent of the one for others.</summary>
+    [Fact]
+    public void Sounds_LinkRows_Independent()
+    {
+        var vm = Vm(new ClientSettings());
+        var rows = vm.SoundRows.ToDictionary(r => r.Event);
+        Assert.Equal(("Sprache über Link", "Eigene Sprache über Link"), (rows[SoundEvent.LinkVoice].Label, rows[SoundEvent.OwnLinkVoice].Label));
+        rows[SoundEvent.OwnLinkVoice].Muted = true;
+        var saved = vm.ToSettings(new ClientSettings());
+        Assert.Equal(0f, AudioEngine.GainFor(saved, SoundEvent.OwnLinkVoice));
+        Assert.Equal(saved.SoundVolume, AudioEngine.GainFor(saved, SoundEvent.LinkVoice), 3);
+    }
+
     [Fact]
     public void Language_RoundTrip_ShownInSettings()
     {

@@ -195,6 +195,7 @@
   <data name="Sound_MicOff" xml:space="preserve"><value>Mikrofon aus</value></data>
   <data name="Sound_MicOn" xml:space="preserve"><value>Mikrofon an</value></data>
   <data name="Sound_Moved" xml:space="preserve"><value>Verschoben</value></data>
+  <data name="Sound_OwnLinkVoice" xml:space="preserve"><value>Eigene Sprache über Link</value></data>
   <data name="Sound_PrivateMessage" xml:space="preserve"><value>Neue Privatnachricht</value></data>
   <data name="Sound_ServerMessage" xml:space="preserve"><value>Nachricht in Allgemein</value></data>
   <data name="Sound_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>

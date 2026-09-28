@@ -409,6 +409,42 @@ public class ServerViewModelTests
         Assert.Equal(2, heard.Count);
     }
 
+    /// <summary>Package 60: starting to talk over a link oneself gives an own tone, once per transmission.</summary>
+    [Fact]
+    public void OwnLinkVoice_OnStartOfOwnLinkTransmission()
+    {
+        var f = Create();
+        f.Vm.Apply(new ChannelsLinked(Lobby, Bravo));
+        var heard = Sounds(f.Vm);
+        const byte Linked = OVS.Shared.Voice.VoiceHeader.TargetLinked;
+        f.Vm.SetSelfTransmitting(Linked);
+        f.Vm.SetSelfTransmitting(Linked); // still the same transmission
+        Assert.Equal([OVS.Client.Audio.SoundEvent.OwnLinkVoice], heard);
+
+        f.Vm.SetSelfTransmitting(null);
+        f.Time.Advance(TimeSpan.FromMilliseconds(100)); // let go and pressed again at once
+        f.Vm.SetSelfTransmitting(Linked);
+        Assert.Single(heard);
+
+        f.Vm.SetSelfTransmitting(null);
+        f.Time.Advance(TimeSpan.FromMilliseconds(400));
+        f.Vm.SetSelfTransmitting(Linked);
+        Assert.Equal(2, heard.Count);
+    }
+
+    [Fact]
+    public void OwnLinkVoice_NotWithoutLinksOrForChannelOnly()
+    {
+        var f = Create();
+        var heard = Sounds(f.Vm);
+        f.Vm.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked); // no link from my channel: nobody else hears it
+        f.Vm.SetSelfTransmitting(null);
+        f.Vm.Apply(new ChannelsLinked(Lobby, Bravo));
+        f.Time.Advance(TimeSpan.FromSeconds(1));
+        f.Vm.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetChannel); // only the own channel, e.g. without the right
+        Assert.Empty(heard);
+    }
+
     [Fact]
     public void LinkVoice_NotForOwnChannelOrSelf()
     {
