@@ -76,6 +76,11 @@
 | 52 | Einstellungen ohne Einfrieren | Einstellungen öffnen, Speichern und Programmstart blockieren die Oberfläche nicht mehr durch das Auflisten der Audiogeräte. | 17 |
 | 53 | Selbsttest | Ein Button in den Einstellungen schaltet einen stumm und taub und spielt die eigene Stimme so zurück, wie andere sie hören. | 50, 52 |
 | 54 | Ein Channel-Dialog | Anlegen und Bearbeiten eines Channels nutzen denselben Dialog mit allen Optionen, leer beim Anlegen und vorbelegt beim Bearbeiten. | 34, 35 |
+| 55 | Lautstärke bis 200 % | Der Regler "Lautstärke" geht von 0 bis 200 %, Standard 100 %. | 50 |
+| 56 | Töne für Chat-Nachrichten | Nachrichten in "Allgemein" und im Channel-Chat haben je einen eigenen Sound, standardmässig den Ton der Privatnachricht. | 48 |
+| 57 | Ton für Sprache über Link | Beginnt jemand aus einem anderen Channel per Link-PTT zu sprechen, hört man einen kurzen eigenen Ton. | 48, 56 |
+| 58 | Reihenfolge der Einstellungen | Die Einstellungen zeigen Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung und Über in dieser Reihenfolge. | - |
+| 59 | Push-to-Talk-Taste von Anfang an | Ein neues Profil hat eine passende PTT-Taste, und die Einstellungen weisen auf eine fehlende PTT-Taste hin. | 41, 58 |
 
 ## Annahmen
 
@@ -158,6 +163,12 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A62 Ende des Selbsttests.** Mit "Selbsttest beenden", beim Schliessen der Einstellungen (Speichern oder Verwerfen) und beim Trennen der Verbindung. Kein Zeitlimit.
 - **A63 Channel anlegen mit allen Optionen.** `CreateChannel` bekommt `IsMuted` und `MaxUsers` (Standard `false` und 0). Der Server prüft beim Anlegen dieselben Regeln wie beim Bearbeiten (0 bis 999 Plätze). Protokollversion 9: Server und Clients werden gemeinsam aktualisiert, ältere bekommen die bekannte Meldung zur Version.
 - **A64 Eigener Channel-Dialog.** `Views/ChannelDialog.axaml` mit `ChannelDialogViewModel` ersetzt `SimpleDialogs.EditChannel`. Anlegen öffnet ihn leer (kein Name, keine Beschreibung, nicht stumm, 0 Plätze = unbegrenzt), Bearbeiten mit den Daten des Channels. Unterschiede nur bei Titel und Button ("Anlegen" bzw. "Speichern"). Beim Standard-Channel bleiben die Plätze gesperrt, mit Hinweis.
+- **A65 Lautstärke bis 200 %.** Nur der Regler "Lautstärke" (`ClientSettings.OutputVolume`, jetzt 0 bis 2) wird erweitert. Mit der Grundverstärkung aus Package 50 sind das bis zu ×4, der Begrenzer verhindert Übersteuern. Gesamt-Soundlautstärke und die Regler je Sound bleiben bei 0 bis 100 %.
+- **A66 Chat-Töne.** Zwei neue Sounds `ServerMessage` ("Nachricht in Allgemein") und `ChannelMessage` ("Nachricht im Channel"), standardmässig derselbe Ton wie `PrivateMessage`. Jeder hat wie alle Sounds eine eigene Zeile (Datei, Lautstärke, Stumm). Ton nur für Nachrichten anderer, immer, auch wenn der Tab offen ist.
+- **A67 Ton für Link-Sprache.** Neuer Sound `LinkVoice` ("Sprache über Link"): ein kurzer, leiser Ton, sobald jemand aus einem anderen Channel per Link-PTT zu sprechen beginnt, erneut nach einer Pause ab etwa 300 ms. Kein Dauerton, kein Ton für die eigene Link-PTT, keiner bei "Ton aus" (A46). Eigene Datei, Lautstärke und Stumm wie alle Sounds.
+- **A68 Reihenfolge der Einstellungen.** Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung, Über.
+- **A69 Standard-PTT-Taste.** Nur ein neues Profil (keine `settings.json`) bekommt eine PTT-Taste: Maustaste 4, wenn Windows mindestens 5 Maustasten meldet (`GetSystemMetrics(SM_CMOUSEBUTTONS)`), sonst Strg rechts. Bestehende Profile ohne PTT-Taste bleiben so. Package 29 ("neues Profil ohne Belegung") wird damit für die PTT-Taste abgelöst.
+- **A70 Hinweis auf fehlende PTT-Taste.** Unter "Übertragung", solange Push-to-Talk gewählt und keine PTT-Taste belegt ist, mit einem Button "Taste festlegen", der den Tasten-Dialog mit Push-to-Talk vorausgewählt öffnet. Der Hinweis unter dem eigenen Namen bleibt.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -180,7 +191,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle Packages 1 bis 54 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6 und 53 AC7 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Die Packages 1 bis 55 sind umgesetzt, 56 bis 59 sind geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6 und 53 AC7 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -3489,3 +3500,251 @@ Testbefehl: `dotnet test`
 
 - Weitere Channel-Optionen (Passwort, Unter-Channels)
 - Anlegen eines Channels direkt mit Links
+
+---
+
+## Package 55: Lautstärke bis 200 %
+
+**Ziel:** Der Regler "Lautstärke" geht von 0 bis 200 %, Standard 100 %.
+
+**Abhängigkeiten:** Package 50
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `OutputVolume` 0 bis 2 in `Clamp()`
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (ändern): `OutputVolumePercent` 0 bis 200
+- `src/OVS.Client/Views/SettingsView.axaml` (ändern): Slider `Maximum="200"`
+- `tests/OVS.Tests/Client/SettingsTests.cs`, `ReceivePathTests.cs` (ändern)
+- `README.md` (ändern)
+
+### Kontext
+
+`ClientSettings.Clamp()` begrenzt `OutputVolume` auf 0 bis 1, `SettingsViewModel.OnOutputVolumePercentChanged` auf 0 bis 100, der Slider in `SettingsView.axaml` hat `Maximum="100"`. Der Mixer multipliziert mit `Mixer.Volume` nach der Grundverstärkung (Package 50), danach begrenzt `SoftLimiter`. A54 hatte den Regler bewusst bei 100 % gelassen, das wird hiermit geändert.
+
+### Acceptance Criteria
+
+- [x] AC1: Der Regler geht von 0 bis 200 %, Standard 100 %, die Prozentanzeige zeigt den Wert.
+- [x] AC2: 200 % werden gespeichert und nach einem Neustart wieder angezeigt. Werte über 200 % aus einer Datei werden auf 200 % begrenzt.
+- [x] AC3: 200 % verdoppeln die Stimmen gegenüber 100 %, laute Stellen bleiben unter der Grenze des Begrenzers.
+
+### Tests (TDD)
+
+1. `SettingsTests > "OutputVolume_UpTo200_RoundTrip_Clamped"` (AC1, AC2)
+   - Gegeben: Regler auf 200, speichern, laden. Ausserdem `OutputVolume = 5` in der Datei
+   - Erwartet: 2,0 bzw. begrenzt auf 2,0, Anzeige 200 %. Standard eines neuen Profils 1,0
+2. `ReceivePathTests > "Mixer_Volume200_DoublesVoice_Limited"` (AC3)
+   - Gegeben: leiser Sinus bei `Volume = 2` gegenüber `Volume = 1`, ausserdem ein lauter Sinus
+   - Erwartet: +6 dB ± 0,5 dB, der laute bleibt unter `SoftLimiter.Threshold`
+3. Bestehender Test `SettingsTests > "Clamp_OutOfRange"` angepasst (Lautstärke-Grenze 2)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 und 3 (rot), Grenzen in `ClientSettings` und `SettingsViewModel`, Slider-Maximum.
+2. Test 2 (sollte ohne Änderung grün sein, sichert das Zusammenspiel mit dem Begrenzer).
+3. README ergänzen.
+
+### Out of Scope
+
+- Sound-Regler über 100 % (A65)
+
+---
+
+## Package 56: Töne für Chat-Nachrichten
+
+**Ziel:** Nachrichten in "Allgemein" und im Channel-Chat haben je einen eigenen Sound, standardmässig den Ton der Privatnachricht.
+
+**Abhängigkeiten:** Package 48
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/Sounds.cs` (ändern): `SoundEvent.ServerMessage`, `SoundEvent.ChannelMessage`, Muster wie `PrivateMessage`
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): Ton je Chat-Ziel
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): `Sound_ServerMessage`, `Sound_ChannelMessage`
+- `tests/OVS.Tests/Client/SoundTests.cs`, `ServerViewModelTests.cs`, `SettingsTests.cs` (ändern)
+- `README.md` (ändern)
+
+### Kontext
+
+`ServerViewModel.Apply` löst für `ChatMessage` nur bei `ChatTarget.Private` von anderen `SoundRequested(SoundEvent.PrivateMessage)` aus. Die Sound-Zeilen in den Einstellungen entstehen aus `Enum.GetValues<SoundEvent>()` (`SettingsViewModel.SoundRows`), ein neuer Wert bekommt also automatisch eine Zeile mit Datei, Lautstärke und Stumm. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` verlangt heute, dass alle Standardtöne verschieden sind.
+
+### Acceptance Criteria
+
+- [ ] AC1: Eine Nachricht eines anderen in "Allgemein" spielt `ServerMessage`, im eigenen Channel `ChannelMessage`, privat wie bisher `PrivateMessage`. Eigene Nachrichten spielen keinen Ton.
+- [ ] AC2: Standardmässig klingen alle drei gleich (Ton der Privatnachricht).
+- [ ] AC3: In den Einstellungen haben "Nachricht in Allgemein" und "Nachricht im Channel" je eine eigene Zeile. Eigene Datei, Lautstärke und Stumm wirken nur auf diesen Sound.
+- [ ] AC4: Die neuen Texte gibt es auf Deutsch und Englisch.
+
+### Tests (TDD)
+
+1. `ServerViewModelTests > "ChatMessages_SoundPerTarget_NotForOwn"` (AC1)
+   - Gegeben: Nachrichten anderer an Server, Channel und privat, dazu eine eigene
+   - Erwartet: `ServerMessage`, `ChannelMessage`, `PrivateMessage`, für die eigene nichts
+2. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` angepasst: die drei Chat-Töne sind gleich, alle anderen verschieden (AC2)
+3. `SettingsTests > "Sounds_ChatRows_Independent"` (AC3): Stumm für `ServerMessage` lässt `ChannelMessage` und `PrivateMessage` unberührt
+4. `LocalizationTests` bleiben grün (AC4)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot), neue Werte in `SoundEvent`, Ton je Ziel in `ServerViewModel`.
+2. Test 2 anpassen, Muster der Privatnachricht für beide übernehmen.
+3. Test 3, Texte in beiden `resx`, README.
+
+### Out of Scope
+
+- Ton nur, wenn der Tab nicht sichtbar ist
+- Erwähnungen (@Name) mit eigenem Ton
+
+---
+
+## Package 57: Ton für Sprache über Link
+
+**Ziel:** Beginnt jemand aus einem anderen Channel per Link-PTT zu sprechen, hört man einen kurzen eigenen Ton.
+
+**Abhängigkeiten:** Package 48, 56 (beide ergänzen `SoundEvent`)
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/Sounds.cs` (ändern): `SoundEvent.LinkVoice` mit eigenem, leisem Muster
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): Beginn einer Link-Übertragung in `OnSpeakers` erkennen
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): `Sound_LinkVoice`
+- `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `SoundTests.cs` (ändern)
+- `README.md` (ändern)
+
+### Kontext
+
+Der Mixer meldet aktive Sprecher mit `ActiveSpeaker.ViaLink` (gesetzt, wenn das Paket mit `VoiceHeader.TargetLinked` kam). `ServerViewModel.OnSpeakers` merkt sich je Session den letzten Zeitpunkt, `RefreshSpeaking` zeigt das Link-Icon, solange der Zeitpunkt jünger als `SpeakingHold` ist. Ein Ton fehlt, deshalb klingt Link-Sprache wie Sprache im eigenen Channel. `AudioEngine.PlaySound` spielt bei "Ton aus" nur Mikrofon- und Ton-Töne (A46), das gilt auch für den neuen Ton.
+
+### Acceptance Criteria
+
+- [ ] AC1: Beginnt ein anderer über Link zu sprechen, wird `LinkVoice` genau einmal ausgelöst, auch wenn er weiterspricht.
+- [ ] AC2: Nach einer Pause ab 300 ms löst der nächste Beginn den Ton erneut aus, kürzere Lücken nicht.
+- [ ] AC3: Sprache im eigenen Channel (ohne Link) und die eigene Link-PTT lösen keinen Ton aus. Bei "Ton aus" bleibt er stumm.
+- [ ] AC4: "Sprache über Link" hat in den Einstellungen eine eigene Zeile, der Standardton ist kurz, leise und von allen anderen verschieden. Texte auf Deutsch und Englisch.
+- [ ] AC5 (manuell): Mit zwei Clients in verlinkten Channels ist beim Link-PTT des anderen der Ton zu hören, er stört das Verstehen nicht.
+
+### Tests (TDD)
+
+1. `ServerViewModelTests > "LinkVoice_SoundOncePerTransmission"` (AC1, AC2)
+   - Gegeben: `ManualTimeProvider`, wiederholte `OnSpeakers` mit `ViaLink = true` für Session 2 alle 20 ms, dann 200 ms Pause, dann 400 ms Pause
+   - Erwartet: ein Ton am Anfang, keiner nach 200 ms, einer nach 400 ms
+2. `ServerViewModelTests > "LinkVoice_NotForOwnChannelOrSelf"` (AC3)
+   - Gegeben: Sprecher ohne Link, eigene Session mit Link
+   - Erwartet: kein `LinkVoice`
+3. `SoundTests > "Deafened_OnlyOwnMicAndSoundTones_AllOffNothing"` um `LinkVoice` ergänzt (AC3)
+4. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` deckt den neuen Ton mit ab, dazu Pegel unter dem der Privatnachricht (AC4)
+5. `LocalizationTests` bleiben grün (AC4)
+6. Manueller Check AC5
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 und 2 (rot), Erkennung in `OnSpeakers`: je Session den Zeitpunkt des letzten Link-Frames merken, Ton bei Beginn oder nach mehr als 300 ms Pause.
+2. Tests 3 und 4, Muster und `SoundEvent.LinkVoice`, Texte, README.
+3. Manueller Check AC5.
+
+### Out of Scope
+
+- Ton für die eigene Link-PTT
+- Anzeige, aus welchem Channel gesprochen wird (das Link-Icon im Baum gibt es schon)
+
+---
+
+## Package 58: Reihenfolge der Einstellungen
+
+**Ziel:** Die Einstellungen zeigen Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung und Über in dieser Reihenfolge.
+
+**Abhängigkeiten:** keine
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/SettingsView.axaml` (ändern): Abschnitte umstellen
+- `tests/OVS.Tests/Client/UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+In `SettingsView.axaml` stehen die Abschnitte heute in der Reihenfolge Geräte, Lautstärke, Sounds, Übertragung, Tasten, Darstellung, Über. Sounds sind der längste Abschnitt und schieben Übertragung und Tasten weit nach unten.
+
+### Acceptance Criteria
+
+- [ ] AC1: Die Überschriften erscheinen in der Reihenfolge Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung, Über.
+- [ ] AC2: Alle Bedienelemente der Abschnitte funktionieren wie vorher (bestehende Tests grün).
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "Settings_SectionOrder"` (AC1)
+   - Gegeben: Einstellungen geöffnet
+   - Erwartet: die Abschnittsüberschriften (`Classes="section"`) in der genannten Reihenfolge, von oben nach unten
+2. Alle bestehenden Einstellungstests bleiben grün (AC2)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot), Abschnitte in `SettingsView.axaml` verschieben, ohne Inhalte zu ändern.
+2. Screenshot der Seite ansehen.
+
+### Out of Scope
+
+- Einklappbare Abschnitte oder Reiter
+
+---
+
+## Package 59: Push-to-Talk-Taste von Anfang an
+
+**Ziel:** Ein neues Profil hat eine passende PTT-Taste, und die Einstellungen weisen auf eine fehlende PTT-Taste hin.
+
+**Abhängigkeiten:** Package 41, 58
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): neues Profil mit Standard-PTT-Taste
+- `src/OVS.Client/Input/KeyPoller.cs` (ändern): Zahl der Maustasten (`GetSystemMetrics(SM_CMOUSEBUTTONS)`), Konstante für Strg rechts, Name "Strg rechts"
+- `src/OVS.Client/Input/KeyBindings.cs` (ändern): `DefaultKeys.PushToTalk(int mouseButtons)`
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (ändern): `ShowPttHint`, `SetPttKeyCommand`
+- `src/OVS.Client/Views/SettingsView.axaml`, `SimpleDialogs.cs` (ändern): Hinweis mit Button, Dialog mit vorausgewählter Aktion
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `tests/OVS.Tests/Client/SettingsTests.cs`, `KeyBindingTests.cs`, `UiSmokeTests.cs` (ändern)
+- `README.md` (ändern)
+
+### Kontext
+
+Seit Package 29 hat ein neues Profil keine Tasten (`SettingsTests > "Load_NoFile_NoBindings"`), gewählt ist aber Push-to-Talk. Wer nichts einstellt, kann nicht sprechen. Den Hinweis "Keine PTT-Taste belegt" gibt es unter dem eigenen Namen (`MainViewModel.HasNoPttBinding`), in den Einstellungen nicht. `ClientSettings.Load` gibt ohne Datei `new ClientSettings()` zurück. Tasten legt `SimpleDialogs.EditKeyBinding` fest (Aktion wählen, Taste drücken), `KeyBindings.Resolve` lässt zusätzliche Modifier zu, also funktioniert auch Strg rechts als einzelne Taste.
+
+### Acceptance Criteria
+
+- [ ] AC1: Ein neues Profil (keine `settings.json`) hat Push-to-Talk auf Maustaste 4, wenn Windows mindestens 5 Maustasten meldet, sonst auf Strg rechts. Weitere Tasten sind nicht belegt.
+- [ ] AC2: Ein bestehendes Profil ohne PTT-Taste bekommt keine Taste untergeschoben.
+- [ ] AC3: Unter "Übertragung" steht bei Push-to-Talk ohne PTT-Taste ein Hinweis mit dem Button "Taste festlegen". Bei Sprachaktivierung oder mit PTT-Taste ist er weg, auch sofort nach dem Hinzufügen oder Entfernen auf der Seite.
+- [ ] AC4: "Taste festlegen" öffnet den Tasten-Dialog mit Push-to-Talk vorausgewählt, die neue Taste landet in der Liste.
+- [ ] AC5: Strg rechts heisst in der Tastenliste "Strg rechts" bzw. "Right Ctrl" und löst Push-to-Talk aus.
+- [ ] AC6: Texte auf Deutsch und Englisch.
+
+### Tests (TDD)
+
+1. `KeyBindingTests > "DefaultPtt_Mouse4WithSideButtons_ElseRightCtrl"` (AC1)
+   - Gegeben: 5 bzw. 7 Maustasten, dann 3
+   - Erwartet: Maustaste 4, dann Strg rechts
+2. `SettingsTests > "Load_NoFile_DefaultPttOnly"` ersetzt `"Load_NoFile_NoBindings"` (AC1, AC2)
+   - Gegeben: keine Datei, dann eine Datei ohne Tasten
+   - Erwartet: genau eine PTT-Taste, dann weiterhin keine
+3. `SettingsTests > "PttHint_OnlyForPushToTalkWithoutKey"` (AC3)
+   - Gegeben: Push-to-Talk ohne PTT-Taste, dann Sprachaktivierung, dann Taste hinzugefügt und wieder entfernt
+   - Erwartet: `ShowPttHint` jeweils passend, mit Änderungsmeldung
+4. `SettingsTests > "SetPttKey_OpensDialogWithPushToTalk"` (AC4): Dialog-Fake bekommt Push-to-Talk vorausgewählt, seine Taste landet in `KeyBindings`
+5. `KeyBindingTests > "RightCtrl_NameAndResolves"` (AC5)
+6. `UiSmokeTests`: Hinweis und Button unter "Übertragung" sichtbar (AC3), `LocalizationTests` grün (AC6)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot), `DefaultKeys.PushToTalk` und die Abfrage der Maustasten.
+2. Test 2 (rot), `ClientSettings.Load` für ein neues Profil.
+3. Tests 3 und 4 (rot), Hinweis und Button, Dialog mit vorausgewählter Aktion.
+4. Test 5, Name und Konstante für Strg rechts.
+5. Test 6, Texte, README (Abschnitt Tasten).
+
+### Out of Scope
+
+- Eine Taste für bestehende Profile nachträglich setzen
+- Weitere Standardbelegungen (Link-PTT, Mute)

@@ -61,7 +61,7 @@ public sealed class ClientSettings
     public string? InputDeviceId { get; set; }
     public string? OutputDeviceId { get; set; }
     public float InputGain { get; set; } = 1f;       // 0..2
-    public float OutputVolume { get; set; } = 1f;    // 0..1
+    public float OutputVolume { get; set; } = 1f;    // 0..2 (Package 55)
     public TransmitMode Mode { get; set; } = TransmitMode.PushToTalk;
     /// <summary>No bindings by default (Package 29): a new profile starts without any key.</summary>
     public List<KeyBinding> KeyBindings { get; set; } = [];
@@ -105,7 +105,7 @@ public sealed class ClientSettings
     public ClientSettings Clamp()
     {
         InputGain = Math.Clamp(InputGain, 0f, 2f);
-        OutputVolume = Math.Clamp(OutputVolume, 0f, 1f);
+        OutputVolume = Math.Clamp(OutputVolume, 0f, 2f);
         SoundVolume = Math.Clamp(SoundVolume, 0f, 1f);
         UserVolumes ??= [];
         foreach (var (fingerprint, volume) in UserVolumes.ToList()) SetVolume(fingerprint, volume);

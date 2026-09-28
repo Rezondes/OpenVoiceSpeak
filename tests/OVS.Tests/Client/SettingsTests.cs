@@ -174,6 +174,24 @@ public sealed class SettingsTests : IDisposable
     {
         var s = new ClientSettings { InputGain = 5, OutputVolume = -1, VadThresholdDb = 0 }.Clamp();
         Assert.Equal((2f, 0f, -10f), (s.InputGain, s.OutputVolume, s.VadThresholdDb));
+        Assert.Equal(2f, new ClientSettings { OutputVolume = 5 }.Clamp().OutputVolume); // Package 55: up to 200 %
+    }
+
+    /// <summary>Package 55: the volume goes up to 200 %, 100 % by default.</summary>
+    [Fact]
+    public void OutputVolume_UpTo200_RoundTrip_Clamped()
+    {
+        Assert.Equal(1f, ClientSettings.Load(dir, out _).OutputVolume);
+        var vm = Vm(new ClientSettings());
+        Assert.Equal(100, vm.OutputVolumePercent);
+        vm.OutputVolumePercent = 200;
+        Assert.Equal(200, vm.OutputVolumePercent);
+        vm.ToSettings(new ClientSettings()).Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal(2f, loaded.OutputVolume);
+        Assert.Equal(200, Vm(loaded).OutputVolumePercent);
+        vm.OutputVolumePercent = 250;
+        Assert.Equal(200, vm.OutputVolumePercent);
     }
 
     static SettingsViewModel Vm(ClientSettings? s = null, params AudioDevice[] inputs) => new(s ?? new ClientSettings(), inputs, []);

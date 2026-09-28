@@ -85,7 +85,7 @@
                 <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding OutputVolumePercent, StringFormat='{}{0:0} %'}" />
                 <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Volume}" />
               </DockPanel>
-              <Slider Minimum="0" Maximum="100" Value="{Binding OutputVolumePercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_Volume}" />
+              <Slider Minimum="0" Maximum="200" Value="{Binding OutputVolumePercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_Volume}" />
             </StackPanel>
           </Border>
         </StackPanel>

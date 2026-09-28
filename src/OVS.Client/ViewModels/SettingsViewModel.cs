@@ -233,7 +233,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnOutputVolumePercentChanged(double value)
     {
-        OutputVolumePercent = Math.Clamp(value, 0, 100);
+        OutputVolumePercent = Math.Clamp(value, 0, 200);
         Preview();
     }
 

@@ -180,6 +180,17 @@ public class ReceivePathTests
         Assert.InRange(Db(mixed, reference), -0.5, 0.5); // 50 % is the level from before Package 50
     }
 
+    /// <summary>Package 55: 200 % doubles the voices once more; loud parts still stay below the limiter's threshold.</summary>
+    [Fact]
+    public void Mixer_Volume200_DoublesVoice_Limited()
+    {
+        var (loud, _) = MixedAndDirect(0.1f, 2f);
+        var (normal, _) = MixedAndDirect(0.1f, 1f);
+        Assert.InRange(Db(loud, normal), 5.5, 6.5);
+        var (limited, _) = MixedAndDirect(0.6f, 2f);
+        Assert.All(limited, v => Assert.InRange(v, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
+    }
+
     /// <summary>Package 51: the volume of one person changes only that person's voice.</summary>
     [Fact]
     public void Mixer_SpeakerGain_OnlyThatSpeaker()
