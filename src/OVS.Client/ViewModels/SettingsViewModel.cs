@@ -183,6 +183,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public ClientSettings ToSettings(ClientSettings basis) => new ClientSettings
     {
         Bookmarks = basis.Bookmarks,
+        UserVolumes = basis.UserVolumes,
         InputDeviceId = SelectedInput.Id,
         OutputDeviceId = SelectedOutput.Id,
         InputGain = (float)(InputGainPercent / 100),

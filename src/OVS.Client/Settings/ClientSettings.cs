@@ -89,11 +89,26 @@ public sealed class ClientSettings
 
     public SoundSetting SoundFor(SoundEvent sound) => Sounds.GetValueOrDefault(sound) ?? new SoundSetting();
 
+    /// <summary>Package 51: the volume per person by fingerprint (so on every server), only what differs from 100 %.</summary>
+    public Dictionary<string, float> UserVolumes { get; set; } = [];
+    public const float MaxUserVolume = 2f;
+
+    public float VolumeFor(string fingerprint) => UserVolumes.GetValueOrDefault(fingerprint, 1f);
+
+    public void SetVolume(string fingerprint, float volume)
+    {
+        volume = Math.Clamp(volume, 0f, MaxUserVolume);
+        if (volume == 1f) UserVolumes.Remove(fingerprint);
+        else UserVolumes[fingerprint] = volume;
+    }
+
     public ClientSettings Clamp()
     {
         InputGain = Math.Clamp(InputGain, 0f, 2f);
         OutputVolume = Math.Clamp(OutputVolume, 0f, 1f);
         SoundVolume = Math.Clamp(SoundVolume, 0f, 1f);
+        UserVolumes ??= [];
+        foreach (var (fingerprint, volume) in UserVolumes.ToList()) SetVolume(fingerprint, volume);
         VadThresholdDb = Math.Clamp(VadThresholdDb, -60f, -10f);
         return this;
     }

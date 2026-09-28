@@ -53,6 +53,35 @@ public class ServerViewModelTests
         Assert.Equal("Server", f.Vm.ServerName);
     }
 
+    /// <summary>Package 51: the volume per person, its icon and tooltip; nobody adjusts their own voice.</summary>
+    [Fact]
+    public void UserVolume_ShownPerUser_NotForSelf()
+    {
+        var f = Create(others: [U(2, "anna", Lobby), U(3, "bert", Lobby), U(4, "carla", Lobby)]);
+        var volumes = new Dictionary<string, float> { ["fp2"] = 1.5f, ["fp3"] = 0f };
+        var changed = new List<(string, float)>();
+        f.Vm.VolumeOf = fp => volumes.GetValueOrDefault(fp, 1f);
+        f.Vm.VolumeChanged += (fp, v) => changed.Add((fp, v));
+        f.Vm.Apply(new UserUpdated(U(4, "carla", Lobby))); // rebuild with the volumes known
+
+        var (anna, bert, carla, me) = (f.User(2), f.User(3), f.User(4), f.User(1));
+        Assert.Equal((150d, true, false, "Lautstärke 150 %"), (anna.VolumePercent, anna.IsVolumeChanged, anna.IsLocallyMuted, anna.VolumeText));
+        Assert.Equal((0d, false, true), (bert.VolumePercent, bert.IsVolumeChanged, bert.IsLocallyMuted));
+        Assert.Equal((100d, false, false), (carla.VolumePercent, carla.IsVolumeChanged, carla.IsLocallyMuted));
+        Assert.Equal("Lautstärke von anna", anna.VolumeLabel);
+        Assert.True(anna.CanAdjustVolume);
+        Assert.False(me.CanAdjustVolume);
+        Assert.Empty(changed); // showing the stored value is no change
+
+        carla.VolumePercent = 80;
+        Assert.True(carla.IsVolumeChanged);
+        anna.ResetVolumeCommand.Execute(null);
+        Assert.Equal(100, anna.VolumePercent);
+        Assert.Equal([("fp4", 0.8f), ("fp2", 1f)], changed);
+        carla.VolumePercent = 250; // the slider cannot, a binding might
+        Assert.Equal(200, carla.VolumePercent);
+    }
+
     [Fact]
     public void CurrentChannelAndSelf_FollowOwnUser()
     {

@@ -493,6 +493,42 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(AppTheme.Dark, ClientSettings.Load(dir, out _).Theme);
     }
 
+    /// <summary>Package 51: the slider acts on the mixer at once, is kept by fingerprint and follows a new session.</summary>
+    [Fact]
+    public async Task UserVolume_ChangesMixer_SavesByFingerprint()
+    {
+        var settingsBefore = await OnUi(() =>
+        {
+            var before = vm.Settings;
+            vm.Server = FakeServers.Admin();
+            vm.Server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").VolumePercent = 200;
+            return before;
+        });
+        Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
+        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(1)));
+        Assert.Same(settingsBefore, await OnUi(() => vm.Settings)); // no ApplySettings: the audio devices keep running
+        Assert.Equal(2f, ClientSettings.Load(dir, out _).VolumeFor("fp2"));
+
+        // anna reconnects with a new session id: her volume comes along
+        await OnUi(() =>
+        {
+            vm.Server!.Apply(new UserLeft(2));
+            vm.Server.Apply(new UserJoined(new UserInfo(9, "fp2", "anna", FakeServers.Lobby, false, false, false, OVS.Shared.Permissions.Permission.Speak, [])));
+            return 0;
+        });
+        Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));
+        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
+        Assert.Equal(200, await OnUi(() => vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).VolumePercent));
+
+        await OnUi(() =>
+        {
+            vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).ResetVolumeCommand.Execute(null);
+            return 0;
+        });
+        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));
+        Assert.DoesNotContain("fp2", File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)));
+    }
+
     [Fact]
     public void Deafened_Engine_IgnoresIncomingVoice()
     {

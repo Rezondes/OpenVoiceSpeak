@@ -280,6 +280,7 @@
   <data name="Ui_LinkedWithFmt" xml:space="preserve"><value>Linked with {0}</value></data>
   <data name="Ui_Links" xml:space="preserve"><value>Links</value></data>
   <data name="Ui_LinksHelp" xml:space="preserve"><value>A tick links two channels. Links only work directly, not in a chain: if several channels should all talk to each other, select them on the left and link them with each other.</value></data>
+  <data name="Ui_LocallyMuted" xml:space="preserve"><value>Muted for you</value></data>
   <data name="Ui_LogoHint" xml:space="preserve"><value>PNG or JPG, square (1:1), at most 3 MB. You can also drop the file onto the field.</value></data>
   <data name="Ui_Message" xml:space="preserve"><value>Message</value></data>
   <data name="Ui_MicGain" xml:space="preserve"><value>Microphone gain</value></data>
@@ -340,6 +341,9 @@
   <data name="Ui_UnlinkSelected" xml:space="preserve"><value>Remove links between selected</value></data>
   <data name="Ui_Unread" xml:space="preserve"><value>Unread</value></data>
   <data name="Ui_UnreadFmt" xml:space="preserve"><value>{0} unread</value></data>
+  <data name="Ui_UserVolumeFmt" xml:space="preserve"><value>Volume {0:0} %</value></data>
+  <data name="Ui_UserVolumeOfFmt" xml:space="preserve"><value>Volume of {0}</value></data>
+  <data name="Ui_UserVolumeReset" xml:space="preserve"><value>Reset to 100 %</value></data>
   <data name="Ui_Users" xml:space="preserve"><value>Users</value></data>
   <data name="Ui_UsersInChannel" xml:space="preserve"><value>Users in this channel</value></data>
   <data name="Ui_Volume" xml:space="preserve"><value>Volume</value></data>

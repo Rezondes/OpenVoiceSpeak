@@ -180,6 +180,40 @@ public class ReceivePathTests
         Assert.InRange(Db(mixed, reference), -0.5, 0.5); // 50 % is the level from before Package 50
     }
 
+    /// <summary>Package 51: the volume of one person changes only that person's voice.</summary>
+    [Fact]
+    public void Mixer_SpeakerGain_OnlyThatSpeaker()
+    {
+        (float[] A, float[] B) Run(Action<Mixer> setup, uint[] speakersA, uint[] speakersB)
+        {
+            Mixer a = new(), b = new();
+            setup(a);
+            var encoders = new Dictionary<uint, VoiceEncoder> { [1] = new(), [2] = new() };
+            for (uint n = 0; n < 6; n++)
+                foreach (var (id, encoder) in encoders)
+                {
+                    var packet = encoder.Encode(Sine(id == 1 ? 0.1f : 0.07f, (int)n * AudioFormat.FrameSamples));
+                    if (speakersA.Contains(id)) a.Push(id, n, packet, false);
+                    if (speakersB.Contains(id)) b.Push(id, n, packet, false);
+                }
+            List<float> outA = [], outB = [];
+            for (int i = 0; i < 4; i++)
+            {
+                outA.AddRange(a.Tick().Frame);
+                outB.AddRange(b.Tick().Frame);
+            }
+            return ([.. outA], [.. outB]);
+        }
+
+        Assert.Equal(1f, new Mixer().SpeakerGain(1)); // no entry: 100 %
+
+        var (doubled, plain) = Run(m => m.SetSpeakerGains(new Dictionary<uint, float> { [1] = 2f }), [1], [1]);
+        for (int i = 0; i < plain.Length; i++) Assert.Equal(2 * plain[i], doubled[i], 3);
+
+        var (withoutOne, onlyTwo) = Run(m => m.SetSpeakerGains(new Dictionary<uint, float> { [1] = 0f }), [1, 2], [2]);
+        for (int i = 0; i < onlyTwo.Length; i++) Assert.Equal(onlyTwo[i], withoutOne[i], 4); // speaker 2 untouched, 1 silent
+    }
+
     [Fact]
     public void Limiter_LoudInput_NoHardClipping_RecoversAfterwards()
     {

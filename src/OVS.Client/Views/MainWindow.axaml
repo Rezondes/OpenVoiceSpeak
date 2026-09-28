@@ -215,6 +215,24 @@
                           <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupNames}">
                             <Border.ContextMenu>
                               <ContextMenu>
+                                <!-- Package 51: this person's volume for me; the menu stays open while dragging -->
+                                <MenuItem StaysOpenOnClick="True" IsVisible="{Binding CanAdjustVolume}">
+                                  <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Speaker}" Classes="sm" /></MenuItem.Icon>
+                                  <MenuItem.Header>
+                                    <StackPanel MinWidth="200" Spacing="2">
+                                      <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding VolumePercent, StringFormat='{}{0:0} %'}" />
+                                        <TextBlock Text="{x:Static l:Strings.Ui_Volume}" />
+                                      </DockPanel>
+                                      <Slider Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="25"
+                                              Value="{Binding VolumePercent}" AutomationProperties.Name="{Binding VolumeLabel}" />
+                                    </StackPanel>
+                                  </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Header="{x:Static l:Strings.Ui_UserVolumeReset}" Command="{Binding ResetVolumeCommand}" IsVisible="{Binding CanAdjustVolume}">
+                                  <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowSync}" Classes="sm" /></MenuItem.Icon>
+                                </MenuItem>
+                                <Separator IsVisible="{Binding CanAdjustVolume}" />
                                 <MenuItem Header="{x:Static l:Strings.Ui_PrivateMessage}" Command="{Binding MessageCommand}" IsVisible="{Binding CanMessage}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Chat}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
@@ -236,6 +254,10 @@
                               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                 <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsSpeakingViaLink}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_TalkingViaLink}" />
+                                <PathIcon Classes="sm muted" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsVolumeChanged}"
+                                          ToolTip.Tip="{Binding VolumeText}" />
+                                <PathIcon Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsLocallyMuted}"
+                                          ToolTip.Tip="{Binding VolumeText}" />
                                 <PathIcon Classes="sm danger" Data="{StaticResource Icon.SpeakerMute}" IsVisible="{Binding ServerMuted}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_ServerMuted}" />
                                 <PathIcon Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsDeafened}"

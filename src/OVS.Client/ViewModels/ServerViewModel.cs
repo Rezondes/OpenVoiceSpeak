@@ -106,6 +106,23 @@ public sealed partial class ServerViewModel : ObservableObject
     public event Action<string>? ChatError;
     /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
     public event Action<UserViewModel>? PrivateChatRequested;
+
+    Func<string, float> volumeOf = _ => 1f;
+
+    /// <summary>Package 51: the stored volume of a person (fingerprint, 1 = 100 %), provided by the main view model.</summary>
+    public Func<string, float> VolumeOf
+    {
+        get => volumeOf;
+        set
+        {
+            volumeOf = value;
+            foreach (var user in userVms.Values) user.ShowVolume(value(user.Fingerprint));
+        }
+    }
+
+    /// <summary>Package 51: someone moved a volume slider (fingerprint, new volume).</summary>
+    public event Action<string, float>? VolumeChanged;
+    internal void OnVolumeChanged(UserViewModel user) => VolumeChanged?.Invoke(user.Fingerprint, (float)(user.VolumePercent / 100));
     internal void RequestPrivateChat(UserViewModel user) => PrivateChatRequested?.Invoke(user);
     public IReadOnlyCollection<ChatMessage> RecentChat => recentChat;
     public bool CanChatServer => SelfPermissions.Has(Permission.ChatServer);
@@ -462,11 +479,15 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
 
 public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId) : ObservableObject
 {
-    [ObservableProperty] string nickname = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VolumeLabel))]
+    string nickname = "";
     [ObservableProperty] string fingerprint = "";
     [ObservableProperty] string statusText = "";
     [ObservableProperty] string groupNames = "";
-    [ObservableProperty] bool isSelf;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanAdjustVolume))]
+    bool isSelf;
     [ObservableProperty] bool serverMuted;
     [ObservableProperty] bool isDeafened;
     [ObservableProperty] bool isSelfMutedOnly;
@@ -478,6 +499,37 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [ObservableProperty] bool canBan;
     [ObservableProperty] bool canMessage;
 
+    /// <summary>Package 51: this person's volume for me, 0 to 200 %.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsVolumeChanged), nameof(IsLocallyMuted), nameof(VolumeText))]
+    double volumePercent = 100;
+
+    bool showingStored;
+
+    public bool CanAdjustVolume => !IsSelf;
+    public bool IsVolumeChanged => VolumePercent is > 0 and not 100;
+    public bool IsLocallyMuted => VolumePercent == 0;
+    public string VolumeText => IsLocallyMuted ? Strings.Ui_LocallyMuted : string.Format(Strings.Ui_UserVolumeFmt, VolumePercent);
+    public string VolumeLabel => string.Format(Strings.Ui_UserVolumeOfFmt, Nickname);
+
+    /// <summary>Shows the stored volume without reporting it as a change.</summary>
+    internal void ShowVolume(float volume)
+    {
+        showingStored = true;
+        VolumePercent = Math.Round(volume * 100);
+        showingStored = false;
+    }
+
+    partial void OnVolumePercentChanged(double value)
+    {
+        double bounded = Math.Clamp(value, 0, ClientSettings.MaxUserVolume * 100);
+        if (bounded != value) VolumePercent = bounded;
+        else if (!showingStored) owner.OnVolumeChanged(this);
+    }
+
+    [RelayCommand]
+    void ResetVolume() => VolumePercent = 100;
+
     public uint SessionId { get; } = sessionId;
     public Permission Permissions { get; private set; }
     public Guid ChannelId { get; private set; }
@@ -486,6 +538,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     {
         Nickname = info.Nickname;
         Fingerprint = info.Fingerprint;
+        ShowVolume(owner.VolumeOf(info.Fingerprint));
         Permissions = info.Permissions;
         ChannelId = info.ChannelId;
         IsSelf = isSelf;

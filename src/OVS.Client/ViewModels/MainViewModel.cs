@@ -375,8 +375,17 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Every connection starts a fresh chat (A27), with the earlier notices so none get lost.</summary>
     partial void OnServerChanged(ServerViewModel? oldValue, ServerViewModel? newValue)
     {
-        if (oldValue is not null) oldValue.StateChanged -= SyncAudioFlags;
-        if (newValue is not null) newValue.StateChanged += SyncAudioFlags; // e.g. the own channel was muted (Package 34)
+        if (oldValue is not null)
+        {
+            oldValue.StateChanged -= SyncAudioFlags;
+            oldValue.VolumeChanged -= OnUserVolumeChanged;
+        }
+        if (newValue is not null)
+        {
+            newValue.StateChanged += SyncAudioFlags; // e.g. the own channel was muted (Package 34)
+            newValue.VolumeOf = fingerprint => Settings.VolumeFor(fingerprint);
+            newValue.VolumeChanged += OnUserVolumeChanged;
+        }
         Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
         SyncAudioFlags();
     }
@@ -391,6 +400,21 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.Deafened = s?.SelfDeafened ?? false;
         Audio.HasSpeakLinked = s?.HasSpeakLinked ?? false;
         Audio.ChannelMuted = s?.CurrentChannel?.IsMuted == true;
+        // Package 51: the volume per person, mapped to the session ids of this connection (they change on reconnect)
+        Audio.Mixer.SetSpeakerGains(s?.Mirror.Users.Values
+            .Where(u => Settings.VolumeFor(u.Fingerprint) != 1f)
+            .ToDictionary(u => u.SessionId, u => Settings.VolumeFor(u.Fingerprint)) ?? []);
+    }
+
+    /// <summary>
+    /// Package 51: straight to the mixer and saved, without ApplySettings, which would restart the audio devices on
+    /// every step of the slider.
+    /// </summary>
+    void OnUserVolumeChanged(string fingerprint, float volume)
+    {
+        Settings.SetVolume(fingerprint, volume);
+        Settings.Save(storageDir);
+        SyncAudioFlags();
     }
 
     /// <summary>UI timer, every 100 ms.</summary>

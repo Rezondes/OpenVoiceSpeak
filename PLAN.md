@@ -169,7 +169,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 50 sind umgesetzt, 51 ist geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6 braucht einen Test mit echten Clients. Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Alle Packages 1 bis 51 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6 und 51 AC6 brauchen einen Test mit echten Clients. Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -196,6 +196,7 @@ Die Packages 1 bis 50 sind umgesetzt, 51 ist geplant. Die Tests laufen mit `dotn
 | 32 | "Allgemein" zeigt Meldungen ab dem Verbinden | "Allgemein" übernimmt beim Verbinden auch die Meldungen davor | So geht z. B. eine Geräte-Warnung vom Start nicht verloren, wie früher in der Aktivität. |
 | 49 | `sections/*.tsx`, `styles.css`, Screenshots als PNG | alle Abschnitte in `App.tsx`, Stil in `index.css`, Screenshots als WebP (je Sprache hell und dunkel), Icons aus den Fluent-Pfaden des Clients (`icons.ts`) | eine kleine Seite braucht keine Aufteilung, WebP ist etwa ein Drittel so gross. In der Galerie steht der Privatchat statt einer Wiederholung des Hero-Bilds. |
 | 50 | AC3: höchstens 1 % der Proben auf der Grenze | höchstens 5 % | Auch ohne Abschneiden liegen bei einem Sinus die Proben um jeden Scheitel nah an der Grenze, 1 % ist dafür zu knapp. Hartes Abschneiden läge bei etwa 40 %. |
+| 51 | Test 4 prüft, dass `Configure` nicht erneut läuft | prüft, dass das `Settings`-Objekt dasselbe bleibt (nur `ApplySettings` ersetzt es und startet die Geräte neu) | `AudioEngine` zählt keine Aufrufe von `Configure`, ein Zähler nur für den Test lohnt sich nicht. |
 | 1 | keine `nuget.config` | `nuget.config` nur mit nuget.org | Die globale NuGet-Konfiguration des Entwicklungsrechners verweist auf einen fehlenden Ordner. Mit der Datei baut das Projekt überall gleich. |
 
 ### Ergebnisse der manuellen Checks (27.09.2026, Windows 11, Docker Desktop 29.2.1)
@@ -3224,11 +3225,11 @@ Der `Mixer` kennt Sprecher nur über die Session-ID (`Push(speakerId, ...)`), al
 
 ### Acceptance Criteria
 
-- [ ] AC1: Im Kontextmenü eines anderen Nutzers gibt es einen Schieberegler "Lautstärke" von 0 bis 200 % in 5er-Schritten mit Prozentanzeige, Standard 100 %, dazu "Auf 100 % zurücksetzen". Das Menü bleibt beim Ziehen offen, der Regler geht auch mit den Pfeiltasten. Beim eigenen Eintrag gibt es beides nicht.
-- [ ] AC2: Die Einstellung wirkt sofort und nur auf diese Person: 200 % verdoppelt, 50 % halbiert, 0 % macht sie für mich stumm. Andere Sprecher bleiben unverändert, die Audiogeräte werden nicht neu gestartet. Faktoren nach A55, der Begrenzer aus Package 50 wirkt danach.
-- [ ] AC3: Die Einstellung hängt am Fingerprint: Sie bleibt nach Neustart, nach erneutem Verbinden (neue Session-ID) und auf einem anderen Server mit derselben Person erhalten. In `settings.json` stehen nur Personen, deren Lautstärke von 100 % abweicht. Werte ausserhalb 0 bis 2 werden beim Laden begrenzt.
-- [ ] AC4: Im Channel-Baum zeigt ein Icon mit Tooltip, dass die Lautstärke einer Person nicht 100 % ist ("Lautstärke 150 %"), bei 0 % der durchgestrichene Lautsprecher mit "Für dich stumm". Bei 100 % ist kein Icon zu sehen.
-- [ ] AC5: Alle neuen Texte gibt es auf Deutsch und Englisch.
+- [x] AC1: Im Kontextmenü eines anderen Nutzers gibt es einen Schieberegler "Lautstärke" von 0 bis 200 % in 5er-Schritten mit Prozentanzeige, Standard 100 %, dazu "Auf 100 % zurücksetzen". Das Menü bleibt beim Ziehen offen, der Regler geht auch mit den Pfeiltasten. Beim eigenen Eintrag gibt es beides nicht.
+- [x] AC2: Die Einstellung wirkt sofort und nur auf diese Person: 200 % verdoppelt, 50 % halbiert, 0 % macht sie für mich stumm. Andere Sprecher bleiben unverändert, die Audiogeräte werden nicht neu gestartet. Faktoren nach A55, der Begrenzer aus Package 50 wirkt danach.
+- [x] AC3: Die Einstellung hängt am Fingerprint: Sie bleibt nach Neustart, nach erneutem Verbinden (neue Session-ID) und auf einem anderen Server mit derselben Person erhalten. In `settings.json` stehen nur Personen, deren Lautstärke von 100 % abweicht. Werte ausserhalb 0 bis 2 werden beim Laden begrenzt.
+- [x] AC4: Im Channel-Baum zeigt ein Icon mit Tooltip, dass die Lautstärke einer Person nicht 100 % ist ("Lautstärke 150 %"), bei 0 % der durchgestrichene Lautsprecher mit "Für dich stumm". Bei 100 % ist kein Icon zu sehen.
+- [x] AC5: Alle neuen Texte gibt es auf Deutsch und Englisch.
 - [ ] AC6 (manuell): Mit zwei echten Clients eine Person auf 0, 50 und 200 % stellen und hören, dass nur sie leiser bzw. lauter wird.
 
 ### Tests (TDD)

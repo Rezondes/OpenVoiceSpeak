@@ -96,6 +96,30 @@ public sealed class SettingsTests : IDisposable
         Assert.False(File.Exists(copy));
     }
 
+    /// <summary>Package 51: per person by fingerprint, only what differs from 100 %, bounded to 0 to 200 %.</summary>
+    [Fact]
+    public void UserVolumes_RoundTrip_OnlyNonDefault_Clamped()
+    {
+        var s = new ClientSettings();
+        s.SetVolume("fpA", 1.5f);
+        s.SetVolume("fpB", 1f);
+        s.SetVolume("fpD", 0f);
+        s.UserVolumes["fpC"] = 7f; // e.g. edited by hand
+        s.Clamp().Save(dir);
+        var json = File.ReadAllText(Path.Combine(dir, ClientSettings.FileName));
+        Assert.DoesNotContain("fpB", json);
+
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal(1.5f, loaded.VolumeFor("fpA"));
+        Assert.Equal(2f, loaded.VolumeFor("fpC"));
+        Assert.Equal(0f, loaded.VolumeFor("fpD"));
+        Assert.Equal(1f, loaded.VolumeFor("fpB"));
+        Assert.Equal(1f, loaded.VolumeFor("unbekannt"));
+        loaded.SetVolume("fpA", 1f); // back to 100 %: the entry goes
+        Assert.False(loaded.UserVolumes.ContainsKey("fpA"));
+        Assert.Equal(2f, Vm(loaded).ToSettings(loaded).VolumeFor("fpC")); // saving the settings page keeps them
+    }
+
     [Fact]
     public void Language_RoundTrip_ShownInSettings()
     {

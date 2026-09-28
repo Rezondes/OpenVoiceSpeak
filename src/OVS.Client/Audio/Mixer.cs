@@ -20,6 +20,18 @@ public sealed class Mixer
 
     readonly Dictionary<uint, Speaker> speakers = [];
     readonly object gate = new();
+    Dictionary<uint, float> speakerGains = [];
+
+    /// <summary>Package 51: the volume per speaker (session id), 1 for everyone not listed.</summary>
+    public void SetSpeakerGains(IReadOnlyDictionary<uint, float> gains)
+    {
+        lock (gate) speakerGains = new Dictionary<uint, float>(gains);
+    }
+
+    public float SpeakerGain(uint speakerId)
+    {
+        lock (gate) return speakerGains.GetValueOrDefault(speakerId, 1f);
+    }
 
     public float Volume { get; set; } = 1f;
 
@@ -48,7 +60,8 @@ public sealed class Mixer
                 }
                 speaker.IdleTicks = 0;
                 active.Add(new ActiveSpeaker(id, speaker.Buffer.ViaLink));
-                for (int i = 0; i < mixed.Length; i++) mixed[i] += pcm[i];
+                float own = speakerGains.GetValueOrDefault(id, 1f);
+                for (int i = 0; i < mixed.Length; i++) mixed[i] += pcm[i] * own;
             }
         }
         float gain = DefaultVoiceBoost * Volume;

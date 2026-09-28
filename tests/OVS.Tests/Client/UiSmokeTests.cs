@@ -440,6 +440,54 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 51: the volume slider sits in the context menu of everyone but me; a changed volume shows in the tree.</summary>
+    [AvaloniaFact]
+    public void UserContextMenu_VolumeSlider_OnlyForOthers()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        vm.Server = FakeServers.Admin();
+        Dispatcher.UIThread.RunJobs();
+
+        Border Row(string nick) => main.GetVisualDescendants().OfType<Border>()
+            .Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel u && u.Nickname == nick);
+        (Slider? Slider, List<string?> Headers) Menu(string nick)
+        {
+            var menu = Row(nick).ContextMenu!;
+            menu.Open(Row(nick));
+            Dispatcher.UIThread.RunJobs();
+            var visible = menu.Items.OfType<MenuItem>().Where(m => m.IsVisible).ToList();
+            var slider = visible.Select(m => m.Header).OfType<Control>().SelectMany(h => Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(h).Prepend(h)).OfType<Slider>().SingleOrDefault();
+            var headers = visible.Select(m => m.Header as string).ToList();
+            menu.Close();
+            Dispatcher.UIThread.RunJobs();
+            return (slider, headers);
+        }
+
+        var (slider, headers) = Menu("anna");
+        Assert.NotNull(slider);
+        Assert.Equal((0d, 200d, 5d, 100d), (slider.Minimum, slider.Maximum, slider.TickFrequency, slider.Value));
+        Assert.True(slider.IsSnapToTickEnabled);
+        Assert.Equal("Lautstärke von anna", AutomationProperties.GetName(slider));
+        Assert.Contains("Auf 100 % zurücksetzen", headers);
+        var (own, ownHeaders) = Menu("ich");
+        Assert.Null(own);
+        Assert.DoesNotContain("Auf 100 % zurücksetzen", ownHeaders);
+
+        var anna = (UserViewModel)Row("anna").DataContext!;
+        bool IconShown(string tip) => Row("anna").GetVisualDescendants().OfType<PathIcon>().Any(i => ToolTip.GetTip(i) as string == tip && i.IsEffectivelyVisible);
+        Assert.False(IconShown("Lautstärke 100 %"));
+        slider.Value = 150; // as if dragged: the binding carries it to the user
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(150, anna.VolumePercent);
+        Assert.True(IconShown("Lautstärke 150 %"));
+        anna.VolumePercent = 0;
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(IconShown("Für dich stumm"));
+        main.Close();
+    }
+
     /// <summary>Everything a user can read or hear from a screen reader: texts, tooltips, names, headers, menus.</summary>
     static IEnumerable<string> AllUserTexts(Visual root) =>
         root.GetVisualDescendants().OfType<Control>().SelectMany(c => new[]
