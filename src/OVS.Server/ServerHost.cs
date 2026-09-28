@@ -1,3 +1,4 @@
+using OVS.Shared;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -45,6 +46,7 @@ public static class ServerHost
             config = ServerConfig.Load(getEnv);
             logs = new ServerLogs(config.DataDir, config.LogDays, time, console, config.LogRotateDaily);
             logs.Server(restarted ? "OpenVoiceSpeak-Server startet (automatischer Neustart)" : "OpenVoiceSpeak-Server startet");
+            logs.Server($"Version {BuildInfo.Current.Version}"); // Package 42
             state = new ServerState(config, time, logs);
         }
         catch (Exception e) when (e is ConfigException or InvalidDataException)

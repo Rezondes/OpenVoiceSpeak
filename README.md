@@ -114,11 +114,15 @@ docker buildx build --platform linux/amd64,linux/arm64 -t openvoicespeak/server:
 
 ## Client (Windows)
 
+Die fertige `OVS.Client.exe` liegt unter [Releases](https://github.com/Rezondes/OpenVoiceSpeak/releases). Sie läuft ohne installiertes .NET. Jeder Push auf `main` baut sie nach grünen Tests neu (`.github/workflows/release.yml`). Die Version ist eine Build-Kennung aus Datum und Uhrzeit in UTC, z. B. `280926.0a1k`, lokale Builds heissen `dev.<...>`. Die Einstellungen zeigen sie unter "Über", der Server schreibt sie beim Start ins Log (`OVS.Server --version` gibt sie aus). Die exe ist nicht signiert, Windows SmartScreen fragt deshalb beim ersten Start nach.
+
+Selbst bauen:
+
 ```bash
-dotnet publish src/OVS.Client -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/client
+dotnet publish src/OVS.Client -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish/client
 ```
 
-Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiertes .NET läuft.
+Heraus kommt eine einzelne `publish/client/OVS.Client.exe`.
 
 **Bedienung:**
 - Ohne Verbindung stehen deine Lesezeichen links in der Seitenleiste. Ein Klick verbindet sofort, fehlt ein Passwort oder stimmt das gespeicherte nicht, fragt der Client danach. Per Rechtsklick: Verbinden, Bearbeiten, Löschen.

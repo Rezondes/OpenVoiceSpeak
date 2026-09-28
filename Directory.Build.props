@@ -6,4 +6,19 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+
+  <!--
+    Package 42: raw build data, formatted by src/OVS.Shared/BuildInfo.cs. The release workflow sets OVS_BUILD_TIME
+    once per run, so exe and server image carry the same version. Local Debug builds leave the time out and stay
+    incremental; GitHub Actions sets GITHUB_SHA and GITHUB_ACTIONS by itself.
+  -->
+  <PropertyGroup>
+    <OvsBuildTime>$(OVS_BUILD_TIME)</OvsBuildTime>
+    <OvsBuildTime Condition="'$(OvsBuildTime)' == '' And '$(Configuration)' == 'Release'">$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"))</OvsBuildTime>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="OvsBuildTime" Value="$(OvsBuildTime)" Condition="'$(OvsBuildTime)' != ''" />
+    <AssemblyMetadata Include="OvsCommit" Value="$(GITHUB_SHA)" Condition="'$(GITHUB_SHA)' != ''" />
+    <AssemblyMetadata Include="OvsIsCI" Value="$(GITHUB_ACTIONS)" Condition="'$(GITHUB_ACTIONS)' != ''" />
+  </ItemGroup>
 </Project>

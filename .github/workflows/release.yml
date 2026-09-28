@@ -1,0 +1,110 @@
+name: Release
+
+# Package 42: every push to main is tested; a green run publishes the Windows client as a GitHub Release.
+# Versioning as in PersonalEinsatzPlanung (see src/OVS.Shared/BuildInfo.cs): one UTC instant per run gives the
+# version, the release is tagged deploy-<sha7>, its notes are the commit messages since the previous release.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  test:
+    # The client tests need Windows (key polling, WASAPI types).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test
+
+  version:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      build-time: ${{ steps.version.outputs.build_time }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - id: version
+        # The server formats its own version, so the format lives in one place only.
+        run: |
+          set -euo pipefail
+          export OVS_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          dotnet build src/OVS.Server -c Release -o out -v q
+          VERSION="$(dotnet out/OVS.Server.dll --version)"
+          echo "build_time=$OVS_BUILD_TIME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version $VERSION"
+
+  client:
+    needs: version
+    runs-on: windows-latest
+    env:
+      OVS_BUILD_TIME: ${{ needs.version.outputs.build-time }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet publish src/OVS.Client -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o publish
+      - name: SHA-256 next to the exe (the client's updater checks it)
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash publish/OVS.Client.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("publish/OVS.Client.exe.sha256", "$hash  OVS.Client.exe`n")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client
+          path: |
+            publish/OVS.Client.exe
+            publish/OVS.Client.exe.sha256
+          if-no-files-found: error
+
+  release:
+    needs: [version, client]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: client
+          path: dist
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          PREV_TAG="$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || true)"
+          if [ -n "$PREV_TAG" ]; then
+            git log "$PREV_TAG..HEAD" --pretty=format:'- %s (%h)' --no-merges > /tmp/notes.md
+          fi
+          [ -s /tmp/notes.md ] || echo "- Erste veröffentlichte Version." > /tmp/notes.md
+          gh release create "deploy-${GITHUB_SHA::7}" \
+            --title "OpenVoiceSpeak $VERSION" \
+            --notes-file /tmp/notes.md \
+            --target "$GITHUB_SHA" \
+            dist/OVS.Client.exe dist/OVS.Client.exe.sha256

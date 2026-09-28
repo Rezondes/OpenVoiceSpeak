@@ -179,6 +179,17 @@
             </StackPanel>
           </Border>
         </StackPanel>
+
+        <!-- About (Package 42) -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="ÜBER" />
+          <Border Classes="card">
+            <StackPanel Spacing="4">
+              <SelectableTextBlock Classes="label" Text="{Binding AppVersion}" />
+              <TextBlock Classes="caption" Text="{Binding BuildDetails}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
   </DockPanel>

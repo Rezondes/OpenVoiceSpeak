@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 41 sind umgesetzt, 42 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 42 sind umgesetzt, 43 und 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2717,12 +2717,12 @@ Es gibt keinen Workflow und keine Version, die exe baut man lokal mit `dotnet pu
 
 ### Acceptance Criteria
 
-- [ ] AC1: `BuildInfo.Format` liefert für CI-Builds `DDMMYY.<stamp>` und lokal `dev.<stamp>`. Der Stamp sind die Sekunden seit UTC-Mitternacht in Base36 mit genau 4 Stellen (00:00:00 = `0000`, 23:59:59 = `1unz`).
-- [ ] AC2: Die Build-Zeit kommt aus der Umgebungsvariable `OVS_BUILD_TIME`, sonst aus dem Build-Zeitpunkt. Commit und CI-Kennzeichen kommen aus `GITHUB_SHA` und `GITHUB_ACTIONS`.
-- [ ] AC3: `OVS.Server --version` gibt die Version aus. Der Server schreibt sie beim Start ins Log, die Einstellungen des Clients zeigen Version, Commit und Build-Zeit.
-- [ ] AC4: Der Workflow läuft bei Pull Requests und Pushes auf `main`: Tests auf `windows-latest`. Nur bei Pushes auf `main` baut er danach die exe (self-contained, eine Datei, ohne `.pdb`) mit einer einmal festgelegten `OVS_BUILD_TIME`.
-- [ ] AC5: Danach legt er das Release `deploy-<sha7>` an, Titel `OpenVoiceSpeak <Version>`, Notizen die Commit-Nachrichten seit dem letzten Release, Anhänge `OVS.Client.exe` und `OVS.Client.exe.sha256`. Rote Tests erzeugen kein Release.
-- [ ] AC6 (manuell): Nach dem ersten Push läuft der Workflow grün, das Release ist ohne Anmeldung herunterladbar, und die exe zeigt dieselbe Version wie der Release-Titel.
+- [x] AC1: `BuildInfo.Format` liefert für CI-Builds `DDMMYY.<stamp>` und lokal `dev.<stamp>`. Der Stamp sind die Sekunden seit UTC-Mitternacht in Base36 mit genau 4 Stellen (00:00:00 = `0000`, 23:59:59 = `1unz`).
+- [x] AC2: Die Build-Zeit kommt aus der Umgebungsvariable `OVS_BUILD_TIME`, sonst aus dem Build-Zeitpunkt. Commit und CI-Kennzeichen kommen aus `GITHUB_SHA` und `GITHUB_ACTIONS`.
+- [x] AC3: `OVS.Server --version` gibt die Version aus. Der Server schreibt sie beim Start ins Log, die Einstellungen des Clients zeigen Version, Commit und Build-Zeit.
+- [x] AC4: Der Workflow läuft bei Pull Requests und Pushes auf `main`: Tests auf `windows-latest`. Nur bei Pushes auf `main` baut er danach die exe (self-contained, eine Datei, ohne `.pdb`) mit einer einmal festgelegten `OVS_BUILD_TIME`.
+- [x] AC5: Danach legt er das Release `deploy-<sha7>` an, Titel `OpenVoiceSpeak <Version>`, Notizen die Commit-Nachrichten seit dem letzten Release, Anhänge `OVS.Client.exe` und `OVS.Client.exe.sha256`. Rote Tests erzeugen kein Release.
+- [ ] AC6 (manuell, offen bis zum ersten Push): Nach dem ersten Push läuft der Workflow grün, das Release ist ohne Anmeldung herunterladbar, und die exe zeigt dieselbe Version wie der Release-Titel.
 
 ### Tests (TDD)
 

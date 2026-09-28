@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Settings;
+using OVS.Shared;
 
 namespace OVS.Client.ViewModels;
 
@@ -53,6 +54,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
     }
+
+    // ---- About (Package 42) ----
+
+    public string AppVersion => $"OpenVoiceSpeak {BuildInfo.Current.Version}";
+    public string BuildDetails => BuildInfo.Current is { IsCi: true } b
+        ? $"Commit {b.ShortCommit}, gebaut am {b.BuildTime.ToLocalTime():dd.MM.yyyy HH:mm}"
+        : "Lokaler Build, keine veröffentlichte Version";
 
     public static IReadOnlyList<ThemeOption> Themes { get; } =
         [new(AppTheme.System, "Wie Windows"), new(AppTheme.Light, "Hell"), new(AppTheme.Dark, "Dunkel")];
