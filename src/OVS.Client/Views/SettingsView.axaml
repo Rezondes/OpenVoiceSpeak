@@ -90,69 +90,6 @@
           </Border>
         </StackPanel>
 
-        <!-- Sounds (Package 47) -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_SoundsSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsHint}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_AllSoundsOff}" IsChecked="{Binding AllSoundsOff}" />
-              <DockPanel IsEnabled="{Binding !AllSoundsOff}">
-                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding SoundVolumePercent, StringFormat='{}{0:0} %'}" />
-                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_SoundVolume}" />
-              </DockPanel>
-              <Slider Minimum="0" Maximum="100" Value="{Binding SoundVolumePercent}" IsEnabled="{Binding !AllSoundsOff}"
-                      AutomationProperties.Name="{x:Static l:Strings.Ui_SoundVolume}" />
-              <!-- Package 48: every sound on its own -->
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsEachHint}" Margin="0,6,0,0" />
-              <ItemsControl ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Spacing="6" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:SoundRow">
-                    <Border Classes="soundRow">
-                      <StackPanel Spacing="4">
-                        <DockPanel>
-                          <Button DockPanel.Dock="Left" Classes="icon" Command="{Binding PlayCommand}" Margin="0,0,6,0"
-                                  ToolTip.Tip="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}"
-                                  AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}">
-                            <PathIcon Classes="sm" Data="{StaticResource Icon.Play}" />
-                          </Button>
-                          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Slider Width="150" Minimum="0" Maximum="100" Value="{Binding VolumePercent}" IsEnabled="{Binding !Muted}"
-                                    VerticalAlignment="Center"
-                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundVolumeFmt}}" />
-                            <TextBlock Classes="muted" Width="44" TextAlignment="Right" VerticalAlignment="Center"
-                                       Text="{Binding VolumePercent, StringFormat='{}{0:0} %'}" />
-                            <CheckBox Content="{x:Static l:Strings.Ui_Muted}" IsChecked="{Binding Muted}" Margin="6,0,0,0"
-                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundMutedFmt}}" />
-                            <Button Click="OnPickSound" Content="{x:Static l:Strings.Ui_ChooseFile}"
-                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChooseFileFmt}}" />
-                            <Button Classes="icon" Command="{Binding ResetCommand}"
-                                    ToolTip.Tip="{x:Static l:Strings.Ui_Reset}"
-                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ResetFmt}}">
-                              <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
-                            </Button>
-                          </StackPanel>
-                          <StackPanel VerticalAlignment="Center">
-                            <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Classes="caption" Text="{Binding SourceText}" />
-                          </StackPanel>
-                        </DockPanel>
-                        <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
-                                   IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-
         <!-- Transmit mode -->
         <StackPanel Spacing="8">
           <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_TransmitSection}" />
@@ -235,6 +172,69 @@
                   <TextBlock Text="{x:Static l:Strings.Dlg_AddKeyAction}" />
                 </StackPanel>
               </Button>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Sounds (Package 47) -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_SoundsSection}" />
+          <Border Classes="card">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsHint}" />
+              <CheckBox Content="{x:Static l:Strings.Ui_AllSoundsOff}" IsChecked="{Binding AllSoundsOff}" />
+              <DockPanel IsEnabled="{Binding !AllSoundsOff}">
+                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding SoundVolumePercent, StringFormat='{}{0:0} %'}" />
+                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_SoundVolume}" />
+              </DockPanel>
+              <Slider Minimum="0" Maximum="100" Value="{Binding SoundVolumePercent}" IsEnabled="{Binding !AllSoundsOff}"
+                      AutomationProperties.Name="{x:Static l:Strings.Ui_SoundVolume}" />
+              <!-- Package 48: every sound on its own -->
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsEachHint}" Margin="0,6,0,0" />
+              <ItemsControl ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="6" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SoundRow">
+                    <Border Classes="soundRow">
+                      <StackPanel Spacing="4">
+                        <DockPanel>
+                          <Button DockPanel.Dock="Left" Classes="icon" Command="{Binding PlayCommand}" Margin="0,0,6,0"
+                                  ToolTip.Tip="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}"
+                                  AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}">
+                            <PathIcon Classes="sm" Data="{StaticResource Icon.Play}" />
+                          </Button>
+                          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Slider Width="150" Minimum="0" Maximum="100" Value="{Binding VolumePercent}" IsEnabled="{Binding !Muted}"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundVolumeFmt}}" />
+                            <TextBlock Classes="muted" Width="44" TextAlignment="Right" VerticalAlignment="Center"
+                                       Text="{Binding VolumePercent, StringFormat='{}{0:0} %'}" />
+                            <CheckBox Content="{x:Static l:Strings.Ui_Muted}" IsChecked="{Binding Muted}" Margin="6,0,0,0"
+                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundMutedFmt}}" />
+                            <Button Click="OnPickSound" Content="{x:Static l:Strings.Ui_ChooseFile}"
+                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChooseFileFmt}}" />
+                            <Button Classes="icon" Command="{Binding ResetCommand}"
+                                    ToolTip.Tip="{x:Static l:Strings.Ui_Reset}"
+                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ResetFmt}}">
+                              <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                            </Button>
+                          </StackPanel>
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Classes="caption" Text="{Binding SourceText}" />
+                          </StackPanel>
+                        </DockPanel>
+                        <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
+                                   IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </StackPanel>
           </Border>
         </StackPanel>

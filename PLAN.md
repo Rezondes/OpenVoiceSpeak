@@ -191,7 +191,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 57 sind umgesetzt, 58 und 59 sind geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6, 53 AC7 und 57 AC5 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Die Packages 1 bis 58 sind umgesetzt, 59 ist geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6, 53 AC7 und 57 AC5 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -3667,8 +3667,8 @@ In `SettingsView.axaml` stehen die Abschnitte heute in der Reihenfolge Geräte, 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Die Überschriften erscheinen in der Reihenfolge Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung, Über.
-- [ ] AC2: Alle Bedienelemente der Abschnitte funktionieren wie vorher (bestehende Tests grün).
+- [x] AC1: Die Überschriften erscheinen in der Reihenfolge Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung, Über.
+- [x] AC2: Alle Bedienelemente der Abschnitte funktionieren wie vorher (bestehende Tests grün).
 
 ### Tests (TDD)
 

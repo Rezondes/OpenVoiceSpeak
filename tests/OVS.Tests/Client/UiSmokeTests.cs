@@ -456,6 +456,22 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 58: transmit and keys come right after the volume, the long sound list after them.</summary>
+    [AvaloniaFact]
+    public void Settings_SectionOrder()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 3200 };
+        main.Show();
+        vm.OpenSettings();
+        Dispatcher.UIThread.RunJobs();
+        var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
+        var sections = page.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("section") && t.IsEffectivelyVisible)
+            .OrderBy(t => t.TranslatePoint(default, main)!.Value.Y).Select(t => t.Text).ToList();
+        Assert.Equal(["GERÄTE", "LAUTSTÄRKE", "ÜBERTRAGUNG", "TASTEN", "SOUNDS", "DARSTELLUNG", "ÜBER"], sections.Select(s => s!.ToUpperInvariant()));
+        main.Close();
+    }
+
     /// <summary>Package 53: the self test button beside the transmit mode, with the headphone hint.</summary>
     [AvaloniaFact]
     public void Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint()
