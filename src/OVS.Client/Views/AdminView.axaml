@@ -209,6 +209,81 @@
         </TabItem>
 
         <!-- ===== Server ===== -->
+        <!-- ===== Links (Package 38) ===== -->
+        <TabItem Header="Links" IsVisible="{Binding ShowLinks}">
+          <DockPanel DataContext="{Binding Links}" x:DataType="vm:LinkMatrixViewModel">
+            <TextBlock DockPanel.Dock="Top" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="Ein Häkchen verbindet zwei Channels. Links wirken nur direkt, nicht über Umwege: Sollen mehrere Channels alle miteinander sprechen, wähle sie links aus und verlinke sie miteinander." />
+            <WrapPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0" ItemSpacing="8" LineSpacing="8">
+              <Button Command="{Binding LinkSelectedCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.Link}" />
+                  <TextBlock Text="Ausgewählte miteinander verlinken" />
+                </StackPanel>
+              </Button>
+              <Button Command="{Binding UnlinkSelectedCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.LinkDismiss}" />
+                  <TextBlock Text="Links zwischen ausgewählten entfernen" />
+                </StackPanel>
+              </Button>
+              <Button Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding HasPending}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
+                  <TextBlock Text="Übernehmen" />
+                </StackPanel>
+              </Button>
+              <Button Classes="subtle" Command="{Binding DiscardCommand}" IsEnabled="{Binding HasPending}" Content="Verwerfen" />
+              <TextBlock Classes="caption" Text="{Binding PendingText}" VerticalAlignment="Center" />
+            </WrapPanel>
+            <Border Classes="card" Padding="8">
+              <ScrollViewer HorizontalScrollBarVisibility="Auto">
+                <StackPanel>
+                  <!-- column numbers -->
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="228" />
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LinkRowViewModel">
+                          <TextBlock Classes="caption" Width="34" TextAlignment="Center" Text="{Binding Number}" ToolTip.Tip="{Binding Name}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:LinkRowViewModel">
+                        <StackPanel Orientation="Horizontal">
+                          <CheckBox IsChecked="{Binding IsSelected}" Width="36" MinWidth="36"
+                                    AutomationProperties.Name="{Binding Name, StringFormat='{}{0} auswählen'}" />
+                          <TextBlock Width="192" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                     Foreground="{DynamicResource Ovs.Text}" ToolTip.Tip="{Binding Name}" />
+                          <ItemsControl ItemsSource="{Binding Cells}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:LinkCellViewModel">
+                                <Border Classes="linkCell" Classes.pending="{Binding IsPending}" ToolTip.Tip="{Binding Tooltip}">
+                                  <CheckBox IsChecked="{Binding IsLinked}" IsVisible="{Binding !IsDiagonal}" MinWidth="0" Padding="0"
+                                            HorizontalAlignment="Center" AutomationProperties.Name="{Binding Tooltip, StringFormat='Link {0}'}" />
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+        </TabItem>
+
         <TabItem Header="Server" IsVisible="{Binding ShowServer}">
           <ScrollViewer>
             <Border Classes="card" MaxWidth="560" HorizontalAlignment="Left">

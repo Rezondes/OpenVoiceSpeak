@@ -186,4 +186,68 @@ public class AdminViewModelTests
         Assert.False(vm.MoveGroupUpCommand.CanExecute(null));
         Assert.Equal(count, sent.Count);
     }
+
+    // ---- Package 38: link matrix ----
+
+    static (LinkMatrixViewModel Matrix, ServerViewModel Server, List<Request> Sent, Guid[] Channels) Matrix(int channelCount, P perms = P.All)
+    {
+        var ids = Enumerable.Range(0, channelCount).Select(_ => Guid.NewGuid()).ToArray();
+        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "", false), ids[0],
+            ids.Select((id, i) => new ChannelInfo(id, $"K{i + 1}", "", i)).ToList(), [],
+            [new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak)],
+            [new UserInfo(1, "fp1", "ich", ids[0], false, false, false, perms, [])]);
+        var sent = new List<Request>();
+        var server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        {
+            sent.Add(r);
+            return Task.CompletedTask;
+        }, new ManualTimeProvider());
+        var admin = new AdminViewModel(server);
+        return (admin.Links, server, sent, ids);
+    }
+
+    [Fact]
+    public async Task LinkMatrix_MeshOfEight_Sends28Links()
+    {
+        var (m, _, sent, _) = Matrix(8);
+        foreach (var row in m.Rows) row.IsSelected = true;
+        m.LinkSelectedCommand.Execute(null);
+        Assert.Equal(28, m.PendingCount);
+        await m.ApplyCommand.ExecuteAsync(null);
+        var request = Assert.IsType<SetChannelLinks>(sent[^1]);
+        Assert.Equal((28, 0), (request.Add.Count, request.Remove.Count));
+        Assert.Equal(28, request.Add.Select(l => (l.A, l.B)).Distinct().Count());
+    }
+
+    [Fact]
+    public void LinkMatrix_ToggleDiscardAndRemoteChange()
+    {
+        var (m, server, _, ids) = Matrix(3);
+        var cell = m.Rows[0].Cells[1];
+        cell.IsLinked = true;
+        Assert.True(m.Rows[1].Cells[0].IsLinked); // the mirrored field follows
+        Assert.True(m.Rows[1].Cells[0].IsPending);
+        Assert.True(m.Rows[0].Cells[0].IsDiagonal);
+
+        m.DiscardCommand.Execute(null);
+        Assert.False(m.Rows[0].Cells[1].IsLinked);
+        Assert.False(m.HasPending);
+
+        m.Rows[0].Cells[1].IsLinked = true; // pending K1-K2
+        m.Rows[0].Cells[2].IsLinked = true; // pending K1-K3
+        server.Apply(new ChannelsLinked(ids[0], ids[1])); // another admin sets K1-K2
+        Assert.Equal(1, m.PendingCount); // K1-K2 is real now, K1-K3 still pending
+        Assert.True(m.Rows[0].Cells[1].IsLinked);
+        Assert.False(m.Rows[0].Cells[1].IsPending);
+        Assert.True(m.Rows[0].Cells[2].IsPending);
+    }
+
+    [Fact]
+    public void LinkTab_OnlyWithChannelLink()
+    {
+        Assert.False(Create(P.GroupsManage).Admin.ShowLinks);
+        var (admin, server, _) = Create(P.ChannelLink);
+        Assert.True(admin.ShowLinks);
+        Assert.True(server.CanAdminister); // the administration opens for this right alone
+    }
 }

@@ -206,6 +206,7 @@ public sealed partial class ServerState
                 case ListBans r: OnListBans(session, r); break;
                 case SetServerMute r: OnSetServerMute(session, r); break;
                 case LinkChannels r: OnLinkChannels(session, r); break;
+                case SetChannelLinks r: OnSetChannelLinks(session, r); break;
                 case UnlinkChannels r: OnUnlinkChannels(session, r); break;
                 case SendChat r: OnSendChat(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;

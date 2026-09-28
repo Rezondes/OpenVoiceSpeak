@@ -72,7 +72,7 @@ public sealed partial class ServerViewModel : ObservableObject
     public bool CanCreateChannel => SelfPermissions.Has(Permission.ChannelCreate);
     public bool HasSpeakLinked => SelfPermissions.Has(Permission.SpeakLinked);
     public bool CanAdminister =>
-        (SelfPermissions & (Permission.GroupsManage | Permission.GroupsAssign | Permission.UserBan | Permission.ServerConfig)) != 0;
+        (SelfPermissions & (Permission.GroupsManage | Permission.GroupsAssign | Permission.UserBan | Permission.ServerConfig | Permission.ChannelLink)) != 0;
     public bool CanRedeemToken => !IsAdmin;
 
     partial void OnIsAdminChanged(bool value) => OnPropertyChanged(nameof(CanRedeemToken));

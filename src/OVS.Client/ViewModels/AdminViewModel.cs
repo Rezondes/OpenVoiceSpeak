@@ -30,6 +30,7 @@ public sealed partial class AdminViewModel : ObservableObject
         serverName = server.Mirror.Settings.Name;
         welcomeText = server.Mirror.Settings.WelcomeText;
         hasPassword = server.Mirror.Settings.HasPassword;
+        Links = new LinkMatrixViewModel(server);
         RebuildGroups();
     }
 
@@ -38,6 +39,8 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool ShowUsers => Actor.Has(Permission.GroupsAssign);
     public bool ShowBans => Actor.Has(Permission.UserBan);
     public bool ShowServer => Actor.Has(Permission.ServerConfig);
+    public bool ShowLinks => Actor.Has(Permission.ChannelLink);
+    public LinkMatrixViewModel Links { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
     public ObservableCollection<KnownUserViewModel> Users { get; } = [];
@@ -95,7 +98,9 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(HasIcon));
         RebuildGroups();
         RebuildUsers();
+        Links.Rebuild();
         HasPassword = server.Mirror.Settings.HasPassword;
+        OnPropertyChanged(nameof(ShowLinks));
         OnPropertyChanged(nameof(ShowGroups));
         OnPropertyChanged(nameof(ShowUsers));
         OnPropertyChanged(nameof(ShowBans));

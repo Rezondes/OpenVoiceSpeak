@@ -172,6 +172,11 @@ public sealed class UiSmokeTests : IDisposable
         Assert.True(vm.IsAdminPage);
         Assert.Contains("Gruppen", Texts(main));
         Assert.Equal(2, main.GetVisualDescendants().OfType<Button>().Count(b => AutomationProperties.GetName(b) is "Gruppe nach oben" or "Gruppe nach unten"));
+        var linksTab = main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Links");
+        linksTab.IsSelected = true; // Package 38: the link matrix
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("Ausgewählte miteinander verlinken", Texts(main));
+        Assert.Contains(main.GetVisualDescendants().OfType<CheckBox>(), c => AutomationProperties.GetName(c) == "Link Lobby und Raid");
         vm.ClosePage();
 
         void Dialog(Func<OverlayHost, Task> open, string title)

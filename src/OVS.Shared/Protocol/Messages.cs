@@ -53,6 +53,7 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(SetServerMute), "setServerMute")]
 // Links
 [JsonDerivedType(typeof(LinkChannels), "linkChannels")]
+[JsonDerivedType(typeof(SetChannelLinks), "setChannelLinks")]
 [JsonDerivedType(typeof(UnlinkChannels), "unlinkChannels")]
 [JsonDerivedType(typeof(ChannelsLinked), "channelsLinked")]
 [JsonDerivedType(typeof(ChannelsUnlinked), "channelsUnlinked")]
@@ -145,6 +146,8 @@ public sealed record SetServerMute(uint SessionId, bool Muted) : Request;
 
 // ---- Links ----
 public sealed record LinkChannels(Guid A, Guid B) : Request;
+/// <summary>Package 38: many links at once, all or nothing.</summary>
+public sealed record SetChannelLinks(IReadOnlyList<LinkInfo> Add, IReadOnlyList<LinkInfo> Remove) : Request;
 public sealed record UnlinkChannels(Guid A, Guid B) : Request;
 public sealed record ChannelsLinked(Guid A, Guid B) : Message;
 public sealed record ChannelsUnlinked(Guid A, Guid B) : Message;

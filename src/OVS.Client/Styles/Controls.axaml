@@ -370,6 +370,17 @@
     <Setter Property="Background" Value="{DynamicResource Ovs.Accent}" />
   </Style>
 
+  <!-- One field of the link matrix; pending changes are tinted (Package 38) -->
+  <Style Selector="Border.linkCell">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.linkCell.pending">
+    <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
+  </Style>
+
   <!-- ===== Chat (Package 32) ===== -->
   <Style Selector="TabStripItem">
     <Setter Property="FontSize" Value="14" />

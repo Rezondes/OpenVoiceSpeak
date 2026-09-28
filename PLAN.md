@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 37 sind umgesetzt, 38 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 38 sind umgesetzt, 39 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2524,11 +2524,11 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminCommandTests|FullyQua
 
 ### Acceptance Criteria
 
-- [ ] AC1: Mit `ChannelLink` gibt es in der Verwaltung den Tab "Links" mit einer Matrix aller Channels. Ein Häkchen bedeutet Link. Ein Klick ändert beide gespiegelten Felder, die Diagonale ist leer.
-- [ ] AC2: Über eine Mehrfachauswahl verbindet "Alle ausgewählten miteinander verlinken" jeden mit jedem. "Links zwischen den ausgewählten entfernen" macht das Gegenteil.
-- [ ] AC3: Änderungen sind bis "Übernehmen" nur vorgemerkt und farblich markiert. "Verwerfen" setzt zurück. "Übernehmen" sendet eine einzige Anfrage.
-- [ ] AC4: Der Server prüft alles vorab: unbekannter Channel oder Selbst-Link ergibt `InvalidValue` und ändert nichts. Sonst speichert er einmal, sendet `ChannelsLinked` bzw. `ChannelsUnlinked` je Änderung und schreibt die Channel-Logs wie beim Einzel-Link. Bereits bestehende Links im Add-Teil sind kein Fehler.
-- [ ] AC5: Ändert ein anderer Admin gleichzeitig Links, zeigt die Matrix den neuen Stand, die eigenen vorgemerkten Änderungen bleiben markiert. `ProtocolInfo.Version` ist 8.
+- [x] AC1: Mit `ChannelLink` gibt es in der Verwaltung den Tab "Links" mit einer Matrix aller Channels. Ein Häkchen bedeutet Link. Ein Klick ändert beide gespiegelten Felder, die Diagonale ist leer.
+- [x] AC2: Über eine Mehrfachauswahl verbindet "Alle ausgewählten miteinander verlinken" jeden mit jedem. "Links zwischen den ausgewählten entfernen" macht das Gegenteil.
+- [x] AC3: Änderungen sind bis "Übernehmen" nur vorgemerkt und farblich markiert. "Verwerfen" setzt zurück. "Übernehmen" sendet eine einzige Anfrage.
+- [x] AC4: Der Server prüft alles vorab: unbekannter Channel oder Selbst-Link ergibt wie beim Einzel-Link `NotFound` bzw. `InvalidLink` und ändert nichts, derselbe Link in Add und Remove `InvalidValue`. Sonst speichert er einmal, sendet `ChannelsLinked` bzw. `ChannelsUnlinked` je Änderung und schreibt die Channel-Logs wie beim Einzel-Link. Bereits bestehende Links im Add-Teil sind kein Fehler.
+- [x] AC5: Ändert ein anderer Admin gleichzeitig Links, zeigt die Matrix den neuen Stand, die eigenen vorgemerkten Änderungen bleiben markiert. `ProtocolInfo.Version` ist 8.
 
 ### Tests (TDD)
 
