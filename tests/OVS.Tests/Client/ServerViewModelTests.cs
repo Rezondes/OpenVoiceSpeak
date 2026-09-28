@@ -247,6 +247,31 @@ public class ServerViewModelTests
         Assert.Equal(new CreateChannel("Neu", "Beschreibung"), f.Sent[^1] with { RequestId = null });
     }
 
+    /// <summary>Package 34: the dialog shows the current flag, the edit sends it, the channel shows it.</summary>
+    [Fact]
+    public async Task ChannelMuted_EditSendsFlag_ViewModelShowsIt()
+    {
+        ChannelDialogMode? shownMode = null;
+        var dialogs = new Dialogs
+        {
+            EditChannel = (_, current, mode) =>
+            {
+                shownMode = mode;
+                return Task.FromResult<ChannelEdit?>(current with { IsMuted = true });
+            },
+        };
+        var f = Create(P.All, dialogs: dialogs);
+        await f.Channel(Bravo).EditCommand.ExecuteAsync(null);
+        Assert.Equal(ChannelDialogMode.Edit, shownMode);
+        Assert.Equal(new EditChannel(Bravo, "Bravo", "", 1, IsMuted: true), f.Sent[^1] with { RequestId = null });
+        await f.Channel(Lobby).EditCommand.ExecuteAsync(null);
+        Assert.Equal(ChannelDialogMode.EditDefault, shownMode);
+
+        Assert.False(f.Channel(Bravo).IsMuted);
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, IsMuted: true)));
+        Assert.True(f.Channel(Bravo).IsMuted);
+    }
+
     [Fact]
     public void RedeemToken_HiddenForAdmin()
     {

@@ -57,7 +57,7 @@ public sealed class AudioEngine : IDisposable
     readonly Thread playbackThread;
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
     volatile bool running = true;
-    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected;
+    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, channelMuted;
     ClientSettings settings = new();
     CapturePipeline? capture;
     WasapiOut? output;
@@ -80,6 +80,8 @@ public sealed class AudioEngine : IDisposable
     public bool SelfMuted { get => selfMuted; set => selfMuted = value; }
     public bool HasSpeakLinked { get => hasSpeakLinked; set => hasSpeakLinked = value; }
     public bool Connected { get => connected; set => connected = value; }
+    /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
+    public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
 
     public bool Deafened
     {
@@ -190,7 +192,7 @@ public sealed class AudioEngine : IDisposable
     byte? Decide(bool voiceActive)
     {
         // Push-to-mute counts like the own mute: it beats every way of sending (Package 29).
-        var target = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, selfMuted || !connected || keys.MuteHeld, hasSpeakLinked);
+        var target = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, selfMuted || !connected || keys.MuteHeld || channelMuted, hasSpeakLinked);
         if (target != lastTarget)
         {
             lastTarget = target;

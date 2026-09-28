@@ -130,6 +130,31 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Null(await vb.ReceiveVoiceAsync(300));
     }
 
+    /// <summary>Package 34: a muted lobby relays nothing, not even the admin's link speech; link speech into a muted channel arrives.</summary>
+    [Fact]
+    public async Task MutedChannel_NoFramesArrive()
+    {
+        var lobby = a.Welcome.Snapshot.DefaultChannelId;
+        await a.SendAsync(new LinkChannels(lobby, other));
+        await c.WaitForAsync<ChannelsLinked>();
+        await a.SendAsync(new EditChannel(lobby, "Lobby", "", 0, IsMuted: true));
+        await c.WaitForAsync<ChannelUpdated>(u => u.Channel.IsMuted);
+        await va.HelloAsync();
+        await vb.HelloAsync();
+        await vc.HelloAsync();
+
+        await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetLinked);
+        Assert.Null(await vb.ReceiveVoiceAsync(400));
+        Assert.Null(await vc.ReceiveVoiceAsync(100));
+
+        // lobby open again, now "other" is muted: link speech into it is heard there
+        await a.SendAsync(new EditChannel(lobby, "Lobby", "", 0, IsMuted: false));
+        await a.SendAsync(new EditChannel(other, "Other", "", 1, IsMuted: true));
+        await c.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == other && u.Channel.IsMuted);
+        await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetLinked);
+        Assert.NotNull(await vc.ReceiveVoiceAsync());
+    }
+
     [Fact]
     public async Task ServerMutedSender_NotRelayed()
     {

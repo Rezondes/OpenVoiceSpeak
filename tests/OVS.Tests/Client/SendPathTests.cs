@@ -71,6 +71,22 @@ public class SendPathTests
         Assert.True(engine.FramesSent > 0); // released: sending again
     }
 
+    /// <summary>Package 34: in a muted channel nobody would hear it, so the client sends nothing.</summary>
+    [Fact]
+    public async Task ChannelMuted_SendsNothing()
+    {
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
+        engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
+        engine.SetTone(440);
+        await Task.Delay(400);
+        Assert.Equal(0, engine.FramesSent);
+
+        engine.ChannelMuted = false;
+        await Task.Delay(300);
+        Assert.True(engine.FramesSent > 0);
+    }
+
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
 
     [Fact]

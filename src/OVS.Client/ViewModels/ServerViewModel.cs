@@ -8,7 +8,10 @@ using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
 
-public sealed record ChannelEdit(string Name, string Description);
+public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false);
+
+/// <summary>The channel dialog only offers the channel options when editing (Package 34).</summary>
+public enum ChannelDialogMode { Create, Edit, EditDefault }
 public sealed record BanChoice(string Reason, int? DurationMinutes, bool IncludeIp)
 {
     public static readonly IReadOnlyList<(string Label, int? Minutes)> Durations =
@@ -18,7 +21,7 @@ public sealed record BanChoice(string Reason, int? DurationMinutes, bool Include
 /// <summary>Dialogs the view provides. Unset entries mean "cancelled" (used by tests).</summary>
 public sealed class Dialogs
 {
-    public Func<string, string, string, Task<ChannelEdit?>>? EditChannel { get; init; }
+    public Func<string, ChannelEdit, ChannelDialogMode, Task<ChannelEdit?>>? EditChannel { get; init; }
     public Func<string, IReadOnlyList<ChannelViewModel>, Task<ChannelViewModel?>>? PickChannel { get; init; }
     public Func<string, string, Task<string?>>? AskText { get; init; }
     public Func<string, Task<BanChoice?>>? Ban { get; init; }
@@ -238,7 +241,7 @@ public sealed partial class ServerViewModel : ObservableObject
 
     public Task JoinAsync(Guid channelId) => SendAsync(new JoinChannel(channelId));
     public Task CreateChannelAsync(string name, string description) => SendAsync(new CreateChannel(name, description));
-    public Task EditChannelAsync(Guid id, string name, string description, int order) => SendAsync(new EditChannel(id, name, description, order));
+    public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) => SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted));
     public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
     public Task LinkAsync(Guid a, Guid b) => SendAsync(new LinkChannels(a, b));
     public Task UnlinkAsync(Guid a, Guid b) => SendAsync(new UnlinkChannels(a, b));
@@ -282,7 +285,7 @@ public sealed partial class ServerViewModel : ObservableObject
     [RelayCommand]
     async Task NewChannel()
     {
-        if (Dialogs.EditChannel is { } edit && await edit("Channel anlegen", "", "") is { } result)
+        if (Dialogs.EditChannel is { } edit && await edit("Channel anlegen", new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
             await CreateChannelAsync(result.Name, result.Description);
     }
 
@@ -303,6 +306,8 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [ObservableProperty] string linkedNames = "";
     [ObservableProperty] bool isCurrent;
     [ObservableProperty] bool isDefault;
+    /// <summary>Package 34: nobody in this channel is heard.</summary>
+    [ObservableProperty] bool isMuted;
     [ObservableProperty] bool canCreate;
     [ObservableProperty] bool canEdit;
     [ObservableProperty] bool canDelete;
@@ -322,6 +327,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         LinkedNames = string.Join(", ", linked);
         IsDefault = isDefault;
         IsCurrent = isCurrent;
+        IsMuted = info.IsMuted;
         CanCreate = actor.Has(Permission.ChannelCreate);
         CanEdit = actor.Has(Permission.ChannelEdit);
         CanDelete = actor.Has(Permission.ChannelDelete) && !isDefault;
@@ -339,8 +345,9 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [RelayCommand]
     async Task Edit()
     {
-        if (owner.Dialogs.EditChannel is { } edit && await edit("Channel bearbeiten", Name, Description) is { } result)
-            await owner.EditChannelAsync(Id, result.Name, result.Description, Order);
+        var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
+        if (owner.Dialogs.EditChannel is { } edit && await edit("Channel bearbeiten", new ChannelEdit(Name, Description, IsMuted), mode) is { } result)
+            await owner.EditChannelAsync(Id, result, Order);
     }
 
     [RelayCommand]

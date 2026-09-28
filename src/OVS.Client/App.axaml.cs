@@ -45,7 +45,7 @@ public partial class App : Application
             var overlay = window.Overlay; // every dialog lives inside the main window (A20)
             vm.Dialogs = new Dialogs
             {
-                EditChannel = (title, name, description) => SimpleDialogs.EditChannel(overlay, title, name, description),
+                EditChannel = (title, current, mode) => SimpleDialogs.EditChannel(overlay, title, current, mode),
                 PickChannel = (title, channels) => SimpleDialogs.PickChannel(overlay, title, channels),
                 AskText = (title, prompt) => SimpleDialogs.AskText(overlay, title, prompt),
                 Ban = nickname => SimpleDialogs.Ban(overlay, nickname),

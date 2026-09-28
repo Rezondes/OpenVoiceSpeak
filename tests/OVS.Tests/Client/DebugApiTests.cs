@@ -180,7 +180,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.Post("tone", new { hz = 330 });
         await bert.Post("linkptt", new { down = true });
         var bertState = await bert.Until(s => s.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
-        Assert.Contains("Kein Recht", bertState.GetProperty("linkHint").GetString());
+        Assert.Contains("Kein Recht", bertState.GetProperty("voiceHint").GetString());
         await Task.Delay(300);
         Assert.Equal(0, FramesFrom(await anna.State(), bertId));
         await bert.Post("linkptt", new { down = false });

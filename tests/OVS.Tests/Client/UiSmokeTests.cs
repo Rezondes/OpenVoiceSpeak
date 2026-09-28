@@ -188,7 +188,13 @@ public sealed class UiSmokeTests : IDisposable
         Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
         Dialog(o => SimpleDialogs.Ban(o, "anna"), "anna bannen");
         Dialog(o => SimpleDialogs.Confirm(o, "Wirklich?"), "Bestätigen");
-        Dialog(o => SimpleDialogs.EditChannel(o, "Channel anlegen", "", ""), "Channel anlegen");
+        Dialog(o => SimpleDialogs.EditChannel(o, "Channel anlegen", new ChannelEdit("", ""), ChannelDialogMode.Create), "Channel anlegen");
+        var editing = SimpleDialogs.EditChannel(main.Overlay, "Channel bearbeiten", new ChannelEdit("Raid", "", IsMuted: true), ChannelDialogMode.Edit);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(main.Overlay.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Content is "Stummer Channel: niemand wird gehört").IsChecked);
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(editing.IsCompleted);
         Dialog(o => SimpleDialogs.PickChannel(o, "Verschieben nach", vm.Server!.Channels), "Verschieben nach");
         Dialog(o => SimpleDialogs.AskText(o, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
     }

@@ -43,6 +43,27 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return null;
         });
 
+    /// <summary>Package 34: in a muted channel the client warns and does not send.</summary>
+    [Fact]
+    public async Task ChannelMuted_HintAndNoSending()
+    {
+        var (hint, muted) = await OnUi(() =>
+        {
+            vm.Server = FakeServers.Admin();
+            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
+            vm.Tick();
+            return (vm.VoiceHint, vm.Audio.ChannelMuted);
+        });
+        Assert.Equal("Stummer Channel: niemand hört dich.", hint);
+        Assert.True(muted);
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.DisconnectAsync();
+            return null;
+        });
+        Assert.False(await OnUi(() => vm.Audio.ChannelMuted));
+    }
+
     [Fact]
     public async Task Connect_SavesBookmark_ToSettingsFile()
     {

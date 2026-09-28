@@ -118,12 +118,16 @@ public static class SimpleDialogs
         return Show(overlay, title, title.StartsWith("Admin-Token") ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
     }
 
-    public static Task<ChannelEdit?> EditChannel(OverlayHost overlay, string title, string name, string description)
+    public static Task<ChannelEdit?> EditChannel(OverlayHost overlay, string title, ChannelEdit current, ChannelDialogMode mode)
     {
-        var nameBox = new TextBox { Text = name };
-        var descriptionBox = new TextBox { Text = description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 76 };
-        return Show(overlay, title, "Speaker", Stack(Field("Name", nameBox), Field("Beschreibung", descriptionBox, "Optional, erscheint als Tooltip und im Kopf des Channels.")),
-            () => string.IsNullOrWhiteSpace(nameBox.Text) ? null : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? ""),
+        var nameBox = new TextBox { Text = current.Name };
+        var descriptionBox = new TextBox { Text = current.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 76 };
+        var muted = new CheckBox { Content = "Stummer Channel: niemand wird gehört", IsChecked = current.IsMuted };
+        var body = Stack(Field("Name", nameBox), Field("Beschreibung", descriptionBox, "Optional, erscheint als Tooltip und im Kopf des Channels."));
+        if (mode != ChannelDialogMode.Create)
+            body.Children.Add(Field("Optionen", muted, "Auch Link-PTT aus diesem Channel wird nicht übertragen. Sprache aus verlinkten Channels ist hörbar."));
+        return Show(overlay, title, "Speaker", body,
+            () => string.IsNullOrWhiteSpace(nameBox.Text) ? null : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? "", muted.IsChecked == true),
             "Speichern");
     }
 

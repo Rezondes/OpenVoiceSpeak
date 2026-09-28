@@ -53,6 +53,17 @@
 | 31 | Chat-Grundlage | Der Server vermittelt serverweite, Channel- und Privatnachrichten und prüft dafür drei neue Rechte. | 8, 21 |
 | 32 | Chat-Oberfläche | Statt der Aktivität zeigt der Hauptbereich einen Chat mit den Tabs Allgemein und aktueller Channel. | 26, 31 |
 | 33 | Privatchats | Zwei Nutzer schreiben sich in einem eigenen Tab privat. | 32 |
+| 34 | Stummer Channel | In einem Channel mit der Option "Stumm" wird niemand gehört, auch nicht per Link-PTT. | 12, 18 |
+| 35 | Slot-Begrenzung | Channels lassen sich auf eine Höchstzahl an Nutzern begrenzen, die nur ein neues Recht umgeht. | 7, 18 |
+| 36 | Channels sortieren | Berechtigte ordnen Channels per Drag and Drop oder Kontextmenü neu, und alle sehen die neue Reihenfolge sofort. | 18, 26 |
+| 37 | Gruppen sortieren | Berechtigte ordnen Gruppen in der Verwaltung neu, und alle Gruppenlisten folgen dieser Reihenfolge. | 18, 26 |
+| 38 | Links-Übersicht | Berechtigte verlinken mehrere Channels auf einmal über eine Matrix in der Verwaltung. | 10, 26 |
+| 39 | Passwort speichern | Serverpasswörter lassen sich verschlüsselt mit dem Lesezeichen speichern. | 26 |
+| 40 | Lesezeichen in der Seitenleiste | Ohne Verbindung zeigt die Seitenleiste die Lesezeichen, und ein Klick verbindet direkt. | 39 |
+| 41 | Tastenliste | Tastenbelegungen sind eine frei erweiterbare Liste, in der eine Aktion auf mehreren Tasten liegen kann. | 29 |
+| 42 | Client-Release per GitHub Actions | Jeder Push auf `main` veröffentlicht nach grünen Tests die Client-exe als versioniertes GitHub-Release. | 19 |
+| 43 | Update-Prüfung im Client | Der Client erkennt neue Releases und installiert sie auf Wunsch selbst. | 42 |
+| 44 | Server-Image in der GitHub Container Registry | Jedes Release stellt das Server-Image für amd64 und arm64 als öffentliches Package bereit, und Compose nutzt es direkt. | 42 |
 
 ## Annahmen
 
@@ -97,6 +108,21 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A29 Chat-Grenzen und Logs.** Höchstens 2000 Zeichen, höchstens 5 Nachrichten in 5 Sekunden. Channelnachrichten ins Channel-Log, serverweite ins Server-Log, von privaten nur die Tatsache ohne Inhalt.
 - **A30 Protokollversion.** Jedes Package, das das Protokoll erweitert (30, 31), erhöht `ProtocolInfo.Version`. Alte Clients bekommen die klare Meldung zur Versionsabweichung statt unbekannter Nachrichten.
 
+**Annahmen für Package 34 bis 44** (mit dem Nutzer abgestimmt am 28.09.2026). Die Reihenfolge folgt den Abhängigkeiten: erst Server und Protokoll, dann Client, zuletzt Auslieferung. Zuordnung zur Anfrage: Punkt 1 = 34, 8 = 35, 5 = 36, 6 = 37, 7 = 38, 2 = 39, 4 = 40, 3 = 41, 9 = 42 bis 44 (auf Vorschlag in drei Packages geteilt).
+
+- **A31 Stummer Channel.** Wer das Recht `ChannelEdit` hat, schaltet im Bearbeiten-Dialog "Stumm" ein. Dann wird dort **niemand** gehört, auch Admins nicht, und es gibt kein Recht, das das umgeht. Link-PTT aus einem stummen Channel ist ebenfalls gesperrt. Sprache aus verlinkten, nicht stummen Channels hört man im stummen Channel. Neue Channels sind nie stumm.
+- **A32 Slot-Begrenzung.** `MaxUsers` pro Channel, 0 = unbegrenzt, sonst 1 bis 999. Neues Recht `ChannelJoinFull` ("Volle Channel betreten", Bit 16). Es gilt für das eigene Betreten und fürs Verschieben: Wer jemanden in einen vollen Channel verschiebt, braucht das Recht selbst. Der Standard-Channel lässt sich nicht begrenzen, weil jeder beim Verbinden und beim Löschen eines Channels dort landet. Wird das Limit unter die aktuelle Zahl gesenkt, muss niemand gehen, nur neu hinein kommt keiner. Admins haben das Recht über `All`, andere Gruppen bekommen es nicht automatisch.
+- **A33 Sortieren.** Channels: Drag and Drop im Channel-Baum und "Nach oben" bzw. "Nach unten" im Kontextmenü, Recht `ChannelEdit`, eine Anfrage mit der vollständigen neuen Reihenfolge. Gruppen: Drag and Drop und Pfeil-Buttons in der Gruppenliste der Verwaltung, Recht `GroupsManage`. Die Gruppenreihenfolge ist die Position in `ServerData.Groups` und nur Anzeige, der Rang bleibt die Teilmengenregel (A11). Gast und Admin sind frei verschiebbar.
+- **A34 Links-Übersicht.** Neuer Verwaltungstab "Links" mit einer Matrix (Channel x Channel, jedes Feld ein Link) und einer Mehrfachauswahl mit "Alle ausgewählten miteinander verlinken" (jeder mit jedem, weil Links nicht transitiv sind, A5; bei 8 Channels 28 Links) und "Links zwischen den ausgewählten entfernen". Änderungen werden gesammelt, markiert und mit einer einzigen Anfrage übernommen oder verworfen. Recht `ChannelLink`. Das einzelne Verlinken per Kontextmenü bleibt.
+- **A35 Passwort speichern.** Das Passwort liegt mit Windows-DPAPI (Bereich aktueller Benutzer) verschlüsselt im Lesezeichen in `settings.json`. Unter einem anderen Benutzer oder PC lässt es sich nicht entschlüsseln und gilt dann als nicht gespeichert. Die Checkbox "Passwort speichern" ist standardmässig aus und nur mit "Als Lesezeichen speichern" wählbar. Gespeichert wird erst nach erfolgreicher Verbindung.
+- **A36 Lesezeichen.** Ohne Verbindung zeigt die Seitenleiste statt des Channel-Baums die Lesezeichen, der Hauptbereich nur Logo, Status und "Verbinden ...". Ein Klick verbindet sofort. Fehlt ein nötiges Passwort oder ist das gespeicherte falsch, fragt ein Overlay nach dem Passwort, mit "Passwort speichern". Kontextmenü: Verbinden, Bearbeiten, Löschen. Bearbeiten ändert Name, Adresse, Port, Nickname und das gespeicherte Passwort (ändern oder entfernen).
+- **A37 Tastenliste.** Die Liste startet leer. "Tastenaktion hinzufügen" öffnet ein Overlay mit Aktion (Dropdown) und Taste (erfassen). "Ändern" öffnet dasselbe Overlay vorbelegt, "Löschen" entfernt die Zeile. Dieselbe Aktion darf auf mehreren Tasten liegen, dieselbe Taste aber nicht auf zwei verschiedenen Aktionen, sonst blockiert ein Hinweis das Speichern. Das Format in `settings.json` ist schon eine Liste, eine Migration entfällt.
+- **A38 Versionierung wie in PersonalEinsatzPlanung.** Keine SemVer, sondern eine Build-Kennung aus einem UTC-Zeitpunkt: `DDMMYY.<Sekunden seit UTC-Mitternacht in Base36, 4 Stellen>`, z. B. `280926.0a1k`. Lokale Builds heissen `dev.<stamp>`. Eingebettet werden nur Rohdaten (Build-Zeit, Commit, CI ja/nein), das Formatieren passiert im Code (`OVS.Shared/BuildInfo.cs`) und ist getestet. Jeder erfolgreiche Push auf `main` erzeugt ein Release mit Tag `deploy-<sha7>`, Titel `OpenVoiceSpeak <Version>` und den Commit-Nachrichten seit dem letzten Release als Notizen. Der Workflow legt die Build-Zeit einmal fest, damit exe und Image dieselbe Version tragen.
+- **A39 Öffentliches Repo.** Der Nutzer stellt das Repo vor dem ersten Push dieser Packages auf öffentlich. Update-Prüfung und `docker pull` brauchen dann keine Anmeldung. GitHub legt neue Container-Packages privat an, das Package muss nach dem ersten Push einmal von Hand auf "public" gestellt werden.
+- **A40 Update im Client.** Prüfung beim Start (in den Einstellungen abschaltbar, Standard an) und per Button "Nach Updates suchen". Ein Overlay fragt "Version X ist verfügbar. Jetzt installieren?" mit den Release-Notizen. Bei Ja lädt der Client die exe aus dem Release, prüft sie gegen die mitveröffentlichte SHA-256-Datei, benennt sich selbst um, legt die neue exe an seinen Platz, startet sie und beendet sich. Die alte Datei wird beim nächsten Start gelöscht. `dev`-Builds prüfen nie. Die exe ist unsigniert, SmartScreen warnt beim ersten Start einer neuen Version. Angefragt wird nur `api.github.com` und der Download von GitHub, ohne Nutzerdaten.
+- **A41 Container-Registry (ersetzt A15).** Image `ghcr.io/rezondes/openvoicespeak-server`, Tags `latest` und die Version aus A38. `docker-compose.yml` nutzt das fertige Image, der lokale Build geht über die zusätzliche `docker-compose.build.yml`.
+- **A42 Protokollversion.** Nach A30 erhöhen 34, 35, 36, 37 und 38 `ProtocolInfo.Version` jeweils um eins, in der Reihenfolge der Umsetzung (geplant 4 bis 8).
+
 ### Projektstruktur (Zielbild)
 
 ```
@@ -117,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle Packages 1 bis 33 sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 34 sind umgesetzt, 35 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2269,3 +2295,551 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQu
 - Flüstern per Sprache
 - Nachrichten an Offline-Nutzer
 
+---
+
+## Package 34: Stummer Channel
+
+**Ziel:** In einem Channel mit der Option "Stumm" wird niemand gehört, auch nicht per Link-PTT.
+
+**Abhängigkeiten:** Package 12, 18
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs`, `ProtocolInfo.cs` (ändern): `ChannelInfo.IsMuted`, `EditChannel.IsMuted`, Version 4
+- `src/OVS.Server/Data/ServerData.cs` (ändern): `ChannelRecord.IsMuted`
+- `src/OVS.Server/Commands/ChannelCommands.cs`, `ServerState.cs` (ändern): Speichern, Channel-Log, `Info(channel)`
+- `src/OVS.Server/Voice/VoiceRouting.cs` (ändern): stumme Channels leiten nichts weiter
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `ChannelViewModel.IsMuted`, `EditChannelAsync` mit Flag
+- `src/OVS.Client/Views/SimpleDialogs.cs`, `MainWindow.axaml` (ändern): Checkbox im Dialog, Symbol am Channel
+- `src/OVS.Client/ViewModels/MainViewModel.cs`, `src/OVS.Client/Audio/SendPath.cs` (ändern): nicht senden, Hinweis
+- `src/OVS.Client/Logging/ClientLog.cs` (ändern)
+- `tests/OVS.Tests/Server/VoiceRoutingTests.cs`, `ChannelCommandTests.cs`, `VoiceRelayTests.cs`, `tests/OVS.Tests/Client/SendPathTests.cs`, `ServerViewModelTests.cs`, `UiSmokeTests.cs`, `SmokeTests.cs` (ändern)
+
+### Kontext
+
+`VoiceRouting.Recipients` prüft heute nur `Speak`, Server-Mute und Selbst-Mute des Senders, dann den eigenen Channel und bei Link-PTT die verlinkten. Channels haben kein Flag (`ChannelRecord`: Id, Name, Description, Order). Der Bearbeiten-Dialog (`SimpleDialogs.EditChannel`) fragt Name und Beschreibung ab und liefert `ChannelEdit`.
+
+### Acceptance Criteria
+
+- [x] AC1: Der Dialog "Channel bearbeiten" hat die Checkbox "Stummer Channel: niemand wird gehört". Speichern geht nur mit `ChannelEdit`. Neue Channels sind nie stumm.
+- [x] AC2: Der Server leitet keine Sprache von Sendern in einem stummen Channel weiter, weder in den Channel noch per Link-PTT in verlinkte, auch nicht von Admins.
+- [x] AC3: Sprache aus einem verlinkten, nicht stummen Channel kommt im stummen Channel an.
+- [x] AC4: Das Flag wird gespeichert, steht im Snapshot und geht per `ChannelUpdated` an alle. Das Channel-Log vermerkt "stumm geschaltet von X" bzw. "Stummschaltung aufgehoben von X".
+- [x] AC5: Der Client zeigt am Channel ein Symbol mit Tooltip. Im stummen Channel sendet er nicht. Bei gedrückter Sprechtaste steht dort "Stummer Channel: niemand hört dich". Der eigene Mikrofonstatus bleibt unverändert.
+- [x] AC6: `ProtocolInfo.Version` ist 4.
+
+### Tests (TDD)
+
+1. `VoiceRoutingTests > "Recipients_MutedChannel_NobodyHearsSender"` (AC2)
+   - Gegeben: Sender (Admin) in stummem Channel A, Empfänger in A und im verlinkten B, Ziel einmal Channel, einmal Linked
+   - Erwartet: leere Empfängerliste in beiden Fällen
+2. `VoiceRoutingTests > "Recipients_LinkIntoMutedChannel_Heard"` (AC3): Sender in B (nicht stumm) mit Link-PTT erreicht Empfänger in A.
+3. `ChannelCommandTests > "Edit_SetsMuted_PersistsLogsBroadcasts"` und `"Edit_Muted_WithoutRight_Denied"` (AC1, AC4)
+4. `VoiceRelayTests > "MutedChannel_NoFramesArrive"` über echtes UDP (AC2)
+5. `SendPathTests > "Decide_ChannelMuted_SendsNothing"` (AC5)
+6. `ServerViewModelTests > "ChannelMuted_FlagAndHint"` (AC5)
+7. `UiSmokeTests`: Dialog zeigt die Checkbox, Channel-Zeile das Symbol, beide Designs (AC1, AC5); `SmokeTests`: Version 4 (AC6)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRoutingTests|FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~VoiceRelayTests|FullyQualifiedName~SendPathTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
+
+### Umsetzungsschritte
+
+1. Routing-Tests rot, `Recipients` bekommt die Information, welche Channels stumm sind.
+2. Protokoll, Datenmodell und `OnEditChannel` mit Tests.
+3. Client: Flag, Dialog, Symbol, Sendesperre und Hinweis.
+
+### Out of Scope
+
+- Ausnahmen per Recht (A31: bewusst keine)
+- Stumm beim Anlegen einstellen
+
+---
+
+## Package 35: Slot-Begrenzung
+
+**Ziel:** Channels lassen sich auf eine Höchstzahl an Nutzern begrenzen, die nur ein neues Recht umgeht.
+
+**Abhängigkeiten:** Package 7, 18
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Permissions/Permission.cs` (ändern): `ChannelJoinFull = 1 << 16`, `All = (1 << 17) - 1`
+- `src/OVS.Shared/Protocol/Messages.cs`, `Codes.cs`, `ProtocolInfo.cs` (ändern): `ChannelInfo.MaxUsers`, `EditChannel.MaxUsers`, Code `ChannelFull`, Version 5
+- `src/OVS.Server/Data/ServerData.cs`, `Commands/ChannelCommands.cs` (ändern): Prüfung in `OnJoinChannel`, `OnMoveUser`, `OnEditChannel`
+- `src/OVS.Client/ErrorTexts.cs` (ändern): Fehlertext, Rechtename
+- `src/OVS.Client/ViewModels/ServerViewModel.cs`, `Views/SimpleDialogs.cs`, `Views/MainWindow.axaml` (ändern): Eingabefeld, Anzeige "3/5"
+- `tests/OVS.Tests/Server/ChannelCommandTests.cs`, `PermissionRulesTests.cs`, `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `UiSmokeTests.cs`, `SmokeTests.cs` (ändern)
+
+### Kontext
+
+`OnJoinChannel` und `OnMoveUser` in `ChannelCommands.cs` prüfen nur, ob der Channel existiert (Move zusätzlich `UserMove` und Rang). Beim Verbinden und beim Löschen eines Channels landen Nutzer im Standard-Channel (`data.DefaultChannelId`). Die Seitenleiste zeigt rechts an jedem Channel die Nutzerzahl.
+
+### Acceptance Criteria
+
+- [ ] AC1: Im Dialog "Channel bearbeiten" gibt es "Maximale Nutzer (0 = unbegrenzt)", 0 bis 999. Beim Standard-Channel ist das Feld gesperrt, der Server lehnt dort einen Wert über 0 mit `InvalidValue` ab.
+- [ ] AC2: Betreten eines vollen Channels ergibt `ChannelFull` ("Der Channel ist voll."), ausser mit `ChannelJoinFull`.
+- [ ] AC3: Verschieben in einen vollen Channel geht nur, wenn der Verschiebende `ChannelJoinFull` hat.
+- [ ] AC4: Wird das Limit unter die aktuelle Zahl gesenkt, bleiben alle drin, neu hinein kommt keiner.
+- [ ] AC5: Die Seitenleiste zeigt bei begrenzten Channels "3/5", bei unbegrenzten wie bisher nur die Zahl. Das neue Recht erscheint in der Gruppenverwaltung als "Volle Channel betreten".
+- [ ] AC6: Das Limit wird gespeichert und steht im Snapshot. `ProtocolInfo.Version` ist 5.
+
+### Tests (TDD)
+
+1. `ChannelCommandTests > "Join_Full_ChannelFull"`, `"Join_Full_WithRight_Allowed"` (AC2)
+2. `ChannelCommandTests > "Move_IntoFull_NeedsRightOfMover"` (AC3)
+3. `ChannelCommandTests > "Edit_DefaultChannelLimit_Invalid"`, `"Edit_LimitRange_0To999"` (AC1)
+4. `ChannelCommandTests > "Edit_LimitBelowCount_NobodyRemoved"` (AC4), `"Limit_PersistedAndInSnapshot"` (AC6)
+5. `PermissionRulesTests`: `All` enthält `ChannelJoinFull` (AC5)
+6. `ServerViewModelTests > "SlotText_LimitedAndUnlimited"` (AC5)
+7. `UiSmokeTests`: Feld im Dialog, "3/5" im Baum; `SmokeTests`: Version 5
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
+
+### Umsetzungsschritte
+
+1. Recht und Code, dann die Server-Tests rot, Prüfungen in Join, Move und Edit.
+2. Protokoll und Datenmodell, Snapshot.
+3. Client: Dialogfeld, Anzeige, Texte.
+
+### Out of Scope
+
+- Warteschlange für volle Channels
+- Limit beim Anlegen einstellen
+
+---
+
+## Package 36: Channels sortieren
+
+**Ziel:** Berechtigte ordnen Channels per Drag and Drop oder Kontextmenü neu, und alle sehen die neue Reihenfolge sofort.
+
+**Abhängigkeiten:** Package 18, 26
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs`, `ProtocolInfo.cs` (ändern): `ReorderChannels(IReadOnlyList<Guid> ChannelIds)`, Version 6
+- `src/OVS.Server/Commands/ChannelCommands.cs`, `ServerState.cs` (ändern): `OnReorderChannels`
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `ReorderChannelsAsync`, `MoveUp`/`MoveDown` am `ChannelViewModel`
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs` (ändern): Drag and Drop mit Einfügemarke, Kontextmenü
+- `src/OVS.Client/Logging/ClientLog.cs` (ändern)
+- `tests/OVS.Tests/Server/ChannelCommandTests.cs`, `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `UiSmokeTests.cs`, `ClientLogTests.cs`, `SmokeTests.cs` (ändern)
+
+### Kontext
+
+Channels haben ein `Order`-Feld, der Baum sortiert nach `Order`, dann nach Name. Ändern lässt sich `Order` bisher nur über `EditChannel` einzeln, die Oberfläche bietet dafür nichts. Gleiche `Order`-Werte kommen vor (neue Channels bekommen Maximum + 1, Seed-Daten gleiche Werte).
+
+### Acceptance Criteria
+
+- [ ] AC1: Mit `ChannelEdit` lässt sich ein Channel im Baum auf einen anderen ziehen. Eine Linie zeigt, wo er landet. Ohne das Recht startet kein Ziehen.
+- [ ] AC2: Das Kontextmenü hat "Nach oben" und "Nach unten", am Anfang bzw. Ende der Liste deaktiviert.
+- [ ] AC3: Der Server nimmt nur eine vollständige Liste aller Channel-IDs ohne Doppelte an, sonst `InvalidValue`, ohne Recht `PermissionDenied`. Danach sind die `Order`-Werte 0 bis n-1, gespeichert, und jeder geänderte Channel geht per `ChannelUpdated` an alle.
+- [ ] AC4: Alle Clients zeigen die neue Reihenfolge sofort. Das Server-Log vermerkt die Umsortierung.
+- [ ] AC5: `ProtocolInfo.Version` ist 6.
+
+### Tests (TDD)
+
+1. `ChannelCommandTests > "Reorder_SetsOrder_PersistsBroadcasts"` (AC3, AC4)
+2. `ChannelCommandTests > "Reorder_IncompleteDuplicateUnknown_Invalid"`, `"Reorder_WithoutRight_Denied"` (AC3)
+3. `ServerViewModelTests > "MoveUpDown_SendFullOrder_DisabledAtEdges"` (AC2)
+4. `ServerViewModelTests > "DropOnChannel_SendsOrderWithSourceBeforeTarget"`: die Einfüge-Logik liegt im ViewModel und ist ohne Maus testbar (AC1)
+5. `UiSmokeTests`: Kontextmenü enthält beide Einträge, ohne Recht ist Ziehen aus (AC1, AC2); `ClientLogTests`, `SmokeTests` (AC5)
+6. Manueller Check: echtes Ziehen mit der Maus, Einfügemarke sichtbar, beide Designs
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~SmokeTests"`
+
+### Umsetzungsschritte
+
+1. Server-Tests rot, `OnReorderChannels`.
+2. ViewModel-Logik (Hoch, Runter, Einfügen vor Ziel) mit Tests.
+3. Drag and Drop und Kontextmenü im Baum, manueller Check.
+
+### Out of Scope
+
+- Unter-Channels (A9: flache Liste)
+
+---
+
+## Package 37: Gruppen sortieren
+
+**Ziel:** Berechtigte ordnen Gruppen in der Verwaltung neu, und alle Gruppenlisten folgen dieser Reihenfolge.
+
+**Abhängigkeiten:** Package 18, 26
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs`, `ProtocolInfo.cs` (ändern): `ReorderGroups(IReadOnlyList<Guid> GroupIds)`, Version 7
+- `src/OVS.Server/Commands/AdminCommands.cs`, `ServerState.cs` (ändern): `OnReorderGroups`
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `Views/AdminView.axaml(.cs)` (ändern): Pfeil-Buttons, Drag and Drop
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): Gruppennamen am Nutzer in Gruppenreihenfolge
+- `src/OVS.Client/Logging/ClientLog.cs` (ändern)
+- `tests/OVS.Tests/Server/AdminCommandTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs`, `ServerViewModelTests.cs`, `UiSmokeTests.cs`, `SmokeTests.cs` (ändern)
+
+### Kontext
+
+`GroupInfo` hat kein Order-Feld. Die Reihenfolge ergibt sich aus `ServerData.Groups` und geht so im Snapshot und in `GroupsChanged` an alle. Der Rang hängt nur an den Rechten (`CanActOn`). `UserViewModel.GroupNames` folgt heute der Reihenfolge der Gruppen-IDs am Nutzer.
+
+### Acceptance Criteria
+
+- [ ] AC1: Mit `GroupsManage` hat jede Gruppe in der Verwaltung Pfeile nach oben und unten, und die Liste lässt sich per Drag and Drop umordnen.
+- [ ] AC2: Der Server nimmt nur eine vollständige Liste aller Gruppen-IDs an (sonst `InvalidValue`, ohne Recht `PermissionDenied`), ordnet `ServerData.Groups` um, speichert und sendet `GroupsChanged`.
+- [ ] AC3: Gruppenliste in der Verwaltung, Gruppenzuweisung bei Nutzern und der Gruppen-Tooltip am Nutzer folgen der neuen Reihenfolge, auch nach einem Server-Neustart.
+- [ ] AC4: Rechte und Rang ändern sich durch das Sortieren nicht. `ProtocolInfo.Version` ist 7.
+
+### Tests (TDD)
+
+1. `AdminCommandTests > "ReorderGroups_PersistsAndBroadcasts"`, `"ReorderGroups_IncompleteOrWithoutRight_Rejected"` (AC2, AC3)
+2. `AdminViewModelTests > "MoveGroupUpDown_SendsFullOrder"` und `"DropGroup_SendsOrder"` (AC1)
+3. `ServerViewModelTests > "GroupNames_FollowGroupOrder"` (AC3)
+4. `AdminCommandTests > "ReorderGroups_RankUnchanged"`: Moderator kann Admin weiterhin nicht kicken (AC4)
+5. `UiSmokeTests`: Pfeile in der Gruppenliste; `SmokeTests`: Version 7
+6. Manueller Check: Ziehen in der Gruppenliste
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminCommandTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
+
+### Umsetzungsschritte
+
+1. Server-Tests rot, `OnReorderGroups`.
+2. Verwaltung: Pfeile, Drag and Drop, Tests.
+3. Gruppennamen am Nutzer nach Gruppenreihenfolge.
+
+### Out of Scope
+
+- Rang nach Reihenfolge statt nach Rechten
+
+---
+
+## Package 38: Links-Übersicht
+
+**Ziel:** Berechtigte verlinken mehrere Channels auf einmal über eine Matrix in der Verwaltung.
+
+**Abhängigkeiten:** Package 10, 26
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs`, `ProtocolInfo.cs` (ändern): `SetChannelLinks(IReadOnlyList<LinkInfo> Add, IReadOnlyList<LinkInfo> Remove)`, Version 8
+- `src/OVS.Server/Commands/LinkCommands.cs`, `ServerState.cs` (ändern): `OnSetChannelLinks`, alles oder nichts
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (ändern): Links-Matrix, Auswahl, ausstehende Änderungen
+- `src/OVS.Client/Views/AdminView.axaml` (ändern): Tab "Links"
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `CanAdminister` schliesst `ChannelLink` ein
+- `src/OVS.Client/Logging/ClientLog.cs` (ändern)
+- `tests/OVS.Tests/Server/LinkCommandTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs`, `UiSmokeTests.cs`, `ClientLogTests.cs`, `SmokeTests.cs` (ändern)
+
+### Kontext
+
+`LinkChannels` und `UnlinkChannels` verarbeiten je ein Paar, die Oberfläche bietet das nur über das Kontextmenü eines Channels. Links sind ungerichtet und nicht transitiv (A5). Acht Channels vollständig zu verbinden, sind heute 28 Einzelschritte. Die Verwaltung ist nur mit `GroupsManage`, `GroupsAssign`, `UserBan` oder `ServerConfig` erreichbar.
+
+### Acceptance Criteria
+
+- [ ] AC1: Mit `ChannelLink` gibt es in der Verwaltung den Tab "Links" mit einer Matrix aller Channels. Ein Häkchen bedeutet Link. Ein Klick ändert beide gespiegelten Felder, die Diagonale ist leer.
+- [ ] AC2: Über eine Mehrfachauswahl verbindet "Alle ausgewählten miteinander verlinken" jeden mit jedem. "Links zwischen den ausgewählten entfernen" macht das Gegenteil.
+- [ ] AC3: Änderungen sind bis "Übernehmen" nur vorgemerkt und farblich markiert. "Verwerfen" setzt zurück. "Übernehmen" sendet eine einzige Anfrage.
+- [ ] AC4: Der Server prüft alles vorab: unbekannter Channel oder Selbst-Link ergibt `InvalidValue` und ändert nichts. Sonst speichert er einmal, sendet `ChannelsLinked` bzw. `ChannelsUnlinked` je Änderung und schreibt die Channel-Logs wie beim Einzel-Link. Bereits bestehende Links im Add-Teil sind kein Fehler.
+- [ ] AC5: Ändert ein anderer Admin gleichzeitig Links, zeigt die Matrix den neuen Stand, die eigenen vorgemerkten Änderungen bleiben markiert. `ProtocolInfo.Version` ist 8.
+
+### Tests (TDD)
+
+1. `LinkCommandTests > "SetLinks_AddAndRemove_OneSaveAllBroadcasts"` (AC4)
+2. `LinkCommandTests > "SetLinks_UnknownOrSelf_NothingChanged"`, `"SetLinks_WithoutRight_Denied"` (AC4)
+3. `AdminViewModelTests > "LinkMatrix_MeshOfEight_Sends28Links"` (AC2, AC3)
+   - Gegeben: 8 Channels ohne Links, alle ausgewählt
+   - Erwartet: nach "Übernehmen" eine Anfrage mit 28 Paaren, 0 Entfernungen
+4. `AdminViewModelTests > "LinkMatrix_ToggleDiscardAndRemoteChange"` (AC1, AC3, AC5)
+5. `UiSmokeTests`: Tab "Links" in beiden Designs; `ClientLogTests`, `SmokeTests` (AC5)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~LinkCommandTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~SmokeTests"`
+
+### Umsetzungsschritte
+
+1. Server-Tests rot, `OnSetChannelLinks` mit Vorabprüfung.
+2. Matrix-Logik im `AdminViewModel` mit Tests.
+3. Tab "Links", Zugang zur Verwaltung mit `ChannelLink`.
+
+### Out of Scope
+
+- Gerichtete oder transitive Links
+
+---
+
+## Package 39: Passwort speichern
+
+**Ziel:** Serverpasswörter lassen sich verschlüsselt mit dem Lesezeichen speichern.
+
+**Abhängigkeiten:** Package 26
+
+**Betroffene Dateien:**
+- `src/OVS.Client/OVS.Client.csproj` (ändern): Paket `System.Security.Cryptography.ProtectedData`
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `Bookmark.ProtectedPassword`, Schutz und Entschlüsseln
+- `src/OVS.Client/Views/SimpleDialogs.cs` (ändern): Checkbox "Passwort speichern", Vorbelegen aus dem Lesezeichen
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): `ConnectChoice.SavePassword`, Speichern nach Erfolg
+- `THIRD-PARTY-NOTICES.md` (ändern)
+- `tests/OVS.Tests/Client/SettingsTests.cs`, `MainViewModelTests.cs`, `UiSmokeTests.cs`, `ClientLogTests.cs` (ändern)
+
+### Kontext
+
+`Bookmark(Name, Host, Port, Nickname)` hat kein Passwort. Der Verbinden-Dialog fragt das Passwort jedes Mal ab. Das Client-Log schreibt nur "mit Passwort", nie das Passwort selbst.
+
+### Acceptance Criteria
+
+- [ ] AC1: Der Verbinden-Dialog hat "Passwort speichern", standardmässig aus. Wählbar ist es nur mit einem eingegebenen Passwort und "Als Lesezeichen speichern".
+- [ ] AC2: Das Passwort steht nach erfolgreicher Verbindung DPAPI-verschlüsselt im Lesezeichen. In `settings.json` taucht der Klartext nicht auf. Bei `WrongPassword` wird nichts gespeichert.
+- [ ] AC3: Ein Lesezeichen mit gespeichertem Passwort füllt das Feld im Dialog vor. Ein nicht entschlüsselbarer Wert (anderer Benutzer, beschädigt) gilt als nicht gespeichert und bricht nichts.
+- [ ] AC4: Das Passwort erscheint in keinem Log.
+
+### Tests (TDD)
+
+1. `SettingsTests > "Password_Protected_RoundTrip_NoPlainTextInFile"` (AC2)
+2. `SettingsTests > "Password_Garbage_TreatedAsNone"` (AC3)
+3. `MainViewModelTests > "Connect_SavePassword_OnlyAfterSuccess"` gegen `TestServer` mit Passwort, einmal falsch, einmal richtig (AC2)
+4. `UiSmokeTests`: Checkbox, aktiv nur mit Passwort und Lesezeichen, Vorbelegung (AC1, AC3)
+5. `ClientLogTests`: das Passwort steht nicht im Log (AC4)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~SettingsTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests"`
+
+### Umsetzungsschritte
+
+1. Schutz und Entschlüsseln mit Tests.
+2. Dialog und Speichern nach Erfolg.
+
+### Out of Scope
+
+- Direkt verbinden per Klick auf ein Lesezeichen (Package 40)
+- Identitätsschlüssel per DPAPI (A16)
+
+---
+
+## Package 40: Lesezeichen in der Seitenleiste
+
+**Ziel:** Ohne Verbindung zeigt die Seitenleiste die Lesezeichen, und ein Klick verbindet direkt.
+
+**Abhängigkeiten:** Package 39
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs` (ändern): Lesezeichen in der Seitenleiste, Kontextmenü, Hauptbereich ohne Liste
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): `ConnectBookmarkAsync`, Passwortabfrage bei Bedarf, `EditBookmark`, `DeleteBookmark`
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `Dialogs.AskPassword`, `Dialogs.EditBookmark`
+- `src/OVS.Client/Views/SimpleDialogs.cs` (ändern): Overlays "Passwort eingeben" und "Lesezeichen bearbeiten"
+- `tests/OVS.Tests/Client/MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Ohne Verbindung zeigt die Seitenleiste nur "Nicht verbunden", der Hauptbereich unter "Verbinden ..." die Lesezeichen als Kacheln. Ein Klick darauf öffnet den Verbinden-Dialog vorbelegt (`MainWindow.OnBookmarkClick`). Der Server antwortet auf ein fehlendes oder falsches Passwort mit `WrongPassword`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Ohne Verbindung zeigt die Seitenleiste die Lesezeichen mit Logo bzw. Buchstabe, Name und Nickname. Der Hauptbereich zeigt nur Logo, Status und "Verbinden ...".
+- [ ] AC2: Ein Klick verbindet sofort, mit gespeichertem Passwort, falls vorhanden. Der TOFU-Dialog erscheint wie bisher.
+- [ ] AC3: Bei `WrongPassword` fragt ein Overlay nach dem Passwort, mit "Passwort speichern". Richtig eingegeben verbindet es und speichert auf Wunsch. Abbrechen lässt den Client getrennt.
+- [ ] AC4: Das Kontextmenü eines Lesezeichens bietet "Verbinden", "Bearbeiten" und "Löschen". Löschen fragt nach. Bearbeiten ändert Name, Adresse, Port, Nickname und das gespeicherte Passwort (ändern oder entfernen). Alles bleibt nach einem Neustart erhalten.
+- [ ] AC5: Während einer Verbindung zeigt die Seitenleiste wie bisher die Channels.
+
+### Tests (TDD)
+
+1. `MainViewModelTests > "Bookmark_Connect_UsesSavedPassword"` (AC2)
+2. `MainViewModelTests > "Bookmark_WrongSavedPassword_AsksAndSavesNew"` und `"Bookmark_AskPassword_Cancel_StaysDisconnected"` (AC3)
+3. `MainViewModelTests > "Bookmark_EditAndDelete_Persist"` (AC4)
+4. `UiSmokeTests > "Bookmarks_InSidebar_WhenDisconnected"`: Lesezeichen in der Seitenleiste, keine Kachelliste im Hauptbereich, Kontextmenü mit drei Einträgen, nach dem Verbinden die Channels (AC1, AC4, AC5)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. Verbinden per Lesezeichen mit Passwortabfrage, Tests gegen `TestServer`.
+2. Bearbeiten und Löschen mit Tests.
+3. Seitenleiste und Hauptbereich umbauen, Screenshots beider Designs prüfen.
+
+### Out of Scope
+
+- Lesezeichen sortieren
+
+---
+
+## Package 41: Tastenliste
+
+**Ziel:** Tastenbelegungen sind eine frei erweiterbare Liste, in der eine Aktion auf mehreren Tasten liegen kann.
+
+**Abhängigkeiten:** Package 29
+
+**Betroffene Dateien:**
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (ändern): Liste statt `KeyRows`, Hinzufügen, Ändern, Löschen, Konfliktprüfung
+- `src/OVS.Client/Views/SettingsView.axaml(.cs)` (ändern): Liste, leerer Zustand, Button "Tastenaktion hinzufügen"
+- `src/OVS.Client/Views/SimpleDialogs.cs` (ändern): Overlay mit Aktion und Taste
+- `src/OVS.Client/Input/KeyBindings.cs`, `KeyPoller.cs` (ändern, falls nötig): eine Aktion ist aktiv, solange eine ihrer Tasten gedrückt ist
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): `TalkHint` mit allen PTT-Tasten
+- `tests/OVS.Tests/Client/KeyBindingTests.cs`, `SettingsTests.cs`, `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+`ClientSettings.KeyBindings` ist bereits eine Liste von `KeyBinding(Action, Chord)`. Die Oberfläche zeigt aber eine feste Zeile pro Aktion (`KeyBindingRow` für jedes Element von `KeyActions.All`) und damit genau eine Taste pro Aktion. `Conflict` erkennt heute dieselbe Taste auf zwei Zeilen.
+
+### Acceptance Criteria
+
+- [ ] AC1: Ohne Belegung zeigt die Einstellungsseite "Noch keine Tastenaktionen" und den Button "Tastenaktion hinzufügen".
+- [ ] AC2: Der Button öffnet ein Overlay mit Dropdown (Push-to-Talk, Link-PTT, Push-to-Mute, Mikrofon an/aus, Ton an/aus) und "Taste festlegen". Speichern geht erst mit Aktion und Taste. Danach steht die Zeile in der Liste.
+- [ ] AC3: Jede Zeile hat "Ändern" (dasselbe Overlay vorbelegt) und "Löschen".
+- [ ] AC4: Dieselbe Aktion darf auf mehreren Tasten liegen, z. B. Push-to-Mute auf Maustaste 4 und 5. Beide wirken, und die Aktion endet erst, wenn keine ihrer Tasten mehr gedrückt ist.
+- [ ] AC5: Dieselbe Taste auf zwei verschiedenen Aktionen und doppelte Zeilen blockieren das Speichern der Einstellungen mit Hinweis.
+- [ ] AC6: Bestehende Profile zeigen ihre Belegungen unverändert als Liste. Unter dem eigenen Namen steht bei mehreren PTT-Tasten z. B. "PTT: Maus 4, Maus 5".
+
+### Tests (TDD)
+
+1. `KeyBindingTests > "SameActionTwoKeys_EitherHolds_EndsWhenBothUp"` (AC4)
+2. `SettingsTests > "KeyList_StartsEmpty_AddEditRemove"` (AC1 bis AC3)
+3. `SettingsTests > "KeyList_SameKeyTwoActions_BlocksSave"` und `"KeyList_SameActionTwoKeys_Saves"` (AC4, AC5)
+4. `SettingsTests > "KeyList_ExistingProfile_ShownAsList"` (AC6)
+5. `MainViewModelTests > "TalkHint_ListsAllPttKeys"` (AC6)
+6. `UiSmokeTests`: leerer Zustand, Overlay öffnet sich im Hauptfenster (A20), Zeile mit "Ändern" und "Löschen" (AC1 bis AC3)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~KeyBindingTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. Test für mehrere Tasten pro Aktion, rot oder schon grün, dann ggf. `KeyPoller` anpassen.
+2. `SettingsViewModel` auf die Liste umbauen, Konfliktprüfung.
+3. Overlay und Einstellungsseite, Screenshots beider Designs.
+
+### Out of Scope
+
+- Neue Aktionen
+
+---
+
+## Package 42: Client-Release per GitHub Actions
+
+**Ziel:** Jeder Push auf `main` veröffentlicht nach grünen Tests die Client-exe als versioniertes GitHub-Release.
+
+**Abhängigkeiten:** Package 19
+
+**Betroffene Dateien:**
+- `.github/workflows/release.yml` (neu)
+- `Directory.Build.props` (ändern): Build-Zeit, Commit und CI-Kennzeichen als `AssemblyMetadata`
+- `src/OVS.Shared/BuildInfo.cs` (neu): Rohdaten lesen, Version formatieren wie in PersonalEinsatzPlanung
+- `src/OVS.Server/Program.cs` (ändern): `--version`, Version beim Start im Log
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (ändern): Abschnitt "Über" mit Version, Commit, Build-Zeit
+- `README.md` (ändern): Releases, Download
+- `tests/OVS.Tests/Shared/BuildInfoTests.cs` (neu), `tests/OVS.Tests/Client/UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Es gibt keinen Workflow und keine Version, die exe baut man lokal mit `dotnet publish` (README). PersonalEinsatzPlanung (`build/buildDefines.ts`, `src/ui/app/buildInfo.ts`, `.github/workflows/deploy.yml`) bettet nur Rohdaten ein, formatiert daraus `DDMMYY.<stamp>` bzw. `dev.<stamp>` und legt pro Deploy ein Release `deploy-<sha7>` mit den Commit-Nachrichten an (A38). Die Client-Tests brauchen Windows (`GetAsyncKeyState`, NAudio).
+
+### Acceptance Criteria
+
+- [ ] AC1: `BuildInfo.Format` liefert für CI-Builds `DDMMYY.<stamp>` und lokal `dev.<stamp>`. Der Stamp sind die Sekunden seit UTC-Mitternacht in Base36 mit genau 4 Stellen (00:00:00 = `0000`, 23:59:59 = `1unz`).
+- [ ] AC2: Die Build-Zeit kommt aus der Umgebungsvariable `OVS_BUILD_TIME`, sonst aus dem Build-Zeitpunkt. Commit und CI-Kennzeichen kommen aus `GITHUB_SHA` und `GITHUB_ACTIONS`.
+- [ ] AC3: `OVS.Server --version` gibt die Version aus. Der Server schreibt sie beim Start ins Log, die Einstellungen des Clients zeigen Version, Commit und Build-Zeit.
+- [ ] AC4: Der Workflow läuft bei Pull Requests und Pushes auf `main`: Tests auf `windows-latest`. Nur bei Pushes auf `main` baut er danach die exe (self-contained, eine Datei, ohne `.pdb`) mit einer einmal festgelegten `OVS_BUILD_TIME`.
+- [ ] AC5: Danach legt er das Release `deploy-<sha7>` an, Titel `OpenVoiceSpeak <Version>`, Notizen die Commit-Nachrichten seit dem letzten Release, Anhänge `OVS.Client.exe` und `OVS.Client.exe.sha256`. Rote Tests erzeugen kein Release.
+- [ ] AC6 (manuell): Nach dem ersten Push läuft der Workflow grün, das Release ist ohne Anmeldung herunterladbar, und die exe zeigt dieselbe Version wie der Release-Titel.
+
+### Tests (TDD)
+
+1. `BuildInfoTests > "Format_CiBuild_DayMonthYearAndStamp"`, `"Format_LocalBuild_Dev"`, `"Stamp_MidnightAndLastSecond"` (AC1)
+2. `BuildInfoTests > "FromMetadata_MissingValues_DevWithNow"` (AC2)
+3. `UiSmokeTests`: Einstellungen zeigen die Version (AC3)
+4. Manueller Check AC6 nach dem Push, Workflow-Syntax vorab mit `actionlint` (falls installiert)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~BuildInfoTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. `BuildInfo` testgetrieben, dann `Directory.Build.props`.
+2. `--version` und Anzeige im Client.
+3. Workflow mit den Jobs `test`, `client`, `release`. Die Version für den Titel liefert `OVS.Server --version`, damit das Format nur an einer Stelle steht.
+
+### Out of Scope
+
+- Signieren der exe
+- Update-Prüfung (Package 43), Server-Image (Package 44)
+
+---
+
+## Package 43: Update-Prüfung im Client
+
+**Ziel:** Der Client erkennt neue Releases und installiert sie auf Wunsch selbst.
+
+**Abhängigkeiten:** Package 42
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Net/UpdateChecker.cs` (neu): neuestes Release über `api.github.com` lesen und mit dem eigenen Build vergleichen
+- `src/OVS.Client/Net/UpdateInstaller.cs` (neu): Download, SHA-256-Prüfung, Selbstersetzung, Aufräumen
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `CheckForUpdates` (Standard an)
+- `src/OVS.Client/ViewModels/MainViewModel.cs`, `SettingsViewModel.cs`, `Views/SettingsView.axaml`, `Views/SimpleDialogs.cs` (ändern): Prüfung beim Start, Button, Overlay
+- `src/OVS.Client/Program.cs` (ändern): alte exe beim Start löschen
+- `README.md` (ändern): Update und Hinweis auf die Anfrage an GitHub
+- `tests/OVS.Tests/Client/UpdateCheckerTests.cs`, `UpdateInstallerTests.cs` (neu), `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Ab Package 42 kennt der Client Commit und Build-Zeit, und jedes Release heisst `deploy-<sha7>` mit der exe und ihrer SHA-256-Datei. Das Repo ist öffentlich (A39), die Releases-API braucht also kein Token. Windows erlaubt, eine laufende exe umzubenennen, nicht aber sie zu überschreiben.
+
+### Acceptance Criteria
+
+- [ ] AC1: Ein Update gilt als verfügbar, wenn das neueste Release einen anderen Commit hat, nach der eigenen Build-Zeit veröffentlicht wurde und beide Anhänge hat. `dev`-Builds prüfen nie.
+- [ ] AC2: Beim Start (wenn eingeschaltet) und per "Nach Updates suchen" fragt ein Overlay "Version X ist verfügbar. Jetzt installieren?" mit den Notizen. "Später" fragt erst beim nächsten Start wieder.
+- [ ] AC3: Nach "Installieren" lädt der Client die exe, prüft den Hash, ersetzt sich und startet die neue Version. Bei falschem Hash oder Abbruch bleibt die alte exe unverändert, mit Meldung.
+- [ ] AC4: Eine übrig gebliebene alte exe wird beim nächsten Start gelöscht.
+- [ ] AC5: Netzwerkfehler und Rate-Limit von GitHub stören nicht: nur ein Eintrag im Client-Log, beim Button zusätzlich eine Meldung.
+- [ ] AC6 (manuell): Echte Aktualisierung von einem Release auf das nächste unter Windows, inklusive SmartScreen-Hinweis.
+
+### Tests (TDD)
+
+1. `UpdateCheckerTests` mit einem Fake-`HttpMessageHandler`: `"NewerRelease_Offered"`, `"SameCommit_NotOffered"`, `"OlderRelease_NotOffered"`, `"MissingAsset_NotOffered"`, `"DevBuild_NeverAsks"`, `"HttpError_NoUpdate_Logged"` (AC1, AC5)
+2. `UpdateInstallerTests` in einem Temp-Ordner: `"HashMismatch_NothingReplaced"`, `"Success_NewInPlace_OldRenamed"`, `"Cleanup_DeletesOldExe"` (AC3, AC4)
+3. `MainViewModelTests > "StartupCheck_Prompt_LaterDoesNothing"` mit Fake-Checker (AC2)
+4. `UiSmokeTests`: Overlay und Button in den Einstellungen (AC2)
+5. Manueller Check AC6
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~UpdateCheckerTests|FullyQualifiedName~UpdateInstallerTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. `UpdateChecker` testgetrieben.
+2. `UpdateInstaller` testgetrieben, der Neustart hinter einer Schnittstelle, damit Tests nichts starten.
+3. Einstellungen, Start-Prüfung, Overlay.
+
+### Out of Scope
+
+- Automatische Updates ohne Nachfrage, Delta-Updates, Update-Kanäle
+
+---
+
+## Package 44: Server-Image in der GitHub Container Registry
+
+**Ziel:** Jedes Release stellt das Server-Image für amd64 und arm64 als öffentliches Package bereit, und Compose nutzt es direkt.
+
+**Abhängigkeiten:** Package 42
+
+**Betroffene Dateien:**
+- `.github/workflows/release.yml` (ändern): Job `image` mit QEMU, Buildx, Login bei `ghcr.io`, Push für beide Architekturen
+- `Dockerfile` (ändern): `OVS_BUILD_TIME` und Commit als Build-Argumente, Label `org.opencontainers.image.source`
+- `docker-compose.yml` (ändern): `image: ghcr.io/rezondes/openvoicespeak-server:latest` statt `build`
+- `docker-compose.build.yml` (neu): lokaler Build als Zusatzdatei
+- `README.md` (ändern): Installation ohne `git clone`, Update mit `pull`, lokaler Build
+- `PLAN.md` (ändern): A15 als ersetzt markieren
+
+### Kontext
+
+Das `Dockerfile` baut bereits für amd64 und arm64 (Cross-Compile über `$BUILDPLATFORM`). Die README beschreibt `git clone` und `docker compose up -d --build` auf dem Server. A15 schloss eine Registry bisher aus.
+
+### Acceptance Criteria
+
+- [ ] AC1: Nach grünen Tests auf `main` baut der Workflow das Image für `linux/amd64` und `linux/arm64` und pusht es mit den Tags `latest` und der Version aus Package 42. Das Release entsteht erst, wenn exe und Image fertig sind.
+- [ ] AC2: `OVS.Server --version` im Image zeigt dieselbe Version wie die exe im selben Release.
+- [ ] AC3: `docker-compose.yml` zieht das fertige Image. `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build` baut weiter lokal.
+- [ ] AC4: Die README beschreibt die Installation nur mit der Compose-Datei und das Update mit `docker compose pull && docker compose up -d`. Daten und Zertifikat bleiben im Volume.
+- [ ] AC5 (manuell): Nach dem ersten Push und dem einmaligen Umstellen des Packages auf "public" (A39) klappt `docker pull ghcr.io/rezondes/openvoicespeak-server:latest` ohne Anmeldung auf amd64 und arm64. Der Fingerprint bleibt beim Wechsel vom lokal gebauten Image erhalten.
+
+### Tests (TDD)
+
+Die Änderungen sind Workflow und Konfiguration, automatisiert prüfbar ist wenig:
+
+1. `docker compose config` mit und ohne `docker-compose.build.yml` läuft ohne Fehler, lokal vor dem Commit (AC3)
+2. Lokaler Build mit `--build-arg OVS_BUILD_TIME=...`, danach `docker run --rm <image> --version` (AC2)
+3. Manueller Check AC1 und AC5 nach dem Push
+
+Testbefehl: `docker compose -f docker-compose.yml -f docker-compose.build.yml config` und `dotnet test` (unverändert grün)
+
+### Umsetzungsschritte
+
+1. `Dockerfile` und Compose-Dateien, lokal prüfen.
+2. Job `image` im Workflow, `release` hängt von `client` und `image` ab.
+3. README, A15 in PLAN.md als ersetzt markieren.
+
+### Out of Scope
+
+- Docker Hub
+- Signieren der Images

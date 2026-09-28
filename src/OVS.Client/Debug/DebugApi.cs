@@ -240,7 +240,7 @@ public sealed class DebugApi : IDisposable
             vm.Status,
             Connected = s is not null,
             vm.TransmitText,
-            vm.LinkHint,
+            vm.VoiceHint,
             vm.PingText,
             Notices = vm.Notices.Take(50).Select(n => n.ToString()).ToList(),
             Server = s is null ? null : new

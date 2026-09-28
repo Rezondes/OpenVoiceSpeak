@@ -58,10 +58,12 @@ public sealed partial class ServerState
         if (channel.Name != name) changes.Add($"Name '{channel.Name}' -> '{name}'");
         if (channel.Description != description) changes.Add("Beschreibung geändert");
         if (channel.Order != r.Order) changes.Add($"Reihenfolge {channel.Order} -> {r.Order}");
+        if (channel.IsMuted != r.IsMuted) changes.Add(r.IsMuted ? "stumm geschaltet" : "Stummschaltung aufgehoben");
 
         channel.Name = name;
         channel.Description = description;
         channel.Order = r.Order;
+        channel.IsMuted = r.IsMuted;
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));

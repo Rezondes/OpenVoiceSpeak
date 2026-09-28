@@ -75,6 +75,29 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.Equal(new ChannelInfo(raid.Id, "Raid 2", "neu", 5), updated.Channel);
     }
 
+    /// <summary>Package 34: the mute flag is stored, logged and in the snapshot of new clients.</summary>
+    [Fact]
+    public async Task Edit_SetsMuted_PersistsLogsBroadcasts()
+    {
+        var raid = await CreateAsync("Raid");
+        await a.SendAsync(new EditChannel(raid.Id, "Raid", "", raid.Order, IsMuted: true));
+        Assert.True((await g.WaitForAsync<ChannelUpdated>()).Channel.IsMuted);
+
+        await using var late = await TestClient.ConnectAsync(server, "spaet");
+        Assert.True(late.Welcome.Snapshot.Channels.Single(c => c.Id == raid.Id).IsMuted);
+        Assert.Contains("\"isMuted\": true", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
+        var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", raid.Id.ToString())).Single();
+        using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        Assert.Contains("stumm geschaltet", new StreamReader(stream).ReadToEnd());
+    }
+
+    [Fact]
+    public async Task Edit_Muted_WithoutRight_Denied()
+    {
+        await g.SendAsync(new EditChannel(Lobby, "Lobby", "", 0, IsMuted: true) { RequestId = "e" });
+        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("e")).Code);
+    }
+
     [Fact]
     public async Task Edit_DescriptionTooLong_InvalidValue()
     {

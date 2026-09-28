@@ -71,7 +71,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] AdminViewModel? adminPage;
     [ObservableProperty] string pingText = "";
     [ObservableProperty] string transmitText = "";
-    [ObservableProperty] string linkHint = "";
+    [ObservableProperty] string voiceHint = "";
 
     /// <param name="useAudioDevices">False runs without microphone and speaker (tests, debug API with test tone).</param>
     public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true, ClientLog? log = null)
@@ -265,7 +265,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     }
 
     /// <summary>Every connection starts a fresh chat (A27), with the earlier notices so none get lost.</summary>
-    partial void OnServerChanged(ServerViewModel? value) => Chat = value is null ? null : new ChatViewModel(value, Notices.Reverse());
+    partial void OnServerChanged(ServerViewModel? oldValue, ServerViewModel? newValue)
+    {
+        if (oldValue is not null) oldValue.StateChanged -= SyncAudioFlags;
+        if (newValue is not null) newValue.StateChanged += SyncAudioFlags; // e.g. the own channel was muted (Package 34)
+        Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
+        SyncAudioFlags();
+    }
 
     void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs e) => SyncAudioFlags();
 
@@ -276,6 +282,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.SelfMuted = s?.SelfMuted ?? true;
         Audio.Deafened = s?.SelfDeafened ?? false;
         Audio.HasSpeakLinked = s?.HasSpeakLinked ?? false;
+        Audio.ChannelMuted = s?.CurrentChannel?.IsMuted == true;
     }
 
     /// <summary>UI timer, every 100 ms.</summary>
@@ -286,9 +293,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         PingText = connection?.LastRoundTrip is { } rtt
             ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.Reachable == false ? ", UDP nicht erreichbar" : "")
             : "";
-        LinkHint = Keys.LinkPttDown && Server is { HasSpeakLinked: false }
-            ? "Kein Recht für Link-Übertragungen: du sprichst nur im eigenen Channel."
-            : "";
+        VoiceHint = Server switch
+        {
+            { CurrentChannel.IsMuted: true } => "Stummer Channel: niemand hört dich.",
+            { HasSpeakLinked: false } when Keys.LinkPttDown => "Kein Recht für Link-Übertragungen: du sprichst nur im eigenen Channel.",
+            _ => "",
+        };
     }
 
     /// <summary>Logs "reachable" once, or "not reachable" when nothing came back within 5 s (then "reachable" if it recovers).</summary>

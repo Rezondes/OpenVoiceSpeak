@@ -28,6 +28,25 @@ public class VoiceRoutingTests
     static uint[] Route(Session sender, byte target, params Session[] others) =>
         VoiceRouting.Recipients([sender, .. others], sender, target, Linked).Select(s => s.Id).Order().ToArray();
 
+    /// <summary>Package 34: in a muted channel nobody is heard, not even an admin via link.</summary>
+    [Theory]
+    [InlineData(VoiceHeader.TargetChannel)]
+    [InlineData(VoiceHeader.TargetLinked)]
+    public void Recipients_MutedChannel_NobodyHearsSender(byte target)
+    {
+        var admin = S(1, A, Permission.All);
+        var heard = VoiceRouting.Recipients([admin, S(2, A), S(3, B)], admin, target, Linked, ch => ch == A);
+        Assert.Empty(heard);
+    }
+
+    [Fact]
+    public void Recipients_LinkIntoMutedChannel_Heard()
+    {
+        var sender = S(1, B);
+        var heard = VoiceRouting.Recipients([sender, S(2, A), S(3, B)], sender, VoiceHeader.TargetLinked, Linked, ch => ch == A);
+        Assert.Equal([2u, 3u], heard.Select(s => s.Id).Order());
+    }
+
     [Fact]
     public void Target0_LinkedChannel_OnlyOwnChannel()
     {

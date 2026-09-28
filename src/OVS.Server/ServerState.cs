@@ -223,7 +223,7 @@ public sealed partial class ServerState
         lock (gate)
         {
             if (!sessions.TryGetValue(sender.Id, out var current) || current != sender) return ([], 0);
-            return (VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels),
+            return (VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels, id => FindChannel(id)?.IsMuted == true),
                 VoiceRouting.EffectiveTarget(sender, requestedTarget));
         }
     }
@@ -286,7 +286,7 @@ public sealed partial class ServerState
     static UserInfo Info(Session s) =>
         new(s.Id, s.Fingerprint, s.Nickname, s.ChannelId, s.SelfMuted, s.SelfDeafened, s.ServerMuted, s.Permissions, s.GroupIds);
 
-    static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order);
+    static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order, c.IsMuted);
 
     ServerSettingsInfo SettingsInfo() =>
         new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.PasswordHash is not null, icon.Hash);

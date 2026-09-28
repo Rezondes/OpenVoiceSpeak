@@ -140,6 +140,8 @@
                                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}" />
                           <PathIcon Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
                                     ToolTip.Tip="Standard-Channel" VerticalAlignment="Center" />
+                          <PathIcon Classes="sm warning" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
+                                    ToolTip.Tip="Stummer Channel: niemand wird gehört" VerticalAlignment="Center" />
                           <Border Classes="chip" IsVisible="{Binding IsLinked}" ToolTip.Tip="{Binding LinkedNames, StringFormat='Verlinkt mit {0}'}">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                               <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" />
@@ -307,10 +309,10 @@
           </Border>
 
           <Border DockPanel.Dock="Top" Classes="banner warning" Margin="20,12,20,0"
-                  IsVisible="{Binding LinkHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                  IsVisible="{Binding VoiceHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" />
-              <TextBlock Classes="warning" Text="{Binding LinkHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <TextBlock Classes="warning" Text="{Binding VoiceHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
             </StackPanel>
           </Border>
 

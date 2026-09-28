@@ -31,6 +31,8 @@ public sealed class ClientLog
                 return $"Channel '{m.Channel.Name}' angelegt";
             case ChannelUpdated m:
                 var before = mirror.Channels.GetValueOrDefault(m.Channel.Id);
+                if (before is not null && before.IsMuted != m.Channel.IsMuted)
+                    return $"Channel '{m.Channel.Name}' {(m.Channel.IsMuted ? "ist jetzt stumm" : "ist nicht mehr stumm")}";
                 return before is null || before.Name == m.Channel.Name
                     ? $"Channel '{m.Channel.Name}' geändert"
                     : $"Channel '{before.Name}' umbenannt in '{m.Channel.Name}'";
@@ -96,7 +98,7 @@ public sealed class ClientLog
         {
             JoinChannel r => $"Channel {Channel(r.ChannelId)} betreten",
             CreateChannel r => $"Channel '{r.Name}' anlegen",
-            EditChannel r => $"Channel {Channel(r.ChannelId)} bearbeiten: Name '{r.Name}', Reihenfolge {r.Order}",
+            EditChannel r => $"Channel {Channel(r.ChannelId)} bearbeiten: Name '{r.Name}', Reihenfolge {r.Order}, stumm {YesNo(r.IsMuted)}",
             DeleteChannel r => $"Channel {Channel(r.ChannelId)} löschen",
             MoveUser r => $"{Nick(r.SessionId)} nach {Channel(r.ChannelId)} verschieben",
             SetSelfState r => $"Eigener Status: stumm {YesNo(r.Muted)}, taub {YesNo(r.Deafened)}",
