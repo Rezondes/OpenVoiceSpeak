@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:OVS.Client.Localization"
              xmlns:vm="using:OVS.Client.ViewModels"
              xmlns:v="using:OVS.Client.Views"
              x:Class="OVS.Client.Views.ChatView"
@@ -7,7 +8,7 @@
   <DockPanel>
     <!-- Tabs: "Allgemein" and the current channel -->
     <Border DockPanel.Dock="Top" Padding="16,0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
-      <TabStrip ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="Chat-Tabs">
+      <TabStrip ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{x:Static l:Strings.Ui_ChatTabs}">
         <TabStrip.ItemTemplate>
           <DataTemplate x:DataType="vm:ChatTab">
             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -16,12 +17,12 @@
               <PathIcon Classes="sm" Data="{StaticResource Icon.Person}" IsVisible="{Binding IsPrivate}" />
               <TextBlock Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis"
                          Classes.offline="{Binding !IsOnline}" />
-              <Border Classes="count" IsVisible="{Binding HasUnread}" ToolTip.Tip="Ungelesen"
-                      AutomationProperties.Name="{Binding Unread, StringFormat='{}{0} ungelesen'}">
+              <Border Classes="count" IsVisible="{Binding HasUnread}" ToolTip.Tip="{x:Static l:Strings.Ui_Unread}"
+                      AutomationProperties.Name="{Binding Unread, StringFormat={x:Static l:Strings.Ui_UnreadFmt}}">
                 <TextBlock Text="{Binding Unread}" />
               </Border>
               <Button Classes="icon tabClose" Command="{Binding CloseCommand}" IsVisible="{Binding IsPrivate}"
-                      ToolTip.Tip="Tab schliessen" AutomationProperties.Name="{Binding Title, StringFormat='{}{0} schliessen'}">
+                      ToolTip.Tip="{x:Static l:Strings.Ui_CloseTab}" AutomationProperties.Name="{Binding Title, StringFormat={x:Static l:Strings.Ui_CloseFmt}}">
                 <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
               </Button>
             </StackPanel>
@@ -44,12 +45,12 @@
       </StackPanel>
       <DockPanel>
         <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding SendCommand}" Margin="8,0,0,0" VerticalAlignment="Bottom"
-                MinHeight="36" ToolTip.Tip="Senden (Enter)" AutomationProperties.Name="Senden">
+                MinHeight="36" ToolTip.Tip="{x:Static l:Strings.Ui_SendEnter}" AutomationProperties.Name="{x:Static l:Strings.Ui_Send}">
           <PathIcon Data="{StaticResource Icon.Send}" />
         </Button>
         <TextBox x:Name="Composer" Text="{Binding Draft}" Watermark="{Binding Placeholder}" IsEnabled="{Binding CanWrite}"
                  AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="160" MinHeight="36"
-                 AutomationProperties.Name="Nachricht" />
+                 AutomationProperties.Name="{x:Static l:Strings.Ui_Message}" />
       </DockPanel>
       <TextBlock Classes="caption" Classes.danger="{Binding IsTooLong}" Text="{Binding CounterText}" IsVisible="{Binding ShowCounter}"
                  HorizontalAlignment="Right" />
@@ -74,7 +75,7 @@
                 <StackPanel Margin="12,0,0,0" Spacing="2">
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Classes="author" Classes.own="{Binding IsOwn}" Text="{Binding From}" />
-                    <TextBlock Classes="caption" Text="(du)" IsVisible="{Binding IsOwn}" VerticalAlignment="Center" />
+                    <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsOwn}" VerticalAlignment="Center" />
                     <TextBlock Classes="caption" Text="{Binding TimeText}" VerticalAlignment="Center" />
                   </StackPanel>
                   <SelectableTextBlock Classes="message" Text="{Binding Text}" />
@@ -92,7 +93,7 @@
                     <PathIcon Classes="danger" Data="{StaticResource Icon.ErrorCircle}" IsVisible="{Binding IsError}" />
                   </Panel>
                   <StackPanel Spacing="2">
-                    <TextBlock Classes="caption" Text="Willkommensnachricht des Servers" IsVisible="{Binding IsWelcome}" />
+                    <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_WelcomeMessage}" IsVisible="{Binding IsWelcome}" />
                     <SelectableTextBlock Classes="message" Text="{Binding Text}" />
                   </StackPanel>
                 </DockPanel>

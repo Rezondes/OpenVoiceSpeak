@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:OVS.Client.Localization"
         xmlns:vm="using:OVS.Client.ViewModels"
         xmlns:s="using:OVS.Client.Settings"
         xmlns:v="using:OVS.Client.Views"
@@ -21,7 +22,7 @@
           <DockPanel>
             <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding Server.NewChannelCommand, FallbackValue={x:Null}}"
                     IsVisible="{Binding Server.CanCreateChannel, FallbackValue=False}"
-                    ToolTip.Tip="Channel anlegen" AutomationProperties.Name="Channel anlegen">
+                    ToolTip.Tip="{x:Static l:Strings.Dialog_CreateChannel}" AutomationProperties.Name="{x:Static l:Strings.Dialog_CreateChannel}">
               <PathIcon Data="{StaticResource Icon.Add}" />
             </Button>
             <!-- Server logo (Package 30), otherwise the first letter of the server name -->
@@ -38,8 +39,8 @@
               <TextBlock Classes="h2" Text="{Binding Server.ServerName, FallbackValue='OpenVoiceSpeak'}" TextTrimming="CharacterEllipsis" />
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Ellipse Classes="dot" Classes.online="{Binding IsConnected}" VerticalAlignment="Center" />
-                <TextBlock Classes="caption" Text="Verbunden" IsVisible="{Binding IsConnected}" />
-                <TextBlock Classes="caption" Text="Nicht verbunden" IsVisible="{Binding !IsConnected}" />
+                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Connected}" IsVisible="{Binding IsConnected}" />
+                <TextBlock Classes="caption" Text="{x:Static l:Strings.Status_NotConnected}" IsVisible="{Binding !IsConnected}" />
               </StackPanel>
             </StackPanel>
           </DockPanel>
@@ -52,7 +53,7 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
               <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfMuted, Mode=OneWay, FallbackValue=False}"
                             Command="{Binding Server.ToggleMuteCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
-                            ToolTip.Tip="Mikrofon stummschalten" AutomationProperties.Name="Mikrofon stummschalten">
+                            ToolTip.Tip="{x:Static l:Strings.Ui_MuteMic}" AutomationProperties.Name="{x:Static l:Strings.Ui_MuteMic}">
                 <Panel>
                   <PathIcon Data="{StaticResource Icon.Mic}" IsVisible="{Binding !Server.SelfMuted, FallbackValue=True}" />
                   <PathIcon Data="{StaticResource Icon.MicOff}" IsVisible="{Binding Server.SelfMuted, FallbackValue=False}" />
@@ -60,13 +61,13 @@
               </ToggleButton>
               <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfDeafened, Mode=OneWay, FallbackValue=False}"
                             Command="{Binding Server.ToggleDeafenCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
-                            ToolTip.Tip="Ton aus (Lautsprecher und Mikrofon)" AutomationProperties.Name="Ton aus">
+                            ToolTip.Tip="{x:Static l:Strings.Ui_DeafenTip}" AutomationProperties.Name="{x:Static l:Strings.Ui_Deafen}">
                 <Panel>
                   <PathIcon Data="{StaticResource Icon.Headphones}" IsVisible="{Binding !Server.SelfDeafened, FallbackValue=True}" />
                   <PathIcon Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
-              <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
+              <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_Settings}" AutomationProperties.Name="{x:Static l:Strings.Ui_Settings}">
                 <PathIcon Data="{StaticResource Icon.Settings}" />
               </Button>
             </StackPanel>
@@ -79,14 +80,14 @@
               </Border>
             </Border>
             <StackPanel Margin="8,0,4,0" VerticalAlignment="Center">
-              <TextBlock Classes="h2" FontSize="14" Text="{Binding Server.Self.Nickname, FallbackValue='Nicht verbunden'}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="h2" FontSize="14" Text="{Binding Server.Self.Nickname, FallbackValue={x:Static l:Strings.Status_NotConnected}}" TextTrimming="CharacterEllipsis" />
               <TextBlock Classes="caption speaking" Text="{Binding TransmitText}" TextTrimming="CharacterEllipsis"
                          IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <Panel IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
                 <TextBlock Classes="caption" Text="{Binding TalkHint}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNoPttBinding}" />
                 <!-- Without a PTT key nobody can talk: the hint leads straight to the settings. -->
                 <Button Classes="hint" Command="{Binding OpenSettingsCommand}" IsVisible="{Binding HasNoPttBinding}"
-                        ToolTip.Tip="Taste in den Einstellungen belegen">
+                        ToolTip.Tip="{x:Static l:Strings.Ui_AssignKeyHint}">
                   <StackPanel Orientation="Horizontal" Spacing="4">
                     <PathIcon Classes="sm warning" Data="{StaticResource Icon.Warning}" />
                     <TextBlock Classes="caption warning" Text="{Binding TalkHint}" />
@@ -102,31 +103,31 @@
           <!-- Not connected: the bookmarks (Package 40) -->
           <ScrollViewer Padding="8,10" IsVisible="{Binding !IsConnected}">
             <StackPanel Spacing="2">
-              <TextBlock Classes="section" Text="LESEZEICHEN" Margin="10,4,0,6" />
+              <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_BookmarksSection}" Margin="10,4,0,6" />
               <TextBlock Classes="caption" Margin="10,0" TextWrapping="Wrap" IsVisible="{Binding !HasBookmarks}"
-                         Text="Noch keine Lesezeichen. Verbinde dich über &quot;Verbinden ...&quot; und speichere den Server als Lesezeichen." />
+                         Text="{x:Static l:Strings.Ui_NoBookmarks}" />
               <ItemsControl ItemsSource="{Binding Bookmarks}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:BookmarkItem">
                     <Button Classes="bookmark" Click="OnBookmarkClick" ToolTip.Tip="{Binding Address}"
-                            AutomationProperties.Name="{Binding Name, StringFormat='Mit {0} verbinden'}">
+                            AutomationProperties.Name="{Binding Name, StringFormat={x:Static l:Strings.Ui_ConnectToFmt}}">
                       <Button.ContextMenu>
                         <ContextMenu>
-                          <MenuItem Header="Verbinden" Click="OnBookmarkClick">
+                          <MenuItem Header="{x:Static l:Strings.Dlg_Connect}" Click="OnBookmarkClick">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.PlugConnected}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="Bearbeiten ..." Click="OnBookmarkEdit">
+                          <MenuItem Header="{x:Static l:Strings.Ui_EditMenu}" Click="OnBookmarkEdit">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Edit}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
                           <Separator />
-                          <MenuItem Header="Löschen ..." Click="OnBookmarkDelete">
+                          <MenuItem Header="{x:Static l:Strings.Ui_DeleteMenu}" Click="OnBookmarkDelete">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Delete}" Classes="sm danger" /></MenuItem.Icon>
                           </MenuItem>
                         </ContextMenu>
                       </Button.ContextMenu>
                       <DockPanel>
                         <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.LockClosed}"
-                                  IsVisible="{Binding HasSavedPassword}" ToolTip.Tip="Passwort gespeichert" />
+                                  IsVisible="{Binding HasSavedPassword}" ToolTip.Tip="{x:Static l:Strings.Ui_PasswordSaved}" />
                         <Panel DockPanel.Dock="Left">
                           <Border Classes="badge" Width="28" Height="28" CornerRadius="7"
                                   IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNull}}">
@@ -139,7 +140,7 @@
                         </Panel>
                         <StackPanel Margin="10,0" VerticalAlignment="Center">
                           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Classes="caption" Text="{Binding Nickname, StringFormat='als {0}'}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="caption" Text="{Binding Nickname, StringFormat={x:Static l:Strings.Ui_AsFmt}}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                       </DockPanel>
                     </Button>
@@ -160,45 +161,45 @@
                             ToolTip.Tip="{Binding Tooltip}">
                       <Border.ContextMenu>
                         <ContextMenu>
-                          <MenuItem Header="Betreten" Command="{Binding JoinCommand}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_Join}" Command="{Binding JoinCommand}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.DoorArrowRight}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="Channel anlegen ..." Command="{Binding CreateCommand}" IsVisible="{Binding CanCreate}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_CreateChannelMenu}" Command="{Binding CreateCommand}" IsVisible="{Binding CanCreate}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Add}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="Bearbeiten ..." Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_EditMenu}" Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Edit}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="Nach oben" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanEdit}" IsEnabled="{Binding CanMoveUp}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_MoveUp}" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanEdit}" IsEnabled="{Binding CanMoveUp}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowUp}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="Nach unten" Command="{Binding MoveDownCommand}" IsVisible="{Binding CanEdit}" IsEnabled="{Binding CanMoveDown}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_MoveDown}" Command="{Binding MoveDownCommand}" IsVisible="{Binding CanEdit}" IsEnabled="{Binding CanMoveDown}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowDown}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="Verlinken mit ..." Command="{Binding LinkCommand}" IsVisible="{Binding CanLink}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_LinkWithMenu}" Command="{Binding LinkCommand}" IsVisible="{Binding CanLink}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Link}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="Link entfernen ..." Command="{Binding UnlinkCommand}" IsVisible="{Binding CanUnlink}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_UnlinkMenu}" Command="{Binding UnlinkCommand}" IsVisible="{Binding CanUnlink}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.LinkDismiss}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
                           <Separator IsVisible="{Binding CanDelete}" />
-                          <MenuItem Header="Löschen ..." Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_DeleteMenu}" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Delete}" Classes="sm danger" /></MenuItem.Icon>
                           </MenuItem>
                         </ContextMenu>
                       </Border.ContextMenu>
                       <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Classes="caption" VerticalAlignment="Center"
-                                   Text="{Binding SlotText}" ToolTip.Tip="Nutzer in diesem Channel" />
+                                   Text="{Binding SlotText}" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
                         <PathIcon DockPanel.Dock="Left" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" Margin="0,0,8,0" />
                         <StackPanel Orientation="Horizontal" Spacing="6">
                           <TextBlock Classes="channelName" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"
                                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}" />
                           <PathIcon Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
-                                    ToolTip.Tip="Standard-Channel" VerticalAlignment="Center" />
+                                    ToolTip.Tip="{x:Static l:Strings.Ui_DefaultChannel}" VerticalAlignment="Center" />
                           <PathIcon Classes="sm warning" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
-                                    ToolTip.Tip="Stummer Channel: niemand wird gehört" VerticalAlignment="Center" />
-                          <Border Classes="chip" IsVisible="{Binding IsLinked}" ToolTip.Tip="{Binding LinkedNames, StringFormat='Verlinkt mit {0}'}">
+                                    ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" VerticalAlignment="Center" />
+                          <Border Classes="chip" IsVisible="{Binding IsLinked}" ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                               <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" />
                               <TextBlock Text="{Binding LinkedNames}" MaxWidth="110" TextTrimming="CharacterEllipsis" />
@@ -214,19 +215,19 @@
                           <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupNames}">
                             <Border.ContextMenu>
                               <ContextMenu>
-                                <MenuItem Header="Privatnachricht" Command="{Binding MessageCommand}" IsVisible="{Binding CanMessage}">
+                                <MenuItem Header="{x:Static l:Strings.Ui_PrivateMessage}" Command="{Binding MessageCommand}" IsVisible="{Binding CanMessage}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Chat}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="Verschieben ..." Command="{Binding MoveCommand}" IsVisible="{Binding CanMove}">
+                                <MenuItem Header="{x:Static l:Strings.Ui_MoveMenu}" Command="{Binding MoveCommand}" IsVisible="{Binding CanMove}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowMove}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="Serverseitig stummschalten an/aus" Command="{Binding ToggleServerMuteCommand}" IsVisible="{Binding CanMute}">
+                                <MenuItem Header="{x:Static l:Strings.Ui_ServerMuteMenu}" Command="{Binding ToggleServerMuteCommand}" IsVisible="{Binding CanMute}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.SpeakerMute}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="Kicken ..." Command="{Binding KickCommand}" IsVisible="{Binding CanKick}">
+                                <MenuItem Header="{x:Static l:Strings.Ui_KickMenu}" Command="{Binding KickCommand}" IsVisible="{Binding CanKick}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.PersonDelete}" Classes="sm danger" /></MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="Bannen ..." Command="{Binding BanCommand}" IsVisible="{Binding CanBan}">
+                                <MenuItem Header="{x:Static l:Strings.Ui_BanMenu}" Command="{Binding BanCommand}" IsVisible="{Binding CanBan}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Prohibited}" Classes="sm danger" /></MenuItem.Icon>
                                 </MenuItem>
                               </ContextMenu>
@@ -234,13 +235,13 @@
                             <DockPanel>
                               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                 <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsSpeakingViaLink}"
-                                          ToolTip.Tip="Spricht über einen Link" />
+                                          ToolTip.Tip="{x:Static l:Strings.Ui_TalkingViaLink}" />
                                 <PathIcon Classes="sm danger" Data="{StaticResource Icon.SpeakerMute}" IsVisible="{Binding ServerMuted}"
-                                          ToolTip.Tip="Vom Server stummgeschaltet" />
+                                          ToolTip.Tip="{x:Static l:Strings.Ui_ServerMuted}" />
                                 <PathIcon Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsDeafened}"
-                                          ToolTip.Tip="Ton aus" />
+                                          ToolTip.Tip="{x:Static l:Strings.Ui_Deafen}" />
                                 <PathIcon Classes="sm muted" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsSelfMutedOnly}"
-                                          ToolTip.Tip="Stumm" />
+                                          ToolTip.Tip="{x:Static l:Strings.Ui_Muted}" />
                               </StackPanel>
                               <Border Classes="ring" Classes.speaking="{Binding IsSpeaking}" Classes.link="{Binding IsSpeakingViaLink}">
                                 <Border Classes="avatar" Width="24" Height="24" Background="{Binding Nickname, Converter={x:Static v:Ui.AvatarBrush}}">
@@ -250,7 +251,7 @@
                               <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Nickname}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}"
                                            FontWeight="{Binding IsSelf, Converter={x:Static v:Ui.SelfWeight}}" />
-                                <TextBlock Classes="caption" Text="(du)" IsVisible="{Binding IsSelf}" VerticalAlignment="Center" />
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsSelf}" VerticalAlignment="Center" />
                               </StackPanel>
                             </DockPanel>
                           </Border>
@@ -283,7 +284,7 @@
                     Margin="0,4,0,0">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <PathIcon Data="{StaticResource Icon.PlugConnected}" />
-                <TextBlock Text="Verbinden ..." VerticalAlignment="Center" />
+                <TextBlock Text="{x:Static l:Strings.Ui_ConnectMenu}" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
           </StackPanel>
@@ -295,7 +296,7 @@
             <DockPanel>
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                 <Border Classes="chip" IsVisible="{Binding PingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                        ToolTip.Tip="Antwortzeit des Servers">
+                        ToolTip.Tip="{x:Static l:Strings.Ui_PingTip}">
                   <StackPanel Orientation="Horizontal" Spacing="4">
                     <PathIcon Classes="sm muted" Data="{StaticResource Icon.WifiSignal}" />
                     <TextBlock Text="{Binding PingText}" />
@@ -304,20 +305,20 @@
                 <Button Classes="subtle" Command="{Binding OpenAdminCommand}" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.ShieldPerson}" />
-                    <TextBlock Text="Verwaltung ..." VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Static l:Strings.Ui_AdminMenu}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
                 <Button Classes="subtle" Command="{Binding Server.RedeemTokenCommand, FallbackValue={x:Null}}"
                         IsVisible="{Binding Server.CanRedeemToken, FallbackValue=False}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.Key}" />
-                    <TextBlock Text="Admin-Token einlösen ..." VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Static l:Strings.Ui_RedeemTokenMenu}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
                 <Button Classes="danger" Command="{Binding DisconnectCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.CallEnd}" />
-                    <TextBlock Text="Trennen" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Static l:Strings.Ui_Disconnect}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
               </StackPanel>

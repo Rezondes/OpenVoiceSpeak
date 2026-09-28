@@ -159,7 +159,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 45 sind umgesetzt, 46 bis 49 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
+Die Packages 1 bis 46 sind umgesetzt, 47 bis 49 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2934,10 +2934,10 @@ Rund 200 Texte stehen fest in den XAML-Dateien, darunter auch Screenreader-Namen
 
 ### Acceptance Criteria
 
-- [ ] AC1: Keine XAML-Datei enthält mehr einen festen Nutzertext. Erlaubt bleiben nur Bindungen, Ressourcen und eine kurze Ausnahmeliste (z. B. der Produktname "OpenVoiceSpeak").
-- [ ] AC2: Mit englischer Kultur zeigt das Hauptfenster samt Einstellungen, Verwaltung, Chat und allen Dialogen keinen deutschen Text aus den Ressourcen.
-- [ ] AC3: Screenreader-Namen und Tooltips sind ebenfalls übersetzt.
-- [ ] AC4 (manuell): Screenshots in beiden Sprachen und beiden Designs zeigen keine abgeschnittenen oder überlaufenden englischen Texte.
+- [x] AC1: Keine XAML-Datei enthält mehr einen festen Nutzertext. Erlaubt bleiben nur Bindungen, Ressourcen und eine kurze Ausnahmeliste (z. B. der Produktname "OpenVoiceSpeak").
+- [x] AC2: Mit englischer Kultur zeigt das Hauptfenster samt Einstellungen, Verwaltung, Chat und allen Dialogen keinen deutschen Text aus den Ressourcen.
+- [x] AC3: Screenreader-Namen und Tooltips sind ebenfalls übersetzt.
+- [x] AC4 (manuell, geprüft am 28.09.2026 mit dem Screenshot-Werkzeug): Screenshots in beiden Sprachen und beiden Designs zeigen keine abgeschnittenen oder überlaufenden englischen Texte.
 
 ### Tests (TDD)
 

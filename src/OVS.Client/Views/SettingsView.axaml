@@ -9,14 +9,14 @@
     <Border DockPanel.Dock="Top" Padding="24,12,16,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CancelCommand}"
-                ToolTip.Tip="Schliessen (Esc)" AutomationProperties.Name="Einstellungen schliessen">
+                ToolTip.Tip="{x:Static l:Strings.Ui_CloseEsc}" AutomationProperties.Name="{x:Static l:Strings.Ui_CloseSettings}">
           <PathIcon Data="{StaticResource Icon.Dismiss}" />
         </Button>
         <StackPanel Orientation="Horizontal" Spacing="12">
           <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
             <PathIcon Classes="accent" Data="{StaticResource Icon.Settings}" />
           </Border>
-          <TextBlock Classes="h2" FontSize="17" Text="Einstellungen" VerticalAlignment="Center" />
+          <TextBlock Classes="h2" FontSize="17" Text="{x:Static l:Strings.Ui_Settings}" VerticalAlignment="Center" />
         </StackPanel>
       </DockPanel>
     </Border>
@@ -25,8 +25,8 @@
             BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-          <Button Content="Abbrechen" Command="{Binding CancelCommand}" MinWidth="96" HorizontalContentAlignment="Center" />
-          <Button Classes="accent" Content="Speichern" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
+          <Button Content="{x:Static l:Strings.Dlg_Cancel}" Command="{Binding CancelCommand}" MinWidth="96" HorizontalContentAlignment="Center" />
+          <Button Classes="accent" Content="{x:Static l:Strings.Dlg_Save}" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
                   MinWidth="96" HorizontalContentAlignment="Center" />
         </StackPanel>
         <TextBlock Classes="danger" Text="{Binding Error}" IsVisible="{Binding HasKeyConflict}" VerticalAlignment="Center" TextWrapping="Wrap" />
@@ -38,11 +38,11 @@
 
         <!-- Devices -->
         <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="GERÄTE" />
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_DevicesSection}" />
           <Border Classes="card">
             <StackPanel Spacing="12">
               <StackPanel Spacing="4">
-                <TextBlock Classes="label" Text="Mikrofon" />
+                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Microphone}" />
                 <ComboBox ItemsSource="{Binding Inputs}" SelectedItem="{Binding SelectedInput}" HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:AudioDeviceOption">
@@ -52,7 +52,7 @@
                 </ComboBox>
               </StackPanel>
               <StackPanel Spacing="4">
-                <TextBlock Classes="label" Text="Lautsprecher" />
+                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Speaker}" />
                 <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:AudioDeviceOption">
@@ -73,42 +73,42 @@
 
         <!-- Volume -->
         <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="LAUTSTÄRKE" />
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_VolumeSection}" />
           <Border Classes="card">
             <StackPanel Spacing="10">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding InputGainPercent, StringFormat='{}{0:0} %'}" />
-                <TextBlock Classes="label" Text="Mikrofonverstärkung" />
+                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_MicGain}" />
               </DockPanel>
-              <Slider Minimum="0" Maximum="200" Value="{Binding InputGainPercent}" AutomationProperties.Name="Mikrofonverstärkung" />
+              <Slider Minimum="0" Maximum="200" Value="{Binding InputGainPercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_MicGain}" />
               <DockPanel>
                 <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding OutputVolumePercent, StringFormat='{}{0:0} %'}" />
-                <TextBlock Classes="label" Text="Lautstärke" />
+                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Volume}" />
               </DockPanel>
-              <Slider Minimum="0" Maximum="100" Value="{Binding OutputVolumePercent}" AutomationProperties.Name="Lautstärke" />
+              <Slider Minimum="0" Maximum="100" Value="{Binding OutputVolumePercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_Volume}" />
             </StackPanel>
           </Border>
         </StackPanel>
 
         <!-- Transmit mode -->
         <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="ÜBERTRAGUNG" />
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_TransmitSection}" />
           <Border Classes="card">
             <StackPanel Spacing="10">
-              <RadioButton Content="Push-to-Talk: senden, solange die Taste gedrückt ist" IsChecked="{Binding IsPushToTalk}" />
-              <RadioButton Content="Sprachaktivierung: senden, sobald du sprichst" IsChecked="{Binding VoiceActivation}" />
+              <RadioButton Content="{x:Static l:Strings.Ui_ModePtt}" IsChecked="{Binding IsPushToTalk}" />
+              <RadioButton Content="{x:Static l:Strings.Ui_ModeVad}" IsChecked="{Binding VoiceActivation}" />
               <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
                 <DockPanel>
                   <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding VadThresholdDb, StringFormat='{}{0:0} dBFS'}" />
-                  <TextBlock Classes="label" Text="Schwelle" />
+                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Threshold}" />
                 </DockPanel>
                 <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold on the meter. -->
                 <ProgressBar Minimum="-60" Maximum="-10" Value="{Binding InputLevelDb}" Height="8" Margin="10,0" CornerRadius="4" />
-                <Slider Minimum="-60" Maximum="-10" Value="{Binding VadThresholdDb}" Margin="0,-6,0,0" AutomationProperties.Name="Schwelle der Sprachaktivierung" />
+                <Slider Minimum="-60" Maximum="-10" Value="{Binding VadThresholdDb}" Margin="0,-6,0,0" AutomationProperties.Name="{x:Static l:Strings.Ui_ThresholdName}" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Classes="caption" Text="{Binding InputLevelDb, StringFormat='Pegel {0:0} dBFS'}" />
-                  <TextBlock Classes="caption speaking" Text="über der Schwelle, würde senden" IsVisible="{Binding IsAboveThreshold}" />
-                  <TextBlock Classes="caption" Text="unter der Schwelle" IsVisible="{Binding !IsAboveThreshold}" />
+                  <TextBlock Classes="caption" Text="{Binding InputLevelDb, StringFormat={x:Static l:Strings.Ui_LevelFmt}}" />
+                  <TextBlock Classes="caption speaking" Text="{x:Static l:Strings.Ui_AboveThreshold}" IsVisible="{Binding IsAboveThreshold}" />
+                  <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BelowThreshold}" IsVisible="{Binding !IsAboveThreshold}" />
                 </StackPanel>
               </StackPanel>
             </StackPanel>
@@ -117,12 +117,12 @@
 
         <!-- Keys: a free list (Package 41). Keys work globally, also while a game has the focus. -->
         <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="TASTEN" />
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_KeysSection}" />
           <Border Classes="card">
             <StackPanel Spacing="10">
               <TextBlock Classes="caption" TextWrapping="Wrap"
-                         Text="Tasten wirken überall, auch während ein Spiel im Vordergrund ist. Kombinationen mit Strg, Umschalt und Alt sind möglich." />
-              <TextBlock Classes="muted" Text="Noch keine Tastenaktionen." IsVisible="{Binding !HasKeyBindings}" />
+                         Text="{x:Static l:Strings.Ui_KeysHelp}" />
+              <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoKeyActions}" IsVisible="{Binding !HasKeyBindings}" />
               <ItemsControl ItemsSource="{Binding KeyBindings}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
@@ -133,14 +133,14 @@
                   <DataTemplate x:DataType="vm:KeyBindingItem">
                     <DockPanel>
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                        <Button Command="{Binding EditCommand}" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: ändern'}">
+                        <Button Command="{Binding EditCommand}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChangeFmt}}">
                           <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Classes="sm" Data="{StaticResource Icon.Edit}" />
-                            <TextBlock Text="Ändern ..." />
+                            <TextBlock Text="{x:Static l:Strings.Ui_ChangeMenu}" />
                           </StackPanel>
                         </Button>
                         <Button Classes="icon" Command="{Binding RemoveCommand}"
-                                ToolTip.Tip="Löschen" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: löschen'}">
+                                ToolTip.Tip="{x:Static l:Strings.Ui_Delete}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_DeleteFmt}}">
                           <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
                         </Button>
                       </StackPanel>
@@ -157,7 +157,7 @@
               <Button Classes="subtle" Command="{Binding AddKeyBindingCommand}" HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
-                  <TextBlock Text="Tastenaktion hinzufügen" />
+                  <TextBlock Text="{x:Static l:Strings.Dlg_AddKeyAction}" />
                 </StackPanel>
               </Button>
             </StackPanel>
@@ -166,10 +166,10 @@
 
         <!-- Appearance -->
         <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="DARSTELLUNG" />
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_AppearanceSection}" />
           <Border Classes="card">
             <StackPanel Spacing="4">
-              <TextBlock Classes="label" Text="Design" />
+              <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Theme}" />
               <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Themes}" SelectedItem="{Binding SelectedTheme}" MinWidth="200">
                 <ComboBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:ThemeOption">
@@ -194,17 +194,17 @@
 
         <!-- About (Package 42) -->
         <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="ÜBER" />
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_AboutSection}" />
           <Border Classes="card">
             <StackPanel Spacing="4">
               <SelectableTextBlock Classes="label" Text="{Binding AppVersion}" />
               <TextBlock Classes="caption" Text="{Binding BuildDetails}" />
-              <CheckBox Content="Beim Start nach Updates suchen" IsChecked="{Binding CheckForUpdates}" Margin="0,8,0,0" />
+              <CheckBox Content="{x:Static l:Strings.Ui_CheckUpdatesAtStart}" IsChecked="{Binding CheckForUpdates}" Margin="0,8,0,0" />
               <StackPanel Orientation="Horizontal" Spacing="10">
                 <Button Command="{Binding CheckUpdatesCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
-                    <TextBlock Text="Nach Updates suchen" />
+                    <TextBlock Text="{x:Static l:Strings.Ui_CheckUpdates}" />
                   </StackPanel>
                 </Button>
                 <TextBlock Classes="caption" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />

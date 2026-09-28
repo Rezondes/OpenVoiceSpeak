@@ -201,6 +201,121 @@
   <data name="Tooltip_LinkedWith" xml:space="preserve"><value>Verlinkt mit: {0}</value></data>
   <data name="Transmit_Channel" xml:space="preserve"><value>Sendet</value></data>
   <data name="Transmit_Linked" xml:space="preserve"><value>Sendet an eigenen Channel und Links</value></data>
+  <data name="Ui_AboutSection" xml:space="preserve"><value>ÜBER</value></data>
+  <data name="Ui_AboveThreshold" xml:space="preserve"><value>über der Schwelle, würde senden</value></data>
+  <data name="Ui_Admin" xml:space="preserve"><value>Verwaltung</value></data>
+  <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar.</value></data>
+  <data name="Ui_AdminMenu" xml:space="preserve"><value>Verwaltung ...</value></data>
+  <data name="Ui_AppearanceSection" xml:space="preserve"><value>DARSTELLUNG</value></data>
+  <data name="Ui_Apply" xml:space="preserve"><value>Übernehmen</value></data>
+  <data name="Ui_AsFmt" xml:space="preserve"><value>als {0}</value></data>
+  <data name="Ui_AssignKeyHint" xml:space="preserve"><value>Taste in den Einstellungen belegen</value></data>
+  <data name="Ui_BanMenu" xml:space="preserve"><value>Bannen ...</value></data>
+  <data name="Ui_Bans" xml:space="preserve"><value>Bans</value></data>
+  <data name="Ui_BelowThreshold" xml:space="preserve"><value>unter der Schwelle</value></data>
+  <data name="Ui_BookmarksSection" xml:space="preserve"><value>LESEZEICHEN</value></data>
+  <data name="Ui_ChangeFmt" xml:space="preserve"><value>{0}: ändern</value></data>
+  <data name="Ui_ChangeMenu" xml:space="preserve"><value>Ändern ...</value></data>
+  <data name="Ui_ChatTabs" xml:space="preserve"><value>Chat-Tabs</value></data>
+  <data name="Ui_CheckUpdates" xml:space="preserve"><value>Nach Updates suchen</value></data>
+  <data name="Ui_CheckUpdatesAtStart" xml:space="preserve"><value>Beim Start nach Updates suchen</value></data>
+  <data name="Ui_ChooseGroup" xml:space="preserve"><value>Wähle links eine Gruppe aus.</value></data>
+  <data name="Ui_ChooseLogo" xml:space="preserve"><value>Logo wählen ...</value></data>
+  <data name="Ui_Close" xml:space="preserve"><value>Schliessen</value></data>
+  <data name="Ui_CloseAdmin" xml:space="preserve"><value>Verwaltung schliessen</value></data>
+  <data name="Ui_CloseEsc" xml:space="preserve"><value>Schliessen (Esc)</value></data>
+  <data name="Ui_CloseFmt" xml:space="preserve"><value>{0} schliessen</value></data>
+  <data name="Ui_CloseSettings" xml:space="preserve"><value>Einstellungen schliessen</value></data>
+  <data name="Ui_CloseTab" xml:space="preserve"><value>Tab schliessen</value></data>
+  <data name="Ui_ConnectMenu" xml:space="preserve"><value>Verbinden ...</value></data>
+  <data name="Ui_ConnectToFmt" xml:space="preserve"><value>Mit {0} verbinden</value></data>
+  <data name="Ui_Connected" xml:space="preserve"><value>Verbunden</value></data>
+  <data name="Ui_CreateChannelMenu" xml:space="preserve"><value>Channel anlegen ...</value></data>
+  <data name="Ui_Deafen" xml:space="preserve"><value>Ton aus</value></data>
+  <data name="Ui_DeafenTip" xml:space="preserve"><value>Ton aus (Lautsprecher und Mikrofon)</value></data>
+  <data name="Ui_DefaultChannel" xml:space="preserve"><value>Standard-Channel</value></data>
+  <data name="Ui_Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Ui_DeleteFmt" xml:space="preserve"><value>{0}: löschen</value></data>
+  <data name="Ui_DeleteGroup" xml:space="preserve"><value>Gruppe löschen</value></data>
+  <data name="Ui_DeleteMenu" xml:space="preserve"><value>Löschen ...</value></data>
+  <data name="Ui_DevicesSection" xml:space="preserve"><value>GERÄTE</value></data>
+  <data name="Ui_Discard" xml:space="preserve"><value>Verwerfen</value></data>
+  <data name="Ui_Disconnect" xml:space="preserve"><value>Trennen</value></data>
+  <data name="Ui_DropImage" xml:space="preserve"><value>Bild hierher ziehen</value></data>
+  <data name="Ui_EditMenu" xml:space="preserve"><value>Bearbeiten ...</value></data>
+  <data name="Ui_GroupDown" xml:space="preserve"><value>Gruppe nach unten</value></data>
+  <data name="Ui_GroupUp" xml:space="preserve"><value>Gruppe nach oben</value></data>
+  <data name="Ui_Groups" xml:space="preserve"><value>Gruppen</value></data>
+  <data name="Ui_HasPassword" xml:space="preserve"><value>Der Server ist mit einem Passwort geschützt.</value></data>
+  <data name="Ui_IdentityFingerprint" xml:space="preserve"><value>Fingerprint der Identität</value></data>
+  <data name="Ui_Join" xml:space="preserve"><value>Betreten</value></data>
+  <data name="Ui_KeysHelp" xml:space="preserve"><value>Tasten wirken überall, auch während ein Spiel im Vordergrund ist. Kombinationen mit Strg, Umschalt und Alt sind möglich.</value></data>
+  <data name="Ui_KeysSection" xml:space="preserve"><value>TASTEN</value></data>
+  <data name="Ui_KickMenu" xml:space="preserve"><value>Kicken ...</value></data>
+  <data name="Ui_LevelFmt" xml:space="preserve"><value>Pegel {0:0} dBFS</value></data>
+  <data name="Ui_LinkFmt" xml:space="preserve"><value>Link {0}</value></data>
+  <data name="Ui_LinkSelected" xml:space="preserve"><value>Ausgewählte miteinander verlinken</value></data>
+  <data name="Ui_LinkWithMenu" xml:space="preserve"><value>Verlinken mit ...</value></data>
+  <data name="Ui_LinkedWithFmt" xml:space="preserve"><value>Verlinkt mit {0}</value></data>
+  <data name="Ui_Links" xml:space="preserve"><value>Links</value></data>
+  <data name="Ui_LinksHelp" xml:space="preserve"><value>Ein Häkchen verbindet zwei Channels. Links wirken nur direkt, nicht über Umwege: Sollen mehrere Channels alle miteinander sprechen, wähle sie links aus und verlinke sie miteinander.</value></data>
+  <data name="Ui_LogoHint" xml:space="preserve"><value>PNG oder JPG, quadratisch (1:1), höchstens 3 MB. Du kannst die Datei auch auf das Feld ziehen.</value></data>
+  <data name="Ui_Message" xml:space="preserve"><value>Nachricht</value></data>
+  <data name="Ui_MicGain" xml:space="preserve"><value>Mikrofonverstärkung</value></data>
+  <data name="Ui_Microphone" xml:space="preserve"><value>Mikrofon</value></data>
+  <data name="Ui_Minimize" xml:space="preserve"><value>Minimieren</value></data>
+  <data name="Ui_ModePtt" xml:space="preserve"><value>Push-to-Talk: senden, solange die Taste gedrückt ist</value></data>
+  <data name="Ui_ModeVad" xml:space="preserve"><value>Sprachaktivierung: senden, sobald du sprichst</value></data>
+  <data name="Ui_MoveDown" xml:space="preserve"><value>Nach unten</value></data>
+  <data name="Ui_MoveMenu" xml:space="preserve"><value>Verschieben ...</value></data>
+  <data name="Ui_MoveUp" xml:space="preserve"><value>Nach oben</value></data>
+  <data name="Ui_MuteMic" xml:space="preserve"><value>Mikrofon stummschalten</value></data>
+  <data name="Ui_Muted" xml:space="preserve"><value>Stumm</value></data>
+  <data name="Ui_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Ui_NewPassword" xml:space="preserve"><value>Neues Passwort (leer lassen = unverändert)</value></data>
+  <data name="Ui_NoBookmarks" xml:space="preserve"><value>Noch keine Lesezeichen. Verbinde dich über "Verbinden ..." und speichere den Server als Lesezeichen.</value></data>
+  <data name="Ui_NoKeyActions" xml:space="preserve"><value>Noch keine Tastenaktionen.</value></data>
+  <data name="Ui_NoPassword" xml:space="preserve"><value>Der Server hat kein Passwort.</value></data>
+  <data name="Ui_NobodyBanned" xml:space="preserve"><value>Niemand ist gebannt.</value></data>
+  <data name="Ui_PasswordSaved" xml:space="preserve"><value>Passwort gespeichert</value></data>
+  <data name="Ui_PingTip" xml:space="preserve"><value>Antwortzeit des Servers</value></data>
+  <data name="Ui_PrivateMessage" xml:space="preserve"><value>Privatnachricht</value></data>
+  <data name="Ui_RedeemTokenMenu" xml:space="preserve"><value>Admin-Token einlösen ...</value></data>
+  <data name="Ui_Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
+  <data name="Ui_RemoveLogo" xml:space="preserve"><value>Logo entfernen</value></data>
+  <data name="Ui_RemovePassword" xml:space="preserve"><value>Passwort entfernen</value></data>
+  <data name="Ui_Rights" xml:space="preserve"><value>Rechte</value></data>
+  <data name="Ui_RightsGreyed" xml:space="preserve"><value>Ausgegraut: Rechte, die du selbst nicht hast, kannst du nicht vergeben.</value></data>
+  <data name="Ui_SaveGroup" xml:space="preserve"><value>Gruppe speichern</value></data>
+  <data name="Ui_SaveServerSettings" xml:space="preserve"><value>Servereinstellungen speichern</value></data>
+  <data name="Ui_SelectFmt" xml:space="preserve"><value>{0} auswählen</value></data>
+  <data name="Ui_Send" xml:space="preserve"><value>Senden</value></data>
+  <data name="Ui_SendEnter" xml:space="preserve"><value>Senden (Enter)</value></data>
+  <data name="Ui_Server" xml:space="preserve"><value>Server</value></data>
+  <data name="Ui_ServerLogo" xml:space="preserve"><value>Server-Logo</value></data>
+  <data name="Ui_ServerMuteMenu" xml:space="preserve"><value>Serverseitig stummschalten an/aus</value></data>
+  <data name="Ui_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>
+  <data name="Ui_ServerName" xml:space="preserve"><value>Servername</value></data>
+  <data name="Ui_Settings" xml:space="preserve"><value>Einstellungen</value></data>
+  <data name="Ui_Speaker" xml:space="preserve"><value>Lautsprecher</value></data>
+  <data name="Ui_TalkingViaLink" xml:space="preserve"><value>Spricht über einen Link</value></data>
+  <data name="Ui_Theme" xml:space="preserve"><value>Design</value></data>
+  <data name="Ui_Threshold" xml:space="preserve"><value>Schwelle</value></data>
+  <data name="Ui_ThresholdName" xml:space="preserve"><value>Schwelle der Sprachaktivierung</value></data>
+  <data name="Ui_TransmitSection" xml:space="preserve"><value>ÜBERTRAGUNG</value></data>
+  <data name="Ui_Unban" xml:space="preserve"><value>Entbannen</value></data>
+  <data name="Ui_UnlinkMenu" xml:space="preserve"><value>Link entfernen ...</value></data>
+  <data name="Ui_UnlinkSelected" xml:space="preserve"><value>Links zwischen ausgewählten entfernen</value></data>
+  <data name="Ui_Unread" xml:space="preserve"><value>Ungelesen</value></data>
+  <data name="Ui_UnreadFmt" xml:space="preserve"><value>{0} ungelesen</value></data>
+  <data name="Ui_Users" xml:space="preserve"><value>Nutzer</value></data>
+  <data name="Ui_UsersInChannel" xml:space="preserve"><value>Nutzer in diesem Channel</value></data>
+  <data name="Ui_Volume" xml:space="preserve"><value>Lautstärke</value></data>
+  <data name="Ui_VolumeSection" xml:space="preserve"><value>LAUTSTÄRKE</value></data>
+  <data name="Ui_WelcomeHint" xml:space="preserve"><value>Erscheint bei jedem Verbinden im Chat-Tab Allgemein.</value></data>
+  <data name="Ui_WelcomeMessage" xml:space="preserve"><value>Willkommensnachricht des Servers</value></data>
+  <data name="Ui_WelcomeText" xml:space="preserve"><value>Willkommenstext</value></data>
+  <data name="Ui_You" xml:space="preserve"><value>(du)</value></data>
   <data name="Update_Available" xml:space="preserve"><value>Version {0} ist verfügbar.</value></data>
   <data name="Update_CheckFailed" xml:space="preserve"><value>Update-Prüfung fehlgeschlagen: {0}</value></data>
   <data name="Update_Checking" xml:space="preserve"><value>Suche nach Updates ...</value></data>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:OVS.Client.Localization"
              xmlns:vm="using:OVS.Client.ViewModels"
              xmlns:v="using:OVS.Client.Views"
              x:Class="OVS.Client.Views.TitleBar"
@@ -10,18 +11,18 @@
     <DockPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
         <Button x:Name="MinimizeButton" Classes="caption" Click="OnMinimize"
-                ToolTip.Tip="Minimieren" AutomationProperties.Name="Minimieren">
+                ToolTip.Tip="{x:Static l:Strings.Ui_Minimize}" AutomationProperties.Name="{x:Static l:Strings.Ui_Minimize}">
           <PathIcon Classes="sm" Data="{StaticResource Icon.Minimize}" />
         </Button>
         <Button x:Name="MaximizeButton" Classes="caption" Click="OnMaximize"
-                ToolTip.Tip="Maximieren" AutomationProperties.Name="Maximieren">
+                ToolTip.Tip="{x:Static l:Strings.Window_Maximize}" AutomationProperties.Name="{x:Static l:Strings.Window_Maximize}">
           <Panel>
             <PathIcon x:Name="MaximizeIcon" Classes="sm" Data="{StaticResource Icon.Maximize}" />
             <PathIcon x:Name="RestoreIcon" Classes="sm" Data="{StaticResource Icon.Restore}" IsVisible="False" />
           </Panel>
         </Button>
         <Button x:Name="CloseButton" Classes="caption close" Click="OnClose"
-                ToolTip.Tip="Schliessen" AutomationProperties.Name="Schliessen">
+                ToolTip.Tip="{x:Static l:Strings.Ui_Close}" AutomationProperties.Name="{x:Static l:Strings.Ui_Close}">
           <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
         </Button>
       </StackPanel>

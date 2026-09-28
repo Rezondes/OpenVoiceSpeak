@@ -54,6 +54,31 @@ public class LocalizationTests
         Assert.Equal("Enter full channels", TestCulture.With("en-US", () => PermissionLabels.All.Last().Label));
     }
 
+    /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>
+    [Fact]
+    public void Xaml_NoHardcodedText()
+    {
+        string[] allowed = ["OpenVoiceSpeak", "O", "{}{0:0} %", "{}{0:0} dBFS", "· {0}"];
+        var attribute = new Regex(@"\b(Text|Header|Content|ToolTip\.Tip|Watermark|AutomationProperties\.Name|PlaceholderText)=""([^""{][^""]*)""");
+        var format = new Regex(@"(?:StringFormat|FallbackValue)='([^']*[A-Za-zÄÖÜäöü][^']*)'");
+        var found = Directory.GetFiles(Path.Combine(SourceDir(), "Views"), "*.axaml")
+            .SelectMany(file => attribute.Matches(File.ReadAllText(file)).Select(m => m.Groups[2].Value)
+                .Concat(format.Matches(File.ReadAllText(file)).Select(m => m.Groups[1].Value))
+                .Where(text => !allowed.Contains(text))
+                .Select(text => $"{Path.GetFileName(file)}: {text}"))
+            .ToList();
+        Assert.True(found.Count == 0, string.Join(Environment.NewLine, found));
+    }
+
+    /// <summary>The German resource texts that differ from their English version: none of them may show in English.</summary>
+    public static HashSet<string> GermanOnly()
+    {
+        var german = Read("Strings.resx");
+        var english = Read("Strings.en.resx");
+        var englishValues = english.Values.ToHashSet();
+        return german.Where(p => p.Value != english[p.Key] && !englishValues.Contains(p.Value)).Select(p => p.Value).ToHashSet();
+    }
+
     /// <summary>A45: German server details stay out of the UI, except the reason a person typed for kick and ban.</summary>
     [Fact]
     public void ServerDetail_HiddenExceptKickAndBan()

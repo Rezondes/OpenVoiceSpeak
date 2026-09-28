@@ -435,6 +435,78 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Everything a user can read or hear from a screen reader: texts, tooltips, names, headers, menus.</summary>
+    static IEnumerable<string> AllUserTexts(Visual root) =>
+        root.GetVisualDescendants().OfType<Control>().SelectMany(c => new[]
+            {
+                (c as TextBlock)?.Text, ToolTip.GetTip(c) as string, AutomationProperties.GetName(c),
+                (c as ContentControl)?.Content as string, (c as Avalonia.Controls.Primitives.HeaderedContentControl)?.Header as string, (c as TextBox)?.Watermark,
+            }
+            .Concat(c.ContextMenu?.Items.OfType<MenuItem>().Select(m => m.Header as string) ?? []))
+            .OfType<string>();
+
+    /// <summary>Package 46: in English, no German resource text is left anywhere in the window, its pages and dialogs.</summary>
+    [AvaloniaFact]
+    public void Windows_English_NoGermanResourceText()
+    {
+        var before = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+        try
+        {
+            var settings = new ClientSettings();
+            settings.Bookmarks.Add(new Bookmark("Gilde", "gilde.example.org", 7000, "ich"));
+            settings.Save(dir);
+            var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+            var main = new MainWindow { DataContext = vm, Width = 1100, Height = 750 };
+            main.Show();
+            Dispatcher.UIThread.RunJobs();
+            var seen = AllUserTexts(main).ToList();
+            Assert.Contains("Connect ...", seen);
+
+            vm.Server = FakeServers.Admin();
+            Dispatcher.UIThread.RunJobs();
+            seen.AddRange(AllUserTexts(main));
+            vm.OpenSettings();
+            Dispatcher.UIThread.RunJobs();
+            seen.AddRange(AllUserTexts(main));
+            vm.ClosePage();
+            _ = vm.OpenAdminAsync();
+            Dispatcher.UIThread.RunJobs();
+            foreach (var tab in main.GetVisualDescendants().OfType<TabControl>().First().Items.OfType<TabItem>())
+            {
+                tab.IsSelected = true;
+                Dispatcher.UIThread.RunJobs();
+                seen.AddRange(AllUserTexts(main));
+            }
+            vm.ClosePage();
+            foreach (var open in new Func<OverlayHost, Task>[]
+            {
+                o => SimpleDialogs.Connect(o, vm.Settings), o => SimpleDialogs.Ban(o, "anna"), o => SimpleDialogs.Confirm(o, "?"),
+                o => SimpleDialogs.EditChannel(o, "x", new ChannelEdit("Raid", ""), ChannelDialogMode.Edit),
+                o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
+                o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)),
+            })
+            {
+                _ = open(main.Overlay);
+                Dispatcher.UIThread.RunJobs();
+                seen.AddRange(AllUserTexts(main.Overlay));
+                main.Overlay.Close();
+                Dispatcher.UIThread.RunJobs();
+            }
+            main.Close();
+
+            var german = LocalizationTests.GermanOnly();
+            var leftovers = seen.Where(german.Contains).Distinct().ToList();
+            Assert.True(leftovers.Count == 0, "Noch deutsch: " + string.Join(" | ", leftovers));
+            Assert.Contains("Settings", seen);
+            Assert.Contains("APPEARANCE", seen);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = before;
+        }
+    }
+
     [Fact]
     public void Avatar_SameNicknameSameColor_InitialUpperCase()
     {
