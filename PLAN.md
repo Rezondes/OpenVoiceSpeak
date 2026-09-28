@@ -180,7 +180,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 53 sind umgesetzt, 54 ist geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6 und 53 AC7 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Alle Packages 1 bis 54 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6 und 53 AC7 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -209,6 +209,7 @@ Die Packages 1 bis 53 sind umgesetzt, 54 ist geplant. Die Tests laufen mit `dotn
 | 50 | AC3: höchstens 1 % der Proben auf der Grenze | höchstens 5 % | Auch ohne Abschneiden liegen bei einem Sinus die Proben um jeden Scheitel nah an der Grenze, 1 % ist dafür zu knapp. Hartes Abschneiden läge bei etwa 40 %. |
 | 51 | Test 4 prüft, dass `Configure` nicht erneut läuft | prüft, dass das `Settings`-Objekt dasselbe bleibt (nur `ApplySettings` ersetzt es und startet die Geräte neu) | `AudioEngine` zählt keine Aufrufe von `Configure`, ein Zähler nur für den Test lohnt sich nicht. |
 | 53 | Test 4 `Sliders_ApplyLive_DiscardRestores` | `SettingsTests > "Sliders_ApplyLive"` prüft die Vorschau, das Zurückstellen beim Verwerfen prüft `MainViewModelTests > "SelfTest_MutesAndDeafens_RestoresPreviousState"` (Lautstärke im Mixer) | Das Zurückstellen macht das `MainViewModel`, nicht die Einstellungsseite. |
+| 54 | Anbindung in `MainWindow.axaml.cs`, README mit Protokollversion | Anbindung in `App.axaml.cs` (dort entstehen alle Dialoge), README nennt Anlegen mit Optionen | Die `Dialogs` werden in `App.axaml.cs` gesetzt. Die README nennt keine Protokollversion. `SimpleDialogs.Show` ist jetzt `internal`, damit der eigene Dialog denselben Rahmen nutzt. `Dialogs.EditChannel` bekommt keinen Titel mehr, den legt der Modus fest. |
 | 1 | keine `nuget.config` | `nuget.config` nur mit nuget.org | Die globale NuGet-Konfiguration des Entwicklungsrechners verweist auf einen fehlenden Ordner. Mit der Datei baut das Projekt überall gleich. |
 
 ### Ergebnisse der manuellen Checks (27.09.2026, Windows 11, Docker Desktop 29.2.1)
@@ -3448,13 +3449,13 @@ Anlegen und Bearbeiten nutzen beide `SimpleDialogs.EditChannel`, im Modus `Chann
 
 ### Acceptance Criteria
 
-- [ ] AC1: "Channel anlegen" und "Channel bearbeiten" zeigen denselben Dialog mit Name, Beschreibung, "Stummer Channel" und "Maximale Nutzer".
-- [ ] AC2: Beim Anlegen ist der Dialog leer (kein Name, keine Beschreibung, nicht stumm, 0 Plätze), Titel "Channel anlegen", Button "Anlegen".
-- [ ] AC3: Beim Bearbeiten ist er mit den Daten des Channels vorbelegt, Titel "Channel bearbeiten", Button "Speichern". Beim Standard-Channel sind die Plätze gesperrt, mit Hinweis.
-- [ ] AC4: Ohne Namen lässt sich der Dialog nicht bestätigen, die Plätze gehen von 0 bis 999.
-- [ ] AC5: Ein neu angelegter Channel hat beim Server gleich die gewählten Optionen (stumm, Plätze). Der Server lehnt beim Anlegen ungültige Plätze ab wie beim Bearbeiten und protokolliert die Optionen im Channel-Log.
-- [ ] AC6: Die Protokollversion ist 9. Ein Client mit Version 8 bekommt beim Verbinden die bekannte Meldung zur Version.
-- [ ] AC7: `SimpleDialogs.EditChannel` gibt es nicht mehr, alle Texte des Dialogs gibt es auf Deutsch und Englisch.
+- [x] AC1: "Channel anlegen" und "Channel bearbeiten" zeigen denselben Dialog mit Name, Beschreibung, "Stummer Channel" und "Maximale Nutzer".
+- [x] AC2: Beim Anlegen ist der Dialog leer (kein Name, keine Beschreibung, nicht stumm, 0 Plätze), Titel "Channel anlegen", Button "Anlegen".
+- [x] AC3: Beim Bearbeiten ist er mit den Daten des Channels vorbelegt, Titel "Channel bearbeiten", Button "Speichern". Beim Standard-Channel sind die Plätze gesperrt, mit Hinweis.
+- [x] AC4: Ohne Namen lässt sich der Dialog nicht bestätigen, die Plätze gehen von 0 bis 999.
+- [x] AC5: Ein neu angelegter Channel hat beim Server gleich die gewählten Optionen (stumm, Plätze). Der Server lehnt beim Anlegen ungültige Plätze ab wie beim Bearbeiten und protokolliert die Optionen im Channel-Log.
+- [x] AC6: Die Protokollversion ist 9. Ein Client mit Version 8 bekommt beim Verbinden die bekannte Meldung zur Version.
+- [x] AC7: `SimpleDialogs.EditChannel` gibt es nicht mehr, alle Texte des Dialogs gibt es auf Deutsch und Englisch.
 
 ### Tests (TDD)
 

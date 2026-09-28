@@ -223,14 +223,29 @@ public sealed class UiSmokeTests : IDisposable
         Dialog(o => SimpleDialogs.OfferUpdate(o, new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))), "Update verfügbar");
         Dialog(o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)), "Tastenaktion hinzufügen");
-        Dialog(o => SimpleDialogs.EditChannel(o, "Channel anlegen", new ChannelEdit("", ""), ChannelDialogMode.Create), "Channel anlegen");
-        var editing = SimpleDialogs.EditChannel(main.Overlay, "Channel bearbeiten", new ChannelEdit("Raid", "", IsMuted: true), ChannelDialogMode.Edit);
-        Dispatcher.UIThread.RunJobs();
-        Assert.True(main.Overlay.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Content is "Stummer Channel: niemand wird gehört").IsChecked);
-        Assert.True(main.Overlay.GetVisualDescendants().OfType<NumericUpDown>().Single().IsEnabled); // Package 35: slot limit
-        main.Overlay.Close();
-        Dispatcher.UIThread.RunJobs();
-        Assert.True(editing.IsCompleted);
+        // Package 54: one dialog for creating and editing, with every option both times
+        (string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled) ChannelDialogShows(ChannelEdit current, ChannelDialogMode mode)
+        {
+            var shown = ChannelDialog.ShowAsync(main.Overlay, current, mode);
+            Dispatcher.UIThread.RunJobs();
+            var o = main.Overlay.GetVisualDescendants().ToList();
+            var title = o.OfType<TextBlock>().First(t => t.Classes.Contains("h2")).Text!;
+            var buttons = o.OfType<Button>().Select(b => b.Content as string).ToList();
+            var name = o.OfType<TextBox>().First().Text;
+            var muted = o.OfType<CheckBox>().Single(c => c.Content is "Stummer Channel: niemand wird gehört").IsChecked;
+            var slots = o.OfType<NumericUpDown>().Single();
+            main.Overlay.Close();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(shown.IsCompleted);
+            return (title, buttons, name, muted, slots.Value, slots.IsEnabled);
+        }
+        var create = ChannelDialogShows(new ChannelEdit("", ""), ChannelDialogMode.Create);
+        Assert.Equal(("Channel anlegen", "", false, 0m, true), (create.Title, create.Name ?? "", create.Muted, create.Slots, create.SlotsEnabled));
+        Assert.Contains("Anlegen", create.Buttons);
+        var edit = ChannelDialogShows(new ChannelEdit("Raid", "", IsMuted: true, MaxUsers: 8), ChannelDialogMode.Edit);
+        Assert.Equal(("Channel bearbeiten", "Raid", true, 8m, true), (edit.Title, edit.Name, edit.Muted, edit.Slots, edit.SlotsEnabled));
+        Assert.Contains("Speichern", edit.Buttons);
+        Assert.False(ChannelDialogShows(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault).SlotsEnabled);
         Dialog(o => SimpleDialogs.PickChannel(o, "Verschieben nach", vm.Server!.Channels), "Verschieben nach");
         Dialog(o => SimpleDialogs.AskText(o, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
     }
@@ -558,7 +573,8 @@ public sealed class UiSmokeTests : IDisposable
             foreach (var open in new Func<OverlayHost, Task>[]
             {
                 o => SimpleDialogs.Connect(o, vm.Settings), o => SimpleDialogs.Ban(o, "anna"), o => SimpleDialogs.Confirm(o, "?"),
-                o => SimpleDialogs.EditChannel(o, "x", new ChannelEdit("Raid", ""), ChannelDialogMode.Edit),
+                o => ChannelDialog.ShowAsync(o, new ChannelEdit("Raid", ""), ChannelDialogMode.Edit),
+                o => ChannelDialog.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
                 o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
                 o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)),
             })

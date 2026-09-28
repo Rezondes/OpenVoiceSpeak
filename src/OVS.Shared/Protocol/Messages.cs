@@ -98,7 +98,8 @@ public sealed record ServerSnapshot(
 
 // ---- Channels and users ----
 public sealed record JoinChannel(Guid ChannelId) : Request;
-public sealed record CreateChannel(string Name, string Description) : Request;
+/// <summary>Package 54: created with its options right away, like <see cref="EditChannel"/>.</summary>
+public sealed record CreateChannel(string Name, string Description, bool IsMuted = false, int MaxUsers = 0) : Request;
 public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0) : Request;
 /// <summary>Package 36: the complete new order, every channel exactly once.</summary>
 public sealed record ReorderChannels(IReadOnlyList<Guid> ChannelIds) : Request;

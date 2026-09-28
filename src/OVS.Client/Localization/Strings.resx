@@ -55,6 +55,7 @@
   <data name="Dlg_Confirm" xml:space="preserve"><value>Bestätigen</value></data>
   <data name="Dlg_Connect" xml:space="preserve"><value>Verbinden</value></data>
   <data name="Dlg_ConnectTitle" xml:space="preserve"><value>Mit Server verbinden</value></data>
+  <data name="Dlg_Create" xml:space="preserve"><value>Anlegen</value></data>
   <data name="Dlg_Description" xml:space="preserve"><value>Beschreibung</value></data>
   <data name="Dlg_DescriptionHint" xml:space="preserve"><value>Optional, erscheint als Tooltip und im Kopf des Channels.</value></data>
   <data name="Dlg_Duration" xml:space="preserve"><value>Dauer</value></data>

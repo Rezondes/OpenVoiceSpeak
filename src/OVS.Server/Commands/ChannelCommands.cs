@@ -32,6 +32,7 @@ public sealed partial class ServerState
     {
         if (!Require(s, r, Permission.ChannelCreate)) return;
         if (!ValidateChannel(s, r, null, r.Name, r.Description, out var name)) return;
+        if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
 
         var channel = new ChannelRecord
         {
@@ -39,10 +40,13 @@ public sealed partial class ServerState
             Name = name,
             Description = r.Description.Trim(),
             Order = data.Channels.Max(c => c.Order) + 1,
+            IsMuted = r.IsMuted,
+            MaxUsers = r.MaxUsers,
         };
         data.Channels.Add(channel);
         Persist();
-        ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}");
+        var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null }.OfType<string>().ToList();
+        ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
         logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
         Broadcast(new ChannelAdded(Info(channel)));
     }
@@ -57,14 +61,7 @@ public sealed partial class ServerState
             return;
         }
         if (!ValidateChannel(s, r, channel.Id, r.Name, r.Description, out var name)) return;
-        if (r.MaxUsers is < 0 or > ProtocolInfo.MaxChannelUsers || (r.MaxUsers > 0 && channel.Id == data.DefaultChannelId))
-        {
-            // Everybody lands in the default channel on connect and when a channel is deleted, so it stays unlimited.
-            Fail(s, r, Codes.InvalidValue, channel.Id == data.DefaultChannelId
-                ? "Der Standard-Channel lässt sich nicht begrenzen."
-                : $"Maximale Nutzer: 0 (unbegrenzt) bis {ProtocolInfo.MaxChannelUsers}.");
-            return;
-        }
+        if (!ValidateLimit(s, r, channel.Id, r.MaxUsers)) return;
 
         var description = r.Description.Trim();
         var changes = new List<string>();
@@ -82,6 +79,18 @@ public sealed partial class ServerState
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
+    }
+
+    /// <summary>Package 35 and 54: 0 (unlimited) to the maximum, for new and edited channels alike.</summary>
+    bool ValidateLimit(Session s, Request r, Guid? channelId, int maxUsers)
+    {
+        bool isDefault = channelId == data.DefaultChannelId;
+        if (maxUsers is >= 0 and <= ProtocolInfo.MaxChannelUsers && !(maxUsers > 0 && isDefault)) return true;
+        // Everybody lands in the default channel on connect and when a channel is deleted, so it stays unlimited.
+        Fail(s, r, Codes.InvalidValue, isDefault
+            ? "Der Standard-Channel lässt sich nicht begrenzen."
+            : $"Maximale Nutzer: 0 (unbegrenzt) bis {ProtocolInfo.MaxChannelUsers}.");
+        return false;
     }
 
     /// <summary>Package 36: Order becomes the position in the list, every changed channel is broadcast.</summary>

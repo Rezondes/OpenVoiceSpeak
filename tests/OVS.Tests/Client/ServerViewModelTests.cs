@@ -267,13 +267,23 @@ public class ServerViewModelTests
         Assert.Equal(new LinkChannels(Lobby, Bravo), f.Sent[^1] with { RequestId = null });
     }
 
+    /// <summary>Package 54: creating opens the same dialog, empty, and sends every option.</summary>
     [Fact]
-    public async Task CreateFromChannelMenu_UsesDialog()
+    public async Task NewChannel_SendsAllOptions()
     {
-        var dialogs = new Dialogs { EditChannel = (_, _, _) => Task.FromResult<ChannelEdit?>(new ChannelEdit("Neu", "Beschreibung")) };
+        (ChannelEdit Current, ChannelDialogMode Mode)? shown = null;
+        var dialogs = new Dialogs
+        {
+            EditChannel = (current, mode) =>
+            {
+                shown = (current, mode);
+                return Task.FromResult<ChannelEdit?>(new ChannelEdit("Neu", "Beschreibung", IsMuted: true, MaxUsers: 3));
+            },
+        };
         var f = Create(P.All, dialogs: dialogs);
         await f.Channel(Alpha).CreateCommand.ExecuteAsync(null);
-        Assert.Equal(new CreateChannel("Neu", "Beschreibung"), f.Sent[^1] with { RequestId = null });
+        Assert.Equal((new ChannelEdit("", ""), ChannelDialogMode.Create), shown);
+        Assert.Equal(new CreateChannel("Neu", "Beschreibung", IsMuted: true, MaxUsers: 3), f.Sent[^1] with { RequestId = null });
     }
 
     /// <summary>Package 34: the dialog shows the current flag, the edit sends it, the channel shows it.</summary>
@@ -283,7 +293,7 @@ public class ServerViewModelTests
         ChannelDialogMode? shownMode = null;
         var dialogs = new Dialogs
         {
-            EditChannel = (_, current, mode) =>
+            EditChannel = (current, mode) =>
             {
                 shownMode = mode;
                 return Task.FromResult<ChannelEdit?>(current with { IsMuted = true });

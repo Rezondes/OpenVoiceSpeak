@@ -151,8 +151,8 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`.
 - Kurze Töne begleiten Mikrofon an/aus, Ton an/aus, Verbinden, Trennen, Channelwechsel, wenn jemand deinen Channel betritt oder verlässt, Server-Mute, Verschieben und Privatnachrichten. Lautstärke und "Alle Sounds aus" findest du in den Einstellungen unter Sounds. Dort lässt sich auch jeder Sound einzeln leiser stellen, stumm schalten oder durch eine eigene WAV- oder MP3-Datei bis 5 Sekunden ersetzen.
 - Doppelklick auf einen Channel betritt ihn.
 - Mit dem Recht "Channels bearbeiten" ziehst du Channels mit der Maus an eine neue Position, oder du nimmst "Nach oben" bzw. "Nach unten" im Kontextmenü.
-- Ein Channel lässt sich unter "Bearbeiten ..." stumm schalten: Dort wird niemand gehört, auch nicht per Link-PTT. Sprache aus verlinkten Channels ist dort hörbar.
-- Ebenfalls unter "Bearbeiten ..." begrenzt "Maximale Nutzer" einen Channel (0 = unbegrenzt, der Standard-Channel bleibt immer unbegrenzt). Die Seitenleiste zeigt dann z. B. "3/5". Wer das Recht "Volle Channel betreten" hat, kommt trotzdem hinein und darf andere hineinverschieben.
+- Ein Channel lässt sich beim Anlegen oder unter "Bearbeiten ..." stumm schalten: Dort wird niemand gehört, auch nicht per Link-PTT. Sprache aus verlinkten Channels ist dort hörbar.
+- Ebenso begrenzt "Maximale Nutzer" einen Channel (0 = unbegrenzt, der Standard-Channel bleibt immer unbegrenzt). Die Seitenleiste zeigt dann z. B. "3/5". Wer das Recht "Volle Channel betreten" hat, kommt trotzdem hinein und darf andere hineinverschieben.
 - Per Rechtsklick auf Channels und Nutzer erreichst du Bearbeiten, Verlinken, Verschieben, Kicken und Bannen. Du siehst nur, wozu du berechtigt bist.
 - Ein grüner Ring um das Profilbild bedeutet: jemand spricht. Ein violetter Ring mit Link-Symbol bedeutet: jemand spricht über einen Link.
 - Unter "Verwaltung ...", Links siehst du alle Channel-Links als Matrix. Wähle mehrere Channels aus und verlinke sie mit einem Klick jeder mit jedem. Änderungen gelten erst nach "Übernehmen".

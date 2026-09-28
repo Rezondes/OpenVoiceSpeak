@@ -46,6 +46,29 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.Equal(raid.Id, (await g.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id)).User.ChannelId);
     }
 
+    /// <summary>Package 54: a new channel gets its options right away, like an edited one.</summary>
+    [Fact]
+    public async Task Create_WithMutedAndSlots_ChannelHasThem()
+    {
+        await a.SendAsync(new CreateChannel("Raid", "", IsMuted: true, MaxUsers: 5));
+        var added = (await g.WaitForAsync<ChannelAdded>()).Channel;
+        Assert.Equal((true, 5), (added.IsMuted, added.MaxUsers));
+        await using var late = await TestClient.ConnectAsync(server, "spät");
+        var known = late.Welcome.Snapshot.Channels.Single(c => c.Id == added.Id);
+        Assert.Equal((true, 5), (known.IsMuted, known.MaxUsers));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1000)]
+    public async Task Create_InvalidSlots_Rejected(int maxUsers)
+    {
+        await a.SendAsync(new CreateChannel("Raid", "", MaxUsers: maxUsers) { RequestId = "c" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("c")).Code);
+        await using var late = await TestClient.ConnectAsync(server, "spät");
+        Assert.DoesNotContain(late.Welcome.Snapshot.Channels, c => c.Name == "Raid");
+    }
+
     [Fact]
     public async Task Create_AsAdmin_BroadcastsAndPersists()
     {

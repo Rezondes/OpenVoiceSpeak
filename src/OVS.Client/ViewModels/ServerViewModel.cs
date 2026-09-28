@@ -24,7 +24,8 @@ public sealed record BanChoice(string Reason, int? DurationMinutes, bool Include
 /// <summary>Dialogs the view provides. Unset entries mean "cancelled" (used by tests).</summary>
 public sealed class Dialogs
 {
-    public Func<string, ChannelEdit, ChannelDialogMode, Task<ChannelEdit?>>? EditChannel { get; init; }
+    /// <summary>Package 54: one dialog for creating (empty) and editing (prefilled); the mode sets title and button.</summary>
+    public Func<ChannelEdit, ChannelDialogMode, Task<ChannelEdit?>>? EditChannel { get; init; }
     public Func<string, IReadOnlyList<ChannelViewModel>, Task<ChannelViewModel?>>? PickChannel { get; init; }
     public Func<string, string, Task<string?>>? AskText { get; init; }
     public Func<string, Task<BanChoice?>>? Ban { get; init; }
@@ -307,7 +308,8 @@ public sealed partial class ServerViewModel : ObservableObject
         pendingJoin = channelId;
         return SendAsync(new JoinChannel(channelId));
     }
-    public Task CreateChannelAsync(string name, string description) => SendAsync(new CreateChannel(name, description));
+    public Task CreateChannelAsync(string name, string description, bool isMuted = false, int maxUsers = 0) =>
+        SendAsync(new CreateChannel(name, description, isMuted, maxUsers));
     public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) => SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers));
     public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
 
@@ -373,8 +375,8 @@ public sealed partial class ServerViewModel : ObservableObject
     [RelayCommand]
     async Task NewChannel()
     {
-        if (Dialogs.EditChannel is { } edit && await edit(Strings.Dialog_CreateChannel, new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
-            await CreateChannelAsync(result.Name, result.Description);
+        if (Dialogs.EditChannel is { } edit && await edit(new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
+            await CreateChannelAsync(result.Name, result.Description, result.IsMuted, result.MaxUsers);
     }
 
     [RelayCommand]
@@ -460,7 +462,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     async Task Edit()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        if (owner.Dialogs.EditChannel is { } edit && await edit(Strings.Dialog_EditChannel, new ChannelEdit(Name, Description, IsMuted, MaxUsers), mode) is { } result)
+        if (owner.Dialogs.EditChannel is { } edit && await edit(new ChannelEdit(Name, Description, IsMuted, MaxUsers), mode) is { } result)
             await owner.EditChannelAsync(Id, result, Order);
     }
 

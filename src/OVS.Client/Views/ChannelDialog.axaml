@@ -1,0 +1,32 @@
+<!-- Package 54: the same fields for creating and editing a channel -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:l="using:OVS.Client.Localization"
+             x:Class="OVS.Client.Views.ChannelDialog"
+             x:DataType="vm:ChannelDialogViewModel">
+  <StackPanel Spacing="12">
+    <StackPanel Spacing="4">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Name}" />
+      <TextBox Text="{Binding Name}" AutomationProperties.Name="{x:Static l:Strings.Ui_Name}" />
+    </StackPanel>
+    <StackPanel Spacing="4">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_Description}" />
+      <TextBox Text="{Binding Description}" AcceptsReturn="True" TextWrapping="Wrap" Height="76"
+               AutomationProperties.Name="{x:Static l:Strings.Dlg_Description}" />
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_DescriptionHint}" />
+    </StackPanel>
+    <StackPanel Spacing="4">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_Options}" />
+      <CheckBox Content="{x:Static l:Strings.Dlg_MutedChannel}" IsChecked="{Binding IsMuted}" />
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_MutedHint}" />
+    </StackPanel>
+    <StackPanel Spacing="4">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_MaxUsers}" />
+      <NumericUpDown Value="{Binding MaxUsers}" Minimum="0" Maximum="{Binding MaxSlots}" Increment="1" FormatString="0"
+                     Width="140" HorizontalAlignment="Left" IsEnabled="{Binding CanLimitUsers}"
+                     AutomationProperties.Name="{x:Static l:Strings.Dlg_MaxUsers}" />
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding SlotsHint}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

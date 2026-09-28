@@ -21,9 +21,9 @@ namespace OVS.Client.Views;
 /// </summary>
 public static class SimpleDialogs
 {
-    enum Kind { Normal, Danger }
+    internal enum Kind { Normal, Danger }
 
-    static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
+    internal static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
         string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null) where T : class
     {
         T? result = null;
@@ -120,31 +120,6 @@ public static class SimpleDialogs
     {
         var box = new TextBox();
         return Show(overlay, title, title == Strings.Dialog_RedeemToken ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
-    }
-
-    public static Task<ChannelEdit?> EditChannel(OverlayHost overlay, string title, ChannelEdit current, ChannelDialogMode mode)
-    {
-        var nameBox = new TextBox { Text = current.Name };
-        var descriptionBox = new TextBox { Text = current.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 76 };
-        var muted = new CheckBox { Content = Strings.Dlg_MutedChannel, IsChecked = current.IsMuted };
-        var maxUsers = new NumericUpDown
-        {
-            Minimum = 0, Maximum = Shared.Protocol.ProtocolInfo.MaxChannelUsers, Increment = 1, FormatString = "0",
-            Value = current.MaxUsers, Width = 140, HorizontalAlignment = HorizontalAlignment.Left,
-            IsEnabled = mode != ChannelDialogMode.EditDefault,
-        };
-        var body = Stack(Field("Name", nameBox), Field(Strings.Dlg_Description, descriptionBox, Strings.Dlg_DescriptionHint));
-        if (mode != ChannelDialogMode.Create)
-        {
-            body.Children.Add(Field(Strings.Dlg_Options, muted, Strings.Dlg_MutedHint));
-            body.Children.Add(Field(Strings.Dlg_MaxUsers, maxUsers, mode == ChannelDialogMode.EditDefault
-                ? Strings.Dlg_MaxUsersDefault
-                : Strings.Dlg_MaxUsersHint));
-        }
-        return Show(overlay, title, "Speaker", body,
-            () => string.IsNullOrWhiteSpace(nameBox.Text) ? null
-                : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? "", muted.IsChecked == true, (int)(maxUsers.Value ?? 0)),
-            Strings.Dlg_Save);
     }
 
     public static Task<ChannelViewModel?> PickChannel(OverlayHost overlay, string title, IReadOnlyList<ChannelViewModel> channels)
