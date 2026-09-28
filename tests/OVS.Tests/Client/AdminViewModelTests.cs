@@ -155,4 +155,35 @@ public class AdminViewModelTests
         await vm.SaveServerSettingsCommand.ExecuteAsync(null);
         Assert.Equal(new UpdateServerSettings("Neu", "Hallo", expected), sent[^1] with { RequestId = null });
     }
+
+    // ---- Package 37: group order ----
+
+    [Fact]
+    public async Task MoveGroupUpDown_SendsFullOrder()
+    {
+        var (vm, _, sent) = Create(P.All);
+        vm.SelectedGroup = Group(vm, "Gast");
+        Assert.False(vm.MoveGroupUpCommand.CanExecute(null));
+        await vm.MoveGroupDownCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { ModGroup, WellKnownGroups.Guest, WellKnownGroups.Admin }, ((ReorderGroups)sent[^1]).GroupIds);
+
+        vm.SelectedGroup = Group(vm, "Admin");
+        Assert.False(vm.MoveGroupDownCommand.CanExecute(null));
+        await vm.MoveGroupUpCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { WellKnownGroups.Guest, WellKnownGroups.Admin, ModGroup }, ((ReorderGroups)sent[^1]).GroupIds);
+    }
+
+    [Fact]
+    public async Task DropGroup_SendsOrder_IgnoresUnsaved()
+    {
+        var (vm, _, sent) = Create(P.All);
+        await vm.MoveGroupAsync(Group(vm, "Admin"), Group(vm, "Gast"), after: false);
+        Assert.Equal(new[] { WellKnownGroups.Admin, WellKnownGroups.Guest, ModGroup }, ((ReorderGroups)sent[^1]).GroupIds);
+
+        vm.NewGroupCommand.Execute(null); // not saved yet: cannot be moved, is not in the order
+        var count = sent.Count;
+        await vm.MoveGroupAsync(vm.SelectedGroup!, Group(vm, "Gast"), after: false);
+        Assert.False(vm.MoveGroupUpCommand.CanExecute(null));
+        Assert.Equal(count, sent.Count);
+    }
 }

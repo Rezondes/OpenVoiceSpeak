@@ -322,4 +322,57 @@ public class AdminCommandTests
         Assert.Contains(b.Welcome.Snapshot.Groups, g => g.Name == "Team");
         Assert.Equal("Umbenannt", b.Welcome.Snapshot.Settings.Name);
     }
+
+    // ---- Package 37: group order ----
+
+    static async Task<(TestServer Server, TestClient Admin, TestClient Mod, TestClient Guest)> GroupServerAsync()
+    {
+        var adminId = ClientIdentity.Create();
+        var modId = ClientIdentity.Create();
+        var server = await TestServer.StartAsync(d =>
+        {
+            TestServer.Grant(adminId, "Admin")(d);
+            TestServer.Grant(modId, "Moderator")(d);
+        });
+        return (server, await TestClient.ConnectAsync(server, "admin", adminId), await TestClient.ConnectAsync(server, "mod", modId),
+            await TestClient.ConnectAsync(server, "gast"));
+    }
+
+    [Fact]
+    public async Task ReorderGroups_PersistsAndBroadcasts_RankUnchanged()
+    {
+        var (server, admin, mod, guest) = await GroupServerAsync();
+        await using var _s = server;
+        await using var _a = admin;
+        await using var _m = mod;
+        await using var _g = guest;
+        var ids = admin.Welcome.Snapshot.Groups.Select(g => g.Id).Reverse().ToList();
+
+        await admin.SendAsync(new ReorderGroups(ids));
+        var changed = await guest.WaitForAsync<GroupsChanged>();
+        Assert.Equal(ids, changed.Groups.Select(g => g.Id));
+        Assert.Contains(server.Log, l => l.Contains("Gruppen umsortiert von admin"));
+
+        await using var late = await TestClient.ConnectAsync(server, "spaet");
+        Assert.Equal(ids, late.Welcome.Snapshot.Groups.Select(g => g.Id));
+
+        await mod.SendAsync(new Kick(admin.Id, "") { RequestId = "k" }); // the moderator still cannot touch the admin
+        Assert.Equal(Codes.PermissionDenied, (await mod.ErrorAsync("k")).Code);
+    }
+
+    [Fact]
+    public async Task ReorderGroups_IncompleteOrWithoutRight_Rejected()
+    {
+        var (server, admin, mod, guest) = await GroupServerAsync();
+        await using var _s = server;
+        await using var _a = admin;
+        await using var _m = mod;
+        await using var _g = guest;
+        var ids = admin.Welcome.Snapshot.Groups.Select(g => g.Id).ToList();
+
+        await admin.SendAsync(new ReorderGroups(ids.Skip(1).ToList()) { RequestId = "fehlt" });
+        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("fehlt")).Code);
+        await guest.SendAsync(new ReorderGroups(ids) { RequestId = "recht" });
+        Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("recht")).Code);
+    }
 }

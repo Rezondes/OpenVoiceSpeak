@@ -31,6 +31,7 @@ namespace OVS.Shared.Protocol;
 // Administration
 [JsonDerivedType(typeof(CreateGroup), "createGroup")]
 [JsonDerivedType(typeof(UpdateGroup), "updateGroup")]
+[JsonDerivedType(typeof(ReorderGroups), "reorderGroups")]
 [JsonDerivedType(typeof(DeleteGroup), "deleteGroup")]
 [JsonDerivedType(typeof(AssignGroup), "assignGroup")]
 [JsonDerivedType(typeof(UnassignGroup), "unassignGroup")]
@@ -114,6 +115,8 @@ public sealed record UserLeft(uint SessionId) : Message;
 public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IReadOnlyList<Guid> GroupIds);
 public sealed record CreateGroup(string Name, Permission Permissions) : Request;
 public sealed record UpdateGroup(Guid GroupId, string Name, Permission Permissions) : Request;
+/// <summary>Package 37: the complete new group order, every group exactly once. Display only, the rank stays with the rights.</summary>
+public sealed record ReorderGroups(IReadOnlyList<Guid> GroupIds) : Request;
 public sealed record DeleteGroup(Guid GroupId) : Request;
 public sealed record AssignGroup(string Fingerprint, Guid GroupId) : Request;
 public sealed record UnassignGroup(string Fingerprint, Guid GroupId) : Request;

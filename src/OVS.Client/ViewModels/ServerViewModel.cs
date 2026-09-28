@@ -139,7 +139,7 @@ public sealed partial class ServerViewModel : ObservableObject
         WelcomeText = Mirror.Settings.WelcomeText;
         SelfPermissions = self?.Permissions ?? Permission.None;
         IsAdmin = self?.GroupIds.Contains(WellKnownGroups.Admin) ?? false;
-        var groupNames = Mirror.Groups.ToDictionary(g => g.Id, g => g.Name);
+        var groups = Mirror.Groups;
 
         foreach (var id in channelVms.Keys.Except(Mirror.Channels.Keys).ToList()) channelVms.Remove(id);
         foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).ToList()) userVms.Remove(id);
@@ -156,7 +156,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 .Select(u =>
                 {
                     if (!userVms.TryGetValue(u.SessionId, out var user)) userVms[u.SessionId] = user = new UserViewModel(this, u.SessionId);
-                    user.Update(u, u.SessionId == Mirror.SelfId, SelfPermissions, groupNames);
+                    user.Update(u, u.SessionId == Mirror.SelfId, SelfPermissions, groups);
                     return user;
                 })
                 .ToList();
@@ -431,7 +431,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     public Permission Permissions { get; private set; }
     public Guid ChannelId { get; private set; }
 
-    internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyDictionary<Guid, string> groups)
+    internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> groups)
     {
         Nickname = info.Nickname;
         Fingerprint = info.Fingerprint;
@@ -442,7 +442,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         IsDeafened = info.SelfDeafened;
         // Deafened implies muted and a server mute has its own icon, so the plain mic-off icon only shows for a mute on its own.
         IsSelfMutedOnly = info.SelfMuted && !info.SelfDeafened && !info.ServerMuted;
-        GroupNames = string.Join(", ", info.GroupIds.Select(g => groups.GetValueOrDefault(g)).OfType<string>());
+        GroupNames = string.Join(", ", groups.Where(g => info.GroupIds.Contains(g.Id)).Select(g => g.Name)); // in the server's group order (Package 37)
         StatusText = info switch
         {
             { ServerMuted: true } => "(vom Server stumm)",

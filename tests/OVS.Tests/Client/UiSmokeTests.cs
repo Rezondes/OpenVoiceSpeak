@@ -171,6 +171,7 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.True(vm.IsAdminPage);
         Assert.Contains("Gruppen", Texts(main));
+        Assert.Equal(2, main.GetVisualDescendants().OfType<Button>().Count(b => AutomationProperties.GetName(b) is "Gruppe nach oben" or "Gruppe nach unten"));
         vm.ClosePage();
 
         void Dialog(Func<OverlayHost, Task> open, string title)
@@ -349,6 +350,33 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(new[] { FakeServers.Raid, FakeServers.Lobby }, sent.OfType<ReorderChannels>().Single().ChannelIds);
         Assert.False(vm.Server.Channels.Single(c => c.Name == "Lobby").IsDropAbove);
+        main.Close();
+    }
+
+    /// <summary>Package 37: dragging a group in the administration sends the new group order.</summary>
+    [AvaloniaFact]
+    public void GroupList_DragAdminAboveGuest_SendsOrder()
+    {
+        var sent = new List<Request>();
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin(sent) };
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 700 };
+        main.Show();
+        _ = vm.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        Point Center(string name)
+        {
+            var item = main.GetVisualDescendants().OfType<ListBoxItem>().Single(i => i.DataContext is GroupEditViewModel g && g.Name == name);
+            return item.TranslatePoint(new Point(item.Bounds.Width / 2, item.Bounds.Height / 2), main)!.Value;
+        }
+        var admin = Center("Admin");
+        var guest = Center("Gast");
+        main.MouseDown(admin, MouseButton.Left);
+        main.MouseMove(admin + new Point(0, -10));
+        main.MouseMove(guest + new Point(0, -6));
+        Dispatcher.UIThread.RunJobs();
+        main.MouseUp(guest + new Point(0, -6), MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new[] { WellKnownGroups.Admin, WellKnownGroups.Guest }, sent.OfType<ReorderGroups>().Single().GroupIds);
         main.Close();
     }
 

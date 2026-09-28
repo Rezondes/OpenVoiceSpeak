@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 36 sind umgesetzt, 37 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 37 sind umgesetzt, 38 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2475,10 +2475,10 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQ
 
 ### Acceptance Criteria
 
-- [ ] AC1: Mit `GroupsManage` hat jede Gruppe in der Verwaltung Pfeile nach oben und unten, und die Liste lässt sich per Drag and Drop umordnen.
-- [ ] AC2: Der Server nimmt nur eine vollständige Liste aller Gruppen-IDs an (sonst `InvalidValue`, ohne Recht `PermissionDenied`), ordnet `ServerData.Groups` um, speichert und sendet `GroupsChanged`.
-- [ ] AC3: Gruppenliste in der Verwaltung, Gruppenzuweisung bei Nutzern und der Gruppen-Tooltip am Nutzer folgen der neuen Reihenfolge, auch nach einem Server-Neustart.
-- [ ] AC4: Rechte und Rang ändern sich durch das Sortieren nicht. `ProtocolInfo.Version` ist 7.
+- [x] AC1: Mit `GroupsManage` hat jede Gruppe in der Verwaltung Pfeile nach oben und unten, und die Liste lässt sich per Drag and Drop umordnen.
+- [x] AC2: Der Server nimmt nur eine vollständige Liste aller Gruppen-IDs an (sonst `InvalidValue`, ohne Recht `PermissionDenied`), ordnet `ServerData.Groups` um, speichert und sendet `GroupsChanged`.
+- [x] AC3: Gruppenliste in der Verwaltung, Gruppenzuweisung bei Nutzern und der Gruppen-Tooltip am Nutzer folgen der neuen Reihenfolge, auch nach einem Server-Neustart.
+- [x] AC4: Rechte und Rang ändern sich durch das Sortieren nicht. `ProtocolInfo.Version` ist 7.
 
 ### Tests (TDD)
 
@@ -2487,7 +2487,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQ
 3. `ServerViewModelTests > "GroupNames_FollowGroupOrder"` (AC3)
 4. `AdminCommandTests > "ReorderGroups_RankUnchanged"`: Moderator kann Admin weiterhin nicht kicken (AC4)
 5. `UiSmokeTests`: Pfeile in der Gruppenliste; `SmokeTests`: Version 7
-6. Manueller Check: Ziehen in der Gruppenliste
+6. `UiSmokeTests > "GroupList_DragAdminAboveGuest_SendsOrder"`: Ziehen mit echten Mausereignissen im Headless-Fenster
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminCommandTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
 

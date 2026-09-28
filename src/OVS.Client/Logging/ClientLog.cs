@@ -101,6 +101,7 @@ public sealed class ClientLog
             EditChannel r => $"Channel {Channel(r.ChannelId)} bearbeiten: Name '{r.Name}', Reihenfolge {r.Order}, stumm {YesNo(r.IsMuted)}, max. Nutzer {r.MaxUsers}",
             DeleteChannel r => $"Channel {Channel(r.ChannelId)} löschen",
             ReorderChannels r => $"Channels umsortieren: {string.Join(", ", r.ChannelIds.Select(Channel))}",
+            ReorderGroups r => $"Gruppen umsortieren: {string.Join(", ", r.GroupIds.Select(id => mirror.Groups.FirstOrDefault(g => g.Id == id)?.Name ?? "?"))}",
             MoveUser r => $"{Nick(r.SessionId)} nach {Channel(r.ChannelId)} verschieben",
             SetSelfState r => $"Eigener Status: stumm {YesNo(r.Muted)}, taub {YesNo(r.Deafened)}",
             LinkChannels r => $"Channels {Channel(r.A)} und {Channel(r.B)} verlinken",

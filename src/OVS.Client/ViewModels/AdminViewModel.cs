@@ -13,7 +13,7 @@ public sealed partial class AdminViewModel : ObservableObject
     IReadOnlyList<KnownUserInfo> knownUsers = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveGroupCommand), nameof(DeleteGroupCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveGroupCommand), nameof(DeleteGroupCommand), nameof(MoveGroupUpCommand), nameof(MoveGroupDownCommand))]
     GroupEditViewModel? selectedGroup;
     [ObservableProperty] string serverName = "";
     [ObservableProperty] string welcomeText = "";
@@ -176,6 +176,29 @@ public sealed partial class AdminViewModel : ObservableObject
         await server.SendAsync(new CreateGroup(g.Name, g.Permissions));
     }
 
+    // ---- Package 37: order ----
+
+    List<GroupEditViewModel> SavedGroups => Groups.Where(g => g.Id is not null).ToList();
+
+    bool CanMoveGroupUp => SelectedGroup is { Id: not null } g && SavedGroups.IndexOf(g) > 0;
+    bool CanMoveGroupDown => SelectedGroup is { Id: not null } g && SavedGroups.IndexOf(g) is var i && i >= 0 && i < SavedGroups.Count - 1;
+
+    [RelayCommand(CanExecute = nameof(CanMoveGroupUp))]
+    Task MoveGroupUp() => SelectedGroup is { } g ? MoveGroupAsync(g, SavedGroups[SavedGroups.IndexOf(g) - 1], after: false) : Task.CompletedTask;
+
+    [RelayCommand(CanExecute = nameof(CanMoveGroupDown))]
+    Task MoveGroupDown() => SelectedGroup is { } g ? MoveGroupAsync(g, SavedGroups[SavedGroups.IndexOf(g) + 1], after: true) : Task.CompletedTask;
+
+    /// <summary>Puts source right before or after target and sends the complete order of the saved groups.</summary>
+    public Task MoveGroupAsync(GroupEditViewModel source, GroupEditViewModel target, bool after)
+    {
+        var saved = SavedGroups;
+        if (source == target || source.Id is null || target.Id is null) return Task.CompletedTask;
+        var order = saved.Where(g => g != source).ToList();
+        order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
+        return order.SequenceEqual(saved) ? Task.CompletedTask : server.SendAsync(new ReorderGroups(order.Select(g => g.Id!.Value).ToList()));
+    }
+
     bool CanDeleteGroup => SelectedGroup is { CanDelete: true };
 
     [RelayCommand(CanExecute = nameof(CanDeleteGroup))]
@@ -222,6 +245,9 @@ public sealed partial class GroupEditViewModel : ObservableObject
     public IReadOnlyList<PermissionToggle> Toggles { get; }
     public Permission Permissions => Toggles.Where(t => t.IsChecked).Aggregate(Permission.None, (acc, t) => acc | t.Permission);
     public string DisplayName => Id is null ? Name + " (neu)" : Name;
+    /// <summary>Package 37: where a dragged group would land.</summary>
+    [ObservableProperty] bool isDropAbove;
+    [ObservableProperty] bool isDropBelow;
 }
 
 public sealed partial class PermissionToggle(Permission permission, string label, bool isChecked, bool isEnabled) : ObservableObject

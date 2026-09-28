@@ -190,6 +190,7 @@ public sealed partial class ServerState
                 case MoveUser r: OnMoveUser(session, r); break;
                 case SetSelfState r: OnSetSelfState(session, r); break;
                 case CreateGroup r: OnCreateGroup(session, r); break;
+                case ReorderGroups r: OnReorderGroups(session, r); break;
                 case UpdateGroup r: OnUpdateGroup(session, r); break;
                 case DeleteGroup r: OnDeleteGroup(session, r); break;
                 case AssignGroup r: OnAssignGroup(session, r); break;

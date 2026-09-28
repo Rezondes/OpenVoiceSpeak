@@ -38,6 +38,25 @@ public sealed partial class ServerState
         Broadcast(new GroupsChanged(GroupInfos()));
     }
 
+    /// <summary>Package 37: the list order is the display order everywhere; rights and rank do not change.</summary>
+    void OnReorderGroups(Session s, ReorderGroups r)
+    {
+        if (!Require(s, r, Permission.GroupsManage)) return;
+        var ids = r.GroupIds ?? [];
+        if (ids.Count != data.Groups.Count || !ids.ToHashSet().SetEquals(data.Groups.Select(g => g.Id)))
+        {
+            Fail(s, r, Codes.InvalidValue, "Die neue Reihenfolge muss jede Gruppe genau einmal enthalten.");
+            return;
+        }
+        var reordered = ids.Select(id => data.Groups.Single(g => g.Id == id)).ToList();
+        if (reordered.SequenceEqual(data.Groups)) return;
+        data.Groups.Clear();
+        data.Groups.AddRange(reordered);
+        Persist();
+        logs.Server($"Gruppen umsortiert von {s.Nickname}: {string.Join(", ", reordered.Select(g => g.Name))}");
+        Broadcast(new GroupsChanged(GroupInfos()));
+    }
+
     void OnUpdateGroup(Session s, UpdateGroup r)
     {
         if (!Require(s, r, Permission.GroupsManage)) return;

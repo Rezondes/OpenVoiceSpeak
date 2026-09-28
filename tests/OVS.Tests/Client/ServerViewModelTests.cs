@@ -304,6 +304,16 @@ public class ServerViewModelTests
         Assert.Equal(before, f.Sent.Count);
     }
 
+    /// <summary>Package 37: the group tooltip follows the server's group order, not the order of assignment.</summary>
+    [Fact]
+    public void GroupNames_FollowGroupOrder()
+    {
+        var f = Create(others: [U(2, "anna", Lobby, groups: [WellKnownGroups.Admin, WellKnownGroups.Guest])]);
+        Assert.Equal("Gast, Admin", f.User(2).GroupNames);
+        f.Vm.Apply(new GroupsChanged([new GroupInfo(WellKnownGroups.Admin, "Admin", P.All), new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak)]));
+        Assert.Equal("Admin, Gast", f.User(2).GroupNames);
+    }
+
     [Fact]
     public void SlotText_LimitedAndUnlimited()
     {
