@@ -7,6 +7,7 @@ public enum SoundEvent
     Connected, Disconnected,
     ChannelEntered, UserJoined, UserLeft,
     ServerMuted, Moved, PrivateMessage,
+    ServerMessage, ChannelMessage, // Package 56
 }
 
 /// <summary>
@@ -17,6 +18,8 @@ public static class SoundSynth
 {
     const float Amplitude = 0.28f;
     const int FadeSamples = AudioFormat.SampleRate / 200; // 5 ms, so no note clicks
+
+    static readonly (float Hz, int Ms)[] ChatTone = [(1047, 60), (0, 40), (1319, 90)];
 
     static readonly Dictionary<SoundEvent, (float Hz, int Ms)[]> Patterns = new()
     {
@@ -31,7 +34,9 @@ public static class SoundSynth
         [SoundEvent.UserLeft] = [(494, 130)],
         [SoundEvent.ServerMuted] = [(330, 120), (0, 60), (330, 120)],
         [SoundEvent.Moved] = [(880, 70), (587, 110)],
-        [SoundEvent.PrivateMessage] = [(1047, 60), (0, 40), (1319, 90)],
+        [SoundEvent.PrivateMessage] = ChatTone,
+        [SoundEvent.ServerMessage] = ChatTone, // Package 56: the same tone by default, each can get its own file
+        [SoundEvent.ChannelMessage] = ChatTone,
     };
 
     static readonly Dictionary<SoundEvent, float[]> Cache = [];

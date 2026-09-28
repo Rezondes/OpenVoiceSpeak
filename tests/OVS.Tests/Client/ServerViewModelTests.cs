@@ -377,13 +377,26 @@ public class ServerViewModelTests
         f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));               // moved by someone else
         f.Vm.Apply(new ChatMessage(ChatTarget.Private, 3, "bob", null, 1, "psst", DateTimeOffset.UtcNow));
         f.Vm.Apply(new ChatMessage(ChatTarget.Private, 1, "ich", null, 3, "ja", DateTimeOffset.UtcNow)); // own echo: nothing
-        f.Vm.Apply(new ChatMessage(ChatTarget.Channel, 3, "bob", Bravo, null, "hi", DateTimeOffset.UtcNow)); // not private: nothing
         Assert.Equal(
         [
             OVS.Client.Audio.SoundEvent.UserJoined, OVS.Client.Audio.SoundEvent.UserJoined, OVS.Client.Audio.SoundEvent.UserLeft,
             OVS.Client.Audio.SoundEvent.UserLeft, OVS.Client.Audio.SoundEvent.ServerMuted, OVS.Client.Audio.SoundEvent.Moved,
             OVS.Client.Audio.SoundEvent.PrivateMessage,
         ], heard);
+    }
+
+    /// <summary>Package 56: "Allgemein" and the channel chat have their own sound; nobody hears their own messages.</summary>
+    [Fact]
+    public void ChatMessages_SoundPerTarget_NotForOwn()
+    {
+        var f = Create(others: [U(2, "anna", Lobby)]);
+        var heard = Sounds(f.Vm);
+        f.Vm.Apply(new ChatMessage(ChatTarget.Server, 2, "anna", null, null, "Hallo alle", DateTimeOffset.UtcNow));
+        f.Vm.Apply(new ChatMessage(ChatTarget.Channel, 2, "anna", Lobby, null, "Hallo Lobby", DateTimeOffset.UtcNow));
+        f.Vm.Apply(new ChatMessage(ChatTarget.Private, 2, "anna", null, 1, "psst", DateTimeOffset.UtcNow));
+        f.Vm.Apply(new ChatMessage(ChatTarget.Server, 1, "ich", null, null, "selbst", DateTimeOffset.UtcNow));
+        f.Vm.Apply(new ChatMessage(ChatTarget.Channel, 1, "ich", Lobby, null, "selbst", DateTimeOffset.UtcNow));
+        Assert.Equal([OVS.Client.Audio.SoundEvent.ServerMessage, OVS.Client.Audio.SoundEvent.ChannelMessage, OVS.Client.Audio.SoundEvent.PrivateMessage], heard);
     }
 
     [Fact]

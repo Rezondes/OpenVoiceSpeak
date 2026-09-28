@@ -17,8 +17,11 @@ public class SoundTests
             Assert.True(VoiceActivityDetector.LevelDb(t.Value) > -30, t.Key.ToString());
             Assert.True(t.Value.Max(Math.Abs) <= 0.5f, t.Key.ToString()); // gentle, never at full scale
         });
+        // Package 56: the three chat sounds share the tone of a private message by default, all others differ
+        SoundEvent[] chat = [SoundEvent.PrivateMessage, SoundEvent.ServerMessage, SoundEvent.ChannelMessage];
+        Assert.All(chat, c => Assert.Equal(tones[SoundEvent.PrivateMessage], tones[c]));
         foreach (var a in tones)
-            foreach (var b in tones.Where(b => b.Key > a.Key))
+            foreach (var b in tones.Where(b => b.Key > a.Key && !(chat.Contains(a.Key) && chat.Contains(b.Key))))
                 Assert.False(a.Value.SequenceEqual(b.Value), $"{a.Key} = {b.Key}");
         Assert.Same(tones[SoundEvent.MicOn], SoundSynth.Render(SoundEvent.MicOn)); // rendered once
     }

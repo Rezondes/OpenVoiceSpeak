@@ -188,12 +188,14 @@
   <data name="SoundImport_TooLong" xml:space="preserve"><value>The sound is longer than 5 seconds.</value></data>
   <data name="SoundImport_Unreadable" xml:space="preserve"><value>The file cannot be read as WAV or MP3.</value></data>
   <data name="Sound_ChannelEntered" xml:space="preserve"><value>Channel entered</value></data>
+  <data name="Sound_ChannelMessage" xml:space="preserve"><value>Message in the channel</value></data>
   <data name="Sound_Connected" xml:space="preserve"><value>Connected</value></data>
   <data name="Sound_Disconnected" xml:space="preserve"><value>Disconnected</value></data>
   <data name="Sound_MicOff" xml:space="preserve"><value>Microphone off</value></data>
   <data name="Sound_MicOn" xml:space="preserve"><value>Microphone on</value></data>
   <data name="Sound_Moved" xml:space="preserve"><value>Moved</value></data>
   <data name="Sound_PrivateMessage" xml:space="preserve"><value>New private message</value></data>
+  <data name="Sound_ServerMessage" xml:space="preserve"><value>Message in General</value></data>
   <data name="Sound_ServerMuted" xml:space="preserve"><value>Muted by the server</value></data>
   <data name="Sound_SoundOff" xml:space="preserve"><value>Sound off</value></data>
   <data name="Sound_SoundOn" xml:space="preserve"><value>Sound on</value></data>

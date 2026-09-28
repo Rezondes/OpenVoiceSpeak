@@ -120,6 +120,21 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(2f, Vm(loaded).ToSettings(loaded).VolumeFor("fpC")); // saving the settings page keeps them
     }
 
+    /// <summary>Package 56: each chat sound has its own row; muting one leaves the others alone.</summary>
+    [Fact]
+    public void Sounds_ChatRows_Independent()
+    {
+        var vm = Vm(new ClientSettings());
+        var rows = vm.SoundRows.ToDictionary(r => r.Event);
+        Assert.Equal(("Nachricht in Allgemein", "Nachricht im Channel"), (rows[SoundEvent.ServerMessage].Label, rows[SoundEvent.ChannelMessage].Label));
+        rows[SoundEvent.ServerMessage].Muted = true;
+        rows[SoundEvent.ChannelMessage].VolumePercent = 40;
+        var saved = vm.ToSettings(new ClientSettings());
+        Assert.Equal(0f, AudioEngine.GainFor(saved, SoundEvent.ServerMessage));
+        Assert.Equal(saved.SoundVolume * 0.4f, AudioEngine.GainFor(saved, SoundEvent.ChannelMessage), 3);
+        Assert.Equal(saved.SoundVolume, AudioEngine.GainFor(saved, SoundEvent.PrivateMessage), 3);
+    }
+
     [Fact]
     public void Language_RoundTrip_ShownInSettings()
     {

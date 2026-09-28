@@ -188,12 +188,14 @@
   <data name="SoundImport_TooLong" xml:space="preserve"><value>Der Sound ist länger als 5 Sekunden.</value></data>
   <data name="SoundImport_Unreadable" xml:space="preserve"><value>Die Datei lässt sich nicht als WAV oder MP3 lesen.</value></data>
   <data name="Sound_ChannelEntered" xml:space="preserve"><value>Channel betreten</value></data>
+  <data name="Sound_ChannelMessage" xml:space="preserve"><value>Nachricht im Channel</value></data>
   <data name="Sound_Connected" xml:space="preserve"><value>Verbunden</value></data>
   <data name="Sound_Disconnected" xml:space="preserve"><value>Getrennt</value></data>
   <data name="Sound_MicOff" xml:space="preserve"><value>Mikrofon aus</value></data>
   <data name="Sound_MicOn" xml:space="preserve"><value>Mikrofon an</value></data>
   <data name="Sound_Moved" xml:space="preserve"><value>Verschoben</value></data>
   <data name="Sound_PrivateMessage" xml:space="preserve"><value>Neue Privatnachricht</value></data>
+  <data name="Sound_ServerMessage" xml:space="preserve"><value>Nachricht in Allgemein</value></data>
   <data name="Sound_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>
   <data name="Sound_SoundOff" xml:space="preserve"><value>Ton aus</value></data>
   <data name="Sound_SoundOn" xml:space="preserve"><value>Ton an</value></data>

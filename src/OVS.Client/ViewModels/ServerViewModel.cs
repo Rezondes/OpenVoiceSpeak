@@ -154,7 +154,13 @@ public sealed partial class ServerViewModel : ObservableObject
                 IconReceived?.Invoke(icon);
                 return;
             case ChatMessage chat:
-                if (chat.Target == ChatTarget.Private && chat.FromSessionId != Mirror.SelfId) SoundRequested?.Invoke(SoundEvent.PrivateMessage);
+                if (chat.FromSessionId != Mirror.SelfId) // Package 56: a sound per chat, never for the own messages
+                    SoundRequested?.Invoke(chat.Target switch
+                    {
+                        ChatTarget.Private => SoundEvent.PrivateMessage,
+                        ChatTarget.Channel => SoundEvent.ChannelMessage,
+                        _ => SoundEvent.ServerMessage,
+                    });
                 recentChat.Enqueue(chat);
                 while (recentChat.Count > 200) recentChat.Dequeue();
                 ChatReceived?.Invoke(chat);
