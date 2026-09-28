@@ -13,6 +13,25 @@ public class KeyBindingTests
     static HashSet<KeyAction> Resolve(KeyBinding[] bindings, int[] down, ChordModifiers held) =>
         KeyActions.Resolve(bindings, down.Contains, held);
 
+    /// <summary>Package 59: a new profile can talk right away; mouse 4 if the mouse has side buttons, else Right Ctrl.</summary>
+    [Fact]
+    public void DefaultPtt_Mouse4WithSideButtons_ElseRightCtrl()
+    {
+        Assert.Equal(new KeyChord(KeyPoller.VkXButton1), DefaultKeys.PushToTalk(mouseButtons: 5));
+        Assert.Equal(new KeyChord(KeyPoller.VkXButton1), DefaultKeys.PushToTalk(mouseButtons: 7));
+        Assert.Equal(new KeyChord(KeyPoller.VkRControl), DefaultKeys.PushToTalk(mouseButtons: 3));
+        Assert.Equal(new KeyChord(KeyPoller.VkRControl), DefaultKeys.PushToTalk(mouseButtons: 0)); // no mouse at all
+        Assert.InRange(KeyPoller.MouseButtonCount(), 0, 32);
+    }
+
+    [Fact]
+    public void RightCtrl_NameAndResolves()
+    {
+        Assert.Equal("Strg rechts", new KeyChord(KeyPoller.VkRControl).Name);
+        KeyBinding[] bindings = [Bind(KeyAction.PushToTalk, KeyPoller.VkRControl)];
+        Assert.Equal([KeyAction.PushToTalk], Resolve(bindings, [KeyPoller.VkRControl], Ctrl)); // Windows reports Ctrl as held, too
+    }
+
     [Fact]
     public void Resolve_ChordWithMoreModifiersWins()
     {

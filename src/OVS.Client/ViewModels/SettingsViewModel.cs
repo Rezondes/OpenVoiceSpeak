@@ -22,7 +22,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] double inputGainPercent;
     [ObservableProperty] double outputVolumePercent;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPushToTalk))]
+    [NotifyPropertyChangedFor(nameof(IsPushToTalk), nameof(ShowPttHint))]
     bool voiceActivation;
     [ObservableProperty] ThemeOption selectedTheme;
     [ObservableProperty] LanguageOption selectedLanguage;
@@ -194,8 +194,20 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public bool HasKeyConflict => KeyConflict is not null;
 
+    /// <summary>Package 59: push-to-talk without a push-to-talk key: nobody would hear you.</summary>
+    public bool ShowPttHint => !VoiceActivation && KeyBindings.All(b => b.Binding.Action != KeyAction.PushToTalk);
+
+    /// <summary>"Taste festlegen": the key dialog with push-to-talk chosen, the user only presses the key.</summary>
+    [RelayCommand]
+    async Task SetPttKey()
+    {
+        if (EditKeyBinding is { } edit && await edit(new KeyBinding(KeyAction.PushToTalk, new KeyChord(0)), CaptureAsync) is { } binding)
+            KeyBindings.Add(new KeyBindingItem(binding, this));
+    }
+
     internal void OnKeysChanged()
     {
+        OnPropertyChanged(nameof(ShowPttHint));
         OnPropertyChanged(nameof(HasKeyBindings));
         OnPropertyChanged(nameof(HasKeyConflict));
         OnPropertyChanged(nameof(CanSave));

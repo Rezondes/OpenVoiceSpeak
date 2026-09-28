@@ -96,6 +96,17 @@
           <Border Classes="card">
             <StackPanel Spacing="10">
               <RadioButton Content="{x:Static l:Strings.Ui_ModePtt}" IsChecked="{Binding IsPushToTalk}" />
+              <!-- Package 59: push-to-talk without a key cannot work -->
+              <Border Classes="banner warning" IsVisible="{Binding ShowPttHint}" Margin="28,0,0,0">
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Content="{x:Static l:Strings.Ui_SetPttKey}" Command="{Binding SetPttKeyCommand}"
+                          VerticalAlignment="Center" Margin="12,0,0,0" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" VerticalAlignment="Top" />
+                    <TextBlock Classes="warning" Text="{x:Static l:Strings.Ui_PttHint}" TextWrapping="Wrap" MaxWidth="360" />
+                  </StackPanel>
+                </DockPanel>
+              </Border>
               <RadioButton Content="{x:Static l:Strings.Ui_ModeVad}" IsChecked="{Binding VoiceActivation}" />
               <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
                 <DockPanel>

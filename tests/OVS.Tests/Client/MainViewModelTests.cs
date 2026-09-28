@@ -260,6 +260,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task TalkHint_NoPttBinding_UntilBound()
     {
+        await OnUi(() => // an existing profile without keys (a new one gets a PTT key, Package 59)
+        {
+            var s = vm.Settings;
+            s.KeyBindings = [];
+            vm.ApplySettings(s);
+            return 0;
+        });
         Assert.True(await OnUi(() => vm.HasNoPttBinding));
         Assert.Equal("Keine PTT-Taste belegt", await OnUi(() => vm.TalkHint));
         await OnUi(() =>
@@ -430,7 +437,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task StartScreen_BookmarksAndConnectingState()
     {
         Assert.False(await OnUi(() => vm.HasBookmarks));
-        Assert.Equal("Keine PTT-Taste belegt", await OnUi(() => vm.TalkHint)); // new profiles have no keys (Package 29)
+        Assert.Equal($"PTT: {DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()).Name}", await OnUi(() => vm.TalkHint)); // Package 59: new profiles get a PTT key
         var changed = new List<string?>();
         await OnUi(() =>
         {

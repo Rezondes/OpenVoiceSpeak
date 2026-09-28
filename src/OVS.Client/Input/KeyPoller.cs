@@ -11,6 +11,14 @@ public sealed partial class KeyPoller : IDisposable
 {
     public const int VkXButton1 = 0x05;
     public const int VkXButton2 = 0x06;
+    public const int VkRControl = 0xA3;
+    const int SmCMouseButtons = 43;
+
+    [LibraryImport("user32.dll")]
+    private static partial int GetSystemMetrics(int index);
+
+    /// <summary>Package 59: how many buttons Windows knows the mouse has (0 without a mouse).</summary>
+    public static int MouseButtonCount() => GetSystemMetrics(SmCMouseButtons);
     const int VkShift = 0x10, VkControl = 0x11, VkMenu = 0x12;
 
     [LibraryImport("user32.dll")]

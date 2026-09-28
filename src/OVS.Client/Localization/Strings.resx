@@ -310,6 +310,7 @@
   <data name="Ui_PingTip" xml:space="preserve"><value>Antwortzeit des Servers</value></data>
   <data name="Ui_PlayFmt" xml:space="preserve"><value>{0} abspielen</value></data>
   <data name="Ui_PrivateMessage" xml:space="preserve"><value>Privatnachricht</value></data>
+  <data name="Ui_PttHint" xml:space="preserve"><value>Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand.</value></data>
   <data name="Ui_RedeemTokenMenu" xml:space="preserve"><value>Admin-Token einlösen ...</value></data>
   <data name="Ui_Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
   <data name="Ui_RemoveLogo" xml:space="preserve"><value>Logo entfernen</value></data>
@@ -331,6 +332,7 @@
   <data name="Ui_ServerMuteMenu" xml:space="preserve"><value>Serverseitig stummschalten an/aus</value></data>
   <data name="Ui_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>
   <data name="Ui_ServerName" xml:space="preserve"><value>Servername</value></data>
+  <data name="Ui_SetPttKey" xml:space="preserve"><value>Taste festlegen</value></data>
   <data name="Ui_Settings" xml:space="preserve"><value>Einstellungen</value></data>
   <data name="Ui_SoundMutedFmt" xml:space="preserve"><value>{0}: stumm</value></data>
   <data name="Ui_SoundVolume" xml:space="preserve"><value>Lautstärke der Sounds</value></data>

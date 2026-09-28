@@ -118,7 +118,8 @@ public sealed class ClientSettings
     {
         warning = null;
         var path = Path.Combine(directory, FileName);
-        if (!File.Exists(path)) return new ClientSettings();
+        if (!File.Exists(path)) // Package 59: a new profile gets a push-to-talk key, an existing one keeps its choice
+            return new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()))] };
         try
         {
             return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), Options) ?? new ClientSettings()).MigrateKeys().Clamp();

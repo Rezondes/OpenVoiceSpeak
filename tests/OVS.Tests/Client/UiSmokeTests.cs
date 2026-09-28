@@ -171,7 +171,10 @@ public sealed class UiSmokeTests : IDisposable
         foreach (var label in new[] { "Mikrofon aus", "Neue Privatnachricht" })
             foreach (var name in new[] { $"{label} abspielen", $"{label}: Lautstärke", $"{label}: stumm", $"{label}: Datei wählen", $"{label}: zurücksetzen" })
                 Assert.Contains(name, soundControls);
-        Assert.Contains("Noch keine Tastenaktionen.", Texts(main)); // Package 41: the list starts empty
+        // Package 59: without a PTT key the transmit section says so (here the profile was saved before, so it has none)
+        bool hasPtt = vm.Settings.KeyBindings.Any(b => b.Action == OVS.Client.Input.KeyAction.PushToTalk);
+        Assert.Equal(!hasPtt, main.GetVisualDescendants().OfType<TextBlock>()
+            .Any(t => t.Text == "Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand." && t.IsEffectivelyVisible));
         // Package 42: version in "Über"; "dev.<stamp>" locally, the release version in GitHub Actions (GITHUB_ACTIONS=true)
         Assert.Contains($"OpenVoiceSpeak {OVS.Shared.BuildInfo.Current.Version}", Texts(main));
         Assert.Contains("Nach Updates suchen", Texts(main)); // Package 43
@@ -453,6 +456,26 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.False(button.IsEffectivelyVisible); // connected: the channels take the sidebar
         Assert.Contains("Raid", Texts(main));
+        main.Close();
+    }
+
+    /// <summary>Package 59: push-to-talk without a key shows a hint with a button under "Übertragung".</summary>
+    [AvaloniaFact]
+    public void Settings_PttHint_WithSetKeyButton()
+    {
+        new ClientSettings().Save(dir); // an existing profile without keys
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 2400 };
+        main.Show();
+        vm.OpenSettings();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(),
+            t => t.Text == "Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand." && t.IsEffectivelyVisible);
+        var button = main.GetVisualDescendants().OfType<Button>().Single(b => b.Content is "Taste festlegen");
+        Assert.True(button.IsEffectivelyVisible);
+        vm.SettingsPage!.VoiceActivation = true;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(button.IsEffectivelyVisible);
         main.Close();
     }
 

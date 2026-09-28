@@ -193,7 +193,7 @@ public static class SimpleDialogs
             PlaceholderText = Strings.Dlg_ChooseAction,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        KeyChord? chord = current?.Chord;
+        KeyChord? chord = current?.Chord is { Key: > 0 } known ? known : null; // Package 59: key 0 = only the action is chosen
         var keyText = new TextBlock { Text = chord?.Name ?? Strings.Dlg_NoKeyYet, VerticalAlignment = VerticalAlignment.Center };
         var keycap = new Border { Child = keyText, VerticalAlignment = VerticalAlignment.Center };
         keycap.Classes.Add("keycap");

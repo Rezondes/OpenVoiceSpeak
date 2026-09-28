@@ -213,8 +213,14 @@ public sealed class SettingsTests : IDisposable
 
     /// <summary>Package 29: a new profile starts without any key.</summary>
     [Fact]
-    public void Load_NoFile_NoBindings()
+    public void Load_NoFile_DefaultPttOnly()
     {
+        // Package 59 (replaces "no keys at all" from Package 29): a new profile can talk right away
+        var fresh = ClientSettings.Load(dir, out _);
+        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()))], fresh.KeyBindings);
+        Assert.Equal(TransmitMode.PushToTalk, fresh.Mode);
+
+        new ClientSettings().Save(dir); // an existing profile without keys keeps them that way
         Assert.Empty(ClientSettings.Load(dir, out _).KeyBindings);
         Assert.Empty(Vm().KeyBindings);
         Assert.False(Vm().HasKeyBindings);
@@ -360,6 +366,44 @@ public sealed class SettingsTests : IDisposable
         vm.VoiceActivation = true;
         Assert.Equal(TransmitMode.VoiceActivation, live[^1].Mode);
         Assert.Equal(0.5f, live[^1].InputGain); // every preview carries all values
+    }
+
+    /// <summary>Package 59: push-to-talk without a key cannot work; the settings say so and offer to set one.</summary>
+    [Fact]
+    public void PttHint_OnlyForPushToTalkWithoutKey()
+    {
+        var vm = Vm(new ClientSettings());
+        var changes = new List<string?>();
+        vm.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+        Assert.True(vm.ShowPttHint);
+        vm.VoiceActivation = true;
+        Assert.False(vm.ShowPttHint);
+        vm.VoiceActivation = false;
+        Assert.True(vm.ShowPttHint);
+        var ptt = new KeyBindingItem(new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1)), vm);
+        vm.KeyBindings.Add(ptt);
+        Assert.False(vm.ShowPttHint);
+        vm.KeyBindings.Remove(ptt);
+        vm.KeyBindings.Add(new KeyBindingItem(new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x4D)), vm));
+        Assert.True(vm.ShowPttHint); // another key does not help
+        Assert.True(changes.Count(c => c == nameof(SettingsViewModel.ShowPttHint)) >= 4);
+    }
+
+    [Fact]
+    public async Task SetPttKey_OpensDialogWithPushToTalk()
+    {
+        var vm = Vm(new ClientSettings());
+        KeyBinding? shown = null;
+        vm.EditKeyBinding = (current, _) =>
+        {
+            shown = current;
+            return Task.FromResult<KeyBinding?>(new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl)));
+        };
+        await vm.SetPttKeyCommand.ExecuteAsync(null);
+        Assert.Equal(KeyAction.PushToTalk, shown!.Action);
+        Assert.Equal(0, shown.Chord.Key); // no key yet: the user presses one
+        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl))], vm.KeyBindings.Select(b => b.Binding));
+        Assert.False(vm.ShowPttHint);
     }
 
     [Fact]
