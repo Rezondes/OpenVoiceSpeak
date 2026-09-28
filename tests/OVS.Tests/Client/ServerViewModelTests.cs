@@ -314,6 +314,58 @@ public class ServerViewModelTests
         Assert.Equal("Admin, Gast", f.User(2).GroupNames);
     }
 
+    // ---- Package 47: sounds ----
+
+    static List<OVS.Client.Audio.SoundEvent> Sounds(ServerViewModel vm)
+    {
+        var heard = new List<OVS.Client.Audio.SoundEvent>();
+        vm.SoundRequested += heard.Add;
+        return heard;
+    }
+
+    [Fact]
+    public void SoundEvents_FromMessages()
+    {
+        var f = Create(others: [U(2, "anna", Lobby), U(3, "bob", Bravo)]);
+        var heard = Sounds(f.Vm);
+        f.Vm.Apply(new UserJoined(U(4, "carla", Lobby)));              // into my channel
+        f.Vm.Apply(new UserJoined(U(5, "dora", Bravo)));               // elsewhere: nothing
+        f.Vm.Apply(new UserUpdated(U(3, "bob", Lobby)));               // comes over to me
+        f.Vm.Apply(new UserUpdated(U(2, "anna", Alpha)));              // leaves my channel
+        f.Vm.Apply(new UserLeft(4));                                   // gone from my channel
+        f.Vm.Apply(new UserLeft(5));                                   // gone elsewhere: nothing
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby) with { ServerMuted = true }));
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));               // moved by someone else
+        f.Vm.Apply(new ChatMessage(ChatTarget.Private, 3, "bob", null, 1, "psst", DateTimeOffset.UtcNow));
+        f.Vm.Apply(new ChatMessage(ChatTarget.Private, 1, "ich", null, 3, "ja", DateTimeOffset.UtcNow)); // own echo: nothing
+        f.Vm.Apply(new ChatMessage(ChatTarget.Channel, 3, "bob", Bravo, null, "hi", DateTimeOffset.UtcNow)); // not private: nothing
+        Assert.Equal(
+        [
+            OVS.Client.Audio.SoundEvent.UserJoined, OVS.Client.Audio.SoundEvent.UserJoined, OVS.Client.Audio.SoundEvent.UserLeft,
+            OVS.Client.Audio.SoundEvent.UserLeft, OVS.Client.Audio.SoundEvent.ServerMuted, OVS.Client.Audio.SoundEvent.Moved,
+            OVS.Client.Audio.SoundEvent.PrivateMessage,
+        ], heard);
+    }
+
+    [Fact]
+    public async Task SoundEvents_OwnChanges_NotDoubled()
+    {
+        var f = Create();
+        var heard = Sounds(f.Vm);
+        await f.Vm.ToggleMuteCommand.ExecuteAsync(null);
+        await f.Vm.ToggleMuteCommand.ExecuteAsync(null);
+        await f.Vm.ToggleDeafenCommand.ExecuteAsync(null);
+        await f.Vm.ToggleMuteCommand.ExecuteAsync(null); // unmuting while deafened turns the sound back on
+        await f.Vm.JoinAsync(Bravo);
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo) with { SelfMuted = false }));
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo) with { SelfMuted = true })); // the server's echo of the own mute: no second tone
+        Assert.Equal(
+        [
+            OVS.Client.Audio.SoundEvent.MicOff, OVS.Client.Audio.SoundEvent.MicOn, OVS.Client.Audio.SoundEvent.SoundOff,
+            OVS.Client.Audio.SoundEvent.SoundOn, OVS.Client.Audio.SoundEvent.ChannelEntered,
+        ], heard);
+    }
+
     [Fact]
     public void SlotText_LimitedAndUnlimited()
     {

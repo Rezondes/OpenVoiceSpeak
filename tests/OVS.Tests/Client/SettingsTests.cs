@@ -50,6 +50,19 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Sounds_GlobalSettings_RoundTrip()
+    {
+        var vm = Vm(new ClientSettings());
+        Assert.Equal((false, 80.0), (vm.AllSoundsOff, Math.Round(vm.SoundVolumePercent)));
+        vm.AllSoundsOff = true;
+        vm.SoundVolumePercent = 150; // clamped
+        var saved = vm.ToSettings(new ClientSettings());
+        saved.Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal((false, 1f), (loaded.SoundsEnabled, loaded.SoundVolume));
+    }
+
+    [Fact]
     public void Language_RoundTrip_ShownInSettings()
     {
         new ClientSettings { Language = OVS.Client.Localization.AppLanguage.English }.Save(dir);

@@ -243,6 +243,7 @@ public sealed class DebugApi : IDisposable
             vm.VoiceHint,
             vm.PingText,
             Notices = vm.Notices.Take(50).Select(n => n.ToString()).ToList(),
+            Sounds = vm.Audio.RecentSounds.Select(s => s.ToString()).ToList(), // Package 47
             Server = s is null ? null : new
             {
                 s.ServerName,

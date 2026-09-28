@@ -159,7 +159,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 46 sind umgesetzt, 47 bis 49 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
+Die Packages 1 bis 47 sind umgesetzt, 48 und 49 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2984,12 +2984,12 @@ Die Audio-Engine (`Audio/AudioEngine.cs`) mischt eingehende Sprache in `Playback
 
 ### Acceptance Criteria
 
-- [ ] AC1: Jedes Ereignis aus A46 hat einen eigenen, hörbar unterschiedlichen Standardton von höchstens einer Sekunde, im Client erzeugt.
-- [ ] AC2: Die Töne kommen aus dem gewählten Lautsprecher, mischen sich mit laufender Sprache und blockieren sie nicht.
-- [ ] AC3: Die Ereignisse lösen genau einmal aus: eigene Mute- und Ton-Wechsel (Button und Taste), Verbinden, Trennen, eigener Channelwechsel, jemand betritt oder verlässt den eigenen Channel, Server-Mute gegen einen selbst, Verschieben durch jemand anderen, eingehende Privatnachricht (nicht die eigene).
-- [ ] AC4: Bei "Ton aus" spielen nur die Töne für Mikrofon und Ton.
-- [ ] AC5: In den Einstellungen gibt es "Sounds" mit Gesamtlautstärke und "Alle Sounds aus". Beides wirkt sofort und bleibt gespeichert.
-- [ ] AC6: Die Debug-API zeigt die zuletzt gespielten Töne in `/state`.
+- [x] AC1: Jedes Ereignis aus A46 hat einen eigenen, hörbar unterschiedlichen Standardton von höchstens einer Sekunde, im Client erzeugt.
+- [x] AC2: Die Töne kommen aus dem gewählten Lautsprecher, mischen sich mit laufender Sprache und blockieren sie nicht.
+- [x] AC3: Die Ereignisse lösen genau einmal aus: eigene Mute- und Ton-Wechsel (Button und Taste), Verbinden, Trennen, eigener Channelwechsel, jemand betritt oder verlässt den eigenen Channel, Server-Mute gegen einen selbst, Verschieben durch jemand anderen, eingehende Privatnachricht (nicht die eigene).
+- [x] AC4: Bei "Ton aus" spielen nur die Töne für Mikrofon und Ton.
+- [x] AC5: In den Einstellungen gibt es "Sounds" mit Gesamtlautstärke und "Alle Sounds aus". Beides wirkt sofort und bleibt gespeichert.
+- [x] AC6: Die Debug-API zeigt die zuletzt gespielten Töne in `/state`.
 
 ### Tests (TDD)
 
@@ -2999,7 +2999,7 @@ Die Audio-Engine (`Audio/AudioEngine.cs`) mischt eingehende Sprache in `Playback
 4. `SoundTests > "Deafened_OnlyOwnMicAndSoundTones"` (AC4)
 5. `SettingsTests > "Sounds_GlobalSettings_RoundTrip"` und `UiSmokeTests`: Abschnitt "Sounds" (AC5)
 6. `DebugApiTests > "Sounds_ListedInState"` mit zwei echten Clients (AC3, AC6)
-7. Manueller Check: Töne klingen angenehm und sind im Spiel hörbar, nicht zu laut
+7. Manueller Check (offen, braucht Ohren): Töne klingen angenehm und sind im Spiel hörbar, nicht zu laut
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~UiSmokeTests"`
 

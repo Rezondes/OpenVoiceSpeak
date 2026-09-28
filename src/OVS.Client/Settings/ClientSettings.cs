@@ -75,11 +75,15 @@ public sealed class ClientSettings
     public AppLanguage Language { get; set; } = AppLanguage.System;
     /// <summary>Package 43: look for a newer release at start (A40).</summary>
     public bool CheckForUpdates { get; set; } = true;
+    /// <summary>Package 47: "Alle Sounds aus" is SoundsEnabled = false.</summary>
+    public bool SoundsEnabled { get; set; } = true;
+    public float SoundVolume { get; set; } = 0.8f;   // 0..1
 
     public ClientSettings Clamp()
     {
         InputGain = Math.Clamp(InputGain, 0f, 2f);
         OutputVolume = Math.Clamp(OutputVolume, 0f, 1f);
+        SoundVolume = Math.Clamp(SoundVolume, 0f, 1f);
         VadThresholdDb = Math.Clamp(VadThresholdDb, -60f, -10f);
         return this;
     }

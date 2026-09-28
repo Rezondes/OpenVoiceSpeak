@@ -84,6 +84,30 @@ public sealed class AudioEngine : IDisposable
     /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
     public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
 
+    // ---- Sounds (Package 47) ----
+
+    public SoundQueue Sounds { get; } = new();
+    readonly Queue<SoundEvent> recentSounds = new();
+
+    /// <summary>The last tones actually played, newest last (debug API).</summary>
+    public IReadOnlyList<SoundEvent> RecentSounds
+    {
+        get { lock (recentSounds) return [.. recentSounds]; }
+    }
+
+    /// <summary>Plays a tone on top of the voice. With the sound off only the own microphone and sound tones play (A46).</summary>
+    public void PlaySound(SoundEvent sound)
+    {
+        if (!settings.SoundsEnabled) return;
+        if (deafened && sound is not (SoundEvent.MicOff or SoundEvent.MicOn or SoundEvent.SoundOff or SoundEvent.SoundOn)) return;
+        Sounds.Play(SoundSynth.Render(sound), settings.SoundVolume);
+        lock (recentSounds)
+        {
+            recentSounds.Enqueue(sound);
+            while (recentSounds.Count > 20) recentSounds.Dequeue();
+        }
+    }
+
     public bool Deafened
     {
         get => deafened;
@@ -251,7 +275,8 @@ public sealed class AudioEngine : IDisposable
     {
         var (frame, active) = Mixer.Tick();
         if (deafened) Array.Clear(frame);
-        LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame);
+        LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame); // voice only, before the tones
+        Sounds.MixInto(frame);
         // On change, and every 100 ms while someone talks: the UI holds an indicator for 300 ms after the last report.
         if (!active.SequenceEqual(lastActive) || (++mixCount % 5 == 0 && active.Count > 0))
         {

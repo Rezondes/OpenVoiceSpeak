@@ -206,6 +206,7 @@
   <data name="Ui_Admin" xml:space="preserve"><value>Administration</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>The admin group always has all rights and cannot be changed.</value></data>
   <data name="Ui_AdminMenu" xml:space="preserve"><value>Administration ...</value></data>
+  <data name="Ui_AllSoundsOff" xml:space="preserve"><value>All sounds off</value></data>
   <data name="Ui_AppearanceSection" xml:space="preserve"><value>APPEARANCE</value></data>
   <data name="Ui_Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="Ui_AsFmt" xml:space="preserve"><value>as {0}</value></data>
@@ -297,6 +298,9 @@
   <data name="Ui_ServerMuted" xml:space="preserve"><value>Muted by the server</value></data>
   <data name="Ui_ServerName" xml:space="preserve"><value>Server name</value></data>
   <data name="Ui_Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Ui_SoundVolume" xml:space="preserve"><value>Sound volume</value></data>
+  <data name="Ui_SoundsHint" xml:space="preserve"><value>Short tones for microphone, sound, connection, channel and private messages. With "Sound off" only those for microphone and sound play.</value></data>
+  <data name="Ui_SoundsSection" xml:space="preserve"><value>SOUNDS</value></data>
   <data name="Ui_Speaker" xml:space="preserve"><value>Speaker</value></data>
   <data name="Ui_TalkingViaLink" xml:space="preserve"><value>Talking through a link</value></data>
   <data name="Ui_Theme" xml:space="preserve"><value>Theme</value></data>

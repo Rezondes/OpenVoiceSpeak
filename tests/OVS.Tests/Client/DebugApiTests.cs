@@ -244,6 +244,18 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.Until(s => FramesFrom(s, annaId) > 10 && s.GetProperty("audio").GetProperty("lastOutputLevelDb").GetDouble() > -60);
     }
 
+    /// <summary>Package 47: the tones actually played show in /state.</summary>
+    [Fact]
+    public async Task Sounds_ListedInState()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+        await bert.Post("connect", ConnectBody("bert"));
+        static bool Played(JsonElement s, string sound) => s.GetProperty("sounds").EnumerateArray().Any(e => e.GetString() == sound);
+        await anna.Until(s => Played(s, "Connected") && Played(s, "UserJoined"));
+        await bert.Post("mute", new { value = true });
+        await bert.Until(s => Played(s, "MicOff"));
+    }
+
     [Fact]
     public async Task AdminActions_ThroughApi()
     {

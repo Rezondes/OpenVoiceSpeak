@@ -90,6 +90,23 @@
           </Border>
         </StackPanel>
 
+        <!-- Sounds (Package 47) -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_SoundsSection}" />
+          <Border Classes="card">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsHint}" />
+              <CheckBox Content="{x:Static l:Strings.Ui_AllSoundsOff}" IsChecked="{Binding AllSoundsOff}" />
+              <DockPanel IsEnabled="{Binding !AllSoundsOff}">
+                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding SoundVolumePercent, StringFormat='{}{0:0} %'}" />
+                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_SoundVolume}" />
+              </DockPanel>
+              <Slider Minimum="0" Maximum="100" Value="{Binding SoundVolumePercent}" IsEnabled="{Binding !AllSoundsOff}"
+                      AutomationProperties.Name="{x:Static l:Strings.Ui_SoundVolume}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
         <!-- Transmit mode -->
         <StackPanel Spacing="8">
           <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_TransmitSection}" />

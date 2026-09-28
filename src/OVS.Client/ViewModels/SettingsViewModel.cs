@@ -36,6 +36,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] string? deviceHint;
     [ObservableProperty] bool checkForUpdates;
+    [ObservableProperty] bool allSoundsOff;
+    [ObservableProperty] double soundVolumePercent;
     [ObservableProperty] string? updateStatus;
 
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice> inputs, IReadOnlyList<AudioDevice> outputs, KeyPoller? keys = null)
@@ -60,6 +62,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         selectedTheme = Themes.First(t => t.Value == current.Theme);
         selectedLanguage = Languages.First(l => l.Value == current.Language);
         checkForUpdates = current.CheckForUpdates;
+        allSoundsOff = !current.SoundsEnabled;
+        soundVolumePercent = current.SoundVolume * 100f;
     }
 
     /// <summary>Package 43: "Nach Updates suchen"; the answer is shown under the button.</summary>
@@ -148,6 +152,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnInputGainPercentChanged(double value) => InputGainPercent = Math.Clamp(value, 0, 200);
     partial void OnOutputVolumePercentChanged(double value) => OutputVolumePercent = Math.Clamp(value, 0, 100);
+    partial void OnSoundVolumePercentChanged(double value) => SoundVolumePercent = Math.Clamp(value, 0, 100);
     partial void OnVadThresholdDbChanged(double value) => VadThresholdDb = Math.Clamp(value, -60, -10);
 
     public event Action<bool>? CloseRequested;
@@ -175,6 +180,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Theme = SelectedTheme.Value,
         Language = SelectedLanguage.Value,
         CheckForUpdates = CheckForUpdates,
+        SoundsEnabled = !AllSoundsOff,
+        SoundVolume = (float)(SoundVolumePercent / 100),
     }.Clamp();
 }
 

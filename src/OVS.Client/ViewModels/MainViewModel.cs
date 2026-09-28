@@ -189,6 +189,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             vm.Notice += text => AddNotice(text, NoticeKind.Error);
             TrackServerIcon(vm, choice.Host, choice.Port);
             vm.PropertyChanged += OnServerPropertyChanged;
+            vm.SoundRequested += Audio.PlaySound; // Package 47
             conn.MessageReceived += m => post(() =>
             {
                 if (ClientLog.Describe(m, mirror) is { } line) Log.Write(line);
@@ -211,6 +212,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Status = string.Format(Strings.Status_Connected, vm.ServerName);
             Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
                       $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
+            Audio.PlaySound(SoundEvent.Connected);
             if (vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
             if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: true);
         }
@@ -345,6 +347,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (Page == Page.Admin) CloseAdmin(); // administration needs a server
         var conn = connection;
         connection = null;
+        if (conn is not null) Audio.PlaySound(SoundEvent.Disconnected);
         if (conn is not null) Status = status;
         if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
         Server = null;

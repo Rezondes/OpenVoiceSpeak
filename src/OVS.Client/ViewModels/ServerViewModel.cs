@@ -99,6 +99,10 @@ public sealed partial class ServerViewModel : ObservableObject
     const string ChatRequestPrefix = "c";
     readonly Queue<ChatMessage> recentChat = new();
     public event Action<ChatMessage>? ChatReceived;
+    /// <summary>Package 47: a moment that deserves a tone. The main view model hands it to the audio engine.</summary>
+    public event Action<SoundEvent>? SoundRequested;
+    /// <summary>The channel the own "Betreten" asked for: arriving there is "entered", anywhere else "moved".</summary>
+    Guid? pendingJoin;
     public event Action<string>? ChatError;
     /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
     public event Action<UserViewModel>? PrivateChatRequested;
@@ -132,12 +136,42 @@ public sealed partial class ServerViewModel : ObservableObject
                 IconReceived?.Invoke(icon);
                 return;
             case ChatMessage chat:
+                if (chat.Target == ChatTarget.Private && chat.FromSessionId != Mirror.SelfId) SoundRequested?.Invoke(SoundEvent.PrivateMessage);
                 recentChat.Enqueue(chat);
                 while (recentChat.Count > 200) recentChat.Dequeue();
                 ChatReceived?.Invoke(chat);
                 return;
         }
+        var sound = SoundFor(message); // compared with the state before the change
         if (Mirror.Apply(message)) Rebuild();
+        if (sound is { } s) SoundRequested?.Invoke(s);
+    }
+
+    SoundEvent? SoundFor(Message message)
+    {
+        var self = Mirror.Self;
+        var mine = self?.ChannelId;
+        switch (message)
+        {
+            case UserJoined j when j.User.SessionId != Mirror.SelfId && j.User.ChannelId == mine:
+                return SoundEvent.UserJoined;
+            case UserLeft l when l.SessionId != Mirror.SelfId && Mirror.Users.TryGetValue(l.SessionId, out var gone) && gone.ChannelId == mine:
+                return SoundEvent.UserLeft;
+            case UserUpdated u when u.User.SessionId == Mirror.SelfId && self is not null:
+                if (u.User.ChannelId != self.ChannelId)
+                {
+                    bool own = pendingJoin == u.User.ChannelId;
+                    pendingJoin = null;
+                    return own ? SoundEvent.ChannelEntered : SoundEvent.Moved;
+                }
+                return u.User.ServerMuted && !self.ServerMuted ? SoundEvent.ServerMuted : null;
+            case UserUpdated u when Mirror.Users.TryGetValue(u.User.SessionId, out var before):
+                if (before.ChannelId != mine && u.User.ChannelId == mine) return SoundEvent.UserJoined;
+                if (before.ChannelId == mine && u.User.ChannelId != mine) return SoundEvent.UserLeft;
+                return null;
+            default:
+                return null;
+        }
     }
 
     // ---- Tree ----
@@ -251,7 +285,11 @@ public sealed partial class ServerViewModel : ObservableObject
         }
     }
 
-    public Task JoinAsync(Guid channelId) => SendAsync(new JoinChannel(channelId));
+    public Task JoinAsync(Guid channelId)
+    {
+        pendingJoin = channelId;
+        return SendAsync(new JoinChannel(channelId));
+    }
     public Task CreateChannelAsync(string name, string description) => SendAsync(new CreateChannel(name, description));
     public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) => SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers));
     public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
@@ -278,10 +316,12 @@ public sealed partial class ServerViewModel : ObservableObject
         {
             SelfDeafened = false;
             SelfMuted = false;
+            SoundRequested?.Invoke(SoundEvent.SoundOn);
         }
         else
         {
             SelfMuted = !SelfMuted;
+            SoundRequested?.Invoke(SelfMuted ? SoundEvent.MicOff : SoundEvent.MicOn);
         }
         return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
     }
@@ -300,6 +340,7 @@ public sealed partial class ServerViewModel : ObservableObject
             SelfDeafened = true;
             SelfMuted = true;
         }
+        SoundRequested?.Invoke(SelfDeafened ? SoundEvent.SoundOff : SoundEvent.SoundOn);
         return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
     }
 
