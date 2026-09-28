@@ -32,6 +32,7 @@ public class PermissionRulesTests
         Assert.Equal(P.Speak | P.SpeakLinked | P.ChannelLink | P.UserMove | P.UserMute | P.UserKick | P.UserBan |
             P.ChatServer | P.ChatChannel | P.ChatPrivate, Moderator.Permissions);
         Assert.Equal(P.All, Admin.Permissions);
+        Assert.True(P.All.Has(P.ChannelJoinFull)); // Package 35: admins enter full channels
         Assert.Equal(GuestGroupId, Guest.Id);
         Assert.Equal(AdminGroupId, Admin.Id);
     }

@@ -91,6 +91,76 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.Contains("stumm geschaltet", new StreamReader(stream).ReadToEnd());
     }
 
+    // ---- Package 35: slot limit ----
+
+    async Task<ChannelInfo> LimitedAsync(string name, int maxUsers)
+    {
+        var channel = await CreateAsync(name);
+        await a.SendAsync(new EditChannel(channel.Id, name, "", channel.Order, MaxUsers: maxUsers));
+        return (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == channel.Id && u.Channel.MaxUsers == maxUsers)).Channel;
+    }
+
+    async Task JoinAsync(TestClient client, Guid channel)
+    {
+        await client.SendAsync(new JoinChannel(channel));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == client.Id && u.User.ChannelId == channel);
+    }
+
+    [Fact]
+    public async Task Join_Full_ChannelFull_AdminStillEnters()
+    {
+        var raid = await LimitedAsync("Raid", 1);
+        await JoinAsync(m, raid.Id);
+        await g.SendAsync(new JoinChannel(raid.Id) { RequestId = "voll" });
+        Assert.Equal(Codes.ChannelFull, (await g.ErrorAsync("voll")).Code);
+        await JoinAsync(a, raid.Id); // the admin has "Volle Channel betreten"
+    }
+
+    [Fact]
+    public async Task Move_IntoFull_NeedsRightOfMover()
+    {
+        var raid = await LimitedAsync("Raid", 1);
+        await JoinAsync(g, raid.Id);
+        await using var g2 = await TestClient.ConnectAsync(server, "gast2");
+        await m.SendAsync(new MoveUser(g2.Id, raid.Id) { RequestId = "mv" });
+        Assert.Equal(Codes.ChannelFull, (await m.ErrorAsync("mv")).Code);
+        await a.SendAsync(new MoveUser(g2.Id, raid.Id));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g2.Id && u.User.ChannelId == raid.Id);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1000)]
+    public async Task Edit_LimitOutOfRange_Invalid(int maxUsers)
+    {
+        var raid = await CreateAsync("Raid");
+        await a.SendAsync(new EditChannel(raid.Id, "Raid", "", raid.Order, MaxUsers: maxUsers) { RequestId = "e" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("e")).Code);
+    }
+
+    [Fact]
+    public async Task Edit_DefaultChannelLimit_Invalid()
+    {
+        await a.SendAsync(new EditChannel(Lobby, "Lobby", "", 0, MaxUsers: 5) { RequestId = "e" });
+        Assert.Contains("Standard-Channel", (await a.ErrorAsync("e")).Detail);
+    }
+
+    [Fact]
+    public async Task Edit_LimitBelowCount_NobodyRemoved_PersistedInSnapshot()
+    {
+        var raid = await CreateAsync("Raid");
+        await JoinAsync(g, raid.Id);
+        await JoinAsync(m, raid.Id);
+        await a.SendAsync(new EditChannel(raid.Id, "Raid", "", raid.Order, MaxUsers: 1));
+        await g.WaitForAsync<ChannelUpdated>(u => u.Channel.MaxUsers == 1);
+
+        await using var late = await TestClient.ConnectAsync(server, "spaet");
+        Assert.Equal(1, late.Welcome.Snapshot.Channels.Single(c => c.Id == raid.Id).MaxUsers);
+        Assert.Equal(2, late.Welcome.Snapshot.Users.Count(u => u.ChannelId == raid.Id)); // both stay
+        await late.SendAsync(new JoinChannel(raid.Id) { RequestId = "j" });
+        Assert.Equal(Codes.ChannelFull, (await late.ErrorAsync("j")).Code);
+    }
+
     [Fact]
     public async Task Edit_Muted_WithoutRight_Denied()
     {

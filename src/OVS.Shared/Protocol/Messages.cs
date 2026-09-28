@@ -80,7 +80,8 @@ public sealed record Disconnected(string Reason, string? Detail = null) : Messag
 /// <param name="IconHash">Hash of the server logo (ServerIconFormat.Hash), null when the server has none.</param>
 public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword, string? IconHash = null);
 /// <param name="IsMuted">Package 34: nobody in this channel is heard, not even via link.</param>
-public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false);
+/// <param name="MaxUsers">Package 35: 0 = unlimited.</param>
+public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0);
 public sealed record LinkInfo(Guid A, Guid B);
 public sealed record GroupInfo(Guid Id, string Name, Permission Permissions);
 public sealed record UserInfo(
@@ -95,7 +96,7 @@ public sealed record ServerSnapshot(
 // ---- Channels and users ----
 public sealed record JoinChannel(Guid ChannelId) : Request;
 public sealed record CreateChannel(string Name, string Description) : Request;
-public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order, bool IsMuted = false) : Request;
+public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0) : Request;
 public sealed record DeleteChannel(Guid ChannelId) : Request;
 public sealed record MoveUser(uint SessionId, Guid ChannelId) : Request;
 public sealed record SetSelfState(bool Muted, bool Deafened) : Request;

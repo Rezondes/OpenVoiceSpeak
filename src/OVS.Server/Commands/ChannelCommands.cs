@@ -8,9 +8,14 @@ public sealed partial class ServerState
 {
     void OnJoinChannel(Session s, JoinChannel r)
     {
-        if (FindChannel(r.ChannelId) is null)
+        if (FindChannel(r.ChannelId) is not { } channel)
         {
             Fail(s, r, Codes.NotFound);
+            return;
+        }
+        if (IsFull(channel, s) && !s.Permissions.Has(Permission.ChannelJoinFull))
+        {
+            Fail(s, r, Codes.ChannelFull);
             return;
         }
         var from = s.ChannelId;
@@ -52,6 +57,14 @@ public sealed partial class ServerState
             return;
         }
         if (!ValidateChannel(s, r, channel.Id, r.Name, r.Description, out var name)) return;
+        if (r.MaxUsers is < 0 or > ProtocolInfo.MaxChannelUsers || (r.MaxUsers > 0 && channel.Id == data.DefaultChannelId))
+        {
+            // Everybody lands in the default channel on connect and when a channel is deleted, so it stays unlimited.
+            Fail(s, r, Codes.InvalidValue, channel.Id == data.DefaultChannelId
+                ? "Der Standard-Channel lässt sich nicht begrenzen."
+                : $"Maximale Nutzer: 0 (unbegrenzt) bis {ProtocolInfo.MaxChannelUsers}.");
+            return;
+        }
 
         var description = r.Description.Trim();
         var changes = new List<string>();
@@ -59,11 +72,13 @@ public sealed partial class ServerState
         if (channel.Description != description) changes.Add("Beschreibung geändert");
         if (channel.Order != r.Order) changes.Add($"Reihenfolge {channel.Order} -> {r.Order}");
         if (channel.IsMuted != r.IsMuted) changes.Add(r.IsMuted ? "stumm geschaltet" : "Stummschaltung aufgehoben");
+        if (channel.MaxUsers != r.MaxUsers) changes.Add(r.MaxUsers == 0 ? "Nutzerlimit aufgehoben" : $"Nutzerlimit {r.MaxUsers}");
 
         channel.Name = name;
         channel.Description = description;
         channel.Order = r.Order;
         channel.IsMuted = r.IsMuted;
+        channel.MaxUsers = r.MaxUsers; // lowering it below the current count sends nobody away
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
@@ -119,6 +134,11 @@ public sealed partial class ServerState
             Fail(s, r, Codes.PermissionDenied);
             return;
         }
+        if (IsFull(FindChannel(r.ChannelId)!, target) && !s.Permissions.Has(Permission.ChannelJoinFull))
+        {
+            Fail(s, r, Codes.ChannelFull); // the mover needs the right, not the one being moved
+            return;
+        }
         var from = target.ChannelId;
         if (from != r.ChannelId)
         {
@@ -128,6 +148,10 @@ public sealed partial class ServerState
         target.ChannelId = r.ChannelId;
         Broadcast(new UserUpdated(Info(target)));
     }
+
+    /// <summary>Full for this user: limited and no free slot, not counting the user if already inside.</summary>
+    bool IsFull(ChannelRecord channel, Session user) =>
+        channel.MaxUsers > 0 && sessions.Values.Count(x => x != user && x.ChannelId == channel.Id) >= channel.MaxUsers;
 
     void OnSetSelfState(Session s, SetSelfState r)
     {

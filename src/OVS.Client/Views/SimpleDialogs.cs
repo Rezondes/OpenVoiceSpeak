@@ -123,11 +123,23 @@ public static class SimpleDialogs
         var nameBox = new TextBox { Text = current.Name };
         var descriptionBox = new TextBox { Text = current.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 76 };
         var muted = new CheckBox { Content = "Stummer Channel: niemand wird gehört", IsChecked = current.IsMuted };
+        var maxUsers = new NumericUpDown
+        {
+            Minimum = 0, Maximum = Shared.Protocol.ProtocolInfo.MaxChannelUsers, Increment = 1, FormatString = "0",
+            Value = current.MaxUsers, Width = 140, HorizontalAlignment = HorizontalAlignment.Left,
+            IsEnabled = mode != ChannelDialogMode.EditDefault,
+        };
         var body = Stack(Field("Name", nameBox), Field("Beschreibung", descriptionBox, "Optional, erscheint als Tooltip und im Kopf des Channels."));
         if (mode != ChannelDialogMode.Create)
+        {
             body.Children.Add(Field("Optionen", muted, "Auch Link-PTT aus diesem Channel wird nicht übertragen. Sprache aus verlinkten Channels ist hörbar."));
+            body.Children.Add(Field("Maximale Nutzer (0 = unbegrenzt)", maxUsers, mode == ChannelDialogMode.EditDefault
+                ? "Der Standard-Channel bleibt unbegrenzt: dort landet jeder beim Verbinden."
+                : "Wer drin ist, bleibt auch bei einem kleineren Limit. Das Recht \"Volle Channel betreten\" umgeht es."));
+        }
         return Show(overlay, title, "Speaker", body,
-            () => string.IsNullOrWhiteSpace(nameBox.Text) ? null : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? "", muted.IsChecked == true),
+            () => string.IsNullOrWhiteSpace(nameBox.Text) ? null
+                : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? "", muted.IsChecked == true, (int)(maxUsers.Value ?? 0)),
             "Speichern");
     }
 

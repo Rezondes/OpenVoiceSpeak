@@ -273,6 +273,16 @@ public class ServerViewModelTests
     }
 
     [Fact]
+    public void SlotText_LimitedAndUnlimited()
+    {
+        var f = Create(others: [U(2, "anna", Bravo)]);
+        Assert.Equal("1", f.Channel(Bravo).SlotText);
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, MaxUsers: 5)));
+        Assert.Equal("1/5", f.Channel(Bravo).SlotText);
+        Assert.Equal(5, f.Channel(Bravo).MaxUsers);
+    }
+
+    [Fact]
     public void RedeemToken_HiddenForAdmin()
     {
         Assert.True(Create().Vm.CanRedeemToken);

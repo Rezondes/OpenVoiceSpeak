@@ -286,7 +286,7 @@ public sealed partial class ServerState
     static UserInfo Info(Session s) =>
         new(s.Id, s.Fingerprint, s.Nickname, s.ChannelId, s.SelfMuted, s.SelfDeafened, s.ServerMuted, s.Permissions, s.GroupIds);
 
-    static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order, c.IsMuted);
+    static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers);
 
     ServerSettingsInfo SettingsInfo() =>
         new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.PasswordHash is not null, icon.Hash);

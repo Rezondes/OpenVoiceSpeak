@@ -8,7 +8,7 @@ using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
 
-public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false);
+public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0);
 
 /// <summary>The channel dialog only offers the channel options when editing (Package 34).</summary>
 public enum ChannelDialogMode { Create, Edit, EditDefault }
@@ -161,6 +161,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 })
                 .ToList();
             Sync(channel.Users, users);
+            channel.SlotText = c.MaxUsers > 0 ? $"{users.Count}/{c.MaxUsers}" : users.Count.ToString();
             desired.Add(channel);
         }
         Sync(Channels, desired);
@@ -241,7 +242,7 @@ public sealed partial class ServerViewModel : ObservableObject
 
     public Task JoinAsync(Guid channelId) => SendAsync(new JoinChannel(channelId));
     public Task CreateChannelAsync(string name, string description) => SendAsync(new CreateChannel(name, description));
-    public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) => SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted));
+    public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) => SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers));
     public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
     public Task LinkAsync(Guid a, Guid b) => SendAsync(new LinkChannels(a, b));
     public Task UnlinkAsync(Guid a, Guid b) => SendAsync(new UnlinkChannels(a, b));
@@ -308,6 +309,10 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [ObservableProperty] bool isDefault;
     /// <summary>Package 34: nobody in this channel is heard.</summary>
     [ObservableProperty] bool isMuted;
+    /// <summary>Package 35: 0 = unlimited.</summary>
+    [ObservableProperty] int maxUsers;
+    /// <summary>"3/5" for a limited channel, otherwise just the count.</summary>
+    [ObservableProperty] string slotText = "0";
     [ObservableProperty] bool canCreate;
     [ObservableProperty] bool canEdit;
     [ObservableProperty] bool canDelete;
@@ -328,6 +333,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         IsDefault = isDefault;
         IsCurrent = isCurrent;
         IsMuted = info.IsMuted;
+        MaxUsers = info.MaxUsers;
         CanCreate = actor.Has(Permission.ChannelCreate);
         CanEdit = actor.Has(Permission.ChannelEdit);
         CanDelete = actor.Has(Permission.ChannelDelete) && !isDefault;
@@ -346,7 +352,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     async Task Edit()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        if (owner.Dialogs.EditChannel is { } edit && await edit("Channel bearbeiten", new ChannelEdit(Name, Description, IsMuted), mode) is { } result)
+        if (owner.Dialogs.EditChannel is { } edit && await edit("Channel bearbeiten", new ChannelEdit(Name, Description, IsMuted, MaxUsers), mode) is { } result)
             await owner.EditChannelAsync(Id, result, Order);
     }
 

@@ -32,6 +32,8 @@ public sealed class ChannelRecord
     public int Order { get; set; }
     /// <summary>Package 34: nobody in this channel is heard.</summary>
     public bool IsMuted { get; set; }
+    /// <summary>Package 35: 0 = unlimited. The default channel is always unlimited.</summary>
+    public int MaxUsers { get; set; }
 }
 
 /// <summary>Undirected link, normalized so that A &lt; B.</summary>

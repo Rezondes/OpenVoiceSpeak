@@ -98,7 +98,7 @@ public sealed class ClientLog
         {
             JoinChannel r => $"Channel {Channel(r.ChannelId)} betreten",
             CreateChannel r => $"Channel '{r.Name}' anlegen",
-            EditChannel r => $"Channel {Channel(r.ChannelId)} bearbeiten: Name '{r.Name}', Reihenfolge {r.Order}, stumm {YesNo(r.IsMuted)}",
+            EditChannel r => $"Channel {Channel(r.ChannelId)} bearbeiten: Name '{r.Name}', Reihenfolge {r.Order}, stumm {YesNo(r.IsMuted)}, max. Nutzer {r.MaxUsers}",
             DeleteChannel r => $"Channel {Channel(r.ChannelId)} löschen",
             MoveUser r => $"{Nick(r.SessionId)} nach {Channel(r.ChannelId)} verschieben",
             SetSelfState r => $"Eigener Status: stumm {YesNo(r.Muted)}, taub {YesNo(r.Deafened)}",

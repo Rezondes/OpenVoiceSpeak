@@ -192,6 +192,7 @@ public sealed class UiSmokeTests : IDisposable
         var editing = SimpleDialogs.EditChannel(main.Overlay, "Channel bearbeiten", new ChannelEdit("Raid", "", IsMuted: true), ChannelDialogMode.Edit);
         Dispatcher.UIThread.RunJobs();
         Assert.True(main.Overlay.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Content is "Stummer Channel: niemand wird gehört").IsChecked);
+        Assert.True(main.Overlay.GetVisualDescendants().OfType<NumericUpDown>().Single().IsEnabled); // Package 35: slot limit
         main.Overlay.Close();
         Dispatcher.UIThread.RunJobs();
         Assert.True(editing.IsCompleted);

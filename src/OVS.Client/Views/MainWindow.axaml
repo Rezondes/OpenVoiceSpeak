@@ -133,7 +133,7 @@
                       </Border.ContextMenu>
                       <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Classes="caption" VerticalAlignment="Center"
-                                   Text="{Binding Users.Count}" ToolTip.Tip="Nutzer in diesem Channel" />
+                                   Text="{Binding SlotText}" ToolTip.Tip="Nutzer in diesem Channel" />
                         <PathIcon DockPanel.Dock="Left" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" Margin="0,0,8,0" />
                         <StackPanel Orientation="Horizontal" Spacing="6">
                           <TextBlock Classes="channelName" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"

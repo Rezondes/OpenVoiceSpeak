@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 34 sind umgesetzt, 35 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 35 sind umgesetzt, 36 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2374,12 +2374,12 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRoutingTests|FullyQua
 
 ### Acceptance Criteria
 
-- [ ] AC1: Im Dialog "Channel bearbeiten" gibt es "Maximale Nutzer (0 = unbegrenzt)", 0 bis 999. Beim Standard-Channel ist das Feld gesperrt, der Server lehnt dort einen Wert über 0 mit `InvalidValue` ab.
-- [ ] AC2: Betreten eines vollen Channels ergibt `ChannelFull` ("Der Channel ist voll."), ausser mit `ChannelJoinFull`.
-- [ ] AC3: Verschieben in einen vollen Channel geht nur, wenn der Verschiebende `ChannelJoinFull` hat.
-- [ ] AC4: Wird das Limit unter die aktuelle Zahl gesenkt, bleiben alle drin, neu hinein kommt keiner.
-- [ ] AC5: Die Seitenleiste zeigt bei begrenzten Channels "3/5", bei unbegrenzten wie bisher nur die Zahl. Das neue Recht erscheint in der Gruppenverwaltung als "Volle Channel betreten".
-- [ ] AC6: Das Limit wird gespeichert und steht im Snapshot. `ProtocolInfo.Version` ist 5.
+- [x] AC1: Im Dialog "Channel bearbeiten" gibt es "Maximale Nutzer (0 = unbegrenzt)", 0 bis 999. Beim Standard-Channel ist das Feld gesperrt, der Server lehnt dort einen Wert über 0 mit `InvalidValue` ab.
+- [x] AC2: Betreten eines vollen Channels ergibt `ChannelFull` ("Der Channel ist voll."), ausser mit `ChannelJoinFull`.
+- [x] AC3: Verschieben in einen vollen Channel geht nur, wenn der Verschiebende `ChannelJoinFull` hat.
+- [x] AC4: Wird das Limit unter die aktuelle Zahl gesenkt, bleiben alle drin, neu hinein kommt keiner.
+- [x] AC5: Die Seitenleiste zeigt bei begrenzten Channels "3/5", bei unbegrenzten wie bisher nur die Zahl. Das neue Recht erscheint in der Gruppenverwaltung als "Volle Channel betreten".
+- [x] AC6: Das Limit wird gespeichert und steht im Snapshot. `ProtocolInfo.Version` ist 5.
 
 ### Tests (TDD)
 

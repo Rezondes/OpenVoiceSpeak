@@ -30,6 +30,7 @@ public static class ErrorTexts
         [Codes.CannotDeleteDefault] = "Der Standard-Channel kann nicht gelöscht werden.",
         [Codes.InvalidToken] = "Das Admin-Token ist ungültig oder wurde bereits eingelöst.",
         [Codes.RateLimited] = "Zu viele Nachrichten, warte ein paar Sekunden.",
+        [Codes.ChannelFull] = "Der Channel ist voll.",
         [Codes.ProtectedGroup] = "Diese Gruppe ist geschützt.",
         [Codes.LastAdmin] = "Der letzte Admin kann nicht entfernt werden.",
         [Codes.InvalidLink] = "Ein Channel kann nicht mit sich selbst verlinkt werden.",
@@ -65,5 +66,6 @@ public static class PermissionLabels
         (Permission.ChatServer, "Serverweit schreiben"),
         (Permission.ChatChannel, "Im Channel schreiben"),
         (Permission.ChatPrivate, "Privat schreiben"),
+        (Permission.ChannelJoinFull, "Volle Channel betreten"),
     ];
 }
