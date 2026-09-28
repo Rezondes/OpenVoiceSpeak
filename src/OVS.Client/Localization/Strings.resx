@@ -317,6 +317,9 @@
   <data name="Ui_SaveGroup" xml:space="preserve"><value>Gruppe speichern</value></data>
   <data name="Ui_SaveServerSettings" xml:space="preserve"><value>Servereinstellungen speichern</value></data>
   <data name="Ui_SelectFmt" xml:space="preserve"><value>{0} auswählen</value></data>
+  <data name="Ui_SelfTestHint" xml:space="preserve"><value>Du bist währenddessen stumm, hörst niemanden und hörst dich selbst so, wie andere dich hören. Mit Kopfhörern testen, sonst gibt es Rückkopplung.</value></data>
+  <data name="Ui_SelfTestStart" xml:space="preserve"><value>Selbsttest starten</value></data>
+  <data name="Ui_SelfTestStop" xml:space="preserve"><value>Selbsttest beenden</value></data>
   <data name="Ui_Send" xml:space="preserve"><value>Senden</value></data>
   <data name="Ui_SendEnter" xml:space="preserve"><value>Senden (Enter)</value></data>
   <data name="Ui_Server" xml:space="preserve"><value>Server</value></data>

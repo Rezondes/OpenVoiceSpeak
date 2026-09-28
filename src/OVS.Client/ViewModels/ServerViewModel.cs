@@ -326,6 +326,15 @@ public sealed partial class ServerViewModel : ObservableObject
     public Task BanAsync(uint sessionId, BanChoice choice) => SendAsync(new Ban(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp));
     public Task ServerMuteAsync(uint sessionId, bool muted) => SendAsync(new SetServerMute(sessionId, muted));
 
+    /// <summary>Package 53: both at once and without tones, for the self test and to restore the state before it.</summary>
+    public Task SetSelfStateAsync(bool muted, bool deafened)
+    {
+        if (deafened && !SelfDeafened) mutedBeforeDeafen = SelfMuted;
+        SelfDeafened = deafened;
+        SelfMuted = muted || deafened;
+        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
+    }
+
     [RelayCommand]
     Task ToggleMute()
     {

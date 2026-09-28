@@ -377,6 +377,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (conn is not null) Audio.PlaySound(SoundEvent.Disconnected);
         if (conn is not null) Status = status;
         if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
+        stateBeforeSelfTest = null; // nothing to restore at a server that is gone
+        await SetSelfTestAsync(false);
         Server = null;
         Audio.Send = null;
         voice?.Dispose();
@@ -536,10 +538,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             CheckNow = CheckForUpdatesAsync,
             ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
             PreviewSound = (sound, setting, overall) => Audio.Sounds.Play(sounds.Samples(sound, setting), overall * setting.Volume),
+            LivePreview = Audio.ApplyLive, // Package 53
+            SetSelfTest = SetSelfTestAsync,
         };
         vm.CloseRequested += save =>
         {
             if (save) ApplySettings(vm.ToSettings(Settings));
+            else Audio.ApplyLive(Settings); // "Verwerfen": back to what is saved
             CloseSettings();
         };
         Audio.InputLevel += OnInputLevel;
@@ -553,8 +558,34 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (SettingsPage is { } vm) vm.InputLevelDb = db;
     });
 
+    (bool Muted, bool Deafened)? stateBeforeSelfTest;
+
+    /// <summary>
+    /// Package 53: during the self test one is muted and deafened, at the server too (others see "Ton aus"), and
+    /// hears only the own voice. Afterwards the state from before comes back.
+    /// </summary>
+    public async Task SetSelfTestAsync(bool on)
+    {
+        if (on == Audio.SelfTest) return;
+        Audio.SelfTest = on;
+        if (SettingsPage is { } page) page.IsSelfTesting = on;
+        Log.Write(on ? "Selbsttest gestartet" : "Selbsttest beendet");
+        if (on)
+        {
+            stateBeforeSelfTest = Server is { } s ? (s.SelfMuted, s.SelfDeafened) : null;
+            if (Server is { } server) await server.SetSelfStateAsync(true, true);
+        }
+        else
+        {
+            var before = stateBeforeSelfTest;
+            stateBeforeSelfTest = null;
+            if (Server is { } server && before is { } state) await server.SetSelfStateAsync(state.Muted, state.Deafened);
+        }
+    }
+
     void CloseSettings()
     {
+        _ = SetSelfTestAsync(false);
         Audio.InputLevel -= OnInputLevel;
         SettingsPage = null;
         if (Page == Page.Settings) Page = Page.Home;

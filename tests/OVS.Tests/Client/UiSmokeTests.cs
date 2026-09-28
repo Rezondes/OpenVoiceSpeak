@@ -440,6 +440,29 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 53: the self test button beside the transmit mode, with the headphone hint.</summary>
+    [AvaloniaFact]
+    public void Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 2400 };
+        main.Show();
+        vm.OpenSettings();
+        Dispatcher.UIThread.RunJobs();
+        Button SelfTest() => main.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) is "Selbsttest starten" or "Selbsttest beenden");
+        Assert.Contains(Texts(main), t => t?.Contains("Kopfhörer") == true);
+        Assert.Equal("Selbsttest starten", AutomationProperties.GetName(SelfTest()));
+        SelfTest().Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Selbsttest beenden", AutomationProperties.GetName(SelfTest()));
+        Assert.Contains("Selbsttest beenden", Texts(main));
+        Assert.True(vm.Audio.SelfTest);
+        vm.SettingsPage!.CancelCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(vm.Audio.SelfTest);
+        main.Close();
+    }
+
     /// <summary>Package 51: the volume slider sits in the context menu of everyone but me; a changed volume shows in the tree.</summary>
     [AvaloniaFact]
     public void UserContextMenu_VolumeSlider_OnlyForOthers()

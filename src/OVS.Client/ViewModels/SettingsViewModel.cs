@@ -44,6 +44,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, KeyPoller? keys = null)
     {
         this.keys = keys;
+        basis = current;
         (savedInputId, savedOutputId) = (current.InputDeviceId, current.OutputDeviceId);
         (inputs, selectedInput, bool inputFellBack) = DeviceOptions(savedInputId, inputDevices);
         (outputs, selectedOutput, bool outputFellBack) = DeviceOptions(savedOutputId, outputDevices);
@@ -107,6 +108,34 @@ public sealed partial class SettingsViewModel : ObservableObject
         get => !VoiceActivation;
         set => VoiceActivation = !value;
     }
+
+    // ---- Self test and live sliders (Package 53) ----
+
+    readonly ClientSettings basis;
+
+    /// <summary>Called with the page's values whenever a slider or the mode changes, so they are heard at once.</summary>
+    public Action<ClientSettings>? LivePreview { get; set; }
+
+    /// <summary>Starts (true) or ends (false) the self test; the main view model mutes, deafens and restores.</summary>
+    public Func<bool, Task>? SetSelfTest { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelfTestText))]
+    bool isSelfTesting;
+
+    public string SelfTestText => IsSelfTesting ? Strings.Ui_SelfTestStop : Strings.Ui_SelfTestStart;
+
+    [RelayCommand]
+    Task ToggleSelfTest()
+    {
+        if (SetSelfTest is { } set) return set(!IsSelfTesting);
+        IsSelfTesting = !IsSelfTesting;
+        return Task.CompletedTask;
+    }
+
+    void Preview() => LivePreview?.Invoke(ToSettings(basis));
+
+    partial void OnVoiceActivationChanged(bool value) => Preview();
 
     // ---- Devices (Package 52: the list loads in the background) ----
 
@@ -196,10 +225,24 @@ public sealed partial class SettingsViewModel : ObservableObject
     public bool CanSave => !HasKeyConflict;
     public string? Error => KeyConflict;
 
-    partial void OnInputGainPercentChanged(double value) => InputGainPercent = Math.Clamp(value, 0, 200);
-    partial void OnOutputVolumePercentChanged(double value) => OutputVolumePercent = Math.Clamp(value, 0, 100);
+    partial void OnInputGainPercentChanged(double value)
+    {
+        InputGainPercent = Math.Clamp(value, 0, 200);
+        Preview();
+    }
+
+    partial void OnOutputVolumePercentChanged(double value)
+    {
+        OutputVolumePercent = Math.Clamp(value, 0, 100);
+        Preview();
+    }
+
     partial void OnSoundVolumePercentChanged(double value) => SoundVolumePercent = Math.Clamp(value, 0, 100);
-    partial void OnVadThresholdDbChanged(double value) => VadThresholdDb = Math.Clamp(value, -60, -10);
+    partial void OnVadThresholdDbChanged(double value)
+    {
+        VadThresholdDb = Math.Clamp(value, -60, -10);
+        Preview();
+    }
 
     public event Action<bool>? CloseRequested;
 

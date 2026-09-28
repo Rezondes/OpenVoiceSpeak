@@ -311,6 +311,24 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(3, reload.Inputs.Count);
     }
 
+    /// <summary>Package 53: the sliders are heard at once, not only after "Speichern".</summary>
+    [Fact]
+    public void Sliders_ApplyLive()
+    {
+        var vm = Vm(new ClientSettings());
+        var live = new List<ClientSettings>();
+        vm.LivePreview = live.Add;
+        vm.InputGainPercent = 50;
+        Assert.Equal(0.5f, live[^1].InputGain);
+        vm.OutputVolumePercent = 30;
+        Assert.Equal(0.3f, live[^1].OutputVolume, 3);
+        vm.VadThresholdDb = -25;
+        Assert.Equal(-25f, live[^1].VadThresholdDb);
+        vm.VoiceActivation = true;
+        Assert.Equal(TransmitMode.VoiceActivation, live[^1].Mode);
+        Assert.Equal(0.5f, live[^1].InputGain); // every preview carries all values
+    }
+
     [Fact]
     public void LevelMeter_MarksThreshold()
     {

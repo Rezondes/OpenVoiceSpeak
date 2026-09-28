@@ -546,6 +546,64 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
     }
 
+    /// <summary>Package 53: the self test mutes and deafens (also at the server) and puts everything back afterwards.</summary>
+    [Fact]
+    public async Task SelfTest_MutesAndDeafens_RestoresPreviousState()
+    {
+        await ConnectAsync(saveBookmark: false);
+        async Task<(bool Muted, bool Deafened)> SeenByServer(bool deafened)
+        {
+            for (int i = 0; i < 100 && await OnUi(() => vm.Server!.Self!.IsDeafened) != deafened; i++) await Task.Delay(20);
+            return await OnUi(() => (vm.Server!.Self!.StatusText.Length > 0, vm.Server.Self.IsDeafened));
+        }
+        Assert.Equal((false, false), await SeenByServer(false));
+
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.OpenSettings();
+            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+            return null;
+        });
+        Assert.True(await OnUi(() => vm.Audio.SelfTest && vm.SettingsPage!.IsSelfTesting));
+        Assert.Equal((true, true), await SeenByServer(true));
+
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+            return null;
+        });
+        Assert.False(await OnUi(() => vm.Audio.SelfTest));
+        Assert.Equal((false, false), await SeenByServer(false));
+
+        // closing the settings ends it too; a slider moved meanwhile goes back on "Verwerfen"
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+            vm.SettingsPage.OutputVolumePercent = 50;
+            return null;
+        });
+        Assert.Equal(0.5f, await OnUi(() => vm.Audio.Mixer.Volume));
+        Assert.Equal((true, true), await SeenByServer(true));
+        await OnUi(() =>
+        {
+            vm.SettingsPage!.CancelCommand.Execute(null);
+            return 0;
+        });
+        Assert.Equal((false, false), await SeenByServer(false));
+        Assert.False(await OnUi(() => vm.Audio.SelfTest));
+        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.Volume));
+
+        // disconnecting ends it as well
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.OpenSettings();
+            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+            await vm.DisconnectAsync();
+            return null;
+        });
+        Assert.False(await OnUi(() => vm.Audio.SelfTest || vm.SettingsPage!.IsSelfTesting));
+    }
+
     /// <summary>Package 51: the slider acts on the mixer at once, is kept by fingerprint and follows a new session.</summary>
     [Fact]
     public async Task UserVolume_ChangesMixer_SavesByFingerprint()

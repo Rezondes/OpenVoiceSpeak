@@ -167,6 +167,84 @@ public class SendPathTests
         }
     }
 
+    /// <summary>A tone engine without devices; the playback clock still mixes, so LastOutputLevelDb shows what would be heard.</summary>
+    static AudioEngine ToneEngine(KeyPoller keys, ClientSettings settings)
+    {
+        var engine = new AudioEngine(keys, useDevices: false);
+        engine.Configure(settings);
+        engine.SetTone(440); // 0.3 amplitude: -13.5 dBFS
+        return engine;
+    }
+
+    static async Task<float> LoudestOutput(AudioEngine engine, int ms)
+    {
+        float loudest = -120;
+        for (int t = 0; t < ms; t += 20)
+        {
+            await Task.Delay(20);
+            loudest = Math.Max(loudest, engine.LastOutputLevelDb);
+        }
+        return loudest;
+    }
+
+    /// <summary>Package 53: the self test plays the own voice back and sends nothing; nobody else is heard.</summary>
+    [Fact]
+    public async Task SelfTest_PlaysOwnVoice_SendsNothing_OthersSilent()
+    {
+        using var keys = new KeyPoller();
+        using var engine = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -50 });
+        int sent = 0;
+        engine.Send = (_, _) => Interlocked.Increment(ref sent);
+        engine.Connected = true;
+        engine.SelfMuted = true;
+        engine.Deafened = true;
+        Assert.True(await LoudestOutput(engine, 300) < -100); // muted and deafened: silence
+
+        engine.SelfTest = true;
+        engine.OnVoice(5, 0, VoiceHeader.TargetChannel, new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]));
+        Assert.True(await LoudestOutput(engine, 1000) > -20); // the tone, boosted: about -7.5 dBFS
+        Assert.Equal(0, sent);
+        Assert.False(engine.FramesReceived.ContainsKey(5));
+
+        engine.SelfTest = false;
+        await Task.Delay(700); // the loopback speaker times out
+        Assert.True(await LoudestOutput(engine, 300) < -100);
+        Assert.Equal(0, sent);
+    }
+
+    [Fact]
+    public async Task SelfTest_FollowsMode_PushToTalkWithoutKeySilent()
+    {
+        using var keys = new KeyPoller(); // no bindings: the PTT key is never down
+        using var ptt = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
+        ptt.SelfTest = true;
+        Assert.True(await LoudestOutput(ptt, 600) < -100);
+
+        using var loudThreshold = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -10 });
+        loudThreshold.SelfTest = true;
+        Assert.True(await LoudestOutput(loudThreshold, 600) < -100); // -13.5 dBFS stays below -10
+    }
+
+    /// <summary>Package 53: sliders act at once, without restarting the devices.</summary>
+    [Fact]
+    public async Task ApplyLive_ChangesGainAndVolume_WithoutRestart()
+    {
+        using var keys = new KeyPoller();
+        using var engine = ToneEngine(keys, new ClientSettings());
+        var levels = new List<float>();
+        engine.InputLevel += db =>
+        {
+            lock (levels) levels.Add(db);
+        };
+        await Task.Delay(400);
+        engine.ApplyLive(new ClientSettings { InputGain = 0.5f, OutputVolume = 0.3f, VadThresholdDb = -25, Mode = VoiceActivation });
+        lock (levels) levels.Clear();
+        await Task.Delay(400);
+        lock (levels) Assert.InRange(levels.Last(), -21f, -18f); // -13.5 dBFS minus 6 dB
+        Assert.Equal(0.3f, engine.Mixer.Volume);
+        Assert.Equal(VoiceActivation, engine.Mode);
+    }
+
     [Fact]
     public void ToMono_Pcm16Mono_Scales()
     {

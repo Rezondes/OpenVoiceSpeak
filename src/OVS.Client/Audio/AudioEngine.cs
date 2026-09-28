@@ -71,7 +71,9 @@ public sealed class AudioEngine : IDisposable
     readonly Thread playbackThread;
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
     volatile bool running = true;
-    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, channelMuted;
+    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, channelMuted, selfTest;
+    bool loopbackFrame; // capture thread only: the frame just decided goes to the own ears
+    uint loopbackSeq;
     ClientSettings settings = new();
     CapturePipeline? capture;
     WasapiOut? output;
@@ -96,6 +98,28 @@ public sealed class AudioEngine : IDisposable
     public bool Connected { get => connected; set => connected = value; }
     /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
     public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
+
+    /// <summary>The mixer id of the own voice during the self test; the server never hands out session id 0.</summary>
+    public const uint SelfTestSpeaker = 0;
+
+    /// <summary>
+    /// Package 53: the own voice goes through Opus, the voice boost and the volume straight back to the own ears,
+    /// gated like real sending (voice activation or PTT), but never to the server.
+    /// </summary>
+    public bool SelfTest { get => selfTest; set => selfTest = value; }
+
+    /// <summary>Package 53: sliders on the settings page act at once, without restarting the devices.</summary>
+    public void ApplyLive(ClientSettings live)
+    {
+        lock (gate)
+        {
+            Mode = live.Mode;
+            Mixer.Volume = live.OutputVolume;
+            if (capture is null) return;
+            capture.Gain = live.InputGain;
+            capture.Vad.ThresholdDb = live.VadThresholdDb;
+        }
+    }
 
     // ---- Sounds (Package 47, 48) ----
 
@@ -230,6 +254,11 @@ public sealed class AudioEngine : IDisposable
 
     void OnFrameEncoded(byte[] opus, byte target)
     {
+        if (loopbackFrame)
+        {
+            Mixer.Push(SelfTestSpeaker, loopbackSeq++, opus, false);
+            return;
+        }
         if (Send is not { } send) return;
         send(opus, target);
         Interlocked.Increment(ref framesSent);
@@ -237,6 +266,18 @@ public sealed class AudioEngine : IDisposable
 
     byte? Decide(bool voiceActive)
     {
+        loopbackFrame = false;
+        if (selfTest)
+        {
+            // as if unmuted, but only for the own ears; nothing counts as sending
+            if (lastTarget is not null)
+            {
+                lastTarget = null;
+                TransmitChanged?.Invoke(null);
+            }
+            loopbackFrame = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, keys.MuteHeld, hasSpeakLinked) is not null;
+            return loopbackFrame ? VoiceHeader.TargetChannel : null;
+        }
         // Push-to-mute counts like the own mute: it beats every way of sending (Package 29).
         var target = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, selfMuted || !connected || keys.MuteHeld || channelMuted, hasSpeakLinked);
         if (target != lastTarget)
@@ -295,7 +336,7 @@ public sealed class AudioEngine : IDisposable
     float[] Mix()
     {
         var (frame, active) = Mixer.Tick();
-        if (deafened) Array.Clear(frame);
+        if (deafened && !selfTest) Array.Clear(frame); // in the self test only the own voice is in the mixer
         LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame); // voice only, before the tones
         Sounds.MixInto(frame);
         // On change, and every 100 ms while someone talks: the UI holds an indicator for 300 ms after the last report.
