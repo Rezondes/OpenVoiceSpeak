@@ -250,6 +250,41 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         OnSettingsListsChanged();
     }
 
+    // ---- Updates (Package 43) ----
+
+    public UpdateChecker? Updates { get; set; }
+    public UpdateInstaller? Installer { get; set; }
+
+    public Task StartupUpdateCheckAsync() => Settings.CheckForUpdates ? CheckForUpdatesAsync() : Task.CompletedTask;
+
+    /// <returns>What happened, for the line under "Nach Updates suchen".</returns>
+    public async Task<string> CheckForUpdatesAsync()
+    {
+        if (Updates is not { IsEnabled: true } updates) return "Lokale Builds suchen nicht nach Updates.";
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var result = await updates.CheckAsync(timeout.Token);
+        if (result.Error is { } error)
+        {
+            Log.Write($"Update-Prüfung fehlgeschlagen: {error}");
+            return $"Update-Prüfung fehlgeschlagen: {error}";
+        }
+        if (result.Offer is not { } offer)
+        {
+            Log.Write("Update-Prüfung: keine neuere Version");
+            return "Du hast die neueste Version.";
+        }
+        Log.Write($"Update verfügbar: {offer.Version} ({offer.Tag})");
+        if (Dialogs.OfferUpdate is not { } ask || !await ask(offer) || Installer is null) return $"Version {offer.Version} ist verfügbar.";
+
+        Status = $"Update auf {offer.Version} wird geladen ...";
+        Log.Write($"Update auf {offer.Version} wird installiert");
+        if (await Installer.InstallAsync(offer) is not { } failure) return "Die neue Version startet ...";
+        Log.Write(failure);
+        Status = failure;
+        AddNotice(failure, NoticeKind.Warning);
+        return failure;
+    }
+
     // ---- Bookmarks in the sidebar (Package 40) ----
 
     /// <summary>One click connects; a missing or wrong password is asked for until it fits or the user gives up.</summary>
@@ -440,7 +475,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         ClosePage();
         var inputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Capture) : [];
         var outputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Render) : [];
-        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys) { EditKeyBinding = Dialogs.EditKeyBinding };
+        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys) { EditKeyBinding = Dialogs.EditKeyBinding, CheckNow = CheckForUpdatesAsync };
         vm.CloseRequested += save =>
         {
             if (save) ApplySettings(vm.ToSettings(Settings));

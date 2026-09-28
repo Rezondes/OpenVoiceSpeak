@@ -187,6 +187,16 @@
             <StackPanel Spacing="4">
               <SelectableTextBlock Classes="label" Text="{Binding AppVersion}" />
               <TextBlock Classes="caption" Text="{Binding BuildDetails}" />
+              <CheckBox Content="Beim Start nach Updates suchen" IsChecked="{Binding CheckForUpdates}" Margin="0,8,0,0" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Command="{Binding CheckUpdatesCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                    <TextBlock Text="Nach Updates suchen" />
+                  </StackPanel>
+                </Button>
+                <TextBlock Classes="caption" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
+              </StackPanel>
             </StackPanel>
           </Border>
         </StackPanel>

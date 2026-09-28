@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 42 sind umgesetzt, 43 und 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 43 sind umgesetzt, 44 ist geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2753,13 +2753,12 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~BuildInfoTests|FullyQualif
 **Abhängigkeiten:** Package 42
 
 **Betroffene Dateien:**
-- `src/OVS.Client/Net/UpdateChecker.cs` (neu): neuestes Release über `api.github.com` lesen und mit dem eigenen Build vergleichen
-- `src/OVS.Client/Net/UpdateInstaller.cs` (neu): Download, SHA-256-Prüfung, Selbstersetzung, Aufräumen
+- `src/OVS.Client/Net/Updates.cs` (neu): `UpdateChecker` (neuestes Release über `api.github.com` lesen und mit dem eigenen Build vergleichen) und `UpdateInstaller` (Download, SHA-256-Prüfung, Selbstersetzung, Aufräumen)
 - `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `CheckForUpdates` (Standard an)
 - `src/OVS.Client/ViewModels/MainViewModel.cs`, `SettingsViewModel.cs`, `Views/SettingsView.axaml`, `Views/SimpleDialogs.cs` (ändern): Prüfung beim Start, Button, Overlay
 - `src/OVS.Client/Program.cs` (ändern): alte exe beim Start löschen
 - `README.md` (ändern): Update und Hinweis auf die Anfrage an GitHub
-- `tests/OVS.Tests/Client/UpdateCheckerTests.cs`, `UpdateInstallerTests.cs` (neu), `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+- `tests/OVS.Tests/Client/UpdateTests.cs` (neu), `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
 
 ### Kontext
 
@@ -2767,12 +2766,12 @@ Ab Package 42 kennt der Client Commit und Build-Zeit, und jedes Release heisst `
 
 ### Acceptance Criteria
 
-- [ ] AC1: Ein Update gilt als verfügbar, wenn das neueste Release einen anderen Commit hat, nach der eigenen Build-Zeit veröffentlicht wurde und beide Anhänge hat. `dev`-Builds prüfen nie.
-- [ ] AC2: Beim Start (wenn eingeschaltet) und per "Nach Updates suchen" fragt ein Overlay "Version X ist verfügbar. Jetzt installieren?" mit den Notizen. "Später" fragt erst beim nächsten Start wieder.
-- [ ] AC3: Nach "Installieren" lädt der Client die exe, prüft den Hash, ersetzt sich und startet die neue Version. Bei falschem Hash oder Abbruch bleibt die alte exe unverändert, mit Meldung.
-- [ ] AC4: Eine übrig gebliebene alte exe wird beim nächsten Start gelöscht.
-- [ ] AC5: Netzwerkfehler und Rate-Limit von GitHub stören nicht: nur ein Eintrag im Client-Log, beim Button zusätzlich eine Meldung.
-- [ ] AC6 (manuell): Echte Aktualisierung von einem Release auf das nächste unter Windows, inklusive SmartScreen-Hinweis.
+- [x] AC1: Ein Update gilt als verfügbar, wenn das neueste Release einen anderen Commit hat, nach der eigenen Build-Zeit veröffentlicht wurde und beide Anhänge hat. `dev`-Builds prüfen nie.
+- [x] AC2: Beim Start (wenn eingeschaltet) und per "Nach Updates suchen" fragt ein Overlay "Version X ist verfügbar. Jetzt installieren?" mit den Notizen. "Später" fragt erst beim nächsten Start wieder.
+- [x] AC3: Nach "Installieren" lädt der Client die exe, prüft den Hash, ersetzt sich und startet die neue Version. Bei falschem Hash oder Abbruch bleibt die alte exe unverändert, mit Meldung.
+- [x] AC4: Eine übrig gebliebene alte exe wird beim nächsten Start gelöscht.
+- [x] AC5: Netzwerkfehler und Rate-Limit von GitHub stören nicht: nur ein Eintrag im Client-Log, beim Button zusätzlich eine Meldung.
+- [ ] AC6 (manuell, offen bis zu zwei echten Releases): Echte Aktualisierung von einem Release auf das nächste unter Windows, inklusive SmartScreen-Hinweis.
 
 ### Tests (TDD)
 

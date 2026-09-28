@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -9,6 +10,7 @@ using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
+using OVS.Shared;
 
 namespace OVS.Client;
 
@@ -23,7 +25,7 @@ public partial class App : Application
             var options = Program.Options;
             var log = new ClientLog(options.ProfileDir, TimeProvider.System);
             var args = string.Join(' ', Environment.GetCommandLineArgs().Skip(1));
-            log.Write($"OpenVoiceSpeak-Client {typeof(App).Assembly.GetName().Version} startet, Profil {options.ProfileDir}, " +
+            log.Write($"OpenVoiceSpeak-Client {BuildInfo.Current.Version} startet, Profil {options.ProfileDir}, " +
                       $"Optionen: {(args.Length > 0 ? args : "keine")}");
             var vm = new MainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), options.UseAudioDevices, log);
             ApplyTheme(vm.Settings.Theme);
@@ -53,11 +55,25 @@ public partial class App : Application
                 AskPassword = name => SimpleDialogs.AskPassword(overlay, name),
                 EditBookmark = bookmark => SimpleDialogs.EditBookmark(overlay, bookmark),
                 EditKeyBinding = (binding, capture) => SimpleDialogs.EditKeyBinding(overlay, binding, capture),
+                OfferUpdate = offer => SimpleDialogs.OfferUpdate(overlay, offer),
             };
             vm.ConfirmTofu = prompt => SimpleDialogs.Tofu(overlay, prompt);
 
             var timer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, (_, _) => vm.Tick());
             timer.Start();
+
+            // Package 43: updates from the GitHub releases, restarted with the same command line
+            var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            vm.Updates = new UpdateChecker(http, BuildInfo.Current);
+            if (Environment.ProcessPath is { } exe)
+                vm.Installer = new UpdateInstaller(http, exe, path =>
+                {
+                    var start = new ProcessStartInfo(path) { UseShellExecute = false };
+                    foreach (var arg in Environment.GetCommandLineArgs().Skip(1)) start.ArgumentList.Add(arg);
+                    Process.Start(start);
+                    desktop.Shutdown();
+                });
+            window.Opened += async (_, _) => await vm.StartupUpdateCheckAsync();
 
             desktop.MainWindow = window;
             desktop.Exit += (_, _) =>

@@ -46,6 +46,7 @@ internal static class Program
     public static void Main(string[] args)
     {
         Options = ClientOptions.Parse(args);
+        UpdateInstaller.CleanupOld(Environment.ProcessPath); // Package 43: the exe replaced by the last update
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

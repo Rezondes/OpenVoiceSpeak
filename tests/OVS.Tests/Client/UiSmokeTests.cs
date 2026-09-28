@@ -167,6 +167,7 @@ public sealed class UiSmokeTests : IDisposable
         Assert.Contains("DARSTELLUNG", Texts(main));
         Assert.Contains("Noch keine Tastenaktionen.", Texts(main)); // Package 41: the list starts empty
         Assert.Contains(Texts(main), t => t?.StartsWith("OpenVoiceSpeak dev.") == true); // Package 42: version in "Über"
+        Assert.Contains("Nach Updates suchen", Texts(main)); // Package 43
         Assert.Contains("Tastenaktion hinzufügen", Texts(main));
         vm.ClosePage();
 
@@ -213,6 +214,8 @@ public sealed class UiSmokeTests : IDisposable
         Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
         Dialog(o => SimpleDialogs.Ban(o, "anna"), "anna bannen");
         Dialog(o => SimpleDialogs.Confirm(o, "Wirklich?"), "Bestätigen");
+        Dialog(o => SimpleDialogs.OfferUpdate(o, new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
+            new Uri("https://example.org/a"), new Uri("https://example.org/b"))), "Update verfügbar");
         Dialog(o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)), "Tastenaktion hinzufügen");
         Dialog(o => SimpleDialogs.EditChannel(o, "Channel anlegen", new ChannelEdit("", ""), ChannelDialogMode.Create), "Channel anlegen");
         var editing = SimpleDialogs.EditChannel(main.Overlay, "Channel bearbeiten", new ChannelEdit("Raid", "", IsMuted: true), ChannelDialogMode.Edit);

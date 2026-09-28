@@ -70,6 +70,8 @@ public sealed class ClientSettings
     public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(b => b.Action == action)?.Chord;
     public float VadThresholdDb { get; set; } = -40f; // -60..-10
     public AppTheme Theme { get; set; } = AppTheme.System;
+    /// <summary>Package 43: look for a newer release at start (A40).</summary>
+    public bool CheckForUpdates { get; set; } = true;
 
     public ClientSettings Clamp()
     {

@@ -23,7 +23,7 @@ public static class SimpleDialogs
     enum Kind { Normal, Danger }
 
     static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
-        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal) where T : class
+        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string cancelText = "Abbrechen") where T : class
     {
         T? result = null;
         void Accept()
@@ -34,7 +34,7 @@ public static class SimpleDialogs
 
         var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Classes.Add(kind == Kind.Danger ? "danger" : "accent");
-        var cancel = new Button { Content = "Abbrechen", MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var cancel = new Button { Content = cancelText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Click += (_, _) => Accept();
         cancel.Click += (_, _) => host.Close();
 
@@ -255,6 +255,18 @@ public static class SimpleDialogs
             error.IsVisible = problem is not null;
             return problem is null ? new KeyBinding(KeyActions.All[action.SelectedIndex], chord!) : null;
         }, "Speichern");
+    }
+
+    /// <summary>Package 43: a newer release is out. "Später" asks again at the next start.</summary>
+    public static async Task<bool> OfferUpdate(OverlayHost overlay, UpdateOffer offer)
+    {
+        var notes = new TextBlock { Text = offer.Notes.Length > 0 ? offer.Notes : "Keine Änderungsnotizen.", TextWrapping = TextWrapping.Wrap, MaxWidth = 440 };
+        notes.Classes.Add("caption");
+        var body = Stack(
+            Text($"Version {offer.Version} ist verfügbar. Jetzt installieren?"),
+            new Border { MaxHeight = 200, Child = new ScrollViewer { Content = notes } },
+            Text("Der Client lädt die neue Version, prüft sie und startet neu. Windows SmartScreen fragt beim ersten Start nach, weil die Datei nicht signiert ist.", "caption"));
+        return await Show(overlay, "Update verfügbar", "ArrowSync", body, () => "ok", "Jetzt installieren", cancelText: "Später") is not null;
     }
 
     public static async Task<bool> Confirm(OverlayHost overlay, string text) =>

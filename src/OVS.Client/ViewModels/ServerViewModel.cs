@@ -33,6 +33,8 @@ public sealed class Dialogs
     public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
     /// <summary>Package 41: action and key; null binding = add. The second argument captures the next key.</summary>
     public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; init; }
+    /// <summary>Package 43: "Version X ist verfügbar. Jetzt installieren?"</summary>
+    public Func<UpdateOffer, Task<bool>>? OfferUpdate { get; init; }
 }
 
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>

@@ -32,6 +32,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     double inputLevelDb = -60;
 
     [ObservableProperty] string? deviceHint;
+    [ObservableProperty] bool checkForUpdates;
+    [ObservableProperty] string? updateStatus;
 
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice> inputs, IReadOnlyList<AudioDevice> outputs, KeyPoller? keys = null)
     {
@@ -53,6 +55,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
+        checkForUpdates = current.CheckForUpdates;
+    }
+
+    /// <summary>Package 43: "Nach Updates suchen"; the answer is shown under the button.</summary>
+    public Func<Task<string>>? CheckNow { get; set; }
+
+    [RelayCommand]
+    async Task CheckUpdates()
+    {
+        if (CheckNow is not { } check) return;
+        UpdateStatus = "Suche nach Updates ...";
+        UpdateStatus = await check();
     }
 
     // ---- About (Package 42) ----
@@ -151,6 +165,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         KeyBindings = KeyBindings.Select(b => b.Binding).ToList(),
         VadThresholdDb = (float)VadThresholdDb,
         Theme = SelectedTheme.Value,
+        CheckForUpdates = CheckForUpdates,
     }.Clamp();
 }
 

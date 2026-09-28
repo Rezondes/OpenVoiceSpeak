@@ -176,6 +176,55 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUi(() => vm.HasBookmarks));
     }
 
+    /// <summary>Package 43: at start a newer release is offered; "Später" downloads nothing; switched off, nothing is asked.</summary>
+    [Fact]
+    public async Task StartupCheck_Prompt_LaterDoesNothing()
+    {
+        var release = new
+        {
+            tag_name = "deploy-bbbbbbb",
+            name = "OpenVoiceSpeak 280926.0b2c",
+            body = "",
+            published_at = DateTimeOffset.UtcNow,
+            assets = new[]
+            {
+                new { name = "OVS.Client.exe", browser_download_url = "https://example.org/OVS.Client.exe" },
+                new { name = "OVS.Client.exe.sha256", browser_download_url = "https://example.org/OVS.Client.exe.sha256" },
+            },
+        };
+        var http = new FakeHttp(_ => FakeHttp.Json(release));
+        var offered = new List<string>();
+        var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
+        await OnUi(() =>
+        {
+            vm.Updates = new OVS.Client.Net.UpdateChecker(new HttpClient(http), running);
+            vm.Installer = new OVS.Client.Net.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "gibt-es-nicht.exe"), _ => offered.Add("neu gestartet"));
+            vm.Dialogs = new Dialogs { OfferUpdate = offer => { offered.Add(offer.Version); return Task.FromResult(false); } };
+            return 0;
+        });
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.StartupUpdateCheckAsync();
+            return null;
+        });
+        Assert.Equal(["280926.0b2c"], offered);
+        Assert.Single(http.Requests); // only the question, no download
+
+        await OnUi(() =>
+        {
+            var s = vm.Settings;
+            s.CheckForUpdates = false;
+            vm.ApplySettings(s);
+            return 0;
+        });
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.StartupUpdateCheckAsync();
+            return null;
+        });
+        Assert.Single(http.Requests);
+    }
+
     [Fact]
     public async Task Connect_SavesBookmark_ToSettingsFile()
     {

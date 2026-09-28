@@ -116,6 +116,8 @@ docker buildx build --platform linux/amd64,linux/arm64 -t openvoicespeak/server:
 
 Die fertige `OVS.Client.exe` liegt unter [Releases](https://github.com/Rezondes/OpenVoiceSpeak/releases). Sie läuft ohne installiertes .NET. Jeder Push auf `main` baut sie nach grünen Tests neu (`.github/workflows/release.yml`). Die Version ist eine Build-Kennung aus Datum und Uhrzeit in UTC, z. B. `280926.0a1k`, lokale Builds heissen `dev.<...>`. Die Einstellungen zeigen sie unter "Über", der Server schreibt sie beim Start ins Log (`OVS.Server --version` gibt sie aus). Die exe ist nicht signiert, Windows SmartScreen fragt deshalb beim ersten Start nach.
 
+**Updates:** Veröffentlichte Versionen fragen beim Start bei GitHub nach einer neueren Version (abschaltbar unter Einstellungen, Über, dort auch "Nach Updates suchen"). Ist eine da, fragt der Client, ob er sie installieren soll. Er lädt dann die neue exe, prüft sie gegen die mitveröffentlichte SHA-256-Datei, ersetzt sich selbst und startet neu. Dabei geht nur eine lesende Anfrage an `api.github.com` und der Download von GitHub raus, keine Nutzerdaten. Lokale Builds (`dev.<...>`) suchen nie nach Updates.
+
 Selbst bauen:
 
 ```bash
