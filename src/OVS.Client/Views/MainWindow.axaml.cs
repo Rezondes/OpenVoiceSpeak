@@ -22,13 +22,29 @@ public partial class MainWindow : Window
 
     async void OnConnectClick(object? sender, RoutedEventArgs e) => await ConnectAsync(null);
 
-    /// <summary>A bookmark opens the connect dialog prefilled, so a password can still be entered.</summary>
-    async void OnBookmarkClick(object? sender, RoutedEventArgs e) => await ConnectAsync(((sender as Control)?.DataContext as BookmarkItem)?.Bookmark);
-
     async Task ConnectAsync(Bookmark? preselect)
     {
         if (Vm.IsConnecting) return;
         if (await SimpleDialogs.Connect(Overlay, Vm.Settings, preselect) is { } choice) await Vm.ConnectAsync(choice);
+    }
+
+    // ---- Bookmarks in the sidebar (Package 40): a click connects right away ----
+
+    static Bookmark? BookmarkOf(object? sender) => ((sender as Control)?.DataContext as BookmarkItem)?.Bookmark;
+
+    async void OnBookmarkClick(object? sender, RoutedEventArgs e)
+    {
+        if (!Vm.IsConnecting && BookmarkOf(sender) is { } bookmark) await Vm.ConnectBookmarkAsync(bookmark);
+    }
+
+    async void OnBookmarkEdit(object? sender, RoutedEventArgs e)
+    {
+        if (BookmarkOf(sender) is { } bookmark) await Vm.EditBookmarkAsync(bookmark);
+    }
+
+    async void OnBookmarkDelete(object? sender, RoutedEventArgs e)
+    {
+        if (BookmarkOf(sender) is { } bookmark) await Vm.DeleteBookmarkAsync(bookmark);
     }
 
     /// <summary>Esc leaves settings (without saving) or the administration. An open dialog handles Esc itself first.</summary>

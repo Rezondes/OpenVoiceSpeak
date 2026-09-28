@@ -16,6 +16,11 @@ using OVS.Shared.Protocol;
 namespace OVS.Client.ViewModels;
 
 /// <param name="SavePassword">Package 39: store the password with the bookmark, after a successful connection only.</param>
+public sealed record PasswordAnswer(string Password, bool Save);
+
+/// <param name="Password">The password shown in the dialog; stored only with SavePassword.</param>
+public sealed record BookmarkEdit(string Name, string Host, int Port, string Nickname, string? Password, bool SavePassword);
+
 public sealed record ConnectChoice(string Host, int Port, string Nickname, string? Password, bool SaveBookmark, bool SavePassword = false);
 
 /// <summary>A bookmark tile: the bookmark and the logo last seen for that server.</summary>
@@ -24,6 +29,8 @@ public sealed record BookmarkItem(Bookmark Bookmark, byte[]? Icon)
     public string Name => Bookmark.Name;
     public string Host => Bookmark.Host;
     public string Nickname => Bookmark.Nickname;
+    public string Address => $"{Bookmark.Host}:{Bookmark.Port}";
+    public bool HasSavedPassword => Bookmark.HasSavedPassword;
 }
 
 public enum NoticeKind { Info, Welcome, Warning, Error }
@@ -54,6 +61,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     VoiceClient? voice;
     DateTime connectedAt;
     bool? udpLogged;
+    /// <summary>Why the last connect attempt was refused, e.g. WrongPassword (Package 40).</summary>
+    string? lastRejection;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConnected))]
@@ -156,6 +165,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task ConnectAsync(ConnectChoice choice)
     {
         await DisconnectAsync();
+        lastRejection = null;
         if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: false);
 
         Status = $"Verbinde mit {choice.Host}:{choice.Port} ...";
@@ -203,6 +213,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
         catch (ConnectionRejectedException e)
         {
+            lastRejection = e.Code;
             Status = "Abgelehnt: " + ErrorTexts.For(e.Code, e.Detail);
         }
         catch (TofuRejectedException)
@@ -234,6 +245,43 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings.Bookmarks.Insert(0, new Bookmark(old?.Name ?? $"{choice.Host}:{choice.Port}", choice.Host, choice.Port, choice.Nickname, password));
         Settings.Save(storageDir);
         if (passwordConfirmed) Log.Write($"Lesezeichen gespeichert{(password is null ? "" : ", Passwort verschlüsselt gespeichert")}");
+        OnSettingsListsChanged();
+    }
+
+    // ---- Bookmarks in the sidebar (Package 40) ----
+
+    /// <summary>One click connects; a missing or wrong password is asked for until it fits or the user gives up.</summary>
+    public async Task ConnectBookmarkAsync(Bookmark bookmark)
+    {
+        var password = bookmark.SavedPassword();
+        bool save = password is not null;
+        while (true)
+        {
+            await ConnectAsync(new ConnectChoice(bookmark.Host, bookmark.Port, bookmark.Nickname, password, SaveBookmark: true, SavePassword: save));
+            if (lastRejection != Codes.WrongPassword || Dialogs.AskPassword is not { } ask) return;
+            if (await ask(bookmark.Name) is not { } answer) return;
+            (password, save) = (answer.Password, answer.Save);
+        }
+    }
+
+    public async Task EditBookmarkAsync(Bookmark bookmark)
+    {
+        if (Dialogs.EditBookmark is not { } edit || await edit(bookmark) is not { } e) return;
+        int index = Settings.Bookmarks.IndexOf(bookmark);
+        if (index < 0) return;
+        var password = e.SavePassword && !string.IsNullOrEmpty(e.Password) ? PasswordProtector.Protect(e.Password) : null;
+        Settings.Bookmarks[index] = new Bookmark(e.Name, e.Host, e.Port, e.Nickname, password);
+        Settings.Save(storageDir);
+        Log.Write($"Lesezeichen '{bookmark.Name}' geändert: {e.Name}, {e.Host}:{e.Port}, {e.Nickname}, Passwort {(password is null ? "nicht gespeichert" : "gespeichert")}");
+        OnSettingsListsChanged();
+    }
+
+    public async Task DeleteBookmarkAsync(Bookmark bookmark)
+    {
+        if (Dialogs.Confirm is not { } confirm || !await confirm($"Lesezeichen \"{bookmark.Name}\" löschen?")) return;
+        if (!Settings.Bookmarks.Remove(bookmark)) return;
+        Settings.Save(storageDir);
+        Log.Write($"Lesezeichen '{bookmark.Name}' gelöscht");
         OnSettingsListsChanged();
     }
 

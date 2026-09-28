@@ -333,6 +333,18 @@
   </Style>
 
   <!-- Bookmark tiles on the start screen -->
+  <!-- A bookmark in the sidebar (Package 40) -->
+  <Style Selector="Button.bookmark">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.bookmark:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+  </Style>
   <Style Selector="Button.tile">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />

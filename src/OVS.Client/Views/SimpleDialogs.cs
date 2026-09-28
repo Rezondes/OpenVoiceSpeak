@@ -162,6 +162,48 @@ public static class SimpleDialogs
     }
 
     /// <summary>Only used for destructive actions, hence the red button.</summary>
+    static CheckBox SavePasswordBox(TextBox password, bool isChecked)
+    {
+        var box = new CheckBox { Content = "Passwort speichern (verschlüsselt für deinen Windows-Benutzer)", IsChecked = isChecked };
+        void Update()
+        {
+            box.IsEnabled = !string.IsNullOrEmpty(password.Text);
+            if (!box.IsEnabled) box.IsChecked = false;
+        }
+        password.TextChanged += (_, _) => Update();
+        Update();
+        return box;
+    }
+
+    /// <summary>Package 40: asked when a bookmark connects and the server wants a (different) password.</summary>
+    public static Task<PasswordAnswer?> AskPassword(OverlayHost overlay, string serverName)
+    {
+        var password = new TextBox { PasswordChar = '•' };
+        var save = SavePasswordBox(password, false);
+        var body = Stack(Text("Der Server verlangt ein Passwort, oder das gespeicherte stimmt nicht mehr.", "muted"), Field("Serverpasswort", password), save);
+        return Show(overlay, $"Passwort für {serverName}", "LockClosed", body,
+            () => string.IsNullOrEmpty(password.Text) ? null : new PasswordAnswer(password.Text, save.IsChecked == true), "Verbinden");
+    }
+
+    public static Task<BookmarkEdit?> EditBookmark(OverlayHost overlay, Bookmark bookmark)
+    {
+        var name = new TextBox { Text = bookmark.Name };
+        var host = new TextBox { Text = bookmark.Host };
+        var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = bookmark.Port, FormatString = "0", Increment = 1, Width = 130 };
+        var nickname = new TextBox { Text = bookmark.Nickname };
+        var password = new TextBox { PasswordChar = '•', Text = bookmark.SavedPassword() ?? "" };
+        var save = SavePasswordBox(password, bookmark.HasSavedPassword);
+        var address = new DockPanel { Children = { Dock(Field("Port", port), Avalonia.Controls.Dock.Right), Field("Adresse", host) } };
+        ((Control)address.Children[0]).Margin = new Thickness(12, 0, 0, 0);
+        var body = Stack(Field("Name", name), address, Field("Nickname", nickname),
+            Field("Serverpasswort", password, "Leer lassen oder den Haken entfernen, um kein Passwort zu speichern."), save);
+        return Show(overlay, "Lesezeichen bearbeiten", "Edit", body, () =>
+            string.IsNullOrWhiteSpace(name.Text) || string.IsNullOrWhiteSpace(host.Text) || string.IsNullOrWhiteSpace(nickname.Text)
+                ? null
+                : new BookmarkEdit(name.Text.Trim(), host.Text.Trim(), (int)(port.Value ?? 7000), nickname.Text.Trim(), password.Text, save.IsChecked == true),
+            "Speichern");
+    }
+
     public static async Task<bool> Confirm(OverlayHost overlay, string text) =>
         await Show(overlay, "Bestätigen", "Delete", Text(text), () => "ok", "Ja, löschen", kind: Kind.Danger) is not null;
 

@@ -401,6 +401,32 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 40: while disconnected the sidebar lists the bookmarks, with Verbinden, Bearbeiten, Löschen.</summary>
+    [AvaloniaFact]
+    public void Bookmarks_InSidebar_WhenDisconnected()
+    {
+        var settings = new ClientSettings();
+        settings.Bookmarks.Add(new Bookmark("Gilde", "gilde.example.org", 7000, "ich"));
+        settings.Save(dir);
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var button = main.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Mit Gilde verbinden");
+        Assert.True(button.TranslatePoint(default, main)!.Value.X < 300); // in the sidebar, not on the start screen
+        button.ContextMenu!.Open(button);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(["Verbinden", "Bearbeiten ...", "Löschen ..."], button.ContextMenu.Items.OfType<MenuItem>().Select(m => m.Header as string));
+        button.ContextMenu.Close();
+
+        vm.Server = FakeServers.Admin();
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(button.IsEffectivelyVisible); // connected: the channels take the sidebar
+        Assert.Contains("Raid", Texts(main));
+        main.Close();
+    }
+
     [Fact]
     public void Avatar_SameNicknameSameColor_InitialUpperCase()
     {

@@ -97,6 +97,85 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Contains("Passwort verschlüsselt gespeichert", log);
     }
 
+    // ---- Package 40: bookmarks in the sidebar ----
+
+    async Task<TestServer> LockedServerAsync() => await TestServer.StartAsync(password: "richtig");
+
+    /// <summary>Like a click in the sidebar: the bookmark is one of the saved ones.</summary>
+    Task ConnectBookmark(Bookmark bookmark) => ui.InvokeAsync<object?>(async () =>
+    {
+        vm.Settings.Bookmarks.Add(bookmark);
+        await vm.ConnectBookmarkAsync(bookmark);
+        return null;
+    });
+
+    [Fact]
+    public async Task Bookmark_Connect_UsesSavedPassword()
+    {
+        await using var locked = await LockedServerAsync();
+        int asked = 0;
+        vm.Dialogs = new Dialogs { AskPassword = _ => { asked++; return Task.FromResult<PasswordAnswer?>(null); } };
+        await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna", PasswordProtector.Protect("richtig")));
+        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.Equal(0, asked);
+    }
+
+    [Fact]
+    public async Task Bookmark_WrongSavedPassword_AsksAndSavesNew()
+    {
+        await using var locked = await LockedServerAsync();
+        var answers = new Queue<PasswordAnswer?>([new PasswordAnswer("auch falsch", true), new PasswordAnswer("richtig", true)]);
+        vm.Dialogs = new Dialogs { AskPassword = _ => Task.FromResult(answers.Dequeue()) };
+        await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna", PasswordProtector.Protect("veraltet")));
+
+        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.Empty(answers); // asked twice: the second answer fitted
+        var saved = ClientSettings.Load(dir, out _).Bookmarks.Single();
+        Assert.Equal(("Gilde", "richtig"), (saved.Name, saved.SavedPassword()));
+    }
+
+    [Fact]
+    public async Task Bookmark_AskPassword_Cancel_StaysDisconnected()
+    {
+        await using var locked = await LockedServerAsync();
+        vm.Dialogs = new Dialogs { AskPassword = _ => Task.FromResult<PasswordAnswer?>(null) };
+        await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna"));
+        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.StartsWith("Abgelehnt", await OnUi(() => vm.Status));
+    }
+
+    [Fact]
+    public async Task Bookmark_EditAndDelete_Persist()
+    {
+        var original = new Bookmark("Alt", "alt.example.org", 7000, "anna");
+        await OnUi(() =>
+        {
+            vm.Settings.Bookmarks.Add(original);
+            vm.Settings.Save(dir);
+            return 0;
+        });
+        vm.Dialogs = new Dialogs
+        {
+            EditBookmark = b => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", "pw", SavePassword: true)),
+            Confirm = _ => Task.FromResult(true),
+        };
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.EditBookmarkAsync(original);
+            return null;
+        });
+        var edited = ClientSettings.Load(dir, out _).Bookmarks.Single();
+        Assert.Equal(("Neu", "neu.example.org", 7100, "berta", "pw"), (edited.Name, edited.Host, edited.Port, edited.Nickname, edited.SavedPassword()));
+
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.DeleteBookmarkAsync(vm.Settings.Bookmarks.Single());
+            return null;
+        });
+        Assert.Empty(ClientSettings.Load(dir, out _).Bookmarks);
+        Assert.False(await OnUi(() => vm.HasBookmarks));
+    }
+
     [Fact]
     public async Task Connect_SavesBookmark_ToSettingsFile()
     {

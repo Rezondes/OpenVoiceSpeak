@@ -50,6 +50,8 @@ public partial class App : Application
                 AskText = (title, prompt) => SimpleDialogs.AskText(overlay, title, prompt),
                 Ban = nickname => SimpleDialogs.Ban(overlay, nickname),
                 Confirm = text => SimpleDialogs.Confirm(overlay, text),
+                AskPassword = name => SimpleDialogs.AskPassword(overlay, name),
+                EditBookmark = bookmark => SimpleDialogs.EditBookmark(overlay, bookmark),
             };
             vm.ConfirmTofu = prompt => SimpleDialogs.Tofu(overlay, prompt);
 

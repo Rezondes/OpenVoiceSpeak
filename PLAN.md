@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 39 sind umgesetzt, 40 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 40 sind umgesetzt, 41 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2619,11 +2619,11 @@ Ohne Verbindung zeigt die Seitenleiste nur "Nicht verbunden", der Hauptbereich u
 
 ### Acceptance Criteria
 
-- [ ] AC1: Ohne Verbindung zeigt die Seitenleiste die Lesezeichen mit Logo bzw. Buchstabe, Name und Nickname. Der Hauptbereich zeigt nur Logo, Status und "Verbinden ...".
-- [ ] AC2: Ein Klick verbindet sofort, mit gespeichertem Passwort, falls vorhanden. Der TOFU-Dialog erscheint wie bisher.
-- [ ] AC3: Bei `WrongPassword` fragt ein Overlay nach dem Passwort, mit "Passwort speichern". Richtig eingegeben verbindet es und speichert auf Wunsch. Abbrechen lässt den Client getrennt.
-- [ ] AC4: Das Kontextmenü eines Lesezeichens bietet "Verbinden", "Bearbeiten" und "Löschen". Löschen fragt nach. Bearbeiten ändert Name, Adresse, Port, Nickname und das gespeicherte Passwort (ändern oder entfernen). Alles bleibt nach einem Neustart erhalten.
-- [ ] AC5: Während einer Verbindung zeigt die Seitenleiste wie bisher die Channels.
+- [x] AC1: Ohne Verbindung zeigt die Seitenleiste die Lesezeichen mit Logo bzw. Buchstabe, Name und Nickname. Der Hauptbereich zeigt nur Logo, Status und "Verbinden ...".
+- [x] AC2: Ein Klick verbindet sofort, mit gespeichertem Passwort, falls vorhanden. Der TOFU-Dialog erscheint wie bisher.
+- [x] AC3: Bei `WrongPassword` fragt ein Overlay nach dem Passwort, mit "Passwort speichern". Richtig eingegeben verbindet es und speichert auf Wunsch. Abbrechen lässt den Client getrennt.
+- [x] AC4: Das Kontextmenü eines Lesezeichens bietet "Verbinden", "Bearbeiten" und "Löschen". Löschen fragt nach. Bearbeiten ändert Name, Adresse, Port, Nickname und das gespeicherte Passwort (ändern oder entfernen). Alles bleibt nach einem Neustart erhalten.
+- [x] AC5: Während einer Verbindung zeigt die Seitenleiste wie bisher die Channels.
 
 ### Tests (TDD)
 

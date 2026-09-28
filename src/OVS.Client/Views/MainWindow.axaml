@@ -99,9 +99,56 @@
 
         <!-- Channel tree -->
         <Panel>
-          <TextBlock Classes="caption" Margin="18" TextWrapping="Wrap" IsVisible="{Binding !IsConnected}"
-                     Text="Verbinde dich mit einem Server, um seine Channels zu sehen." />
-          <ScrollViewer Padding="8,10">
+          <!-- Not connected: the bookmarks (Package 40) -->
+          <ScrollViewer Padding="8,10" IsVisible="{Binding !IsConnected}">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="section" Text="LESEZEICHEN" Margin="10,4,0,6" />
+              <TextBlock Classes="caption" Margin="10,0" TextWrapping="Wrap" IsVisible="{Binding !HasBookmarks}"
+                         Text="Noch keine Lesezeichen. Verbinde dich über &quot;Verbinden ...&quot; und speichere den Server als Lesezeichen." />
+              <ItemsControl ItemsSource="{Binding Bookmarks}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:BookmarkItem">
+                    <Button Classes="bookmark" Click="OnBookmarkClick" ToolTip.Tip="{Binding Address}"
+                            AutomationProperties.Name="{Binding Name, StringFormat='Mit {0} verbinden'}">
+                      <Button.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="Verbinden" Click="OnBookmarkClick">
+                            <MenuItem.Icon><PathIcon Data="{StaticResource Icon.PlugConnected}" Classes="sm" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="Bearbeiten ..." Click="OnBookmarkEdit">
+                            <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Edit}" Classes="sm" /></MenuItem.Icon>
+                          </MenuItem>
+                          <Separator />
+                          <MenuItem Header="Löschen ..." Click="OnBookmarkDelete">
+                            <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Delete}" Classes="sm danger" /></MenuItem.Icon>
+                          </MenuItem>
+                        </ContextMenu>
+                      </Button.ContextMenu>
+                      <DockPanel>
+                        <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.LockClosed}"
+                                  IsVisible="{Binding HasSavedPassword}" ToolTip.Tip="Passwort gespeichert" />
+                        <Panel DockPanel.Dock="Left">
+                          <Border Classes="badge" Width="28" Height="28" CornerRadius="7"
+                                  IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNull}}">
+                            <TextBlock Text="{Binding Name, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                          </Border>
+                          <Border Classes="badge" Width="28" Height="28" CornerRadius="7" ClipToBounds="True" Background="Transparent"
+                                  IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Image Source="{Binding Icon, Converter={x:Static v:Ui.PngToBitmap}}" Stretch="UniformToFill" />
+                          </Border>
+                        </Panel>
+                        <StackPanel Margin="10,0" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="caption" Text="{Binding Nickname, StringFormat='als {0}'}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </DockPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+          <ScrollViewer Padding="8,10" IsVisible="{Binding IsConnected}">
             <ItemsControl x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
@@ -239,41 +286,6 @@
                 <TextBlock Text="Verbinden ..." VerticalAlignment="Center" />
               </StackPanel>
             </Button>
-
-            <StackPanel Spacing="8" Margin="0,18,0,0" IsVisible="{Binding HasBookmarks}">
-              <TextBlock Classes="section" Text="LESEZEICHEN" />
-              <ItemsControl ItemsSource="{Binding Bookmarks}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Spacing="8" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:BookmarkItem">
-                    <Button Classes="tile" Click="OnBookmarkClick"
-                            AutomationProperties.Name="{Binding Name, StringFormat='Mit {0} verbinden'}">
-                      <DockPanel>
-                        <PathIcon DockPanel.Dock="Right" Classes="muted" Data="{StaticResource Icon.ChevronRight}" />
-                        <Panel DockPanel.Dock="Left">
-                          <Border Classes="badge" Width="32" Height="32" CornerRadius="8"
-                                  IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNull}}">
-                            <TextBlock Text="{Binding Host, Converter={x:Static v:Ui.Initials}}" FontSize="14" />
-                          </Border>
-                          <Border Classes="badge" Width="32" Height="32" CornerRadius="8" ClipToBounds="True" Background="Transparent"
-                                  IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Image Source="{Binding Icon, Converter={x:Static v:Ui.PngToBitmap}}" Stretch="UniformToFill" />
-                          </Border>
-                        </Panel>
-                        <StackPanel Margin="12,0" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Classes="caption" Text="{Binding Nickname, StringFormat='als {0}'}" />
-                        </StackPanel>
-                      </DockPanel>
-                    </Button>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
           </StackPanel>
         </ScrollViewer>
 

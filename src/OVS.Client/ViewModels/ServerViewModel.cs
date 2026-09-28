@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio;
 using OVS.Client.Net;
+using OVS.Client.Settings;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 
@@ -26,6 +27,9 @@ public sealed class Dialogs
     public Func<string, string, Task<string?>>? AskText { get; init; }
     public Func<string, Task<BanChoice?>>? Ban { get; init; }
     public Func<string, Task<bool>>? Confirm { get; init; }
+    /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
+    public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }
+    public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
 }
 
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>
