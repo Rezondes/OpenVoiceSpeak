@@ -33,13 +33,26 @@ public static class AudioDevices
         : available.Any(d => d.Id == wanted) ? (wanted, false)
         : (null, true);
 
+    /// <summary>
+    /// The saved device by its id, or null (= default device, with a warning if it was set but is gone). Package 52:
+    /// straight by id instead of listing every device with its name, which took more than half a second.
+    /// </summary>
     public static MMDevice? Open(string? id, DataFlow flow, List<string> warnings)
     {
-        var (resolved, fellBack) = Resolve(id, List(flow));
-        if (fellBack) warnings.Add(Strings.Audio_DeviceFallback);
-        if (resolved is null) return null;
-        using var enumerator = new MMDeviceEnumerator();
-        return enumerator.GetDevice(resolved);
+        if (id is null) return null;
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            var device = enumerator.GetDevice(id);
+            if (device.State == DeviceState.Active && device.DataFlow == flow) return device;
+            device.Dispose();
+        }
+        catch (Exception e) when (e is COMException or ArgumentException)
+        {
+            // unknown id: unplugged or removed
+        }
+        warnings.Add(Strings.Audio_DeviceFallback);
+        return null;
     }
 }
 

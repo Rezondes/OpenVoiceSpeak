@@ -28,6 +28,7 @@
   <data name="Confirm_DeleteBookmark" xml:space="preserve"><value>Lesezeichen "{0}" löschen?</value></data>
   <data name="Confirm_DeleteChannel" xml:space="preserve"><value>Channel "{0}" löschen? Nutzer darin landen im Standard-Channel.</value></data>
   <data name="Device_Default" xml:space="preserve"><value>Standardgerät</value></data>
+  <data name="Device_Loading" xml:space="preserve"><value>Geräte werden geladen ...</value></data>
   <data name="Device_Missing" xml:space="preserve"><value>Ein gespeichertes Audiogerät ist nicht mehr vorhanden, es wird das Standardgerät verwendet.</value></data>
   <data name="Dialog_CreateChannel" xml:space="preserve"><value>Channel anlegen</value></data>
   <data name="Dialog_EditChannel" xml:space="preserve"><value>Channel bearbeiten</value></data>

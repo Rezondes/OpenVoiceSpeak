@@ -73,6 +73,9 @@
 | 49 | Website | Eine zweisprachige Seite auf GitHub Pages stellt die App für Nutzer vor und wird mit jedem Release neu ausgeliefert. | 42, 46 |
 | 50 | Stimmen lauter | Andere Stimmen kommen beim Zuhörer standardmässig doppelt so laut an, ohne bei lauten Stellen zu verzerren. | 13, 17 |
 | 51 | Lautstärke je Nutzer | Jeder kann die Lautstärke einzelner anderer Nutzer zwischen 0 und 200 % einstellen, und die Einstellung bleibt je Person erhalten. | 50 |
+| 52 | Einstellungen ohne Einfrieren | Einstellungen öffnen, Speichern und Programmstart blockieren die Oberfläche nicht mehr durch das Auflisten der Audiogeräte. | 17 |
+| 53 | Selbsttest | Ein Button in den Einstellungen schaltet einen stumm und taub und spielt die eigene Stimme so zurück, wie andere sie hören. | 50, 52 |
+| 54 | Ein Channel-Dialog | Anlegen und Bearbeiten eines Channels nutzen denselben Dialog mit allen Optionen, leer beim Anlegen und vorbelegt beim Bearbeiten. | 34, 35 |
 
 ## Annahmen
 
@@ -147,6 +150,14 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A54 Regler "Lautstärke".** Er bleibt bei 0 bis 100 %. Mehr als heute gibt es über die Grundverstärkung (A51) und je Nutzer (A55).
 - **A55 Lautstärke je Nutzer.** Schieberegler 0 bis 200 % in 5er-Schritten direkt im Kontextmenü eines anderen Nutzers, mit Prozentanzeige und dem Eintrag "Auf 100 % zurücksetzen". Beim eigenen Eintrag gibt es ihn nicht. Gespeichert je Fingerprint in `ClientSettings.UserVolumes`, damit gilt die Einstellung auf allen Servern und nach einem Neustart. Gespeichert wird nur, was von 100 % abweicht. Reihenfolge der Faktoren: Nutzer-Lautstärke × Grundverstärkung × Regler "Lautstärke", danach der Begrenzer. 200 % bei einer Person sind also ×4 gegenüber vor Package 50.
 - **A56 Anzeige im Channel-Baum.** Weicht die Lautstärke einer Person von 100 % ab, zeigt ein kleines Lautsprecher-Icon mit Tooltip (z. B. "Lautstärke 150 %") das an. Bei 0 % ist es der durchgestrichene Lautsprecher mit dem Tooltip "Für dich stumm". Das Ändern der Lautstärke startet keine Audiogeräte neu, es wirkt sofort im Mixer.
+- **A57 Geräteliste im Hintergrund.** Teuer ist nicht das Aufzählen der Geräte (8 ms), sondern `FriendlyName` je Gerät (27 bis 49 ms, gemessen mit 18 Geräten einer Elgato Wave XLR Pro: zusammen etwa 650 ms). Die Liste wird deshalb im Hintergrund geladen, beim Start und bei jedem Öffnen der Einstellungen neu. Die Seite öffnet sofort mit der zuletzt bekannten Liste. Fehlt sie noch, zeigt das Auswahlfeld "Geräte werden geladen ...", und der Hinweis "Gerät fehlt" erscheint erst nach dem Laden.
+- **A58 Gerät öffnen ohne Namensliste.** `AudioDevices.Open` holt das gespeicherte Gerät direkt über seine ID (`MMDeviceEnumerator.GetDevice`) und prüft nur, ob es aktiv ist. Fehlt es, gilt wie bisher das Standardgerät mit Hinweis. So blockieren auch "Speichern" und der Start nicht mehr.
+- **A59 Selbsttest.** Button "Selbsttest starten" in den Einstellungen, Abschnitt Übertragung. Während des Tests ist man wirklich stumm und taub, bei Verbindung auch beim Server (andere sehen "Ton aus"). Danach kommt der vorherige Zustand zurück. Ohne Verbindung läuft der Test rein lokal.
+- **A60 Was man im Selbsttest hört.** Live, mit etwa 60 bis 100 ms Verzögerung, mit dem Hinweis "Mit Kopfhörern testen, sonst gibt es Rückkopplung". Die eigene Stimme läuft durch Opus, die Verstärkung aus Package 50 und den eigenen Regler "Lautstärke", also etwa so, wie andere einen bei Standardeinstellungen hören. Die Übertragung folgt dem Modus: Sprachaktivierung nur über der Schwelle, Push-to-Talk nur mit gedrückter Taste. Andere Stimmen hört man nicht.
+- **A61 Regler wirken sofort.** Mikrofonverstärkung, Lautstärke, VAD-Schwelle und Modus wirken auf der Einstellungsseite sofort (ohne die Geräte neu zu starten), nicht erst nach "Speichern". "Verwerfen" stellt die gespeicherten Werte wieder her. Ein anderes Gerät wird erst nach "Speichern" genutzt.
+- **A62 Ende des Selbsttests.** Mit "Selbsttest beenden", beim Schliessen der Einstellungen (Speichern oder Verwerfen) und beim Trennen der Verbindung. Kein Zeitlimit.
+- **A63 Channel anlegen mit allen Optionen.** `CreateChannel` bekommt `IsMuted` und `MaxUsers` (Standard `false` und 0). Der Server prüft beim Anlegen dieselben Regeln wie beim Bearbeiten (0 bis 999 Plätze). Protokollversion 9: Server und Clients werden gemeinsam aktualisiert, ältere bekommen die bekannte Meldung zur Version.
+- **A64 Eigener Channel-Dialog.** `Views/ChannelDialog.axaml` mit `ChannelDialogViewModel` ersetzt `SimpleDialogs.EditChannel`. Anlegen öffnet ihn leer (kein Name, keine Beschreibung, nicht stumm, 0 Plätze = unbegrenzt), Bearbeiten mit den Daten des Channels. Unterschiede nur bei Titel und Button ("Anlegen" bzw. "Speichern"). Beim Standard-Channel bleiben die Plätze gesperrt, mit Hinweis.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -169,7 +180,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle Packages 1 bis 51 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6 und 51 AC6 brauchen einen Test mit echten Clients. Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Die Packages 1 bis 52 sind umgesetzt, 53 und 54 sind geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6 und 51 AC6 brauchen einen Test mit echten Clients. Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -3270,3 +3281,209 @@ Testbefehl: `dotnet test`
 - Lautstärke je Nutzer serverseitig oder für andere sichtbar
 - Pegelautomatik je Sprecher
 - Eine Übersicht aller angepassten Personen in den Einstellungen
+
+---
+
+## Package 52: Einstellungen ohne Einfrieren
+
+**Ziel:** Einstellungen öffnen, Speichern und Programmstart blockieren die Oberfläche nicht mehr durch das Auflisten der Audiogeräte.
+
+**Abhängigkeiten:** Package 17
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/AudioEngine.cs` (ändern): `AudioDevices.Open` direkt über die ID (A58)
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): Geräteliste im Hintergrund, `DeviceSource` austauschbar für Tests
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (ändern): `ShowDevices(inputs, outputs)`, Platzhalter solange geladen wird
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): "Geräte werden geladen ..."
+- `tests/OVS.Tests/Client/MainViewModelTests.cs`, `SettingsTests.cs` (ändern)
+
+### Kontext
+
+`MainViewModel.OpenSettings` ruft `AudioDevices.List` für Eingänge und Ausgänge synchron auf dem UI-Thread auf. Gemessen auf dem Entwicklungsrechner (9 Eingänge, 9 Ausgänge): 260 bis 290 ms plus 360 bis 380 ms, dazu 80 bis 190 ms für Aufbau und Layout der Seite. Das passt zum beobachteten Einfrieren von etwa einer Sekunde. Das Aufzählen selbst dauert 8 ms, teuer ist `FriendlyName` je Gerät.
+
+Dieselbe Funktion steckt in `AudioDevices.Open`, das `AudioEngine.Configure` beim Start und bei jedem "Speichern" für Mikrofon und Lautsprecher aufruft. Auch dort friert die App also jedes Mal etwa 0,6 s ein.
+
+### Acceptance Criteria
+
+- [x] AC1: `OpenSettings` wartet nicht auf die Geräteliste: Die Seite ist sofort offen, auch wenn das Laden noch läuft.
+- [x] AC2: Ist die Liste da, zeigen die Auswahlfelder alle Geräte, das gespeicherte ist ausgewählt. Solange sie fehlt, zeigt das Feld "Geräte werden geladen ...", und der Hinweis "Gerät fehlt" erscheint nicht.
+- [x] AC3: Fehlt das gespeicherte Gerät nach dem Laden wirklich, erscheint der Hinweis wie bisher. Eine Auswahl, die der Nutzer während des Ladens getroffen hat, bleibt erhalten.
+- [x] AC4: Beim zweiten Öffnen ist die Liste sofort da (vom letzten Laden) und wird im Hintergrund aufgefrischt.
+- [x] AC5: `AudioDevices.Open` liest keine Gerätenamen mehr, ein fehlendes oder deaktiviertes Gerät führt wie bisher zum Standardgerät mit Hinweis.
+- [ ] AC6 (manuell, Messung erledigt, Gefühl am echten Client offen): Gemessen mit 18 Geräten: `OpenSettings` 1 bis 16 ms statt etwa 650 ms, `AudioDevices.Open` 0 bis 3 ms statt 300 bis 380 ms, Speichern samt Gerätestart 48 bis 79 ms. Auf dem Entwicklungsrechner öffnen sich die Einstellungen ohne spürbare Pause, "Speichern" ebenso. Das Messprogramm aus der Analyse zeigt für `OpenSettings` unter 50 ms und für `Configure` ohne Gerätestart unter 50 ms.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `MainViewModelTests > "OpenSettings_DoesNotWaitForDeviceList"` (AC1, AC2) - Reproduktion, muss zuerst rot sein
+   - Gegeben: `DeviceSource`, das bis zur Freigabe blockiert, gespeichertes Eingabegerät "mic-2"
+   - Erwartet: `OpenSettings` kehrt in unter 100 ms zurück, `Page` ist Settings, das Eingabefeld zeigt den Platzhalter, kein `DeviceHint`. Nach der Freigabe enthält `Inputs` die Geräte, "mic-2" ist ausgewählt.
+2. `SettingsTests > "Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice"` (AC2, AC3)
+   - Gegeben: `SettingsViewModel` ohne Liste, der Nutzer wählt "Standard", danach `ShowDevices` ohne das gespeicherte Gerät
+   - Erwartet: Auswahl "Standard" bleibt. Ohne Nutzerauswahl erscheint der Hinweis "Gerät fehlt" erst nach `ShowDevices`.
+3. `MainViewModelTests > "OpenSettings_Again_UsesLastListAtOnce"` (AC4)
+   - Gegeben: erstes Öffnen mit Liste A geladen, zweites Öffnen mit blockierendem `DeviceSource`
+   - Erwartet: Liste A ist sofort da, nach der Freigabe die neue Liste
+4. Bestehende Tests zu `AudioDevices.Resolve` bleiben grün, `Open` nutzt dieselbe Entscheidung über die ID (AC5)
+5. Manueller Check AC6 mit dem Messprogramm und am echten Client
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 schreiben (rot). `DeviceSource` in `MainViewModel`, Laden per `Task.Run`, Ergebnis per `post` an die Seite.
+2. Test 2 schreiben (rot), `SettingsViewModel.ShowDevices` und Platzhalter.
+3. Test 3 schreiben (rot), letzte Liste merken, Laden beim Start anstossen.
+4. `AudioDevices.Open` auf `GetDevice(id)` umstellen (A58).
+5. Messprogramm erneut laufen lassen, manueller Check AC6.
+
+### Out of Scope
+
+- Schnellerer Aufbau der Einstellungsseite selbst (80 bis 190 ms headless). Nur wenn sie nach der Änderung noch spürbar hängt, wird das gesondert angegangen.
+- Automatisches Aktualisieren bei neu angesteckten Geräten, während die Seite offen ist
+
+---
+
+## Package 53: Selbsttest
+
+**Ziel:** Ein Button in den Einstellungen schaltet einen stumm und taub und spielt die eigene Stimme so zurück, wie andere sie hören.
+
+**Abhängigkeiten:** Package 50, 52
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/AudioEngine.cs` (ändern): `SelfTest`, eigene Frames in den Mixer statt ins Netz, `ApplyLive(...)` für Regler ohne Geräteneustart
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (ändern): `IsSelfTesting`, `ToggleSelfTestCommand`, Regler melden Änderungen sofort (`LivePreview`)
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): Test starten und beenden, Zustand merken und wiederherstellen
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `SetSelfStateAsync(muted, deafened)` für das gezielte Setzen und Zurücksetzen
+- `src/OVS.Client/Views/SettingsView.axaml` (ändern): Button und Kopfhörer-Hinweis beim Pegel
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `tests/OVS.Tests/Client/SendPathTests.cs`, `MainViewModelTests.cs`, `SettingsTests.cs`, `UiSmokeTests.cs` (ändern)
+- `README.md` (ändern)
+
+### Kontext
+
+Die Einstellungen zeigen den Mikrofonpegel (`AudioEngine.InputLevel` -> `SettingsViewModel.InputLevelDb`) und die VAD-Schwelle, aber man hört sich nicht selbst. Regler wirken heute erst nach "Speichern", weil nur `ApplySettings` -> `AudioEngine.Configure` sie übernimmt. `Configure` startet dabei die Geräte neu.
+
+Die Aufnahme läuft immer (`CapturePipeline.Feed` -> `AudioEngine.Decide` -> `OnFrameEncoded` -> `Send`). `Decide` sendet nichts, wenn man stumm oder nicht verbunden ist. Der Mixer (`Mixer.Push`) nimmt Opus-Frames je Sprecher-ID an. Ist man taub, verwirft `OnVoice` fremde Frames, und `Mix()` leert den Frame.
+
+Stumm und taub setzt heute nur `ServerViewModel.ToggleMute` und `ToggleDeafen`, beide senden `SetSelfState` an den Server.
+
+### Acceptance Criteria
+
+- [ ] AC1: Die Einstellungen haben im Abschnitt mit dem Pegel einen Button "Selbsttest starten", daneben den Hinweis "Mit Kopfhörern testen, sonst gibt es Rückkopplung". Während des Tests heisst er "Selbsttest beenden".
+- [ ] AC2: Während des Tests ist man stumm und taub. Bei Verbindung geht das per `SetSelfState` auch an den Server, und nichts wird gesendet. Andere Stimmen hört man nicht.
+- [ ] AC3: Die eigene Stimme ist live zu hören, durch Opus, die Verstärkung aus Package 50 und den Regler "Lautstärke". Bei Sprachaktivierung nur über der Schwelle, bei Push-to-Talk nur mit gedrückter Taste.
+- [ ] AC4: Mikrofonverstärkung, Lautstärke, VAD-Schwelle und Modus wirken sofort (auch ohne Test), ohne die Geräte neu zu starten. "Verwerfen" stellt die gespeicherten Werte wieder her, "Speichern" übernimmt sie.
+- [ ] AC5: Der Test endet mit "Selbsttest beenden", beim Schliessen der Einstellungen und beim Trennen. Danach gilt wieder der Zustand von vorher (stumm, taub oder keins von beiden), auch beim Server.
+- [ ] AC6: Alle neuen Texte gibt es auf Deutsch und Englisch.
+- [ ] AC7 (manuell): Mit Kopfhörern an echtem Mikrofon: Man hört sich mit kurzer Verzögerung, ein zweiter Client hört einen während des Tests nicht und sieht "Ton aus".
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `SendPathTests > "SelfTest_PlaysOwnVoice_SendsNothing_OthersSilent"` (AC2, AC3)
+   - Gegeben: `AudioEngine` ohne Geräte, Testton 440 Hz, Sprachaktivierung mit niedriger Schwelle, stumm und taub, `SelfTest = true`, `Send` zählt mit
+   - Erwartet: innerhalb einer Sekunde `LastOutputLevelDb` über -30 dB, `Send` nie aufgerufen, ein fremder Frame per `OnVoice` bleibt ungehört
+2. `SendPathTests > "SelfTest_FollowsMode_PushToTalkWithoutKeySilent"` (AC3)
+   - Gegeben: wie oben, aber Push-to-Talk ohne gedrückte Taste, danach mit hoher VAD-Schwelle (-10 dB) bei Sprachaktivierung
+   - Erwartet: in beiden Fällen bleibt die Ausgabe still
+3. `SendPathTests > "ApplyLive_ChangesGainAndVolume_WithoutRestart"` (AC4)
+   - Gegeben: laufende Engine, `ApplyLive` mit Verstärkung 50 %
+   - Erwartet: der gemeldete Eingangspegel sinkt um etwa 6 dB, die Aufnahme wurde nicht neu erzeugt
+4. `SettingsTests > "Sliders_ApplyLive_DiscardRestores"` (AC4)
+   - Gegeben: `SettingsViewModel` mit `LivePreview`, Verstärkung und Schwelle ändern, danach verwerfen
+   - Erwartet: `LivePreview` bekam die neuen Werte sofort, beim Verwerfen die gespeicherten
+5. `MainViewModelTests > "SelfTest_MutesAndDeafens_RestoresPreviousState"` (AC2, AC5)
+   - Gegeben: echter Testserver, verbunden, nicht stumm. Einstellungen öffnen, Selbsttest starten
+   - Erwartet: der Server meldet stumm und taub. Nach "Selbsttest beenden" wieder nicht stumm und nicht taub. Zweiter Durchlauf: Start, dann Einstellungen schliessen, ebenso zurück. Dritter: Start, dann trennen, der Test ist aus.
+6. `UiSmokeTests > "Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint"` (AC1, AC6)
+7. `LocalizationTests` bleiben grün (AC6)
+8. Manueller Check AC7
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1, 2 schreiben (rot). `SelfTest` in `AudioEngine`: `Decide` entscheidet im Test wie unstumm, `OnFrameEncoded` gibt den Frame an den Mixer (eigene Sprecher-ID 0) statt an `Send`, `Mix()` leert im Test den Frame nicht.
+2. Test 3 schreiben (rot), `ApplyLive` (Verstärkung, Lautstärke, Schwelle, Modus).
+3. Test 4 schreiben (rot), `LivePreview` im `SettingsViewModel`, `MainViewModel` verbindet es mit `ApplyLive` und stellt beim Verwerfen zurück.
+4. Test 5 schreiben (rot), `ServerViewModel.SetSelfStateAsync`, Start und Ende im `MainViewModel` mit gemerktem Zustand.
+5. Test 6 schreiben (rot), Button und Hinweis in `SettingsView.axaml`, Texte in beiden `resx`.
+6. README ergänzen, manueller Check AC7.
+
+### Out of Scope
+
+- Aufnehmen und später abspielen
+- Test über den Server (Echo vom Server zurück)
+- Anderes Gerät ohne "Speichern" ausprobieren
+
+---
+
+## Package 54: Ein Channel-Dialog
+
+**Ziel:** Anlegen und Bearbeiten eines Channels nutzen denselben Dialog mit allen Optionen, leer beim Anlegen und vorbelegt beim Bearbeiten.
+
+**Abhängigkeiten:** Package 34, 35
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs` (ändern): `CreateChannel(Name, Description, IsMuted = false, MaxUsers = 0)`
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (ändern): Version 9
+- `src/OVS.Server/Commands/ChannelCommands.cs` (ändern): `OnCreateChannel` übernimmt und prüft beide Werte
+- `src/OVS.Client/Views/ChannelDialog.axaml`, `ChannelDialog.axaml.cs` (neu)
+- `src/OVS.Client/ViewModels/ChannelDialogViewModel.cs` (neu)
+- `src/OVS.Client/Views/SimpleDialogs.cs` (ändern): `EditChannel` entfällt
+- `src/OVS.Client/Views/MainWindow.axaml.cs` (ändern): `Dialogs.EditChannel` zeigt den neuen Dialog
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `NewChannel` schickt alle Werte, `CreateChannelAsync` mit `ChannelEdit`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): Button "Anlegen"
+- `tests/OVS.Tests/Server/ChannelCommandTests.cs`, `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `UiSmokeTests.cs`, `tests/OVS.Tests/SmokeTests.cs` (ändern)
+- `tests/OVS.Tests/Client/ChannelDialogViewModelTests.cs` (neu)
+- `README.md` (ändern): Protokollversion
+
+### Kontext
+
+Anlegen und Bearbeiten nutzen beide `SimpleDialogs.EditChannel`, im Modus `ChannelDialogMode.Create` blendet der Dialog aber "Stummer Channel" und "Maximale Nutzer" aus. Der Grund liegt im Protokoll: `CreateChannel(Name, Description)` kann diese Werte nicht übertragen, nur `EditChannel` hat `IsMuted` und `MaxUsers`. `OnEditChannel` prüft die Plätze (0 bis `ProtocolInfo.MaxChannelUsers`, Standard-Channel unbegrenzt). `OnCreateChannel` legt immer einen nicht stummen, unbegrenzten Channel an. Beide Buttons heissen heute "Speichern".
+
+### Acceptance Criteria
+
+- [ ] AC1: "Channel anlegen" und "Channel bearbeiten" zeigen denselben Dialog mit Name, Beschreibung, "Stummer Channel" und "Maximale Nutzer".
+- [ ] AC2: Beim Anlegen ist der Dialog leer (kein Name, keine Beschreibung, nicht stumm, 0 Plätze), Titel "Channel anlegen", Button "Anlegen".
+- [ ] AC3: Beim Bearbeiten ist er mit den Daten des Channels vorbelegt, Titel "Channel bearbeiten", Button "Speichern". Beim Standard-Channel sind die Plätze gesperrt, mit Hinweis.
+- [ ] AC4: Ohne Namen lässt sich der Dialog nicht bestätigen, die Plätze gehen von 0 bis 999.
+- [ ] AC5: Ein neu angelegter Channel hat beim Server gleich die gewählten Optionen (stumm, Plätze). Der Server lehnt beim Anlegen ungültige Plätze ab wie beim Bearbeiten und protokolliert die Optionen im Channel-Log.
+- [ ] AC6: Die Protokollversion ist 9. Ein Client mit Version 8 bekommt beim Verbinden die bekannte Meldung zur Version.
+- [ ] AC7: `SimpleDialogs.EditChannel` gibt es nicht mehr, alle Texte des Dialogs gibt es auf Deutsch und Englisch.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `ChannelCommandTests > "Create_WithMutedAndSlots_ChannelHasThem"` (AC5)
+   - Gegeben: Admin legt einen Channel mit `IsMuted = true`, `MaxUsers = 5` an
+   - Erwartet: `ChannelAdded` mit beiden Werten, gespeichert in den Serverdaten, Eintrag im Channel-Log
+2. `ChannelCommandTests > "Create_InvalidSlots_Rejected"` (AC5)
+   - Gegeben: `MaxUsers = -1` und `1000`
+   - Erwartet: `InvalidValue`, kein Channel angelegt
+3. `SmokeTests` Version auf 9, `HandshakeTests > "OldProtocolVersion_RejectedVersionMismatch"` bleibt grün (AC6)
+4. `ChannelDialogViewModelTests > "Create_EmptyDefaults"`, `"Edit_Prefilled"`, `"Default_SlotsLocked"`, `"NameRequired_SlotsBounded"` (AC2 bis AC4)
+5. `ServerViewModelTests > "NewChannel_SendsAllOptions"` (AC1, AC5)
+   - Gegeben: Dialog-Fake liefert Name, Beschreibung, stumm, 3 Plätze
+   - Erwartet: gesendetes `CreateChannel` mit allen vier Werten
+6. `UiSmokeTests > "ChannelDialog_SameForCreateAndEdit"` (AC1 bis AC3, AC7): beide öffnen, gleiche Felder sichtbar, Titel und Button je Modus
+7. `LocalizationTests` bleiben grün (AC7)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 bis 3 schreiben (rot), `CreateChannel` erweitern, `OnCreateChannel` mit derselben Prüfung wie `OnEditChannel` (gemeinsame Hilfsmethode), Version 9.
+2. Test 4 schreiben (rot), `ChannelDialogViewModel`.
+3. Test 5 schreiben (rot), `NewChannel` und `CreateChannelAsync` umstellen.
+4. Test 6 schreiben (rot), `ChannelDialog.axaml`, Anbindung in `MainWindow.axaml.cs`, `SimpleDialogs.EditChannel` entfernen, Texte.
+5. README (Protokollversion) ergänzen, Screenshot-Werkzeug auf den neuen Dialog umstellen und beide Modi ansehen.
+
+### Out of Scope
+
+- Weitere Channel-Optionen (Passwort, Unter-Channels)
+- Anlegen eines Channels direkt mit Links

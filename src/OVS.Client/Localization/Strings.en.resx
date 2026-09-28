@@ -28,6 +28,7 @@
   <data name="Confirm_DeleteBookmark" xml:space="preserve"><value>Delete bookmark "{0}"?</value></data>
   <data name="Confirm_DeleteChannel" xml:space="preserve"><value>Delete channel "{0}"? Users in it end up in the default channel.</value></data>
   <data name="Device_Default" xml:space="preserve"><value>Default device</value></data>
+  <data name="Device_Loading" xml:space="preserve"><value>Loading devices ...</value></data>
   <data name="Device_Missing" xml:space="preserve"><value>A saved audio device is no longer available, the default device is used.</value></data>
   <data name="Dialog_CreateChannel" xml:space="preserve"><value>Create channel</value></data>
   <data name="Dialog_EditChannel" xml:space="preserve"><value>Edit channel</value></data>

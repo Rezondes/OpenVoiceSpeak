@@ -40,16 +40,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] double soundVolumePercent;
     [ObservableProperty] string? updateStatus;
 
-    public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice> inputs, IReadOnlyList<AudioDevice> outputs, KeyPoller? keys = null)
+    /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
+    public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, KeyPoller? keys = null)
     {
         this.keys = keys;
-        Inputs = [new AudioDeviceOption(null, Strings.Device_Default), .. inputs.Select(d => new AudioDeviceOption(d.Id, d.Name))];
-        Outputs = [new AudioDeviceOption(null, Strings.Device_Default), .. outputs.Select(d => new AudioDeviceOption(d.Id, d.Name))];
-
-        var (inputId, inputFellBack) = AudioDevices.Resolve(current.InputDeviceId, inputs);
-        var (outputId, outputFellBack) = AudioDevices.Resolve(current.OutputDeviceId, outputs);
-        selectedInput = Inputs.First(o => o.Id == inputId);
-        selectedOutput = Outputs.First(o => o.Id == outputId);
+        (savedInputId, savedOutputId) = (current.InputDeviceId, current.OutputDeviceId);
+        (inputs, selectedInput, bool inputFellBack) = DeviceOptions(savedInputId, inputDevices);
+        (outputs, selectedOutput, bool outputFellBack) = DeviceOptions(savedOutputId, outputDevices);
         if (inputFellBack || outputFellBack)
             deviceHint = Strings.Device_Missing;
 
@@ -111,8 +108,44 @@ public sealed partial class SettingsViewModel : ObservableObject
         set => VoiceActivation = !value;
     }
 
-    public IReadOnlyList<AudioDeviceOption> Inputs { get; }
-    public IReadOnlyList<AudioDeviceOption> Outputs { get; }
+    // ---- Devices (Package 52: the list loads in the background) ----
+
+    readonly string? savedInputId, savedOutputId;
+    bool showingDevices, inputChosen, outputChosen;
+
+    [ObservableProperty] IReadOnlyList<AudioDeviceOption> inputs;
+    [ObservableProperty] IReadOnlyList<AudioDeviceOption> outputs;
+
+    /// <summary>Without a list yet the wanted device waits behind a placeholder, and nothing counts as missing.</summary>
+    static (IReadOnlyList<AudioDeviceOption> Options, AudioDeviceOption Selected, bool FellBack) DeviceOptions(string? wanted, IReadOnlyList<AudioDevice>? devices)
+    {
+        List<AudioDeviceOption> options = [new(null, Strings.Device_Default)];
+        if (devices is null)
+        {
+            if (wanted is not null) options.Add(new(wanted, Strings.Device_Loading));
+            return (options, options[^1], false);
+        }
+        options.AddRange(devices.Select(d => new AudioDeviceOption(d.Id, d.Name)));
+        var (id, fellBack) = AudioDevices.Resolve(wanted, devices);
+        return (options, options.First(o => o.Id == id), fellBack);
+    }
+
+    /// <summary>The loaded list: a device the user picked meanwhile stays, otherwise the saved one is looked up.</summary>
+    public void ShowDevices(IReadOnlyList<AudioDevice> inputDevices, IReadOnlyList<AudioDevice> outputDevices)
+    {
+        var (inputOptions, input, inputFellBack) = DeviceOptions(inputChosen ? SelectedInput?.Id : savedInputId, inputDevices);
+        var (outputOptions, output, outputFellBack) = DeviceOptions(outputChosen ? SelectedOutput?.Id : savedOutputId, outputDevices);
+        showingDevices = true;
+        Inputs = inputOptions;
+        Outputs = outputOptions;
+        SelectedInput = input; // replacing the items may have cleared the combo box's selection
+        SelectedOutput = output;
+        showingDevices = false;
+        DeviceHint = inputFellBack || outputFellBack ? Strings.Device_Missing : null;
+    }
+
+    partial void OnSelectedInputChanged(AudioDeviceOption value) => inputChosen |= !showingDevices;
+    partial void OnSelectedOutputChanged(AudioDeviceOption value) => outputChosen |= !showingDevices;
     /// <summary>
     /// Package 41: a free list, empty for a new profile. One action may sit on several keys, but one key may not
     /// do two different things.

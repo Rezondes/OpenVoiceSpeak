@@ -97,6 +97,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings = ClientSettings.Load(storageDir, out var warning);
         if (warning is not null) AddNotice(warning, NoticeKind.Warning);
 
+        DeviceSource = useAudioDevices ? AudioDevices.List : _ => [];
+        if (useAudioDevices) RefreshDevices();
         Keys = new KeyPoller();
         Audio = new AudioEngine(Keys, useAudioDevices);
         sounds = new SoundLibrary(storageDir, Log.Write);
@@ -120,6 +122,27 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.SpeakersChanged += active => post(() => Server?.OnSpeakers(active));
         Keys.Pressed += action => post(() => OnKeyAction(action));
         ApplySettings(Settings);
+    }
+
+    /// <summary>
+    /// Package 52: reading a device's name takes 30 to 50 ms, with many (virtual) devices together more than half a
+    /// second. So the list is loaded in the background and the settings open with the last one known.
+    /// </summary>
+    public Func<NAudio.CoreAudioApi.DataFlow, List<AudioDevice>> DeviceSource { get; set; }
+    (List<AudioDevice> Inputs, List<AudioDevice> Outputs)? knownDevices;
+    int deviceLoads;
+
+    void RefreshDevices()
+    {
+        var source = DeviceSource;
+        int load = ++deviceLoads;
+        Task.Run(() => (source(NAudio.CoreAudioApi.DataFlow.Capture), source(NAudio.CoreAudioApi.DataFlow.Render)))
+            .ContinueWith(t => post(() =>
+            {
+                if (load != deviceLoads) return; // a newer list is on its way
+                knownDevices = t.Result;
+                SettingsPage?.ShowDevices(t.Result.Item1, t.Result.Item2);
+            }), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
     }
 
     public ClientSettings Settings { get; private set; }
@@ -507,9 +530,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (Page == Page.Settings) return;
         ClosePage();
-        var inputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Capture) : [];
-        var outputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Render) : [];
-        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys) 
+        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Keys)
         {
             EditKeyBinding = Dialogs.EditKeyBinding,
             CheckNow = CheckForUpdatesAsync,
@@ -524,6 +545,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.InputLevel += OnInputLevel;
         SettingsPage = vm;
         Page = Page.Settings;
+        RefreshDevices(); // a device may have been plugged in since
     }
 
     void OnInputLevel(float db) => post(() =>

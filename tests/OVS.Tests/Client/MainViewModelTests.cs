@@ -493,6 +493,59 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(AppTheme.Dark, ClientSettings.Load(dir, out _).Theme);
     }
 
+    /// <summary>
+    /// Package 52: listing the audio devices took about 650 ms on the UI thread (a name per device), so the whole app
+    /// froze for a second whenever the settings opened. The list now loads in the background.
+    /// </summary>
+    [Fact]
+    public async Task OpenSettings_DoesNotWaitForDeviceList()
+    {
+        using var gate = new ManualResetEventSlim();
+        var settings = new ClientSettings { InputDeviceId = "mic-2" };
+        settings.Save(dir);
+        var main = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(dir, ui.Post, useAudioDevices: false)));
+        main.DeviceSource = flow =>
+        {
+            gate.Wait(TimeSpan.FromSeconds(10));
+            return flow == NAudio.CoreAudioApi.DataFlow.Capture
+                ? [new AudioDevice("mic-1", "Headset"), new AudioDevice("mic-2", "XLR Mic")]
+                : [new AudioDevice("out-1", "Kopfhörer")];
+        };
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var (page, inputs, hint) = await OnUi(() =>
+        {
+            main.OpenSettings();
+            return (main.Page, main.SettingsPage!.Inputs.Select(i => i.Name).ToList(), main.SettingsPage.DeviceHint);
+        });
+        Assert.True(watch.ElapsedMilliseconds < 1000, $"{watch.ElapsedMilliseconds} ms"); // not blocked by the gate
+        Assert.Equal(Page.Settings, page);
+        Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], inputs);
+        Assert.Null(hint);
+
+        gate.Set();
+        for (int i = 0; i < 100 && await OnUi(() => main.SettingsPage!.Inputs.Count) != 3; i++) await Task.Delay(20);
+        Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], await OnUi(() => main.SettingsPage!.Inputs.Select(i => i.Name).ToList()));
+        Assert.Equal("mic-2", await OnUi(() => main.SettingsPage!.SelectedInput.Id));
+        Assert.Null(await OnUi(() => main.SettingsPage!.DeviceHint));
+
+        // second time: the last list is there at once, a fresh one follows
+        gate.Reset();
+        var again = await OnUi(() =>
+        {
+            main.ClosePage();
+            main.OpenSettings();
+            return main.SettingsPage!.Inputs.Select(i => i.Name).ToList();
+        });
+        Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], again);
+        gate.Set();
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await main.DisposeAsync();
+            return null;
+        });
+    }
+
     /// <summary>Package 51: the slider acts on the mixer at once, is kept by fingerprint and follows a new session.</summary>
     [Fact]
     public async Task UserVolume_ChangesMixer_SavesByFingerprint()

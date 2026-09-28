@@ -283,6 +283,34 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal("da", ok.SelectedInput.Id);
     }
 
+    /// <summary>Package 52: the page opens before the device list is there; the hint only comes once it really is missing.</summary>
+    [Fact]
+    public void Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice()
+    {
+        var vm = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "box" }, null, null);
+        Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], vm.Inputs.Select(i => i.Name));
+        Assert.Equal(("weg", "box"), (vm.SelectedInput.Id, vm.SelectedOutput.Id));
+        Assert.Null(vm.DeviceHint);
+        Assert.Equal(("weg", "box"), (vm.ToSettings(new ClientSettings()).InputDeviceId, vm.ToSettings(new ClientSettings()).OutputDeviceId)); // saving early keeps them
+
+        vm.ShowDevices([new AudioDevice("da", "Headset")], [new AudioDevice("box", "Lautsprecher")]);
+        Assert.Equal(["Standardgerät", "Headset"], vm.Inputs.Select(i => i.Name));
+        Assert.Null(vm.SelectedInput.Id); // "weg" is really gone
+        Assert.Equal("box", vm.SelectedOutput.Id);
+        Assert.NotNull(vm.DeviceHint);
+
+        var chosen = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg" }, null, null);
+        chosen.SelectedInput = chosen.Inputs[0]; // the user picks "Standard" while loading
+        chosen.ShowDevices([new AudioDevice("da", "Headset")], []);
+        Assert.Null(chosen.SelectedInput.Id);
+        Assert.Null(chosen.DeviceHint); // nothing went missing: the user chose
+
+        var reload = Vm(new ClientSettings { InputDeviceId = "da" }, new AudioDevice("da", "Headset"));
+        reload.ShowDevices([new AudioDevice("neu", "Webcam"), new AudioDevice("da", "Headset")], []);
+        Assert.Equal("da", reload.SelectedInput.Id);
+        Assert.Equal(3, reload.Inputs.Count);
+    }
+
     [Fact]
     public void LevelMeter_MarksThreshold()
     {
