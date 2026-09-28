@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -29,9 +30,9 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     public bool HasPending => PendingCount > 0;
     public string PendingText => PendingCount switch
     {
-        0 => "Keine offenen Änderungen.",
-        1 => "1 Änderung noch nicht übernommen.",
-        var n => $"{n} Änderungen noch nicht übernommen.",
+        0 => Strings.Links_NoPending,
+        1 => Strings.Links_OnePending,
+        var n => string.Format(Strings.Links_Pending, n),
     };
 
     static (Guid, Guid) Norm(Guid a, Guid b) => a.CompareTo(b) < 0 ? (a, b) : (b, a);
@@ -65,7 +66,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
         {
             var row = channels[i];
             Rows.Add(new LinkRowViewModel(i + 1, row.Id, row.Name, selected.Contains(row.Id),
-                channels.Select(col => new LinkCellViewModel(this, row.Id, col.Id, $"{row.Name} und {col.Name}")).ToList()));
+                channels.Select(col => new LinkCellViewModel(this, row.Id, col.Id, string.Format(Strings.Links_Pair, row.Name, col.Name))).ToList()));
         }
         PendingCount = desired.Count;
     }

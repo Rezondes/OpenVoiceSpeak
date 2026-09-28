@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="About_Build" xml:space="preserve"><value>Commit {0}, built {1:yyyy-MM-dd HH:mm}</value></data>
+  <data name="About_LocalBuild" xml:space="preserve"><value>Local build, not a published version</value></data>
+  <data name="Audio_DeviceFallback" xml:space="preserve"><value>A saved audio device is missing, the default device is used.</value></data>
+  <data name="Audio_MicFailed" xml:space="preserve"><value>Could not open the microphone: {0}</value></data>
+  <data name="Audio_SpeakerFailed" xml:space="preserve"><value>Could not open the speaker: {0}</value></data>
+  <data name="Ban_Day" xml:space="preserve"><value>1 day</value></data>
+  <data name="Ban_Forever" xml:space="preserve"><value>permanent</value></data>
+  <data name="Ban_Hour" xml:space="preserve"><value>1 hour</value></data>
+  <data name="Ban_Line" xml:space="preserve"><value>: {0}, by {1}, {2}</value></data>
+  <data name="Ban_Permanent" xml:space="preserve"><value>Permanent</value></data>
+  <data name="Ban_Until" xml:space="preserve"><value>until {0:yyyy-MM-dd HH:mm}</value></data>
+  <data name="Ban_Week" xml:space="preserve"><value>7 days</value></data>
+  <data name="Chat_BackOnline" xml:space="preserve"><value>{0} is back online.</value></data>
+  <data name="Chat_Entered" xml:space="preserve"><value>You entered "{0}".</value></data>
+  <data name="Chat_General" xml:space="preserve"><value>General</value></data>
+  <data name="Chat_MessageTo" xml:space="preserve"><value>Message to {0}</value></data>
+  <data name="Chat_NoRightChannel" xml:space="preserve"><value>You don't have the right to write in the channel.</value></data>
+  <data name="Chat_NoRightPrivate" xml:space="preserve"><value>You don't have the right to write privately.</value></data>
+  <data name="Chat_NoRightServer" xml:space="preserve"><value>You don't have the right to write server-wide.</value></data>
+  <data name="Chat_NotOnline" xml:space="preserve"><value>{0} is not online.</value></data>
+  <data name="Chat_Offline" xml:space="preserve"><value>{0} is offline.</value></data>
+  <data name="Confirm_DeleteBookmark" xml:space="preserve"><value>Delete bookmark "{0}"?</value></data>
+  <data name="Confirm_DeleteChannel" xml:space="preserve"><value>Delete channel "{0}"? Users in it end up in the default channel.</value></data>
+  <data name="Device_Default" xml:space="preserve"><value>Default device</value></data>
+  <data name="Device_Missing" xml:space="preserve"><value>A saved audio device is no longer available, the default device is used.</value></data>
+  <data name="Dialog_CreateChannel" xml:space="preserve"><value>Create channel</value></data>
+  <data name="Dialog_EditChannel" xml:space="preserve"><value>Edit channel</value></data>
+  <data name="Dialog_Kick" xml:space="preserve"><value>Kick {0}</value></data>
+  <data name="Dialog_KickReason" xml:space="preserve"><value>Reason:</value></data>
+  <data name="Dialog_LinkWith" xml:space="preserve"><value>Link "{0}" with</value></data>
+  <data name="Dialog_MoveTo" xml:space="preserve"><value>Move {0} to</value></data>
+  <data name="Dialog_RedeemToken" xml:space="preserve"><value>Redeem admin token</value></data>
+  <data name="Dialog_RedeemTokenPrompt" xml:space="preserve"><value>Token from the server log:</value></data>
+  <data name="Dialog_Unlink" xml:space="preserve"><value>Remove link of "{0}"</value></data>
+  <data name="Dlg_Action" xml:space="preserve"><value>Action</value></data>
+  <data name="Dlg_ActionMissing" xml:space="preserve"><value>Please choose an action.</value></data>
+  <data name="Dlg_AddKeyAction" xml:space="preserve"><value>Add key action</value></data>
+  <data name="Dlg_Address" xml:space="preserve"><value>Address</value></data>
+  <data name="Dlg_AddressMissing" xml:space="preserve"><value>Please enter an address.</value></data>
+  <data name="Dlg_Ban" xml:space="preserve"><value>Ban</value></data>
+  <data name="Dlg_BanIp" xml:space="preserve"><value>Also block the IP address</value></data>
+  <data name="Dlg_BanTitle" xml:space="preserve"><value>Ban {0}</value></data>
+  <data name="Dlg_Bookmark" xml:space="preserve"><value>Bookmark</value></data>
+  <data name="Dlg_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Dlg_ChangeKeyAction" xml:space="preserve"><value>Change key action</value></data>
+  <data name="Dlg_ChooseAction" xml:space="preserve"><value>Choose action</value></data>
+  <data name="Dlg_ChooseBookmark" xml:space="preserve"><value>Choose a saved server</value></data>
+  <data name="Dlg_Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Dlg_Connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="Dlg_ConnectTitle" xml:space="preserve"><value>Connect to server</value></data>
+  <data name="Dlg_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Dlg_DescriptionHint" xml:space="preserve"><value>Optional, shown as tooltip and in the channel header.</value></data>
+  <data name="Dlg_Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="Dlg_EditBookmark" xml:space="preserve"><value>Edit bookmark</value></data>
+  <data name="Dlg_HostExample" xml:space="preserve"><value>e.g. voice.example.org</value></data>
+  <data name="Dlg_InstallNow" xml:space="preserve"><value>Install now</value></data>
+  <data name="Dlg_Key" xml:space="preserve"><value>Key</value></data>
+  <data name="Dlg_KeyHint" xml:space="preserve"><value>Works everywhere, also while a game is in the foreground.</value></data>
+  <data name="Dlg_KeyMissing" xml:space="preserve"><value>Please set a key.</value></data>
+  <data name="Dlg_Later" xml:space="preserve"><value>Later</value></data>
+  <data name="Dlg_MaxUsers" xml:space="preserve"><value>Maximum users (0 = unlimited)</value></data>
+  <data name="Dlg_MaxUsersDefault" xml:space="preserve"><value>The default channel stays unlimited: everybody lands there when connecting.</value></data>
+  <data name="Dlg_MaxUsersHint" xml:space="preserve"><value>Whoever is inside stays even with a lower limit. The right "Enter full channels" bypasses it.</value></data>
+  <data name="Dlg_MutedChannel" xml:space="preserve"><value>Muted channel: nobody is heard</value></data>
+  <data name="Dlg_MutedHint" xml:space="preserve"><value>Link PTT from this channel is not transmitted either. Speech from linked channels can be heard.</value></data>
+  <data name="Dlg_NicknameMissing" xml:space="preserve"><value>Please enter a nickname.</value></data>
+  <data name="Dlg_NoChannel" xml:space="preserve"><value>No matching channel.</value></data>
+  <data name="Dlg_NoKeyYet" xml:space="preserve"><value>No key yet</value></data>
+  <data name="Dlg_NoNotes" xml:space="preserve"><value>No release notes.</value></data>
+  <data name="Dlg_Options" xml:space="preserve"><value>Options</value></data>
+  <data name="Dlg_PasswordEditHint" xml:space="preserve"><value>Leave it empty or untick the box to not save a password.</value></data>
+  <data name="Dlg_PasswordFor" xml:space="preserve"><value>Password for {0}</value></data>
+  <data name="Dlg_PasswordNeeded" xml:space="preserve"><value>The server wants a password, or the saved one no longer fits.</value></data>
+  <data name="Dlg_PasswordOptional" xml:space="preserve"><value>Only needed if the server has one.</value></data>
+  <data name="Dlg_PressKey" xml:space="preserve"><value>Now press the key or combination, a mouse button works too ...</value></data>
+  <data name="Dlg_Reason" xml:space="preserve"><value>Reason</value></data>
+  <data name="Dlg_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Dlg_SaveBookmark" xml:space="preserve"><value>Save as bookmark</value></data>
+  <data name="Dlg_SavePassword" xml:space="preserve"><value>Save password (encrypted for your Windows user)</value></data>
+  <data name="Dlg_Select" xml:space="preserve"><value>Select</value></data>
+  <data name="Dlg_ServerPassword" xml:space="preserve"><value>Server password</value></data>
+  <data name="Dlg_SetKey" xml:space="preserve"><value>Set key</value></data>
+  <data name="Dlg_SetKeyButton" xml:space="preserve"><value>Set key ...</value></data>
+  <data name="Dlg_ShowPassword" xml:space="preserve"><value>Show password</value></data>
+  <data name="Dlg_UpdateHint" xml:space="preserve"><value>The client downloads the new version, checks it and restarts. Windows SmartScreen asks on the first start because the file is not signed.</value></data>
+  <data name="Dlg_UpdateQuestion" xml:space="preserve"><value>Version {0} is available. Install now?</value></data>
+  <data name="Dlg_UpdateTitle" xml:space="preserve"><value>Update available</value></data>
+  <data name="Dlg_YesDelete" xml:space="preserve"><value>Yes, delete</value></data>
+  <data name="Error_BadSignature" xml:space="preserve"><value>Signing in with your identity failed.</value></data>
+  <data name="Error_Banned" xml:space="preserve"><value>You are banned from this server.</value></data>
+  <data name="Error_CannotDeleteDefault" xml:space="preserve"><value>The default channel cannot be deleted.</value></data>
+  <data name="Error_ChannelFull" xml:space="preserve"><value>The channel is full.</value></data>
+  <data name="Error_ConnectionLost" xml:space="preserve"><value>The connection to the server was lost.</value></data>
+  <data name="Error_InvalidLink" xml:space="preserve"><value>A channel cannot be linked to itself.</value></data>
+  <data name="Error_InvalidName" xml:space="preserve"><value>Invalid name.</value></data>
+  <data name="Error_InvalidToken" xml:space="preserve"><value>The admin token is invalid or has already been redeemed.</value></data>
+  <data name="Error_InvalidValue" xml:space="preserve"><value>Invalid value.</value></data>
+  <data name="Error_Kicked" xml:space="preserve"><value>You were kicked from the server.</value></data>
+  <data name="Error_LastAdmin" xml:space="preserve"><value>The last admin cannot be removed.</value></data>
+  <data name="Error_NameTaken" xml:space="preserve"><value>This name is already taken.</value></data>
+  <data name="Error_NicknameInvalid" xml:space="preserve"><value>Invalid nickname (1 to 32 characters).</value></data>
+  <data name="Error_NicknameTaken" xml:space="preserve"><value>This nickname is already online.</value></data>
+  <data name="Error_NotFound" xml:space="preserve"><value>Not found (maybe deleted in the meantime).</value></data>
+  <data name="Error_PermissionDenied" xml:space="preserve"><value>You don't have the right to do that.</value></data>
+  <data name="Error_ProtectedGroup" xml:space="preserve"><value>This group is protected.</value></data>
+  <data name="Error_ProtocolError" xml:space="preserve"><value>Protocol error.</value></data>
+  <data name="Error_RateLimited" xml:space="preserve"><value>Too many messages, wait a few seconds.</value></data>
+  <data name="Error_ReplacedByNewConnection" xml:space="preserve"><value>You connected from somewhere else with the same identity.</value></data>
+  <data name="Error_ServerFull" xml:space="preserve"><value>The server is full.</value></data>
+  <data name="Error_ServerRestart" xml:space="preserve"><value>The server is restarting. Connect again in a few seconds.</value></data>
+  <data name="Error_ServerShutdown" xml:space="preserve"><value>The server was shut down.</value></data>
+  <data name="Error_Timeout" xml:space="preserve"><value>Timed out.</value></data>
+  <data name="Error_TooManyConnections" xml:space="preserve"><value>Too many connections from your IP address.</value></data>
+  <data name="Error_Unknown" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="Error_UnknownRequest" xml:space="preserve"><value>The server does not know this request.</value></data>
+  <data name="Error_VersionMismatch" xml:space="preserve"><value>Client and server use different protocol versions.</value></data>
+  <data name="Error_WrongPassword" xml:space="preserve"><value>Wrong server password.</value></data>
+  <data name="Group_New" xml:space="preserve"><value>New group</value></data>
+  <data name="Group_Unsaved" xml:space="preserve"><value>{0} (new)</value></data>
+  <data name="Icon_Format" xml:space="preserve"><value>Only PNG and JPG files are allowed.</value></data>
+  <data name="Icon_Missing" xml:space="preserve"><value>The file does not exist.</value></data>
+  <data name="Icon_NotSquare" xml:space="preserve"><value>The image must be square (1:1), it is {0} x {1} pixels.</value></data>
+  <data name="Icon_PickFilter" xml:space="preserve"><value>Images (PNG, JPG)</value></data>
+  <data name="Icon_PickTitle" xml:space="preserve"><value>Choose server logo</value></data>
+  <data name="Icon_TooBig" xml:space="preserve"><value>The file is larger than 3 MB.</value></data>
+  <data name="Icon_TooSmall" xml:space="preserve"><value>The image must be at least {0} x {0} pixels.</value></data>
+  <data name="Icon_Unreadable" xml:space="preserve"><value>The file cannot be read as an image.</value></data>
+  <data name="KeyAction_LinkPushToTalk" xml:space="preserve"><value>Link PTT (own channel and linked channels)</value></data>
+  <data name="KeyAction_PushToMute" xml:space="preserve"><value>Push-to-mute (muted while held)</value></data>
+  <data name="KeyAction_PushToTalk" xml:space="preserve"><value>Push-to-talk</value></data>
+  <data name="KeyAction_ToggleDeafen" xml:space="preserve"><value>Sound on/off</value></data>
+  <data name="KeyAction_ToggleMute" xml:space="preserve"><value>Microphone on/off</value></data>
+  <data name="Key_CapsLock" xml:space="preserve"><value>Caps Lock</value></data>
+  <data name="Key_Ctrl" xml:space="preserve"><value>Ctrl</value></data>
+  <data name="Key_CtrlPlus" xml:space="preserve"><value>Ctrl+</value></data>
+  <data name="Key_LeftAlt" xml:space="preserve"><value>Left Alt</value></data>
+  <data name="Key_LeftCtrl" xml:space="preserve"><value>Left Ctrl</value></data>
+  <data name="Key_LeftShift" xml:space="preserve"><value>Left Shift</value></data>
+  <data name="Key_Mouse4" xml:space="preserve"><value>Mouse button 4</value></data>
+  <data name="Key_Mouse5" xml:space="preserve"><value>Mouse button 5</value></data>
+  <data name="Key_MouseMiddle" xml:space="preserve"><value>Middle mouse button</value></data>
+  <data name="Key_None" xml:space="preserve"><value>(none)</value></data>
+  <data name="Key_RightAlt" xml:space="preserve"><value>Right Alt</value></data>
+  <data name="Key_RightCtrl" xml:space="preserve"><value>Right Ctrl</value></data>
+  <data name="Key_RightShift" xml:space="preserve"><value>Right Shift</value></data>
+  <data name="Key_Shift" xml:space="preserve"><value>Shift</value></data>
+  <data name="Key_ShiftPlus" xml:space="preserve"><value>Shift+</value></data>
+  <data name="Key_Space" xml:space="preserve"><value>Space</value></data>
+  <data name="Key_Unknown" xml:space="preserve"><value>Key 0x{0:X2}</value></data>
+  <data name="Keys_Conflict" xml:space="preserve"><value>"{0}" and "{1}" are on the same key.</value></data>
+  <data name="Keys_Duplicate" xml:space="preserve"><value>"{0}" is on the same key twice.</value></data>
+  <data name="Language_System" xml:space="preserve"><value>Like Windows</value></data>
+  <data name="Links_NoPending" xml:space="preserve"><value>No pending changes.</value></data>
+  <data name="Links_OnePending" xml:space="preserve"><value>1 change not applied yet.</value></data>
+  <data name="Links_Pair" xml:space="preserve"><value>{0} and {1}</value></data>
+  <data name="Links_Pending" xml:space="preserve"><value>{0} changes not applied yet.</value></data>
+  <data name="Perm_ChannelCreate" xml:space="preserve"><value>Create channels</value></data>
+  <data name="Perm_ChannelDelete" xml:space="preserve"><value>Delete channels</value></data>
+  <data name="Perm_ChannelEdit" xml:space="preserve"><value>Edit channels</value></data>
+  <data name="Perm_ChannelJoinFull" xml:space="preserve"><value>Enter full channels</value></data>
+  <data name="Perm_ChannelLink" xml:space="preserve"><value>Link channels</value></data>
+  <data name="Perm_ChatChannel" xml:space="preserve"><value>Write in the channel</value></data>
+  <data name="Perm_ChatPrivate" xml:space="preserve"><value>Write privately</value></data>
+  <data name="Perm_ChatServer" xml:space="preserve"><value>Write server-wide</value></data>
+  <data name="Perm_GroupsAssign" xml:space="preserve"><value>Assign groups</value></data>
+  <data name="Perm_GroupsManage" xml:space="preserve"><value>Manage groups</value></data>
+  <data name="Perm_ServerConfig" xml:space="preserve"><value>Change server settings</value></data>
+  <data name="Perm_Speak" xml:space="preserve"><value>Speak</value></data>
+  <data name="Perm_SpeakLinked" xml:space="preserve"><value>Speak through links</value></data>
+  <data name="Perm_UserBan" xml:space="preserve"><value>Ban users</value></data>
+  <data name="Perm_UserKick" xml:space="preserve"><value>Kick users</value></data>
+  <data name="Perm_UserMove" xml:space="preserve"><value>Move users</value></data>
+  <data name="Perm_UserMute" xml:space="preserve"><value>Mute users</value></data>
+  <data name="Ping_UdpUnreachable" xml:space="preserve"><value>, UDP not reachable</value></data>
+  <data name="Settings_Damaged" xml:space="preserve"><value>Settings were damaged and have been reset (backup: {0}.bak).</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Settings_LanguageHint" xml:space="preserve"><value>Takes effect after restarting the client.</value></data>
+  <data name="Status_Connected" xml:space="preserve"><value>Connected to {0}</value></data>
+  <data name="Status_Connecting" xml:space="preserve"><value>Connecting to {0}:{1} ...</value></data>
+  <data name="Status_Disconnected" xml:space="preserve"><value>Disconnected: {0}</value></data>
+  <data name="Status_Failed" xml:space="preserve"><value>Connection failed: {0}</value></data>
+  <data name="Status_NotConnected" xml:space="preserve"><value>Not connected</value></data>
+  <data name="Status_Refused" xml:space="preserve"><value>Refused: {0}</value></data>
+  <data name="Status_TofuRejected" xml:space="preserve"><value>Connection aborted: server certificate not accepted.</value></data>
+  <data name="TalkHint_NoPttKey" xml:space="preserve"><value>No PTT key assigned</value></data>
+  <data name="TalkHint_VoiceActivation" xml:space="preserve"><value>Voice activation</value></data>
+  <data name="Theme_Dark" xml:space="preserve"><value>Dark</value></data>
+  <data name="Theme_Light" xml:space="preserve"><value>Light</value></data>
+  <data name="Theme_System" xml:space="preserve"><value>Like Windows</value></data>
+  <data name="Tofu_Changed" xml:space="preserve"><value>The certificate of {0}:{1} has changed. That happens when the server was set up again, but it can also be an attack. If in doubt, ask the server operator for the fingerprint from the server log.</value></data>
+  <data name="Tofu_First" xml:space="preserve"><value>First connection to {0}:{1}. Compare the fingerprint with the line 'Zertifikat-Fingerprint' in the server log.</value></data>
+  <data name="Tofu_Title" xml:space="preserve"><value>Check server certificate</value></data>
+  <data name="Tofu_Trust" xml:space="preserve"><value>Trust</value></data>
+  <data name="Tofu_TrustAnyway" xml:space="preserve"><value>Trust anyway</value></data>
+  <data name="Tooltip_LinkedWith" xml:space="preserve"><value>Linked with: {0}</value></data>
+  <data name="Transmit_Channel" xml:space="preserve"><value>Sending</value></data>
+  <data name="Transmit_Linked" xml:space="preserve"><value>Sending to own channel and links</value></data>
+  <data name="Update_Available" xml:space="preserve"><value>Version {0} is available.</value></data>
+  <data name="Update_CheckFailed" xml:space="preserve"><value>Update check failed: {0}</value></data>
+  <data name="Update_Checking" xml:space="preserve"><value>Looking for updates ...</value></data>
+  <data name="Update_Damaged" xml:space="preserve"><value>The update arrived damaged (checksum does not match). The current version stays.</value></data>
+  <data name="Update_Downloading" xml:space="preserve"><value>Downloading update to {0} ...</value></data>
+  <data name="Update_GitHubStatus" xml:space="preserve"><value>GitHub answered with {0}.</value></data>
+  <data name="Update_InstallFailed" xml:space="preserve"><value>The update could not be installed: {0}</value></data>
+  <data name="Update_Latest" xml:space="preserve"><value>You have the latest version.</value></data>
+  <data name="Update_LocalBuild" xml:space="preserve"><value>Local builds do not look for updates.</value></data>
+  <data name="Update_Starting" xml:space="preserve"><value>The new version is starting ...</value></data>
+  <data name="UserStatus_Deafened" xml:space="preserve"><value>(sound off)</value></data>
+  <data name="UserStatus_Muted" xml:space="preserve"><value>(muted)</value></data>
+  <data name="UserStatus_ServerMuted" xml:space="preserve"><value>(muted by server)</value></data>
+  <data name="VoiceHint_MutedChannel" xml:space="preserve"><value>Muted channel: nobody hears you.</value></data>
+  <data name="VoiceHint_NoLinkRight" xml:space="preserve"><value>No right to talk through links: you only talk in your own channel.</value></data>
+  <data name="Window_Maximize" xml:space="preserve"><value>Maximize</value></data>
+  <data name="Window_Restore" xml:space="preserve"><value>Restore</value></data>
+</root>

@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using Avalonia;
 using Avalonia.VisualTree;
 using Avalonia.Controls;
@@ -89,9 +90,9 @@ public partial class AdminView : UserControl
         if (TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Server-Logo wählen",
+            Title = Strings.Icon_PickTitle,
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Bilder (PNG, JPG)") { Patterns = ["*.png", "*.jpg", "*.jpeg"] }],
+            FileTypeFilter = [new FilePickerFileType(Strings.Icon_PickFilter) { Patterns = ["*.png", "*.jpg", "*.jpeg"] }],
         });
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) await UploadAsync(path);
     }

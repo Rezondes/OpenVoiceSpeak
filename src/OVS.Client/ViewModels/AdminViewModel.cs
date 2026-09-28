@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -159,7 +160,7 @@ public sealed partial class AdminViewModel : ObservableObject
     [RelayCommand]
     void NewGroup()
     {
-        var group = new GroupEditViewModel(null, "Neue Gruppe", Permission.Speak, Actor);
+        var group = new GroupEditViewModel(null, Strings.Group_New, Permission.Speak, Actor);
         Groups.Add(group);
         SelectedGroup = group;
     }
@@ -249,7 +250,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
     public bool CanDelete { get; }
     public IReadOnlyList<PermissionToggle> Toggles { get; }
     public Permission Permissions => Toggles.Where(t => t.IsChecked).Aggregate(Permission.None, (acc, t) => acc | t.Permission);
-    public string DisplayName => Id is null ? Name + " (neu)" : Name;
+    public string DisplayName => Id is null ? string.Format(Strings.Group_Unsaved, Name) : Name;
     /// <summary>Package 37: where a dragged group would land.</summary>
     [ObservableProperty] bool isDropAbove;
     [ObservableProperty] bool isDropBelow;
@@ -288,8 +289,7 @@ public sealed partial class BanViewModel(BanInfo ban, Func<Task> unban) : Observ
     public BanInfo Ban { get; } = ban;
     public string Text => $"{Ban.Nickname} ({Ban.Fingerprint[..Math.Min(12, Ban.Fingerprint.Length)]})" +
                           (Ban.Ip is null ? "" : $", IP {Ban.Ip}") +
-                          $": {Ban.Reason}, von {Ban.CreatedBy}, " +
-                          (Ban.ExpiresAt is { } until ? $"bis {until.ToLocalTime():dd.MM.yyyy HH:mm}" : "dauerhaft");
+                          string.Format(Strings.Ban_Line, Ban.Reason, Ban.CreatedBy, (Ban.ExpiresAt is { } until ? string.Format(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever));
 
     [RelayCommand]
     Task Unban() => unban();

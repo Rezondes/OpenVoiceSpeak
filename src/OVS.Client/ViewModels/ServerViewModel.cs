@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,8 +17,8 @@ public sealed record ChannelEdit(string Name, string Description, bool IsMuted =
 public enum ChannelDialogMode { Create, Edit, EditDefault }
 public sealed record BanChoice(string Reason, int? DurationMinutes, bool IncludeIp)
 {
-    public static readonly IReadOnlyList<(string Label, int? Minutes)> Durations =
-        [("1 Stunde", 60), ("1 Tag", 1440), ("7 Tage", 10080), ("Dauerhaft", null)];
+    public static IReadOnlyList<(string Label, int? Minutes)> Durations =>
+        [(Strings.Ban_Hour, 60), (Strings.Ban_Day, 1440), (Strings.Ban_Week, 10080), (Strings.Ban_Permanent, null)];
 }
 
 /// <summary>Dialogs the view provides. Unset entries mean "cancelled" (used by tests).</summary>
@@ -305,14 +306,14 @@ public sealed partial class ServerViewModel : ObservableObject
     [RelayCommand]
     async Task NewChannel()
     {
-        if (Dialogs.EditChannel is { } edit && await edit("Channel anlegen", new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
+        if (Dialogs.EditChannel is { } edit && await edit(Strings.Dialog_CreateChannel, new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
             await CreateChannelAsync(result.Name, result.Description);
     }
 
     [RelayCommand]
     async Task RedeemToken()
     {
-        if (Dialogs.AskText is { } ask && await ask("Admin-Token einlösen", "Token aus dem Serverlog:") is { Length: > 0 } token)
+        if (Dialogs.AskText is { } ask && await ask(Strings.Dialog_RedeemToken, Strings.Dialog_RedeemTokenPrompt) is { Length: > 0 } token)
             await SendAsync(new RedeemAdminToken(token.Trim()));
     }
 }
@@ -345,7 +346,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
 
     public Guid Id { get; } = id;
     public ObservableCollection<UserViewModel> Users { get; } = [];
-    public string Tooltip => IsLinked ? $"{Description}\nVerlinkt mit: {LinkedNames}".Trim() : Description;
+    public string Tooltip => IsLinked ? $"{Description}\n{string.Format(Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description;
 
     internal void Update(ChannelInfo info, IReadOnlyList<string> linked, bool isDefault, bool isCurrent, Permission actor)
     {
@@ -392,28 +393,28 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     async Task Edit()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        if (owner.Dialogs.EditChannel is { } edit && await edit("Channel bearbeiten", new ChannelEdit(Name, Description, IsMuted, MaxUsers), mode) is { } result)
+        if (owner.Dialogs.EditChannel is { } edit && await edit(Strings.Dialog_EditChannel, new ChannelEdit(Name, Description, IsMuted, MaxUsers), mode) is { } result)
             await owner.EditChannelAsync(Id, result, Order);
     }
 
     [RelayCommand]
     async Task Delete()
     {
-        if (owner.Dialogs.Confirm is { } confirm && await confirm($"Channel \"{Name}\" löschen? Nutzer darin landen im Standard-Channel."))
+        if (owner.Dialogs.Confirm is { } confirm && await confirm(string.Format(Strings.Confirm_DeleteChannel, Name)))
             await owner.DeleteChannelAsync(Id);
     }
 
     [RelayCommand]
     async Task Link()
     {
-        if (owner.Dialogs.PickChannel is { } pick && await pick($"\"{Name}\" verlinken mit", owner.LinkCandidates(this)) is { } other)
+        if (owner.Dialogs.PickChannel is { } pick && await pick(string.Format(Strings.Dialog_LinkWith, Name), owner.LinkCandidates(this)) is { } other)
             await owner.LinkAsync(Id, other.Id);
     }
 
     [RelayCommand]
     async Task Unlink()
     {
-        if (owner.Dialogs.PickChannel is { } pick && await pick($"Link von \"{Name}\" entfernen", owner.LinkedChannelVms(this)) is { } other)
+        if (owner.Dialogs.PickChannel is { } pick && await pick(string.Format(Strings.Dialog_Unlink, Name), owner.LinkedChannelVms(this)) is { } other)
             await owner.UnlinkAsync(Id, other.Id);
     }
 }
@@ -454,9 +455,9 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         GroupNames = string.Join(", ", groups.Where(g => info.GroupIds.Contains(g.Id)).Select(g => g.Name)); // in the server's group order (Package 37)
         StatusText = info switch
         {
-            { ServerMuted: true } => "(vom Server stumm)",
-            { SelfDeafened: true } => "(taub)",
-            { SelfMuted: true } => "(stumm)",
+            { ServerMuted: true } => Strings.UserStatus_ServerMuted,
+            { SelfDeafened: true } => Strings.UserStatus_Deafened,
+            { SelfMuted: true } => Strings.UserStatus_Muted,
             _ => "",
         };
         bool rank = actor.CanActOn(info.Permissions);
@@ -477,7 +478,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     async Task Move()
     {
         var targets = owner.Channels.Where(c => c.Id != ChannelId).ToList();
-        if (owner.Dialogs.PickChannel is { } pick && await pick($"{Nickname} verschieben nach", targets) is { } channel)
+        if (owner.Dialogs.PickChannel is { } pick && await pick(string.Format(Strings.Dialog_MoveTo, Nickname), targets) is { } channel)
             await owner.MoveAsync(SessionId, channel.Id);
     }
 
@@ -490,7 +491,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [RelayCommand]
     async Task Kick()
     {
-        if (owner.Dialogs.AskText is { } ask && await ask($"{Nickname} kicken", "Grund:") is { } reason)
+        if (owner.Dialogs.AskText is { } ask && await ask(string.Format(Strings.Dialog_Kick, Nickname), Strings.Dialog_KickReason) is { } reason)
             await owner.KickAsync(SessionId, reason);
     }
 

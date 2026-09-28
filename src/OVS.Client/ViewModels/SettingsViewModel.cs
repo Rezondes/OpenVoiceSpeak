@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,6 +11,7 @@ namespace OVS.Client.ViewModels;
 
 public sealed record AudioDeviceOption(string? Id, string Name);
 public sealed record ThemeOption(AppTheme Value, string Name);
+public sealed record LanguageOption(AppLanguage Value, string Name);
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
@@ -23,6 +25,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsPushToTalk))]
     bool voiceActivation;
     [ObservableProperty] ThemeOption selectedTheme;
+    [ObservableProperty] LanguageOption selectedLanguage;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAboveThreshold))]
     double vadThresholdDb;
@@ -38,15 +41,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice> inputs, IReadOnlyList<AudioDevice> outputs, KeyPoller? keys = null)
     {
         this.keys = keys;
-        Inputs = [new AudioDeviceOption(null, "Standardgerät"), .. inputs.Select(d => new AudioDeviceOption(d.Id, d.Name))];
-        Outputs = [new AudioDeviceOption(null, "Standardgerät"), .. outputs.Select(d => new AudioDeviceOption(d.Id, d.Name))];
+        Inputs = [new AudioDeviceOption(null, Strings.Device_Default), .. inputs.Select(d => new AudioDeviceOption(d.Id, d.Name))];
+        Outputs = [new AudioDeviceOption(null, Strings.Device_Default), .. outputs.Select(d => new AudioDeviceOption(d.Id, d.Name))];
 
         var (inputId, inputFellBack) = AudioDevices.Resolve(current.InputDeviceId, inputs);
         var (outputId, outputFellBack) = AudioDevices.Resolve(current.OutputDeviceId, outputs);
         selectedInput = Inputs.First(o => o.Id == inputId);
         selectedOutput = Outputs.First(o => o.Id == outputId);
         if (inputFellBack || outputFellBack)
-            deviceHint = "Ein gespeichertes Audiogerät ist nicht mehr vorhanden, es wird das Standardgerät verwendet.";
+            deviceHint = Strings.Device_Missing;
 
         inputGainPercent = current.InputGain * 100f;
         outputVolumePercent = current.OutputVolume * 100f;
@@ -55,6 +58,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
+        selectedLanguage = Languages.First(l => l.Value == current.Language);
         checkForUpdates = current.CheckForUpdates;
     }
 
@@ -65,7 +69,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     async Task CheckUpdates()
     {
         if (CheckNow is not { } check) return;
-        UpdateStatus = "Suche nach Updates ...";
+        UpdateStatus = Strings.Update_Checking;
         UpdateStatus = await check();
     }
 
@@ -73,11 +77,15 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string AppVersion => $"OpenVoiceSpeak {BuildInfo.Current.Version}";
     public string BuildDetails => BuildInfo.Current is { IsCi: true } b
-        ? $"Commit {b.ShortCommit}, gebaut am {b.BuildTime.ToLocalTime():dd.MM.yyyy HH:mm}"
-        : "Lokaler Build, keine veröffentlichte Version";
+        ? string.Format(Strings.About_Build, b.ShortCommit, b.BuildTime.ToLocalTime())
+        : Strings.About_LocalBuild;
 
-    public static IReadOnlyList<ThemeOption> Themes { get; } =
-        [new(AppTheme.System, "Wie Windows"), new(AppTheme.Light, "Hell"), new(AppTheme.Dark, "Dunkel")];
+    public static IReadOnlyList<ThemeOption> Themes =>
+        [new(AppTheme.System, Strings.Theme_System), new(AppTheme.Light, Strings.Theme_Light), new(AppTheme.Dark, Strings.Theme_Dark)];
+
+    /// <summary>Package 45: the language names stay in their own language, so everybody finds theirs.</summary>
+    public static IReadOnlyList<LanguageOption> Languages =>
+        [new(AppLanguage.System, Strings.Language_System), new(AppLanguage.German, "Deutsch"), new(AppLanguage.English, "English")];
 
     /// <summary>The other radio button of the transmit mode.</summary>
     public bool IsPushToTalk
@@ -101,8 +109,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     string? KeyConflict =>
         KeyBindings.GroupBy(b => b.Binding.Chord).Where(g => g.Count() > 1).Select(g => g.Select(b => b.Binding.Action).Distinct().ToList())
             .Select(actions => actions.Count > 1
-                ? $"\"{KeyActions.Label(actions[0])}\" und \"{KeyActions.Label(actions[1])}\" liegen auf derselben Taste."
-                : $"\"{KeyActions.Label(actions[0])}\" steht doppelt auf derselben Taste.")
+                ? string.Format(Strings.Keys_Conflict, KeyActions.Label(actions[0]), KeyActions.Label(actions[1]))
+                : string.Format(Strings.Keys_Duplicate, KeyActions.Label(actions[0])))
             .FirstOrDefault();
 
     public bool HasKeyConflict => KeyConflict is not null;
@@ -165,6 +173,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         KeyBindings = KeyBindings.Select(b => b.Binding).ToList(),
         VadThresholdDb = (float)VadThresholdDb,
         Theme = SelectedTheme.Value,
+        Language = SelectedLanguage.Value,
         CheckForUpdates = CheckForUpdates,
     }.Clamp();
 }

@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Net;
@@ -71,7 +72,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>The chat of the current connection (Package 32), replaces the activity feed.</summary>
     [ObservableProperty] ChatViewModel? chat;
 
-    [ObservableProperty] string status = "Nicht verbunden";
+    [ObservableProperty] string status = Strings.Status_NotConnected;
     [ObservableProperty] bool isConnecting;
 
     [ObservableProperty]
@@ -108,8 +109,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             TransmitText = target switch
             {
                 null => "",
-                Shared.Voice.VoiceHeader.TargetLinked => "Sendet an eigenen Channel und Links",
-                _ => "Sendet",
+                Shared.Voice.VoiceHeader.TargetLinked => Strings.Transmit_Linked,
+                _ => Strings.Transmit_Channel,
             };
             Server?.SetSelfTransmitting(target);
         });
@@ -132,10 +133,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
     public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
-        ? "Sprachaktivierung"
+        ? Strings.TalkHint_VoiceActivation
         : Settings.KeyBindings.Where(b => b.Action == KeyAction.PushToTalk).Select(b => b.Chord.Name).ToList() is { Count: > 0 } ptt
             ? $"PTT: {string.Join(", ", ptt)}"
-            : "Keine PTT-Taste belegt";
+            : Strings.TalkHint_NoPttKey;
 
     /// <summary>Push-to-talk without a key: nobody can talk. The hint then opens the settings.</summary>
     public bool HasNoPttBinding => Settings.Mode == TransmitMode.PushToTalk && Settings.ChordFor(KeyAction.PushToTalk) is null;
@@ -170,7 +171,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         lastRejection = null;
         if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: false);
 
-        Status = $"Verbinde mit {choice.Host}:{choice.Port} ...";
+        Status = string.Format(Strings.Status_Connecting, choice.Host, choice.Port);
         IsConnecting = true;
         Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(string.IsNullOrEmpty(choice.Password) ? "" : " mit Passwort")}");
         try
@@ -207,7 +208,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             udpLogged = null;
             Server = vm;
             SyncAudioFlags();
-            Status = $"Verbunden mit {vm.ServerName}";
+            Status = string.Format(Strings.Status_Connected, vm.ServerName);
             Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
                       $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
             if (vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
@@ -216,15 +217,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         catch (ConnectionRejectedException e)
         {
             lastRejection = e.Code;
-            Status = "Abgelehnt: " + ErrorTexts.For(e.Code, e.Detail);
+            Status = string.Format(Strings.Status_Refused, ErrorTexts.For(e.Code, e.Detail));
+            Log.Write($"Abgelehnt vom Server: {e.Code}{(string.IsNullOrEmpty(e.Detail) ? "" : $" ({e.Detail})")}");
         }
         catch (TofuRejectedException)
         {
-            Status = "Verbindung abgebrochen: Serverzertifikat nicht akzeptiert.";
+            Status = Strings.Status_TofuRejected;
         }
         catch (Exception e) when (e is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException)
         {
-            Status = $"Verbindung fehlgeschlagen: {e.Message}";
+            Status = string.Format(Strings.Status_Failed, e.Message);
         }
         finally
         {
@@ -260,25 +262,25 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <returns>What happened, for the line under "Nach Updates suchen".</returns>
     public async Task<string> CheckForUpdatesAsync()
     {
-        if (Updates is not { IsEnabled: true } updates) return "Lokale Builds suchen nicht nach Updates.";
+        if (Updates is not { IsEnabled: true } updates) return Strings.Update_LocalBuild;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var result = await updates.CheckAsync(timeout.Token);
         if (result.Error is { } error)
         {
             Log.Write($"Update-Prüfung fehlgeschlagen: {error}");
-            return $"Update-Prüfung fehlgeschlagen: {error}";
+            return string.Format(Strings.Update_CheckFailed, error);
         }
         if (result.Offer is not { } offer)
         {
             Log.Write("Update-Prüfung: keine neuere Version");
-            return "Du hast die neueste Version.";
+            return Strings.Update_Latest;
         }
         Log.Write($"Update verfügbar: {offer.Version} ({offer.Tag})");
-        if (Dialogs.OfferUpdate is not { } ask || !await ask(offer) || Installer is null) return $"Version {offer.Version} ist verfügbar.";
+        if (Dialogs.OfferUpdate is not { } ask || !await ask(offer) || Installer is null) return string.Format(Strings.Update_Available, offer.Version);
 
-        Status = $"Update auf {offer.Version} wird geladen ...";
+        Status = string.Format(Strings.Update_Downloading, offer.Version);
         Log.Write($"Update auf {offer.Version} wird installiert");
-        if (await Installer.InstallAsync(offer) is not { } failure) return "Die neue Version startet ...";
+        if (await Installer.InstallAsync(offer) is not { } failure) return Strings.Update_Starting;
         Log.Write(failure);
         Status = failure;
         AddNotice(failure, NoticeKind.Warning);
@@ -315,7 +317,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     public async Task DeleteBookmarkAsync(Bookmark bookmark)
     {
-        if (Dialogs.Confirm is not { } confirm || !await confirm($"Lesezeichen \"{bookmark.Name}\" löschen?")) return;
+        if (Dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Confirm_DeleteBookmark, bookmark.Name))) return;
         if (!Settings.Bookmarks.Remove(bookmark)) return;
         Settings.Save(storageDir);
         Log.Write($"Lesezeichen '{bookmark.Name}' gelöscht");
@@ -334,7 +336,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public Task DisconnectAsync()
     {
         if (connection is not null) Log.Write("Verbindung getrennt (eigene Aktion)");
-        return DisconnectAsync("Nicht verbunden");
+        return DisconnectAsync(Strings.Status_NotConnected);
     }
 
     /// <param name="status">Set before tearing down, so nobody ever sees "disconnected" with a stale status.</param>
@@ -357,7 +359,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     void OnDisconnected(ClientConnection conn, string reason, string? detail)
     {
         if (conn != connection) return;
-        var text = "Getrennt: " + ErrorTexts.For(reason, detail);
+        var text = string.Format(Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
+        if (!string.IsNullOrEmpty(detail)) Log.Write($"Getrennt vom Server: {reason} ({detail})");
         AddNotice(text, NoticeKind.Warning);
         _ = DisconnectAsync(text);
     }
@@ -389,12 +392,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Server?.RefreshSpeaking();
         LogUdpReachability();
         PingText = connection?.LastRoundTrip is { } rtt
-            ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.Reachable == false ? ", UDP nicht erreichbar" : "")
+            ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.Reachable == false ? Strings.Ping_UdpUnreachable : "")
             : "";
         VoiceHint = Server switch
         {
-            { CurrentChannel.IsMuted: true } => "Stummer Channel: niemand hört dich.",
-            { HasSpeakLinked: false } when Keys.LinkPttDown => "Kein Recht für Link-Übertragungen: du sprichst nur im eigenen Channel.",
+            { CurrentChannel.IsMuted: true } => Strings.VoiceHint_MutedChannel,
+            { HasSpeakLinked: false } when Keys.LinkPttDown => Strings.VoiceHint_NoLinkRight,
             _ => "",
         };
     }

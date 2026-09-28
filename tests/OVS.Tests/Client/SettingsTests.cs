@@ -50,6 +50,18 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Language_RoundTrip_ShownInSettings()
+    {
+        new ClientSettings { Language = OVS.Client.Localization.AppLanguage.English }.Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal(OVS.Client.Localization.AppLanguage.English, loaded.Language);
+        var vm = Vm(loaded);
+        Assert.Equal("English", vm.SelectedLanguage.Name);
+        vm.SelectedLanguage = SettingsViewModel.Languages.First(); // "Wie Windows"
+        Assert.Equal(OVS.Client.Localization.AppLanguage.System, vm.ToSettings(loaded).Language);
+    }
+
+    [Fact]
     public void FullSettings_RoundTrip_IncludingBookmarks()
     {
         var s = new ClientSettings
@@ -250,6 +262,6 @@ public sealed class SettingsTests : IDisposable
     public void ErrorTexts_EveryCodeHasText()
     {
         foreach (var code in Codes.All()) Assert.True(ErrorTexts.Has(code), code);
-        Assert.Equal("Dafür fehlt dir das Recht. (x)", ErrorTexts.For(Codes.PermissionDenied, "x"));
+        Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(Codes.PermissionDenied, "x")); // server details stay out of the UI (A45)
     }
 }

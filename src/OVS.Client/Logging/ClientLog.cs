@@ -65,6 +65,8 @@ public sealed class ClientLog
                 };
             case ServerIcon m:
                 return m.PngBase64 is null ? "Server hat kein Logo" : $"Server-Logo erhalten ({m.PngBase64.Length * 3 / 4 / 1024} KB)";
+            case Error { Detail: { Length: > 0 } detail } e:
+                return $"Fehler {e.Code} ({e.RequestId}): {detail}"; // A45: the UI shows its own text, the detail only lands here
             case Error:
                 return null;
             default:

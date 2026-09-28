@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -35,7 +36,7 @@ public static class AudioDevices
     public static MMDevice? Open(string? id, DataFlow flow, List<string> warnings)
     {
         var (resolved, fellBack) = Resolve(id, List(flow));
-        if (fellBack) warnings.Add("Ein gespeichertes Audiogerät fehlt, das Standardgerät wird verwendet.");
+        if (fellBack) warnings.Add(Strings.Audio_DeviceFallback);
         if (resolved is null) return null;
         using var enumerator = new MMDeviceEnumerator();
         return enumerator.GetDevice(resolved);
@@ -153,7 +154,7 @@ public sealed class AudioEngine : IDisposable
         {
             capture?.Dispose();
             capture = null;
-            warnings.Add($"Mikrofon konnte nicht geöffnet werden: {e.Message}");
+            warnings.Add(string.Format(Strings.Audio_MicFailed, e.Message));
         }
     }
 
@@ -178,7 +179,7 @@ public sealed class AudioEngine : IDisposable
         {
             output?.Dispose();
             output = null;
-            warnings.Add($"Lautsprecher konnte nicht geöffnet werden: {e.Message}");
+            warnings.Add(string.Format(Strings.Audio_SpeakerFailed, e.Message));
         }
     }
 

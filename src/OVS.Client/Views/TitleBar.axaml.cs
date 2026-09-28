@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -36,7 +37,7 @@ public partial class TitleBar : UserControl
         bool maximized = state == WindowState.Maximized;
         MaximizeIcon.IsVisible = !maximized;
         RestoreIcon.IsVisible = maximized;
-        var label = maximized ? "Wiederherstellen" : "Maximieren";
+        var label = maximized ? Strings.Window_Restore : Strings.Window_Maximize;
         ToolTip.SetTip(MaximizeButton, label);
         AutomationProperties.SetName(MaximizeButton, label);
     }

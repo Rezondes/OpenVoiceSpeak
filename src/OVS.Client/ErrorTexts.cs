@@ -1,71 +1,50 @@
+using OVS.Client.Localization;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 
 namespace OVS.Client;
 
+/// <summary>User texts for the protocol's error codes, in the chosen language (Package 45).</summary>
 public static class ErrorTexts
 {
-    static readonly Dictionary<string, string> Texts = new()
-    {
-        [Codes.VersionMismatch] = "Client und Server verwenden unterschiedliche Protokollversionen.",
-        [Codes.BadSignature] = "Die Anmeldung mit deiner Identität ist fehlgeschlagen.",
-        [Codes.WrongPassword] = "Falsches Serverpasswort.",
-        [Codes.ServerFull] = "Der Server ist voll.",
-        [Codes.NicknameInvalid] = "Ungültiger Nickname (1 bis 32 Zeichen).",
-        [Codes.NicknameTaken] = "Dieser Nickname ist bereits online.",
-        [Codes.TooManyConnections] = "Zu viele Verbindungen von deiner IP-Adresse.",
-        [Codes.Timeout] = "Zeitüberschreitung.",
-        [Codes.Banned] = "Du bist auf diesem Server gebannt.",
-        [Codes.ProtocolError] = "Protokollfehler.",
-        [Codes.ReplacedByNewConnection] = "Du hast dich von woanders mit derselben Identität verbunden.",
-        [Codes.ServerShutdown] = "Der Server wurde heruntergefahren.",
-        [Codes.ServerRestart] = "Der Server startet neu. Verbinde dich in ein paar Sekunden erneut.",
-        [Codes.Kicked] = "Du wurdest vom Server gekickt.",
-        [Codes.ConnectionLost] = "Die Verbindung zum Server ist abgebrochen.",
-        [Codes.PermissionDenied] = "Dafür fehlt dir das Recht.",
-        [Codes.NotFound] = "Nicht gefunden (vielleicht inzwischen gelöscht).",
-        [Codes.InvalidName] = "Ungültiger Name.",
-        [Codes.NameTaken] = "Dieser Name ist bereits vergeben.",
-        [Codes.InvalidValue] = "Ungültiger Wert.",
-        [Codes.CannotDeleteDefault] = "Der Standard-Channel kann nicht gelöscht werden.",
-        [Codes.InvalidToken] = "Das Admin-Token ist ungültig oder wurde bereits eingelöst.",
-        [Codes.RateLimited] = "Zu viele Nachrichten, warte ein paar Sekunden.",
-        [Codes.ChannelFull] = "Der Channel ist voll.",
-        [Codes.ProtectedGroup] = "Diese Gruppe ist geschützt.",
-        [Codes.LastAdmin] = "Der letzte Admin kann nicht entfernt werden.",
-        [Codes.InvalidLink] = "Ein Channel kann nicht mit sich selbst verlinkt werden.",
-        [Codes.UnknownRequest] = "Der Server kennt diese Anfrage nicht.",
-    };
+    /// <summary>
+    /// A45: the server's own detail texts are German and meant for operators, so they only go to the client log.
+    /// Kick and ban are different: their detail is the reason a person typed in.
+    /// </summary>
+    static readonly HashSet<string> DetailShown = [Codes.Kicked, Codes.Banned];
 
-    public static bool Has(string code) => Texts.ContainsKey(code);
+    static string? Text(string code) => Strings.ResourceManager.GetString("Error_" + code, Strings.Culture);
+
+    public static bool Has(string code) => Text(code) is not null;
 
     public static string For(string code, string? detail = null)
     {
-        var text = Texts.TryGetValue(code, out var t) ? t : $"Fehler: {code}";
-        return string.IsNullOrWhiteSpace(detail) ? text : $"{text} ({detail})";
+        var text = Text(code) ?? string.Format(Strings.Error_Unknown, code);
+        return string.IsNullOrWhiteSpace(detail) || !DetailShown.Contains(code) ? text : $"{text} ({detail})";
     }
 }
 
 public static class PermissionLabels
 {
-    public static readonly IReadOnlyList<(Permission Permission, string Label)> All =
+    /// <summary>Built on every call, so it follows the language of the calling thread.</summary>
+    public static IReadOnlyList<(Permission Permission, string Label)> All =>
     [
-        (Permission.Speak, "Sprechen"),
-        (Permission.SpeakLinked, "Über Links sprechen"),
-        (Permission.ChannelCreate, "Channels anlegen"),
-        (Permission.ChannelEdit, "Channels bearbeiten"),
-        (Permission.ChannelDelete, "Channels löschen"),
-        (Permission.ChannelLink, "Channels verlinken"),
-        (Permission.UserMove, "Nutzer verschieben"),
-        (Permission.UserMute, "Nutzer stummschalten"),
-        (Permission.UserKick, "Nutzer kicken"),
-        (Permission.UserBan, "Nutzer bannen"),
-        (Permission.GroupsManage, "Gruppen verwalten"),
-        (Permission.GroupsAssign, "Gruppen zuweisen"),
-        (Permission.ServerConfig, "Servereinstellungen ändern"),
-        (Permission.ChatServer, "Serverweit schreiben"),
-        (Permission.ChatChannel, "Im Channel schreiben"),
-        (Permission.ChatPrivate, "Privat schreiben"),
-        (Permission.ChannelJoinFull, "Volle Channel betreten"),
+        (Permission.Speak, Strings.Perm_Speak),
+        (Permission.SpeakLinked, Strings.Perm_SpeakLinked),
+        (Permission.ChannelCreate, Strings.Perm_ChannelCreate),
+        (Permission.ChannelEdit, Strings.Perm_ChannelEdit),
+        (Permission.ChannelDelete, Strings.Perm_ChannelDelete),
+        (Permission.ChannelLink, Strings.Perm_ChannelLink),
+        (Permission.UserMove, Strings.Perm_UserMove),
+        (Permission.UserMute, Strings.Perm_UserMute),
+        (Permission.UserKick, Strings.Perm_UserKick),
+        (Permission.UserBan, Strings.Perm_UserBan),
+        (Permission.GroupsManage, Strings.Perm_GroupsManage),
+        (Permission.GroupsAssign, Strings.Perm_GroupsAssign),
+        (Permission.ServerConfig, Strings.Perm_ServerConfig),
+        (Permission.ChatServer, Strings.Perm_ChatServer),
+        (Permission.ChatChannel, Strings.Perm_ChatChannel),
+        (Permission.ChatPrivate, Strings.Perm_ChatPrivate),
+        (Permission.ChannelJoinFull, Strings.Perm_ChannelJoinFull),
     ];
 }

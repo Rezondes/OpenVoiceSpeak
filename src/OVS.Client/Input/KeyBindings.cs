@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Numerics;
 
 namespace OVS.Client.Input;
@@ -14,8 +15,8 @@ public sealed record KeyChord(int Key, ChordModifiers Modifiers = ChordModifiers
     public int ModifierCount => BitOperations.PopCount((uint)Modifiers);
 
     public string Name =>
-        (Modifiers.HasFlag(ChordModifiers.Ctrl) ? "Strg+" : "") +
-        (Modifiers.HasFlag(ChordModifiers.Shift) ? "Umschalt+" : "") +
+        (Modifiers.HasFlag(ChordModifiers.Ctrl) ? Strings.Key_CtrlPlus : "") +
+        (Modifiers.HasFlag(ChordModifiers.Shift) ? Strings.Key_ShiftPlus : "") +
         (Modifiers.HasFlag(ChordModifiers.Alt) ? "Alt+" : "") +
         KeyPoller.KeyName(Key);
 }
@@ -30,11 +31,11 @@ public static class KeyActions
 
     public static string Label(KeyAction action) => action switch
     {
-        KeyAction.PushToTalk => "Push-to-Talk",
-        KeyAction.LinkPushToTalk => "Link-PTT (eigener Channel und verlinkte Channels)",
-        KeyAction.PushToMute => "Push-to-Mute (stumm, solange gedrückt)",
-        KeyAction.ToggleMute => "Mikrofon an/aus",
-        KeyAction.ToggleDeafen => "Ton an/aus",
+        KeyAction.PushToTalk => Strings.KeyAction_PushToTalk,
+        KeyAction.LinkPushToTalk => Strings.KeyAction_LinkPushToTalk,
+        KeyAction.PushToMute => Strings.KeyAction_PushToMute,
+        KeyAction.ToggleMute => Strings.KeyAction_ToggleMute,
+        KeyAction.ToggleDeafen => Strings.KeyAction_ToggleDeafen,
         _ => action.ToString(),
     };
 

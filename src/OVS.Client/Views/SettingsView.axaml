@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:l="using:OVS.Client.Localization"
              x:Class="OVS.Client.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <DockPanel>
@@ -176,6 +177,17 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
+              <!-- Package 45 -->
+              <TextBlock Classes="label" Text="{x:Static l:Strings.Settings_Language}" Margin="0,10,0,0" />
+              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding SelectedLanguage}" MinWidth="200"
+                        AutomationProperties.Name="{x:Static l:Strings.Settings_Language}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LanguageOption">
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Classes="caption" Text="{x:Static l:Strings.Settings_LanguageHint}" />
             </StackPanel>
           </Border>
         </StackPanel>

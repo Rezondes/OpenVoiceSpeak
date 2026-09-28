@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -87,7 +88,7 @@ public sealed partial class ChatViewModel : ObservableObject
     public ChatViewModel(ServerViewModel server, IEnumerable<Notice>? earlier = null)
     {
         this.server = server;
-        General = new ChatTab(ChatTabKind.General, "Allgemein");
+        General = new ChatTab(ChatTabKind.General, Strings.Chat_General);
         ChannelTab = new ChatTab(ChatTabKind.Channel, "");
         Tabs = [General, ChannelTab];
         selected = General;
@@ -113,13 +114,13 @@ public sealed partial class ChatViewModel : ObservableObject
 
     public string? NoRightHint => CanWrite ? null : Selected.Kind switch
     {
-        ChatTabKind.General => "Dir fehlt das Recht, serverweit zu schreiben.",
-        ChatTabKind.Channel => "Dir fehlt das Recht, im Channel zu schreiben.",
-        _ when !Selected.IsOnline => $"{Selected.Title} ist nicht online.",
-        _ => "Dir fehlt das Recht, privat zu schreiben.",
+        ChatTabKind.General => Strings.Chat_NoRightServer,
+        ChatTabKind.Channel => Strings.Chat_NoRightChannel,
+        _ when !Selected.IsOnline => string.Format(Strings.Chat_NotOnline, Selected.Title),
+        _ => Strings.Chat_NoRightPrivate,
     };
 
-    public string Placeholder => CanWrite ? $"Nachricht an {Selected.Title}" : "";
+    public string Placeholder => CanWrite ? string.Format(Strings.Chat_MessageTo, Selected.Title) : "";
     public bool ShowCounter => Draft.Length >= CounterFrom;
     public bool IsTooLong => Draft.Length > ProtocolInfo.MaxChatLength;
     public string CounterText => $"{Draft.Length} / {ProtocolInfo.MaxChatLength}";
@@ -184,7 +185,7 @@ public sealed partial class ChatViewModel : ObservableObject
         bool online = user is not null;
         if (online == tab.IsOnline) return;
         tab.IsOnline = online;
-        tab.Add(new ChatEntry(DateTime.Now, online ? $"{tab.Title} ist wieder online." : $"{tab.Title} ist offline."), countUnread: false);
+        tab.Add(new ChatEntry(DateTime.Now, online ? string.Format(Strings.Chat_BackOnline, tab.Title) : string.Format(Strings.Chat_Offline, tab.Title)), countUnread: false);
     }
 
     /// <summary>A new channel starts an empty tab (A27). Also picks up renames and changed rights.</summary>
@@ -196,7 +197,7 @@ public sealed partial class ChatViewModel : ObservableObject
             channelId = channel?.Id;
             ChannelTab.Entries.Clear();
             ChannelTab.Unread = 0;
-            if (channel is not null) Add(ChannelTab, new ChatEntry(DateTime.Now, $"Du hast \"{channel.Name}\" betreten."), countUnread: false);
+            if (channel is not null) Add(ChannelTab, new ChatEntry(DateTime.Now, string.Format(Strings.Chat_Entered, channel.Name)), countUnread: false);
         }
         ChannelTab.Title = channel?.Name ?? "";
         foreach (var tab in privateTabs.Values) SyncPartner(tab);

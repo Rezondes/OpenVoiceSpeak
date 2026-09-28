@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Runtime.InteropServices;
 
 namespace OVS.Client.Input;
@@ -117,24 +118,24 @@ public sealed partial class KeyPoller : IDisposable
 
     public static string KeyName(int vk) => vk switch
     {
-        0 => "(keine)",
-        VkXButton1 => "Maustaste 4",
-        VkXButton2 => "Maustaste 5",
-        0x04 => "Mittlere Maustaste",
+        0 => Strings.Key_None,
+        VkXButton1 => Strings.Key_Mouse4,
+        VkXButton2 => Strings.Key_Mouse5,
+        0x04 => Strings.Key_MouseMiddle,
         >= 0x70 and <= 0x87 => "F" + (vk - 0x6F),
         >= 0x30 and <= 0x5A => ((char)vk).ToString(),
-        0x10 => "Umschalt",
-        0x11 => "Strg",
+        0x10 => Strings.Key_Shift,
+        0x11 => Strings.Key_Ctrl,
         0x12 => "Alt",
-        0x14 => "Feststelltaste",
-        0x20 => "Leertaste",
-        0xA0 => "Umschalt links",
-        0xA1 => "Umschalt rechts",
-        0xA2 => "Strg links",
-        0xA3 => "Strg rechts",
-        0xA4 => "Alt links",
-        0xA5 => "Alt rechts",
-        _ => $"Taste 0x{vk:X2}",
+        0x14 => Strings.Key_CapsLock,
+        0x20 => Strings.Key_Space,
+        0xA0 => Strings.Key_LeftShift,
+        0xA1 => Strings.Key_RightShift,
+        0xA2 => Strings.Key_LeftCtrl,
+        0xA3 => Strings.Key_RightCtrl,
+        0xA4 => Strings.Key_LeftAlt,
+        0xA5 => Strings.Key_RightAlt,
+        _ => string.Format(Strings.Key_Unknown, vk),
     };
 
     public void Dispose()

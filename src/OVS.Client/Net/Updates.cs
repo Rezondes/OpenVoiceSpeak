@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -33,7 +34,7 @@ public sealed class UpdateChecker(HttpClient http, BuildInfo current)
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("OpenVoiceSpeak", current.Version));
             using var response = await http.SendAsync(request, cancel);
-            if (!response.IsSuccessStatusCode) return new UpdateCheckResult(null, $"GitHub antwortet mit {(int)response.StatusCode}.");
+            if (!response.IsSuccessStatusCode) return new UpdateCheckResult(null, string.Format(Strings.Update_GitHubStatus, (int)response.StatusCode));
             using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancel), cancellationToken: cancel);
             return new UpdateCheckResult(Evaluate(json.RootElement));
         }
@@ -83,7 +84,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
             if (actual != expected)
             {
                 File.Delete(NewPath);
-                return "Das Update ist beschädigt angekommen (Prüfsumme stimmt nicht). Die bisherige Version bleibt.";
+                return Strings.Update_Damaged;
             }
             if (File.Exists(OldPath)) File.Delete(OldPath);
             File.Move(exePath, OldPath);
@@ -93,7 +94,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         {
             TryDelete(NewPath);
             if (!File.Exists(exePath) && File.Exists(OldPath)) File.Move(OldPath, exePath); // swap half done: undo it
-            return $"Das Update konnte nicht installiert werden: {e.Message}";
+            return string.Format(Strings.Update_InstallFailed, e.Message);
         }
         restart(exePath);
         return null;

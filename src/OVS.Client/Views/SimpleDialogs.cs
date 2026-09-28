@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -23,7 +24,7 @@ public static class SimpleDialogs
     enum Kind { Normal, Danger }
 
     static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
-        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string cancelText = "Abbrechen") where T : class
+        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null) where T : class
     {
         T? result = null;
         void Accept()
@@ -34,7 +35,7 @@ public static class SimpleDialogs
 
         var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Classes.Add(kind == Kind.Danger ? "danger" : "accent");
-        var cancel = new Button { Content = cancelText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var cancel = new Button { Content = cancelText ?? Strings.Dlg_Cancel, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Click += (_, _) => Accept();
         cancel.Click += (_, _) => host.Close();
 
@@ -118,39 +119,39 @@ public static class SimpleDialogs
     public static Task<string?> AskText(OverlayHost overlay, string title, string prompt)
     {
         var box = new TextBox();
-        return Show(overlay, title, title.StartsWith("Admin-Token") ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
+        return Show(overlay, title, title == Strings.Dialog_RedeemToken ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
     }
 
     public static Task<ChannelEdit?> EditChannel(OverlayHost overlay, string title, ChannelEdit current, ChannelDialogMode mode)
     {
         var nameBox = new TextBox { Text = current.Name };
         var descriptionBox = new TextBox { Text = current.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 76 };
-        var muted = new CheckBox { Content = "Stummer Channel: niemand wird gehört", IsChecked = current.IsMuted };
+        var muted = new CheckBox { Content = Strings.Dlg_MutedChannel, IsChecked = current.IsMuted };
         var maxUsers = new NumericUpDown
         {
             Minimum = 0, Maximum = Shared.Protocol.ProtocolInfo.MaxChannelUsers, Increment = 1, FormatString = "0",
             Value = current.MaxUsers, Width = 140, HorizontalAlignment = HorizontalAlignment.Left,
             IsEnabled = mode != ChannelDialogMode.EditDefault,
         };
-        var body = Stack(Field("Name", nameBox), Field("Beschreibung", descriptionBox, "Optional, erscheint als Tooltip und im Kopf des Channels."));
+        var body = Stack(Field("Name", nameBox), Field(Strings.Dlg_Description, descriptionBox, Strings.Dlg_DescriptionHint));
         if (mode != ChannelDialogMode.Create)
         {
-            body.Children.Add(Field("Optionen", muted, "Auch Link-PTT aus diesem Channel wird nicht übertragen. Sprache aus verlinkten Channels ist hörbar."));
-            body.Children.Add(Field("Maximale Nutzer (0 = unbegrenzt)", maxUsers, mode == ChannelDialogMode.EditDefault
-                ? "Der Standard-Channel bleibt unbegrenzt: dort landet jeder beim Verbinden."
-                : "Wer drin ist, bleibt auch bei einem kleineren Limit. Das Recht \"Volle Channel betreten\" umgeht es."));
+            body.Children.Add(Field(Strings.Dlg_Options, muted, Strings.Dlg_MutedHint));
+            body.Children.Add(Field(Strings.Dlg_MaxUsers, maxUsers, mode == ChannelDialogMode.EditDefault
+                ? Strings.Dlg_MaxUsersDefault
+                : Strings.Dlg_MaxUsersHint));
         }
         return Show(overlay, title, "Speaker", body,
             () => string.IsNullOrWhiteSpace(nameBox.Text) ? null
                 : new ChannelEdit(nameBox.Text.Trim(), descriptionBox.Text ?? "", muted.IsChecked == true, (int)(maxUsers.Value ?? 0)),
-            "Speichern");
+            Strings.Dlg_Save);
     }
 
     public static Task<ChannelViewModel?> PickChannel(OverlayHost overlay, string title, IReadOnlyList<ChannelViewModel> channels)
     {
-        if (channels.Count == 0) return Show<ChannelViewModel>(overlay, title, "Speaker", Text("Kein passender Channel vorhanden.", "muted"), () => null);
+        if (channels.Count == 0) return Show<ChannelViewModel>(overlay, title, "Speaker", Text(Strings.Dlg_NoChannel, "muted"), () => null);
         var list = new ListBox { ItemsSource = channels.Select(c => c.Name).ToList(), MaxHeight = 320, SelectedIndex = 0, CornerRadius = new CornerRadius(8) };
-        return Show(overlay, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, "Auswählen");
+        return Show(overlay, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, Strings.Dlg_Select);
     }
 
     public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname)
@@ -158,16 +159,16 @@ public static class SimpleDialogs
         var durations = BanChoice.Durations;
         var reason = new TextBox();
         var duration = new ComboBox { ItemsSource = durations.Select(d => d.Label).ToList(), SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
-        var includeIp = new CheckBox { Content = "Auch die IP-Adresse sperren" };
-        return Show(overlay, $"{nickname} bannen", "Prohibited", Stack(Field("Grund", reason), Field("Dauer", duration), includeIp),
+        var includeIp = new CheckBox { Content = Strings.Dlg_BanIp };
+        return Show(overlay, string.Format(Strings.Dlg_BanTitle, nickname), "Prohibited", Stack(Field(Strings.Dlg_Reason, reason), Field(Strings.Dlg_Duration, duration), includeIp),
             () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Minutes, includeIp.IsChecked == true),
-            "Bannen", kind: Kind.Danger);
+            Strings.Dlg_Ban, kind: Kind.Danger);
     }
 
     /// <summary>Only used for destructive actions, hence the red button.</summary>
     static CheckBox SavePasswordBox(TextBox password, bool isChecked)
     {
-        var box = new CheckBox { Content = "Passwort speichern (verschlüsselt für deinen Windows-Benutzer)", IsChecked = isChecked };
+        var box = new CheckBox { Content = Strings.Dlg_SavePassword, IsChecked = isChecked };
         void Update()
         {
             box.IsEnabled = !string.IsNullOrEmpty(password.Text);
@@ -183,9 +184,9 @@ public static class SimpleDialogs
     {
         var password = new TextBox { PasswordChar = '•' };
         var save = SavePasswordBox(password, false);
-        var body = Stack(Text("Der Server verlangt ein Passwort, oder das gespeicherte stimmt nicht mehr.", "muted"), Field("Serverpasswort", password), save);
-        return Show(overlay, $"Passwort für {serverName}", "LockClosed", body,
-            () => string.IsNullOrEmpty(password.Text) ? null : new PasswordAnswer(password.Text, save.IsChecked == true), "Verbinden");
+        var body = Stack(Text(Strings.Dlg_PasswordNeeded, "muted"), Field(Strings.Dlg_ServerPassword, password), save);
+        return Show(overlay, string.Format(Strings.Dlg_PasswordFor, serverName), "LockClosed", body,
+            () => string.IsNullOrEmpty(password.Text) ? null : new PasswordAnswer(password.Text, save.IsChecked == true), Strings.Dlg_Connect);
     }
 
     public static Task<BookmarkEdit?> EditBookmark(OverlayHost overlay, Bookmark bookmark)
@@ -196,15 +197,15 @@ public static class SimpleDialogs
         var nickname = new TextBox { Text = bookmark.Nickname };
         var password = new TextBox { PasswordChar = '•', Text = bookmark.SavedPassword() ?? "" };
         var save = SavePasswordBox(password, bookmark.HasSavedPassword);
-        var address = new DockPanel { Children = { Dock(Field("Port", port), Avalonia.Controls.Dock.Right), Field("Adresse", host) } };
+        var address = new DockPanel { Children = { Dock(Field("Port", port), Avalonia.Controls.Dock.Right), Field(Strings.Dlg_Address, host) } };
         ((Control)address.Children[0]).Margin = new Thickness(12, 0, 0, 0);
         var body = Stack(Field("Name", name), address, Field("Nickname", nickname),
-            Field("Serverpasswort", password, "Leer lassen oder den Haken entfernen, um kein Passwort zu speichern."), save);
-        return Show(overlay, "Lesezeichen bearbeiten", "Edit", body, () =>
+            Field(Strings.Dlg_ServerPassword, password, Strings.Dlg_PasswordEditHint), save);
+        return Show(overlay, Strings.Dlg_EditBookmark, "Edit", body, () =>
             string.IsNullOrWhiteSpace(name.Text) || string.IsNullOrWhiteSpace(host.Text) || string.IsNullOrWhiteSpace(nickname.Text)
                 ? null
                 : new BookmarkEdit(name.Text.Trim(), host.Text.Trim(), (int)(port.Value ?? 7000), nickname.Text.Trim(), password.Text, save.IsChecked == true),
-            "Speichern");
+            Strings.Dlg_Save);
     }
 
     /// <summary>Package 41: pick the action, then press the key or combination.</summary>
@@ -214,15 +215,15 @@ public static class SimpleDialogs
         {
             ItemsSource = KeyActions.All.Select(KeyActions.Label).ToList(),
             SelectedIndex = current is null ? -1 : KeyActions.All.ToList().IndexOf(current.Action),
-            PlaceholderText = "Aktion wählen",
+            PlaceholderText = Strings.Dlg_ChooseAction,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         KeyChord? chord = current?.Chord;
-        var keyText = new TextBlock { Text = chord?.Name ?? "Noch keine Taste", VerticalAlignment = VerticalAlignment.Center };
+        var keyText = new TextBlock { Text = chord?.Name ?? Strings.Dlg_NoKeyYet, VerticalAlignment = VerticalAlignment.Center };
         var keycap = new Border { Child = keyText, VerticalAlignment = VerticalAlignment.Center };
         keycap.Classes.Add("keycap");
-        var assign = new Button { Content = "Taste festlegen ...", Margin = new Thickness(12, 0, 0, 0) };
-        AutomationProperties.SetName(assign, "Taste festlegen");
+        var assign = new Button { Content = Strings.Dlg_SetKeyButton, Margin = new Thickness(12, 0, 0, 0) };
+        AutomationProperties.SetName(assign, Strings.Dlg_SetKey);
         var hint = Text("", "accent");
         hint.IsVisible = false;
         var error = Text("", "danger");
@@ -230,7 +231,7 @@ public static class SimpleDialogs
         assign.Click += async (_, _) =>
         {
             assign.IsEnabled = false;
-            hint.Text = "Drücke jetzt die Taste oder Kombination, auch eine Maustaste ...";
+            hint.Text = Strings.Dlg_PressKey;
             hint.IsVisible = true;
             try
             {
@@ -247,39 +248,38 @@ public static class SimpleDialogs
             }
         };
         var keyRow = new StackPanel { Orientation = Orientation.Horizontal, Children = { keycap, assign } };
-        var body = Stack(Field("Aktion", action), Field("Taste", keyRow, "Wirkt überall, auch während ein Spiel im Vordergrund ist."), hint, error);
-        return Show(overlay, current is null ? "Tastenaktion hinzufügen" : "Tastenaktion ändern", "Keyboard", body, () =>
+        var body = Stack(Field(Strings.Dlg_Action, action), Field(Strings.Dlg_Key, keyRow, Strings.Dlg_KeyHint), hint, error);
+        return Show(overlay, current is null ? Strings.Dlg_AddKeyAction : Strings.Dlg_ChangeKeyAction, "Keyboard", body, () =>
         {
-            string? problem = action.SelectedIndex < 0 ? "Bitte eine Aktion wählen." : chord is null ? "Bitte eine Taste festlegen." : null;
+            string? problem = action.SelectedIndex < 0 ? Strings.Dlg_ActionMissing : chord is null ? Strings.Dlg_KeyMissing : null;
             error.Text = problem ?? "";
             error.IsVisible = problem is not null;
             return problem is null ? new KeyBinding(KeyActions.All[action.SelectedIndex], chord!) : null;
-        }, "Speichern");
+        }, Strings.Dlg_Save);
     }
 
     /// <summary>Package 43: a newer release is out. "Später" asks again at the next start.</summary>
     public static async Task<bool> OfferUpdate(OverlayHost overlay, UpdateOffer offer)
     {
-        var notes = new TextBlock { Text = offer.Notes.Length > 0 ? offer.Notes : "Keine Änderungsnotizen.", TextWrapping = TextWrapping.Wrap, MaxWidth = 440 };
+        var notes = new TextBlock { Text = offer.Notes.Length > 0 ? offer.Notes : Strings.Dlg_NoNotes, TextWrapping = TextWrapping.Wrap, MaxWidth = 440 };
         notes.Classes.Add("caption");
         var body = Stack(
-            Text($"Version {offer.Version} ist verfügbar. Jetzt installieren?"),
+            Text(string.Format(Strings.Dlg_UpdateQuestion, offer.Version)),
             new Border { MaxHeight = 200, Child = new ScrollViewer { Content = notes } },
-            Text("Der Client lädt die neue Version, prüft sie und startet neu. Windows SmartScreen fragt beim ersten Start nach, weil die Datei nicht signiert ist.", "caption"));
-        return await Show(overlay, "Update verfügbar", "ArrowSync", body, () => "ok", "Jetzt installieren", cancelText: "Später") is not null;
+            Text(Strings.Dlg_UpdateHint, "caption"));
+        return await Show(overlay, Strings.Dlg_UpdateTitle, "ArrowSync", body, () => "ok", Strings.Dlg_InstallNow, cancelText: Strings.Dlg_Later) is not null;
     }
 
     public static async Task<bool> Confirm(OverlayHost overlay, string text) =>
-        await Show(overlay, "Bestätigen", "Delete", Text(text), () => "ok", "Ja, löschen", kind: Kind.Danger) is not null;
+        await Show(overlay, Strings.Dlg_Confirm, "Delete", Text(text), () => "ok", Strings.Dlg_YesDelete, kind: Kind.Danger) is not null;
 
     public static async Task<bool> Tofu(OverlayHost overlay, TofuPrompt prompt)
     {
         var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(i => prompt.Fingerprint.Substring(i * 8, 8)));
         bool mismatch = prompt.Result == TofuResult.Mismatch;
         var text = mismatch
-            ? $"Das Zertifikat von {prompt.Host}:{prompt.Port} hat sich geändert. Das passiert, wenn der Server neu aufgesetzt wurde, " +
-              "kann aber auch ein Angriff sein. Frag im Zweifel den Serverbetreiber nach dem Fingerprint aus dem Serverlog."
-            : $"Erste Verbindung zu {prompt.Host}:{prompt.Port}. Vergleiche den Fingerprint mit der Zeile 'Zertifikat-Fingerprint' im Serverlog.";
+            ? string.Format(Strings.Tofu_Changed, prompt.Host, prompt.Port)
+            : string.Format(Strings.Tofu_First, prompt.Host, prompt.Port);
         var code = new Border
         {
             Padding = new Thickness(12, 10),
@@ -298,21 +298,21 @@ public static class SimpleDialogs
             banner.Classes.Add("warning");
             message = banner;
         }
-        return await Show(overlay, "Serverzertifikat prüfen", mismatch ? "Warning" : "LockClosed", Stack(message, Field("Fingerprint", code)), () => "ok",
-            mismatch ? "Trotzdem vertrauen" : "Vertrauen", prompt.AcceptIsDefault, mismatch ? Kind.Danger : Kind.Normal) is not null;
+        return await Show(overlay, Strings.Tofu_Title, mismatch ? "Warning" : "LockClosed", Stack(message, Field("Fingerprint", code)), () => "ok",
+            mismatch ? Strings.Tofu_TrustAnyway : Strings.Tofu_Trust, prompt.AcceptIsDefault, mismatch ? Kind.Danger : Kind.Normal) is not null;
     }
 
     public static Task<ConnectChoice?> Connect(OverlayHost overlay, ClientSettings settings, Bookmark? preselect = null)
     {
-        var host = new TextBox { Watermark = "z. B. voice.example.org" };
+        var host = new TextBox { Watermark = Strings.Dlg_HostExample };
         var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = 7000, FormatString = "0", Increment = 1, Width = 130 };
         var nickname = new TextBox();
         var password = new TextBox { PasswordChar = '•', RevealPassword = false };
         var reveal = new ToggleButton { Content = Icon("Eye", "muted"), Width = 36, Margin = new Thickness(6, 0, 0, 0) };
-        ToolTip.SetTip(reveal, "Passwort anzeigen");
+        ToolTip.SetTip(reveal, Strings.Dlg_ShowPassword);
         reveal.IsCheckedChanged += (_, _) => password.RevealPassword = reveal.IsChecked == true;
-        var save = new CheckBox { Content = "Als Lesezeichen speichern", IsChecked = true };
-        var savePassword = new CheckBox { Content = "Passwort speichern (verschlüsselt für deinen Windows-Benutzer)", IsChecked = false };
+        var save = new CheckBox { Content = Strings.Dlg_SaveBookmark, IsChecked = true };
+        var savePassword = new CheckBox { Content = Strings.Dlg_SavePassword, IsChecked = false };
         void UpdateSavePassword()
         {
             // Package 39: only with a password and only together with the bookmark.
@@ -326,7 +326,7 @@ public static class SimpleDialogs
         var bookmarks = new ComboBox
         {
             ItemsSource = settings.Bookmarks.Select(b => $"{b.Name} ({b.Nickname})").ToList(),
-            PlaceholderText = "Gespeicherten Server wählen",
+            PlaceholderText = Strings.Dlg_ChooseBookmark,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         bookmarks.SelectionChanged += (_, _) =>
@@ -343,18 +343,18 @@ public static class SimpleDialogs
         int index = preselect is null ? 0 : settings.Bookmarks.IndexOf(preselect);
         if (settings.Bookmarks.Count > 0) bookmarks.SelectedIndex = Math.Max(0, index);
 
-        var address = new DockPanel { Children = { Dock(Field("Port", port), Avalonia.Controls.Dock.Right), Field("Adresse", host) } };
+        var address = new DockPanel { Children = { Dock(Field("Port", port), Avalonia.Controls.Dock.Right), Field(Strings.Dlg_Address, host) } };
         ((Control)address.Children[0]).Margin = new Thickness(12, 0, 0, 0);
         var passwordRow = new DockPanel { Children = { Dock(reveal, Avalonia.Controls.Dock.Right), password } };
 
         UpdateSavePassword();
-        var body = Stack(address, Field("Nickname", nickname), Field("Serverpasswort", passwordRow, "Nur nötig, wenn der Server eines hat."), save, savePassword, error);
-        if (settings.Bookmarks.Count > 0) body.Children.Insert(0, Field("Lesezeichen", bookmarks));
+        var body = Stack(address, Field("Nickname", nickname), Field(Strings.Dlg_ServerPassword, passwordRow, Strings.Dlg_PasswordOptional), save, savePassword, error);
+        if (settings.Bookmarks.Count > 0) body.Children.Insert(0, Field(Strings.Dlg_Bookmark, bookmarks));
 
-        return Show(overlay, "Mit Server verbinden", "PlugConnected", body, () =>
+        return Show(overlay, Strings.Dlg_ConnectTitle, "PlugConnected", body, () =>
             {
-                string? problem = string.IsNullOrWhiteSpace(host.Text) ? "Bitte eine Adresse eingeben."
-                    : string.IsNullOrWhiteSpace(nickname.Text) ? "Bitte einen Nickname eingeben."
+                string? problem = string.IsNullOrWhiteSpace(host.Text) ? Strings.Dlg_AddressMissing
+                    : string.IsNullOrWhiteSpace(nickname.Text) ? Strings.Dlg_NicknameMissing
                     : null;
                 error.Text = problem ?? "";
                 error.IsVisible = problem is not null;
@@ -363,6 +363,6 @@ public static class SimpleDialogs
                     : new ConnectChoice(host.Text!.Trim(), (int)(port.Value ?? 7000), nickname.Text!.Trim(), password.Text, save.IsChecked == true,
                         savePassword.IsChecked == true);
             },
-            "Verbinden");
+            Strings.Dlg_Connect);
     }
 }

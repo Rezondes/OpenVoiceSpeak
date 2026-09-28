@@ -64,6 +64,11 @@
 | 42 | Client-Release per GitHub Actions | Jeder Push auf `main` veröffentlicht nach grünen Tests die Client-exe als versioniertes GitHub-Release. | 19 |
 | 43 | Update-Prüfung im Client | Der Client erkennt neue Releases und installiert sie auf Wunsch selbst. | 42 |
 | 44 | Server-Image in der GitHub Container Registry | Jedes Release stellt das Server-Image für amd64 und arm64 als öffentliches Package bereit, und Compose nutzt es direkt. | 42 |
+| 45 | Lokalisierung: Grundlage | Der Client hat eine Sprachwahl (Wie Windows, Deutsch, English), und alle Texte aus dem C#-Code gibt es auf Deutsch und Englisch. | 26 |
+| 46 | Lokalisierung: Oberfläche | Alle XAML-Views zeigen ihre Texte in der gewählten Sprache, kein fest verdrahteter Text bleibt übrig. | 45 |
+| 47 | Sounds | Der Client spielt bei Mikrofon, Ton, Verbindung, Channel und Privatnachricht kurze Töne, mit Gesamtlautstärke und "Alle Sounds aus". | 46 |
+| 48 | Sounds anpassen | Jeder Sound hat eine eigene Lautstärke, lässt sich stumm schalten und durch eine eigene Datei ersetzen. | 47 |
+| 49 | Website | Eine zweisprachige Seite auf GitHub Pages stellt die App für Nutzer vor und wird mit jedem Release neu ausgeliefert. | 42, 46 |
 
 ## Annahmen
 
@@ -123,6 +128,17 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A41 Container-Registry (ersetzt A15).** Image `ghcr.io/rezondes/openvoicespeak-server`, Tags `latest` und die Version aus A38. `docker-compose.yml` nutzt das fertige Image, der lokale Build geht über die zusätzliche `docker-compose.build.yml`.
 - **A42 Protokollversion.** Nach A30 erhöhen 34, 35, 36, 37 und 38 `ProtocolInfo.Version` jeweils um eins, in der Reihenfolge der Umsetzung (geplant 4 bis 8).
 
+**Annahmen für Package 45 bis 49** (mit dem Nutzer abgestimmt am 28.09.2026). Reihenfolge: Lokalisierung zuerst, damit die Sound-Einstellungen gleich zweisprachig entstehen, dann Sounds, zuletzt die Website (technisch unabhängig, braucht aber englische Screenshots). Zuordnung zur Anfrage: Punkt 2 = 45 und 46, Punkt 3 = 47 und 48 (jeweils auf Vorschlag geteilt), Punkt 1 = 49.
+
+- **A43 Sprachwahl.** Standard folgt der Windows-Anzeigesprache, alles außer Deutsch fällt auf Englisch zurück. In den Einstellungen: "Wie Windows / Deutsch / English". Ein Wechsel wirkt nach einem Neustart des Clients.
+- **A44 Technik der Übersetzung.** Standard-`.resx` mit stark typisierter Klasse: `Strings.resx` (Deutsch, neutrale Sprache) und `Strings.en.resx`. XAML nutzt `{x:Static}`. Ein Test prüft, dass beide Dateien dieselben Schlüssel haben und kein Text leer ist. Die Tests laufen fest mit deutscher Kultur, damit die bestehenden deutschen Erwartungen auf jedem Rechner und in CI gelten.
+- **A45 Was deutsch bleibt.** Server-Logs, Client-Log und Debug-API richten sich an Betreiber und Entwickler und bleiben deutsch. Die Detail-Texte, die der Server bei Fehlern mitschickt, zeigt der Client nicht mehr an, sondern seinen eigenen Text je Fehlercode; das Detail landet nur noch im Client-Log. Ausnahme sind Kick und Bann: Deren Detail enthält den Grund, den ein Mensch eingegeben hat, und bleibt sichtbar.
+- **A46 Sounds.** Kurze Töne, im Client selbst synthetisch erzeugt (keine Dateien, keine Lizenzfragen). Sie laufen über dieselbe Audioausgabe wie die Sprache. Ereignisse: Mikrofon aus, Mikrofon an, Ton aus, Ton an, Verbunden, Getrennt, du betrittst einen Channel, jemand betritt deinen Channel, jemand verlässt ihn, du wirst vom Server stummgeschaltet, du wirst verschoben, neue Privatnachricht. Bei "Ton aus" spielen nur die Töne für das eigene Mikrofon und den eigenen Ton.
+- **A47 Sounds anpassen.** Pro Sound: eigene Datei (WAV oder MP3, höchstens 5 Sekunden, wird ins Profil nach `sounds/` kopiert), Lautstärke, stumm, "Abspielen", "Zurücksetzen". Global: Gesamtlautstärke und "Alle Sounds aus". Die Windows-Dateiauswahl ist wie beim Server-Logo die erlaubte Ausnahme von A20.
+- **A48 Website.** Ordner `website/`, React, Vite und TypeScript, Tests mit Vitest. Deutsch und Englisch mit Umschalter, Standard nach Browsersprache. Einseitig: Hero mit Download-Button (direkt die neueste exe über `releases/latest/download/OVS.Client.exe`) und Versionsnummer, Vorteile, für wen, Screenshots, Installation in drei Schritten mit SmartScreen-Hinweis, "Eigenen Server betreiben" mit Link zur README, Footer. Gestaltung mit dem Skill `ui-ux-pro-max`.
+- **A49 Auslieferung der Website.** Eigener Job `pages` im Release-Workflow nach dem Release, damit die Seite die ausgelieferte Version zeigt. Adresse `https://rezondes.github.io/OpenVoiceSpeak/`. GitHub Pages ist im Repo bereits auf "GitHub Actions" gestellt. Pull Requests bauen und testen die Seite nur.
+- **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
+
 ### Projektstruktur (Zielbild)
 
 ```
@@ -143,7 +159,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle Packages 1 bis 44 sind umgesetzt. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
+Die Packages 1 bis 45 sind umgesetzt, 46 bis 49 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2841,3 +2857,260 @@ Testbefehl: `docker compose -f docker-compose.yml -f docker-compose.build.yml co
 
 - Docker Hub
 - Signieren der Images
+
+---
+
+## Package 45: Lokalisierung: Grundlage
+
+**Ziel:** Der Client hat eine Sprachwahl (Wie Windows, Deutsch, English), und alle Texte aus dem C#-Code gibt es auf Deutsch und Englisch.
+
+**Abhängigkeiten:** Package 26
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (neu): alle Nutzertexte, Deutsch als neutrale Sprache
+- `src/OVS.Client/Localization/Language.cs` (neu): `AppLanguage` (System, German, English), Auflösen der Windows-Sprache, Setzen der UI-Kultur
+- `src/OVS.Client/OVS.Client.csproj` (ändern): stark typisierte Ressourcenklasse `Strings`, `NeutralLanguage` de
+- `src/OVS.Client/Program.cs` (ändern): Sprache aus den Einstellungen setzen, bevor Avalonia startet
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `Language`
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (ändern): Auswahl "Sprache" mit Hinweis "Wirkt nach einem Neustart"
+- `src/OVS.Client/ErrorTexts.cs` (ändern): Fehlertexte und Rechtenamen aus den Ressourcen, Detail-Regel nach A45
+- `src/OVS.Client/Input/KeyBindings.cs`, `Views/SimpleDialogs.cs`, `ViewModels/*.cs`, `Views/*.axaml.cs` (ändern): Texte aus den Ressourcen
+- `tests/OVS.Tests/Client/LocalizationTests.cs` (neu), `tests/OVS.Tests/TestSupport/` (ändern): Testlauf fest auf Deutsch
+
+### Kontext
+
+Alle Texte sind heute deutsch und fest im Code: rund 300 in C# (`ErrorTexts`, `PermissionLabels`, `KeyActions.Label`, `SimpleDialogs`, Status und Hinweise in `MainViewModel`, `ServerViewModel`, `ChatViewModel`, `AdminViewModel`, `LinkMatrixViewModel`, `SettingsViewModel`) und rund 200 in den XAML-Views (Package 46). Fehler zeigt `ErrorTexts.For(code, detail)` als "Text (Detail)", das Detail kommt vom Server auf Deutsch (z. B. "Der Standard-Channel lässt sich nicht begrenzen."). Kick und Bann schicken den eingegebenen Grund als Detail.
+
+### Acceptance Criteria
+
+- [x] AC1: `Strings.resx` und `Strings.en.resx` haben dieselben Schlüssel, kein Wert ist leer, und die Platzhalter (`{0}`, `{1}`) stimmen je Schlüssel überein.
+- [x] AC2: Ohne Einstellung folgt die Sprache Windows: Deutsch bei einer deutschen Anzeigesprache, sonst Englisch. Die Einstellung "Deutsch" bzw. "English" überstimmt das.
+- [x] AC3: In den Einstellungen gibt es "Sprache" mit "Wie Windows", "Deutsch", "English" und dem Hinweis, dass der Wechsel nach einem Neustart wirkt. Die Wahl bleibt gespeichert.
+- [x] AC4: Fehlertexte, Rechtenamen, Tastenaktionen, alle Dialoge und alle Status- und Hinweistexte aus dem C#-Code erscheinen in der gewählten Sprache.
+- [x] AC5: Server-Details erscheinen nicht mehr in der Oberfläche, nur im Client-Log. Kick- und Bann-Grund bleiben sichtbar.
+- [x] AC6: Client-Log und Debug-API bleiben deutsch und unverändert.
+
+### Tests (TDD)
+
+1. `LocalizationTests > "Resources_SameKeys_NoneEmpty_SamePlaceholders"` (AC1)
+   - Gegeben: beide `.resx` als XML
+   - Erwartet: gleiche Schlüsselmenge, keine leeren Werte, gleiche Platzhalter je Schlüssel
+2. `LocalizationTests > "Language_System_GermanOrEnglish"` als Theory: `de-DE`, `de-AT` ergeben Deutsch, `en-US`, `fr-FR` ergeben Englisch, eine feste Wahl überstimmt (AC2)
+3. `LocalizationTests > "ErrorTexts_English"`: mit englischer Kultur liefert `ErrorTexts.For(Codes.PermissionDenied)` den englischen Text (AC4)
+4. `LocalizationTests > "ServerDetail_HiddenExceptKickAndBan"` (AC5)
+5. `SettingsTests > "Language_RoundTrip"` und `UiSmokeTests`: Auswahl "Sprache" auf der Einstellungsseite (AC3)
+6. Die ganze bestehende Suite läuft weiter grün mit fest deutscher Kultur (AC4, AC6)
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~LocalizationTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~UiSmokeTests"`, danach `dotnet test`
+
+### Umsetzungsschritte
+
+1. Testlauf auf deutsche Kultur festlegen, `Strings.resx` mit Parity-Test, stark typisierte Klasse.
+2. Sprachwahl in Einstellungen und `Program.cs`.
+3. Texte aus dem C#-Code Datei für Datei in die Ressourcen, englische Übersetzung dazu, Detail-Regel in `ErrorTexts`.
+
+### Out of Scope
+
+- XAML-Texte (Package 46)
+- Server-Logs, Client-Log, Debug-API (A45)
+- Sprachwechsel ohne Neustart
+
+---
+
+## Package 46: Lokalisierung: Oberfläche
+
+**Ziel:** Alle XAML-Views zeigen ihre Texte in der gewählten Sprache, kein fest verdrahteter Text bleibt übrig.
+
+**Abhängigkeiten:** Package 45
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/MainWindow.axaml`, `SettingsView.axaml`, `AdminView.axaml`, `ChatView.axaml`, `TitleBar.axaml` (ändern): `Text`, `Header`, `Content`, `ToolTip.Tip`, `Watermark`, `AutomationProperties.Name` und `StringFormat` aus `Strings`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `tests/OVS.Tests/Client/LocalizationTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Rund 200 Texte stehen fest in den XAML-Dateien, darunter auch Screenreader-Namen (`AutomationProperties.Name`) und Formatierungen wie `StringFormat='Mit {0} verbinden'`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Keine XAML-Datei enthält mehr einen festen Nutzertext. Erlaubt bleiben nur Bindungen, Ressourcen und eine kurze Ausnahmeliste (z. B. der Produktname "OpenVoiceSpeak").
+- [ ] AC2: Mit englischer Kultur zeigt das Hauptfenster samt Einstellungen, Verwaltung, Chat und allen Dialogen keinen deutschen Text aus den Ressourcen.
+- [ ] AC3: Screenreader-Namen und Tooltips sind ebenfalls übersetzt.
+- [ ] AC4 (manuell): Screenshots in beiden Sprachen und beiden Designs zeigen keine abgeschnittenen oder überlaufenden englischen Texte.
+
+### Tests (TDD)
+
+1. `LocalizationTests > "Xaml_NoHardcodedText"` (AC1)
+   - Gegeben: alle `.axaml` unter `src/OVS.Client`
+   - Erwartet: kein Attribut `Text`, `Header`, `Content`, `ToolTip.Tip`, `Watermark`, `AutomationProperties.Name` mit einem Wert außerhalb von `{...}` und der Ausnahmeliste
+2. `UiSmokeTests > "Windows_English_NoGermanResourceText"` (AC2, AC3)
+   - Gegeben: englische Kultur, Hauptfenster mit Fake-Server, alle Seiten und Dialoge wie in `ExercisePagesAndDialogs`
+   - Erwartet: kein angezeigter Text, Tooltip oder Automation-Name entspricht einem deutschen Ressourcenwert, der sich vom englischen unterscheidet
+3. Manueller Check AC4 mit dem Screenshot-Werkzeug
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~LocalizationTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. `Xaml_NoHardcodedText` rot sehen.
+2. View für View auf `{x:Static}` umstellen, bis der Test grün ist.
+3. Englischer UI-Test, Screenshots beider Sprachen prüfen.
+
+### Out of Scope
+
+- Rechts-nach-links-Sprachen, weitere Sprachen
+
+---
+
+## Package 47: Sounds
+
+**Ziel:** Der Client spielt bei Mikrofon, Ton, Verbindung, Channel und Privatnachricht kurze Töne, mit Gesamtlautstärke und "Alle Sounds aus".
+
+**Abhängigkeiten:** Package 46
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/Sounds.cs` (neu): `SoundEvent`, Synthese der Standardtöne, `SoundQueue` (mischt laufende Töne in einen Ausgabepuffer)
+- `src/OVS.Client/Audio/AudioEngine.cs` (ändern): `PlaySound`, Mischen in `PlaybackLoop`, Regel bei "Ton aus"
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): Ereignis `SoundRequested` aus eingehenden Nachrichten und eigenen Aktionen
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): Verbunden, Getrennt, Weiterleitung an die Audio-Engine
+- `src/OVS.Client/Settings/ClientSettings.cs`, `ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (ändern): `SoundsEnabled`, `SoundVolume`, Abschnitt "Sounds"
+- `src/OVS.Client/Localization/Strings*.resx` (ändern), `src/OVS.Client/Debug/DebugApi.cs` (ändern): zuletzt gespielte Töne in `/state`
+- `tests/OVS.Tests/Client/SoundTests.cs` (neu), `ServerViewModelTests.cs`, `SettingsTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Die Audio-Engine (`Audio/AudioEngine.cs`) mischt eingehende Sprache in `PlaybackLoop` und gibt sie über WASAPI auf dem gewählten Lautsprecher aus. Töne gibt es nicht. Die Auslöser liegen in `ServerViewModel.Apply` (`UserJoined`, `UserUpdated`, `UserLeft`, `ChatMessage`), in `ToggleMute`/`ToggleDeafen` und in `MainViewModel.ConnectAsync`/`OnDisconnected`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Jedes Ereignis aus A46 hat einen eigenen, hörbar unterschiedlichen Standardton von höchstens einer Sekunde, im Client erzeugt.
+- [ ] AC2: Die Töne kommen aus dem gewählten Lautsprecher, mischen sich mit laufender Sprache und blockieren sie nicht.
+- [ ] AC3: Die Ereignisse lösen genau einmal aus: eigene Mute- und Ton-Wechsel (Button und Taste), Verbinden, Trennen, eigener Channelwechsel, jemand betritt oder verlässt den eigenen Channel, Server-Mute gegen einen selbst, Verschieben durch jemand anderen, eingehende Privatnachricht (nicht die eigene).
+- [ ] AC4: Bei "Ton aus" spielen nur die Töne für Mikrofon und Ton.
+- [ ] AC5: In den Einstellungen gibt es "Sounds" mit Gesamtlautstärke und "Alle Sounds aus". Beides wirkt sofort und bleibt gespeichert.
+- [ ] AC6: Die Debug-API zeigt die zuletzt gespielten Töne in `/state`.
+
+### Tests (TDD)
+
+1. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` (AC1)
+2. `SoundTests > "Queue_MixesIntoBuffer_WithVolume_Overlaps"` (AC2)
+3. `ServerViewModelTests > "SoundEvents_FromMessages"` als Theory je Nachricht, dazu `"SoundEvents_OwnChanges_NotDoubled"` (AC3)
+4. `SoundTests > "Deafened_OnlyOwnMicAndSoundTones"` (AC4)
+5. `SettingsTests > "Sounds_GlobalSettings_RoundTrip"` und `UiSmokeTests`: Abschnitt "Sounds" (AC5)
+6. `DebugApiTests > "Sounds_ListedInState"` mit zwei echten Clients (AC3, AC6)
+7. Manueller Check: Töne klingen angenehm und sind im Spiel hörbar, nicht zu laut
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. Synthese und `SoundQueue` testgetrieben.
+2. Ereignisse aus `ServerViewModel` und `MainViewModel`, Tests je Nachricht.
+3. Einbau in die Audio-Engine, Einstellungen, Debug-API, manueller Hörtest.
+
+### Out of Scope
+
+- Pro-Sound-Einstellungen und eigene Dateien (Package 48)
+- Sprachansagen wie bei TeamSpeak
+
+---
+
+## Package 48: Sounds anpassen
+
+**Ziel:** Jeder Sound hat eine eigene Lautstärke, lässt sich stumm schalten und durch eine eigene Datei ersetzen.
+
+**Abhängigkeiten:** Package 47
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/SoundImport.cs` (neu): WAV oder MP3 prüfen (höchstens 5 Sekunden), auf 48 kHz mono umrechnen, ins Profil kopieren
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `Sounds` je Ereignis mit Lautstärke, stumm, Dateiname
+- `src/OVS.Client/Audio/Sounds.cs`, `AudioEngine.cs` (ändern): eigene Datei statt Standardton, Lautstärke je Sound
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml(.cs)` (ändern): eine Zeile je Sound mit Abspielen, Lautstärke, stumm, "Datei wählen ...", "Zurücksetzen"
+- `src/OVS.Client/Localization/Strings*.resx` (ändern)
+- `tests/OVS.Tests/Client/SoundImportTests.cs` (neu), `SoundTests.cs`, `SettingsTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Nach Package 47 gibt es feste Standardtöne und nur globale Einstellungen. Die Windows-Dateiauswahl gibt es schon für das Server-Logo (`AdminView.OnPickIcon`), die Umrechnung von Audio (`LinearResampler`, `ToMono`) im Aufnahmepfad.
+
+### Acceptance Criteria
+
+- [ ] AC1: Jeder Sound hat in den Einstellungen eine Zeile mit Name, "Abspielen", Lautstärke (0 bis 100 %), "Stumm", "Datei wählen ..." und "Zurücksetzen".
+- [ ] AC2: Eine gewählte WAV- oder MP3-Datei bis 5 Sekunden ersetzt den Standardton. Sie liegt danach als Kopie im Profil unter `sounds/`, das Original darf verschwinden.
+- [ ] AC3: Zu lange, unlesbare oder fremde Dateien werden mit einem verständlichen Hinweis abgelehnt, der bisherige Ton bleibt.
+- [ ] AC4: "Zurücksetzen" stellt Standardton und 100 % wieder her und löscht die Kopie.
+- [ ] AC5: Lautstärke und "Stumm" je Sound wirken zusätzlich zur Gesamtlautstärke und zu "Alle Sounds aus". Alles bleibt nach einem Neustart erhalten.
+- [ ] AC6: Fehlt die kopierte Datei später, spielt der Standardton, und das Client-Log vermerkt es.
+
+### Tests (TDD)
+
+1. `SoundImportTests > "Wav_UpToFiveSeconds_Accepted_Copied"`, `"TooLong_Rejected"`, `"NotAudio_Rejected"` mit selbst erzeugten WAV-Dateien (AC2, AC3)
+2. `SoundTests > "CustomSound_ReplacesDefault_MissingFileFallsBack"` (AC2, AC6)
+3. `SoundTests > "Volume_PerSoundTimesGlobal_MutedSilent"` (AC5)
+4. `SettingsTests > "Sounds_PerEvent_RoundTrip_ResetDeletesCopy"` (AC4, AC5)
+5. `UiSmokeTests`: eine Zeile je Sound mit allen Bedienelementen, beide Designs (AC1)
+6. Manueller Check: eine echte MP3-Datei auswählen und hören
+
+Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundImportTests|FullyQualifiedName~SoundTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~UiSmokeTests"`
+
+### Umsetzungsschritte
+
+1. `SoundImport` testgetrieben.
+2. Einstellungen je Sound und Wiedergabe mit Lautstärke und Ersatzdatei.
+3. Einstellungsseite, Screenshots beider Designs, manueller Hörtest.
+
+### Out of Scope
+
+- Soundpakete zum Teilen, weitere Formate als WAV und MP3
+
+---
+
+## Package 49: Website
+
+**Ziel:** Eine zweisprachige Seite auf GitHub Pages stellt die App für Nutzer vor und wird mit jedem Release neu ausgeliefert.
+
+**Abhängigkeiten:** Package 42, 46
+
+**Betroffene Dateien:**
+- `website/package.json`, `package-lock.json`, `vite.config.ts`, `tsconfig.json`, `index.html` (neu): React, Vite, TypeScript, Vitest, Basis-Pfad `/OpenVoiceSpeak/`
+- `website/src/main.tsx`, `App.tsx`, `i18n.ts`, `sections/*.tsx`, `styles.css` (neu): Hero, Vorteile, Für wen, Screenshots, Installation, Eigener Server, Footer
+- `website/src/*.test.tsx` (neu)
+- `website/public/screenshots/*.png`, `website/public/logo.svg` (neu)
+- `.github/workflows/release.yml` (ändern): Website-Tests bei jedem Lauf, Job `pages` nach dem Release
+- `.gitignore` (ändern): `website/node_modules`, `website/dist`
+- `README.md` (ändern): Link zur Website
+
+### Kontext
+
+Die README richtet sich an Entwickler und Serverbetreiber. Releases heißen `deploy-<sha7>` mit Titel `OpenVoiceSpeak <Version>` (Package 42), die neueste exe liegt stabil unter `https://github.com/Rezondes/OpenVoiceSpeak/releases/latest/download/OVS.Client.exe`. Node 24 und npm 12 sind installiert. GitHub Pages steht im Repo bereits auf "GitHub Actions". Vorbild für den Pages-Job ist `.github/workflows/deploy.yml` in PersonalEinsatzPlanung.
+
+### Acceptance Criteria
+
+- [ ] AC1: Die Seite ist ein OnePager mit Hero (Name, Kernaussage, Download-Button, Versionsnummer), Vorteilen, "Für wen", Screenshots, Installation in drei Schritten mit SmartScreen-Hinweis, "Eigenen Server betreiben" mit Link zur README und Footer.
+- [ ] AC2: Der Download-Button lädt direkt die neueste `OVS.Client.exe`. Die angezeigte Version ist die des Releases, mit dem die Seite gebaut wurde.
+- [ ] AC3: Deutsch und Englisch mit Umschalter. Standard nach Browsersprache (Deutsch bei `de`, sonst Englisch), die Wahl bleibt im Browser gespeichert. Beide Sprachen haben dieselben Texte.
+- [ ] AC4: Die Seite funktioniert von 375 px Breite an ohne waagerechtes Scrollen, in hellem und dunklem Design nach Systemeinstellung, mit Tastatur bedienbar und sinnvollen Alt-Texten.
+- [ ] AC5: Pull Requests bauen und testen die Seite, nach jedem Release auf `main` wird sie neu auf GitHub Pages ausgeliefert.
+- [ ] AC6 (manuell, nach dem Push): Die Seite ist unter `https://rezondes.github.io/OpenVoiceSpeak/` erreichbar, der Download funktioniert, Lighthouse zeigt bei Barrierefreiheit mindestens 90.
+
+### Tests (TDD)
+
+1. `website/src/App.test.tsx > "Hero shows version and direct download link"` (AC1, AC2)
+2. `website/src/i18n.test.ts > "same keys in German and English"` und `"browser language picks German or English"` (AC3)
+3. `website/src/App.test.tsx > "language toggle switches texts and is remembered"` (AC3)
+4. `website/src/App.test.tsx > "every section has a heading, every image an alt text"` (AC1, AC4)
+5. Manueller Check: Ansicht bei 375 px und am Desktop, hell und dunkel (AC4)
+6. Manueller Check AC6 nach dem Push
+
+Testbefehl: `cd website && npm test`, Build: `cd website && npm run build`
+
+### Umsetzungsschritte
+
+1. Vite-Projekt anlegen, i18n mit Tests, Hero mit Version und Download testgetrieben.
+2. Übrige Abschnitte, Gestaltung mit `ui-ux-pro-max`, Screenshots mit dem Screenshot-Werkzeug in beiden Sprachen erzeugen.
+3. Workflow: Tests der Seite im Job `test`, Job `pages` nach `release` mit der Version als Build-Variable.
+
+### Out of Scope
+
+- Eigene Domain, Analytics, Blog oder Changelog-Seite

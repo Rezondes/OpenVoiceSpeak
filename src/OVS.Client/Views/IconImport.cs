@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using OVS.Shared.Protocol;
@@ -16,14 +17,14 @@ public static class IconImport
     public static (byte[]? Png, string? Error) Prepare(string path)
     {
         var file = new FileInfo(path);
-        if (!file.Exists) return (null, "Die Datei gibt es nicht.");
-        if (file.Length > MaxFileBytes) return (null, "Die Datei ist grösser als 3 MB.");
+        if (!file.Exists) return (null, Strings.Icon_Missing);
+        if (file.Length > MaxFileBytes) return (null, Strings.Icon_TooBig);
 
         var head = new byte[8];
         using (var stream = file.OpenRead()) stream.ReadExactly(head, 0, (int)Math.Min(8, file.Length));
         bool isPng = head.AsSpan().SequenceEqual((ReadOnlySpan<byte>)[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
         bool isJpg = head[0] == 0xFF && head[1] == 0xD8 && head[2] == 0xFF;
-        if (!isPng && !isJpg) return (null, "Nur PNG- und JPG-Dateien sind erlaubt.");
+        if (!isPng && !isJpg) return (null, Strings.Icon_Format);
 
         Bitmap image;
         try
@@ -33,14 +34,14 @@ public static class IconImport
         }
         catch (Exception e) when (e is not OutOfMemoryException)
         {
-            return (null, "Die Datei lässt sich nicht als Bild lesen.");
+            return (null, Strings.Icon_Unreadable);
         }
 
         using (image)
         {
             var (width, height) = (image.PixelSize.Width, image.PixelSize.Height);
-            if (width != height) return (null, $"Das Bild muss quadratisch sein (1:1), es ist {width} x {height} Pixel gross.");
-            if (width < ServerIconFormat.MinSize) return (null, $"Das Bild muss mindestens {ServerIconFormat.MinSize} x {ServerIconFormat.MinSize} Pixel gross sein.");
+            if (width != height) return (null, string.Format(Strings.Icon_NotSquare, width, height));
+            if (width < ServerIconFormat.MinSize) return (null, string.Format(Strings.Icon_TooSmall, ServerIconFormat.MinSize));
 
             using var output = new MemoryStream();
             if (width > TargetSize)

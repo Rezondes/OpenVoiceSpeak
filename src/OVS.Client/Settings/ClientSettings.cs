@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -70,6 +71,8 @@ public sealed class ClientSettings
     public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(b => b.Action == action)?.Chord;
     public float VadThresholdDb { get; set; } = -40f; // -60..-10
     public AppTheme Theme { get; set; } = AppTheme.System;
+    /// <summary>Package 45: follows Windows unless set; takes effect at the next start.</summary>
+    public AppLanguage Language { get; set; } = AppLanguage.System;
     /// <summary>Package 43: look for a newer release at start (A40).</summary>
     public bool CheckForUpdates { get; set; } = true;
 
@@ -94,7 +97,7 @@ public sealed class ClientSettings
         catch (JsonException)
         {
             File.Copy(path, path + ".bak", overwrite: true);
-            warning = $"Einstellungen waren beschädigt und wurden zurückgesetzt (Sicherung: {path}.bak).";
+            warning = string.Format(Strings.Settings_Damaged, path);
             return new ClientSettings();
         }
     }

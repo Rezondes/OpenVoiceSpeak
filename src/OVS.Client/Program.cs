@@ -1,5 +1,7 @@
 using Avalonia;
+using OVS.Client.Localization;
 using OVS.Client.Net;
+using OVS.Client.Settings;
 
 namespace OVS.Client;
 
@@ -47,6 +49,7 @@ internal static class Program
     {
         Options = ClientOptions.Parse(args);
         UpdateInstaller.CleanupOld(Environment.ProcessPath); // Package 43: the exe replaced by the last update
+        Language.Apply(ClientSettings.Load(Options.ProfileDir, out _).Language); // Package 45: before the first window
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
