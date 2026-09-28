@@ -31,7 +31,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     double inputLevelDb = -60;
 
     [ObservableProperty] string? deviceHint;
-    [ObservableProperty] string? captureHint;
 
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice> inputs, IReadOnlyList<AudioDevice> outputs, KeyPoller? keys = null)
     {
@@ -50,7 +49,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         outputVolumePercent = current.OutputVolume * 100f;
         voiceActivation = current.Mode == TransmitMode.VoiceActivation;
         vadThresholdDb = current.VadThresholdDb;
-        KeyRows = new(KeyActions.All.Select(a => new KeyBindingRow(a, current.ChordFor(a), CaptureAsync, OnKeysChanged)));
+        KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
+        KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
     }
 
@@ -66,41 +66,55 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<AudioDeviceOption> Inputs { get; }
     public IReadOnlyList<AudioDeviceOption> Outputs { get; }
-    /// <summary>One row per action, unbound ones included.</summary>
-    public ObservableCollection<KeyBindingRow> KeyRows { get; }
+    /// <summary>
+    /// Package 41: a free list, empty for a new profile. One action may sit on several keys, but one key may not
+    /// do two different things.
+    /// </summary>
+    public ObservableCollection<KeyBindingItem> KeyBindings { get; }
+    public bool HasKeyBindings => KeyBindings.Count > 0;
 
-    /// <summary>Two actions on the same key combination: the first such pair.</summary>
-    (KeyBindingRow A, KeyBindingRow B)? Conflict =>
-        KeyRows.Where(r => r.Chord is not null).GroupBy(r => r.Chord).Where(g => g.Count() > 1)
-            .Select(g => ((KeyBindingRow, KeyBindingRow)?)(g.First(), g.Skip(1).First())).FirstOrDefault();
+    /// <summary>The overlay with action and key; the view sets it (A20: inside the main window).</summary>
+    public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; set; }
 
-    public bool HasKeyConflict => Conflict is not null;
+    string? KeyConflict =>
+        KeyBindings.GroupBy(b => b.Binding.Chord).Where(g => g.Count() > 1).Select(g => g.Select(b => b.Binding.Action).Distinct().ToList())
+            .Select(actions => actions.Count > 1
+                ? $"\"{KeyActions.Label(actions[0])}\" und \"{KeyActions.Label(actions[1])}\" liegen auf derselben Taste."
+                : $"\"{KeyActions.Label(actions[0])}\" steht doppelt auf derselben Taste.")
+            .FirstOrDefault();
 
-    void OnKeysChanged()
+    public bool HasKeyConflict => KeyConflict is not null;
+
+    internal void OnKeysChanged()
     {
+        OnPropertyChanged(nameof(HasKeyBindings));
         OnPropertyChanged(nameof(HasKeyConflict));
         OnPropertyChanged(nameof(CanSave));
         OnPropertyChanged(nameof(Error));
     }
 
-    async Task<KeyChord?> CaptureAsync(KeyAction action)
+    Task<KeyChord?> CaptureAsync(KeyAction action) =>
+        keys is null ? Task.FromResult<KeyChord?>(null) : keys.CaptureNextChordAsync().ContinueWith(t => (KeyChord?)t.Result, TaskScheduler.Default);
+
+    [RelayCommand]
+    async Task AddKeyBinding()
     {
-        if (keys is null) return null;
-        CaptureHint = $"Drücke jetzt die Taste oder Kombination für \"{KeyActions.Label(action)}\" ...";
-        try
-        {
-            return await keys.CaptureNextChordAsync();
-        }
-        finally
-        {
-            CaptureHint = null;
-        }
+        if (EditKeyBinding is { } edit && await edit(null, CaptureAsync) is { } binding) KeyBindings.Add(new KeyBindingItem(binding, this));
     }
+
+    internal async Task EditAsync(KeyBindingItem item)
+    {
+        if (EditKeyBinding is not { } edit || await edit(item.Binding, CaptureAsync) is not { } binding) return;
+        item.Binding = binding;
+        OnKeysChanged();
+    }
+
+    internal void Remove(KeyBindingItem item) => KeyBindings.Remove(item);
 
     /// <summary>Would voice activation send right now?</summary>
     public bool IsAboveThreshold => InputLevelDb >= VadThresholdDb;
     public bool CanSave => !HasKeyConflict;
-    public string? Error => Conflict is var (a, b) ? $"\"{KeyActions.Label(a.Action)}\" und \"{KeyActions.Label(b.Action)}\" liegen auf derselben Taste." : null;
+    public string? Error => KeyConflict;
 
     partial void OnInputGainPercentChanged(double value) => InputGainPercent = Math.Clamp(value, 0, 200);
     partial void OnOutputVolumePercentChanged(double value) => OutputVolumePercent = Math.Clamp(value, 0, 100);
@@ -126,33 +140,25 @@ public sealed partial class SettingsViewModel : ObservableObject
         InputGain = (float)(InputGainPercent / 100),
         OutputVolume = (float)(OutputVolumePercent / 100),
         Mode = VoiceActivation ? TransmitMode.VoiceActivation : TransmitMode.PushToTalk,
-        KeyBindings = KeyRows.Where(r => r.Chord is not null).Select(r => new KeyBinding(r.Action, r.Chord!)).ToList(),
+        KeyBindings = KeyBindings.Select(b => b.Binding).ToList(),
         VadThresholdDb = (float)VadThresholdDb,
         Theme = SelectedTheme.Value,
     }.Clamp();
 }
 
-/// <summary>One action in the key list: its label, its key combination (or none) and the two buttons.</summary>
-public sealed partial class KeyBindingRow(KeyAction action, KeyChord? initial, Func<KeyAction, Task<KeyChord?>> capture, Action changed) : ObservableObject
+/// <summary>One line of the key list (Package 41): action, key, "Ändern" and "Löschen".</summary>
+public sealed partial class KeyBindingItem(KeyBinding binding, SettingsViewModel owner) : ObservableObject
 {
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ChordName), nameof(IsBound), nameof(AssignText))]
-    KeyChord? chord = initial;
+    [NotifyPropertyChangedFor(nameof(Label), nameof(ChordName))]
+    KeyBinding binding = binding;
 
-    public KeyAction Action { get; } = action;
-    public string Label => KeyActions.Label(Action);
-    public string ChordName => Chord?.Name ?? "Nicht belegt";
-    public bool IsBound => Chord is not null;
-    public string AssignText => IsBound ? "Ändern ..." : "Belegen ...";
-
-    partial void OnChordChanged(KeyChord? value) => changed();
+    public string Label => KeyActions.Label(Binding.Action);
+    public string ChordName => Binding.Chord.Name;
 
     [RelayCommand]
-    async Task Assign()
-    {
-        if (await capture(Action) is { } captured) Chord = captured;
-    }
+    Task Edit() => owner.EditAsync(this);
 
     [RelayCommand]
-    void Clear() => Chord = null;
+    void Remove() => owner.Remove(this);
 }

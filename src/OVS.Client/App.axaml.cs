@@ -52,6 +52,7 @@ public partial class App : Application
                 Confirm = text => SimpleDialogs.Confirm(overlay, text),
                 AskPassword = name => SimpleDialogs.AskPassword(overlay, name),
                 EditBookmark = bookmark => SimpleDialogs.EditBookmark(overlay, bookmark),
+                EditKeyBinding = (binding, capture) => SimpleDialogs.EditKeyBinding(overlay, binding, capture),
             };
             vm.ConfirmTofu = prompt => SimpleDialogs.Tofu(overlay, prompt);
 

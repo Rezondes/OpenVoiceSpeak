@@ -46,6 +46,23 @@ public class KeyBindingTests
         Assert.False(tracker.Update(new HashSet<KeyAction> { KeyAction.ToggleMute, KeyAction.PushToTalk }).HoldChanged);
     }
 
+    /// <summary>Package 41: one action on two keys: either holds it, it ends when both are up.</summary>
+    [Fact]
+    public void SameActionTwoKeys_EitherHolds_EndsWhenBothUp()
+    {
+        KeyBinding[] bindings = [Bind(KeyAction.PushToMute, KeyPoller.VkXButton1), Bind(KeyAction.PushToMute, KeyPoller.VkXButton2)];
+        var tracker = new KeyStateTracker();
+        (bool Active, bool Changed) Poll(params int[] down)
+        {
+            var active = Resolve(bindings, down, None);
+            return (active.Contains(KeyAction.PushToMute), tracker.Update(active).HoldChanged);
+        }
+        Assert.Equal((true, true), Poll(KeyPoller.VkXButton1));
+        Assert.Equal((true, false), Poll(KeyPoller.VkXButton1, KeyPoller.VkXButton2));
+        Assert.Equal((true, false), Poll(KeyPoller.VkXButton2)); // the first let go, the second still holds
+        Assert.Equal((false, true), Poll());
+    }
+
     [Fact]
     public void ChordName_IsReadable()
     {

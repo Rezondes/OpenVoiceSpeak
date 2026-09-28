@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 40 sind umgesetzt, 41 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 41 sind umgesetzt, 42 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2666,12 +2666,12 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~MainViewModelTests|FullyQu
 
 ### Acceptance Criteria
 
-- [ ] AC1: Ohne Belegung zeigt die Einstellungsseite "Noch keine Tastenaktionen" und den Button "Tastenaktion hinzufügen".
-- [ ] AC2: Der Button öffnet ein Overlay mit Dropdown (Push-to-Talk, Link-PTT, Push-to-Mute, Mikrofon an/aus, Ton an/aus) und "Taste festlegen". Speichern geht erst mit Aktion und Taste. Danach steht die Zeile in der Liste.
-- [ ] AC3: Jede Zeile hat "Ändern" (dasselbe Overlay vorbelegt) und "Löschen".
-- [ ] AC4: Dieselbe Aktion darf auf mehreren Tasten liegen, z. B. Push-to-Mute auf Maustaste 4 und 5. Beide wirken, und die Aktion endet erst, wenn keine ihrer Tasten mehr gedrückt ist.
-- [ ] AC5: Dieselbe Taste auf zwei verschiedenen Aktionen und doppelte Zeilen blockieren das Speichern der Einstellungen mit Hinweis.
-- [ ] AC6: Bestehende Profile zeigen ihre Belegungen unverändert als Liste. Unter dem eigenen Namen steht bei mehreren PTT-Tasten z. B. "PTT: Maus 4, Maus 5".
+- [x] AC1: Ohne Belegung zeigt die Einstellungsseite "Noch keine Tastenaktionen" und den Button "Tastenaktion hinzufügen".
+- [x] AC2: Der Button öffnet ein Overlay mit Dropdown (Push-to-Talk, Link-PTT, Push-to-Mute, Mikrofon an/aus, Ton an/aus) und "Taste festlegen". Speichern geht erst mit Aktion und Taste. Danach steht die Zeile in der Liste.
+- [x] AC3: Jede Zeile hat "Ändern" (dasselbe Overlay vorbelegt) und "Löschen".
+- [x] AC4: Dieselbe Aktion darf auf mehreren Tasten liegen, z. B. Push-to-Mute auf Maustaste 4 und 5. Beide wirken, und die Aktion endet erst, wenn keine ihrer Tasten mehr gedrückt ist.
+- [x] AC5: Dieselbe Taste auf zwei verschiedenen Aktionen und doppelte Zeilen blockieren das Speichern der Einstellungen mit Hinweis.
+- [x] AC6: Bestehende Profile zeigen ihre Belegungen unverändert als Liste. Unter dem eigenen Namen steht bei mehreren PTT-Tasten z. B. "PTT: Maus 4, Maus 5".
 
 ### Tests (TDD)
 

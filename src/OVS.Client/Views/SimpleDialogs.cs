@@ -5,6 +5,9 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Automation;
+using OVS.Client.Input;
+using KeyBinding = OVS.Client.Input.KeyBinding;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -202,6 +205,56 @@ public static class SimpleDialogs
                 ? null
                 : new BookmarkEdit(name.Text.Trim(), host.Text.Trim(), (int)(port.Value ?? 7000), nickname.Text.Trim(), password.Text, save.IsChecked == true),
             "Speichern");
+    }
+
+    /// <summary>Package 41: pick the action, then press the key or combination.</summary>
+    public static Task<KeyBinding?> EditKeyBinding(OverlayHost overlay, KeyBinding? current, Func<KeyAction, Task<KeyChord?>> capture)
+    {
+        var action = new ComboBox
+        {
+            ItemsSource = KeyActions.All.Select(KeyActions.Label).ToList(),
+            SelectedIndex = current is null ? -1 : KeyActions.All.ToList().IndexOf(current.Action),
+            PlaceholderText = "Aktion wählen",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        KeyChord? chord = current?.Chord;
+        var keyText = new TextBlock { Text = chord?.Name ?? "Noch keine Taste", VerticalAlignment = VerticalAlignment.Center };
+        var keycap = new Border { Child = keyText, VerticalAlignment = VerticalAlignment.Center };
+        keycap.Classes.Add("keycap");
+        var assign = new Button { Content = "Taste festlegen ...", Margin = new Thickness(12, 0, 0, 0) };
+        AutomationProperties.SetName(assign, "Taste festlegen");
+        var hint = Text("", "accent");
+        hint.IsVisible = false;
+        var error = Text("", "danger");
+        error.IsVisible = false;
+        assign.Click += async (_, _) =>
+        {
+            assign.IsEnabled = false;
+            hint.Text = "Drücke jetzt die Taste oder Kombination, auch eine Maustaste ...";
+            hint.IsVisible = true;
+            try
+            {
+                if (await capture(action.SelectedIndex >= 0 ? KeyActions.All[action.SelectedIndex] : KeyAction.PushToTalk) is { } captured)
+                {
+                    chord = captured;
+                    keyText.Text = captured.Name;
+                }
+            }
+            finally
+            {
+                assign.IsEnabled = true;
+                hint.IsVisible = false;
+            }
+        };
+        var keyRow = new StackPanel { Orientation = Orientation.Horizontal, Children = { keycap, assign } };
+        var body = Stack(Field("Aktion", action), Field("Taste", keyRow, "Wirkt überall, auch während ein Spiel im Vordergrund ist."), hint, error);
+        return Show(overlay, current is null ? "Tastenaktion hinzufügen" : "Tastenaktion ändern", "Keyboard", body, () =>
+        {
+            string? problem = action.SelectedIndex < 0 ? "Bitte eine Aktion wählen." : chord is null ? "Bitte eine Taste festlegen." : null;
+            error.Text = problem ?? "";
+            error.IsVisible = problem is not null;
+            return problem is null ? new KeyBinding(KeyActions.All[action.SelectedIndex], chord!) : null;
+        }, "Speichern");
     }
 
     public static async Task<bool> Confirm(OverlayHost overlay, string text) =>

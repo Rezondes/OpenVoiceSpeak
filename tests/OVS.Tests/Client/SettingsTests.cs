@@ -100,7 +100,8 @@ public sealed class SettingsTests : IDisposable
     public void Load_NoFile_NoBindings()
     {
         Assert.Empty(ClientSettings.Load(dir, out _).KeyBindings);
-        Assert.All(Vm().KeyRows, r => Assert.Equal("Nicht belegt", r.ChordName));
+        Assert.Empty(Vm().KeyBindings);
+        Assert.False(Vm().HasKeyBindings);
     }
 
     /// <summary>A profile from before Package 29 keeps mouse buttons 4 and 5, now as bindings.</summary>
@@ -118,24 +119,72 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(2, ClientSettings.Load(dir, out _).KeyBindings.Count);
     }
 
-    [Fact]
-    public void Save_DuplicateChord_Blocked()
+    // ---- Package 41: a free list of key bindings ----
+
+    /// <summary>A settings page whose overlay answers with the next binding from the queue.</summary>
+    static SettingsViewModel ListVm(Queue<KeyBinding?> answers, ClientSettings? s = null)
     {
-        var vm = Vm();
+        var vm = Vm(s);
+        vm.EditKeyBinding = (_, _) => Task.FromResult(answers.Dequeue());
+        return vm;
+    }
+
+    static KeyBinding Bind(KeyAction action, int key) => new(action, new KeyChord(key));
+
+    [Fact]
+    public async Task KeyList_StartsEmpty_AddEditRemove()
+    {
+        var answers = new Queue<KeyBinding?>([Bind(KeyAction.PushToMute, KeyPoller.VkXButton1), null, Bind(KeyAction.ToggleMute, 0x70)]);
+        var vm = ListVm(answers);
+        await vm.AddKeyBindingCommand.ExecuteAsync(null);
+        Assert.Equal("Push-to-Mute (stumm, solange gedrückt)", vm.KeyBindings.Single().Label);
+        await vm.AddKeyBindingCommand.ExecuteAsync(null); // cancelled: nothing added
+        Assert.Single(vm.KeyBindings);
+
+        await vm.KeyBindings[0].EditCommand.ExecuteAsync(null);
+        Assert.Equal(Bind(KeyAction.ToggleMute, 0x70), vm.KeyBindings[0].Binding);
+        Assert.Equal("F1", vm.KeyBindings[0].ChordName);
+
+        vm.KeyBindings[0].RemoveCommand.Execute(null);
+        Assert.Empty(vm.ToSettings(new ClientSettings()).KeyBindings);
+    }
+
+    [Fact]
+    public async Task KeyList_SameActionTwoKeys_Saves()
+    {
+        var vm = ListVm(new([Bind(KeyAction.PushToMute, KeyPoller.VkXButton1), Bind(KeyAction.PushToMute, KeyPoller.VkXButton2)]));
+        await vm.AddKeyBindingCommand.ExecuteAsync(null);
+        await vm.AddKeyBindingCommand.ExecuteAsync(null);
         Assert.True(vm.CanSave);
-        vm.KeyRows.Single(r => r.Action == KeyAction.PushToTalk).Chord = new KeyChord(0x70);
-        vm.KeyRows.Single(r => r.Action == KeyAction.ToggleDeafen).Chord = new KeyChord(0x70);
+        Assert.Equal(2, vm.ToSettings(new ClientSettings()).KeyBindings.Count(b => b.Action == KeyAction.PushToMute));
+    }
+
+    [Fact]
+    public async Task KeyList_SameKeyTwoActions_BlocksSave()
+    {
+        var vm = ListVm(new([Bind(KeyAction.PushToTalk, 0x70), Bind(KeyAction.ToggleDeafen, 0x70), Bind(KeyAction.PushToTalk, 0x70)]));
+        await vm.AddKeyBindingCommand.ExecuteAsync(null);
+        await vm.AddKeyBindingCommand.ExecuteAsync(null);
         Assert.False(vm.CanSave);
-        Assert.Contains("Push-to-Talk", vm.Error);
+        Assert.Contains("liegen auf derselben Taste", vm.Error);
         bool? closed = null;
         vm.CloseRequested += ok => closed = ok;
         vm.SaveCommand.Execute(null);
         Assert.Null(closed);
 
-        vm.KeyRows.Single(r => r.Action == KeyAction.ToggleDeafen).ClearCommand.Execute(null);
+        vm.KeyBindings[1].RemoveCommand.Execute(null);
         Assert.True(vm.CanSave);
-        var saved = vm.ToSettings(new ClientSettings());
-        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x70))], saved.KeyBindings);
+        await vm.AddKeyBindingCommand.ExecuteAsync(null); // the very same line twice
+        Assert.Contains("doppelt", vm.Error);
+    }
+
+    [Fact]
+    public void KeyList_ExistingProfile_ShownAsList()
+    {
+        var s = new ClientSettings { KeyBindings = [Bind(KeyAction.PushToTalk, KeyPoller.VkXButton1), Bind(KeyAction.LinkPushToTalk, KeyPoller.VkXButton2)] };
+        var vm = Vm(s);
+        Assert.Equal(["Maustaste 4", "Maustaste 5"], vm.KeyBindings.Select(b => b.ChordName));
+        Assert.Equal(s.KeyBindings, vm.ToSettings(new ClientSettings()).KeyBindings);
     }
 
     [Fact]

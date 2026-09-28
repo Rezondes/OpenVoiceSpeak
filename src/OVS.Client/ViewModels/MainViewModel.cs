@@ -133,7 +133,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
     public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
         ? "Sprachaktivierung"
-        : Settings.ChordFor(KeyAction.PushToTalk) is { } ptt ? $"PTT: {ptt.Name}" : "Keine PTT-Taste belegt";
+        : Settings.KeyBindings.Where(b => b.Action == KeyAction.PushToTalk).Select(b => b.Chord.Name).ToList() is { Count: > 0 } ptt
+            ? $"PTT: {string.Join(", ", ptt)}"
+            : "Keine PTT-Taste belegt";
 
     /// <summary>Push-to-talk without a key: nobody can talk. The hint then opens the settings.</summary>
     public bool HasNoPttBinding => Settings.Mode == TransmitMode.PushToTalk && Settings.ChordFor(KeyAction.PushToTalk) is null;
@@ -438,7 +440,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         ClosePage();
         var inputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Capture) : [];
         var outputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Render) : [];
-        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys);
+        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys) { EditKeyBinding = Dialogs.EditKeyBinding };
         vm.CloseRequested += save =>
         {
             if (save) ApplySettings(vm.ToSettings(Settings));

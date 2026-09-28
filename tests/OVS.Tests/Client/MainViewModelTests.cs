@@ -222,6 +222,15 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
         Assert.False(await OnUi(() => vm.HasNoPttBinding));
         Assert.Equal("PTT: Maustaste 4", await OnUi(() => vm.TalkHint));
+
+        await OnUi(() => // Package 41: several PTT keys are all listed
+        {
+            var s = vm.Settings;
+            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1)), new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton2))];
+            vm.ApplySettings(s);
+            return 0;
+        });
+        Assert.Equal("PTT: Maustaste 4, Maustaste 5", await OnUi(() => vm.TalkHint));
     }
 
     /// <summary>Package 30: the logo is downloaded once, then taken from the cache; the bookmark tile shows it.</summary>

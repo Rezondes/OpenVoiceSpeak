@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio;
+using OVS.Client.Input;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Shared.Permissions;
@@ -30,6 +31,8 @@ public sealed class Dialogs
     /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
     public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }
     public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
+    /// <summary>Package 41: action and key; null binding = add. The second argument captures the next key.</summary>
+    public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; init; }
 }
 
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>

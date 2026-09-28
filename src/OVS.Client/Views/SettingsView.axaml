@@ -114,54 +114,51 @@
           </Border>
         </StackPanel>
 
-        <!-- Keys: every action, bound or not. Keys work globally, also while a game has the focus. -->
+        <!-- Keys: a free list (Package 41). Keys work globally, also while a game has the focus. -->
         <StackPanel Spacing="8">
           <TextBlock Classes="section" Text="TASTEN" />
           <Border Classes="card">
             <StackPanel Spacing="10">
               <TextBlock Classes="caption" TextWrapping="Wrap"
                          Text="Tasten wirken überall, auch während ein Spiel im Vordergrund ist. Kombinationen mit Strg, Umschalt und Alt sind möglich." />
-              <ItemsControl ItemsSource="{Binding KeyRows}">
+              <TextBlock Classes="muted" Text="Noch keine Tastenaktionen." IsVisible="{Binding !HasKeyBindings}" />
+              <ItemsControl ItemsSource="{Binding KeyBindings}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="10" />
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:KeyBindingRow">
+                  <DataTemplate x:DataType="vm:KeyBindingItem">
                     <DockPanel>
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                        <Button Command="{Binding AssignCommand}" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: Taste belegen'}">
+                        <Button Command="{Binding EditCommand}" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: ändern'}">
                           <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Classes="sm" Data="{StaticResource Icon.Keyboard}" />
-                            <TextBlock Text="{Binding AssignText}" />
+                            <PathIcon Classes="sm" Data="{StaticResource Icon.Edit}" />
+                            <TextBlock Text="Ändern ..." />
                           </StackPanel>
                         </Button>
-                        <!-- Keeps its space when hidden, so the buttons line up in every row -->
-                        <Panel Width="36">
-                          <Button Classes="icon" Command="{Binding ClearCommand}" IsVisible="{Binding IsBound}"
-                                  ToolTip.Tip="Belegung entfernen" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: Belegung entfernen'}">
-                            <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
-                          </Button>
-                        </Panel>
+                        <Button Classes="icon" Command="{Binding RemoveCommand}"
+                                ToolTip.Tip="Löschen" AutomationProperties.Name="{Binding Label, StringFormat='{}{0}: löschen'}">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
+                        </Button>
                       </StackPanel>
                       <StackPanel Spacing="4">
                         <TextBlock Classes="label" Text="{Binding Label}" />
-                        <Border Classes="keycap" HorizontalAlignment="Left" IsVisible="{Binding IsBound}">
+                        <Border Classes="keycap" HorizontalAlignment="Left">
                           <TextBlock Text="{Binding ChordName}" />
                         </Border>
-                        <TextBlock Classes="caption" Text="Nicht belegt" IsVisible="{Binding !IsBound}" />
                       </StackPanel>
                     </DockPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <Border Classes="banner accent" IsVisible="{Binding CaptureHint, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <PathIcon Classes="accent" Data="{StaticResource Icon.Keyboard}" />
-                  <TextBlock Classes="accent" Text="{Binding CaptureHint}" TextWrapping="Wrap" />
+              <Button Classes="subtle" Command="{Binding AddKeyBindingCommand}" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
+                  <TextBlock Text="Tastenaktion hinzufügen" />
                 </StackPanel>
-              </Border>
+              </Button>
             </StackPanel>
           </Border>
         </StackPanel>
