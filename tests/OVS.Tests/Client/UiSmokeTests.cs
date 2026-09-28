@@ -190,6 +190,22 @@ public sealed class UiSmokeTests : IDisposable
             Assert.True(shown.IsCompleted, title);
         }
         Dialog(o => SimpleDialogs.Connect(o, vm.Settings), "Mit Server verbinden");
+
+        // Package 39: "Passwort speichern" needs a password and the bookmark; a saved one is filled in
+        vm.Settings.Bookmarks.Insert(0, new Bookmark("Gilde", "gilde.example.org", 7000, "ich", PasswordProtector.Protect("pw")));
+        var connecting = SimpleDialogs.Connect(main.Overlay, vm.Settings, vm.Settings.Bookmarks[0]);
+        Dispatcher.UIThread.RunJobs();
+        var boxes = main.Overlay.GetVisualDescendants().OfType<CheckBox>().ToList();
+        var savePassword = boxes.Single(c => c.Content is string text && text.StartsWith("Passwort speichern"));
+        var saveBookmark = boxes.Single(c => c.Content is "Als Lesezeichen speichern");
+        Assert.Equal((true, true), (savePassword.IsEnabled, savePassword.IsChecked == true));
+        Assert.Equal("pw", main.Overlay.GetVisualDescendants().OfType<TextBox>().Single(t => t.PasswordChar == '•').Text);
+        saveBookmark.IsChecked = false;
+        Assert.Equal((false, false), (savePassword.IsEnabled, savePassword.IsChecked == true));
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(connecting.IsCompleted);
+        vm.Settings.Bookmarks.RemoveAt(0);
         Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Mismatch)), "Serverzertifikat prüfen");
         Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
         Dialog(o => SimpleDialogs.Ban(o, "anna"), "anna bannen");

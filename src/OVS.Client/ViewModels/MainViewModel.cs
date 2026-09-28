@@ -15,7 +15,8 @@ using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
 
-public sealed record ConnectChoice(string Host, int Port, string Nickname, string? Password, bool SaveBookmark);
+/// <param name="SavePassword">Package 39: store the password with the bookmark, after a successful connection only.</param>
+public sealed record ConnectChoice(string Host, int Port, string Nickname, string? Password, bool SaveBookmark, bool SavePassword = false);
 
 /// <summary>A bookmark tile: the bookmark and the logo last seen for that server.</summary>
 public sealed record BookmarkItem(Bookmark Bookmark, byte[]? Icon)
@@ -155,13 +156,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task ConnectAsync(ConnectChoice choice)
     {
         await DisconnectAsync();
-        if (choice.SaveBookmark)
-        {
-            Settings.Bookmarks.RemoveAll(b => b.Host == choice.Host && b.Port == choice.Port);
-            Settings.Bookmarks.Insert(0, new Bookmark($"{choice.Host}:{choice.Port}", choice.Host, choice.Port, choice.Nickname));
-            Settings.Save(storageDir);
-            OnSettingsListsChanged();
-        }
+        if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: false);
 
         Status = $"Verbinde mit {choice.Host}:{choice.Port} ...";
         IsConnecting = true;
@@ -204,6 +199,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
                       $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
             if (vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
+            if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: true);
         }
         catch (ConnectionRejectedException e)
         {
@@ -222,6 +218,23 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             IsConnecting = false;
         }
         if (connection is null) Log.Write(Status);
+    }
+
+    /// <summary>
+    /// Puts the server first in the bookmarks, keeping a name given earlier. The password (Package 39) is only
+    /// written once the server accepted it: before that the bookmark keeps whatever it had.
+    /// </summary>
+    void SaveBookmark(ConnectChoice choice, bool passwordConfirmed)
+    {
+        var old = Settings.Bookmarks.FirstOrDefault(b => b.Host == choice.Host && b.Port == choice.Port);
+        var password = !passwordConfirmed ? old?.ProtectedPassword
+            : choice.SavePassword && !string.IsNullOrEmpty(choice.Password) ? PasswordProtector.Protect(choice.Password)
+            : null;
+        Settings.Bookmarks.RemoveAll(b => b.Host == choice.Host && b.Port == choice.Port);
+        Settings.Bookmarks.Insert(0, new Bookmark(old?.Name ?? $"{choice.Host}:{choice.Port}", choice.Host, choice.Port, choice.Nickname, password));
+        Settings.Save(storageDir);
+        if (passwordConfirmed) Log.Write($"Lesezeichen gespeichert{(password is null ? "" : ", Passwort verschlüsselt gespeichert")}");
+        OnSettingsListsChanged();
     }
 
     async Task<bool> ConfirmTofuLogged(TofuPrompt prompt)

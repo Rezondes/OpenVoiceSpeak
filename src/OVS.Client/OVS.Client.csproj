@@ -16,6 +16,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Concentus" Version="2.2.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.10" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />

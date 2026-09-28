@@ -143,7 +143,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 38 sind umgesetzt, 39 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
+Die Packages 1 bis 39 sind umgesetzt, 40 bis 44 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Drei Acceptance Criteria sind noch offen, weil sie ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung brauchen: Package 16 AC9, Package 17 AC7 und Package 27 AC4 (siehe Tabelle der manuellen Checks).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -2565,7 +2565,6 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~LinkCommandTests|FullyQual
 - `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `Bookmark.ProtectedPassword`, Schutz und Entschlüsseln
 - `src/OVS.Client/Views/SimpleDialogs.cs` (ändern): Checkbox "Passwort speichern", Vorbelegen aus dem Lesezeichen
 - `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): `ConnectChoice.SavePassword`, Speichern nach Erfolg
-- `THIRD-PARTY-NOTICES.md` (ändern)
 - `tests/OVS.Tests/Client/SettingsTests.cs`, `MainViewModelTests.cs`, `UiSmokeTests.cs`, `ClientLogTests.cs` (ändern)
 
 ### Kontext
@@ -2574,10 +2573,10 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~LinkCommandTests|FullyQual
 
 ### Acceptance Criteria
 
-- [ ] AC1: Der Verbinden-Dialog hat "Passwort speichern", standardmässig aus. Wählbar ist es nur mit einem eingegebenen Passwort und "Als Lesezeichen speichern".
-- [ ] AC2: Das Passwort steht nach erfolgreicher Verbindung DPAPI-verschlüsselt im Lesezeichen. In `settings.json` taucht der Klartext nicht auf. Bei `WrongPassword` wird nichts gespeichert.
-- [ ] AC3: Ein Lesezeichen mit gespeichertem Passwort füllt das Feld im Dialog vor. Ein nicht entschlüsselbarer Wert (anderer Benutzer, beschädigt) gilt als nicht gespeichert und bricht nichts.
-- [ ] AC4: Das Passwort erscheint in keinem Log.
+- [x] AC1: Der Verbinden-Dialog hat "Passwort speichern", standardmässig aus. Wählbar ist es nur mit einem eingegebenen Passwort und "Als Lesezeichen speichern".
+- [x] AC2: Das Passwort steht nach erfolgreicher Verbindung DPAPI-verschlüsselt im Lesezeichen. In `settings.json` taucht der Klartext nicht auf. Bei `WrongPassword` wird nichts gespeichert.
+- [x] AC3: Ein Lesezeichen mit gespeichertem Passwort füllt das Feld im Dialog vor. Ein nicht entschlüsselbarer Wert (anderer Benutzer, beschädigt) gilt als nicht gespeichert und bricht nichts.
+- [x] AC4: Das Passwort erscheint in keinem Log.
 
 ### Tests (TDD)
 

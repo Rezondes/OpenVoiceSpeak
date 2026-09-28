@@ -23,6 +23,32 @@ public sealed class SettingsTests : IDisposable
         Assert.Empty(s.Bookmarks);
     }
 
+    /// <summary>Package 39: the password is stored DPAPI-protected, never as plain text.</summary>
+    [Fact]
+    public void Password_Protected_RoundTrip_NoPlainTextInFile()
+    {
+        var s = new ClientSettings();
+        s.Bookmarks.Add(new Bookmark("Gilde", "voice.example.org", 7000, "ich", PasswordProtector.Protect("streng-geheim")));
+        s.Save(dir);
+        Assert.DoesNotContain("streng-geheim", File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)));
+
+        var loaded = ClientSettings.Load(dir, out _).Bookmarks.Single();
+        Assert.Equal("streng-geheim", loaded.SavedPassword());
+        Assert.True(loaded.HasSavedPassword);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("kein base64 !")]
+    [InlineData("AAAAAAAA")]
+    public void Password_Garbage_TreatedAsNone(string? stored)
+    {
+        var bookmark = new Bookmark("Gilde", "h", 1, "ich", stored);
+        Assert.Null(bookmark.SavedPassword());
+        Assert.False(bookmark.HasSavedPassword);
+    }
+
     [Fact]
     public void FullSettings_RoundTrip_IncludingBookmarks()
     {

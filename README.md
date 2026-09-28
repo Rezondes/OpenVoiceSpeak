@@ -121,7 +121,7 @@ dotnet publish src/OVS.Client -c Release -r win-x64 --self-contained -p:PublishS
 Heraus kommt eine einzelne `publish/client/OVS.Client.exe`, die ohne installiertes .NET läuft.
 
 **Bedienung:**
-- Der Startbildschirm zeigt "Verbinden ..." und deine Lesezeichen. Der Dialog fragt Adresse, Port, Nickname und optional das Serverpasswort ab. Mit "Als Lesezeichen speichern" steht der Server beim nächsten Mal als Kachel bereit.
+- Der Startbildschirm zeigt "Verbinden ..." und deine Lesezeichen. Der Dialog fragt Adresse, Port, Nickname und optional das Serverpasswort ab. Mit "Als Lesezeichen speichern" steht der Server beim nächsten Mal als Kachel bereit. Mit "Passwort speichern" merkt sich das Lesezeichen auch das Serverpasswort, verschlüsselt für deinen Windows-Benutzer und erst nach einer erfolgreichen Verbindung.
 - Links stehen Server, Channels und Nutzer, unten dein eigener Name mit Mikrofon, Ton aus und Einstellungen.
 - Tasten legst du unter Einstellungen, Tasten fest: Push-to-Talk, Link-PTT, Push-to-Mute, Mikrofon an/aus und Ton an/aus, auch als Kombination mit Strg, Umschalt oder Alt. Ein neues Profil hat keine Belegung, bis dahin steht unter deinem Namen "Keine PTT-Taste belegt". Profile aus älteren Versionen behalten Maustaste 4 und 5. Die Tasten wirken auch, während ein Spiel im Vordergrund ist.
 - In den Einstellungen wählst du ausserdem Push-to-Talk oder Sprachaktivierung, die Geräte und das Design (wie Windows, hell oder dunkel). Bei Sprachaktivierung wirkt die PTT-Taste nicht, Link-PTT schon.

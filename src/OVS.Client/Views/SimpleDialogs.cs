@@ -205,6 +205,15 @@ public static class SimpleDialogs
         ToolTip.SetTip(reveal, "Passwort anzeigen");
         reveal.IsCheckedChanged += (_, _) => password.RevealPassword = reveal.IsChecked == true;
         var save = new CheckBox { Content = "Als Lesezeichen speichern", IsChecked = true };
+        var savePassword = new CheckBox { Content = "Passwort speichern (verschlüsselt für deinen Windows-Benutzer)", IsChecked = false };
+        void UpdateSavePassword()
+        {
+            // Package 39: only with a password and only together with the bookmark.
+            savePassword.IsEnabled = save.IsChecked == true && !string.IsNullOrEmpty(password.Text);
+            if (!savePassword.IsEnabled) savePassword.IsChecked = false;
+        }
+        save.IsCheckedChanged += (_, _) => UpdateSavePassword();
+        password.TextChanged += (_, _) => UpdateSavePassword();
         var error = Text("", "danger");
         error.IsVisible = false;
         var bookmarks = new ComboBox
@@ -220,6 +229,9 @@ public static class SimpleDialogs
             host.Text = b.Host;
             port.Value = b.Port;
             nickname.Text = b.Nickname;
+            password.Text = b.SavedPassword() ?? "";
+            UpdateSavePassword();
+            savePassword.IsChecked = b.HasSavedPassword;
         };
         int index = preselect is null ? 0 : settings.Bookmarks.IndexOf(preselect);
         if (settings.Bookmarks.Count > 0) bookmarks.SelectedIndex = Math.Max(0, index);
@@ -228,7 +240,8 @@ public static class SimpleDialogs
         ((Control)address.Children[0]).Margin = new Thickness(12, 0, 0, 0);
         var passwordRow = new DockPanel { Children = { Dock(reveal, Avalonia.Controls.Dock.Right), password } };
 
-        var body = Stack(address, Field("Nickname", nickname), Field("Serverpasswort", passwordRow, "Nur nötig, wenn der Server eines hat."), save, error);
+        UpdateSavePassword();
+        var body = Stack(address, Field("Nickname", nickname), Field("Serverpasswort", passwordRow, "Nur nötig, wenn der Server eines hat."), save, savePassword, error);
         if (settings.Bookmarks.Count > 0) body.Children.Insert(0, Field("Lesezeichen", bookmarks));
 
         return Show(overlay, "Mit Server verbinden", "PlugConnected", body, () =>
@@ -240,7 +253,8 @@ public static class SimpleDialogs
                 error.IsVisible = problem is not null;
                 return problem is not null
                     ? null
-                    : new ConnectChoice(host.Text!.Trim(), (int)(port.Value ?? 7000), nickname.Text!.Trim(), password.Text, save.IsChecked == true);
+                    : new ConnectChoice(host.Text!.Trim(), (int)(port.Value ?? 7000), nickname.Text!.Trim(), password.Text, save.IsChecked == true,
+                        savePassword.IsChecked == true);
             },
             "Verbinden");
     }

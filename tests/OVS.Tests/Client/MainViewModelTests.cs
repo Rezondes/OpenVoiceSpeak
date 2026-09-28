@@ -64,6 +64,39 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUi(() => vm.Audio.ChannelMuted));
     }
 
+    string ClientLogText() => string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return new StreamReader(stream).ReadToEnd();
+    }));
+
+    /// <summary>Package 39: a wrong password is never stored, the right one only when asked for, and never logged.</summary>
+    [Fact]
+    public async Task Connect_SavePassword_OnlyAfterSuccess()
+    {
+        await using var locked = await TestServer.StartAsync(password: "richtig-geheim");
+        Task Connect(string password, bool save) => ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.ConnectAsync(new ConnectChoice("127.0.0.1", locked.Port, "anna", password, SaveBookmark: true, SavePassword: save));
+            return null;
+        });
+
+        await Connect("falsch-geheim", save: true);
+        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.False(ClientSettings.Load(dir, out _).Bookmarks.Single().HasSavedPassword);
+
+        await Connect("richtig-geheim", save: true);
+        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.Equal("richtig-geheim", ClientSettings.Load(dir, out _).Bookmarks.Single().SavedPassword());
+
+        await Connect("richtig-geheim", save: false); // unticked: the stored one goes away
+        Assert.False(ClientSettings.Load(dir, out _).Bookmarks.Single().HasSavedPassword);
+
+        var log = ClientLogText();
+        Assert.DoesNotContain("geheim", log);
+        Assert.Contains("Passwort verschlüsselt gespeichert", log);
+    }
+
     [Fact]
     public async Task Connect_SavesBookmark_ToSettingsFile()
     {
