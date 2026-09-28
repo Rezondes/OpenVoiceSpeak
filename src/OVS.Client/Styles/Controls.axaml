@@ -393,6 +393,13 @@
     <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
   </Style>
 
+  <!-- One sound in the settings (Package 48) -->
+  <Style Selector="Border.soundRow">
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+  </Style>
+
   <!-- ===== Chat (Package 32) ===== -->
   <Style Selector="TabStripItem">
     <Setter Property="FontSize" Value="14" />

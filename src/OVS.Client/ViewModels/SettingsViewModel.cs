@@ -63,8 +63,21 @@ public sealed partial class SettingsViewModel : ObservableObject
         selectedLanguage = Languages.First(l => l.Value == current.Language);
         checkForUpdates = current.CheckForUpdates;
         allSoundsOff = !current.SoundsEnabled;
+        SoundRows = Enum.GetValues<SoundEvent>().Select(e => new SoundRow(e, current.SoundFor(e), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
     }
+
+    // ---- Package 48: every sound on its own ----
+
+    public IReadOnlyList<SoundRow> SoundRows { get; }
+    /// <summary>Copies the chosen file into the profile; returns its name there or why it was refused.</summary>
+    public Func<string, SoundEvent, (string? File, string? Error)>? ImportSound { get; set; }
+    /// <summary>Plays a tone the way the row is set up now, even if it is muted: the user asked for it.</summary>
+    public Action<SoundEvent, SoundSetting, float>? PreviewSound { get; set; }
+
+    internal void Preview(SoundRow row) => PreviewSound?.Invoke(row.Event, row.ToSetting() with { Muted = false }, (float)(SoundVolumePercent / 100));
+
+    internal (string? File, string? Error) Import(string path, SoundEvent sound) => ImportSound?.Invoke(path, sound) ?? (null, null);
 
     /// <summary>Package 43: "Nach Updates suchen"; the answer is shown under the button.</summary>
     public Func<Task<string>>? CheckNow { get; set; }
@@ -182,7 +195,59 @@ public sealed partial class SettingsViewModel : ObservableObject
         CheckForUpdates = CheckForUpdates,
         SoundsEnabled = !AllSoundsOff,
         SoundVolume = (float)(SoundVolumePercent / 100),
+        Sounds = SoundRows.Select(r => (r.Event, Setting: r.ToSetting())).Where(r => !r.Setting.IsDefault).ToDictionary(r => r.Event, r => r.Setting),
     }.Clamp();
+}
+
+/// <summary>Package 48: one sound in the settings: play, volume, mute, own file, reset.</summary>
+public sealed partial class SoundRow : ObservableObject
+{
+    readonly SettingsViewModel owner;
+
+    [ObservableProperty] double volumePercent;
+    [ObservableProperty] bool muted;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOwnFile), nameof(SourceText))]
+    string? file;
+    [ObservableProperty] string? error;
+
+    public SoundRow(SoundEvent sound, SoundSetting setting, SettingsViewModel owner)
+    {
+        this.owner = owner;
+        Event = sound;
+        volumePercent = setting.Volume * 100;
+        muted = setting.Muted;
+        file = setting.File;
+    }
+
+    public SoundEvent Event { get; }
+    public string Label => Strings.ResourceManager.GetString("Sound_" + Event, Strings.Culture) ?? Event.ToString();
+    public bool HasOwnFile => File is not null;
+    public string SourceText => HasOwnFile ? Strings.Ui_CustomSound : Strings.Ui_DefaultSound;
+
+    partial void OnVolumePercentChanged(double value) => VolumePercent = Math.Clamp(value, 0, 100);
+
+    public SoundSetting ToSetting() => new((float)(VolumePercent / 100), Muted, File);
+
+    [RelayCommand]
+    void Play() => owner.Preview(this);
+
+    [RelayCommand]
+    void Reset()
+    {
+        VolumePercent = 100;
+        Muted = false;
+        File = null; // the copy goes when the settings are saved
+        Error = null;
+    }
+
+    /// <summary>From the file dialog: a refused file keeps the previous tone.</summary>
+    public void Import(string path)
+    {
+        var (imported, problem) = owner.Import(path, Event);
+        Error = problem;
+        if (imported is not null) File = imported;
+    }
 }
 
 /// <summary>One line of the key list (Package 41): action, key, "Ändern" and "Löschen".</summary>

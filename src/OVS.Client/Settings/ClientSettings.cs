@@ -46,6 +46,12 @@ public static class PasswordProtector
 
 public enum AppTheme { System, Light, Dark }
 
+/// <param name="File">Package 48: an own tone, a bare file name in the profile's "sounds" folder.</param>
+public sealed record SoundSetting(float Volume = 1f, bool Muted = false, string? File = null)
+{
+    public bool IsDefault => Volume >= 1f && !Muted && File is null;
+}
+
 public sealed class ClientSettings
 {
     public const string FileName = "settings.json";
@@ -78,6 +84,10 @@ public sealed class ClientSettings
     /// <summary>Package 47: "Alle Sounds aus" is SoundsEnabled = false.</summary>
     public bool SoundsEnabled { get; set; } = true;
     public float SoundVolume { get; set; } = 0.8f;   // 0..1
+    /// <summary>Package 48: only sounds that differ from the default are stored.</summary>
+    public Dictionary<SoundEvent, SoundSetting> Sounds { get; set; } = [];
+
+    public SoundSetting SoundFor(SoundEvent sound) => Sounds.GetValueOrDefault(sound) ?? new SoundSetting();
 
     public ClientSettings Clamp()
     {

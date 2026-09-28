@@ -159,7 +159,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Die Packages 1 bis 47 sind umgesetzt, 48 und 49 sind geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
+Die Packages 1 bis 48 sind umgesetzt, 49 ist geplant. Die Tests laufen mit `dotnet test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen).
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -3023,7 +3023,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundTests|FullyQualifiedN
 **Abhängigkeiten:** Package 47
 
 **Betroffene Dateien:**
-- `src/OVS.Client/Audio/SoundImport.cs` (neu): WAV oder MP3 prüfen (höchstens 5 Sekunden), auf 48 kHz mono umrechnen, ins Profil kopieren
+- `src/OVS.Client/Audio/SoundImport.cs` (neu): `SoundImport` (WAV oder MP3 prüfen, höchstens 5 Sekunden, als 48 kHz mono ins Profil) und `SoundLibrary` (eigene Datei oder Standardton, Aufräumen nach dem Speichern)
 - `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `Sounds` je Ereignis mit Lautstärke, stumm, Dateiname
 - `src/OVS.Client/Audio/Sounds.cs`, `AudioEngine.cs` (ändern): eigene Datei statt Standardton, Lautstärke je Sound
 - `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml(.cs)` (ändern): eine Zeile je Sound mit Abspielen, Lautstärke, stumm, "Datei wählen ...", "Zurücksetzen"
@@ -3036,12 +3036,12 @@ Nach Package 47 gibt es feste Standardtöne und nur globale Einstellungen. Die W
 
 ### Acceptance Criteria
 
-- [ ] AC1: Jeder Sound hat in den Einstellungen eine Zeile mit Name, "Abspielen", Lautstärke (0 bis 100 %), "Stumm", "Datei wählen ..." und "Zurücksetzen".
-- [ ] AC2: Eine gewählte WAV- oder MP3-Datei bis 5 Sekunden ersetzt den Standardton. Sie liegt danach als Kopie im Profil unter `sounds/`, das Original darf verschwinden.
-- [ ] AC3: Zu lange, unlesbare oder fremde Dateien werden mit einem verständlichen Hinweis abgelehnt, der bisherige Ton bleibt.
-- [ ] AC4: "Zurücksetzen" stellt Standardton und 100 % wieder her und löscht die Kopie.
-- [ ] AC5: Lautstärke und "Stumm" je Sound wirken zusätzlich zur Gesamtlautstärke und zu "Alle Sounds aus". Alles bleibt nach einem Neustart erhalten.
-- [ ] AC6: Fehlt die kopierte Datei später, spielt der Standardton, und das Client-Log vermerkt es.
+- [x] AC1: Jeder Sound hat in den Einstellungen eine Zeile mit Name, "Abspielen", Lautstärke (0 bis 100 %), "Stumm", "Datei wählen ..." und "Zurücksetzen".
+- [x] AC2: Eine gewählte WAV- oder MP3-Datei bis 5 Sekunden ersetzt den Standardton. Sie liegt danach als Kopie im Profil unter `sounds/`, das Original darf verschwinden.
+- [x] AC3: Zu lange, unlesbare oder fremde Dateien werden mit einem verständlichen Hinweis abgelehnt, der bisherige Ton bleibt.
+- [x] AC4: "Zurücksetzen" stellt Standardton und 100 % wieder her. Die Kopie verschwindet beim Speichern der Einstellungen, so bleibt sie bei "Abbrechen" erhalten.
+- [x] AC5: Lautstärke und "Stumm" je Sound wirken zusätzlich zur Gesamtlautstärke und zu "Alle Sounds aus". Alles bleibt nach einem Neustart erhalten.
+- [x] AC6: Fehlt die kopierte Datei später, spielt der Standardton, und das Client-Log vermerkt es.
 
 ### Tests (TDD)
 
@@ -3050,7 +3050,7 @@ Nach Package 47 gibt es feste Standardtöne und nur globale Einstellungen. Die W
 3. `SoundTests > "Volume_PerSoundTimesGlobal_MutedSilent"` (AC5)
 4. `SettingsTests > "Sounds_PerEvent_RoundTrip_ResetDeletesCopy"` (AC4, AC5)
 5. `UiSmokeTests`: eine Zeile je Sound mit allen Bedienelementen, beide Designs (AC1)
-6. Manueller Check: eine echte MP3-Datei auswählen und hören
+6. Manueller Check (offen, braucht Ohren): eine echte MP3-Datei auswählen und hören
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundImportTests|FullyQualifiedName~SoundTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~UiSmokeTests"`
 

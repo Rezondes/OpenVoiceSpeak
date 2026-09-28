@@ -181,6 +181,22 @@
   <data name="Settings_Damaged" xml:space="preserve"><value>Einstellungen waren beschädigt und wurden zurückgesetzt (Sicherung: {0}.bak).</value></data>
   <data name="Settings_Language" xml:space="preserve"><value>Sprache</value></data>
   <data name="Settings_LanguageHint" xml:space="preserve"><value>Wirkt nach einem Neustart des Clients.</value></data>
+  <data name="SoundImport_Missing" xml:space="preserve"><value>Die Datei gibt es nicht.</value></data>
+  <data name="SoundImport_TooBig" xml:space="preserve"><value>Die Datei ist grösser als 10 MB.</value></data>
+  <data name="SoundImport_TooLong" xml:space="preserve"><value>Der Sound ist länger als 5 Sekunden.</value></data>
+  <data name="SoundImport_Unreadable" xml:space="preserve"><value>Die Datei lässt sich nicht als WAV oder MP3 lesen.</value></data>
+  <data name="Sound_ChannelEntered" xml:space="preserve"><value>Channel betreten</value></data>
+  <data name="Sound_Connected" xml:space="preserve"><value>Verbunden</value></data>
+  <data name="Sound_Disconnected" xml:space="preserve"><value>Getrennt</value></data>
+  <data name="Sound_MicOff" xml:space="preserve"><value>Mikrofon aus</value></data>
+  <data name="Sound_MicOn" xml:space="preserve"><value>Mikrofon an</value></data>
+  <data name="Sound_Moved" xml:space="preserve"><value>Verschoben</value></data>
+  <data name="Sound_PrivateMessage" xml:space="preserve"><value>Neue Privatnachricht</value></data>
+  <data name="Sound_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>
+  <data name="Sound_SoundOff" xml:space="preserve"><value>Ton aus</value></data>
+  <data name="Sound_SoundOn" xml:space="preserve"><value>Ton an</value></data>
+  <data name="Sound_UserJoined" xml:space="preserve"><value>Jemand betritt deinen Channel</value></data>
+  <data name="Sound_UserLeft" xml:space="preserve"><value>Jemand verlässt deinen Channel</value></data>
   <data name="Status_Connected" xml:space="preserve"><value>Verbunden mit {0}</value></data>
   <data name="Status_Connecting" xml:space="preserve"><value>Verbinde mit {0}:{1} ...</value></data>
   <data name="Status_Disconnected" xml:space="preserve"><value>Getrennt: {0}</value></data>
@@ -220,6 +236,8 @@
   <data name="Ui_ChatTabs" xml:space="preserve"><value>Chat-Tabs</value></data>
   <data name="Ui_CheckUpdates" xml:space="preserve"><value>Nach Updates suchen</value></data>
   <data name="Ui_CheckUpdatesAtStart" xml:space="preserve"><value>Beim Start nach Updates suchen</value></data>
+  <data name="Ui_ChooseFile" xml:space="preserve"><value>Datei wählen ...</value></data>
+  <data name="Ui_ChooseFileFmt" xml:space="preserve"><value>{0}: Datei wählen</value></data>
   <data name="Ui_ChooseGroup" xml:space="preserve"><value>Wähle links eine Gruppe aus.</value></data>
   <data name="Ui_ChooseLogo" xml:space="preserve"><value>Logo wählen ...</value></data>
   <data name="Ui_Close" xml:space="preserve"><value>Schliessen</value></data>
@@ -232,9 +250,11 @@
   <data name="Ui_ConnectToFmt" xml:space="preserve"><value>Mit {0} verbinden</value></data>
   <data name="Ui_Connected" xml:space="preserve"><value>Verbunden</value></data>
   <data name="Ui_CreateChannelMenu" xml:space="preserve"><value>Channel anlegen ...</value></data>
+  <data name="Ui_CustomSound" xml:space="preserve"><value>Eigene Datei</value></data>
   <data name="Ui_Deafen" xml:space="preserve"><value>Ton aus</value></data>
   <data name="Ui_DeafenTip" xml:space="preserve"><value>Ton aus (Lautsprecher und Mikrofon)</value></data>
   <data name="Ui_DefaultChannel" xml:space="preserve"><value>Standard-Channel</value></data>
+  <data name="Ui_DefaultSound" xml:space="preserve"><value>Standardton</value></data>
   <data name="Ui_Delete" xml:space="preserve"><value>Löschen</value></data>
   <data name="Ui_DeleteFmt" xml:space="preserve"><value>{0}: löschen</value></data>
   <data name="Ui_DeleteGroup" xml:space="preserve"><value>Gruppe löschen</value></data>
@@ -279,12 +299,17 @@
   <data name="Ui_NoPassword" xml:space="preserve"><value>Der Server hat kein Passwort.</value></data>
   <data name="Ui_NobodyBanned" xml:space="preserve"><value>Niemand ist gebannt.</value></data>
   <data name="Ui_PasswordSaved" xml:space="preserve"><value>Passwort gespeichert</value></data>
+  <data name="Ui_PickSoundFilter" xml:space="preserve"><value>Audio (WAV, MP3)</value></data>
+  <data name="Ui_PickSoundTitle" xml:space="preserve"><value>Sound wählen</value></data>
   <data name="Ui_PingTip" xml:space="preserve"><value>Antwortzeit des Servers</value></data>
+  <data name="Ui_PlayFmt" xml:space="preserve"><value>{0} abspielen</value></data>
   <data name="Ui_PrivateMessage" xml:space="preserve"><value>Privatnachricht</value></data>
   <data name="Ui_RedeemTokenMenu" xml:space="preserve"><value>Admin-Token einlösen ...</value></data>
   <data name="Ui_Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
   <data name="Ui_RemoveLogo" xml:space="preserve"><value>Logo entfernen</value></data>
   <data name="Ui_RemovePassword" xml:space="preserve"><value>Passwort entfernen</value></data>
+  <data name="Ui_Reset" xml:space="preserve"><value>Zurücksetzen</value></data>
+  <data name="Ui_ResetFmt" xml:space="preserve"><value>{0}: zurücksetzen</value></data>
   <data name="Ui_Rights" xml:space="preserve"><value>Rechte</value></data>
   <data name="Ui_RightsGreyed" xml:space="preserve"><value>Ausgegraut: Rechte, die du selbst nicht hast, kannst du nicht vergeben.</value></data>
   <data name="Ui_SaveGroup" xml:space="preserve"><value>Gruppe speichern</value></data>
@@ -298,7 +323,10 @@
   <data name="Ui_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>
   <data name="Ui_ServerName" xml:space="preserve"><value>Servername</value></data>
   <data name="Ui_Settings" xml:space="preserve"><value>Einstellungen</value></data>
+  <data name="Ui_SoundMutedFmt" xml:space="preserve"><value>{0}: stumm</value></data>
   <data name="Ui_SoundVolume" xml:space="preserve"><value>Lautstärke der Sounds</value></data>
+  <data name="Ui_SoundVolumeFmt" xml:space="preserve"><value>{0}: Lautstärke</value></data>
+  <data name="Ui_SoundsEachHint" xml:space="preserve"><value>Jeder Sound lässt sich einzeln stumm schalten, leiser stellen oder durch eine eigene Datei ersetzen (WAV oder MP3, höchstens 5 Sekunden).</value></data>
   <data name="Ui_SoundsHint" xml:space="preserve"><value>Kurze Töne bei Mikrofon, Ton, Verbindung, Channel und Privatnachrichten. Bei "Ton aus" spielen nur die für Mikrofon und Ton.</value></data>
   <data name="Ui_SoundsSection" xml:space="preserve"><value>SOUNDS</value></data>
   <data name="Ui_Speaker" xml:space="preserve"><value>Lautsprecher</value></data>

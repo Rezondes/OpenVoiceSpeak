@@ -62,6 +62,40 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal((false, 1f), (loaded.SoundsEnabled, loaded.SoundVolume));
     }
 
+    /// <summary>Package 48: per sound volume, mute and own file survive a restart; "Zurücksetzen" lets the copy go.</summary>
+    [Fact]
+    public void Sounds_PerEvent_RoundTrip_ResetDeletesCopy()
+    {
+        var wav = Path.Combine(dir, "eigener.wav");
+        using (var writer = new NAudio.Wave.WaveFileWriter(wav, NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48000, 1)))
+            writer.WriteSamples(Enumerable.Repeat(0.2f, 4800).ToArray(), 0, 4800);
+        var vm = Vm(new ClientSettings());
+        vm.ImportSound = (path, sound) => SoundImport.Prepare(path, dir, sound);
+        Assert.Equal(Enum.GetValues<SoundEvent>().Length, vm.SoundRows.Count);
+        Assert.Equal("Standardton", vm.SoundRows[0].SourceText);
+
+        var joined = vm.SoundRows.Single(r => r.Event == SoundEvent.UserJoined);
+        joined.Import(wav);
+        joined.VolumePercent = 50;
+        vm.SoundRows.Single(r => r.Event == SoundEvent.UserLeft).Muted = true;
+        Assert.Equal("Eigene Datei", joined.SourceText);
+        var saved = vm.ToSettings(new ClientSettings());
+        Assert.Equal(2, saved.Sounds.Count); // only what differs from the default
+        saved.Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal((0.5f, false), (loaded.SoundFor(SoundEvent.UserJoined).Volume, loaded.SoundFor(SoundEvent.UserJoined).Muted));
+        Assert.True(loaded.SoundFor(SoundEvent.UserLeft).Muted);
+        var copy = Path.Combine(dir, SoundLibrary.Folder, loaded.SoundFor(SoundEvent.UserJoined).File!);
+        Assert.True(File.Exists(copy));
+
+        var again = Vm(loaded);
+        again.SoundRows.Single(r => r.Event == SoundEvent.UserJoined).ResetCommand.Execute(null);
+        var reset = again.ToSettings(loaded);
+        Assert.Null(reset.SoundFor(SoundEvent.UserJoined).File);
+        new SoundLibrary(dir, _ => { }).CleanUp(reset); // what saving the settings does
+        Assert.False(File.Exists(copy));
+    }
+
     [Fact]
     public void Language_RoundTrip_ShownInSettings()
     {

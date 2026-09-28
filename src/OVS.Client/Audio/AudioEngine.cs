@@ -84,7 +84,14 @@ public sealed class AudioEngine : IDisposable
     /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
     public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
 
-    // ---- Sounds (Package 47) ----
+    // ---- Sounds (Package 47, 48) ----
+
+    /// <summary>Where a tone's samples come from: the default tone, or the user's own file (set by the main view model).</summary>
+    public Func<SoundEvent, float[]>? SoundSource { get; set; }
+
+    /// <summary>"Alle Sounds aus" and "stumm" silence it, otherwise the sound's own volume times the overall one.</summary>
+    public static float GainFor(ClientSettings settings, SoundEvent sound) =>
+        !settings.SoundsEnabled || settings.SoundFor(sound) is { Muted: true } ? 0f : settings.SoundVolume * settings.SoundFor(sound).Volume;
 
     public SoundQueue Sounds { get; } = new();
     readonly Queue<SoundEvent> recentSounds = new();
@@ -98,9 +105,10 @@ public sealed class AudioEngine : IDisposable
     /// <summary>Plays a tone on top of the voice. With the sound off only the own microphone and sound tones play (A46).</summary>
     public void PlaySound(SoundEvent sound)
     {
-        if (!settings.SoundsEnabled) return;
         if (deafened && sound is not (SoundEvent.MicOff or SoundEvent.MicOn or SoundEvent.SoundOff or SoundEvent.SoundOn)) return;
-        Sounds.Play(SoundSynth.Render(sound), settings.SoundVolume);
+        float gain = GainFor(settings, sound);
+        if (gain <= 0) return;
+        Sounds.Play((SoundSource ?? SoundSynth.Render)(sound), gain);
         lock (recentSounds)
         {
             recentSounds.Enqueue(sound);

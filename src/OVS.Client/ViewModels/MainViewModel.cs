@@ -58,6 +58,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly bool useAudioDevices;
     readonly KnownServers known;
     readonly ServerIconCache icons;
+    readonly SoundLibrary sounds;
     ClientConnection? connection;
     VoiceClient? voice;
     DateTime connectedAt;
@@ -98,6 +99,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
         Keys = new KeyPoller();
         Audio = new AudioEngine(Keys, useAudioDevices);
+        sounds = new SoundLibrary(storageDir, Log.Write);
+        Audio.SoundSource = sound => sounds.Samples(sound, Settings.SoundFor(sound)); // Package 48
         Audio.TransmitChanged += target => post(() =>
         {
             Log.Write(target switch
@@ -147,6 +150,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Settings = settings.Clamp();
         Settings.Save(storageDir);
+        sounds.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();
         var keysText = Settings.KeyBindings.Count == 0 ? "keine" : string.Join(", ", Settings.KeyBindings.Select(b => $"{b.Action} {b.Chord.Name}"));
         Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
@@ -481,7 +485,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         ClosePage();
         var inputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Capture) : [];
         var outputs = useAudioDevices ? AudioDevices.List(NAudio.CoreAudioApi.DataFlow.Render) : [];
-        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys) { EditKeyBinding = Dialogs.EditKeyBinding, CheckNow = CheckForUpdatesAsync };
+        var vm = new SettingsViewModel(Settings, inputs, outputs, Keys) 
+        {
+            EditKeyBinding = Dialogs.EditKeyBinding,
+            CheckNow = CheckForUpdatesAsync,
+            ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
+            PreviewSound = (sound, setting, overall) => Audio.Sounds.Play(sounds.Samples(sound, setting), overall * setting.Volume),
+        };
         vm.CloseRequested += save =>
         {
             if (save) ApplySettings(vm.ToSettings(Settings));

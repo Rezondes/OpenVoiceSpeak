@@ -167,6 +167,10 @@ public sealed class UiSmokeTests : IDisposable
         Assert.Contains("DARSTELLUNG", Texts(main));
         Assert.Contains("Wirkt nach einem Neustart des Clients.", Texts(main)); // Package 45: language choice
         Assert.Contains("Alle Sounds aus", Texts(main)); // Package 47
+        var soundControls = main.GetVisualDescendants().OfType<Control>().Select(AutomationProperties.GetName).ToList(); // Package 48
+        foreach (var label in new[] { "Mikrofon aus", "Neue Privatnachricht" })
+            foreach (var name in new[] { $"{label} abspielen", $"{label}: Lautstärke", $"{label}: stumm", $"{label}: Datei wählen", $"{label}: zurücksetzen" })
+                Assert.Contains(name, soundControls);
         Assert.Contains("Noch keine Tastenaktionen.", Texts(main)); // Package 41: the list starts empty
         Assert.Contains(Texts(main), t => t?.StartsWith("OpenVoiceSpeak dev.") == true); // Package 42: version in "Über"
         Assert.Contains("Nach Updates suchen", Texts(main)); // Package 43

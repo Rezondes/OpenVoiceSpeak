@@ -38,6 +38,40 @@ public class SoundTests
         Assert.Equal(0, queue.Count);
     }
 
+    /// <summary>Package 48: the sound's own volume times the overall one; muted or all off is silent.</summary>
+    [Fact]
+    public void Volume_PerSoundTimesGlobal_MutedSilent()
+    {
+        var settings = new ClientSettings
+        {
+            SoundVolume = 0.5f,
+            Sounds = { [SoundEvent.MicOn] = new SoundSetting(Volume: 0.4f), [SoundEvent.MicOff] = new SoundSetting(Muted: true) },
+        };
+        Assert.Equal(0.2f, AudioEngine.GainFor(settings, SoundEvent.MicOn), 3);
+        Assert.Equal(0.5f, AudioEngine.GainFor(settings, SoundEvent.Connected), 3); // not set: 100 %
+        Assert.Equal(0f, AudioEngine.GainFor(settings, SoundEvent.MicOff));
+        settings.SoundsEnabled = false;
+        Assert.Equal(0f, AudioEngine.GainFor(settings, SoundEvent.MicOn));
+    }
+
+    [Fact]
+    public void CustomSource_IsPlayed_MutedSoundNotRecorded()
+    {
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false);
+        engine.Configure(new ClientSettings { Sounds = { [SoundEvent.UserLeft] = new SoundSetting(Muted: true) } });
+        var asked = new List<SoundEvent>();
+        engine.SoundSource = e =>
+        {
+            asked.Add(e);
+            return [0.1f];
+        };
+        engine.PlaySound(SoundEvent.UserJoined);
+        engine.PlaySound(SoundEvent.UserLeft);
+        Assert.Equal([SoundEvent.UserJoined], asked);
+        Assert.Equal([SoundEvent.UserJoined], engine.RecentSounds);
+    }
+
     [Fact]
     public void Deafened_OnlyOwnMicAndSoundTones_AllOffNothing()
     {
