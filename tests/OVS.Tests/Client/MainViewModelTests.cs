@@ -553,6 +553,35 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
     }
 
+    /// <summary>Package 61: the background changes while sliding, "Verwerfen" brings the saved one back.</summary>
+    [Fact]
+    public async Task Appearance_LivePreview_DiscardRestores_SaveKeeps()
+    {
+        Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() => vm.Appearance));
+        var live = await OnUi(() =>
+        {
+            vm.OpenSettings();
+            vm.SettingsPage!.BackgroundOpacityPercent = 30;
+            vm.SettingsPage.BlurBackground = true;
+            return vm.Appearance;
+        });
+        Assert.Equal(new BackgroundAppearance(0.3f, true), live with { Opacity = MathF.Round(live.Opacity, 3) });
+        Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() =>
+        {
+            vm.SettingsPage!.CancelCommand.Execute(null);
+            return vm.Appearance;
+        }));
+        var saved = await OnUi(() =>
+        {
+            vm.OpenSettings();
+            vm.SettingsPage!.BackgroundOpacityPercent = 60;
+            vm.SettingsPage.SaveCommand.Execute(null);
+            return (vm.Appearance.Opacity, vm.Settings.BackgroundOpacity);
+        });
+        Assert.Equal((0.6f, 0.6f), (MathF.Round(saved.Item1, 3), MathF.Round(saved.Item2, 3)));
+        Assert.Equal(0.6f, ClientSettings.Load(dir, out _).BackgroundOpacity, 3);
+    }
+
     /// <summary>Package 53: the self test mutes and deafens (also at the server) and puts everything back afterwards.</summary>
     [Fact]
     public async Task SelfTest_MutesAndDeafens_RestoresPreviousState()

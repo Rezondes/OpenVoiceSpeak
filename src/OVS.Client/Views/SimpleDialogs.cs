@@ -51,7 +51,7 @@ public static class SimpleDialogs
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { cancel, ok } },
         };
-        buttonBar.Bind(Border.BackgroundProperty, buttonBar.GetResourceObservable("Ovs.Sidebar"));
+        buttonBar.Bind(Border.BackgroundProperty, buttonBar.GetResourceObservable("Ovs.DialogBar"));
         buttonBar.Bind(Border.BorderBrushProperty, buttonBar.GetResourceObservable("Ovs.Border"));
 
         var frame = new DockPanel

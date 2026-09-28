@@ -82,6 +82,7 @@
 | 58 | Reihenfolge der Einstellungen | Die Einstellungen zeigen Geräte, Lautstärke, Übertragung, Tasten, Sounds, Darstellung und Über in dieser Reihenfolge. | - |
 | 59 | Push-to-Talk-Taste von Anfang an | Ein neues Profil hat eine passende PTT-Taste, und die Einstellungen weisen auf eine fehlende PTT-Taste hin. | 41, 58 |
 | 60 | Ton für die eigene Link-PTT | Beginnt man selbst über Link zu sprechen, hört man einen eigenen, einzeln anpassbaren Ton, standardmässig den aus Package 57. | 57 |
+| 61 | Durchsichtiger Hintergrund | Die grossen Hintergrundflächen des Fensters lassen sich von 0 bis 100 % Deckkraft einstellen, auf Wunsch weichgezeichnet, während Text und Bedienelemente lesbar bleiben. | 53, 58 |
 
 ## Annahmen
 
@@ -171,6 +172,9 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A69 Standard-PTT-Taste.** Nur ein neues Profil (keine `settings.json`) bekommt eine PTT-Taste: Maustaste 4, wenn Windows mindestens 5 Maustasten meldet (`GetSystemMetrics(SM_CMOUSEBUTTONS)`), sonst Strg rechts. Bestehende Profile ohne PTT-Taste bleiben so. Package 29 ("neues Profil ohne Belegung") wird damit für die PTT-Taste abgelöst.
 - **A70 Hinweis auf fehlende PTT-Taste.** Unter "Übertragung", solange Push-to-Talk gewählt und keine PTT-Taste belegt ist, mit einem Button "Taste festlegen", der den Tasten-Dialog mit Push-to-Talk vorausgewählt öffnet. Der Hinweis unter dem eigenen Namen bleibt.
 - **A71 Ton für die eigene Link-PTT.** Neuer Sound `OwnLinkVoice` ("Eigene Sprache über Link"), standardmässig derselbe Ton wie `LinkVoice`, mit eigener Zeile (Datei, Lautstärke, Stumm). Er spielt nur lokal, bei jedem Beginn der eigenen Link-Übertragung, mit derselben 300-ms-Pausenregel wie in Package 57. Nur wenn die Stimme wirklich über Link geht: Recht vorhanden (sonst sendet Link-PTT nur in den eigenen Channel) und der eigene Channel ist mit mindestens einem anderen verlinkt. Kein Ton, wenn nichts gesendet wird (stumm, "Ton aus", stummer Channel, Selbsttest). Das ersetzt "kein Ton für die eigene Link-PTT" aus A67.
+- **A72 Machbarkeit durchsichtiger Hintergrund (geprüft).** Wegwerf-Test mit Avalonia 11.3 unter Windows 11 (Build 26200), Fenster ohne Rahmen wie der Client: `Transparent`, `AcrylicBlur` und `Mica` werden gewährt. Klicks auf völlig durchsichtige Stellen (0 %) bleiben im Fenster, weil Avalonia über DirectComposition zeichnet (`WS_EX_NOREDIRECTIONBITMAP`, kein Layered Window). Windows 10 kann `Transparent` und `AcrylicBlur`.
+- **A73 Was durchsichtig wird.** Die grossen Flächen: Fensterhintergrund, Titelleiste, Seitenleiste mit Fusszeile, Chat-Bereich und die Seiten (Einstellungen, Verwaltung), also die Pinsel `Ovs.Bg`, `Ovs.Sidebar` und `Ovs.SidebarFooter`. Karten, Eingabefelder, Menüs, Dialoge und Tooltips bleiben deckend. Dialoge bekommen dafür eigene Pinsel (`Ovs.DialogBg`, `Ovs.DialogBar`), weil sie heute `Ovs.Bg` und `Ovs.Sidebar` mitbenutzen. Text, Icons und Buttons bleiben immer voll deckend.
+- **A74 Regler und Weichzeichnen.** Unter Darstellung: Regler "Deckkraft des Hintergrunds" 0 bis 100 %, Standard 100 %, und Checkbox "Hintergrund weichzeichnen" (Acrylic, Standard aus). Beide wirken sofort, "Verwerfen" stellt die gespeicherten Werte wieder her (wie A61). Bei 100 % ohne Weichzeichnen bleibt das Fenster ein ganz normales, undurchsichtiges Fenster ohne Transparenzmodus. 0 % ist erlaubt (A72).
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -193,7 +197,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle Packages 1 bis 60 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6, 53 AC7, 57 AC5 und 60 AC6 brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Alle Packages 1 bis 61 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6, 51 AC6, 53 AC7, 57 AC5, 60 AC6 und 61 AC6 (echtes Fenster, headless zeichnet auf Schwarz) brauchen einen Test mit echten Clients (53 mit Kopfhörern). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -3807,3 +3811,72 @@ Testbefehl: `dotnet test`
 
 - Ein Ton beim Loslassen der Link-PTT
 - Anzeige, welche Channels man gerade erreicht
+
+---
+
+## Package 61: Durchsichtiger Hintergrund
+
+**Ziel:** Die grossen Hintergrundflächen des Fensters lassen sich von 0 bis 100 % Deckkraft einstellen, auf Wunsch weichgezeichnet, während Text und Bedienelemente lesbar bleiben.
+
+**Abhängigkeiten:** Package 53 (sofort wirkende Regler), 58 (Reihenfolge der Einstellungen)
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `BackgroundOpacity` (0 bis 1, Standard 1), `BlurBackground` (Standard `false`)
+- `src/OVS.Client/Views/WindowAppearance.cs` (neu): setzt die Deckkraft der Hintergrund-Pinsel in beiden Themes und den `TransparencyLevelHint` des Fensters
+- `src/OVS.Client/Styles/Theme.axaml` (ändern): `Ovs.DialogBg`, `Ovs.DialogBar` in hell und dunkel
+- `src/OVS.Client/Styles/Controls.axaml`, `src/OVS.Client/Views/SimpleDialogs.cs` (ändern): Dialoge nutzen die eigenen Pinsel
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (ändern): `BackgroundOpacityPercent`, `BlurBackground`, in `LivePreview` und `ToSettings`
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): `Appearance` für Vorschau, Speichern und Verwerfen
+- `src/OVS.Client/App.axaml.cs` (ändern): wendet `Appearance` wie das Theme an
+- `src/OVS.Client/Views/SettingsView.axaml` (ändern): Regler und Checkbox unter Darstellung
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `tests/OVS.Tests/Client/SettingsTests.cs`, `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+- `README.md` (ändern)
+
+### Kontext
+
+Ein Nutzer möchte die App dahinter sehen können. Alle Farben kommen aus `Styles/Theme.axaml` (je ein `ResourceDictionary` für hell und dunkel). Die grossen Flächen nutzen drei Pinsel: `Ovs.Bg` (Fenster, `MainWindow.Background`), `Ovs.Sidebar` (Seitenleiste, Fusszeilen der Seiten) und `Ovs.SidebarFooter` (Titelleiste, eigene Leiste unten links). Dieselben Pinsel nutzt aber auch der Dialog: `Border.dialog` in `Controls.axaml` hat `Ovs.Bg`, die Button-Leiste in `SimpleDialogs.Show` hat `Ovs.Sidebar`. Karten nutzen `Ovs.Surface`, Menüs und Tooltips die Pinsel des Fluent-Themes.
+
+Die Deckkraft eines `SolidColorBrush` (`Opacity`) wirkt nur auf die Flächen, die ihn nutzen. Text (`Ovs.Text`) bleibt deckend. Damit das Fenster wirklich durchsichtig ist, braucht es zusätzlich `TransparencyLevelHint` (`Transparent` bzw. `AcrylicBlur` zum Weichzeichnen). Die Machbarkeit ist geprüft (A72). Das Theme wendet `App.ApplyTheme` an, wenn sich `MainViewModel.Settings` ändert. Die sofort wirkenden Regler laufen seit Package 53 über `SettingsViewModel.LivePreview`, "Verwerfen" stellt über `MainViewModel` zurück.
+
+### Acceptance Criteria
+
+- [x] AC1: Unter Darstellung gibt es den Regler "Deckkraft des Hintergrunds" von 0 bis 100 % (Standard 100 %) und die Checkbox "Hintergrund weichzeichnen" (Standard aus).
+- [x] AC2: Unter 100 % haben `Ovs.Bg`, `Ovs.Sidebar` und `Ovs.SidebarFooter` in hellem und dunklem Theme genau diese Deckkraft, und das Fenster läuft im Transparenzmodus (`Transparent`, mit Weichzeichnen `AcrylicBlur`). Bei 100 % ohne Weichzeichnen ist das Fenster normal undurchsichtig (kein Transparenzmodus).
+- [x] AC3: Text, Karten, Eingabefelder, Dialoge, Menüs und Tooltips bleiben voll deckend, auch bei 0 %.
+- [x] AC4: Regler und Checkbox wirken sofort, "Verwerfen" stellt die gespeicherten Werte wieder her, "Speichern" übernimmt sie, und sie gelten nach einem Neustart.
+- [x] AC5: Werte ausserhalb 0 bis 100 % aus der Datei werden begrenzt. Texte auf Deutsch und Englisch.
+- [ ] AC6 (manuell): Am echten Fenster unter Windows 11 bei 50 % und 0 %: Die App dahinter ist sichtbar, Text bleibt lesbar, Klicks auf leere Stellen bleiben im Fenster, mit Weichzeichnen ist der Hintergrund verschwommen. Wechsel zwischen hell und dunkel behält die Deckkraft.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `SettingsTests > "BackgroundAppearance_RoundTrip_Clamped"` (AC1, AC5)
+   - Gegeben: neues Profil, dann Regler 40 % und Weichzeichnen an, speichern und laden, ausserdem `BackgroundOpacity = 3` und `-1` in der Datei
+   - Erwartet: Standard 1,0 und aus. Nach dem Laden 0,4 und an. Begrenzt auf 1 bzw. 0.
+2. `SettingsTests > "Sliders_ApplyLive"` erweitert (AC4): Regler und Checkbox lösen `LivePreview` mit den neuen Werten aus
+3. `UiSmokeTests > "BackgroundOpacity_OnlyBackgroundsSeeThrough"` (AC2, AC3)
+   - Gegeben: Hauptfenster, `WindowAppearance.Apply` mit 50 % ohne und dann mit Weichzeichnen, dann 100 %. Beide Theme-Varianten
+   - Erwartet: `Ovs.Bg`, `Ovs.Sidebar`, `Ovs.SidebarFooter` mit `Opacity` 0,5, `Ovs.Text`, `Ovs.Surface`, `Ovs.DialogBg`, `Ovs.DialogBar` mit 1. `TransparencyLevelHint` `Transparent`, dann `AcrylicBlur`, bei 100 % leer. Ein offener Dialog nutzt `Ovs.DialogBg`.
+4. `MainViewModelTests > "Appearance_LivePreview_DiscardRestores_SaveKeeps"` (AC4)
+   - Gegeben: Einstellungen öffnen, Regler auf 30 %, verwerfen. Dann 60 % und speichern
+   - Erwartet: `Appearance` sofort 30 %, nach dem Verwerfen wieder 100 %. Nach dem Speichern 60 % in `Settings` und in der Datei.
+5. `LocalizationTests` bleiben grün (AC5)
+6. Manueller Check AC6
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot), Felder und Begrenzung in `ClientSettings`, Werte im `SettingsViewModel`.
+2. Test 3 (rot), `Ovs.DialogBg` und `Ovs.DialogBar` im Theme, Dialoge darauf umstellen, `WindowAppearance.Apply`.
+3. Tests 2 und 4 (rot), `LivePreview` erweitern, `MainViewModel.Appearance`, Anwendung in `App.axaml.cs` neben dem Theme.
+4. Regler und Checkbox in `SettingsView.axaml` (Abschnitt Darstellung), Texte, README.
+5. Manueller Check AC6 am echten Fenster, Screenshot bei 50 % ansehen.
+
+### Out of Scope
+
+- Durchsichtige Karten, Menüs und Dialoge
+- `Mica` als eigene Option (nur Windows 11, wirkt kaum anders als Acrylic)
+- Eine Tastenkombination zum schnellen Umschalten der Deckkraft

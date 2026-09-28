@@ -169,9 +169,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public Dialogs Dialogs { get; set; } = new();
     public Func<TofuPrompt, Task<bool>> ConfirmTofu { get; set; } = _ => Task.FromResult(false);
 
+    /// <summary>Package 61: how see-through the backgrounds are right now (saved, or previewed on the settings page).</summary>
+    [ObservableProperty] BackgroundAppearance appearance = new(1f, false);
+
     public void ApplySettings(ClientSettings settings)
     {
         Settings = settings.Clamp();
+        Appearance = BackgroundAppearance.From(Settings);
         Settings.Save(storageDir);
         sounds.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();
@@ -538,13 +542,21 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             CheckNow = CheckForUpdatesAsync,
             ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
             PreviewSound = (sound, setting, overall) => Audio.Sounds.Play(sounds.Samples(sound, setting), overall * setting.Volume),
-            LivePreview = Audio.ApplyLive, // Package 53
+            LivePreview = live => // Package 53, 61
+            {
+                Audio.ApplyLive(live);
+                Appearance = BackgroundAppearance.From(live);
+            },
             SetSelfTest = SetSelfTestAsync,
         };
         vm.CloseRequested += save =>
         {
             if (save) ApplySettings(vm.ToSettings(Settings));
-            else Audio.ApplyLive(Settings); // "Verwerfen": back to what is saved
+            else // "Verwerfen": back to what is saved
+            {
+                Audio.ApplyLive(Settings);
+                Appearance = BackgroundAppearance.From(Settings);
+            }
             CloseSettings();
         };
         Audio.InputLevel += OnInputLevel;

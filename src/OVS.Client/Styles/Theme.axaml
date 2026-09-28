@@ -8,6 +8,9 @@
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Ovs.Bg" Color="#111318" />
+      <!-- Package 61: dialogs keep solid copies when the backgrounds become see-through -->
+      <SolidColorBrush x:Key="Ovs.DialogBg" Color="#111318" />
+      <SolidColorBrush x:Key="Ovs.DialogBar" Color="#17191F" />
       <SolidColorBrush x:Key="Ovs.Sidebar" Color="#17191F" />
       <SolidColorBrush x:Key="Ovs.SidebarFooter" Color="#13151A" />
       <SolidColorBrush x:Key="Ovs.Surface" Color="#1E2128" />
@@ -33,6 +36,9 @@
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="Ovs.Bg" Color="#F4F5F7" />
+      <!-- Package 61: dialogs keep solid copies when the backgrounds become see-through -->
+      <SolidColorBrush x:Key="Ovs.DialogBg" Color="#F4F5F7" />
+      <SolidColorBrush x:Key="Ovs.DialogBar" Color="#EBEDF1" />
       <SolidColorBrush x:Key="Ovs.Sidebar" Color="#EBEDF1" />
       <SolidColorBrush x:Key="Ovs.SidebarFooter" Color="#E3E6EB" />
       <SolidColorBrush x:Key="Ovs.Surface" Color="#FFFFFF" />

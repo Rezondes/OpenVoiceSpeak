@@ -102,8 +102,13 @@ public sealed class ClientSettings
         else UserVolumes[fingerprint] = volume;
     }
 
+    /// <summary>Package 61: opacity of the large backgrounds (0 to 1) and whether what shows through is blurred.</summary>
+    public float BackgroundOpacity { get; set; } = 1f;
+    public bool BlurBackground { get; set; }
+
     public ClientSettings Clamp()
     {
+        BackgroundOpacity = Math.Clamp(BackgroundOpacity, 0f, 1f);
         InputGain = Math.Clamp(InputGain, 0f, 2f);
         OutputVolume = Math.Clamp(OutputVolume, 0f, 2f);
         SoundVolume = Math.Clamp(SoundVolume, 0f, 1f);
@@ -150,4 +155,10 @@ public sealed class ClientSettings
         Directory.CreateDirectory(directory);
         ClientStorage.WriteAtomic(Path.Combine(directory, FileName), JsonSerializer.SerializeToUtf8Bytes(this, Options));
     }
+}
+
+/// <summary>Package 61: how see-through the window's backgrounds are.</summary>
+public sealed record BackgroundAppearance(float Opacity, bool Blur)
+{
+    public static BackgroundAppearance From(ClientSettings settings) => new(settings.BackgroundOpacity, settings.BlurBackground);
 }

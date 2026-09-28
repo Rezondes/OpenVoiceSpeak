@@ -479,6 +479,46 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 61: only the large backgrounds become see-through; text, cards and dialogs stay solid.</summary>
+    [AvaloniaFact]
+    public void BackgroundOpacity_OnlyBackgroundsSeeThrough()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm };
+        main.Show();
+        var app = Application.Current!;
+        double Opacity(string key, ThemeVariant variant) =>
+            app.Resources.TryGetResource(key, variant, out var value) && value is ISolidColorBrush brush ? brush.Opacity : double.NaN;
+        try
+        {
+            WindowAppearance.Apply(app, main, new BackgroundAppearance(0.5f, false));
+            foreach (var variant in new[] { ThemeVariant.Dark, ThemeVariant.Light })
+            {
+                foreach (var key in WindowAppearance.BackgroundKeys) Assert.Equal(0.5, Opacity(key, variant), 3);
+                foreach (var key in new[] { "Ovs.Text", "Ovs.Surface", "Ovs.DialogBg", "Ovs.DialogBar", "Ovs.Accent" }) Assert.Equal(1, Opacity(key, variant));
+            }
+            Assert.Equal([WindowTransparencyLevel.Transparent], main.TransparencyLevelHint);
+            WindowAppearance.Apply(app, main, new BackgroundAppearance(0.5f, true));
+            Assert.Equal(WindowTransparencyLevel.AcrylicBlur, main.TransparencyLevelHint[0]);
+
+            _ = SimpleDialogs.Confirm(main.Overlay, "?");
+            Dispatcher.UIThread.RunJobs();
+            var card = main.Overlay.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("dialog"));
+            Assert.Equal(1, ((ISolidColorBrush)card.Background!).Opacity); // dialogs stay solid
+            main.Overlay.Close();
+            Dispatcher.UIThread.RunJobs();
+
+            WindowAppearance.Apply(app, main, new BackgroundAppearance(1f, false));
+            Assert.Empty(main.TransparencyLevelHint); // a normal window again
+            Assert.Equal(1, Opacity("Ovs.Bg", ThemeVariant.Dark));
+        }
+        finally
+        {
+            WindowAppearance.Apply(app, main, new BackgroundAppearance(1f, false)); // the resources are shared by all tests
+            main.Close();
+        }
+    }
+
     /// <summary>Package 58: transmit and keys come right after the volume, the long sound list after them.</summary>
     [AvaloniaFact]
     public void Settings_SectionOrder()

@@ -39,6 +39,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] bool allSoundsOff;
     [ObservableProperty] double soundVolumePercent;
     [ObservableProperty] string? updateStatus;
+    [ObservableProperty] double backgroundOpacityPercent;
+    [ObservableProperty] bool blurBackground;
 
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, KeyPoller? keys = null)
@@ -61,6 +63,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         selectedLanguage = Languages.First(l => l.Value == current.Language);
         checkForUpdates = current.CheckForUpdates;
         allSoundsOff = !current.SoundsEnabled;
+        backgroundOpacityPercent = current.BackgroundOpacity * 100f;
+        blurBackground = current.BlurBackground;
         SoundRows = Enum.GetValues<SoundEvent>().Select(e => new SoundRow(e, current.SoundFor(e), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
     }
@@ -136,6 +140,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     void Preview() => LivePreview?.Invoke(ToSettings(basis));
 
     partial void OnVoiceActivationChanged(bool value) => Preview();
+
+    partial void OnBackgroundOpacityPercentChanged(double value)
+    {
+        BackgroundOpacityPercent = Math.Clamp(value, 0, 100);
+        Preview();
+    }
+
+    partial void OnBlurBackgroundChanged(bool value) => Preview();
 
     // ---- Devices (Package 52: the list loads in the background) ----
 
@@ -284,6 +296,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         CheckForUpdates = CheckForUpdates,
         SoundsEnabled = !AllSoundsOff,
         SoundVolume = (float)(SoundVolumePercent / 100),
+        BackgroundOpacity = (float)(BackgroundOpacityPercent / 100),
+        BlurBackground = BlurBackground,
         Sounds = SoundRows.Select(r => (r.Event, Setting: r.ToSetting())).Where(r => !r.Setting.IsDefault).ToDictionary(r => r.Event, r => r.Setting),
     }.Clamp();
 }

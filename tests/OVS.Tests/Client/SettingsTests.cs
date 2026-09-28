@@ -363,6 +363,25 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(3, reload.Inputs.Count);
     }
 
+    /// <summary>Package 61: background opacity and blur survive a restart and stay within 0 to 100 %.</summary>
+    [Fact]
+    public void BackgroundAppearance_RoundTrip_Clamped()
+    {
+        var fresh = ClientSettings.Load(dir, out _);
+        Assert.Equal((1f, false), (fresh.BackgroundOpacity, fresh.BlurBackground));
+        var vm = Vm(fresh);
+        Assert.Equal((100d, false), (vm.BackgroundOpacityPercent, vm.BlurBackground));
+        vm.BackgroundOpacityPercent = 40;
+        vm.BlurBackground = true;
+        vm.ToSettings(fresh).Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal((0.4f, true), (loaded.BackgroundOpacity, loaded.BlurBackground));
+        Assert.Equal(1f, new ClientSettings { BackgroundOpacity = 3 }.Clamp().BackgroundOpacity);
+        Assert.Equal(0f, new ClientSettings { BackgroundOpacity = -1 }.Clamp().BackgroundOpacity);
+        vm.BackgroundOpacityPercent = 150;
+        Assert.Equal(100, vm.BackgroundOpacityPercent);
+    }
+
     /// <summary>Package 53: the sliders are heard at once, not only after "Speichern".</summary>
     [Fact]
     public void Sliders_ApplyLive()
@@ -379,6 +398,10 @@ public sealed class SettingsTests : IDisposable
         vm.VoiceActivation = true;
         Assert.Equal(TransmitMode.VoiceActivation, live[^1].Mode);
         Assert.Equal(0.5f, live[^1].InputGain); // every preview carries all values
+        vm.BackgroundOpacityPercent = 30; // Package 61: the background is seen at once as well
+        Assert.Equal(0.3f, live[^1].BackgroundOpacity, 3);
+        vm.BlurBackground = true;
+        Assert.True(live[^1].BlurBackground);
     }
 
     /// <summary>Package 59: push-to-talk without a key cannot work; the settings say so and offer to set one.</summary>

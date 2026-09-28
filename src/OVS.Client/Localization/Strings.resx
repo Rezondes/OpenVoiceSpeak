@@ -233,9 +233,12 @@
   <data name="Ui_Apply" xml:space="preserve"><value>Übernehmen</value></data>
   <data name="Ui_AsFmt" xml:space="preserve"><value>als {0}</value></data>
   <data name="Ui_AssignKeyHint" xml:space="preserve"><value>Taste in den Einstellungen belegen</value></data>
+  <data name="Ui_BackgroundOpacity" xml:space="preserve"><value>Deckkraft des Hintergrunds</value></data>
+  <data name="Ui_BackgroundOpacityHint" xml:space="preserve"><value>Unter 100 % scheint die App dahinter durch. Text, Karten und Dialoge bleiben deckend.</value></data>
   <data name="Ui_BanMenu" xml:space="preserve"><value>Bannen ...</value></data>
   <data name="Ui_Bans" xml:space="preserve"><value>Bans</value></data>
   <data name="Ui_BelowThreshold" xml:space="preserve"><value>unter der Schwelle</value></data>
+  <data name="Ui_BlurBackground" xml:space="preserve"><value>Hintergrund weichzeichnen</value></data>
   <data name="Ui_BookmarksSection" xml:space="preserve"><value>LESEZEICHEN</value></data>
   <data name="Ui_ChangeFmt" xml:space="preserve"><value>{0}: ändern</value></data>
   <data name="Ui_ChangeMenu" xml:space="preserve"><value>Ändern ...</value></data>

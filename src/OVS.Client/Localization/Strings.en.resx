@@ -233,9 +233,12 @@
   <data name="Ui_Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="Ui_AsFmt" xml:space="preserve"><value>as {0}</value></data>
   <data name="Ui_AssignKeyHint" xml:space="preserve"><value>Assign a key in the settings</value></data>
+  <data name="Ui_BackgroundOpacity" xml:space="preserve"><value>Background opacity</value></data>
+  <data name="Ui_BackgroundOpacityHint" xml:space="preserve"><value>Below 100 % the app behind shows through. Text, cards and dialogs stay solid.</value></data>
   <data name="Ui_BanMenu" xml:space="preserve"><value>Ban ...</value></data>
   <data name="Ui_Bans" xml:space="preserve"><value>Bans</value></data>
   <data name="Ui_BelowThreshold" xml:space="preserve"><value>below the threshold</value></data>
+  <data name="Ui_BlurBackground" xml:space="preserve"><value>Blur the background</value></data>
   <data name="Ui_BookmarksSection" xml:space="preserve"><value>BOOKMARKS</value></data>
   <data name="Ui_ChangeFmt" xml:space="preserve"><value>{0}: change</value></data>
   <data name="Ui_ChangeMenu" xml:space="preserve"><value>Change ...</value></data>

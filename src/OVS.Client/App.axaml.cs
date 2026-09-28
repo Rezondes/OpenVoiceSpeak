@@ -34,6 +34,11 @@ public partial class App : Application
                 if (e.PropertyName == nameof(MainViewModel.Settings)) ApplyTheme(vm.Settings.Theme);
             };
             var window = new MainWindow { DataContext = vm };
+            WindowAppearance.Apply(this, window, vm.Appearance); // Package 61
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.Appearance)) WindowAppearance.Apply(this, window, vm.Appearance);
+            };
             if (options.ProfileDir != ClientStorage.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
             DebugApi? debugApi = null;
             if (options.DebugApiPort is { } port)

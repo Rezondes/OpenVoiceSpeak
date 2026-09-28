@@ -274,6 +274,14 @@
                 </ComboBox.ItemTemplate>
               </ComboBox>
               <TextBlock Classes="caption" Text="{x:Static l:Strings.Settings_LanguageHint}" />
+              <!-- Package 61: see-through backgrounds -->
+              <DockPanel Margin="0,10,0,0">
+                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding BackgroundOpacityPercent, StringFormat='{}{0:0} %'}" />
+                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_BackgroundOpacity}" />
+              </DockPanel>
+              <Slider Minimum="0" Maximum="100" Value="{Binding BackgroundOpacityPercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_BackgroundOpacity}" />
+              <CheckBox Content="{x:Static l:Strings.Ui_BlurBackground}" IsChecked="{Binding BlurBackground}" />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackgroundOpacityHint}" />
             </StackPanel>
           </Border>
         </StackPanel>

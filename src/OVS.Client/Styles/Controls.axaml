@@ -90,7 +90,7 @@
   </Style>
   <!-- Dialog card on the overlay layer -->
   <Style Selector="Border.dialog">
-    <Setter Property="Background" Value="{DynamicResource Ovs.Bg}" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.DialogBg}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
