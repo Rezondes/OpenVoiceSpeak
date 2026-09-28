@@ -114,11 +114,12 @@ public class ReceivePathTests
         Assert.All(silence, s => Assert.Equal(0f, s));
         Assert.Empty(active);
 
-        // Feed identical steady frames to two speakers and compare with one speaker.
+        // Feed identical steady frames to two speakers and compare with one speaker; quiet enough to stay below the limiter.
         var single = new Mixer();
+        var encoder = new VoiceEncoder(); // a fresh stream: no start-up transient from another test's encoder state
         for (uint n = 0; n < 6; n++)
         {
-            var f = Encoder.Encode(Sine(0.4f, (int)n * AudioFormat.FrameSamples));
+            var f = encoder.Encode(Sine(0.15f, (int)n * AudioFormat.FrameSamples));
             mixer.Push(1, n, f, false);
             mixer.Push(2, n, f, false);
             single.Push(1, n, f, false);
@@ -128,7 +129,7 @@ public class ReceivePathTests
             var (both, act) = mixer.Tick();
             var (one, _) = single.Tick();
             Assert.Equal(2, act.Count);
-            for (int k = 0; k < one.Length; k++) Assert.Equal(Math.Clamp(2 * one[k], -1f, 1f), both[k], 3);
+            for (int k = 0; k < one.Length; k++) Assert.Equal(2 * one[k], both[k], 3);
         }
     }
 
@@ -138,7 +139,81 @@ public class ReceivePathTests
         var mixer = new Mixer { Volume = 10f };
         for (uint n = 0; n < 3; n++) mixer.Push(1, n, Encoder.Encode(Sine(0.8f)), false);
         var (frame, _) = mixer.Tick();
-        Assert.All(frame, s => Assert.InRange(s, -1f, 1f));
+        Assert.All(frame, s => Assert.InRange(s, -SoftLimiter.Threshold, SoftLimiter.Threshold));
+    }
+
+    /// <summary>The first frames a mixer plays for one speaker, next to the same frames decoded directly.</summary>
+    static (float[] Mixed, float[] Reference) MixedAndDirect(float amplitude, float volume, int frames = 4)
+    {
+        var encoder = new VoiceEncoder();
+        var packets = Enumerable.Range(0, 8).Select(n => encoder.Encode(Sine(amplitude, n * AudioFormat.FrameSamples))).ToList();
+        var mixer = new Mixer { Volume = volume };
+        for (int n = 0; n < packets.Count; n++) mixer.Push(1, (uint)n, packets[n], false);
+        var mixed = new List<float>();
+        for (int tick = 0; tick < 20 && mixed.Count < frames * AudioFormat.FrameSamples; tick++)
+        {
+            var (frame, active) = mixer.Tick();
+            if (active.Count > 0) mixed.AddRange(frame);
+        }
+        var decoder = new VoiceDecoder();
+        var reference = packets.Take(frames).SelectMany(p => decoder.Decode(p)).ToArray();
+        return ([.. mixed], reference);
+    }
+
+    static double Db(float[] a, float[] b) => 20 * Math.Log10(Rms(a) / Rms(b));
+
+    /// <summary>Package 50: others arrived much too quietly; every voice now gets twice the amplitude (+6 dB).</summary>
+    [Fact]
+    public void Mixer_DefaultBoost_DoublesQuietVoice()
+    {
+        Assert.Equal(2f, Mixer.DefaultVoiceBoost);
+        var (mixed, reference) = MixedAndDirect(0.2f, 1f);
+        Assert.Equal(reference.Length, mixed.Length);
+        Assert.InRange(Db(mixed, reference), 5.5, 6.5);
+        for (int i = 0; i < mixed.Length; i++) Assert.Equal(2 * reference[i], mixed[i], 3);
+    }
+
+    [Fact]
+    public void Mixer_Volume_ScalesBoostedVoice()
+    {
+        var (mixed, reference) = MixedAndDirect(0.2f, 0.5f);
+        Assert.InRange(Db(mixed, reference), -0.5, 0.5); // 50 % is the level from before Package 50
+    }
+
+    [Fact]
+    public void Limiter_LoudInput_NoHardClipping_RecoversAfterwards()
+    {
+        var limiter = new SoftLimiter();
+        for (int n = 0; n < 5; n++)
+        {
+            var frame = Sine(1.6f, n * AudioFormat.FrameSamples);
+            limiter.Process(frame);
+            Assert.All(frame, s => Assert.InRange(s, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
+            int atLimit = frame.Count(s => MathF.Abs(s) > SoftLimiter.Threshold - 0.001f);
+            Assert.True(atLimit <= frame.Length / 20, $"{atLimit} samples flattened at the limit"); // hard clipping: about 40 %
+            Assert.True(Rms(frame) > 0.6f, "the loud part stays loud");
+        }
+        Assert.True(limiter.Gain < 1f);
+        for (int n = 0; n < 15; n++) limiter.Process(Sine(0.4f, n * AudioFormat.FrameSamples)); // 300 ms of normal speech
+        Assert.Equal(1f, limiter.Gain);
+        var quiet = Sine(0.4f);
+        var copy = quiet.ToArray();
+        limiter.Process(quiet);
+        Assert.Equal(copy, quiet);
+    }
+
+    [Fact]
+    public void Limiter_BelowThreshold_Untouched()
+    {
+        var limiter = new SoftLimiter();
+        for (int n = 0; n < 10; n++)
+        {
+            var frame = Sine(0.5f, n * AudioFormat.FrameSamples);
+            var copy = frame.ToArray();
+            limiter.Process(frame);
+            for (int i = 0; i < frame.Length; i++) Assert.Equal(copy[i], frame[i], 3);
+        }
+        Assert.Equal(1f, limiter.Gain);
     }
 
     [Fact]

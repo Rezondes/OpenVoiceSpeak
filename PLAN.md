@@ -14,6 +14,8 @@
 > | Phase 5: Client-UI | 16, 17, 18 |
 > | Phase 6: Hosting | 19 |
 >
+> **Packages 50 und 51:** In der Anfrage stand die Lautstärke je Nutzer zuerst. Sie kommt als 51 nach der Grundverstärkung (50), weil beide im selben Mixer wirken und 51 den Begrenzer aus 50 braucht.
+>
 > **Parallel möglich:** Nach Package 1 können 2, 3, 6, 11 und 13 unabhängig voneinander laufen. Nach Package 7 können 8, 9 und 10 parallel laufen.
 
 ## Überblick
@@ -69,6 +71,8 @@
 | 47 | Sounds | Der Client spielt bei Mikrofon, Ton, Verbindung, Channel und Privatnachricht kurze Töne, mit Gesamtlautstärke und "Alle Sounds aus". | 46 |
 | 48 | Sounds anpassen | Jeder Sound hat eine eigene Lautstärke, lässt sich stumm schalten und durch eine eigene Datei ersetzen. | 47 |
 | 49 | Website | Eine zweisprachige Seite auf GitHub Pages stellt die App für Nutzer vor und wird mit jedem Release neu ausgeliefert. | 42, 46 |
+| 50 | Stimmen lauter | Andere Stimmen kommen beim Zuhörer standardmässig doppelt so laut an, ohne bei lauten Stellen zu verzerren. | 13, 17 |
+| 51 | Lautstärke je Nutzer | Jeder kann die Lautstärke einzelner anderer Nutzer zwischen 0 und 200 % einstellen, und die Einstellung bleibt je Person erhalten. | 50 |
 
 ## Annahmen
 
@@ -137,6 +141,12 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A47 Sounds anpassen.** Pro Sound: eigene Datei (WAV oder MP3, höchstens 5 Sekunden, wird ins Profil nach `sounds/` kopiert), Lautstärke, stumm, "Abspielen", "Zurücksetzen". Global: Gesamtlautstärke und "Alle Sounds aus". Die Windows-Dateiauswahl ist wie beim Server-Logo die erlaubte Ausnahme von A20.
 - **A48 Website.** Ordner `website/`, React, Vite und TypeScript, Tests mit Vitest. Deutsch und Englisch mit Umschalter, Standard nach Browsersprache. Einseitig: Hero mit Download-Button (direkt die neueste exe über `releases/latest/download/OVS.Client.exe`) und Versionsnummer, Vorteile, für wen, Screenshots, Installation in drei Schritten mit SmartScreen-Hinweis, "Eigenen Server betreiben" mit Link zur README, Footer. Gestaltung mit dem Skill `ui-ux-pro-max`.
 - **A49 Auslieferung der Website.** Eigener Job `pages` im Release-Workflow nach dem Release, damit die Seite die ausgelieferte Version zeigt. Adresse `https://rezondes.github.io/OpenVoiceSpeak/`. GitHub Pages ist im Repo bereits auf "GitHub Actions" gestellt. Pull Requests bauen und testen die Seite nur.
+- **A51 Verstärkung beim Empfänger.** Alle eingehenden Stimmen bekommen im Mixer den festen Faktor ×2 (+6 dB, `Mixer.DefaultVoiceBoost`), vor dem Regler "Lautstärke". Das wirkt, sobald der Zuhörer aktualisiert, unabhängig von der Version des Sprechers. Die Mikrofonverstärkung beim Sender bleibt unverändert (gespeicherte Profile hätten sonst eine Migration gebraucht). Eine Pegelautomatik je Sprecher ist nicht Teil davon.
+- **A52 Begrenzer statt hartem Abschneiden.** Nach Verstärkung und Lautstärke begrenzt ein weicher Begrenzer die Summe auf höchstens 0,95: Die Absenkung greift sofort und geht innerhalb von etwa 200 ms zurück, Übergänge werden innerhalb eines Frames gerampt, damit nichts knackt. Unterhalb der Schwelle bleibt das Signal unverändert.
+- **A53 Stereo-Mikrofone.** `CapturePipeline.ToMono` nimmt bei mehreren Kanälen den lautesten Kanal, wenn er mindestens 6 dB (vierfache Energie) lauter ist als der Durchschnitt der übrigen, sonst weiter den Durchschnitt. So kommt ein Mikrofon, das nur auf einem Kanal liefert, nicht mehr mit halbem Pegel an, und echtes Stereo mit gleichen Kanälen bleibt wie bisher.
+- **A54 Regler "Lautstärke".** Er bleibt bei 0 bis 100 %. Mehr als heute gibt es über die Grundverstärkung (A51) und je Nutzer (A55).
+- **A55 Lautstärke je Nutzer.** Schieberegler 0 bis 200 % in 5er-Schritten direkt im Kontextmenü eines anderen Nutzers, mit Prozentanzeige und dem Eintrag "Auf 100 % zurücksetzen". Beim eigenen Eintrag gibt es ihn nicht. Gespeichert je Fingerprint in `ClientSettings.UserVolumes`, damit gilt die Einstellung auf allen Servern und nach einem Neustart. Gespeichert wird nur, was von 100 % abweicht. Reihenfolge der Faktoren: Nutzer-Lautstärke × Grundverstärkung × Regler "Lautstärke", danach der Begrenzer. 200 % bei einer Person sind also ×4 gegenüber vor Package 50.
+- **A56 Anzeige im Channel-Baum.** Weicht die Lautstärke einer Person von 100 % ab, zeigt ein kleines Lautsprecher-Icon mit Tooltip (z. B. "Lautstärke 150 %") das an. Bei 0 % ist es der durchgestrichene Lautsprecher mit dem Tooltip "Für dich stumm". Das Ändern der Lautstärke startet keine Audiogeräte neu, es wirkt sofort im Mixer.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -159,7 +169,7 @@ tests/OVS.Tests/  TestSupport/, Protocol/, Shared/, Server/, Voice/, Client/
 
 ## Umsetzungsstand (27.09.2026)
 
-Alle Packages 1 bis 49 sind umgesetzt. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
+Die Packages 1 bis 50 sind umgesetzt, 51 ist geplant. Die Tests laufen mit `dotnet test` und `cd website && npm test` grün, der Build hat 0 Warnungen. Offen sind nur manuelle Acceptance Criteria: Package 16 AC9, 17 AC7 und 27 AC4 brauchen ein Headset, einen Blick auf den Bildschirm bzw. echte Fensterbedienung (siehe Tabelle der manuellen Checks). Package 42 AC6, 43 AC6 und 44 AC5 lassen sich erst nach dem Push auf das öffentliche Repo prüfen: erster Workflow-Lauf, ein Update von einem Release auf das nächste, `docker pull` ohne Anmeldung (vorher das Container-Package einmal auf "public" stellen). Package 50 AC6 braucht einen Test mit echten Clients. Package 49 AC6 ebenso: die Seite unter `https://rezondes.github.io/OpenVoiceSpeak/` mit Download und Lighthouse-Wert.
 
 ### Bewusste Abweichungen vom Plantext
 
@@ -185,6 +195,7 @@ Alle Packages 1 bis 49 sind umgesetzt. Die Tests laufen mit `dotnet test` und `c
 | 32 | AC8 (Scrollverhalten) als manueller Check | `UiSmokeTests > "Chat_FollowsNewLines_UnlessScrolledUp"` | Headless mit Skia lässt sich das Scrollen verlässlich prüfen. |
 | 32 | "Allgemein" zeigt Meldungen ab dem Verbinden | "Allgemein" übernimmt beim Verbinden auch die Meldungen davor | So geht z. B. eine Geräte-Warnung vom Start nicht verloren, wie früher in der Aktivität. |
 | 49 | `sections/*.tsx`, `styles.css`, Screenshots als PNG | alle Abschnitte in `App.tsx`, Stil in `index.css`, Screenshots als WebP (je Sprache hell und dunkel), Icons aus den Fluent-Pfaden des Clients (`icons.ts`) | eine kleine Seite braucht keine Aufteilung, WebP ist etwa ein Drittel so gross. In der Galerie steht der Privatchat statt einer Wiederholung des Hero-Bilds. |
+| 50 | AC3: höchstens 1 % der Proben auf der Grenze | höchstens 5 % | Auch ohne Abschneiden liegen bei einem Sinus die Proben um jeden Scheitel nah an der Grenze, 1 % ist dafür zu knapp. Hartes Abschneiden läge bei etwa 40 %. |
 | 1 | keine `nuget.config` | `nuget.config` nur mit nuget.org | Die globale NuGet-Konfiguration des Entwicklungsrechners verweist auf einen fehlenden Ordner. Mit der Datei baut das Projekt überall gleich. |
 
 ### Ergebnisse der manuellen Checks (27.09.2026, Windows 11, Docker Desktop 29.2.1)
@@ -3115,3 +3126,146 @@ Testbefehl: `cd website && npm test`, Build: `cd website && npm run build`
 ### Out of Scope
 
 - Eigene Domain, Analytics, Blog oder Changelog-Seite
+
+---
+
+## Package 50: Stimmen lauter
+
+**Ziel:** Andere Stimmen kommen beim Zuhörer standardmässig doppelt so laut an, ohne bei lauten Stellen zu verzerren.
+
+**Abhängigkeiten:** Package 13, 17
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/Mixer.cs` (ändern): `DefaultVoiceBoost = 2f`, Verstärkung vor `Volume`, Begrenzer statt `Math.Clamp`
+- `src/OVS.Client/Audio/Mixer.cs` (ändern): neue kleine Klasse `SoftLimiter` in derselben Datei
+- `src/OVS.Client/Audio/CapturePipeline.cs` (ändern): `ToMono` nimmt bei einseitigem Signal den lauteren Kanal (A53)
+- `tests/OVS.Tests/Client/ReceivePathTests.cs` (ändern)
+- `tests/OVS.Tests/Client/SendPathTests.cs` (ändern)
+- `README.md` (ändern): Hinweis zur Verstärkung bei den Client-Einstellungen
+
+### Kontext
+
+Im Test mit anderen Leuten waren alle hörbar, aber sehr leise. Die Wiedergabe hat heute genau einen Faktor: `Mixer.Tick()` summiert die dekodierten Frames aller Sprecher, multipliziert mit `Volume` (Regler "Lautstärke", 0 bis 100 %, `ClientSettings.OutputVolume`) und schneidet mit `Math.Clamp` hart auf ±1 ab. Eine Verstärkung gibt es nur beim Sender (`CapturePipeline.Gain`, Regler "Mikrofonverstärkung", Standard 100 %).
+
+Dazu kommt eine wahrscheinliche Ursache auf der Senderseite: `CapturePipeline.ToMono` mittelt die Kanäle. Viele Audio-Interfaces und manche Headsets melden sich als Stereo, liefern aber nur auf einem Kanal Signal. Dann halbiert der Durchschnitt den Pegel (−6 dB).
+
+`AudioEngine.Mix()` misst `LastOutputLevelDb` nach dem Mixer und vor den Tönen, die Debug-API gibt den Wert aus. Damit lässt sich die Änderung auch am echten Gerät nachmessen.
+
+### Acceptance Criteria
+
+- [x] AC1: Ein einzelner leiser Sprecher (Sinus mit Spitze 0,2) kommt bei Lautstärke 100 % mit etwa doppelter Amplitude an (Pegel +6 dB ± 0,5 dB gegenüber vorher).
+- [x] AC2: Der Regler "Lautstärke" wirkt weiter linear auf die verstärkte Stimme: 50 % ergibt den Pegel von vor Package 50.
+- [x] AC3: Laute Signale (Spitze nach Verstärkung über 1) werden nicht hart abgeschnitten: keine Probe liegt über 0,95, die Kurvenform bleibt rund (höchstens 1 % der Proben eines Frames liegen auf der Grenze), und nach dem Ende der lauten Stelle ist die volle Verstärkung nach spätestens 300 ms zurück.
+- [x] AC4: Signale unterhalb der Schwelle bleiben unverändert (Abweichung unter 0,001), der Begrenzer färbt normale Sprache also nicht.
+- [x] AC5: Ein Stereo-Mikrofon mit Signal nur auf einem Kanal wird mit vollem Pegel übernommen. Stereo mit gleichen Kanälen und Mono verhalten sich wie bisher.
+- [ ] AC6 (manuell): Test mit mindestens zwei echten Clients über den Docker-Server: Die anderen sind bei Standardeinstellungen deutlich lauter als vorher, auch zwei gleichzeitig Sprechende verzerren nicht. Die Debug-API zeigt beim Sprechen einen um etwa 6 dB höheren `LastOutputLevelDb` als eine Version vor Package 50.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `ReceivePathTests > "Mixer_DefaultBoost_DoublesQuietVoice"` (AC1)
+   - Gegeben: ein Sprecher mit Sinus 0,2, einmal durch `new Mixer()`, einmal als Referenz direkt dekodiert
+   - Erwartet: Pegel des Mixer-Frames = Referenz + 6 dB ± 0,5 dB, Spitze etwa 0,4
+2. `ReceivePathTests > "Mixer_Volume_ScalesBoostedVoice"` (AC2)
+   - Gegeben: derselbe Sprecher, `Volume = 0.5f`
+   - Erwartet: Pegel gleich der Referenz ± 0,5 dB
+3. `ReceivePathTests > "Limiter_LoudInput_NoHardClipping_RecoversAfterwards"` (AC3)
+   - Gegeben: `SoftLimiter` mit Frames eines Sinus mit Spitze 1,6, danach Frames mit Spitze 0,4
+   - Erwartet: alle Proben höchstens 0,95, höchstens 1 % der Proben eines Frames auf 0,95 ± 0,001, spätestens nach 15 leisen Frames (300 ms) wieder Faktor 1
+4. `ReceivePathTests > "Limiter_BelowThreshold_Untouched"` (AC4)
+   - Gegeben: Sinus mit Spitze 0,5
+   - Erwartet: Ausgabe gleich Eingabe (Abweichung unter 0,001)
+5. `ReceivePathTests > "Mixer_SumsAndClamps"` und `"Mixer_LoudInput_ClampedToUnit"` anpassen: Summe zweier Sprecher = 2 × einzeln bis zur Schwelle, Grenze 0,95 statt 1
+6. `SendPathTests > "ToMono_StereoSignalOnOneChannel_KeepsFullLevel"` (AC5)
+   - Gegeben: Float-Stereo, links Sinus 0,5, rechts 0 (und umgekehrt)
+   - Erwartet: Mono-Spitze 0,5 statt 0,25
+7. `SendPathTests > "ToMono_FloatStereo_Averages"` bleibt grün: gleiche oder ähnlich laute Kanäle werden weiter gemittelt (AC5)
+8. Manueller Check AC6 mit zwei Clients und der Debug-API
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1, 2 schreiben (rot), `Mixer.DefaultVoiceBoost` einführen und in `Tick()` vor `Volume` anwenden.
+2. Tests 3, 4 schreiben (rot), `SoftLimiter` mit Schwelle 0,95, sofortiger Absenkung, Rampe innerhalb des Frames und etwa 200 ms Rückkehr umsetzen. `Tick()` nutzt ihn statt `Math.Clamp`. Tests 5 anpassen.
+3. Test 6 schreiben (rot), `ToMono` nach A53 umbauen, Test 7 grün halten.
+4. README ergänzen (Stimmen werden beim Empfang verstärkt, "Lautstärke" regelt das Ganze).
+5. Manueller Check AC6.
+
+### Out of Scope
+
+- Pegelautomatik je Sprecher
+- Höherer Standard für die Mikrofonverstärkung beim Sender
+- Regler "Lautstärke" über 100 % (A54)
+- Lautstärke je Nutzer (Package 51)
+
+---
+
+## Package 51: Lautstärke je Nutzer
+
+**Ziel:** Jeder kann die Lautstärke einzelner anderer Nutzer zwischen 0 und 200 % einstellen, und die Einstellung bleibt je Person erhalten.
+
+**Abhängigkeiten:** Package 50
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/Mixer.cs` (ändern): Faktor je Sprecher (`SetSpeakerGains`)
+- `src/OVS.Client/Settings/ClientSettings.cs` (ändern): `UserVolumes` (Fingerprint -> Faktor), `VolumeFor`, Begrenzung in `Clamp()`
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): `UserViewModel.VolumePercent`, `IsVolumeChanged`, `IsLocallyMuted`, `VolumeText`, `ResetVolumeCommand`
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): Nutzer-Lautstärken an den Mixer geben, bei Änderung speichern ohne `ApplySettings`
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs` (ändern): Regler und "Auf 100 % zurücksetzen" im Kontextmenü, Icons im Baum
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): neue Texte
+- `tests/OVS.Tests/Client/ReceivePathTests.cs`, `SettingsTests.cs`, `ServerViewModelTests.cs`, `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+- `README.md` (ändern): Abschnitt Client-Bedienung
+
+### Kontext
+
+Der `Mixer` kennt Sprecher nur über die Session-ID (`Push(speakerId, ...)`), alle werden gleich laut summiert. Personen werden über ihren Fingerprint erkannt (`UserViewModel.Fingerprint`, gleich auf allen Servern). Das Kontextmenü eines Nutzers steht in `MainWindow.axaml` im `DataTemplate` für `vm:UserViewModel` (Privatnachricht, Verschieben, Server-Stumm, Kicken, Bannen). Geänderte Einstellungen laufen heute über `MainViewModel.ApplySettings`, das auch `AudioEngine.Configure` aufruft und damit die Geräte neu startet. Für einen Schieberegler ist das zu schwer, deshalb geht die Nutzer-Lautstärke direkt an den Mixer und wird nur gespeichert.
+
+### Acceptance Criteria
+
+- [ ] AC1: Im Kontextmenü eines anderen Nutzers gibt es einen Schieberegler "Lautstärke" von 0 bis 200 % in 5er-Schritten mit Prozentanzeige, Standard 100 %, dazu "Auf 100 % zurücksetzen". Das Menü bleibt beim Ziehen offen, der Regler geht auch mit den Pfeiltasten. Beim eigenen Eintrag gibt es beides nicht.
+- [ ] AC2: Die Einstellung wirkt sofort und nur auf diese Person: 200 % verdoppelt, 50 % halbiert, 0 % macht sie für mich stumm. Andere Sprecher bleiben unverändert, die Audiogeräte werden nicht neu gestartet. Faktoren nach A55, der Begrenzer aus Package 50 wirkt danach.
+- [ ] AC3: Die Einstellung hängt am Fingerprint: Sie bleibt nach Neustart, nach erneutem Verbinden (neue Session-ID) und auf einem anderen Server mit derselben Person erhalten. In `settings.json` stehen nur Personen, deren Lautstärke von 100 % abweicht. Werte ausserhalb 0 bis 2 werden beim Laden begrenzt.
+- [ ] AC4: Im Channel-Baum zeigt ein Icon mit Tooltip, dass die Lautstärke einer Person nicht 100 % ist ("Lautstärke 150 %"), bei 0 % der durchgestrichene Lautsprecher mit "Für dich stumm". Bei 100 % ist kein Icon zu sehen.
+- [ ] AC5: Alle neuen Texte gibt es auf Deutsch und Englisch.
+- [ ] AC6 (manuell): Mit zwei echten Clients eine Person auf 0, 50 und 200 % stellen und hören, dass nur sie leiser bzw. lauter wird.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `ReceivePathTests > "Mixer_SpeakerGain_OnlyThatSpeaker"` (AC2)
+   - Gegeben: zwei Sprecher mit gleichem leisen Sinus, `SetSpeakerGains({1: 2f})`, danach `{1: 0f}`
+   - Erwartet: Sprecher 1 hat die doppelte Amplitude bzw. ist still, Sprecher 2 unverändert, ohne Eintrag gilt 1
+2. `SettingsTests > "UserVolumes_RoundTrip_OnlyNonDefault_Clamped"` (AC3)
+   - Gegeben: `UserVolumes` mit 1,5 für A, 1,0 für B, 7 für C, speichern und laden
+   - Erwartet: A = 1,5, B fehlt in der Datei, C = 2, `VolumeFor(unbekannt)` = 1
+3. `ServerViewModelTests > "UserVolume_ShownPerUser_NotForSelf"` (AC1, AC4)
+   - Gegeben: Snapshot mit mir und zwei anderen, Lautstärke für einen auf 150 %, für einen auf 0 %
+   - Erwartet: `VolumePercent`, `IsVolumeChanged`, `IsLocallyMuted` und `VolumeText` passend, der eigene Eintrag bietet keinen Regler an
+4. `MainViewModelTests > "UserVolume_ChangesMixer_SavesByFingerprint_NoDeviceRestart"` (AC2, AC3)
+   - Gegeben: verbundener Fake-Server, `VolumePercent` einer Person auf 200 setzen
+   - Erwartet: der Mixer hat für ihre Session-ID Faktor 2, `settings.json` enthält ihren Fingerprint, `Configure` wurde nicht erneut aufgerufen. Nach neuem Snapshot mit anderer Session-ID gilt der Faktor für die neue ID. "Auf 100 % zurücksetzen" entfernt den Eintrag.
+5. `UiSmokeTests > "UserContextMenu_VolumeSlider_OnlyForOthers"` (AC1, AC4)
+   - Gegeben: Hauptfenster mit Fake-Server
+   - Erwartet: Das Kontextmenü eines anderen Nutzers enthält einen `Slider` (0 bis 200, Schritt 5) mit Namen "Lautstärke von anna" und "Auf 100 % zurücksetzen", das eigene nicht. Bei 150 % bzw. 0 % ist das jeweilige Icon sichtbar.
+6. `LocalizationTests` bleiben grün (Parität der neuen Schlüssel, kein fest verdrahteter Text) (AC5)
+7. Manueller Check AC6
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 schreiben (rot), Faktor je Sprecher im `Mixer` (vor Grundverstärkung, `Volume` und Begrenzer).
+2. Test 2 schreiben (rot), `ClientSettings.UserVolumes`, `VolumeFor`, Begrenzung in `Clamp()`.
+3. Test 3 schreiben (rot), Eigenschaften und `ResetVolumeCommand` im `UserViewModel`, Wert aus den Einstellungen beim Aufbau.
+4. Test 4 schreiben (rot), `MainViewModel` hält die Zuordnung Session-ID zu Faktor aktuell (bei `StateChanged` und Änderung am Regler), speichert ohne `ApplySettings`.
+5. Test 5 schreiben (rot), Kontextmenü mit Regler (`StaysOpenOnClick`) und Icons in `MainWindow.axaml`, neue Texte in beiden `resx`.
+6. README ergänzen, manueller Check AC6.
+
+### Out of Scope
+
+- Lautstärke je Nutzer serverseitig oder für andere sichtbar
+- Pegelautomatik je Sprecher
+- Eine Übersicht aller angepassten Personen in den Einstellungen

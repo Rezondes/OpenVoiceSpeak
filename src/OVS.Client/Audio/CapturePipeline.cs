@@ -111,6 +111,11 @@ public sealed class CapturePipeline : IDisposable
 
         if (channels == 1) return interleaved;
         var mono = new float[interleaved.Length / channels];
+        if (DominantChannel(interleaved, channels) is { } only)
+        {
+            for (int i = 0; i < mono.Length; i++) mono[i] = interleaved[i * channels + only];
+            return mono;
+        }
         for (int i = 0; i < mono.Length; i++)
         {
             float sum = 0;
@@ -118,6 +123,19 @@ public sealed class CapturePipeline : IDisposable
             mono[i] = sum / channels;
         }
         return mono;
+    }
+
+    /// <summary>
+    /// Package 50 (A53): a channel at least 6 dB (four times the energy) above the average of the others carries the
+    /// voice alone, e.g. an interface or headset that reports stereo but fills one side. Averaging would halve it.
+    /// </summary>
+    static int? DominantChannel(float[] interleaved, int channels)
+    {
+        var energy = new double[channels];
+        for (int i = 0; i < interleaved.Length; i++) energy[i % channels] += interleaved[i] * interleaved[i];
+        int loudest = Array.IndexOf(energy, energy.Max());
+        double others = (energy.Sum() - energy[loudest]) / (channels - 1);
+        return energy[loudest] > 0 && energy[loudest] >= 4 * others ? loudest : null;
     }
 
     public void Dispose()

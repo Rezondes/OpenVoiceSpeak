@@ -150,6 +150,23 @@ public class SendPathTests
         Assert.Equal(0f, mono[1], 5);
     }
 
+    /// <summary>Package 50 (A53): interfaces and some headsets deliver the voice on one channel only; averaging halved it.</summary>
+    [Fact]
+    public void ToMono_StereoSignalOnOneChannel_KeepsFullLevel()
+    {
+        foreach (int voiced in new[] { 0, 1 })
+        {
+            var stereo = new float[2 * 480];
+            for (int i = 0; i < 480; i++) stereo[2 * i + voiced] = 0.5f * MathF.Sin(2 * MathF.PI * 440 * i / 48_000f);
+            var bytes = new byte[stereo.Length * 4];
+            Buffer.BlockCopy(stereo, 0, bytes, 0, bytes.Length);
+            var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2));
+            Assert.Equal(480, mono.Length);
+            Assert.InRange(mono.Max(), 0.49f, 0.5f);
+            for (int i = 0; i < 480; i++) Assert.Equal(stereo[2 * i + voiced], mono[i]);
+        }
+    }
+
     [Fact]
     public void ToMono_Pcm16Mono_Scales()
     {
