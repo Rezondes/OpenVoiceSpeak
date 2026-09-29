@@ -70,6 +70,36 @@ public sealed class UserRecord
     public string LastNickname { get; set; } = "";
     public List<Guid> GroupIds { get; set; } = [];
     public DateTimeOffset FirstSeen { get; set; }
+
+    // Package 70: statistics (A86). Files from before start at null or 0, without a new data version.
+    public DateTimeOffset? LastLogin { get; set; }
+    public int LoginCount { get; set; }
+    /// <summary>A personal datum: only shown to those who may see the user list.</summary>
+    public string? LastIp { get; set; }
+    /// <summary>Newest first, at most MaxPreviousNicknames, without duplicates and without LastNickname.</summary>
+    public List<string> PreviousNicknames { get; set; } = [];
+    public TimeSpan OnlineTime { get; set; }
+    /// <summary>Relayed voice only, 20 ms per packet.</summary>
+    public TimeSpan SpeechTime { get; set; }
+    public int ChatMessages { get; set; }
+
+    public const int MaxPreviousNicknames = 5;
+
+    /// <summary>Package 70: a login with this nickname; the old one moves to the front of the history.</summary>
+    public void Login(string nickname, string ip, DateTimeOffset now)
+    {
+        if (LastNickname.Length > 0 && LastNickname != nickname)
+        {
+            PreviousNicknames.RemoveAll(n => n.Equals(LastNickname, StringComparison.OrdinalIgnoreCase));
+            PreviousNicknames.Insert(0, LastNickname);
+        }
+        PreviousNicknames.RemoveAll(n => n.Equals(nickname, StringComparison.OrdinalIgnoreCase));
+        if (PreviousNicknames.Count > MaxPreviousNicknames) PreviousNicknames.RemoveRange(MaxPreviousNicknames, PreviousNicknames.Count - MaxPreviousNicknames);
+        LastNickname = nickname;
+        LastLogin = now;
+        LoginCount++;
+        LastIp = ip;
+    }
 }
 
 public sealed class BanRecord

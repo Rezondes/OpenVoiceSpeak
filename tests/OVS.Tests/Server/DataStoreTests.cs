@@ -110,6 +110,34 @@ public sealed class DataStoreTests : IDisposable
         Assert.True(second.Settings.AutoRestart);
     }
 
+    /// <summary>Package 70: users saved before the statistics keep FirstSeen, the new values start empty.</summary>
+    [Fact]
+    public void OldUsers_KeepFirstSeen_NewFieldsEmpty()
+    {
+        var store = new DataStore(FilePath);
+        var data = ServerData.CreateDefault(Config);
+        var firstSeen = new DateTimeOffset(2025, 5, 1, 8, 0, 0, TimeSpan.Zero);
+        data.Users.Add(new UserRecord { Fingerprint = "ab", LastNickname = "alt", GroupIds = [PermissionRules.GuestGroupId], FirstSeen = firstSeen });
+        store.Save(data);
+        // the user exactly as a file before Package 70 has it
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
+        var user = json["users"]![0]!.AsObject();
+        foreach (var key in user.Select(p => p.Key).Except(["fingerprint", "lastNickname", "groupIds", "firstSeen"]).ToList()) user.Remove(key);
+        File.WriteAllText(FilePath, json.ToJsonString());
+
+        var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.False(loaded.Migrate(Config)); // no new data version needed
+        var old = Assert.Single(loaded.Users);
+        Assert.Equal(firstSeen, old.FirstSeen);
+        Assert.Null(old.LastLogin);
+        Assert.Null(old.LastIp);
+        Assert.Equal(0, old.LoginCount);
+        Assert.Equal(0, old.ChatMessages);
+        Assert.Equal(TimeSpan.Zero, old.OnlineTime);
+        Assert.Equal(TimeSpan.Zero, old.SpeechTime);
+        Assert.Empty(old.PreviousNicknames);
+    }
+
     [Fact]
     public void NewServer_StartsWithConfigValues()
     {

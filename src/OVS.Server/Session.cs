@@ -36,6 +36,19 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
 
     readonly Queue<DateTimeOffset> chatTimes = new();
 
+    // ---- Package 70: statistics of this session, added to the UserRecord when it ends ----
+
+    public DateTimeOffset ConnectedAt { get; } = time.GetUtcNow();
+    /// <summary>Guarded by the ServerState lock.</summary>
+    public int ChatMessages { get; set; }
+    long voiceFrames;
+
+    /// <summary>Called by the UDP loop for each relayed voice packet; no lock on that path.</summary>
+    public void CountVoiceFrame() => Interlocked.Increment(ref voiceFrames);
+
+    /// <summary>20 ms per relayed voice packet.</summary>
+    public TimeSpan SpeechTime => TimeSpan.FromMilliseconds(20 * Interlocked.Read(ref voiceFrames));
+
     /// <summary>At most ChatBurst messages per ChatWindow (A29). Guarded by the ServerState lock.</summary>
     public bool TryChat()
     {

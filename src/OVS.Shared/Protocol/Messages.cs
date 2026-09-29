@@ -120,7 +120,15 @@ public sealed record UserUpdated(UserInfo User) : Message;
 public sealed record UserLeft(uint SessionId) : Message;
 
 // ---- Administration ----
-public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IReadOnlyList<Guid> GroupIds);
+/// <summary>A user the server has seen. Package 70: with statistics; for online users they include the running session.</summary>
+/// <param name="LastLogin">null when unknown (before Package 70 or never logged in).</param>
+/// <param name="LastIp">A personal datum, only in the user list.</param>
+/// <param name="PreviousNicknames">Newest first, at most 5.</param>
+/// <param name="SessionId">Set while the user is online.</param>
+public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IReadOnlyList<Guid> GroupIds,
+    DateTimeOffset FirstSeen = default, DateTimeOffset? LastLogin = null, int LoginCount = 0, TimeSpan OnlineTime = default,
+    string? LastIp = null, IReadOnlyList<string>? PreviousNicknames = null, TimeSpan SpeechTime = default, int ChatMessages = 0,
+    bool IsOnline = false, uint? SessionId = null);
 public sealed record CreateGroup(string Name, Permission Permissions) : Request;
 public sealed record UpdateGroup(Guid GroupId, string Name, Permission Permissions) : Request;
 /// <summary>Package 37: the complete new group order, every group exactly once. Display only, the rank stays with the rights.</summary>

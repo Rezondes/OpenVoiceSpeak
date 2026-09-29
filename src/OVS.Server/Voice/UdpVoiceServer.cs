@@ -79,6 +79,7 @@ public sealed class UdpVoiceServer : IDisposable
             // Voice plaintext is [frameSeq][opus] in both directions, so it is relayed as is.
             case PacketType.Voice when RelayPayload.TryParse(plain, out _, out var opus) && opus.Length is > 0 and <= VoiceHeader.MaxOpusSize:
                 var (recipients, target) = state.VoiceRecipients(sender, header.Target);
+                if (recipients.Count > 0) sender.CountVoiceFrame(); // Package 70: only relayed speech counts
                 foreach (var r in recipients)
                     await SendAsync(r, new VoiceHeader(PacketType.Voice, sender.Id, r.OutSeq.Next(), target), plain);
                 break;

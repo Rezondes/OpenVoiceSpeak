@@ -47,6 +47,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.RateLimited);
             return;
         }
+        s.ChatMessages++; // Package 70
 
         var message = new ChatMessage(r.Target, s.Id, s.Nickname, r.Target == ChatTarget.Channel ? s.ChannelId : null,
             to?.Id, text, time.GetUtcNow());

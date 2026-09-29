@@ -4400,10 +4400,10 @@ Testbefehl: `dotnet test`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Beim Login werden letzter Login (Zeit), Anzahl Logins (+1) und letzte IP gespeichert. Ein neuer Nickname schiebt den bisherigen in "frühere Nicknames" (höchstens 5, neueste zuerst, ohne Doppelte, ohne den aktuellen).
-- [ ] AC2: Beim Trennen (auch Kick, Ban, Zeitüberschreitung, Ersetzen) und beim Herunterfahren werden Online-Zeit, Sprechzeit und Chatnachrichten der Sitzung aufaddiert und gespeichert. Zwischen Login und Trennen wird dafür nicht gespeichert.
-- [ ] AC3: Sprechzeit zählt nur weitergeleitete Sprachpakete (20 ms je Paket), Sprache in einen stummen Channel zählt nicht. Chatnachrichten zählen alle gesendeten Nachrichten (Server, Channel, privat).
-- [ ] AC4: `KnownUserInfo` enthält alle Werte, dazu ob der Nutzer online ist und seine Session-Id. Für Online-Nutzer enthalten Online-Zeit, Sprechzeit und Nachrichten die laufende Sitzung schon mit.
+- [x] AC1: Beim Login werden letzter Login (Zeit), Anzahl Logins (+1) und letzte IP gespeichert. Ein neuer Nickname schiebt den bisherigen in "frühere Nicknames" (höchstens 5, neueste zuerst, ohne Doppelte, ohne den aktuellen).
+- [x] AC2: Beim Trennen (auch Kick, Ban, Zeitüberschreitung, Ersetzen) und beim Herunterfahren werden Online-Zeit, Sprechzeit und Chatnachrichten der Sitzung aufaddiert und gespeichert. Zwischen Login und Trennen wird dafür nicht gespeichert.
+- [x] AC3: Sprechzeit zählt nur weitergeleitete Sprachpakete (20 ms je Paket), Sprache in einen stummen Channel zählt nicht. Chatnachrichten zählen alle gesendeten Nachrichten (Server, Channel, privat).
+- [x] AC4: `KnownUserInfo` enthält alle Werte, dazu ob der Nutzer online ist und seine Session-Id. Für Online-Nutzer enthalten Online-Zeit, Sprechzeit und Nachrichten die laufende Sitzung schon mit.
 - [ ] AC5: Bestehende Nutzer behalten `FirstSeen`. Die neuen Werte starten leer bzw. bei 0 und werden in der Oberfläche als "unbekannt" gezeigt (Package 71).
 
 ### Tests (TDD)

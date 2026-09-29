@@ -176,7 +176,7 @@ public sealed partial class ServerState
                 user = new UserRecord { Fingerprint = fingerprint, GroupIds = [GuestGroupId], FirstSeen = now };
                 data.Users.Add(user);
             }
-            user.LastNickname = nickname;
+            user.Login(nickname, ipText, now);
             Persist();
 
             var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32), time)
@@ -207,12 +207,15 @@ public sealed partial class ServerState
         {
             closedWith = final is Disconnected d ? d.Reason : Codes.ServerShutdown;
             var why = final is Disconnected { Reason: Codes.ServerRestart } ? "Server startet neu" : "Server fährt herunter";
+            var now = time.GetUtcNow();
             foreach (var s in sessions.Values)
             {
                 s.Close(final);
+                AddSessionStats(s, now);
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
             logs.Server($"{why}, {sessions.Count} Nutzer getrennt");
+            if (sessions.Count > 0) Persist();
             sessions.Clear();
         }
     }
@@ -228,6 +231,8 @@ public sealed partial class ServerState
         session.Close(final);
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
+        AddSessionStats(session, time.GetUtcNow());
+        Persist();
         Broadcast(new UserLeft(session.Id));
         if (final is Disconnected d) reason = d.Reason switch
         {
@@ -238,6 +243,15 @@ public sealed partial class ServerState
         };
         logs.Server($"{session.Nickname} getrennt ({reason})");
         ChannelLog(session.ChannelId, $"{session.Nickname} hat den Channel verlassen ({reason})");
+    }
+
+    /// <summary>Package 70: adds the ended session to the user's totals (A86: saved on disconnect, not while online).</summary>
+    void AddSessionStats(Session s, DateTimeOffset now)
+    {
+        if (FindUser(s.Fingerprint) is not { } user) return;
+        user.OnlineTime += now - s.ConnectedAt;
+        user.SpeechTime += s.SpeechTime;
+        user.ChatMessages += s.ChatMessages;
     }
 
     void ChannelLog(Guid channelId, string text)
