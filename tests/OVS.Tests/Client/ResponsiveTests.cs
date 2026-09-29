@@ -401,6 +401,10 @@ public sealed class ResponsiveTests : IDisposable
             }
             LayoutAssert.FitsHorizontally(main, matrix);
         }
+        // Package 69: the new server settings are part of the checked Server tab
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Server));
+        foreach (var name in new[] { "MaxUsersInput", "LogDaysInput", "LogRotateDailyInput", "AutoRestartInput", "AutoRestartTimeInput" })
+            Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         main.Close();
         return 0;
     });

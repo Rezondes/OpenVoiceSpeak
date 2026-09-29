@@ -1,4 +1,5 @@
 using OVS.Server;
+using OVS.Server.Logging;
 
 namespace OVS.Tests.Server;
 
@@ -160,5 +161,23 @@ public sealed class ServerConfigTests : IDisposable
         WriteFile("{ kaputt");
         var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
         Assert.Contains(ServerConfig.FileName, e.Message);
+    }
+
+    /// <summary>Package 69: after the first start the values live in server-data.json; a differing variable is only noted.</summary>
+    [Fact]
+    public void EnvDiffersFromStored_HintInLog()
+    {
+        var lines = new List<string>();
+        var logs = new ServerLogs(dir, 0, TimeProvider.System, lines.Add);
+        _ = new ServerState(ServerConfig.Load(Env(("OVS_MAX_USERS", "20"), ("OVS_LOG_DAYS", "7"))), TimeProvider.System, logs);
+        Assert.DoesNotContain(lines, l => l.Contains("OVS_"));
+
+        WriteFile("""{"autoRestart":true}""");
+        var config = ServerConfig.Load(Env(("OVS_MAX_USERS", "99"), ("OVS_LOG_DAYS", "7")));
+        _ = new ServerState(config, TimeProvider.System, logs);
+        Assert.Contains(lines, l => l.Contains("OVS_MAX_USERS") && l.Contains("99") && l.Contains("20"));
+        Assert.Contains(lines, l => l.Contains("OVS_AUTO_RESTART"));
+        Assert.DoesNotContain(lines, l => l.Contains("OVS_LOG_DAYS")); // same as stored
+        Assert.DoesNotContain(lines, l => l.Contains("OVS_LOG_ROTATE_DAILY")); // not set at all
     }
 }

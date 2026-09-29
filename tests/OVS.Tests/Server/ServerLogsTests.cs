@@ -192,6 +192,26 @@ public sealed class ServerLogsTests : IDisposable
         Assert.Contains("drei", text);
     }
 
+    /// <summary>Package 69: retention and daily files change while the server runs.</summary>
+    [Fact]
+    public void RetentionChangedAtRuntime_NextCleanupUsesIt()
+    {
+        var time = new ManualTimeProvider();
+        var server = Path.Combine(dir, "logs", "server");
+        var start = Start(time);
+        Touch(server, Start(time, -10));
+        var logs = new ServerLogs(dir, 30, time, _ => { });
+        logs.Server("eins");
+        Assert.True(File.Exists(Path.Combine(server, Start(time, -10) + ".log")));
+
+        logs.Update(5, newFileEachDay: false);
+        time.Advance(TimeSpan.FromDays(1));
+        logs.Server("zwei");
+
+        Assert.Equal([start + ".log"], Directory.GetFiles(server).Select(Path.GetFileName)); // old file gone, no new day file
+        Assert.Contains("zwei", File.ReadAllText(Path.Combine(server, start + ".log")));
+    }
+
     [Fact]
     public void RetentionZero_KeepsAll()
     {

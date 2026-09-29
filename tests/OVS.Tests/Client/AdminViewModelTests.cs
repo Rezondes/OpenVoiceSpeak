@@ -12,9 +12,9 @@ public class AdminViewModelTests
     static readonly Guid Lobby = Guid.NewGuid();
     static readonly Guid ModGroup = Guid.NewGuid();
 
-    static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false)
+    static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false, ServerLimits? limits = null)
     {
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword), Lobby,
+        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword, null, limits), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
             [
                 new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak),
@@ -154,6 +154,36 @@ public class AdminViewModelTests
         vm.RemovePassword = remove;
         await vm.SaveServerSettingsCommand.ExecuteAsync(null);
         Assert.Equal(new UpdateServerSettings("Neu", "Hallo", expected), sent[^1] with { RequestId = null });
+    }
+
+    /// <summary>Package 69: the limits travel with name, welcome text and password.</summary>
+    [Fact]
+    public async Task SaveServerSettings_SendsAllFields()
+    {
+        var (vm, server, sent) = Create(P.ServerConfig, limits: new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)));
+        Assert.Equal((50m, 30m, true, false, new TimeSpan(4, 0, 0)), (vm.MaxUsers, vm.LogDays, vm.LogRotateDaily, vm.AutoRestart, vm.AutoRestartTime));
+
+        vm.MaxUsers = 12;
+        vm.LogDays = 0;
+        vm.LogRotateDaily = false;
+        vm.AutoRestart = true;
+        vm.AutoRestartTime = new TimeSpan(3, 30, 0);
+        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        Assert.Equal(new UpdateServerSettings("Server", "Hallo", null, new ServerLimits(12, 0, false, true, new TimeOnly(3, 30))),
+            sent[^1] with { RequestId = null });
+    }
+
+    [Fact]
+    public async Task SaveServerSettings_LimitsUnknown_LeftUnchanged()
+    {
+        var (vm, server, sent) = Create(P.ServerConfig);
+        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        Assert.Null(((UpdateServerSettings)sent[^1]).Limits);
+
+        // they arrive later, e.g. after the right was granted
+        server.Apply(new ServerSettingsChanged(new ServerSettingsInfo("Server", "Hallo", false, null, new ServerLimits(8, 1, true, true, new TimeOnly(2, 0)))));
+        Assert.Equal(8m, vm.MaxUsers);
+        Assert.Equal(new TimeSpan(2, 0, 0), vm.AutoRestartTime);
     }
 
     // ---- Package 37: group order ----

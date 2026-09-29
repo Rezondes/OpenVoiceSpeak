@@ -12,6 +12,26 @@ public sealed class ServerSettings
     public string Name { get; set; } = "";
     public string WelcomeText { get; set; } = "";
     public string? PasswordHash { get; set; }
+    // Package 69: formerly environment variables, now changed in the administration (A85)
+    public int MaxUsers { get; set; } = 50;
+    /// <summary>0 keeps every log file.</summary>
+    public int LogDays { get; set; } = 30;
+    public bool LogRotateDaily { get; set; } = true;
+    public bool AutoRestart { get; set; }
+    /// <summary>Server local time.</summary>
+    public TimeOnly AutoRestartTime { get; set; } = ServerConfig.DefaultRestartTime;
+
+    /// <summary>Package 69: takes the start values once, for a new server or on the update to data version 3.</summary>
+    public void TakeStartValues(ServerConfig config)
+    {
+        MaxUsers = config.MaxUsers;
+        LogDays = config.LogDays;
+        LogRotateDaily = config.LogRotateDaily;
+        AutoRestart = config.AutoRestartAt is not null;
+        AutoRestartTime = config.AutoRestartAt ?? config.AutoRestartTime;
+    }
+
+    public ServerLimits Limits => new(MaxUsers, LogDays, LogRotateDaily, AutoRestart, AutoRestartTime);
 
     public static string? Hash(string password) =>
         password.Length == 0 ? null : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
@@ -68,9 +88,10 @@ public sealed class BanRecord
 public sealed class ServerData
 {
     /// <summary>
-    /// 1 = before Package 31 (files without this field), 2 = chat rights. New servers start at the current version.
+    /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69).
+    /// New servers start at the current version.
     /// </summary>
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
     public int DataVersion { get; set; } = 1;
 
     public ServerSettings Settings { get; set; } = new();
@@ -84,9 +105,11 @@ public sealed class ServerData
     public static ServerData CreateDefault(ServerConfig config)
     {
         var lobby = new ChannelRecord { Id = Guid.NewGuid(), Name = "Lobby" };
+        var settings = new ServerSettings { Name = config.ServerName, PasswordHash = ServerSettings.Hash(config.Password) };
+        settings.TakeStartValues(config);
         return new ServerData
         {
-            Settings = new ServerSettings { Name = config.ServerName, PasswordHash = ServerSettings.Hash(config.Password) },
+            Settings = settings,
             DefaultChannelId = lobby.Id,
             Channels = [lobby],
             Groups = PermissionRules.DefaultGroups(),
@@ -95,12 +118,14 @@ public sealed class ServerData
     }
 
     /// <summary>Brings an older file up to date. Returns true when something changed and must be saved.</summary>
-    public bool Migrate()
+    /// <param name="config">Package 69: the start values a version 2 file takes over once.</param>
+    public bool Migrate(ServerConfig config)
     {
         if (DataVersion >= CurrentVersion) return false;
         int guest = Groups.FindIndex(g => g.Id == PermissionRules.GuestGroupId);
         if (DataVersion < 2 && guest >= 0) // A28: guests may chat, granted once
             Groups[guest] = Groups[guest] with { Permissions = Groups[guest].Permissions | Permission.ChatChannel | Permission.ChatPrivate };
+        if (DataVersion < 3) Settings.TakeStartValues(config);
         DataVersion = CurrentVersion;
         return true;
     }

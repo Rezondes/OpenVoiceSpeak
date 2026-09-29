@@ -1,5 +1,6 @@
 using OVS.Server;
 using OVS.Server.Data;
+using OVS.Server.Logging;
 using OVS.Server.Permissions;
 using OVS.Shared.Permissions;
 using OVS.Tests.TestSupport;
@@ -77,6 +78,45 @@ public sealed class DataStoreTests : IDisposable
         }
         Assert.Equal(ServerData.CurrentVersion, migrated.DataVersion);
         migrated.Groups[guest] = migrated.Groups[guest] with { Permissions = Permission.Speak }; // the admin takes it back
-        Assert.False(migrated.Migrate());
+        Assert.False(migrated.Migrate(Config));
+    }
+
+    /// <summary>Package 69: the settings that were environment variables are taken over once, later values are ignored.</summary>
+    [Fact]
+    public void V2_Migrates_SettingsFromConfig()
+    {
+        var store = new DataStore(FilePath);
+        var old = ServerData.CreateDefault(Config);
+        old.DataVersion = 2;
+        old.Settings = new ServerSettings { Name = "Alt" }; // a version 2 file has none of the new fields
+        store.Save(old);
+
+        var config = Config with { MaxUsers = 20, LogDays = 7, AutoRestartAt = new TimeOnly(3, 30), LogRotateDaily = false };
+        var logs = new ServerLogs(dir, 0, TimeProvider.System, _ => { });
+        _ = new ServerState(config, TimeProvider.System, logs);
+
+        var migrated = store.LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.Equal(3, migrated.DataVersion);
+        Assert.Equal("Alt", migrated.Settings.Name);
+        Assert.Equal(20, migrated.Settings.MaxUsers);
+        Assert.Equal(7, migrated.Settings.LogDays);
+        Assert.False(migrated.Settings.LogRotateDaily);
+        Assert.True(migrated.Settings.AutoRestart);
+        Assert.Equal(new TimeOnly(3, 30), migrated.Settings.AutoRestartTime);
+
+        _ = new ServerState(config with { MaxUsers = 99, AutoRestartAt = null }, TimeProvider.System, logs);
+        var second = store.LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.Equal(20, second.Settings.MaxUsers);
+        Assert.True(second.Settings.AutoRestart);
+    }
+
+    [Fact]
+    public void NewServer_StartsWithConfigValues()
+    {
+        var config = Config with { MaxUsers = 12, LogDays = 0, AutoRestartAt = new TimeOnly(5, 0) };
+        var data = ServerData.CreateDefault(config);
+        Assert.Equal(ServerData.CurrentVersion, data.DataVersion);
+        Assert.Equal((12, 0, true, true, new TimeOnly(5, 0)),
+            (data.Settings.MaxUsers, data.Settings.LogDays, data.Settings.LogRotateDaily, data.Settings.AutoRestart, data.Settings.AutoRestartTime));
     }
 }

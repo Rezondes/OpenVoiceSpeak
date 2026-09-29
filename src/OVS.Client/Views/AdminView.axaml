@@ -356,6 +356,37 @@
                   <TextBox Text="{Binding NewPassword}" PasswordChar="•" Watermark="{x:Static l:Strings.Ui_NewPassword}" />
                   <CheckBox Content="{x:Static l:Strings.Ui_RemovePassword}" IsChecked="{Binding RemovePassword}" />
                 </StackPanel>
+                <Border Classes="divider" />
+
+                <!-- Package 69: formerly environment variables, applied at once -->
+                <StackPanel Spacing="12" IsEnabled="{Binding HasLimits}">
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Operation}" />
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_OperationHint}" />
+                  </StackPanel>
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_MaxUsers}" />
+                    <NumericUpDown x:Name="MaxUsersInput" Value="{Binding MaxUsers}" Minimum="1" Maximum="100000" Increment="1" FormatString="0"
+                                   Width="160" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Ui_MaxUsers}" />
+                  </StackPanel>
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogDays}" />
+                    <NumericUpDown x:Name="LogDaysInput" Value="{Binding LogDays}" Minimum="0" Maximum="3650" Increment="1" FormatString="0"
+                                   Width="160" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Ui_LogDays}" />
+                  </StackPanel>
+                  <CheckBox x:Name="LogRotateDailyInput" IsChecked="{Binding LogRotateDaily}">
+                    <TextBlock TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogRotateDaily}" />
+                  </CheckBox>
+                  <StackPanel Spacing="4">
+                    <CheckBox x:Name="AutoRestartInput" IsChecked="{Binding AutoRestart}">
+                      <TextBlock TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoRestart}" />
+                    </CheckBox>
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoRestartTime}" />
+                    <TimePicker x:Name="AutoRestartTimeInput" SelectedTime="{Binding AutoRestartTime}" ClockIdentifier="24HourClock"
+                                IsEnabled="{Binding AutoRestart}" HorizontalAlignment="Left"
+                                AutomationProperties.Name="{x:Static l:Strings.Ui_AutoRestartTime}" />
+                  </StackPanel>
+                </StackPanel>
                 <Button Classes="accent" Command="{Binding SaveServerSettingsCommand}" HorizontalAlignment="Left">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />

@@ -7,6 +7,10 @@ namespace OVS.Server;
 public sealed class ConfigException(string message) : Exception(message);
 
 /// <summary>Startup settings. Precedence: environment variable, then server-config.json, then default.</summary>
+/// <remarks>
+/// Package 69: only Port and DataDir stay settings of the environment. MaxUsers, LogDays, LogRotateDaily and the automatic
+/// restart are start values, taken into server-data.json once (like ServerName and Password) and then changed in the administration.
+/// </remarks>
 /// <param name="AutoRestartAt">Daily restart time in server local time, null when the automatic restart is off.</param>
 /// <param name="LogRotateDaily">True begins new log files after midnight, false keeps them until the next start.</param>
 public sealed record ServerConfig(
@@ -15,6 +19,12 @@ public sealed record ServerConfig(
 {
     public const string FileName = "server-config.json";
     public static readonly TimeOnly DefaultRestartTime = new(4, 0, 0);
+
+    /// <summary>Package 69: the restart time even while the restart is off, so it can be taken over as start value.</summary>
+    public TimeOnly AutoRestartTime { get; init; } = AutoRestartAt ?? DefaultRestartTime;
+
+    /// <summary>Package 69: names of the start values that were set in the environment or the file, for the hint at startup.</summary>
+    public IReadOnlySet<string> GivenStartValues { get; init; } = new HashSet<string>();
 
     sealed record FileValues(
         int? Port, int? MaxUsers, string? ServerName, string? Password, int? LogDays,
@@ -51,7 +61,18 @@ public sealed record ServerConfig(
         if (name.Length is < 1 or > 64)
             throw new ConfigException("OVS_SERVER_NAME muss 1 bis 64 Zeichen lang sein.");
 
-        return new ServerConfig(port, dataDir, maxUsers, name, password, logDays, autoRestart ? restartTime : null, logRotateDaily);
+        var given = new (string Key, object? FileValue)[]
+            {
+                ("OVS_MAX_USERS", file.MaxUsers), ("OVS_LOG_DAYS", file.LogDays), ("OVS_LOG_ROTATE_DAILY", file.LogRotateDaily),
+                ("OVS_AUTO_RESTART", file.AutoRestart), ("OVS_AUTO_RESTART_TIME", file.AutoRestartTime),
+            }
+            .Where(v => getEnv(v.Key) is not null || v.FileValue is not null).Select(v => v.Key).ToHashSet();
+
+        return new ServerConfig(port, dataDir, maxUsers, name, password, logDays, autoRestart ? restartTime : null, logRotateDaily)
+        {
+            AutoRestartTime = restartTime,
+            GivenStartValues = given,
+        };
     }
 
     static FileValues ReadFile(string path)

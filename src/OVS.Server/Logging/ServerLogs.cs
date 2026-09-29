@@ -20,6 +20,9 @@ public sealed class ServerLogs
         this.console = console;
     }
 
+    /// <summary>Package 69: retention and daily files come from the administration and change at runtime.</summary>
+    public void Update(int keepDays, bool newFileEachDay) => files.Update(keepDays, newFileEachDay);
+
     /// <param name="toFile">False for secrets such as the admin token, which only belong on the console.</param>
     public void Server(string text, bool toFile = true, bool toConsole = true)
     {

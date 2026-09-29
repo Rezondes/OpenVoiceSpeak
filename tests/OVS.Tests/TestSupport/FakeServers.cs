@@ -53,7 +53,8 @@ public static class FakeServers
         var users = Enumerable.Range(1, 20).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Mitspieler{i}",
             channels[i % 8].Id, false, false, false, i == 1 ? Permission.All : Permission.Speak,
             [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest])).ToList();
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), channels[0].Id, channels, links, groups, users);
+        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true, null, new ServerLimits(50, 30, true, true, new TimeOnly(4, 0))),
+            channels[0].Id, channels, links, groups, users);
         return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);
     }
 }

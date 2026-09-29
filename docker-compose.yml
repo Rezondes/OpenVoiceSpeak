@@ -8,10 +8,12 @@ services:
       - "7000:7000/tcp"
       - "7000:7000/udp"
     environment:
-      OVS_SERVER_NAME: "Mein Server"
       # OVS_PORT: "7000"      # bei Änderung auch die Port-Mappings oben anpassen
+      # Alle folgenden OVS_-Werte sind nur Startwerte beim allerersten Start.
+      # Danach im Client unter Verwaltung, Server ändern (wirkt sofort).
+      OVS_SERVER_NAME: "Mein Server"
       # OVS_MAX_USERS: "50"
-      # OVS_PASSWORD: ""      # nur Startwert beim allerersten Start
+      # OVS_PASSWORD: ""
       # OVS_AUTO_RESTART: "false"          # täglicher automatischer Neustart an/aus
       # OVS_AUTO_RESTART_TIME: "04:00:00"  # Uhrzeit des Neustarts (hh:mm:ss)
       # OVS_LOG_ROTATE_DAILY: "true"       # nach 00:00:00 neue Logdateien beginnen

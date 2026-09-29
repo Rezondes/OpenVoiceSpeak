@@ -41,7 +41,9 @@ public sealed partial class ServerState
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
         icon = new ServerIconStore(config.DataDir);
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
-        if (data.Migrate()) store.Save(data);
+        if (data.Migrate(config)) store.Save(data);
+        logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
+        HintIgnoredStartValues();
         if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
@@ -51,6 +53,34 @@ public sealed partial class ServerState
     }
 
     public string? PendingAdminToken => adminToken.Current;
+
+    /// <summary>Package 69: raised under the lock after the server settings changed; handlers must be quick.</summary>
+    public event Action? SettingsChanged;
+
+    /// <summary>Package 69: the daily restart as set in the administration, At in server local time.</summary>
+    public (bool On, TimeOnly At) AutoRestart
+    {
+        get { lock (gate) return (data.Settings.AutoRestart, data.Settings.AutoRestartTime); }
+    }
+
+    /// <summary>Package 69: environment and server-config.json only give start values; a differing one is worth a hint.</summary>
+    void HintIgnoredStartValues()
+    {
+        var s = data.Settings;
+        var values = new (string Key, string Given, string Stored)[]
+        {
+            ("OVS_MAX_USERS", $"{config.MaxUsers}", $"{s.MaxUsers}"),
+            ("OVS_LOG_DAYS", $"{config.LogDays}", $"{s.LogDays}"),
+            ("OVS_LOG_ROTATE_DAILY", OnOff(config.LogRotateDaily), OnOff(s.LogRotateDaily)),
+            ("OVS_AUTO_RESTART", OnOff(config.AutoRestartAt is not null), OnOff(s.AutoRestart)),
+            ("OVS_AUTO_RESTART_TIME", $"{config.AutoRestartTime:HH:mm:ss}", $"{s.AutoRestartTime:HH:mm:ss}"),
+        };
+        foreach (var (key, given, stored) in values)
+            if (config.GivenStartValues.Contains(key) && given != stored)
+                logs.Server($"Hinweis: {key}={given} wird ignoriert, es gilt der gespeicherte Wert {stored} (änderbar in der Verwaltung unter Server)");
+
+        static string OnOff(bool on) => on ? "an" : "aus";
+    }
 
     public int SessionCount
     {
@@ -133,7 +163,7 @@ public sealed partial class ServerState
             }
 
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
-            if (sessions.Count - (replaced is null ? 0 : 1) >= config.MaxUsers)
+            if (sessions.Count - (replaced is null ? 0 : 1) >= data.Settings.MaxUsers)
                 return (null, new Rejected(Codes.ServerFull));
             if (sessions.Values.Any(s => s != replaced && string.Equals(s.Nickname, nickname, StringComparison.OrdinalIgnoreCase)))
                 return (null, new Rejected(Codes.NicknameTaken));
@@ -156,7 +186,7 @@ public sealed partial class ServerState
                 Permissions = Effective(user.GroupIds, data.Groups),
             };
             sessions.Add(session.Id, session);
-            session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot()));
+            session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
                 if (other != session) other.Send(new UserJoined(Info(session)));
             logs.Server($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
@@ -324,9 +354,11 @@ public sealed partial class ServerState
             var groups = FindUser(s.Fingerprint)?.GroupIds ?? [];
             var perms = Effective(groups, data.Groups);
             if (perms == s.Permissions && groups.SequenceEqual(s.GroupIds)) continue;
+            bool limitsChanged = perms.Has(Permission.ServerConfig) != s.Permissions.Has(Permission.ServerConfig);
             s.Permissions = perms;
             s.GroupIds = groups.ToList();
             Broadcast(new UserUpdated(Info(s)));
+            if (limitsChanged) s.Send(new ServerSettingsChanged(SettingsInfo(s))); // Package 69: the limits come and go with the right
         }
     }
 
@@ -335,13 +367,20 @@ public sealed partial class ServerState
 
     static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers);
 
-    ServerSettingsInfo SettingsInfo() =>
-        new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.PasswordHash is not null, icon.Hash);
+    /// <summary>Package 69: the limits only for those who may change them.</summary>
+    ServerSettingsInfo SettingsInfo(Session to) =>
+        new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.PasswordHash is not null, icon.Hash,
+            to.Permissions.Has(Permission.ServerConfig) ? data.Settings.Limits : null);
+
+    void BroadcastSettings()
+    {
+        foreach (var s in sessions.Values) s.Send(new ServerSettingsChanged(SettingsInfo(s)));
+    }
 
     List<GroupInfo> GroupInfos() => data.Groups.Select(g => new GroupInfo(g.Id, g.Name, g.Permissions)).ToList();
 
-    ServerSnapshot Snapshot() => new(
-        SettingsInfo(),
+    ServerSnapshot Snapshot(Session to) => new(
+        SettingsInfo(to),
         data.DefaultChannelId,
         data.Channels.Select(Info).ToList(),
         data.Links.Select(l => new LinkInfo(l.A, l.B)).ToList(),

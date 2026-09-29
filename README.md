@@ -50,25 +50,27 @@ Wenn UDP hinter Docker-NAT Probleme macht, kannst du in `docker-compose.yml` `ne
 
 Du setzt sie in `docker-compose.yml` unter `environment:`, dort stehen alle als Kommentar. Übernommen werden Änderungen mit `docker compose up -d`. Ein ungültiger Wert beendet den Server mit einer Fehlermeldung in `docker compose logs`.
 
+Nur `OVS_PORT`, `OVS_DATA_DIR` und `TZ` gehören dauerhaft zur Umgebung. Alle anderen sind **Startwerte**: Der Server übernimmt sie beim allerersten Start (bzw. einmal beim Update auf diese Version) in `server-data.json`. Danach änderst du sie im Client unter Verwaltung, Server, und sie wirken sofort. Ein später gesetzter abweichender Wert wird ignoriert, beim Start steht dazu ein Hinweis im Log.
+
 | Variable | Standard | Bedeutung |
 |---|---|---|
 | `OVS_PORT` | 7000 | Port für TCP und UDP. Die Port-Mappings in der Compose-Datei mit anpassen. |
 | `OVS_DATA_DIR` | `/data` im Container, sonst `./data` | Speicherort für Daten, Zertifikat und optional `server-config.json` |
-| `OVS_MAX_USERS` | 50 | Maximale Zahl gleichzeitiger Nutzer |
-| `OVS_SERVER_NAME` | `OpenVoiceSpeak Server` | Nur Startwert beim allerersten Start. Später im Client unter Verwaltung, Server ändern. |
-| `OVS_PASSWORD` | leer | Nur Startwert beim allerersten Start, wie oben |
-| `OVS_LOG_DAYS` | 30 | Wie viele Tage Logdateien aufbewahrt werden. `0` löscht nie. |
-| `OVS_LOG_ROTATE_DAILY` | `true` | `true`: nach 00:00:00 beginnen neue Logdateien. `false`: die Dateien laufen bis zum nächsten Start weiter. |
-| `OVS_AUTO_RESTART` | `false` | Täglicher automatischer Neustart an (`true`) oder aus (`false`). Auch `1`/`0` und `an`/`aus` gehen. |
-| `OVS_AUTO_RESTART_TIME` | `04:00:00` | Uhrzeit des Neustarts im Format `hh:mm:ss` |
+| `OVS_MAX_USERS` | 50 | Startwert: maximale Zahl gleichzeitiger Nutzer |
+| `OVS_SERVER_NAME` | `OpenVoiceSpeak Server` | Startwert: Name des Servers |
+| `OVS_PASSWORD` | leer | Startwert: Serverpasswort |
+| `OVS_LOG_DAYS` | 30 | Startwert: wie viele Tage Logdateien aufbewahrt werden. `0` löscht nie. |
+| `OVS_LOG_ROTATE_DAILY` | `true` | Startwert. `true`: nach 00:00:00 beginnen neue Logdateien. `false`: die Dateien laufen bis zum nächsten Start weiter. |
+| `OVS_AUTO_RESTART` | `false` | Startwert: täglicher automatischer Neustart an (`true`) oder aus (`false`). Auch `1`/`0` und `an`/`aus` gehen. |
+| `OVS_AUTO_RESTART_TIME` | `04:00:00` | Startwert: Uhrzeit des Neustarts im Format `hh:mm:ss` |
 | `TZ` | `UTC` im Container | Zeitzone für Neustart-Uhrzeit, Tageswechsel der Logs und Zeitstempel, z. B. `Europe/Berlin` (in der Compose-Datei gesetzt) |
 
-Umgebungsvariablen haben Vorrang vor `server-config.json`
+Für die Startwerte und den Port haben Umgebungsvariablen Vorrang vor `server-config.json`
 (`{"port":7000,"maxUsers":50,"logDays":30,"logRotateDaily":true,"autoRestart":false,"autoRestartTime":"04:00:00"}`).
 
 ### Automatischer Neustart
 
-Mit `OVS_AUTO_RESTART=true` startet der Server jeden Tag zur eingestellten Uhrzeit neu, ohne dass der Prozess oder Container endet.
+Ist der automatische Neustart an (Verwaltung, Server, oder Startwert `OVS_AUTO_RESTART=true`), startet der Server jeden Tag zur eingestellten Uhrzeit neu, ohne dass der Prozess oder Container endet. Ein- und Ausschalten und eine neue Uhrzeit gelten sofort.
 Die Uhrzeit gilt in der Zeitzone aus `TZ`. Die Compose-Datei setzt `Europe/Berlin`, ohne `TZ` gilt UTC.
 Beim Neustart liest der Server Konfiguration, Daten und Zertifikat neu ein und beginnt neue Logdateien.
 
@@ -76,7 +78,7 @@ Verbundene Clients bekommen die Meldung "Der Server startet neu" und verbinden s
 
 ### Logs
 
-Der Server beginnt bei jedem Start neue Logdateien im Datenverzeichnis, benannt nach Datum und Uhrzeit des Starts (z. B. `2026-09-27_17-29-22.log`). Server-Log und Channel-Logs eines Laufs tragen denselben Namen. Läuft der Server über Mitternacht, beginnt eine neue Datei (abschaltbar mit `OVS_LOG_ROTATE_DAILY=false`).
+Der Server beginnt bei jedem Start neue Logdateien im Datenverzeichnis, benannt nach Datum und Uhrzeit des Starts (z. B. `2026-09-27_17-29-22.log`). Server-Log und Channel-Logs eines Laufs tragen denselben Namen. Läuft der Server über Mitternacht, beginnt eine neue Datei (abschaltbar in der Verwaltung unter Server, Startwert `OVS_LOG_ROTATE_DAILY`). Die Aufbewahrung stellst du dort ebenfalls ein.
 
 - `logs/server/<Start>.log`: Start, Stopp, Verbindungen, Ablehnungen, Kicks, Bans, Gruppen- und Einstellungsänderungen. Dieselben Zeilen stehen auch in `docker compose logs`.
 - `logs/channels/<Channel-ID>/<Start>.log`: Betreten, Verlassen, Verschieben, Links und Änderungen eines Channels. Der Ordner ist nach der ID benannt, damit ein umbenannter Channel seine Historie behält. Jede Zeile nennt den aktuellen Channelnamen.

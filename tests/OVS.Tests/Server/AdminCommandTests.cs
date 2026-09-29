@@ -268,7 +268,7 @@ public class AdminCommandTests
 
         await a.SendAsync(new UpdateServerSettings("Neu", "Hallo", "pw"));
         var changed = await a.WaitForAsync<ServerSettingsChanged>();
-        Assert.Equal(new ServerSettingsInfo("Neu", "Hallo", true), changed.Settings);
+        Assert.Equal(new ServerSettingsInfo("Neu", "Hallo", true), changed.Settings with { Limits = null });
 
         await using var without = await TestClient.OpenAsync(server.Port);
         Assert.Equal(Codes.WrongPassword, Assert.IsType<Rejected>(await without.HandshakeAsync("x")).Code);
@@ -293,6 +293,68 @@ public class AdminCommandTests
 
         await a.SendAsync(new UpdateServerSettings(name, welcome == "LONG" ? new string('x', 501) : welcome, null) { RequestId = "s" });
         Assert.Equal(code, (await a.ErrorAsync("s")).Code);
+    }
+
+    // ---- Package 69: limits, logs and restart ----
+
+    static readonly ServerLimits NewLimits = new(20, 7, false, true, new TimeOnly(3, 30));
+
+    [Fact]
+    public async Task UpdateSettings_Limits_ValidatedAndBroadcast()
+    {
+        var admin = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var g = await TestClient.ConnectAsync(server);
+        Assert.Equal(new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)), a.Welcome.Snapshot.Settings.Limits);
+        Assert.Null(g.Welcome.Snapshot.Settings.Limits); // only for those with the right
+
+        await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { MaxUsers = 0 }) { RequestId = "1" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("1")).Code);
+        await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { LogDays = 5000 }) { RequestId = "2" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("2")).Code);
+        var store = new DataStore(Path.Combine(server.DataDir, DataStore.FileName));
+        var unchanged = store.LoadOrCreate(() => throw new InvalidOperationException()).Settings;
+        Assert.Equal(("Testserver", 50, 30), (unchanged.Name, unchanged.MaxUsers, unchanged.LogDays)); // nothing half applied
+
+        await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits));
+        Assert.Equal(NewLimits, (await a.WaitForAsync<ServerSettingsChanged>()).Settings.Limits);
+        var seen = await g.WaitForAsync<ServerSettingsChanged>();
+        Assert.Equal("Neu", seen.Settings.Name);
+        Assert.Null(seen.Settings.Limits);
+        var saved = store.LoadOrCreate(() => throw new InvalidOperationException()).Settings;
+        Assert.Equal((20, 7, false, true, new TimeOnly(3, 30)),
+            (saved.MaxUsers, saved.LogDays, saved.LogRotateDaily, saved.AutoRestart, saved.AutoRestartTime));
+    }
+
+    [Fact]
+    public async Task MaxUsersLowered_NextJoinRejected_NobodyKicked()
+    {
+        var admin = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var b = await TestClient.ConnectAsync(server);
+        await using var c = await TestClient.ConnectAsync(server);
+
+        await a.SendAsync(new UpdateServerSettings("S", "", null, NewLimits with { MaxUsers = 2 }));
+        await a.WaitForAsync<ServerSettingsChanged>();
+        Assert.Equal(3, server.State.SessionCount);
+
+        await using var d = await TestClient.OpenAsync(server.Port);
+        Assert.Equal(Codes.ServerFull, Assert.IsType<Rejected>(await d.HandshakeAsync("vierter")).Code);
+        Assert.Equal(3, server.State.SessionCount);
+    }
+
+    [Fact]
+    public async Task ServerConfigGranted_LimitsDelivered()
+    {
+        var admin = ClientIdentity.Create();
+        var guest = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var g = await TestClient.ConnectAsync(server, identity: guest);
+        await a.SendAsync(new AssignGroup(guest.Fingerprint, PermissionRules.AdminGroupId));
+        Assert.NotNull((await g.WaitForAsync<ServerSettingsChanged>()).Settings.Limits);
     }
 
     [Fact]

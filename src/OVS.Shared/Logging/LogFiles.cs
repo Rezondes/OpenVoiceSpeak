@@ -15,10 +15,10 @@ public sealed class LogFiles
     const string NameFormat = "yyyy-MM-dd_HH-mm-ss";
 
     readonly string root;
-    readonly int keepDays;
+    int keepDays;
     readonly TimeProvider time;
     readonly Action<string> onFailure;
-    readonly bool newFileEachDay;
+    bool newFileEachDay;
     readonly object gate = new();
     DateOnly fileDay, cleanedUpFor;
     string fileName = "";
@@ -33,6 +33,18 @@ public sealed class LogFiles
         this.onFailure = onFailure;
         this.newFileEachDay = newFileEachDay;
         lock (gate) StartFile(time.GetLocalNow());
+    }
+
+    /// <summary>Package 69: changes the settings of a running log. The retention applies at the next cleanup, which
+    /// runs with the next line; the daily files from the next day change on.</summary>
+    public void Update(int keepDays, bool newFileEachDay)
+    {
+        lock (gate)
+        {
+            if (keepDays != this.keepDays) cleanedUpFor = default;
+            this.keepDays = keepDays;
+            this.newFileEachDay = newFileEachDay;
+        }
     }
 
     public string Stamp() => time.GetLocalNow().ToString("yyyy-MM-dd HH:mm:ss.fff");

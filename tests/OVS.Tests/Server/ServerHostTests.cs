@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using OVS.Server;
+using OVS.Server.Logging;
+using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
 
@@ -46,6 +48,50 @@ public sealed class ServerHostTests : IDisposable
         server.State.CloseAll(new Disconnected(Codes.ServerRestart));
         var rejected = Assert.IsType<Rejected>(await client.HandshakeAsync("spaet"));
         Assert.Equal(Codes.ServerRestart, rejected.Code);
+    }
+
+    /// <summary>Package 69: switching the restart on, off or to another time in the administration takes effect at once.</summary>
+    [Fact]
+    public async Task AutoRestartChanged_ScheduleFollows()
+    {
+        var time = new ManualTimeProvider();
+        var admin = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time);
+        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        var logs = new ServerLogs(server.DataDir, 0, time, _ => { });
+        using var stop = new CancellationTokenSource();
+        var restart = ServerHost.WaitForRestartAsync(server.State, time, logs, stop.Token);
+
+        async Task SetAsync(bool on, TimeSpan fromNow)
+        {
+            var at = TimeOnly.FromDateTime(time.GetLocalNow().DateTime + fromNow);
+            await a.SendAsync(new UpdateServerSettings("S", "", null, new ServerLimits(50, 30, true, on, at)));
+            await a.WaitForAsync<ServerSettingsChanged>();
+        }
+
+        await SetAsync(true, TimeSpan.FromMinutes(10));
+        await SetAsync(false, TimeSpan.FromMinutes(10)); // switched off before the time
+        time.Advance(TimeSpan.FromMinutes(11));
+        await Task.Delay(200);
+        Assert.False(restart.IsCompleted);
+
+        await SetAsync(true, TimeSpan.FromMinutes(10));
+        time.Advance(TimeSpan.FromMinutes(9));
+        await Task.Delay(200);
+        Assert.False(restart.IsCompleted);
+        time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(2));
+        Assert.True(await restart.WaitAsync(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task WaitForRestart_Stopped_ReturnsFalse()
+    {
+        var time = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(time: time);
+        using var stop = new CancellationTokenSource();
+        var restart = ServerHost.WaitForRestartAsync(server.State, time, new ServerLogs(server.DataDir, 0, time, _ => { }), stop.Token);
+        stop.Cancel();
+        Assert.False(await restart.WaitAsync(TimeSpan.FromSeconds(5)));
     }
 
     static async Task<TestClient?> TryConnectAsync(int port, string nickname)

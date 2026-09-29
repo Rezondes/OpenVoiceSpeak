@@ -162,6 +162,11 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, "Willkommenstext zu lang");
             return;
         }
+        if (r.Limits is { } l && (l.MaxUsers is < 1 or > 100_000 || l.LogDays is < 0 or > 3650))
+        {
+            Fail(s, r, Codes.InvalidValue, l.MaxUsers is < 1 or > 100_000 ? "Maximale Nutzer: 1 bis 100000" : "Logs aufbewahren: 0 bis 3650 Tage");
+            return;
+        }
         var welcome = r.WelcomeText ?? "";
         var changes = new List<string>();
         if (data.Settings.Name != name) changes.Add($"Name '{data.Settings.Name}' -> '{name}'");
@@ -171,9 +176,25 @@ public sealed partial class ServerState
         data.Settings.Name = name;
         data.Settings.WelcomeText = welcome;
         if (r.Password is not null) data.Settings.PasswordHash = ServerSettings.Hash(r.Password);
+        if (r.Limits is { } limits && limits != data.Settings.Limits)
+        {
+            var old = data.Settings.Limits;
+            if (old.MaxUsers != limits.MaxUsers) changes.Add($"maximale Nutzer {old.MaxUsers} -> {limits.MaxUsers}");
+            if (old.LogDays != limits.LogDays) changes.Add($"Logs aufbewahren {old.LogDays} -> {limits.LogDays} Tage");
+            if (old.LogRotateDaily != limits.LogRotateDaily) changes.Add($"tägliche Log-Datei {(limits.LogRotateDaily ? "an" : "aus")}");
+            if (old.AutoRestart != limits.AutoRestart || old.AutoRestartTime != limits.AutoRestartTime)
+                changes.Add(limits.AutoRestart ? $"automatischer Neustart um {limits.AutoRestartTime:HH:mm:ss}" : "automatischer Neustart aus");
+            data.Settings.MaxUsers = limits.MaxUsers;
+            data.Settings.LogDays = limits.LogDays;
+            data.Settings.LogRotateDaily = limits.LogRotateDaily;
+            data.Settings.AutoRestart = limits.AutoRestart;
+            data.Settings.AutoRestartTime = limits.AutoRestartTime;
+            logs.Update(limits.LogDays, limits.LogRotateDaily);
+        }
         Persist();
         logs.Server($"Servereinstellungen geändert von {s.Nickname}: {(changes.Count > 0 ? string.Join(", ", changes) : "keine Änderung")}");
-        Broadcast(new ServerSettingsChanged(SettingsInfo()));
+        BroadcastSettings();
+        SettingsChanged?.Invoke();
     }
 
     /// <summary>Package 30: the client sends a square PNG of at most 512 KB; the server only checks the header.</summary>
@@ -200,7 +221,7 @@ public sealed partial class ServerState
         }
         icon.Set(png);
         logs.Server(png is null ? $"Server-Logo entfernt von {s.Nickname}" : $"Server-Logo geändert von {s.Nickname} ({png.Length / 1024} KB)");
-        Broadcast(new ServerSettingsChanged(SettingsInfo()));
+        BroadcastSettings();
     }
 
     bool ValidateGroupName(Session s, Request r, Guid? self, string? rawName, out string name)

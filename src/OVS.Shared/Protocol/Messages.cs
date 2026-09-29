@@ -81,7 +81,13 @@ public sealed record Disconnected(string Reason, string? Detail = null) : Messag
 
 // ---- State ----
 /// <param name="IconHash">Hash of the server logo (ServerIconFormat.Hash), null when the server has none.</param>
-public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword, string? IconHash = null);
+/// <param name="Limits">Package 69: only sent to clients with the ServerConfig right, null for everyone else.</param>
+public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword, string? IconHash = null, ServerLimits? Limits = null);
+/// <summary>Package 69: settings that used to be environment variables, now changed in the administration.</summary>
+/// <param name="MaxUsers">1 to 100000.</param>
+/// <param name="LogDays">0 to 3650, 0 keeps every log file.</param>
+/// <param name="AutoRestartTime">Daily restart time in server local time, used while AutoRestart is on.</param>
+public sealed record ServerLimits(int MaxUsers, int LogDays, bool LogRotateDaily, bool AutoRestart, TimeOnly AutoRestartTime);
 /// <param name="IsMuted">Package 34: nobody in this channel is heard, not even via link.</param>
 /// <param name="MaxUsers">Package 35: 0 = unlimited.</param>
 public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0);
@@ -126,7 +132,8 @@ public sealed record ListUsers : Request;
 public sealed record UserList(string? RequestId, IReadOnlyList<KnownUserInfo> Users) : Message;
 public sealed record RedeemAdminToken(string Token) : Request;
 /// <param name="Password">null = unchanged, "" = remove, anything else = new password.</param>
-public sealed record UpdateServerSettings(string Name, string WelcomeText, string? Password) : Request;
+/// <param name="Limits">Package 69: null = unchanged.</param>
+public sealed record UpdateServerSettings(string Name, string WelcomeText, string? Password, ServerLimits? Limits = null) : Request;
 public sealed record GroupsChanged(IReadOnlyList<GroupInfo> Groups) : Message;
 public sealed record ServerSettingsChanged(ServerSettingsInfo Settings) : Message;
 /// <summary>Sets the server logo, a square PNG as base64 (see ServerIconFormat); null removes it.</summary>

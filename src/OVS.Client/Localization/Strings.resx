@@ -234,6 +234,8 @@
   <data name="Ui_Apply" xml:space="preserve"><value>Übernehmen</value></data>
   <data name="Ui_AsFmt" xml:space="preserve"><value>als {0}</value></data>
   <data name="Ui_AssignKeyHint" xml:space="preserve"><value>Taste in den Einstellungen belegen</value></data>
+  <data name="Ui_AutoRestart" xml:space="preserve"><value>Automatischer Neustart</value></data>
+  <data name="Ui_AutoRestartTime" xml:space="preserve"><value>Uhrzeit des Neustarts (Serverzeit)</value></data>
   <data name="Ui_BackgroundOpacity" xml:space="preserve"><value>Deckkraft des Hintergrunds</value></data>
   <data name="Ui_BackgroundOpacityHint" xml:space="preserve"><value>Unter 100 % scheint die App dahinter durch. Text, Karten und Dialoge bleiben deckend.</value></data>
   <data name="Ui_BanMenu" xml:space="preserve"><value>Bannen ...</value></data>
@@ -291,7 +293,10 @@
   <data name="Ui_Links" xml:space="preserve"><value>Links</value></data>
   <data name="Ui_LinksHelp" xml:space="preserve"><value>Ein Häkchen verbindet zwei Channels. Links wirken nur direkt, nicht über Umwege: Sollen mehrere Channels alle miteinander sprechen, wähle sie links aus und verlinke sie miteinander.</value></data>
   <data name="Ui_LocallyMuted" xml:space="preserve"><value>Für dich stumm</value></data>
+  <data name="Ui_LogDays" xml:space="preserve"><value>Logs aufbewahren (Tage, 0 = unbegrenzt)</value></data>
+  <data name="Ui_LogRotateDaily" xml:space="preserve"><value>Jeden Tag eine neue Log-Datei</value></data>
   <data name="Ui_LogoHint" xml:space="preserve"><value>PNG oder JPG, quadratisch (1:1), höchstens 3 MB. Du kannst die Datei auch auf das Feld ziehen.</value></data>
+  <data name="Ui_MaxUsers" xml:space="preserve"><value>Maximale Nutzer</value></data>
   <data name="Ui_Message" xml:space="preserve"><value>Nachricht</value></data>
   <data name="Ui_MicGain" xml:space="preserve"><value>Mikrofonverstärkung</value></data>
   <data name="Ui_Microphone" xml:space="preserve"><value>Mikrofon</value></data>
@@ -309,6 +314,8 @@
   <data name="Ui_NoKeyActions" xml:space="preserve"><value>Noch keine Tastenaktionen.</value></data>
   <data name="Ui_NoPassword" xml:space="preserve"><value>Der Server hat kein Passwort.</value></data>
   <data name="Ui_NobodyBanned" xml:space="preserve"><value>Niemand ist gebannt.</value></data>
+  <data name="Ui_Operation" xml:space="preserve"><value>Betrieb</value></data>
+  <data name="Ui_OperationHint" xml:space="preserve"><value>Gilt sofort. Umgebungsvariablen liefern nur die Werte für den ersten Start.</value></data>
   <data name="Ui_PasswordSaved" xml:space="preserve"><value>Passwort gespeichert</value></data>
   <data name="Ui_PickSoundFilter" xml:space="preserve"><value>Audio (WAV, MP3)</value></data>
   <data name="Ui_PickSoundTitle" xml:space="preserve"><value>Sound wählen</value></data>

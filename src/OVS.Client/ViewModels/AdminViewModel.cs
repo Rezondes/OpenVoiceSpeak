@@ -21,6 +21,13 @@ public sealed partial class AdminViewModel : ObservableObject
     [ObservableProperty] string newPassword = "";
     [ObservableProperty] bool removePassword;
     [ObservableProperty] bool hasPassword;
+    // Package 69: limits, logs and restart; null limits (not sent yet) leave them unchanged on save
+    ServerLimits? loadedLimits;
+    [ObservableProperty] decimal? maxUsers;
+    [ObservableProperty] decimal? logDays;
+    [ObservableProperty] bool logRotateDaily;
+    [ObservableProperty] bool autoRestart;
+    [ObservableProperty] TimeSpan? autoRestartTime;
 
     public AdminViewModel(ServerViewModel server)
     {
@@ -31,6 +38,7 @@ public sealed partial class AdminViewModel : ObservableObject
         serverName = server.Mirror.Settings.Name;
         welcomeText = server.Mirror.Settings.WelcomeText;
         hasPassword = server.Mirror.Settings.HasPassword;
+        LoadLimits();
         Links = new LinkMatrixViewModel(server);
         RebuildGroups();
     }
@@ -101,6 +109,7 @@ public sealed partial class AdminViewModel : ObservableObject
         RebuildUsers();
         Links.Rebuild();
         HasPassword = server.Mirror.Settings.HasPassword;
+        if (loadedLimits is null) LoadLimits(); // e.g. arriving with the ServerConfig right; later ones never overwrite edits
         OnPropertyChanged(nameof(ShowLinks));
         OnPropertyChanged(nameof(ShowGroups));
         OnPropertyChanged(nameof(ShowUsers));
@@ -215,13 +224,32 @@ public sealed partial class AdminViewModel : ObservableObject
         else Groups.Remove(g);
     }
 
+    public bool HasLimits => loadedLimits is not null;
+
+    void LoadLimits()
+    {
+        if (server.Mirror.Settings.Limits is not { } l) return;
+        loadedLimits = l;
+        MaxUsers = l.MaxUsers;
+        LogDays = l.LogDays;
+        LogRotateDaily = l.LogRotateDaily;
+        AutoRestart = l.AutoRestart;
+        AutoRestartTime = l.AutoRestartTime.ToTimeSpan();
+        OnPropertyChanged(nameof(HasLimits));
+    }
+
     [RelayCommand]
     Task SaveServerSettings()
     {
         string? password = RemovePassword ? "" : NewPassword.Length > 0 ? NewPassword : null;
         NewPassword = "";
         RemovePassword = false;
-        return server.SendAsync(new UpdateServerSettings(ServerName, WelcomeText, password));
+        // the server checks the ranges again; an emptied number field keeps the last known value
+        var limits = loadedLimits is { } l
+            ? new ServerLimits((int)(MaxUsers ?? l.MaxUsers), (int)(LogDays ?? l.LogDays), LogRotateDaily, AutoRestart,
+                AutoRestartTime is { } t ? TimeOnly.FromTimeSpan(t) : l.AutoRestartTime)
+            : null;
+        return server.SendAsync(new UpdateServerSettings(ServerName, WelcomeText, password, limits));
     }
 
     [RelayCommand]

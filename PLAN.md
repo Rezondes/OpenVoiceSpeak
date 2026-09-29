@@ -4335,12 +4335,12 @@ Testbefehl: `dotnet test`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Im Server-Tab gibt es "Maximale Nutzer" (1 bis 100000), "Logs aufbewahren (Tage, 0 = unbegrenzt)" (0 bis 3650), "Jeden Tag eine neue Log-Datei", "Automatischer Neustart" mit Uhrzeit. Speichern schickt alle Werte mit Name, Willkommenstext und Passwort.
-- [ ] AC2: Der Server übernimmt die Werte, speichert sie in `server-data.json` und schickt sie an alle Clients mit dem Recht. Ungültige Werte werden mit `InvalidValue` abgelehnt, nichts wird teilweise übernommen.
-- [ ] AC3: Die Werte wirken ohne Neustart: das Limit beim nächsten Beitritt (niemand wird rausgeworfen, wenn es unter die aktuelle Zahl sinkt), die Aufbewahrung bei der nächsten Log-Bereinigung, die Tagesdatei ab der nächsten Datei, der Neustart-Zeitplan sofort (an, aus, neue Uhrzeit).
-- [ ] AC4: Beim ersten Start nach dem Update (Datenversion 2 -> 3) werden die aktuellen Werte aus Umgebung, `server-config.json` oder Standard einmal übernommen. Danach werden `OVS_MAX_USERS`, `OVS_LOG_DAYS`, `OVS_LOG_ROTATE_DAILY`, `OVS_AUTO_RESTART`, `OVS_AUTO_RESTART_TIME` und die gleichnamigen Werte in `server-config.json` ignoriert. Weicht ein gesetzter Wert vom gespeicherten ab, steht beim Start ein Hinweis im Log.
-- [ ] AC5: `OVS_PORT` und `OVS_DATA_DIR` bleiben Einstellungen der Umgebung (A85).
-- [ ] AC6: README und `docker-compose.yml` beschreiben die Variablen als Startwerte und verweisen auf die Verwaltung. Texte auf Deutsch und Englisch.
+- [x] AC1: Im Server-Tab gibt es "Maximale Nutzer" (1 bis 100000), "Logs aufbewahren (Tage, 0 = unbegrenzt)" (0 bis 3650), "Jeden Tag eine neue Log-Datei", "Automatischer Neustart" mit Uhrzeit. Speichern schickt alle Werte mit Name, Willkommenstext und Passwort.
+- [x] AC2: Der Server übernimmt die Werte, speichert sie in `server-data.json` und schickt sie an alle Clients mit dem Recht. Ungültige Werte werden mit `InvalidValue` abgelehnt, nichts wird teilweise übernommen.
+- [x] AC3: Die Werte wirken ohne Neustart: das Limit beim nächsten Beitritt (niemand wird rausgeworfen, wenn es unter die aktuelle Zahl sinkt), die Aufbewahrung bei der nächsten Log-Bereinigung, die Tagesdatei ab der nächsten Datei, der Neustart-Zeitplan sofort (an, aus, neue Uhrzeit).
+- [x] AC4: Beim ersten Start nach dem Update (Datenversion 2 -> 3) werden die aktuellen Werte aus Umgebung, `server-config.json` oder Standard einmal übernommen. Danach werden `OVS_MAX_USERS`, `OVS_LOG_DAYS`, `OVS_LOG_ROTATE_DAILY`, `OVS_AUTO_RESTART`, `OVS_AUTO_RESTART_TIME` und die gleichnamigen Werte in `server-config.json` ignoriert. Weicht ein gesetzter Wert vom gespeicherten ab, steht beim Start ein Hinweis im Log.
+- [x] AC5: `OVS_PORT` und `OVS_DATA_DIR` bleiben Einstellungen der Umgebung (A85).
+- [x] AC6: README und `docker-compose.yml` beschreiben die Variablen als Startwerte und verweisen auf die Verwaltung. Texte auf Deutsch und Englisch.
 
 ### Tests (TDD)
 
