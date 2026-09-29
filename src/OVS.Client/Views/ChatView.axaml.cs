@@ -32,7 +32,10 @@ public partial class ChatView : UserControl
 
     void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ChatViewModel.Selected)) ScrollToEnd(); // another tab starts at its newest line
+        if (e.PropertyName != nameof(ChatViewModel.Selected)) return;
+        ScrollToEnd(); // another tab starts at its newest line
+        // Package 79: a tab scrolled out of the strip comes into view when chosen
+        Dispatcher.UIThread.Post(() => (watched?.Selected is { } tab ? Tabs.ContainerFromItem(tab) : null)?.BringIntoView(), DispatcherPriority.Background);
     }
 
     void OnComposerKeyDown(object? sender, KeyEventArgs e)

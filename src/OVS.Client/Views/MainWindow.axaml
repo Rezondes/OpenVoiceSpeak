@@ -320,7 +320,7 @@
         <!-- Start screen while not connected -->
         <Panel IsVisible="{Binding !IsConnected}">
         <ScrollViewer>
-          <StackPanel MaxWidth="460" Margin="32" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <StackPanel Classes="startScreen" MaxWidth="460" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
             <v:LogoMark Width="80" Height="80" HorizontalAlignment="Center" />
             <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
             <TextBlock Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
@@ -421,16 +421,17 @@
 
     <!-- Package 62: update progress over everything below the title bar; the content under it is disabled meanwhile -->
     <Panel x:Name="UpdateLayer" Grid.ColumnSpan="3" ZIndex="2" IsVisible="{Binding IsUpdating}" Background="{DynamicResource Ovs.Scrim}">
-      <Border Classes="dialog" Width="420" Padding="24,20" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <!-- Package 79: 420 px where there is room, otherwise the window width less 16 px on each side -->
+      <Border Classes="dialog" MaxWidth="420" Margin="16" Padding="24,20" VerticalAlignment="Center">
         <StackPanel Spacing="12">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <PathIcon Classes="accent" Data="{StaticResource Icon.ArrowSync}" />
-            <TextBlock Classes="h2" Text="{Binding UpdateInProgress.Title, FallbackValue=''}" VerticalAlignment="Center" />
-          </StackPanel>
+          <DockPanel>
+            <PathIcon DockPanel.Dock="Left" Classes="accent" Data="{StaticResource Icon.ArrowSync}" Margin="0,0,10,0" />
+            <TextBlock Classes="h2" Text="{Binding UpdateInProgress.Title, FallbackValue=''}" VerticalAlignment="Center" TextWrapping="Wrap" />
+          </DockPanel>
           <ProgressBar x:Name="UpdateBar" Minimum="0" Maximum="100" Height="8" CornerRadius="4"
                        Value="{Binding UpdateInProgress.Percent, FallbackValue=0}"
                        IsIndeterminate="{Binding UpdateInProgress.IsIndeterminate, FallbackValue=True}" />
-          <TextBlock x:Name="UpdateDetail" Classes="caption" Text="{Binding UpdateInProgress.Detail, FallbackValue=''}" />
+          <TextBlock x:Name="UpdateDetail" Classes="caption" Text="{Binding UpdateInProgress.Detail, FallbackValue=''}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
     </Panel>

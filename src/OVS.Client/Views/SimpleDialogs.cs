@@ -39,9 +39,9 @@ public static class SimpleDialogs
         ok.Click += (_, _) => Accept();
         cancel.Click += (_, _) => host.Close();
 
-        var badge = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Child = Icon(icon, kind == Kind.Danger ? "danger" : "accent") };
+        var badge = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Margin = new Thickness(0, 0, 12, 0), Child = Icon(icon, kind == Kind.Danger ? "danger" : "accent") };
         badge.Bind(Border.BackgroundProperty, badge.GetResourceObservable(kind == Kind.Danger ? "Ovs.DangerSurface" : "Ovs.AccentSurface"));
-        var heading = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxWidth = 400 };
+        var heading = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
         heading.Classes.Add("h2");
         heading.FontSize = 17;
 
@@ -49,7 +49,7 @@ public static class SimpleDialogs
         {
             Padding = new Thickness(24, 12),
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Child = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8, Children = { cancel, ok } },
+            Child = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, ItemSpacing = 8, LineSpacing = 8, Children = { cancel, ok } },
         };
         buttonBar.Bind(Border.BackgroundProperty, buttonBar.GetResourceObservable("Ovs.DialogBar"));
         buttonBar.Bind(Border.BorderBrushProperty, buttonBar.GetResourceObservable("Ovs.Border"));
@@ -59,14 +59,18 @@ public static class SimpleDialogs
             Children =
             {
                 Dock(buttonBar, Avalonia.Controls.Dock.Bottom),
-                new StackPanel
+                // Package 79: a dialog taller than the window scrolls its content, the button bar stays in view
+                new ScrollViewer
                 {
-                    Margin = new Thickness(24, 20, 24, 20),
-                    Spacing = 16,
-                    Children =
+                    Content = new StackPanel
                     {
-                        new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { badge, heading } },
-                        body,
+                        Margin = new Thickness(24, 20, 24, 20),
+                        Spacing = 16,
+                        Children =
+                        {
+                            new DockPanel { Children = { Dock(badge, Avalonia.Controls.Dock.Left), heading } },
+                            body,
+                        },
                     },
                 },
             },

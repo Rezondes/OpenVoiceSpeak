@@ -457,6 +457,210 @@ public sealed class ResponsiveTests : IDisposable
         LayoutAssert.FitsHorizontally(page, cells);
         main.Close();
     }
+
+    // ---- Package 79: chat, start screen, update card and dialogs at every width ----
+
+    /// <summary>Every dialog of <c>UiSmokeTests.ExercisePagesAndDialogs</c>, plus the password and bookmark dialogs.</summary>
+    static Task OpenDialog(string name, OverlayHost o, ClientSettings settings, ServerViewModel server) => name switch
+    {
+        "Connect" => SimpleDialogs.Connect(o, settings),
+        "TofuMismatch" => SimpleDialogs.Tofu(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
+        "TofuUnknown" => SimpleDialogs.Tofu(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Unknown)),
+        "Ban" => SimpleDialogs.Ban(o, "Mitspieler mit langem Namen"),
+        "Confirm" => SimpleDialogs.Confirm(o, "Channel \"Raidgruppe Nummer 2\" wirklich löschen? Alle darin landen in der Lobby."),
+        "Update" => SimpleDialogs.OfferUpdate(o, new OVS.Client.Net.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
+            string.Join("\n", Enumerable.Range(1, 30).Select(i => $"- Neuerung Nummer {i} mit etwas mehr Text")), DateTimeOffset.UtcNow,
+            new Uri("https://example.org/a"), new Uri("https://example.org/b"))),
+        "KeyBinding" => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<KeyChord?>(null)),
+        "ChannelCreate" => ChannelDialog.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
+        "ChannelEdit" => ChannelDialog.ShowAsync(o, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8), ChannelDialogMode.Edit),
+        "PickChannel" => SimpleDialogs.PickChannel(o, "Verschieben nach", server.Channels),
+        "AskText" => SimpleDialogs.AskText(o, Strings.Dialog_RedeemToken, "Token:"),
+        "Password" => SimpleDialogs.AskPassword(o, "Gilde"),
+        "Bookmark" => SimpleDialogs.EditBookmark(o, settings.Bookmarks[0]),
+        _ => throw new ArgumentException(name),
+    };
+
+    /// <summary>Three bookmarks, so the start screen and the connect dialog show their lists.</summary>
+    void SaveThreeBookmarks()
+    {
+        var settings = new ClientSettings();
+        foreach (var name in new[] { "Gilde", "Raidgruppe am Donnerstagabend", "Freunde" })
+            settings.Bookmarks.Add(new Bookmark(name, $"{name.ToLowerInvariant().Replace(' ', '-')}.example.org", 7000, "ich"));
+        settings.Save(dir);
+    }
+
+    static Border DialogCard(MainWindow main) => main.Overlay.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("dialog"));
+
+    /// <summary>At most as wide as before, at least 16 px from every window edge.</summary>
+    static void CardInside(MainWindow main, Border card, double maxWidth)
+    {
+        var at = card.TranslatePoint(default, main)!.Value;
+        Assert.True(card.Bounds.Width <= maxWidth + 0.5, $"Karte {card.Bounds.Width}");
+        Assert.True(at.X >= 16 - 0.5 && at.X + card.Bounds.Width <= main.Bounds.Width - 16 + 0.5, $"Karte bei {at.X}..{at.X + card.Bounds.Width}, Fenster {main.Bounds.Width}");
+        Assert.True(at.Y >= 16 - 0.5 && at.Y + card.Bounds.Height <= main.Bounds.Height - 16 + 0.5, $"Karte bei y {at.Y}..{at.Y + card.Bounds.Height}, Fenster {main.Bounds.Height}");
+    }
+
+    public static TheoryData<string, string> Dialogs()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "Bookmark" })
+            foreach (var culture in new[] { "de-DE", "en-US" })
+                data.Add(dialog, culture);
+        return data;
+    }
+
+    [AvaloniaTheory]
+    [MemberData(nameof(Dialogs))]
+    public void Dialogs_FitAt360(string dialog, string culture) => TestCulture.With(culture, () =>
+    {
+        SaveThreeBookmarks();
+        var main = Open(1100, FakeServers.Crowded(), out var vm);
+        foreach (var width in new[] { 360.0, 480, 1100 })
+        {
+            Resize(main, width);
+            var shown = OpenDialog(dialog, main.Overlay, vm.Settings, vm.Server!);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(main.Overlay.IsOpen);
+            CardInside(main, DialogCard(main), 460);
+            LayoutAssert.FitsHorizontally(main.Overlay);
+            main.Overlay.Close();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(shown.IsCompleted);
+        }
+        main.Close();
+        return 0;
+    });
+
+    [AvaloniaTheory]
+    [InlineData("Connect")]
+    [InlineData("ChannelEdit")]
+    [InlineData("Update")]
+    public void Dialog_TallerThanWindow_ContentScrollsButtonsVisible(string dialog)
+    {
+        SaveThreeBookmarks();
+        var main = Open(360, FakeServers.Crowded(), out var vm);
+        main.Height = 480;
+        Dispatcher.UIThread.RunJobs();
+        _ = OpenDialog(dialog, main.Overlay, vm.Settings, vm.Server!);
+        Dispatcher.UIThread.RunJobs();
+        var card = DialogCard(main);
+        CardInside(main, card, 460);
+        var content = card.GetVisualDescendants().OfType<ScrollViewer>().First();
+        Assert.True(content.Extent.Height > content.Viewport.Height + 1, $"Inhalt {content.Extent.Height} passt in {content.Viewport.Height}");
+        foreach (var button in card.GetVisualDescendants().OfType<Button>().Where(b => b.Content is string && b.FindAncestorOfType<ScrollViewer>() is null))
+        {
+            var (top, bottom) = Vertical(button, main);
+            Assert.True(top >= 0 && bottom <= main.Bounds.Height, $"{button.Content} bei {top}..{bottom}");
+        }
+        Assert.Equal(2, card.GetVisualDescendants().OfType<Button>().Count(b => b.Content is string && b.FindAncestorOfType<ScrollViewer>() is null));
+        // scrolled to the end, the last field is reachable
+        content.Offset = new Vector(0, content.Extent.Height);
+        Dispatcher.UIThread.RunJobs();
+        LayoutAssert.FitsHorizontally(main.Overlay);
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
+        main.Close();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(360, "de-DE")]
+    [InlineData(480, "de-DE")]
+    [InlineData(1100, "de-DE")]
+    [InlineData(360, "en-US")]
+    [InlineData(480, "en-US")]
+    [InlineData(1100, "en-US")]
+    public void UpdateCard_Fits(double width, string culture) => TestCulture.With(culture, () =>
+    {
+        var main = Open(width, FakeServers.Admin(), out var vm);
+        vm.UpdateInProgress = new OVS.Client.Net.UpdateProgress("290926.0lh6", OVS.Client.Net.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
+        Dispatcher.UIThread.RunJobs();
+        var layer = main.FindControl<Panel>("UpdateLayer")!;
+        CardInside(main, layer.Children.OfType<Border>().Single(), 420);
+        LayoutAssert.FitsHorizontally(layer);
+        main.Close();
+        return 0;
+    });
+
+    [AvaloniaTheory]
+    [InlineData(360, "de-DE")]
+    [InlineData(480, "de-DE")]
+    [InlineData(1100, "de-DE")]
+    [InlineData(360, "en-US")]
+    [InlineData(480, "en-US")]
+    [InlineData(1100, "en-US")]
+    public void Chat_Narrow_TabsScroll_SendVisible(double width, string culture) => TestCulture.With(culture, () =>
+    {
+        var server = FakeServers.Crowded();
+        var main = Open(width, server, out var vm);
+        var text = string.Join(" ", Enumerable.Repeat("Eine recht lange Nachricht, die umbrechen muss.", 12));
+        server.Apply(new OVS.Shared.Protocol.ChatMessage(OVS.Shared.Protocol.ChatTarget.Server, 3, "Mitspieler3", null, null, text, DateTimeOffset.Now));
+        server.Apply(new OVS.Shared.Protocol.ChatMessage(OVS.Shared.Protocol.ChatTarget.Server, 1, "ich", null, null, new string('y', 400), DateTimeOffset.Now));
+        server.Apply(new OVS.Shared.Protocol.ChatMessage(OVS.Shared.Protocol.ChatTarget.Server, 4, "Mitspieler4", null, null, new string('x', 400), DateTimeOffset.Now));
+        for (var i = 5; i <= 10; i++) vm.Chat!.OpenPrivate($"fp{i}");
+        vm.Chat!.Selected = vm.Chat.Tabs[0];
+        Dispatcher.UIThread.RunJobs();
+
+        var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
+        var strip = chat.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.TabStrip>().Single();
+        var tabs = strip.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.TabStripItem>().ToList();
+        Assert.Equal(vm.Chat.Tabs.Count, tabs.Count);
+        Assert.Single(tabs.Select(t => Math.Round(t.TranslatePoint(default, main)!.Value.Y)).Distinct()); // one line
+        var scroller = strip.FindAncestorOfType<ScrollViewer>()!;
+        if (width < 1100) Assert.True(scroller.Extent.Width > scroller.Viewport.Width + 1, "Tab-Leiste scrollt nicht");
+
+        // the last tab, once chosen, is in view
+        vm.Chat.Selected = vm.Chat.Tabs[^1];
+        Dispatcher.UIThread.RunJobs();
+        var last = tabs[^1];
+        var x = last.TranslatePoint(default, scroller)!.Value.X;
+        Assert.True(x >= -1 && x + last.Bounds.Width <= scroller.Viewport.Width + 1, $"letzter Tab bei {x}");
+        vm.Chat.Selected = vm.Chat.Tabs[0];
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(tabs[0].TranslatePoint(default, scroller)!.Value.X >= -1, $"erster Tab bei {tabs[0].TranslatePoint(default, scroller)!.Value.X}");
+
+        var send = chat.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == Strings.Ui_Send);
+        FullyInside(main, send);
+        var history = chat.GetVisualDescendants().OfType<ItemsControl>().Single(i => i is not Avalonia.Controls.Primitives.TabStrip);
+        var share = main.Classes.Contains("narrow") ? 0.85 : 0.75;
+        foreach (var bubble in history.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("bubble") && b.IsEffectivelyVisible))
+            Assert.True(bubble.Bounds.Width <= history.Bounds.Width * share + 1, $"Blase {bubble.Bounds.Width} von {history.Bounds.Width}");
+        if (main.Classes.Contains("narrow"))
+        {
+            var own = history.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("bubble") && b.Classes.Contains("own") && b.IsEffectivelyVisible);
+            Assert.True(own.Bounds.Width > history.Bounds.Width * 0.8, $"eigene Blase nur {own.Bounds.Width} von {history.Bounds.Width}");
+            Assert.Equal(12, history.TranslatePoint(default, chat)!.Value.X, 1);
+        }
+        LayoutAssert.FitsHorizontally(chat, strip);
+        main.Close();
+        return 0;
+    });
+
+    [AvaloniaTheory]
+    [InlineData(360, "de-DE")]
+    [InlineData(480, "de-DE")]
+    [InlineData(1100, "de-DE")]
+    [InlineData(360, "en-US")]
+    [InlineData(480, "en-US")]
+    [InlineData(1100, "en-US")]
+    public void StartScreen_FitsAt360(double width, string culture) => TestCulture.With(culture, () =>
+    {
+        SaveThreeBookmarks();
+        var main = Open(width, null, out var vm);
+        vm.Status = "Verbindung zu raidgruppe-am-donnerstagabend.example.org:7000 fehlgeschlagen: Zeitüberschreitung";
+        Dispatcher.UIThread.RunJobs();
+        var start = main.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Classes.Contains("startScreen"));
+        Assert.Equal(width < 700 ? 16 : 32, start.Margin.Left);
+        LayoutAssert.FitsHorizontally(main);
+        if (width < 700)
+        {
+            Click(main, MenuButton(main)); // the bookmarks live in the drawer
+            LayoutAssert.FitsHorizontally(main);
+            Assert.Contains(Sidebar(main).GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == "Freunde");
+        }
+        main.Close();
+        return 0;
+    });
 }
 
 /// <summary>Package 68: the layout check itself finds what runs off the visible area.</summary>

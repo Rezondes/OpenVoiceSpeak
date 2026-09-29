@@ -637,6 +637,46 @@
     <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
     <Setter Property="Opacity" Value="0.75" />
   </Style>
+  <!-- Package 79: 75 % of the history for a bubble, 85 % under narrow (columns 15*,2*,3* and 3*,2*,15*) -->
+  <Style Selector="Grid > DockPanel.otherMessage">
+    <Setter Property="Grid.ColumnSpan" Value="1" />
+  </Style>
+  <Style Selector="Window.narrow Grid > DockPanel.otherMessage">
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+  </Style>
+  <Style Selector="Grid > Border.bubble.own">
+    <Setter Property="Grid.Column" Value="2" />
+  </Style>
+  <Style Selector="Window.narrow Grid > Border.bubble.own">
+    <Setter Property="Grid.Column" Value="1" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+  </Style>
+  <!-- Package 79: paddings of the chat, 12 px under narrow -->
+  <Style Selector="Border.chatTabs">
+    <Setter Property="Padding" Value="16,0" />
+  </Style>
+  <Style Selector="Window.narrow Border.chatTabs">
+    <Setter Property="Padding" Value="12,0" />
+  </Style>
+  <Style Selector="StackPanel.chatComposer">
+    <Setter Property="Margin" Value="20,8,20,16" />
+  </Style>
+  <Style Selector="Window.narrow StackPanel.chatComposer">
+    <Setter Property="Margin" Value="12,8,12,12" />
+  </Style>
+  <Style Selector="ItemsControl.chatHistory">
+    <Setter Property="Margin" Value="20,12" />
+  </Style>
+  <Style Selector="Window.narrow ItemsControl.chatHistory">
+    <Setter Property="Margin" Value="12" />
+  </Style>
+  <!-- Package 79: the start screen, 16 px from the edges under compact -->
+  <Style Selector="StackPanel.startScreen">
+    <Setter Property="Margin" Value="32" />
+  </Style>
+  <Style Selector="Window.compact StackPanel.startScreen">
+    <Setter Property="Margin" Value="16" />
+  </Style>
   <Style Selector="SelectableTextBlock.message">
     <Setter Property="FontSize" Value="14" />
     <Setter Property="LineHeight" Value="21" />

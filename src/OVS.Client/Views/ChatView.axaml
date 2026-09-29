@@ -7,8 +7,15 @@
              x:DataType="vm:ChatViewModel">
   <DockPanel>
     <!-- Tabs: "Allgemein" and the current channel -->
-    <Border DockPanel.Dock="Top" Padding="16,0" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
-      <TabStrip ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{x:Static l:Strings.Ui_ChatTabs}">
+    <!-- Package 79: the tabs stay in one line and scroll sideways when they do not fit -->
+    <Border DockPanel.Dock="Top" Classes="chatTabs" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <TabStrip x:Name="Tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{x:Static l:Strings.Ui_ChatTabs}">
+        <TabStrip.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </TabStrip.ItemsPanel>
         <TabStrip.ItemTemplate>
           <DataTemplate x:DataType="vm:ChatTab">
             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -29,10 +36,11 @@
           </DataTemplate>
         </TabStrip.ItemTemplate>
       </TabStrip>
+      </ScrollViewer>
     </Border>
 
     <!-- Composer: Enter sends, Shift+Enter breaks the line -->
-    <StackPanel DockPanel.Dock="Bottom" Margin="20,8,20,16" Spacing="6">
+    <StackPanel DockPanel.Dock="Bottom" Classes="chatComposer" Spacing="6">
       <Border Classes="banner danger" IsVisible="{Binding ComposerError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
         <StackPanel Orientation="Horizontal" Spacing="8">
           <PathIcon Classes="danger" Data="{StaticResource Icon.ErrorCircle}" />
@@ -57,7 +65,7 @@
     </StackPanel>
 
     <ScrollViewer x:Name="Scroller">
-      <ItemsControl ItemsSource="{Binding Selected.Entries}" Margin="20,12" MaxWidth="900" HorizontalAlignment="Stretch">
+      <ItemsControl ItemsSource="{Binding Selected.Entries}" Classes="chatHistory" MaxWidth="900" HorizontalAlignment="Stretch">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <StackPanel Spacing="10" />
@@ -67,8 +75,9 @@
           <DataTemplate x:DataType="vm:ChatEntry">
             <Panel>
               <!-- Package 64: someone else's message on the left: avatar, name, time, text in a neutral bubble (at most 3/4 wide) -->
-              <Grid IsVisible="{Binding IsOtherMessage}" ColumnDefinitions="3*,*">
-                <DockPanel HorizontalAlignment="Left">
+              <!-- Package 79: columns 75 %, 10 %, 15 %; under narrow the bubble may take 85 % (styles in Controls.axaml) -->
+              <Grid IsVisible="{Binding IsOtherMessage}" ColumnDefinitions="15*,2*,3*">
+                <DockPanel Classes="otherMessage" HorizontalAlignment="Left">
                   <Border DockPanel.Dock="Left" Classes="avatar" Width="32" Height="32" VerticalAlignment="Top"
                           Background="{Binding From, Converter={x:Static v:Ui.AvatarBrush}}">
                     <TextBlock Text="{Binding From, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
@@ -86,8 +95,8 @@
               </Grid>
 
               <!-- Package 64: own message on the right: accent bubble, no avatar or name, time below the text -->
-              <Grid IsVisible="{Binding IsOwnMessage}" ColumnDefinitions="*,3*">
-                <Border Grid.Column="1" Classes="bubble own" HorizontalAlignment="Right">
+              <Grid IsVisible="{Binding IsOwnMessage}" ColumnDefinitions="3*,2*,15*">
+                <Border Classes="bubble own" HorizontalAlignment="Right">
                   <StackPanel Spacing="2">
                     <SelectableTextBlock Classes="message" Text="{Binding Text}" />
                     <TextBlock Classes="caption" Text="{Binding TimeText}" HorizontalAlignment="Right" />

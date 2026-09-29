@@ -4931,14 +4931,14 @@ Die Breiten sind heute fest:
 
 ### Acceptance Criteria
 
-- [ ] AC1: Dialoge und Update-Karte sind höchstens so breit wie ihr Standard (460 bzw. 420 px) und mindestens 16 px vom Fensterrand entfernt. Inhalt und Buttons brechen um. Ist ein Dialog höher als das Fenster, scrollt sein Inhalt, die Buttons bleiben sichtbar.
-- [ ] AC2: Chat unter `narrow`:
+- [x] AC1: Dialoge und Update-Karte sind höchstens so breit wie ihr Standard (460 bzw. 420 px) und mindestens 16 px vom Fensterrand entfernt. Inhalt und Buttons brechen um. Ist ein Dialog höher als das Fenster, scrollt sein Inhalt, die Buttons bleiben sichtbar.
+- [x] AC2: Chat unter `narrow`:
   - Die Tab-Leiste scrollt waagrecht.
   - Blasen dürfen 85 % der Breite nutzen.
   - Die Eingabezeile behält den Senden-Button sichtbar.
   - Die Innenabstände schrumpfen auf 12 px.
-- [ ] AC3: Die Startseite (Logo, Status, Verbinden, Lesezeichen) passt ab 360 px, der Abstand schrumpft auf 16 px.
-- [ ] AC4: `LayoutAssert.FitsHorizontally` ist für Chat mit langen Nachrichten, Startseite mit drei Lesezeichen, jeden Dialog aus `ExercisePagesAndDialogs` und die Update-Karte bei 360, 480 und 1100 px grün, in Deutsch und Englisch.
+- [x] AC3: Die Startseite (Logo, Status, Verbinden, Lesezeichen) passt ab 360 px, der Abstand schrumpft auf 16 px.
+- [x] AC4: `LayoutAssert.FitsHorizontally` ist für Chat mit langen Nachrichten, Startseite mit drei Lesezeichen, jeden Dialog aus `ExercisePagesAndDialogs` und die Update-Karte bei 360, 480 und 1100 px grün, in Deutsch und Englisch.
 
 ### Tests (TDD)
 

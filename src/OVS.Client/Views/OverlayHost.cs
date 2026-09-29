@@ -26,7 +26,8 @@ public sealed class OverlayHost : Panel
         IsVisible = false;
         var scrim = new Border();
         scrim.Bind(Border.BackgroundProperty, scrim.GetResourceObservable("Ovs.Scrim"));
-        card = new Border { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Width = 460, Margin = new Thickness(24) };
+        // Package 79: 460 px where there is room, otherwise the window width less 16 px on each side (stretched but capped = centered)
+        card = new Border { VerticalAlignment = VerticalAlignment.Center, MaxWidth = 460, Margin = new Thickness(16) };
         card.Classes.Add("dialog");
         KeyboardNavigation.SetTabNavigation(card, KeyboardNavigationMode.Cycle);
         Children.Add(scrim);
