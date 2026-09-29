@@ -411,6 +411,92 @@
     <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
   </Style>
 
+  <!-- ===== Settings page (Package 77): as before from 560 px, stacked below (Window.narrow) ===== -->
+  <Style Selector="Border.settingsHeader">
+    <Setter Property="Padding" Value="24,12,16,12" />
+  </Style>
+  <Style Selector="Border.settingsBar">
+    <Setter Property="Padding" Value="24,12" />
+  </Style>
+  <Style Selector="StackPanel.settingsBody">
+    <Setter Property="Margin" Value="24,20" />
+  </Style>
+  <Style Selector="Window.narrow Border.settingsHeader">
+    <Setter Property="Padding" Value="12,12,8,12" />
+  </Style>
+  <Style Selector="Window.narrow Border.settingsBar">
+    <Setter Property="Padding" Value="12" />
+  </Style>
+  <Style Selector="Window.narrow StackPanel.settingsBody">
+    <Setter Property="Margin" Value="12,16" />
+  </Style>
+  <!-- Sound row: controls beside the name; stacked (Responsive.StackBelow) in a line below it, under narrow the buttons in a third -->
+  <Style Selector="Grid.soundControls Slider">
+    <Setter Property="Width" Value="150" />
+  </Style>
+  <Style Selector="Grid.soundControls WrapPanel">
+    <Setter Property="Grid.Column" Value="2" />
+    <Setter Property="Margin" Value="12,0,0,0" />
+  </Style>
+  <Style Selector="Grid.soundControls">
+    <Setter Property="Grid.Column" Value="2" />
+    <Setter Property="Margin" Value="8,0,0,0" />
+  </Style>
+  <Style Selector="ItemsControl.stacked Grid.soundControls">
+    <Setter Property="Grid.Row" Value="1" />
+    <Setter Property="Grid.Column" Value="0" />
+    <Setter Property="Grid.ColumnSpan" Value="3" />
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+  <Style Selector="ItemsControl.stacked Grid.soundControls Slider">
+    <Setter Property="Width" Value="NaN" />
+  </Style>
+  <Style Selector="Window.narrow Grid.soundControls WrapPanel">
+    <Setter Property="Grid.Row" Value="1" />
+    <Setter Property="Grid.Column" Value="0" />
+    <Setter Property="Grid.ColumnSpan" Value="3" />
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <!-- Label beside its buttons, under narrow the buttons go below -->
+  <Style Selector="StackPanel.keyActions">
+    <Setter Property="DockPanel.Dock" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Window.narrow StackPanel.keyActions">
+    <Setter Property="DockPanel.Dock" Value="Bottom" />
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+  <Style Selector="Button.pttKey">
+    <Setter Property="DockPanel.Dock" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="12,0,0,0" />
+  </Style>
+  <Style Selector="Window.narrow Button.pttKey">
+    <Setter Property="DockPanel.Dock" Value="Bottom" />
+    <Setter Property="Margin" Value="0,8,0,0" />
+  </Style>
+  <Style Selector="DockPanel.selfTest > Button">
+    <Setter Property="DockPanel.Dock" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+  <Style Selector="DockPanel.selfTest > TextBlock">
+    <Setter Property="Margin" Value="12,0,0,0" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.selfTest > Button">
+    <Setter Property="DockPanel.Dock" Value="Top" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.selfTest > TextBlock">
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+  <Style Selector="ComboBox.settingsChoice">
+    <Setter Property="MinWidth" Value="200" />
+  </Style>
+  <Style Selector="Window.narrow ComboBox.settingsChoice">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+
   <!-- ===== Chat (Package 32) ===== -->
   <Style Selector="TabStripItem">
     <Setter Property="FontSize" Value="14" />

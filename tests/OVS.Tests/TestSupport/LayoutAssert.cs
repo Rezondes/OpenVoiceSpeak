@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Xunit.Sdk;
 
@@ -29,6 +30,10 @@ public static class LayoutAssert
             if (Horizontal(container, top) is not var (left, right) || Horizontal(control, top) is not var (x, end)) continue;
             if (x < left - Tolerance || end > right + Tolerance)
                 offenders.Add($"{control.GetType().Name} {Describe(control)} at {x:0.#}..{end:0.#}, visible {left:0.#}..{right:0.#}");
+            // Text wider than its own box is cut off without "..." (trimmed text is fine)
+            else if (control is TextBlock { TextTrimming: var trimming } text && trimming == TextTrimming.None
+                     && text.TextLayout.WidthIncludingTrailingWhitespace > text.Bounds.Width - text.Padding.Left - text.Padding.Right + Tolerance)
+                offenders.Add($"{control.GetType().Name} {Describe(control)} needs {text.TextLayout.WidthIncludingTrailingWhitespace:0.#}, has {text.Bounds.Width:0.#}");
         }
         if (offenders.Count > 0) throw new XunitException("Outside the visible area:" + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }

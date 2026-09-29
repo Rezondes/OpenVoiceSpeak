@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 
 namespace OVS.Client.Views;
@@ -30,5 +31,27 @@ public static class Responsive
     {
         window.Classes.Set("compact", IsCompact(windowWidth));
         window.Classes.Set("narrow", mainWidth < NarrowBelow);
+    }
+
+    /// <summary>
+    /// Package 77: a control that needs more room than the narrow step promises sets its own break width in XAML
+    /// (<c>v:Responsive.StackBelow="660"</c>) and gets the class <c>stacked</c> while it is narrower.
+    /// </summary>
+    public static readonly AttachedProperty<double> StackBelowProperty =
+        AvaloniaProperty.RegisterAttached<Control, double>("StackBelow", typeof(Responsive));
+
+    public static double GetStackBelow(Control control) => control.GetValue(StackBelowProperty);
+    public static void SetStackBelow(Control control, double value) => control.SetValue(StackBelowProperty, value);
+
+    static Responsive() => StackBelowProperty.Changed.AddClassHandler<Control>((control, _) =>
+    {
+        control.SizeChanged -= OnStackSizeChanged;
+        control.SizeChanged += OnStackSizeChanged;
+    });
+
+    static void OnStackSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        var control = (Control)sender!;
+        control.Classes.Set("stacked", e.NewSize.Width < GetStackBelow(control));
     }
 }

@@ -2,11 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OVS.Client.ViewModels"
              xmlns:l="using:OVS.Client.Localization"
+             xmlns:v="using:OVS.Client.Views"
              x:Class="OVS.Client.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <DockPanel>
-    <!-- Page header: title and close (Esc closes as well) -->
-    <Border DockPanel.Dock="Top" Padding="24,12,16,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+    <!-- Page header: title and close (Esc closes as well). Package 77: paddings and narrow layouts in Controls.axaml -->
+    <Border DockPanel.Dock="Top" Classes="settingsHeader" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CancelCommand}"
                 ToolTip.Tip="{x:Static l:Strings.Ui_CloseEsc}" AutomationProperties.Name="{x:Static l:Strings.Ui_CloseSettings}">
@@ -21,7 +22,7 @@
       </DockPanel>
     </Border>
     <!-- Button bar -->
-    <Border DockPanel.Dock="Bottom" Padding="24,12" Background="{DynamicResource Ovs.Sidebar}"
+    <Border DockPanel.Dock="Bottom" Classes="settingsBar" Background="{DynamicResource Ovs.Sidebar}"
             BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
@@ -34,7 +35,7 @@
     </Border>
 
     <ScrollViewer>
-      <StackPanel Margin="24,20" Spacing="20" MaxWidth="720" HorizontalAlignment="Stretch">
+      <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Stretch">
 
         <!-- Devices -->
         <StackPanel Spacing="8">
@@ -62,10 +63,10 @@
                 </ComboBox>
               </StackPanel>
               <Border Classes="banner warning" IsVisible="{Binding DeviceHint, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" />
-                  <TextBlock Classes="warning" Text="{Binding DeviceHint}" TextWrapping="Wrap" MaxWidth="420" />
-                </StackPanel>
+                <DockPanel>
+                  <PathIcon DockPanel.Dock="Left" Classes="warning" Data="{StaticResource Icon.Warning}" Margin="0,0,8,0" VerticalAlignment="Top" />
+                  <TextBlock Classes="warning" Text="{Binding DeviceHint}" TextWrapping="Wrap" />
+                </DockPanel>
               </Border>
             </StackPanel>
           </Border>
@@ -95,19 +96,20 @@
           <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_TransmitSection}" />
           <Border Classes="card">
             <StackPanel Spacing="10">
-              <RadioButton Content="{x:Static l:Strings.Ui_ModePtt}" IsChecked="{Binding IsPushToTalk}" />
+              <RadioButton IsChecked="{Binding IsPushToTalk}">
+                <TextBlock Text="{x:Static l:Strings.Ui_ModePtt}" TextWrapping="Wrap" />
+              </RadioButton>
               <!-- Package 59: push-to-talk without a key cannot work -->
               <Border Classes="banner warning" IsVisible="{Binding ShowPttHint}" Margin="28,0,0,0">
                 <DockPanel>
-                  <Button DockPanel.Dock="Right" Content="{x:Static l:Strings.Ui_SetPttKey}" Command="{Binding SetPttKeyCommand}"
-                          VerticalAlignment="Center" Margin="12,0,0,0" />
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <PathIcon Classes="warning" Data="{StaticResource Icon.Warning}" VerticalAlignment="Top" />
-                    <TextBlock Classes="warning" Text="{x:Static l:Strings.Ui_PttHint}" TextWrapping="Wrap" MaxWidth="360" />
-                  </StackPanel>
+                  <PathIcon DockPanel.Dock="Left" Classes="warning" Data="{StaticResource Icon.Warning}" Margin="0,0,8,0" VerticalAlignment="Top" />
+                  <Button Classes="pttKey" Content="{x:Static l:Strings.Ui_SetPttKey}" Command="{Binding SetPttKeyCommand}" />
+                  <TextBlock Classes="warning" Text="{x:Static l:Strings.Ui_PttHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
                 </DockPanel>
               </Border>
-              <RadioButton Content="{x:Static l:Strings.Ui_ModeVad}" IsChecked="{Binding VoiceActivation}" />
+              <RadioButton IsChecked="{Binding VoiceActivation}">
+                <TextBlock Text="{x:Static l:Strings.Ui_ModeVad}" TextWrapping="Wrap" />
+              </RadioButton>
               <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
                 <DockPanel>
                   <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding VadThresholdDb, StringFormat='{}{0:0} dBFS'}" />
@@ -123,15 +125,15 @@
                 </StackPanel>
               </StackPanel>
               <!-- Package 53: hear yourself the way the others do -->
-              <DockPanel Margin="0,4,0,0">
-                <Button DockPanel.Dock="Left" Command="{Binding ToggleSelfTestCommand}" Classes.accent="{Binding IsSelfTesting}"
+              <DockPanel Classes="selfTest" Margin="0,4,0,0">
+                <Button Command="{Binding ToggleSelfTestCommand}" Classes.accent="{Binding IsSelfTesting}"
                         AutomationProperties.Name="{Binding SelfTestText}" VerticalAlignment="Top">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.Headphones}" Classes="sm" />
                     <TextBlock Text="{Binding SelfTestText}" />
                   </StackPanel>
                 </Button>
-                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="12,0,0,0" VerticalAlignment="Center"
+                <TextBlock Classes="caption" TextWrapping="Wrap" VerticalAlignment="Center"
                            Text="{x:Static l:Strings.Ui_SelfTestHint}" />
               </DockPanel>
             </StackPanel>
@@ -155,7 +157,7 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:KeyBindingItem">
                     <DockPanel>
-                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                      <StackPanel Classes="keyActions" Orientation="Horizontal" Spacing="4">
                         <Button Command="{Binding EditCommand}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChangeFmt}}">
                           <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Classes="sm" Data="{StaticResource Icon.Edit}" />
@@ -168,7 +170,7 @@
                         </Button>
                       </StackPanel>
                       <StackPanel Spacing="4">
-                        <TextBlock Classes="label" Text="{Binding Label}" />
+                        <TextBlock Classes="label" Text="{Binding Label}" TextWrapping="Wrap" />
                         <Border Classes="keycap" HorizontalAlignment="Left">
                           <TextBlock Text="{Binding ChordName}" />
                         </Border>
@@ -202,7 +204,8 @@
                       AutomationProperties.Name="{x:Static l:Strings.Ui_SoundVolume}" />
               <!-- Package 48: every sound on its own -->
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsEachHint}" Margin="0,6,0,0" />
-              <ItemsControl ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}">
+              <!-- Package 77: below 670 px name and controls no longer fit side by side (German texts), the controls go below -->
+              <ItemsControl ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}" v:Responsive.StackBelow="670">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="6" />
@@ -212,33 +215,36 @@
                   <DataTemplate x:DataType="vm:SoundRow">
                     <Border Classes="soundRow">
                       <StackPanel Spacing="4">
-                        <DockPanel>
-                          <Button DockPanel.Dock="Left" Classes="icon" Command="{Binding PlayCommand}" Margin="0,0,6,0"
+                        <!-- Package 77: one line when wide; when stacked the controls move below play and name (Controls.axaml) -->
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                          <Button Classes="icon" Command="{Binding PlayCommand}" Margin="0,0,6,0"
                                   ToolTip.Tip="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}"
                                   AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}">
                             <PathIcon Classes="sm" Data="{StaticResource Icon.Play}" />
                           </Button>
-                          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Slider Width="150" Minimum="0" Maximum="100" Value="{Binding VolumePercent}" IsEnabled="{Binding !Muted}"
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Classes="caption" Text="{Binding SourceText}" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <Grid Classes="soundControls" ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                            <Slider Minimum="0" Maximum="100" Value="{Binding VolumePercent}" IsEnabled="{Binding !Muted}"
                                     VerticalAlignment="Center"
                                     AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundVolumeFmt}}" />
-                            <TextBlock Classes="muted" Width="44" TextAlignment="Right" VerticalAlignment="Center"
+                            <TextBlock Grid.Column="1" Classes="muted" Width="44" Margin="6,0,0,0" TextAlignment="Right" VerticalAlignment="Center"
                                        Text="{Binding VolumePercent, StringFormat='{}{0:0} %'}" />
-                            <CheckBox Content="{x:Static l:Strings.Ui_Muted}" IsChecked="{Binding Muted}" Margin="6,0,0,0"
-                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundMutedFmt}}" />
-                            <Button Click="OnPickSound" Content="{x:Static l:Strings.Ui_ChooseFile}"
-                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChooseFileFmt}}" />
-                            <Button Classes="icon" Command="{Binding ResetCommand}"
-                                    ToolTip.Tip="{x:Static l:Strings.Ui_Reset}"
-                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ResetFmt}}">
-                              <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
-                            </Button>
-                          </StackPanel>
-                          <StackPanel VerticalAlignment="Center">
-                            <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Classes="caption" Text="{Binding SourceText}" />
-                          </StackPanel>
-                        </DockPanel>
+                            <WrapPanel ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
+                              <CheckBox Content="{x:Static l:Strings.Ui_Muted}" IsChecked="{Binding Muted}"
+                                        AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundMutedFmt}}" />
+                              <Button Click="OnPickSound" Content="{x:Static l:Strings.Ui_ChooseFile}"
+                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChooseFileFmt}}" />
+                              <Button Classes="icon" Command="{Binding ResetCommand}"
+                                      ToolTip.Tip="{x:Static l:Strings.Ui_Reset}"
+                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ResetFmt}}">
+                                <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                              </Button>
+                            </WrapPanel>
+                          </Grid>
+                        </Grid>
                         <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                                    IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                       </StackPanel>
@@ -256,7 +262,7 @@
           <Border Classes="card">
             <StackPanel Spacing="4">
               <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Theme}" />
-              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Themes}" SelectedItem="{Binding SelectedTheme}" MinWidth="200">
+              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Themes}" SelectedItem="{Binding SelectedTheme}" Classes="settingsChoice">
                 <ComboBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:ThemeOption">
                     <TextBlock Text="{Binding Name}" />
@@ -265,7 +271,7 @@
               </ComboBox>
               <!-- Package 45 -->
               <TextBlock Classes="label" Text="{x:Static l:Strings.Settings_Language}" Margin="0,10,0,0" />
-              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding SelectedLanguage}" MinWidth="200"
+              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding SelectedLanguage}" Classes="settingsChoice"
                         AutomationProperties.Name="{x:Static l:Strings.Settings_Language}">
                 <ComboBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:LanguageOption">
@@ -294,15 +300,15 @@
               <SelectableTextBlock Classes="label" Text="{Binding AppVersion}" />
               <TextBlock Classes="caption" Text="{Binding BuildDetails}" />
               <CheckBox Content="{x:Static l:Strings.Ui_CheckUpdatesAtStart}" IsChecked="{Binding CheckForUpdates}" Margin="0,8,0,0" />
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <Button Command="{Binding CheckUpdatesCommand}">
+              <DockPanel>
+                <Button DockPanel.Dock="Left" Command="{Binding CheckUpdatesCommand}" Margin="0,0,10,0" VerticalAlignment="Top">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
                     <TextBlock Text="{x:Static l:Strings.Ui_CheckUpdates}" />
                   </StackPanel>
                 </Button>
                 <TextBlock Classes="caption" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
-              </StackPanel>
+              </DockPanel>
             </StackPanel>
           </Border>
         </StackPanel>

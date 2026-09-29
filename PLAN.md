@@ -4828,9 +4828,9 @@ Wird der Hauptbereich schmal, verdrängt die rechte Gruppe den Namen und läuft 
   - oben Play-Button, Name und Quelle (volle Breite, Name nie leer)
   - unten Regler (füllt den Platz), Prozent, "Stumm", "Datei wählen" und Zurücksetzen
   Wird es noch enger, bricht die untere Reihe um, statt abzuschneiden.
-- [ ] AC3: Tasten-Zeilen, Geräteauswahl, Lautstärke, Übertragung und Darstellung stapeln Beschriftung und Bedienelement untereinander. `ComboBox`en und Regler nutzen die volle Breite. Hinweistexte brechen um.
-- [ ] AC4: Die Fusszeile (Abbrechen, Speichern) bleibt immer sichtbar. Die Seitenabstände schrumpfen unter `narrow` auf 12 px.
-- [ ] AC5: `LayoutAssert.FitsHorizontally` ist für die ganze, nach unten gescrollte Seite bei 360, 480, 600 und 1100 px grün, in Deutsch und Englisch.
+- [x] AC3: Tasten-Zeilen, Geräteauswahl, Lautstärke, Übertragung und Darstellung stapeln Beschriftung und Bedienelement untereinander. `ComboBox`en und Regler nutzen die volle Breite. Hinweistexte brechen um.
+- [x] AC4: Die Fusszeile (Abbrechen, Speichern) bleibt immer sichtbar. Die Seitenabstände schrumpfen unter `narrow` auf 12 px.
+- [x] AC5: `LayoutAssert.FitsHorizontally` ist für die ganze, nach unten gescrollte Seite bei 360, 480, 600 und 1100 px grün, in Deutsch und Englisch.
 
 ### Tests (TDD)
 

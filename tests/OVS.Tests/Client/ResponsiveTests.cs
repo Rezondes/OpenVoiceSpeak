@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -236,6 +237,101 @@ public sealed class ResponsiveTests : IDisposable
         Assert.DoesNotContain(main.GetVisualDescendants().OfType<Button>(), b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == Strings.Ui_ShowChannels);
         main.Close();
     }
+
+    // ---- Package 77: the settings page at every width ----
+
+    /// <summary>Settings with the worst case: a key row next to the push-to-talk hint (a key, but none for push-to-talk).</summary>
+    MainWindow OpenSettings(double width)
+    {
+        var settings = new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.ToggleMute, new KeyChord(0x70))] };
+        settings.Save(dir);
+        var main = Open(width, null, out var vm);
+        vm.OpenSettings();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.SettingsPage!.ShowPttHint);
+        return main;
+    }
+
+    [AvaloniaTheory]
+    [InlineData(360, "de-DE")]
+    [InlineData(480, "de-DE")]
+    [InlineData(600, "de-DE")]
+    [InlineData(1100, "de-DE")]
+    [InlineData(360, "en-US")]
+    [InlineData(480, "en-US")]
+    [InlineData(600, "en-US")]
+    [InlineData(1100, "en-US")]
+    public void Settings_FitAt360_480_600_1100(double width, string culture) => TestCulture.With(culture, () =>
+    {
+        var main = OpenSettings(width);
+        var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
+        var scroller = page.GetVisualDescendants().OfType<ScrollViewer>().First();
+        foreach (var section in page.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("section")).ToList())
+        {
+            section.BringIntoView();
+            Dispatcher.UIThread.RunJobs();
+            LayoutAssert.FitsHorizontally(page);
+        }
+        scroller.Offset = new Vector(0, scroller.Extent.Height);
+        Dispatcher.UIThread.RunJobs();
+        LayoutAssert.FitsHorizontally(main);
+        foreach (var row in page.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("soundRow")))
+        {
+            var name = row.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("label"));
+            Assert.True(name.Bounds.Width > 60, $"Name {name.Text}: {name.Bounds.Width}");
+        }
+
+        // the button bar stays in view
+        foreach (var text in new[] { Strings.Dlg_Cancel, Strings.Dlg_Save })
+        {
+            var button = page.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == text);
+            Assert.True(button.IsEffectivelyVisible);
+            var y = button.TranslatePoint(default, main)!.Value.Y;
+            Assert.True(y >= 0 && y + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {y}");
+        }
+        main.Close();
+        return 0;
+    });
+
+    static (TextBlock Name, Slider Slider) FirstSoundRow(MainWindow main)
+    {
+        var row = main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("soundRow"));
+        return (row.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("label")),
+            row.GetVisualDescendants().OfType<Slider>().Single());
+    }
+
+    static (double Top, double Bottom) Vertical(Control control, Visual root)
+    {
+        var y = control.TranslatePoint(default, root)!.Value.Y;
+        return (y, y + control.Bounds.Height);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(360)]
+    [InlineData(600)] // not narrow yet, but too tight for name and controls side by side
+    public void Settings_SoundRow_TwoLinesWhenNarrow_NameVisible(double width)
+    {
+        var main = OpenSettings(width);
+        var (name, slider) = FirstSoundRow(main);
+        Assert.True(name.Bounds.Width > 0);
+        Assert.False(name.TextLayout.TextLines.Any(l => l.HasCollapsed), "Name abgeschnitten");
+        Assert.True(Vertical(slider, main).Top >= Vertical(name, main).Bottom, "Regler nicht unter dem Namen");
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void Settings_Wide_LayoutUnchanged()
+    {
+        var main = OpenSettings(1100);
+        Assert.DoesNotContain("narrow", main.Classes);
+        var (name, slider) = FirstSoundRow(main);
+        var (top, bottom) = Vertical(slider, main);
+        var middle = (Vertical(name, main).Top + Vertical(name, main).Bottom) / 2;
+        Assert.True(middle > top - 12 && middle < bottom + 12, "Sound-Zeile nicht einzeilig");
+        Assert.True(slider.TranslatePoint(default, main)!.Value.X >= name.TranslatePoint(default, main)!.Value.X + name.Bounds.Width - 1);
+        Assert.Equal(150, slider.Bounds.Width, 1);
+        main.Close();
+    }
 }
 
 /// <summary>Package 68: the layout check itself finds what runs off the visible area.</summary>
@@ -253,7 +349,11 @@ public sealed class LayoutAssertTests
         Assert.Contains("Button", error.Message);
         Assert.Contains("Datei wählen", error.Message);
 
-        button.Width = 50; // fits now
+        button.Width = 50; // inside now, but its text is cut off
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("needs", Assert.ThrowsAny<Exception>(() => LayoutAssert.FitsHorizontally(window)).Message);
+
+        button.Content = "OK";
         Dispatcher.UIThread.RunJobs();
         LayoutAssert.FitsHorizontally(window);
         window.Close();
