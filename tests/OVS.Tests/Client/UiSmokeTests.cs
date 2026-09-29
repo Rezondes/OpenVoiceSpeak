@@ -762,6 +762,40 @@ public sealed class UiSmokeTests : IDisposable
         }
     }
 
+    /// <summary>The channel's own row (not its users), found by name.</summary>
+    static Border ChannelRow(Visual root, string name) => root.GetVisualDescendants().OfType<Border>()
+        .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel c && c.Name == name);
+
+    static List<PathIcon> VisibleIcons(Visual row) => row.GetVisualDescendants().OfType<PathIcon>().Where(i => i.IsEffectivelyVisible).ToList();
+
+    /// <summary>Package 66: a muted channel shows the mute icon in front instead of the speaker, and none behind its name.</summary>
+    [AvaloniaFact]
+    public void MutedChannel_IconReplacesSpeaker()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
+        Dispatcher.UIThread.RunJobs();
+        var micOff = main.FindResource("Icon.MicOff");
+        var speaker = main.FindResource("Icon.Speaker");
+
+        var lobby = VisibleIcons(ChannelRow(main, "Lobby"));
+        Assert.Same(micOff, lobby[0].Data);
+        Assert.Contains("warning", lobby[0].Classes);
+        Assert.Equal(OVS.Client.Localization.Strings.Dlg_MutedChannel, ToolTip.GetTip(lobby[0]));
+        Assert.DoesNotContain(lobby, i => i.Data == speaker);
+        Assert.Single(lobby, i => i.Data == micOff); // nothing behind the name
+        Assert.Same(speaker, VisibleIcons(ChannelRow(main, "Raid"))[0].Data);
+
+        vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0)));
+        Dispatcher.UIThread.RunJobs();
+        lobby = VisibleIcons(ChannelRow(main, "Lobby"));
+        Assert.Same(speaker, lobby[0].Data);
+        Assert.DoesNotContain(lobby, i => i.Data == micOff);
+        main.Close();
+    }
+
     /// <summary>Package 46: in English, no German resource text is left anywhere in the window, its pages and dialogs.</summary>
     [AvaloniaFact]
     public void Windows_English_NoGermanResourceText()

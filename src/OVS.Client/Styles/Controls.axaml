@@ -176,7 +176,8 @@
   <Style Selector="Border.row.current TextBlock.channelName">
     <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
   </Style>
-  <Style Selector="Border.row.current PathIcon.channelIcon">
+  <!-- Package 66: the muted-channel icon keeps its warning colour in the current channel -->
+  <Style Selector="Border.row.current PathIcon.channelIcon:not(.warning)">
     <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
   </Style>
 

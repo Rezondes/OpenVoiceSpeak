@@ -4168,9 +4168,9 @@ In der Channel-Zeile steht vorne immer `PathIcon Classes="muted channelIcon" Dat
 
 ### Acceptance Criteria
 
-- [ ] AC1: Bei einem stummen Channel ist vorne `Icon.MicOff` in Warnfarbe mit Tooltip "Stummer Channel: niemand wird gehört" zu sehen, der Lautsprecher nicht.
-- [ ] AC2: Hinter dem Namen erscheint bei stummen Channels kein Stumm-Icon mehr. Home- und Link-Icon bleiben.
-- [ ] AC3: Nicht stumme Channels zeigen wie bisher den Lautsprecher. Wird ein Channel stumm geschaltet oder freigegeben, wechselt das Icon sofort.
+- [x] AC1: Bei einem stummen Channel ist vorne `Icon.MicOff` in Warnfarbe mit Tooltip "Stummer Channel: niemand wird gehört" zu sehen, der Lautsprecher nicht.
+- [x] AC2: Hinter dem Namen erscheint bei stummen Channels kein Stumm-Icon mehr. Home- und Link-Icon bleiben.
+- [x] AC3: Nicht stumme Channels zeigen wie bisher den Lautsprecher. Wird ein Channel stumm geschaltet oder freigegeben, wechselt das Icon sofort.
 
 ### Tests (TDD)
 

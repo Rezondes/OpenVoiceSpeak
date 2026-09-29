@@ -191,14 +191,17 @@
                       <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Classes="caption" VerticalAlignment="Center"
                                    Text="{Binding SlotText}" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
-                        <PathIcon DockPanel.Dock="Left" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" Margin="0,0,8,0" />
+                        <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->
+                        <Panel DockPanel.Dock="Left" Margin="0,0,8,0">
+                          <PathIcon Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
+                          <PathIcon Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
+                                    ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" />
+                        </Panel>
                         <StackPanel Orientation="Horizontal" Spacing="6">
                           <TextBlock Classes="channelName" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"
                                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}" />
                           <PathIcon Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
                                     ToolTip.Tip="{x:Static l:Strings.Ui_DefaultChannel}" VerticalAlignment="Center" />
-                          <PathIcon Classes="sm warning" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
-                                    ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" VerticalAlignment="Center" />
                           <Border Classes="chip" IsVisible="{Binding IsLinked}" ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}">
                             <StackPanel Orientation="Horizontal" Spacing="4">
                               <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" />
