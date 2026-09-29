@@ -6,6 +6,16 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <!-- ===== Width steps (Package 68, A93): classes set on the window by Views/Responsive.cs ===== -->
+  <!-- Only below 700 px window width, e.g. the button that opens the sidebar drawer -->
+  <Style Selector="Window:not(.compact) :is(Control).compactOnly">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <!-- Hidden while the main area is under 560 px, e.g. button texts next to an icon (tooltip keeps the text) -->
+  <Style Selector="Window.narrow :is(Control).wideOnly">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+
   <!-- ===== Text roles ===== -->
   <Style Selector="TextBlock.h1">
     <Setter Property="FontSize" Value="22" />

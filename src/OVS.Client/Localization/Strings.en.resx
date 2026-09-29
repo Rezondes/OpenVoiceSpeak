@@ -313,6 +313,7 @@
   <data name="Ui_PickSoundFilter" xml:space="preserve"><value>Audio (WAV, MP3)</value></data>
   <data name="Ui_PickSoundTitle" xml:space="preserve"><value>Choose sound</value></data>
   <data name="Ui_PingTip" xml:space="preserve"><value>Server response time</value></data>
+  <data name="Ui_ShowChannels" xml:space="preserve"><value>Show channels</value></data>
   <data name="Ui_PlayFmt" xml:space="preserve"><value>Play {0}</value></data>
   <data name="Ui_PrivateMessage" xml:space="preserve"><value>Private message</value></data>
   <data name="Ui_PttHint" xml:space="preserve"><value>Push-to-talk is selected, but no key is set. Without a key nobody hears you.</value></data>

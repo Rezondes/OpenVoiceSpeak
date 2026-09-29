@@ -6,15 +6,35 @@
         xmlns:v="using:OVS.Client.Views"
         x:Class="OVS.Client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Title="OpenVoiceSpeak" Width="1100" Height="700" MinWidth="760" MinHeight="480"
+        Title="OpenVoiceSpeak" Width="1100" Height="700" MinWidth="360" MinHeight="480"
         Background="{DynamicResource Ovs.Bg}" Icon="/Assets/ovs.ico"
         ExtendClientAreaToDecorationsHint="True" ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaTitleBarHeightHint="-1">
+
+  <Window.Styles>
+    <!-- Package 68 (A94): below 700 px the sidebar leaves its column and slides in over the left edge -->
+    <Style Selector="Window.compact Border#Sidebar">
+      <Setter Property="Grid.ColumnSpan" Value="3" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="ZIndex" Value="1" />
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Window.compact.drawer Border#Sidebar">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Window:not(.drawer) Border#DrawerScrim">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Window.compact GridSplitter">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </Window.Styles>
 
   <!-- Maximized, Windows hides a border off screen: OffScreenMargin keeps the content inside. -->
   <DockPanel Margin="{Binding $parent[Window].OffScreenMargin}">
   <v:TitleBar DockPanel.Dock="Top" />
-  <!-- Package 67: the sidebar width is fitted to the channel names on connect (MainWindow.axaml.cs) -->
-  <Grid ColumnDefinitions="300,Auto,*">
+  <!-- Package 67: the sidebar width is fitted to the channel names on connect (MainWindow.axaml.cs);
+       Package 68: bounded so the header always fits, below 700 px a drawer -->
+  <Grid x:Name="Shell" ColumnDefinitions="300,Auto,*">
     <!-- ================= Sidebar: server, channels, own user ================= -->
     <Border x:Name="Sidebar" Grid.Column="0" IsEnabled="{Binding !IsUpdating}" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
@@ -292,13 +312,14 @@
       </DockPanel>
     </Border>
 
-    <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" DragCompleted="OnSidebarDragCompleted" />
+    <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" DragCompleted="OnSidebarDragCompleted" />
 
     <!-- ================= Main area: home, settings or administration, all inside this window (A20) ================= -->
     <Panel Grid.Column="2" IsEnabled="{Binding !IsUpdating}">
       <Panel IsVisible="{Binding IsHomePage}">
         <!-- Start screen while not connected -->
-        <ScrollViewer IsVisible="{Binding !IsConnected}">
+        <Panel IsVisible="{Binding !IsConnected}">
+        <ScrollViewer>
           <StackPanel MaxWidth="460" Margin="32" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
             <v:LogoMark Width="80" Height="80" HorizontalAlignment="Center" />
             <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
@@ -313,40 +334,58 @@
             </Button>
           </StackPanel>
         </ScrollViewer>
+        <Button Classes="icon compactOnly" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Click="OnDrawerToggle"
+                ToolTip.Tip="{x:Static l:Strings.Ui_ShowChannels}" AutomationProperties.Name="{x:Static l:Strings.Ui_ShowChannels}">
+          <PathIcon Data="{StaticResource Icon.Navigation}" />
+        </Button>
+        </Panel>
 
         <!-- Connected: channel header and chat -->
         <DockPanel IsVisible="{Binding IsConnected}">
-          <Border DockPanel.Dock="Top" Padding="20,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+          <!-- Package 68 (A82, A95): never clipped; the sidebar yields to it, under narrow the buttons show only their icon -->
+          <Border x:Name="ChannelHeader" DockPanel.Dock="Top" Padding="20,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
             <DockPanel>
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <Border Classes="chip" IsVisible="{Binding PingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                        ToolTip.Tip="{x:Static l:Strings.Ui_PingTip}">
+              <StackPanel x:Name="HeaderActions" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Border x:Name="PingChip" Classes="chip" IsVisible="{Binding PingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                  <ToolTip.Tip>
+                    <StackPanel>
+                      <TextBlock Text="{x:Static l:Strings.Ui_PingTip}" />
+                      <TextBlock Text="{Binding PingText}" />
+                    </StackPanel>
+                  </ToolTip.Tip>
                   <StackPanel Orientation="Horizontal" Spacing="4">
                     <PathIcon Classes="sm muted" Data="{StaticResource Icon.WifiSignal}" />
-                    <TextBlock Text="{Binding PingText}" />
+                    <TextBlock Classes="wideOnly" Text="{Binding PingText}" />
                   </StackPanel>
                 </Border>
-                <Button Classes="subtle" Command="{Binding OpenAdminCommand}" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}">
+                <Button Classes="subtle" Command="{Binding OpenAdminCommand}" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}"
+                        ToolTip.Tip="{x:Static l:Strings.Ui_AdminMenu}" AutomationProperties.Name="{x:Static l:Strings.Ui_AdminMenu}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.ShieldPerson}" />
-                    <TextBlock Text="{x:Static l:Strings.Ui_AdminMenu}" VerticalAlignment="Center" />
+                    <TextBlock Classes="wideOnly" Text="{x:Static l:Strings.Ui_AdminMenu}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
                 <Button Classes="subtle" Command="{Binding Server.RedeemTokenCommand, FallbackValue={x:Null}}"
-                        IsVisible="{Binding Server.CanRedeemToken, FallbackValue=False}">
+                        IsVisible="{Binding Server.CanRedeemToken, FallbackValue=False}"
+                        ToolTip.Tip="{x:Static l:Strings.Ui_RedeemTokenMenu}" AutomationProperties.Name="{x:Static l:Strings.Ui_RedeemTokenMenu}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.Key}" />
-                    <TextBlock Text="{x:Static l:Strings.Ui_RedeemTokenMenu}" VerticalAlignment="Center" />
+                    <TextBlock Classes="wideOnly" Text="{x:Static l:Strings.Ui_RedeemTokenMenu}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
-                <Button Classes="danger" Command="{Binding DisconnectCommand}">
+                <Button Classes="danger" Command="{Binding DisconnectCommand}"
+                        ToolTip.Tip="{x:Static l:Strings.Ui_Disconnect}" AutomationProperties.Name="{x:Static l:Strings.Ui_Disconnect}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.CallEnd}" />
-                    <TextBlock Text="{x:Static l:Strings.Ui_Disconnect}" VerticalAlignment="Center" />
+                    <TextBlock Classes="wideOnly" Text="{x:Static l:Strings.Ui_Disconnect}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
               </StackPanel>
-              <PathIcon DockPanel.Dock="Left" Classes="muted" Data="{StaticResource Icon.Speaker}" Margin="0,0,10,0" VerticalAlignment="Center" />
+              <Button DockPanel.Dock="Left" Classes="icon compactOnly" Margin="-8,0,4,0" Click="OnDrawerToggle"
+                      ToolTip.Tip="{x:Static l:Strings.Ui_ShowChannels}" AutomationProperties.Name="{x:Static l:Strings.Ui_ShowChannels}">
+                <PathIcon Data="{StaticResource Icon.Navigation}" />
+              </Button>
+              <PathIcon x:Name="VoiceIcon" DockPanel.Dock="Left" Classes="muted" Data="{StaticResource Icon.Speaker}" Margin="0,0,10,0" VerticalAlignment="Center" />
               <StackPanel VerticalAlignment="Center">
                 <TextBlock Classes="h2" Text="{Binding Server.CurrentChannel.Name, FallbackValue=''}" TextTrimming="CharacterEllipsis" />
                 <TextBlock Classes="caption" Text="{Binding Server.CurrentChannel.Description, FallbackValue=''}" TextTrimming="CharacterEllipsis"
@@ -374,11 +413,14 @@
       </Panel>
     </Panel>
 
-    <!-- Dialogs: a modal layer over the whole window -->
-    <v:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" />
+    <!-- Package 68: dims the main area while the drawer is open; a click on it closes the drawer -->
+    <Border x:Name="DrawerScrim" Grid.ColumnSpan="3" Background="{DynamicResource Ovs.Scrim}" PointerPressed="OnDrawerScrimPressed" />
+
+    <!-- Dialogs: a modal layer over the whole window (above the drawer) -->
+    <v:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" ZIndex="2" />
 
     <!-- Package 62: update progress over everything below the title bar; the content under it is disabled meanwhile -->
-    <Panel x:Name="UpdateLayer" Grid.ColumnSpan="3" IsVisible="{Binding IsUpdating}" Background="{DynamicResource Ovs.Scrim}">
+    <Panel x:Name="UpdateLayer" Grid.ColumnSpan="3" ZIndex="2" IsVisible="{Binding IsUpdating}" Background="{DynamicResource Ovs.Scrim}">
       <Border Classes="dialog" Width="420" Padding="24,20" HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel Spacing="12">
           <StackPanel Orientation="Horizontal" Spacing="10">

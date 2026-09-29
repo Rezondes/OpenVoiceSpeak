@@ -4262,18 +4262,18 @@ Das Fenster ist mindestens 760 × 480 px gross (`MainWindow.axaml`). Die Haupt-`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Das Fenster ist mindestens 360 × 480 px gross. Es gibt zwei Stufen, die als Klassen am Fenster hängen, damit jede Seite per Stil darauf reagieren kann:
+- [x] AC1: Das Fenster ist mindestens 360 × 480 px gross. Es gibt zwei Stufen, die als Klassen am Fenster hängen, damit jede Seite per Stil darauf reagieren kann:
   - `compact`: Fensterbreite unter 700 px
   - `narrow`: Hauptbereich schmaler als 560 px
   Die Stufen wechseln sofort beim Ändern der Grösse.
-- [ ] AC2: Ab 700 px stehen Seitenleiste und Hauptbereich nebeneinander. Die Seitenleiste ist höchstens so breit, dass der Hauptbereich die Kopfzeile ohne Titel fasst: Voice-Icon, Ping, alle sichtbaren Buttons, Innenabstand. Das gilt beim Ziehen, beim Verkleinern und wenn Buttons erscheinen oder verschwinden. Reicht der Platz nicht, gibt die Seitenleiste bis 200 px nach.
-- [ ] AC3: Unter 700 px (`compact`) ist die Seitenleiste ausgeblendet, der Hauptbereich nutzt die ganze Breite.
+- [x] AC2: Ab 700 px stehen Seitenleiste und Hauptbereich nebeneinander. Die Seitenleiste ist höchstens so breit, dass der Hauptbereich die Kopfzeile ohne Titel fasst: Voice-Icon, Ping, alle sichtbaren Buttons, Innenabstand. Das gilt beim Ziehen, beim Verkleinern und wenn Buttons erscheinen oder verschwinden. Reicht der Platz nicht, gibt die Seitenleiste bis 200 px nach.
+- [x] AC3: Unter 700 px (`compact`) ist die Seitenleiste ausgeblendet, der Hauptbereich nutzt die ganze Breite.
   - Ein Menü-Button oben links ("Channels anzeigen") blendet sie als Überlagerung von links ein, höchstens Fensterbreite minus 48 px, darunter abgedunkelt.
   - Sie schliesst sich durch einen Klick daneben, durch Esc, beim Betreten eines Channels und beim Öffnen von Einstellungen oder Verwaltung.
   - Wird das Fenster wieder breit, erscheint die Seitenleiste normal.
-- [ ] AC4: Die Kopfzeile wird nie abgeschnitten. Der Channel-Titel wird gekürzt oder verschwindet. Unter `narrow` zeigen "Verwaltung" und "Trennen" nur noch ihr Icon, mit dem Text als Tooltip und Namen für Screenreader, und die Ping-Anzeige nur noch das Icon mit dem Wert im Tooltip.
-- [ ] AC5: Ohne Verbindung (Startseite) gelten dieselben Regeln, damit die Breite beim Verbinden nicht springt.
-- [ ] AC6: Eine Test-Hilfe `LayoutAssert.FitsHorizontally(window)` prüft, dass kein sichtbarer Button, Regler, Eingabefeld, Checkbox oder Text ausserhalb des sichtbaren Bereichs seines Scroll-Containers bzw. des Fensters liegt. Sie wird in den Packages 77 bis 79 für alle Seiten genutzt.
+- [x] AC4: Die Kopfzeile wird nie abgeschnitten. Der Channel-Titel wird gekürzt oder verschwindet. Unter `narrow` zeigen "Verwaltung" und "Trennen" nur noch ihr Icon, mit dem Text als Tooltip und Namen für Screenreader, und die Ping-Anzeige nur noch das Icon mit dem Wert im Tooltip.
+- [x] AC5: Ohne Verbindung (Startseite) gelten dieselben Regeln, damit die Breite beim Verbinden nicht springt.
+- [x] AC6: Eine Test-Hilfe `LayoutAssert.FitsHorizontally(window)` prüft, dass kein sichtbarer Button, Regler, Eingabefeld, Checkbox oder Text ausserhalb des sichtbaren Bereichs seines Scroll-Containers bzw. des Fensters liegt. Sie wird in den Packages 77 bis 79 für alle Seiten genutzt.
 
 ### Tests (TDD)
 

@@ -1,0 +1,54 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.VisualTree;
+using Xunit.Sdk;
+
+namespace OVS.Tests.TestSupport;
+
+/// <summary>
+/// Package 68 (A93): layout checks for the responsive tests. Headless rendering lays out like the real window,
+/// so a control that runs off the visible area shows up in its bounds.
+/// </summary>
+public static class LayoutAssert
+{
+    const double Tolerance = 1;
+
+    /// <summary>
+    /// Every visible button, slider, text box, check box, combo box and text block lies horizontally inside
+    /// the viewport of its nearest ScrollViewer, or inside the window when there is none.
+    /// </summary>
+    public static void FitsHorizontally(Visual root)
+    {
+        var top = TopLevel.GetTopLevel(root) ?? (Visual)root;
+        var offenders = new List<string>();
+        foreach (var control in root.GetVisualDescendants().OfType<Control>())
+        {
+            if (control is not (Button or Slider or TextBox or CheckBox or ComboBox or TextBlock)) continue;
+            if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0) continue;
+            var container = control.FindAncestorOfType<ScrollViewer>() is { } scroller ? (Visual)scroller : top;
+            if (Horizontal(container, top) is not var (left, right) || Horizontal(control, top) is not var (x, end)) continue;
+            if (x < left - Tolerance || end > right + Tolerance)
+                offenders.Add($"{control.GetType().Name} {Describe(control)} at {x:0.#}..{end:0.#}, visible {left:0.#}..{right:0.#}");
+        }
+        if (offenders.Count > 0) throw new XunitException("Outside the visible area:" + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>Left and right edge in window coordinates; a ScrollViewer counts with its viewport (without the scroll bar).</summary>
+    static (double Left, double Right)? Horizontal(Visual visual, Visual top)
+    {
+        var width = visual is ScrollViewer { Viewport.Width: > 0 } s ? s.Viewport.Width : visual.Bounds.Width;
+        return visual.TranslatePoint(default, top) is { } origin ? (origin.X, origin.X + width) : null;
+    }
+
+    static string Describe(Control control)
+    {
+        var text = control switch
+        {
+            TextBlock t => t.Text,
+            ContentControl { Content: string s } => s,
+            ContentControl c => c.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(t => !string.IsNullOrEmpty(t.Text))?.Text,
+            _ => null,
+        };
+        return $"'{control.Name ?? Avalonia.Automation.AutomationProperties.GetName(control)}' \"{text}\"";
+    }
+}
