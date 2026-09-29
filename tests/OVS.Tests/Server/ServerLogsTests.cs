@@ -127,6 +127,24 @@ public sealed class ServerLogsTests : IDisposable
         Assert.Contains("[Raid] anna hat den Channel betreten", File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log")));
     }
 
+    [Fact]
+    public void LineBreaksInText_Escaped_EntryStaysOneLine()
+    {
+        // Regression (CWE-117): chat text and reasons come from guests; a CR/LF used to add a forged, timestamped line.
+        var time = new ManualTimeProvider();
+        var logs = new ServerLogs(dir, 30, time, _ => { });
+        var id = Guid.NewGuid();
+        logs.Channel(id, "Raid", "hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\0e\u001b[31m");
+        logs.Channel(id, "Raid", @"Pfad C:\neu äöü");
+
+        var lines = File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log"))
+            .Split(Environment.NewLine);
+        Assert.Equal(3, lines.Length); // two entries and the empty rest after the last newline
+        Assert.EndsWith(@"[Raid] hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\u0000e\u001B[31m", lines[0]);
+        Assert.EndsWith(@"[Raid] Pfad C:\neu äöü", lines[1]); // text without control characters is unchanged
+        Assert.Equal("", lines[2]);
+    }
+
     static void Touch(string folder, string name)
     {
         Directory.CreateDirectory(folder);

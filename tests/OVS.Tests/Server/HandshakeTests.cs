@@ -79,6 +79,31 @@ public class HandshakeTests
     }
 
     [Fact]
+    public async Task RepeatedWrongPasswords_BlockSourceWithGrowingDelay()
+    {
+        var clock = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(password: "pw", time: clock);
+        int n = 0;
+        async Task<Message> Try(string password)
+        {
+            await using var client = await TestClient.OpenAsync(server.Port);
+            return await client.HandshakeAsync("user" + ++n, password);
+        }
+        static string Code(Message m) => Assert.IsType<Rejected>(m).Code;
+
+        for (int i = 0; i < 5; i++) Assert.Equal(Codes.WrongPassword, Code(await Try("falsch")));
+        Assert.Equal(Codes.TooManyPasswordAttempts, Code(await Try("pw"))); // blocked: not even the right one
+        clock.Advance(TimeSpan.FromMinutes(1));
+        Assert.IsType<Welcome>(await Try("pw"));
+
+        Assert.Equal(Codes.WrongPassword, Code(await Try("falsch"))); // 6th: 2 minutes
+        clock.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(Codes.TooManyPasswordAttempts, Code(await Try("pw")));
+        clock.Advance(TimeSpan.FromMinutes(1));
+        Assert.IsType<Welcome>(await Try("pw"));
+    }
+
+    [Fact]
     public async Task MaxUsersReached_RejectedServerFull()
     {
         await using var server = await TestServer.StartAsync(maxUsers: 1);

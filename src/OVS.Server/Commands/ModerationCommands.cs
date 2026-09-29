@@ -8,14 +8,14 @@ public sealed partial class ServerState
 {
     void OnKick(Session s, Kick r)
     {
-        if (!Require(s, r, Permission.UserKick) || !FindTarget(s, r, r.SessionId, out var target)) return;
+        if (!Require(s, r, Permission.UserKick) || !FindTarget(s, r, r.SessionId, out var target) || !ValidateReason(s, r, r.Reason)) return;
         logs.Server($"{target.Nickname} wurde von {s.Nickname} gekickt: {r.Reason}");
         RemoveLocked(target, new Disconnected(Codes.Kicked, r.Reason));
     }
 
     void OnBan(Session s, Ban r)
     {
-        if (!Require(s, r, Permission.UserBan) || !FindTarget(s, r, r.SessionId, out var target)) return;
+        if (!Require(s, r, Permission.UserBan) || !FindTarget(s, r, r.SessionId, out var target) || !ValidateReason(s, r, r.Reason)) return;
         if (r.DurationMinutes is <= 0)
         {
             Fail(s, r, Codes.InvalidValue, "Dauer muss positiv sein");
@@ -73,6 +73,14 @@ public sealed partial class ServerState
         s.Send(new BanList(requestId, data.Bans.Where(b => b.IsActive(now))
             .Select(b => new BanInfo(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt))
             .ToList()));
+    }
+
+    /// <summary>The reason goes into the server log and the ban list: bounded, one line, no control characters. Empty is fine.</summary>
+    static bool ValidateReason(Session s, Request r, string? reason)
+    {
+        if (reason is null || (reason.Length <= ProtocolInfo.MaxReasonLength && !reason.Any(c => char.IsControl(c) || c is '\u2028' or '\u2029'))) return true;
+        Fail(s, r, Codes.InvalidValue, $"Ein Grund hat höchstens {ProtocolInfo.MaxReasonLength} Zeichen und keine Zeilenumbrüche oder Steuerzeichen.");
+        return false;
     }
 
     bool FindTarget(Session s, Request r, uint sessionId, out Session target)

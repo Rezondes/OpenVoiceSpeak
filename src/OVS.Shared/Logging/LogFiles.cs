@@ -57,7 +57,7 @@ public sealed class LogFiles
                 else if (today != cleanedUpFor) CleanUp(today);
                 var dir = Path.Combine(root, folder);
                 Directory.CreateDirectory(dir);
-                AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), line + Environment.NewLine);
+                AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), OneLine(line) + Environment.NewLine);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -67,6 +67,27 @@ public sealed class LogFiles
             }
         }
     }
+
+    /// <summary>
+    /// One entry stays one line: line breaks and other control characters in logged text (chat, reasons) become
+    /// visible escapes such as \n or \u0085, so a message cannot forge further, timestamped lines. Other text is unchanged.
+    /// </summary>
+    static string OneLine(string line)
+    {
+        if (!line.Any(IsBreaking)) return line;
+        var text = new StringBuilder(line.Length + 16);
+        foreach (var c in line)
+        {
+            if (c == '\r') text.Append(@"\r");
+            else if (c == '\n') text.Append(@"\n");
+            else if (c == '\t') text.Append(@"\t");
+            else if (IsBreaking(c)) text.Append(@"\u").Append(((int)c).ToString("X4", CultureInfo.InvariantCulture));
+            else text.Append(c);
+        }
+        return text.ToString();
+    }
+
+    static bool IsBreaking(char c) => char.IsControl(c) || c is '\u2028' or '\u2029';
 
     /// <summary>
     /// Lets readers keep the file open, and retries briefly while a reader locks it against writing

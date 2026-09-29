@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using OVS.Server.Data;
 using OVS.Server.Logging;
@@ -13,6 +14,8 @@ namespace OVS.Server;
 public sealed partial class ServerState
 {
     const int MaxConnectionsPerIp = 5;
+    const int FreePasswordFailures = 5;
+    static readonly TimeSpan ForgetPasswordFailures = TimeSpan.FromDays(1);
 
     // ponytail: one global lock for all state; fine for a few hundred users, shard per channel if it ever contends
     readonly object gate = new();
@@ -24,6 +27,8 @@ public sealed partial class ServerState
     readonly ServerLogs logs;
     readonly Dictionary<uint, Session> sessions = [];
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
+    readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> passwordFailures = [];
+    DateTimeOffset nextPasswordSweep;
     readonly AdminToken adminToken = new();
     uint lastSessionId;
     string? closedWith; // set by CloseAll: the reason every later handshake is rejected with
@@ -75,6 +80,37 @@ public sealed partial class ServerState
         }
     }
 
+    // ---- Password guessing (call under gate) ----
+
+    /// <summary>IPv4 address, or the /64 of an IPv6 address (one IPv6 host usually owns a whole /64).</summary>
+    static IPAddress PasswordSource(IPAddress ip)
+    {
+        if (ip.AddressFamily != AddressFamily.InterNetworkV6) return ip;
+        var bytes = ip.GetAddressBytes();
+        Array.Clear(bytes, 8, 8);
+        return new IPAddress(bytes);
+    }
+
+    /// <summary>From the 5th wrong password on: blocked 1, 2, 4, ... minutes (at most 60) after the last wrong one.</summary>
+    static TimeSpan PasswordBlock(int failures) =>
+        failures < FreePasswordFailures ? TimeSpan.Zero
+            : TimeSpan.FromMinutes(Math.Min(60, 1 << Math.Min(failures - FreePasswordFailures, 6)));
+
+    bool PasswordBlocked(IPAddress source, DateTimeOffset now) =>
+        passwordFailures.TryGetValue(source, out var f) && now < f.Last + PasswordBlock(f.Count);
+
+    void RecordPasswordFailure(IPAddress source, DateTimeOffset now)
+    {
+        if (now >= nextPasswordSweep)
+        {
+            foreach (var (key, f) in passwordFailures)
+                if (now - f.Last >= ForgetPasswordFailures) passwordFailures.Remove(key);
+            nextPasswordSweep = now + ForgetPasswordFailures;
+        }
+        int count = passwordFailures.TryGetValue(source, out var old) && now - old.Last < ForgetPasswordFailures ? old.Count : 0;
+        passwordFailures[source] = (count + 1, now);
+    }
+
     public (Session? Session, Rejected? Rejection) Admit(string fingerprint, string nickname, IPAddress ip, string? password)
     {
         lock (gate)
@@ -86,7 +122,15 @@ public sealed partial class ServerState
             var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint || b.Ip == ipText));
             if (ban is not null) return (null, new Rejected(Codes.Banned, BanText(ban)));
 
-            if (!data.Settings.CheckPassword(password)) return (null, new Rejected(Codes.WrongPassword));
+            // A source that guessed wrong too often is turned away before its password is even looked at.
+            var source = PasswordSource(ip);
+            if (data.Settings.PasswordHash is not null && PasswordBlocked(source, now))
+                return (null, new Rejected(Codes.TooManyPasswordAttempts));
+            if (!data.Settings.CheckPassword(password))
+            {
+                RecordPasswordFailure(source, now);
+                return (null, new Rejected(Codes.WrongPassword));
+            }
 
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
             if (sessions.Count - (replaced is null ? 0 : 1) >= config.MaxUsers)

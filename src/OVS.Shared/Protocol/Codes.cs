@@ -11,6 +11,7 @@ public static class Codes
     public const string NicknameInvalid = nameof(NicknameInvalid);
     public const string NicknameTaken = nameof(NicknameTaken);
     public const string TooManyConnections = nameof(TooManyConnections);
+    public const string TooManyPasswordAttempts = nameof(TooManyPasswordAttempts);
     public const string Timeout = nameof(Timeout);
     public const string Banned = nameof(Banned);
     public const string ProtocolError = nameof(ProtocolError);

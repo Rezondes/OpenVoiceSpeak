@@ -124,6 +124,40 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("r")).Code);
     }
 
+    [Theory]
+    [InlineData("kick", "Spam\n2026-01-01 00:00:00 admin wurde gebannt")]
+    [InlineData("ban", "Spam\r\nfalsch")]
+    [InlineData("kick", "Spam\u2028falsch")]
+    [InlineData("ban", "\u001b[31mrot")]
+    public async Task KickBan_ReasonWithLineBreakOrControl_InvalidValue(string action, string reason)
+    {
+        Request r = action == "kick" ? new Kick(g.Id, reason) : new Ban(g.Id, reason, null, false);
+        await m.SendAsync(r with { RequestId = "r" });
+        Assert.Equal(Codes.InvalidValue, (await m.ErrorAsync("r")).Code);
+
+        await g.SendAsync(new ListBans { RequestId = "still-here" }); // the guest is still connected
+        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("still-here")).Code);
+        await m.SendAsync(new ListBans { RequestId = "l" });
+        Assert.Empty((await m.WaitForAsync<BanList>(b => b.RequestId == "l")).Bans);
+    }
+
+    [Fact]
+    public async Task Ban_ReasonTooLong_InvalidValue_MaxLengthAccepted()
+    {
+        await m.SendAsync(new Ban(g.Id, new string('x', ProtocolInfo.MaxReasonLength + 1), null, false) { RequestId = "r" });
+        Assert.Equal(Codes.InvalidValue, (await m.ErrorAsync("r")).Code);
+
+        await m.SendAsync(new Ban(g.Id, new string('x', ProtocolInfo.MaxReasonLength), null, false));
+        Assert.Equal(Codes.Banned, (await g.WaitForAsync<Disconnected>()).Reason);
+    }
+
+    [Fact]
+    public async Task Kick_EmptyReason_Allowed()
+    {
+        await m.SendAsync(new Kick(g.Id, ""));
+        Assert.Equal(new Disconnected(Codes.Kicked, ""), await g.WaitForAsync<Disconnected>());
+    }
+
     [Fact]
     public async Task ExpiredBans_RemovedOnNextSave()
     {

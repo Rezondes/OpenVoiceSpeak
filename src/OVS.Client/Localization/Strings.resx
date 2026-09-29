@@ -119,6 +119,7 @@
   <data name="Error_ServerShutdown" xml:space="preserve"><value>Der Server wurde heruntergefahren.</value></data>
   <data name="Error_Timeout" xml:space="preserve"><value>Zeitüberschreitung.</value></data>
   <data name="Error_TooManyConnections" xml:space="preserve"><value>Zu viele Verbindungen von deiner IP-Adresse.</value></data>
+  <data name="Error_TooManyPasswordAttempts" xml:space="preserve"><value>Zu viele falsche Passwörter von deiner IP-Adresse, versuche es später erneut.</value></data>
   <data name="Error_Unknown" xml:space="preserve"><value>Fehler: {0}</value></data>
   <data name="Error_UnknownRequest" xml:space="preserve"><value>Der Server kennt diese Anfrage nicht.</value></data>
   <data name="Error_VersionMismatch" xml:space="preserve"><value>Client und Server verwenden unterschiedliche Protokollversionen.</value></data>
