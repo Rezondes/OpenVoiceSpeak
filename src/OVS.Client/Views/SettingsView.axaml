@@ -223,7 +223,8 @@
                             <PathIcon Classes="sm" Data="{StaticResource Icon.Play}" />
                           </Button>
                           <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                            <!-- Package 73: longer names may be cut off on wide windows, the tooltip shows them whole -->
+                            <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Label}" />
                             <TextBlock Classes="caption" Text="{Binding SourceText}" TextTrimming="CharacterEllipsis" />
                           </StackPanel>
                           <Grid Classes="soundControls" ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">

@@ -10,6 +10,7 @@ public enum SoundEvent
     ServerMessage, ChannelMessage, // Package 56
     LinkVoice, // Package 57
     OwnLinkVoice, // Package 60
+    GroupChanged, GroupChangedByMe, // Package 73
 }
 
 /// <summary>
@@ -25,6 +26,9 @@ public static class SoundSynth
 
     /// <summary>Package 57: a short, soft double blip over the voice.</summary>
     static readonly (float Hz, int Ms)[] LinkTone = [(1397, 30), (0, 20), (1760, 40)];
+
+    /// <summary>Package 73: three quick steps up, for a group given or taken away.</summary>
+    static readonly (float Hz, int Ms)[] GroupTone = [(698, 60), (0, 30), (880, 60), (1175, 110)];
 
     static readonly Dictionary<SoundEvent, (float Hz, int Ms)[]> Patterns = new()
     {
@@ -44,6 +48,8 @@ public static class SoundSynth
         [SoundEvent.ChannelMessage] = ChatTone,
         [SoundEvent.LinkVoice] = LinkTone,
         [SoundEvent.OwnLinkVoice] = LinkTone, // Package 60: the same by default, each can get its own file
+        [SoundEvent.GroupChanged] = GroupTone,
+        [SoundEvent.GroupChangedByMe] = GroupTone, // Package 73: the same by default, each can get its own file
     };
 
     /// <summary>Tones that play over speech are softer.</summary>

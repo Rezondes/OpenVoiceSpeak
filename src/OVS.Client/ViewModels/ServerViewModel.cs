@@ -107,6 +107,9 @@ public sealed partial class ServerViewModel : ObservableObject
     public event Action<ChatMessage>? ChatReceived;
     /// <summary>Package 47: a moment that deserves a tone. The main view model hands it to the audio engine.</summary>
     public event Action<SoundEvent>? SoundRequested;
+    internal void RequestSound(SoundEvent sound) => SoundRequested?.Invoke(sound);
+    /// <summary>Package 73: the admin page changes the own groups; the tone for the one acting follows from there.</summary>
+    internal bool OwnGroupChangePending { get; set; }
     /// <summary>The channel the own "Betreten" asked for: arriving there is "entered", anywhere else "moved".</summary>
     Guid? pendingJoin;
     public event Action<string>? ChatError;
@@ -146,6 +149,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 var text = ErrorTexts.For(e.Code, e.Detail);
                 if (e.RequestId?.StartsWith(ChatRequestPrefix) == true && ChatError is { } chatError) chatError(text);
                 else Notice?.Invoke(text);
+                AdminMessage?.Invoke(message); // Package 73: the admin page drops what the server refused
                 return;
             case UserList list:
                 LastUserList = list;
@@ -193,7 +197,9 @@ public sealed partial class ServerViewModel : ObservableObject
                     pendingJoin = null;
                     return own ? SoundEvent.ChannelEntered : SoundEvent.Moved;
                 }
-                return u.User.ServerMuted && !self.ServerMuted ? SoundEvent.ServerMuted : null;
+                if (u.User.ServerMuted && !self.ServerMuted) return SoundEvent.ServerMuted;
+                // Package 73: the own groups changed; a change made by myself only gives the tone for the one acting
+                return !OwnGroupChangePending && !u.User.GroupIds.ToHashSet().SetEquals(self.GroupIds) ? SoundEvent.GroupChanged : null;
             case UserUpdated u when Mirror.Users.TryGetValue(u.User.SessionId, out var before):
                 if (before.ChannelId != mine && u.User.ChannelId == mine) return SoundEvent.UserJoined;
                 if (before.ChannelId == mine && u.User.ChannelId != mine) return SoundEvent.UserLeft;
@@ -322,17 +328,20 @@ public sealed partial class ServerViewModel : ObservableObject
 
     // ---- Requests ----
 
-    public async Task SendAsync(Request request)
+    /// <summary>Sends a request and returns the id it got, so an answer or error can be matched (Package 73).</summary>
+    public async Task<string> SendAsync(Request request)
     {
+        var id = $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}";
         try
         {
-            await send(request with { RequestId = $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}" });
+            await send(request with { RequestId = id });
         }
         // InvalidOperationException: a request raced a disconnect that had already shut TLS down.
         catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException or InvalidOperationException)
         {
             Notice?.Invoke(ErrorTexts.For(Codes.ConnectionLost));
         }
+        return id;
     }
 
     public Task JoinAsync(Guid channelId)

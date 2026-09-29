@@ -19,7 +19,12 @@ public class SoundTests
         });
         // Package 56: the three chat sounds share the tone of a private message by default, all others differ
         // Package 60: the own link tone sounds like the one for others by default
-        SoundEvent[][] shared = [[SoundEvent.PrivateMessage, SoundEvent.ServerMessage, SoundEvent.ChannelMessage], [SoundEvent.LinkVoice, SoundEvent.OwnLinkVoice]];
+        // Package 73: both group tones share one tone by default
+        SoundEvent[][] shared =
+        [
+            [SoundEvent.PrivateMessage, SoundEvent.ServerMessage, SoundEvent.ChannelMessage], [SoundEvent.LinkVoice, SoundEvent.OwnLinkVoice],
+            [SoundEvent.GroupChanged, SoundEvent.GroupChangedByMe],
+        ];
         foreach (var group in shared) Assert.All(group, e => Assert.Equal(tones[group[0]], tones[e]));
         bool SameGroup(SoundEvent a, SoundEvent b) => shared.Any(g => g.Contains(a) && g.Contains(b));
         foreach (var a in tones)

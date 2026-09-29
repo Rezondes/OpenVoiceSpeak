@@ -148,6 +148,20 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(saved.SoundVolume, AudioEngine.GainFor(saved, SoundEvent.LinkVoice), 3);
     }
 
+    /// <summary>Package 73: the two group tones have their own rows, independent of each other.</summary>
+    [Fact]
+    public void Sounds_GroupRows_Independent()
+    {
+        var vm = Vm(new ClientSettings());
+        var rows = vm.SoundRows.ToDictionary(r => r.Event);
+        Assert.Equal(("Eigene Gruppe geändert", "Gruppe vergeben oder entzogen"), (rows[SoundEvent.GroupChanged].Label, rows[SoundEvent.GroupChangedByMe].Label));
+        rows[SoundEvent.GroupChanged].Muted = true;
+        rows[SoundEvent.GroupChangedByMe].VolumePercent = 30;
+        var saved = vm.ToSettings(new ClientSettings());
+        Assert.Equal(0f, AudioEngine.GainFor(saved, SoundEvent.GroupChanged));
+        Assert.Equal(saved.SoundVolume * 0.3f, AudioEngine.GainFor(saved, SoundEvent.GroupChangedByMe), 3);
+    }
+
     [Fact]
     public void Language_RoundTrip_ShownInSettings()
     {

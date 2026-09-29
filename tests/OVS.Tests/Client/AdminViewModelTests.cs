@@ -188,6 +188,33 @@ public class AdminViewModelTests
         Assert.IsType<ListUsers>(sent[^1]);
     }
 
+    /// <summary>Package 73: the one acting hears a tone once the next user list shows the change, also offline; an error gives none.</summary>
+    [Fact]
+    public async Task AssignGroup_SoundWhenListConfirms_NotOnError()
+    {
+        var (vm, server, sent) = Create(P.GroupsAssign | P.Speak | P.UserKick);
+        var heard = new List<OVS.Client.Audio.SoundEvent>();
+        server.SoundRequested += heard.Add;
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+
+        var mod = Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Moderator");
+        mod.IsChecked = true;
+        await mod.ToggleCommand.ExecuteAsync(null);
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])])); // an older answer: not yet
+        Assert.Empty(heard);
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])]));
+        Assert.Equal([OVS.Client.Audio.SoundEvent.GroupChangedByMe], heard);
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])])); // only once
+        Assert.Single(heard);
+
+        var guest = Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Gast");
+        guest.IsChecked = false;
+        await guest.ToggleCommand.ExecuteAsync(null);
+        server.Apply(new Error(sent[^2].RequestId, Codes.LastAdmin));
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [ModGroup])])); // even if it changed some other way
+        Assert.Single(heard);
+    }
+
     [Fact]
     public void BanList_ShowsBans_UnbanSends()
     {

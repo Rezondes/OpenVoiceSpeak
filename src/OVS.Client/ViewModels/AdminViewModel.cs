@@ -159,7 +159,11 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         switch (message)
         {
+            case Error e:
+                if (pendingGroupChanges.RemoveAll(p => p.RequestId == e.RequestId) > 0) UpdateOwnGroupChangePending();
+                break;
             case UserList list:
+                ConfirmGroupChanges(list.Users);
                 knownUsers = list.Users;
                 RebuildUsers();
                 break;
@@ -296,10 +300,31 @@ public sealed partial class AdminViewModel : ObservableObject
     bool CanAssign(GroupInfo g) =>
         Actor.Has(Permission.GroupsAssign) && (g.Id == WellKnownGroups.Admin ? Permission.All : g.Permissions).IsSubsetOf(Actor);
 
+    /// <summary>Package 73: group changes sent but not yet seen in a user list; the server sends no confirmation.</summary>
+    readonly List<(string RequestId, string Fingerprint, Guid GroupId, bool Assigned)> pendingGroupChanges = [];
+
     async Task ToggleUserGroupAsync(string fingerprint, GroupToggle toggle)
     {
-        await server.SendAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId));
+        bool own = fingerprint == server.Mirror.Self?.Fingerprint;
+        if (own) server.OwnGroupChangePending = true; // set before sending: the server's update can come at once
+        var id = await server.SendAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId));
+        pendingGroupChanges.Add((id, fingerprint, toggle.GroupId, toggle.IsChecked));
+        UpdateOwnGroupChangePending();
         await server.SendAsync(new ListUsers());
+    }
+
+    void UpdateOwnGroupChangePending()
+    {
+        var self = server.Mirror.Self?.Fingerprint;
+        server.OwnGroupChangePending = pendingGroupChanges.Any(p => p.Fingerprint == self);
+    }
+
+    /// <summary>Package 73: a tone once a user list shows a pending change; also works for users who are offline.</summary>
+    void ConfirmGroupChanges(IReadOnlyList<KnownUserInfo> users)
+    {
+        int done = pendingGroupChanges.RemoveAll(p => users.Any(u => u.Fingerprint == p.Fingerprint && u.GroupIds.Contains(p.GroupId) == p.Assigned));
+        UpdateOwnGroupChangePending();
+        if (done > 0) server.RequestSound(Audio.SoundEvent.GroupChangedByMe);
     }
 
     bool CanNewGroup => Actor.Has(Permission.GroupsCreate);

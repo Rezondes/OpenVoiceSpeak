@@ -4562,11 +4562,11 @@ Sounds sind die Werte von `SoundEvent` (Reihenfolge = Reihenfolge in den Einstel
 
 ### Acceptance Criteria
 
-- [ ] AC1: Zwei neue Töne, "Eigene Gruppe geändert" und "Gruppe vergeben oder entzogen", mit eigener Zeile (Datei, Lautstärke, Stumm), standardmässig derselbe kurze Ton, der sich von den anderen unterscheidet.
-- [ ] AC2: Der betroffene Nutzer hört "Eigene Gruppe geändert", wenn sich die Gruppen im eigenen `UserUpdated` ändern (neu dazu oder entfernt), einmal je Änderung, nicht beim Verbinden.
-- [ ] AC3: Der Handelnde hört "Gruppe vergeben oder entzogen", sobald die nächste Nutzerliste die gewünschte Änderung zeigt, auch bei Offline-Nutzern. Kein Ton bei einem Fehler (z. B. `LastAdmin`).
-- [ ] AC4: Ändert man die eigene Gruppe, hört man nur einen Ton, "Gruppe vergeben oder entzogen".
-- [ ] AC5: Wie alle Töne: aus bei "Alle Sounds aus", bei "Ton aus" nicht zu hören.
+- [x] AC1: Zwei neue Töne, "Eigene Gruppe geändert" und "Gruppe vergeben oder entzogen", mit eigener Zeile (Datei, Lautstärke, Stumm), standardmässig derselbe kurze Ton, der sich von den anderen unterscheidet.
+- [x] AC2: Der betroffene Nutzer hört "Eigene Gruppe geändert", wenn sich die Gruppen im eigenen `UserUpdated` ändern (neu dazu oder entfernt), einmal je Änderung, nicht beim Verbinden.
+- [x] AC3: Der Handelnde hört "Gruppe vergeben oder entzogen", sobald die nächste Nutzerliste die gewünschte Änderung zeigt, auch bei Offline-Nutzern. Kein Ton bei einem Fehler (z. B. `LastAdmin`).
+- [x] AC4: Ändert man die eigene Gruppe, hört man nur einen Ton, "Gruppe vergeben oder entzogen".
+- [x] AC5: Wie alle Töne: aus bei "Alle Sounds aus", bei "Ton aus" nicht zu hören.
 
 ### Tests (TDD)
 

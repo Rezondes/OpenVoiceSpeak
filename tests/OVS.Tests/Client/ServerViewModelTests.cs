@@ -385,6 +385,39 @@ public class ServerViewModelTests
         ], heard);
     }
 
+    /// <summary>Package 73: a change of the own groups gives one tone, the state on connect and other updates none.</summary>
+    [Fact]
+    public void OwnGroupsChanged_SoundOnce_NotOnConnect()
+    {
+        var f = Create(others: [U(2, "anna", Lobby)]);
+        var heard = Sounds(f.Vm);
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, groups: [WellKnownGroups.Guest]) with { SelfMuted = true })); // no group change
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // given
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // repeated: no change
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest]))); // taken away
+        f.Vm.Apply(new UserUpdated(U(2, "anna", Lobby, P.All, [WellKnownGroups.Admin]))); // somebody else
+        Assert.Equal([SoundEvent.GroupChanged, SoundEvent.GroupChanged], heard);
+    }
+
+    /// <summary>Package 73: changing the own groups in the admin page gives only the tone for the one acting.</summary>
+    [Fact]
+    public async Task OwnGroupChangedByMe_OnlyOneSound()
+    {
+        var f = Create(P.All | P.GroupsAssign, [WellKnownGroups.Guest, WellKnownGroups.Admin]);
+        var admin = new AdminViewModel(f.Vm);
+        f.Vm.Apply(new UserList("r", [new KnownUserInfo("fp1", "ich", [WellKnownGroups.Guest, WellKnownGroups.Admin])]));
+        var heard = Sounds(f.Vm);
+        var guest = Assert.Single(admin.Users).Toggles.Single(t => t.GroupId == WellKnownGroups.Guest);
+        guest.IsChecked = false;
+        await guest.ToggleCommand.ExecuteAsync(null);
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Admin]))); // the server tells me first
+        f.Vm.Apply(new UserList("r", [new KnownUserInfo("fp1", "ich", [WellKnownGroups.Admin])]));
+        Assert.Equal([SoundEvent.GroupChangedByMe], heard);
+
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // someone else gives it back
+        Assert.Equal([SoundEvent.GroupChangedByMe, SoundEvent.GroupChanged], heard);
+    }
+
     /// <summary>Package 57: someone talking in over a link is announced by a short tone, once per transmission.</summary>
     [Fact]
     public void LinkVoice_SoundOncePerTransmission()
