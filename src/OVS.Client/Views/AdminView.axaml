@@ -235,6 +235,27 @@
                               <SelectableTextBlock Classes="caption" Text="{Binding Fingerprint}" TextWrapping="Wrap"
                                                    FontFamily="Cascadia Mono,Consolas,monospace" />
                             </StackPanel>
+                            <!-- Package 72: works for offline users too; deleting asks first -->
+                            <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="0,4,0,0" IsVisible="{Binding HasActions}">
+                              <Button Command="{Binding BanCommand}" IsVisible="{Binding CanBan}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Prohibited}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_BanUser}" />
+                                </StackPanel>
+                              </Button>
+                              <Button Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
+                                </StackPanel>
+                              </Button>
+                              <Button Classes="danger" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="sm" Data="{StaticResource Icon.PersonDelete}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_DeleteUser}" />
+                                </StackPanel>
+                              </Button>
+                            </WrapPanel>
                           </StackPanel>
                         </DockPanel>
                       </Border>

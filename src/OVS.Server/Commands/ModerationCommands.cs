@@ -1,4 +1,5 @@
 using OVS.Server.Data;
+using OVS.Server.Permissions;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 
@@ -16,26 +17,71 @@ public sealed partial class ServerState
     void OnBan(Session s, Ban r)
     {
         if (!Require(s, r, Permission.UserBan) || !FindTarget(s, r, r.SessionId, out var target) || !ValidateReason(s, r, r.Reason)) return;
-        if (r.DurationMinutes is <= 0)
+        if (!ValidateDuration(s, r, r.DurationMinutes)) return;
+        AddBan(s, target.Fingerprint, target.Nickname, r.IncludeIp ? target.Ip.ToString() : null, r.Reason, r.DurationMinutes, target);
+    }
+
+    /// <summary>Package 72: the same ban by fingerprint, for online and offline users alike.</summary>
+    void OnBanUser(Session s, BanUser r)
+    {
+        if (!Require(s, r, Permission.UserBan) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online)
+            || !ValidateReason(s, r, r.Reason) || !ValidateDuration(s, r, r.DurationMinutes)) return;
+        var ip = online?.Ip.ToString() ?? user.LastIp;
+        if (r.IncludeIp && ip is null)
         {
-            Fail(s, r, Codes.InvalidValue, "Dauer muss positiv sein");
+            Fail(s, r, Codes.InvalidValue, "Für diesen Nutzer ist keine IP-Adresse bekannt.");
             return;
         }
-        var now = time.GetUtcNow();
+        AddBan(s, user.Fingerprint, online?.Nickname ?? user.LastNickname, r.IncludeIp ? ip : null, r.Reason, r.DurationMinutes, online);
+    }
+
+    /// <summary>Package 72 (A88): record, groups, statistics and bans go; the log files stay and age out.</summary>
+    void OnDeleteUser(Session s, DeleteUser r)
+    {
+        if (!Require(s, r, Permission.UserDelete)) return;
+        var user = FindUser(r.Fingerprint);
+        if (user is null)
+        {
+            Fail(s, r, Codes.NotFound);
+            return;
+        }
+        if (PermissionRules.WouldRemoveLastAdmin(data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds)),
+                user.Fingerprint, PermissionRules.AdminGroupId))
+        {
+            Fail(s, r, Codes.LastAdmin);
+            return;
+        }
+        if (!FindKnownTarget(s, r, r.Fingerprint, out _, out var online)) return;
+        data.Users.Remove(user);
+        int bans = data.Bans.RemoveAll(b => b.Fingerprint == user.Fingerprint);
+        Persist();
+        logs.Server($"Nutzerdaten von {user.LastNickname} gelöscht von {s.Nickname} ({user.Fingerprint[..Math.Min(12, user.Fingerprint.Length)]}, {bans} Bans)");
+        if (online is not null) RemoveLocked(online, new Disconnected(Codes.UserDeleted));
+    }
+
+    void AddBan(Session s, string fingerprint, string nickname, string? ip, string reason, int? durationMinutes, Session? online)
+    {
         data.Bans.Add(new BanRecord
         {
             Id = Guid.NewGuid(),
-            Fingerprint = target.Fingerprint,
-            Nickname = target.Nickname,
-            Ip = r.IncludeIp ? target.Ip.ToString() : null,
-            Reason = r.Reason,
+            Fingerprint = fingerprint,
+            Nickname = nickname,
+            Ip = ip,
+            Reason = reason,
             CreatedBy = s.Nickname,
-            ExpiresAt = r.DurationMinutes is { } minutes ? now.AddMinutes(minutes) : null,
+            ExpiresAt = durationMinutes is { } minutes ? time.GetUtcNow().AddMinutes(minutes) : null,
         });
         Persist();
-        var duration = r.DurationMinutes is { } m ? $"für {m} Minuten" : "dauerhaft";
-        logs.Server($"{target.Nickname} wurde von {s.Nickname} gebannt {duration}{(r.IncludeIp ? " mit IP" : "")}: {r.Reason}");
-        RemoveLocked(target, new Disconnected(Codes.Banned, r.Reason));
+        var duration = durationMinutes is { } m ? $"für {m} Minuten" : "dauerhaft";
+        logs.Server($"{nickname} wurde von {s.Nickname} gebannt {duration}{(ip is not null ? " mit IP" : "")}{(online is null ? " (offline)" : "")}: {reason}");
+        if (online is not null) RemoveLocked(online, new Disconnected(Codes.Banned, reason));
+    }
+
+    static bool ValidateDuration(Session s, Request r, int? minutes)
+    {
+        if (minutes is not <= 0) return true;
+        Fail(s, r, Codes.InvalidValue, "Dauer muss positiv sein");
+        return false;
     }
 
     void OnUnban(Session s, Unban r)
@@ -81,6 +127,28 @@ public sealed partial class ServerState
         if (reason is null || (reason.Length <= ProtocolInfo.MaxReasonLength && !reason.Any(c => char.IsControl(c) || c is '\u2028' or '\u2029'))) return true;
         Fail(s, r, Codes.InvalidValue, $"Ein Grund hat höchstens {ProtocolInfo.MaxReasonLength} Zeichen und keine Zeilenumbrüche oder Steuerzeichen.");
         return false;
+    }
+
+    /// <summary>
+    /// Package 72: a stored user, never the actor, and only one whose rights are a subset of the actor's.
+    /// Online the session's rights count, offline those of the stored groups.
+    /// </summary>
+    bool FindKnownTarget(Session s, Request r, string fingerprint, out UserRecord user, out Session? online)
+    {
+        user = FindUser(fingerprint)!;
+        online = sessions.Values.FirstOrDefault(x => x.Fingerprint == fingerprint);
+        if (user is null)
+        {
+            Fail(s, r, Codes.NotFound);
+            return false;
+        }
+        var rights = online?.Permissions ?? PermissionRules.Effective(user.GroupIds, data.Groups);
+        if (fingerprint == s.Fingerprint || !s.Permissions.CanActOn(rights))
+        {
+            Fail(s, r, Codes.PermissionDenied);
+            return false;
+        }
+        return true;
     }
 
     bool FindTarget(Session s, Request r, uint sessionId, out Session target)

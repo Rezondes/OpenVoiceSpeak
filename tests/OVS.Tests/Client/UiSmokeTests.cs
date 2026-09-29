@@ -202,6 +202,8 @@ public sealed class UiSmokeTests : IDisposable
         Assert.Equal(["Status", "Gruppe", "Sortierung"], main.GetVisualDescendants().OfType<AdminView>().Single()
             .GetVisualDescendants().OfType<ComboBox>().Select(AutomationProperties.GetName));
         Assert.Contains("Alle Nutzer", Texts(main)); // the combo boxes show their labels
+        foreach (var text in new[] { "Bannen", "Nutzerdaten löschen" }) // Package 72: the actions of the card
+            Assert.Contains(text, Texts(main));
         vm.ClosePage();
 
         void Dialog(Func<OverlayHost, Task> open, string title)
@@ -235,6 +237,13 @@ public sealed class UiSmokeTests : IDisposable
         Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
         Dialog(o => SimpleDialogs.Ban(o, "anna"), "anna bannen");
         Dialog(o => SimpleDialogs.Confirm(o, "Wirklich?"), "Bestätigen");
+        Dialog(o => SimpleDialogs.ConfirmDeleteUser(o, "anna"), "Alle Daten von anna löschen?"); // Package 72
+        _ = SimpleDialogs.ConfirmDeleteUser(main.Overlay, "anna");
+        Dispatcher.UIThread.RunJobs();
+        foreach (var text in new[] { "Endgültig löschen", "Nutzerdatensatz", "Gruppen", "Statistiken", "Bans" })
+            Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains(text) == true);
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
         Dialog(o => SimpleDialogs.OfferUpdate(o, new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))), "Update verfügbar");
         Dialog(o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)), "Tastenaktion hinzufügen");

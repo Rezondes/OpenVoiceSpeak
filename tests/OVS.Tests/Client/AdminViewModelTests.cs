@@ -12,7 +12,8 @@ public class AdminViewModelTests
     static readonly Guid Lobby = Guid.NewGuid();
     static readonly Guid ModGroup = Guid.NewGuid();
 
-    static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false, ServerLimits? limits = null)
+    static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false, ServerLimits? limits = null,
+        Dialogs? dialogs = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword, null, limits), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
@@ -27,7 +28,7 @@ public class AdminViewModelTests
         {
             sent.Add(r);
             return Task.CompletedTask;
-        }, new ManualTimeProvider());
+        }, new ManualTimeProvider(), dialogs);
         return (new AdminViewModel(server), server, sent);
     }
 
@@ -431,6 +432,100 @@ public class AdminViewModelTests
         Assert.Empty(vm.Users);
         vm.SelectedStatusFilter = vm.StatusFilters[0];
         Assert.Equal("Berta", Assert.Single(vm.Users).Nickname);
+    }
+
+    // ---- Package 72: ban, unban and delete from the user card ----
+
+    [Fact]
+    public async Task DeleteUser_AsksFirst_SendsOnlyAfterConfirm()
+    {
+        var answer = false;
+        string? asked = null;
+        var dialogs = new Dialogs
+        {
+            ConfirmDeleteUser = name =>
+            {
+                asked = name;
+                return Task.FromResult(answer);
+            },
+        };
+        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserDelete | P.Speak, dialogs: dialogs);
+        server.Apply(new UserList("r", [Known("fpX", "Xaver")]));
+        var user = Assert.Single(vm.Users);
+
+        await user.DeleteCommand.ExecuteAsync(null);
+        Assert.Equal("Xaver", asked);
+        Assert.Empty(sent.OfType<DeleteUser>());
+
+        answer = true;
+        await user.DeleteCommand.ExecuteAsync(null);
+        var index = sent.FindIndex(r => r is DeleteUser);
+        Assert.Equal(new DeleteUser("fpX"), sent[index] with { RequestId = null });
+        Assert.Equal([typeof(ListUsers), typeof(ListBans)], sent.Skip(index + 1).Select(r => r.GetType())); // both tabs follow
+    }
+
+    [Fact]
+    public async Task BanUnbanDeleteButtons_ByStateAndRight()
+    {
+        var ban1 = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
+        var ban2 = new BanInfo(Guid.NewGuid(), "fpB", "Bert", "10.0.0.7", "", "mod", T0.AddDays(3));
+        KnownUserInfo[] users =
+        [
+            Known("fpX", "Xaver"),
+            Known("fpB", "Bert", bans: [ban1, ban2]),
+            Known("fpM", "Mod", [WellKnownGroups.Guest, ModGroup]),
+            Known("fpA", "Anna", [WellKnownGroups.Admin]),
+            Known("fp1", "ich", [ModGroup]),
+            new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest]),
+        ];
+        static (bool Ban, bool Unban, bool Delete) Buttons(AdminViewModel vm, string nick)
+        {
+            var u = vm.Users.Single(u => u.Nickname == nick);
+            return (u.CanBan, u.CanUnban, u.CanDelete);
+        }
+
+        var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
+        viewServer.Apply(new UserList("r", users));
+        Assert.All(view.Users, u => Assert.Equal((false, false, false), (u.CanBan, u.CanUnban, u.CanDelete)));
+
+        var (banOnly, banServer, _) = Create(P.UsersView | P.UserBan | P.Speak | P.UserKick);
+        banServer.Apply(new UserList("r", users));
+        Assert.Equal((true, false, false), Buttons(banOnly, "Xaver"));
+
+        BanChoice? choice = new("spam", 60, true);
+        bool? ipOffered = null;
+        var dialogs = new Dialogs
+        {
+            Ban = (_, ipKnown) =>
+            {
+                ipOffered = ipKnown;
+                return Task.FromResult<BanChoice?>(choice);
+            },
+        };
+        var (vm, server, sent) = Create(P.UsersView | P.UserBan | P.UserDelete | P.Speak | P.UserKick, dialogs: dialogs);
+        server.Apply(new UserList("r", users));
+        Assert.Equal((true, false, true), Buttons(vm, "Xaver"));
+        Assert.Equal((false, true, true), Buttons(vm, "Bert"));   // banned: unban instead of ban
+        Assert.Equal((true, false, true), Buttons(vm, "Mod"));    // Speak and UserKick are a subset
+        Assert.Equal((false, false, false), Buttons(vm, "Anna")); // stronger (Admin)
+        Assert.Equal((false, false, false), Buttons(vm, "ich"));  // never oneself
+
+        await vm.Users.Single(u => u.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
+        Assert.True(ipOffered);
+        Assert.Equal(new BanUser("fpX", "spam", 60, true), sent.OfType<BanUser>().Last() with { RequestId = null });
+        Assert.IsType<ListUsers>(sent[^1]);
+
+        await vm.Users.Single(u => u.Nickname == "Otto").BanCommand.ExecuteAsync(null); // no IP known: the option is locked
+        Assert.False(ipOffered);
+        Assert.Equal(new BanUser("fpOld", "spam", 60, false), sent.OfType<BanUser>().Last() with { RequestId = null });
+
+        await vm.Users.Single(u => u.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
+        Assert.Equal([ban1.Id, ban2.Id], sent.OfType<Unban>().Select(u => u.BanId));
+
+        choice = null; // cancelled
+        var count = sent.Count;
+        await vm.Users.Single(u => u.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
+        Assert.Equal(count, sent.Count);
     }
 
     // ---- Package 38: link matrix ----

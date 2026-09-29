@@ -28,8 +28,11 @@ public sealed class Dialogs
     public Func<ChannelEdit, ChannelDialogMode, Task<ChannelEdit?>>? EditChannel { get; init; }
     public Func<string, IReadOnlyList<ChannelViewModel>, Task<ChannelViewModel?>>? PickChannel { get; init; }
     public Func<string, string, Task<string?>>? AskText { get; init; }
-    public Func<string, Task<BanChoice?>>? Ban { get; init; }
+    /// <summary>Nickname, and whether an IP is known to ban as well (Package 72: not for every offline user).</summary>
+    public Func<string, bool, Task<BanChoice?>>? Ban { get; init; }
     public Func<string, Task<bool>>? Confirm { get; init; }
+    /// <summary>Package 72: the red "Alle Daten von {0} löschen?" dialog.</summary>
+    public Func<string, Task<bool>>? ConfirmDeleteUser { get; init; }
     /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
     public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }
     public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
@@ -632,7 +635,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [RelayCommand]
     async Task Ban()
     {
-        if (owner.Dialogs.Ban is { } ban && await ban(Nickname) is { } choice)
+        if (owner.Dialogs.Ban is { } ban && await ban(Nickname, true) is { } choice)
             await owner.BanAsync(SessionId, choice);
     }
 }

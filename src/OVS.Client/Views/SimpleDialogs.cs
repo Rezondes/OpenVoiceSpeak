@@ -133,13 +133,16 @@ public static class SimpleDialogs
         return Show(overlay, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, Strings.Dlg_Select);
     }
 
-    public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname)
+    /// <param name="ipKnown">Package 72: an offline user without a stored IP cannot be banned by IP.</param>
+    public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname, bool ipKnown = true)
     {
         var durations = BanChoice.Durations;
         var reason = new TextBox();
         var duration = new ComboBox { ItemsSource = durations.Select(d => d.Label).ToList(), SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
-        var includeIp = new CheckBox { Content = Strings.Dlg_BanIp };
-        return Show(overlay, string.Format(Strings.Dlg_BanTitle, nickname), "Prohibited", Stack(Field(Strings.Dlg_Reason, reason), Field(Strings.Dlg_Duration, duration), includeIp),
+        var includeIp = new CheckBox { Content = Strings.Dlg_BanIp, IsEnabled = ipKnown };
+        var body = Stack(Field(Strings.Dlg_Reason, reason), Field(Strings.Dlg_Duration, duration), includeIp);
+        if (!ipKnown) body.Children.Add(Text(Strings.Dlg_BanIpUnknown, "caption"));
+        return Show(overlay, string.Format(Strings.Dlg_BanTitle, nickname), "Prohibited", body,
             () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Minutes, includeIp.IsChecked == true),
             Strings.Dlg_Ban, kind: Kind.Danger);
     }
@@ -251,6 +254,17 @@ public static class SimpleDialogs
 
     public static async Task<bool> Confirm(OverlayHost overlay, string text) =>
         await Show(overlay, Strings.Dlg_Confirm, "Delete", Text(text), () => "ok", Strings.Dlg_YesDelete, kind: Kind.Danger) is not null;
+
+    /// <summary>Package 72: lists what goes, so nobody deletes a user by accident.</summary>
+    public static async Task<bool> ConfirmDeleteUser(OverlayHost overlay, string nickname)
+    {
+        var items = new[] { Strings.Dlg_DeleteUserRecord, Strings.Dlg_DeleteUserGroups, Strings.Dlg_DeleteUserStats, Strings.Dlg_DeleteUserBans };
+        var list = new StackPanel { Spacing = 2, Margin = new Thickness(8, 0, 0, 0) };
+        list.Children.AddRange(items.Select(item => Text("\u2022 " + item)));
+        var body = Stack(Text(Strings.Dlg_DeleteUserIntro), list, Text(Strings.Dlg_DeleteUserHint, "muted"));
+        return await Show(overlay, string.Format(Strings.Dlg_DeleteUserTitle, nickname), "PersonDelete", body, () => "ok",
+            Strings.Dlg_DeleteForever, okIsDefault: false, kind: Kind.Danger) is not null;
+    }
 
     public static async Task<bool> Tofu(OverlayHost overlay, TofuPrompt prompt)
     {

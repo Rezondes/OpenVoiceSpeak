@@ -4504,12 +4504,12 @@ Testbefehl: `dotnet test`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Jede Karte hat mit Recht `UserBan` "Bannen" (öffnet den vorhandenen Ban-Dialog) bzw. bei aktivem Ban "Entbannen". Das wirkt auch für Offline-Nutzer. "IP mitbannen" nutzt bei Offline-Nutzern die gespeicherte letzte IP (ohne IP ist die Option gesperrt).
-- [ ] AC2: Bannen ist nur bei Nutzern erlaubt, deren Rechte (aus ihren Gruppen) eine Teilmenge der eigenen sind, sonst `PermissionDenied`. Man kann sich nicht selbst bannen. Ist der Nutzer online, wird er wie bisher mit Grund getrennt.
-- [ ] AC3: "Nutzerdaten löschen" öffnet einen eigenen roten Dialog: "Alle Daten von {Name} löschen?" mit Aufzählung (Nutzerdatensatz, Gruppen, Statistiken, Bans) und dem Hinweis, dass der Nutzer danach als neu gilt. Erst "Endgültig löschen" schickt die Anfrage.
-- [ ] AC4: Der Server entfernt den `UserRecord` und alle `BanRecord`s mit diesem Fingerabdruck und speichert. Ist der Nutzer online, wird er mit Code `UserDeleted` getrennt ("Deine Nutzerdaten wurden auf diesem Server gelöscht."). Verbindet er sich neu, ist er ein neuer Nutzer (Gast, neues `FirstSeen`).
-- [ ] AC5: Löschen braucht `UserDelete` (Package 76) und dieselbe Rechte-Regel wie Bannen. Sich selbst und den letzten Admin kann man nicht löschen (`LastAdmin`). Das Löschen wird im Server-Log vermerkt. Die Logdateien bleiben (A88).
-- [ ] AC6: Nach jeder Aktion aktualisieren sich Nutzer- und Bans-Tab. Texte auf Deutsch und Englisch, `ErrorTexts` kennt `UserDeleted`.
+- [x] AC1: Jede Karte hat mit Recht `UserBan` "Bannen" (öffnet den vorhandenen Ban-Dialog) bzw. bei aktivem Ban "Entbannen". Das wirkt auch für Offline-Nutzer. "IP mitbannen" nutzt bei Offline-Nutzern die gespeicherte letzte IP (ohne IP ist die Option gesperrt).
+- [x] AC2: Bannen ist nur bei Nutzern erlaubt, deren Rechte (aus ihren Gruppen) eine Teilmenge der eigenen sind, sonst `PermissionDenied`. Man kann sich nicht selbst bannen. Ist der Nutzer online, wird er wie bisher mit Grund getrennt.
+- [x] AC3: "Nutzerdaten löschen" öffnet einen eigenen roten Dialog: "Alle Daten von {Name} löschen?" mit Aufzählung (Nutzerdatensatz, Gruppen, Statistiken, Bans) und dem Hinweis, dass der Nutzer danach als neu gilt. Erst "Endgültig löschen" schickt die Anfrage.
+- [x] AC4: Der Server entfernt den `UserRecord` und alle `BanRecord`s mit diesem Fingerabdruck und speichert. Ist der Nutzer online, wird er mit Code `UserDeleted` getrennt ("Deine Nutzerdaten wurden auf diesem Server gelöscht."). Verbindet er sich neu, ist er ein neuer Nutzer (Gast, neues `FirstSeen`).
+- [x] AC5: Löschen braucht `UserDelete` (Package 76) und dieselbe Rechte-Regel wie Bannen. Sich selbst und den letzten Admin kann man nicht löschen (`LastAdmin`). Das Löschen wird im Server-Log vermerkt. Die Logdateien bleiben (A88).
+- [x] AC6: Nach jeder Aktion aktualisieren sich Nutzer- und Bans-Tab. Texte auf Deutsch und Englisch, `ErrorTexts` kennt `UserDeleted`.
 
 ### Tests (TDD)
 

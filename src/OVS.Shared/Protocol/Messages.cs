@@ -48,6 +48,8 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(Kick), "kick")]
 [JsonDerivedType(typeof(Ban), "ban")]
 [JsonDerivedType(typeof(Unban), "unban")]
+[JsonDerivedType(typeof(BanUser), "banUser")]
+[JsonDerivedType(typeof(DeleteUser), "deleteUser")]
 [JsonDerivedType(typeof(ListBans), "listBans")]
 [JsonDerivedType(typeof(BanList), "banList")]
 [JsonDerivedType(typeof(SetServerMute), "setServerMute")]
@@ -156,6 +158,10 @@ public sealed record BanInfo(
 public sealed record Kick(uint SessionId, string Reason) : Request;
 public sealed record Ban(uint SessionId, string Reason, int? DurationMinutes, bool IncludeIp) : Request;
 public sealed record Unban(Guid BanId) : Request;
+/// <summary>Package 72: bans a known user by fingerprint, online or offline; IncludeIp uses the last known IP.</summary>
+public sealed record BanUser(string Fingerprint, string Reason, int? DurationMinutes, bool IncludeIp) : Request;
+/// <summary>Package 72: removes the user record and every ban on this fingerprint (A88).</summary>
+public sealed record DeleteUser(string Fingerprint) : Request;
 public sealed record ListBans : Request;
 public sealed record BanList(string? RequestId, IReadOnlyList<BanInfo> Bans) : Message;
 public sealed record SetServerMute(uint SessionId, bool Muted) : Request;

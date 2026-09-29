@@ -509,7 +509,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task Ban_SendsDurationAndIpFlag()
     {
-        var dialogs = new Dialogs { Ban = _ => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
+        var dialogs = new Dialogs { Ban = (_, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
         var f = Create(Moderator, dialogs: dialogs, others: U(2, "gast", Lobby));
         await f.User(2).BanCommand.ExecuteAsync(null);
         Assert.Equal(new Ban(2, "spam", 60, true), f.Sent[^1] with { RequestId = null });

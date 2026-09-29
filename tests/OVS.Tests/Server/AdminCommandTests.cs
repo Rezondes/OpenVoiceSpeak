@@ -480,6 +480,8 @@ public class AdminCommandTests
         { "updateGroup", Permission.GroupsManage },
         { "reorderGroups", Permission.GroupsManage },
         { "deleteGroup", Permission.GroupsDelete },
+        { "banUser", Permission.UserBan },       // Package 72
+        { "deleteUser", Permission.UserDelete },
     };
 
     [Theory]
@@ -521,6 +523,8 @@ public class AdminCommandTests
             "updateGroup" => new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak),
             "reorderGroups" => new ReorderGroups(groups.Select(g => g.Id).Reverse().ToList()),
             "deleteGroup" => new DeleteGroup(mod),
+            "banUser" => new BanUser(target.Fingerprint, "x", null, false),
+            "deleteUser" => new DeleteUser(target.Fingerprint),
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         };
         await a.SendAsync(r with { RequestId = "r" });

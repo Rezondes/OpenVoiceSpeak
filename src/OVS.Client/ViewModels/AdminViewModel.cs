@@ -165,7 +165,11 @@ public sealed partial class AdminViewModel : ObservableObject
                 break;
             case BanList list:
                 Bans.Clear();
-                foreach (var ban in list.Bans) Bans.Add(new BanViewModel(ban, Actor.Has(Permission.UserBan), () => server.SendAsync(new Unban(ban.Id))));
+                foreach (var ban in list.Bans) Bans.Add(new BanViewModel(ban, Actor.Has(Permission.UserBan), async () =>
+                {
+                    await server.SendAsync(new Unban(ban.Id)); // answered with the new ban list
+                    if (ShowUsers) await server.SendAsync(new ListUsers()); // Package 72: the user cards follow
+                }));
                 break;
         }
     }
@@ -227,12 +231,20 @@ public sealed partial class AdminViewModel : ObservableObject
         var search = SearchText.Trim();
         var status = SelectedStatusFilter?.Value ?? UserStatusFilter.All;
         var group = SelectedGroupFilter?.Value;
+        var self = server.Mirror.Self?.Fingerprint;
+        var admins = knownUsers.Count(u => u.GroupIds.Contains(WellKnownGroups.Admin));
         var all = knownUsers.Select(user =>
         {
             var toggles = server.Mirror.Groups.Select(g => new GroupToggle(g.Id, g.Name, user.GroupIds.Contains(g.Id),
                 CanAssign(g), t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
             var bans = (user.Bans ?? []).Where(b => b.ExpiresAt is null || b.ExpiresAt > now).ToList();
-            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans);
+            // Package 72: the server checks the same; never oneself, only users without more rights, never the last admin
+            var weaker = user.Fingerprint != self && RightsOf(user.GroupIds).IsSubsetOf(Actor);
+            var lastAdmin = admins == 1 && user.GroupIds.Contains(WellKnownGroups.Admin);
+            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this,
+                canBan: Actor.Has(Permission.UserBan) && weaker && bans.Count == 0,
+                canUnban: Actor.Has(Permission.UserBan) && bans.Count > 0,
+                canDelete: Actor.Has(Permission.UserDelete) && weaker && !lastAdmin);
         }).ToList();
         var visible = all.Where(u => u.Matches(search) && (group is null || u.Info.GroupIds.Contains(group.Value)) && status switch
         {
@@ -251,6 +263,34 @@ public sealed partial class AdminViewModel : ObservableObject
         Users.Clear();
         foreach (var user in visible) Users.Add(user);
         UserCountText = string.Format(Strings.Ui_UserCount, Users.Count, all.Count);
+    }
+
+    /// <summary>What the stored groups give; the Admin group always everything (like PermissionRules.Effective).</summary>
+    Permission RightsOf(IReadOnlyList<Guid> groupIds) => groupIds.Contains(WellKnownGroups.Admin)
+        ? Permission.All
+        : server.Mirror.Groups.Where(g => groupIds.Contains(g.Id)).Aggregate(Permission.None, (acc, g) => acc | g.Permissions);
+
+    // ---- Package 72: ban, unban and delete from a user card, online or offline ----
+
+    internal async Task BanUserAsync(KnownUserViewModel user)
+    {
+        var ipKnown = user.Info.LastIp is not null;
+        if (server.Dialogs.Ban is not { } ban || await ban(user.Nickname, ipKnown) is not { } choice) return;
+        await server.SendAsync(new BanUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown));
+        await RequestListsAsync();
+    }
+
+    internal async Task UnbanUserAsync(KnownUserViewModel user)
+    {
+        foreach (var ban in user.Bans) await server.SendAsync(new Unban(ban.Id));
+        await RequestListsAsync();
+    }
+
+    internal async Task DeleteUserAsync(KnownUserViewModel user)
+    {
+        if (server.Dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
+        await server.SendAsync(new DeleteUser(user.Fingerprint));
+        await RequestListsAsync();
     }
 
     bool CanAssign(GroupInfo g) =>
@@ -409,7 +449,8 @@ public sealed record Choice<T>(T Value, string Label)
 }
 
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
-public sealed class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggle> toggles, IReadOnlyList<BanInfo> bans)
+public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggle> toggles, IReadOnlyList<BanInfo> bans,
+    AdminViewModel? owner = null, bool canBan = false, bool canUnban = false, bool canDelete = false)
 {
     public KnownUserInfo Info { get; } = info;
     public string Fingerprint => Info.Fingerprint;
@@ -420,6 +461,21 @@ public sealed class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadO
     public string StatusText => IsOnline ? Strings.Ui_StatusOnline : Strings.Ui_StatusOffline;
     public IReadOnlyList<BanInfo> Bans { get; } = bans;
     public bool IsBanned => Bans.Count > 0;
+
+    // Package 72: only the actions the viewer may take show on the card
+    public bool CanBan { get; } = canBan;
+    public bool CanUnban { get; } = canUnban;
+    public bool CanDelete { get; } = canDelete;
+    public bool HasActions => CanBan || CanUnban || CanDelete;
+
+    [RelayCommand(CanExecute = nameof(CanBan))]
+    Task Ban() => owner?.BanUserAsync(this) ?? Task.CompletedTask;
+
+    [RelayCommand(CanExecute = nameof(CanUnban))]
+    Task Unban() => owner?.UnbanUserAsync(this) ?? Task.CompletedTask;
+
+    [RelayCommand(CanExecute = nameof(CanDelete))]
+    Task Delete() => owner?.DeleteUserAsync(this) ?? Task.CompletedTask;
 
     /// <summary>The longest running ban.</summary>
     public string BanText => Bans.OrderBy(b => b.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""

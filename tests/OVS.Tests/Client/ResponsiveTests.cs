@@ -476,6 +476,8 @@ public sealed class ResponsiveTests : IDisposable
         "TofuMismatch" => SimpleDialogs.Tofu(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
         "TofuUnknown" => SimpleDialogs.Tofu(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Unknown)),
         "Ban" => SimpleDialogs.Ban(o, "Mitspieler mit langem Namen"),
+        "BanWithoutIp" => SimpleDialogs.Ban(o, "Mitspieler mit langem Namen", ipKnown: false),
+        "DeleteUser" => SimpleDialogs.ConfirmDeleteUser(o, "Mitspieler mit langem Namen"),
         "Confirm" => SimpleDialogs.Confirm(o, "Channel \"Raidgruppe Nummer 2\" wirklich löschen? Alle darin landen in der Lobby."),
         "Update" => SimpleDialogs.OfferUpdate(o, new OVS.Client.Net.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
             string.Join("\n", Enumerable.Range(1, 30).Select(i => $"- Neuerung Nummer {i} mit etwas mehr Text")), DateTimeOffset.UtcNow,
@@ -513,7 +515,7 @@ public sealed class ResponsiveTests : IDisposable
     public static TheoryData<string, string> Dialogs()
     {
         var data = new TheoryData<string, string>();
-        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "Bookmark" })
+        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "Bookmark" })
             foreach (var culture in new[] { "de-DE", "en-US" })
                 data.Add(dialog, culture);
         return data;

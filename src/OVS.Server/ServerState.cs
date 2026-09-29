@@ -239,6 +239,7 @@ public sealed partial class ServerState
             Codes.Kicked => "gekickt",
             Codes.Banned => "gebannt",
             Codes.ReplacedByNewConnection => "durch neue Verbindung ersetzt",
+            Codes.UserDeleted => "Nutzerdaten gelöscht",
             _ => d.Reason,
         };
         logs.Server($"{session.Nickname} getrennt ({reason})");
@@ -291,6 +292,8 @@ public sealed partial class ServerState
                 case Kick r: OnKick(session, r); break;
                 case Ban r: OnBan(session, r); break;
                 case Unban r: OnUnban(session, r); break;
+                case BanUser r: OnBanUser(session, r); break;
+                case DeleteUser r: OnDeleteUser(session, r); break;
                 case ListBans r: OnListBans(session, r); break;
                 case SetServerMute r: OnSetServerMute(session, r); break;
                 case LinkChannels r: OnLinkChannels(session, r); break;

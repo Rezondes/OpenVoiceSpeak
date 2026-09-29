@@ -46,6 +46,7 @@
   <data name="Dlg_AddressMissing" xml:space="preserve"><value>Bitte eine Adresse eingeben.</value></data>
   <data name="Dlg_Ban" xml:space="preserve"><value>Bannen</value></data>
   <data name="Dlg_BanIp" xml:space="preserve"><value>Auch die IP-Adresse sperren</value></data>
+  <data name="Dlg_BanIpUnknown" xml:space="preserve"><value>Für diesen Nutzer ist keine IP-Adresse bekannt.</value></data>
   <data name="Dlg_BanTitle" xml:space="preserve"><value>{0} bannen</value></data>
   <data name="Dlg_Bookmark" xml:space="preserve"><value>Lesezeichen</value></data>
   <data name="Dlg_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
@@ -56,6 +57,14 @@
   <data name="Dlg_Connect" xml:space="preserve"><value>Verbinden</value></data>
   <data name="Dlg_ConnectTitle" xml:space="preserve"><value>Mit Server verbinden</value></data>
   <data name="Dlg_Create" xml:space="preserve"><value>Anlegen</value></data>
+  <data name="Dlg_DeleteForever" xml:space="preserve"><value>Endgültig löschen</value></data>
+  <data name="Dlg_DeleteUserBans" xml:space="preserve"><value>Bans</value></data>
+  <data name="Dlg_DeleteUserGroups" xml:space="preserve"><value>Gruppen</value></data>
+  <data name="Dlg_DeleteUserHint" xml:space="preserve"><value>Danach gilt der Nutzer als neu: Verbindet er sich wieder, ist er ein Gast. Die Logdateien bleiben.</value></data>
+  <data name="Dlg_DeleteUserIntro" xml:space="preserve"><value>Gelöscht werden:</value></data>
+  <data name="Dlg_DeleteUserRecord" xml:space="preserve"><value>Nutzerdatensatz</value></data>
+  <data name="Dlg_DeleteUserStats" xml:space="preserve"><value>Statistiken</value></data>
+  <data name="Dlg_DeleteUserTitle" xml:space="preserve"><value>Alle Daten von {0} löschen?</value></data>
   <data name="Dlg_Description" xml:space="preserve"><value>Beschreibung</value></data>
   <data name="Dlg_DescriptionHint" xml:space="preserve"><value>Optional, erscheint als Tooltip und im Kopf des Channels.</value></data>
   <data name="Dlg_Duration" xml:space="preserve"><value>Dauer</value></data>
@@ -122,6 +131,7 @@
   <data name="Error_TooManyPasswordAttempts" xml:space="preserve"><value>Zu viele falsche Passwörter von deiner IP-Adresse, versuche es später erneut.</value></data>
   <data name="Error_Unknown" xml:space="preserve"><value>Fehler: {0}</value></data>
   <data name="Error_UnknownRequest" xml:space="preserve"><value>Der Server kennt diese Anfrage nicht.</value></data>
+  <data name="Error_UserDeleted" xml:space="preserve"><value>Deine Nutzerdaten wurden auf diesem Server gelöscht.</value></data>
   <data name="Error_VersionMismatch" xml:space="preserve"><value>Client und Server verwenden unterschiedliche Protokollversionen.</value></data>
   <data name="Error_WrongPassword" xml:space="preserve"><value>Falsches Serverpasswort.</value></data>
   <data name="Group_New" xml:space="preserve"><value>Neue Gruppe</value></data>
@@ -237,7 +247,9 @@
   <data name="Ui_AllGroups" xml:space="preserve"><value>Alle Gruppen</value></data>
   <data name="Ui_BanDetail" xml:space="preserve"><value>Gebannt ({0})</value></data>
   <data name="Ui_BanReason" xml:space="preserve"><value>Grund: {0}</value></data>
+  <data name="Ui_BanUser" xml:space="preserve"><value>Bannen</value></data>
   <data name="Ui_ChatMessages" xml:space="preserve"><value>Chatnachrichten</value></data>
+  <data name="Ui_DeleteUser" xml:space="preserve"><value>Nutzerdaten löschen</value></data>
   <data name="Ui_DurationDays" xml:space="preserve"><value>{0} T {1} h</value></data>
   <data name="Ui_FirstSeen" xml:space="preserve"><value>Erster Login</value></data>
   <data name="Ui_GroupFilter" xml:space="preserve"><value>Gruppe</value></data>

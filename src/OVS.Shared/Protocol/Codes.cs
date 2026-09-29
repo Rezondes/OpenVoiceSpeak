@@ -21,6 +21,7 @@ public static class Codes
     public const string ServerShutdown = nameof(ServerShutdown);
     public const string ServerRestart = nameof(ServerRestart);
     public const string Kicked = nameof(Kicked);
+    public const string UserDeleted = nameof(UserDeleted); // Package 72
     public const string ConnectionLost = nameof(ConnectionLost); // client side only
 
     // Error (requests)
