@@ -87,4 +87,14 @@ describe('App', () => {
       .toBe('https://github.com/Rezondes/OpenVoiceSpeak#readme')
     expect(screen.getByText(/docker compose up -d/)).toBeTruthy()
   })
+
+  it('screenshots open enlarged and close again', () => {
+    render(<App />)
+    expect(document.querySelector('dialog')).toBeNull()
+    fireEvent.click(screen.getAllByRole('button', { name: /Enlarge screenshot/ })[1])
+    const dialog = document.querySelector('dialog')!
+    expect(dialog.querySelector('img')?.getAttribute('alt')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close', hidden: true }))
+    expect(document.querySelector('dialog')).toBeNull()
+  })
 })

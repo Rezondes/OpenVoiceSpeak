@@ -37,7 +37,7 @@ function store(lang: Lang) {
 function Shot({ file, lang, alt, eager = false }: { file: string; lang: Lang; alt: string; eager?: boolean }) {
   const path = `${import.meta.env.BASE_URL}screenshots/${file}-${lang}`
   return (
-    <picture>
+    <picture key={`${file}-${lang}`}>
       <source srcSet={`${path}-dark.webp`} media="(prefers-color-scheme: dark)" />
       <img src={`${path}-light.webp`} alt={alt} width="1100" height={file.startsWith('main') ? 700 : 760}
            loading={eager ? 'eager' : 'lazy'} decoding="async" />
@@ -45,11 +45,102 @@ function Shot({ file, lang, alt, eager = false }: { file: string; lang: Lang; al
   )
 }
 
+type Zoom = { file: string; alt: string }
+
+/** A screenshot that opens larger on click or Enter. */
+function ZoomShot({ file, alt, lang, label, onOpen, eager }: Zoom & { lang: Lang; label: string; onOpen: (z: Zoom) => void; eager?: boolean }) {
+  return (
+    <button type="button" className="zoom" aria-label={`${label}: ${alt}`} onClick={() => onOpen({ file, alt })}>
+      <Shot file={file} lang={lang} alt={alt} eager={eager} />
+    </button>
+  )
+}
+
+/** Native dialog: focus trap, Esc and inert background come for free. A click outside the image closes it. */
+function Lightbox({ zoom, lang, close, onClose }: { zoom: Zoom; lang: Lang; close: string; onClose: () => void }) {
+  return (
+    <dialog className="lightbox" aria-label={zoom.alt} ref={el => { if (el && !el.open) el.showModal?.() }}
+            onClose={onClose} onClick={e => { if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'IMG') onClose() }}>
+      <button type="button" className="lightbox-close" aria-label={close} onClick={onClose}>&times;</button>
+      <Shot file={zoom.file} lang={lang} alt={zoom.alt} eager />
+    </dialog>
+  )
+}
+
+/** Fades elements in once when they scroll into view. Used as a ref, so elements React remounts (language switch) are picked up again. */
+const revealer = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); revealer?.unobserve(e.target) }
+}, { rootMargin: '0px 0px -8% 0px', threshold: 0.1 })
+if (revealer) document.documentElement.classList.add('reveal-on')
+const reveal = { 'data-reveal': '', ref: (el: HTMLElement | null) => {
+  if (!el || !revealer) return
+  el.style.setProperty('--i', String((el.parentElement ? [...el.parentElement.children].indexOf(el) : 0) % 6))
+  revealer.observe(el)
+} }
+
+/** In-page links glide to their target. Done in script because browsers drop CSS smooth scrolling when the system has animations off. */
+function useGlide() {
+  useEffect(() => {
+    let frame = 0
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]')
+      const target = link && document.getElementById(link.hash.slice(1))
+      if (!link || !target || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return
+      e.preventDefault()
+      const from = scrollY
+      const to = Math.max(0, from + target.getBoundingClientRect().top - parseFloat(getComputedStyle(target).scrollMarginTop || '0'))
+      const start = performance.now()
+      const duration = Math.min(900, 350 + Math.abs(to - from) / 4)
+      cancelAnimationFrame(frame)
+      const step = (now: number) => {
+        const k = Math.min(1, (now - start) / duration)
+        scrollTo({ top: from + (to - from) * (1 - (1 - k) ** 3), behavior: 'instant' })
+        if (k < 1) frame = requestAnimationFrame(step)
+      }
+      frame = requestAnimationFrame(step)
+      history.replaceState(null, '', link.hash)
+      target.focus({ preventScroll: true })
+    }
+    const stop = () => cancelAnimationFrame(frame)
+    addEventListener('click', onClick)
+    addEventListener('wheel', stop, { passive: true })
+    addEventListener('touchstart', stop, { passive: true })
+    return () => { removeEventListener('click', onClick); removeEventListener('wheel', stop); removeEventListener('touchstart', stop); stop() }
+  }, [])
+}
+
+/** Highlights the nav link of the section in view, and marks the header once the page is scrolled. */
+function useScrollState(ids: readonly string[]) {
+  const [active, setActive] = useState<string | null>(null)
+  useEffect(() => {
+    const root = document.documentElement
+    let queued = 0
+    const paint = () => {
+      queued = 0
+      root.classList.toggle('scrolled', scrollY > 8)
+      root.style.setProperty('--sy', String(Math.round(scrollY)))
+      root.style.setProperty('--p', String(Math.min(1, scrollY / Math.max(1, root.scrollHeight - innerHeight))))
+    }
+    const onScroll = () => { queued ||= requestAnimationFrame(paint) }
+    paint()
+    addEventListener('scroll', onScroll, { passive: true })
+    addEventListener('resize', onScroll)
+    const off = () => { removeEventListener('scroll', onScroll); removeEventListener('resize', onScroll); cancelAnimationFrame(queued) }
+    if (typeof IntersectionObserver === 'undefined') return off
+    const io = new IntersectionObserver(entries => {
+      for (const e of entries) if (e.isIntersecting) setActive(e.target.id)
+    }, { rootMargin: '-40% 0px -55% 0px' })
+    ids.forEach(id => { const el = document.getElementById(id); if (el) io.observe(el) })
+    return () => { io.disconnect(); off() }
+  }, [ids])
+  return active
+}
+
 function Section({ id, title, band = false, children }: { id: string; title: string; band?: boolean; children: ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className={band ? 'band' : undefined}>
       <div className="container">
-        <h2 id={`${id}-title`}>{title}</h2>
+        <h2 id={`${id}-title`} {...reveal}>{title}</h2>
         {children}
       </div>
     </section>
@@ -65,7 +156,12 @@ function DownloadButton({ label, large = false }: { label: string; large?: boole
   )
 }
 
+const navIds = ['features', 'audience', 'screenshots', 'install', 'server'] as const
+
 export default function App() {
+  const [zoom, setZoom] = useState<Zoom | null>(null)
+  const active = useScrollState(navIds)
+  useGlide()
   const [lang, setLang] = useState<Lang>(() => pickLanguage(navigator.languages ?? [navigator.language], readStored()))
   const t = texts[lang]
   const version = import.meta.env.VITE_OVS_VERSION || 'dev'
@@ -82,6 +178,7 @@ export default function App() {
 
   return (
     <>
+      <div className="progress" aria-hidden="true" />
       <a className="skip" href="#main">{t.skip}</a>
       <header className="header">
         <div className="container header-row">
@@ -91,8 +188,8 @@ export default function App() {
           </a>
           <nav aria-label="OpenVoiceSpeak">
             <ul>
-              {(['features', 'audience', 'screenshots', 'install', 'server'] as const).map(id => (
-                <li key={id}><a href={`#${id}`}>{t.nav[id]}</a></li>
+              {navIds.map(id => (
+                <li key={id}><a href={`#${id}`} aria-current={active === id ? 'true' : undefined}>{t.nav[id]}</a></li>
               ))}
             </ul>
           </nav>
@@ -118,7 +215,7 @@ export default function App() {
             </div>
             <p className="hint">{t.hero.note}</p>
             <div className="frame hero-shot">
-              <Shot file="main-online" lang={lang} alt={t.hero.shotAlt} eager />
+              <ZoomShot file="main-online" lang={lang} alt={t.hero.shotAlt} label={t.zoom} onOpen={setZoom} eager />
             </div>
           </div>
         </div>
@@ -126,7 +223,7 @@ export default function App() {
         <Section id="features" title={t.features.title}>
           <ul className="cards">
             {t.features.items.map(item => (
-              <li key={item.title} className="card">
+              <li key={item.title} className="card" {...reveal}>
                 <span className="card-icon"><Icon name={item.icon} /></span>
                 <h3>{item.title}</h3>
                 <p>{item.text}</p>
@@ -138,7 +235,7 @@ export default function App() {
         <Section id="audience" title={t.audience.title} band>
           <ul className="cards cards-three">
             {t.audience.items.map(item => (
-              <li key={item.title} className="card">
+              <li key={item.title} className="card" {...reveal}>
                 <span className="card-icon"><Icon name={item.icon} /></span>
                 <h3>{item.title}</h3>
                 <p>{item.text}</p>
@@ -150,9 +247,9 @@ export default function App() {
         <Section id="screenshots" title={t.screenshots.title}>
           <ul className="gallery">
             {t.screenshots.items.map(item => (
-              <li key={item.file}>
+              <li key={item.file} {...reveal}>
                 <figure>
-                  <div className="frame"><Shot file={item.file} lang={lang} alt={item.alt} /></div>
+                  <div className="frame"><ZoomShot file={item.file} lang={lang} alt={item.alt} label={t.zoom} onOpen={setZoom} /></div>
                   <figcaption>{item.caption}</figcaption>
                 </figure>
               </li>
@@ -163,7 +260,7 @@ export default function App() {
         <Section id="install" title={t.install.title} band>
           <ol className="steps">
             {t.install.steps.map(step => (
-              <li key={step.title} className="card">
+              <li key={step.title} className="card" {...reveal}>
                 <h3>{step.title}</h3>
                 <p>{step.text}</p>
               </li>
@@ -174,7 +271,7 @@ export default function App() {
         </Section>
 
         <Section id="server" title={t.server.title}>
-          <div className="server">
+          <div className="server" {...reveal}>
             <div>
               <p>{t.server.text}</p>
               <p><a className="text-link" href={`${repo}#readme`}>{t.server.readme}</a></p>
@@ -193,6 +290,7 @@ export default function App() {
           </ul>
         </div>
       </footer>
+      {zoom && <Lightbox zoom={zoom} lang={lang} close={t.close} onClose={() => setZoom(null)} />}
     </>
   )
 }

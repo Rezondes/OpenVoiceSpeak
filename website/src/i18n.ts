@@ -10,6 +10,8 @@ const de = {
   skip: 'Zum Inhalt springen',
   nav: { features: 'Vorteile', audience: 'Für wen', screenshots: 'Screenshots', install: 'Installation', server: 'Eigener Server' },
   langLabel: 'Sprache',
+  zoom: 'Screenshot vergrößern',
+  close: 'Schließen',
   download: 'Herunterladen',
   hero: {
     title: 'Voice-Chat, der dir gehört.',
@@ -24,7 +26,7 @@ const de = {
     title: 'Was OpenVoiceSpeak ausmacht',
     items: [
       { icon: 'headphones', title: 'Klarer Sound', text: 'Sprache mit dem Opus-Codec, Push-to-Talk oder Sprachaktivierung und Tasten, die auch im Spiel wirken.' },
-      { icon: 'home', title: 'Dein eigener Server', text: 'Der Server läuft per Docker auf deinem Linux-Server. Eure Gespräche laufen über keinen fremden Dienst.' },
+      { icon: 'home', title: 'Dein eigener Server', text: 'Der Server läuft per Docker auf deinem eigenen Server. Eure Gespräche laufen über keinen fremden Dienst.' },
       { icon: 'key', title: 'Keine Accounts', text: 'Deine Identität ist ein Schlüssel auf deinem PC. Keine Registrierung, keine E-Mail, kein Passwort zum Vergessen.' },
       { icon: 'link', title: 'Channels verbinden', text: 'Verlinkte Channels hören sich per Link-Taste gegenseitig. Ideal für Raids, Turniere und große Events.' },
       { icon: 'lockClosed', title: 'Verschlüsselt', text: 'Sprache per AES-GCM verschlüsselt, Steuerung über TLS. Der Server speichert keinen Chatverlauf.' },
@@ -58,7 +60,7 @@ const de = {
   },
   server: {
     title: 'Eigenen Server betreiben',
-    text: 'Du brauchst einen Linux-Server mit Docker. Drei Befehle, dann läuft dein Server. Gib Port 7000 für TCP und UDP frei.',
+    text: 'Du brauchst einen Server, auf dem Docker läuft. Das Betriebssystem ist egal. Drei Befehle, dann läuft dein Server. Gib Port 7000 für TCP und UDP frei.',
     readme: 'Anleitung für Serverbetreiber',
     code: 'Befehle für den Server',
   },
@@ -76,6 +78,8 @@ const en: Texts = {
   skip: 'Skip to content',
   nav: { features: 'Features', audience: 'Who it is for', screenshots: 'Screenshots', install: 'Install', server: 'Own server' },
   langLabel: 'Language',
+  zoom: 'Enlarge screenshot',
+  close: 'Close',
   download: 'Download',
   hero: {
     title: 'Voice chat that belongs to you.',
@@ -90,7 +94,7 @@ const en: Texts = {
     title: 'What makes OpenVoiceSpeak',
     items: [
       { icon: 'headphones', title: 'Clear sound', text: 'Voice with the Opus codec, push-to-talk or voice activation and keys that work while you play.' },
-      { icon: 'home', title: 'Your own server', text: 'The server runs in Docker on your Linux server. Your conversations never pass through someone else\'s service.' },
+      { icon: 'home', title: 'Your own server', text: 'The server runs in Docker on your own server. Your conversations never pass through someone else\'s service.' },
       { icon: 'key', title: 'No accounts', text: 'Your identity is a key on your PC. No sign-up, no email, no password to forget.' },
       { icon: 'link', title: 'Link channels', text: 'Linked channels hear each other with the link key. Made for raids, tournaments and big events.' },
       { icon: 'lockClosed', title: 'Encrypted', text: 'Voice encrypted with AES-GCM, control over TLS. The server keeps no chat history.' },
@@ -124,7 +128,7 @@ const en: Texts = {
   },
   server: {
     title: 'Run your own server',
-    text: 'You need a Linux server with Docker. Three commands and your server is running. Open port 7000 for TCP and UDP.',
+    text: 'You need a server that runs Docker. The operating system does not matter. Three commands and your server is running. Open port 7000 for TCP and UDP.',
     readme: 'Guide for server operators',
     code: 'Commands for the server',
   },

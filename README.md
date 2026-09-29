@@ -11,13 +11,13 @@ Selbst hostbarer Voice-Chat in der Art von Mumble oder TeamSpeak, bewusst einfac
 - Identität per Schlüsselpaar: keine Accounts, keine Passwörter
 - Sprache als Opus über verschlüsseltes UDP (AES-GCM), Steuerung über TLS
 
-Der Server läuft im Docker-Container auf Linux (amd64 und arm64). Der Client läuft unter Windows.
+Der Server läuft im Docker-Container (Image für amd64 und arm64), das Betriebssystem des Hosts ist egal. Der Client läuft unter Windows.
 
 Für Nutzer gibt es eine eigene Seite mit Download und Anleitung: https://rezondes.github.io/OpenVoiceSpeak/ (Quelle in `website/`, ausgeliefert nach jedem Release).
 
 ## Server mit Docker
 
-Voraussetzungen: Linux-Server (amd64 oder arm64) mit Docker samt Compose-Plugin
+Voraussetzungen: ein Server (amd64 oder arm64, beliebiges Betriebssystem) mit Docker samt Compose-Plugin
 (z. B. `curl -fsSL https://get.docker.com | sh`). Das fertige Image liegt als Package in der GitHub Container Registry
 (`ghcr.io/rezondes/openvoicespeak-server`, Tags `latest` und die Version, siehe "Client (Windows)"). Du brauchst nur die Compose-Datei:
 

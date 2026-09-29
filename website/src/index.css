@@ -155,9 +155,86 @@ section h2 {
 .footer a { color: var(--muted); text-underline-offset: 3px; }
 .footer a:hover { color: var(--text); }
 
+/* Screenshot zoom */
+.zoom { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; cursor: zoom-in; }
+.zoom:focus-visible { outline-offset: -3px; }
+
+.lightbox {
+  width: min(1100px, 96vw); max-width: none; max-height: 94vh; padding: 0; overflow: auto;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow);
+}
+.lightbox::backdrop { background: rgb(8 10 14 / 0.78); backdrop-filter: blur(4px); }
+.lightbox img { cursor: zoom-out; }
+.lightbox-close {
+  position: absolute; top: 8px; right: 8px; z-index: 1; width: 44px; height: 44px; border: 0; border-radius: 999px;
+  background: rgb(8 10 14 / 0.7); color: #fff; font-size: 1.75rem; line-height: 1; cursor: pointer;
+}
+.lightbox-close:hover { background: var(--accent); }
+
+/* Reading progress */
+.progress {
+  position: fixed; inset: 0 0 auto; z-index: 20; height: 3px; pointer-events: none;
+  background: linear-gradient(90deg, var(--accent), #8b5cf6); transform-origin: left; transform: scaleX(var(--p, 0));
+}
+
+/* Header: clear edge once scrolled, current section marked */
+.header nav a[aria-current='true'] { color: var(--accent-text); background: var(--accent-soft); }
+.scrolled .header { box-shadow: 0 6px 24px rgb(16 24 40 / 0.1); }
+
+/* Effects always run, softly. Big movement (shift, scale, drift) only when the system does not ask for reduced motion. */
+html { scroll-behavior: smooth; }
+.button, .lang button, .header nav a { transition: background-color 150ms ease-out, color 150ms ease-out, transform 150ms ease-out, box-shadow 150ms ease-out; }
+.header { transition: box-shadow 200ms ease-out; }
+.button-large:hover { box-shadow: 0 12px 30px rgb(47 111 235 / 0.42); }
+.card { transition: transform 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out; }
+.card:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); box-shadow: var(--shadow); }
+.card-icon { transition: transform 250ms ease-out, background-color 250ms ease-out, color 250ms ease-out; }
+.card:hover .card-icon { background: var(--accent); color: #fff; }
+.frame { transition: transform 250ms ease-out, box-shadow 250ms ease-out; }
+.frame:hover { box-shadow: 0 2px 4px rgb(16 24 40 / 0.1), 0 20px 48px rgb(16 24 40 / 0.2); }
+.frame img { transition: transform 400ms ease-out; }
+
+/* Scroll reveal: only hidden while the script is running, so no-JS visitors see everything */
+.reveal-on [data-reveal] { opacity: 0; }
+.reveal-on [data-reveal].in {
+  opacity: 1;
+  transition: opacity 700ms ease-out calc(var(--i, 0) * 80ms), transform 700ms ease-out calc(var(--i, 0) * 80ms),
+              border-color 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+/* Light behind the whole page: fixed, so it stays while scrolling and shines through the bands */
+body::before, body::after {
+  content: ''; position: fixed; z-index: -1; width: 620px; height: 620px; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), transparent);
+  filter: blur(24px); pointer-events: none; animation: glow 8s ease-in-out infinite alternate;
+}
+body::before { top: -140px; left: -140px; }
+body::after {
+  bottom: -180px; right: -160px; animation-duration: 11s;
+  background: radial-gradient(closest-side, color-mix(in srgb, #8b5cf6 22%, transparent), transparent);
+}
+section.band { background: color-mix(in srgb, var(--surface) 72%, transparent); }
+@keyframes glow { from { opacity: 0.45; } to { opacity: 1; } }
+
+.lightbox[open]::backdrop { animation: fade 200ms ease-out; }
+@keyframes fade { from { opacity: 0; } }
+
 @media (prefers-reduced-motion: no-preference) {
-  html { scroll-behavior: smooth; }
-  .button, .lang button, .header nav a { transition: background-color 150ms ease-out, color 150ms ease-out; }
-  .card { transition: transform 200ms ease-out, border-color 200ms ease-out; }
-  .card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .button:hover { transform: translateY(-2px); }
+  .button:active { transform: translateY(0); }
+  /* Lights drift at their own pace against the scroll (the individual translate property stacks with the drift animation) */
+  body::before { translate: 0 calc(var(--sy, 0) * 0.08px); }
+  body::after { translate: 0 calc(var(--sy, 0) * -0.07px); }
+  .card:hover { transform: translateY(-4px); }
+  .card:hover .card-icon { transform: scale(1.1) rotate(-4deg); }
+  .frame:hover { transform: translateY(-3px); }
+  .frame:hover img { transform: scale(1.02); }
+  .reveal-on [data-reveal] { transform: translateY(28px); }
+  .reveal-on [data-reveal].in { transform: none; }
+  .reveal-on .card.in:hover { transform: translateY(-4px); transition-delay: 0s; }
+  body::before, body::after { animation-name: glow, drift; animation-duration: 8s, 18s; }
+  body::after { animation-duration: 11s, 24s; animation-direction: alternate, alternate-reverse; }
+  @keyframes drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(160px, 90px) scale(1.25); } }
+  .lightbox[open] { animation: pop 200ms ease-out; }
+  @keyframes pop { from { opacity: 0; transform: scale(0.96); } }
 }
