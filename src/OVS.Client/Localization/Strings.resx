@@ -377,6 +377,7 @@
   <data name="Update_Latest" xml:space="preserve"><value>Du hast die neueste Version.</value></data>
   <data name="Update_LocalBuild" xml:space="preserve"><value>Lokale Builds suchen nicht nach Updates.</value></data>
   <data name="Update_Starting" xml:space="preserve"><value>Die neue Version startet ...</value></data>
+  <data name="Update_RestartFailed" xml:space="preserve"><value>Die neue Version ist installiert, konnte aber nicht gestartet werden ({0}). Bitte starte OpenVoiceSpeak neu.</value></data>
   <data name="Update_Title" xml:space="preserve"><value>Update auf {0}</value></data>
   <data name="Update_Size" xml:space="preserve"><value>{0:0} %  ·  {1:0.0} / {2:0.0} MB</value></data>
   <data name="Update_SizeUnknown" xml:space="preserve"><value>{0:0.0} MB geladen</value></data>

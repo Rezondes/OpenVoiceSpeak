@@ -117,8 +117,9 @@ public sealed class UpdateTests : IDisposable
         Assert.Equal("alt", File.ReadAllText(exe + ".old"));
         Assert.Equal([exe], restarted);
 
-        UpdateInstaller.CleanupOld(exe); // next start
+        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe)); // next start
         Assert.False(File.Exists(exe + ".old"));
+        Assert.Null(await UpdateInstaller.CleanupOldAsync(exe)); // nothing left to do
     }
 
     [Fact]
@@ -179,5 +180,81 @@ public sealed class UpdateTests : IDisposable
         Assert.True(loading[^1].IsIndeterminate);
         Assert.Equal(neu.Length, loading[^1].Bytes);
         Assert.Equal("neu ohne Laenge", File.ReadAllText(exe));
+    }
+
+    // ---- restart and cleanup (Package 63) ----
+
+    /// <summary>A77: the restart threw (in the real client: Process could not be loaded from the renamed exe) and took the client down.</summary>
+    [Fact]
+    public async Task RestartFails_ClientStaysOpen_ErrorShown()
+    {
+        var neu = Encoding.ASCII.GetBytes("neu");
+        var exe = Path.Combine(dir, "OVS.Client.exe");
+        File.WriteAllText(exe, "alt");
+        var http = new FakeHttp(r => FakeHttp.Bytes(r.RequestUri!.AbsolutePath.EndsWith(".sha256") ? Encoding.ASCII.GetBytes(Sha(neu)) : neu));
+        var installer = new UpdateInstaller(new HttpClient(http), exe, _ => throw new FileNotFoundException("System.Diagnostics.Process fehlt"));
+
+        var result = await installer.InstallAsync(Offer);
+        Assert.NotNull(result);
+        Assert.Contains("System.Diagnostics.Process fehlt", result);
+        Assert.Equal("neu", File.ReadAllText(exe)); // installed; the next start by hand uses it
+    }
+
+    [Fact]
+    public void Restart_PassesArgs_PlusAfterUpdatePid()
+    {
+        Assert.Equal(["--profile", "X", "--after-update", "42"], UpdateInstaller.RestartArgs(["--profile", "X"], 42));
+        Assert.Equal(["--no-audio", "--after-update", "42"], UpdateInstaller.RestartArgs(["--after-update", "7", "--no-audio"], 42));
+    }
+
+    [Fact]
+    public void Parse_AfterUpdate()
+    {
+        Assert.Equal(1234, OVS.Client.ClientOptions.Parse(["--after-update", "1234", "--no-audio"]).AfterUpdatePid);
+        var invalid = OVS.Client.ClientOptions.Parse(["--after-update", "abc"]);
+        Assert.Null(invalid.AfterUpdatePid);
+        Assert.Null(OVS.Client.ClientOptions.Parse([]).AfterUpdatePid);
+    }
+
+    [Fact]
+    public async Task CleanupOld_WaitsForLockedFile_ThenDeletes()
+    {
+        var exe = Path.Combine(dir, "OVS.Client.exe");
+        File.WriteAllText(exe + ".old", "alt");
+        var locked = new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None);
+        _ = Task.Delay(700).ContinueWith(_ => locked.Dispose());
+
+        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, pause: TimeSpan.FromMilliseconds(500)));
+        Assert.False(File.Exists(exe + ".old"));
+    }
+
+    [Fact]
+    public async Task CleanupOld_StillLocked_ReportsReason()
+    {
+        var exe = Path.Combine(dir, "OVS.Client.exe");
+        File.WriteAllText(exe + ".old", "alt");
+        using var locked = new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = await UpdateInstaller.CleanupOldAsync(exe, attempts: 3, pause: TimeSpan.FromMilliseconds(100));
+        Assert.StartsWith("Alte Version konnte nicht entfernt werden", result);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(2), clock.Elapsed.ToString());
+        Assert.True(File.Exists(exe + ".old"));
+    }
+
+    [Fact]
+    public async Task CleanupOld_WaitsForProcessExit()
+    {
+        var exe = Path.Combine(dir, "OVS.Client.exe");
+        File.WriteAllText(exe + ".old", "alt");
+        using var old = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping -n 2 127.0.0.1 >nul")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        })!;
+
+        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, old.Id));
+        Assert.True(old.HasExited); // deleted only after the old process was gone
+        Assert.False(File.Exists(exe + ".old"));
     }
 }

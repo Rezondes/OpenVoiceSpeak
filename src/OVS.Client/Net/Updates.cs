@@ -117,8 +117,32 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
             if (!File.Exists(exePath) && File.Exists(OldPath)) File.Move(OldPath, exePath); // swap half done: undo it
             return string.Format(Strings.Update_InstallFailed, e.Message);
         }
-        restart(exePath);
+        try
+        {
+            restart(exePath);
+        }
+        catch (Exception e) // Package 63: whatever it is, the window stays open and says so instead of vanishing
+        {
+            return string.Format(Strings.Update_RestartFailed, e.Message);
+        }
         return null;
+    }
+
+    /// <summary>
+    /// Package 63: the arguments for the new version, the running ones plus "--after-update &lt;pid&gt;" so it waits for
+    /// this process before it removes "*.old". An earlier "--after-update" is not passed on twice.
+    /// </summary>
+    public static List<string> RestartArgs(IEnumerable<string> current, int pid)
+    {
+        var args = new List<string>();
+        using var e = current.GetEnumerator();
+        while (e.MoveNext())
+        {
+            if (e.Current == ClientOptions.AfterUpdateArg) e.MoveNext();
+            else args.Add(e.Current);
+        }
+        args.AddRange([ClientOptions.AfterUpdateArg, pid.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        return args;
     }
 
     async Task DownloadAsync(UpdateOffer offer, Action<UpdateProgress>? progress, CancellationToken cancel)
@@ -145,10 +169,42 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         if (bytes != reported) progress?.Invoke(new UpdateProgress(offer.Version, UpdatePhase.Downloading, bytes, total));
     }
 
-    /// <summary>At start: the exe replaced by the last update is not running any more and can go.</summary>
-    public static void CleanupOld(string? exePath)
+    /// <summary>
+    /// At start: removes the exe replaced by the last update. Package 63: right after an update the old process may
+    /// still be closing, and Windows keeps a just-ended exe locked for a moment, so it waits for that process (at
+    /// most <paramref name="waitForExit"/>) and tries a few times.
+    /// </summary>
+    /// <returns>What happened, for the log; null when there was nothing to remove.</returns>
+    public static async Task<string?> CleanupOldAsync(string? exePath, int? oldPid = null, TimeSpan? waitForExit = null,
+        int attempts = 5, TimeSpan? pause = null)
     {
-        if (exePath is not null) TryDelete(exePath + ".old");
+        if (exePath is null || !File.Exists(exePath + ".old")) return null;
+        if (oldPid is { } pid)
+        {
+            try
+            {
+                using var old = System.Diagnostics.Process.GetProcessById(pid);
+                using var timeout = new CancellationTokenSource(waitForExit ?? TimeSpan.FromSeconds(10));
+                await old.WaitForExitAsync(timeout.Token);
+            }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException or OperationCanceledException)
+            {
+                // already gone, or still there after the wait: try anyway
+            }
+        }
+        for (int i = 1; ; i++)
+        {
+            try
+            {
+                File.Delete(exePath + ".old");
+                return "Alte Version entfernt";
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                if (i >= attempts) return $"Alte Version konnte nicht entfernt werden: {e.Message}";
+                await Task.Delay(pause ?? TimeSpan.FromMilliseconds(500));
+            }
+        }
     }
 
     static void TryDelete(string path)

@@ -1,5 +1,6 @@
 using Avalonia;
 using OVS.Client.Localization;
+using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 
@@ -8,14 +9,17 @@ namespace OVS.Client;
 /// <summary>
 /// Command line: --profile &lt;dir&gt; (own identity and settings, e.g. for a second instance),
 /// --debug-api &lt;port&gt; (local test API, see Debug/DebugApi.cs), --no-audio (no microphone or speaker),
-/// --audio-debug (key and frame rate lines in the client log, see Debug/AudioDebugLog.cs).
+/// --audio-debug (key and frame rate lines in the client log, see Debug/AudioDebugLog.cs),
+/// --after-update &lt;pid&gt; (set by the updater: the replaced version still closing, see Net/Updates.cs).
 /// </summary>
-public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices, bool AudioDebug = false)
+public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices, bool AudioDebug = false, int? AfterUpdatePid = null)
 {
+    public const string AfterUpdateArg = "--after-update";
+
     public static ClientOptions Parse(string[] args)
     {
         string profile = ClientStorage.DefaultDirectory;
-        int? debugPort = null;
+        int? debugPort = null, afterUpdate = null;
         bool audio = true, audioDebug = false;
         for (int i = 0; i < args.Length; i++)
         {
@@ -34,21 +38,34 @@ public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool Us
                 case "--audio-debug":
                     audioDebug = true;
                     break;
+                case AfterUpdateArg when i + 1 < args.Length && int.TryParse(args[i + 1], out var pid):
+                    afterUpdate = pid;
+                    i++;
+                    break;
             }
         }
-        return new ClientOptions(profile, debugPort, audio, audioDebug);
+        return new ClientOptions(profile, debugPort, audio, audioDebug, afterUpdate);
     }
 }
 
 internal static class Program
 {
     public static ClientOptions Options { get; private set; } = ClientOptions.Parse([]);
+    public static ClientLog? Log { get; internal set; }
 
     [STAThread]
     public static void Main(string[] args)
     {
         Options = ClientOptions.Parse(args);
-        UpdateInstaller.CleanupOld(Environment.ProcessPath); // Package 43: the exe replaced by the last update
+        Log = new ClientLog(Options.ProfileDir, TimeProvider.System);
+        // Package 63: a crash used to leave no trace at all; exceptions escaping the UI thread end up here too
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => Log?.Write($"Absturz: {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) => Log?.Write($"Unbeobachteter Fehler: {e.Exception}");
+        // Package 43/63: the exe replaced by the last update, in the background so the window does not wait for it
+        _ = Task.Run(async () =>
+        {
+            if (await UpdateInstaller.CleanupOldAsync(Environment.ProcessPath, Options.AfterUpdatePid) is { } result) Log?.Write(result);
+        });
         Language.Apply(ClientSettings.Load(Options.ProfileDir, out _).Language); // Package 45: before the first window
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

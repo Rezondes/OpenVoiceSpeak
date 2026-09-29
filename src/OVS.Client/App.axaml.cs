@@ -23,7 +23,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var options = Program.Options;
-            var log = new ClientLog(options.ProfileDir, TimeProvider.System);
+            var log = Program.Log ??= new ClientLog(options.ProfileDir, TimeProvider.System);
             var args = string.Join(' ', Environment.GetCommandLineArgs().Skip(1));
             log.Write($"OpenVoiceSpeak-Client {BuildInfo.Current.Version} startet, Profil {options.ProfileDir}, " +
                       $"Optionen: {(args.Length > 0 ? args : "keine")}");
@@ -71,13 +71,19 @@ public partial class App : Application
             var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
             vm.Updates = new UpdateChecker(http, BuildInfo.Current);
             if (Environment.ProcessPath is { } exe)
-                vm.Installer = new UpdateInstaller(http, exe, path =>
+            {
+                // Package 63: prepared now, while the exe is still in place. A single-file exe loads assemblies from its
+                // own file on first use; after the swap that file is "*.old", and Process was not there any more (A77).
+                var start = new ProcessStartInfo(exe) { UseShellExecute = false };
+                foreach (var arg in UpdateInstaller.RestartArgs(Environment.GetCommandLineArgs().Skip(1), Environment.ProcessId))
+                    start.ArgumentList.Add(arg);
+                vm.Installer = new UpdateInstaller(http, exe, _ =>
                 {
-                    var start = new ProcessStartInfo(path) { UseShellExecute = false };
-                    foreach (var arg in Environment.GetCommandLineArgs().Skip(1)) start.ArgumentList.Add(arg);
-                    Process.Start(start);
+                    Process.Start(start)?.Dispose();
+                    log.Write("Neue Version gestartet");
                     desktop.Shutdown();
                 });
+            }
             window.Opened += async (_, _) => await vm.StartupUpdateCheckAsync();
 
             desktop.MainWindow = window;
