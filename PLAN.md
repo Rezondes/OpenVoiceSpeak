@@ -4210,10 +4210,10 @@ Hinter dem Channel-Namen steht heute bei `IsLinked` ein `Border Classes="chip"` 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Statt des Chips steht hinter dem Namen nur `Icon.Link` (klein, Klasse `link`), in einer Reihe mit dem Home-Icon. Der Tooltip nennt alle verlinkten Channels ("Verlinkt mit Artillery, FoB, ...").
-- [ ] AC2: Beim Verbinden mit einem Server (und wenn neue Channels dazukommen oder umbenannt werden, solange der Nutzer die Breite nicht selbst gezogen hat) wird die Seitenleiste so breit, dass der längste Channel-Name samt Icon davor, Home- und Link-Icon dahinter und Nutzerzahl ohne Abschneiden passt, mindestens 240 px.
-- [ ] AC3: Die Wunschbreite gilt als Mindestbreite der Spalte. Sie wird von Package 68 nach oben begrenzt: Reicht das Fenster nicht, werden die Namen mit "..." abgeschnitten.
-- [ ] AC4: Zieht der Nutzer die Seitenleiste breiter, bleibt seine Breite bis zum nächsten Verbinden.
+- [x] AC1: Statt des Chips steht hinter dem Namen nur `Icon.Link` (klein, Klasse `link`), in einer Reihe mit dem Home-Icon. Der Tooltip nennt alle verlinkten Channels ("Verlinkt mit Artillery, FoB, ...").
+- [x] AC2: Beim Verbinden mit einem Server (und wenn neue Channels dazukommen oder umbenannt werden, solange der Nutzer die Breite nicht selbst gezogen hat) wird die Seitenleiste so breit, dass der längste Channel-Name samt Icon davor, Home- und Link-Icon dahinter und Nutzerzahl ohne Abschneiden passt, mindestens 240 px.
+- [x] AC3: Die Wunschbreite gilt als Mindestbreite der Spalte. Sie wird von Package 68 nach oben begrenzt: Reicht das Fenster nicht, werden die Namen mit "..." abgeschnitten.
+- [x] AC4: Zieht der Nutzer die Seitenleiste breiter, bleibt seine Breite bis zum nächsten Verbinden.
 
 ### Tests (TDD)
 

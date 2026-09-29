@@ -796,6 +796,86 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 67: a linked channel shows only a link icon behind its name, the partners are in its tooltip.</summary>
+    [AvaloniaFact]
+    public void LinkedChannel_IconWithTooltip_NoChip()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+        var row = ChannelRow(main, "Lobby");
+        Assert.DoesNotContain(row.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("chip"));
+        var link = Assert.Single(VisibleIcons(row), i => i.Data == main.FindResource("Icon.Link"));
+        Assert.Contains("link", link.Classes);
+        Assert.Equal("Verlinkt mit Raid", ToolTip.GetTip(link));
+        main.Close();
+    }
+
+    static Border Sidebar(MainWindow main) => main.FindControl<Border>("Sidebar")!;
+
+    static readonly string[] SquadChannels =
+        ["Infantry Squad 1", "Infantry Squad 2", "Sabotage Squad", "Logistics and Support Squad", "Artillery", "FoB"];
+
+    /// <summary>Package 67: after connecting, every channel name fits without trimming and the sidebar is not wider than needed.</summary>
+    [AvaloniaFact]
+    public void Connect_SidebarFitsLongestChannel()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        vm.Server = FakeServers.WithChannels(SquadChannels);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(Sidebar(main).Bounds.Width >= 240);
+        var slack = new List<double>();
+        foreach (var name in SquadChannels)
+        {
+            var row = ChannelRow(main, name);
+            var text = row.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Classes.Contains("channelName"));
+            Assert.False(text.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{name} ist abgeschnitten");
+            var group = (Control)text.Parent!; // name, home and link icon
+            var count = row.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Classes.Contains("channelCount"));
+            var groupRight = group.TranslatePoint(new Point(group.Bounds.Width, 0), row)!.Value.X;
+            var countLeft = count.TranslatePoint(default, row)!.Value.X;
+            slack.Add(countLeft - groupRight - count.Margin.Left);
+        }
+        Assert.True(slack.Min() >= -0.5, $"überlappt: {slack.Min()}");
+        Assert.True(slack.Min() <= 1, $"zu breit: {slack.Min()}");
+        main.Close();
+    }
+
+    /// <summary>Package 67: a width the user dragged stays until the next connect, even when channels change.</summary>
+    [AvaloniaFact]
+    public void UserDraggedWidth_KeptUntilReconnect()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        vm.Server = FakeServers.WithChannels(SquadChannels);
+        Dispatcher.UIThread.RunJobs();
+        var fitted = Sidebar(main).Bounds.Width;
+
+        // a new, longer channel widens the sidebar while the user has not dragged
+        vm.Server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Logistics and Support Squad Number Two", "", 9)));
+        Dispatcher.UIThread.RunJobs();
+        var wider = Sidebar(main).Bounds.Width;
+        Assert.True(wider > fitted, $"{wider} <= {fitted}");
+
+        var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();
+        ((Grid)splitter.Parent!).ColumnDefinitions[0].Width = new GridLength(wider + 80);
+        splitter.RaiseEvent(new Avalonia.Input.VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragCompletedEvent });
+        Dispatcher.UIThread.RunJobs();
+        vm.Server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Logistics and Support Squad Number Three and Four", "", 10)));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(wider + 80, Sidebar(main).Bounds.Width, 1);
+
+        vm.Server = FakeServers.WithChannels(SquadChannels);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(fitted, Sidebar(main).Bounds.Width, 1);
+        main.Close();
+    }
+
     /// <summary>Package 46: in English, no German resource text is left anywhere in the window, its pages and dialogs.</summary>
     [AvaloniaFact]
     public void Windows_English_NoGermanResourceText()

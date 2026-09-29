@@ -2,6 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 
@@ -13,6 +17,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnKeyDown);
+        DataContextChanged += (_, _) => WatchServer();
     }
 
     MainViewModel Vm => (MainViewModel)DataContext!;
@@ -118,4 +123,63 @@ public partial class MainWindow : Window
         dragSource = null;
         dragging = false;
     }
+
+    // ---- Package 67 (A81): sidebar as wide as the widest channel row, until the user drags it ----
+
+    MainViewModel? watchedVm;
+    ServerViewModel? watchedServer;
+    bool sidebarDragged;
+
+    void WatchServer()
+    {
+        if (watchedVm is not null) watchedVm.PropertyChanged -= OnVmPropertyChanged;
+        watchedVm = DataContext as MainViewModel;
+        if (watchedVm is not null) watchedVm.PropertyChanged += OnVmPropertyChanged;
+        OnServerChanged();
+    }
+
+    void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.Server)) OnServerChanged();
+    }
+
+    /// <summary>Every connect starts with the fitted width again.</summary>
+    void OnServerChanged()
+    {
+        if (watchedServer is not null) watchedServer.StateChanged -= QueueFitSidebar;
+        watchedServer = watchedVm?.Server;
+        if (watchedServer is null) return;
+        watchedServer.StateChanged += QueueFitSidebar;
+        sidebarDragged = false;
+        QueueFitSidebar();
+    }
+
+    // After layout, so the rows of new or renamed channels exist and carry their styles.
+    void QueueFitSidebar() => Dispatcher.UIThread.Post(FitSidebar, DispatcherPriority.Background);
+
+    void OnSidebarDragCompleted(object? sender, Avalonia.Input.VectorEventArgs e) => sidebarDragged = true;
+
+    void FitSidebar()
+    {
+        if (sidebarDragged || watchedServer is null || !IsVisible) return;
+        var rows = ChannelItems.GetRealizedContainers().Select(c =>
+        {
+            var texts = c.GetVisualDescendants().OfType<TextBlock>().ToList();
+            var name = texts.FirstOrDefault(t => t.Classes.Contains("channelName"));
+            var count = texts.FirstOrDefault(t => t.Classes.Contains("channelCount"));
+            var channel = c.DataContext as ChannelViewModel;
+            return new SidebarRow(TextWidth(name), (channel?.IsDefault == true ? 1 : 0) + (channel?.IsLinked == true ? 1 : 0), TextWidth(count));
+        }).ToList();
+        if (rows.Count == 0) return;
+        // ponytail: capped at half the window until Package 68 sets the real upper bound (A82).
+        var width = Math.Min(SidebarWidth.For(rows), Math.Max(SidebarWidth.Minimum, Bounds.Width / 2));
+        var column = ((Grid)Sidebar.Parent!).ColumnDefinitions[0];
+        column.MinWidth = width;
+        column.Width = new GridLength(width);
+    }
+
+    /// <summary>The untrimmed width of a text block's text in its current font.</summary>
+    static double TextWidth(TextBlock? text) => string.IsNullOrEmpty(text?.Text) ? 0
+        : new TextLayout(text.Text, new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, null)
+            .WidthIncludingTrailingWhitespace;
 }

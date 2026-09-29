@@ -26,4 +26,15 @@ public static class FakeServers
             return Task.CompletedTask;
         }, TimeProvider.System);
     }
+
+    /// <summary>Package 67: own user "ich" (admin) in the first channel, which is the default; all channels linked with each other.</summary>
+    public static ServerViewModel WithChannels(params string[] names)
+    {
+        var channels = names.Select((n, i) => new ChannelInfo(Guid.NewGuid(), n, "", i)).ToList();
+        var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
+        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "", false), channels[0].Id, channels, links,
+            [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
+            [new UserInfo(1, "fp1", "ich", channels[0].Id, false, false, false, Permission.All, [WellKnownGroups.Admin])]);
+        return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);
+    }
 }

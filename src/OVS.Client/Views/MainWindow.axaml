@@ -13,9 +13,10 @@
   <!-- Maximized, Windows hides a border off screen: OffScreenMargin keeps the content inside. -->
   <DockPanel Margin="{Binding $parent[Window].OffScreenMargin}">
   <v:TitleBar DockPanel.Dock="Top" />
+  <!-- Package 67: the sidebar width is fitted to the channel names on connect (MainWindow.axaml.cs) -->
   <Grid ColumnDefinitions="300,Auto,*">
     <!-- ================= Sidebar: server, channels, own user ================= -->
-    <Border Grid.Column="0" IsEnabled="{Binding !IsUpdating}" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
+    <Border x:Name="Sidebar" Grid.Column="0" IsEnabled="{Binding !IsUpdating}" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <!-- Server header -->
         <Border DockPanel.Dock="Top" Padding="14,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
@@ -189,7 +190,7 @@
                         </ContextMenu>
                       </Border.ContextMenu>
                       <DockPanel>
-                        <TextBlock DockPanel.Dock="Right" Classes="caption" VerticalAlignment="Center"
+                        <TextBlock DockPanel.Dock="Right" Classes="caption channelCount" VerticalAlignment="Center" Margin="8,0,0,0"
                                    Text="{Binding SlotText}" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
                         <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->
                         <Panel DockPanel.Dock="Left" Margin="0,0,8,0">
@@ -197,18 +198,16 @@
                           <PathIcon Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
                                     ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" />
                         </Panel>
-                        <StackPanel Orientation="Horizontal" Spacing="6">
+                        <!-- Package 67: left-aligned, so home and link icon follow the name and the name trims when space runs out -->
+                        <DockPanel HorizontalAlignment="Left">
+                          <PathIcon DockPanel.Dock="Right" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsLinked}"
+                                    ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}"
+                                    Margin="6,0,0,0" VerticalAlignment="Center" />
+                          <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
+                                    ToolTip.Tip="{x:Static l:Strings.Ui_DefaultChannel}" Margin="6,0,0,0" VerticalAlignment="Center" />
                           <TextBlock Classes="channelName" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"
                                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}" />
-                          <PathIcon Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
-                                    ToolTip.Tip="{x:Static l:Strings.Ui_DefaultChannel}" VerticalAlignment="Center" />
-                          <Border Classes="chip" IsVisible="{Binding IsLinked}" ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                              <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" />
-                              <TextBlock Text="{Binding LinkedNames}" MaxWidth="110" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                          </Border>
-                        </StackPanel>
+                        </DockPanel>
                       </DockPanel>
                     </Border>
 
@@ -293,7 +292,7 @@
       </DockPanel>
     </Border>
 
-    <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" />
+    <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" DragCompleted="OnSidebarDragCompleted" />
 
     <!-- ================= Main area: home, settings or administration, all inside this window (A20) ================= -->
     <Panel Grid.Column="2" IsEnabled="{Binding !IsUpdating}">
