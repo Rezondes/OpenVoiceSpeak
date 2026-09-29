@@ -462,6 +462,10 @@
   <Style Selector="Window.narrow UniformGrid.rights">
     <Setter Property="Columns" Value="1" />
   </Style>
+  <!-- Package 71: the details of a user card in columns of 180 px, as many as fit (one under narrow) -->
+  <Style Selector="WrapPanel.userDetails > StackPanel">
+    <Setter Property="Width" Value="180" />
+  </Style>
   <!-- Action of a user or ban card: beside the details, under narrow below them -->
   <Style Selector="Button.cardAction">
     <Setter Property="DockPanel.Dock" Value="Right" />

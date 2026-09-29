@@ -234,6 +234,13 @@
   <data name="Ui_AboveThreshold" xml:space="preserve"><value>above the threshold, would send</value></data>
   <data name="Ui_Admin" xml:space="preserve"><value>Administration</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>The admin group always has all rights and cannot be changed.</value></data>
+  <data name="Ui_AllGroups" xml:space="preserve"><value>All groups</value></data>
+  <data name="Ui_BanDetail" xml:space="preserve"><value>Banned ({0})</value></data>
+  <data name="Ui_BanReason" xml:space="preserve"><value>Reason: {0}</value></data>
+  <data name="Ui_ChatMessages" xml:space="preserve"><value>Chat messages</value></data>
+  <data name="Ui_DurationDays" xml:space="preserve"><value>{0} d {1} h</value></data>
+  <data name="Ui_FirstSeen" xml:space="preserve"><value>First login</value></data>
+  <data name="Ui_GroupFilter" xml:space="preserve"><value>Group</value></data>
   <data name="Ui_GroupStronger" xml:space="preserve"><value>This group has rights you do not have yourself, so you cannot change it.</value></data>
   <data name="Ui_GroupViewOnly" xml:space="preserve"><value>You may only view groups, not edit them.</value></data>
   <data name="Ui_AdminMenu" xml:space="preserve"><value>Administration</value></data>
@@ -293,6 +300,8 @@
   <data name="Ui_KeysHelp" xml:space="preserve"><value>Keys work everywhere, also while a game is in the foreground. Combinations with Ctrl, Shift and Alt are possible.</value></data>
   <data name="Ui_KeysSection" xml:space="preserve"><value>KEYS</value></data>
   <data name="Ui_KickMenu" xml:space="preserve"><value>Kick ...</value></data>
+  <data name="Ui_LastIp" xml:space="preserve"><value>Last IP</value></data>
+  <data name="Ui_LastLogin" xml:space="preserve"><value>Last login</value></data>
   <data name="Ui_LevelFmt" xml:space="preserve"><value>Level {0:0} dBFS</value></data>
   <data name="Ui_LinkFmt" xml:space="preserve"><value>Link {0}</value></data>
   <data name="Ui_LinkSelected" xml:space="preserve"><value>Link selected with each other</value></data>
@@ -302,6 +311,7 @@
   <data name="Ui_LinksHelp" xml:space="preserve"><value>A tick links two channels. Links only work directly, not in a chain: if several channels should all talk to each other, select them on the left and link them with each other.</value></data>
   <data name="Ui_LocallyMuted" xml:space="preserve"><value>Muted for you</value></data>
   <data name="Ui_LogDays" xml:space="preserve"><value>Keep logs (days, 0 = forever)</value></data>
+  <data name="Ui_LoginCount" xml:space="preserve"><value>Logins</value></data>
   <data name="Ui_LogRotateDaily" xml:space="preserve"><value>Start a new log file every day</value></data>
   <data name="Ui_LogoHint" xml:space="preserve"><value>PNG or JPG, square (1:1), at most 3 MB. You can also drop the file onto the field.</value></data>
   <data name="Ui_MaxUsers" xml:space="preserve"><value>Maximum users</value></data>
@@ -320,14 +330,18 @@
   <data name="Ui_NewPassword" xml:space="preserve"><value>New password (leave empty = unchanged)</value></data>
   <data name="Ui_NoBookmarks" xml:space="preserve"><value>No bookmarks yet. Connect with "Connect ..." and save the server as a bookmark.</value></data>
   <data name="Ui_NoKeyActions" xml:space="preserve"><value>No key actions yet.</value></data>
+  <data name="Ui_None" xml:space="preserve"><value>none</value></data>
   <data name="Ui_NoPassword" xml:space="preserve"><value>The server has no password.</value></data>
   <data name="Ui_NobodyBanned" xml:space="preserve"><value>Nobody is banned.</value></data>
+  <data name="Ui_NoUserMatches" xml:space="preserve"><value>No user matches the search and filters.</value></data>
+  <data name="Ui_OnlineTime" xml:space="preserve"><value>Online time</value></data>
   <data name="Ui_Operation" xml:space="preserve"><value>Operation</value></data>
   <data name="Ui_OperationHint" xml:space="preserve"><value>Applies at once. Environment variables only give the values for the first start.</value></data>
   <data name="Ui_PasswordSaved" xml:space="preserve"><value>Password saved</value></data>
   <data name="Ui_PickSoundFilter" xml:space="preserve"><value>Audio (WAV, MP3)</value></data>
   <data name="Ui_PickSoundTitle" xml:space="preserve"><value>Choose sound</value></data>
   <data name="Ui_PingTip" xml:space="preserve"><value>Server response time</value></data>
+  <data name="Ui_PreviousNicknames" xml:space="preserve"><value>Previous nicknames</value></data>
   <data name="Ui_ShowChannels" xml:space="preserve"><value>Show channels</value></data>
   <data name="Ui_PlayFmt" xml:space="preserve"><value>Play {0}</value></data>
   <data name="Ui_PrivateMessage" xml:space="preserve"><value>Private message</value></data>
@@ -355,6 +369,10 @@
   <data name="Ui_ServerName" xml:space="preserve"><value>Server name</value></data>
   <data name="Ui_SetPttKey" xml:space="preserve"><value>Set key</value></data>
   <data name="Ui_Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Ui_SortLastLogin" xml:space="preserve"><value>By last login</value></data>
+  <data name="Ui_SortName" xml:space="preserve"><value>By name</value></data>
+  <data name="Ui_SortOnlineTime" xml:space="preserve"><value>By online time</value></data>
+  <data name="Ui_SortOrder" xml:space="preserve"><value>Sort order</value></data>
   <data name="Ui_SoundMutedFmt" xml:space="preserve"><value>{0}: muted</value></data>
   <data name="Ui_SoundVolume" xml:space="preserve"><value>Sound volume</value></data>
   <data name="Ui_SoundVolumeFmt" xml:space="preserve"><value>{0}: volume</value></data>
@@ -362,16 +380,25 @@
   <data name="Ui_SoundsHint" xml:space="preserve"><value>Short tones for microphone, sound, connection, channel and private messages. With "Sound off" only those for microphone and sound play.</value></data>
   <data name="Ui_SoundsSection" xml:space="preserve"><value>SOUNDS</value></data>
   <data name="Ui_Speaker" xml:space="preserve"><value>Speaker</value></data>
+  <data name="Ui_SpeechTime" xml:space="preserve"><value>Speaking time</value></data>
+  <data name="Ui_StatusAll" xml:space="preserve"><value>All users</value></data>
+  <data name="Ui_StatusBanned" xml:space="preserve"><value>Banned</value></data>
+  <data name="Ui_StatusFilter" xml:space="preserve"><value>Status</value></data>
+  <data name="Ui_StatusOffline" xml:space="preserve"><value>Offline</value></data>
+  <data name="Ui_StatusOnline" xml:space="preserve"><value>Online</value></data>
   <data name="Ui_TalkingViaLink" xml:space="preserve"><value>Talking through a link</value></data>
   <data name="Ui_Theme" xml:space="preserve"><value>Theme</value></data>
   <data name="Ui_Threshold" xml:space="preserve"><value>Threshold</value></data>
   <data name="Ui_ThresholdName" xml:space="preserve"><value>Voice activation threshold</value></data>
   <data name="Ui_TransmitSection" xml:space="preserve"><value>TRANSMISSION</value></data>
   <data name="Ui_Unban" xml:space="preserve"><value>Unban</value></data>
+  <data name="Ui_Unknown" xml:space="preserve"><value>unknown</value></data>
   <data name="Ui_UnlinkMenu" xml:space="preserve"><value>Remove link ...</value></data>
   <data name="Ui_UnlinkSelected" xml:space="preserve"><value>Remove links between selected</value></data>
   <data name="Ui_Unread" xml:space="preserve"><value>Unread</value></data>
   <data name="Ui_UnreadFmt" xml:space="preserve"><value>{0} unread</value></data>
+  <data name="Ui_UserCount" xml:space="preserve"><value>{0} of {1} users</value></data>
+  <data name="Ui_UserSearch" xml:space="preserve"><value>Search name, fingerprint or IP</value></data>
   <data name="Ui_UserVolumeFmt" xml:space="preserve"><value>Volume {0:0} %</value></data>
   <data name="Ui_UserVolumeOfFmt" xml:space="preserve"><value>Volume of {0}</value></data>
   <data name="Ui_UserVolumeReset" xml:space="preserve"><value>Reset to 100 %</value></data>

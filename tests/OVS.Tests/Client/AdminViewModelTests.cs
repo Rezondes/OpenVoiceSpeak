@@ -286,6 +286,153 @@ public class AdminViewModelTests
         Assert.Equal(count, sent.Count);
     }
 
+    // ---- Package 71: user overview ----
+
+    static readonly DateTimeOffset T0 = new(2026, 9, 1, 18, 30, 0, TimeSpan.Zero);
+
+    static KnownUserInfo Known(string fp, string nick, Guid[]? groups = null, DateTimeOffset? lastLogin = null, int logins = 3,
+        TimeSpan? online = null, string? ip = "10.0.0.7", string[]? previous = null, BanInfo[]? bans = null) =>
+        new(fp, nick, groups ?? [WellKnownGroups.Guest], T0.AddDays(-30), lastLogin ?? T0, logins, online ?? TimeSpan.FromMinutes(90), ip,
+            previous ?? [], TimeSpan.FromSeconds(75), 12, false, null, bans);
+
+    static UserInfo Online(uint id, string fp, string nick) => new(id, fp, nick, Lobby, false, false, false, P.Speak, [WellKnownGroups.Guest]);
+
+    [Fact]
+    public void UserDetails_FromKnownUserInfo()
+    {
+        var (vm, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak);
+        var ban = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "Spam", "mod", T0.AddDays(2));
+        server.Apply(new UserJoined(Online(2, "fpX0123456789abcdef", "Xaver")));
+        server.Apply(new UserList("r",
+        [
+            Known("fpX0123456789abcdef", "Xaver", [WellKnownGroups.Guest, ModGroup], previous: ["Xav", "X"], bans: [ban]),
+            new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest]), // saved before Package 70
+        ]));
+
+        var x = vm.Users.Single(u => u.Nickname == "Xaver");
+        Assert.True(x.IsOnline);
+        Assert.Equal(["Gast", "Moderator"], x.Toggles.Where(t => t.IsChecked).Select(t => t.Name));
+        Assert.Equal(T0.AddDays(-30).ToLocalTime().ToString("g"), x.FirstSeenText);
+        Assert.Equal(T0.ToLocalTime().ToString("g"), x.LastLoginText);
+        Assert.Equal("3", x.LoginCountText);
+        Assert.Equal("1 h 30 min", x.OnlineTimeText);
+        Assert.Equal("1 min 15 s", x.SpeechTimeText);
+        Assert.Equal("12", x.ChatMessagesText);
+        Assert.Equal("10.0.0.7", x.LastIpText);
+        Assert.Equal("Xav, X", x.PreviousNicknamesText);
+        Assert.Equal("fpX0123456789abc", x.ShortFingerprint);
+        Assert.Equal("fpX0123456789abcdef", x.Fingerprint);
+        Assert.True(x.IsBanned);
+        Assert.Contains("Spam", x.BanText);
+        Assert.Contains(T0.AddDays(2).ToLocalTime().ToString("dd.MM.yyyy HH:mm"), x.BanText);
+
+        var otto = vm.Users.Single(u => u.Nickname == "Otto");
+        Assert.False(otto.IsOnline);
+        Assert.False(otto.IsBanned);
+        Assert.All(new[] { otto.FirstSeenText, otto.LastLoginText, otto.LoginCountText, otto.OnlineTimeText, otto.SpeechTimeText,
+            otto.ChatMessagesText, otto.LastIpText, otto.PreviousNicknamesText }, t => Assert.Equal("unbekannt", t));
+    }
+
+    [Theory]
+    [InlineData("xav", "Xaver")]
+    [InlineData("ALTNAME", "Xaver")]
+    [InlineData("ab12", "Berta")]
+    [InlineData("192.168.", "Berta")]
+    [InlineData("", "Berta,Xaver")]
+    [InlineData("gibtsnicht", "")]
+    public void Search_MatchesNicknamePreviousFingerprintIp(string search, string expected)
+    {
+        var (vm, server, _) = Create(P.UsersView);
+        server.Apply(new UserList("r",
+        [
+            Known("ffff0000", "Xaver", previous: ["Altname"], ip: "10.0.0.7"),
+            Known("00AB12cd", "Berta", ip: "192.168.1.20"),
+        ]));
+        vm.SearchText = search;
+        Assert.Equal(expected, string.Join(",", vm.Users.Select(u => u.Nickname)));
+    }
+
+    [Fact]
+    public void Filter_StatusGroup_Sort_Count()
+    {
+        var (vm, server, _) = Create(P.UsersView);
+        var ban = new BanInfo(Guid.NewGuid(), "fpC", "Cora", null, "", "mod", null);
+        server.Apply(new UserJoined(Online(2, "fpB", "Bert")));
+        server.Apply(new UserList("r",
+        [
+            Known("fpA", "anton", lastLogin: T0.AddDays(-1), online: TimeSpan.FromHours(5)),
+            Known("fpB", "Bert", [WellKnownGroups.Guest, ModGroup], lastLogin: T0, online: TimeSpan.FromHours(1)),
+            Known("fpC", "Cora", lastLogin: T0.AddDays(-5), online: TimeSpan.FromHours(9), bans: [ban]),
+            new KnownUserInfo("fpD", "Dora", [WellKnownGroups.Guest]),
+        ]));
+        string Names() => string.Join(",", vm.Users.Select(u => u.Nickname));
+
+        Assert.Equal("anton,Bert,Cora,Dora", Names()); // by name, case-insensitive
+        Assert.Equal("4 von 4 Nutzern", vm.UserCountText);
+
+        vm.SelectedStatusFilter = vm.StatusFilters.Single(f => f.Value == UserStatusFilter.Online);
+        Assert.Equal("Bert", Names());
+        vm.SelectedStatusFilter = vm.StatusFilters.Single(f => f.Value == UserStatusFilter.Offline);
+        Assert.Equal("anton,Cora,Dora", Names());
+        vm.SelectedStatusFilter = vm.StatusFilters.Single(f => f.Value == UserStatusFilter.Banned);
+        Assert.Equal("Cora", Names());
+        Assert.Equal("1 von 4 Nutzern", vm.UserCountText);
+        vm.SelectedStatusFilter = vm.StatusFilters[0];
+
+        Assert.Equal(["Alle Gruppen", "Gast", "Moderator", "Admin"], vm.GroupFilters.Select(f => f.Label));
+        vm.SelectedGroupFilter = vm.GroupFilters.Single(f => f.Label == "Moderator");
+        Assert.Equal("Bert", Names());
+        vm.SelectedGroupFilter = vm.GroupFilters[0];
+
+        vm.SelectedSortOrder = vm.SortOrders.Single(s => s.Value == UserSortOrder.LastLogin);
+        Assert.Equal("Bert,anton,Cora,Dora", Names()); // newest first, never logged in last
+        vm.SelectedSortOrder = vm.SortOrders.Single(s => s.Value == UserSortOrder.OnlineTime);
+        Assert.Equal("Cora,anton,Bert,Dora", Names());
+    }
+
+    [Fact]
+    public void UsersViewOnly_SearchWorks_TogglesLocked()
+    {
+        var (vm, server, _) = Create(P.UsersView);
+        Assert.True(vm.ShowUsers);
+        server.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
+        vm.SearchText = "ber";
+        var berta = Assert.Single(vm.Users);
+        Assert.Equal("10.0.0.7", berta.LastIpText);
+        Assert.All(berta.Toggles, t => Assert.False(t.IsEnabled));
+        Assert.True(berta.Toggles.Single(t => t.Name == "Gast").IsChecked);
+    }
+
+    [Fact]
+    public async Task UserJoins_ListRefreshed_FilterKept()
+    {
+        var (vm, server, sent) = Create(P.UsersView);
+        var time = (ManualTimeProvider)server.Time;
+        server.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
+        vm.SearchText = "ber";
+        vm.SelectedStatusFilter = vm.StatusFilters.Single(f => f.Value == UserStatusFilter.Online);
+        Assert.Empty(vm.Users);
+
+        server.Apply(new UserJoined(Online(2, "fpB", "Berta")));
+        Assert.Equal("Berta", Assert.Single(vm.Users).Nickname); // online at once, from the live state
+        Assert.Single(sent.OfType<ListUsers>()); // and the stored data is asked for again
+
+        server.Apply(new UserJoined(Online(3, "fpC", "Carl")));
+        server.Apply(new UserLeft(2));
+        Assert.Single(sent.OfType<ListUsers>()); // at most once per second
+        Assert.Empty(vm.Users);
+        time.Advance(TimeSpan.FromSeconds(1));
+        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+        Assert.Equal(2, sent.OfType<ListUsers>().Count());
+
+        server.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta"), Known("fpC", "Carla")]));
+        Assert.Equal("ber", vm.SearchText);
+        Assert.Equal(UserStatusFilter.Online, vm.SelectedStatusFilter.Value);
+        Assert.Empty(vm.Users);
+        vm.SelectedStatusFilter = vm.StatusFilters[0];
+        Assert.Equal("Berta", Assert.Single(vm.Users).Nickname);
+    }
+
     // ---- Package 38: link matrix ----
 
     static (LinkMatrixViewModel Matrix, ServerViewModel Server, List<Request> Sent, Guid[] Channels) Matrix(int channelCount, P perms = P.All)

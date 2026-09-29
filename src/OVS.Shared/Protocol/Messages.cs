@@ -128,7 +128,7 @@ public sealed record UserLeft(uint SessionId) : Message;
 public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IReadOnlyList<Guid> GroupIds,
     DateTimeOffset FirstSeen = default, DateTimeOffset? LastLogin = null, int LoginCount = 0, TimeSpan OnlineTime = default,
     string? LastIp = null, IReadOnlyList<string>? PreviousNicknames = null, TimeSpan SpeechTime = default, int ChatMessages = 0,
-    bool IsOnline = false, uint? SessionId = null);
+    bool IsOnline = false, uint? SessionId = null, IReadOnlyList<BanInfo>? Bans = null); // Package 71: the active bans on this fingerprint
 public sealed record CreateGroup(string Name, Permission Permissions) : Request;
 public sealed record UpdateGroup(Guid GroupId, string Name, Permission Permissions) : Request;
 /// <summary>Package 37: the complete new group order, every group exactly once. Display only, the rank stays with the rights.</summary>

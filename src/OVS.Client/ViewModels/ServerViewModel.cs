@@ -77,6 +77,7 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     public StateMirror Mirror { get; }
+    public TimeProvider Time => time;
     public Dialogs Dialogs { get; }
     public ObservableCollection<ChannelViewModel> Channels { get; } = [];
 

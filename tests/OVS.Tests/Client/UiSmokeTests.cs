@@ -191,6 +191,17 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("Ausgewählte miteinander verlinken", Texts(main));
         Assert.Contains(main.GetVisualDescendants().OfType<CheckBox>(), c => AutomationProperties.GetName(c) == "Link Lobby und Raid");
+        // Package 71: the user overview with search, filters and every stored value
+        vm.Server.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
+            DateTimeOffset.Now, 4, TimeSpan.FromHours(2), "10.0.0.2", ["anni"], TimeSpan.FromMinutes(3), 7)]));
+        main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Nutzer").IsSelected = true;
+        Dispatcher.UIThread.RunJobs();
+        foreach (var text in new[] { "1 von 1 Nutzern", "anni", "10.0.0.2", "2 h", "3 min", "Online", "Frühere Nicknames" })
+            Assert.Contains(text, Texts(main));
+        Assert.Single(main.GetVisualDescendants().OfType<TextBox>(), t => AutomationProperties.GetName(t) == "Name, Fingerabdruck oder IP suchen");
+        Assert.Equal(["Status", "Gruppe", "Sortierung"], main.GetVisualDescendants().OfType<AdminView>().Single()
+            .GetVisualDescendants().OfType<ComboBox>().Select(AutomationProperties.GetName));
+        Assert.Contains("Alle Nutzer", Texts(main)); // the combo boxes show their labels
         vm.ClosePage();
 
         void Dialog(Func<OverlayHost, Task> open, string title)

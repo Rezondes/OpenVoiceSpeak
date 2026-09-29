@@ -343,8 +343,13 @@ public sealed class ResponsiveTests : IDisposable
         _ = vm.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         var groups = server.Mirror.Groups.Select(g => g.Id).ToList();
+        // Package 71: cards with every detail, long previous nicknames and an active ban
         server.Apply(new OVS.Shared.Protocol.UserList("r", Enumerable.Range(1, 20)
-            .Select(i => new OVS.Shared.Protocol.KnownUserInfo($"fp{i}", $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]])).ToList()));
+            .Select(i => new OVS.Shared.Protocol.KnownUserInfo(new string((char)('a' + i % 6), 64), $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]],
+                DateTimeOffset.Now.AddDays(-40), DateTimeOffset.Now.AddHours(-i), i, TimeSpan.FromHours(30 + i), "2001:db8:85a3::8a2e:370:7334",
+                ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, i % 2 == 0, null,
+                i % 4 == 0 ? [new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null))
+            .ToList()));
         server.Apply(new OVS.Shared.Protocol.BanList("r",
         [
             new(Guid.NewGuid(), "fpA", "Störenfried", "10.0.0.1", "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert", "ich", null),

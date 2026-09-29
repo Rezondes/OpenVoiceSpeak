@@ -438,6 +438,33 @@ public class AdminCommandTests
         Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("recht")).Code);
     }
 
+    /// <summary>Package 71: the overview shows a user's active bans, also to someone who may not see the ban list.</summary>
+    [Fact]
+    public async Task ListUsers_IncludesActiveBans()
+    {
+        var viewer = ClientIdentity.Create();
+        var guest = ClientIdentity.Create();
+        var time = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(d =>
+        {
+            d.Groups.Add(new Group(Guid.NewGuid(), "Leser", Permission.UsersView));
+            TestServer.Grant(viewer, "Leser")(d);
+            d.Users.Add(new UserRecord { Fingerprint = guest.Fingerprint, LastNickname = "gast", GroupIds = [PermissionRules.GuestGroupId] });
+            d.Users.Add(new UserRecord { Fingerprint = "frei", LastNickname = "Frei", GroupIds = [PermissionRules.GuestGroupId] });
+            d.Bans.Add(new BanRecord { Id = Guid.NewGuid(), Fingerprint = guest.Fingerprint, Nickname = "gast", Reason = "aktiv", CreatedBy = "mod" });
+            d.Bans.Add(new BanRecord { Id = Guid.NewGuid(), Fingerprint = guest.Fingerprint, Nickname = "gast", Reason = "kurz", CreatedBy = "mod",
+                ExpiresAt = time.GetUtcNow().AddMinutes(5) });
+        }, time: time);
+        time.Advance(TimeSpan.FromMinutes(10)); // the short ban has run out
+        await using var v = await TestClient.ConnectAsync(server, identity: viewer);
+
+        await v.SendAsync(new ListUsers { RequestId = "l" });
+        var users = (await v.WaitForAsync<UserList>(l => l.RequestId == "l")).Users;
+        var ban = Assert.Single(users.Single(u => u.Fingerprint == guest.Fingerprint).Bans!);
+        Assert.Equal(("aktiv", "mod", (DateTimeOffset?)null), (ban.Reason, ban.CreatedBy, ban.ExpiresAt));
+        Assert.Empty(users.Single(u => u.Fingerprint == "frei").Bans ?? []);
+    }
+
     // ---- Package 76: one right per request ----
 
     public static TheoryData<string, Permission> RightPerRequest => new()

@@ -234,6 +234,13 @@
   <data name="Ui_AboveThreshold" xml:space="preserve"><value>über der Schwelle, würde senden</value></data>
   <data name="Ui_Admin" xml:space="preserve"><value>Verwaltung</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar.</value></data>
+  <data name="Ui_AllGroups" xml:space="preserve"><value>Alle Gruppen</value></data>
+  <data name="Ui_BanDetail" xml:space="preserve"><value>Gebannt ({0})</value></data>
+  <data name="Ui_BanReason" xml:space="preserve"><value>Grund: {0}</value></data>
+  <data name="Ui_ChatMessages" xml:space="preserve"><value>Chatnachrichten</value></data>
+  <data name="Ui_DurationDays" xml:space="preserve"><value>{0} T {1} h</value></data>
+  <data name="Ui_FirstSeen" xml:space="preserve"><value>Erster Login</value></data>
+  <data name="Ui_GroupFilter" xml:space="preserve"><value>Gruppe</value></data>
   <data name="Ui_GroupStronger" xml:space="preserve"><value>Diese Gruppe hat Rechte, die du selbst nicht hast, und ist deshalb nicht änderbar.</value></data>
   <data name="Ui_GroupViewOnly" xml:space="preserve"><value>Du darfst Gruppen nur ansehen, nicht bearbeiten.</value></data>
   <data name="Ui_AdminMenu" xml:space="preserve"><value>Verwaltung</value></data>
@@ -293,6 +300,8 @@
   <data name="Ui_KeysHelp" xml:space="preserve"><value>Tasten wirken überall, auch während ein Spiel im Vordergrund ist. Kombinationen mit Strg, Umschalt und Alt sind möglich.</value></data>
   <data name="Ui_KeysSection" xml:space="preserve"><value>TASTEN</value></data>
   <data name="Ui_KickMenu" xml:space="preserve"><value>Kicken ...</value></data>
+  <data name="Ui_LastIp" xml:space="preserve"><value>Letzte IP</value></data>
+  <data name="Ui_LastLogin" xml:space="preserve"><value>Letzter Login</value></data>
   <data name="Ui_LevelFmt" xml:space="preserve"><value>Pegel {0:0} dBFS</value></data>
   <data name="Ui_LinkFmt" xml:space="preserve"><value>Link {0}</value></data>
   <data name="Ui_LinkSelected" xml:space="preserve"><value>Ausgewählte miteinander verlinken</value></data>
@@ -302,6 +311,7 @@
   <data name="Ui_LinksHelp" xml:space="preserve"><value>Ein Häkchen verbindet zwei Channels. Links wirken nur direkt, nicht über Umwege: Sollen mehrere Channels alle miteinander sprechen, wähle sie links aus und verlinke sie miteinander.</value></data>
   <data name="Ui_LocallyMuted" xml:space="preserve"><value>Für dich stumm</value></data>
   <data name="Ui_LogDays" xml:space="preserve"><value>Logs aufbewahren (Tage, 0 = unbegrenzt)</value></data>
+  <data name="Ui_LoginCount" xml:space="preserve"><value>Logins</value></data>
   <data name="Ui_LogRotateDaily" xml:space="preserve"><value>Jeden Tag eine neue Log-Datei</value></data>
   <data name="Ui_LogoHint" xml:space="preserve"><value>PNG oder JPG, quadratisch (1:1), höchstens 3 MB. Du kannst die Datei auch auf das Feld ziehen.</value></data>
   <data name="Ui_MaxUsers" xml:space="preserve"><value>Maximale Nutzer</value></data>
@@ -320,14 +330,18 @@
   <data name="Ui_NewPassword" xml:space="preserve"><value>Neues Passwort (leer lassen = unverändert)</value></data>
   <data name="Ui_NoBookmarks" xml:space="preserve"><value>Noch keine Lesezeichen. Verbinde dich über "Verbinden ..." und speichere den Server als Lesezeichen.</value></data>
   <data name="Ui_NoKeyActions" xml:space="preserve"><value>Noch keine Tastenaktionen.</value></data>
+  <data name="Ui_None" xml:space="preserve"><value>keine</value></data>
   <data name="Ui_NoPassword" xml:space="preserve"><value>Der Server hat kein Passwort.</value></data>
   <data name="Ui_NobodyBanned" xml:space="preserve"><value>Niemand ist gebannt.</value></data>
+  <data name="Ui_NoUserMatches" xml:space="preserve"><value>Kein Nutzer passt zu Suche und Filter.</value></data>
+  <data name="Ui_OnlineTime" xml:space="preserve"><value>Online-Zeit</value></data>
   <data name="Ui_Operation" xml:space="preserve"><value>Betrieb</value></data>
   <data name="Ui_OperationHint" xml:space="preserve"><value>Gilt sofort. Umgebungsvariablen liefern nur die Werte für den ersten Start.</value></data>
   <data name="Ui_PasswordSaved" xml:space="preserve"><value>Passwort gespeichert</value></data>
   <data name="Ui_PickSoundFilter" xml:space="preserve"><value>Audio (WAV, MP3)</value></data>
   <data name="Ui_PickSoundTitle" xml:space="preserve"><value>Sound wählen</value></data>
   <data name="Ui_PingTip" xml:space="preserve"><value>Antwortzeit des Servers</value></data>
+  <data name="Ui_PreviousNicknames" xml:space="preserve"><value>Frühere Nicknames</value></data>
   <data name="Ui_ShowChannels" xml:space="preserve"><value>Channels anzeigen</value></data>
   <data name="Ui_PlayFmt" xml:space="preserve"><value>{0} abspielen</value></data>
   <data name="Ui_PrivateMessage" xml:space="preserve"><value>Privatnachricht</value></data>
@@ -355,6 +369,10 @@
   <data name="Ui_ServerName" xml:space="preserve"><value>Servername</value></data>
   <data name="Ui_SetPttKey" xml:space="preserve"><value>Taste festlegen</value></data>
   <data name="Ui_Settings" xml:space="preserve"><value>Einstellungen</value></data>
+  <data name="Ui_SortLastLogin" xml:space="preserve"><value>Nach letztem Login</value></data>
+  <data name="Ui_SortName" xml:space="preserve"><value>Nach Name</value></data>
+  <data name="Ui_SortOnlineTime" xml:space="preserve"><value>Nach Online-Zeit</value></data>
+  <data name="Ui_SortOrder" xml:space="preserve"><value>Sortierung</value></data>
   <data name="Ui_SoundMutedFmt" xml:space="preserve"><value>{0}: stumm</value></data>
   <data name="Ui_SoundVolume" xml:space="preserve"><value>Lautstärke der Sounds</value></data>
   <data name="Ui_SoundVolumeFmt" xml:space="preserve"><value>{0}: Lautstärke</value></data>
@@ -362,16 +380,25 @@
   <data name="Ui_SoundsHint" xml:space="preserve"><value>Kurze Töne bei Mikrofon, Ton, Verbindung, Channel und Privatnachrichten. Bei "Ton aus" spielen nur die für Mikrofon und Ton.</value></data>
   <data name="Ui_SoundsSection" xml:space="preserve"><value>SOUNDS</value></data>
   <data name="Ui_Speaker" xml:space="preserve"><value>Lautsprecher</value></data>
+  <data name="Ui_SpeechTime" xml:space="preserve"><value>Sprechzeit</value></data>
+  <data name="Ui_StatusAll" xml:space="preserve"><value>Alle Nutzer</value></data>
+  <data name="Ui_StatusBanned" xml:space="preserve"><value>Gebannt</value></data>
+  <data name="Ui_StatusFilter" xml:space="preserve"><value>Status</value></data>
+  <data name="Ui_StatusOffline" xml:space="preserve"><value>Offline</value></data>
+  <data name="Ui_StatusOnline" xml:space="preserve"><value>Online</value></data>
   <data name="Ui_TalkingViaLink" xml:space="preserve"><value>Spricht über einen Link</value></data>
   <data name="Ui_Theme" xml:space="preserve"><value>Design</value></data>
   <data name="Ui_Threshold" xml:space="preserve"><value>Schwelle</value></data>
   <data name="Ui_ThresholdName" xml:space="preserve"><value>Schwelle der Sprachaktivierung</value></data>
   <data name="Ui_TransmitSection" xml:space="preserve"><value>ÜBERTRAGUNG</value></data>
   <data name="Ui_Unban" xml:space="preserve"><value>Entbannen</value></data>
+  <data name="Ui_Unknown" xml:space="preserve"><value>unbekannt</value></data>
   <data name="Ui_UnlinkMenu" xml:space="preserve"><value>Link entfernen ...</value></data>
   <data name="Ui_UnlinkSelected" xml:space="preserve"><value>Links zwischen ausgewählten entfernen</value></data>
   <data name="Ui_Unread" xml:space="preserve"><value>Ungelesen</value></data>
   <data name="Ui_UnreadFmt" xml:space="preserve"><value>{0} ungelesen</value></data>
+  <data name="Ui_UserCount" xml:space="preserve"><value>{0} von {1} Nutzern</value></data>
+  <data name="Ui_UserSearch" xml:space="preserve"><value>Name, Fingerabdruck oder IP suchen</value></data>
   <data name="Ui_UserVolumeFmt" xml:space="preserve"><value>Lautstärke {0:0} %</value></data>
   <data name="Ui_UserVolumeOfFmt" xml:space="preserve"><value>Lautstärke von {0}</value></data>
   <data name="Ui_UserVolumeReset" xml:space="preserve"><value>Auf 100 % zurücksetzen</value></data>

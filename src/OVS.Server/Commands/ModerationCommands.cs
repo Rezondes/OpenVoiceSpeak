@@ -70,10 +70,10 @@ public sealed partial class ServerState
     void SendBanList(Session s, string? requestId)
     {
         var now = time.GetUtcNow();
-        s.Send(new BanList(requestId, data.Bans.Where(b => b.IsActive(now))
-            .Select(b => new BanInfo(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt))
-            .ToList()));
+        s.Send(new BanList(requestId, data.Bans.Where(b => b.IsActive(now)).Select(ToInfo).ToList()));
     }
+
+    static BanInfo ToInfo(BanRecord b) => new(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt);
 
     /// <summary>The reason goes into the server log and the ban list: bounded, one line, no control characters. Empty is fine.</summary>
     static bool ValidateReason(Session s, Request r, string? reason)

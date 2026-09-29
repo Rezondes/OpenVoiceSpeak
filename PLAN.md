@@ -4404,7 +4404,7 @@ Testbefehl: `dotnet test`
 - [x] AC2: Beim Trennen (auch Kick, Ban, Zeitüberschreitung, Ersetzen) und beim Herunterfahren werden Online-Zeit, Sprechzeit und Chatnachrichten der Sitzung aufaddiert und gespeichert. Zwischen Login und Trennen wird dafür nicht gespeichert.
 - [x] AC3: Sprechzeit zählt nur weitergeleitete Sprachpakete (20 ms je Paket), Sprache in einen stummen Channel zählt nicht. Chatnachrichten zählen alle gesendeten Nachrichten (Server, Channel, privat).
 - [x] AC4: `KnownUserInfo` enthält alle Werte, dazu ob der Nutzer online ist und seine Session-Id. Für Online-Nutzer enthalten Online-Zeit, Sprechzeit und Nachrichten die laufende Sitzung schon mit.
-- [ ] AC5: Bestehende Nutzer behalten `FirstSeen`. Die neuen Werte starten leer bzw. bei 0 und werden in der Oberfläche als "unbekannt" gezeigt (Package 71).
+- [x] AC5: Bestehende Nutzer behalten `FirstSeen`. Die neuen Werte starten leer bzw. bei 0 und werden in der Oberfläche als "unbekannt" gezeigt (Package 71).
 
 ### Tests (TDD)
 
@@ -4451,12 +4451,12 @@ Der Tab "Nutzer" (`ShowUsers` = Recht `GroupsAssign`) zeigt je Nutzer eine Karte
 
 ### Acceptance Criteria
 
-- [ ] AC1: Jede Karte zeigt Nickname, Online-Punkt, Gruppen, erster und letzter Login (Datum und Uhrzeit, lokal), Anzahl Logins, Online-Zeit, Sprechzeit, Chatnachrichten, letzte IP, frühere Nicknames, gekürzten Fingerabdruck (voll im Tooltip, kopierbar) und einen aktiven Ban mit Grund und Ablauf. Leere Werte heissen "unbekannt".
-- [ ] AC2: Ein Suchfeld filtert sofort nach Nickname, früheren Nicknames, Fingerabdruck und IP, ohne Gross- und Kleinschreibung.
-- [ ] AC3: Filter: Status (alle, online, offline, gebannt) und Gruppe (alle oder eine Gruppe). Sortierung: Name, letzter Login (neueste zuerst), Online-Zeit. Die Trefferzahl steht über der Liste ("12 von 40 Nutzern").
-- [ ] AC4: Suche, Filter und Details sind für jeden mit `UsersView` nutzbar (Package 76). Ohne `GroupsAssign` sind die Gruppen-Checkboxen sichtbar, aber gesperrt.
-- [ ] AC5: Die Liste aktualisiert sich, wenn Nutzer kommen und gehen (Online-Status), ohne dass Suche und Filter zurückgesetzt werden.
-- [ ] AC6: Texte auf Deutsch und Englisch.
+- [x] AC1: Jede Karte zeigt Nickname, Online-Punkt, Gruppen, erster und letzter Login (Datum und Uhrzeit, lokal), Anzahl Logins, Online-Zeit, Sprechzeit, Chatnachrichten, letzte IP, frühere Nicknames, gekürzten Fingerabdruck (voll im Tooltip, kopierbar) und einen aktiven Ban mit Grund und Ablauf. Leere Werte heissen "unbekannt".
+- [x] AC2: Ein Suchfeld filtert sofort nach Nickname, früheren Nicknames, Fingerabdruck und IP, ohne Gross- und Kleinschreibung.
+- [x] AC3: Filter: Status (alle, online, offline, gebannt) und Gruppe (alle oder eine Gruppe). Sortierung: Name, letzter Login (neueste zuerst), Online-Zeit. Die Trefferzahl steht über der Liste ("12 von 40 Nutzern").
+- [x] AC4: Suche, Filter und Details sind für jeden mit `UsersView` nutzbar (Package 76). Ohne `GroupsAssign` sind die Gruppen-Checkboxen sichtbar, aber gesperrt.
+- [x] AC5: Die Liste aktualisiert sich, wenn Nutzer kommen und gehen (Online-Status), ohne dass Suche und Filter zurückgesetzt werden.
+- [x] AC6: Texte auf Deutsch und Englisch.
 
 ### Tests (TDD)
 

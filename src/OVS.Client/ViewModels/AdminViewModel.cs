@@ -28,10 +28,32 @@ public sealed partial class AdminViewModel : ObservableObject
     [ObservableProperty] bool logRotateDaily;
     [ObservableProperty] bool autoRestart;
     [ObservableProperty] TimeSpan? autoRestartTime;
+    // Package 71: search, filters and order of the user overview survive every refresh
+    [ObservableProperty] string searchText = "";
+    [ObservableProperty] Choice<UserStatusFilter> selectedStatusFilter;
+    [ObservableProperty] Choice<Guid?>? selectedGroupFilter;
+    [ObservableProperty] Choice<UserSortOrder> selectedSortOrder;
+    [ObservableProperty] string userCountText = "";
+    HashSet<string> onlineFingerprints;
+    DateTimeOffset lastUserRequest = DateTimeOffset.MinValue;
+    bool userRequestPending, detached;
 
     public AdminViewModel(ServerViewModel server)
     {
         this.server = server;
+        StatusFilters =
+        [
+            new(UserStatusFilter.All, Strings.Ui_StatusAll), new(UserStatusFilter.Online, Strings.Ui_StatusOnline),
+            new(UserStatusFilter.Offline, Strings.Ui_StatusOffline), new(UserStatusFilter.Banned, Strings.Ui_StatusBanned),
+        ];
+        SortOrders =
+        [
+            new(UserSortOrder.Name, Strings.Ui_SortName), new(UserSortOrder.LastLogin, Strings.Ui_SortLastLogin),
+            new(UserSortOrder.OnlineTime, Strings.Ui_SortOnlineTime),
+        ];
+        selectedStatusFilter = StatusFilters[0];
+        selectedSortOrder = SortOrders[0];
+        onlineFingerprints = OnlineFingerprints();
         server.AdminMessage += OnAdminMessage;
         server.StateChanged += OnStateChanged;
         server.PropertyChanged += OnServerPropertyChanged;
@@ -41,6 +63,8 @@ public sealed partial class AdminViewModel : ObservableObject
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
         RebuildGroups();
+        RebuildGroupFilters();
+        RebuildUsers();
     }
 
     Permission Actor => server.SelfPermissions;
@@ -53,7 +77,11 @@ public sealed partial class AdminViewModel : ObservableObject
     public LinkMatrixViewModel Links { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
+    /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
     public ObservableCollection<KnownUserViewModel> Users { get; } = [];
+    public IReadOnlyList<Choice<UserStatusFilter>> StatusFilters { get; }
+    public ObservableCollection<Choice<Guid?>> GroupFilters { get; } = [];
+    public IReadOnlyList<Choice<UserSortOrder>> SortOrders { get; }
     public ObservableCollection<BanViewModel> Bans { get; } = [];
 
     /// <summary>The page asks to be closed (close button or Esc).</summary>
@@ -64,6 +92,7 @@ public sealed partial class AdminViewModel : ObservableObject
 
     public void Detach()
     {
+        detached = true;
         server.AdminMessage -= OnAdminMessage;
         server.StateChanged -= OnStateChanged;
         server.PropertyChanged -= OnServerPropertyChanged;
@@ -107,6 +136,11 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasIcon));
         RebuildGroups();
+        RebuildGroupFilters();
+        // Package 71: online status at once from the live state, the stored data follows with a new list
+        var online = OnlineFingerprints();
+        if (!online.SetEquals(onlineFingerprints)) _ = RequestUsersSoonAsync();
+        onlineFingerprints = online;
         RebuildUsers();
         Links.Rebuild();
         HasPassword = server.Mirror.Settings.HasPassword;
@@ -150,15 +184,73 @@ public sealed partial class AdminViewModel : ObservableObject
         };
     }
 
+    // ---- Package 71: user overview ----
+
+    partial void OnSearchTextChanged(string value) => RebuildUsers();
+    partial void OnSelectedStatusFilterChanged(Choice<UserStatusFilter> value) => RebuildUsers();
+    partial void OnSelectedGroupFilterChanged(Choice<Guid?>? value) => RebuildUsers();
+    partial void OnSelectedSortOrderChanged(Choice<UserSortOrder> value) => RebuildUsers();
+
+    HashSet<string> OnlineFingerprints() => server.Mirror.Users.Values.Select(u => u.Fingerprint).ToHashSet();
+
+    /// <summary>Someone came or went: asks for the stored data again, at most once per second.</summary>
+    async Task RequestUsersSoonAsync()
+    {
+        if (!ShowUsers || userRequestPending) return;
+        var wait = lastUserRequest + TimeSpan.FromSeconds(1) - server.Time.GetUtcNow();
+        if (wait > TimeSpan.Zero)
+        {
+            userRequestPending = true;
+            await Task.Delay(wait, server.Time);
+            userRequestPending = false;
+        }
+        if (detached || !ShowUsers) return;
+        lastUserRequest = server.Time.GetUtcNow();
+        await server.SendAsync(new ListUsers());
+    }
+
+    /// <summary>Keeps the chosen group when the groups change; a deleted group falls back to "all".</summary>
+    void RebuildGroupFilters()
+    {
+        var wanted = new List<Choice<Guid?>> { new(null, Strings.Ui_AllGroups) };
+        wanted.AddRange(server.Mirror.Groups.Select(g => new Choice<Guid?>(g.Id, g.Name)));
+        if (wanted.SequenceEqual(GroupFilters)) return;
+        var selected = SelectedGroupFilter?.Value;
+        GroupFilters.Clear();
+        foreach (var choice in wanted) GroupFilters.Add(choice);
+        SelectedGroupFilter = GroupFilters.FirstOrDefault(c => c.Value == selected) ?? GroupFilters[0];
+    }
+
     void RebuildUsers()
     {
-        Users.Clear();
-        foreach (var user in knownUsers.OrderBy(u => u.LastNickname, StringComparer.CurrentCultureIgnoreCase))
+        var now = server.Time.GetUtcNow();
+        var search = SearchText.Trim();
+        var status = SelectedStatusFilter?.Value ?? UserStatusFilter.All;
+        var group = SelectedGroupFilter?.Value;
+        var all = knownUsers.Select(user =>
         {
             var toggles = server.Mirror.Groups.Select(g => new GroupToggle(g.Id, g.Name, user.GroupIds.Contains(g.Id),
                 CanAssign(g), t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
-            Users.Add(new KnownUserViewModel(user.Fingerprint, user.LastNickname, toggles));
-        }
+            var bans = (user.Bans ?? []).Where(b => b.ExpiresAt is null || b.ExpiresAt > now).ToList();
+            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans);
+        }).ToList();
+        var visible = all.Where(u => u.Matches(search) && (group is null || u.Info.GroupIds.Contains(group.Value)) && status switch
+        {
+            UserStatusFilter.Online => u.IsOnline,
+            UserStatusFilter.Offline => !u.IsOnline,
+            UserStatusFilter.Banned => u.IsBanned,
+            _ => true,
+        });
+        var byName = StringComparer.CurrentCultureIgnoreCase;
+        visible = (SelectedSortOrder?.Value ?? UserSortOrder.Name) switch
+        {
+            UserSortOrder.LastLogin => visible.OrderByDescending(u => u.Info.LastLogin ?? DateTimeOffset.MinValue).ThenBy(u => u.Nickname, byName),
+            UserSortOrder.OnlineTime => visible.OrderByDescending(u => u.Info.OnlineTime).ThenBy(u => u.Nickname, byName),
+            _ => visible.OrderBy(u => u.Nickname, byName),
+        };
+        Users.Clear();
+        foreach (var user in visible) Users.Add(user);
+        UserCountText = string.Format(Strings.Ui_UserCount, Users.Count, all.Count);
     }
 
     bool CanAssign(GroupInfo g) =>
@@ -215,7 +307,7 @@ public sealed partial class AdminViewModel : ObservableObject
     public Task MoveGroupAsync(GroupEditViewModel source, GroupEditViewModel target, bool after)
     {
         var saved = SavedGroups;
-        if (source == target || source.Id is null || target.Id is null) return Task.CompletedTask;
+        if (!Actor.Has(Permission.GroupsManage) || source == target || source.Id is null || target.Id is null) return Task.CompletedTask;
         var order = saved.Where(g => g != source).ToList();
         order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
         return order.SequenceEqual(saved) ? Task.CompletedTask : server.SendAsync(new ReorderGroups(order.Select(g => g.Id!.Value).ToList()));
@@ -307,9 +399,58 @@ public sealed partial class PermissionToggle(Permission permission, string label
     public bool IsEnabled { get; } = isEnabled;
 }
 
-public sealed record KnownUserViewModel(string Fingerprint, string Nickname, IReadOnlyList<GroupToggle> Toggles)
+public enum UserStatusFilter { All, Online, Offline, Banned }
+public enum UserSortOrder { Name, LastLogin, OnlineTime }
+
+/// <summary>An entry of a combo box: the value and its text.</summary>
+public sealed record Choice<T>(T Value, string Label)
 {
+    public override string ToString() => Label;
+}
+
+/// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
+public sealed class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggle> toggles, IReadOnlyList<BanInfo> bans)
+{
+    public KnownUserInfo Info { get; } = info;
+    public string Fingerprint => Info.Fingerprint;
+    public string Nickname => Info.LastNickname;
     public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;
+    public IReadOnlyList<GroupToggle> Toggles { get; } = toggles;
+    public bool IsOnline { get; } = isOnline;
+    public string StatusText => IsOnline ? Strings.Ui_StatusOnline : Strings.Ui_StatusOffline;
+    public IReadOnlyList<BanInfo> Bans { get; } = bans;
+    public bool IsBanned => Bans.Count > 0;
+
+    /// <summary>The longest running ban.</summary>
+    public string BanText => Bans.OrderBy(b => b.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""
+        : string.Format(Strings.Ui_BanDetail, ban.ExpiresAt is { } until ? string.Format(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever)
+          + (ban.Reason.Length > 0 ? ". " + string.Format(Strings.Ui_BanReason, ban.Reason) : "");
+
+    /// <summary>Users saved before Package 70 have no statistics yet (LoginCount 0): shown as unknown.</summary>
+    bool HasStats => Info.LoginCount > 0;
+    static string Unknown => Strings.Ui_Unknown;
+    public string FirstSeenText => Info.FirstSeen == default ? Unknown : Info.FirstSeen.ToLocalTime().ToString("g");
+    public string LastLoginText => Info.LastLogin is { } at ? at.ToLocalTime().ToString("g") : Unknown;
+    public string LoginCountText => HasStats ? Info.LoginCount.ToString() : Unknown;
+    public string OnlineTimeText => HasStats ? Duration(Info.OnlineTime) : Unknown;
+    public string SpeechTimeText => HasStats ? Duration(Info.SpeechTime) : Unknown;
+    public string ChatMessagesText => HasStats ? Info.ChatMessages.ToString() : Unknown;
+    public string LastIpText => Info.LastIp ?? Unknown;
+    public string PreviousNicknamesText => Info.PreviousNicknames is { Count: > 0 } names ? string.Join(", ", names) : HasStats ? Strings.Ui_None : Unknown;
+
+    /// <summary>Case-insensitive, in nickname, previous nicknames, fingerprint and IP.</summary>
+    public bool Matches(string search) =>
+        search.Length == 0
+        || new[] { Nickname, Fingerprint, Info.LastIp ?? "" }.Concat(Info.PreviousNicknames ?? []).Any(v => v.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>"45 s", "1 min 15 s", "1 h 30 min", "2 T 3 h".</summary>
+    public static string Duration(TimeSpan t) => t switch
+    {
+        { TotalMinutes: < 1 } => $"{t.Seconds} s",
+        { TotalHours: < 1 } => t.Seconds == 0 ? $"{t.Minutes} min" : $"{t.Minutes} min {t.Seconds} s",
+        { TotalDays: < 1 } => t.Minutes == 0 ? $"{t.Hours} h" : $"{t.Hours} h {t.Minutes} min",
+        _ => string.Format(Strings.Ui_DurationDays, (int)t.TotalDays, t.Hours),
+    };
 }
 
 public sealed partial class GroupToggle(Guid groupId, string name, bool isChecked, bool isEnabled, Func<GroupToggle, Task> onToggle)

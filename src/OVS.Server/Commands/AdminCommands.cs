@@ -146,13 +146,15 @@ public sealed partial class ServerState
         if (!Require(s, r, Permission.UsersView)) return; // Package 76: the IP is only for those who may see the overview (A86)
         var now = time.GetUtcNow();
         var online = sessions.Values.ToDictionary(x => x.Fingerprint);
+        var bans = data.Bans.Where(b => b.IsActive(now)).ToLookup(b => b.Fingerprint);
         s.Send(new UserList(r.RequestId, data.Users.Select(u =>
         {
             // Package 70: for online users the running session counts already
             var live = online.GetValueOrDefault(u.Fingerprint);
             return new KnownUserInfo(u.Fingerprint, u.LastNickname, u.GroupIds.ToList(), u.FirstSeen, u.LastLogin, u.LoginCount,
                 u.OnlineTime + (live is null ? TimeSpan.Zero : now - live.ConnectedAt), u.LastIp, u.PreviousNicknames.ToList(),
-                u.SpeechTime + (live?.SpeechTime ?? TimeSpan.Zero), u.ChatMessages + (live?.ChatMessages ?? 0), live is not null, live?.Id);
+                u.SpeechTime + (live?.SpeechTime ?? TimeSpan.Zero), u.ChatMessages + (live?.ChatMessages ?? 0), live is not null, live?.Id,
+                bans[u.Fingerprint].Select(ToInfo).ToList());
         }).ToList()));
     }
 

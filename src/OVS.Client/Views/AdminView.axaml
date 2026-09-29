@@ -129,49 +129,121 @@
           </Grid>
         </TabItem>
 
-        <!-- ===== Users ===== -->
+        <!-- ===== Users (Package 71: everything stored, with search, filters and order) ===== -->
         <TabItem Header="{x:Static l:Strings.Ui_Users}" IsVisible="{Binding ShowUsers}">
-          <ScrollViewer>
-            <ItemsControl ItemsSource="{Binding Users}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Spacing="8" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:KnownUserViewModel">
-                  <Border Classes="card" Padding="12,10">
-                    <DockPanel>
-                      <Border DockPanel.Dock="Left" Classes="avatar" Width="32" Height="32" VerticalAlignment="Top"
-                              Background="{Binding Nickname, Converter={x:Static v:Ui.AvatarBrush}}">
-                        <TextBlock Text="{Binding Nickname, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+              <TextBox x:Name="UserSearch" Text="{Binding SearchText}" Watermark="{x:Static l:Strings.Ui_UserSearch}"
+                       AutomationProperties.Name="{x:Static l:Strings.Ui_UserSearch}" />
+              <WrapPanel ItemSpacing="8" LineSpacing="8">
+                <ComboBox x:Name="StatusFilter" ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding SelectedStatusFilter}"
+                          MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_StatusFilter}" />
+                <ComboBox x:Name="GroupFilter" ItemsSource="{Binding GroupFilters}" SelectedItem="{Binding SelectedGroupFilter}"
+                          MinWidth="120" MaxWidth="240" AutomationProperties.Name="{x:Static l:Strings.Ui_GroupFilter}" />
+                <ComboBox x:Name="SortOrder" ItemsSource="{Binding SortOrders}" SelectedItem="{Binding SelectedSortOrder}"
+                          MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_SortOrder}" />
+              </WrapPanel>
+              <TextBlock Classes="caption" Text="{Binding UserCountText}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Panel>
+              <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoUserMatches}" TextWrapping="Wrap" TextAlignment="Center"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         IsVisible="{Binding Users.Count, Converter={x:Static v:Ui.IsZero}}" />
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Users}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Spacing="8" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:KnownUserViewModel">
+                      <Border Classes="card" Padding="12,10">
+                        <DockPanel>
+                          <Panel DockPanel.Dock="Left" VerticalAlignment="Top" Width="32" Height="32">
+                            <Border Classes="avatar" Width="32" Height="32"
+                                    Background="{Binding Nickname, Converter={x:Static v:Ui.AvatarBrush}}">
+                              <TextBlock Text="{Binding Nickname, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                            </Border>
+                            <Ellipse Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-2"
+                                     Fill="{DynamicResource Ovs.Speaking}" Stroke="{DynamicResource Ovs.Surface}" StrokeThickness="2"
+                                     IsVisible="{Binding IsOnline}" ToolTip.Tip="{Binding StatusText}" />
+                          </Panel>
+                          <StackPanel Margin="12,0,0,0" Spacing="6">
+                            <WrapPanel ItemSpacing="8">
+                              <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextWrapping="Wrap" />
+                              <TextBlock Classes="caption" Text="{Binding StatusText}" VerticalAlignment="Center" />
+                              <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
+                                         VerticalAlignment="Center" ToolTip.Tip="{Binding Fingerprint}" />
+                            </WrapPanel>
+                            <Border Classes="banner danger" IsVisible="{Binding IsBanned}">
+                              <DockPanel>
+                                <PathIcon DockPanel.Dock="Left" Classes="sm danger" Data="{StaticResource Icon.Prohibited}" VerticalAlignment="Top" Margin="0,2,8,0" />
+                                <TextBlock Classes="danger" Text="{Binding BanText}" TextWrapping="Wrap" />
+                              </DockPanel>
+                            </Border>
+                            <ItemsControl ItemsSource="{Binding Toggles}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                  <WrapPanel />
+                                </ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:GroupToggle">
+                                  <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}"
+                                            Command="{Binding ToggleCommand}" Margin="0,0,16,0" />
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <!-- two or more columns when wide, one under narrow -->
+                            <WrapPanel Classes="userDetails" ItemSpacing="16" LineSpacing="6">
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_FirstSeen}" />
+                                <TextBlock Classes="body" Text="{Binding FirstSeenText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_LastLogin}" />
+                                <TextBlock Classes="body" Text="{Binding LastLoginText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_LoginCount}" />
+                                <TextBlock Classes="body" Text="{Binding LoginCountText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_OnlineTime}" />
+                                <TextBlock Classes="body" Text="{Binding OnlineTimeText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_SpeechTime}" />
+                                <TextBlock Classes="body" Text="{Binding SpeechTimeText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_ChatMessages}" />
+                                <TextBlock Classes="body" Text="{Binding ChatMessagesText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_LastIp}" />
+                                <TextBlock Classes="body" Text="{Binding LastIpText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_PreviousNicknames}" />
+                                <TextBlock Classes="body" Text="{Binding PreviousNicknamesText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                            </WrapPanel>
+                            <StackPanel>
+                              <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_IdentityFingerprint}" />
+                              <SelectableTextBlock Classes="caption" Text="{Binding Fingerprint}" TextWrapping="Wrap"
+                                                   FontFamily="Cascadia Mono,Consolas,monospace" />
+                            </StackPanel>
+                          </StackPanel>
+                        </DockPanel>
                       </Border>
-                      <StackPanel Margin="12,0,0,0" Spacing="4">
-                        <WrapPanel ItemSpacing="8">
-                          <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" />
-                          <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
-                                     VerticalAlignment="Center" ToolTip.Tip="{x:Static l:Strings.Ui_IdentityFingerprint}" />
-                        </WrapPanel>
-                        <ItemsControl ItemsSource="{Binding Toggles}">
-                          <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                              <WrapPanel />
-                            </ItemsPanelTemplate>
-                          </ItemsControl.ItemsPanel>
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:GroupToggle">
-                              <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}"
-                                        Command="{Binding ToggleCommand}" Margin="0,0,16,0" />
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                      </StackPanel>
-                    </DockPanel>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Panel>
+          </DockPanel>
         </TabItem>
 
         <!-- ===== Bans ===== -->
