@@ -20,6 +20,11 @@ public partial class AdminView : UserControl
         // Posted: the tabs' IsVisible bindings follow the new DataContext first.
         DataContextChanged += (_, _) => Dispatcher.UIThread.Post(() =>
             Tabs.SelectedItem = Tabs.Items.OfType<TabItem>().FirstOrDefault(t => t.IsVisible));
+        // Package 78: a tab scrolled out of the header strip comes into view when chosen
+        Tabs.SelectionChanged += (_, e) =>
+        {
+            if (e.Source == Tabs) Tabs.ContainerFromIndex(Tabs.SelectedIndex)?.BringIntoView();
+        };
         IconDrop.AddHandler(DragDrop.DragOverEvent, OnIconDragOver);
         IconDrop.AddHandler(DragDrop.DropEvent, OnIconDrop);
     }

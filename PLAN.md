@@ -4878,15 +4878,15 @@ Die `TabControl`-Kopfzeile hat fünf Tabs nebeneinander.
 
 ### Acceptance Criteria
 
-- [ ] AC1: Die Tab-Leiste läuft bei Platzmangel waagrecht scrollbar, statt abzuschneiden. Der gewählte Tab ist immer sichtbar.
-- [ ] AC2: Gruppen unter `narrow`:
+- [x] AC1: Die Tab-Leiste läuft bei Platzmangel waagrecht scrollbar, statt abzuschneiden. Der gewählte Tab ist immer sichtbar.
+- [x] AC2: Gruppen unter `narrow`:
   - Liste und Editor stehen untereinander, die Liste höchstens 40 % der Höhe und scrollbar.
   - Die Rechte-Checkboxen stehen einspaltig.
   - Die Buttons (Neu, hoch, runter, Speichern, Löschen) brechen um.
-- [ ] AC3: Nutzer- und Bans-Karten nutzen die volle Breite, Details brechen um (auch die Felder aus Packages 71 und 72, soweit schon umgesetzt), Aktions-Buttons stehen unter den Details.
-- [ ] AC4: Die Link-Matrix bleibt eine Matrix, liegt aber in einem waagrecht und senkrecht scrollbaren Bereich. Die Zeilentitel bleiben beim waagrechten Scrollen stehen. Die Buttons (Auswahl verlinken, trennen, Übernehmen, Verwerfen) brechen um.
-- [ ] AC5: Der Server-Tab nutzt unter `narrow` die volle Breite, alle Felder stehen untereinander.
-- [ ] AC6: `LayoutAssert.FitsHorizontally` ist für jeden Tab (Link-Matrix: für den Bereich um die Matrix) bei 360, 480, 600 und 1100 px grün, in Deutsch und Englisch, mit 8 Channels und 20 Nutzern.
+- [x] AC3: Nutzer- und Bans-Karten nutzen die volle Breite, Details brechen um (auch die Felder aus Packages 71 und 72, soweit schon umgesetzt), Aktions-Buttons stehen unter den Details.
+- [x] AC4: Die Link-Matrix bleibt eine Matrix, liegt aber in einem waagrecht und senkrecht scrollbaren Bereich. Die Zeilentitel bleiben beim waagrechten Scrollen stehen. Die Buttons (Auswahl verlinken, trennen, Übernehmen, Verwerfen) brechen um.
+- [x] AC5: Der Server-Tab nutzt unter `narrow` die volle Breite, alle Felder stehen untereinander.
+- [x] AC6: `LayoutAssert.FitsHorizontally` ist für jeden Tab (Link-Matrix: für den Bereich um die Matrix) bei 360, 480, 600 und 1100 px grün, in Deutsch und Englisch, mit 8 Channels und 20 Nutzern.
 
 ### Tests (TDD)
 

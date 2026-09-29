@@ -17,8 +17,9 @@ public static class LayoutAssert
     /// <summary>
     /// Every visible button, slider, text box, check box, combo box and text block lies horizontally inside
     /// the viewport of its nearest ScrollViewer, or inside the window when there is none.
+    /// Package 78: controls inside <paramref name="except"/> are skipped (e.g. a matrix that scrolls on purpose).
     /// </summary>
-    public static void FitsHorizontally(Visual root)
+    public static void FitsHorizontally(Visual root, Visual? except = null)
     {
         var top = TopLevel.GetTopLevel(root) ?? (Visual)root;
         var offenders = new List<string>();
@@ -26,17 +27,22 @@ public static class LayoutAssert
         {
             if (control is not (Button or Slider or TextBox or CheckBox or ComboBox or TextBlock)) continue;
             if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0) continue;
+            if (except is not null && except.IsVisualAncestorOf(control)) continue;
             var container = control.FindAncestorOfType<ScrollViewer>() is { } scroller ? (Visual)scroller : top;
             if (Horizontal(container, top) is not var (left, right) || Horizontal(control, top) is not var (x, end)) continue;
             if (x < left - Tolerance || end > right + Tolerance)
                 offenders.Add($"{control.GetType().Name} {Describe(control)} at {x:0.#}..{end:0.#}, visible {left:0.#}..{right:0.#}");
             // Text wider than its own box is cut off without "..." (trimmed text is fine)
             else if (control is TextBlock { TextTrimming: var trimming } text && trimming == TextTrimming.None
-                     && text.TextLayout.WidthIncludingTrailingWhitespace > text.Bounds.Width - text.Padding.Left - text.Padding.Right + Tolerance)
-                offenders.Add($"{control.GetType().Name} {Describe(control)} needs {text.TextLayout.WidthIncludingTrailingWhitespace:0.#}, has {text.Bounds.Width:0.#}");
+                     && Needed(text) > text.Bounds.Width - text.Padding.Left - text.Padding.Right + Tolerance)
+                offenders.Add($"{control.GetType().Name} {Describe(control)} needs {Needed(text):0.#}, has {text.Bounds.Width:0.#}");
         }
         if (offenders.Count > 0) throw new XunitException("Outside the visible area:" + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
+
+    /// <summary>Package 78: a wrapped line may end in the space it broke at, which is not drawn.</summary>
+    static double Needed(TextBlock text) =>
+        text.TextWrapping == TextWrapping.NoWrap ? text.TextLayout.WidthIncludingTrailingWhitespace : text.TextLayout.Width;
 
     /// <summary>Left and right edge in window coordinates; a ScrollViewer counts with its viewport (without the scroll bar).</summary>
     static (double Left, double Right)? Horizontal(Visual visual, Visual top)

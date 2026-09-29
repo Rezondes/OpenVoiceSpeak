@@ -377,13 +377,36 @@
   <Style Selector="ContextMenu">
     <Setter Property="CornerRadius" Value="8" />
   </Style>
+  <!-- Package 78: the tab headers stay in one line and scroll sideways when they do not fit -->
   <Style Selector="TabControl">
     <Setter Property="Padding" Value="0,12,0,0" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DockPanel>
+          <ScrollViewer Name="PART_TabStrip" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+          </ScrollViewer>
+          <ContentPresenter Name="PART_SelectedContentHost" Margin="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Content="{TemplateBinding SelectedContent}"
+                            ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+        </DockPanel>
+      </ControlTemplate>
+    </Setter>
   </Style>
   <Style Selector="TabItem">
     <Setter Property="FontSize" Value="15" />
     <Setter Property="MinHeight" Value="36" />
     <Setter Property="Padding" Value="12,0" />
+  </Style>
+  <Style Selector="Window.narrow TabItem">
+    <Setter Property="Padding" Value="8,0" />
   </Style>
   <!-- Where a dragged channel or group lands (Package 36, 37) -->
   <Style Selector="Border.dropLine">
@@ -402,6 +425,63 @@
   </Style>
   <Style Selector="Border.linkCell.pending">
     <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
+  </Style>
+
+  <!-- ===== Administration (Package 78): as before from 560 px, stacked below (Window.narrow) ===== -->
+  <Style Selector="DockPanel.adminBody">
+    <Setter Property="Margin" Value="24,12,24,16" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.adminBody">
+    <Setter Property="Margin" Value="12,8,12,12" />
+  </Style>
+  <!-- Groups: list (240 px) beside the editor; under narrow the list on top (40 % of the height), the editor below -->
+  <Style Selector="Grid.adminGroups > Border.groupList">
+    <Setter Property="Width" Value="240" />
+    <Setter Property="Grid.RowSpan" Value="2" />
+  </Style>
+  <Style Selector="Grid.adminGroups > Border.groupEditor">
+    <Setter Property="Grid.Column" Value="1" />
+    <Setter Property="Grid.RowSpan" Value="2" />
+    <Setter Property="Margin" Value="12,0,0,0" />
+  </Style>
+  <Style Selector="Window.narrow Grid.adminGroups > Border.groupList">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Grid.RowSpan" Value="1" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+  </Style>
+  <Style Selector="Window.narrow Grid.adminGroups > Border.groupEditor">
+    <Setter Property="Grid.Row" Value="1" />
+    <Setter Property="Grid.Column" Value="0" />
+    <Setter Property="Grid.RowSpan" Value="1" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+    <Setter Property="Margin" Value="0,12,0,0" />
+  </Style>
+  <Style Selector="UniformGrid.rights">
+    <Setter Property="Columns" Value="2" />
+  </Style>
+  <Style Selector="Window.narrow UniformGrid.rights">
+    <Setter Property="Columns" Value="1" />
+  </Style>
+  <!-- Action of a user or ban card: beside the details, under narrow below them -->
+  <Style Selector="Button.cardAction">
+    <Setter Property="DockPanel.Dock" Value="Right" />
+    <Setter Property="Margin" Value="12,0,0,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Window.narrow Button.cardAction">
+    <Setter Property="DockPanel.Dock" Value="Bottom" />
+    <Setter Property="Margin" Value="0,8,0,0" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <!-- Link matrix: fixed title column, narrower titles under narrow -->
+  <Style Selector=":is(Control).linkHeader">
+    <Setter Property="Height" Value="20" />
+  </Style>
+  <Style Selector="TextBlock.linkTitle">
+    <Setter Property="Width" Value="192" />
+  </Style>
+  <Style Selector="Window.narrow TextBlock.linkTitle">
+    <Setter Property="Width" Value="112" />
   </Style>
 
   <!-- One sound in the settings (Package 48) -->

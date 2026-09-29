@@ -332,6 +332,131 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Equal(150, slider.Bounds.Width, 1);
         main.Close();
     }
+
+    // ---- Package 78: the administration at every width ----
+
+    /// <summary>The administration with 8 channels, 20 known users and three bans (one with a long reason).</summary>
+    MainWindow OpenAdmin(double width, out AdminView page)
+    {
+        var server = FakeServers.Crowded();
+        var main = Open(width, server, out var vm);
+        _ = vm.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var groups = server.Mirror.Groups.Select(g => g.Id).ToList();
+        server.Apply(new OVS.Shared.Protocol.UserList("r", Enumerable.Range(1, 20)
+            .Select(i => new OVS.Shared.Protocol.KnownUserInfo($"fp{i}", $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]])).ToList()));
+        server.Apply(new OVS.Shared.Protocol.BanList("r",
+        [
+            new(Guid.NewGuid(), "fpA", "Störenfried", "10.0.0.1", "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert", "ich", null),
+            new(Guid.NewGuid(), "fpB", "Spammer", null, "Werbung", "ich", DateTimeOffset.Now.AddDays(3)),
+            new(Guid.NewGuid(), "fpC", "Troll", null, "", "ich", null),
+        ]));
+        Dispatcher.UIThread.RunJobs();
+        page = main.GetVisualDescendants().OfType<AdminView>().Single();
+        return main;
+    }
+
+    static TabControl AdminTabs(AdminView page) => page.FindControl<TabControl>("Tabs")!;
+
+    static void SelectTab(AdminView page, int index)
+    {
+        AdminTabs(page).SelectedIndex = index;
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(360, "de-DE")]
+    [InlineData(480, "de-DE")]
+    [InlineData(600, "de-DE")]
+    [InlineData(1100, "de-DE")]
+    [InlineData(360, "en-US")]
+    [InlineData(480, "en-US")]
+    [InlineData(600, "en-US")]
+    [InlineData(1100, "en-US")]
+    public void Admin_EveryTabFits(double width, string culture) => TestCulture.With(culture, () =>
+    {
+        var main = OpenAdmin(width, out var page);
+        var tabs = AdminTabs(page);
+        var strip = tabs.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == "PART_TabStrip");
+        for (var i = 0; i < tabs.ItemCount; i++)
+        {
+            SelectTab(page, i);
+            // the chosen tab is in view of the (scrolling) tab strip
+            var header = (TabItem)tabs.ContainerFromIndex(i)!;
+            var x = header.TranslatePoint(default, strip)!.Value.X;
+            Assert.True(x >= -1 && x + header.Bounds.Width <= strip.Viewport.Width + 1, $"Tab {header.Header} at {x}, strip {strip.Viewport.Width}");
+
+            var content = tabs.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Single(p => p.Name == "PART_SelectedContentHost");
+            var matrix = content.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(s => s.Name == "LinkCells");
+            // scroll every scrolling list through, so the lower cards are checked too
+            foreach (var scroller in content.GetVisualDescendants().OfType<ScrollViewer>().Where(s => s != matrix && s.Viewport.Height > 0).ToList())
+            {
+                for (var y = 0.0; ; y += scroller.Viewport.Height)
+                {
+                    scroller.Offset = new Vector(0, y);
+                    Dispatcher.UIThread.RunJobs();
+                    LayoutAssert.FitsHorizontally(page, matrix);
+                    if (y + scroller.Viewport.Height >= scroller.Extent.Height) break;
+                }
+            }
+            LayoutAssert.FitsHorizontally(main, matrix);
+        }
+        main.Close();
+        return 0;
+    });
+
+    [AvaloniaTheory]
+    [InlineData(360, true)]
+    [InlineData(1100, false)]
+    public void Admin_Groups_StackedWhenNarrow(double width, bool stacked)
+    {
+        var main = OpenAdmin(width, out var page);
+        SelectTab(page, 0);
+        var list = page.FindControl<ListBox>("GroupList")!;
+        var listCard = list.FindAncestorOfType<Border>()!;
+        var editor = page.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("groupEditor"));
+        var grid = (Grid)listCard.Parent!;
+        var rights = editor.GetVisualDescendants().OfType<CheckBox>().Where(c => c.IsEffectivelyVisible).ToList();
+        Assert.True(rights.Count > 2);
+        var columns = rights.Select(c => Math.Round(c.TranslatePoint(default, main)!.Value.X)).Distinct().Count();
+        if (stacked)
+        {
+            Assert.True(Vertical(editor, main).Top >= Vertical(listCard, main).Bottom - 1, "Editor nicht unter der Liste");
+            Assert.True(listCard.Bounds.Height <= grid.Bounds.Height * 0.4 + 1, $"Liste {listCard.Bounds.Height} von {grid.Bounds.Height}");
+            Assert.Equal(1, columns);
+        }
+        else
+        {
+            Assert.True(editor.TranslatePoint(default, main)!.Value.X >= listCard.TranslatePoint(default, main)!.Value.X + listCard.Bounds.Width);
+            Assert.Equal(240, listCard.Bounds.Width, 1);
+            Assert.Equal(2, columns);
+        }
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void Admin_LinkMatrix_ScrollsTitlesStay()
+    {
+        var main = OpenAdmin(360, out var page);
+        SelectTab(page, 3);
+        var cells = page.FindControl<ScrollViewer>("LinkCells")!;
+        Assert.True(cells.Extent.Width > cells.Viewport.Width + 1, $"Matrix {cells.Extent.Width} passt in {cells.Viewport.Width}");
+        var title = page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("linkTitle"));
+        var before = title.TranslatePoint(default, main)!.Value;
+        var lastCell = page.GetVisualDescendants().OfType<Border>().Last(b => b.Classes.Contains("linkCell"));
+        Assert.True(lastCell.TranslatePoint(default, cells)!.Value.X > cells.Viewport.Width);
+
+        cells.Offset = new Vector(cells.Extent.Width, 0);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(before, title.TranslatePoint(default, main)!.Value);
+        var x = lastCell.TranslatePoint(default, cells)!.Value.X;
+        Assert.True(x >= 0 && x + lastCell.Bounds.Width <= cells.Viewport.Width + 1, $"letzte Zelle bei {x}");
+        // title and cells of one row stay on one line
+        Assert.Equal(Vertical(title, main).Top + title.Bounds.Height / 2,
+            Vertical(page.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("linkCell")), main).Top + 16, tolerance: 2);
+        LayoutAssert.FitsHorizontally(page, cells);
+        main.Close();
+    }
 }
 
 /// <summary>Package 68: the layout check itself finds what runs off the visible area.</summary>
