@@ -488,6 +488,8 @@ website/dist/
 .claude-flow/
 .swarm/
 ruvector.db
+agentdb.rvf
+agentdb.rvf.lock
 publish/
 # Source folder, not a build output (the template ignores [Dd]ebug/)
 !src/OVS.Client/Debug/
