@@ -71,6 +71,30 @@ public class ReceivePathTests
     }
 
     [Fact]
+    public void Gap_RebuiltFromFec_CloserThanConcealment()
+    {
+        // one continuous stream, as a real sender produces it; frame 5 goes missing
+        var encoder = new VoiceEncoder();
+        var input = Enumerable.Range(0, 8).Select(n => Sine(0.5f, n * AudioFormat.FrameSamples)).ToList();
+        var packets = input.Select(f => encoder.Encode(f)).ToList();
+        var jb = new JitterBuffer();
+        for (uint n = 0; n < packets.Count; n++) if (n != 5) jb.Push(n, packets[(int)n], false);
+        var played = Enumerable.Range(0, 6).Select(_ => jb.Pull()!).ToList();
+
+        var clean = new VoiceDecoder(); // what frame 5 sounds like when nothing is lost
+        var plc = new VoiceDecoder();
+        float[] expected = [], concealed = [];
+        for (int n = 0; n <= 5; n++)
+        {
+            expected = clean.Decode(packets[n]);
+            concealed = n < 5 ? plc.Decode(packets[n]) : plc.Decode([]);
+        }
+
+        float Error(float[] x) => Rms(x.Zip(expected, (a, b) => a - b).ToArray());
+        Assert.True(Error(played[5]) < Error(concealed), $"fec {Error(played[5])} vs plc {Error(concealed)}");
+    }
+
+    [Fact]
     public void LatePacket_Dropped()
     {
         var jb = new JitterBuffer();

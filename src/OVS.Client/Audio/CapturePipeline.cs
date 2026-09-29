@@ -14,6 +14,8 @@ public sealed class CapturePipeline : IDisposable
     readonly FrameChunker chunker = new();
     readonly VoiceEncoder encoder = new();
     readonly object gate = new();
+    readonly float[] previous = new float[AudioFormat.FrameSamples]; // pre-roll, see Feed
+    bool sending;
     LinearResampler? resampler;
     int resamplerRate;
     WasapiCapture? capture;
@@ -85,7 +87,15 @@ public sealed class CapturePipeline : IDisposable
                 for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i] * gain, -1f, 1f);
                 bool voice = Vad.Process(frame);
                 Level?.Invoke(Vad.LastLevelDb);
-                if (DecideTarget(voice) is { } target) FrameEncoded?.Invoke(encoder.Encode(frame), target);
+                var target = DecideTarget(voice);
+                if (target is { } t)
+                {
+                    // The level only crosses the threshold inside a word: send the 20 ms before it too, so the onset is not cut.
+                    if (!sending) FrameEncoded?.Invoke(encoder.Encode(previous), t);
+                    FrameEncoded?.Invoke(encoder.Encode(frame), t);
+                }
+                sending = target is not null;
+                frame.CopyTo(previous, 0);
             }
         }
     }

@@ -107,6 +107,21 @@ public class SendPathTests
     }
 
     [Fact]
+    public void Capture_SendStart_IncludesPreviousFrame()
+    {
+        var pipeline = CapturePipeline.FromTone(440); // never started, fed by hand
+        var sent = new List<float>();
+        pipeline.DecideTarget = voice => voice ? Ch : null;
+        pipeline.FrameEncoded += (_, _) => sent.Add(0);
+        pipeline.Feed(Constant(0.001f), AudioFormat.SampleRate); // quiet: nothing
+        Assert.Empty(sent);
+        pipeline.Feed(Constant(0.5f), AudioFormat.SampleRate);   // onset: the quiet frame before it, then this one
+        Assert.Equal(2, sent.Count);
+        pipeline.Feed(Constant(0.5f), AudioFormat.SampleRate);   // already sending: just this one
+        Assert.Equal(3, sent.Count);
+    }
+
+    [Fact]
     public void FrameChunker_IrregularInput_ExactFrames_NoLoss()
     {
         var chunker = new FrameChunker();

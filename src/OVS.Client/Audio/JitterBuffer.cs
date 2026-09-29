@@ -54,8 +54,8 @@ public sealed class JitterBuffer
         }
         if (frames.Count > 0)
         {
-            next++; // lost packet, later ones already here
-            return decoder.Decode([]);
+            // lost packet, later ones already here: the very next one carries an FEC copy of it
+            return frames.TryGetValue(++next, out var following) ? decoder.DecodeLost(following) : decoder.Decode([]);
         }
         if (++underruns > MaxUnderruns)
         {
