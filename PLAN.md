@@ -4043,11 +4043,11 @@ Testbefehl: `dotnet test`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Eigene Nachrichten stehen rechtsbündig in einer Blase mit Akzent-Hintergrund, ohne Avatar, ohne Namen und ohne "Du", mit der Uhrzeit unter dem Text. Die Blase ist so breit wie der Text, höchstens aber etwa 75 % des Verlaufs.
-- [ ] AC2: Nachrichten anderer stehen links mit Avatar, Name und Zeit wie bisher, der Text in einer neutralen Blase, ebenfalls höchstens etwa 75 % breit.
-- [ ] AC3: Willkommensnachricht und andere Hinweise nutzen weiter die volle Breite, Marker bleiben mittig.
-- [ ] AC4: Das gilt in den Tabs Allgemein, Channel und privat. Der Text bleibt markierbar, lange Wörter und URLs brechen um, statt über den Rand zu laufen.
-- [ ] AC5 (manuell): Im hellen und dunklen Theme ist der Text auf beiden Blasen gut lesbar, auch bei durchsichtigem Hintergrund (Package 61).
+- [x] AC1: Eigene Nachrichten stehen rechtsbündig in einer Blase mit Akzent-Hintergrund, ohne Avatar, ohne Namen und ohne "Du", mit der Uhrzeit unter dem Text. Die Blase ist so breit wie der Text, höchstens aber etwa 75 % des Verlaufs.
+- [x] AC2: Nachrichten anderer stehen links mit Avatar, Name und Zeit wie bisher, der Text in einer neutralen Blase, ebenfalls höchstens etwa 75 % breit.
+- [x] AC3: Willkommensnachricht und andere Hinweise nutzen weiter die volle Breite, Marker bleiben mittig.
+- [x] AC4: Das gilt in den Tabs Allgemein, Channel und privat. Der Text bleibt markierbar, lange Wörter und URLs brechen um, statt über den Rand zu laufen.
+- [x] AC5 (manuell): Im hellen und dunklen Theme ist der Text auf beiden Blasen gut lesbar, auch bei durchsichtigem Hintergrund (Package 61).
 
 ### Tests (TDD)
 

@@ -16,6 +16,8 @@ public sealed record ChatEntry(DateTime Time, string Text, string? From = null, 
 {
     public string TimeText => Time.ToString("HH:mm");
     public bool IsMessage => From is not null;
+    public bool IsOwnMessage => IsMessage && IsOwn;     // Package 64: right, as a bubble without avatar
+    public bool IsOtherMessage => IsMessage && !IsOwn;  // left, with avatar and name
     public bool IsNotice => Notice is not null;
     public bool IsMarker => From is null && Notice is null;
     public bool IsInfo => Notice is NoticeKind.Info;

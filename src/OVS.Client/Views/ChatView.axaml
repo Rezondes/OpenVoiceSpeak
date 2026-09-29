@@ -66,21 +66,34 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ChatEntry">
             <Panel>
-              <!-- Message: avatar, name, time, selectable text -->
-              <DockPanel IsVisible="{Binding IsMessage}">
-                <Border DockPanel.Dock="Left" Classes="avatar" Width="32" Height="32" VerticalAlignment="Top"
-                        Background="{Binding From, Converter={x:Static v:Ui.AvatarBrush}}">
-                  <TextBlock Text="{Binding From, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
-                </Border>
-                <StackPanel Margin="12,0,0,0" Spacing="2">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Classes="author" Classes.own="{Binding IsOwn}" Text="{Binding From}" />
-                    <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsOwn}" VerticalAlignment="Center" />
-                    <TextBlock Classes="caption" Text="{Binding TimeText}" VerticalAlignment="Center" />
+              <!-- Package 64: someone else's message on the left: avatar, name, time, text in a neutral bubble (at most 3/4 wide) -->
+              <Grid IsVisible="{Binding IsOtherMessage}" ColumnDefinitions="3*,*">
+                <DockPanel HorizontalAlignment="Left">
+                  <Border DockPanel.Dock="Left" Classes="avatar" Width="32" Height="32" VerticalAlignment="Top"
+                          Background="{Binding From, Converter={x:Static v:Ui.AvatarBrush}}">
+                    <TextBlock Text="{Binding From, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                  </Border>
+                  <StackPanel Margin="12,0,0,0" Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Classes="author" Text="{Binding From}" />
+                      <TextBlock Classes="caption" Text="{Binding TimeText}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Border Classes="bubble" HorizontalAlignment="Left">
+                      <SelectableTextBlock Classes="message" Text="{Binding Text}" />
+                    </Border>
                   </StackPanel>
-                  <SelectableTextBlock Classes="message" Text="{Binding Text}" />
-                </StackPanel>
-              </DockPanel>
+                </DockPanel>
+              </Grid>
+
+              <!-- Package 64: own message on the right: accent bubble, no avatar or name, time below the text -->
+              <Grid IsVisible="{Binding IsOwnMessage}" ColumnDefinitions="*,3*">
+                <Border Grid.Column="1" Classes="bubble own" HorizontalAlignment="Right">
+                  <StackPanel Spacing="2">
+                    <SelectableTextBlock Classes="message" Text="{Binding Text}" />
+                    <TextBlock Classes="caption" Text="{Binding TimeText}" HorizontalAlignment="Right" />
+                  </StackPanel>
+                </Border>
+              </Grid>
 
               <!-- System notice, as in the former activity feed -->
               <Border Classes="card" Padding="14,10" Classes.welcome="{Binding IsWelcome}" IsVisible="{Binding IsNotice}">

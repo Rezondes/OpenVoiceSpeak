@@ -440,6 +440,26 @@
   <Style Selector="TextBlock.author.own">
     <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
   </Style>
+  <!-- Package 64: chat bubbles, neutral for others, accent for the own messages -->
+  <Style Selector="Border.bubble">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="12,7" />
+  </Style>
+  <Style Selector="Border.bubble.own">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Accent}" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Border.bubble.own SelectableTextBlock.message">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+    <Setter Property="SelectionBrush" Value="#66FFFFFF" />
+  </Style>
+  <Style Selector="Border.bubble.own TextBlock.caption">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+    <Setter Property="Opacity" Value="0.75" />
+  </Style>
   <Style Selector="SelectableTextBlock.message">
     <Setter Property="FontSize" Value="14" />
     <Setter Property="LineHeight" Value="21" />

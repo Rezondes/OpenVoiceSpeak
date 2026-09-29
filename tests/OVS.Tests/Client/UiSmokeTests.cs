@@ -376,6 +376,90 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 64: own messages on the right, everyone else on the left, notices across the whole width.</summary>
+    [AvaloniaFact]
+    public void Chat_OwnRight_OthersLeft_NoticesFullWidth()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        vm.Chat!.AddNotice(new Notice(DateTime.Now, "Willkommen hier", NoticeKind.Welcome));
+        vm.Server!.Apply(new ChatMessage(ChatTarget.Server, 2, "anna", null, null, "Hallo Gilde", DateTimeOffset.Now));
+        vm.Server.Apply(new ChatMessage(ChatTarget.Server, 1, "ich", null, null, "Hallo anna", DateTimeOffset.Now));
+        Dispatcher.UIThread.RunJobs();
+        AssertSides(main, "Hallo Gilde", "Hallo anna");
+
+        // the welcome card still spans the history
+        var history = ChatHistory(main);
+        var card = history.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("welcome"));
+        Assert.Equal(history.Bounds.Width, card.Bounds.Width, 1);
+        main.Close();
+    }
+
+    /// <summary>Package 64: a long own message stays inside three quarters of the history and wraps.</summary>
+    [AvaloniaFact]
+    public void Chat_LongMessage_BubbleCappedAndWraps()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        var text = new string('x', 600);
+        vm.Server!.Apply(new ChatMessage(ChatTarget.Server, 1, "ich", null, null, text, DateTimeOffset.Now));
+        Dispatcher.UIThread.RunJobs();
+
+        var history = ChatHistory(main);
+        var bubble = Bubble(main, text);
+        Assert.True(bubble.Bounds.Width <= history.Bounds.Width * 0.75 + 1, $"{bubble.Bounds.Width} von {history.Bounds.Width}");
+        var line = MessageBlock(main, text);
+        Assert.True(line.Bounds.Height > 2 * line.LineHeight, $"Höhe {line.Bounds.Height}");
+        main.Close();
+    }
+
+    /// <summary>Package 64: the same sides in a private tab.</summary>
+    [AvaloniaFact]
+    public void Chat_PrivateTab_OwnRight()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        vm.Server!.Apply(new ChatMessage(ChatTarget.Private, 2, "anna", null, 1, "psst", DateTimeOffset.Now));
+        vm.Server.Apply(new ChatMessage(ChatTarget.Private, 1, "ich", null, 2, "ja?", DateTimeOffset.Now));
+        vm.Chat!.Selected = vm.Chat.Tabs.Single(t => t.IsPrivate);
+        Dispatcher.UIThread.RunJobs();
+        AssertSides(main, "psst", "ja?");
+        main.Close();
+    }
+
+    static ItemsControl ChatHistory(MainWindow main) =>
+        main.GetVisualDescendants().OfType<ChatView>().Single().GetVisualDescendants().OfType<ItemsControl>().Single(i => i is not Avalonia.Controls.Primitives.TabStrip);
+
+    static SelectableTextBlock MessageBlock(MainWindow main, string text) =>
+        ChatHistory(main).GetVisualDescendants().OfType<SelectableTextBlock>().Single(t => t.Text == text && t.IsEffectivelyVisible);
+
+    static Border Bubble(MainWindow main, string text) =>
+        MessageBlock(main, text).GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("bubble"));
+
+    static void AssertSides(MainWindow main, string other, string own)
+    {
+        var history = ChatHistory(main);
+        Rect InHistory(Visual v) => new(v.TranslatePoint(new Point(), history)!.Value, v.Bounds.Size);
+
+        var ownBubble = Bubble(main, own);
+        Assert.Contains("own", ownBubble.Classes);
+        Assert.Equal(history.Bounds.Width, InHistory(ownBubble).Right, 1);
+        var ownRow = ownBubble.GetVisualAncestors().OfType<Grid>().First();
+        Assert.DoesNotContain(ownRow.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("avatar") && b.IsEffectivelyVisible);
+
+        var otherBubble = Bubble(main, other);
+        Assert.DoesNotContain("own", otherBubble.Classes);
+        var otherRow = otherBubble.GetVisualAncestors().OfType<Grid>().First();
+        var avatar = otherRow.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("avatar"));
+        Assert.True(avatar.IsEffectivelyVisible);
+        Assert.Equal(0, InHistory(avatar).Left, 1);
+        Assert.True(InHistory(otherBubble).Left > InHistory(avatar).Right);
+        Assert.True(InHistory(otherBubble).Right < history.Bounds.Width * 0.75 + 1);
+    }
+
     /// <summary>Package 32 AC8: new lines scroll along, unless the reader scrolled up.</summary>
     [AvaloniaFact]
     public void Chat_FollowsNewLines_UnlessScrolledUp()
