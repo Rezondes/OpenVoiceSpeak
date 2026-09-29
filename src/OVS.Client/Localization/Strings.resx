@@ -228,7 +228,7 @@
   <data name="Ui_AboveThreshold" xml:space="preserve"><value>über der Schwelle, würde senden</value></data>
   <data name="Ui_Admin" xml:space="preserve"><value>Verwaltung</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar.</value></data>
-  <data name="Ui_AdminMenu" xml:space="preserve"><value>Verwaltung ...</value></data>
+  <data name="Ui_AdminMenu" xml:space="preserve"><value>Verwaltung</value></data>
   <data name="Ui_AllSoundsOff" xml:space="preserve"><value>Alle Sounds aus</value></data>
   <data name="Ui_AppearanceSection" xml:space="preserve"><value>DARSTELLUNG</value></data>
   <data name="Ui_Apply" xml:space="preserve"><value>Übernehmen</value></data>

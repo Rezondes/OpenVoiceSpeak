@@ -4130,8 +4130,8 @@ Testbefehl: `dotnet test`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Der Button zeigt "Verwaltung" (Deutsch) bzw. "Administration" (Englisch), ohne " ...".
-- [ ] AC2: Der Button "Admin-Token einlösen ..." bleibt unverändert, weil er einen Dialog öffnet.
+- [x] AC1: Der Button zeigt "Verwaltung" (Deutsch) bzw. "Administration" (Englisch), ohne " ...".
+- [x] AC2: Der Button "Admin-Token einlösen ..." bleibt unverändert, weil er einen Dialog öffnet.
 
 ### Tests (TDD)
 

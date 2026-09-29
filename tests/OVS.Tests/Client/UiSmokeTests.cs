@@ -736,6 +736,32 @@ public sealed class UiSmokeTests : IDisposable
             .Concat(c.ContextMenu?.Items.OfType<MenuItem>().Select(m => m.Header as string) ?? []))
             .OfType<string>();
 
+    /// <summary>Package 65: the administration is a page, not a dialog, so its header button has no " ...".</summary>
+    [AvaloniaTheory]
+    [InlineData("de-DE", "Verwaltung")]
+    [InlineData("en-US", "Administration")]
+    public void Header_AdminButton_WithoutEllipsis(string culture, string expected)
+    {
+        var before = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(culture);
+        try
+        {
+            var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+            var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+            main.Show();
+            Dispatcher.UIThread.RunJobs();
+            var visible = main.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+            Assert.Contains(expected, visible);
+            Assert.DoesNotContain(expected + " ...", visible);
+            Assert.EndsWith(" ...", OVS.Client.Localization.Strings.Ui_RedeemTokenMenu); // it opens a dialog
+            main.Close();
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = before;
+        }
+    }
+
     /// <summary>Package 46: in English, no German resource text is left anywhere in the window, its pages and dialogs.</summary>
     [AvaloniaFact]
     public void Windows_English_NoGermanResourceText()
