@@ -22,6 +22,7 @@ public sealed partial class ServerState
     readonly ServerConfig config;
     readonly DataStore store;
     readonly ServerIconStore icon;
+    readonly BackupStore backups; // Package 74
     readonly ServerData data;
     readonly TimeProvider time;
     readonly ServerLogs logs;
@@ -40,6 +41,7 @@ public sealed partial class ServerState
         this.logs = logs;
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
         icon = new ServerIconStore(config.DataDir);
+        backups = new BackupStore(config.DataDir, time);
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         if (data.Migrate(config)) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
@@ -206,7 +208,12 @@ public sealed partial class ServerState
         lock (gate)
         {
             closedWith = final is Disconnected d ? d.Reason : Codes.ServerShutdown;
-            var why = final is Disconnected { Reason: Codes.ServerRestart } ? "Server startet neu" : "Server fährt herunter";
+            var why = final switch
+            {
+                Disconnected { Reason: Codes.ServerRestart } => "Server startet neu",
+                Disconnected { Reason: Codes.Restoring } => "Server wird aus einem Backup wiederhergestellt", // Package 74
+                _ => "Server fährt herunter",
+            };
             var now = time.GetUtcNow();
             foreach (var s in sessions.Values)
             {
@@ -300,6 +307,10 @@ public sealed partial class ServerState
                 case SetChannelLinks r: OnSetChannelLinks(session, r); break;
                 case UnlinkChannels r: OnUnlinkChannels(session, r); break;
                 case SendChat r: OnSendChat(session, r); break;
+                case ListBackups r: OnListBackups(session, r); break;
+                case CreateBackup r: OnCreateBackup(session, r); break;
+                case DeleteBackup r: OnDeleteBackup(session, r); break;
+                case RestoreBackup r: OnRestoreBackup(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }

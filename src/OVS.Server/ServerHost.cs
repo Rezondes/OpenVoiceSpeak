@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using OVS.Server.Data;
 using OVS.Server.Logging;
 using OVS.Server.Tls;
 using OVS.Server.Voice;
@@ -80,13 +81,32 @@ public static class ServerHost
         logs.Server($"Listening on {endpoint} (TCP und UDP)");
         logs.Server($"Zertifikat-Fingerprint: {CertFingerprint.Of(certificate)}");
 
-        bool restart = await WaitForRestartAsync(state, time, logs, stop);
+        // Package 74: a restore from the administration ends the run like a restart, on the backup's files
+        using var runEnd = CancellationTokenSource.CreateLinkedTokenSource(stop);
+        void OnRestore() => runEnd.Cancel();
+        state.RestoreRequested += OnRestore;
+        bool restart = await WaitForRestartAsync(state, time, logs, runEnd.Token);
+        state.RestoreRequested -= OnRestore;
+        var restore = state.PendingRestore;
+        if (restore is not null) restart = !stop.IsCancellationRequested;
 
-        logs.Server(restart ? "Automatischer Neustart ..." : "Fahre herunter ...");
+        logs.Server(restore is not null ? "Wiederherstellung aus einem Backup ..." : restart ? "Automatischer Neustart ..." : "Fahre herunter ...");
         await control.StopAsync(restart);
         await control.DisposeAsync();
         voice.Dispose();
         certificate.Dispose();
+        if (restore is not null)
+        {
+            try
+            {
+                BackupStore.Apply(config.DataDir, restore);
+                logs.Server($"Backup eingespielt (Datenversion {restore.Manifest.DataVersion}, Serverversion {restore.Manifest.ServerVersion})");
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                logs.Server($"Backup einspielen fehlgeschlagen: {e.Message}");
+            }
+        }
         logs.Server(restart ? "Server beendet, startet neu" : "Server beendet");
         return restart ? RunEnd.Restart : RunEnd.Stopped;
     }

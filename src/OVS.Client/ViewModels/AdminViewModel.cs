@@ -83,6 +83,9 @@ public sealed partial class AdminViewModel : ObservableObject
     public ObservableCollection<Choice<Guid?>> GroupFilters { get; } = [];
     public IReadOnlyList<Choice<UserSortOrder>> SortOrders { get; }
     public ObservableCollection<BanViewModel> Bans { get; } = [];
+    /// <summary>Package 74: the backups on the server, newest first.</summary>
+    public ObservableCollection<BackupViewModel> Backups { get; } = [];
+    public bool HasNoBackups => Backups.Count == 0;
 
     /// <summary>The page asks to be closed (close button or Esc).</summary>
     public event Action? CloseRequested;
@@ -130,6 +133,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         if (ShowUsers) await server.SendAsync(new ListUsers());
         if (ShowBans) await server.SendAsync(new ListBans());
+        if (ShowServer) await server.SendAsync(new ListBackups());
     }
 
     void OnStateChanged()
@@ -166,6 +170,11 @@ public sealed partial class AdminViewModel : ObservableObject
                 ConfirmGroupChanges(list.Users);
                 knownUsers = list.Users;
                 RebuildUsers();
+                break;
+            case BackupList list:
+                Backups.Clear();
+                foreach (var backup in list.Backups) Backups.Add(new BackupViewModel(backup, DeleteBackupAsync, RestoreBackupAsync));
+                OnPropertyChanged(nameof(HasNoBackups));
                 break;
             case BanList list:
                 Bans.Clear();
@@ -295,6 +304,25 @@ public sealed partial class AdminViewModel : ObservableObject
         if (server.Dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
         await server.SendAsync(new DeleteUser(user.Fingerprint));
         await RequestListsAsync();
+    }
+
+    // ---- Package 74: backups ----
+
+    /// <summary>Answered with the new list.</summary>
+    [RelayCommand]
+    Task NewBackup() => server.SendAsync(new CreateBackup());
+
+    async Task DeleteBackupAsync(BackupViewModel backup)
+    {
+        if (server.Dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Backup_ConfirmDelete, backup.Title))) return;
+        await server.SendAsync(new DeleteBackup(backup.Info.FileName));
+    }
+
+    /// <summary>Everyone, this client too, is disconnected with Restoring once the server accepted the backup.</summary>
+    async Task RestoreBackupAsync(BackupViewModel backup)
+    {
+        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(backup.Title)) return;
+        await server.SendAsync(new RestoreBackup(backup.Info.FileName));
     }
 
     bool CanAssign(GroupInfo g) =>
@@ -546,6 +574,28 @@ public sealed partial class GroupToggle(Guid groupId, string name, bool isChecke
     /// <summary>Bound to the checkbox's Command: IsChecked already holds the new value.</summary>
     [RelayCommand]
     Task Toggle() => onToggle(this);
+}
+
+/// <summary>Package 74: one backup on the server: date as title, size and server version below.</summary>
+public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewModel, Task> delete, Func<BackupViewModel, Task> restore)
+    : ObservableObject
+{
+    public BackupInfo Info { get; } = info;
+    public string Title => Info.CreatedAt.ToLocalTime().ToString("G") +
+                           (Info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");
+    public string Details => string.Format(Strings.Backup_Details, Size(Info.Size), Info.ServerVersion);
+
+    /// <summary>The prefix the server gives the backup it takes before a restore.</summary>
+    const string SafetyPrefix = "vor-wiederherstellung_";
+
+    static string Size(long bytes) =>
+        bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.0} MB" : $"{Math.Max(1, (bytes + 1023) / 1024)} KB";
+
+    [RelayCommand]
+    Task Delete() => delete(this);
+
+    [RelayCommand]
+    Task Restore() => restore(this);
 }
 
 public sealed partial class BanViewModel(BanInfo ban, bool canUnban, Func<Task> unban) : ObservableObject

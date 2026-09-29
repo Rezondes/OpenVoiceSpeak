@@ -266,6 +266,11 @@ public static class SimpleDialogs
             Strings.Dlg_DeleteForever, okIsDefault: false, kind: Kind.Danger) is not null;
     }
 
+    /// <summary>Package 74: red, because everyone is disconnected and the current state goes (a safety backup stays).</summary>
+    public static async Task<bool> ConfirmRestore(OverlayHost overlay, string backupTitle) =>
+        await Show(overlay, string.Format(Strings.Backup_RestoreTitle, backupTitle), "ArrowSync", Text(Strings.Backup_ConfirmRestore), () => "ok",
+            Strings.Ui_Restore, okIsDefault: false, kind: Kind.Danger) is not null;
+
     public static async Task<bool> Tofu(OverlayHost overlay, TofuPrompt prompt)
     {
         var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(i => prompt.Fingerprint.Substring(i * 8, 8)));

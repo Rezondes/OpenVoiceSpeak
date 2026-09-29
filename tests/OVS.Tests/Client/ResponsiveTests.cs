@@ -356,6 +356,13 @@ public sealed class ResponsiveTests : IDisposable
             new(Guid.NewGuid(), "fpB", "Spammer", null, "Werbung", "ich", DateTimeOffset.Now.AddDays(3)),
             new(Guid.NewGuid(), "fpC", "Troll", null, "", "ich", null),
         ]));
+        // Package 74: backups in the server tab, one of them the safety backup with the longer title
+        server.Apply(new OVS.Shared.Protocol.BackupList("r",
+        [
+            new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 12_345_678, "300926.1a2b"),
+            new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 800_000, "dev.0000"),
+            new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-2), 900, "dev.0000"),
+        ]));
         Dispatcher.UIThread.RunJobs();
         page = main.GetVisualDescendants().OfType<AdminView>().Single();
         return main;
@@ -410,6 +417,9 @@ public sealed class ResponsiveTests : IDisposable
         SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Server));
         foreach (var name in new[] { "MaxUsersInput", "LogDaysInput", "LogRotateDailyInput", "AutoRestartInput", "AutoRestartTimeInput" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
+        // Package 74: every backup with its restore and delete button, all checked for width above
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Restore && t.IsEffectivelyVisible));
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Delete && t.IsEffectivelyVisible));
         main.Close();
         return 0;
     });

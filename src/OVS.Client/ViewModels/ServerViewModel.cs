@@ -33,6 +33,8 @@ public sealed class Dialogs
     public Func<string, Task<bool>>? Confirm { get; init; }
     /// <summary>Package 72: the red "Alle Daten von {0} löschen?" dialog.</summary>
     public Func<string, Task<bool>>? ConfirmDeleteUser { get; init; }
+    /// <summary>Package 74: the red question before a backup replaces the server's state (argument: the backup's title).</summary>
+    public Func<string, Task<bool>>? ConfirmRestore { get; init; }
     /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
     public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }
     public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
@@ -157,6 +159,9 @@ public sealed partial class ServerViewModel : ObservableObject
                 return;
             case BanList list:
                 LastBanList = list;
+                AdminMessage?.Invoke(message);
+                return;
+            case BackupList: // Package 74
                 AdminMessage?.Invoke(message);
                 return;
             case ServerIcon icon:

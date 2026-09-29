@@ -58,6 +58,7 @@ public partial class App : Application
                 Ban = (nickname, ipKnown) => SimpleDialogs.Ban(overlay, nickname, ipKnown),
                 Confirm = text => SimpleDialogs.Confirm(overlay, text),
                 ConfirmDeleteUser = nickname => SimpleDialogs.ConfirmDeleteUser(overlay, nickname),
+                ConfirmRestore = title => SimpleDialogs.ConfirmRestore(overlay, title),
                 AskPassword = name => SimpleDialogs.AskPassword(overlay, name),
                 EditBookmark = bookmark => SimpleDialogs.EditBookmark(overlay, bookmark),
                 EditKeyBinding = (binding, capture) => SimpleDialogs.EditKeyBinding(overlay, binding, capture),

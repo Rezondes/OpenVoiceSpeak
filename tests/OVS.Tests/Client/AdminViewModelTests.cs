@@ -215,6 +215,53 @@ public class AdminViewModelTests
         Assert.Single(heard);
     }
 
+    /// <summary>Package 74: the backups in the server tab; deleting and restoring only after a question.</summary>
+    [Fact]
+    public async Task Backups_ListCreateDeleteRestore_AskFirst()
+    {
+        var asked = new List<string>();
+        bool answer = false;
+        var dialogs = new Dialogs
+        {
+            Confirm = text => { asked.Add("delete " + text); return Task.FromResult(answer); },
+            ConfirmRestore = name => { asked.Add("restore " + name); return Task.FromResult(answer); },
+        };
+        var (vm, server, sent) = Create(P.ServerConfig | P.Speak, dialogs: dialogs);
+        await vm.RequestListsAsync();
+        Assert.Contains(sent, r => r is ListBackups);
+
+        var older = new BackupInfo("2026-01-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 1, 1, 10, 0, 0, TimeSpan.Zero), 2_500_000, "010126.abcd");
+        var newer = new BackupInfo("2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 2, 1, 10, 0, 0, TimeSpan.Zero), 800, "dev.0000");
+        server.Apply(new BackupList("r", [newer, older]));
+        Assert.Equal([newer.FileName, older.FileName], vm.Backups.Select(b => b.Info.FileName));
+        Assert.Contains($"{2.4:0.0} MB", vm.Backups[1].Details);
+        Assert.Contains("010126.abcd", vm.Backups[1].Details);
+        Assert.Contains("1 KB", vm.Backups[0].Details);
+        Assert.False(vm.HasNoBackups);
+
+        await vm.NewBackupCommand.ExecuteAsync(null);
+        Assert.IsType<CreateBackup>(sent[^1]);
+
+        sent.Clear();
+        await vm.Backups[1].DeleteCommand.ExecuteAsync(null);
+        await vm.Backups[1].RestoreCommand.ExecuteAsync(null);
+        Assert.Empty(sent); // said no
+        Assert.Equal(2, asked.Count);
+        Assert.All(asked, a => Assert.Contains(vm.Backups[1].Title, a));
+
+        answer = true;
+        await vm.Backups[1].DeleteCommand.ExecuteAsync(null);
+        await vm.Backups[1].RestoreCommand.ExecuteAsync(null);
+        Assert.Equal([new DeleteBackup(older.FileName), new RestoreBackup(older.FileName)], sent.Select(r => r with { RequestId = null }));
+
+        server.Apply(new BackupList("r", []));
+        Assert.True(vm.HasNoBackups);
+
+        var (other, _, otherSent) = Create(P.Speak | P.UsersView);
+        await other.RequestListsAsync();
+        Assert.DoesNotContain(otherSent, r => r is ListBackups);
+    }
+
     [Fact]
     public void BanList_ShowsBans_UnbanSends()
     {

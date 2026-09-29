@@ -22,6 +22,7 @@ public static class Codes
     public const string ServerRestart = nameof(ServerRestart);
     public const string Kicked = nameof(Kicked);
     public const string UserDeleted = nameof(UserDeleted); // Package 72
+    public const string Restoring = nameof(Restoring); // Package 74: the server restarts on a backup
     public const string ConnectionLost = nameof(ConnectionLost); // client side only
 
     // Error (requests)
@@ -38,6 +39,7 @@ public static class Codes
     public const string UnknownRequest = nameof(UnknownRequest);
     public const string RateLimited = nameof(RateLimited);
     public const string ChannelFull = nameof(ChannelFull);
+    public const string InvalidBackup = nameof(InvalidBackup); // Package 74
 
     public static IEnumerable<string> All() =>
         typeof(Codes).GetFields().Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!);

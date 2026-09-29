@@ -97,6 +97,18 @@ Ordnernamen (`openvoicespeak_ovs-data` bei einem Ordner namens `openvoicespeak`,
 - `cert.pfx`: Serverzertifikat. Geht es verloren, bekommen alle Clients eine Warnung.
 - `server-icon.png`: Server-Logo, falls eines hochgeladen wurde
 - `logs/`: Server- und Channel-Logs (siehe oben)
+- `backups/`: Backups aus der Verwaltung (siehe unten)
+
+**Backups in der Verwaltung:** Unter Verwaltung, Server, Backups legt "Backup anlegen" auf dem Server die Datei
+`backups/<JJJJ-MM-TT_hh-mm-ss>.ovsbackup` an, ein Zip mit `manifest.json`, `server-data.json`, `cert.pfx` und, falls
+vorhanden, `server-icon.png`. Logs kommen nicht mit. Die Liste zeigt Datum, Grösse und Serverversion, neueste zuerst;
+jedes Backup lässt sich nach Rückfrage löschen. "Wiederherstellen" fragt vorher rot nach: Der Server prüft das Archiv
+(ein ungültiges oder zu neues ändert nichts), legt ein Sicherheits-Backup `vor-wiederherstellung_<Zeit>.ovsbackup` an,
+trennt alle, ersetzt die Dateien und startet im selben Prozess neu. Ältere Backups werden dabei wie gewohnt migriert,
+der Zertifikats-Fingerabdruck ist danach der aus dem Backup. Nötig ist das Recht "Servereinstellungen ändern". Automatische,
+zeitgesteuerte Backups gibt es nicht.
+
+Weiterhin geht es auch ohne Client über das Volume:
 
 ```bash
 # Backup

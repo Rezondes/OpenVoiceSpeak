@@ -9,6 +9,11 @@
   <data name="Audio_DeviceFallback" xml:space="preserve"><value>A saved audio device is missing, the default device is used.</value></data>
   <data name="Audio_MicFailed" xml:space="preserve"><value>Could not open the microphone: {0}</value></data>
   <data name="Audio_SpeakerFailed" xml:space="preserve"><value>Could not open the speaker: {0}</value></data>
+  <data name="Backup_ConfirmDelete" xml:space="preserve"><value>Delete the backup from {0}?</value></data>
+  <data name="Backup_ConfirmRestore" xml:space="preserve"><value>Everyone is disconnected and the current state is replaced. The server takes a safety backup first.</value></data>
+  <data name="Backup_Details" xml:space="preserve"><value>{0}, server version {1}</value></data>
+  <data name="Backup_RestoreTitle" xml:space="preserve"><value>Restore the backup from {0}?</value></data>
+  <data name="Backup_Safety" xml:space="preserve"><value>(before restore)</value></data>
   <data name="Ban_Day" xml:space="preserve"><value>1 day</value></data>
   <data name="Ban_Forever" xml:space="preserve"><value>permanent</value></data>
   <data name="Ban_Hour" xml:space="preserve"><value>1 hour</value></data>
@@ -108,6 +113,7 @@
   <data name="Error_CannotDeleteDefault" xml:space="preserve"><value>The default channel cannot be deleted.</value></data>
   <data name="Error_ChannelFull" xml:space="preserve"><value>The channel is full.</value></data>
   <data name="Error_ConnectionLost" xml:space="preserve"><value>The connection to the server was lost.</value></data>
+  <data name="Error_InvalidBackup" xml:space="preserve"><value>The backup is invalid or too new for this server. Nothing was changed.</value></data>
   <data name="Error_InvalidLink" xml:space="preserve"><value>A channel cannot be linked to itself.</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>Invalid name.</value></data>
   <data name="Error_InvalidToken" xml:space="preserve"><value>The admin token is invalid or has already been redeemed.</value></data>
@@ -123,6 +129,7 @@
   <data name="Error_ProtocolError" xml:space="preserve"><value>Protocol error.</value></data>
   <data name="Error_RateLimited" xml:space="preserve"><value>Too many messages, wait a few seconds.</value></data>
   <data name="Error_ReplacedByNewConnection" xml:space="preserve"><value>You connected from somewhere else with the same identity.</value></data>
+  <data name="Error_Restoring" xml:space="preserve"><value>The server is being restored from a backup. Connect again in a few seconds.</value></data>
   <data name="Error_ServerFull" xml:space="preserve"><value>The server is full.</value></data>
   <data name="Error_ServerRestart" xml:space="preserve"><value>The server is restarting. Connect again in a few seconds.</value></data>
   <data name="Error_ServerShutdown" xml:space="preserve"><value>The server was shut down.</value></data>
@@ -247,10 +254,13 @@
   <data name="Ui_Admin" xml:space="preserve"><value>Administration</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>The admin group always has all rights and cannot be changed.</value></data>
   <data name="Ui_AllGroups" xml:space="preserve"><value>All groups</value></data>
+  <data name="Ui_Backups" xml:space="preserve"><value>Backups</value></data>
+  <data name="Ui_BackupsHint" xml:space="preserve"><value>A backup holds channels, groups, users, bans, settings, certificate and logo, but no logs. It is kept on the server in backups/.</value></data>
   <data name="Ui_BanDetail" xml:space="preserve"><value>Banned ({0})</value></data>
   <data name="Ui_BanReason" xml:space="preserve"><value>Reason: {0}</value></data>
   <data name="Ui_BanUser" xml:space="preserve"><value>Ban</value></data>
   <data name="Ui_ChatMessages" xml:space="preserve"><value>Chat messages</value></data>
+  <data name="Ui_CreateBackup" xml:space="preserve"><value>Create backup</value></data>
   <data name="Ui_DeleteUser" xml:space="preserve"><value>Delete user data</value></data>
   <data name="Ui_DurationDays" xml:space="preserve"><value>{0} d {1} h</value></data>
   <data name="Ui_FirstSeen" xml:space="preserve"><value>First login</value></data>
@@ -342,6 +352,7 @@
   <data name="Ui_Muted" xml:space="preserve"><value>Muted</value></data>
   <data name="Ui_Name" xml:space="preserve"><value>Name</value></data>
   <data name="Ui_NewPassword" xml:space="preserve"><value>New password (leave empty = unchanged)</value></data>
+  <data name="Ui_NoBackups" xml:space="preserve"><value>No backups yet.</value></data>
   <data name="Ui_NoBookmarks" xml:space="preserve"><value>No bookmarks yet. Connect with "Connect ..." and save the server as a bookmark.</value></data>
   <data name="Ui_NoKeyActions" xml:space="preserve"><value>No key actions yet.</value></data>
   <data name="Ui_None" xml:space="preserve"><value>none</value></data>
@@ -356,6 +367,7 @@
   <data name="Ui_PickSoundTitle" xml:space="preserve"><value>Choose sound</value></data>
   <data name="Ui_PingTip" xml:space="preserve"><value>Server response time</value></data>
   <data name="Ui_PreviousNicknames" xml:space="preserve"><value>Previous nicknames</value></data>
+  <data name="Ui_Restore" xml:space="preserve"><value>Restore</value></data>
   <data name="Ui_ShowChannels" xml:space="preserve"><value>Show channels</value></data>
   <data name="Ui_PlayFmt" xml:space="preserve"><value>Play {0}</value></data>
   <data name="Ui_PrivateMessage" xml:space="preserve"><value>Private message</value></data>

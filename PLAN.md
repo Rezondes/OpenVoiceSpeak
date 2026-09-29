@@ -4614,12 +4614,12 @@ Backups gehen heute nur per `docker run ... tar` über das Volume (README). Im D
 
 ### Acceptance Criteria
 
-- [ ] AC1: "Backup anlegen" schreibt `/data/backups/<JJJJ-MM-TT_hh-mm-ss>.ovsbackup`, ein Zip mit `manifest.json` (Formatversion, Datenversion, Serverversion, Zeit), `server-data.json`, `cert.pfx` und, falls vorhanden, `server-icon.png`. Logs kommen nicht mit (A90). Das Archiv entsteht aus einem konsistenten Stand unter dem Lock.
-- [ ] AC2: Die Liste zeigt je Backup Datum, Grösse und Serverversion, neueste zuerst. Einzelne Backups lassen sich nach Rückfrage löschen.
-- [ ] AC3: "Wiederherstellen" fragt rot nach ("Alle werden getrennt, der aktuelle Stand wird ersetzt"). Der Server prüft das Archiv (Manifest, lesbare Daten, Datenversion nicht neuer als die eigene), legt zuerst ein Sicherheits-Backup `vor-wiederherstellung_<Zeit>.ovsbackup` an, trennt alle mit Code `Restoring` ("Der Server wird aus einem Backup wiederhergestellt ..."), ersetzt die Dateien und startet den Lauf neu. Ein ungültiges Archiv ändert nichts (`InvalidBackup`).
-- [ ] AC4: Ältere Archive (niedrigere Datenversion) werden beim Neustart wie gewohnt migriert. Der Zertifikats-Fingerabdruck ist nach dem Wiederherstellen der aus dem Backup.
-- [ ] AC5: Alle Aktionen brauchen das Recht `ServerConfig` und stehen im Server-Log. Dateinamen aus Anfragen werden gegen die Liste geprüft, Pfade ausserhalb von `backups/` sind unmöglich.
-- [ ] AC6: Texte auf Deutsch und Englisch, README beschreibt beide Wege.
+- [x] AC1: "Backup anlegen" schreibt `/data/backups/<JJJJ-MM-TT_hh-mm-ss>.ovsbackup`, ein Zip mit `manifest.json` (Formatversion, Datenversion, Serverversion, Zeit), `server-data.json`, `cert.pfx` und, falls vorhanden, `server-icon.png`. Logs kommen nicht mit (A90). Das Archiv entsteht aus einem konsistenten Stand unter dem Lock.
+- [x] AC2: Die Liste zeigt je Backup Datum, Grösse und Serverversion, neueste zuerst. Einzelne Backups lassen sich nach Rückfrage löschen.
+- [x] AC3: "Wiederherstellen" fragt rot nach ("Alle werden getrennt, der aktuelle Stand wird ersetzt"). Der Server prüft das Archiv (Manifest, lesbare Daten, Datenversion nicht neuer als die eigene), legt zuerst ein Sicherheits-Backup `vor-wiederherstellung_<Zeit>.ovsbackup` an, trennt alle mit Code `Restoring` ("Der Server wird aus einem Backup wiederhergestellt ..."), ersetzt die Dateien und startet den Lauf neu. Ein ungültiges Archiv ändert nichts (`InvalidBackup`).
+- [x] AC4: Ältere Archive (niedrigere Datenversion) werden beim Neustart wie gewohnt migriert. Der Zertifikats-Fingerabdruck ist nach dem Wiederherstellen der aus dem Backup.
+- [x] AC5: Alle Aktionen brauchen das Recht `ServerConfig` und stehen im Server-Log. Dateinamen aus Anfragen werden gegen die Liste geprüft, Pfade ausserhalb von `backups/` sind unmöglich.
+- [x] AC6: Texte auf Deutsch und Englisch, README beschreibt beide Wege.
 
 ### Tests (TDD)
 

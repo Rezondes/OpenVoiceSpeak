@@ -44,6 +44,12 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(SetServerIcon), "setServerIcon")]
 [JsonDerivedType(typeof(GetServerIcon), "getServerIcon")]
 [JsonDerivedType(typeof(ServerIcon), "serverIcon")]
+// Backups (Package 74)
+[JsonDerivedType(typeof(ListBackups), "listBackups")]
+[JsonDerivedType(typeof(CreateBackup), "createBackup")]
+[JsonDerivedType(typeof(DeleteBackup), "deleteBackup")]
+[JsonDerivedType(typeof(RestoreBackup), "restoreBackup")]
+[JsonDerivedType(typeof(BackupList), "backupList")]
 // Moderation
 [JsonDerivedType(typeof(Kick), "kick")]
 [JsonDerivedType(typeof(Ban), "ban")]
@@ -151,6 +157,19 @@ public sealed record SetServerIcon(string? PngBase64) : Request;
 /// <summary>Asks for the logo; clients only do this when the hash differs from their cache.</summary>
 public sealed record GetServerIcon : Request;
 public sealed record ServerIcon(string? RequestId, string? Hash, string? PngBase64) : Message;
+
+// ---- Backups (Package 74, right ServerConfig) ----
+/// <param name="FileName">Only the name inside the server's backups folder; requests name a backup by it.</param>
+public sealed record BackupInfo(string FileName, DateTimeOffset CreatedAt, long Size, string ServerVersion);
+public sealed record ListBackups : Request;
+/// <summary>Answered with the new BackupList.</summary>
+public sealed record CreateBackup : Request;
+/// <summary>Answered with the new BackupList.</summary>
+public sealed record DeleteBackup(string FileName) : Request;
+/// <summary>Takes a safety backup, disconnects everyone with Restoring and restarts the server on the backup's state.</summary>
+public sealed record RestoreBackup(string FileName) : Request;
+/// <summary>Newest first.</summary>
+public sealed record BackupList(string? RequestId, IReadOnlyList<BackupInfo> Backups) : Message;
 
 // ---- Moderation ----
 public sealed record BanInfo(
