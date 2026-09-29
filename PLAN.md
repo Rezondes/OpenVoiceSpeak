@@ -17,6 +17,8 @@
 > **Packages 50 und 51:** In der Anfrage stand die Lautstärke je Nutzer zuerst. Sie kommt als 51 nach der Grundverstärkung (50), weil beide im selben Mixer wirken und 51 den Begrenzer aus 50 braucht.
 >
 > **Parallel möglich:** Nach Package 1 können 2, 3, 6, 11 und 13 unabhängig voneinander laufen. Nach Package 7 können 8, 9 und 10 parallel laufen.
+>
+> **Packages 65 bis 75:** Die Reihenfolge weicht von der Anfrage ab, kleine UI-Punkte zuerst, dann Server und Verwaltung, Backup zuletzt. Zuordnung der Anfrage: Backup -> 74 und 75, Link-Icon und Breite -> 67, stummer Channel -> 66, Slots -> 69, Nutzerübersicht -> 71 und 72, Nutzerdaten -> 70, Gruppen-Ton -> 73, "Verwaltung ..." -> 65, Seitenleiste zu breit -> 68. 65, 66, 69 und 73 können parallel beginnen. Package 76 (einzelne Rechte) kam nachträglich dazu und wird vor 71 und 72 umgesetzt. Es kann ebenfalls sofort beginnen. Package 68 wurde nachträglich vom Bugfix "Seitenleiste zu breit" zum responsiven Grundgerüst erweitert. Die Packages 77 bis 79 machen darauf aufbauend Einstellungen, Verwaltung sowie Chat und Dialoge responsiv und können nach 68 parallel laufen.
 
 ## Überblick
 
@@ -86,6 +88,21 @@
 | 62 | Update-Fortschritt | Während ein Update geladen, geprüft und gestartet wird, liegt über dem ganzen Fenster eine Karte mit Fortschrittsbalken, Prozent und Megabyte. | - |
 | 63 | Neustart nach Update | Nach einem Update startet die neue Version von selbst, die alte `.exe.old` verschwindet, und jeder Fehler auf dem Weg steht im Log. | - |
 | 64 | Eigene Nachrichten rechts | Eigene Chatnachrichten stehen rechts als Blase ohne Avatar, die anderer links, Hinweise weiter über die volle Breite. | - |
+| 65 | Verwaltungs-Button ohne Auslassungspunkte | Der Button in der Kopfzeile heisst nur noch "Verwaltung" bzw. "Administration". | - |
+| 66 | Stummer Channel mit eigenem Icon | Ein stummer Channel zeigt vorne ein Stumm-Icon statt des Lautsprechers und hinter dem Namen kein zusätzliches Stumm-Icon mehr. | - |
+| 67 | Link-Icon und passende Breite der Seitenleiste | Verlinkte Channels zeigen nur noch ein Link-Icon hinter dem Namen (Partner im Tooltip), und beim Betreten eines Servers ist die Seitenleiste breit genug für Namen und Icons. | 66 |
+| 68 | Responsives Grundgerüst | Das Hauptfenster passt sich jeder Breite ab 360 px an: Die Kopfzeile wird nie abgeschnitten, und unter 700 px wird die Seitenleiste zu einer einblendbaren Leiste. | 67 |
+| 69 | Servereinstellungen in der Verwaltung | Nutzerlimit, Log-Aufbewahrung, tägliche Log-Datei und automatischer Neustart lassen sich unter "Verwaltung -> Server" ändern und wirken sofort, Umgebungsvariablen gelten nur noch beim ersten Start. | - |
+| 70 | Nutzerstatistiken auf dem Server | Der Server merkt sich pro Nutzer ersten und letzten Login, Anzahl Logins, Online-Zeit, letzte IP, frühere Nicknames, Sprechzeit und Anzahl Chatnachrichten und liefert sie mit der Nutzerliste aus. | 69 |
+| 71 | Nutzerübersicht mit Details, Suche und Filter | Unter "Verwaltung -> Nutzer" sieht man zu jedem bekannten Nutzer alle gespeicherten Daten und kann die Liste durchsuchen und filtern. | 70, 76 |
+| 72 | Nutzer offline bannen, entbannen und löschen | In der Nutzerübersicht lassen sich Nutzer auch offline bannen und entbannen sowie nach einer Rückfrage mit allen Daten löschen. | 71, 76 |
+| 73 | Töne bei Gruppenänderung | Wer einem Nutzer eine Gruppe gibt oder nimmt, und der betroffene Nutzer, falls online, hören je einen eigenen, einzeln einstellbaren Ton, standardmässig denselben. | - |
+| 74 | Backups auf dem Server | Unter "Verwaltung -> Server" lassen sich Backups auf dem Server anlegen, auflisten, löschen und wiederherstellen. | 69 |
+| 75 | Backup herunterladen und hochladen | Ein Admin kann ein Backup vom Server auf seinen PC laden und ein Backup von seinem PC hochladen und wiederherstellen. | 74 |
+| 76 | Einzelne Rechte für die Verwaltung | Nutzerübersicht, Bans-Übersicht, Gruppenübersicht, Gruppen anlegen, Gruppen löschen und Nutzer löschen haben je ein eigenes Recht, und standardmässig sieht nur die Gruppe Admin die Nutzerübersicht. | - |
+| 77 | Einstellungen responsiv | Die Einstellungsseite ist auf jeder Breite ab 360 px vollständig bedienbar, ohne abgeschnittene oder überlappende Elemente. | 68 |
+| 78 | Verwaltung responsiv | Alle Tabs der Verwaltung sind auf jeder Breite ab 360 px vollständig bedienbar. | 68 |
+| 79 | Chat, Startseite und Dialoge responsiv | Chat, Startseite, Update-Karte und alle Dialoge sind auf jeder Breite ab 360 px vollständig bedienbar. | 68 |
 
 ## Annahmen
 
@@ -183,6 +200,23 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A77 Neustart-Befund.** Log vom 29.09.2026 10:16: "Update auf 290926.0lh6 wird installiert", danach beim alten Client weder "Client beendet" noch ein Fehler. Das Fenster ging laut Nutzer einfach zu, der neue Client kam nicht, und um 10:18 wurde er von Hand gestartet. Der Client hat keinen Handler für unbehandelte Ausnahmen, ein Absturz hinterlässt also keine Spur. Das Muster passt zu einem Absturz im Neustart-Callback in `App.axaml.cs` (dort ist `Process.Start` ungeschützt, und er läuft im `async void`-Handler von `window.Opened`). **Befund (reproduziert mit einer alt datierten CI-exe und dem echten Release):** `FileNotFoundException: System.Diagnostics.Process` im Neustart-Callback. Die Single-File-exe lädt Assemblies erst beim ersten Gebrauch aus ihrer eigenen Datei, und die heisst nach dem Tausch schon `*.old`. Der Absturz beendet den Prozess, bevor der neue gestartet ist. Danach hält Windows die abgestürzte exe noch minutenlang gesperrt (kein sichtbarer Prozess, Löschen gibt "Zugriff verweigert"), deshalb blieb auch `.old` liegen. Nach einem sauberen Ende ist sie sofort löschbar. Fix: Die Startdaten werden beim Programmstart gebaut, solange die exe noch am Platz ist. Unbehandelte Ausnahmen des UI-Threads landen über `AppDomain.UnhandledException` im Log.
 - **A78 Aufräumen der alten exe.** Die neue Version bekommt `--after-update <pid>` mit. Sie wartet höchstens 10 Sekunden, bis dieser Prozess weg ist, und löscht dann `OVS.Client.exe.old`, mit ein paar Versuchen (Virenscanner halten frische Dateien kurz fest). Jeder normale Start räumt weiterhin auf wie bisher. Was nicht klappt, wird mit Grund geloggt statt geschluckt.
 - **A79 Eigene Nachrichten.** Rechts, als Blase mit Akzent-Hintergrund, ohne Avatar, ohne Namen und ohne "Du", nur mit der Uhrzeit. Die Blase ist höchstens etwa 75 % so breit wie der Verlauf. Nachrichten anderer bleiben links mit Avatar, Name und Zeit, der Text steht in einer neutralen Blase (`Ovs.Surface`). Hinweise, Willkommensnachricht und Marker bleiben unverändert über die volle Breite bzw. mittig. Gilt in allen Tabs (Allgemein, Channel, privat).
+- **A80 Aufteilung.** "Nutzerübersicht" wurde in 71 (Anzeige, Suche, Filter) und 72 (Bannen, Entbannen, Löschen) geteilt, "Backup" in 74 (auf dem Server) und 75 (Download und Upload). Die Zeile "9**f" in der Anfrage wurde als Tippfehler ignoriert.
+- **A81 Breite der Seitenleiste.** Beim Verbinden wird sie auf den längsten Channel-Namen samt Icons und Nutzerzahl gesetzt, mindestens 240 px. Diese Breite ist die Mindestbreite, begrenzt durch A82. Zieht der Nutzer sie breiter, gilt das bis zum nächsten Verbinden. Die Breite wird nicht gespeichert.
+- **A82 Kopfzeile hat Vorrang.** Der Hauptbereich ist nie schmaler als Voice-Icon, Ping, alle sichtbaren Buttons und Innenabstand. Der Channel-Titel darf gekürzt werden oder verschwinden. Reicht das Fenster nicht, gibt die Seitenleiste bis 200 px nach, unter 700 px wird sie einblendbar (A93).
+- **A83 Link-Icon.** Kleines `Icon.Link` (Klasse `link`) hinter dem Namen neben dem Home-Icon, Tooltip "Verlinkt mit ..." mit allen Partnern. Der Tooltip der ganzen Zeile bleibt.
+- **A84 Stummer Channel.** Vorne `Icon.MicOff` in Warnfarbe statt des Lautsprechers, mit Tooltip "Stummer Channel: niemand wird gehört". Hinter dem Namen kein Stumm-Icon mehr.
+- **A85 Einstellungen in der Verwaltung.** Neu änderbar: maximale Nutzer, Log-Aufbewahrung, tägliche Log-Datei, automatischer Neustart mit Uhrzeit. Sie wirken sofort und werden in `server-data.json` gespeichert. Umgebungsvariablen und `server-config.json` liefern dafür nur noch Startwerte (einmalige Übernahme beim Update auf Datenversion 3), wie heute schon Name und Passwort. `OVS_PORT` und `OVS_DATA_DIR` bleiben in der Umgebung, weil sie zum Container gehören (Port-Mapping, Volume).
+- **A86 Nutzerdaten.** Zusätzlich zu `FirstSeen`: letzter Login, Anzahl Logins, gesamte Online-Zeit, letzte IP, bis zu 5 frühere Nicknames, Sprechzeit (weitergeleitete Sprache, 20 ms je Paket) und Anzahl Chatnachrichten. Gespeichert beim Login und beim Trennen bzw. Herunterfahren, nicht laufend. Die IP ist ein personenbezogenes Datum und wird nur Nutzern mit Zugriff auf die Nutzerübersicht gezeigt.
+- **A87 Nutzerübersicht.** Sichtbar nur mit dem neuen Recht `UsersView` (Package 76), standardmässig nur für Admin. Gruppen ändern nur mit `GroupsAssign`. Suche über Nickname, frühere Nicknames, Fingerabdruck und IP. Filter nach Status und Gruppe, Sortierung nach Name, letztem Login oder Online-Zeit.
+- **A88 Nutzer löschen.** Eigenes Recht `UserDelete` (Package 76) und nur bei schwächeren Nutzern, nie sich selbst oder den letzten Admin. Gelöscht werden Nutzerdatensatz, Gruppen, Statistiken und alle Bans mit dem Fingerabdruck. Die Logdateien bleiben und laufen über ihre Aufbewahrungszeit aus. Das Löschen selbst wird geloggt. Ein Online-Nutzer wird mit eigener Meldung getrennt.
+- **A89 Gruppen-Töne.** `GroupChanged` für den Betroffenen (bei Änderung der eigenen Gruppen, nicht beim Verbinden) und `GroupChangedByMe` für den Handelnden (wenn die nächste Nutzerliste die Änderung zeigt, auch bei Offline-Nutzern). Standardmässig derselbe neue Ton, einzeln einstellbar wie `LinkVoice`/`OwnLinkVoice`. Bei der eigenen Gruppe nur ein Ton.
+- **A90 Backups.** Zip-Archiv `.ovsbackup` mit Manifest, `server-data.json`, `cert.pfx` (damit der Fingerabdruck gleich bleibt) und Logo, ohne Logs. Auf dem Server in `/data/backups/`. Wiederherstellen legt vorher ein Sicherheits-Backup an, trennt alle und startet den Lauf im Prozess neu. Recht `ServerConfig`. Keine automatischen, zeitgesteuerten Backups.
+- **A91 Backup-Übertragung.** Über die bestehende Steuerverbindung in Stücken von 512 KB (Nachrichten sind höchstens 1 MiB), Download Stück für Stück auf Anfrage, Upload höchstens 50 MB. Kein HTTP und kein zweiter Port.
+- **A92 Einzelne Rechte.** Neu: `UsersView`, `BansView`, `GroupsView`, `GroupsCreate`, `GroupsDelete`, `UserDelete`. Schon vorhanden und weiter genutzt: `UserKick` (kicken), `UserBan` (bannen und entbannen), `GroupsAssign` (Gruppe eines Nutzers ändern), `GroupsManage` (heisst jetzt "Gruppen bearbeiten": Name, Rechte, Reihenfolge). Sehen und Handeln sind getrennt. Standard: Admin alles, Moderator zusätzlich `BansView`. Bestehende Gruppen bekommen beim Update die Sehen-Rechte zu den Rechten, die sie schon haben, damit niemand etwas verliert. `UserDelete` bekommt nur Admin.
+- **A93 Responsives System.** Ziel ist, dass der Client später auch auf einem Handy laufen kann. Mindestgrösse des Fensters 360 × 480 px. Zwei Stufen als Klassen am Fenster: `compact` (Fenster unter 700 px) und `narrow` (Hauptbereich unter 560 px). Seiten reagieren per Stil darauf, nicht per Code.
+- **A94 Einblendbare Seitenleiste.** Unter 700 px ist die Seitenleiste weg und wird über einen Menü-Button oben links als Überlagerung von links eingeblendet (wie Discord oder Slack mobil). Sie schliesst beim Channel-Wechsel, bei Klick daneben und mit Esc.
+- **A95 Schmale Kopfzeile.** Unter `narrow` zeigen Verwaltung, Trennen, Admin-Token und Ping nur ihr Icon, der Text steht im Tooltip und im Namen für Screenreader.
+- **A96 Responsive auch für neue UI.** Alle Packages, die Oberfläche hinzufügen oder ändern (65 bis 79), halten sich an A93. Wer nach Package 68 umgesetzt wird, prüft seine neuen Bereiche zusätzlich mit `LayoutAssert.FitsHorizontally` bei 360 px. Wer davor umgesetzt wird, wird von 77 bis 79 mit abgedeckt.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -4077,3 +4111,851 @@ Testbefehl: `dotnet test`
 - Aufeinanderfolgende Nachrichten desselben Absenders zusammenfassen
 - Lesebestätigungen, Reaktionen, Bearbeiten
 - Änderungen am Chat-Protokoll oder am ViewModel über eine reine Anzeige-Eigenschaft hinaus
+
+---
+
+## Package 65: Verwaltungs-Button ohne Auslassungspunkte
+
+**Ziel:** Der Button in der Kopfzeile heisst nur noch "Verwaltung" bzw. "Administration".
+
+**Abhängigkeiten:** keine
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): `Ui_AdminMenu`
+- `tests/OVS.Tests/Client/UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+`MainWindow.axaml` zeigt im verbundenen Kopfbereich `Strings.Ui_AdminMenu` = "Verwaltung ..." / "Administration ...". Die Punkte deuteten früher ein eigenes Fenster an. Die Verwaltung ist aber eine Seite im Hauptfenster (A20).
+
+### Acceptance Criteria
+
+- [ ] AC1: Der Button zeigt "Verwaltung" (Deutsch) bzw. "Administration" (Englisch), ohne " ...".
+- [ ] AC2: Der Button "Admin-Token einlösen ..." bleibt unverändert, weil er einen Dialog öffnet.
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "Header_AdminButton_WithoutEllipsis"` (AC1, AC2)
+   - Gegeben: Hauptfenster verbunden als Admin, einmal Deutsch, einmal Englisch
+   - Erwartet: Button-Text "Verwaltung" bzw. "Administration", kein Text endet in der Kopfzeile auf "Verwaltung ..."
+2. `LocalizationTests` bleiben grün
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot), `Ui_AdminMenu` in beiden resx anpassen, grün.
+
+### Out of Scope
+
+- Andere Menüeinträge mit " ...", die einen Dialog öffnen
+
+---
+
+## Package 66: Stummer Channel mit eigenem Icon
+
+**Ziel:** Ein stummer Channel zeigt vorne ein Stumm-Icon statt des Lautsprechers und hinter dem Namen kein zusätzliches Stumm-Icon mehr.
+
+**Abhängigkeiten:** keine
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/MainWindow.axaml` (ändern): Channel-Zeile im `ChannelItems`-Template
+- `tests/OVS.Tests/Client/UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+In der Channel-Zeile steht vorne immer `PathIcon Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}"`. Hinter dem Namen folgt bei `ChannelViewModel.IsMuted` ein `PathIcon Classes="sm warning" Data="{StaticResource Icon.MicOff}"` mit Tooltip `Dlg_MutedChannel`. Der Stil `.row.current PathIcon.channelIcon` färbt das vordere Icon im aktuellen Channel ein.
+
+### Acceptance Criteria
+
+- [ ] AC1: Bei einem stummen Channel ist vorne `Icon.MicOff` in Warnfarbe mit Tooltip "Stummer Channel: niemand wird gehört" zu sehen, der Lautsprecher nicht.
+- [ ] AC2: Hinter dem Namen erscheint bei stummen Channels kein Stumm-Icon mehr. Home- und Link-Icon bleiben.
+- [ ] AC3: Nicht stumme Channels zeigen wie bisher den Lautsprecher. Wird ein Channel stumm geschaltet oder freigegeben, wechselt das Icon sofort.
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "MutedChannel_IconReplacesSpeaker"` (AC1, AC2, AC3)
+   - Gegeben: `FakeServers.Admin()`, Lobby per `ChannelUpdated` stumm geschaltet, Layout durchgelaufen
+   - Erwartet: in Lobbys Zeile ist das erste sichtbare `PathIcon` das Stumm-Icon mit Tooltip `Dlg_MutedChannel`, kein sichtbares Lautsprecher-Icon, nach dem Namen kein Stumm-Icon. In Raids Zeile ist vorne der Lautsprecher. Nach `IsMuted = false` zeigt Lobby wieder den Lautsprecher.
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot).
+2. Vorne zwei `PathIcon` übereinander (Lautsprecher mit `IsVisible="{Binding !IsMuted}"`, Stumm-Icon mit `IsVisible="{Binding IsMuted}"`, beide `channelIcon`), das hintere Stumm-Icon entfernen. Grün.
+3. Manueller Blick im hellen und dunklen Theme, auch im aktuellen Channel.
+
+### Out of Scope
+
+- Die Status-Icons der Nutzer unter dem Channel
+
+---
+
+## Package 67: Link-Icon und passende Breite der Seitenleiste
+
+**Ziel:** Verlinkte Channels zeigen nur noch ein Link-Icon hinter dem Namen (Partner im Tooltip), und beim Betreten eines Servers ist die Seitenleiste breit genug für Namen und Icons.
+
+**Abhängigkeiten:** Package 66 (dieselbe Channel-Zeile)
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/MainWindow.axaml` (ändern): Channel-Zeile, `ColumnDefinitions` der Haupt-`Grid`
+- `src/OVS.Client/Views/MainWindow.axaml.cs` (ändern): Breite beim Verbinden berechnen
+- `src/OVS.Client/Views/SidebarWidth.cs` (neu): reine Rechenfunktion für die Wunschbreite
+- `tests/OVS.Tests/Client/UiSmokeTests.cs` (ändern), `tests/OVS.Tests/Client/SidebarWidthTests.cs` (neu)
+
+### Kontext
+
+Hinter dem Channel-Namen steht heute bei `IsLinked` ein `Border Classes="chip"` mit Link-Icon und `LinkedNames` (max. 110 px, abgeschnitten). Das kostet viel Platz, siehe Screenshot mit "Artillery, FoB, Infan...". Den Tooltip `Ui_LinkedWithFmt` gibt es schon. Home- und Stumm-Icon stehen als kleine `PathIcon Classes="sm ..."` direkt hinter dem Namen. Die Seitenleiste ist eine feste Spalte mit 300 px (`ColumnDefinitions="300,Auto,*"`). Ihre Breite wird weder gespeichert noch aus dem Inhalt abgeleitet.
+
+### Acceptance Criteria
+
+- [ ] AC1: Statt des Chips steht hinter dem Namen nur `Icon.Link` (klein, Klasse `link`), in einer Reihe mit dem Home-Icon. Der Tooltip nennt alle verlinkten Channels ("Verlinkt mit Artillery, FoB, ...").
+- [ ] AC2: Beim Verbinden mit einem Server (und wenn neue Channels dazukommen oder umbenannt werden, solange der Nutzer die Breite nicht selbst gezogen hat) wird die Seitenleiste so breit, dass der längste Channel-Name samt Icon davor, Home- und Link-Icon dahinter und Nutzerzahl ohne Abschneiden passt, mindestens 240 px.
+- [ ] AC3: Die Wunschbreite gilt als Mindestbreite der Spalte. Sie wird von Package 68 nach oben begrenzt: Reicht das Fenster nicht, werden die Namen mit "..." abgeschnitten.
+- [ ] AC4: Zieht der Nutzer die Seitenleiste breiter, bleibt seine Breite bis zum nächsten Verbinden.
+
+### Tests (TDD)
+
+1. `SidebarWidthTests > "Fits_LongestName_PlusIcons"` (AC2)
+   - Gegeben: Textbreiten 80, 150, 60 px, Icons und Abstände wie in der Zeile
+   - Erwartet: Breite = 150 + Summe der festen Anteile. Mit nur kurzen Namen: 240.
+2. `UiSmokeTests > "LinkedChannel_IconWithTooltip_NoChip"` (AC1)
+   - Gegeben: `FakeServers.Admin()` (Lobby und Raid verlinkt)
+   - Erwartet: in Lobbys Zeile kein `Border.chip`, ein sichtbares Link-Icon mit Tooltip "Verlinkt mit Raid"
+3. `UiSmokeTests > "Connect_SidebarFitsLongestChannel"` (AC2, AC3)
+   - Gegeben: Server mit Channels wie im Screenshot ("Infantry Squad 1", "Sabotage Squad", ...), alle verlinkt, Fenster 1100 px
+   - Erwartet: kein `TextBlock.channelName` ist abgeschnitten (`DesiredSize` passt in `Bounds`), die Seitenleiste ist höchstens so breit wie nötig plus 1 px
+4. `UiSmokeTests > "UserDraggedWidth_KeptUntilReconnect"` (AC4)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 2 (rot), Chip durch `PathIcon` ersetzen, grün.
+2. Test 1 (rot), `SidebarWidth.For(nameWidths, …)`, grün.
+3. Tests 3 und 4 (rot). In `MainWindow.axaml.cs` beim Wechsel auf verbunden und bei Änderungen an `Server.Channels` die Namen mit `TextLayout` messen und die Spaltenbreite setzen, solange kein eigener Zug per `GridSplitter.DragCompleted` erfolgt ist. Grün.
+
+### Out of Scope
+
+- Die Breite speichern (A81)
+- Obergrenze der Seitenleiste (Package 68)
+
+---
+
+## Package 68: Responsives Grundgerüst
+
+**Ziel:** Das Hauptfenster passt sich jeder Breite ab 360 px an: Die Kopfzeile wird nie abgeschnitten, und unter 700 px wird die Seitenleiste zu einer einblendbaren Leiste.
+
+**Abhängigkeiten:** Package 67 (setzt die Breite der Seitenleiste)
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/Responsive.cs` (neu): Breitenstufen, setzt die Klassen `compact` und `narrow` am Fenster
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs` (ändern): Mindestgrösse, Seitenleiste als Überlagerung, Menü-Button, Kopfzeile, Obergrenze der Seitenleiste
+- `src/OVS.Client/Styles/Controls.axaml` (ändern): Stile für `compact` und `narrow`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): "Channels anzeigen"
+- `tests/OVS.Tests/Client/ResponsiveTests.cs` (neu), `tests/OVS.Tests/TestSupport/LayoutAssert.cs` (neu), `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Das Fenster ist mindestens 760 × 480 px gross (`MainWindow.axaml`). Die Haupt-`Grid` hat `ColumnDefinitions="300,Auto,*"` ohne Grenzen, der `GridSplitter` lässt die Seitenleiste beliebig breit ziehen. Dadurch rutschen im Hauptbereich die Kopfzeilen-Buttons (Ping, Verwaltung, Trennen) aus dem Bild (zweiter Screenshot zu Package 68). Die Seiten (Einstellungen, Verwaltung) haben feste Breiten und brechen nicht um (Screenshots zur Einstellungsseite). Es gibt keine gemeinsame Regel für schmale Breiten. Die Tests rendern das Fenster headless (`UiSmokeTests`, `main.Show()` mit fester `Width`).
+
+### Acceptance Criteria
+
+- [ ] AC1: Das Fenster ist mindestens 360 × 480 px gross. Es gibt zwei Stufen, die als Klassen am Fenster hängen, damit jede Seite per Stil darauf reagieren kann:
+  - `compact`: Fensterbreite unter 700 px
+  - `narrow`: Hauptbereich schmaler als 560 px
+  Die Stufen wechseln sofort beim Ändern der Grösse.
+- [ ] AC2: Ab 700 px stehen Seitenleiste und Hauptbereich nebeneinander. Die Seitenleiste ist höchstens so breit, dass der Hauptbereich die Kopfzeile ohne Titel fasst: Voice-Icon, Ping, alle sichtbaren Buttons, Innenabstand. Das gilt beim Ziehen, beim Verkleinern und wenn Buttons erscheinen oder verschwinden. Reicht der Platz nicht, gibt die Seitenleiste bis 200 px nach.
+- [ ] AC3: Unter 700 px (`compact`) ist die Seitenleiste ausgeblendet, der Hauptbereich nutzt die ganze Breite.
+  - Ein Menü-Button oben links ("Channels anzeigen") blendet sie als Überlagerung von links ein, höchstens Fensterbreite minus 48 px, darunter abgedunkelt.
+  - Sie schliesst sich durch einen Klick daneben, durch Esc, beim Betreten eines Channels und beim Öffnen von Einstellungen oder Verwaltung.
+  - Wird das Fenster wieder breit, erscheint die Seitenleiste normal.
+- [ ] AC4: Die Kopfzeile wird nie abgeschnitten. Der Channel-Titel wird gekürzt oder verschwindet. Unter `narrow` zeigen "Verwaltung" und "Trennen" nur noch ihr Icon, mit dem Text als Tooltip und Namen für Screenreader, und die Ping-Anzeige nur noch das Icon mit dem Wert im Tooltip.
+- [ ] AC5: Ohne Verbindung (Startseite) gelten dieselben Regeln, damit die Breite beim Verbinden nicht springt.
+- [ ] AC6: Eine Test-Hilfe `LayoutAssert.FitsHorizontally(window)` prüft, dass kein sichtbarer Button, Regler, Eingabefeld, Checkbox oder Text ausserhalb des sichtbaren Bereichs seines Scroll-Containers bzw. des Fensters liegt. Sie wird in den Packages 77 bis 79 für alle Seiten genutzt.
+
+### Tests (TDD)
+
+Bug-Reproduktion zuerst:
+
+1. `ResponsiveTests > "SidebarDraggedWide_HeaderButtonsStayVisible"` (AC2, AC4)
+   - Gegeben: Fenster 776 px wie im Screenshot, verbunden, Seitenleiste auf 600 px gesetzt (wie ein Zug am Splitter)
+   - Erwartet (vorher rot): Seitenleiste auf die Obergrenze zurückgenommen, Ping, Verwaltung und Trennen vollständig im Fenster
+2. `ResponsiveTests > "Classes_FollowWidth"` (AC1): 1100 px keine Klasse, 650 px `compact`, 360 px `compact` und `narrow`, zurück auf 1100 px beide weg
+3. `ResponsiveTests > "Compact_SidebarAsOverlay_OpenClose"` (AC3)
+   - Gegeben: 360 px, verbunden
+   - Erwartet: Seitenleiste unsichtbar, Menü-Button sichtbar. Klick öffnet sie als Überlagerung, höchstens 312 px breit. Doppelklick auf Raid betritt den Channel und schliesst sie. Esc und Klick auf die Abdunklung schliessen sie ebenfalls.
+4. `ResponsiveTests > "Narrow_HeaderIconOnly_NothingClipped"` (AC4, AC6): 360 px, Admin und Nicht-Admin (mit "Admin-Token einlösen"), `LayoutAssert.FitsHorizontally`
+5. `ResponsiveTests > "WindowShrinks_SidebarGivesWay"` (AC2): Seitenleiste 350 px, Fenster von 1100 auf 760 px, Buttons sichtbar, Seitenleiste mindestens 200 px
+6. `ResponsiveTests > "StartScreen_SameRules"` (AC5)
+7. `LayoutAssertTests > "DetectsClippedButton"`: ein absichtlich zu breites Panel wird erkannt (die Hilfe selbst ist korrekt)
+8. `LocalizationTests` bleiben grün
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 7 und 1 (rot): `LayoutAssert` schreiben, Bug reproduzieren.
+2. `Responsive.Attach(window)`: bei `SizeChanged` die Klassen setzen und die Obergrenze der Spalte berechnen. Grün für Test 1, dann Tests 2 und 5.
+3. Test 3 (rot): Seitenleisten-Inhalt in ein eigenes `UserControl` ziehen, das je nach `compact` in Spalte 0 oder in einer Überlagerungs-Ebene (wie `OverlayHost`, aber links angedockt) steht. Menü-Button in Kopfzeile und Startseite.
+4. Test 4 (rot): Button-Texte per Stil `Window.narrow` ausblenden, Tooltips und `AutomationProperties.Name` setzen. Test 6.
+5. Manueller Check: echtes Fenster auf 360, 600, 776 und 1100 px ziehen.
+
+### Out of Scope
+
+- Die einzelnen Seiten (Packages 77 bis 79)
+- Touch-Gesten (Wischen zum Öffnen) und eine echte Handy-App
+- Speichern der Seitenleistenbreite
+
+---
+
+## Package 69: Servereinstellungen in der Verwaltung
+
+**Ziel:** Nutzerlimit, Log-Aufbewahrung, tägliche Log-Datei und automatischer Neustart lassen sich unter "Verwaltung -> Server" ändern und wirken sofort, Umgebungsvariablen gelten nur noch beim ersten Start.
+
+**Abhängigkeiten:** keine
+
+**Betroffene Dateien:**
+- `src/OVS.Server/Data/ServerData.cs` (ändern): `ServerSettings` um `MaxUsers`, `LogDays`, `LogRotateDaily`, `AutoRestart`, `AutoRestartTime`, `DataVersion` 3 mit Migration
+- `src/OVS.Server/ServerConfig.cs` (ändern): die Werte heissen jetzt Startwerte
+- `src/OVS.Server/ServerState.cs` (ändern): `Admit` liest das Limit aus den Einstellungen, Ereignis `SettingsChanged`
+- `src/OVS.Server/ServerHost.cs` (ändern): Wartezeit bis zum Neustart neu berechnen, wenn sich die Einstellung ändert
+- `src/OVS.Server/Logging/ServerLogs.cs` (ändern): Aufbewahrung und Tagesdatei zur Laufzeit ändern
+- `src/OVS.Server/Commands/AdminCommands.cs` (ändern): `OnUpdateServerSettings`
+- `src/OVS.Shared/Protocol/Messages.cs`, `ProtocolInfo.cs` (ändern): `UpdateServerSettings`, `ServerSettingsInfo` erweitert, Protokollversion 10
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `src/OVS.Client/Views/AdminView.axaml` (ändern): Felder im Server-Tab
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `README.md`, `docker-compose.yml` (ändern)
+- `tests/OVS.Tests/Server/ServerConfigTests.cs`, `DataStoreTests.cs`, `AdminCommandTests.cs`, `ServerHostTests.cs`, `ServerLogsTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs` (ändern)
+
+### Kontext
+
+`ServerConfig.Load` liest `OVS_MAX_USERS`, `OVS_LOG_DAYS`, `OVS_LOG_ROTATE_DAILY`, `OVS_AUTO_RESTART`, `OVS_AUTO_RESTART_TIME` (Umgebung vor `server-config.json` vor Standard) bei jedem Start neu. Diese Werte leben nur im unveränderlichen `ServerConfig`: `ServerState.Admit` prüft `config.MaxUsers`, `ServerHost.RunOnceAsync` baut `ServerLogs` mit `LogDays`/`LogRotateDaily` und plant den Neustart aus `AutoRestartAt`. Name und Passwort sind schon heute nur Startwerte: `ServerData.CreateDefault` übernimmt sie, danach gilt `server-data.json`. Zur Laufzeit änderbar sind über `UpdateServerSettings` nur Name, Willkommenstext und Passwort (Recht `ServerConfig`).
+
+### Acceptance Criteria
+
+- [ ] AC1: Im Server-Tab gibt es "Maximale Nutzer" (1 bis 100000), "Logs aufbewahren (Tage, 0 = unbegrenzt)" (0 bis 3650), "Jeden Tag eine neue Log-Datei", "Automatischer Neustart" mit Uhrzeit. Speichern schickt alle Werte mit Name, Willkommenstext und Passwort.
+- [ ] AC2: Der Server übernimmt die Werte, speichert sie in `server-data.json` und schickt sie an alle Clients mit dem Recht. Ungültige Werte werden mit `InvalidValue` abgelehnt, nichts wird teilweise übernommen.
+- [ ] AC3: Die Werte wirken ohne Neustart: das Limit beim nächsten Beitritt (niemand wird rausgeworfen, wenn es unter die aktuelle Zahl sinkt), die Aufbewahrung bei der nächsten Log-Bereinigung, die Tagesdatei ab der nächsten Datei, der Neustart-Zeitplan sofort (an, aus, neue Uhrzeit).
+- [ ] AC4: Beim ersten Start nach dem Update (Datenversion 2 -> 3) werden die aktuellen Werte aus Umgebung, `server-config.json` oder Standard einmal übernommen. Danach werden `OVS_MAX_USERS`, `OVS_LOG_DAYS`, `OVS_LOG_ROTATE_DAILY`, `OVS_AUTO_RESTART`, `OVS_AUTO_RESTART_TIME` und die gleichnamigen Werte in `server-config.json` ignoriert. Weicht ein gesetzter Wert vom gespeicherten ab, steht beim Start ein Hinweis im Log.
+- [ ] AC5: `OVS_PORT` und `OVS_DATA_DIR` bleiben Einstellungen der Umgebung (A85).
+- [ ] AC6: README und `docker-compose.yml` beschreiben die Variablen als Startwerte und verweisen auf die Verwaltung. Texte auf Deutsch und Englisch.
+
+### Tests (TDD)
+
+1. `DataStoreTests > "V2_Migrates_SettingsFromConfig"` (AC4)
+   - Gegeben: `server-data.json` der Version 2, Config mit MaxUsers 20, LogDays 7, AutoRestart 03:30
+   - Erwartet: Version 3, die Werte stehen in `Settings`. Zweiter Start mit MaxUsers 99 in der Config ändert nichts.
+2. `ServerConfigTests > "EnvDiffersFromStored_HintInLog"` (AC4)
+3. `AdminCommandTests > "UpdateSettings_Limits_ValidatedAndBroadcast"` (AC2)
+   - Gegeben: Admin schickt MaxUsers 0, dann LogDays 5000, dann gültige Werte
+   - Erwartet: zweimal `InvalidValue` ohne Änderung, dann `ServerSettingsChanged` mit den neuen Werten, Datei aktualisiert
+4. `AdminCommandTests > "MaxUsersLowered_NextJoinRejected_NobodyKicked"` (AC3)
+   - Gegeben: 3 Nutzer verbunden, Limit auf 2
+   - Erwartet: alle 3 bleiben, ein vierter bekommt `ServerFull`
+5. `ServerHostTests > "AutoRestartChanged_ScheduleFollows"` (AC3)
+   - Gegeben: `ManualTimeProvider`, Neustart aus, dann per Einstellung an für in 10 Minuten
+   - Erwartet: nach 10 Minuten Zeitvorschub startet ein neuer Lauf. Ausschalten davor verhindert ihn.
+6. `ServerLogsTests > "RetentionChangedAtRuntime_NextCleanupUsesIt"` (AC3)
+7. `AdminViewModelTests > "SaveServerSettings_SendsAllFields"` (AC1), bestehende `SaveServerSettings_PasswordSemantics` bleibt grün
+8. `UiSmokeTests`: neue Felder im Server-Tab, `LocalizationTests` (AC6)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot): Felder in `ServerSettings`, `Migrate()` auf Version 3 mit den Config-Werten, `CreateDefault` ebenso. Grün.
+2. Test 2: Vergleich und Hinweis beim Start in `ServerState`.
+3. Tests 3 und 4 (rot): Protokoll erweitern (Version 10), Validierung in `OnUpdateServerSettings`, `Admit` nutzt `data.Settings.MaxUsers`.
+4. Tests 5 und 6 (rot): `ServerState.SettingsChanged`, `ServerHost` wartet auf "Zeit erreicht oder Einstellung geändert" und rechnet neu. `ServerLogs` bekommt `Update(logDays, rotateDaily)`.
+5. Test 7, UI-Felder, Texte, README und compose.
+
+### Out of Scope
+
+- Port und Datenverzeichnis ändern (A85)
+- Einstellungen für einzelne Channels (gibt es schon)
+
+---
+
+## Package 70: Nutzerstatistiken auf dem Server
+
+**Ziel:** Der Server merkt sich pro Nutzer ersten und letzten Login, Anzahl Logins, Online-Zeit, letzte IP, frühere Nicknames, Sprechzeit und Anzahl Chatnachrichten und liefert sie mit der Nutzerliste aus.
+
+**Abhängigkeiten:** Package 69 (beide ändern das Datenformat, 69 kommt zuerst)
+
+**Betroffene Dateien:**
+- `src/OVS.Server/Data/ServerData.cs` (ändern): `UserRecord`
+- `src/OVS.Server/ServerState.cs` (ändern): `Admit`, `RemoveLocked`, Herunterfahren
+- `src/OVS.Server/Session.cs` (ändern): Verbindungsbeginn, gezählte Sprechzeit und Nachrichten der laufenden Sitzung
+- `src/OVS.Server/Voice/UdpVoiceServer.cs` (ändern): Sprechzeit zählen
+- `src/OVS.Server/Commands/ChatCommands.cs` (ändern): Nachrichten zählen
+- `src/OVS.Server/Commands/AdminCommands.cs` (ändern): `OnListUsers`
+- `src/OVS.Shared/Protocol/Messages.cs` (ändern): `KnownUserInfo` erweitert
+- `tests/OVS.Tests/Server/UserStatsTests.cs` (neu), `DataStoreTests.cs` (ändern)
+
+### Kontext
+
+`UserRecord` hat heute nur `Fingerprint`, `LastNickname`, `GroupIds` und `FirstSeen` (gesetzt beim ersten `Admit`). Die IP steht nur in der flüchtigen `Session`. Das Log schreibt Verbinden und Trennen mit IP, gespeichert wird davon nichts. `ListUsers` (Recht `GroupsAssign`) liefert `KnownUserInfo(Fingerprint, LastNickname, GroupIds)`. Der Server speichert nach jedem Login synchron unter dem globalen Lock. Sprachpakete laufen durch `UdpVoiceServer.HandleAsync` (Fall `PacketType.Voice`, ein Paket = 20 ms), Chatnachrichten durch `ChatCommands`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Beim Login werden letzter Login (Zeit), Anzahl Logins (+1) und letzte IP gespeichert. Ein neuer Nickname schiebt den bisherigen in "frühere Nicknames" (höchstens 5, neueste zuerst, ohne Doppelte, ohne den aktuellen).
+- [ ] AC2: Beim Trennen (auch Kick, Ban, Zeitüberschreitung, Ersetzen) und beim Herunterfahren werden Online-Zeit, Sprechzeit und Chatnachrichten der Sitzung aufaddiert und gespeichert. Zwischen Login und Trennen wird dafür nicht gespeichert.
+- [ ] AC3: Sprechzeit zählt nur weitergeleitete Sprachpakete (20 ms je Paket), Sprache in einen stummen Channel zählt nicht. Chatnachrichten zählen alle gesendeten Nachrichten (Server, Channel, privat).
+- [ ] AC4: `KnownUserInfo` enthält alle Werte, dazu ob der Nutzer online ist und seine Session-Id. Für Online-Nutzer enthalten Online-Zeit, Sprechzeit und Nachrichten die laufende Sitzung schon mit.
+- [ ] AC5: Bestehende Nutzer behalten `FirstSeen`. Die neuen Werte starten leer bzw. bei 0 und werden in der Oberfläche als "unbekannt" gezeigt (Package 71).
+
+### Tests (TDD)
+
+1. `UserStatsTests > "Login_SetsLastLoginCountIp"` (AC1): zweimal verbinden mit `ManualTimeProvider`, Werte in `ServerData` prüfen
+2. `UserStatsTests > "NicknameChange_KeepsFiveNewestDistinct"` (AC1)
+3. `UserStatsTests > "Disconnect_AddsOnlineTimeSpeechChat"` (AC2, AC3)
+   - Gegeben: Login, 90 s Zeitvorschub, 50 Sprachpakete über UDP, 3 Chatnachrichten, Trennen
+   - Erwartet: Online-Zeit 90 s, Sprechzeit 1 s, Nachrichten 3, gespeichert
+4. `UserStatsTests > "MutedChannel_SpeechNotCounted"` (AC3)
+5. `UserStatsTests > "ListUsers_IncludesLiveSession"` (AC4)
+6. `UserStatsTests > "Shutdown_PersistsOpenSessions"` (AC2)
+7. `DataStoreTests > "OldUsers_KeepFirstSeen_NewFieldsEmpty"` (AC5)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 und 2 (rot), Felder in `UserRecord`, Pflege in `Admit`.
+2. Tests 3, 4 und 6 (rot), Zähler in `Session`, Aufaddieren in `RemoveLocked` und beim Herunterfahren.
+3. Tests 5 und 7 (rot), `KnownUserInfo` erweitern.
+
+### Out of Scope
+
+- Anzeige in der Verwaltung (Package 71)
+- Verlauf einzelner Sitzungen oder Statistiken pro Channel
+
+---
+
+## Package 71: Nutzerübersicht mit Details, Suche und Filter
+
+**Ziel:** Unter "Verwaltung -> Nutzer" sieht man zu jedem bekannten Nutzer alle gespeicherten Daten und kann die Liste durchsuchen und filtern.
+
+**Abhängigkeiten:** Package 70, Package 76
+
+**Betroffene Dateien:**
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (ändern): `KnownUserViewModel`, Suche, Filter, Sortierung
+- `src/OVS.Client/Views/AdminView.axaml` (ändern): Tab "Nutzer"
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `tests/OVS.Tests/Client/AdminViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+Der Tab "Nutzer" (`ShowUsers` = Recht `GroupsAssign`) zeigt je Nutzer eine Karte mit Avatar, Nickname, gekürztem Fingerabdruck und Gruppen-Checkboxen (`GroupToggle`). Es gibt keine Suche, keinen Filter, keinen Online-Status. Die Liste kommt aus `UserList`, sortiert nach `LastNickname`. Ab Package 76 hängt der Tab am Recht `UsersView`, die Checkboxen an `GroupsAssign`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Jede Karte zeigt Nickname, Online-Punkt, Gruppen, erster und letzter Login (Datum und Uhrzeit, lokal), Anzahl Logins, Online-Zeit, Sprechzeit, Chatnachrichten, letzte IP, frühere Nicknames, gekürzten Fingerabdruck (voll im Tooltip, kopierbar) und einen aktiven Ban mit Grund und Ablauf. Leere Werte heissen "unbekannt".
+- [ ] AC2: Ein Suchfeld filtert sofort nach Nickname, früheren Nicknames, Fingerabdruck und IP, ohne Gross- und Kleinschreibung.
+- [ ] AC3: Filter: Status (alle, online, offline, gebannt) und Gruppe (alle oder eine Gruppe). Sortierung: Name, letzter Login (neueste zuerst), Online-Zeit. Die Trefferzahl steht über der Liste ("12 von 40 Nutzern").
+- [ ] AC4: Suche, Filter und Details sind für jeden mit `UsersView` nutzbar (Package 76). Ohne `GroupsAssign` sind die Gruppen-Checkboxen sichtbar, aber gesperrt.
+- [ ] AC5: Die Liste aktualisiert sich, wenn Nutzer kommen und gehen (Online-Status), ohne dass Suche und Filter zurückgesetzt werden.
+- [ ] AC6: Texte auf Deutsch und Englisch.
+
+### Tests (TDD)
+
+1. `AdminViewModelTests > "UserDetails_FromKnownUserInfo"` (AC1): alle Felder und "unbekannt" für leere Werte
+2. `AdminViewModelTests > "Search_MatchesNicknamePreviousFingerprintIp"` (AC2)
+3. `AdminViewModelTests > "Filter_StatusGroup_Sort_Count"` (AC3)
+4. `AdminViewModelTests > "UsersViewOnly_SearchWorks_TogglesLocked"` (AC4)
+5. entfällt, die Rechteprüfung von `ListUsers` testet Package 76
+6. `AdminViewModelTests > "UserJoins_ListRefreshed_FilterKept"` (AC5)
+7. `UiSmokeTests`: Nutzer-Tab mit Suchfeld und Filtern rendert ohne Binding-Fehler, `LocalizationTests` (AC6)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 bis 3 (rot), `KnownUserViewModel` erweitern, `SearchText`, `StatusFilter`, `GroupFilter`, `SortOrder`, `VisibleUsers`.
+2. Test 4.
+3. Test 6: bei `UserJoined`/`UserLeft` die Liste neu anfordern (höchstens einmal pro Sekunde).
+4. XAML: Suchfeld und zwei `ComboBox`en über der Liste, Karte mit zweispaltigem Detailbereich. Test 7.
+
+### Out of Scope
+
+- Bannen, Entbannen, Löschen (Package 72)
+- Export der Liste
+
+---
+
+## Package 72: Nutzer offline bannen, entbannen und löschen
+
+**Ziel:** In der Nutzerübersicht lassen sich Nutzer auch offline bannen und entbannen sowie nach einer Rückfrage mit allen Daten löschen.
+
+**Abhängigkeiten:** Package 71, Package 76
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs`, `Codes.cs` (ändern): `BanUser`, `DeleteUser`, Code `UserDeleted`
+- `src/OVS.Server/Commands/ModerationCommands.cs` (ändern): `OnBanUser`, `OnDeleteUser`
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `src/OVS.Client/Views/AdminView.axaml` (ändern): Buttons je Karte
+- `src/OVS.Client/Views/SimpleDialogs.cs`, `src/OVS.Client/ViewModels/ServerViewModel.cs`, `src/OVS.Client/App.axaml.cs` (ändern): Lösch-Dialog im `Dialogs`-Record
+- `src/OVS.Client/ErrorTexts.cs`, `Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `tests/OVS.Tests/Server/ModerationTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+`Ban(SessionId, Reason, DurationMinutes, IncludeIp)` wirkt nur auf verbundene Nutzer (`FindTarget` sucht in `sessions`). `BanRecord` speichert Fingerabdruck und optional IP, `Admit` prüft beides. `Unban(BanId)` gibt es, im Tab "Bans". Nutzerdaten löschen gibt es nicht. Der Ban-Dialog (`SimpleDialogs.Ban`) liefert Grund, Dauer und "IP mitbannen". `Dialogs.Confirm` zeigt einen roten Bestätigungsdialog.
+
+### Acceptance Criteria
+
+- [ ] AC1: Jede Karte hat mit Recht `UserBan` "Bannen" (öffnet den vorhandenen Ban-Dialog) bzw. bei aktivem Ban "Entbannen". Das wirkt auch für Offline-Nutzer. "IP mitbannen" nutzt bei Offline-Nutzern die gespeicherte letzte IP (ohne IP ist die Option gesperrt).
+- [ ] AC2: Bannen ist nur bei Nutzern erlaubt, deren Rechte (aus ihren Gruppen) eine Teilmenge der eigenen sind, sonst `PermissionDenied`. Man kann sich nicht selbst bannen. Ist der Nutzer online, wird er wie bisher mit Grund getrennt.
+- [ ] AC3: "Nutzerdaten löschen" öffnet einen eigenen roten Dialog: "Alle Daten von {Name} löschen?" mit Aufzählung (Nutzerdatensatz, Gruppen, Statistiken, Bans) und dem Hinweis, dass der Nutzer danach als neu gilt. Erst "Endgültig löschen" schickt die Anfrage.
+- [ ] AC4: Der Server entfernt den `UserRecord` und alle `BanRecord`s mit diesem Fingerabdruck und speichert. Ist der Nutzer online, wird er mit Code `UserDeleted` getrennt ("Deine Nutzerdaten wurden auf diesem Server gelöscht."). Verbindet er sich neu, ist er ein neuer Nutzer (Gast, neues `FirstSeen`).
+- [ ] AC5: Löschen braucht `UserDelete` (Package 76) und dieselbe Rechte-Regel wie Bannen. Sich selbst und den letzten Admin kann man nicht löschen (`LastAdmin`). Das Löschen wird im Server-Log vermerkt. Die Logdateien bleiben (A88).
+- [ ] AC6: Nach jeder Aktion aktualisieren sich Nutzer- und Bans-Tab. Texte auf Deutsch und Englisch, `ErrorTexts` kennt `UserDeleted`.
+
+### Tests (TDD)
+
+1. `ModerationTests > "BanUser_Offline_BlocksNextLogin"` (AC1): Gast verbindet, trennt, Moderator bannt per Fingerabdruck, Gast bekommt `Banned`
+2. `ModerationTests > "BanUser_OfflineWithIp_UsesLastIp"` (AC1)
+3. `ModerationTests > "BanUser_StrongerOrSelf_Denied"` (AC2)
+4. `ModerationTests > "BanUser_Online_Disconnected"` (AC2)
+5. `ModerationTests > "DeleteUser_RemovesRecordAndBans_RejoinsAsNew"` (AC4)
+   - Gegeben: Nutzer in Gruppe Moderator mit Statistiken und einem abgelaufenen und einem aktiven Ban
+   - Erwartet: kein `UserRecord`, keine Bans mit dem Fingerabdruck, erneuter Login als Gast mit neuem `FirstSeen`
+6. `ModerationTests > "DeleteUser_Online_KickedWithMessage"` (AC4)
+7. `ModerationTests > "DeleteUser_SelfLastAdminStronger_Denied"` (AC5)
+8. `AdminViewModelTests > "DeleteUser_AsksFirst_SendsOnlyAfterConfirm"` (AC3)
+9. `AdminViewModelTests > "BanUnbanDeleteButtons_ByStateAndRight"` (AC1, AC5, AC6): Bannen und Entbannen nur mit `UserBan`, Löschen nur mit `UserDelete`
+10. `UiSmokeTests`: Lösch-Dialog rendert, `LocalizationTests`, `SettingsTests > "ErrorTexts_EveryCodeHasText"` (AC6)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 bis 4 (rot): `BanUser(Fingerprint, Reason, DurationMinutes, IncludeIp)`, Rechte über die Gruppen des `UserRecord`, bei Online-Nutzern die bestehende Trennlogik.
+2. Tests 5 bis 7 (rot): `DeleteUser(Fingerprint)`, `Codes.UserDeleted`.
+3. Tests 8 und 9 (rot): Buttons und `Dialogs.ConfirmDeleteUser`.
+4. Test 10, Texte.
+
+### Out of Scope
+
+- Logzeilen über den Nutzer entfernen (A88)
+- Mehrere Nutzer auf einmal bearbeiten
+
+---
+
+## Package 73: Töne bei Gruppenänderung
+
+**Ziel:** Wer einem Nutzer eine Gruppe gibt oder nimmt, und der betroffene Nutzer, falls online, hören je einen eigenen, einzeln einstellbaren Ton, standardmässig denselben.
+
+**Abhängigkeiten:** keine (nutzt die Nutzerliste, wie sie heute schon ist)
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Audio/Sounds.cs` (ändern): `SoundEvent.GroupChanged`, `SoundEvent.GroupChangedByMe`, gemeinsamer Standardton
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (ändern): eigener `UserUpdated` mit anderen `GroupIds`
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (ändern): Ton, wenn die eigene Zuweisung in der nächsten `UserList` angekommen ist
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): `Sound_GroupChanged`, `Sound_GroupChangedByMe`
+- `README.md` (ändern)
+- `tests/OVS.Tests/Client/SoundTests.cs`, `ServerViewModelTests.cs`, `AdminViewModelTests.cs`, `SettingsTests.cs` (ändern)
+
+### Kontext
+
+Sounds sind die Werte von `SoundEvent` (Reihenfolge = Reihenfolge in den Einstellungen). Standardtöne kommen aus `SoundSynth.Patterns`, Zeilen der Einstellungen entstehen automatisch aus dem Enum, der Name aus `Sound_<Event>`. Das Paar `LinkVoice`/`OwnLinkVoice` (Packages 57 und 60) ist genau dieses Muster: zwei Einträge, gemeinsamer Ton, die Liste `shared` in `SoundTests.Defaults_EveryEvent_ShortAudibleDistinct`. Gruppenänderungen schickt der Server als `UserUpdated` an alle, aber nur für Online-Nutzer. Der Handelnde bekommt keine Bestätigung. `AdminViewModel` fordert nach `AssignGroup`/`UnassignGroup` die `UserList` neu an.
+
+### Acceptance Criteria
+
+- [ ] AC1: Zwei neue Töne, "Eigene Gruppe geändert" und "Gruppe vergeben oder entzogen", mit eigener Zeile (Datei, Lautstärke, Stumm), standardmässig derselbe kurze Ton, der sich von den anderen unterscheidet.
+- [ ] AC2: Der betroffene Nutzer hört "Eigene Gruppe geändert", wenn sich die Gruppen im eigenen `UserUpdated` ändern (neu dazu oder entfernt), einmal je Änderung, nicht beim Verbinden.
+- [ ] AC3: Der Handelnde hört "Gruppe vergeben oder entzogen", sobald die nächste Nutzerliste die gewünschte Änderung zeigt, auch bei Offline-Nutzern. Kein Ton bei einem Fehler (z. B. `LastAdmin`).
+- [ ] AC4: Ändert man die eigene Gruppe, hört man nur einen Ton, "Gruppe vergeben oder entzogen".
+- [ ] AC5: Wie alle Töne: aus bei "Alle Sounds aus", bei "Ton aus" nicht zu hören.
+
+### Tests (TDD)
+
+1. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` erweitert (AC1): das neue Paar in `shared`
+2. `SettingsTests > "Sounds_GroupRows_Independent"` (AC1)
+3. `ServerViewModelTests > "OwnGroupsChanged_SoundOnce_NotOnConnect"` (AC2)
+4. `AdminViewModelTests > "AssignGroup_SoundWhenListConfirms_NotOnError"` (AC3)
+5. `ServerViewModelTests > "OwnGroupChangedByMe_OnlyOneSound"` (AC4)
+6. `SoundTests > "Deafened_OnlyOwnMicAndSoundTones_AllOffNothing"` bleibt grün (AC5)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 und 2 (rot), Enum, Ton, Texte.
+2. Tests 3 und 5 (rot), in `ServerViewModel.SoundFor` die Gruppen des eigenen Nutzers vergleichen, unterdrückt, solange eine eigene Zuweisung an sich selbst offen ist.
+3. Test 4 (rot), offene Zuweisung im `AdminViewModel` merken und bei passender `UserList` den Ton auslösen, bei `Error` mit derselben RequestId verwerfen.
+4. README.
+
+### Out of Scope
+
+- Töne für andere Admin-Aktionen (Kick, Ban)
+
+---
+
+## Package 74: Backups auf dem Server
+
+**Ziel:** Unter "Verwaltung -> Server" lassen sich Backups auf dem Server anlegen, auflisten, löschen und wiederherstellen.
+
+**Abhängigkeiten:** Package 69 (Neustart-Signal im `ServerHost`)
+
+**Betroffene Dateien:**
+- `src/OVS.Server/Data/BackupStore.cs` (neu): Archiv anlegen, prüfen, auflisten, löschen, entpacken
+- `src/OVS.Server/Commands/BackupCommands.cs` (neu): Anfragen
+- `src/OVS.Server/ServerState.cs`, `src/OVS.Server/ServerHost.cs` (ändern): Wiederherstellen trennt alle und startet den Lauf neu
+- `src/OVS.Shared/Protocol/Messages.cs`, `Codes.cs` (ändern): `CreateBackup`, `ListBackups`, `BackupList`, `DeleteBackup`, `RestoreBackup`, Codes `Restoring`, `InvalidBackup`
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `src/OVS.Client/Views/AdminView.axaml` (ändern): Bereich "Backups" im Server-Tab
+- `src/OVS.Client/ErrorTexts.cs`, `Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `README.md` (ändern): Docker-Befehle bleiben als Alternative
+- `tests/OVS.Tests/Server/BackupTests.cs` (neu), `tests/OVS.Tests/Client/AdminViewModelTests.cs` (ändern)
+
+### Kontext
+
+Backups gehen heute nur per `docker run ... tar` über das Volume (README). Im Datenverzeichnis liegen `server-data.json` (atomar geschrieben von `DataStore`), `cert.pfx`, `server-icon.png`, optional `server-config.json` und `logs/`. Es gibt keinen Datei-Lock, nur den globalen Lock in `ServerState`. `ServerHost.RunAsync` kann einen Lauf beenden und im selben Prozess neu starten (automatischer Neustart). Dabei werden Config, Daten und Zertifikat neu gelesen.
+
+### Acceptance Criteria
+
+- [ ] AC1: "Backup anlegen" schreibt `/data/backups/<JJJJ-MM-TT_hh-mm-ss>.ovsbackup`, ein Zip mit `manifest.json` (Formatversion, Datenversion, Serverversion, Zeit), `server-data.json`, `cert.pfx` und, falls vorhanden, `server-icon.png`. Logs kommen nicht mit (A90). Das Archiv entsteht aus einem konsistenten Stand unter dem Lock.
+- [ ] AC2: Die Liste zeigt je Backup Datum, Grösse und Serverversion, neueste zuerst. Einzelne Backups lassen sich nach Rückfrage löschen.
+- [ ] AC3: "Wiederherstellen" fragt rot nach ("Alle werden getrennt, der aktuelle Stand wird ersetzt"). Der Server prüft das Archiv (Manifest, lesbare Daten, Datenversion nicht neuer als die eigene), legt zuerst ein Sicherheits-Backup `vor-wiederherstellung_<Zeit>.ovsbackup` an, trennt alle mit Code `Restoring` ("Der Server wird aus einem Backup wiederhergestellt ..."), ersetzt die Dateien und startet den Lauf neu. Ein ungültiges Archiv ändert nichts (`InvalidBackup`).
+- [ ] AC4: Ältere Archive (niedrigere Datenversion) werden beim Neustart wie gewohnt migriert. Der Zertifikats-Fingerabdruck ist nach dem Wiederherstellen der aus dem Backup.
+- [ ] AC5: Alle Aktionen brauchen das Recht `ServerConfig` und stehen im Server-Log. Dateinamen aus Anfragen werden gegen die Liste geprüft, Pfade ausserhalb von `backups/` sind unmöglich.
+- [ ] AC6: Texte auf Deutsch und Englisch, README beschreibt beide Wege.
+
+### Tests (TDD)
+
+1. `BackupTests > "Create_ContainsDataCertIcon_NoLogs"` (AC1)
+2. `BackupTests > "List_NewestFirst_Delete"` (AC2)
+3. `BackupTests > "Restore_ReplacesState_SafetyBackup_RestartsRun"` (AC3, AC4)
+   - Gegeben: Backup mit Channel "Alt", danach Channel "Neu" angelegt, zwei Clients verbunden
+   - Erwartet: beide getrennt mit `Restoring`, neuer Lauf hat "Alt" statt "Neu", Sicherheits-Backup enthält "Neu", Fingerabdruck wie im Backup
+4. `BackupTests > "Restore_Invalid_NothingChanged"` (AC3): kaputtes Zip, fehlendes Manifest, zu neue Datenversion
+5. `BackupTests > "Restore_OlderDataVersion_Migrated"` (AC4)
+6. `BackupTests > "PathTraversal_AndMissingRight_Rejected"` (AC5)
+7. `AdminViewModelTests > "Backups_ListCreateDeleteRestore_AskFirst"` (AC2, AC3)
+8. `UiSmokeTests`, `LocalizationTests`, `ErrorTexts_EveryCodeHasText` (AC6)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1, 2, 4 und 6 (rot): `BackupStore` mit `System.IO.Compression.ZipArchive`, Anfragen und Rechte.
+2. Tests 3 und 5 (rot): `ServerState.RequestRestore(file)`: Prüfen, Sicherheits-Backup, alle trennen, Signal an `ServerHost`, der den Lauf beendet, die Dateien ersetzt und neu startet.
+3. Test 7, UI-Bereich "Backups" mit Liste und Buttons.
+4. Test 8, Texte, README.
+
+### Out of Scope
+
+- Zeitgesteuerte automatische Backups und deren Aufbewahrung
+- Download und Upload (Package 75)
+
+---
+
+## Package 75: Backup herunterladen und hochladen
+
+**Ziel:** Ein Admin kann ein Backup vom Server auf seinen PC laden und ein Backup von seinem PC hochladen und wiederherstellen.
+
+**Abhängigkeiten:** Package 74
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Protocol/Messages.cs` (ändern): `DownloadBackup`, `BackupChunk`, `UploadBackupChunk`, `BackupUploaded`
+- `src/OVS.Server/Commands/BackupCommands.cs` (ändern)
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `src/OVS.Client/Views/AdminView.axaml`, `AdminView.axaml.cs` (ändern): Speichern- und Öffnen-Dialog, Fortschritt
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern)
+- `tests/OVS.Tests/Server/BackupTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs` (ändern)
+
+### Kontext
+
+Steuernachrichten sind höchstens 1 MiB gross (`FrameReader.MaxFrameSize`). Base64 erlaubt also etwa 750 KB Nutzdaten je Nachricht. Das Server-Logo (bis 512 KB) geht heute in einer Nachricht. Ein Backup ist meist klein (Daten und Zertifikat), mit Logo unter 1 MB, kann aber bei vielen Nutzern wachsen. Die Ausgangs-Queue einer Session fasst 1024 Nachrichten. Datei-Dialoge nutzt der Client schon für Logo und eigene Töne (`StorageProvider`).
+
+### Acceptance Criteria
+
+- [ ] AC1: Bei jedem Backup in der Liste gibt es "Herunterladen". Der Client fragt nach dem Speicherort (Vorschlag: Dateiname vom Server) und speichert die Datei. Der Inhalt ist bytegleich zum Archiv auf dem Server.
+- [ ] AC2: "Backup hochladen ..." wählt eine `.ovsbackup`-Datei. Sie wird hochgeladen, vom Server wie in Package 74 geprüft und unter `backups/` abgelegt, danach erscheint sie in der Liste und kann wiederhergestellt werden. Auf Wunsch direkt mit "Hochladen und wiederherstellen" (gleiche Rückfrage wie in 74).
+- [ ] AC3: Die Übertragung läuft in Stücken von 512 KB (Base64), mit Fortschritt in Prozent. Dateien über 50 MB lehnt der Server ab. Ein abgebrochener Upload hinterlässt keine Datei.
+- [ ] AC4: Während der Übertragung bleiben Sprache und Chat nutzbar. Der Download schickt die Stücke nacheinander (das nächste erst auf Anfrage des Clients), damit die Ausgangs-Queue nicht überläuft.
+- [ ] AC5: Recht `ServerConfig`. Texte auf Deutsch und Englisch.
+
+### Tests (TDD)
+
+1. `BackupTests > "Download_ChunkedByteIdentical"` (AC1, AC3, AC4): Backup mit 1,5 MB Logo-Platzhalter, Stücke zusammensetzen, Hash vergleichen
+2. `BackupTests > "Upload_ValidatedStored_Listed"` (AC2)
+3. `BackupTests > "Upload_TooLargeOrAborted_NoFileLeft"` (AC3)
+4. `BackupTests > "Upload_InvalidArchive_Rejected"` (AC2)
+5. `AdminViewModelTests > "Download_SavesToChosenPath_Progress"` (AC1, AC3)
+6. `AdminViewModelTests > "UploadAndRestore_AsksFirst"` (AC2)
+7. `LocalizationTests` (AC5)
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 bis 4 (rot): Nachrichten mit Übertragungs-Id, Offset und Ende, Zwischendatei `backups/.upload-<id>` bis zur Prüfung.
+2. Tests 5 und 6 (rot): Client-Seite mit Datei-Dialogen und Fortschritt.
+3. Test 7, Texte.
+
+### Out of Scope
+
+- Übertragung über HTTP oder einen zweiten Port
+- Backups zwischen Servern abgleichen
+
+---
+
+## Package 76: Einzelne Rechte für die Verwaltung
+
+**Ziel:** Nutzerübersicht, Bans-Übersicht, Gruppenübersicht, Gruppen anlegen, Gruppen löschen und Nutzer löschen haben je ein eigenes Recht, und standardmässig sieht nur die Gruppe Admin die Nutzerübersicht.
+
+**Abhängigkeiten:** keine (muss vor Package 71 und 72 fertig sein)
+
+**Betroffene Dateien:**
+- `src/OVS.Shared/Permissions/Permission.cs` (ändern): `UsersView`, `BansView`, `GroupsView`, `GroupsCreate`, `GroupsDelete`, `UserDelete`, `All` neu berechnet
+- `src/OVS.Server/Permissions/PermissionRules.cs` (ändern): `ModeratorPermissions`
+- `src/OVS.Server/Data/ServerData.cs` (ändern): Migration der gespeicherten Gruppen (nächste Datenversion)
+- `src/OVS.Server/Commands/AdminCommands.cs`, `ModerationCommands.cs` (ändern): geprüfte Rechte je Anfrage
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (ändern): Protokollversion erhöhen, falls nicht schon in Package 69 geschehen
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `ServerViewModel.cs` (ändern): Sichtbarkeit der Tabs und Buttons, `CanAdminister`
+- `src/OVS.Client/Views/AdminView.axaml` (ändern): Buttons im Gruppen-Tab einzeln gesperrt
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): `Perm_*`
+- `README.md` (ändern): Rechte-Tabelle
+- `tests/OVS.Tests/Server/PermissionRulesTests.cs`, `AdminCommandTests.cs`, `ModerationTests.cs`, `DataStoreTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs` (ändern)
+
+### Kontext
+
+`Permission` ist ein `[Flags]`-Enum mit 17 Bits (bis `ChannelJoinFull = 1 << 16`, `All = (1 << 17) - 1`). Für die Verwaltung gibt es heute:
+- `UserKick` (kicken)
+- `UserBan` (bannen und entbannen; macht ausserdem den Tab "Bans" sichtbar und erlaubt `ListBans`)
+- `GroupsAssign` (Gruppen zuweisen; macht ausserdem den Tab "Nutzer" sichtbar und erlaubt `ListUsers`)
+- `GroupsManage` (Gruppen anlegen, bearbeiten, sortieren, löschen; macht ausserdem den Tab "Gruppen" sichtbar)
+
+Sehen und Handeln hängen also am selben Recht. Die Standardgruppe Moderator hat `UserKick` und `UserBan`, aber kein `GroupsAssign`. Die Gruppe Admin bekommt immer `Permission.All` (`PermissionRules.Effective`). Gruppen werden mit ihren Rechten als Text-Enum in `server-data.json` gespeichert (`ProtocolJson.Options`). Die Tab-Sichtbarkeit steht in `AdminViewModel` (`ShowGroups`, `ShowUsers`, `ShowBans`), der Button "Verwaltung" in `ServerViewModel.CanAdminister`. Die Rechte-Checkboxen im Gruppen-Editor entstehen aus dem Enum, ihre Namen aus `Perm_<Name>`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Neue Rechte, im Gruppen-Editor einzeln wählbar:
+  - "Nutzerübersicht sehen" (`UsersView`)
+  - "Bans sehen" (`BansView`)
+  - "Gruppen sehen" (`GroupsView`)
+  - "Gruppen anlegen" (`GroupsCreate`)
+  - "Gruppen löschen" (`GroupsDelete`)
+  - "Nutzer löschen" (`UserDelete`)
+  Die bestehenden Rechte heissen im Editor "Nutzer kicken" (`UserKick`), "Nutzer bannen und entbannen" (`UserBan`), "Gruppen zuweisen" (`GroupsAssign`) und "Gruppen bearbeiten" (`GroupsManage`: Name, Rechte, Reihenfolge).
+- [ ] AC2: Sichtbarkeit: Tab "Nutzer" nur mit `UsersView`, Tab "Bans" nur mit `BansView`, Tab "Gruppen" nur mit `GroupsView`. Der Button "Verwaltung" erscheint, sobald irgendein Tab sichtbar wäre.
+- [ ] AC3: Der Server prüft je Anfrage genau ein Recht:
+  - `ListUsers`: `UsersView`
+  - `ListBans`: `BansView`
+  - `Ban`, `BanUser`, `Unban`: `UserBan`
+  - `Kick`: `UserKick`
+  - `AssignGroup`, `UnassignGroup`: `GroupsAssign`
+  - `CreateGroup`: `GroupsCreate`
+  - `UpdateGroup`, `ReorderGroups`: `GroupsManage`
+  - `DeleteGroup`: `GroupsDelete`
+  - `DeleteUser`: `UserDelete`
+  Fehlt es, kommt `PermissionDenied`. Die Regeln gegen Rechteausweitung (nur Teilmengen der eigenen Rechte vergeben, nur schwächere Nutzer bearbeiten) gelten weiter.
+- [ ] AC4: In den Tabs sind Aktionen ohne das passende Recht gesperrt, aber die Übersicht bleibt lesbar:
+  - "Neue Gruppe" nur mit `GroupsCreate`
+  - "Speichern" und Sortieren nur mit `GroupsManage`
+  - "Löschen" nur mit `GroupsDelete`
+  - Gruppen-Checkboxen bei Nutzern nur mit `GroupsAssign`
+  - "Entbannen" nur mit `UserBan`
+- [ ] AC5: Standard auf neuen Servern: Admin hat alles (wie bisher über `All`), Moderator bekommt zusätzlich `BansView`, aber nicht `UsersView`. Die Nutzerübersicht sieht also standardmässig nur Admin. Gast bekommt nichts Neues.
+- [ ] AC6: Bestehende Server verlieren beim Update keine Möglichkeit. Jede gespeicherte Gruppe bekommt einmalig:
+  - mit `GroupsManage`: `GroupsView`, `GroupsCreate`, `GroupsDelete`
+  - mit `GroupsAssign`: `UsersView`
+  - mit `UserBan`: `BansView`
+  `UserDelete` bekommt nur Admin (über `All`). Eine Gruppe, die als Rechte-Text "All" gespeichert ist, hat danach auch alle neuen Rechte.
+- [ ] AC7: Texte auf Deutsch und Englisch, README-Rechtetabelle aktualisiert.
+
+### Tests (TDD)
+
+1. `PermissionRulesTests > "DefaultGroups_OnlyAdminSeesUsers_ModeratorSeesBans"` (AC5)
+2. `DataStoreTests > "Migration_GrantsViewRightsFromOldRights"` (AC6)
+   - Gegeben: gespeicherte Gruppen der alten Version mit `GroupsManage`, mit `GroupsAssign`, mit `UserBan` und eine ohne alles davon
+   - Erwartet: genau die Zusatzrechte aus AC6, die letzte Gruppe unverändert, `UserDelete` bei keiner
+3. `AdminCommandTests > "EachAdminRequest_RequiresItsOwnRight"` (AC3, Theory über alle Anfragen aus AC3)
+   - Gegeben: Nutzer in einer Gruppe mit allen Rechten ausser dem geprüften
+   - Erwartet: `PermissionDenied`. Mit dem Recht: kein Rechtefehler
+4. `AdminCommandTests > "GroupsCreateOnly_CannotEditOrDelete"` (AC3)
+5. `AdminViewModelTests > "Tabs_VisibleByPermission"` erweitert (AC2)
+   - Gegeben: je nur `UsersView`, `BansView`, `GroupsView`, dann `GroupsAssign` allein
+   - Erwartet: jeweils genau der passende Tab. Mit `GroupsAssign` allein keiner, und der Verwaltungs-Button ist ausgeblendet.
+6. `AdminViewModelTests > "GroupButtons_ByRight"` (AC4): Neu, Speichern, Sortieren, Löschen, Nutzer-Checkboxen, Entbannen einzeln gesperrt
+7. `AdminViewModelTests > "GroupEditor_ListsNewRights"`, `LocalizationTests` (AC1, AC7): Checkbox-Namen aus `Perm_*` in beiden Sprachen
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 und 2 (rot):
+   - Bits 17 bis 22 anlegen, `All = (1 << 23) - 1`.
+   - `ModeratorPermissions` erweitern.
+   - Migration in `ServerData.Migrate()` (nächste freie Datenversion nach Package 69 und 70).
+2. Tests 3 und 4 (rot): `Require(...)` in allen Handlern auf das Recht aus AC3 umstellen.
+3. Tests 5 und 6 (rot):
+   - `ShowUsers`, `ShowBans`, `ShowGroups` und `CanAdminister` umstellen.
+   - `CanCreateGroup`, `CanEditGroup`, `CanDeleteGroup`, `CanUnban` im `AdminViewModel`, Buttons in `AdminView.axaml` daran binden.
+4. Test 7: `Perm_*` für neue und umbenannte Rechte, README.
+
+### Out of Scope
+
+- Rechte für Channels, Links, Server und Chat (unverändert)
+- Rechte pro Channel
+
+---
+
+## Package 77: Einstellungen responsiv
+
+**Ziel:** Die Einstellungsseite ist auf jeder Breite ab 360 px vollständig bedienbar, ohne abgeschnittene oder überlappende Elemente.
+
+**Abhängigkeiten:** Package 68
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/SettingsView.axaml` (ändern): Sound-Zeilen, Geräte, Tasten, Darstellung, Fusszeile
+- `src/OVS.Client/Styles/Controls.axaml` (ändern): Stile für `Window.narrow` auf der Einstellungsseite
+- `tests/OVS.Tests/Client/ResponsiveTests.cs` (ändern)
+
+### Kontext
+
+Die Seite ist ein `StackPanel` mit `MaxWidth="720"` und `Margin="24,20"`. Eine Sound-Zeile (`Border.soundRow`) ist ein `DockPanel`:
+- links Play-Button
+- rechts ein waagrechtes `StackPanel` mit Regler (`Width="150"`), Prozent (`Width="44"`), "Stumm", "Datei wählen ..." und Zurücksetzen
+- in der Mitte Name und Quelle
+
+Wird der Hauptbereich schmal, verdrängt die rechte Gruppe den Namen und läuft über den Rand (Screenshot 2: Name weg, "Stumm" abgeschnitten, "Datei wählen" unsichtbar). Ähnlich fest sind die Tasten-Zeilen ("Ändern ...", Löschen), die Hinweise mit `MaxWidth` 360 bzw. 420 und die `ComboBox`en mit `MinWidth="200"`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Ab einem Hauptbereich von 560 px sieht die Seite aus wie heute (Screenshot 1).
+- [ ] AC2: Darunter (`narrow`) wird jede Sound-Zeile zweizeilig:
+  - oben Play-Button, Name und Quelle (volle Breite, Name nie leer)
+  - unten Regler (füllt den Platz), Prozent, "Stumm", "Datei wählen" und Zurücksetzen
+  Wird es noch enger, bricht die untere Reihe um, statt abzuschneiden.
+- [ ] AC3: Tasten-Zeilen, Geräteauswahl, Lautstärke, Übertragung und Darstellung stapeln Beschriftung und Bedienelement untereinander. `ComboBox`en und Regler nutzen die volle Breite. Hinweistexte brechen um.
+- [ ] AC4: Die Fusszeile (Abbrechen, Speichern) bleibt immer sichtbar. Die Seitenabstände schrumpfen unter `narrow` auf 12 px.
+- [ ] AC5: `LayoutAssert.FitsHorizontally` ist für die ganze, nach unten gescrollte Seite bei 360, 480, 600 und 1100 px grün, in Deutsch und Englisch.
+
+### Tests (TDD)
+
+1. `ResponsiveTests > "Settings_FitAt360_480_600_1100"` (AC2 bis AC5, Theory über Breite und Sprache): jede Sektion in den Blick scrollen und `LayoutAssert.FitsHorizontally` prüfen. Vorher rot, entspricht Screenshot 2.
+2. `ResponsiveTests > "Settings_SoundRow_TwoLinesWhenNarrow_NameVisible"` (AC2): bei 360 px liegen Name und Regler in verschiedenen Zeilen, der Name hat Breite > 0
+3. `ResponsiveTests > "Settings_Wide_LayoutUnchanged"` (AC1): bei 1100 px Sound-Zeile einzeilig wie bisher
+4. Bestehende `UiSmokeTests` zu Einstellungen (`Settings_SectionOrder`, `Settings_PttHint_WithSetKeyButton` usw.) bleiben grün
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot).
+2. Sound-Zeile als `Grid` mit zwei Zeilen und zwei Spalten, die Position des Bedienblocks per Stil `Window.narrow` umschalten (Zeile 1, volle Breite). Untere Reihe als `WrapPanel`.
+3. Übrige Sektionen: Paare aus Beschriftung und Bedienelement in eine gemeinsame Vorlage (`DockPanel` breit, `StackPanel` schmal), feste `Width`/`MaxWidth` durch `MinWidth="0"` und Stretch ersetzen.
+4. Tests 2 und 3, manueller Blick bei 360 px hell und dunkel.
+
+### Out of Scope
+
+- Neue Einstellungen
+- Verwaltung, Chat, Dialoge (Packages 78 und 79)
+
+---
+
+## Package 78: Verwaltung responsiv
+
+**Ziel:** Alle Tabs der Verwaltung sind auf jeder Breite ab 360 px vollständig bedienbar.
+
+**Abhängigkeiten:** Package 68
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/AdminView.axaml` (ändern): Tabs Gruppen, Nutzer, Bans, Links, Server
+- `src/OVS.Client/Styles/Controls.axaml` (ändern)
+- `tests/OVS.Tests/Client/ResponsiveTests.cs` (ändern)
+
+### Kontext
+
+Die Tabs sind heute auf breite Fenster ausgelegt:
+- **Gruppen:** `Grid ColumnDefinitions="240,*"` mit Liste links und Editor rechts, Rechte in einer zweispaltigen `UniformGrid`
+- **Nutzer und Bans:** Karten, die Gruppen-Checkboxen stehen in einem `WrapPanel`
+- **Links:** eine Matrix mit festen Breiten (Kopf 228 px, Zeilentitel 192 px, Zellen 34 bis 36 px)
+- **Server:** eine Karte mit `MaxWidth="560"`
+
+Die `TabControl`-Kopfzeile hat fünf Tabs nebeneinander.
+
+### Acceptance Criteria
+
+- [ ] AC1: Die Tab-Leiste läuft bei Platzmangel waagrecht scrollbar, statt abzuschneiden. Der gewählte Tab ist immer sichtbar.
+- [ ] AC2: Gruppen unter `narrow`:
+  - Liste und Editor stehen untereinander, die Liste höchstens 40 % der Höhe und scrollbar.
+  - Die Rechte-Checkboxen stehen einspaltig.
+  - Die Buttons (Neu, hoch, runter, Speichern, Löschen) brechen um.
+- [ ] AC3: Nutzer- und Bans-Karten nutzen die volle Breite, Details brechen um (auch die Felder aus Packages 71 und 72, soweit schon umgesetzt), Aktions-Buttons stehen unter den Details.
+- [ ] AC4: Die Link-Matrix bleibt eine Matrix, liegt aber in einem waagrecht und senkrecht scrollbaren Bereich. Die Zeilentitel bleiben beim waagrechten Scrollen stehen. Die Buttons (Auswahl verlinken, trennen, Übernehmen, Verwerfen) brechen um.
+- [ ] AC5: Der Server-Tab nutzt unter `narrow` die volle Breite, alle Felder stehen untereinander.
+- [ ] AC6: `LayoutAssert.FitsHorizontally` ist für jeden Tab (Link-Matrix: für den Bereich um die Matrix) bei 360, 480, 600 und 1100 px grün, in Deutsch und Englisch, mit 8 Channels und 20 Nutzern.
+
+### Tests (TDD)
+
+1. `ResponsiveTests > "Admin_EveryTabFits"` (AC1 bis AC6, Theory über Tab, Breite und Sprache), vorher rot
+2. `ResponsiveTests > "Admin_Groups_StackedWhenNarrow"` (AC2)
+3. `ResponsiveTests > "Admin_LinkMatrix_ScrollsTitlesStay"` (AC4)
+4. Bestehende `GroupList_DragAdminAboveGuest_SendsOrder`, `LinkMatrix_*` und `AdminViewModelTests` bleiben grün
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot).
+2. Tab-Leiste scrollbar, Gruppen-Tab per Stil umschalten (`Grid` mit Zeilen statt Spalten). Test 2.
+3. Link-Matrix in `ScrollViewer` mit fester Titelspalte. Test 3.
+4. Nutzer-, Bans- und Server-Tab, Test 1 grün.
+
+### Out of Scope
+
+- Inhalte der Tabs, die Packages 69 bis 76 erst hinzufügen: Diese Packages halten sich selbst an die Regeln aus 68 (A96).
+
+---
+
+## Package 79: Chat, Startseite und Dialoge responsiv
+
+**Ziel:** Chat, Startseite, Update-Karte und alle Dialoge sind auf jeder Breite ab 360 px vollständig bedienbar.
+
+**Abhängigkeiten:** Package 68
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/ChatView.axaml` (ändern): Tabs, Eingabe
+- `src/OVS.Client/Views/OverlayHost.cs`, `SimpleDialogs.cs`, `ChannelDialog.axaml` (ändern): Breite der Dialoge
+- `src/OVS.Client/Views/MainWindow.axaml` (ändern): Startseite, Update-Karte (`Width="420"`)
+- `tests/OVS.Tests/Client/ResponsiveTests.cs` (ändern)
+
+### Kontext
+
+Die Breiten sind heute fest:
+- **Dialoge:** Die Karte im `OverlayHost` ist fest 460 px breit (plus 24 px Rand), die Update-Karte 420 px, `ChannelDialog` enthält ein Feld mit `Width="140"`.
+- **Chat:** Die Tab-Titel sind höchstens 220 px breit, die Blasen höchstens 75 % des Verlaufs (Package 64).
+- **Startseite:** ein `StackPanel` mit `MaxWidth="460"` und `Margin="32"`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Dialoge und Update-Karte sind höchstens so breit wie ihr Standard (460 bzw. 420 px) und mindestens 16 px vom Fensterrand entfernt. Inhalt und Buttons brechen um. Ist ein Dialog höher als das Fenster, scrollt sein Inhalt, die Buttons bleiben sichtbar.
+- [ ] AC2: Chat unter `narrow`:
+  - Die Tab-Leiste scrollt waagrecht.
+  - Blasen dürfen 85 % der Breite nutzen.
+  - Die Eingabezeile behält den Senden-Button sichtbar.
+  - Die Innenabstände schrumpfen auf 12 px.
+- [ ] AC3: Die Startseite (Logo, Status, Verbinden, Lesezeichen) passt ab 360 px, der Abstand schrumpft auf 16 px.
+- [ ] AC4: `LayoutAssert.FitsHorizontally` ist für Chat mit langen Nachrichten, Startseite mit drei Lesezeichen, jeden Dialog aus `ExercisePagesAndDialogs` und die Update-Karte bei 360, 480 und 1100 px grün, in Deutsch und Englisch.
+
+### Tests (TDD)
+
+1. `ResponsiveTests > "Dialogs_FitAt360"` (AC1, AC4, Theory über alle `SimpleDialogs` und `ChannelDialog`), vorher rot
+2. `ResponsiveTests > "Dialog_TallerThanWindow_ContentScrollsButtonsVisible"` (AC1)
+3. `ResponsiveTests > "Chat_Narrow_TabsScroll_SendVisible"` (AC2)
+4. `ResponsiveTests > "StartScreen_FitsAt360"` (AC3)
+5. Bestehende Chat- und Overlay-Tests bleiben grün
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot), Kartenbreite im `OverlayHost` und in der Update-Karte an die Fensterbreite koppeln (`MaxWidth` statt `Width`, Rand 16 px).
+2. Test 2, Dialog-Inhalt in `ScrollViewer`.
+3. Tests 3 und 4, Chat- und Startseiten-Stile für `narrow`.
+
+### Out of Scope
+
+- Touch-Bedienung, Bildschirmtastatur-Verhalten
