@@ -44,9 +44,10 @@ public sealed partial class AdminViewModel : ObservableObject
     }
 
     Permission Actor => server.SelfPermissions;
-    public bool ShowGroups => Actor.Has(Permission.GroupsManage);
-    public bool ShowUsers => Actor.Has(Permission.GroupsAssign);
-    public bool ShowBans => Actor.Has(Permission.UserBan);
+    // Package 76: seeing a tab and acting in it are separate rights
+    public bool ShowGroups => Actor.Has(Permission.GroupsView);
+    public bool ShowUsers => Actor.Has(Permission.UsersView);
+    public bool ShowBans => Actor.Has(Permission.BansView);
     public bool ShowServer => Actor.Has(Permission.ServerConfig);
     public bool ShowLinks => Actor.Has(Permission.ChannelLink);
     public LinkMatrixViewModel Links { get; }
@@ -115,6 +116,9 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowUsers));
         OnPropertyChanged(nameof(ShowBans));
         OnPropertyChanged(nameof(ShowServer));
+        NewGroupCommand.NotifyCanExecuteChanged();
+        MoveGroupUpCommand.NotifyCanExecuteChanged();
+        MoveGroupDownCommand.NotifyCanExecuteChanged();
     }
 
     void OnAdminMessage(Message message)
@@ -127,7 +131,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 break;
             case BanList list:
                 Bans.Clear();
-                foreach (var ban in list.Bans) Bans.Add(new BanViewModel(ban, () => server.SendAsync(new Unban(ban.Id))));
+                foreach (var ban in list.Bans) Bans.Add(new BanViewModel(ban, Actor.Has(Permission.UserBan), () => server.SendAsync(new Unban(ban.Id))));
                 break;
         }
     }
@@ -166,7 +170,9 @@ public sealed partial class AdminViewModel : ObservableObject
         await server.SendAsync(new ListUsers());
     }
 
-    [RelayCommand]
+    bool CanNewGroup => Actor.Has(Permission.GroupsCreate);
+
+    [RelayCommand(CanExecute = nameof(CanNewGroup))]
     void NewGroup()
     {
         var group = new GroupEditViewModel(null, Strings.Group_New, Permission.Speak, Actor);
@@ -195,8 +201,9 @@ public sealed partial class AdminViewModel : ObservableObject
 
     List<GroupEditViewModel> SavedGroups => Groups.Where(g => g.Id is not null).ToList();
 
-    bool CanMoveGroupUp => SelectedGroup is { Id: not null } g && SavedGroups.IndexOf(g) > 0;
-    bool CanMoveGroupDown => SelectedGroup is { Id: not null } g && SavedGroups.IndexOf(g) is var i && i >= 0 && i < SavedGroups.Count - 1;
+    bool CanMoveGroupUp => Actor.Has(Permission.GroupsManage) && SelectedGroup is { Id: not null } g && SavedGroups.IndexOf(g) > 0;
+    bool CanMoveGroupDown => Actor.Has(Permission.GroupsManage) && SelectedGroup is { Id: not null } g &&
+                             SavedGroups.IndexOf(g) is var i && i >= 0 && i < SavedGroups.Count - 1;
 
     [RelayCommand(CanExecute = nameof(CanMoveGroupUp))]
     Task MoveGroupUp() => SelectedGroup is { } g ? MoveGroupAsync(g, SavedGroups[SavedGroups.IndexOf(g) - 1], after: false) : Task.CompletedTask;
@@ -265,8 +272,14 @@ public sealed partial class GroupEditViewModel : ObservableObject
         Id = id;
         this.name = name;
         // Admin is fixed; a group stronger than the actor could only be edited by escalating.
-        IsReadOnly = id == WellKnownGroups.Admin || (id is not null && !permissions.IsSubsetOf(actor));
-        CanDelete = id != WellKnownGroups.Admin && id != WellKnownGroups.Guest && permissions.IsSubsetOf(actor);
+        // Package 76: saved groups need GroupsManage to edit and GroupsDelete to delete; an unsaved one is the actor's own draft.
+        ReadOnlyReason = id is null ? null
+            : id == WellKnownGroups.Admin ? Strings.Ui_AdminGroupFixed
+            : !permissions.IsSubsetOf(actor) ? Strings.Ui_GroupStronger
+            : !actor.Has(Permission.GroupsManage) ? Strings.Ui_GroupViewOnly
+            : null;
+        IsReadOnly = ReadOnlyReason is not null;
+        CanDelete = id is null || (id != WellKnownGroups.Admin && id != WellKnownGroups.Guest && permissions.IsSubsetOf(actor) && actor.Has(Permission.GroupsDelete));
         Toggles = PermissionLabels.All
             .Select(p => new PermissionToggle(p.Permission, p.Label, permissions.Has(p.Permission), !IsReadOnly && actor.Has(p.Permission)))
             .ToList();
@@ -274,6 +287,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
 
     public Guid? Id { get; }
     public bool IsReadOnly { get; }
+    public string? ReadOnlyReason { get; }
     public bool IsEditable => !IsReadOnly;
     public bool CanDelete { get; }
     public IReadOnlyList<PermissionToggle> Toggles { get; }
@@ -312,13 +326,16 @@ public sealed partial class GroupToggle(Guid groupId, string name, bool isChecke
     Task Toggle() => onToggle(this);
 }
 
-public sealed partial class BanViewModel(BanInfo ban, Func<Task> unban) : ObservableObject
+public sealed partial class BanViewModel(BanInfo ban, bool canUnban, Func<Task> unban) : ObservableObject
 {
     public BanInfo Ban { get; } = ban;
     public string Text => $"{Ban.Nickname} ({Ban.Fingerprint[..Math.Min(12, Ban.Fingerprint.Length)]})" +
                           (Ban.Ip is null ? "" : $", IP {Ban.Ip}") +
                           string.Format(Strings.Ban_Line, Ban.Reason, Ban.CreatedBy, (Ban.ExpiresAt is { } until ? string.Format(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever));
 
-    [RelayCommand]
+    /// <summary>Package 76: the list is readable with BansView, lifting a ban needs UserBan.</summary>
+    public bool CanUnban { get; } = canUnban;
+
+    [RelayCommand(CanExecute = nameof(CanUnban))]
     Task Unban() => unban();
 }

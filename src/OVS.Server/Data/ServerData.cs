@@ -118,10 +118,10 @@ public sealed class BanRecord
 public sealed class ServerData
 {
     /// <summary>
-    /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69).
-    /// New servers start at the current version.
+    /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69),
+    /// 4 = separate view, create and delete rights (76). New servers start at the current version.
     /// </summary>
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
     public int DataVersion { get; set; } = 1;
 
     public ServerSettings Settings { get; set; } = new();
@@ -156,8 +156,18 @@ public sealed class ServerData
         if (DataVersion < 2 && guest >= 0) // A28: guests may chat, granted once
             Groups[guest] = Groups[guest] with { Permissions = Groups[guest].Permissions | Permission.ChatChannel | Permission.ChatPrivate };
         if (DataVersion < 3) Settings.TakeStartValues(config);
+        if (DataVersion < 4) // Package 76 (A92): nobody loses a possibility; a stored "All" already reads as every new right
+            for (int i = 0; i < Groups.Count; i++) Groups[i] = Groups[i] with { Permissions = WithViewRights(Groups[i].Permissions) };
         DataVersion = CurrentVersion;
         return true;
+    }
+
+    static Permission WithViewRights(Permission p)
+    {
+        if (p.Has(Permission.GroupsManage)) p |= Permission.GroupsView | Permission.GroupsCreate | Permission.GroupsDelete;
+        if (p.Has(Permission.GroupsAssign)) p |= Permission.UsersView;
+        if (p.Has(Permission.UserBan)) p |= Permission.BansView;
+        return p;
     }
 }
 

@@ -96,7 +96,7 @@ public sealed class DataStoreTests : IDisposable
         _ = new ServerState(config, TimeProvider.System, logs);
 
         var migrated = store.LoadOrCreate(() => throw new InvalidOperationException());
-        Assert.Equal(3, migrated.DataVersion);
+        Assert.Equal(ServerData.CurrentVersion, migrated.DataVersion);
         Assert.Equal("Alt", migrated.Settings.Name);
         Assert.Equal(20, migrated.Settings.MaxUsers);
         Assert.Equal(7, migrated.Settings.LogDays);
@@ -136,6 +136,39 @@ public sealed class DataStoreTests : IDisposable
         Assert.Equal(TimeSpan.Zero, old.OnlineTime);
         Assert.Equal(TimeSpan.Zero, old.SpeechTime);
         Assert.Empty(old.PreviousNicknames);
+    }
+
+    /// <summary>Package 76 (AC6): an update to data version 4 keeps every possibility by granting the new view rights once.</summary>
+    [Fact]
+    public void Migration_GrantsViewRightsFromOldRights()
+    {
+        var store = new DataStore(FilePath);
+        var data = ServerData.CreateDefault(Config);
+        data.DataVersion = 3;
+        data.Groups.Clear();
+        data.Groups.Add(new Group(Guid.NewGuid(), "Verwalter", Permission.GroupsManage | Permission.Speak));
+        data.Groups.Add(new Group(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign));
+        data.Groups.Add(new Group(Guid.NewGuid(), "Banner", Permission.UserBan | Permission.UserKick));
+        data.Groups.Add(new Group(Guid.NewGuid(), "Normal", Permission.Speak | Permission.ChatChannel));
+        data.Groups.Add(new Group(Guid.NewGuid(), "Alles", Permission.None));
+        store.Save(data);
+        // as a version 3 file stores them: text flags, "All" for every right of that time
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
+        Assert.Equal("Speak, GroupsManage", json["groups"]![0]!["permissions"]!.GetValue<string>());
+        json["groups"]![4]!["permissions"] = "All";
+        File.WriteAllText(FilePath, json.ToJsonString());
+
+        var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.True(loaded.Migrate(Config));
+        Assert.Equal(4, loaded.DataVersion);
+        var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
+        Assert.Equal(Permission.GroupsManage | Permission.Speak | Permission.GroupsView | Permission.GroupsCreate | Permission.GroupsDelete, perms["Verwalter"]);
+        Assert.Equal(Permission.GroupsAssign | Permission.UsersView, perms["Zuweiser"]);
+        Assert.Equal(Permission.UserBan | Permission.UserKick | Permission.BansView, perms["Banner"]);
+        Assert.Equal(Permission.Speak | Permission.ChatChannel, perms["Normal"]);
+        Assert.Equal(Permission.All, perms["Alles"]);
+        Assert.All(loaded.Groups.Where(g => g.Name != "Alles"), g => Assert.False(g.Permissions.HasFlag(Permission.UserDelete)));
+        Assert.False(loaded.Migrate(Config)); // once
     }
 
     [Fact]

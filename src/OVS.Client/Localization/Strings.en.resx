@@ -163,6 +163,7 @@
   <data name="Links_OnePending" xml:space="preserve"><value>1 change not applied yet.</value></data>
   <data name="Links_Pair" xml:space="preserve"><value>{0} and {1}</value></data>
   <data name="Links_Pending" xml:space="preserve"><value>{0} changes not applied yet.</value></data>
+  <data name="Perm_BansView" xml:space="preserve"><value>View bans</value></data>
   <data name="Perm_ChannelCreate" xml:space="preserve"><value>Create channels</value></data>
   <data name="Perm_ChannelDelete" xml:space="preserve"><value>Delete channels</value></data>
   <data name="Perm_ChannelEdit" xml:space="preserve"><value>Edit channels</value></data>
@@ -172,14 +173,19 @@
   <data name="Perm_ChatPrivate" xml:space="preserve"><value>Write privately</value></data>
   <data name="Perm_ChatServer" xml:space="preserve"><value>Write server-wide</value></data>
   <data name="Perm_GroupsAssign" xml:space="preserve"><value>Assign groups</value></data>
-  <data name="Perm_GroupsManage" xml:space="preserve"><value>Manage groups</value></data>
+  <data name="Perm_GroupsCreate" xml:space="preserve"><value>Create groups</value></data>
+  <data name="Perm_GroupsDelete" xml:space="preserve"><value>Delete groups</value></data>
+  <data name="Perm_GroupsManage" xml:space="preserve"><value>Edit groups</value></data>
+  <data name="Perm_GroupsView" xml:space="preserve"><value>View groups</value></data>
   <data name="Perm_ServerConfig" xml:space="preserve"><value>Change server settings</value></data>
   <data name="Perm_Speak" xml:space="preserve"><value>Speak</value></data>
   <data name="Perm_SpeakLinked" xml:space="preserve"><value>Speak through links</value></data>
-  <data name="Perm_UserBan" xml:space="preserve"><value>Ban users</value></data>
+  <data name="Perm_UserBan" xml:space="preserve"><value>Ban and unban users</value></data>
+  <data name="Perm_UserDelete" xml:space="preserve"><value>Delete users</value></data>
   <data name="Perm_UserKick" xml:space="preserve"><value>Kick users</value></data>
   <data name="Perm_UserMove" xml:space="preserve"><value>Move users</value></data>
   <data name="Perm_UserMute" xml:space="preserve"><value>Mute users</value></data>
+  <data name="Perm_UsersView" xml:space="preserve"><value>View user overview</value></data>
   <data name="Ping_UdpUnreachable" xml:space="preserve"><value>, UDP not reachable</value></data>
   <data name="Settings_Damaged" xml:space="preserve"><value>Settings were damaged and have been reset (backup: {0}.bak).</value></data>
   <data name="Settings_Language" xml:space="preserve"><value>Language</value></data>
@@ -228,6 +234,8 @@
   <data name="Ui_AboveThreshold" xml:space="preserve"><value>above the threshold, would send</value></data>
   <data name="Ui_Admin" xml:space="preserve"><value>Administration</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>The admin group always has all rights and cannot be changed.</value></data>
+  <data name="Ui_GroupStronger" xml:space="preserve"><value>This group has rights you do not have yourself, so you cannot change it.</value></data>
+  <data name="Ui_GroupViewOnly" xml:space="preserve"><value>You may only view groups, not edit them.</value></data>
   <data name="Ui_AdminMenu" xml:space="preserve"><value>Administration</value></data>
   <data name="Ui_AllSoundsOff" xml:space="preserve"><value>All sounds off</value></data>
   <data name="Ui_AppearanceSection" xml:space="preserve"><value>APPEARANCE</value></data>

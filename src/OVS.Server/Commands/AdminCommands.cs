@@ -24,7 +24,7 @@ public sealed partial class ServerState
 
     void OnCreateGroup(Session s, CreateGroup r)
     {
-        if (!Require(s, r, Permission.GroupsManage)) return;
+        if (!Require(s, r, Permission.GroupsCreate)) return;
         if (!ValidateGroupName(s, r, null, r.Name, out var name)) return;
         if (!CanSaveGroup(s.Permissions, null, null, r.Permissions))
         {
@@ -90,7 +90,7 @@ public sealed partial class ServerState
 
     void OnDeleteGroup(Session s, DeleteGroup r)
     {
-        if (!Require(s, r, Permission.GroupsManage)) return;
+        if (!Require(s, r, Permission.GroupsDelete)) return;
         var group = data.Groups.FirstOrDefault(g => g.Id == r.GroupId);
         if (group is null)
         {
@@ -143,7 +143,7 @@ public sealed partial class ServerState
 
     void OnListUsers(Session s, ListUsers r)
     {
-        if (!Require(s, r, Permission.GroupsAssign)) return;
+        if (!Require(s, r, Permission.UsersView)) return; // Package 76: the IP is only for those who may see the overview (A86)
         var now = time.GetUtcNow();
         var online = sessions.Values.ToDictionary(x => x.Fingerprint);
         s.Send(new UserList(r.RequestId, data.Users.Select(u =>

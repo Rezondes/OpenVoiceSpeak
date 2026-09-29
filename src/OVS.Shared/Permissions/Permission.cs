@@ -21,7 +21,14 @@ public enum Permission
     ChatChannel = 1 << 14,  // write in the own channel
     ChatPrivate = 1 << 15,  // write private messages
     ChannelJoinFull = 1 << 16, // enter a full channel, or move someone into one (Package 35)
-    All = (1 << 17) - 1,
+    // Package 76 (A92): seeing and acting are separate rights. GroupsManage now only edits (name, rights, order).
+    UsersView = 1 << 17,    // the user overview and ListUsers
+    BansView = 1 << 18,     // the ban list
+    GroupsView = 1 << 19,   // the groups tab
+    GroupsCreate = 1 << 20,
+    GroupsDelete = 1 << 21,
+    UserDelete = 1 << 22,   // delete a user's stored data (Package 72)
+    All = (1 << 23) - 1,
 }
 
 /// <summary>Fixed ids of the two protected groups, known to server and client.</summary>

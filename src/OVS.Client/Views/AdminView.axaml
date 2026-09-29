@@ -101,7 +101,7 @@
                           <Border Classes="banner accent" IsVisible="{Binding IsReadOnly}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                               <PathIcon Classes="accent" Data="{StaticResource Icon.LockClosed}" />
-                              <TextBlock Classes="accent" Text="{x:Static l:Strings.Ui_AdminGroupFixed}" TextWrapping="Wrap" />
+                              <TextBlock Classes="accent" Text="{Binding ReadOnlyReason}" TextWrapping="Wrap" />
                             </StackPanel>
                           </Border>
                           <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Rights}" Margin="0,6,0,0" />

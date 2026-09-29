@@ -36,7 +36,7 @@ public class AdminViewModelTests
     [Fact]
     public void GroupEditor_DisablesUnownedPermissions()
     {
-        var (vm, _, _) = Create(P.GroupsManage | P.Speak | P.UserKick);
+        var (vm, _, _) = Create(P.GroupsManage | P.GroupsDelete | P.Speak | P.UserKick);
         var mod = Group(vm, "Moderator");
         Assert.True(mod.Toggles.Single(t => t.Permission == P.UserKick).IsEnabled);
         Assert.False(mod.Toggles.Single(t => t.Permission == P.ServerConfig).IsEnabled);
@@ -80,21 +80,90 @@ public class AdminViewModelTests
         Assert.Equal([("1 Stunde", (int?)60), ("1 Tag", 1440), ("7 Tage", 10080), ("Dauerhaft", null)], BanChoice.Durations);
     }
 
+    /// <summary>Package 76: every tab has its own view right; acting rights alone open nothing.</summary>
     [Theory]
-    [InlineData(P.GroupsManage, true, false, false, false)]
-    [InlineData(P.GroupsAssign, false, true, false, false)]
-    [InlineData(P.UserBan, false, false, true, false)]
+    [InlineData(P.GroupsView, true, false, false, false)]
+    [InlineData(P.UsersView, false, true, false, false)]
+    [InlineData(P.BansView, false, false, true, false)]
     [InlineData(P.ServerConfig, false, false, false, true)]
+    [InlineData(P.GroupsAssign, false, false, false, false)]
+    [InlineData(P.GroupsManage | P.GroupsCreate | P.GroupsDelete | P.UserBan | P.UserKick | P.UserDelete, false, false, false, false)]
     public void Tabs_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server)
     {
-        var (vm, _, _) = Create(perms);
+        var (vm, serverVm, _) = Create(perms);
         Assert.Equal((groups, users, bans, server), (vm.ShowGroups, vm.ShowUsers, vm.ShowBans, vm.ShowServer));
+        Assert.Equal(groups || users || bans || server, serverVm.CanAdminister);
+    }
+
+    /// <summary>Package 76 (AC4): without the acting right the overview stays readable, only the action is locked.</summary>
+    [Fact]
+    public void GroupButtons_ByRight()
+    {
+        var (view, _, _) = Create(P.GroupsView | P.Speak);
+        view.SelectedGroup = Group(view, "Gast");
+        Assert.False(view.NewGroupCommand.CanExecute(null));
+        Assert.False(view.SaveGroupCommand.CanExecute(null));
+        Assert.False(view.DeleteGroupCommand.CanExecute(null));
+        Assert.False(view.MoveGroupDownCommand.CanExecute(null));
+        Assert.True(view.SelectedGroup.IsReadOnly);
+        Assert.All(view.SelectedGroup.Toggles, t => Assert.False(t.IsEnabled));
+
+        var (create, _, _) = Create(P.GroupsView | P.GroupsCreate | P.Speak);
+        Assert.True(create.NewGroupCommand.CanExecute(null));
+        create.SelectedGroup = Group(create, "Gast");
+        Assert.False(create.SaveGroupCommand.CanExecute(null));
+        create.NewGroupCommand.Execute(null); // a new group can be saved (created) and dropped again
+        Assert.True(create.SaveGroupCommand.CanExecute(null));
+        Assert.True(create.DeleteGroupCommand.CanExecute(null));
+
+        var (edit, _, _) = Create(P.GroupsView | P.GroupsManage | P.Speak);
+        edit.SelectedGroup = Group(edit, "Gast");
+        Assert.False(edit.NewGroupCommand.CanExecute(null));
+        Assert.True(edit.SaveGroupCommand.CanExecute(null));
+        Assert.True(edit.MoveGroupDownCommand.CanExecute(null));
+        Assert.False(edit.DeleteGroupCommand.CanExecute(null));
+
+        var (delete, _, _) = Create(P.GroupsView | P.GroupsDelete | P.Speak | P.UserKick);
+        delete.SelectedGroup = Group(delete, "Moderator");
+        Assert.True(delete.DeleteGroupCommand.CanExecute(null));
+        Assert.False(delete.SaveGroupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void UserTogglesAndUnban_ByRight()
+    {
+        var (view, server, _) = Create(P.UsersView | P.BansView | P.Speak);
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+        Assert.All(Assert.Single(view.Users).Toggles, t => Assert.False(t.IsEnabled));
+        server.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
+        Assert.False(Assert.Single(view.Bans).UnbanCommand.CanExecute(null));
+
+        var (act, actServer, _) = Create(P.UsersView | P.BansView | P.GroupsAssign | P.UserBan | P.Speak);
+        actServer.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+        Assert.True(Assert.Single(act.Users).Toggles.Single(t => t.Name == "Gast").IsEnabled);
+        actServer.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
+        Assert.True(Assert.Single(act.Bans).UnbanCommand.CanExecute(null));
+    }
+
+    /// <summary>Package 76 (AC1, AC7): every right is a checkbox, named in both languages.</summary>
+    [Theory]
+    [InlineData("de-DE", "Nutzerübersicht sehen", "Bans sehen", "Gruppen sehen", "Gruppen anlegen", "Gruppen löschen", "Nutzer löschen", "Gruppen bearbeiten", "Nutzer bannen und entbannen")]
+    [InlineData("en-US", "View user overview", "View bans", "View groups", "Create groups", "Delete groups", "Delete users", "Edit groups", "Ban and unban users")]
+    public void GroupEditor_ListsNewRights(string culture, string users, string bans, string groups, string create, string delete,
+        string userDelete, string manage, string ban)
+    {
+        var labels = TestCulture.With(culture, () => Create(P.All).Admin.Groups.First().Toggles.ToDictionary(t => t.Permission, t => t.Label));
+        var single = Enum.GetValues<P>().Where(p => p != P.None && ((int)p & ((int)p - 1)) == 0).ToList();
+        Assert.Equal(single.Order(), labels.Keys.Order());
+        Assert.Equal(labels.Count, labels.Values.Distinct().Count());
+        Assert.Equal([users, bans, groups, create, delete, userDelete, manage, ban],
+            new[] { P.UsersView, P.BansView, P.GroupsView, P.GroupsCreate, P.GroupsDelete, P.UserDelete, P.GroupsManage, P.UserBan }.Select(p => labels[p]));
     }
 
     [Fact]
     public async Task RequestLists_OnlyAllowedOnes()
     {
-        var (vm, _, sent) = Create(P.UserBan);
+        var (vm, _, sent) = Create(P.BansView | P.GroupsAssign);
         await vm.RequestListsAsync();
         Assert.IsType<ListBans>(Assert.Single(sent));
     }
@@ -121,7 +190,7 @@ public class AdminViewModelTests
     [Fact]
     public void BanList_ShowsBans_UnbanSends()
     {
-        var (vm, server, sent) = Create(P.UserBan);
+        var (vm, server, sent) = Create(P.BansView | P.UserBan);
         var ban = new BanInfo(Guid.NewGuid(), "abcdef0123456789", "troll", "1.2.3.4", "spam", "mod", null);
         server.Apply(new BanList("r", [ban]));
         var entry = Assert.Single(vm.Bans);

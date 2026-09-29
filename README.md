@@ -163,6 +163,23 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`.
 
 Ein Server kann ein eigenes Logo haben: Unter "Verwaltung ...", Server lädst du ein PNG oder JPG hoch (quadratisch, höchstens 3 MB, per Dateiauswahl oder durch Ziehen auf das Vorschaufeld). Der Client verkleinert es auf 256 x 256 Pixel. Alle verbundenen Clients sehen es sofort in der Seitenleiste, die Lesezeichen-Kacheln zeigen das zuletzt gesehene Logo.
 
+**Rechte in der Verwaltung:** Sehen und Handeln sind getrennte Rechte. Ohne das Recht zum Handeln bleibt ein Tab lesbar, nur die Schaltfläche ist gesperrt. Die Gruppe Admin hat immer alle Rechte.
+
+| Recht | erlaubt | Standard |
+|---|---|---|
+| Nutzerübersicht sehen | Tab "Nutzer" | Admin |
+| Bans sehen | Tab "Bans" | Moderator, Admin |
+| Gruppen sehen | Tab "Gruppen" | Admin |
+| Gruppen anlegen | "Neue Gruppe" | Admin |
+| Gruppen bearbeiten | Name, Rechte und Reihenfolge ändern | Admin |
+| Gruppen löschen | "Löschen" im Tab "Gruppen" | Admin |
+| Gruppen zuweisen | Gruppen eines Nutzers ändern | Admin |
+| Nutzer kicken | "Kicken" | Moderator, Admin |
+| Nutzer bannen und entbannen | "Bannen", "Entbannen" | Moderator, Admin |
+| Nutzer löschen | alle gespeicherten Daten eines Nutzers löschen | Admin |
+
+Vergeben lassen sich nur Rechte, die man selbst hat, und bearbeiten lassen sich nur Nutzer und Gruppen ohne mehr Rechte als man selbst. Bestehende Server geben beim Update jeder Gruppe einmalig die passenden Sehen-Rechte zu ihren Rechten ("Gruppen bearbeiten" bekommt Sehen, Anlegen und Löschen dazu, "Gruppen zuweisen" die Nutzerübersicht, "Nutzer bannen" die Bans), damit niemand etwas verliert.
+
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 
 Der Client schreibt alles, was er tut, in eine neue Datei pro Start (und nach Mitternacht): `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>_<Uhrzeit>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.

@@ -13,7 +13,7 @@ public static class PermissionRules
     public const Permission ModeratorPermissions =
         Permission.Speak | Permission.SpeakLinked | Permission.ChannelLink |
         Permission.UserMove | Permission.UserMute | Permission.UserKick | Permission.UserBan |
-        Permission.ChatServer | Permission.ChatChannel | Permission.ChatPrivate;
+        Permission.ChatServer | Permission.ChatChannel | Permission.ChatPrivate | Permission.BansView;
 
     /// <summary>What a guest may do on a new server, and what existing servers add once (A28).</summary>
     public const Permission GuestPermissions = Permission.Speak | Permission.ChatChannel | Permission.ChatPrivate;
@@ -36,13 +36,13 @@ public static class PermissionRules
 
     /// <param name="existing">Current permissions when editing, null when creating.</param>
     public static bool CanSaveGroup(Permission actor, Guid? groupId, Permission? existing, Permission newPerms) =>
-        actor.Has(Permission.GroupsManage)
+        actor.Has(existing is null ? Permission.GroupsCreate : Permission.GroupsManage) // Package 76
         && groupId != AdminGroupId
         && newPerms.IsSubsetOf(actor)
         && (existing is null || existing.Value.IsSubsetOf(actor));
 
     public static bool CanDeleteGroup(Permission actor, Group group) =>
-        actor.Has(Permission.GroupsManage) && !IsProtected(group.Id) && group.Permissions.IsSubsetOf(actor);
+        actor.Has(Permission.GroupsDelete) && !IsProtected(group.Id) && group.Permissions.IsSubsetOf(actor);
 
     public static bool CanAssign(Permission actor, Group group) =>
         actor.Has(Permission.GroupsAssign) && EffectiveOf(group).IsSubsetOf(actor);

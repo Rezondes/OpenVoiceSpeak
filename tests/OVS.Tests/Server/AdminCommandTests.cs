@@ -91,7 +91,7 @@ public class AdminCommandTests
         var manager = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(d =>
         {
-            d.Groups.Add(new Group(Guid.NewGuid(), "Verwalter", Permission.GroupsManage | Permission.Speak));
+            d.Groups.Add(new Group(Guid.NewGuid(), "Verwalter", Permission.GroupsCreate | Permission.Speak));
             TestServer.Grant(manager, "Verwalter")(d);
         });
         await using var v = await TestClient.ConnectAsync(server, identity: manager);
@@ -436,5 +436,92 @@ public class AdminCommandTests
         Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("fehlt")).Code);
         await guest.SendAsync(new ReorderGroups(ids) { RequestId = "recht" });
         Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("recht")).Code);
+    }
+
+    // ---- Package 76: one right per request ----
+
+    public static TheoryData<string, Permission> RightPerRequest => new()
+    {
+        { "listUsers", Permission.UsersView },
+        { "listBans", Permission.BansView },
+        { "ban", Permission.UserBan },
+        { "unban", Permission.UserBan },
+        { "kick", Permission.UserKick },
+        { "assign", Permission.GroupsAssign },
+        { "unassign", Permission.GroupsAssign },
+        { "createGroup", Permission.GroupsCreate },
+        { "updateGroup", Permission.GroupsManage },
+        { "reorderGroups", Permission.GroupsManage },
+        { "deleteGroup", Permission.GroupsDelete },
+    };
+
+    [Theory]
+    [MemberData(nameof(RightPerRequest))]
+    public async Task EachAdminRequest_RequiresItsOwnRight(string action, Permission right)
+    {
+        Assert.Equal(Codes.PermissionDenied, await ErrorOfAsync(action, Permission.All & ~right));
+        Assert.NotEqual(Codes.PermissionDenied, await ErrorOfAsync(action, Permission.All));
+    }
+
+    /// <summary>
+    /// Sends the request as a member of a group with exactly <paramref name="rights"/> (not the Admin group) and returns
+    /// its error code, or null when it succeeded. A request that surely fails follows, so "no error" needs no timeout.
+    /// </summary>
+    static async Task<string?> ErrorOfAsync(string action, Permission rights)
+    {
+        var actor = ClientIdentity.Create();
+        var target = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(d =>
+        {
+            TestServer.Grant(ClientIdentity.Create(), "Admin")(d); // someone else is admin, so no token is pending
+            d.Groups.Add(new Group(Guid.NewGuid(), "Tester", rights));
+            TestServer.Grant(actor, "Tester")(d);
+        });
+        await using var a = await TestClient.ConnectAsync(server, "tester", actor);
+        await using var t = await TestClient.ConnectAsync(server, "ziel", target);
+        var groups = a.Welcome.Snapshot.Groups;
+        var mod = groups.Single(g => g.Name == "Moderator").Id;
+        Request r = action switch
+        {
+            "listUsers" => new ListUsers(),
+            "listBans" => new ListBans(),
+            "ban" => new Ban(t.Id, "x", null, false),
+            "unban" => new Unban(Guid.NewGuid()),
+            "kick" => new Kick(t.Id, "x"),
+            "assign" => new AssignGroup(target.Fingerprint, mod),
+            "unassign" => new UnassignGroup(target.Fingerprint, PermissionRules.GuestGroupId),
+            "createGroup" => new CreateGroup("Neu", Permission.Speak),
+            "updateGroup" => new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak),
+            "reorderGroups" => new ReorderGroups(groups.Select(g => g.Id).Reverse().ToList()),
+            "deleteGroup" => new DeleteGroup(mod),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+        await a.SendAsync(r with { RequestId = "r" });
+        await a.SendAsync(new RedeemAdminToken("falsch") { RequestId = "probe" });
+        var error = await a.WaitForAsync<Error>(e => e.RequestId is "r" or "probe");
+        return error.RequestId == "r" ? error.Code : null;
+    }
+
+    [Fact]
+    public async Task GroupsCreateOnly_CannotEditOrDelete()
+    {
+        var creator = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(d =>
+        {
+            d.Groups.Add(new Group(Guid.NewGuid(), "Anleger", Permission.GroupsCreate | Permission.Speak));
+            TestServer.Grant(creator, "Anleger")(d);
+        });
+        await using var c = await TestClient.ConnectAsync(server, identity: creator);
+        var ids = c.Welcome.Snapshot.Groups.Select(g => g.Id).ToList();
+
+        await c.SendAsync(new CreateGroup("Neu", Permission.Speak));
+        var created = (await c.WaitForAsync<GroupsChanged>()).Groups.Single(g => g.Name == "Neu");
+
+        await c.SendAsync(new UpdateGroup(created.Id, "Anders", Permission.Speak) { RequestId = "u" });
+        Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync("u")).Code);
+        await c.SendAsync(new DeleteGroup(created.Id) { RequestId = "d" });
+        Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync("d")).Code);
+        await c.SendAsync(new ReorderGroups([.. ids.Append(created.Id).Reverse()]) { RequestId = "o" });
+        Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync("o")).Code);
     }
 }

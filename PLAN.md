@@ -4730,7 +4730,7 @@ Sehen und Handeln hängen also am selben Recht. Die Standardgruppe Moderator hat
 
 ### Acceptance Criteria
 
-- [ ] AC1: Neue Rechte, im Gruppen-Editor einzeln wählbar:
+- [x] AC1: Neue Rechte, im Gruppen-Editor einzeln wählbar:
   - "Nutzerübersicht sehen" (`UsersView`)
   - "Bans sehen" (`BansView`)
   - "Gruppen sehen" (`GroupsView`)
@@ -4738,8 +4738,8 @@ Sehen und Handeln hängen also am selben Recht. Die Standardgruppe Moderator hat
   - "Gruppen löschen" (`GroupsDelete`)
   - "Nutzer löschen" (`UserDelete`)
   Die bestehenden Rechte heissen im Editor "Nutzer kicken" (`UserKick`), "Nutzer bannen und entbannen" (`UserBan`), "Gruppen zuweisen" (`GroupsAssign`) und "Gruppen bearbeiten" (`GroupsManage`: Name, Rechte, Reihenfolge).
-- [ ] AC2: Sichtbarkeit: Tab "Nutzer" nur mit `UsersView`, Tab "Bans" nur mit `BansView`, Tab "Gruppen" nur mit `GroupsView`. Der Button "Verwaltung" erscheint, sobald irgendein Tab sichtbar wäre.
-- [ ] AC3: Der Server prüft je Anfrage genau ein Recht:
+- [x] AC2: Sichtbarkeit: Tab "Nutzer" nur mit `UsersView`, Tab "Bans" nur mit `BansView`, Tab "Gruppen" nur mit `GroupsView`. Der Button "Verwaltung" erscheint, sobald irgendein Tab sichtbar wäre.
+- [x] AC3: Der Server prüft je Anfrage genau ein Recht:
   - `ListUsers`: `UsersView`
   - `ListBans`: `BansView`
   - `Ban`, `BanUser`, `Unban`: `UserBan`
@@ -4750,19 +4750,19 @@ Sehen und Handeln hängen also am selben Recht. Die Standardgruppe Moderator hat
   - `DeleteGroup`: `GroupsDelete`
   - `DeleteUser`: `UserDelete`
   Fehlt es, kommt `PermissionDenied`. Die Regeln gegen Rechteausweitung (nur Teilmengen der eigenen Rechte vergeben, nur schwächere Nutzer bearbeiten) gelten weiter.
-- [ ] AC4: In den Tabs sind Aktionen ohne das passende Recht gesperrt, aber die Übersicht bleibt lesbar:
+- [x] AC4: In den Tabs sind Aktionen ohne das passende Recht gesperrt, aber die Übersicht bleibt lesbar:
   - "Neue Gruppe" nur mit `GroupsCreate`
   - "Speichern" und Sortieren nur mit `GroupsManage`
   - "Löschen" nur mit `GroupsDelete`
   - Gruppen-Checkboxen bei Nutzern nur mit `GroupsAssign`
   - "Entbannen" nur mit `UserBan`
-- [ ] AC5: Standard auf neuen Servern: Admin hat alles (wie bisher über `All`), Moderator bekommt zusätzlich `BansView`, aber nicht `UsersView`. Die Nutzerübersicht sieht also standardmässig nur Admin. Gast bekommt nichts Neues.
-- [ ] AC6: Bestehende Server verlieren beim Update keine Möglichkeit. Jede gespeicherte Gruppe bekommt einmalig:
+- [x] AC5: Standard auf neuen Servern: Admin hat alles (wie bisher über `All`), Moderator bekommt zusätzlich `BansView`, aber nicht `UsersView`. Die Nutzerübersicht sieht also standardmässig nur Admin. Gast bekommt nichts Neues.
+- [x] AC6: Bestehende Server verlieren beim Update keine Möglichkeit. Jede gespeicherte Gruppe bekommt einmalig:
   - mit `GroupsManage`: `GroupsView`, `GroupsCreate`, `GroupsDelete`
   - mit `GroupsAssign`: `UsersView`
   - mit `UserBan`: `BansView`
   `UserDelete` bekommt nur Admin (über `All`). Eine Gruppe, die als Rechte-Text "All" gespeichert ist, hat danach auch alle neuen Rechte.
-- [ ] AC7: Texte auf Deutsch und Englisch, README-Rechtetabelle aktualisiert.
+- [x] AC7: Texte auf Deutsch und Englisch, README-Rechtetabelle aktualisiert.
 
 ### Tests (TDD)
 
