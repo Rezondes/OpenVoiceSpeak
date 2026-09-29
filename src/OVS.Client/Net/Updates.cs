@@ -9,6 +9,26 @@ namespace OVS.Client.Net;
 /// <summary>A newer release than the running build, with its exe and the exe's SHA-256 file.</summary>
 public sealed record UpdateOffer(string Version, string Tag, string Notes, DateTimeOffset PublishedAt, Uri ExeUrl, Uri HashUrl);
 
+public enum UpdatePhase { Downloading, Verifying, Starting }
+
+/// <summary>Package 62: what the update card over the window shows. Total is null when GitHub sends no size.</summary>
+public sealed record UpdateProgress(string Version, UpdatePhase Phase, long Bytes = 0, long? Total = null)
+{
+    const double MB = 1024 * 1024;
+
+    public bool IsIndeterminate => Phase != UpdatePhase.Downloading || Total is not > 0;
+    public double Percent => Total is > 0 and var total ? Math.Min(100, 100.0 * Bytes / total) : 0;
+    public string Title => string.Format(Strings.Update_Title, Version);
+
+    public string Detail => Phase switch
+    {
+        UpdatePhase.Verifying => Strings.Update_Verifying,
+        UpdatePhase.Starting => Strings.Update_Starting,
+        _ when Total is > 0 and var total => string.Format(Strings.Update_Size, Percent, Bytes / MB, total / MB),
+        _ => string.Format(Strings.Update_SizeUnknown, Bytes / MB),
+    };
+}
+
 /// <summary>Offer is null when there is nothing newer; Error says why the check did not work.</summary>
 public sealed record UpdateCheckResult(UpdateOffer? Offer, string? Error = null);
 
@@ -70,14 +90,14 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
     string OldPath => exePath + ".old";
 
     /// <returns>Null when the new version was started, otherwise why not.</returns>
-    public async Task<string?> InstallAsync(UpdateOffer offer, CancellationToken cancel = default)
+    /// <param name="progress">Package 62: called on the caller's context, at most every 1 % or 100 ms while loading.</param>
+    public async Task<string?> InstallAsync(UpdateOffer offer, Action<UpdateProgress>? progress = null, CancellationToken cancel = default)
     {
         try
         {
             var expected = (await http.GetStringAsync(offer.HashUrl, cancel)).Split(' ', '\t', '\r', '\n')[0].Trim().ToLowerInvariant();
-            await using (var source = await http.GetStreamAsync(offer.ExeUrl, cancel))
-            await using (var target = File.Create(NewPath))
-                await source.CopyToAsync(target, cancel);
+            await DownloadAsync(offer, progress, cancel);
+            progress?.Invoke(new UpdateProgress(offer.Version, UpdatePhase.Verifying));
             string actual;
             await using (var file = File.OpenRead(NewPath))
                 actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(file, cancel));
@@ -89,6 +109,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
             if (File.Exists(OldPath)) File.Delete(OldPath);
             File.Move(exePath, OldPath);
             File.Move(NewPath, exePath);
+            progress?.Invoke(new UpdateProgress(offer.Version, UpdatePhase.Starting));
         }
         catch (Exception e) when (e is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException)
         {
@@ -98,6 +119,30 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         }
         restart(exePath);
         return null;
+    }
+
+    async Task DownloadAsync(UpdateOffer offer, Action<UpdateProgress>? progress, CancellationToken cancel)
+    {
+        using var response = await http.GetAsync(offer.ExeUrl, HttpCompletionOption.ResponseHeadersRead, cancel);
+        response.EnsureSuccessStatusCode();
+        long? total = response.Content.Headers.ContentLength;
+        await using var source = await response.Content.ReadAsStreamAsync(cancel);
+        await using var target = File.Create(NewPath);
+        var buffer = new byte[81920];
+        long bytes = 0, reported = -1;
+        long step = total is > 0 and var t ? Math.Max(1, t / 100) : long.MaxValue;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        int read;
+        while ((read = await source.ReadAsync(buffer, cancel)) > 0)
+        {
+            await target.WriteAsync(buffer.AsMemory(0, read), cancel);
+            bytes += read;
+            if (bytes - reported < step && clock.ElapsedMilliseconds < 100) continue;
+            progress?.Invoke(new UpdateProgress(offer.Version, UpdatePhase.Downloading, bytes, total));
+            reported = bytes;
+            clock.Restart();
+        }
+        if (bytes != reported) progress?.Invoke(new UpdateProgress(offer.Version, UpdatePhase.Downloading, bytes, total));
     }
 
     /// <summary>At start: the exe replaced by the last update is not running any more and can go.</summary>

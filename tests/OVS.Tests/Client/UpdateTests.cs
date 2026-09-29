@@ -22,6 +22,12 @@ sealed class FakeHttp(Func<HttpRequestMessage, HttpResponseMessage> respond) : H
     public static HttpResponseMessage Bytes(byte[] value) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(value) };
 }
 
+/// <summary>A download whose size is unknown up front, as with a chunked response.</summary>
+sealed class Unseekable(byte[] data) : MemoryStream(data)
+{
+    public override bool CanSeek => false;
+}
+
 /// <summary>Package 43: which release counts as an update, and how the exe is swapped.</summary>
 public sealed class UpdateTests : IDisposable
 {
@@ -132,5 +138,46 @@ public sealed class UpdateTests : IDisposable
         Assert.Contains("nicht installiert", await installer.InstallAsync(Offer));
         Assert.Equal("alt", File.ReadAllText(exe));
         Assert.Empty(restarted);
+    }
+
+    // ---- progress (Package 62) ----
+
+    [Fact]
+    public async Task Install_ReportsProgress_ThenVerify_ThenStart()
+    {
+        var neu = new byte[300_000];
+        new Random(1).NextBytes(neu);
+        var (installer, _, _) = Installer(neu, Sha(neu));
+        var reports = new List<UpdateProgress>();
+        Assert.Null(await installer.InstallAsync(Offer, reports.Add));
+
+        var loading = reports.TakeWhile(r => r.Phase == UpdatePhase.Downloading).ToList();
+        Assert.True(loading.Count > 1, $"{loading.Count} Meldungen");
+        Assert.All(loading, r => Assert.Equal(neu.Length, r.Total));
+        Assert.Equal(loading.Select(r => r.Bytes).Order(), loading.Select(r => r.Bytes));
+        Assert.Equal(neu.Length, loading[^1].Bytes);
+        Assert.Equal(100, loading[^1].Percent);
+        Assert.False(loading[^1].IsIndeterminate);
+        Assert.Equal([UpdatePhase.Verifying, UpdatePhase.Starting], reports.Skip(loading.Count).Select(r => r.Phase));
+    }
+
+    [Fact]
+    public async Task Install_WithoutLength_ReportsUnknownTotal()
+    {
+        var neu = Encoding.ASCII.GetBytes("neu ohne Laenge");
+        var exe = Path.Combine(dir, "OVS.Client.exe");
+        File.WriteAllText(exe, "alt");
+        var http = new FakeHttp(r => r.RequestUri!.AbsolutePath.EndsWith(".sha256")
+            ? FakeHttp.Bytes(Encoding.ASCII.GetBytes(Sha(neu)))
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new Unseekable(neu)) });
+        var reports = new List<UpdateProgress>();
+        Assert.Null(await new UpdateInstaller(new HttpClient(http), exe, _ => { }).InstallAsync(Offer, reports.Add));
+
+        var loading = reports.Where(r => r.Phase == UpdatePhase.Downloading).ToList();
+        Assert.NotEmpty(loading);
+        Assert.All(loading, r => Assert.Null(r.Total));
+        Assert.True(loading[^1].IsIndeterminate);
+        Assert.Equal(neu.Length, loading[^1].Bytes);
+        Assert.Equal("neu ohne Laenge", File.ReadAllText(exe));
     }
 }

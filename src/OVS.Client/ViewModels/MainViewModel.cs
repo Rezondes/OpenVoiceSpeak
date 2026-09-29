@@ -76,6 +76,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] string status = Strings.Status_NotConnected;
     [ObservableProperty] bool isConnecting;
 
+    /// <summary>Package 62: the update being loaded, checked or started; null otherwise.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsUpdating))] UpdateProgress? updateInProgress;
+    public bool IsUpdating => UpdateInProgress is not null;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomePage), nameof(IsSettingsPage), nameof(IsAdminPage))]
     Page page = Page.Home;
@@ -313,7 +317,18 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
         Status = string.Format(Strings.Update_Downloading, offer.Version);
         Log.Write($"Update auf {offer.Version} wird installiert");
-        if (await Installer.InstallAsync(offer) is not { } failure) return Strings.Update_Starting;
+        UpdateInProgress = new UpdateProgress(offer.Version, UpdatePhase.Downloading);
+        string? failure;
+        try
+        {
+            // Package 62: reported on this (UI) context, the card over the window follows it
+            failure = await Installer.InstallAsync(offer, p => UpdateInProgress = p);
+        }
+        finally
+        {
+            UpdateInProgress = null;
+        }
+        if (failure is null) return Strings.Update_Starting;
         Log.Write(failure);
         Status = failure;
         AddNotice(failure, NoticeKind.Warning);

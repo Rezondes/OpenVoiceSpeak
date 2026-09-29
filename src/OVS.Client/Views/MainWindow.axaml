@@ -15,7 +15,7 @@
   <v:TitleBar DockPanel.Dock="Top" />
   <Grid ColumnDefinitions="300,Auto,*">
     <!-- ================= Sidebar: server, channels, own user ================= -->
-    <Border Grid.Column="0" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
+    <Border Grid.Column="0" IsEnabled="{Binding !IsUpdating}" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <!-- Server header -->
         <Border DockPanel.Dock="Top" Padding="14,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
@@ -293,7 +293,7 @@
     <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" />
 
     <!-- ================= Main area: home, settings or administration, all inside this window (A20) ================= -->
-    <Panel Grid.Column="2">
+    <Panel Grid.Column="2" IsEnabled="{Binding !IsUpdating}">
       <Panel IsVisible="{Binding IsHomePage}">
         <!-- Start screen while not connected -->
         <ScrollViewer IsVisible="{Binding !IsConnected}">
@@ -374,6 +374,22 @@
 
     <!-- Dialogs: a modal layer over the whole window -->
     <v:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" />
+
+    <!-- Package 62: update progress over everything below the title bar; the content under it is disabled meanwhile -->
+    <Panel x:Name="UpdateLayer" Grid.ColumnSpan="3" IsVisible="{Binding IsUpdating}" Background="{DynamicResource Ovs.Scrim}">
+      <Border Classes="dialog" Width="420" Padding="24,20" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <PathIcon Classes="accent" Data="{StaticResource Icon.ArrowSync}" />
+            <TextBlock Classes="h2" Text="{Binding UpdateInProgress.Title, FallbackValue=''}" VerticalAlignment="Center" />
+          </StackPanel>
+          <ProgressBar x:Name="UpdateBar" Minimum="0" Maximum="100" Height="8" CornerRadius="4"
+                       Value="{Binding UpdateInProgress.Percent, FallbackValue=0}"
+                       IsIndeterminate="{Binding UpdateInProgress.IsIndeterminate, FallbackValue=True}" />
+          <TextBlock x:Name="UpdateDetail" Classes="caption" Text="{Binding UpdateInProgress.Detail, FallbackValue=''}" />
+        </StackPanel>
+      </Border>
+    </Panel>
   </Grid>
   </DockPanel>
 </Window>

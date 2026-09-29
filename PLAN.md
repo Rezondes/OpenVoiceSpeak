@@ -83,6 +83,9 @@
 | 59 | Push-to-Talk-Taste von Anfang an | Ein neues Profil hat eine passende PTT-Taste, und die Einstellungen weisen auf eine fehlende PTT-Taste hin. | 41, 58 |
 | 60 | Ton für die eigene Link-PTT | Beginnt man selbst über Link zu sprechen, hört man einen eigenen, einzeln anpassbaren Ton, standardmässig den aus Package 57. | 57 |
 | 61 | Durchsichtiger Hintergrund | Die grossen Hintergrundflächen des Fensters lassen sich von 0 bis 100 % Deckkraft einstellen, auf Wunsch weichgezeichnet, während Text und Bedienelemente lesbar bleiben. | 53, 58 |
+| 62 | Update-Fortschritt | Während ein Update geladen, geprüft und gestartet wird, liegt über dem ganzen Fenster eine Karte mit Fortschrittsbalken, Prozent und Megabyte. | - |
+| 63 | Neustart nach Update | Nach einem Update startet die neue Version von selbst, die alte `.exe.old` verschwindet, und jeder Fehler auf dem Weg steht im Log. | - |
+| 64 | Eigene Nachrichten rechts | Eigene Chatnachrichten stehen rechts als Blase ohne Avatar, die anderer links, Hinweise weiter über die volle Breite. | - |
 
 ## Annahmen
 
@@ -175,6 +178,11 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A72 Machbarkeit durchsichtiger Hintergrund (geprüft).** Wegwerf-Test mit Avalonia 11.3 unter Windows 11 (Build 26200), Fenster ohne Rahmen wie der Client: `Transparent`, `AcrylicBlur` und `Mica` werden gewährt. Klicks auf völlig durchsichtige Stellen (0 %) bleiben im Fenster, weil Avalonia über DirectComposition zeichnet (`WS_EX_NOREDIRECTIONBITMAP`, kein Layered Window). Windows 10 kann `Transparent` und `AcrylicBlur`.
 - **A73 Was durchsichtig wird.** Die grossen Flächen: Fensterhintergrund, Titelleiste, Seitenleiste mit Fusszeile, Chat-Bereich und die Seiten (Einstellungen, Verwaltung), also die Pinsel `Ovs.Bg`, `Ovs.Sidebar` und `Ovs.SidebarFooter`. Karten, Eingabefelder, Menüs, Dialoge und Tooltips bleiben deckend. Dialoge bekommen dafür eigene Pinsel (`Ovs.DialogBg`, `Ovs.DialogBar`), weil sie heute `Ovs.Bg` und `Ovs.Sidebar` mitbenutzen. Text, Icons und Buttons bleiben immer voll deckend.
 - **A74 Regler und Weichzeichnen.** Unter Darstellung: Regler "Deckkraft des Hintergrunds" 0 bis 100 %, Standard 100 %, und Checkbox "Hintergrund weichzeichnen" (Acrylic, Standard aus). Beide wirken sofort, "Verwerfen" stellt die gespeicherten Werte wieder her (wie A61). Bei 100 % ohne Weichzeichnen bleibt das Fenster ein ganz normales, undurchsichtiges Fenster ohne Transparenzmodus. 0 % ist erlaubt (A72).
+- **A75 Update-Fortschritt.** Karte mittig über dem abgedunkelten ganzen Fenster, die alle Eingaben abfängt (Titelleiste ausgenommen): Titel "Update auf {Version}", Balken mit Prozent und "12,3 / 48,0 MB". Schickt GitHub keine Dateigrösse, dreht sich der Balken ohne Prozent. Danach "Wird geprüft ..." und "Die neue Version startet ...". Kein Abbrechen-Knopf. Schlägt etwas fehl, verschwindet die Karte und der Fehler erscheint wie bisher. Die Verbindung und die Sprache laufen während des Downloads weiter.
+- **A76 Aufteilung.** Der Punkt "Update" aus der Anfrage wurde in 62 (Anzeige) und 63 (Neustart, Aufräumen) geteilt. Beide berühren `UpdateInstaller`, sind aber unabhängig voneinander umsetzbar.
+- **A77 Neustart-Befund.** Log vom 29.09.2026 10:16: "Update auf 290926.0lh6 wird installiert", danach beim alten Client weder "Client beendet" noch ein Fehler. Das Fenster ging laut Nutzer einfach zu, der neue Client kam nicht, und um 10:18 wurde er von Hand gestartet. Der Client hat keinen Handler für unbehandelte Ausnahmen, ein Absturz hinterlässt also keine Spur. Das Muster passt zu einem Absturz im Neustart-Callback in `App.axaml.cs` (dort ist `Process.Start` ungeschützt, und er läuft im `async void`-Handler von `window.Opened`). Das ist eine Vermutung, deshalb beginnt Package 63 mit Absturz-Logging und einer Reproduktion.
+- **A78 Aufräumen der alten exe.** Die neue Version bekommt `--after-update <pid>` mit. Sie wartet höchstens 10 Sekunden, bis dieser Prozess weg ist, und löscht dann `OVS.Client.exe.old`, mit ein paar Versuchen (Virenscanner halten frische Dateien kurz fest). Jeder normale Start räumt weiterhin auf wie bisher. Was nicht klappt, wird mit Grund geloggt statt geschluckt.
+- **A79 Eigene Nachrichten.** Rechts, als Blase mit Akzent-Hintergrund, ohne Avatar, ohne Namen und ohne "Du", nur mit der Uhrzeit. Die Blase ist höchstens etwa 75 % so breit wie der Verlauf. Nachrichten anderer bleiben links mit Avatar, Name und Zeit, der Text steht in einer neutralen Blase (`Ovs.Surface`). Hinweise, Willkommensnachricht und Marker bleiben unverändert über die volle Breite bzw. mittig. Gilt in allen Tabs (Allgemein, Channel, privat).
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -3880,3 +3888,192 @@ Testbefehl: `dotnet test`
 - Durchsichtige Karten, Menüs und Dialoge
 - `Mica` als eigene Option (nur Windows 11, wirkt kaum anders als Acrylic)
 - Eine Tastenkombination zum schnellen Umschalten der Deckkraft
+
+---
+
+## Package 62: Update-Fortschritt
+
+**Ziel:** Während ein Update geladen, geprüft und gestartet wird, liegt über dem ganzen Fenster eine Karte mit Fortschrittsbalken, Prozent und Megabyte.
+
+**Abhängigkeiten:** keine
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Net/Updates.cs` (ändern): `UpdateProgress` (neu, Record), `InstallAsync` meldet den Fortschritt über `IProgress<UpdateProgress>`
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (ändern): `UpdateProgress? UpdateInProgress` samt abgeleiteten Texten, gesetzt in `CheckForUpdatesAsync`
+- `src/OVS.Client/Views/MainWindow.axaml` (ändern): eigene Ebene über allem, auch über `OverlayLayer`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (ändern): "Update auf {0}", "{0} / {1} MB", "Wird geprüft ..."
+- `tests/OVS.Tests/Client/UpdateTests.cs`, `MainViewModelTests.cs`, `UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+`MainViewModel.CheckForUpdatesAsync` fragt über `Dialogs.OfferUpdate`, setzt dann nur `Status = Update_Downloading` und ruft `Installer.InstallAsync` auf. `Status` ist aber nur auf dem Startbildschirm zu sehen (`MainWindow.axaml`, `IsHomePage` und `!IsConnected`). Ist man verbunden oder in den Einstellungen, sieht man während des Downloads (der Client ist etwa 50 MB gross) gar nichts. `UpdateInstaller.InstallAsync` lädt mit `GetStreamAsync` und kennt dadurch die Grösse nicht. Mit `GetAsync(..., HttpCompletionOption.ResponseHeadersRead)` steht sie in `Content.Headers.ContentLength`. Dialoge laufen über `OverlayHost` (A20, eine Karte zur Zeit, mit `SemaphoreSlim`). Der Fortschritt soll sie nicht blockieren und bekommt deshalb eine eigene Ebene statt eines Dialogs. Einen unbestimmten `ProgressBar` gibt es schon beim Verbinden.
+
+### Acceptance Criteria
+
+- [x] AC1: `InstallAsync` meldet beim Laden steigende Byte-Zahlen mit der Gesamtgrösse aus `Content-Length` (oder `null` ohne Grösse), danach die Phase "Prüfen" und zuletzt "Starten". Beim letzten Download-Schritt stimmen die geladenen Bytes mit der Dateigrösse überein.
+- [x] AC2: Ab der Zusage im Update-Dialog bis zum Neustart oder Fehler liegt über dem ganzen Fenster eine abgedunkelte Fläche mit einer mittigen Karte: Titel mit Version, Balken mit Prozent und "x,x / y,y MB". Ohne Grösse dreht sich der Balken ohne Prozent. Beim Prüfen und Starten stehen die passenden Texte da.
+- [x] AC3: Solange die Karte da ist, kommen keine Klicks und Tastendrücke an das Fenster darunter (Titelleiste ausgenommen, damit man das Fenster verschieben und minimieren kann).
+- [x] AC4: Schlägt das Update fehl (Prüfsumme, Netz, Datei), verschwindet die Karte, und der Fehler erscheint wie bisher. Das gilt für den Start-Check und für "Nach Updates suchen" in den Einstellungen gleichermassen.
+- [x] AC5: Texte auf Deutsch und Englisch.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `UpdateTests > "Install_ReportsProgress_ThenVerify_ThenStart"` (AC1)
+   - Gegeben: Fake-Handler liefert 300 kB mit `Content-Length`, passende Prüfsumme, `IProgress` sammelt die Meldungen synchron
+   - Erwartet: mehrere Download-Meldungen, Bytes steigend, Gesamtgrösse 300 kB, die letzte mit 300 kB, danach genau einmal "Prüfen", dann "Starten"
+2. `UpdateTests > "Install_WithoutLength_ReportsUnknownTotal"` (AC1)
+   - Gegeben: Antwort ohne `Content-Length` (gestreamter Inhalt)
+   - Erwartet: Download-Meldungen mit Gesamtgrösse `null`, Installation klappt trotzdem
+3. `MainViewModelTests > "Update_Accepted_ShowsProgress_UntilFailure"` (AC2, AC4)
+   - Gegeben: Fake-Checker mit Angebot, Dialog sagt ja, Installer mit Fake-Handler, dessen Prüfsumme nicht passt
+   - Erwartet: während des Downloads `UpdateInProgress` nicht null mit Version und Prozent-Text, danach null, und die Rückgabe ist `Update_Damaged`
+4. `UiSmokeTests > "UpdateProgress_CoversWholeWindow_BlocksInput"` (AC2, AC3)
+   - Gegeben: Hauptfenster verbunden, `UpdateInProgress` auf 40 % von 50 MB gesetzt
+   - Erwartet: die Ebene ist sichtbar und so gross wie der Inhalt unter der Titelleiste, die Karte steht mittig, Text "40 %" und "20,0 / 50,0 MB". Ein Klick auf den Chat-Senden-Knopf kommt nicht an. Mit `Total = null` ist der Balken `IsIndeterminate`.
+5. `LocalizationTests` bleiben grün (AC5)
+6. Manueller Check: echtes Update von einer Release-Version aus, verbunden mit einem Server. Die Karte ist sofort sichtbar, und die Prozente laufen hoch.
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Tests 1 und 2 (rot). `UpdateProgress(Phase, long Bytes, long? Total)` anlegen. In `InstallAsync` per `ResponseHeadersRead` laden und in einer Schleife mit Puffer kopieren, höchstens etwa alle 100 ms oder je 1 % melden.
+2. Test 3 (rot). `UpdateInProgress` im `MainViewModel` mit `Progress<T>` (meldet auf dem UI-Thread), im `finally` zurücksetzen. Abgeleitete Eigenschaften für Titel, Prozent und MB-Text.
+3. Test 4 (rot). Ebene in `MainWindow.axaml` über alle Spalten und über `OverlayLayer` legen: Scrim wie beim `OverlayHost`, Karte im Stil `Border.dialog`, `ProgressBar` mit `Value` und `IsIndeterminate`.
+4. Texte in beiden Sprachen, `LocalizationTests`.
+5. Manueller Check.
+
+### Out of Scope
+
+- Abbrechen des Downloads (A75)
+- Neustart und Aufräumen (Package 63)
+- Hintergrund-Download ohne Rückfrage
+
+---
+
+## Package 63: Neustart nach Update
+
+**Ziel:** Nach einem Update startet die neue Version von selbst, die alte `.exe.old` verschwindet, und jeder Fehler auf dem Weg steht im Log.
+
+**Abhängigkeiten:** keine (mit Package 62 parallel möglich, beide ändern `Updates.cs`, aber an verschiedenen Stellen)
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Program.cs` (ändern): Option `--after-update <pid>`, Absturz-Logging vor dem Start von Avalonia
+- `src/OVS.Client/Net/Updates.cs` (ändern): Argumente für den Neustart, `CleanupOldAsync` wartet auf den alten Prozess, versucht es mehrmals und gibt einen Grund zurück
+- `src/OVS.Client/App.axaml.cs` (ändern): Neustart-Callback fängt Fehler ab und loggt sie, Aufräum-Ergebnis ins Log
+- `src/OVS.Client/Logging/ClientLog.cs` (ändern, falls nötig): Schreiben ohne laufende App
+- `tests/OVS.Tests/Client/UpdateTests.cs` (ändern), dazu die Tests von `ClientOptions.Parse` (ändern)
+
+### Kontext
+
+`UpdateInstaller.InstallAsync` benennt die laufende exe in `OVS.Client.exe.old` um, schiebt die neue an ihre Stelle und ruft den `restart`-Callback aus `App.axaml.cs` auf. Der startet die neue exe mit denselben Argumenten (`Process.Start`, ohne `try`) und ruft danach `desktop.Shutdown()` auf. Beim Start ruft `Program.Main` `UpdateInstaller.CleanupOld` auf. Das löscht `.old` und schluckt `IOException` und `UnauthorizedAccessException` stillschweigend.
+
+Im Log vom 29.09. endet der alte Client nach "Update ... wird installiert" ohne "Client beendet", und ein neuer Prozess wurde nicht gestartet (A77). Es gibt keinen Handler für unbehandelte Ausnahmen, ein Absturz ist also unsichtbar. Das Update wird beim Start aus `window.Opened` angestossen, einem `async void`-Handler, in dem eine Ausnahme den Prozess beendet. Zwei Schwachstellen sind unabhängig von der genauen Ursache sicher:
+
+1. Selbst wenn der neue Prozess startet, läuft sein `CleanupOld` in dem Moment, in dem der alte noch beendet wird. Die Datei ist dann noch gesperrt, das Löschen scheitert still, und es gibt keinen zweiten Versuch in dieser Sitzung.
+2. Ein Fehler beim Starten des neuen Prozesses wird weder angezeigt noch geloggt.
+
+Der Client wird als Single-File mit `IncludeNativeLibrariesForSelfExtract` veröffentlicht (`.github/workflows/release.yml`).
+
+### Acceptance Criteria
+
+- [ ] AC1: Unbehandelte Ausnahmen (AppDomain, Tasks, UI-Dispatcher) landen mit Stacktrace im Client-Log, bevor der Prozess endet.
+- [ ] AC2: Die Ursache aus A77 ist reproduziert und als Test festgehalten, der vor dem Fix rot ist (oder, falls sie ausserhalb des Codes liegt, z. B. beim Virenscanner, ist sie mit Log-Zeilen belegt und in A77 nachgetragen).
+- [ ] AC3: Nach einem erfolgreichen Tausch startet die neue exe mit den bisherigen Argumenten plus `--after-update <pid des alten Prozesses>`. Erst danach beendet sich der alte Client, sauber, mit "Client beendet" im Log.
+- [ ] AC4: Scheitert der Start der neuen exe, bleibt der alte Client offen, zeigt den Fehler (wie `Update_InstallFailed`) und loggt ihn. Die neue exe liegt dann schon an ihrem Platz, der nächste Start von Hand nutzt sie also.
+- [ ] AC5: Mit `--after-update <pid>` wartet der neue Client höchstens 10 Sekunden auf das Ende dieses Prozesses und löscht dann `.old`, mit bis zu 5 Versuchen im Abstand von 500 ms, ohne den Start des Fensters aufzuhalten. Das Ergebnis steht im Log ("alte Version entfernt" oder der Grund).
+- [ ] AC6: Ein normaler Start räumt eine liegengebliebene `.old` weiterhin auf, und ein Fehlschlag wird geloggt statt geschluckt.
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. Reproduktion zuerst (AC2): Absturz-Logging aus Schritt 1 einbauen, dann ein echtes Update von der vorigen Release-Version durchspielen (Release-exe in einen Testordner kopieren und starten, das Update annehmen). Den Stacktrace bzw. die letzten Log-Zeilen festhalten und daraus einen Unit-Test ableiten, der rot ist. Vermutlich ist das `UpdateTests > "RestartFails_ClientStaysOpen_ErrorShown"` (Restart-Callback wirft `Win32Exception`, erwartet: `InstallAsync` bzw. `CheckForUpdatesAsync` liefert einen Fehlertext, keine Ausnahme).
+2. `UpdateTests > "Restart_PassesArgs_PlusAfterUpdatePid"` (AC3)
+   - Gegeben: Installer mit Fake-Download, bisherige Argumente `--profile X`
+   - Erwartet: der Callback bekommt den exe-Pfad und `--profile X --after-update <Environment.ProcessId>`
+3. `ClientOptions`-Test `"Parse_AfterUpdate"` (AC5): `--after-update 1234` ergibt `AfterUpdatePid = 1234`, ungültige Werte werden ignoriert
+4. `UpdateTests > "CleanupOld_WaitsForLockedFile_ThenDeletes"` (AC5)
+   - Gegeben: `.old` mit `FileShare.None` geöffnet, nach 700 ms wieder freigegeben
+   - Erwartet: `CleanupOldAsync` liefert "entfernt", und die Datei ist weg
+5. `UpdateTests > "CleanupOld_StillLocked_ReportsReason"` (AC5, AC6)
+   - Gegeben: `.old` bleibt die ganze Zeit gesperrt
+   - Erwartet: Ergebnis mit Grund, keine Ausnahme, Dauer höchstens etwa 2,5 s (5 × 500 ms)
+6. `UpdateTests > "CleanupOld_WaitsForProcessExit"` (AC5)
+   - Gegeben: ein kurzlebiger Kindprozess (`cmd /c ping -n 2 127.0.0.1`) als pid
+   - Erwartet: gelöscht wird erst, nachdem der Prozess beendet ist
+7. Bestehender Test `Success_NewInPlace_OldRenamed_Restarted` bleibt grün
+8. Manueller Check (AC3, AC5): echtes Update von einer Release-Version. Die neue Version öffnet sich von selbst, im Ordner liegt danach keine `.old` mehr, und das Log des alten Clients endet mit "Client beendet".
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Absturz-Logging in `Program.Main` (`AppDomain.CurrentDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`) und in `App` (`Dispatcher.UIThread.UnhandledException`). Dann die Reproduktion, Test 1 aus dem Befund schreiben (rot).
+2. Tests 2 und 3 (rot). `ClientOptions.AfterUpdatePid`, Argumente für den Neustart zusammenbauen, das alte `--after-update` dabei nicht doppelt weitergeben.
+3. Restart-Callback in `App.axaml.cs`: `Process.Start` in `try`. Bei Fehler loggen und als Fehlertext zurückgeben, nicht `Shutdown`. Test 1 grün.
+4. Tests 4 bis 6 (rot). `CleanupOldAsync(exePath, pid?)`: auf den Prozess warten (`Process.GetProcessById` und `WaitForExitAsync` mit 10 s Timeout, `ArgumentException` heisst schon weg), dann löschen mit Wiederholungen, Ergebnis zurückgeben. In `Program.Main` im Hintergrund starten und das Ergebnis loggen.
+5. Manueller Check. Den Befund in A77 nachtragen.
+
+### Out of Scope
+
+- Fortschrittsanzeige (Package 62)
+- Signierte Releases oder ein eigener Updater-Prozess
+- Rückkehr zur alten Version, wenn die neue nicht startet
+
+---
+
+## Package 64: Eigene Nachrichten rechts
+
+**Ziel:** Eigene Chatnachrichten stehen rechts als Blase ohne Avatar, die anderer links, Hinweise weiter über die volle Breite.
+
+**Abhängigkeiten:** keine
+
+**Betroffene Dateien:**
+- `src/OVS.Client/Views/ChatView.axaml` (ändern): Vorlage für Nachrichten aufgeteilt in "eigene" und "andere"
+- `src/OVS.Client/Styles/Controls.axaml` (ändern): `Border.bubble` und `Border.bubble.own`
+- `src/OVS.Client/Styles/Theme.axaml` (ändern, falls nötig): Pinsel für Text auf der Akzent-Blase in hell und dunkel
+- `tests/OVS.Tests/Client/UiSmokeTests.cs` (ändern)
+
+### Kontext
+
+`ChatEntry` (`ViewModels/ChatViewModel.cs`) kennt schon `IsOwn`, `IsMessage`, `IsNotice`, `IsWelcome` und `IsMarker`. Eigene Nachrichten werden in `ChatViewModelTests` bereits als `IsOwn` geprüft, im Channel, allgemein und privat. In `ChatView.axaml` hat heute jede Nachricht denselben Aufbau: `DockPanel` mit Avatar links, Name (mit Klasse `own` und dem Zusatz "Du"), Zeit, `SelectableTextBlock`. Hinweise sind `Border.card` über die volle Breite, Marker ein mittiger `TextBlock`. Der Verlauf ist ein `ItemsControl` mit `MaxWidth="900"`. Das ViewModel muss sich nicht ändern, nur Vorlage und Stil.
+
+### Acceptance Criteria
+
+- [ ] AC1: Eigene Nachrichten stehen rechtsbündig in einer Blase mit Akzent-Hintergrund, ohne Avatar, ohne Namen und ohne "Du", mit der Uhrzeit unter dem Text. Die Blase ist so breit wie der Text, höchstens aber etwa 75 % des Verlaufs.
+- [ ] AC2: Nachrichten anderer stehen links mit Avatar, Name und Zeit wie bisher, der Text in einer neutralen Blase, ebenfalls höchstens etwa 75 % breit.
+- [ ] AC3: Willkommensnachricht und andere Hinweise nutzen weiter die volle Breite, Marker bleiben mittig.
+- [ ] AC4: Das gilt in den Tabs Allgemein, Channel und privat. Der Text bleibt markierbar, lange Wörter und URLs brechen um, statt über den Rand zu laufen.
+- [ ] AC5 (manuell): Im hellen und dunklen Theme ist der Text auf beiden Blasen gut lesbar, auch bei durchsichtigem Hintergrund (Package 61).
+
+### Tests (TDD)
+
+Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
+
+1. `UiSmokeTests > "Chat_OwnRight_OthersLeft_NoticesFullWidth"` (AC1, AC2, AC3)
+   - Gegeben: Hauptfenster verbunden, im allgemeinen Chat ein Willkommenshinweis, eine Nachricht von "anna" (Session 2) und eine eigene (Session 1), Layout durchgelaufen
+   - Erwartet: Die sichtbare Blase der eigenen Nachricht endet am rechten Rand des Verlaufs (Toleranz 1 px) und hat die Klasse `own`, im Eintrag ist kein Avatar sichtbar. Annas Blase beginnt links nach dem Avatar, der Avatar ist sichtbar. Der Hinweis ist so breit wie der Verlauf.
+2. `UiSmokeTests > "Chat_LongMessage_BubbleCappedAndWraps"` (AC1, AC4)
+   - Gegeben: eine eigene Nachricht mit 600 Zeichen ohne Leerzeichen
+   - Erwartet: Die Blase ist höchstens 75 % des Verlaufs breit, und der Text hat mehrere Zeilen (Höhe grösser als eine Zeile)
+3. `UiSmokeTests > "Chat_PrivateTab_OwnRight"` (AC4): dasselbe wie Test 1 in einem privaten Tab
+4. Bestehende `ChatViewModelTests` und `Chat_FollowsNewLines_UnlessScrolledUp` bleiben grün
+5. Manueller Check AC5: Screenshot hell, dunkel und bei 50 % Deckkraft ansehen
+
+Testbefehl: `dotnet test`
+
+### Umsetzungsschritte
+
+1. Test 1 (rot). In `ChatView.axaml` die Nachricht in zwei Zweige teilen: `IsVisible` auf eigene bzw. fremde Nachrichten (dafür `IsOtherMessage` im `ChatEntry` oder ein Converter). Der eigene Zweig richtet sich rechts aus, `HorizontalAlignment="Right"`.
+2. Stil `Border.bubble` (Padding, Eckenradius, `Ovs.Surface`) und `Border.bubble.own` (Akzentfarbe, passende Textfarbe) in `Controls.axaml`.
+3. Test 2 (rot). Maximale Breite der Blase an die Breite des Verlaufs koppeln (z. B. über ein `Grid` mit Spalten `*,3*` bzw. `3*,*`), `TextWrapping="Wrap"`.
+4. Test 3, bestehende Tests grün, manueller Check.
+
+### Out of Scope
+
+- Aufeinanderfolgende Nachrichten desselben Absenders zusammenfassen
+- Lesebestätigungen, Reaktionen, Bearbeiten
+- Änderungen am Chat-Protokoll oder am ViewModel über eine reine Anzeige-Eigenschaft hinaus

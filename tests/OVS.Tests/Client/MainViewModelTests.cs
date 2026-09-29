@@ -225,6 +225,48 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Single(http.Requests);
     }
 
+    /// <summary>Package 62: once accepted, the progress card is up until the update fails (or starts).</summary>
+    [Fact]
+    public async Task Update_Accepted_ShowsProgress_UntilFailure()
+    {
+        var release = new
+        {
+            tag_name = "deploy-bbbbbbb",
+            name = "OpenVoiceSpeak 280926.0b2c",
+            body = "",
+            published_at = DateTimeOffset.UtcNow,
+            assets = new[]
+            {
+                new { name = "OVS.Client.exe", browser_download_url = "https://example.org/OVS.Client.exe" },
+                new { name = "OVS.Client.exe.sha256", browser_download_url = "https://example.org/OVS.Client.exe.sha256" },
+            },
+        };
+        var http = new FakeHttp(r => r.RequestUri!.Host == "api.github.com" ? FakeHttp.Json(release)
+            : r.RequestUri.AbsolutePath.EndsWith(".sha256") ? FakeHttp.Bytes(System.Text.Encoding.ASCII.GetBytes(new string('0', 64)))
+            : FakeHttp.Bytes(new byte[200_000]));
+        var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
+        var seen = new List<OVS.Client.Net.UpdateProgress?>();
+        await OnUi(() =>
+        {
+            File.WriteAllText(Path.Combine(dir, "OVS.Client.exe"), "alt");
+            vm.Updates = new OVS.Client.Net.UpdateChecker(new HttpClient(http), running);
+            vm.Installer = new OVS.Client.Net.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "OVS.Client.exe"), _ => { });
+            vm.Dialogs = new Dialogs { OfferUpdate = _ => Task.FromResult(true) };
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.UpdateInProgress)) seen.Add(vm.UpdateInProgress);
+            };
+            return 0;
+        });
+        var result = await ui.InvokeAsync(() => vm.CheckForUpdatesAsync());
+
+        Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, result);
+        Assert.Contains(seen, p => p is { Phase: OVS.Client.Net.UpdatePhase.Downloading, Bytes: 200_000, Total: 200_000 });
+        Assert.All(seen.OfType<OVS.Client.Net.UpdateProgress>(), p => Assert.Equal("280926.0b2c", p.Version));
+        Assert.Null(seen[^1]);
+        Assert.False(await OnUi(() => vm.IsUpdating));
+    }
+
     [Fact]
     public async Task Connect_SavesBookmark_ToSettingsFile()
     {

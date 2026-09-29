@@ -340,6 +340,42 @@ public sealed class UiSmokeTests : IDisposable
         Assert.True(closed);
     }
 
+    /// <summary>Package 62: the update card covers everything below the title bar and nothing underneath takes input.</summary>
+    [AvaloniaFact]
+    public void UpdateProgress_CoversWholeWindow_BlocksInput()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+        var layer = main.FindControl<Panel>("UpdateLayer")!;
+        Assert.False(layer.IsVisible);
+
+        vm.UpdateInProgress = new UpdateProgress("290926.0lh6", UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
+        Dispatcher.UIThread.RunJobs();
+        var grid = (Control)layer.Parent!;
+        Assert.True(layer.IsEffectivelyVisible);
+        Assert.Equal(grid.Bounds.Size, layer.Bounds.Size);
+        var bar = main.FindControl<ProgressBar>("UpdateBar")!;
+        Assert.Equal((40d, false), (bar.Value, bar.IsIndeterminate));
+        Assert.Contains(Texts(layer), t => t?.Contains("290926.0lh6") == true);
+        Assert.Contains("40", main.FindControl<TextBlock>("UpdateDetail")!.Text);
+        var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
+        Assert.False(chat.IsEffectivelyEnabled); // no clicks, no keys
+        var card = layer.Children.OfType<Border>().Single();
+        Assert.Equal(layer.Bounds.Width / 2, card.Bounds.Center.X, 1);
+
+        vm.UpdateInProgress = vm.UpdateInProgress with { Total = null };
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(bar.IsIndeterminate);
+
+        vm.UpdateInProgress = null;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(layer.IsVisible);
+        Assert.True(chat.IsEffectivelyEnabled);
+        main.Close();
+    }
+
     /// <summary>Package 32 AC8: new lines scroll along, unless the reader scrolled up.</summary>
     [AvaloniaFact]
     public void Chat_FollowsNewLines_UnlessScrolledUp()
