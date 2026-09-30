@@ -340,7 +340,9 @@ public sealed class UiSmokeTests : IDisposable
         Assert.True(main.ExtendClientAreaToDecorationsHint);
         Assert.NotNull(main.Icon); // Package 28: window and taskbar show the logo
         var bar = main.GetVisualDescendants().OfType<TitleBar>().Single();
-        Assert.Single(bar.GetVisualDescendants().OfType<LogoMark>());
+        var wave = bar.GetVisualDescendants().OfType<LogoMark>().Single().GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().Single(p => p.Name == "Wave");
+        Assert.True(wave.IsEffectivelyVisible); // Package 95: the title bar logo shows the wave, with the thicker small-size strokes
+        Assert.Equal(20, wave.StrokeThickness);
         Assert.Single(main.GetVisualDescendants().OfType<LogoMark>(), l => l.Bounds.Width >= 64); // start screen
         Button ButtonNamed(string name) => bar.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == name);
         void Click(Button b)

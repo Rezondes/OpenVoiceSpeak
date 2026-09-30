@@ -5848,11 +5848,11 @@ There is one design: a headset with a three-bar sound wave, white on a #2F6FEB r
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every ICO frame (16, 24, 32, 48, 64, 256 px) shows the headset with the wave, rendered from `logo.svg` by the new tool; at 16 and 24 px the wave strokes are thickened just enough to stay visible (one pixel or more at 16 px).
-- [ ] AC2: The title bar shows the logo with the wave; below 32 px `LogoMark` uses the same thicker wave strokes as the small icon frames.
-- [ ] AC3: `docs/logo.png` equals the 256 px frame.
-- [ ] AC4: Running the tool twice gives byte-identical files; the README says how to run it after changing `logo.svg`.
-- [ ] AC5 (manual): exe in Explorer, taskbar, window title bar and start screen show the same design at 100 % and 150 % display scaling.
+- [x] AC1: Every ICO frame (16, 24, 32, 48, 64, 256 px) shows the headset with the wave, rendered from `logo.svg` by the new tool; at 16 and 24 px the wave strokes are thickened just enough to stay visible (one pixel or more at 16 px).
+- [x] AC2: The title bar shows the logo with the wave; below 32 px `LogoMark` uses the same thicker wave strokes as the small icon frames.
+- [x] AC3: `docs/logo.png` equals the 256 px frame.
+- [x] AC4: Running the tool twice gives byte-identical files; the README says how to run it after changing `logo.svg`.
+- [ ] AC5 (manual): exe in Explorer, taskbar, window title bar and start screen show the same design at 100 % and 150 % display scaling. (open: needs a manual look on a real Windows desktop)
 
 ### Tests (TDD)
 

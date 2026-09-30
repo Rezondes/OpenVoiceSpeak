@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Package 95: renders the app icon from logo.svg. Not part of the solution; run it after changing logo.svg. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Same SkiaSharp as Avalonia 11.3 uses, so the tool and the tests render the same pixels. -->
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+  </ItemGroup>
+</Project>

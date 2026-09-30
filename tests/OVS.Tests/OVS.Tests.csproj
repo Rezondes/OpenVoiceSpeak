@@ -13,6 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Package 95: the icon renderer of tools/render-icon, so the tests check the checked-in icon against it -->
+    <Compile Include="..\..\tools\render-icon\LogoRenderer.cs" Link="Client\LogoRenderer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

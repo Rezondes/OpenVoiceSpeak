@@ -274,5 +274,14 @@ Projektaufbau:
 - `src/OVS.Server`: Server
 - `src/OVS.Client`: Avalonia-Client
 - `tests/OVS.Tests`: Tests
+- `tools/render-icon`: erzeugt das App-Icon (nicht Teil der Solution)
+
+Nach einer Änderung an `src/OVS.Client/Assets/logo.svg` das Icon neu erzeugen und die SVG nach `website/public/logo.svg` kopieren:
+
+```bash
+dotnet run --project tools/render-icon
+```
+
+Das Tool schreibt `src/OVS.Client/Assets/ovs.ico` (16, 24, 32, 48, 64 und 256 px, unter 32 px mit dickeren Wellenstrichen) und `docs/logo.png` (256 px). Zwei Läufe ergeben identische Dateien; die Tests prüfen, dass das eingecheckte Icon zur SVG passt.
 
 Der Umsetzungsplan steht in `PLAN.md`.
