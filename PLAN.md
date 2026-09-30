@@ -19,6 +19,8 @@
 > **Parallel möglich:** Nach Package 1 können 2, 3, 6, 11 und 13 unabhängig voneinander laufen. Nach Package 7 können 8, 9 und 10 parallel laufen.
 >
 > **Packages 65 bis 75:** Die Reihenfolge weicht von der Anfrage ab, kleine UI-Punkte zuerst, dann Server und Verwaltung, Backup zuletzt. Zuordnung der Anfrage: Backup -> 74 und 75, Link-Icon und Breite -> 67, stummer Channel -> 66, Slots -> 69, Nutzerübersicht -> 71 und 72, Nutzerdaten -> 70, Gruppen-Ton -> 73, "Verwaltung ..." -> 65, Seitenleiste zu breit -> 68. 65, 66, 69 und 73 können parallel beginnen. Package 76 (einzelne Rechte) kam nachträglich dazu und wird vor 71 und 72 umgesetzt. Es kann ebenfalls sofort beginnen. Package 68 wurde nachträglich vom Bugfix "Seitenleiste zu breit" zum responsiven Grundgerüst erweitert. Die Packages 77 bis 79 machen darauf aufbauend Einstellungen, Verwaltung sowie Chat und Dialoge responsiv und können nach 68 parallel laufen.
+>
+> **Packages 80 to 82 (written in English from here on, at the user's request):** 80 is the ban overview, 81 and 82 are the log viewer split into viewing/searching and downloading. 80 and 81 can start in parallel, 82 needs 81.
 
 ## Überblick
 
@@ -103,6 +105,9 @@
 | 77 | Einstellungen responsiv | Die Einstellungsseite ist auf jeder Breite ab 360 px vollständig bedienbar, ohne abgeschnittene oder überlappende Elemente. | 68 |
 | 78 | Verwaltung responsiv | Alle Tabs der Verwaltung sind auf jeder Breite ab 360 px vollständig bedienbar. | 68 |
 | 79 | Chat, Startseite und Dialoge responsiv | Chat, Startseite, Update-Karte und alle Dialoge sind auf jeder Breite ab 360 px vollständig bedienbar. | 68 |
+| 80 | Ban overview with details, history, search and filter | Under "Verwaltung -> Bans" every ban (active, expired and lifted) is shown with all stored details and can be searched, filtered and sorted like the user overview. | - |
+| 81 | Server logs viewable and searchable in the app | Users with the new right "Logs ansehen" can list the server and channel log files under "Verwaltung -> Logs", open them page by page and search all of them. | - |
+| 82 | Server logs downloadable | Users with the new right "Logs herunterladen" can save a single log file or a selection of files as a zip on their PC. | 81 |
 
 ## Annahmen
 
@@ -217,6 +222,10 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A94 Einblendbare Seitenleiste.** Unter 700 px ist die Seitenleiste weg und wird über einen Menü-Button oben links als Überlagerung von links eingeblendet (wie Discord oder Slack mobil). Sie schliesst beim Channel-Wechsel, bei Klick daneben und mit Esc.
 - **A95 Schmale Kopfzeile.** Unter `narrow` zeigen Verwaltung, Trennen, Admin-Token und Ping nur ihr Icon, der Text steht im Tooltip und im Namen für Screenreader.
 - **A96 Responsive auch für neue UI.** Alle Packages, die Oberfläche hinzufügen oder ändern (65 bis 79), halten sich an A93. Wer nach Package 68 umgesetzt wird, prüft seine neuen Bereiche zusätzlich mit `LayoutAssert.FitsHorizontally` bei 360 px. Wer davor umgesetzt wird, wird von 77 bis 79 mit abgedeckt.
+- **A97 Ban details and history.** New per ban: creation time, creator fingerprint, original duration, IP flag, lifted by/at, blocked join attempts with time and IP of the last one. Lifted and expired bans stay as history (status filter, default "active") and are removed after the log retention period (`LogDays`, 0 = forever) or with the user's data. Attempts are saved at most once per minute per ban. Old bans show "unknown" for new fields.
+- **A98 Log viewer.** New tab "Logs" in the administration with right `LogsView` (only Admin by default). Server and channel logs, listed newest first with type, channel name, start and size. Opened page by page (1000 lines, last page first) with a line filter. Search runs on the server over all files (plain text, case-insensitive, optional type and period filter), at most 500 hits, stops after 5 s. Files are addressed by listing id only, never by client path. Reading happens outside the state lock.
+- **A99 Log download.** Right `LogsDownload` (only Admin by default; needs `LogsView` to see the tab). One file as `.log` or a selection as `.zip` with folders `server/` and `channels/<name>_<id>/`, built from a snapshot in `<DataDir>/logs-export/`, at most 200 MB, transferred in 512 KB chunks like backups.
+- **A100 Language.** From Package 80 on, plan texts and commit messages are in English at the user's request. UI texts stay bilingual (German and English resources).
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -4959,3 +4968,216 @@ Testbefehl: `dotnet test`
 ### Out of Scope
 
 - Touch-Bedienung, Bildschirmtastatur-Verhalten
+
+---
+
+## Package 80: Ban overview with details, history, search and filter
+
+**Goal:** Under "Verwaltung -> Bans" every ban (active, expired and lifted) is shown with all stored details and can be searched, filtered and sorted like the user overview.
+
+**Dependencies:** none (builds on Packages 71, 72, 76 and 78, which are done)
+
+**Affected files:**
+- `src/OVS.Server/Data/ServerData.cs` (change): `BanRecord` gets `CreatedAt`, `CreatedByFingerprint`, `DurationMinutes`, `LiftedAt`, `LiftedBy`, `BlockedAttempts`, `LastAttempt`, `LastAttemptIp`
+- `src/OVS.Server/ServerState.cs` (change): `Admit` counts blocked attempts, `Persist` keeps history instead of dropping expired bans, history retention
+- `src/OVS.Server/Commands/ModerationCommands.cs` (change): `OnBan`, `OnBanUser` fill the new fields, `OnUnban` marks a ban as lifted instead of removing it, `OnListBans` returns history too
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `BanInfo` extended
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (change): `BanViewModel` with details, `BanSearchText`, `BanStatusFilter`, `BanSortOrder`, `VisibleBans`
+- `src/OVS.Client/Views/AdminView.axaml` (change): Bans tab as cards with search box, filters and sort, like the Users tab
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Server/ModerationTests.cs`, `DataStoreTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs`, `ResponsiveTests.cs`, `UiSmokeTests.cs` (change)
+
+### Context
+
+`BanRecord` (ServerData.cs) stores `Id`, `Fingerprint`, `Nickname`, `Ip?`, `Reason`, `CreatedBy` (nickname) and `ExpiresAt?`. There is no creation time. `Persist()` drops expired bans, and `Unban` deletes the record, so there is no history. `Admit` rejects a banned fingerprint or IP without recording the attempt. `ListBans` (right `BansView`) returns `BanList(BanInfo...)`. The Bans tab shows one text line per ban (`BanViewModel.Text`) with an "Entbannen" button (`UserBan`), without search or filter. The Users tab (Package 71) is the model: search box, `Choice<T>` combo boxes for status and sort, a hit counter ("12 von 40 Nutzern"), cards with a two-column detail area, responsive since Package 78.
+
+### Acceptance Criteria
+
+- [ ] AC1: New bans store:
+  - creation time and the creator's fingerprint (besides the existing nickname)
+  - the original duration (null = permanent) and whether the IP is included
+  Existing bans keep working and show "unknown" for the missing values.
+- [ ] AC2: Lifting a ban (Unban) and expiry no longer delete the record. The ban becomes inactive and keeps:
+  - for Unban: who lifted it (nickname) and when
+  - for expiry: status "expired"
+  `Admit` only blocks on active bans. History entries are removed after the log retention period (`LogDays` from Package 69, 0 = keep forever) and when the user's data is deleted (Package 72).
+- [ ] AC3: Every rejected join because of an active ban increments that ban's attempt counter and stores time and IP of the last attempt. This is saved at most once per minute per ban, not on every attempt.
+- [ ] AC4: Each ban card shows:
+  - nickname, short fingerprint (full one in the tooltip, copyable)
+  - IP if included, reason
+  - created by and at, duration and end ("dauerhaft" or date), remaining time for active bans
+  - status (active, expired, lifted by X at Y)
+  - blocked attempts with the last time and IP
+- [ ] AC5: A search box filters immediately and case-insensitively by nickname, fingerprint, IP, reason, creator and lifter.
+- [ ] AC6: Filters:
+  - status: active, expired, lifted, all; default is active
+  - type: permanent, temporary, with IP, all
+  Sorting: newest first (default), ending soonest, most blocked attempts, name. The hit count is shown above the list ("3 von 12 Bans").
+- [ ] AC7: "Entbannen" stays only on active bans and needs `UserBan`. Without `UserBan` the list is read-only. Search and filter are kept when the list refreshes after an action.
+- [ ] AC8: The Bans tab fits from 360 px (A96, `LayoutAssert.FitsHorizontally` in `ResponsiveTests.Admin_EveryTabFits`). Texts in German and English.
+
+### Tests (TDD)
+
+1. `ModerationTests > "Ban_StoresCreatedAtCreatorDuration"` (AC1)
+   - Given: moderator bans a guest online for 60 minutes with IP, `ManualTimeProvider`
+   - Expected: `CreatedAt` = now, `CreatedByFingerprint` = moderator, `DurationMinutes` = 60, IP flag true, in `BanList` too
+2. `ModerationTests > "Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive"` (AC2)
+   - Given: one ban lifted, one expired by advancing the clock
+   - Expected: both still in `BanList` with status lifted (by/at) and expired, the guest can join again
+3. `ModerationTests > "History_RemovedAfterLogRetention_AndOnUserDelete"` (AC2)
+4. `ModerationTests > "BlockedAttempts_Counted_SavedAtMostPerMinute"` (AC3)
+   - Given: a banned guest tries 3 times within 10 seconds, then again after 2 minutes
+   - Expected: counter 4, last attempt time and IP set, the data file written at most twice for these attempts
+5. `DataStoreTests > "OldBans_LoadWithUnknownNewFields"` (AC1)
+6. `AdminViewModelTests > "BanCards_ShowAllDetails_UnknownForMissing"` (AC4)
+7. `AdminViewModelTests > "BanSearch_MatchesAllTextFields"` (AC5)
+8. `AdminViewModelTests > "BanFilter_StatusType_Sort_Count"` (AC6)
+9. `AdminViewModelTests > "Unban_OnlyActive_OnlyWithRight_FilterKept"` (AC7)
+10. `ResponsiveTests > "Admin_EveryTabFits"` extended with 12 bans of every status, `LocalizationTests` (AC8)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 2, 3 and 5 (red): new fields, history instead of deletion, retention in `Persist`.
+2. Test 4 (red): attempt counter in `Admit`, throttled saving.
+3. `BanInfo` extended (unreleased protocol version 10 stays, only its comment is extended, unless a release happened meanwhile: then bump).
+4. Tests 6 to 9 (red): `BanViewModel` and filter logic, copying the patterns of `KnownUserViewModel` and `RebuildUsers`.
+5. XAML cards, search and filter bar like the Users tab, test 10, headless screenshot at 360 and 1100 px.
+
+### Out of Scope
+
+- Editing a ban (reason, duration)
+- Creating a ban from the Bans tab (done from the user overview or the channel tree)
+
+---
+
+## Package 81: Server logs viewable and searchable in the app
+
+**Goal:** Users with the new right "Logs ansehen" can list the server and channel log files under "Verwaltung -> Logs", open them page by page and search all of them.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Permissions/Permission.cs` (change): `LogsView = 1 << 23`, `All = (1 << 25) - 1` (bit 24 reserved for Package 82)
+- `src/OVS.Server/Logging/LogReader.cs` (new): list files, read a page of lines, search
+- `src/OVS.Server/Commands/LogCommands.cs` (new): requests
+- `src/OVS.Server/ServerState.cs` (change): dispatch
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `ListLogs`, `LogList`, `LogFileInfo`, `ReadLog`, `LogPage`, `SearchLogs`, `LogSearchResult`, `LogHit`
+- `src/OVS.Client/ViewModels/LogsViewModel.cs` (new), `AdminViewModel.cs` (change): tab visibility, request lists
+- `src/OVS.Client/Views/AdminView.axaml` (change): new tab "Logs"
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): tab, labels, `Perm_LogsView`
+- `README.md` (change): rights table
+- `tests/OVS.Tests/Server/LogCommandTests.cs` (new), `tests/OVS.Tests/Client/LogsViewModelTests.cs` (new), `ResponsiveTests.cs`, `AdminViewModelTests.cs` (change)
+
+### Context
+
+`ServerLogs` writes `logs/server/<yyyy-MM-dd_HH-mm-ss>.log` and one folder per channel `logs/channels/<channelId>/<start>.log`, through `LogFiles` (one file per start and per day, retention from Package 69). Each line starts with a timestamp `yyyy-MM-dd HH:mm:ss.fff`, channel lines contain `[Channelname]`. The files are open for appending while the server runs (`FileShare.ReadWrite|Delete`). There is no way to read them from the client today, only through the Docker volume. Logs contain IPs, fingerprints and server and channel chat text, so they are sensitive. Messages are limited to 1 MiB (`FrameReader.MaxFrameSize`), and the outbox per session to 1024 messages. Package 75 shows the pull-based chunk pattern (one request per chunk).
+
+### Acceptance Criteria
+
+- [ ] AC1: New right "Logs ansehen" (`LogsView`), selectable in the group editor. Only Admin has it by default (through `All`), existing groups get nothing new. The tab "Logs" is visible only with this right, and the server checks it on every log request (`PermissionDenied` otherwise).
+- [ ] AC2: The file list shows, newest first:
+  - type: server or channel with the channel's current name, or the name found in the file for deleted channels
+  - start time and size
+  Filters: type (all, server, one channel) and period (from, to).
+- [ ] AC3: Opening a file shows its lines in pages of 1000 lines (the last page first). Controls: "Ältere laden", "Neuere laden", jump to start and end. The currently written file can be refreshed.
+- [ ] AC4: A filter box inside the opened file shows only matching lines, case-insensitive, with the matches highlighted.
+- [ ] AC5: Search across all files: query text (case-insensitive, plain text, no regex), optionally limited by the type and period filters. The server returns at most 500 hits (file, line number, line) newest first and says if there were more. Clicking a hit opens the file at that line with the line highlighted.
+- [ ] AC6: Security:
+  - Files are addressed only by an id from the server's own listing; paths from the client are never used.
+  - Only `*.log` files below `<DataDir>/logs` are reachable.
+  - Pages and search results stay below the message size limit: long lines are cut at 2000 characters with a marker.
+  - A search stops after 5 seconds and returns what it found so far.
+- [ ] AC7: Reading and searching happen outside the global state lock, so voice and chat keep running while a large file is read.
+- [ ] AC8: The Logs tab fits from 360 px (A96): the file list and viewer stack under `narrow`, and long lines wrap or scroll horizontally inside the viewer. Texts in German and English, README rights table updated.
+
+### Tests (TDD)
+
+1. `LogCommandTests > "ListLogs_ServerAndChannelFiles_NewestFirst_WithNames"` (AC2)
+   - Given: server started with two channels and some chat, then a restart (so two server files)
+   - Expected: both server files and the channel files, channel names resolved, sizes greater than 0
+2. `LogCommandTests > "ReadLog_PagesOf1000_LastPageFirst"` (AC3): a file with 2500 lines, pages 3, 2, 1
+3. `LogCommandTests > "SearchLogs_AllFiles_CaseInsensitive_Max500_Truncated"` (AC5, AC6)
+4. `LogCommandTests > "Logs_RequireLogsView_UnknownIdRejected_NoPathTraversal"` (AC1, AC6)
+5. `LogCommandTests > "LongLine_CutAt2000"` (AC6)
+6. `LogCommandTests > "Search_DoesNotHoldStateLock"` (AC7): a chat message is delivered while a long search runs (search on a large generated file, with a test hook that pauses the reader)
+7. `LogsViewModelTests > "FileFilter_TypeAndPeriod"` (AC2)
+8. `LogsViewModelTests > "OpenFile_PageNavigation_Refresh"` (AC3)
+9. `LogsViewModelTests > "LineFilter_HighlightsMatches"` (AC4)
+10. `LogsViewModelTests > "SearchHit_OpensFileAtLine"` (AC5)
+11. `AdminViewModelTests > "Tabs_VisibleByPermission"` extended with `LogsView`, `PermissionRulesTests` default groups unchanged except Admin (AC1)
+12. `ResponsiveTests > "Admin_EveryTabFits"` with the Logs tab, `LocalizationTests` (AC8)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 4 and 11 (red): permission bit, `Require` in the new handlers, tab visibility.
+2. Tests 1, 2, 3 and 5 (red): `LogReader` (list, page, search) on a directory, independent of `ServerState`; file ids as a stable hash or relative name from the listing, resolved only through the listing.
+3. Test 6 (red): handlers read files on a worker task and post the answer to the session, without taking `gate` while reading.
+4. Tests 7 to 10 (red): `LogsViewModel`.
+5. XAML tab, test 12, headless screenshot at 360 and 1100 px.
+
+### Out of Scope
+
+- Downloading (Package 82)
+- Live tail (automatic follow of new lines); a manual refresh is enough
+- The client's own log files
+
+---
+
+## Package 82: Server logs downloadable
+
+**Goal:** Users with the new right "Logs herunterladen" can save a single log file or a selection of files as a zip on their PC.
+
+**Dependencies:** Package 81 (file list and file ids)
+
+**Affected files:**
+- `src/OVS.Shared/Permissions/Permission.cs` (change): `LogsDownload = 1 << 24`
+- `src/OVS.Server/Logging/LogReader.cs` (change): build a zip of selected files
+- `src/OVS.Server/Commands/LogCommands.cs` (change): download requests
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `PrepareLogDownload`, `LogDownloadReady`, `DownloadLogChunk`, `LogChunk`
+- `src/OVS.Client/ViewModels/LogsViewModel.cs` (change), `src/OVS.Client/Views/AdminView.axaml`, `AdminView.axaml.cs` (change): selection, save dialog, progress
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Perm_LogsDownload` and labels
+- `README.md` (change)
+- `tests/OVS.Tests/Server/LogCommandTests.cs`, `tests/OVS.Tests/Client/LogsViewModelTests.cs`, `ResponsiveTests.cs` (change)
+
+### Context
+
+After Package 81 the client knows the log files by id. Backups (Package 75) already transfer files pull-based in chunks of `ProtocolInfo.BackupChunkBytes` (512 KB) with a `.part` file on the client and a `StorageProvider` save dialog in `AdminView.axaml.cs`. Log files are still being appended to while the server runs.
+
+### Acceptance Criteria
+
+- [ ] AC1: New right "Logs herunterladen" (`LogsDownload`), selectable in the group editor. Only Admin has it by default, existing groups get nothing new. Download buttons are only visible with the right, and the server checks it on every download request. Without `LogsView` the tab stays hidden, so downloading also needs the view right.
+- [ ] AC2: Files in the list can be selected with checkboxes. There are shortcuts "Alle im Zeitraum" and "Keine".
+  - "Herunterladen" saves one selected file as `.log` under its original name.
+  - Several files are saved as one `.zip` named `ovs-logs_<from>_<to>.zip`, which keeps the folder structure `server/...` and `channels/<channel name>_<id>/...`.
+- [ ] AC3: The server takes a consistent snapshot: files are copied at the moment of the request, and lines written later are not included. For a zip, the archive is built in a temporary file below `<DataDir>/logs-export/`, deleted after the transfer, when the session ends, and at the next start.
+- [ ] AC4: The transfer runs in chunks of 512 KB, one request per chunk, with progress in percent. The client writes to `<target>.part` and moves it into place at the end, so a failed transfer leaves no half file. A zip over 200 MB is refused (`LogsTooLarge`), and the user is told to choose a shorter period.
+- [ ] AC5: Voice and chat keep working during a download (reading and zipping outside the state lock).
+- [ ] AC6: The selection column and download controls fit from 360 px (A96). Texts in German and English, README updated.
+
+### Tests (TDD)
+
+1. `LogCommandTests > "DownloadSingleFile_ByteIdenticalSnapshot"` (AC2, AC3): content equals the file at request time, lines logged afterwards are not included
+2. `LogCommandTests > "DownloadSelection_ZipWithFolders_TempRemoved"` (AC2, AC3)
+3. `LogCommandTests > "Download_RequiresLogsDownload_TooLargeRejected"` (AC1, AC4)
+4. `LogCommandTests > "Download_ChunkedPullBased_ChatStillFlows"` (AC4, AC5)
+5. `LogsViewModelTests > "Selection_AllInPeriod_None_SingleVsZip"` (AC2)
+6. `LogsViewModelTests > "Download_PartFileMovedAtEnd_Progress"` (AC4)
+7. `ResponsiveTests > "Admin_EveryTabFits"` with the selection and progress, `LocalizationTests` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 3 (red): permission bit, checks.
+2. Tests 1 and 2 (red): snapshot copy, zip with `System.IO.Compression`, temp folder and cleanup.
+3. Test 4 (red): chunked transfer, reusing the chunk pattern from Package 75 (ideally a shared helper instead of a copy).
+4. Tests 5 and 6 (red), UI with selection, save dialog, progress; test 7, headless screenshot at 360 and 1100 px.
+
+### Out of Scope
+
+- Automatic or scheduled log export
+- Deleting log files from the app (retention is set in Package 69)
