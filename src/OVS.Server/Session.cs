@@ -158,6 +158,15 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         return now - floodSince >= Limits.FloodDisconnectAfter;
     }
 
+    /// <summary>Per list kind: when its first page was answered and which later pages were sent since.</summary>
+    readonly Dictionary<Type, (DateTimeOffset Start, HashSet<int> Served)> listRounds = [];
+
+    public void StartListRound(Type kind) => listRounds[kind] = (time.GetUtcNow(), []);
+
+    /// <summary>True when this later page follows a recent first page and was not sent in that round yet.</summary>
+    public bool TakeFollowPage(Type kind, int offset) =>
+        listRounds.TryGetValue(kind, out var round) && time.GetUtcNow() - round.Start <= Limits.ListRoundWindow && round.Served.Add(offset);
+
     /// <summary>The own bucket of a costly request kind, created on first use.</summary>
     public bool TryTakeCostly(Type kind, double perSecond, double burst)
     {

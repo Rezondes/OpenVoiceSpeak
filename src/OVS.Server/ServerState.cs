@@ -460,8 +460,17 @@ public sealed partial class ServerState
         return false;
     }
 
-    /// <summary>Package 87: only the first page counts, the others follow from it and are cheap.</summary>
-    static bool ThrottleList(Session s, Request r, int offset) => offset > 0 || Throttle(s, r, Limits.ListsPerSecond, Limits.ListBurst);
+    /// <summary>
+    /// Package 87: the first page counts; a later page is free only once per round, within ListRoundWindow
+    /// of an answered first page of the same list. Any other page counts like a first page.
+    /// </summary>
+    static bool ThrottleList(Session s, Request r, int offset)
+    {
+        if (offset > 0 && s.TakeFollowPage(r.GetType(), offset)) return true;
+        if (!Throttle(s, r, Limits.ListsPerSecond, Limits.ListBurst)) return false;
+        if (offset <= 0) s.StartListRound(r.GetType());
+        return true;
+    }
 
     static bool ThrottleHeavy(Session s, Request r) => Throttle(s, r, 1 / Limits.HeavyInterval.TotalSeconds);
 

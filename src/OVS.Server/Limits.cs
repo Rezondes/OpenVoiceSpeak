@@ -44,6 +44,8 @@ public static class Limits
     public static readonly TimeSpan PruneGuestsAfter = TimeSpan.FromDays(90);
     /// <summary>Entries per page of UserList, BanList, LogList and BackupList.</summary>
     public const int ListPageSize = 200;
+    /// <summary>Later pages are free for this long after the first page of the same list was answered.</summary>
+    public static readonly TimeSpan ListRoundWindow = TimeSpan.FromSeconds(30);
 
     // ---- Package 88: UDP ----
     /// <summary>Undecodable, foreign or undecryptable UDP packets per source (IPv6: per /64) and second before the rest is dropped undecrypted.</summary>

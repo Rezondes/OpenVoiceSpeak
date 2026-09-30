@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using OVS.Server;
 using OVS.Server.Data;
 using OVS.Shared.Identity;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
 
@@ -144,6 +145,50 @@ public sealed class LimitsTests
         time.Advance(Limits.HeavyInterval);
         await client.SendAsync(new CreateBackup { RequestId = "b3" });
         await client.WaitForAsync<BackupList>(l => l.RequestId == "b3");
+    }
+
+    [Fact]
+    public async Task ListPages_FreeOnlyAsFollowUpOfAFirstPage()
+    {
+        var admin = ClientIdentity.Create();
+        var time = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(d =>
+        {
+            TestServer.Grant(admin, "Admin")(d);
+            for (int i = 0; i < 449; i++) d.Users.Add(new UserRecord { Fingerprint = $"fp{i}", GroupIds = [WellKnownGroups.Guest], FirstSeen = time.GetUtcNow() });
+        }, time: time);
+        await using var client = await TestClient.ConnectAsync(server, "chef", admin);
+        int n = 0;
+        async Task<string> Ask(int offset)
+        {
+            var id = $"l{n++}";
+            await client.SendAsync(new ListUsers(offset) { RequestId = id });
+            while (true)
+                switch (await client.NextAsync())
+                {
+                    case UserList l when l.RequestId == id: return "ok";
+                    case Error e when e.RequestId == id: return e.Code;
+                }
+        }
+
+        // Normal paging through all 450 users, a whole burst of times: never throttled.
+        for (int round = 0; round < Limits.ListBurst; round++)
+            foreach (var offset in new[] { 0, Limits.ListPageSize, 2 * Limits.ListPageSize })
+                Assert.Equal("ok", await Ask(offset));
+
+        // A page served in this round already counts like a first page.
+        Assert.Equal(Codes.RateLimited, await Ask(Limits.ListPageSize));
+
+        // Without a first page in the last 30 s every later page counts.
+        time.Advance(TimeSpan.FromSeconds(31)); // the budget is full again
+        for (int i = 0; i < Limits.ListBurst; i++) Assert.Equal("ok", await Ask(1));
+        Assert.Equal(Codes.RateLimited, await Ask(1));
+
+        // Asking for the same later page again within a round counts from the second time on.
+        time.Advance(TimeSpan.FromSeconds(10));
+        Assert.Equal("ok", await Ask(0));
+        for (int i = 0; i < Limits.ListBurst; i++) Assert.Equal("ok", await Ask(Limits.ListPageSize));
+        Assert.Equal(Codes.RateLimited, await Ask(Limits.ListPageSize));
     }
 
     [Fact]
