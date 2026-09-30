@@ -47,6 +47,7 @@ public sealed partial class ServerState
         if (!Require(s, r, Permission.BackupsManage) || !ThrottleHeavy(s, r)) return;
         try
         {
+            if (savePending) Persist(); // the archive is made from the file, so it gets what the debounced save still holds
             var created = backups.Create();
             logs.Server($"Backup {created.FileName} angelegt von {s.Nickname}");
         }
@@ -229,19 +230,31 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidBackup, e.Message);
             return;
         }
+        // The safety backup gets pending changes and the running sessions' statistics, which CloseAll then does not add again.
+        var now = time.GetUtcNow();
+        var running = sessions.Values.Select(x => (x.Fingerprint, Online: now - x.ConnectedAt, x.SpeechTime, x.ChatMessages)).ToList();
+        foreach (var x in running) AddStats(x.Fingerprint, x.Online, x.SpeechTime, x.ChatMessages);
+        void Uncount()
+        {
+            foreach (var x in running) AddStats(x.Fingerprint, -x.Online, -x.SpeechTime, -x.ChatMessages);
+            PersistSoon(); // the file may hold the counted statistics now
+        }
         BackupInfo safety;
         try
         {
+            Persist();
             safety = backups.Create(BackupStore.SafetyPrefix);
         }
         catch (BackupQuotaException e) // Package 89: no restore without the safety backup
         {
+            Uncount();
             logs.Server($"Sicherheits-Backup nicht möglich, Backup-Limit erreicht, keine Wiederherstellung ({s.Nickname}): {e.Message}");
             Fail(s, r, Codes.BackupQuotaExceeded, e.Message);
             return;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            Uncount();
             logs.Server($"Sicherheits-Backup fehlgeschlagen, keine Wiederherstellung ({s.Nickname}): {e.Message}");
             Fail(s, r, Codes.InvalidValue, e.Message);
             return;
@@ -249,7 +262,7 @@ public sealed partial class ServerState
         logs.Server($"Backup {r.FileName} wird wiederhergestellt von {s.Nickname} (Datenversion {content.Manifest.DataVersion}, " +
                     $"Serverversion {content.Manifest.ServerVersion}), Sicherheits-Backup {safety.FileName}");
         pendingRestore = content;
-        CloseAll(new Disconnected(Codes.Restoring));
+        CloseAll(new Disconnected(Codes.Restoring), statsCounted: true);
         RestoreRequested?.Invoke();
     }
 }

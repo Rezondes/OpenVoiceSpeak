@@ -252,7 +252,10 @@ public sealed partial class ServerState
         lock (gate) RemoveLocked(session, null, reason);
     }
 
-    public void CloseAll(Message final)
+    public void CloseAll(Message final) => CloseAll(final, statsCounted: false);
+
+    /// <param name="statsCounted">The running sessions' statistics are in their records already (restore safety backup).</param>
+    void CloseAll(Message final, bool statsCounted)
     {
         lock (gate)
         {
@@ -269,7 +272,7 @@ public sealed partial class ServerState
                 s.Close(final);
                 DropUpload(s);
                 s.DropLogDownload(ended: true); // Package 82
-                AddSessionStats(s, now);
+                if (!statsCounted) AddSessionStats(s, now);
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
             logs.Server($"{why}, {sessions.Count} Nutzer getrennt");
@@ -321,12 +324,15 @@ public sealed partial class ServerState
     }
 
     /// <summary>Package 70: adds the ended session to the user's totals (A86: saved on disconnect, not while online).</summary>
-    void AddSessionStats(Session s, DateTimeOffset now)
+    void AddSessionStats(Session s, DateTimeOffset now) => AddStats(s.Fingerprint, now - s.ConnectedAt, s.SpeechTime, s.ChatMessages);
+
+    /// <summary>Negative values take back what was added before.</summary>
+    void AddStats(string fingerprint, TimeSpan online, TimeSpan speech, int chatMessages)
     {
-        if (FindUser(s.Fingerprint) is not { } user) return;
-        user.OnlineTime += now - s.ConnectedAt;
-        user.SpeechTime += s.SpeechTime;
-        user.ChatMessages += s.ChatMessages;
+        if (FindUser(fingerprint) is not { } user) return;
+        user.OnlineTime += online;
+        user.SpeechTime += speech;
+        user.ChatMessages += chatMessages;
     }
 
     void ChannelLog(Guid channelId, string text)
@@ -506,7 +512,6 @@ public sealed partial class ServerState
     /// </summary>
     void Persist()
     {
-        savePending = false; // a full save takes a pending debounced one along
         var now = time.GetUtcNow();
         if (data.Settings.LogDays > 0)
         {
@@ -516,6 +521,7 @@ public sealed partial class ServerState
         if (now >= nextPrune) PruneGuests(now);
         BeforeSave?.Invoke();
         store.Save(data);
+        savePending = false; // a full save takes a pending debounced one along; a failed one leaves it pending
         if (saveFailed)
         {
             saveFailed = false;
@@ -550,7 +556,6 @@ public sealed partial class ServerState
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
                     // A virus scanner or backup tool holds the file, or the disk is full: keep the changes and try again.
-                    savePending = true;
                     if (!saveFailed) logs.Server($"Serverdaten nicht gespeichert, neuer Versuch alle {Limits.SaveDelay.TotalSeconds:0} s: {e.Message}");
                     saveFailed = true;
                     saveTimer!.Change(Limits.SaveDelay, Timeout.InfiniteTimeSpan);

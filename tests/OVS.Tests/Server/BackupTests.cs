@@ -83,6 +83,46 @@ public sealed class BackupTests : IDisposable
     }
 
     [Fact]
+    public async Task Create_RightAfterFirstConnect_ContainsUser()
+    {
+        var (server, admin) = await StartWithAdminAsync(new ManualTimeProvider()); // the debounced save never fires
+        await using var _ = server;
+        await using var a = admin;
+        var anna = ClientIdentity.Create();
+        await using var client = await TestClient.ConnectAsync(server, "anna", anna);
+
+        await admin.SendAsync(new CreateBackup { RequestId = "b" });
+        var info = Assert.Single((await admin.WaitForAsync<BackupList>(l => l.RequestId == "b")).Backups);
+        var data = DataOf(Entries(Path.Combine(server.DataDir, "backups", info.FileName))["server-data.json"]);
+        Assert.Contains(data.Users, u => u.Fingerprint == anna.Fingerprint);
+    }
+
+    [Fact]
+    public async Task Restore_WithinSaveDelay_SafetyBackupHasNewUserAndStats()
+    {
+        var (server, admin) = await StartWithAdminAsync(new ManualTimeProvider()); // the debounced save never fires
+        await using var _ = server;
+        await using var a = admin;
+        await admin.SendAsync(new CreateBackup { RequestId = "b" });
+        var backup = Assert.Single((await admin.WaitForAsync<BackupList>(l => l.RequestId == "b")).Backups).FileName;
+
+        var bert = ClientIdentity.Create();
+        await using var client = await TestClient.ConnectAsync(server, "bert", bert);
+        await client.SendAsync(new SendChat(ChatTarget.Channel, null, "hallo"));
+        await client.WaitForAsync<ChatMessage>(m => m.Text == "hallo");
+
+        await admin.SendAsync(new RestoreBackup(backup));
+        Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>()).Reason);
+        var safety = Directory.GetFiles(Path.Combine(server.DataDir, "backups"), BackupStore.SafetyPrefix + "*").Single();
+        var user = DataOf(Entries(safety)["server-data.json"]).Users.Single(u => u.Fingerprint == bert.Fingerprint);
+        Assert.Equal((1, 1), (user.LoginCount, user.ChatMessages));
+
+        // the running session was counted once, not again on the disconnect
+        var live = new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.Equal(1, live.Users.Single(u => u.Fingerprint == bert.Fingerprint).ChatMessages);
+    }
+
+    [Fact]
     public async Task List_NewestFirst_Delete()
     {
         var time = new ManualTimeProvider();
