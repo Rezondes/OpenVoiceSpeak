@@ -66,6 +66,10 @@ public class LocalizationTests
         Assert.Equal("Die Auswahl ist grösser als 200 MB. Wähle einen kürzeren Zeitraum.", ErrorTexts.For(Codes.LogsTooLarge));
         Assert.Equal("The selection is larger than 200 MB. Choose a shorter period.", TestCulture.With("en-US", () => ErrorTexts.For(Codes.LogsTooLarge)));
         Assert.Equal("Downloading logs: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Logs_Downloading, 42)));
+        // Package 97: the waiting states
+        Assert.Equal("Keine Antwort vom Server. Versuche es noch einmal.", Strings.Pending_NoAnswer);
+        Assert.Equal("No answer from the server. Please try again.", TestCulture.With("en-US", () => Strings.Pending_NoAnswer));
+        Assert.Equal("Searching ...", TestCulture.With("en-US", () => Strings.Ui_LogSearching));
     }
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>

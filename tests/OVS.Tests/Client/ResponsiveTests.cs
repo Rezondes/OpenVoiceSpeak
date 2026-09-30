@@ -414,6 +414,13 @@ public sealed class ResponsiveTests : IDisposable
         admin.IsTransferring = true;
         admin.TransferPercent = 42;
         admin.TransferText = string.Format(Strings.Backup_Uploading, 42);
+        // Package 97: the waiting states, checked with the rest: a refresh, a first load, a failed refresh, busy buttons
+        admin.UsersLoad.IsBusy = true;
+        admin.BansLoad.HasSucceeded = false;
+        admin.BansLoad.IsBusy = true;
+        admin.Logs.FilesLoad.Error = Strings.Pending_NoAnswer;
+        admin.BackupCreate.IsBusy = true;
+        admin.Logs.Searching.IsBusy = true;
         Assert.Equal(12, admin.Bans.Count); // Package 80: every ban of every status is checked for width below
         Dispatcher.UIThread.RunJobs();
         var tabs = AdminTabs(page);
@@ -453,10 +460,20 @@ public sealed class ResponsiveTests : IDisposable
         foreach (var name in new[] { "UploadBackupButton", "UploadRestoreButton", "BackupTransfer" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.TransferText && t.IsEffectivelyVisible);
+        // Package 97: "Backup anlegen" busy (checked above), then the whole card while restoring
+        Assert.Contains(page.FindControl<Button>("NewBackupButton")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
+        admin.Restoring.IsBusy = true;
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(page.FindControl<Control>("RestoringState")?.IsEffectivelyVisible);
+        LayoutAssert.FitsHorizontally(main);
+        admin.Restoring.IsBusy = false;
         // Package 85: the stored server mute on four cards, the lift button where the viewer outranks the user (checked for width above)
         SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Users));
         Assert.Equal(4, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_ServerMuted && t.IsEffectivelyVisible));
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_LiftServerMute && t.IsEffectivelyVisible));
+        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Ui_Loading && t.IsEffectivelyVisible); // Package 97: refreshing
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Bans));
+        Assert.Contains(page.FindControl<ContentControl>("BansLoadState")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
         // Package 81: the Logs tab with the opened file (checked above), then with the hits of a search instead of the files
         SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Logs));
         foreach (var name in new[] { "LogPager", "LogLineFilter", "LogLines" })
@@ -464,9 +481,10 @@ public sealed class ResponsiveTests : IDisposable
         Assert.NotEmpty(page.FindControl<ListBox>("LogLines")!.GetRealizedContainers());
         admin.Logs.CloseFileCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();
-        foreach (var name in new[] { "LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList", "LogDownloadBar", "LogDownloadButton", "LogTransfer" })
+        foreach (var name in new[] { "LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList", "LogDownloadBar", "LogDownloadButton", "LogTransfer", "LogSearchBusy" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.Contains(page.FindControl<ListBox>("LogFileList")!.GetVisualDescendants().OfType<CheckBox>(), c => c.IsEffectivelyVisible && c.IsChecked == true);
+        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Pending_NoAnswer && t.IsEffectivelyVisible); // Package 97
         LayoutAssert.FitsHorizontally(main);
         admin.Logs.Apply(new OVS.Shared.Protocol.LogSearchResult(null, admin.Logs.Files.Take(8).Select((f, i) =>
             new OVS.Shared.Protocol.LogHit(f.Info.Id, 1000 + i, "2026-09-30 12:00:00.000 [Raidgruppe Nummer 2] Mitspieler3: " + new string('y', 400))).ToList(), true, false));

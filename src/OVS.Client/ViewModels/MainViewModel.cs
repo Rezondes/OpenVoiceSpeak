@@ -220,7 +220,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             {
                 Log.Write(ClientLog.Describe(request, mirror));
                 return conn.SendAsync(request);
-            }, TimeProvider.System, Dialogs);
+            }, TimeProvider.System, Dialogs) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
             vm.Notice += text => AddNotice(text, NoticeKind.Error);
             TrackServerIcon(vm, choice.Host, choice.Port);
             vm.PropertyChanged += OnServerPropertyChanged;

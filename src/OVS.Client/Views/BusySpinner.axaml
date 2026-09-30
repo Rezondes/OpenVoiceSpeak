@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:OVS.Client.Localization"
+             x:Class="OVS.Client.Views.BusySpinner"
+             Width="14" Height="14" VerticalAlignment="Center" IsHitTestVisible="False"
+             AutomationProperties.Name="{x:Static l:Strings.Ui_Busy}">
+  <!-- Package 97 (A113): the small turning arc of every waiting state, in the accent color of both themes -->
+  <UserControl.Styles>
+    <Style Selector="Arc.spin">
+      <Style.Animations>
+        <Animation Duration="0:0:0.9" IterationCount="Infinite">
+          <KeyFrame Cue="0%">
+            <Setter Property="RotateTransform.Angle" Value="0" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="RotateTransform.Angle" Value="360" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+  </UserControl.Styles>
+  <Arc Classes="spin" StartAngle="0" SweepAngle="270" Stroke="{DynamicResource Ovs.AccentText}" StrokeThickness="2"
+       StrokeLineCap="Round" Stretch="Uniform" Margin="1">
+    <Arc.RenderTransform>
+      <RotateTransform />
+    </Arc.RenderTransform>
+  </Arc>
+</UserControl>

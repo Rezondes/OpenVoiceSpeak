@@ -22,7 +22,7 @@ public class LogsViewModelTests
 
     /// <summary>A server that answers ReadLog with 3 pages of numbered lines ("Zeile n", every 7th line "FEHLER"), and SearchLogs with the given result.</summary>
     static (LogsViewModel Logs, List<Request> Sent) Create(LogSearchResult? searchResult = null, Permission perms = Permission.LogsView,
-        Func<Request, Message?>? reply = null)
+        Func<Request, Message?>? reply = null, ManualTimeProvider? time = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "", false), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [], [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
@@ -41,7 +41,7 @@ public class LogsViewModelTests
             };
             if (answer is not null) server!.Apply(answer);
             return Task.CompletedTask;
-        }, new ManualTimeProvider());
+        }, time ?? new ManualTimeProvider());
         var admin = new AdminViewModel(server);
         _ = admin.RequestListsAsync(); // completes at once: the fake server answers synchronously
         return (admin.Logs, sent);
@@ -280,5 +280,29 @@ public class LogsViewModelTests
         var (logs, sent) = Create(reply: r => r is ListLogs l ? new LogList(r.RequestId, files.Skip(l.Offset).Take(3).ToList(), l.Offset, files.Length) : null);
         Assert.Equal([0, 3], sent.OfType<ListLogs>().Select(l => l.Offset));
         Assert.Equal(4, logs.Files.Count);
+    }
+
+    /// <summary>Package 97 (AC4): the search is busy (spinner, button disabled) until its result arrives.</summary>
+    [Fact]
+    public void Search_BusyUntilResult()
+    {
+        var time = new ManualTimeProvider();
+        var (logs, sent) = Create(time: time); // no search result: the server answers when told below
+        logs.SearchText = "fehler";
+        logs.SearchCommand.Execute(null);
+        Assert.True(logs.Searching.IsRunning);
+        time.Advance(TimeSpan.FromMilliseconds(149));
+        Assert.False(logs.Searching.IsBusy);
+        Assert.True(logs.SearchCommand.CanExecute(null));
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.True(logs.Searching.IsBusy);
+        Assert.False(logs.SearchCommand.CanExecute(null));
+        logs.SearchCommand.Execute(null); // e.g. Enter in the box: ignored meanwhile
+        var search = Assert.Single(sent.OfType<SearchLogs>());
+
+        logs.Apply(new LogSearchResult(search.RequestId, [new LogHit(ServerFile.Id, 3, "Zeile 3 FEHLER")], false, false));
+        Assert.False(logs.Searching.IsBusy);
+        Assert.True(logs.SearchCommand.CanExecute(null));
+        Assert.True(logs.ShowHits);
     }
 }

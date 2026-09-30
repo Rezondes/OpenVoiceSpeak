@@ -56,8 +56,16 @@ public sealed partial class AdminViewModel : ObservableObject
     public AdminViewModel(ServerViewModel server)
     {
         this.server = server;
-        userRefresh = new("u", () => !detached && ShowUsers, id => server.SendAsync(new ListUsers(), id), server.Time);
-        banRefresh = new("b", () => !detached && ShowBans, id => server.SendAsync(new ListBans(), id), server.Time);
+        UsersLoad = server.NewPending();
+        BansLoad = server.NewPending();
+        BackupsLoad = server.NewPending();
+        BackupCreate = server.NewPending();
+        Restoring = server.NewPending();
+        userRefresh = new("u", () => !detached && ShowUsers, id => server.SendAsync(new ListUsers(), id, UsersLoad), server.Time);
+        banRefresh = new("b", () => !detached && ShowBans, id => server.SendAsync(new ListBans(), id, BansLoad), server.Time);
+        // Package 97: a list that never came no longer blocks the next request ("Aktualisieren" retries)
+        UsersLoad.TimedOut += userRefresh.Completed;
+        BansLoad.TimedOut += banRefresh.Completed;
         StatusFilters =
         [
             new(UserStatusFilter.All, Strings.Ui_StatusAll), new(UserStatusFilter.Online, Strings.Ui_StatusOnline),
@@ -120,6 +128,12 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool ShowLogs => Actor.Has(Permission.LogsView); // Package 81
     public LinkMatrixViewModel Links { get; }
     public LogsViewModel Logs { get; }
+    /// <summary>Package 97 (A113): the lists' loading states, and the backup actions that wait for the server.</summary>
+    public Pending UsersLoad { get; }
+    public Pending BansLoad { get; }
+    public Pending BackupsLoad { get; }
+    public Pending BackupCreate { get; }
+    public Pending Restoring { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
     /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
@@ -188,7 +202,7 @@ public sealed partial class AdminViewModel : ObservableObject
     public async Task RequestListsAsync()
     {
         await RefreshUsersAndBansAsync();
-        if (ShowBackups) await server.SendAsync(new ListBackups());
+        if (ShowBackups) await server.SendAsync(new ListBackups(), pending: BackupsLoad);
         if (ShowLogs) await Logs.RequestAsync();
     }
 
@@ -251,6 +265,7 @@ public sealed partial class AdminViewModel : ObservableObject
             case UserList list:
                 if (userPages.Add(list.RequestId, list.Offset, list.Total, list.Users, (id, o) => _ = server.SendAsync(new ListUsers(o), id)) is not { } users) break;
                 userRefresh.Completed();
+                UsersLoad.Done();
                 ConfirmGroupChanges(users, userRefresh.RoundOf(list.RequestId));
                 knownUsers = users;
                 RebuildUsers();
@@ -258,11 +273,14 @@ public sealed partial class AdminViewModel : ObservableObject
             case BackupList list:
                 if (backupPages.Add(list.RequestId, list.Offset, list.Total, list.Backups, (id, o) => _ = server.SendAsync(new ListBackups(o), id)) is not { } backups) break;
                 backupInfos = backups;
+                BackupsLoad.Done();
+                BackupCreate.Done(); // the new backup is in the list (Restoring waits for the disconnect)
                 RebuildBackups();
                 break;
             case BanList list:
                 if (banPages.Add(list.RequestId, list.Offset, list.Total, list.Bans, (id, o) => _ = server.SendAsync(new ListBans(o), id)) is not { } bans) break;
                 banRefresh.Completed();
+                BansLoad.Done();
                 allBans = bans;
                 RebuildBans();
                 break;
@@ -458,9 +476,9 @@ public sealed partial class AdminViewModel : ObservableObject
     /// <summary>Package 89 (A101): asked before the file picker; the archive holds the certificate with its private key and all user data.</summary>
     public async Task<bool> ConfirmDownloadAsync() => server.Dialogs.ConfirmBackupDownload is { } warn && await warn();
 
-    /// <summary>Answered with the new list.</summary>
+    /// <summary>Answered with the new list; Package 97: busy until then, a second click meanwhile is ignored.</summary>
     [RelayCommand]
-    Task NewBackup() => server.SendAsync(new CreateBackup());
+    Task NewBackup() => BackupCreate.IsRunning ? Task.CompletedTask : server.SendAsync(new CreateBackup(), pending: BackupCreate);
 
     async Task DeleteBackupAsync(BackupViewModel backup)
     {
@@ -473,7 +491,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         if (!CanUploadRestore) return;
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(backup.Title)) return;
-        await server.SendAsync(new RestoreBackup(backup.Info.FileName));
+        await server.SendAsync(new RestoreBackup(backup.Info.FileName), pending: Restoring); // Package 97: until the disconnect
     }
 
     // ---- Package 75: download to and upload from this PC, chunk by chunk (A91) ----
@@ -612,7 +630,7 @@ public sealed partial class AdminViewModel : ObservableObject
         }
         if (!restore || uploaded is null) return;
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
-        await server.SendAsync(new RestoreBackup(uploaded.FileName));
+        await server.SendAsync(new RestoreBackup(uploaded.FileName), pending: Restoring);
     }
 
     /// <summary>

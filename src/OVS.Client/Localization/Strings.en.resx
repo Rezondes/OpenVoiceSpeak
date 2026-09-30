@@ -561,4 +561,9 @@
   <data name="Error_BackupQuotaExceeded" xml:space="preserve"><value>The backup limit is reached (at most 50 backups, 2 GB in total). Delete old backups first.</value></data>
   <data name="Backup_DownloadTitle" xml:space="preserve"><value>Download the backup?</value></data>
   <data name="Backup_DownloadWarning" xml:space="preserve"><value>The file contains the server's private key and all user data, including the password hash and IP addresses. Store it safely and do not share it.</value></data>
+  <data name="Pending_NoAnswer" xml:space="preserve"><value>No answer from the server. Please try again.</value></data>
+  <data name="Ui_Loading" xml:space="preserve"><value>Loading ...</value></data>
+  <data name="Ui_LogSearching" xml:space="preserve"><value>Searching ...</value></data>
+  <data name="Ui_Restoring" xml:space="preserve"><value>Restoring ...</value></data>
+  <data name="Ui_Busy" xml:space="preserve"><value>Please wait</value></data>
 </root>

@@ -168,6 +168,7 @@ public sealed partial class ServerViewModel : ObservableObject
                     pendingPassword = null;
                 }
                 var text = ErrorTexts.For(e.Code, e.Detail);
+                if (e.RequestId is { } failed && waiting.Remove(failed, out var pending) && pending.Answers(failed)) pending.Fail(text); // Package 97
                 if (e.RequestId?.StartsWith(ChatRequestPrefix) == true && ChatError is { } chatError) chatError(text);
                 else Notice?.Invoke(text);
                 AdminMessage?.Invoke(message); // Package 73: the admin page drops what the server refused
@@ -357,9 +358,16 @@ public sealed partial class ServerViewModel : ObservableObject
 
     /// <summary>Sends a request and returns the id it got, so an answer or error can be matched (Package 73).</summary>
     /// <param name="id">A fixed id instead of a new one, e.g. the round a later list page belongs to.</param>
-    public async Task<string> SendAsync(Request request, string? id = null)
+    /// <param name="pending">Package 97: marked running under the request's id before sending; the server's error for it ends it.</param>
+    public async Task<string> SendAsync(Request request, string? id = null, Pending? pending = null)
     {
         id ??= $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}";
+        if (pending is not null)
+        {
+            foreach (var over in waiting.Where(w => !w.Value.Answers(w.Key)).Select(w => w.Key).ToList()) waiting.Remove(over);
+            pending.Start(id); // before sending: the answer can come at once
+            waiting[id] = pending;
+        }
         try
         {
             await send(request with { RequestId = id });
@@ -367,10 +375,28 @@ public sealed partial class ServerViewModel : ObservableObject
         // InvalidOperationException: a request raced a disconnect that had already shut TLS down.
         catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException or InvalidOperationException)
         {
-            Notice?.Invoke(ErrorTexts.For(Codes.ConnectionLost));
+            var text = ErrorTexts.For(Codes.ConnectionLost);
+            if (pending?.Answers(id) == true) pending.Fail(text);
+            Notice?.Invoke(text);
         }
         return id;
     }
+
+    // ---- Package 97 (A113): waiting states ----
+
+    /// <summary>The running marks by request id; the server's error for one of them ends it.</summary>
+    readonly Dictionary<string, Pending> waiting = [];
+
+    /// <summary>
+    /// Runs work on the UI thread; the main view model sets its dispatcher. Made on Avalonia's UI thread (headless tests)
+    /// it posts there, otherwise (view model tests with a manual clock) it runs inline.
+    /// </summary>
+    public Action<Action> Post { get; set; } = SynchronizationContext.Current is Avalonia.Threading.AvaloniaSynchronizationContext ui
+        ? action => ui.Post(_ => action(), null)
+        : action => action();
+
+    /// <summary>A waiting mark on this server's clock, its timers handed to the UI thread.</summary>
+    public Pending NewPending() => new(time, action => Post(action));
 
     /// <summary>Package 94: asks for the password of a password-locked channel unless remembered, the bypass right or an admin.</summary>
     public async Task JoinAsync(Guid channelId)

@@ -56,6 +56,12 @@ public sealed partial class LogsViewModel : ObservableObject
     {
         this.server = server;
         Owner = owner;
+        FilesLoad = server.NewPending();
+        Searching = server.NewPending();
+        Searching.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(Pending.IsBusy)) SearchCommand.NotifyCanExecuteChanged();
+        };
         downloadRight = ShowDownload;
         RebuildSources();
         selectedSource = Sources[0];
@@ -76,8 +82,11 @@ public sealed partial class LogsViewModel : ObservableObject
     public ObservableCollection<LogHitViewModel> Hits { get; } = [];
 
     public AdminViewModel? Owner { get; }
+    /// <summary>Package 97 (A113): the file list's loading state and the running search.</summary>
+    public Pending FilesLoad { get; }
+    public Pending Searching { get; }
 
-    public Task RequestAsync() => server.SendAsync(new ListLogs());
+    public Task RequestAsync() => server.SendAsync(new ListLogs(), pending: FilesLoad);
 
     /// <summary>The server's answers, passed on by the administration page.</summary>
     public void Apply(Message message)
@@ -87,6 +96,7 @@ public sealed partial class LogsViewModel : ObservableObject
             case LogList list:
                 if (filePages.Add(list.RequestId, list.Offset, list.Total, list.Files, (id, o) => _ = server.SendAsync(new ListLogs(o), id)) is not { } files) break;
                 allFiles = files;
+                FilesLoad.Done();
                 selected.IntersectWith(allFiles.Select(f => f.Id)); // files gone meanwhile (retention) drop out
                 RebuildSources();
                 RebuildFiles();
@@ -99,6 +109,7 @@ public sealed partial class LogsViewModel : ObservableObject
                 RebuildLines();
                 break;
             case LogSearchResult result:
+                Searching.Done();
                 Hits.Clear();
                 foreach (var hit in result.Hits) Hits.Add(new LogHitViewModel(hit, TitleOf(hit.FileId)));
                 HitsText = result.TimedOut ? string.Format(Strings.Ui_LogHitsTimedOut, result.Hits.Count)
@@ -298,15 +309,17 @@ public sealed partial class LogsViewModel : ObservableObject
 
     // ---- Search over all files ----
 
-    bool CanSearch => !string.IsNullOrWhiteSpace(SearchText);
+    /// <summary>Package 97: disabled while the search shows busy; before that a second try is ignored in Search.</summary>
+    bool CanSearch => !string.IsNullOrWhiteSpace(SearchText) && !Searching.IsBusy;
     partial void OnSearchTextChanged(string value) => SearchCommand.NotifyCanExecuteChanged();
 
     /// <summary>With the type and period of the file filters.</summary>
     [RelayCommand(CanExecute = nameof(CanSearch))]
     Task Search()
     {
+        if (Searching.IsRunning) return Task.CompletedTask;
         var source = SelectedSource?.Value;
-        return server.SendAsync(new SearchLogs(SearchText, source?.Kind, source?.ChannelId, From, To));
+        return server.SendAsync(new SearchLogs(SearchText, source?.Kind, source?.ChannelId, From, To), pending: Searching);
     }
 
     [RelayCommand]

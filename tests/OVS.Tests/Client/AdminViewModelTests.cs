@@ -1271,4 +1271,75 @@ public class AdminViewModelTests
         Assert.Null(vm.GroupError);
         Assert.IsType<CreateGroup>(sent[^1]);
     }
+
+    // ---- Package 97 (A113): waiting states ----
+
+    static readonly TimeSpan ShowAfter = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>Package 97 (AC3): every list shows its loading state until the first page is complete; a refresh keeps the content.</summary>
+    [Fact]
+    public async Task Lists_ShowLoadingUntilFirstPage_RefreshKeepsContent()
+    {
+        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.BackupsManage | P.LogsView | P.Speak);
+        var time = (ManualTimeProvider)server.Time;
+        await vm.RequestListsAsync();
+        Pending[] loads = [vm.UsersLoad, vm.BansLoad, vm.BackupsLoad, vm.Logs.FilesLoad];
+        Assert.All(loads, l => Assert.True(l.IsRunning && !l.IsBusy)); // nothing shows before 150 ms
+        time.Advance(ShowAfter);
+        Assert.All(loads, l => Assert.True(l.IsFirstLoad && !l.IsRefreshing));
+
+        // the users come in two pages: loading until the list is complete
+        var users = sent.OfType<ListUsers>().Single().RequestId;
+        server.Apply(new UserList(users, [new KnownUserInfo("fpX", "Xaver", [])], 0, 2));
+        Assert.True(vm.UsersLoad.IsFirstLoad);
+        server.Apply(new UserList(users, [new KnownUserInfo("fpY", "Yvonne", [])], 1, 2));
+        Assert.False(vm.UsersLoad.IsBusy);
+        server.Apply(new BanList(sent.OfType<ListBans>().Single().RequestId, []));
+        server.Apply(new BackupList(sent.OfType<ListBackups>().Single().RequestId, []));
+        server.Apply(new LogList(sent.OfType<ListLogs>().Single().RequestId, []));
+        Assert.All(loads, l => Assert.False(l.IsRunning || l.IsBusy));
+
+        // a refresh: the old cards stay, with a small spinner instead of the loading state
+        time.Advance(TimeSpan.FromSeconds(1));
+        await vm.RefreshCommand.ExecuteAsync(null);
+        time.Advance(ShowAfter);
+        Assert.All(loads, l => Assert.True(l.IsRefreshing && !l.IsFirstLoad));
+        Assert.Equal(2, vm.Users.Count);
+
+        // a list that never comes: a visible error after 10 s, and "Aktualisieren" asks again
+        time.Advance(TimeSpan.FromSeconds(10));
+        Assert.All(loads, l => Assert.Equal(Strings.Pending_NoAnswer, l.Error));
+        Assert.All(loads, l => Assert.False(l.IsBusy));
+        await vm.RefreshCommand.ExecuteAsync(null);
+        Assert.All(loads, l => Assert.True(l.IsRunning && l.Error is null));
+    }
+
+    /// <summary>Package 97 (AC5): "Backup anlegen" is busy until the new list, "Wiederherstellen" until the disconnect or an error.</summary>
+    [Fact]
+    public async Task BackupCreateAndRestore_ShowBusy()
+    {
+        var dialogs = new Dialogs { ConfirmRestore = _ => Task.FromResult(true) };
+        var (vm, server, sent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
+        var time = (ManualTimeProvider)server.Time;
+        BackupInfo older = new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 900, "dev");
+        server.Apply(new BackupList(null, [older]));
+
+        await vm.NewBackupCommand.ExecuteAsync(null);
+        await vm.NewBackupCommand.ExecuteAsync(null); // a second click meanwhile is ignored
+        Assert.Single(sent.OfType<CreateBackup>());
+        time.Advance(ShowAfter);
+        Assert.True(vm.BackupCreate.IsBusy);
+        server.Apply(new BackupList(null, [new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
+        Assert.False(vm.BackupCreate.IsBusy);
+
+        await vm.Backups[1].RestoreCommand.ExecuteAsync(null);
+        var restore = Assert.IsType<RestoreBackup>(sent[^1]);
+        time.Advance(ShowAfter);
+        Assert.True(vm.Restoring.IsBusy);
+        server.Apply(new BackupList(null, [new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
+        Assert.True(vm.Restoring.IsBusy); // the safety backup appears, the disconnect is still to come
+        server.Apply(new Error(restore.RequestId, Codes.NotFound)); // refused: the card comes back with the error
+        Assert.False(vm.Restoring.IsBusy);
+        Assert.Equal(OVS.Client.ErrorTexts.For(Codes.NotFound), vm.Restoring.Error);
+    }
 }

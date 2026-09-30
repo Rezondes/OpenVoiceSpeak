@@ -5,6 +5,29 @@
              xmlns:v="using:OVS.Client.Views"
              x:Class="OVS.Client.Views.AdminView"
              x:DataType="vm:AdminViewModel">
+  <UserControl.Resources>
+    <!-- Package 97 (A113): a list's first load (spinner and "Wird geladen ..." in place of the list) or its error -->
+    <DataTemplate x:Key="ListLoad" x:DataType="vm:Pending">
+      <Panel IsHitTestVisible="False" Margin="8">
+        <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFirstLoad}">
+          <v:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+          <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_Loading}" TextWrapping="Wrap" TextAlignment="Center" />
+        </StackPanel>
+        <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap" TextAlignment="Center"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFirstLoadFailed}" />
+      </Panel>
+    </DataTemplate>
+    <!-- Package 97: a refresh keeps the content, a small spinner (or the error) below the list's count -->
+    <DataTemplate x:Key="ListRefresh" x:DataType="vm:Pending">
+      <Panel>
+        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRefreshing}">
+          <v:BusySpinner />
+          <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Loading}" VerticalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Classes="caption danger" Text="{Binding Error}" TextWrapping="Wrap" IsVisible="{Binding IsRefreshFailed}" />
+      </Panel>
+    </DataTemplate>
+  </UserControl.Resources>
   <DockPanel>
     <!-- Page header: title and close (Esc closes as well) -->
     <Border DockPanel.Dock="Top" Classes="settingsHeader" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
@@ -141,11 +164,19 @@
                           MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_SortOrder}" />
               </WrapPanel>
               <TextBlock Classes="caption" Text="{Binding UserCountText}" TextWrapping="Wrap" />
+              <ContentControl Content="{Binding UsersLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding UsersLoad.HasState}" />
             </StackPanel>
             <Panel>
               <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoUserMatches}" TextWrapping="Wrap" TextAlignment="Center"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                         IsVisible="{Binding Users.Count, Converter={x:Static v:Ui.IsZero}}" />
+                         HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock.IsVisible>
+                  <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="Users.Count" Converter="{x:Static v:Ui.IsZero}" />
+                    <Binding Path="UsersLoad.HasSucceeded" />
+                  </MultiBinding>
+                </TextBlock.IsVisible>
+              </TextBlock>
+              <ContentControl Name="UsersLoadState" Content="{Binding UsersLoad}" ContentTemplate="{StaticResource ListLoad}" />
               <ScrollViewer>
                 <ItemsControl ItemsSource="{Binding Users}">
                   <ItemsControl.ItemsPanel>
@@ -292,9 +323,17 @@
                           MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_SortOrder}" />
               </WrapPanel>
               <TextBlock Classes="caption" Text="{Binding BanCountText}" TextWrapping="Wrap" />
+              <ContentControl Content="{Binding BansLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding BansLoad.HasState}" />
             </StackPanel>
             <Panel>
-              <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding HasNoBans}">
+              <ContentControl Name="BansLoadState" Content="{Binding BansLoad}" ContentTemplate="{StaticResource ListLoad}" />
+              <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel.IsVisible>
+                  <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="HasNoBans" />
+                    <Binding Path="BansLoad.HasSucceeded" />
+                  </MultiBinding>
+                </StackPanel.IsVisible>
                 <PathIcon Classes="muted" Data="{StaticResource Icon.Prohibited}" Width="32" Height="32" />
                 <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NobodyBanned}" HorizontalAlignment="Center" TextWrapping="Wrap" />
               </StackPanel>
@@ -568,76 +607,96 @@
               </Border>
               <!-- Package 74: backups on the server, restored after a red question -->
               <Border Classes="card" IsVisible="{Binding ShowBackups}">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Backups}" />
-                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackupsHint}" />
-                  <!-- Package 75: upload from this PC, optionally restored right away (after the same red question) -->
-                  <WrapPanel ItemSpacing="8" LineSpacing="6">
-                    <Button Command="{Binding NewBackupCommand}">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
-                        <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
-                      </StackPanel>
-                    </Button>
-                    <!-- Package 89 (A101): upload and restore only for members of the Admin group -->
-                    <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
-                        <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
-                      </StackPanel>
-                    </Button>
-                    <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
-                        <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
-                      </StackPanel>
-                    </Button>
-                  </WrapPanel>
-                  <StackPanel Name="BackupTransfer" Spacing="4" IsVisible="{Binding IsTransferring}">
-                    <TextBlock Classes="caption" Text="{Binding TransferText}" />
-                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding TransferPercent}" Height="8" CornerRadius="4" />
+                <Panel>
+                  <!-- Package 97: the whole card waits for the disconnect that follows a restore -->
+                  <StackPanel Name="RestoringState" Spacing="8" Margin="0,24" HorizontalAlignment="Center" IsVisible="{Binding Restoring.IsBusy}">
+                    <v:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+                    <TextBlock Classes="body" Text="{x:Static l:Strings.Ui_Restoring}" TextAlignment="Center" />
                   </StackPanel>
-                  <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBackups}" IsVisible="{Binding HasNoBackups}" />
-                  <ItemsControl ItemsSource="{Binding Backups}">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <StackPanel Spacing="6" />
-                      </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:BackupViewModel">
-                        <Border Classes="soundRow">
-                          <StackPanel Spacing="6">
-                            <StackPanel>
-                              <TextBlock Classes="body" Text="{Binding Title}" TextWrapping="Wrap" />
-                              <TextBlock Classes="caption" Text="{Binding Details}" TextWrapping="Wrap" />
+                  <StackPanel Spacing="8" IsVisible="{Binding !Restoring.IsBusy}">
+                    <TextBlock Classes="danger" Text="{Binding Restoring.Error}" TextWrapping="Wrap" IsVisible="{Binding Restoring.HasError}" />
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Backups}" />
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackupsHint}" />
+                    <!-- Package 75: upload from this PC, optionally restored right away (after the same red question) -->
+                    <WrapPanel ItemSpacing="8" LineSpacing="6">
+                      <!-- Package 97: busy until the new list arrives -->
+                      <Button Name="NewBackupButton" Command="{Binding NewBackupCommand}" IsEnabled="{Binding !BackupCreate.IsBusy}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" IsVisible="{Binding !BackupCreate.IsBusy}" />
+                          <v:BusySpinner IsVisible="{Binding BackupCreate.IsBusy}" />
+                          <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
+                        </StackPanel>
+                      </Button>
+                      <!-- Package 89 (A101): upload and restore only for members of the Admin group -->
+                      <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
+                          <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
+                        </StackPanel>
+                      </Button>
+                      <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                          <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </Button>
+                    </WrapPanel>
+                    <StackPanel Name="BackupTransfer" Spacing="4" IsVisible="{Binding IsTransferring}">
+                      <TextBlock Classes="caption" Text="{Binding TransferText}" />
+                      <ProgressBar Minimum="0" Maximum="100" Value="{Binding TransferPercent}" Height="8" CornerRadius="4" />
+                    </StackPanel>
+                    <TextBlock Classes="danger" Text="{Binding BackupCreate.Error}" TextWrapping="Wrap" IsVisible="{Binding BackupCreate.HasError}" />
+                    <ContentControl Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding BackupsLoad.HasState}" />
+                    <ContentControl Name="BackupsLoadState" Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListLoad}" IsVisible="{Binding BackupsLoad.HasState}" />
+                    <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBackups}">
+                      <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                          <Binding Path="HasNoBackups" />
+                          <Binding Path="BackupsLoad.HasSucceeded" />
+                        </MultiBinding>
+                      </TextBlock.IsVisible>
+                    </TextBlock>
+                    <ItemsControl ItemsSource="{Binding Backups}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Spacing="6" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BackupViewModel">
+                          <Border Classes="soundRow">
+                            <StackPanel Spacing="6">
+                              <StackPanel>
+                                <TextBlock Classes="body" Text="{Binding Title}" TextWrapping="Wrap" />
+                                <TextBlock Classes="caption" Text="{Binding Details}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <WrapPanel ItemSpacing="8" LineSpacing="6">
+                                <Button Click="OnDownloadBackup">
+                                  <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                                    <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
+                                  </StackPanel>
+                                </Button>
+                                <Button Classes="danger" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
+                                  <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                                    <TextBlock Text="{x:Static l:Strings.Ui_Restore}" />
+                                  </StackPanel>
+                                </Button>
+                                <Button Classes="subtle" Command="{Binding DeleteCommand}">
+                                  <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
+                                    <TextBlock Text="{x:Static l:Strings.Ui_Delete}" />
+                                  </StackPanel>
+                                </Button>
+                              </WrapPanel>
                             </StackPanel>
-                            <WrapPanel ItemSpacing="8" LineSpacing="6">
-                              <Button Click="OnDownloadBackup">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
-                                  <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
-                                </StackPanel>
-                              </Button>
-                              <Button Classes="danger" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
-                                  <TextBlock Text="{x:Static l:Strings.Ui_Restore}" />
-                                </StackPanel>
-                              </Button>
-                              <Button Classes="subtle" Command="{Binding DeleteCommand}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
-                                  <TextBlock Text="{x:Static l:Strings.Ui_Delete}" />
-                                </StackPanel>
-                              </Button>
-                            </WrapPanel>
-                          </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Panel>
               </Border>
             </StackPanel>
           </ScrollViewer>
@@ -648,9 +707,10 @@
           <DockPanel DataContext="{Binding Logs}" x:DataType="vm:LogsViewModel" Classes="logsPage" Classes.fileOpen="{Binding IsFileOpen}">
             <StackPanel DockPanel.Dock="Top" Classes="logFilters" Spacing="8" Margin="0,0,0,12">
               <DockPanel>
-                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Command="{Binding SearchCommand}">
+                <Button Name="LogSearchButton" DockPanel.Dock="Right" Margin="8,0,0,0" Command="{Binding SearchCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.Search}" />
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.Search}" IsVisible="{Binding !Searching.IsBusy}" />
+                    <v:BusySpinner IsVisible="{Binding Searching.IsBusy}" />
                     <TextBlock Text="{x:Static l:Strings.Ui_Search}" />
                   </StackPanel>
                 </Button>
@@ -669,7 +729,14 @@
                 <CalendarDatePicker x:Name="LogTo" SelectedDate="{Binding ToDate}" Watermark="{x:Static l:Strings.Ui_LogTo}"
                                     Width="150" AutomationProperties.Name="{x:Static l:Strings.Ui_LogTo}" />
               </WrapPanel>
+              <!-- Package 97: the running search, or why it failed -->
+              <StackPanel Name="LogSearchBusy" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Searching.IsBusy}">
+                <v:BusySpinner />
+                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_LogSearching}" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Classes="caption danger" Text="{Binding Searching.Error}" TextWrapping="Wrap" IsVisible="{Binding Searching.HasError}" />
               <TextBlock Classes="caption" Text="{Binding FileCountText}" TextWrapping="Wrap" />
+              <ContentControl Content="{Binding FilesLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding FilesLoad.HasState}" />
               <!-- Package 82: with LogsDownload, the checked files as one .log or a zip; the progress is the page's transfer -->
               <WrapPanel Name="LogDownloadBar" ItemSpacing="8" LineSpacing="6" IsVisible="{Binding ShowDownload}">
                 <Button Command="{Binding SelectAllInPeriodCommand}">
@@ -696,8 +763,16 @@
               <Border Classes="card logList" Padding="6">
                 <Panel>
                   <Panel IsVisible="{Binding !ShowHits}">
+                    <ContentControl Name="LogsLoadState" Content="{Binding FilesLoad}" ContentTemplate="{StaticResource ListLoad}" />
                     <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoLogs}" TextWrapping="Wrap" TextAlignment="Center"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8" IsVisible="{Binding HasNoFiles}" />
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8">
+                      <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                          <Binding Path="HasNoFiles" />
+                          <Binding Path="FilesLoad.HasSucceeded" />
+                        </MultiBinding>
+                      </TextBlock.IsVisible>
+                    </TextBlock>
                     <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoLogMatches}" TextWrapping="Wrap" TextAlignment="Center"
                                HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8" IsVisible="{Binding HasNoFileMatches}" />
                     <ListBox x:Name="LogFileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" Background="Transparent">

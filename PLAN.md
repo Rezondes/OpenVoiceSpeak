@@ -5936,7 +5936,7 @@ Test command: `dotnet test tests/OVS.Tests`
 
 **Affected files:**
 - `src/OVS.Client/ViewModels/Pending.cs` (new): tracks pending requests, flips `IsBusy` after a short delay, times out
-- `src/OVS.Client/Styles/Controls.axaml`, `src/OVS.Client/Views/Spinner.axaml` (new): small spinner and busy styles for buttons, rows and list areas
+- `src/OVS.Client/Styles/Controls.axaml`, `src/OVS.Client/Views/Spinner.axaml` (new): small spinner and busy styles for buttons, rows and list areas (done as `Views/BusySpinner.axaml` with its own animation style: Avalonia already has a `Spinner` control)
 - `src/OVS.Client/ViewModels/AdminViewModel.cs`, `LogsViewModel.cs`, `ListPages.cs` (change): loading state per list, search, backup create and restore
 - `src/OVS.Client/Views/AdminView.axaml` (change)
 - `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
@@ -5948,12 +5948,12 @@ There is no shared busy component. Only connecting (`IsConnecting`, indeterminat
 
 ### Acceptance Criteria
 
-- [ ] AC1: `Pending` marks an action busy when it starts; its UI (spinner on the triggering button or area, button disabled) becomes visible after 150 ms at the latest if the action is not done by then, so it is visible within 400 ms and fast actions do not flicker. When the answer (or an error) arrives, the busy state ends.
-- [ ] AC2: If no answer arrives within 10 s, the busy state ends with a visible error ("Keine Antwort vom Server") and the action can be retried.
-- [ ] AC3: Every admin list (users, bans, backups, logs) shows a loading state (spinner in the list area plus "Wird geladen ...") while its first page is on the way, and keeps showing the old content with a small spinner during a refresh.
-- [ ] AC4: Log search shows a spinner and "Suche läuft ..." until results arrive; the search button is disabled meanwhile.
-- [ ] AC5: "Backup anlegen" shows a spinner on the button until the new list arrives; "Wiederherstellen" shows a full-card "Wird wiederhergestellt ..." state until the disconnect.
-- [ ] AC6: Busy states fit at 360 px (A96); texts in German and English.
+- [x] AC1: `Pending` marks an action busy when it starts; its UI (spinner on the triggering button or area, button disabled) becomes visible after 150 ms at the latest if the action is not done by then, so it is visible within 400 ms and fast actions do not flicker. When the answer (or an error) arrives, the busy state ends.
+- [x] AC2: If no answer arrives within 10 s, the busy state ends with a visible error ("Keine Antwort vom Server") and the action can be retried.
+- [x] AC3: Every admin list (users, bans, backups, logs) shows a loading state (spinner in the list area plus "Wird geladen ...") while its first page is on the way, and keeps showing the old content with a small spinner during a refresh.
+- [x] AC4: Log search shows a spinner and "Suche läuft ..." until results arrive; the search button is disabled meanwhile.
+- [x] AC5: "Backup anlegen" shows a spinner on the button until the new list arrives; "Wiederherstellen" shows a full-card "Wird wiederhergestellt ..." state until the disconnect.
+- [x] AC6: Busy states fit at 360 px (A96); texts in German and English.
 
 ### Tests (TDD)
 
