@@ -80,6 +80,9 @@
   <data name="Dlg_DescriptionHint" xml:space="preserve"><value>Optional, erscheint als Tooltip und im Kopf des Channels.</value></data>
   <data name="Dlg_Duration" xml:space="preserve"><value>Dauer</value></data>
   <data name="Dlg_EditBookmark" xml:space="preserve"><value>Lesezeichen bearbeiten</value></data>
+  <data name="Dlg_GroupLock" xml:space="preserve"><value>Nur für Gruppen</value></data>
+  <data name="Dlg_GroupLockDefault" xml:space="preserve"><value>Der Standard-Channel bleibt für alle offen: dort landet jeder beim Verbinden.</value></data>
+  <data name="Dlg_GroupLockHint" xml:space="preserve"><value>Ohne Haken darf jeder hinein. Admins dürfen immer, und wer schon drin ist, bleibt.</value></data>
   <data name="Dlg_HostExample" xml:space="preserve"><value>z. B. voice.example.org</value></data>
   <data name="Dlg_InstallNow" xml:space="preserve"><value>Jetzt installieren</value></data>
   <data name="Dlg_Key" xml:space="preserve"><value>Taste</value></data>
@@ -122,6 +125,7 @@
   <data name="Error_Banned" xml:space="preserve"><value>Du bist auf diesem Server gebannt.</value></data>
   <data name="Error_CannotDeleteDefault" xml:space="preserve"><value>Der Standard-Channel kann nicht gelöscht werden.</value></data>
   <data name="Error_ChannelFull" xml:space="preserve"><value>Der Channel ist voll.</value></data>
+  <data name="Error_ChannelLocked" xml:space="preserve"><value>Dieser Channel ist nur für bestimmte Gruppen.</value></data>
   <data name="Error_ConnectionLost" xml:space="preserve"><value>Die Verbindung zum Server ist abgebrochen.</value></data>
   <data name="Error_InvalidBackup" xml:space="preserve"><value>Das Backup ist ungültig oder zu neu für diesen Server. Es wurde nichts geändert.</value></data>
   <data name="Error_InvalidLink" xml:space="preserve"><value>Ein Channel kann nicht mit sich selbst verlinkt werden.</value></data>
@@ -299,6 +303,8 @@
   <data name="Ui_BanTypePermanent" xml:space="preserve"><value>Dauerhaft</value></data>
   <data name="Ui_BanTypeTemporary" xml:space="preserve"><value>Befristet</value></data>
   <data name="Ui_BanTypeWithIp" xml:space="preserve"><value>Mit IP</value></data>
+  <data name="Ui_LockedAdmins" xml:space="preserve"><value>Nur für Admins</value></data>
+  <data name="Ui_LockedGroupsFmt" xml:space="preserve"><value>Nur für Gruppen: {0}</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Neueste zuerst</value></data>
   <data name="Ui_SortEndingSoonest" xml:space="preserve"><value>Endet am frühesten</value></data>
   <data name="Ui_SortMostAttempts" xml:space="preserve"><value>Meiste Versuche</value></data>

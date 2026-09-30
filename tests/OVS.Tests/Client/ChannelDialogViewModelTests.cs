@@ -1,5 +1,6 @@
 using OVS.Client.Localization;
 using OVS.Client.ViewModels;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 
 namespace OVS.Tests.Client;
@@ -68,5 +69,44 @@ public class ChannelDialogViewModelTests
         vm.Description = "oben\r\nunten"; // a line break from the text box is fine
         Assert.Equal(new ChannelEdit("Raid", "oben\r\nunten", false, 0), vm.Result());
         Assert.Null(vm.Error);
+    }
+
+    static readonly Guid Mod = Guid.NewGuid(), RaidGroup = Guid.NewGuid();
+    static readonly GroupInfo[] Groups =
+    [
+        new(WellKnownGroups.Guest, "Gast", Permission.None), new(Mod, "Moderator", Permission.None),
+        new(RaidGroup, "Raid", Permission.None), new(WellKnownGroups.Admin, "Admin", Permission.None),
+    ];
+
+    /// <summary>Package 93: a checkbox per group; the list is only sent when it changed (null keeps the lock).</summary>
+    [Fact]
+    public void GroupLock_ListedChecked_SentOnlyWhenChanged()
+    {
+        var vm = new ChannelDialogViewModel(new ChannelEdit("Raid", "", AllowedGroupIds: [RaidGroup]), ChannelDialogMode.Edit, Groups);
+        Assert.Equal(["Gast", "Moderator", "Raid", "Admin"], vm.Groups.Select(g => g.Name));
+        Assert.Equal([RaidGroup], vm.Groups.Where(g => g.IsChecked).Select(g => g.Id));
+        Assert.True(vm.CanLockGroups);
+        Assert.Null(vm.Result()!.AllowedGroupIds);
+
+        vm.Groups[1].IsChecked = true;
+        Assert.Equal([Mod, RaidGroup], vm.Result()!.AllowedGroupIds!);
+        vm.Groups[1].IsChecked = false;
+        vm.Groups[2].IsChecked = false;
+        Assert.Equal([], vm.Result()!.AllowedGroupIds!); // the lock goes
+
+        var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create, Groups) { Name = "Neu" };
+        Assert.Null(create.Result()!.AllowedGroupIds);
+        create.Groups[1].IsChecked = true;
+        Assert.Equal([Mod], create.Result()!.AllowedGroupIds!);
+    }
+
+    [Fact]
+    public void GroupLock_DisabledForDefault()
+    {
+        var vm = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault, Groups);
+        Assert.False(vm.CanLockGroups);
+        Assert.Contains("Standard-Channel", vm.GroupLockHint);
+        vm.Groups[1].IsChecked = true; // cannot happen through the disabled list, but never sent either
+        Assert.Null(vm.Result()!.AllowedGroupIds);
     }
 }

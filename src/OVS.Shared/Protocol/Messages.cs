@@ -115,7 +115,10 @@ public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool Ha
 public sealed record ServerLimits(int MaxUsers, int LogDays, bool LogRotateDaily, bool AutoRestart, TimeOnly AutoRestartTime);
 /// <param name="IsMuted">Package 34: nobody in this channel is heard, not even via link.</param>
 /// <param name="MaxUsers">Package 35: 0 = unlimited.</param>
-public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0);
+/// <param name="AllowedGroupIds">Package 93: null = no group lock; else only members of one of these groups (and admins) may
+/// join, an empty list (all its groups deleted) means admins only.</param>
+public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0,
+    IReadOnlyList<Guid>? AllowedGroupIds = null);
 public sealed record LinkInfo(Guid A, Guid B);
 /// <param name="Permissions">Package 92 (A104): only for recipients with GroupsView, None for everyone else.</param>
 /// <param name="AssignableByMe">Package 92: the recipient may assign this group (GroupsAssign and not stronger than the recipient).</param>
@@ -135,8 +138,12 @@ public sealed record ServerSnapshot(
 // ---- Channels and users ----
 public sealed record JoinChannel(Guid ChannelId) : Request;
 /// <summary>Package 54: created with its options right away, like <see cref="EditChannel"/>.</summary>
-public sealed record CreateChannel(string Name, string Description, bool IsMuted = false, int MaxUsers = 0) : Request;
-public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0) : Request;
+/// <param name="AllowedGroupIds">Package 93: the group lock, null or empty = none.</param>
+public sealed record CreateChannel(string Name, string Description, bool IsMuted = false, int MaxUsers = 0,
+    IReadOnlyList<Guid>? AllowedGroupIds = null) : Request;
+/// <param name="AllowedGroupIds">Package 93: null = unchanged, empty = remove the group lock.</param>
+public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0,
+    IReadOnlyList<Guid>? AllowedGroupIds = null) : Request;
 /// <summary>Package 36: the complete new order, every channel exactly once.</summary>
 public sealed record ReorderChannels(IReadOnlyList<Guid> ChannelIds) : Request;
 public sealed record DeleteChannel(Guid ChannelId) : Request;

@@ -121,9 +121,14 @@ public sealed partial class ServerState
         }
         data.Groups.Remove(group);
         foreach (var user in data.Users) user.GroupIds.Remove(group.Id);
+        // Package 93 (A109): gone from every group lock; a lock left empty means admins only, until someone edits it
+        var unlocked = data.Channels.Where(c => c.AllowedGroupIds?.Remove(group.Id) == true).ToList();
         Persist();
         logs.Server($"Gruppe '{group.Name}' gelöscht von {s.Nickname}");
+        foreach (var channel in unlocked)
+            ChannelLog(channel.Id, $"Gruppe '{group.Name}' aus der Gruppen-Sperre entfernt (Gruppe gelöscht)");
         RecomputePermissions(groupsChanged: true); // Package 92: the groups per recipient, judged by the new rights
+        foreach (var channel in unlocked) Broadcast(new ChannelUpdated(Info(channel)));
     }
 
     void OnAssignGroup(Session s, AssignGroup r)

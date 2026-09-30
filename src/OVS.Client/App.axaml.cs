@@ -52,7 +52,7 @@ public partial class App : Application
             var overlay = window.Overlay; // every dialog lives inside the main window (A20)
             vm.Dialogs = new Dialogs
             {
-                EditChannel = (current, mode) => ChannelDialog.ShowAsync(overlay, current, mode),
+                EditChannel = (current, mode) => ChannelDialog.ShowAsync(overlay, current, mode, vm.Server?.Mirror.Groups), // Package 93
                 PickChannel = (title, channels) => SimpleDialogs.PickChannel(overlay, title, channels),
                 AskText = (title, prompt) => SimpleDialogs.AskText(overlay, title, prompt),
                 Ban = (nickname, ipKnown) => SimpleDialogs.Ban(overlay, nickname, ipKnown),

@@ -13,6 +13,11 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
+        if (LockRefusal(s, channel) is { } locked)
+        {
+            Fail(s, r, locked);
+            return;
+        }
         if (IsFull(channel, s) && !s.Permissions.Has(Permission.ChannelJoinFull))
         {
             Fail(s, r, Codes.ChannelFull);
@@ -31,6 +36,7 @@ public sealed partial class ServerState
         if (!Require(s, r, Permission.ChannelCreate)) return;
         if (!ValidateChannel(s, r, null, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
+        if (!ValidateGroupLock(s, r, null, r.AllowedGroupIds, out var allowed)) return;
 
         var channel = new ChannelRecord
         {
@@ -41,10 +47,12 @@ public sealed partial class ServerState
             Order = (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1),
             IsMuted = r.IsMuted,
             MaxUsers = r.MaxUsers,
+            AllowedGroupIds = allowed,
         };
         data.Channels.Add(channel);
         Persist();
-        var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null }.OfType<string>().ToList();
+        var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null,
+            allowed is null ? null : $"nur für {GroupNames(allowed)}" }.OfType<string>().ToList();
         ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
         logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
         Broadcast(new ChannelAdded(Info(channel)));
@@ -61,6 +69,8 @@ public sealed partial class ServerState
         }
         if (!ValidateChannel(s, r, channel.Id, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, channel.Id, r.MaxUsers)) return;
+        if (!ValidateGroupLock(s, r, channel.Id, r.AllowedGroupIds, out var allowed)) return;
+        if (r.AllowedGroupIds is null) allowed = channel.AllowedGroupIds; // Package 93: null keeps the lock as it is
 
         // Package 83: r.Order is ignored, the order only changes through ReorderChannels
         var changes = new List<string>();
@@ -68,11 +78,13 @@ public sealed partial class ServerState
         if (channel.Description != description) changes.Add("Beschreibung geändert");
         if (channel.IsMuted != r.IsMuted) changes.Add(r.IsMuted ? "stumm geschaltet" : "Stummschaltung aufgehoben");
         if (channel.MaxUsers != r.MaxUsers) changes.Add(r.MaxUsers == 0 ? "Nutzerlimit aufgehoben" : $"Nutzerlimit {r.MaxUsers}");
+        if (!SameGroups(channel.AllowedGroupIds, allowed)) changes.Add(allowed is null ? "Gruppen-Sperre aufgehoben" : $"nur für {GroupNames(allowed)}");
 
         channel.Name = name;
         channel.Description = description;
         channel.IsMuted = r.IsMuted;
         channel.MaxUsers = r.MaxUsers; // lowering it below the current count sends nobody away
+        channel.AllowedGroupIds = allowed; // Package 93 (A108): nor does a lock
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
@@ -88,6 +100,37 @@ public sealed partial class ServerState
             ? "Der Standard-Channel lässt sich nicht begrenzen."
             : $"Maximale Nutzer: 0 (unbegrenzt) bis {ProtocolInfo.MaxChannelUsers}.");
         return false;
+    }
+
+    /// <summary>Package 93 (A109): existing groups only, none on the default channel. Null or empty asks for no lock.</summary>
+    bool ValidateGroupLock(Session s, Request r, Guid? channelId, IReadOnlyList<Guid>? ids, out List<Guid>? allowed)
+    {
+        allowed = ids is { Count: > 0 } ? ids.Distinct().ToList() : null;
+        if (allowed is null) return true;
+        if (channelId == data.DefaultChannelId)
+        {
+            Fail(s, r, Codes.InvalidValue, "Der Standard-Channel lässt sich nicht auf Gruppen beschränken.");
+            return false;
+        }
+        if (allowed.All(id => data.Groups.Any(g => g.Id == id))) return true;
+        Fail(s, r, Codes.InvalidValue, "Unbekannte Gruppe in der Gruppen-Sperre.");
+        return false;
+    }
+
+    static bool SameGroups(List<Guid>? a, List<Guid>? b) => a is null || b is null ? a == b : a.ToHashSet().SetEquals(b);
+
+    string GroupNames(List<Guid> ids) =>
+        ids.Count == 0 ? "nur Admins" : string.Join(", ", ids.Select(id => data.Groups.FirstOrDefault(g => g.Id == id)?.Name ?? "?"));
+
+    /// <summary>
+    /// Package 93 (A106, A110): the lock rule for entering a channel, shared by joining (actor = the one joining) and moving
+    /// (actor = the mover; the moved user is not checked). Admin-group members pass every lock. Null when allowed.
+    /// </summary>
+    string? LockRefusal(Session actor, ChannelRecord channel)
+    {
+        if (actor.GroupIds.Contains(WellKnownGroups.Admin)) return null;
+        if (channel.AllowedGroupIds is { } allowed && !actor.GroupIds.Any(allowed.Contains)) return Codes.ChannelLocked;
+        return null;
     }
 
     /// <summary>Package 36: Order becomes the position in the list, every changed channel is broadcast.</summary>
@@ -160,6 +203,11 @@ public sealed partial class ServerState
             return;
         }
         if (!CanModerate(s, r, target.Permissions, target.Fingerprint)) return; // Package 84: never oneself, that is JoinChannel
+        if (LockRefusal(s, FindChannel(r.ChannelId)!) is { } locked)
+        {
+            Fail(s, r, locked); // Package 93 (A106): the mover must be able to join, the one being moved is not checked
+            return;
+        }
         if (IsFull(FindChannel(r.ChannelId)!, target) && !s.Permissions.Has(Permission.ChannelJoinFull))
         {
             Fail(s, r, Codes.ChannelFull); // the mover needs the right, not the one being moved

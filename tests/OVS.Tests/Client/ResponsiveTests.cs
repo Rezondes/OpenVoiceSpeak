@@ -584,7 +584,8 @@ public sealed class ResponsiveTests : IDisposable
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))),
         "KeyBinding" => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<KeyChord?>(null)),
         "ChannelCreate" => ChannelDialog.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
-        "ChannelEdit" => ChannelDialog.ShowAsync(o, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8), ChannelDialogMode.Edit),
+        "ChannelEdit" => ChannelDialog.ShowAsync(o, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8,
+            AllowedGroupIds: [server.Mirror.Groups[2].Id]), ChannelDialogMode.Edit, server.Mirror.Groups), // Package 93: with its groups
         "PickChannel" => SimpleDialogs.PickChannel(o, "Verschieben nach", server.Channels),
         "AskText" => SimpleDialogs.AskText(o, Strings.Dialog_RedeemToken, "Token:"),
         "Password" => SimpleDialogs.AskPassword(o, "Gilde"),

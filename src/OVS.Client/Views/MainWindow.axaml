@@ -182,7 +182,7 @@
                             ToolTip.Tip="{Binding Tooltip}">
                       <Border.ContextMenu>
                         <ContextMenu>
-                          <MenuItem Header="{x:Static l:Strings.Ui_Join}" Command="{Binding JoinCommand}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_Join}" Command="{Binding JoinCommand}" IsEnabled="{Binding CanJoin}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.DoorArrowRight}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
                           <MenuItem Header="{x:Static l:Strings.Ui_CreateChannelMenu}" Command="{Binding CreateCommand}" IsVisible="{Binding CanCreate}">
@@ -220,6 +220,9 @@
                         </Panel>
                         <!-- Package 67: left-aligned, so home and link icon follow the name and the name trims when space runs out -->
                         <DockPanel HorizontalAlignment="Left">
+                          <!-- Package 93: the lock names who may join -->
+                          <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.LockClosed}" IsVisible="{Binding IsLocked}"
+                                    ToolTip.Tip="{Binding LockText}" Margin="6,0,0,0" VerticalAlignment="Center" />
                           <PathIcon DockPanel.Dock="Right" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsLinked}"
                                     ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}"
                                     Margin="6,0,0,0" VerticalAlignment="Center" />

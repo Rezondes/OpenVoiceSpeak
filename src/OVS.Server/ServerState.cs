@@ -649,7 +649,7 @@ public sealed partial class ServerState
         new(s.Id, s.Fingerprint, s.Nickname, s.ChannelId, s.SelfMuted, s.SelfDeafened, s.ServerMuted,
             s == to ? s.Permissions : Permission.None, s.GroupIds, Moderates(to, s));
 
-    static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers);
+    static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers, c.AllowedGroupIds?.ToList());
 
     /// <summary>Package 69: the limits only for those who may change them.</summary>
     ServerSettingsInfo SettingsInfo(Session to) =>

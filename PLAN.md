@@ -5716,14 +5716,14 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Creating or editing a channel (rights `ChannelCreate`/`ChannelEdit`) can set a list of allowed groups (any existing groups, several at once). An empty list means no group lock. The server rejects unknown group ids (`InvalidValue`) and any group lock on the default channel (`InvalidValue`).
-- [ ] AC2: Joining a group-locked channel requires membership in at least one listed group; otherwise `ChannelLocked`. No right bypasses the group lock. Members of the Admin group can always join.
-- [ ] AC3: Moving another user into a group-locked channel is allowed only if the mover could join it by group themselves (A106); the moved user's groups are not checked. Admins can always move.
-- [ ] AC4: Adding, changing or removing a group lock does not move anybody out of the channel, and losing a group does not either; the lock only applies to later joins and moves.
-- [ ] AC5: Deleting a group removes it from every channel's list. If a list becomes empty that way, the channel stays locked and only admins can join (shown as "nur Admins" in the tooltip), until someone edits the lock.
-- [ ] AC6: Everyone sees locked channels as before (name, description, users, links unchanged). A lock icon stands behind the name next to the home and link icons; its tooltip names the allowed groups. The sidebar width fitting from Package 67 counts the icon.
-- [ ] AC7: The client offers "Beitreten" and double-click join only when the own groups allow it (or the user is an admin); a refused join still shows the server's error text. The channel dialog shows a checkbox list of groups under "Nur für Gruppen", disabled with a hint for the default channel.
-- [ ] AC8: Texts in German and English, README updated, the dialog and the icon fit from 360 px (A96).
+- [x] AC1: Creating or editing a channel (rights `ChannelCreate`/`ChannelEdit`) can set a list of allowed groups (any existing groups, several at once). An empty list means no group lock. The server rejects unknown group ids (`InvalidValue`) and any group lock on the default channel (`InvalidValue`).
+- [x] AC2: Joining a group-locked channel requires membership in at least one listed group; otherwise `ChannelLocked`. No right bypasses the group lock. Members of the Admin group can always join.
+- [x] AC3: Moving another user into a group-locked channel is allowed only if the mover could join it by group themselves (A106); the moved user's groups are not checked. Admins can always move.
+- [x] AC4: Adding, changing or removing a group lock does not move anybody out of the channel, and losing a group does not either; the lock only applies to later joins and moves.
+- [x] AC5: Deleting a group removes it from every channel's list. If a list becomes empty that way, the channel stays locked and only admins can join (shown as "nur Admins" in the tooltip), until someone edits the lock.
+- [x] AC6: Everyone sees locked channels as before (name, description, users, links unchanged). A lock icon stands behind the name next to the home and link icons; its tooltip names the allowed groups. The sidebar width fitting from Package 67 counts the icon.
+- [x] AC7: The client offers "Beitreten" and double-click join only when the own groups allow it (or the user is an admin); a refused join still shows the server's error text. The channel dialog shows a checkbox list of groups under "Nur für Gruppen", disabled with a hint for the default channel.
+- [x] AC8: Texts in German and English, README updated, the dialog and the icon fit from 360 px (A96).
 
 ### Tests (TDD)
 

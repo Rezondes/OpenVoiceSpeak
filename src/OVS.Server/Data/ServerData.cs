@@ -103,6 +103,11 @@ public sealed class ChannelRecord
     public bool IsMuted { get; set; }
     /// <summary>Package 35: 0 = unlimited. The default channel is always unlimited.</summary>
     public int MaxUsers { get; set; }
+    /// <summary>
+    /// Package 93 (A109): null = no group lock. Otherwise only members of one of these groups (and admins) may join;
+    /// empty once its groups were deleted, which means admins only. Older files load as null, without a new data version.
+    /// </summary>
+    public List<Guid>? AllowedGroupIds { get; set; }
 }
 
 /// <summary>Undirected link, normalized so that A &lt; B.</summary>

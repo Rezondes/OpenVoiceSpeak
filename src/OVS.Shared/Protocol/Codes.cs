@@ -39,6 +39,7 @@ public static class Codes
     public const string UnknownRequest = nameof(UnknownRequest);
     public const string RateLimited = nameof(RateLimited);
     public const string ChannelFull = nameof(ChannelFull);
+    public const string ChannelLocked = nameof(ChannelLocked); // Package 93: not in one of the channel's groups
     public const string InvalidBackup = nameof(InvalidBackup); // Package 74
     public const string BackupTooLarge = nameof(BackupTooLarge); // Package 75: an upload over MaxBackupUploadBytes
     public const string LogsTooLarge = nameof(LogsTooLarge); // Package 82: a log download over MaxLogDownloadBytes

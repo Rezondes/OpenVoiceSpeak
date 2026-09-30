@@ -28,6 +28,21 @@
                      AutomationProperties.Name="{x:Static l:Strings.Dlg_MaxUsers}" />
       <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding SlotsHint}" />
     </StackPanel>
+    <!-- Package 93: only members of a ticked group (and admins) may join -->
+    <StackPanel Spacing="4">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_GroupLock}" />
+      <ItemsControl ItemsSource="{Binding Groups}" IsEnabled="{Binding CanLockGroups}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GroupChoice">
+            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,0,12,0" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding GroupLockHint}" />
+    </StackPanel>
     <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
   </StackPanel>

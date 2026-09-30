@@ -852,7 +852,11 @@ public sealed class UiSmokeTests : IDisposable
         var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Server = FakeServers.WithChannels(SquadChannels);
+        var server = FakeServers.WithChannels(SquadChannels);
+        // Package 93: the lock icon behind the longest name counts as well
+        var longest = server.Mirror.Channels.Values.Single(c => c.Name == "Logistics and Support Squad");
+        server.Apply(new ChannelUpdated(longest with { AllowedGroupIds = [WellKnownGroups.Admin] }));
+        vm.Server = server;
         Dispatcher.UIThread.RunJobs();
 
         Assert.True(Sidebar(main).Bounds.Width >= 240);

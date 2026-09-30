@@ -11,7 +11,8 @@ using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
 
-public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0);
+/// <param name="AllowedGroupIds">Package 93: the channel's group lock; from the dialog null while unchanged, empty to remove it.</param>
+public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null);
 
 /// <summary>The channel dialog only offers the channel options when editing (Package 34).</summary>
 public enum ChannelDialogMode { Create, Edit, EditDefault }
@@ -239,6 +240,7 @@ public sealed partial class ServerViewModel : ObservableObject
             if (!channelVms.TryGetValue(c.Id, out var channel)) channelVms[c.Id] = channel = new ChannelViewModel(this, c.Id);
             var linked = Mirror.LinkedChannels(c.Id).Select(id => Mirror.Channels.GetValueOrDefault(id)?.Name).OfType<string>().Order().ToList();
             channel.Update(c, linked, c.Id == Mirror.DefaultChannelId, self?.ChannelId == c.Id, SelfPermissions);
+            channel.UpdateLock(c, groups, self?.GroupIds ?? [], IsAdmin);
 
             var users = Mirror.Users.Values.Where(u => u.ChannelId == c.Id)
                 .OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase)
@@ -359,9 +361,10 @@ public sealed partial class ServerViewModel : ObservableObject
         pendingJoin = channelId;
         return SendAsync(new JoinChannel(channelId));
     }
-    public Task CreateChannelAsync(string name, string description, bool isMuted = false, int maxUsers = 0) =>
-        SendAsync(new CreateChannel(name, description, isMuted, maxUsers));
-    public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) => SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers));
+    public Task CreateChannelAsync(string name, string description, bool isMuted = false, int maxUsers = 0, IReadOnlyList<Guid>? allowedGroupIds = null) =>
+        SendAsync(new CreateChannel(name, description, isMuted, maxUsers, allowedGroupIds));
+    public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) =>
+        SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds));
     public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
 
     /// <summary>Package 36: puts source right before or after target and sends the complete new order.</summary>
@@ -427,7 +430,7 @@ public sealed partial class ServerViewModel : ObservableObject
     async Task NewChannel()
     {
         if (Dialogs.EditChannel is { } edit && await edit(new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
-            await CreateChannelAsync(result.Name, result.Description, result.IsMuted, result.MaxUsers);
+            await CreateChannelAsync(result.Name, result.Description, result.IsMuted, result.MaxUsers, result.AllowedGroupIds);
     }
 
     [RelayCommand]
@@ -463,6 +466,13 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     /// <summary>Package 36: where a dragged channel would land, shown as a line above or below this one.</summary>
     [ObservableProperty] bool isDropAbove;
     [ObservableProperty] bool isDropBelow;
+    /// <summary>Package 93: the lock icon behind the name and its tooltip.</summary>
+    [ObservableProperty] bool isLocked;
+    [ObservableProperty] string lockText = "";
+    /// <summary>Package 93: "Beitreten" and the double click, only with one of the lock's groups or as admin.</summary>
+    [ObservableProperty] bool canJoin = true;
+    /// <summary>Package 93: null = no group lock, empty = admins only.</summary>
+    public IReadOnlyList<Guid>? AllowedGroupIds { get; private set; }
 
     public Guid Id { get; } = id;
     public ObservableCollection<UserViewModel> Users { get; } = [];
@@ -487,6 +497,21 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         OnPropertyChanged(nameof(Tooltip));
     }
 
+    /// <summary>Package 93 (A108, A109): everyone sees the lock; the own groups decide whether joining is offered.</summary>
+    internal void UpdateLock(ChannelInfo info, IReadOnlyList<GroupInfo> groups, IReadOnlyList<Guid> ownGroups, bool isAdmin)
+    {
+        AllowedGroupIds = info.AllowedGroupIds;
+        IsLocked = info.AllowedGroupIds is not null;
+        LockText = info.AllowedGroupIds switch
+        {
+            null => "",
+            [] => Strings.Ui_LockedAdmins,
+            var ids => string.Format(Strings.Ui_LockedGroupsFmt,
+                string.Join(", ", groups.Where(g => ids.Contains(g.Id)).Select(g => g.Name))), // in the server's group order
+        };
+        CanJoin = isAdmin || info.AllowedGroupIds is not { } allowed || ownGroups.Any(allowed.Contains);
+    }
+
     bool first, last;
 
     internal void SetPosition(bool first, bool last)
@@ -504,7 +529,12 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     Task MoveDown() => last ? Task.CompletedTask : owner.MoveChannelAsync(this, owner.Channels[owner.Channels.IndexOf(this) + 1], after: true);
 
     [RelayCommand]
-    Task Join() => owner.JoinAsync(Id);
+    Task Join()
+    {
+        if (CanJoin) return owner.JoinAsync(Id);
+        owner.ShowNotice(ErrorTexts.For(Codes.ChannelLocked)); // Package 93: the server would refuse it anyway
+        return Task.CompletedTask;
+    }
 
     [RelayCommand]
     Task Create() => owner.NewChannelCommand.ExecuteAsync(null);
@@ -513,7 +543,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     async Task Edit()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        if (owner.Dialogs.EditChannel is { } edit && await edit(new ChannelEdit(Name, Description, IsMuted, MaxUsers), mode) is { } result)
+        if (owner.Dialogs.EditChannel is { } edit && await edit(new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds), mode) is { } result)
             await owner.EditChannelAsync(Id, result, Order);
     }
 

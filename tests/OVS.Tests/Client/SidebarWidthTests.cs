@@ -13,6 +13,8 @@ public class SidebarWidthTests
         Assert.Equal(SidebarWidth.Minimum, SidebarWidth.For([new SidebarRow(40, 2, 8), new SidebarRow(20, 0, 8)]));
         Assert.Equal(240, SidebarWidth.Minimum);
         Assert.Equal(SidebarWidth.Minimum, SidebarWidth.For([]));
+        // Package 93: home, link and lock icon behind one name
+        Assert.Equal(200 + SidebarWidth.Fixed + 3 * SidebarWidth.PerIcon + 8, SidebarWidth.For([new SidebarRow(200, 3, 8)]));
     }
 
     [Fact]

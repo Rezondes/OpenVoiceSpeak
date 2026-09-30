@@ -203,6 +203,37 @@ public class ServerViewModelTests
         Assert.False(f.Vm.SelfDeafened);
     }
 
+    /// <summary>Package 93: the lock icon names the groups; joining is only offered with one of them or as admin.</summary>
+    [Fact]
+    public async Task LockedChannel_IconTooltipAndJoinAvailability()
+    {
+        var raid = Guid.NewGuid();
+        var f = Create();
+        string? notice = null;
+        f.Vm.Notice += n => notice = n;
+        f.Vm.Apply(new GroupsChanged([new(WellKnownGroups.Guest, "Gast", P.None), new(raid, "Raid", P.None), new(WellKnownGroups.Admin, "Admin", P.None)]));
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, AllowedGroupIds: [raid, WellKnownGroups.Admin])));
+        var bravo = f.Channel(Bravo);
+        Assert.Equal((true, false), (bravo.IsLocked, bravo.CanJoin));
+        Assert.Equal("Nur für Gruppen: Raid, Admin", bravo.LockText);
+        Assert.Equal((false, true), (f.Channel(Alpha).IsLocked, f.Channel(Alpha).CanJoin));
+
+        await bravo.JoinCommand.ExecuteAsync(null);
+        Assert.Empty(f.Sent);
+        Assert.Equal(ErrorTexts.For(Codes.ChannelLocked), notice);
+
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest, raid])));
+        Assert.True(bravo.CanJoin);
+        await bravo.JoinCommand.ExecuteAsync(null);
+        Assert.Equal(new JoinChannel(Bravo), f.Sent[^1] with { RequestId = null });
+
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, AllowedGroupIds: [])));
+        Assert.Equal((true, false, "Nur für Admins"), (bravo.IsLocked, bravo.CanJoin, bravo.LockText));
+        var admin = Create(P.All, [WellKnownGroups.Admin]);
+        admin.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, AllowedGroupIds: [])));
+        Assert.True(admin.Channel(Bravo).CanJoin);
+    }
+
     [Fact]
     public void Error_BecomesGermanNotice()
     {

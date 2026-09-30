@@ -185,7 +185,8 @@ public partial class MainWindow : Window
             var name = texts.FirstOrDefault(t => t.Classes.Contains("channelName"));
             var count = texts.FirstOrDefault(t => t.Classes.Contains("channelCount"));
             var channel = c.DataContext as ChannelViewModel;
-            return new SidebarRow(TextWidth(name), (channel?.IsDefault == true ? 1 : 0) + (channel?.IsLinked == true ? 1 : 0), TextWidth(count));
+            int icons = new[] { channel?.IsDefault, channel?.IsLinked, channel?.IsLocked }.Count(on => on == true); // Package 93: the lock too
+            return new SidebarRow(TextWidth(name), icons, TextWidth(count));
         }).ToList();
         if (rows.Count == 0) return;
         sidebarFitted = sidebarWanted = SidebarWidth.For(rows);
