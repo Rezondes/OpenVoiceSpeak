@@ -29,6 +29,17 @@ public sealed class UdpVoiceServer : IDisposable
 
     public IPEndPoint LocalEndPoint => (IPEndPoint)socket.LocalEndPoint!;
 
+    long foreignSourceDrops, preFilterDrops;
+    // Package 88: bad packets per source group in the current second; only the receive loop touches these
+    readonly Dictionary<IPAddress, int> badPackets = [];
+    long badSecond;
+
+    /// <summary>Package 88: packets for a session from an address other than its control connection's.</summary>
+    public long ForeignSourceDrops => Interlocked.Read(ref foreignSourceDrops);
+
+    /// <summary>Package 88: packets dropped undecrypted because their source sent too many bad ones this second.</summary>
+    public long PreFilterDrops => Interlocked.Read(ref preFilterDrops);
+
     public void Start() => loop = Task.Run(ReceiveLoopAsync);
 
     async Task ReceiveLoopAsync()
@@ -63,10 +74,37 @@ public sealed class UdpVoiceServer : IDisposable
 
     async Task HandleAsync(ReadOnlyMemory<byte> packet, IPEndPoint from)
     {
-        if (!VoiceHeader.TryRead(packet.Span, out var header)) return;
+        var source = ServerState.AddressGroup(from.Address);
+        if (!VoiceHeader.TryRead(packet.Span, out var header))
+        {
+            CountBad(source);
+            return;
+        }
         var sender = state.FindSession(header.SessionId);
-        if (sender is null) return;
-        if (!sender.Crypto.TryOpen(Direction.ClientToServer, packet.Span, out header, out var plain)) return;
+        // Package 88: a source over its budget of bad packets costs no decryption for the rest of the second;
+        // a client's own bound endpoint is exempt, so a flood from behind the same NAT does not cut it off
+        if (!from.Equals(sender?.UdpEndpoint) && OverBudget(source))
+        {
+            Interlocked.Increment(ref preFilterDrops);
+            return;
+        }
+        if (sender is null)
+        {
+            CountBad(source);
+            return;
+        }
+        // Package 88: voice goes only to the address of the own control connection (no reflection to a spoofed victim)
+        if (!source.Equals(ServerState.AddressGroup(sender.Ip)))
+        {
+            Interlocked.Increment(ref foreignSourceDrops);
+            CountBad(source);
+            return;
+        }
+        if (!sender.Crypto.TryOpen(Direction.ClientToServer, packet.Span, out header, out var plain))
+        {
+            CountBad(source);
+            return;
+        }
         if (!sender.Replay.Accept(header.Seq) || !sender.Limiter.TryTake()) return;
 
         if (header.Type == PacketType.Hello || sender.UdpEndpoint is not null) sender.UdpEndpoint = from;
@@ -84,6 +122,23 @@ public sealed class UdpVoiceServer : IDisposable
                     await SendAsync(r, new VoiceHeader(PacketType.Voice, sender.Id, r.OutSeq.Next(), target), plain);
                 break;
         }
+    }
+
+    bool OverBudget(IPAddress source)
+    {
+        long second = Environment.TickCount64 / 1000;
+        if (second != badSecond)
+        {
+            badPackets.Clear(); // also bounds the table to the sources of one second
+            badSecond = second;
+        }
+        return badPackets.GetValueOrDefault(source) >= Limits.BadVoicePacketsPerSecond;
+    }
+
+    void CountBad(IPAddress source)
+    {
+        OverBudget(source); // starts a new second if one began
+        badPackets[source] = badPackets.GetValueOrDefault(source) + 1;
     }
 
     async Task SendAsync(Session to, VoiceHeader header, byte[] payload)

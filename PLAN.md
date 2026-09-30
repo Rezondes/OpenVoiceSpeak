@@ -5477,9 +5477,9 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: The server accepts a UDP endpoint only if its address equals the session's control-connection address (IPv4 exact, IPv6 same /64). Other packets for that session are dropped and counted.
-- [ ] AC2: The UDP path looks up sessions without taking the global lock, and a per-source-address pre-filter drops more than 200 unauthenticated packets per second from one address before decryption.
-- [ ] AC3: The per-IP connection limit and IP bans group IPv6 addresses by /64 (the same helper as password throttling). Existing IPv6 bans keep matching their exact address and also their /64.
+- [x] AC1: The server accepts a UDP endpoint only if its address equals the session's control-connection address (IPv4 exact, IPv6 same /64). Other packets for that session are dropped and counted.
+- [x] AC2: The UDP path looks up sessions without taking the global lock, and a per-source-address pre-filter drops more than 200 unauthenticated packets per second from one address before decryption.
+- [x] AC3: The per-IP connection limit and IP bans group IPv6 addresses by /64 (the same helper as password throttling). Existing IPv6 bans keep matching their exact address and also their /64.
 
 ### Tests (TDD)
 

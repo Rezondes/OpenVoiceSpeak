@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Cryptography;
 using OVS.Server.Tls;
 using OVS.Shared.Protocol;
@@ -183,5 +184,19 @@ public class HandshakeTests
     {
         await using var server = await TestServer.StartAsync();
         Assert.Contains(server.Log, l => l.Contains("Admin-Token: " + server.State.PendingAdminToken));
+    }
+
+    /// <summary>Package 88: one IPv6 host owns a whole /64, so its addresses share the 5 connections of one IP.</summary>
+    [Fact]
+    public async Task Ipv6_SameSlash64_SharesConnectionLimit()
+    {
+        await using var server = await TestServer.StartAsync();
+        var state = server.State;
+        for (int i = 1; i <= 5; i++) Assert.True(state.TryAddConnection(IPAddress.Parse($"2001:db8:5:6::{i}")));
+        Assert.False(state.TryAddConnection(IPAddress.Parse("2001:db8:5:6:ffff::1")));
+        Assert.Equal(6, state.ConnectionsFrom(IPAddress.Parse("2001:db8:5:6::99")));
+        Assert.True(state.TryAddConnection(IPAddress.Parse("2001:db8:5:7::1")));
+        state.ReleaseConnection(IPAddress.Parse("2001:db8:5:6:abcd::1"));
+        Assert.Equal(5, state.ConnectionsFrom(IPAddress.Parse("2001:db8:5:6::1")));
     }
 }

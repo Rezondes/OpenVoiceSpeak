@@ -7,13 +7,15 @@ namespace OVS.Tests.TestSupport;
 /// <summary>UDP side of a TestClient.</summary>
 public sealed class TestVoice : IDisposable
 {
-    readonly UdpClient udp = new(new IPEndPoint(IPAddress.Loopback, 0));
+    readonly UdpClient udp;
     readonly VoiceCrypto crypto;
     readonly uint sessionId;
     readonly IPEndPoint server;
 
-    public TestVoice(TestClient client, IPEndPoint server, SeqCounter? seq = null)
+    /// <param name="bind">Package 88: another loopback address (e.g. 127.0.0.2) stands in for a foreign source.</param>
+    public TestVoice(TestClient client, IPEndPoint server, SeqCounter? seq = null, IPAddress? bind = null)
     {
+        udp = new UdpClient(new IPEndPoint(bind ?? IPAddress.Loopback, 0));
         crypto = new VoiceCrypto(Convert.FromBase64String(client.Welcome.VoiceKey));
         sessionId = client.Id;
         this.server = server;

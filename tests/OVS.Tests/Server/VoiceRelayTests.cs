@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Cryptography;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
@@ -165,5 +166,44 @@ public sealed class VoiceRelayTests : IAsyncLifetime
 
         await vb.SendAsync(PacketType.Voice, Opus);
         Assert.Null(await va.ReceiveVoiceAsync(400));
+    }
+
+    /// <summary>Package 88: a Hello from another address cannot redirect the session's voice (no reflection).</summary>
+    [Fact]
+    public async Task Hello_FromOtherAddress_EndpointNotChanged()
+    {
+        await va.HelloAsync();
+        await vb.HelloAsync();
+        long before = server.Voice.ForeignSourceDrops;
+
+        // 127.0.0.2 is loopback as well, but not the address of b's control connection (127.0.0.1)
+        using var spoofed = new TestVoice(b, server.VoiceEndPoint, vb.Seq, IPAddress.Parse("127.0.0.2"));
+        await spoofed.SendAsync(PacketType.Hello, []);
+        Assert.Null(await spoofed.ReceiveAsync(300));
+
+        await va.SendAsync(PacketType.Voice, Opus);
+        Assert.NotNull(await vb.ReceiveVoiceAsync());
+        Assert.Null(await spoofed.ReceiveVoiceAsync(300));
+        Assert.Equal(before + 1, server.Voice.ForeignSourceDrops);
+    }
+
+    /// <summary>Package 88: a source sending undecryptable packets is cut off before decryption; bound clients and the control channel go on.</summary>
+    [Fact]
+    public async Task GarbageFlood_DroppedBeforeDecrypt_ControlStaysResponsive()
+    {
+        await va.HelloAsync();
+        // c's live session id, sealed with a wrong key, from c's own address: passes every check up to decryption
+        using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
+        using var flood = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        var garbage = stranger.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Ping, c.Id, 0, 0), []);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (server.Voice.PreFilterDrops == 0 && DateTime.UtcNow < deadline)
+            for (int i = 0; i < 100; i++) await flood.SendAsync(garbage, server.VoiceEndPoint);
+        Assert.True(server.Voice.PreFilterDrops > 0);
+
+        await va.SendAsync(PacketType.Ping, []); // the bound endpoint of a is not held up by the flood from its address
+        Assert.NotNull(await va.ReceiveAsync());
+        await a.SendAsync(new CreateChannel("Nach der Flut", ""));
+        await a.WaitForAsync<ChannelAdded>(m => m.Channel.Name == "Nach der Flut");
     }
 }

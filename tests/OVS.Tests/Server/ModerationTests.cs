@@ -1,3 +1,4 @@
+using System.Net;
 using OVS.Server.Data;
 using OVS.Server.Permissions;
 using OVS.Shared.Identity;
@@ -70,6 +71,20 @@ public sealed class ModerationTests : IAsyncLifetime
         var rejected = Assert.IsType<Rejected>(await ReconnectGuestAsync(ClientIdentity.Create()));
         Assert.Equal(Codes.Banned, rejected.Code);
         Assert.Contains("dauerhaft", rejected.Detail);
+    }
+
+    /// <summary>Package 88: an IPv6 ban is stored with the exact address and matches the whole /64.</summary>
+    [Fact]
+    public async Task IpBan_Ipv6_MatchesWholeSlash64()
+    {
+        var (target, _) = server.State.Admit("fpv6-000000000001", "v6", IPAddress.Parse("2001:db8:7:8::1"), null);
+        Assert.NotNull(target);
+        await a.SendAsync(new Ban(target.Id, "raus", null, IncludeIp: true));
+        await a.WaitForAsync<UserLeft>(u => u.SessionId == target.Id);
+
+        var rejected = server.State.Admit("fpv6-000000000002", "v6b", IPAddress.Parse("2001:db8:7:8:ffff::2"), null);
+        Assert.Equal(Codes.Banned, rejected.Rejection?.Code);
+        Assert.Null(server.State.Admit("fpv6-000000000003", "v6c", IPAddress.Parse("2001:db8:7:9::1"), null).Rejection);
     }
 
     [Fact]

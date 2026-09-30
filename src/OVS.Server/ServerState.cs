@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -28,10 +29,12 @@ public sealed partial class ServerState
     readonly TimeProvider time;
     readonly ServerLogs logs;
     readonly Dictionary<uint, Session> sessions = [];
+    /// <summary>Package 88: the same sessions for the UDP path, read without the lock; changed together with sessions.</summary>
+    readonly ConcurrentDictionary<uint, Session> voiceSessions = new();
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> passwordFailures = [];
-    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per PasswordSource
-    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool Logged)> newIdentities = []; // Package 87, per PasswordSource
+    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per AddressGroup
+    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool Logged)> newIdentities = []; // Package 87, per AddressGroup
     DateTimeOffset nextIdentitySweep;
     ITimer? saveTimer; // Package 87: the debounced save of logins and logouts
     bool savePending;
@@ -106,6 +109,7 @@ public sealed partial class ServerState
     /// <summary>Counts the connection. Always pair with ReleaseConnection.</summary>
     public bool TryAddConnection(IPAddress ip)
     {
+        ip = AddressGroup(ip); // Package 88: IPv6 per /64
         lock (gate)
         {
             int count = connectionsPerIp.GetValueOrDefault(ip) + 1;
@@ -116,11 +120,12 @@ public sealed partial class ServerState
 
     public int ConnectionsFrom(IPAddress ip)
     {
-        lock (gate) return connectionsPerIp.GetValueOrDefault(ip);
+        lock (gate) return connectionsPerIp.GetValueOrDefault(AddressGroup(ip));
     }
 
     public void ReleaseConnection(IPAddress ip)
     {
+        ip = AddressGroup(ip);
         lock (gate)
         {
             int count = connectionsPerIp.GetValueOrDefault(ip) - 1;
@@ -131,9 +136,13 @@ public sealed partial class ServerState
 
     // ---- Password guessing (call under gate) ----
 
-    /// <summary>IPv4 address, or the /64 of an IPv6 address (one IPv6 host usually owns a whole /64).</summary>
-    static IPAddress PasswordSource(IPAddress ip)
+    /// <summary>
+    /// IPv4 address, or the /64 of an IPv6 address (one IPv6 host usually owns a whole /64). Package 88: the one grouping
+    /// for password and token throttling, new identities, the connection limit, IP bans and the UDP source check.
+    /// </summary>
+    internal static IPAddress AddressGroup(IPAddress ip)
     {
+        if (ip.IsIPv4MappedToIPv6) return ip.MapToIPv4();
         if (ip.AddressFamily != AddressFamily.InterNetworkV6) return ip;
         var bytes = ip.GetAddressBytes();
         Array.Clear(bytes, 8, 8);
@@ -168,7 +177,10 @@ public sealed partial class ServerState
             if (closedWith is not null) return (null, new Rejected(closedWith));
             var now = time.GetUtcNow();
             var ipText = ip.ToString();
-            var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint || b.Ip == ipText));
+            var source = AddressGroup(ip);
+            // Package 88: an IP ban keeps the address it was given and matches everything in its group (IPv6: the /64)
+            var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint
+                || b.Ip is not null && IPAddress.TryParse(b.Ip, out var banned) && AddressGroup(banned).Equals(source)));
             if (ban is not null)
             {
                 RecordBlockedAttempt(ban, ipText, now);
@@ -176,7 +188,6 @@ public sealed partial class ServerState
             }
 
             // A source that guessed wrong too often is turned away before its password is even looked at.
-            var source = PasswordSource(ip);
             if (data.Settings.PasswordHash is not null && PasswordBlocked(source, now))
                 return (null, new Rejected(Codes.TooManyPasswordAttempts));
             if (!data.Settings.CheckPassword(password))
@@ -216,6 +227,7 @@ public sealed partial class ServerState
                 ServerMuted = user.ServerMuted, // Package 85: set before the Welcome, so no voice slips through in between
             };
             sessions.Add(session.Id, session);
+            voiceSessions[session.Id] = session;
             session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
                 if (other != session) other.Send(new UserJoined(Info(session)));
@@ -255,6 +267,7 @@ public sealed partial class ServerState
             saveTimer?.Dispose(); // Package 87: nothing is written after this save (a restore replaces the file next)
             if (sessions.Count > 0 || savePending) Persist();
             sessions.Clear();
+            voiceSessions.Clear();
         }
     }
 
@@ -271,6 +284,7 @@ public sealed partial class ServerState
         session.DropLogDownload(ended: true); // Package 82: nor a prepared log download
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
+        voiceSessions.TryRemove(session.Id, out _);
         AddSessionStats(session, time.GetUtcNow());
         PersistSoon();
         Broadcast(new UserLeft(session.Id));
@@ -430,10 +444,8 @@ public sealed partial class ServerState
 
     // ---- Voice ----
 
-    public Session? FindSession(uint id)
-    {
-        lock (gate) return sessions.GetValueOrDefault(id);
-    }
+    /// <summary>Package 88: lock-free, so a UDP flood never waits on or holds up the control channel.</summary>
+    public Session? FindSession(uint id) => voiceSessions.GetValueOrDefault(id);
 
     public (List<Session> Recipients, byte Target) VoiceRecipients(Session sender, byte requestedTarget)
     {

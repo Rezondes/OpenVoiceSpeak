@@ -11,7 +11,7 @@ public sealed partial class ServerState
     void OnRedeemAdminToken(Session s, RedeemAdminToken r)
     {
         // Package 86: at most AdminTokenFailures wrong tokens per source and window, even across sessions
-        var source = PasswordSource(s.Ip);
+        var source = AddressGroup(s.Ip);
         var now = time.GetUtcNow();
         if (adminTokenFailures.TryGetValue(source, out var f) && now - f.First >= Limits.AdminTokenWindow)
             adminTokenFailures.Remove(source);
