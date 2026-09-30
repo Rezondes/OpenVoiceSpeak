@@ -102,6 +102,37 @@ public partial class AdminView : UserControl
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) await UploadAsync(path);
     }
 
+    // ---- Package 75: backups to and from this PC, through the same file dialogs ----
+
+    static FilePickerFileType BackupFiles => new(Strings.Backup_FileFilter) { Patterns = ["*.ovsbackup"] };
+
+    async void OnDownloadBackup(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not BackupViewModel backup || Vm is not { } vm
+            || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = Strings.Backup_SaveTitle,
+            SuggestedFileName = backup.Info.FileName,
+            DefaultExtension = "ovsbackup",
+            FileTypeChoices = [BackupFiles],
+        });
+        if (file?.TryGetLocalPath() is { } path) await vm.DownloadBackupAsync(backup, path);
+    }
+
+    async void OnUploadBackup(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = Strings.Backup_OpenTitle,
+            AllowMultiple = false,
+            FileTypeFilter = [BackupFiles],
+        });
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
+            await vm.UploadBackupAsync(path, restore: sender == UploadRestoreButton);
+    }
+
     void OnIconDragOver(object? sender, DragEventArgs e) =>
         e.DragEffects = e.DataTransfer.TryGetFile() is not null ? DragDropEffects.Copy : DragDropEffects.None;
 

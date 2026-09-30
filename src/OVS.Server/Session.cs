@@ -26,6 +26,8 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public bool ServerMuted { get; set; }
     public Permission Permissions { get; set; }
     public IReadOnlyList<Guid> GroupIds { get; set; } = [];
+    /// <summary>Package 75: the backup upload in progress (one per session), its hidden file and the bytes stored.</summary>
+    public (string Id, string Path, long Received)? Upload { get; set; }
 
     // Voice state, only touched by the UDP receive loop.
     public VoiceCrypto Crypto { get; } = new(voiceKey);

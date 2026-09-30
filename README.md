@@ -108,6 +108,12 @@ trennt alle, ersetzt die Dateien und startet im selben Prozess neu. Ältere Back
 der Zertifikats-Fingerabdruck ist danach der aus dem Backup. Nötig ist das Recht "Servereinstellungen ändern". Automatische,
 zeitgesteuerte Backups gibt es nicht.
 
+"Herunterladen" speichert ein Backup auf dem eigenen PC (bytegleich, erst am Ende an den gewählten Ort verschoben).
+"Backup hochladen ..." schickt eine `.ovsbackup`-Datei (höchstens 50 MB) zum Server, der sie wie beim Wiederherstellen
+prüft und als `backups/hochgeladen_<Zeit>.ovsbackup` ablegt; "Hochladen und wiederherstellen ..." fragt danach dieselbe
+rote Rückfrage und stellt es direkt wieder her. Beides läuft in Stücken von 512 KB über die normale Verbindung (kein
+zweiter Port) und zeigt den Fortschritt in Prozent. Ein abgebrochener Upload hinterlässt keine Datei.
+
 Weiterhin geht es auch ohne Client über das Volume:
 
 ```bash

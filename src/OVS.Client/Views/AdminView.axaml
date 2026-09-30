@@ -495,12 +495,31 @@
                 <StackPanel Spacing="8">
                   <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Backups}" />
                   <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackupsHint}" />
-                  <Button Command="{Binding NewBackupCommand}" HorizontalAlignment="Left">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
-                      <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
-                    </StackPanel>
-                  </Button>
+                  <!-- Package 75: upload from this PC, optionally restored right away (after the same red question) -->
+                  <WrapPanel ItemSpacing="8" LineSpacing="6">
+                    <Button Command="{Binding NewBackupCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Button>
+                  </WrapPanel>
+                  <StackPanel Name="BackupTransfer" Spacing="4" IsVisible="{Binding IsTransferring}">
+                    <TextBlock Classes="caption" Text="{Binding TransferText}" />
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding TransferPercent}" Height="8" CornerRadius="4" />
+                  </StackPanel>
                   <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBackups}" IsVisible="{Binding HasNoBackups}" />
                   <ItemsControl ItemsSource="{Binding Backups}">
                     <ItemsControl.ItemsPanel>
@@ -517,6 +536,12 @@
                               <TextBlock Classes="caption" Text="{Binding Details}" TextWrapping="Wrap" />
                             </StackPanel>
                             <WrapPanel ItemSpacing="8" LineSpacing="6">
+                              <Button Click="OnDownloadBackup">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
+                                </StackPanel>
+                              </Button>
                               <Button Classes="danger" Command="{Binding RestoreCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                   <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />

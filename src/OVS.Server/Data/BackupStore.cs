@@ -36,12 +36,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
     {
         var now = time.GetUtcNow();
         var manifest = new BackupManifest(FormatVersion, ServerData.CurrentVersion, BuildInfo.Current.Version, now);
-        Directory.CreateDirectory(Folder);
-        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString("yyyy-MM-dd_HH-mm-ss");
-        var name = stamp + Extension;
-        for (int i = 2; File.Exists(Path.Combine(Folder, name)); i++) name = $"{stamp}_{i}{Extension}";
-
-        var path = Path.Combine(Folder, name);
+        var (name, path) = NewName(prefix, now);
         var tmp = path + ".tmp";
         using (var zip = ZipFile.Open(tmp, ZipArchiveMode.Create))
         {
@@ -53,6 +48,69 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
         }
         File.Move(tmp, path);
         return new BackupInfo(name, now, new FileInfo(path).Length, manifest.ServerVersion);
+    }
+
+    /// <summary>A free name of the form prefix + local time, with _2, _3 ... when that second is taken already.</summary>
+    (string Name, string Path) NewName(string prefix, DateTimeOffset now)
+    {
+        Directory.CreateDirectory(Folder);
+        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString("yyyy-MM-dd_HH-mm-ss");
+        var name = stamp + Extension;
+        for (int i = 2; File.Exists(Path.Combine(Folder, name)); i++) name = $"{stamp}_{i}{Extension}";
+        return (name, Path.Combine(Folder, name));
+    }
+
+    // ---- Package 75: uploads land in a hidden file until the whole archive is checked ----
+
+    public const string UploadPrefix = ".upload-";
+    public const string UploadedPrefix = "hochgeladen_";
+
+    /// <summary>32 lowercase hex digits (Guid "N"), so an id can never name a path.</summary>
+    public static bool IsUploadId(string? id) => id is { Length: 32 } && id.All(char.IsAsciiHexDigitLower);
+
+    /// <summary>Only call with an id that passed IsUploadId.</summary>
+    public string UploadPath(string id)
+    {
+        Directory.CreateDirectory(Folder);
+        return Path.Combine(Folder, UploadPrefix + id);
+    }
+
+    /// <summary>Checks a finished upload like a restore would, then gives it a normal backup name. Throws InvalidDataException.</summary>
+    public BackupInfo AcceptUpload(string uploadPath)
+    {
+        var manifest = Read(uploadPath).Manifest;
+        var (name, path) = NewName(UploadedPrefix, time.GetUtcNow());
+        File.Move(uploadPath, path);
+        return new BackupInfo(name, manifest.CreatedAt, new FileInfo(path).Length, manifest.ServerVersion);
+    }
+
+    /// <summary>Unfinished uploads a crash or a lost connection left behind.</summary>
+    public void RemoveUploads()
+    {
+        if (!Directory.Exists(Folder)) return;
+        foreach (var file in Directory.GetFiles(Folder, UploadPrefix + "*")) DeleteQuietly(file);
+    }
+
+    public static void DeleteQuietly(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    /// <summary>At most BackupChunkBytes from offset; null when offset is outside the file.</summary>
+    public static (byte[] Bytes, long Total)? ReadChunk(string path, long offset)
+    {
+        using var file = File.OpenRead(path);
+        if (offset < 0 || offset > file.Length) return null;
+        file.Position = offset;
+        var bytes = new byte[Math.Min(ProtocolInfo.BackupChunkBytes, file.Length - offset)];
+        file.ReadExactly(bytes);
+        return (bytes, file.Length);
     }
 
     static void Add(ZipArchive zip, string name, byte[] bytes)

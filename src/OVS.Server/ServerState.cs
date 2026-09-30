@@ -42,6 +42,7 @@ public sealed partial class ServerState
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
         icon = new ServerIconStore(config.DataDir);
         backups = new BackupStore(config.DataDir, time);
+        backups.RemoveUploads(); // Package 75: what a crash left behind
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         if (data.Migrate(config)) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
@@ -218,6 +219,7 @@ public sealed partial class ServerState
             foreach (var s in sessions.Values)
             {
                 s.Close(final);
+                DropUpload(s);
                 AddSessionStats(s, now);
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
@@ -236,6 +238,7 @@ public sealed partial class ServerState
     void RemoveLocked(Session session, Message? final, string reason = "getrennt")
     {
         session.Close(final);
+        DropUpload(session); // Package 75: an abandoned upload leaves no file
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
         AddSessionStats(session, time.GetUtcNow());
@@ -311,6 +314,8 @@ public sealed partial class ServerState
                 case CreateBackup r: OnCreateBackup(session, r); break;
                 case DeleteBackup r: OnDeleteBackup(session, r); break;
                 case RestoreBackup r: OnRestoreBackup(session, r); break;
+                case DownloadBackup r: OnDownloadBackup(session, r); break;
+                case UploadBackupChunk r: OnUploadBackupChunk(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }

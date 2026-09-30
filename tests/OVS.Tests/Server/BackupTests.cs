@@ -208,6 +208,185 @@ public sealed class BackupTests : IDisposable
         await guest.AssertNoMessageAsync<Disconnected>();
     }
 
+    // ---- Package 75: download to and upload from the admin's PC, in chunks over the control connection ----
+
+    const int Chunk = 512 * 1024;
+
+    static string[] UploadFiles(string dataDir) =>
+        Directory.Exists(Path.Combine(dataDir, "backups"))
+            ? Directory.GetFiles(Path.Combine(dataDir, "backups"), ".upload-*")
+            : [];
+
+    [Fact]
+    public async Task Download_ChunkedByteIdentical()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var a = admin;
+        var logo = new byte[1_500_000];
+        Random.Shared.NextBytes(logo); // does not compress: the archive needs three chunks
+        File.WriteAllBytes(Path.Combine(server.DataDir, ServerIconStore.FileName), logo);
+        await admin.SendAsync(new CreateBackup());
+        var info = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups);
+        var path = Path.Combine(server.DataDir, "backups", info.FileName);
+
+        using var received = new MemoryStream();
+        int chunks = 0;
+        while (true)
+        {
+            var id = $"d{chunks}";
+            await admin.SendAsync(new DownloadBackup(info.FileName, received.Length) { RequestId = id });
+            var chunk = await admin.WaitForAsync<BackupChunk>(c => c.RequestId == id);
+            await admin.AssertNoMessageAsync<BackupChunk>(100); // one chunk per request, the next only on request
+            Assert.Equal(info.FileName, chunk.FileName);
+            Assert.Equal(received.Length, chunk.Offset);
+            Assert.Equal(new FileInfo(path).Length, chunk.TotalSize);
+            var bytes = Convert.FromBase64String(chunk.DataBase64);
+            Assert.InRange(bytes.Length, 1, Chunk);
+            received.Write(bytes);
+            chunks++;
+            if (chunks == 1) // AC4: other requests go through between two chunks
+            {
+                await admin.SendAsync(new SendChat(ChatTarget.Server, null, "während des Downloads"));
+                await admin.WaitForAsync<ChatMessage>(m => m.Text == "während des Downloads");
+            }
+            Assert.Equal(received.Length == chunk.TotalSize, chunk.IsLast);
+            if (chunk.IsLast) break;
+        }
+        Assert.Equal(3, chunks);
+        Assert.Equal(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path)), System.Security.Cryptography.SHA256.HashData(received.ToArray()));
+
+        await admin.SendAsync(new DownloadBackup(info.FileName, received.Length + 1) { RequestId = "weit" });
+        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("weit")).Code);
+        await admin.SendAsync(new DownloadBackup(info.FileName, -1) { RequestId = "minus" });
+        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("minus")).Code);
+        await admin.SendAsync(new DownloadBackup("../" + DataStore.FileName, 0) { RequestId = "raus" });
+        Assert.Equal(Codes.NotFound, (await admin.ErrorAsync("raus")).Code);
+    }
+
+    /// <summary>Sends the bytes in chunks of the given size, each after the answer to the one before; returns the last answer.</summary>
+    static async Task<Message> UploadAsync(TestClient client, byte[] bytes, int chunkSize = Chunk, string? uploadId = null)
+    {
+        uploadId ??= Guid.NewGuid().ToString("N");
+        for (int offset = 0, n = 0; ; offset += chunkSize, n++)
+        {
+            var size = Math.Min(chunkSize, bytes.Length - offset);
+            var last = offset + size >= bytes.Length;
+            var id = $"u{n}";
+            await client.SendAsync(new UploadBackupChunk(uploadId, offset, Convert.ToBase64String(bytes, offset, size), last) { RequestId = id });
+            var answer = await client.WaitForAsync<Message>(m => m is UploadBackupAck { RequestId: var r } && r == id
+                                                                 || m is BackupUploaded { RequestId: var u } && u == id
+                                                                 || m is Error { RequestId: var e } && e == id);
+            if (answer is UploadBackupAck ack) Assert.Equal(offset + size, ack.Received);
+            if (last || answer is not UploadBackupAck) return answer;
+        }
+    }
+
+    [Fact]
+    public async Task Upload_ValidatedStored_Listed()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var a = admin;
+        await admin.SendAsync(new CreateChannel("Hochgeladen", ""));
+        await admin.WaitForAsync<ChannelAdded>();
+        await admin.SendAsync(new CreateBackup());
+        var original = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups);
+        var bytes = File.ReadAllBytes(Path.Combine(server.DataDir, "backups", original.FileName));
+        await admin.SendAsync(new DeleteBackup(original.FileName) { RequestId = "weg" });
+        Assert.Empty((await admin.WaitForAsync<BackupList>(l => l.RequestId == "weg")).Backups);
+
+        var answer = Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes, chunkSize: 1000)); // several chunks
+        Assert.EndsWith(".ovsbackup", answer.Backup.FileName);
+        Assert.Equal(bytes.Length, answer.Backup.Size);
+        Assert.Equal(original.CreatedAt, answer.Backup.CreatedAt);
+        var list = await admin.WaitForAsync<BackupList>(l => l.RequestId == answer.RequestId);
+        Assert.Equal(answer.Backup, Assert.Single(list.Backups));
+        Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(server.DataDir, "backups", answer.Backup.FileName)));
+        Assert.Empty(UploadFiles(server.DataDir));
+        Assert.Contains(server.Log, l => l.Contains($"Backup {answer.Backup.FileName} hochgeladen von chef"));
+
+        // a second upload of the same file gets a name of its own
+        var again = Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));
+        Assert.NotEqual(answer.Backup.FileName, again.Backup.FileName);
+    }
+
+    [Fact]
+    public async Task Upload_TooLargeOrAborted_NoFileLeft()
+    {
+        var (server, admin) = await StartWithAdminAsync(); // disposed through RestartAsync at the end
+        var backups = Path.Combine(server.DataDir, "backups");
+
+        // over 50 MB: refused as soon as a chunk crosses the limit
+        var tooLarge = await UploadAsync(admin, new byte[50 * 1024 * 1024 + 1]);
+        Assert.Equal(Codes.BackupTooLarge, Assert.IsType<Error>(tooLarge).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+
+        // a chunk bigger than 512 KB, a wrong offset, a bad id and bad base64
+        var id = Guid.NewGuid().ToString("N");
+        await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[Chunk + 1]), false) { RequestId = "gross" });
+        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("gross")).Code);
+        await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[10]), false) { RequestId = "ok" });
+        Assert.Equal(10, (await admin.WaitForAsync<UploadBackupAck>(r => r.RequestId == "ok")).Received);
+        await admin.SendAsync(new UploadBackupChunk(id, 5, Convert.ToBase64String(new byte[10]), false) { RequestId = "luecke" });
+        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("luecke")).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+        foreach (var bad in new[] { "../../x", "..\\x", "abc", "", id.ToUpperInvariant(), id + "0" })
+        {
+            await admin.SendAsync(new UploadBackupChunk(bad, 0, Convert.ToBase64String(new byte[10]), false) { RequestId = "id" + bad });
+            Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("id" + bad)).Code);
+        }
+        await admin.SendAsync(new UploadBackupChunk(id, 0, "kein base64!", false) { RequestId = "b64" });
+        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("b64")).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+        Assert.False(File.Exists(Path.Combine(server.DataDir, "x")));
+
+        // the connection ends in the middle of an upload
+        await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[10]), false) { RequestId = "halb" });
+        await admin.WaitForAsync<UploadBackupAck>(r => r.RequestId == "halb");
+        Assert.Single(UploadFiles(server.DataDir));
+        await admin.DisposeAsync();
+        for (int i = 0; i < 50 && UploadFiles(server.DataDir).Length > 0; i++) await Task.Delay(50);
+        Assert.Empty(UploadFiles(server.DataDir));
+        Assert.Empty(Directory.GetFiles(backups, "*.ovsbackup"));
+
+        // left over from a crash: removed on the next start
+        File.WriteAllBytes(Path.Combine(backups, ".upload-" + Guid.NewGuid().ToString("N")), [1, 2, 3]);
+        await using var restarted = await server.RestartAsync();
+        Assert.Empty(UploadFiles(restarted.DataDir));
+        Assert.True(File.Exists(Path.Combine(backups, "..", DataStore.FileName)));
+    }
+
+    [Fact]
+    public async Task Upload_InvalidArchive_Rejected()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var a = admin;
+        await using var guest = await TestClient.ConnectAsync(server, "gast");
+        await admin.SendAsync(new CreateBackup());
+        var good = Entries(Path.Combine(server.DataDir, "backups", Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName));
+        var scratch = Path.Combine(dir, "ohne-manifest.zip");
+        WriteArchive(scratch, good.Where(e => e.Key != "manifest.json").ToDictionary());
+
+        foreach (var bytes in new[] { new byte[] { 1, 2, 3, 4 }, File.ReadAllBytes(scratch) })
+        {
+            var answer = Assert.IsType<Error>(await UploadAsync(admin, bytes));
+            Assert.Equal(Codes.InvalidBackup, answer.Code);
+        }
+        var name = Assert.Single(Directory.GetFiles(Path.Combine(server.DataDir, "backups"), "*.ovsbackup"));
+        Assert.Empty(UploadFiles(server.DataDir));
+        Assert.Contains(server.Log, l => l.Contains("Hochgeladenes Backup ist ungültig"));
+
+        // AC5: the right ServerConfig for both directions
+        await guest.SendAsync(new DownloadBackup(Path.GetFileName(name), 0) { RequestId = "g1" });
+        Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("g1")).Code);
+        await guest.SendAsync(new UploadBackupChunk(Guid.NewGuid().ToString("N"), 0, Convert.ToBase64String(File.ReadAllBytes(name)), true) { RequestId = "g2" });
+        Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("g2")).Code);
+        Assert.Single(Directory.GetFiles(Path.Combine(server.DataDir, "backups"), "*.ovsbackup"));
+        Assert.Empty(UploadFiles(server.DataDir));
+    }
+
     // ---- Restore through the real host: the run ends and a new one starts on the restored files ----
 
     static async Task<TestClient?> TryConnectAsync(int port, string nickname, ClientIdentity identity)

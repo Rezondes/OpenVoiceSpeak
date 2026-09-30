@@ -50,6 +50,11 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(DeleteBackup), "deleteBackup")]
 [JsonDerivedType(typeof(RestoreBackup), "restoreBackup")]
 [JsonDerivedType(typeof(BackupList), "backupList")]
+[JsonDerivedType(typeof(DownloadBackup), "downloadBackup")] // Package 75
+[JsonDerivedType(typeof(BackupChunk), "backupChunk")]
+[JsonDerivedType(typeof(UploadBackupChunk), "uploadBackupChunk")]
+[JsonDerivedType(typeof(UploadBackupAck), "uploadBackupAck")]
+[JsonDerivedType(typeof(BackupUploaded), "backupUploaded")]
 // Moderation
 [JsonDerivedType(typeof(Kick), "kick")]
 [JsonDerivedType(typeof(Ban), "ban")]
@@ -170,6 +175,16 @@ public sealed record DeleteBackup(string FileName) : Request;
 public sealed record RestoreBackup(string FileName) : Request;
 /// <summary>Newest first.</summary>
 public sealed record BackupList(string? RequestId, IReadOnlyList<BackupInfo> Backups) : Message;
+// Package 75 (A91): transfers in chunks of ProtocolInfo.BackupChunkBytes, always one request per chunk, so the outbox never fills up
+/// <summary>Asks for the chunk at Offset; answered with one BackupChunk.</summary>
+public sealed record DownloadBackup(string FileName, long Offset) : Request;
+public sealed record BackupChunk(string? RequestId, string FileName, long Offset, long TotalSize, string DataBase64, bool IsLast) : Message;
+/// <param name="UploadId">32 lowercase hex digits chosen by the client; a new id at offset 0 replaces an unfinished upload.</param>
+/// <summary>Answered with UploadBackupAck, the last one (IsLast) with BackupUploaded and the new BackupList once the archive is valid.</summary>
+public sealed record UploadBackupChunk(string UploadId, long Offset, string DataBase64, bool IsLast) : Request;
+/// <param name="Received">The bytes stored so far, the offset of the next chunk.</param>
+public sealed record UploadBackupAck(string? RequestId, string UploadId, long Received) : Message;
+public sealed record BackupUploaded(string? RequestId, BackupInfo Backup) : Message;
 
 // ---- Moderation ----
 public sealed record BanInfo(

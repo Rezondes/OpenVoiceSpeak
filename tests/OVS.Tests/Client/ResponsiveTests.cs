@@ -388,6 +388,12 @@ public sealed class ResponsiveTests : IDisposable
     public void Admin_EveryTabFits(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = OpenAdmin(width, out var page);
+        // Package 75: a transfer in progress, so its progress line is checked with the rest of the Server tab
+        var admin = (AdminViewModel)page.DataContext!;
+        admin.IsTransferring = true;
+        admin.TransferPercent = 42;
+        admin.TransferText = string.Format(Strings.Backup_Uploading, 42);
+        Dispatcher.UIThread.RunJobs();
         var tabs = AdminTabs(page);
         var strip = tabs.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == "PART_TabStrip");
         for (var i = 0; i < tabs.ItemCount; i++)
@@ -420,6 +426,11 @@ public sealed class ResponsiveTests : IDisposable
         // Package 74: every backup with its restore and delete button, all checked for width above
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Restore && t.IsEffectivelyVisible));
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Delete && t.IsEffectivelyVisible));
+        // Package 75: download per backup, both upload buttons and the progress
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Download && t.IsEffectivelyVisible));
+        foreach (var name in new[] { "UploadBackupButton", "UploadRestoreButton", "BackupTransfer" })
+            Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
+        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.TransferText && t.IsEffectivelyVisible);
         main.Close();
         return 0;
     });

@@ -4669,11 +4669,11 @@ Steuernachrichten sind höchstens 1 MiB gross (`FrameReader.MaxFrameSize`). Base
 
 ### Acceptance Criteria
 
-- [ ] AC1: Bei jedem Backup in der Liste gibt es "Herunterladen". Der Client fragt nach dem Speicherort (Vorschlag: Dateiname vom Server) und speichert die Datei. Der Inhalt ist bytegleich zum Archiv auf dem Server.
-- [ ] AC2: "Backup hochladen ..." wählt eine `.ovsbackup`-Datei. Sie wird hochgeladen, vom Server wie in Package 74 geprüft und unter `backups/` abgelegt, danach erscheint sie in der Liste und kann wiederhergestellt werden. Auf Wunsch direkt mit "Hochladen und wiederherstellen" (gleiche Rückfrage wie in 74).
-- [ ] AC3: Die Übertragung läuft in Stücken von 512 KB (Base64), mit Fortschritt in Prozent. Dateien über 50 MB lehnt der Server ab. Ein abgebrochener Upload hinterlässt keine Datei.
+- [x] AC1: Bei jedem Backup in der Liste gibt es "Herunterladen". Der Client fragt nach dem Speicherort (Vorschlag: Dateiname vom Server) und speichert die Datei. Der Inhalt ist bytegleich zum Archiv auf dem Server.
+- [x] AC2: "Backup hochladen ..." wählt eine `.ovsbackup`-Datei. Sie wird hochgeladen, vom Server wie in Package 74 geprüft und unter `backups/` abgelegt, danach erscheint sie in der Liste und kann wiederhergestellt werden. Auf Wunsch direkt mit "Hochladen und wiederherstellen" (gleiche Rückfrage wie in 74).
+- [x] AC3: Die Übertragung läuft in Stücken von 512 KB (Base64), mit Fortschritt in Prozent. Dateien über 50 MB lehnt der Server ab. Ein abgebrochener Upload hinterlässt keine Datei.
 - [ ] AC4: Während der Übertragung bleiben Sprache und Chat nutzbar. Der Download schickt die Stücke nacheinander (das nächste erst auf Anfrage des Clients), damit die Ausgangs-Queue nicht überläuft.
-- [ ] AC5: Recht `ServerConfig`. Texte auf Deutsch und Englisch.
+- [x] AC5: Recht `ServerConfig`. Texte auf Deutsch und Englisch.
 
 ### Tests (TDD)
 

@@ -99,6 +99,8 @@ public sealed partial class ServerViewModel : ObservableObject
     public BanList? LastBanList { get; private set; }
 
     public event Action<string>? Notice;
+    /// <summary>Package 75: a notice from the administration page (e.g. a failed backup transfer).</summary>
+    internal void ShowNotice(string text) => Notice?.Invoke(text);
     public event Action<Message>? AdminMessage;
     public event Action<ServerIcon>? IconReceived;
 
@@ -161,7 +163,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 LastBanList = list;
                 AdminMessage?.Invoke(message);
                 return;
-            case BackupList: // Package 74
+            case BackupList or BackupChunk or UploadBackupAck or BackupUploaded: // Packages 74 and 75
                 AdminMessage?.Invoke(message);
                 return;
             case ServerIcon icon:

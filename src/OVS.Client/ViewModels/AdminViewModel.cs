@@ -99,6 +99,7 @@ public sealed partial class AdminViewModel : ObservableObject
         server.AdminMessage -= OnAdminMessage;
         server.StateChanged -= OnStateChanged;
         server.PropertyChanged -= OnServerPropertyChanged;
+        foreach (var reply in replies.Values) reply.TrySetCanceled(); // Package 75: a transfer stops and cleans up
     }
 
     // ---- Server logo (Package 30) ----
@@ -165,6 +166,16 @@ public sealed partial class AdminViewModel : ObservableObject
         {
             case Error e:
                 if (pendingGroupChanges.RemoveAll(p => p.RequestId == e.RequestId) > 0) UpdateOwnGroupChangePending();
+                if (IsTransferring && e.RequestId is { } failed) Reply(failed).TrySetResult(e);
+                break;
+            case BackupChunk { RequestId: { } id }:
+                Reply(id).TrySetResult(message);
+                break;
+            case UploadBackupAck { RequestId: { } id }:
+                Reply(id).TrySetResult(message);
+                break;
+            case BackupUploaded { RequestId: { } id }:
+                Reply(id).TrySetResult(message);
                 break;
             case UserList list:
                 ConfirmGroupChanges(list.Users);
@@ -323,6 +334,142 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(backup.Title)) return;
         await server.SendAsync(new RestoreBackup(backup.Info.FileName));
+    }
+
+    // ---- Package 75: download to and upload from this PC, chunk by chunk (A91) ----
+
+    static readonly TimeSpan TransferTimeout = TimeSpan.FromSeconds(30);
+    [ObservableProperty] bool isTransferring;
+    [ObservableProperty] double transferPercent;
+    [ObservableProperty] string transferText = "";
+    /// <summary>Answers by request id; an answer can come before SendAsync returns, so whoever comes first adds the entry.</summary>
+    readonly Dictionary<string, TaskCompletionSource<Message>> replies = [];
+
+    TaskCompletionSource<Message> Reply(string requestId)
+    {
+        if (!replies.TryGetValue(requestId, out var reply))
+            replies[requestId] = reply = new TaskCompletionSource<Message>(TaskCreationOptions.RunContinuationsAsynchronously);
+        return reply;
+    }
+
+    /// <summary>The server's answer to one request, or null (error, timeout, page closed). The server shows its own errors as a notice.</summary>
+    async Task<Message?> RequestAsync(Request request)
+    {
+        var id = await server.SendAsync(request);
+        try
+        {
+            var answer = await Reply(id).Task.WaitAsync(TransferTimeout, server.Time);
+            return answer is Error ? null : answer;
+        }
+        catch (TimeoutException)
+        {
+            server.ShowNotice(Strings.Backup_TransferFailed);
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        finally
+        {
+            replies.Remove(id);
+        }
+    }
+
+    void Progress(string format, long done, long total)
+    {
+        TransferPercent = total <= 0 ? 100 : done * 100d / total;
+        TransferText = string.Format(format, (int)Math.Round(TransferPercent));
+    }
+
+    /// <summary>Writes to a temporary file next to target and moves it into place only once the last chunk arrived.</summary>
+    public async Task DownloadBackupAsync(BackupViewModel backup, string target)
+    {
+        if (IsTransferring) return;
+        IsTransferring = true;
+        Progress(Strings.Backup_Downloading, 0, 1);
+        var temp = target + ".part";
+        bool done = false;
+        try
+        {
+            await using (var file = File.Create(temp))
+            {
+                while (true)
+                {
+                    if (await RequestAsync(new DownloadBackup(backup.Info.FileName, file.Length)) is not BackupChunk chunk || chunk.Offset != file.Length) return;
+                    var bytes = Convert.FromBase64String(chunk.DataBase64);
+                    await file.WriteAsync(bytes);
+                    Progress(Strings.Backup_Downloading, file.Length, chunk.TotalSize);
+                    if (chunk.IsLast) break;
+                    if (bytes.Length == 0) return;
+                }
+            }
+            File.Move(temp, target, overwrite: true);
+            done = true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException)
+        {
+            server.ShowNotice(Strings.Backup_TransferFailed);
+        }
+        finally
+        {
+            if (!done) DeleteQuietly(temp);
+            replies.Clear(); // answers to other failed requests that came in meanwhile
+            IsTransferring = false;
+        }
+    }
+
+    /// <summary>Sends the file in chunks, each after the server's answer; with restore, asks the red question of Package 74 once it is stored.</summary>
+    public async Task UploadBackupAsync(string path, bool restore)
+    {
+        if (IsTransferring) return;
+        IsTransferring = true;
+        Progress(Strings.Backup_Uploading, 0, 1);
+        BackupInfo? uploaded = null;
+        try
+        {
+            await using var file = File.OpenRead(path);
+            if (file.Length > ProtocolInfo.MaxBackupUploadBytes)
+            {
+                server.ShowNotice(ErrorTexts.For(Codes.BackupTooLarge));
+                return;
+            }
+            var uploadId = Guid.NewGuid().ToString("N");
+            var buffer = new byte[ProtocolInfo.BackupChunkBytes];
+            for (long offset = 0; ;)
+            {
+                int read = await file.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false);
+                bool last = offset + read >= file.Length;
+                var answer = await RequestAsync(new UploadBackupChunk(uploadId, offset, Convert.ToBase64String(buffer, 0, read), last));
+                offset += read;
+                Progress(Strings.Backup_Uploading, offset, file.Length);
+                if (answer is BackupUploaded u) uploaded = u.Backup;
+                if (last || answer is not UploadBackupAck) break;
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            server.ShowNotice(Strings.Backup_TransferFailed);
+        }
+        finally
+        {
+            replies.Clear(); // answers to other failed requests that came in meanwhile
+            IsTransferring = false;
+        }
+        if (!restore || uploaded is null) return;
+        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
+        await server.SendAsync(new RestoreBackup(uploaded.FileName));
+    }
+
+    static void DeleteQuietly(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     bool CanAssign(GroupInfo g) =>
@@ -581,8 +728,9 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
     : ObservableObject
 {
     public BackupInfo Info { get; } = info;
-    public string Title => Info.CreatedAt.ToLocalTime().ToString("G") +
-                           (Info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");
+    public string Title => TitleOf(Info);
+    public static string TitleOf(BackupInfo info) => info.CreatedAt.ToLocalTime().ToString("G") +
+                                                     (info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");
     public string Details => string.Format(Strings.Backup_Details, Size(Info.Size), Info.ServerVersion);
 
     /// <summary>The prefix the server gives the backup it takes before a restore.</summary>

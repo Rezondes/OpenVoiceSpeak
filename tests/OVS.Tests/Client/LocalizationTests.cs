@@ -52,6 +52,11 @@ public class LocalizationTests
         Assert.Equal("You don't have the right to do that.", TestCulture.With("en-US", () => ErrorTexts.For(Codes.PermissionDenied)));
         Assert.Equal("Mouse button 4", TestCulture.With("en-US", () => OVS.Client.Input.KeyPoller.KeyName(OVS.Client.Input.KeyPoller.VkXButton1)));
         Assert.Equal("Enter full channels", TestCulture.With("en-US", () => PermissionLabels.All.Last().Label));
+        // Package 75: download and upload of backups
+        Assert.Equal("Das Backup ist grösser als 50 MB.", ErrorTexts.For(Codes.BackupTooLarge));
+        Assert.Equal("The backup is larger than 50 MB.", TestCulture.With("en-US", () => ErrorTexts.For(Codes.BackupTooLarge)));
+        Assert.Equal("Upload and restore ...", TestCulture.With("en-US", () => Strings.Ui_UploadAndRestore));
+        Assert.Equal("Uploading: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Backup_Uploading, 42)));
     }
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>

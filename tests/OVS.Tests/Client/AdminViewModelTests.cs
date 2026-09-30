@@ -12,8 +12,9 @@ public class AdminViewModelTests
     static readonly Guid Lobby = Guid.NewGuid();
     static readonly Guid ModGroup = Guid.NewGuid();
 
+    /// <param name="reply">Package 75: the server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
     static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false, ServerLimits? limits = null,
-        Dialogs? dialogs = null)
+        Dialogs? dialogs = null, Func<Request, Message?>? reply = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword, null, limits), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
@@ -24,9 +25,11 @@ public class AdminViewModelTests
             ],
             [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, selfPerms, [])]);
         var sent = new List<Request>();
-        var server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        ServerViewModel? server = null;
+        server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
         {
             sent.Add(r);
+            if (reply?.Invoke(r) is { } answer) server!.Apply(answer);
             return Task.CompletedTask;
         }, new ManualTimeProvider(), dialogs);
         return (new AdminViewModel(server), server, sent);
@@ -260,6 +263,132 @@ public class AdminViewModelTests
         var (other, _, otherSent) = Create(P.Speak | P.UsersView);
         await other.RequestListsAsync();
         Assert.DoesNotContain(otherSent, r => r is ListBackups);
+    }
+
+    /// <summary>Package 75: the backup arrives chunk by chunk, each asked for, and is only moved to the chosen path when complete.</summary>
+    [Fact]
+    public async Task Download_SavesToChosenPath_Progress()
+    {
+        var dir = Directory.CreateTempSubdirectory("ovs-download-").FullName;
+        try
+        {
+            var archive = new byte[1_200_000];
+            Random.Shared.NextBytes(archive);
+            var info = new BackupInfo("2026-02-01_10-00-00.ovsbackup", DateTimeOffset.UtcNow, archive.Length, "dev.0000");
+            AdminViewModel? vm = null;
+            var progress = new List<(bool Busy, double Percent, string Text)>();
+            string? failAt = null;
+            Message? Reply(Request r)
+            {
+                if (r is not DownloadBackup d) return null;
+                progress.Add((vm!.IsTransferring, vm.TransferPercent, vm.TransferText));
+                if (failAt is not null && d.Offset > 0) return new Error(r.RequestId, Codes.NotFound);
+                var size = (int)Math.Min(OVS.Shared.Protocol.ProtocolInfo.BackupChunkBytes, archive.Length - d.Offset);
+                return new BackupChunk(r.RequestId, d.FileName, d.Offset, archive.Length, Convert.ToBase64String(archive, (int)d.Offset, size),
+                    d.Offset + size >= archive.Length);
+            }
+            var (admin, server, sent) = Create(P.ServerConfig | P.Speak, reply: Reply);
+            vm = admin;
+            server.Apply(new BackupList("r", [info]));
+
+            var target = Path.Combine(dir, "mein-backup.ovsbackup");
+            await vm.DownloadBackupAsync(vm.Backups[0], target);
+            Assert.Equal(archive, File.ReadAllBytes(target));
+            Assert.Equal([0L, 524_288L, 1_048_576L], sent.OfType<DownloadBackup>().Select(d => d.Offset));
+            Assert.All(sent.OfType<DownloadBackup>(), d => Assert.Equal(info.FileName, d.FileName));
+            Assert.All(progress, p => Assert.True(p.Busy));
+            Assert.Equal([0d, 43.7, 87.4], progress.Select(p => Math.Round(p.Percent, 1)));
+            Assert.Equal(string.Format(OVS.Client.Localization.Strings.Backup_Downloading, 44), progress[1].Text);
+            Assert.False(vm.IsTransferring);
+            Assert.Equal([target], Directory.GetFiles(dir));
+
+            // an error in the middle: the file there before stays as it was, no half file is left
+            File.WriteAllText(target, "alt");
+            failAt = "second";
+            sent.Clear();
+            await vm.DownloadBackupAsync(vm.Backups[0], target);
+            Assert.Equal(2, sent.Count);
+            Assert.Equal("alt", File.ReadAllText(target));
+            Assert.Equal([target], Directory.GetFiles(dir));
+            Assert.False(vm.IsTransferring);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    /// <summary>Package 75: the file goes up chunk by chunk; "Hochladen und wiederherstellen" asks the red question of Package 74 first.</summary>
+    [Fact]
+    public async Task UploadAndRestore_AsksFirst()
+    {
+        var dir = Directory.CreateTempSubdirectory("ovs-upload-").FullName;
+        try
+        {
+            var archive = new byte[1_100_000];
+            Random.Shared.NextBytes(archive);
+            var file = Path.Combine(dir, "backup.ovsbackup");
+            File.WriteAllBytes(file, archive);
+            var info = new BackupInfo("hochgeladen_2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 1, 5, 9, 0, 0, TimeSpan.Zero), archive.Length, "dev.0000");
+            var asked = new List<string>();
+            bool answer = false;
+            var dialogs = new Dialogs { ConfirmRestore = title => { asked.Add(title); return Task.FromResult(answer); } };
+            AdminViewModel? vm = null;
+            var received = new MemoryStream();
+            var busy = new List<bool>();
+            bool invalid = false;
+            Message? Reply(Request r)
+            {
+                if (r is not UploadBackupChunk c) return null;
+                busy.Add(vm!.IsTransferring);
+                Assert.Equal(received.Length, c.Offset);
+                received.Write(Convert.FromBase64String(c.DataBase64));
+                if (!c.IsLast) return new UploadBackupAck(r.RequestId, c.UploadId, received.Length);
+                return invalid ? new Error(r.RequestId, Codes.InvalidBackup) : new BackupUploaded(r.RequestId, info);
+            }
+            var (admin, _, sent) = Create(P.ServerConfig | P.Speak, dialogs: dialogs, reply: Reply);
+            vm = admin;
+
+            // only upload: no question, no restore
+            await vm.UploadBackupAsync(file, restore: false);
+            Assert.Equal(archive, received.ToArray());
+            var chunks = sent.OfType<UploadBackupChunk>().ToList();
+            Assert.Equal(3, chunks.Count);
+            Assert.Single(chunks.Select(c => c.UploadId).Distinct());
+            Assert.Matches("^[0-9a-f]{32}$", chunks[0].UploadId);
+            Assert.Equal([false, false, true], chunks.Select(c => c.IsLast));
+            Assert.All(busy, Assert.True);
+            Assert.False(vm.IsTransferring);
+            Assert.Empty(asked);
+            Assert.DoesNotContain(sent, r => r is RestoreBackup);
+
+            // upload and restore: said no, then yes
+            foreach (var yes in new[] { false, true })
+            {
+                answer = yes;
+                received.SetLength(0);
+                sent.Clear();
+                await vm.UploadBackupAsync(file, restore: true);
+                Assert.Equal(archive, received.ToArray());
+                Assert.Equal(yes ? [new RestoreBackup(info.FileName)] : [], sent.OfType<RestoreBackup>().Select(r => r with { RequestId = null }));
+            }
+            Assert.Equal(2, asked.Count);
+            Assert.All(asked, a => Assert.Contains(new BackupViewModel(info, _ => Task.CompletedTask, _ => Task.CompletedTask).Title, a));
+            Assert.NotEqual(sent.OfType<UploadBackupChunk>().First().UploadId, chunks[0].UploadId); // a new id per upload
+
+            // the server refuses the archive: nothing to restore, no question
+            invalid = true;
+            received.SetLength(0);
+            sent.Clear();
+            await vm.UploadBackupAsync(file, restore: true);
+            Assert.Equal(2, asked.Count);
+            Assert.DoesNotContain(sent, r => r is RestoreBackup);
+            Assert.False(vm.IsTransferring);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
     }
 
     [Fact]

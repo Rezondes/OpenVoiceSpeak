@@ -12,8 +12,14 @@
   <data name="Backup_ConfirmDelete" xml:space="preserve"><value>Delete the backup from {0}?</value></data>
   <data name="Backup_ConfirmRestore" xml:space="preserve"><value>Everyone is disconnected and the current state is replaced. The server takes a safety backup first.</value></data>
   <data name="Backup_Details" xml:space="preserve"><value>{0}, server version {1}</value></data>
+  <data name="Backup_Downloading" xml:space="preserve"><value>Downloading: {0} %</value></data>
+  <data name="Backup_FileFilter" xml:space="preserve"><value>OpenVoiceSpeak backup</value></data>
+  <data name="Backup_OpenTitle" xml:space="preserve"><value>Choose a backup to upload</value></data>
   <data name="Backup_RestoreTitle" xml:space="preserve"><value>Restore the backup from {0}?</value></data>
   <data name="Backup_Safety" xml:space="preserve"><value>(before restore)</value></data>
+  <data name="Backup_SaveTitle" xml:space="preserve"><value>Save backup</value></data>
+  <data name="Backup_TransferFailed" xml:space="preserve"><value>The backup transfer failed.</value></data>
+  <data name="Backup_Uploading" xml:space="preserve"><value>Uploading: {0} %</value></data>
   <data name="Ban_Day" xml:space="preserve"><value>1 day</value></data>
   <data name="Ban_Forever" xml:space="preserve"><value>permanent</value></data>
   <data name="Ban_Hour" xml:space="preserve"><value>1 hour</value></data>
@@ -108,6 +114,7 @@
   <data name="Dlg_UpdateQuestion" xml:space="preserve"><value>Version {0} is available. Install now?</value></data>
   <data name="Dlg_UpdateTitle" xml:space="preserve"><value>Update available</value></data>
   <data name="Dlg_YesDelete" xml:space="preserve"><value>Yes, delete</value></data>
+  <data name="Error_BackupTooLarge" xml:space="preserve"><value>The backup is larger than 50 MB.</value></data>
   <data name="Error_BadSignature" xml:space="preserve"><value>Signing in with your identity failed.</value></data>
   <data name="Error_Banned" xml:space="preserve"><value>You are banned from this server.</value></data>
   <data name="Error_CannotDeleteDefault" xml:space="preserve"><value>The default channel cannot be deleted.</value></data>
@@ -307,6 +314,7 @@
   <data name="Ui_DefaultChannel" xml:space="preserve"><value>Default channel</value></data>
   <data name="Ui_DefaultSound" xml:space="preserve"><value>Default tone</value></data>
   <data name="Ui_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Ui_Download" xml:space="preserve"><value>Download</value></data>
   <data name="Ui_DeleteFmt" xml:space="preserve"><value>{0}: delete</value></data>
   <data name="Ui_DeleteGroup" xml:space="preserve"><value>Delete group</value></data>
   <data name="Ui_DeleteMenu" xml:space="preserve"><value>Delete ...</value></data>
@@ -423,6 +431,8 @@
   <data name="Ui_UnlinkSelected" xml:space="preserve"><value>Remove links between selected</value></data>
   <data name="Ui_Unread" xml:space="preserve"><value>Unread</value></data>
   <data name="Ui_UnreadFmt" xml:space="preserve"><value>{0} unread</value></data>
+  <data name="Ui_UploadAndRestore" xml:space="preserve"><value>Upload and restore ...</value></data>
+  <data name="Ui_UploadBackup" xml:space="preserve"><value>Upload backup ...</value></data>
   <data name="Ui_UserCount" xml:space="preserve"><value>{0} of {1} users</value></data>
   <data name="Ui_UserSearch" xml:space="preserve"><value>Search name, fingerprint or IP</value></data>
   <data name="Ui_UserVolumeFmt" xml:space="preserve"><value>Volume {0:0} %</value></data>

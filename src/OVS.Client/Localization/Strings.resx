@@ -12,8 +12,14 @@
   <data name="Backup_ConfirmDelete" xml:space="preserve"><value>Backup vom {0} löschen?</value></data>
   <data name="Backup_ConfirmRestore" xml:space="preserve"><value>Alle werden getrennt, der aktuelle Stand wird ersetzt. Vorher legt der Server ein Sicherheits-Backup an.</value></data>
   <data name="Backup_Details" xml:space="preserve"><value>{0}, Serverversion {1}</value></data>
+  <data name="Backup_Downloading" xml:space="preserve"><value>Herunterladen: {0} %</value></data>
+  <data name="Backup_FileFilter" xml:space="preserve"><value>OpenVoiceSpeak-Backup</value></data>
+  <data name="Backup_OpenTitle" xml:space="preserve"><value>Backup zum Hochladen wählen</value></data>
   <data name="Backup_RestoreTitle" xml:space="preserve"><value>Backup vom {0} wiederherstellen?</value></data>
   <data name="Backup_Safety" xml:space="preserve"><value>(vor Wiederherstellung)</value></data>
+  <data name="Backup_SaveTitle" xml:space="preserve"><value>Backup speichern</value></data>
+  <data name="Backup_TransferFailed" xml:space="preserve"><value>Die Übertragung des Backups ist fehlgeschlagen.</value></data>
+  <data name="Backup_Uploading" xml:space="preserve"><value>Hochladen: {0} %</value></data>
   <data name="Ban_Day" xml:space="preserve"><value>1 Tag</value></data>
   <data name="Ban_Forever" xml:space="preserve"><value>dauerhaft</value></data>
   <data name="Ban_Hour" xml:space="preserve"><value>1 Stunde</value></data>
@@ -108,6 +114,7 @@
   <data name="Dlg_UpdateQuestion" xml:space="preserve"><value>Version {0} ist verfügbar. Jetzt installieren?</value></data>
   <data name="Dlg_UpdateTitle" xml:space="preserve"><value>Update verfügbar</value></data>
   <data name="Dlg_YesDelete" xml:space="preserve"><value>Ja, löschen</value></data>
+  <data name="Error_BackupTooLarge" xml:space="preserve"><value>Das Backup ist grösser als 50 MB.</value></data>
   <data name="Error_BadSignature" xml:space="preserve"><value>Die Anmeldung mit deiner Identität ist fehlgeschlagen.</value></data>
   <data name="Error_Banned" xml:space="preserve"><value>Du bist auf diesem Server gebannt.</value></data>
   <data name="Error_CannotDeleteDefault" xml:space="preserve"><value>Der Standard-Channel kann nicht gelöscht werden.</value></data>
@@ -307,6 +314,7 @@
   <data name="Ui_DefaultChannel" xml:space="preserve"><value>Standard-Channel</value></data>
   <data name="Ui_DefaultSound" xml:space="preserve"><value>Standardton</value></data>
   <data name="Ui_Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Ui_Download" xml:space="preserve"><value>Herunterladen</value></data>
   <data name="Ui_DeleteFmt" xml:space="preserve"><value>{0}: löschen</value></data>
   <data name="Ui_DeleteGroup" xml:space="preserve"><value>Gruppe löschen</value></data>
   <data name="Ui_DeleteMenu" xml:space="preserve"><value>Löschen ...</value></data>
@@ -423,6 +431,8 @@
   <data name="Ui_UnlinkSelected" xml:space="preserve"><value>Links zwischen ausgewählten entfernen</value></data>
   <data name="Ui_Unread" xml:space="preserve"><value>Ungelesen</value></data>
   <data name="Ui_UnreadFmt" xml:space="preserve"><value>{0} ungelesen</value></data>
+  <data name="Ui_UploadAndRestore" xml:space="preserve"><value>Hochladen und wiederherstellen ...</value></data>
+  <data name="Ui_UploadBackup" xml:space="preserve"><value>Backup hochladen ...</value></data>
   <data name="Ui_UserCount" xml:space="preserve"><value>{0} von {1} Nutzern</value></data>
   <data name="Ui_UserSearch" xml:space="preserve"><value>Name, Fingerabdruck oder IP suchen</value></data>
   <data name="Ui_UserVolumeFmt" xml:space="preserve"><value>Lautstärke {0:0} %</value></data>

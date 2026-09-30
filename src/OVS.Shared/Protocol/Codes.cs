@@ -40,6 +40,7 @@ public static class Codes
     public const string RateLimited = nameof(RateLimited);
     public const string ChannelFull = nameof(ChannelFull);
     public const string InvalidBackup = nameof(InvalidBackup); // Package 74
+    public const string BackupTooLarge = nameof(BackupTooLarge); // Package 75: an upload over MaxBackupUploadBytes
 
     public static IEnumerable<string> All() =>
         typeof(Codes).GetFields().Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!);
