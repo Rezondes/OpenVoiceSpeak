@@ -20,14 +20,15 @@ public static class ServerHost
 {
     enum RunEnd { Stopped, Restart, Failed }
 
+    /// <param name="afterWait">Tests only: runs when a run's wait has ended, before the sessions are closed.</param>
     /// <returns>The process exit code: 0 after a stop request, 1 when a run could not start.</returns>
     public static async Task<int> RunAsync(Func<string, string?> getEnv, IPAddress bindAddress, TimeProvider time,
-        Action<string> console, Action<string> error, CancellationToken stop)
+        Action<string> console, Action<string> error, CancellationToken stop, Func<ServerState, Task>? afterWait = null)
     {
         bool restarted = false;
         while (true)
         {
-            switch (await RunOnceAsync(getEnv, bindAddress, time, console, error, restarted, stop))
+            switch (await RunOnceAsync(getEnv, bindAddress, time, console, error, restarted, stop, afterWait))
             {
                 case RunEnd.Stopped: return 0;
                 case RunEnd.Failed: return 1;
@@ -37,7 +38,7 @@ public static class ServerHost
     }
 
     static async Task<RunEnd> RunOnceAsync(Func<string, string?> getEnv, IPAddress bindAddress, TimeProvider time,
-        Action<string> console, Action<string> error, bool restarted, CancellationToken stop)
+        Action<string> console, Action<string> error, bool restarted, CancellationToken stop, Func<ServerState, Task>? afterWait)
     {
         ServerConfig config;
         ServerLogs logs;
@@ -91,7 +92,14 @@ public static class ServerHost
         if (restore is not null) restart = !stop.IsCancellationRequested;
 
         logs.Server(restore is not null ? "Wiederherstellung aus einem Backup ..." : restart ? "Automatischer Neustart ..." : "Fahre herunter ...");
+        if (afterWait is not null) await afterWait(state);
         await control.StopAsync(restart);
+        // A restore accepted while the run was ending: after CloseAll every request is rejected, so none can come later.
+        if (restore is null && state.PendingRestore is { } late)
+        {
+            restore = late;
+            logs.Server("Wiederherstellung aus einem Backup beim Beenden angefordert ...");
+        }
         await control.DisposeAsync();
         voice.Dispose();
         certificate.Dispose();

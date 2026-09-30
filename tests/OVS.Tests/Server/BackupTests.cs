@@ -460,6 +460,7 @@ public sealed class BackupTests : IDisposable
     {
         public Task<int> Run => run;
         public int Port => port;
+        public void Stop() => stop.Cancel();
 
         public async ValueTask DisposeAsync()
         {
@@ -470,7 +471,7 @@ public sealed class BackupTests : IDisposable
     }
 
     /// <summary>Starts ServerHost on the data dir; a port that Windows reserves makes the run end with 1, then another is tried.</summary>
-    static async Task<(Host Host, TestClient Admin)> StartHostAsync(string dataDir, ClientIdentity admin)
+    static async Task<(Host Host, TestClient Admin)> StartHostAsync(string dataDir, ClientIdentity admin, Func<ServerState, Task>? afterWait = null)
     {
         for (int attempt = 0; ; attempt++)
         {
@@ -478,7 +479,7 @@ public sealed class BackupTests : IDisposable
             var env = new Dictionary<string, string> { ["OVS_DATA_DIR"] = dataDir, ["OVS_PORT"] = port.ToString() };
             var output = new ConcurrentQueue<string>();
             var stop = new CancellationTokenSource();
-            var run = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop.Token);
+            var run = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop.Token, afterWait);
             try
             {
                 var client = await ConnectWhenUpAsync(port, "chef", admin, run);
@@ -547,6 +548,43 @@ public sealed class BackupTests : IDisposable
         }
         var log = string.Join("\n", Directory.GetFiles(Path.Combine(dir, "logs", "server")).Select(File.ReadAllText));
         Assert.Contains($"Backup {backup} wird wiederhergestellt von chef", log);
+        Assert.Contains("Backup eingespielt", log);
+    }
+
+    [Fact]
+    public async Task Restore_ArrivingWhileShuttingDown_Applied()
+    {
+        var adminId = ClientIdentity.Create();
+        SeedAdmin(dir, adminId);
+        var gap = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task AfterWait(ServerState _)
+        {
+            gap.SetResult();
+            await sent.Task;
+        }
+        var (host, admin) = await StartHostAsync(dir, adminId, AfterWait);
+        await using (host)
+        await using (admin)
+        {
+            await admin.SendAsync(new CreateChannel("Alt", ""));
+            await admin.WaitForAsync<ChannelAdded>();
+            await admin.SendAsync(new CreateBackup());
+            var backup = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName;
+            await admin.SendAsync(new CreateChannel("Neu", ""));
+            await admin.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Neu");
+
+            host.Stop(); // a plain shutdown: the wait ends, the sessions are still open
+            await gap.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await admin.SendAsync(new RestoreBackup(backup));
+            Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 10_000)).Reason);
+            sent.SetResult();
+            Assert.Equal(0, await host.Run.WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+        var channels = new DataStore(Path.Combine(dir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Channels;
+        Assert.Contains(channels, c => c.Name == "Alt");
+        Assert.DoesNotContain(channels, c => c.Name == "Neu");
+        var log = string.Join("\n", Directory.GetFiles(Path.Combine(dir, "logs", "server")).Select(File.ReadAllText));
         Assert.Contains("Backup eingespielt", log);
     }
 
