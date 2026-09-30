@@ -31,7 +31,8 @@ public enum Permission
     LogsView = 1 << 23,     // Package 81 (A98): list, read and search the server and channel logs
     LogsDownload = 1 << 24, // Package 82 (A99): save log files on the own PC (the tab needs LogsView)
     BackupsManage = 1 << 25, // Package 89 (A101): list, create, download and delete backups; upload and restore need the Admin group
-    All = (1 << 26) - 1,
+    ChannelPasswordBypass = 1 << 26, // Package 94: join password-locked channels without the password (never past a group lock)
+    All = (1 << 27) - 1,
 }
 
 /// <summary>Fixed ids of the two protected groups, known to server and client.</summary>

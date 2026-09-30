@@ -37,6 +37,15 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     public bool CanLockGroups => mode != ChannelDialogMode.EditDefault;
     public string GroupLockHint => CanLockGroups ? Strings.Dlg_GroupLockHint : Strings.Dlg_GroupLockDefault;
 
+    /// <summary>Package 94: a new password; empty leaves it as it is.</summary>
+    [ObservableProperty] string password = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEnterPassword))]
+    bool removePassword;
+    /// <summary>Package 94: the channel has a password, so "Passwort entfernen" is offered.</summary>
+    public bool HasPassword => current.HasPassword;
+    public bool CanEnterPassword => CanLockGroups && !RemovePassword;
+
     partial void OnMaxUsersChanged(decimal? value)
     {
         if (value is { } v && (v < 0 || v > MaxSlots)) MaxUsers = Math.Clamp(v, 0, MaxSlots);
@@ -52,10 +61,13 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
         Error = string.IsNullOrWhiteSpace(Name) ? null
             : TextRules.Name(Name, ProtocolInfo.MaxNameLength) is null ? Strings.Dlg_NameInvalid
             : TextRules.Text(Description ?? "", ProtocolInfo.MaxTextLength) is null ? Strings.Dlg_TextInvalid
+            : (Password ?? "").Length > ProtocolInfo.MaxPasswordLength ? Strings.Dlg_PasswordTooLong
             : null;
         var ticked = Groups.Where(g => g.IsChecked).Select(g => g.Id).ToList();
         bool changed = CanLockGroups && !ticked.ToHashSet().SetEquals(current.AllowedGroupIds ?? []);
+        string? password = !CanLockGroups ? null : RemovePassword ? "" : Password is { Length: > 0 } entered ? entered : null;
         return string.IsNullOrWhiteSpace(Name) || Error is not null ? null
-            : new ChannelEdit(Name.Trim(), Description ?? "", IsMuted, CanLimitUsers ? (int)(MaxUsers ?? 0) : 0, changed ? ticked : null);
+            : new ChannelEdit(Name.Trim(), Description ?? "", IsMuted, CanLimitUsers ? (int)(MaxUsers ?? 0) : 0, changed ? ticked : null,
+                Password: password);
     }
 }

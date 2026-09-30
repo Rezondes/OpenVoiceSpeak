@@ -191,7 +191,7 @@ public sealed class DataStoreTests : IDisposable
         Assert.Equal(Permission.GroupsAssign | Permission.UsersView, perms["Zuweiser"]);
         Assert.Equal(Permission.UserBan | Permission.UserKick | Permission.BansView, perms["Banner"]);
         Assert.Equal(Permission.Speak | Permission.ChatChannel, perms["Normal"]);
-        Assert.Equal(Permission.All, perms["Alles"]);
+        Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]); // Package 94: only Admin gets the newest right
         Assert.All(loaded.Groups.Where(g => g.Name != "Alles"), g => Assert.Equal(Permission.None, g.Permissions & (Permission.UserDelete | Permission.LogsView | Permission.LogsDownload)));
         Assert.False(loaded.Migrate(Config)); // once
     }
@@ -214,11 +214,11 @@ public sealed class DataStoreTests : IDisposable
 
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.True(loaded.Migrate(Config));
-        Assert.Equal(5, loaded.DataVersion);
+        Assert.Equal(ServerData.CurrentVersion, loaded.DataVersion);
         var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
         Assert.Equal(Permission.ServerConfig | Permission.Speak | Permission.BackupsManage, perms["Konfig"]);
         Assert.Equal(Permission.Speak | Permission.LogsView, perms["Normal"]);
-        Assert.Equal(Permission.All, perms["Alles"]);
+        Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]); // Package 94: not the newer right
         Assert.True(perms["Admin"].Has(Permission.BackupsManage));
         Assert.False(perms["Moderator"].Has(Permission.BackupsManage));
         Assert.False(perms["Gast"].Has(Permission.BackupsManage));
@@ -226,6 +226,32 @@ public sealed class DataStoreTests : IDisposable
 
         // new servers: only Admin
         Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(g => g.Permissions.Has(Permission.BackupsManage)).Select(g => g.Name));
+    }
+
+    /// <summary>
+    /// Package 94: ChannelPasswordBypass is for Admin only. A group stored as "All" reads as every right, the new one
+    /// included, so the update to data version 6 takes it away from every other group once.
+    /// </summary>
+    [Fact]
+    public void Migration_OnlyAdminGetsChannelPasswordBypass()
+    {
+        var store = new DataStore(FilePath);
+        var data = ServerData.CreateDefault(Config);
+        data.DataVersion = 5;
+        data.Groups.Add(new Group(Guid.NewGuid(), "Alles", Permission.None));
+        store.Save(data);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
+        json["groups"]!.AsArray().Single(g => g!["name"]!.GetValue<string>() == "Alles")!["permissions"] = "All";
+        File.WriteAllText(FilePath, json.ToJsonString());
+
+        var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.True(loaded.Migrate(Config));
+        Assert.Equal(6, loaded.DataVersion);
+        var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
+        Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]);
+        Assert.Equal(Permission.All, perms["Admin"]);
+        Assert.False(loaded.Migrate(Config)); // once
+        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(g => g.Permissions.Has(Permission.ChannelPasswordBypass)).Select(g => g.Name));
     }
 
     [Fact]

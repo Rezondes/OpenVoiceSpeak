@@ -54,6 +54,7 @@ public static class PermissionLabels
         (Permission.ChatServer, Strings.Perm_ChatServer),
         (Permission.ChatChannel, Strings.Perm_ChatChannel),
         (Permission.ChatPrivate, Strings.Perm_ChatPrivate),
+        (Permission.ChannelPasswordBypass, Strings.Perm_ChannelPasswordBypass), // Package 94
         (Permission.ChannelJoinFull, Strings.Perm_ChannelJoinFull),
     ];
 }

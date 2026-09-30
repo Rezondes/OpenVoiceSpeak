@@ -234,6 +234,57 @@ public class ServerViewModelTests
         Assert.True(admin.Channel(Bravo).CanJoin);
     }
 
+    /// <summary>Package 94: asked once per connection; a wrong password is forgotten, the bypass right and admins are never asked.</summary>
+    [Fact]
+    public async Task JoinPasswordChannel_PromptsOnce_RememberedForSession()
+    {
+        var asked = new List<string>();
+        string? answer = null;
+        var dialogs = new Dialogs
+        {
+            AskChannelPassword = name =>
+            {
+                asked.Add(name);
+                return Task.FromResult(answer);
+            },
+        };
+        var f = Create(dialogs: dialogs);
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
+        var bravo = f.Channel(Bravo);
+        Assert.Equal((true, true, "Passwort"), (bravo.IsLocked, bravo.CanJoin, bravo.LockText));
+
+        await bravo.JoinCommand.ExecuteAsync(null); // cancelled
+        Assert.Empty(f.Sent);
+        answer = "falsch";
+        await bravo.JoinCommand.ExecuteAsync(null);
+        Assert.Equal(new JoinChannel(Bravo, "falsch"), f.Sent[^1] with { RequestId = null });
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.WrongChannelPassword));
+        answer = "geheim";
+        await bravo.JoinCommand.ExecuteAsync(null); // asked again
+        Assert.Equal(new JoinChannel(Bravo, "geheim"), f.Sent[^1] with { RequestId = null });
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        Assert.Equal(["Bravo", "Bravo", "Bravo"], asked);
+
+        await f.Channel(Lobby).JoinCommand.ExecuteAsync(null);
+        Assert.Equal(new JoinChannel(Lobby), f.Sent[^1] with { RequestId = null });
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby)));
+        await bravo.JoinCommand.ExecuteAsync(null); // remembered
+        Assert.Equal(new JoinChannel(Bravo, "geheim"), f.Sent[^1] with { RequestId = null });
+        Assert.Equal(3, asked.Count);
+
+        foreach (var (perms, groups) in new (P, Guid)[] { (P.Speak | P.ChannelPasswordBypass, WellKnownGroups.Guest), (P.All, WellKnownGroups.Admin) })
+        {
+            var other = Create(perms, [groups], dialogs);
+            other.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
+            await other.Channel(Bravo).JoinCommand.ExecuteAsync(null);
+            Assert.Equal(new JoinChannel(Bravo), other.Sent[^1] with { RequestId = null });
+        }
+        Assert.Equal(3, asked.Count);
+
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, AllowedGroupIds: [WellKnownGroups.Guest], HasPassword: true)));
+        Assert.Equal("Nur für Gruppen: Gast\nPasswort", bravo.LockText);
+    }
+
     [Fact]
     public void Error_BecomesGermanNotice()
     {

@@ -12,7 +12,10 @@ using OVS.Shared.Protocol;
 namespace OVS.Client.ViewModels;
 
 /// <param name="AllowedGroupIds">Package 93: the channel's group lock; from the dialog null while unchanged, empty to remove it.</param>
-public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null);
+/// <param name="HasPassword">Package 94: into the dialog, whether the channel has a password.</param>
+/// <param name="Password">Package 94: out of the dialog, null = unchanged, empty = remove, else the new password.</param>
+public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null,
+    bool HasPassword = false, string? Password = null);
 
 /// <summary>The channel dialog only offers the channel options when editing (Package 34).</summary>
 public enum ChannelDialogMode { Create, Edit, EditDefault }
@@ -40,6 +43,8 @@ public sealed class Dialogs
     public Func<Task<bool>>? ConfirmBackupDownload { get; init; }
     /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
     public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }
+    /// <summary>Package 94: the password of a channel (argument: its name); null = cancelled.</summary>
+    public Func<string, Task<string?>>? AskChannelPassword { get; init; }
     public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
     /// <summary>Package 41: action and key; null binding = add. The second argument captures the next key.</summary>
     public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; init; }
@@ -120,6 +125,9 @@ public sealed partial class ServerViewModel : ObservableObject
     internal bool OwnGroupChangePending { get; set; }
     /// <summary>The channel the own "Betreten" asked for: arriving there is "entered", anywhere else "moved".</summary>
     Guid? pendingJoin;
+    /// <summary>Package 94 (A109): channel passwords that worked, in memory for this connection only.</summary>
+    readonly Dictionary<Guid, string> channelPasswords = [];
+    (Guid Channel, string Password)? pendingPassword;
     public event Action<string>? ChatError;
     /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
     public event Action<UserViewModel>? PrivateChatRequested;
@@ -154,6 +162,11 @@ public sealed partial class ServerViewModel : ObservableObject
         switch (message)
         {
             case Error e:
+                if (e.Code is Codes.WrongChannelPassword or Codes.ChannelPasswordRequired && pendingPassword is { } wrong)
+                {
+                    channelPasswords.Remove(wrong.Channel); // Package 94: changed meanwhile, ask again next time
+                    pendingPassword = null;
+                }
                 var text = ErrorTexts.For(e.Code, e.Detail);
                 if (e.RequestId?.StartsWith(ChatRequestPrefix) == true && ChatError is { } chatError) chatError(text);
                 else Notice?.Invoke(text);
@@ -204,6 +217,8 @@ public sealed partial class ServerViewModel : ObservableObject
             case UserUpdated u when u.User.SessionId == Mirror.SelfId && self is not null:
                 if (u.User.ChannelId != self.ChannelId)
                 {
+                    if (pendingPassword is { } worked && worked.Channel == u.User.ChannelId) channelPasswords[worked.Channel] = worked.Password;
+                    pendingPassword = null;
                     bool own = pendingJoin == u.User.ChannelId;
                     pendingJoin = null;
                     return own ? SoundEvent.ChannelEntered : SoundEvent.Moved;
@@ -356,15 +371,26 @@ public sealed partial class ServerViewModel : ObservableObject
         return id;
     }
 
-    public Task JoinAsync(Guid channelId)
+    /// <summary>Package 94: asks for the password of a password-locked channel unless remembered, the bypass right or an admin.</summary>
+    public async Task JoinAsync(Guid channelId)
     {
+        string? password = null;
+        if (Mirror.Channels.GetValueOrDefault(channelId) is { HasPassword: true } channel && !IsAdmin
+            && !SelfPermissions.Has(Permission.ChannelPasswordBypass) && Mirror.Self?.ChannelId != channelId
+            && !channelPasswords.TryGetValue(channelId, out password))
+        {
+            if (Dialogs.AskChannelPassword is not { } ask || await ask(channel.Name) is not { Length: > 0 } entered) return;
+            password = entered;
+        }
         pendingJoin = channelId;
-        return SendAsync(new JoinChannel(channelId));
+        pendingPassword = password is null ? null : (channelId, password);
+        await SendAsync(new JoinChannel(channelId, password));
     }
-    public Task CreateChannelAsync(string name, string description, bool isMuted = false, int maxUsers = 0, IReadOnlyList<Guid>? allowedGroupIds = null) =>
-        SendAsync(new CreateChannel(name, description, isMuted, maxUsers, allowedGroupIds));
+    public Task CreateChannelAsync(string name, string description, bool isMuted = false, int maxUsers = 0,
+        IReadOnlyList<Guid>? allowedGroupIds = null, string? password = null) =>
+        SendAsync(new CreateChannel(name, description, isMuted, maxUsers, allowedGroupIds, password));
     public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) =>
-        SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds));
+        SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password));
     public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
 
     /// <summary>Package 36: puts source right before or after target and sends the complete new order.</summary>
@@ -430,7 +456,7 @@ public sealed partial class ServerViewModel : ObservableObject
     async Task NewChannel()
     {
         if (Dialogs.EditChannel is { } edit && await edit(new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
-            await CreateChannelAsync(result.Name, result.Description, result.IsMuted, result.MaxUsers, result.AllowedGroupIds);
+            await CreateChannelAsync(result.Name, result.Description, result.IsMuted, result.MaxUsers, result.AllowedGroupIds, result.Password);
     }
 
     [RelayCommand]
@@ -469,10 +495,12 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     /// <summary>Package 93: the lock icon behind the name and its tooltip.</summary>
     [ObservableProperty] bool isLocked;
     [ObservableProperty] string lockText = "";
-    /// <summary>Package 93: "Beitreten" and the double click, only with one of the lock's groups or as admin.</summary>
+    /// <summary>Package 93: "Beitreten" and the double click, only with one of the lock's groups or as admin (a password is asked for).</summary>
     [ObservableProperty] bool canJoin = true;
     /// <summary>Package 93: null = no group lock, empty = admins only.</summary>
     public IReadOnlyList<Guid>? AllowedGroupIds { get; private set; }
+    /// <summary>Package 94: joining needs a password (without the bypass right).</summary>
+    public bool HasPassword { get; private set; }
 
     public Guid Id { get; } = id;
     public ObservableCollection<UserViewModel> Users { get; } = [];
@@ -501,14 +529,16 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     internal void UpdateLock(ChannelInfo info, IReadOnlyList<GroupInfo> groups, IReadOnlyList<Guid> ownGroups, bool isAdmin)
     {
         AllowedGroupIds = info.AllowedGroupIds;
-        IsLocked = info.AllowedGroupIds is not null;
-        LockText = info.AllowedGroupIds switch
+        HasPassword = info.HasPassword;
+        IsLocked = info.AllowedGroupIds is not null || info.HasPassword;
+        var groupText = info.AllowedGroupIds switch
         {
-            null => "",
+            null => null,
             [] => Strings.Ui_LockedAdmins,
             var ids => string.Format(Strings.Ui_LockedGroupsFmt,
                 string.Join(", ", groups.Where(g => ids.Contains(g.Id)).Select(g => g.Name))), // in the server's group order
         };
+        LockText = string.Join("\n", new[] { groupText, info.HasPassword ? Strings.Ui_LockedPassword : null }.OfType<string>());
         CanJoin = isAdmin || info.AllowedGroupIds is not { } allowed || ownGroups.Any(allowed.Contains);
     }
 
@@ -543,7 +573,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     async Task Edit()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        if (owner.Dialogs.EditChannel is { } edit && await edit(new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds), mode) is { } result)
+        if (owner.Dialogs.EditChannel is { } edit && await edit(new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds, HasPassword), mode) is { } result)
             await owner.EditChannelAsync(Id, result, Order);
     }
 

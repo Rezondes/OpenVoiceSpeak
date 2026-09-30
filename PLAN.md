@@ -5777,16 +5777,16 @@ After Package 93 channels can be group-locked. The server password is stored as 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Creating or editing a channel can set, change or remove a password (null = unchanged, empty = remove, 1..128 characters). It is stored as a salted PBKDF2 hash like the server password and never sent to clients; clients only see `HasPassword`. The default channel cannot get a password (`InvalidValue`).
-- [ ] AC2: Joining a password-locked channel requires the correct password (`ChannelPasswordRequired` without, `WrongChannelPassword` with a wrong one). Users with the new right "Passwort-Lock umgehen" (`ChannelPasswordBypass`) and Admin-group members join without it.
-- [ ] AC3: The bypass right does not bypass the group lock: a channel with both locks needs a listed group AND (the password or the bypass right). Admins are exempt from both.
-- [ ] AC4: Nobody can move another user into a password-locked channel (`ChannelPasswordRequired`), except Admin-group members (A107).
-- [ ] AC10: Admin-group members can move any user into any channel regardless of group lock, password lock and user limit, also all three at once (A110).
-- [ ] AC5: Wrong channel passwords are throttled: after 5 wrong attempts per session and channel within 5 minutes, further attempts get `RateLimited` for 5 minutes. Attempts are logged without the password.
-- [ ] AC6: Adding or changing a password does not move anybody out of the channel (A108 via Package 93 AC4).
-- [ ] AC7: The new right appears in the group editor; only Admin has it on new and existing servers (through `All`), other groups get nothing new.
-- [ ] AC8: Client: joining a password-locked channel without the bypass right asks for the password in an in-window dialog; a correct password is remembered in memory for this connection and not stored on disk. The lock icon's tooltip says "Passwort" (and the groups, if also group-locked). The channel dialog has a password field with "Passwort entfernen" when one is set.
-- [ ] AC9: Texts in German and English, README rights table and channel section updated; the prompt and dialog fit from 360 px.
+- [x] AC1: Creating or editing a channel can set, change or remove a password (null = unchanged, empty = remove, 1..128 characters). It is stored as a salted PBKDF2 hash like the server password and never sent to clients; clients only see `HasPassword`. The default channel cannot get a password (`InvalidValue`).
+- [x] AC2: Joining a password-locked channel requires the correct password (`ChannelPasswordRequired` without, `WrongChannelPassword` with a wrong one). Users with the new right "Passwort-Lock umgehen" (`ChannelPasswordBypass`) and Admin-group members join without it.
+- [x] AC3: The bypass right does not bypass the group lock: a channel with both locks needs a listed group AND (the password or the bypass right). Admins are exempt from both.
+- [x] AC4: Nobody can move another user into a password-locked channel (`ChannelPasswordRequired`), except Admin-group members (A107).
+- [x] AC10: Admin-group members can move any user into any channel regardless of group lock, password lock and user limit, also all three at once (A110).
+- [x] AC5: Wrong channel passwords are throttled: after 5 wrong attempts per session and channel within 5 minutes, further attempts get `RateLimited` for 5 minutes. Attempts are logged without the password.
+- [x] AC6: Adding or changing a password does not move anybody out of the channel (A108 via Package 93 AC4).
+- [x] AC7: The new right appears in the group editor; only Admin has it on new and existing servers (through `All`), other groups get nothing new.
+- [x] AC8: Client: joining a password-locked channel without the bypass right asks for the password in an in-window dialog; a correct password is remembered in memory for this connection and not stored on disk. The lock icon's tooltip says "Passwort" (and the groups, if also group-locked). The channel dialog has a password field with "Passwort entfernen" when one is set.
+- [x] AC9: Texts in German and English, README rights table and channel section updated; the prompt and dialog fit from 360 px.
 
 ### Tests (TDD)
 

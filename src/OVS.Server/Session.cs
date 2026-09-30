@@ -29,6 +29,8 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public bool ServerMuted { get; set; }
     public Permission Permissions { get; set; }
     public IReadOnlyList<Guid> GroupIds { get; set; } = [];
+    /// <summary>Package 94: wrong channel passwords per channel, the first of the window and the end of a block.</summary>
+    public Dictionary<Guid, (int Count, DateTimeOffset First, DateTimeOffset BlockedUntil)> ChannelPasswordFailures { get; } = [];
     /// <summary>Package 75: the backup upload in progress (one per session), its hidden file and the bytes stored.</summary>
     public (string Id, string Path, long Received)? Upload { get; set; }
 

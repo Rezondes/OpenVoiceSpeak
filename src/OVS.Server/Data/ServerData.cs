@@ -56,13 +56,16 @@ public sealed class ServerSettings
     public bool HasLegacyHash => IsLegacy(PasswordHash);
 
     /// <summary>Constant-time in both formats; true when there is no password.</summary>
-    public bool CheckPassword(string? password)
+    public bool CheckPassword(string? password) => Verify(PasswordHash, password);
+
+    /// <summary>Package 94: the same check for any stored hash, also a channel's; true when there is none.</summary>
+    public static bool Verify(string? hash, string? password)
     {
-        if (PasswordHash is null) return true;
+        if (hash is null) return true;
         var given = Encoding.UTF8.GetBytes(password ?? "");
-        if (IsLegacy(PasswordHash))
-            return CryptographicOperations.FixedTimeEquals(SHA256.HashData(given), Convert.FromHexString(PasswordHash));
-        return TryParse(PasswordHash, out int iterations, out var salt, out var key)
+        if (IsLegacy(hash))
+            return CryptographicOperations.FixedTimeEquals(SHA256.HashData(given), Convert.FromHexString(hash));
+        return TryParse(hash, out int iterations, out var salt, out var key)
             && CryptographicOperations.FixedTimeEquals(Rfc2898DeriveBytes.Pbkdf2(given, salt, iterations, HashAlgorithmName.SHA256, KeyBytes), key);
     }
 
@@ -108,6 +111,8 @@ public sealed class ChannelRecord
     /// empty once its groups were deleted, which means admins only. Older files load as null, without a new data version.
     /// </summary>
     public List<Guid>? AllowedGroupIds { get; set; }
+    /// <summary>Package 94 (A109): salted PBKDF2 like the server password (ServerSettings.Hash); null = no password lock.</summary>
+    public string? PasswordHash { get; set; }
 }
 
 /// <summary>Undirected link, normalized so that A &lt; B.</summary>
@@ -190,9 +195,10 @@ public sealed class ServerData
 {
     /// <summary>
     /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69),
-    /// 4 = separate view, create and delete rights (76), 5 = the backup right (89). New servers start at the current version.
+    /// 4 = separate view, create and delete rights (76), 5 = the backup right (89), 6 = the channel password bypass only for
+    /// Admin (94). New servers start at the current version.
     /// </summary>
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 6;
     public int DataVersion { get; set; } = 1;
 
     public ServerSettings Settings { get; set; } = new();
@@ -244,6 +250,9 @@ public sealed class ServerData
         if (DataVersion < 5) // Package 89 (A101): backups were part of ServerConfig; a stored "All" already reads as the new right
             for (int i = 0; i < Groups.Count; i++)
                 if (Groups[i].Permissions.Has(Permission.ServerConfig)) Groups[i] = Groups[i] with { Permissions = Groups[i].Permissions | Permission.BackupsManage };
+        if (DataVersion < 6) // Package 94: a stored "All" reads as the new right too, but only Admin gets it
+            for (int i = 0; i < Groups.Count; i++)
+                if (Groups[i].Id != PermissionRules.AdminGroupId) Groups[i] = Groups[i] with { Permissions = Groups[i].Permissions & ~Permission.ChannelPasswordBypass };
         DataVersion = CurrentVersion;
         return true;
     }

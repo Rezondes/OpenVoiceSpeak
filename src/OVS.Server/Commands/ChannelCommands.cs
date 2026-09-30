@@ -13,7 +13,9 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
-        if (LockRefusal(s, channel) is { } locked)
+        var from = s.ChannelId;
+        if (from == r.ChannelId) return; // Package 86: no broadcast for a no-op; Package 94: nor a password check
+        if (LockRefusal(s, channel, r.Password, moving: false) is { } locked)
         {
             Fail(s, r, locked);
             return;
@@ -23,8 +25,6 @@ public sealed partial class ServerState
             Fail(s, r, Codes.ChannelFull);
             return;
         }
-        var from = s.ChannelId;
-        if (from == r.ChannelId) return; // Package 86: no broadcast for a no-op
         ChannelLog(from, $"{s.Nickname} hat den Channel verlassen (wechselt nach {ChannelName(r.ChannelId)})");
         ChannelLog(r.ChannelId, $"{s.Nickname} hat den Channel betreten (kommt aus {ChannelName(from)})");
         s.ChannelId = r.ChannelId;
@@ -37,6 +37,7 @@ public sealed partial class ServerState
         if (!ValidateChannel(s, r, null, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
         if (!ValidateGroupLock(s, r, null, r.AllowedGroupIds, out var allowed)) return;
+        if (!ValidatePassword(s, r, null, r.Password)) return;
 
         var channel = new ChannelRecord
         {
@@ -48,11 +49,12 @@ public sealed partial class ServerState
             IsMuted = r.IsMuted,
             MaxUsers = r.MaxUsers,
             AllowedGroupIds = allowed,
+            PasswordHash = ServerSettings.Hash(r.Password ?? ""),
         };
         data.Channels.Add(channel);
         Persist();
         var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null,
-            allowed is null ? null : $"nur für {GroupNames(allowed)}" }.OfType<string>().ToList();
+            allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.PasswordHash is null ? null : "mit Passwort" }.OfType<string>().ToList();
         ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
         logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
         Broadcast(new ChannelAdded(Info(channel)));
@@ -71,6 +73,7 @@ public sealed partial class ServerState
         if (!ValidateLimit(s, r, channel.Id, r.MaxUsers)) return;
         if (!ValidateGroupLock(s, r, channel.Id, r.AllowedGroupIds, out var allowed)) return;
         if (r.AllowedGroupIds is null) allowed = channel.AllowedGroupIds; // Package 93: null keeps the lock as it is
+        if (!ValidatePassword(s, r, channel.Id, r.Password)) return;
 
         // Package 83: r.Order is ignored, the order only changes through ReorderChannels
         var changes = new List<string>();
@@ -79,12 +82,15 @@ public sealed partial class ServerState
         if (channel.IsMuted != r.IsMuted) changes.Add(r.IsMuted ? "stumm geschaltet" : "Stummschaltung aufgehoben");
         if (channel.MaxUsers != r.MaxUsers) changes.Add(r.MaxUsers == 0 ? "Nutzerlimit aufgehoben" : $"Nutzerlimit {r.MaxUsers}");
         if (!SameGroups(channel.AllowedGroupIds, allowed)) changes.Add(allowed is null ? "Gruppen-Sperre aufgehoben" : $"nur für {GroupNames(allowed)}");
+        if (r.Password is not null && (r.Password.Length > 0 || channel.PasswordHash is not null))
+            changes.Add(r.Password.Length == 0 ? "Passwort entfernt" : "Passwort gesetzt"); // never the password itself
 
         channel.Name = name;
         channel.Description = description;
         channel.IsMuted = r.IsMuted;
         channel.MaxUsers = r.MaxUsers; // lowering it below the current count sends nobody away
         channel.AllowedGroupIds = allowed; // Package 93 (A108): nor does a lock
+        if (r.Password is not null) channel.PasswordHash = ServerSettings.Hash(r.Password); // Package 94: "" removes it
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
@@ -117,20 +123,62 @@ public sealed partial class ServerState
         return false;
     }
 
+    /// <summary>Package 94 (A109): at most MaxPasswordLength characters, none on the default channel ("" is fine: no password).</summary>
+    bool ValidatePassword(Session s, Request r, Guid? channelId, string? password)
+    {
+        if (password is not { Length: > 0 }) return true;
+        if (channelId == data.DefaultChannelId)
+        {
+            Fail(s, r, Codes.InvalidValue, "Der Standard-Channel lässt sich nicht mit einem Passwort sperren.");
+            return false;
+        }
+        if (password.Length <= ProtocolInfo.MaxPasswordLength) return true;
+        Fail(s, r, Codes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolInfo.MaxPasswordLength} Zeichen.");
+        return false;
+    }
+
     static bool SameGroups(List<Guid>? a, List<Guid>? b) => a is null || b is null ? a == b : a.ToHashSet().SetEquals(b);
 
     string GroupNames(List<Guid> ids) =>
         ids.Count == 0 ? "nur Admins" : string.Join(", ", ids.Select(id => data.Groups.FirstOrDefault(g => g.Id == id)?.Name ?? "?"));
 
     /// <summary>
-    /// Package 93 (A106, A110): the lock rule for entering a channel, shared by joining (actor = the one joining) and moving
-    /// (actor = the mover; the moved user is not checked). Admin-group members pass every lock. Null when allowed.
+    /// Packages 93 and 94 (A106, A107, A110): the lock rule for entering a channel, shared by joining (actor = the one joining)
+    /// and moving (actor = the mover; the moved user is not checked). Admin-group members pass every lock. The group lock
+    /// has no bypass; the password lock is skipped with ChannelPasswordBypass and refuses every move. Null when allowed.
     /// </summary>
-    string? LockRefusal(Session actor, ChannelRecord channel)
+    string? LockRefusal(Session actor, ChannelRecord channel, string? password, bool moving)
     {
         if (actor.GroupIds.Contains(WellKnownGroups.Admin)) return null;
         if (channel.AllowedGroupIds is { } allowed && !actor.GroupIds.Any(allowed.Contains)) return Codes.ChannelLocked;
-        return null;
+        if (channel.PasswordHash is null) return null;
+        if (moving) return Codes.ChannelPasswordRequired;
+        if (actor.Permissions.Has(Permission.ChannelPasswordBypass)) return null;
+        if (string.IsNullOrEmpty(password)) return Codes.ChannelPasswordRequired;
+        return CheckChannelPassword(actor, channel, password);
+    }
+
+    /// <summary>
+    /// Package 94: the password against the hash (about 9 ms under the lock), throttled per session and channel: after
+    /// ChannelPasswordFailures wrong ones within ChannelPasswordWindow every attempt gets RateLimited for ChannelPasswordBlock.
+    /// </summary>
+    string? CheckChannelPassword(Session actor, ChannelRecord channel, string password)
+    {
+        var now = time.GetUtcNow();
+        var failures = actor.ChannelPasswordFailures;
+        if (failures.TryGetValue(channel.Id, out var f) && now < f.BlockedUntil) return Codes.RateLimited;
+        if (ServerSettings.Verify(channel.PasswordHash, password))
+        {
+            failures.Remove(channel.Id);
+            return null;
+        }
+        if (now - f.First > Limits.ChannelPasswordWindow || f.Count >= Limits.ChannelPasswordFailures) f = (0, now, default);
+        f.Count++;
+        if (f.Count >= Limits.ChannelPasswordFailures) f.BlockedUntil = now + Limits.ChannelPasswordBlock;
+        failures[channel.Id] = f;
+        logs.Server($"Falsches Channel-Passwort von {actor.Nickname} für '{channel.Name}' ({f.Count}. Versuch)" +
+                    (f.Count >= Limits.ChannelPasswordFailures ? $", gesperrt für {Limits.ChannelPasswordBlock.TotalMinutes:0} Minuten" : ""));
+        return Codes.WrongChannelPassword;
     }
 
     /// <summary>Package 36: Order becomes the position in the list, every changed channel is broadcast.</summary>
@@ -203,7 +251,7 @@ public sealed partial class ServerState
             return;
         }
         if (!CanModerate(s, r, target.Permissions, target.Fingerprint)) return; // Package 84: never oneself, that is JoinChannel
-        if (LockRefusal(s, FindChannel(r.ChannelId)!) is { } locked)
+        if (LockRefusal(s, FindChannel(r.ChannelId)!, null, moving: true) is { } locked)
         {
             Fail(s, r, locked); // Package 93 (A106): the mover must be able to join, the one being moved is not checked
             return;

@@ -62,6 +62,10 @@
   <data name="Dlg_Bookmark" xml:space="preserve"><value>Bookmark</value></data>
   <data name="Dlg_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Dlg_ChangeKeyAction" xml:space="preserve"><value>Change key action</value></data>
+  <data name="Dlg_ChannelPassword" xml:space="preserve"><value>Password</value></data>
+  <data name="Dlg_ChannelPasswordFor" xml:space="preserve"><value>Password for {0}</value></data>
+  <data name="Dlg_ChannelPasswordHint" xml:space="preserve"><value>Leave it empty to keep it as it is. Admins and whoever has the right "Bypass password lock" do not need it.</value></data>
+  <data name="Dlg_ChannelPasswordNeeded" xml:space="preserve"><value>This channel is protected with a password.</value></data>
   <data name="Dlg_ChooseAction" xml:space="preserve"><value>Choose action</value></data>
   <data name="Dlg_ChooseBookmark" xml:space="preserve"><value>Choose a saved server</value></data>
   <data name="Dlg_Confirm" xml:space="preserve"><value>Confirm</value></data>
@@ -96,6 +100,8 @@
   <data name="Dlg_MutedHint" xml:space="preserve"><value>Link PTT from this channel is not transmitted either. Speech from linked channels can be heard.</value></data>
   <data name="Dlg_NameInvalid" xml:space="preserve"><value>The name is empty, too long or contains characters that are not allowed (control or invisible characters).</value></data>
   <data name="Dlg_NicknameInvalid" xml:space="preserve"><value>The nickname is too long (at most 32 characters) or contains characters that are not allowed.</value></data>
+  <data name="Dlg_PasswordTooLong" xml:space="preserve"><value>The password is too long (at most 128 characters).</value></data>
+  <data name="Dlg_RemovePassword" xml:space="preserve"><value>Remove password</value></data>
   <data name="Dlg_TextInvalid" xml:space="preserve"><value>The text is too long or contains control characters that are not allowed (line breaks are fine).</value></data>
   <data name="Dlg_NicknameMissing" xml:space="preserve"><value>Please enter a nickname.</value></data>
   <data name="Dlg_NoChannel" xml:space="preserve"><value>No matching channel.</value></data>
@@ -126,6 +132,7 @@
   <data name="Error_CannotDeleteDefault" xml:space="preserve"><value>The default channel cannot be deleted.</value></data>
   <data name="Error_ChannelFull" xml:space="preserve"><value>The channel is full.</value></data>
   <data name="Error_ChannelLocked" xml:space="preserve"><value>This channel is only for certain groups.</value></data>
+  <data name="Error_ChannelPasswordRequired" xml:space="preserve"><value>This channel needs a password.</value></data>
   <data name="Error_ConnectionLost" xml:space="preserve"><value>The connection to the server was lost.</value></data>
   <data name="Error_InvalidBackup" xml:space="preserve"><value>The backup is invalid or too new for this server. Nothing was changed.</value></data>
   <data name="Error_InvalidLink" xml:space="preserve"><value>A channel cannot be linked to itself.</value></data>
@@ -154,6 +161,7 @@
   <data name="Error_UnknownRequest" xml:space="preserve"><value>The server does not know this request.</value></data>
   <data name="Error_UserDeleted" xml:space="preserve"><value>Your user data was deleted on this server.</value></data>
   <data name="Error_VersionMismatch" xml:space="preserve"><value>Client and server use different protocol versions.</value></data>
+  <data name="Error_WrongChannelPassword" xml:space="preserve"><value>Wrong channel password.</value></data>
   <data name="Error_WrongPassword" xml:space="preserve"><value>Wrong server password.</value></data>
   <data name="Group_New" xml:space="preserve"><value>New group</value></data>
   <data name="Group_Unsaved" xml:space="preserve"><value>{0} (new)</value></data>
@@ -200,6 +208,7 @@
   <data name="Perm_ChannelEdit" xml:space="preserve"><value>Edit channels</value></data>
   <data name="Perm_ChannelJoinFull" xml:space="preserve"><value>Enter full channels</value></data>
   <data name="Perm_ChannelLink" xml:space="preserve"><value>Link channels</value></data>
+  <data name="Perm_ChannelPasswordBypass" xml:space="preserve"><value>Bypass password lock</value></data>
   <data name="Perm_ChatChannel" xml:space="preserve"><value>Write in the channel</value></data>
   <data name="Perm_ChatPrivate" xml:space="preserve"><value>Write privately</value></data>
   <data name="Perm_ChatServer" xml:space="preserve"><value>Write server-wide</value></data>
@@ -305,6 +314,7 @@
   <data name="Ui_BanTypeWithIp" xml:space="preserve"><value>With IP</value></data>
   <data name="Ui_LockedAdmins" xml:space="preserve"><value>Only for admins</value></data>
   <data name="Ui_LockedGroupsFmt" xml:space="preserve"><value>Only for groups: {0}</value></data>
+  <data name="Ui_LockedPassword" xml:space="preserve"><value>Password</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Newest first</value></data>
   <data name="Ui_SortEndingSoonest" xml:space="preserve"><value>Ending soonest</value></data>
   <data name="Ui_SortMostAttempts" xml:space="preserve"><value>Most attempts</value></data>

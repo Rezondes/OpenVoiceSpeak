@@ -43,6 +43,14 @@
       </ItemsControl>
       <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding GroupLockHint}" />
     </StackPanel>
+    <!-- Package 94: set, change or remove the channel password -->
+    <StackPanel Spacing="4">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_ChannelPassword}" />
+      <TextBox Text="{Binding Password}" PasswordChar="•" IsEnabled="{Binding CanEnterPassword}"
+               AutomationProperties.Name="{x:Static l:Strings.Dlg_ChannelPassword}" />
+      <CheckBox Content="{x:Static l:Strings.Dlg_RemovePassword}" IsChecked="{Binding RemovePassword}" IsVisible="{Binding HasPassword}" />
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_ChannelPasswordHint}" />
+    </StackPanel>
     <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
   </StackPanel>

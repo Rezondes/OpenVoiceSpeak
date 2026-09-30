@@ -49,6 +49,12 @@ public static class Limits
     /// <summary>Undecodable, foreign or undecryptable UDP packets per source (IPv6: per /64) and second before the rest is dropped undecrypted.</summary>
     public const int BadVoicePacketsPerSecond = 200;
 
+    // ---- Package 94: channel passwords ----
+    /// <summary>Wrong channel passwords per session and channel within ChannelPasswordWindow; then RateLimited for ChannelPasswordBlock.</summary>
+    public const int ChannelPasswordFailures = 5;
+    public static readonly TimeSpan ChannelPasswordWindow = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan ChannelPasswordBlock = TimeSpan.FromMinutes(5);
+
     // ---- Package 89 (A101): the backups folder ----
     public const int MaxBackups = 50;
     public const long MaxBackupBytes = 2L * 1024 * 1024 * 1024;

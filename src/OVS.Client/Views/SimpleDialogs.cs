@@ -172,6 +172,16 @@ public static class SimpleDialogs
             () => string.IsNullOrEmpty(password.Text) ? null : new PasswordAnswer(password.Text, save.IsChecked == true), Strings.Dlg_Connect);
     }
 
+    /// <summary>Package 94: asked when joining a password-locked channel; the answer is only kept in memory.</summary>
+    public static Task<string?> AskChannelPassword(OverlayHost overlay, string channelName)
+    {
+        var password = new TextBox { PasswordChar = '•' };
+        AutomationProperties.SetName(password, Strings.Dlg_ChannelPassword);
+        var body = Stack(Text(Strings.Dlg_ChannelPasswordNeeded, "muted"), Field(Strings.Dlg_ChannelPassword, password));
+        return Show(overlay, string.Format(Strings.Dlg_ChannelPasswordFor, channelName), "LockClosed", body,
+            () => string.IsNullOrEmpty(password.Text) ? null : password.Text, Strings.Ui_Join);
+    }
+
     public static Task<BookmarkEdit?> EditBookmark(OverlayHost overlay, Bookmark bookmark)
     {
         var name = new TextBox { Text = bookmark.Name };

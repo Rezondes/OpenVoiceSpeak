@@ -82,13 +82,16 @@ public class PermissionRulesTests
         Assert.Equal(P.None, Moderator.Permissions & (P.UsersView | P.GroupsView | P.GroupsCreate | P.GroupsDelete | P.UserDelete));
         Assert.Equal(P.Speak | P.ChatChannel | P.ChatPrivate, Guest.Permissions);
         Assert.True(Effective([AdminGroupId], Groups).Has(P.UsersView | P.BansView | P.GroupsView | P.GroupsCreate | P.GroupsDelete | P.UserDelete));
-        Assert.Equal((P)((1 << 26) - 1), P.All);
+        Assert.Equal((P)((1 << 27) - 1), P.All);
         // Packages 81 and 82 (A98, A99): the logs only for Admin
         Assert.Equal(P.None, (Moderator.Permissions | Guest.Permissions) & (P.LogsView | P.LogsDownload));
         Assert.True(Effective([AdminGroupId], Groups).Has(P.LogsView | P.LogsDownload));
         // Package 89 (A101): new servers give the backups only to Admin
         Assert.Equal(P.None, (Moderator.Permissions | Guest.Permissions) & P.BackupsManage);
         Assert.True(Effective([AdminGroupId], Groups).Has(P.BackupsManage));
+        // Package 94: skipping channel passwords only for Admin
+        Assert.Equal(P.None, (Moderator.Permissions | Guest.Permissions) & P.ChannelPasswordBypass);
+        Assert.True(Effective([AdminGroupId], Groups).Has(P.ChannelPasswordBypass));
     }
 
     [Fact]

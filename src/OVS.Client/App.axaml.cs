@@ -61,6 +61,7 @@ public partial class App : Application
                 ConfirmRestore = title => SimpleDialogs.ConfirmRestore(overlay, title),
                 ConfirmBackupDownload = () => SimpleDialogs.ConfirmBackupDownload(overlay),
                 AskPassword = name => SimpleDialogs.AskPassword(overlay, name),
+                AskChannelPassword = name => SimpleDialogs.AskChannelPassword(overlay, name), // Package 94
                 EditBookmark = bookmark => SimpleDialogs.EditBookmark(overlay, bookmark),
                 EditKeyBinding = (binding, capture) => SimpleDialogs.EditKeyBinding(overlay, binding, capture),
                 OfferUpdate = offer => SimpleDialogs.OfferUpdate(overlay, offer),

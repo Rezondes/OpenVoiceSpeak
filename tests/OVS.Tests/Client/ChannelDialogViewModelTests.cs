@@ -100,6 +100,32 @@ public class ChannelDialogViewModelTests
         Assert.Equal([Mod], create.Result()!.AllowedGroupIds!);
     }
 
+    /// <summary>Package 94: a new password, "Passwort entfernen", or nothing (unchanged); never on the default channel.</summary>
+    [Fact]
+    public void Password_SetRemoveUnchanged_DisabledForDefault()
+    {
+        var vm = new ChannelDialogViewModel(new ChannelEdit("Raid", "", HasPassword: true), ChannelDialogMode.Edit);
+        Assert.True(vm.HasPassword);
+        Assert.True(vm.CanEnterPassword);
+        Assert.Null(vm.Result()!.Password);
+        vm.Password = "neu";
+        Assert.Equal("neu", vm.Result()!.Password);
+        vm.RemovePassword = true;
+        Assert.False(vm.CanEnterPassword);
+        Assert.Equal("", vm.Result()!.Password);
+
+        var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { Name = "Neu" };
+        Assert.False(create.HasPassword);
+        Assert.Null(create.Result()!.Password);
+        create.Password = new string('x', ProtocolInfo.MaxPasswordLength + 1);
+        Assert.Null(create.Result());
+        Assert.Equal(Strings.Dlg_PasswordTooLong, create.Error);
+
+        var lobby = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault) { Password = "x" };
+        Assert.False(lobby.CanEnterPassword);
+        Assert.Null(lobby.Result()!.Password);
+    }
+
     [Fact]
     public void GroupLock_DisabledForDefault()
     {

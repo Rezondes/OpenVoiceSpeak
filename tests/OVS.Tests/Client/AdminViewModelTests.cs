@@ -160,17 +160,17 @@ public class AdminViewModelTests
 
     /// <summary>Package 76 (AC1, AC7): every right is a checkbox, named in both languages.</summary>
     [Theory]
-    [InlineData("de-DE", "Nutzerübersicht sehen", "Bans sehen", "Gruppen sehen", "Gruppen anlegen", "Gruppen löschen", "Nutzer löschen", "Gruppen bearbeiten", "Nutzer bannen und entbannen")]
-    [InlineData("en-US", "View user overview", "View bans", "View groups", "Create groups", "Delete groups", "Delete users", "Edit groups", "Ban and unban users")]
+    [InlineData("de-DE", "Nutzerübersicht sehen", "Bans sehen", "Gruppen sehen", "Gruppen anlegen", "Gruppen löschen", "Nutzer löschen", "Gruppen bearbeiten", "Nutzer bannen und entbannen", "Passwort-Lock umgehen")]
+    [InlineData("en-US", "View user overview", "View bans", "View groups", "Create groups", "Delete groups", "Delete users", "Edit groups", "Ban and unban users", "Bypass password lock")]
     public void GroupEditor_ListsNewRights(string culture, string users, string bans, string groups, string create, string delete,
-        string userDelete, string manage, string ban)
+        string userDelete, string manage, string ban, string bypass)
     {
         var labels = TestCulture.With(culture, () => Create(P.All).Admin.Groups.First().Toggles.ToDictionary(t => t.Permission, t => t.Label));
         var single = Enum.GetValues<P>().Where(p => p != P.None && ((int)p & ((int)p - 1)) == 0).ToList();
         Assert.Equal(single.Order(), labels.Keys.Order());
         Assert.Equal(labels.Count, labels.Values.Distinct().Count());
-        Assert.Equal([users, bans, groups, create, delete, userDelete, manage, ban],
-            new[] { P.UsersView, P.BansView, P.GroupsView, P.GroupsCreate, P.GroupsDelete, P.UserDelete, P.GroupsManage, P.UserBan }.Select(p => labels[p]));
+        Assert.Equal([users, bans, groups, create, delete, userDelete, manage, ban, bypass],
+            new[] { P.UsersView, P.BansView, P.GroupsView, P.GroupsCreate, P.GroupsDelete, P.UserDelete, P.GroupsManage, P.UserBan, P.ChannelPasswordBypass }.Select(p => labels[p]));
     }
 
     [Fact]

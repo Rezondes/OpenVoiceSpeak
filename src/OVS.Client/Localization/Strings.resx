@@ -62,6 +62,10 @@
   <data name="Dlg_Bookmark" xml:space="preserve"><value>Lesezeichen</value></data>
   <data name="Dlg_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
   <data name="Dlg_ChangeKeyAction" xml:space="preserve"><value>Tastenaktion ändern</value></data>
+  <data name="Dlg_ChannelPassword" xml:space="preserve"><value>Passwort</value></data>
+  <data name="Dlg_ChannelPasswordFor" xml:space="preserve"><value>Passwort für {0}</value></data>
+  <data name="Dlg_ChannelPasswordHint" xml:space="preserve"><value>Leer lassen ändert nichts. Admins und wer das Recht "Passwort-Lock umgehen" hat, brauchen es nicht.</value></data>
+  <data name="Dlg_ChannelPasswordNeeded" xml:space="preserve"><value>Dieser Channel ist mit einem Passwort geschützt.</value></data>
   <data name="Dlg_ChooseAction" xml:space="preserve"><value>Aktion wählen</value></data>
   <data name="Dlg_ChooseBookmark" xml:space="preserve"><value>Gespeicherten Server wählen</value></data>
   <data name="Dlg_Confirm" xml:space="preserve"><value>Bestätigen</value></data>
@@ -96,6 +100,8 @@
   <data name="Dlg_MutedHint" xml:space="preserve"><value>Auch Link-PTT aus diesem Channel wird nicht übertragen. Sprache aus verlinkten Channels ist hörbar.</value></data>
   <data name="Dlg_NameInvalid" xml:space="preserve"><value>Der Name ist leer, zu lang oder enthält unerlaubte Zeichen (Steuerzeichen oder unsichtbare Zeichen).</value></data>
   <data name="Dlg_NicknameInvalid" xml:space="preserve"><value>Der Nickname ist zu lang (höchstens 32 Zeichen) oder enthält unerlaubte Zeichen.</value></data>
+  <data name="Dlg_PasswordTooLong" xml:space="preserve"><value>Das Passwort ist zu lang (höchstens 128 Zeichen).</value></data>
+  <data name="Dlg_RemovePassword" xml:space="preserve"><value>Passwort entfernen</value></data>
   <data name="Dlg_TextInvalid" xml:space="preserve"><value>Der Text ist zu lang oder enthält unerlaubte Steuerzeichen (Zeilenumbrüche sind erlaubt).</value></data>
   <data name="Dlg_NicknameMissing" xml:space="preserve"><value>Bitte einen Nickname eingeben.</value></data>
   <data name="Dlg_NoChannel" xml:space="preserve"><value>Kein passender Channel vorhanden.</value></data>
@@ -126,6 +132,7 @@
   <data name="Error_CannotDeleteDefault" xml:space="preserve"><value>Der Standard-Channel kann nicht gelöscht werden.</value></data>
   <data name="Error_ChannelFull" xml:space="preserve"><value>Der Channel ist voll.</value></data>
   <data name="Error_ChannelLocked" xml:space="preserve"><value>Dieser Channel ist nur für bestimmte Gruppen.</value></data>
+  <data name="Error_ChannelPasswordRequired" xml:space="preserve"><value>Dieser Channel braucht ein Passwort.</value></data>
   <data name="Error_ConnectionLost" xml:space="preserve"><value>Die Verbindung zum Server ist abgebrochen.</value></data>
   <data name="Error_InvalidBackup" xml:space="preserve"><value>Das Backup ist ungültig oder zu neu für diesen Server. Es wurde nichts geändert.</value></data>
   <data name="Error_InvalidLink" xml:space="preserve"><value>Ein Channel kann nicht mit sich selbst verlinkt werden.</value></data>
@@ -154,6 +161,7 @@
   <data name="Error_UnknownRequest" xml:space="preserve"><value>Der Server kennt diese Anfrage nicht.</value></data>
   <data name="Error_UserDeleted" xml:space="preserve"><value>Deine Nutzerdaten wurden auf diesem Server gelöscht.</value></data>
   <data name="Error_VersionMismatch" xml:space="preserve"><value>Client und Server verwenden unterschiedliche Protokollversionen.</value></data>
+  <data name="Error_WrongChannelPassword" xml:space="preserve"><value>Falsches Channel-Passwort.</value></data>
   <data name="Error_WrongPassword" xml:space="preserve"><value>Falsches Serverpasswort.</value></data>
   <data name="Group_New" xml:space="preserve"><value>Neue Gruppe</value></data>
   <data name="Group_Unsaved" xml:space="preserve"><value>{0} (neu)</value></data>
@@ -200,6 +208,7 @@
   <data name="Perm_ChannelEdit" xml:space="preserve"><value>Channels bearbeiten</value></data>
   <data name="Perm_ChannelJoinFull" xml:space="preserve"><value>Volle Channel betreten</value></data>
   <data name="Perm_ChannelLink" xml:space="preserve"><value>Channels verlinken</value></data>
+  <data name="Perm_ChannelPasswordBypass" xml:space="preserve"><value>Passwort-Lock umgehen</value></data>
   <data name="Perm_ChatChannel" xml:space="preserve"><value>Im Channel schreiben</value></data>
   <data name="Perm_ChatPrivate" xml:space="preserve"><value>Privat schreiben</value></data>
   <data name="Perm_ChatServer" xml:space="preserve"><value>Serverweit schreiben</value></data>
@@ -305,6 +314,7 @@
   <data name="Ui_BanTypeWithIp" xml:space="preserve"><value>Mit IP</value></data>
   <data name="Ui_LockedAdmins" xml:space="preserve"><value>Nur für Admins</value></data>
   <data name="Ui_LockedGroupsFmt" xml:space="preserve"><value>Nur für Gruppen: {0}</value></data>
+  <data name="Ui_LockedPassword" xml:space="preserve"><value>Passwort</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Neueste zuerst</value></data>
   <data name="Ui_SortEndingSoonest" xml:space="preserve"><value>Endet am frühesten</value></data>
   <data name="Ui_SortMostAttempts" xml:space="preserve"><value>Meiste Versuche</value></data>
