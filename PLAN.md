@@ -21,6 +21,8 @@
 > **Packages 65 bis 75:** Die Reihenfolge weicht von der Anfrage ab, kleine UI-Punkte zuerst, dann Server und Verwaltung, Backup zuletzt. Zuordnung der Anfrage: Backup -> 74 und 75, Link-Icon und Breite -> 67, stummer Channel -> 66, Slots -> 69, Nutzerübersicht -> 71 und 72, Nutzerdaten -> 70, Gruppen-Ton -> 73, "Verwaltung ..." -> 65, Seitenleiste zu breit -> 68. 65, 66, 69 und 73 können parallel beginnen. Package 76 (einzelne Rechte) kam nachträglich dazu und wird vor 71 und 72 umgesetzt. Es kann ebenfalls sofort beginnen. Package 68 wurde nachträglich vom Bugfix "Seitenleiste zu breit" zum responsiven Grundgerüst erweitert. Die Packages 77 bis 79 machen darauf aufbauend Einstellungen, Verwaltung sowie Chat und Dialoge responsiv und können nach 68 parallel laufen.
 >
 > **Packages 80 to 82 (written in English from here on, at the user's request):** 80 is the ban overview, 81 and 82 are the log viewer split into viewing/searching and downloading. 80 and 81 can start in parallel, 82 needs 81.
+>
+> **Packages 83 to 92 (security audit):** the request "check that every permission is enforced on the server" was audited first (two read-only passes over all requests, the voice path, handshake, backups and logs). The voice path and sender identity are sound; the findings were split by theme into ten packages at the user's request. 92 needs 84, 87 needs 86; all others can run in parallel. Recommended order by severity: 86, 89, 85, 84, 87, 83, 88, 90, 91, 92.
 
 ## Überblick
 
@@ -108,6 +110,16 @@
 | 80 | Ban overview with details, history, search and filter | Under "Verwaltung -> Bans" every ban (active, expired and lifted) is shown with all stored details and can be searched, filtered and sorted like the user overview. | - |
 | 81 | Server logs viewable and searchable in the app | Users with the new right "Logs ansehen" can list the server and channel log files under "Verwaltung -> Logs", open them page by page and search all of them. | - |
 | 82 | Server logs downloadable | Users with the new right "Logs herunterladen" can save a single log file or a selection of files as a zip on their PC. | 81 |
+| 83 | Every request validated on the server | No client request can crash its handler or store malformed text: every field is checked for null, range and allowed characters, and violations are answered with `InvalidValue`. | - |
+| 84 | Consistent rank rules for every moderation action | Every action on another user is allowed only on users with strictly fewer rights, never on oneself, and never removes the last admin. | - |
+| 85 | Server mute survives reconnects | A user muted by the server stays muted after disconnecting and reconnecting until someone with the right lifts it. | - |
+| 86 | Limits on the control channel | No client can exhaust the server's memory, flood other clients with broadcasts or keep a dead connection open, whatever it sends. | - |
+| 87 | Identity flood and large lists | Connecting with many fresh key pairs cannot bloat the data file or stall the server, and every list reaches the client even when it is large. | 86 |
+| 88 | Network: UDP endpoint and IPv6 | Voice traffic can only be sent to the address of the user's own control connection, and IPv6 users cannot bypass per-IP limits and IP bans by rotating addresses. | - |
+| 89 | Backups with their own right, restore only for admins | Backups are managed with the new right "Backups verwalten", uploading and restoring are reserved for members of the Admin group, and a restored archive is validated completely. | - |
+| 90 | Log and console hygiene | Nothing a client sends can forge or corrupt lines in the console, the Docker log or the log files. | - |
+| 91 | Salted server password hash | The server password is stored as a salted, slow hash, and existing hashes are upgraded without the admin re-entering the password. | - |
+| 92 | Clients get only the rights data they need | Without "Gruppen sehen", clients no longer receive other groups' permission bits or other users' full rights; they get only what the UI needs. | 84 |
 
 ## Annahmen
 
@@ -226,6 +238,11 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A98 Log viewer.** New tab "Logs" in the administration with right `LogsView` (only Admin by default). Server and channel logs, listed newest first with type, channel name, start and size. Opened page by page (1000 lines, last page first) with a line filter. Search runs on the server over all files (plain text, case-insensitive, optional type and period filter), at most 500 hits, stops after 5 s. Files are addressed by listing id only, never by client path. Reading happens outside the state lock.
 - **A99 Log download.** Right `LogsDownload` (only Admin by default; needs `LogsView` to see the tab). One file as `.log` or a selection as `.zip` with folders `server/` and `channels/<name>_<id>/`, built from a snapshot in `<DataDir>/logs-export/`, at most 200 MB, transferred in 512 KB chunks like backups.
 - **A100 Language.** From Package 80 on, plan texts and commit messages are in English at the user's request. UI texts stay bilingual (German and English resources).
+- **A101 Backups.** New right "Backups verwalten" for list, create, download, delete; groups with `ServerConfig` get it once on update. Upload and restore only for members of the Admin group. The certificate stays in backups so a server move keeps its fingerprint; the download warns that the file holds the private key and user data.
+- **A102 Rank rule.** Actions on other users need strictly more rights than the target (strict subset). Equal ranks, including two admins, cannot act on each other; nobody can act on themselves; the last Admin-group member is always protected.
+- **A103 Limits.** Concrete numbers in Packages 86 to 88 (request budget 20/s burst 40, outbox 8 MB, write timeout 10 s, 64 pending handshakes, 10 new identities per IP per hour, lists paged by 200, 50 backups / 2 GB) are starting values; they live as constants in one place so they can be tuned.
+- **A104 Public data.** Fingerprints stay visible to all clients (hashes of public keys, needed for private chat and per-user volume). Permission bits of other users and groups are sent only to `GroupsView` holders (Package 92).
+- **A105 Not changed by design.** There is no per-channel join or listen right; anyone can join and hear any channel. Fingerprint bans are avoided by a new key pair; only IP bans help there. Opus payloads are relayed unchecked; clients must tolerate malformed frames.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -5181,3 +5198,485 @@ Test command: `dotnet test tests/OVS.Tests`
 
 - Automatic or scheduled log export
 - Deleting log files from the app (retention is set in Package 69)
+
+---
+
+## Package 83: Every request validated on the server
+
+**Goal:** No client request can crash its handler or store malformed text: every field is checked for null, range and allowed characters, and violations are answered with `InvalidValue`.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/FrameCodec.cs` (change): `ProtocolJson.Options` with `RespectNullableAnnotations`
+- `src/OVS.Server/ServerState.cs` (change): `Handle` catches unexpected exceptions per request and answers `InvalidValue` instead of dropping the connection; `ValidName` and a new `ValidText`
+- `src/OVS.Server/Commands/ChannelCommands.cs`, `AdminCommands.cs`, `ChatCommands.cs`, `LinkCommands.cs`, `BackupCommands.cs`, `LogCommands.cs` (change)
+- `src/OVS.Server/ServerState.cs` `Admit` (change): nickname rules and uniqueness
+- `tests/OVS.Tests/Server/RequestValidationTests.cs` (new), existing command tests (change)
+
+### Context
+
+Audit findings (both passes agree):
+- Nullable annotations are not enforced when deserializing. `CreateChannel`/`EditChannel` with `Description = null` (ChannelCommands.cs:41/66), `UploadBackupChunk` with `DataBase64 = null` (BackupCommands.cs:86) and `SetChannelLinks` with a null list element (LinkCommands.cs:39) throw a `NullReferenceException` inside the lock. The sender is disconnected.
+- `EditChannel.Order` accepts any int (ChannelCommands.cs:76). `int.MaxValue` makes the next `CreateChannel` overflow `Max + 1` (:42).
+- `ValidName` (ServerState.cs:408) rejects only `char.IsControl`. Zero-width characters (U+200B), bidi overrides (U+202E) and U+2028/2029 pass in nicknames, channel, group and server names.
+- Nickname uniqueness is checked case-insensitively against online users only (ServerState.cs:178).
+- Chat (ChatCommands.cs:22), welcome text (AdminCommands.cs:170) and channel descriptions (ChannelCommands.cs:204) are length-limited only; any control characters reach other clients.
+- The server password has no length limit (AdminCommands.cs:188).
+- `SendChat` with an out-of-range `ChatTarget` value is treated as private chat and counted but delivered nowhere.
+
+### Acceptance Criteria
+
+- [ ] AC1: A request with a null value in a non-nullable field, an unknown enum value or a malformed list is rejected with `InvalidValue`, and the connection stays open. No handler throws for any such input.
+- [ ] AC2: Unexpected exceptions inside a handler are logged (German server log line with the request type) and answered with `InvalidValue`. Only protocol violations on the frame level still close the connection.
+- [ ] AC3: Names (nickname, channel, group, server) reject control characters, Unicode format characters (category Cf: zero-width, bidi controls) and U+2028/2029, and are trimmed. Nickname uniqueness compares NFKC-normalized, case-insensitive names against online users AND the stored `LastNickname` of other users (so an offline admin's name cannot be taken by a new identity).
+- [ ] AC4: Multi-line texts (welcome text, channel description) allow `\n` but reject other C0/C1 control characters and bidi controls. Chat text allows `\n` and rejects the same set.
+- [ ] AC5: `EditChannel.Order` is ignored (order only changes through `ReorderChannels`) or validated to 0..channel count; `CreateChannel` never overflows. The server password is limited to 1..128 characters when set.
+- [ ] AC6: `SendChat` with a target outside the enum is rejected with `InvalidValue` and not counted against the rate limit.
+
+### Tests (TDD)
+
+1. `RequestValidationTests > "NullFields_Rejected_ConnectionStays"` (AC1): Theory over CreateChannel/EditChannel with null Description, UploadBackupChunk with null data, SetChannelLinks with a null element, SendChat with null text; expected `InvalidValue` and a following Ping still answered
+2. `RequestValidationTests > "HandlerException_AnsweredNotDropped"` (AC2): a test hook throws inside a handler
+3. `RequestValidationTests > "Names_RejectFormatAndBidiChars"` (AC3): Theory "Admin​", "‮evil", "a b" for nickname, channel, group, server name
+4. `RequestValidationTests > "Nickname_OfflineUserNameTaken_NormalizedCompare"` (AC3)
+5. `RequestValidationTests > "MultilineTexts_AllowNewlineRejectOtherControls"` (AC4)
+6. `RequestValidationTests > "ChannelOrder_NoOverflow_PasswordLength"` (AC5)
+7. `RequestValidationTests > "ChatTargetOutOfRange_Rejected"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): `RespectNullableAnnotations`, enum validation after deserialization, catch-all per request in `Handle`.
+2. Tests 3 to 7 (red): `ValidName`/`ValidText` helpers, use them everywhere text is accepted.
+3. Client: mirror the same rules in the dialogs so users get the message before sending (the server remains the authority).
+
+### Out of Scope
+
+- Rate limits (Package 86)
+
+---
+
+## Package 84: Consistent rank rules for every moderation action
+
+**Goal:** Every action on another user (kick, ban, unban, mute, move, group change, delete) is allowed only on users with strictly fewer rights, never on oneself, and never removes the last admin.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Permissions/Permission.cs` (change): `CanActOn` becomes a strict subset
+- `src/OVS.Server/Commands/ModerationCommands.cs` (change): `FindTarget`, `OnBan`, `OnBanUser`, `OnUnban`, `OnSetServerMute`, `OnKick`
+- `src/OVS.Server/Commands/AdminCommands.cs` (change): `FindAssignment` checks the target's rank
+- `src/OVS.Server/Commands/ChannelCommands.cs` (change): `OnMoveUser`
+- `src/OVS.Client/ViewModels/ServerViewModel.cs`, `AdminViewModel.cs` (change): same rule for showing and enabling actions
+- `tests/OVS.Tests/Server/ModerationTests.cs`, `AdminCommandTests.cs`, `PermissionRulesTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs`, `ServerViewModelTests.cs` (change)
+
+### Context
+
+`CanActOn(actor, target)` means `target ⊆ actor` (Permission.cs:50), so equal ranks may act on each other. `FindTarget` (ModerationCommands.cs:158-171) does not exclude oneself: a server-muted moderator can unmute themselves, and the last admin can ban themselves (`Ban`/`BanUser` have no last-admin check; `DeleteUser` and `UnassignGroup` do). `AssignGroup`/`UnassignGroup` only check that the group is within the actor's rights, not the target's rank (AdminCommands.cs:118-142, `FindAssignment` :254): a GroupsAssign holder can strip Guest or Moderator from a stronger user. `OnUnban` (ModerationCommands.cs:91-106) lifts any ban regardless of the banned user's or the creator's rank and replies with the full `BanList` without checking `BansView`. The client hides self-actions (ServerViewModel.cs:618-620) but the server allows them.
+
+### Acceptance Criteria
+
+- [ ] AC1: `CanActOn` requires the target's rights to be a strict subset of the actor's rights. Two users with equal rights (for example two admins, or two moderators) cannot kick, ban, mute, move, regroup or delete each other.
+- [ ] AC2: No moderation action targets oneself on the server (`PermissionDenied`): Kick, Ban, BanUser, SetServerMute, MoveUser of another session id equal to one's own, AssignGroup/UnassignGroup on one's own fingerprint, DeleteUser. Moving oneself stays possible through `JoinChannel`.
+- [ ] AC3: Ban and BanUser can never hit the last member of the Admin group (`LastAdmin`), the same as DeleteUser and UnassignGroup.
+- [ ] AC4: AssignGroup and UnassignGroup require the actor to be able to act on the target (AC1) in addition to the existing group-subset rule.
+- [ ] AC5: Unban requires that the actor could ban that user now (rank rule against the banned user's stored rights) and replies only with an acknowledgement; the full `BanList` is sent only if the actor has `BansView`.
+- [ ] AC6: The client shows and enables exactly the actions the server would allow (same helper), so hidden buttons and server answers never disagree.
+
+### Tests (TDD)
+
+1. `PermissionRulesTests > "CanActOn_StrictSubsetOnly"` (AC1)
+2. `ModerationTests > "EqualRanks_CannotActOnEachOther"` (AC1): two moderators, kick/ban/mute/move
+3. `ModerationTests > "SelfTargeting_Denied"` (AC2): Theory over every action, including a server-muted moderator unmuting themselves
+4. `ModerationTests > "LastAdmin_CannotBeBanned"` (AC3): online and offline ban
+5. `AdminCommandTests > "Unassign_FromStrongerUser_Denied"` (AC4)
+6. `ModerationTests > "Unban_StrongerBannedUser_Denied_NoBanListWithoutBansView"` (AC5)
+7. `AdminViewModelTests`/`ServerViewModelTests > "ActionsMatchServerRule"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red), `CanActOn` strict; fix existing tests that relied on equal ranks.
+2. Tests 2 to 6 (red): one server helper `CanModerate(actor, targetRights, targetFingerprint)` used by all handlers.
+3. Test 7: client uses the same helper for visibility.
+
+### Out of Scope
+
+- Persisting the server mute (Package 85)
+
+---
+
+## Package 85: Server mute survives reconnects
+
+**Goal:** A user muted by the server stays muted after disconnecting and reconnecting until someone with the right lifts it.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/Data/ServerData.cs` (change): `UserRecord.ServerMuted`
+- `src/OVS.Server/Commands/ModerationCommands.cs` (change): `OnSetServerMute` persists
+- `src/OVS.Server/ServerState.cs` (change): `Admit` applies the stored mute
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `KnownUserInfo.ServerMuted`
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `src/OVS.Client/Views/AdminView.axaml` (change): mute state on the user card
+- `tests/OVS.Tests/Server/ModerationTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs` (change)
+
+### Context
+
+`ServerMuted` exists only on the live `Session` (Session.cs:26). `OnSetServerMute` (ModerationCommands.cs:114-120) sets it there, and `Admit` creates every new session unmuted (ServerState.cs:192-197). A muted user just reconnects.
+
+### Acceptance Criteria
+
+- [ ] AC1: Setting or lifting a server mute is stored on the user's record and saved.
+- [ ] AC2: On login a stored mute is applied before the Welcome, so the user never sends voice in between; the other clients see the user as server-muted.
+- [ ] AC3: The user overview shows "vom Server stummgeschaltet" and, with `UserMute`, allows lifting it for offline users too (rank rule from Package 84 applies).
+- [ ] AC4: Deleting the user's data (Package 72) removes the mute.
+
+### Tests (TDD)
+
+1. `ModerationTests > "ServerMute_Persists_AcrossReconnect"` (AC1, AC2)
+2. `ModerationTests > "ServerMute_NoVoiceBeforeWelcome"` (AC2): voice packets right after Hello are not relayed
+3. `AdminViewModelTests > "UserCard_ShowsServerMute_LiftOffline"` (AC3)
+4. `ModerationTests > "DeleteUser_RemovesMute"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 2 and 4 (red), field, persistence, `Admit`.
+2. Test 3 (red), `KnownUserInfo` and UI; an offline lift uses a new `SetStoredServerMute(Fingerprint, Muted)` request checked like `SetServerMute`.
+
+### Out of Scope
+
+- Temporary mutes with an expiry
+
+---
+
+## Package 86: Limits on the control channel
+
+**Goal:** No client can exhaust the server's memory, flood other clients with broadcasts or keep a dead connection open, whatever it sends.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/Session.cs` (change): per-session request budget, outbox limited by bytes
+- `src/OVS.Server/ControlServer.cs` (change): write timeout, dispose on overflow or timeout, per-IP limit before TLS, global cap on pending handshakes
+- `src/OVS.Server/ServerState.cs` (change): budget check in `Handle`, no-op suppression
+- `src/OVS.Server/Data/ServerIconStore.cs` (change): cached base64
+- `src/OVS.Server/Commands/ChannelCommands.cs`, `AdminCommands.cs`, `BackupCommands.cs`, `LogCommands.cs` (change)
+- `tests/OVS.Tests/Server/LimitsTests.cs` (new)
+
+### Context
+
+Audit findings:
+- `GetServerIcon` (ServerState.cs:310) needs no right, has no limit and builds a new base64 string of up to ~683 KB on every call (ServerIconStore.cs:24). The outbox is limited to 1024 messages, not bytes (Session.cs:14), and the write loop has no timeout (ControlServer.cs:169-183). A client that stops reading pins about 1.4 GB per connection. A 1 MiB `RequestId` echoed in `Error` is a smaller variant.
+- `JoinChannel` and `SetSelfState` need no right, have no limit and broadcast `UserUpdated` to every session; `JoinChannel` also writes two channel log lines, even for the same channel.
+- Only chat (5 per 5 s) and log jobs (4 queued) are limited. `ListUsers`, `ListBans`, `CreateBackup`, `RedeemAdminToken`, `SearchLogs`, `PrepareLogDownload` are not.
+- A connection over the per-IP limit still costs a full TLS handshake (ControlServer.cs:84-93); there is no global cap on pending handshakes.
+- `RequestId` has no length limit.
+
+### Acceptance Criteria
+
+- [ ] AC1: Every session has a request budget (token bucket, for example 20 requests per second with a burst of 40, Ping exempt). Exceeding it answers `RateLimited`; sustained abuse (budget exhausted for 10 s) disconnects with a log line.
+- [ ] AC2: Expensive requests have their own lower limits: `GetServerIcon` at most once per 10 s per session and answered from a cached string; `ListUsers`, `ListBans`, `ListLogs`, `ListBackups` at most 2 per second; `CreateBackup` and `PrepareLogDownload` at most 1 per 10 s; `RedeemAdminToken` at most 5 failures per 10 minutes per IP, failures logged.
+- [ ] AC3: `JoinChannel` into the current channel and `SetSelfState` without a change do nothing (no broadcast, no log line).
+- [ ] AC4: The outbox is limited by bytes too (for example 8 MB); exceeding it disconnects the session. Each write has a timeout (for example 10 s); on timeout the connection is closed immediately and its slot released, without waiting for the write loop.
+- [ ] AC5: `RequestId` longer than 64 characters is rejected (`InvalidValue` with the id cut).
+- [ ] AC6: Connections over the per-IP limit are closed before TLS. At most 64 handshakes run at the same time server-wide; more are closed right away.
+
+### Tests (TDD)
+
+1. `LimitsTests > "RequestFlood_RateLimited_ThenDisconnected"` (AC1)
+2. `LimitsTests > "ServerIcon_CachedAndThrottled"` (AC2)
+3. `LimitsTests > "AdminTokenGuessing_Throttled_Logged"` (AC2)
+4. `LimitsTests > "NoOpJoinAndSelfState_NoBroadcast"` (AC3)
+5. `LimitsTests > "NonReadingClient_DisconnectedAndSlotFreed"` (AC4): a raw TLS client that never reads, flooding icon requests; the server stays under the byte cap and the slot is free within the timeout
+6. `LimitsTests > "LongRequestId_Rejected"` (AC5)
+7. `LimitsTests > "OverLimitConnection_ClosedBeforeTls"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 5 and 2 first (highest impact): byte cap, write timeout, cached icon.
+2. Tests 1, 3, 4 and 6: token bucket in `Session`, per-request costs in `Handle`, no-op checks.
+3. Test 7: reorder the accept path in `ControlServer`, global semaphore.
+
+### Out of Scope
+
+- Identity flood and list paging (Package 87)
+- UDP limits (Package 88)
+
+---
+
+## Package 87: Identity flood and large lists
+
+**Goal:** Connecting with many fresh key pairs cannot bloat the data file or stall the server, and every list reaches the client even when it is large.
+
+**Dependencies:** Package 86 (uses its budget helpers)
+
+**Affected files:**
+- `src/OVS.Server/ServerState.cs` (change): new-identity throttle per IP, debounced persistence
+- `src/OVS.Server/Data/ServerData.cs` (change): pruning of unused guest records
+- `src/OVS.Server/Commands/AdminCommands.cs`, `ModerationCommands.cs`, `BackupCommands.cs`, `LogCommands.cs` (change): paged lists
+- `src/OVS.Shared/Protocol/Messages.cs` (change): page fields on `ListUsers`/`UserList`, `ListBans`/`BanList`, `ListLogs`/`LogList`, `ListBackups`/`BackupList`
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `LogsViewModel.cs` (change): fetch all pages
+- `tests/OVS.Tests/Server/IdentityFloodTests.cs` (new), existing list tests (change)
+
+### Context
+
+Every successful login with a new fingerprint creates a permanent `UserRecord` and rewrites the whole `server-data.json` with fsync under the global lock (ServerState.cs:183-190, Persist on remove :254, ServerData.cs:217-226). On a server without a password a script can create thousands. At about 2000 records the `UserList` JSON exceeds 1 MiB; `FrameWriter` throws and every admin who opens the Users tab is disconnected (the client re-requests automatically). `BanList`, `LogList` and `BackupList` have no paging either.
+
+### Acceptance Criteria
+
+- [ ] AC1: At most 10 new identities per IP (IPv6: per /64) per hour are admitted; more get `RateLimited` with a log line. Known fingerprints are never throttled.
+- [ ] AC2: Saving after login and logout is debounced (at most once per 2 s, and always on shutdown), so a connect loop no longer causes an fsync per connection.
+- [ ] AC3: Records of users who only ever had the Guest group, have no bans and have not logged in for 90 days are pruned automatically (logged).
+- [ ] AC4: All four lists are paged (for example 200 entries per page, plus the total). The client fetches all pages and shows the full list; no single message can exceed the frame limit.
+- [ ] AC5: With 5000 users, 2000 bans and 2000 log files the admin page loads without disconnecting.
+
+### Tests (TDD)
+
+1. `IdentityFloodTests > "NewIdentities_ThrottledPerIp_KnownNotThrottled"` (AC1)
+2. `IdentityFloodTests > "ConnectLoop_SavesDebounced"` (AC2)
+3. `IdentityFloodTests > "OldGuestRecords_Pruned"` (AC3)
+4. `IdentityFloodTests > "LargeLists_Paged_UnderFrameLimit"` (AC4, AC5)
+5. `AdminViewModelTests > "UserList_FetchesAllPages"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 4 (red) first: paging is the visible failure today.
+2. Tests 1 to 3 (red): throttle, debounce, pruning.
+3. Test 5: client paging.
+
+### Out of Scope
+
+- Accounts or registration
+
+---
+
+## Package 88: Network: UDP endpoint and IPv6
+
+**Goal:** Voice traffic can only be sent to the address of the user's own control connection, and IPv6 users cannot bypass per-IP limits and IP bans by rotating addresses.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/Voice/UdpVoiceServer.cs` (change): endpoint check, pre-filter
+- `src/OVS.Server/ServerState.cs` (change): lock-free session lookup for UDP, /64 grouping for connection limit and IP bans
+- `src/OVS.Server/Commands/ModerationCommands.cs` (change): IP ban stores the /64 for IPv6
+- `tests/OVS.Tests/Server/VoiceRelayTests.cs`, `ModerationTests.cs`, `HandshakeTests.cs` (change)
+
+### Context
+
+`UdpVoiceServer.cs:72` sets `UdpEndpoint = from` on any authenticated Hello, without comparing `from.Address` with the control connection's `Session.Ip`. One Hello with a spoofed source address makes the server send every relayed voice packet to a victim (reflection). Unauthenticated UDP packets cost a `FindSession` under the global lock and an AES-GCM attempt, with sequential, guessable session ids. The per-IP connection limit (ServerState.cs:99-107) and IP bans (:158, exact string) use the full IPv6 address, while password throttling already groups by /64.
+
+### Acceptance Criteria
+
+- [ ] AC1: The server accepts a UDP endpoint only if its address equals the session's control-connection address (IPv4 exact, IPv6 same /64). Other packets for that session are dropped and counted.
+- [ ] AC2: The UDP path looks up sessions without taking the global lock, and a per-source-address pre-filter drops more than 200 unauthenticated packets per second from one address before decryption.
+- [ ] AC3: The per-IP connection limit and IP bans group IPv6 addresses by /64 (the same helper as password throttling). Existing IPv6 bans keep matching their exact address and also their /64.
+
+### Tests (TDD)
+
+1. `VoiceRelayTests > "Hello_FromOtherAddress_EndpointNotChanged"` (AC1)
+2. `VoiceRelayTests > "GarbageFlood_DroppedBeforeDecrypt_ControlStaysResponsive"` (AC2)
+3. `HandshakeTests > "Ipv6_SameSlash64_SharesConnectionLimit"` (AC3)
+4. `ModerationTests > "IpBan_Ipv6_MatchesWholeSlash64"` (AC3)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red), endpoint check.
+2. Test 2 (red), `ConcurrentDictionary` for UDP lookups, pre-filter.
+3. Tests 3 and 4 (red), shared address-grouping helper.
+
+### Out of Scope
+
+- NAT traversal changes; clients behind carrier-grade NAT keep working because the check uses the control connection's observed address
+
+---
+
+## Package 89: Backups with their own right, restore only for admins
+
+**Goal:** Backups are managed with the new right "Backups verwalten", uploading and restoring are reserved for members of the Admin group, and a restored archive is validated completely.
+
+**Dependencies:** none (Package 84 recommended first for the last-admin rules)
+
+**Affected files:**
+- `src/OVS.Shared/Permissions/Permission.cs` (change): `BackupsManage = 1 << 25`, `All = (1 << 26) - 1`
+- `src/OVS.Server/Data/ServerData.cs` (change): migration (groups with `ServerConfig` get `BackupsManage` once)
+- `src/OVS.Server/Commands/BackupCommands.cs` (change): rights per request
+- `src/OVS.Server/Data/BackupStore.cs` (change): full validation, manifest cap, quota, listing cache
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `src/OVS.Client/Views/AdminView.axaml` (change)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Perm_BackupsManage`
+- `README.md` (change)
+- `tests/OVS.Tests/Server/BackupTests.cs`, `DataStoreTests.cs`, `PermissionRulesTests.cs`, `tests/OVS.Tests/Client/AdminViewModelTests.cs` (change)
+
+### Context
+
+All backup requests need `ServerConfig` (BackupCommands.cs). A holder of that right can download an archive with `cert.pfx` (TLS private key, no password, ServerCertificate.cs:20) and the complete `server-data.json` (password hash, every IP), and can upload an edited archive that puts their fingerprint into the Admin group and restore it (BackupStore.cs:178-200 checks structure, versions, default channel, certificate, logo only). `"users": null` or `"settings": null` passes validation and crashes every later start (ServerState.cs:51/53; ServerHost.cs:55 only catches ConfigException/InvalidDataException); `"channels": null` throws inside `Read` and leaves the upload file. `List()` decompresses every manifest up to 64 MB under the lock on every chunk; there is no count or disk quota.
+
+### Acceptance Criteria
+
+- [ ] AC1: New right "Backups verwalten" (`BackupsManage`): list, create, download and delete backups. Groups that have `ServerConfig` today get it once on update (so nobody loses a function); new servers: Admin only.
+- [ ] AC2: Uploading and restoring require membership in the Admin group, checked on the server for every upload chunk and on restore. The buttons are hidden for everyone else.
+- [ ] AC3: A restored or uploaded archive is fully validated before anything is replaced: every collection present, every name valid under the Package 83 rules, ids unique, references (group ids, channel ids, default channel) consistent, at least one Admin-group member. Any failure, including unexpected exceptions, gives `InvalidBackup` and leaves no temp file. The server can never end up unable to start because of a restored archive.
+- [ ] AC4: `manifest.json` is limited to 16 KB; the listing is cached and refreshed only when files change. At most 50 backups and 2 GB in total; creating or uploading beyond that gives `BackupQuotaExceeded` with a hint to delete old ones.
+- [ ] AC5: Downloads keep the certificate (so a server move keeps its fingerprint); the download dialog warns that the file contains the server's private key and user data and must be stored safely.
+- [ ] AC6: Texts in German and English, README rights table and backup section updated.
+
+### Tests (TDD)
+
+1. `BackupTests > "BackupsManage_Required_ServerConfigAloneNotEnough"` (AC1)
+2. `DataStoreTests > "Migration_ServerConfigGroupsGetBackupsManage"` (AC1)
+3. `BackupTests > "UploadAndRestore_OnlyAdminGroup_CheckedPerChunk"` (AC2)
+4. `BackupTests > "Restore_InvalidContent_RejectedServerStillStarts"` (AC3): Theory null users, null settings, null channels, invalid names, dangling group ids, no admin
+5. `BackupTests > "ManifestCap_Quota_ListingCached"` (AC4)
+6. `AdminViewModelTests > "BackupButtons_ByRightAndAdminGroup_DownloadWarns"` (AC2, AC5)
+7. `LocalizationTests` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 3 (red): permission bit, migration, per-request checks.
+2. Test 4 (red): `BackupStore.Validate(ServerData)` reusing the server's own validation helpers, catch-all to `InvalidDataException`.
+3. Test 5 (red): manifest cap, quota, cache.
+4. Test 6, UI and texts.
+
+### Out of Scope
+
+- Encrypting the certificate inside backups (decided against, A101)
+
+---
+
+## Package 90: Log and console hygiene
+
+**Goal:** Nothing a client sends can forge or corrupt lines in the console, the Docker log or the log files.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/Logging/ServerLogs.cs` (change): `OneLine` also for the console
+- `src/OVS.Shared/Logging/LogFiles.cs` (change): `OneLine` also escapes ANSI escape sequences
+- `src/OVS.Server/Commands/LogCommands.cs` (change): search log line only for accepted searches
+- `tests/OVS.Tests/Server/ServerLogsTests.cs`, `LogCommandTests.cs` (change)
+
+### Context
+
+`ServerLogs.Server` (ServerLogs.cs:29-30) writes the raw line to `Console.WriteLine`; only the file path goes through `LogFiles.OneLine` (LogFiles.cs:72, 87-102). Chat text reaches the console (ChatCommands.cs:57), so a guest can inject a fake line such as "Admin-Token: ..." or terminal escape sequences into `docker logs`. `LogCommands.cs:44` logs a search even when it is then refused as `RateLimited` (:104).
+
+### Acceptance Criteria
+
+- [ ] AC1: Console and file receive the same escaped line: CR, LF, U+2028/2029, other control characters and ESC (ANSI sequences) are shown escaped.
+- [ ] AC2: A chat message containing a newline followed by a fake timestamp produces exactly one log line on the console and in the file.
+- [ ] AC3: The search log line is written only when the search is actually run.
+
+### Tests (TDD)
+
+1. `ServerLogsTests > "ConsoleLine_EscapedLikeFile"` (AC1)
+2. `ServerLogsTests > "ChatWithFakeLine_OneLineOnly"` (AC2)
+3. `LogCommandTests > "RefusedSearch_NotLogged"` (AC3)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red), apply `OneLine` before both outputs, extend it for ESC.
+2. Test 3 (red), move the log line.
+
+### Out of Scope
+
+- Structured (JSON) logging
+
+---
+
+## Package 91: Salted server password hash
+
+**Goal:** The server password is stored as a salted, slow hash, and existing hashes are upgraded without the admin re-entering the password.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/Data/ServerData.cs` (change): `ServerSettings.PasswordHash` format with algorithm, iterations and salt; `Hash`/`Verify`
+- `src/OVS.Server/ServerState.cs` (change): `Admit` verifies and upgrades
+- `src/OVS.Server/Commands/AdminCommands.cs` (change): new passwords hashed the new way
+- `tests/OVS.Tests/Server/DataStoreTests.cs`, `HandshakeTests.cs` (change)
+
+### Context
+
+`ServerSettings.Hash` stores an unsalted SHA-256 hex string (ServerData.cs:36-44), compared in constant time. The hash is in every backup, so it can be attacked offline with precomputed tables.
+
+### Acceptance Criteria
+
+- [ ] AC1: New and changed passwords are stored as PBKDF2-SHA256 with a random 16-byte salt and at least 100,000 iterations, in a self-describing format (for example `pbkdf2$<iterations>$<salt>$<hash>`).
+- [ ] AC2: Verification stays constant-time and works for both formats; a successful login with an old SHA-256 hash replaces it with the new format and saves.
+- [ ] AC3: No password (empty) keeps meaning "no password".
+
+### Tests (TDD)
+
+1. `DataStoreTests > "PasswordHash_Pbkdf2_SaltedUnique"` (AC1): the same password twice gives different stored values that both verify
+2. `HandshakeTests > "OldSha256Hash_LoginWorks_UpgradedAfter"` (AC2)
+3. `HandshakeTests > "EmptyPassword_StillOpenServer"` (AC3)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 3 (red), `Rfc2898DeriveBytes.Pbkdf2`, format parsing, upgrade in `Admit`.
+
+### Out of Scope
+
+- User accounts with individual passwords
+
+---
+
+## Package 92: Clients get only the rights data they need
+
+**Goal:** Without "Gruppen sehen", clients no longer receive other groups' permission bits or other users' full rights; they get only what the UI needs.
+
+**Dependencies:** Package 84 (the "can act on" rule sent to clients is the strict rule from 84)
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `GroupInfo` without permissions for non-viewers, `UserInfo` with per-viewer flags
+- `src/OVS.Server/ServerState.cs` (change): per-recipient Welcome and broadcasts (`Info(s)` per viewer)
+- `src/OVS.Server/Commands/AdminCommands.cs` (change): `GroupsChanged` per recipient
+- `src/OVS.Client/Net/StateMirror.cs`, `src/OVS.Client/ViewModels/ServerViewModel.cs`, `AdminViewModel.cs` (change): use the flags instead of computing from others' permissions
+- `tests/OVS.Tests/Server/StateSyncTests.cs`, `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `AdminViewModelTests.cs` (change)
+
+### Context
+
+Every client receives all groups with their permission bitmasks in the Welcome and in every `GroupsChanged` (ServerState.cs:445-452, AdminCommands.cs:38 etc.), and every online user's fingerprint, effective permissions and group ids (`UserInfo`, :430-431), even without `GroupsView`. That makes it trivial to see who can moderate. The client uses others' permissions to decide which actions to show.
+
+### Acceptance Criteria
+
+- [ ] AC1: Users with `GroupsView` receive groups with permissions as today; everyone else receives groups with id, name and order only.
+- [ ] AC2: Other users' `UserInfo` no longer carries their permission bits. Instead each recipient gets per-target flags it needs: `CanBeModeratedByMe` (Package 84 rule) and `CanSpeakLinked` for the link indicator, plus the group ids for display. The own user still receives the full own permissions.
+- [ ] AC3: Flags are recomputed and sent when the recipient's or the target's rights change (the existing `RecomputePermissions` path).
+- [ ] AC4: The client's context menus, admin cards and indicators behave exactly as before for every combination covered by the existing tests.
+- [ ] AC5: Fingerprints stay in `UserInfo` (needed for private chat and user volume); this is documented as public data.
+
+### Tests (TDD)
+
+1. `StateSyncTests > "Welcome_WithoutGroupsView_NoPermissionBits"` (AC1, AC2)
+2. `StateSyncTests > "Flags_PerRecipient_RecomputedOnRightsChange"` (AC3)
+3. existing `ServerViewModelTests` and `AdminViewModelTests` adapted to flags stay green (AC4)
+4. `StateSyncTests > "GroupsView_StillSeesFullGroups"` (AC1)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 2 and 4 (red): per-recipient serialization in `ServerState` (`Info(s, viewer)`), broadcasts become per-recipient sends.
+2. Client adaptation, test 3.
+3. Protocol version: bump once for Packages 83 to 92 if a release happened after version 10, otherwise keep 10 and extend the comment.
+
+### Out of Scope
+
+- Hiding fingerprints (they are public keys' hashes, A104)
