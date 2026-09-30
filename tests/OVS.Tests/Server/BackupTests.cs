@@ -113,6 +113,9 @@ public sealed class BackupTests : IDisposable
 
         await admin.SendAsync(new RestoreBackup(backup));
         Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>()).Reason);
+        // The disconnect arrives while the server still holds its lock and writes the data file on closing; reading the
+        // pending restore takes that lock, so the file is complete once it returns.
+        Assert.NotNull(server.State.PendingRestore);
         var safety = Directory.GetFiles(Path.Combine(server.DataDir, "backups"), BackupStore.SafetyPrefix + "*").Single();
         var user = DataOf(Entries(safety)["server-data.json"]).Users.Single(u => u.Fingerprint == bert.Fingerprint);
         Assert.Equal((1, 1), (user.LoginCount, user.ChatMessages));
