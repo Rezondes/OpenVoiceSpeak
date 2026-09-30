@@ -187,8 +187,11 @@ public sealed record UploadBackupAck(string? RequestId, string UploadId, long Re
 public sealed record BackupUploaded(string? RequestId, BackupInfo Backup) : Message;
 
 // ---- Moderation ----
+/// <summary>Package 80 (A97): active, expired and lifted bans; the new values are null or 0 for bans saved before.</summary>
 public sealed record BanInfo(
-    Guid Id, string Fingerprint, string Nickname, string? Ip, string Reason, string CreatedBy, DateTimeOffset? ExpiresAt);
+    Guid Id, string Fingerprint, string Nickname, string? Ip, string Reason, string CreatedBy, DateTimeOffset? ExpiresAt,
+    DateTimeOffset? CreatedAt = null, string? CreatedByFingerprint = null, int? DurationMinutes = null,
+    DateTimeOffset? LiftedAt = null, string? LiftedBy = null, int BlockedAttempts = 0, DateTimeOffset? LastAttempt = null, string? LastAttemptIp = null);
 public sealed record Kick(uint SessionId, string Reason) : Request;
 public sealed record Ban(uint SessionId, string Reason, int? DurationMinutes, bool IncludeIp) : Request;
 public sealed record Unban(Guid BanId) : Request;

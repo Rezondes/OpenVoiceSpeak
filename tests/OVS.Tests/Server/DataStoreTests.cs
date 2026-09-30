@@ -138,6 +138,31 @@ public sealed class DataStoreTests : IDisposable
         Assert.Empty(old.PreviousNicknames);
     }
 
+    /// <summary>Package 80: bans saved before the history keep working; the new values start empty ("unknown" in the client).</summary>
+    [Fact]
+    public void OldBans_LoadWithUnknownNewFields()
+    {
+        var store = new DataStore(FilePath);
+        var data = ServerData.CreateDefault(Config);
+        var until = new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        data.Bans.Add(new BanRecord { Id = Guid.NewGuid(), Fingerprint = "ab", Nickname = "troll", Ip = "10.0.0.1", Reason = "spam", CreatedBy = "mod", ExpiresAt = until });
+        store.Save(data);
+        // the ban exactly as a file before Package 80 has it
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
+        var ban = json["bans"]![0]!.AsObject();
+        foreach (var key in ban.Select(p => p.Key).Except(["id", "fingerprint", "nickname", "ip", "reason", "createdBy", "expiresAt"]).ToList()) ban.Remove(key);
+        File.WriteAllText(FilePath, json.ToJsonString());
+
+        var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.False(loaded.Migrate(Config)); // no new data version needed
+        var old = Assert.Single(loaded.Bans);
+        Assert.Equal(("troll", "10.0.0.1", "spam", "mod", (DateTimeOffset?)until), (old.Nickname, old.Ip, old.Reason, old.CreatedBy, old.ExpiresAt));
+        Assert.Equal(((DateTimeOffset?)null, (string?)null, (int?)null), (old.CreatedAt, old.CreatedByFingerprint, old.DurationMinutes));
+        Assert.Equal((null, null, 0, null, null), (old.LiftedAt, old.LiftedBy, old.BlockedAttempts, old.LastAttempt, old.LastAttemptIp));
+        Assert.True(old.IsActive(until.AddMinutes(-1)));
+        Assert.False(old.IsActive(until));
+    }
+
     /// <summary>Package 76 (AC6): an update to data version 4 keeps every possibility by granting the new view rights once.</summary>
     [Fact]
     public void Migration_GrantsViewRightsFromOldRights()

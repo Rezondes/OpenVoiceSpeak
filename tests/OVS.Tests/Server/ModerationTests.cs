@@ -1,3 +1,4 @@
+using OVS.Server.Data;
 using OVS.Server.Permissions;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
@@ -92,7 +93,7 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal("mod", ban.CreatedBy);
 
         await m.SendAsync(new Unban(ban.Id) { RequestId = "u" });
-        Assert.Empty((await m.WaitForAsync<BanList>(b => b.RequestId == "u")).Bans);
+        Assert.Equal("mod", Assert.Single((await m.WaitForAsync<BanList>(b => b.RequestId == "u")).Bans).LiftedBy); // Package 80: kept as history
         Assert.IsType<Welcome>(await ReconnectGuestAsync());
     }
 
@@ -158,18 +159,6 @@ public sealed class ModerationTests : IAsyncLifetime
     {
         await m.SendAsync(new Kick(g.Id, ""));
         Assert.Equal(new Disconnected(Codes.Kicked, ""), await g.WaitForAsync<Disconnected>());
-    }
-
-    [Fact]
-    public async Task ExpiredBans_RemovedOnNextSave()
-    {
-        await m.SendAsync(new Ban(g.Id, "kurzweg", 10, false));
-        await g.WaitForAsync<Disconnected>();
-        time.Advance(TimeSpan.FromMinutes(11));
-
-        await a.SendAsync(new CreateChannel("Irgendwas", "")); // any change that saves
-        await a.WaitForAsync<ChannelAdded>();
-        Assert.DoesNotContain("kurzweg", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
     }
 
     [Fact]
@@ -289,9 +278,9 @@ public sealed class ModerationTests : IAsyncLifetime
         await GuestOfflineAsync();
         await a.SendAsync(new BanUser(guestId.Fingerprint, "kurz", 10, false));
         Assert.Single(await BansAsync(a));
-        time.Advance(TimeSpan.FromMinutes(11)); // expired, still stored until the next save
+        time.Advance(TimeSpan.FromMinutes(11)); // expired, kept as history (Package 80)
         await a.SendAsync(new BanUser(guestId.Fingerprint, "lang", null, true));
-        Assert.Single(await BansAsync(a));
+        Assert.Equal(2, (await BansAsync(a)).Count);
 
         await a.SendAsync(new DeleteUser(guestId.Fingerprint));
         Assert.DoesNotContain(await UsersAsync(a), u => u.Fingerprint == guestId.Fingerprint);
@@ -339,5 +328,107 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal(Codes.PermissionDenied, (await d.ErrorAsync("self")).Code);
         await d.SendAsync(new DeleteUser(guestId.Fingerprint));
         Assert.Equal(Codes.UserDeleted, (await g.WaitForAsync<Disconnected>()).Reason);
+    }
+
+    // ---- Package 80: ban details and history (A97) ----
+
+    List<BanRecord> StoredBans() =>
+        new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Bans;
+
+    [Fact]
+    public async Task Ban_StoresCreatedAtCreatorDuration()
+    {
+        time.Advance(TimeSpan.FromMinutes(3));
+        var now = time.GetUtcNow();
+        await m.SendAsync(new Ban(g.Id, "laut", 60, IncludeIp: true));
+        await g.WaitForAsync<Disconnected>();
+
+        var ban = Assert.Single(await BansAsync(m));
+        Assert.Equal((now, modId.Fingerprint, 60, "127.0.0.1", now.AddMinutes(60)),
+            (ban.CreatedAt, ban.CreatedByFingerprint, ban.DurationMinutes, ban.Ip, ban.ExpiresAt));
+        Assert.Equal((null, null, 0), (ban.LiftedAt, ban.LiftedBy, ban.BlockedAttempts));
+        var stored = Assert.Single(StoredBans());
+        Assert.Equal((now, modId.Fingerprint, 60), (stored.CreatedAt, stored.CreatedByFingerprint, stored.DurationMinutes));
+    }
+
+    [Fact]
+    public async Task Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive()
+    {
+        await m.SendAsync(new Ban(g.Id, "weg", null, false));
+        await g.WaitForAsync<Disconnected>();
+        var lifted = Assert.Single(await BansAsync(m));
+        time.Advance(TimeSpan.FromMinutes(1));
+        await m.SendAsync(new Unban(lifted.Id) { RequestId = "u" });
+        await m.WaitForAsync<BanList>(b => b.RequestId == "u");
+        await m.SendAsync(new Unban(lifted.Id) { RequestId = "again" }); // lifting twice is not possible
+        Assert.Equal(Codes.NotFound, (await m.ErrorAsync("again")).Code);
+        Assert.IsType<Welcome>(await ReconnectGuestAsync());
+
+        await m.SendAsync(new BanUser(guestId.Fingerprint, "kurz", 10, false));
+        Assert.Equal(2, (await BansAsync(m)).Count);
+        Assert.Equal(Codes.Banned, Assert.IsType<Rejected>(await ReconnectGuestAsync()).Code);
+        time.Advance(TimeSpan.FromMinutes(11));
+        Assert.IsType<Welcome>(await ReconnectGuestAsync());
+
+        var bans = await BansAsync(m);
+        var l = bans.Single(b => b.Id == lifted.Id);
+        Assert.Equal(("mod", time.GetUtcNow().AddMinutes(-11)), (l.LiftedBy, l.LiftedAt));
+        var expired = bans.Single(b => b.Id != lifted.Id);
+        Assert.Equal(("kurz", null), (expired.Reason, expired.LiftedAt));
+        Assert.True(expired.ExpiresAt < time.GetUtcNow());
+        Assert.Equal(2, StoredBans().Count);
+        Assert.Empty((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).Bans!); // the user card only gets active bans
+    }
+
+    [Fact]
+    public async Task History_RemovedAfterLogRetention_AndOnUserDelete()
+    {
+        await a.SendAsync(new UpdateServerSettings("Testserver", "", null, new ServerLimits(50, 1, true, false, new TimeOnly(4, 0))));
+        await a.WaitForAsync<ServerSettingsChanged>();
+        await m.SendAsync(new Ban(g.Id, "alt", 10, false));
+        await g.WaitForAsync<Disconnected>();
+        g = m;
+        time.Advance(TimeSpan.FromMinutes(11));
+        await m.SendAsync(new BanUser(guestId.Fingerprint, "dauer", null, false));
+        Assert.Equal(2, (await BansAsync(m)).Count);
+
+        time.Advance(TimeSpan.FromHours(23)); // the expired ban ended 23 h ago: still kept
+        await a.SendAsync(new CreateChannel("Speichern1", ""));
+        await a.WaitForAsync<ChannelAdded>();
+        Assert.Equal(2, StoredBans().Count);
+
+        time.Advance(TimeSpan.FromHours(2)); // now more than one day: gone, the active one stays however old
+        await a.SendAsync(new CreateChannel("Speichern2", ""));
+        await a.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Speichern2");
+        Assert.Equal("dauer", Assert.Single(StoredBans()).Reason);
+        var active = Assert.Single(await BansAsync(m));
+
+        await m.SendAsync(new Unban(active.Id) { RequestId = "u" });
+        await m.WaitForAsync<BanList>(b => b.RequestId == "u");
+        await a.SendAsync(new DeleteUser(guestId.Fingerprint));
+        Assert.DoesNotContain(await UsersAsync(a), u => u.Fingerprint == guestId.Fingerprint);
+        Assert.Empty(await BansAsync(a));
+        Assert.Empty(StoredBans());
+    }
+
+    [Fact]
+    public async Task BlockedAttempts_Counted_SavedAtMostPerMinute()
+    {
+        await m.SendAsync(new Ban(g.Id, "raus", null, false));
+        await g.WaitForAsync<Disconnected>();
+        for (int i = 0; i < 3; i++)
+        {
+            if (i > 0) time.Advance(TimeSpan.FromSeconds(5));
+            Assert.Equal(Codes.Banned, Assert.IsType<Rejected>(await ReconnectGuestAsync()).Code);
+        }
+        Assert.Equal(3, Assert.Single(await BansAsync(m)).BlockedAttempts);
+        Assert.Equal(1, Assert.Single(StoredBans()).BlockedAttempts); // only the first of these was written
+
+        time.Advance(TimeSpan.FromMinutes(2));
+        Assert.Equal(Codes.Banned, Assert.IsType<Rejected>(await ReconnectGuestAsync()).Code);
+        var ban = Assert.Single(await BansAsync(m));
+        Assert.Equal((4, time.GetUtcNow(), "127.0.0.1"), (ban.BlockedAttempts, ban.LastAttempt, ban.LastAttemptIp));
+        var stored = Assert.Single(StoredBans());
+        Assert.Equal((4, time.GetUtcNow(), "127.0.0.1"), (stored.BlockedAttempts, stored.LastAttempt, stored.LastAttemptIp));
     }
 }

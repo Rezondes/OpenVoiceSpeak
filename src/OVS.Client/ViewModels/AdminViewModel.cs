@@ -34,6 +34,13 @@ public sealed partial class AdminViewModel : ObservableObject
     [ObservableProperty] Choice<Guid?>? selectedGroupFilter;
     [ObservableProperty] Choice<UserSortOrder> selectedSortOrder;
     [ObservableProperty] string userCountText = "";
+    // Package 80: the same for the ban overview; active bans by default
+    IReadOnlyList<BanInfo> allBans = [];
+    [ObservableProperty] string banSearchText = "";
+    [ObservableProperty] Choice<BanStatusFilter> selectedBanStatusFilter;
+    [ObservableProperty] Choice<BanTypeFilter> selectedBanTypeFilter;
+    [ObservableProperty] Choice<BanSortOrder> selectedBanSortOrder;
+    [ObservableProperty] string banCountText = "";
     HashSet<string> onlineFingerprints;
     DateTimeOffset lastUserRequest = DateTimeOffset.MinValue;
     bool userRequestPending, detached;
@@ -53,6 +60,24 @@ public sealed partial class AdminViewModel : ObservableObject
         ];
         selectedStatusFilter = StatusFilters[0];
         selectedSortOrder = SortOrders[0];
+        BanStatusFilters =
+        [
+            new(BanStatusFilter.Active, Strings.Ui_BanStatusActive), new(BanStatusFilter.Expired, Strings.Ui_BanStatusExpired),
+            new(BanStatusFilter.Lifted, Strings.Ui_BanStatusLifted), new(BanStatusFilter.All, Strings.Ui_BanStatusAll),
+        ];
+        BanTypeFilters =
+        [
+            new(BanTypeFilter.All, Strings.Ui_BanTypeAll), new(BanTypeFilter.Permanent, Strings.Ui_BanTypePermanent),
+            new(BanTypeFilter.Temporary, Strings.Ui_BanTypeTemporary), new(BanTypeFilter.WithIp, Strings.Ui_BanTypeWithIp),
+        ];
+        BanSortOrders =
+        [
+            new(BanSortOrder.Newest, Strings.Ui_SortNewest), new(BanSortOrder.EndingSoonest, Strings.Ui_SortEndingSoonest),
+            new(BanSortOrder.MostAttempts, Strings.Ui_SortMostAttempts), new(BanSortOrder.Name, Strings.Ui_SortName),
+        ];
+        selectedBanStatusFilter = BanStatusFilters[0];
+        selectedBanTypeFilter = BanTypeFilters[0];
+        selectedBanSortOrder = BanSortOrders[0];
         onlineFingerprints = OnlineFingerprints();
         server.AdminMessage += OnAdminMessage;
         server.StateChanged += OnStateChanged;
@@ -82,7 +107,14 @@ public sealed partial class AdminViewModel : ObservableObject
     public IReadOnlyList<Choice<UserStatusFilter>> StatusFilters { get; }
     public ObservableCollection<Choice<Guid?>> GroupFilters { get; } = [];
     public IReadOnlyList<Choice<UserSortOrder>> SortOrders { get; }
+    /// <summary>Package 80: the bans that pass search and filters, in the chosen order.</summary>
     public ObservableCollection<BanViewModel> Bans { get; } = [];
+    public IReadOnlyList<Choice<BanStatusFilter>> BanStatusFilters { get; }
+    public IReadOnlyList<Choice<BanTypeFilter>> BanTypeFilters { get; }
+    public IReadOnlyList<Choice<BanSortOrder>> BanSortOrders { get; }
+    /// <summary>No ban stored at all (none ever, or all aged out); otherwise an empty list means nothing matches.</summary>
+    public bool HasNoBans => allBans.Count == 0;
+    public bool HasNoBanMatches => allBans.Count > 0 && Bans.Count == 0;
     /// <summary>Package 74: the backups on the server, newest first.</summary>
     public ObservableCollection<BackupViewModel> Backups { get; } = [];
     public bool HasNoBackups => Backups.Count == 0;
@@ -188,12 +220,8 @@ public sealed partial class AdminViewModel : ObservableObject
                 OnPropertyChanged(nameof(HasNoBackups));
                 break;
             case BanList list:
-                Bans.Clear();
-                foreach (var ban in list.Bans) Bans.Add(new BanViewModel(ban, Actor.Has(Permission.UserBan), async () =>
-                {
-                    await server.SendAsync(new Unban(ban.Id)); // answered with the new ban list
-                    if (ShowUsers) await server.SendAsync(new ListUsers()); // Package 72: the user cards follow
-                }));
+                allBans = list.Bans;
+                RebuildBans();
                 break;
         }
     }
@@ -261,7 +289,7 @@ public sealed partial class AdminViewModel : ObservableObject
         {
             var toggles = server.Mirror.Groups.Select(g => new GroupToggle(g.Id, g.Name, user.GroupIds.Contains(g.Id),
                 CanAssign(g), t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
-            var bans = (user.Bans ?? []).Where(b => b.ExpiresAt is null || b.ExpiresAt > now).ToList();
+            var bans = (user.Bans ?? []).Where(b => b.LiftedAt is null && (b.ExpiresAt is null || b.ExpiresAt > now)).ToList();
             // Package 72: the server checks the same; never oneself, only users without more rights, never the last admin
             var weaker = user.Fingerprint != self && RightsOf(user.GroupIds).IsSubsetOf(Actor);
             var lastAdmin = admins == 1 && user.GroupIds.Contains(WellKnownGroups.Admin);
@@ -287,6 +315,52 @@ public sealed partial class AdminViewModel : ObservableObject
         Users.Clear();
         foreach (var user in visible) Users.Add(user);
         UserCountText = string.Format(Strings.Ui_UserCount, Users.Count, all.Count);
+    }
+
+    // ---- Package 80: ban overview ----
+
+    partial void OnBanSearchTextChanged(string value) => RebuildBans();
+    partial void OnSelectedBanStatusFilterChanged(Choice<BanStatusFilter> value) => RebuildBans();
+    partial void OnSelectedBanTypeFilterChanged(Choice<BanTypeFilter> value) => RebuildBans();
+    partial void OnSelectedBanSortOrderChanged(Choice<BanSortOrder> value) => RebuildBans();
+
+    void RebuildBans()
+    {
+        var now = server.Time.GetUtcNow();
+        var search = BanSearchText.Trim();
+        var status = SelectedBanStatusFilter?.Value ?? BanStatusFilter.All;
+        var type = SelectedBanTypeFilter?.Value ?? BanTypeFilter.All;
+        var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan), async () =>
+        {
+            await server.SendAsync(new Unban(ban.Id)); // answered with the new ban list
+            if (ShowUsers) await server.SendAsync(new ListUsers()); // Package 72: the user cards follow
+        })).ToList();
+        var visible = all.Where(b => b.Matches(search) && status switch
+        {
+            BanStatusFilter.Active => b.Status == BanStatus.Active,
+            BanStatusFilter.Expired => b.Status == BanStatus.Expired,
+            BanStatusFilter.Lifted => b.Status == BanStatus.Lifted,
+            _ => true,
+        } && type switch
+        {
+            BanTypeFilter.Permanent => b.Ban.ExpiresAt is null,
+            BanTypeFilter.Temporary => b.Ban.ExpiresAt is not null,
+            BanTypeFilter.WithIp => b.HasIp,
+            _ => true,
+        });
+        var byName = StringComparer.CurrentCultureIgnoreCase;
+        visible = (SelectedBanSortOrder?.Value ?? BanSortOrder.Newest) switch
+        {
+            BanSortOrder.EndingSoonest => visible.OrderBy(b => b.Ban.ExpiresAt ?? DateTimeOffset.MaxValue).ThenBy(b => b.Nickname, byName),
+            BanSortOrder.MostAttempts => visible.OrderByDescending(b => b.Ban.BlockedAttempts).ThenBy(b => b.Nickname, byName),
+            BanSortOrder.Name => visible.OrderBy(b => b.Nickname, byName),
+            _ => visible.OrderByDescending(b => b.Ban.CreatedAt ?? DateTimeOffset.MinValue).ThenBy(b => b.Nickname, byName),
+        };
+        Bans.Clear();
+        foreach (var ban in visible) Bans.Add(ban);
+        BanCountText = string.Format(Strings.Ui_BanCount, Bans.Count, all.Count);
+        OnPropertyChanged(nameof(HasNoBans));
+        OnPropertyChanged(nameof(HasNoBanMatches));
     }
 
     /// <summary>What the stored groups give; the Admin group always everything (like PermissionRules.Effective).</summary>
@@ -641,6 +715,10 @@ public sealed partial class PermissionToggle(Permission permission, string label
 
 public enum UserStatusFilter { All, Online, Offline, Banned }
 public enum UserSortOrder { Name, LastLogin, OnlineTime }
+public enum BanStatusFilter { Active, Expired, Lifted, All }
+public enum BanTypeFilter { All, Permanent, Temporary, WithIp }
+public enum BanSortOrder { Newest, EndingSoonest, MostAttempts, Name }
+public enum BanStatus { Active, Expired, Lifted }
 
 /// <summary>An entry of a combo box: the value and its text.</summary>
 public sealed record Choice<T>(T Value, string Label)
@@ -746,15 +824,50 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
     Task Restore() => restore(this);
 }
 
-public sealed partial class BanViewModel(BanInfo ban, bool canUnban, Func<Task> unban) : ObservableObject
+/// <summary>Package 80: one card of the ban overview with everything the server stores about the ban (A97).</summary>
+/// <param name="now">The client's time when the list was built: status and remaining time as of then.</param>
+public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban) : ObservableObject
 {
     public BanInfo Ban { get; } = ban;
-    public string Text => $"{Ban.Nickname} ({Ban.Fingerprint[..Math.Min(12, Ban.Fingerprint.Length)]})" +
-                          (Ban.Ip is null ? "" : $", IP {Ban.Ip}") +
-                          string.Format(Strings.Ban_Line, Ban.Reason, Ban.CreatedBy, (Ban.ExpiresAt is { } until ? string.Format(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever));
+    public string Nickname => Ban.Nickname;
+    public string Fingerprint => Ban.Fingerprint;
+    public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;
+    public bool HasIp => Ban.Ip is not null;
+    public string Ip => Ban.Ip ?? "";
+    public string ReasonText => Ban.Reason.Length > 0 ? Ban.Reason : Strings.Ui_BanNoReason;
+    public string CreatedBy => Ban.CreatedBy;
 
-    /// <summary>Package 76: the list is readable with BansView, lifting a ban needs UserBan.</summary>
-    public bool CanUnban { get; } = canUnban;
+    public BanStatus Status { get; } = StatusOf(ban, now);
+    static BanStatus StatusOf(BanInfo b, DateTimeOffset now) =>
+        b.LiftedAt is not null ? BanStatus.Lifted : b.ExpiresAt is { } end && end <= now ? BanStatus.Expired : BanStatus.Active;
+    public string StatusText => Status switch
+    {
+        BanStatus.Lifted => string.Format(Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),
+        BanStatus.Expired => Strings.Ui_BanExpired,
+        _ => Strings.Ui_BanActive,
+    };
+    public bool IsActive => Status == BanStatus.Active;
+
+    // Bans saved before Package 80 have no creation time, creator fingerprint or duration: shown as unknown
+    static string Unknown => Strings.Ui_Unknown;
+    static string Local(DateTimeOffset? at) => at?.ToLocalTime().ToString("g") ?? Unknown;
+    public string CreatedAtText => Local(Ban.CreatedAt);
+    public string CreatedByFingerprintText => Ban.CreatedByFingerprint ?? Unknown;
+    public string DurationText => Ban.ExpiresAt is null ? Strings.Ban_Forever
+        : Ban.DurationMinutes is { } minutes ? KnownUserViewModel.Duration(TimeSpan.FromMinutes(minutes)) : Unknown;
+    public string EndText => Ban.ExpiresAt is null ? Strings.Ban_Forever : Local(Ban.ExpiresAt);
+    public bool HasRemaining => IsActive && Ban.ExpiresAt is not null;
+    public string RemainingText => HasRemaining ? KnownUserViewModel.Duration(Ban.ExpiresAt!.Value - now) : "";
+    public string AttemptsText => Ban.BlockedAttempts == 0 ? Strings.Ui_None
+        : string.Format(Strings.Ui_BanAttemptsFmt, Ban.BlockedAttempts, Local(Ban.LastAttempt), Ban.LastAttemptIp ?? Unknown);
+
+    /// <summary>Case-insensitive, in nickname, fingerprint, IP, reason, creator and lifter.</summary>
+    public bool Matches(string search) =>
+        search.Length == 0
+        || new[] { Nickname, Fingerprint, Ban.Ip, Ban.Reason, Ban.CreatedBy, Ban.LiftedBy }.Any(v => v?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
+
+    /// <summary>Package 76: the list is readable with BansView, lifting a ban needs UserBan; Package 80: only active ones.</summary>
+    public bool CanUnban { get; } = canUnban && StatusOf(ban, now) == BanStatus.Active;
 
     [RelayCommand(CanExecute = nameof(CanUnban))]
     Task Unban() => unban();

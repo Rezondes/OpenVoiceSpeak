@@ -23,7 +23,6 @@
   <data name="Ban_Day" xml:space="preserve"><value>1 day</value></data>
   <data name="Ban_Forever" xml:space="preserve"><value>permanent</value></data>
   <data name="Ban_Hour" xml:space="preserve"><value>1 hour</value></data>
-  <data name="Ban_Line" xml:space="preserve"><value>: {0}, by {1}, {2}</value></data>
   <data name="Ban_Permanent" xml:space="preserve"><value>Permanent</value></data>
   <data name="Ban_Until" xml:space="preserve"><value>until {0:yyyy-MM-dd HH:mm}</value></data>
   <data name="Ban_Week" xml:space="preserve"><value>7 days</value></data>
@@ -286,6 +285,34 @@
   <data name="Ui_BackgroundOpacityHint" xml:space="preserve"><value>Below 100 % the app behind shows through. Text, cards and dialogs stay solid.</value></data>
   <data name="Ui_BanMenu" xml:space="preserve"><value>Ban ...</value></data>
   <data name="Ui_Bans" xml:space="preserve"><value>Bans</value></data>
+  <data name="Ui_BanSearch" xml:space="preserve"><value>Search name, IP, reason, moderator</value></data>
+  <data name="Ui_BanStatusActive" xml:space="preserve"><value>Active bans</value></data>
+  <data name="Ui_BanStatusExpired" xml:space="preserve"><value>Expired bans</value></data>
+  <data name="Ui_BanStatusLifted" xml:space="preserve"><value>Lifted bans</value></data>
+  <data name="Ui_BanStatusAll" xml:space="preserve"><value>All bans</value></data>
+  <data name="Ui_BanTypeFilter" xml:space="preserve"><value>Type</value></data>
+  <data name="Ui_BanTypeAll" xml:space="preserve"><value>All types</value></data>
+  <data name="Ui_BanTypePermanent" xml:space="preserve"><value>Permanent</value></data>
+  <data name="Ui_BanTypeTemporary" xml:space="preserve"><value>Temporary</value></data>
+  <data name="Ui_BanTypeWithIp" xml:space="preserve"><value>With IP</value></data>
+  <data name="Ui_SortNewest" xml:space="preserve"><value>Newest first</value></data>
+  <data name="Ui_SortEndingSoonest" xml:space="preserve"><value>Ending soonest</value></data>
+  <data name="Ui_SortMostAttempts" xml:space="preserve"><value>Most attempts</value></data>
+  <data name="Ui_BanCount" xml:space="preserve"><value>{0} of {1} bans</value></data>
+  <data name="Ui_NoBanMatches" xml:space="preserve"><value>No ban matches the search and filters.</value></data>
+  <data name="Ui_BanActive" xml:space="preserve"><value>active</value></data>
+  <data name="Ui_BanExpired" xml:space="preserve"><value>expired</value></data>
+  <data name="Ui_BanLifted" xml:space="preserve"><value>lifted by {0} on {1}</value></data>
+  <data name="Ui_BanNoReason" xml:space="preserve"><value>no reason given</value></data>
+  <data name="Ui_BanAttemptsFmt" xml:space="preserve"><value>{0}, last on {1} from {2}</value></data>
+  <data name="Ui_BanReasonLabel" xml:space="preserve"><value>Reason</value></data>
+  <data name="Ui_BanCreatedBy" xml:space="preserve"><value>Created by</value></data>
+  <data name="Ui_BanCreatedAt" xml:space="preserve"><value>Created on</value></data>
+  <data name="Ui_BanDuration" xml:space="preserve"><value>Duration</value></data>
+  <data name="Ui_BanEnd" xml:space="preserve"><value>Ends</value></data>
+  <data name="Ui_BanRemaining" xml:space="preserve"><value>Remaining</value></data>
+  <data name="Ui_BanAttempts" xml:space="preserve"><value>Blocked attempts</value></data>
+  <data name="Ui_BanIp" xml:space="preserve"><value>IP address</value></data>
   <data name="Ui_BelowThreshold" xml:space="preserve"><value>below the threshold</value></data>
   <data name="Ui_BlurBackground" xml:space="preserve"><value>Blur the background</value></data>
   <data name="Ui_BookmarksSection" xml:space="preserve"><value>BOOKMARKS</value></data>

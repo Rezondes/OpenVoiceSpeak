@@ -29,6 +29,7 @@ public sealed partial class ServerState
     readonly Dictionary<uint, Session> sessions = [];
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> passwordFailures = [];
+    readonly Dictionary<Guid, DateTimeOffset> attemptSaved = []; // Package 80: last save of a ban's blocked attempts
     DateTimeOffset nextPasswordSweep;
     readonly AdminToken adminToken = new();
     uint lastSessionId;
@@ -153,7 +154,11 @@ public sealed partial class ServerState
             var now = time.GetUtcNow();
             var ipText = ip.ToString();
             var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint || b.Ip == ipText));
-            if (ban is not null) return (null, new Rejected(Codes.Banned, BanText(ban)));
+            if (ban is not null)
+            {
+                RecordBlockedAttempt(ban, ipText, now);
+                return (null, new Rejected(Codes.Banned, BanText(ban)));
+            }
 
             // A source that guessed wrong too often is turned away before its password is even looked at.
             var source = PasswordSource(ip);
@@ -360,12 +365,30 @@ public sealed partial class ServerState
         foreach (var s in sessions.Values) s.Send(message);
     }
 
-    /// <summary>Saves after every change; expired bans are dropped on the way.</summary>
+    /// <summary>
+    /// Saves after every change. Package 80 (A97): lifted and expired bans stay as history and are dropped on the way
+    /// once they ended longer ago than the log retention (LogDays, 0 = forever).
+    /// </summary>
     void Persist()
     {
-        var now = time.GetUtcNow();
-        data.Bans.RemoveAll(b => !b.IsActive(now));
+        if (data.Settings.LogDays > 0)
+        {
+            var now = time.GetUtcNow();
+            var cutoff = now.AddDays(-data.Settings.LogDays);
+            data.Bans.RemoveAll(b => b.EndedAt(now) < cutoff);
+        }
         store.Save(data);
+    }
+
+    /// <summary>Package 80 (A97): counts a join the ban turned away; written at most once per minute per ban, later saves take the rest along.</summary>
+    void RecordBlockedAttempt(BanRecord ban, string ip, DateTimeOffset now)
+    {
+        ban.BlockedAttempts++;
+        ban.LastAttempt = now;
+        ban.LastAttemptIp = ip;
+        if (attemptSaved.TryGetValue(ban.Id, out var saved) && now - saved < TimeSpan.FromMinutes(1)) return;
+        attemptSaved[ban.Id] = now;
+        Persist();
     }
 
     UserRecord? FindUser(string fingerprint) => data.Users.FirstOrDefault(u => u.Fingerprint == fingerprint);

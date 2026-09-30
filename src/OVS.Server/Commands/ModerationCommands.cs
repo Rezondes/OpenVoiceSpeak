@@ -53,7 +53,7 @@ public sealed partial class ServerState
         }
         if (!FindKnownTarget(s, r, r.Fingerprint, out _, out var online)) return;
         data.Users.Remove(user);
-        int bans = data.Bans.RemoveAll(b => b.Fingerprint == user.Fingerprint);
+        int bans = data.Bans.RemoveAll(b => b.Fingerprint == user.Fingerprint); // Package 80: the history as well
         Persist();
         logs.Server($"Nutzerdaten von {user.LastNickname} gelöscht von {s.Nickname} ({user.Fingerprint[..Math.Min(12, user.Fingerprint.Length)]}, {bans} Bans)");
         if (online is not null) RemoveLocked(online, new Disconnected(Codes.UserDeleted));
@@ -61,6 +61,7 @@ public sealed partial class ServerState
 
     void AddBan(Session s, string fingerprint, string nickname, string? ip, string reason, int? durationMinutes, Session? online)
     {
+        var now = time.GetUtcNow();
         data.Bans.Add(new BanRecord
         {
             Id = Guid.NewGuid(),
@@ -69,7 +70,10 @@ public sealed partial class ServerState
             Ip = ip,
             Reason = reason,
             CreatedBy = s.Nickname,
-            ExpiresAt = durationMinutes is { } minutes ? time.GetUtcNow().AddMinutes(minutes) : null,
+            ExpiresAt = durationMinutes is { } minutes ? now.AddMinutes(minutes) : null,
+            CreatedAt = now, // Package 80
+            CreatedByFingerprint = s.Fingerprint,
+            DurationMinutes = durationMinutes,
         });
         Persist();
         var duration = durationMinutes is { } m ? $"für {m} Minuten" : "dauerhaft";
@@ -87,13 +91,15 @@ public sealed partial class ServerState
     void OnUnban(Session s, Unban r)
     {
         if (!Require(s, r, Permission.UserBan)) return;
-        var ban = data.Bans.FirstOrDefault(b => b.Id == r.BanId);
+        var now = time.GetUtcNow();
+        var ban = data.Bans.FirstOrDefault(b => b.Id == r.BanId && b.IsActive(now)); // Package 80: history cannot be lifted again
         if (ban is null)
         {
             Fail(s, r, Codes.NotFound);
             return;
         }
-        data.Bans.Remove(ban);
+        ban.LiftedAt = now; // Package 80 (A97): kept as history
+        ban.LiftedBy = s.Nickname;
         Persist();
         logs.Server($"Bann von {ban.Nickname} aufgehoben von {s.Nickname}");
         SendBanList(s, r.RequestId);
@@ -113,13 +119,11 @@ public sealed partial class ServerState
         Broadcast(new UserUpdated(Info(target)));
     }
 
-    void SendBanList(Session s, string? requestId)
-    {
-        var now = time.GetUtcNow();
-        s.Send(new BanList(requestId, data.Bans.Where(b => b.IsActive(now)).Select(ToInfo).ToList()));
-    }
+    /// <summary>Package 80: active bans and the history; the client filters.</summary>
+    void SendBanList(Session s, string? requestId) => s.Send(new BanList(requestId, data.Bans.Select(ToInfo).ToList()));
 
-    static BanInfo ToInfo(BanRecord b) => new(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt);
+    static BanInfo ToInfo(BanRecord b) => new(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt,
+        b.CreatedAt, b.CreatedByFingerprint, b.DurationMinutes, b.LiftedAt, b.LiftedBy, b.BlockedAttempts, b.LastAttempt, b.LastAttemptIp);
 
     /// <summary>The reason goes into the server log and the ban list: bounded, one line, no control characters. Empty is fine.</summary>
     static bool ValidateReason(Session s, Request r, string? reason)

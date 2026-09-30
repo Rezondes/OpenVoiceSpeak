@@ -350,12 +350,17 @@ public sealed class ResponsiveTests : IDisposable
                 ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, i % 2 == 0, null,
                 i % 4 == 0 ? [new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null))
             .ToList()));
-        server.Apply(new OVS.Shared.Protocol.BanList("r",
-        [
-            new(Guid.NewGuid(), "fpA", "Störenfried", "10.0.0.1", "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert", "ich", null),
-            new(Guid.NewGuid(), "fpB", "Spammer", null, "Werbung", "ich", DateTimeOffset.Now.AddDays(3)),
-            new(Guid.NewGuid(), "fpC", "Troll", null, "", "ich", null),
-        ]));
+        // Package 80: 12 bans of every status (active, expired, lifted, old without details), all shown
+        var now = DateTimeOffset.Now;
+        server.Apply(new OVS.Shared.Protocol.BanList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(),
+            new string((char)('a' + i % 6), 64), $"Störenfried mit langem Namen {i}", i % 2 == 0 ? "2001:db8:85a3::8a2e:370:7334" : null,
+            i % 3 == 0 ? "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert" : "", "Moderator mit langem Namen",
+            (i % 4) switch { 0 => null, 1 => now.AddDays(3), 2 => now.AddDays(-1), _ => now.AddHours(5) },
+            i == 11 ? null : now.AddDays(-i - 2), i == 11 ? null : new string('f', 64), i % 4 is 1 or 3 ? 4320 : i % 4 == 2 ? 1440 : null,
+            i % 4 == 3 ? now.AddHours(-1) : null, i % 4 == 3 ? "Administrator mit langem Namen" : null, i * 7,
+            i % 2 == 1 ? now.AddMinutes(-i) : null, i % 2 == 1 ? "2001:db8:85a3::8a2e:370:7335" : null)).ToList()));
+        var admin = (AdminViewModel)main.GetVisualDescendants().OfType<AdminView>().Single().DataContext!;
+        admin.SelectedBanStatusFilter = admin.BanStatusFilters.Single(f => f.Value == BanStatusFilter.All);
         // Package 74: backups in the server tab, one of them the safety backup with the longer title
         server.Apply(new OVS.Shared.Protocol.BackupList("r",
         [
@@ -393,6 +398,7 @@ public sealed class ResponsiveTests : IDisposable
         admin.IsTransferring = true;
         admin.TransferPercent = 42;
         admin.TransferText = string.Format(Strings.Backup_Uploading, 42);
+        Assert.Equal(12, admin.Bans.Count); // Package 80: every ban of every status is checked for width below
         Dispatcher.UIThread.RunJobs();
         var tabs = AdminTabs(page);
         var strip = tabs.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == "PART_TabStrip");

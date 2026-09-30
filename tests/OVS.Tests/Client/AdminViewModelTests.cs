@@ -391,17 +391,155 @@ public class AdminViewModelTests
         }
     }
 
+    // ---- Package 80: ban overview with details, history, search and filter ----
+
+    static BanInfo BanOf(string nick, DateTimeOffset? expires = null, string? ip = null, string reason = "", string by = "mod",
+        DateTimeOffset? created = null, int? minutes = null, DateTimeOffset? liftedAt = null, string? liftedBy = null, int attempts = 0,
+        DateTimeOffset? lastAttempt = null, string? lastIp = null, string? fp = null) =>
+        new(Guid.NewGuid(), fp ?? "fp" + nick, nick, ip, reason, by, expires, created, created is null ? null : "fpMod", minutes,
+            liftedAt, liftedBy, attempts, lastAttempt, lastIp);
+
+    static string Local(DateTimeOffset t) => t.ToLocalTime().ToString("g");
+
+    static void ShowAllBans(AdminViewModel vm) => vm.SelectedBanStatusFilter = vm.BanStatusFilters.Single(f => f.Value == BanStatusFilter.All);
+
     [Fact]
-    public void BanList_ShowsBans_UnbanSends()
+    public void BanCards_ShowAllDetails_UnknownForMissing()
     {
+        var (vm, server, _) = Create(P.BansView);
+        var now = server.Time.GetUtcNow();
+        server.Apply(new BanList("r",
+        [
+            BanOf("Troll", now.AddMinutes(90), "10.0.0.9", "Spam", created: now.AddMinutes(-30), minutes: 120, attempts: 3,
+                lastAttempt: now.AddMinutes(-5), lastIp: "10.0.0.8", fp: "abcdef0123456789abcdef"),
+            BanOf("Otto", now.AddDays(2)), // saved before Package 80
+            BanOf("Lisa", created: now.AddDays(-1), liftedAt: now.AddHours(-2), liftedBy: "admin"),
+            BanOf("Emil", now.AddMinutes(-1), created: now.AddMinutes(-61), minutes: 60),
+        ]));
+        ShowAllBans(vm);
+
+        var t = vm.Bans.Single(b => b.Nickname == "Troll");
+        Assert.Equal(("abcdef0123456789", "abcdef0123456789abcdef"), (t.ShortFingerprint, t.Fingerprint));
+        Assert.Equal((true, "10.0.0.9"), (t.HasIp, t.Ip));
+        Assert.Equal("Spam", t.ReasonText);
+        Assert.Equal(("mod", "fpMod", Local(now.AddMinutes(-30))), (t.CreatedBy, t.CreatedByFingerprintText, t.CreatedAtText));
+        Assert.Equal(("2 h", Local(now.AddMinutes(90))), (t.DurationText, t.EndText));
+        Assert.Equal((true, "1 h 30 min"), (t.HasRemaining, t.RemainingText));
+        Assert.Equal((BanStatus.Active, "aktiv"), (t.Status, t.StatusText));
+        Assert.Equal($"3, zuletzt {Local(now.AddMinutes(-5))} von 10.0.0.8", t.AttemptsText);
+
+        var o = vm.Bans.Single(b => b.Nickname == "Otto");
+        Assert.Equal(("unbekannt", "unbekannt", "unbekannt"), (o.CreatedAtText, o.CreatedByFingerprintText, o.DurationText));
+        Assert.Equal((false, "ohne Grund", "keine"), (o.HasIp, o.ReasonText, o.AttemptsText));
+        Assert.Equal((BanStatus.Active, Local(now.AddDays(2))), (o.Status, o.EndText));
+
+        var l = vm.Bans.Single(b => b.Nickname == "Lisa");
+        Assert.Equal((BanStatus.Lifted, $"aufgehoben von admin am {Local(now.AddHours(-2))}"), (l.Status, l.StatusText));
+        Assert.Equal(("dauerhaft", "dauerhaft", false), (l.DurationText, l.EndText, l.HasRemaining));
+
+        var e = vm.Bans.Single(b => b.Nickname == "Emil");
+        Assert.Equal((BanStatus.Expired, "abgelaufen", "1 h", false), (e.Status, e.StatusText, e.DurationText, e.HasRemaining));
+    }
+
+    [Theory]
+    [InlineData("TROLL", "Troll")]
+    [InlineData("abc12", "Troll")]
+    [InlineData("10.0.0", "Troll")]
+    [InlineData("werbung", "Troll")]
+    [InlineData("chef", "Lisa")]
+    [InlineData("aufheber", "Lisa")]
+    [InlineData("", "Lisa,Troll")]
+    [InlineData("gibtsnicht", "")]
+    public void BanSearch_MatchesAllTextFields(string search, string expected)
+    {
+        var (vm, server, _) = Create(P.BansView);
+        var now = server.Time.GetUtcNow();
+        server.Apply(new BanList("r",
+        [
+            BanOf("Troll", ip: "10.0.0.9", reason: "Werbung", fp: "ffabc12ff", created: now),
+            BanOf("Lisa", by: "Chef", liftedAt: now, liftedBy: "Aufheber", created: now.AddDays(-1)),
+        ]));
+        ShowAllBans(vm);
+        vm.BanSearchText = search;
+        Assert.Equal(expected, string.Join(",", vm.Bans.Select(b => b.Nickname).Order()));
+    }
+
+    [Fact]
+    public void BanFilter_StatusType_Sort_Count()
+    {
+        var (vm, server, _) = Create(P.BansView);
+        var now = server.Time.GetUtcNow();
+        server.Apply(new BanList("r",
+        [
+            BanOf("Anna", created: now.AddDays(-1), attempts: 5),
+            BanOf("bert", now.AddHours(1), "10.0.0.2", created: now.AddHours(-2), minutes: 180),
+            BanOf("Cleo", now.AddHours(-1), created: now.AddDays(-3), minutes: 60, attempts: 1),
+            BanOf("Dino", now.AddHours(5), created: now.AddMinutes(-10), minutes: 315, liftedAt: now, liftedBy: "admin", attempts: 9),
+            BanOf("Emil", now.AddMinutes(30)), // old: no creation time
+        ]));
+        string Names() => string.Join(",", vm.Bans.Select(b => b.Nickname));
+
+        Assert.Equal((BanStatusFilter.Active, BanTypeFilter.All, BanSortOrder.Newest),
+            (vm.SelectedBanStatusFilter.Value, vm.SelectedBanTypeFilter.Value, vm.SelectedBanSortOrder.Value));
+        Assert.Equal("bert,Anna,Emil", Names()); // active only, newest first, unknown creation last
+        Assert.Equal("3 von 5 Bans", vm.BanCountText);
+        vm.SelectedBanStatusFilter = vm.BanStatusFilters.Single(f => f.Value == BanStatusFilter.Expired);
+        Assert.Equal("Cleo", Names());
+        vm.SelectedBanStatusFilter = vm.BanStatusFilters.Single(f => f.Value == BanStatusFilter.Lifted);
+        Assert.Equal("Dino", Names());
+        Assert.Equal("1 von 5 Bans", vm.BanCountText);
+        ShowAllBans(vm);
+        Assert.Equal("Dino,bert,Anna,Cleo,Emil", Names());
+
+        vm.SelectedBanTypeFilter = vm.BanTypeFilters.Single(f => f.Value == BanTypeFilter.Permanent);
+        Assert.Equal("Anna", Names());
+        vm.SelectedBanTypeFilter = vm.BanTypeFilters.Single(f => f.Value == BanTypeFilter.Temporary);
+        Assert.Equal("Dino,bert,Cleo,Emil", Names());
+        vm.SelectedBanTypeFilter = vm.BanTypeFilters.Single(f => f.Value == BanTypeFilter.WithIp);
+        Assert.Equal("bert", Names());
+        vm.SelectedBanTypeFilter = vm.BanTypeFilters[0];
+
+        vm.SelectedBanSortOrder = vm.BanSortOrders.Single(s => s.Value == BanSortOrder.EndingSoonest);
+        Assert.Equal("Cleo,Emil,bert,Dino,Anna", Names()); // permanent last
+        vm.SelectedBanSortOrder = vm.BanSortOrders.Single(s => s.Value == BanSortOrder.MostAttempts);
+        Assert.Equal("Dino,Anna,Cleo,bert,Emil", Names());
+        vm.SelectedBanSortOrder = vm.BanSortOrders.Single(s => s.Value == BanSortOrder.Name);
+        Assert.Equal("Anna,bert,Cleo,Dino,Emil", Names());
+        Assert.Equal("5 von 5 Bans", vm.BanCountText);
+    }
+
+    [Fact]
+    public void Unban_OnlyActive_OnlyWithRight_FilterKept()
+    {
+        var (view, viewServer, _) = Create(P.BansView);
+        var now = viewServer.Time.GetUtcNow();
+        BanInfo[] bans =
+        [
+            BanOf("Anna", created: now),
+            BanOf("bert", now.AddHours(1), created: now),
+            BanOf("Cleo", now.AddHours(-1), created: now.AddDays(-1)),
+            BanOf("Dino", created: now.AddDays(-1), liftedAt: now, liftedBy: "admin"),
+        ];
+        viewServer.Apply(new BanList("r", bans));
+        ShowAllBans(view);
+        Assert.All(view.Bans, b => Assert.False(b.CanUnban)); // read-only without UserBan
+        Assert.All(view.Bans, b => Assert.False(b.UnbanCommand.CanExecute(null)));
+
         var (vm, server, sent) = Create(P.BansView | P.UserBan);
-        var ban = new BanInfo(Guid.NewGuid(), "abcdef0123456789", "troll", "1.2.3.4", "spam", "mod", null);
-        server.Apply(new BanList("r", [ban]));
-        var entry = Assert.Single(vm.Bans);
-        Assert.Contains("troll", entry.Text);
-        Assert.Contains("dauerhaft", entry.Text);
-        entry.UnbanCommand.Execute(null);
-        Assert.Equal(new Unban(ban.Id), sent[^1] with { RequestId = null });
+        server.Apply(new BanList("r", bans));
+        ShowAllBans(vm);
+        Assert.Equal(["Anna", "bert"], vm.Bans.Where(b => b.CanUnban).Select(b => b.Nickname).Order());
+        Assert.False(vm.Bans.Single(b => b.Nickname == "Dino").UnbanCommand.CanExecute(null));
+
+        vm.BanSearchText = "bert";
+        vm.SelectedBanSortOrder = vm.BanSortOrders.Single(s => s.Value == BanSortOrder.Name);
+        vm.Bans.Single().UnbanCommand.Execute(null);
+        Assert.Equal(new Unban(bans[1].Id), sent.OfType<Unban>().Single() with { RequestId = null });
+
+        server.Apply(new BanList("u", [.. bans[..1], bans[1] with { LiftedAt = now, LiftedBy = "ich" }, .. bans[2..]]));
+        Assert.Equal(("bert", BanStatusFilter.All, BanSortOrder.Name), (vm.BanSearchText, vm.SelectedBanStatusFilter.Value, vm.SelectedBanSortOrder.Value));
+        var bert = Assert.Single(vm.Bans);
+        Assert.Equal((BanStatus.Lifted, false), (bert.Status, bert.CanUnban));
     }
 
     [Fact]

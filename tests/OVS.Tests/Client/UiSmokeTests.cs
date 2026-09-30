@@ -204,6 +204,14 @@ public sealed class UiSmokeTests : IDisposable
         Assert.Contains("Alle Nutzer", Texts(main)); // the combo boxes show their labels
         foreach (var text in new[] { "Bannen", "Nutzerdaten löschen" }) // Package 72: the actions of the card
             Assert.Contains(text, Texts(main));
+        // Package 80: the ban overview with search, filters and every detail
+        vm.Server.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
+            "fp2", null, null, null, 2, DateTimeOffset.Now, "10.0.0.4")]));
+        main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Bans").IsSelected = true;
+        Dispatcher.UIThread.RunJobs();
+        foreach (var text in new[] { "1 von 1 Bans", "troll", "Spam", "aktiv", "10.0.0.3", "Blockierte Versuche", "Erstellt von", "anna", "Aktive Bans" })
+            Assert.Contains(text, Texts(main));
+        Assert.Single(main.GetVisualDescendants().OfType<TextBox>(), t => AutomationProperties.GetName(t) == "Name, IP, Grund, Moderator suchen");
         vm.ClosePage();
 
         void Dialog(Func<OverlayHost, Task> open, string title)

@@ -267,40 +267,105 @@
           </DockPanel>
         </TabItem>
 
-        <!-- ===== Bans ===== -->
+        <!-- ===== Bans (Package 80: active bans and history with every detail, search, filters and order) ===== -->
         <TabItem Header="{x:Static l:Strings.Ui_Bans}" IsVisible="{Binding ShowBans}">
-          <Panel>
-            <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center"
-                        IsVisible="{Binding Bans.Count, Converter={x:Static v:Ui.IsZero}}">
-              <PathIcon Classes="muted" Data="{StaticResource Icon.Prohibited}" Width="32" Height="32" />
-              <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NobodyBanned}" HorizontalAlignment="Center" />
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+              <TextBox x:Name="BanSearch" Text="{Binding BanSearchText}" Watermark="{x:Static l:Strings.Ui_BanSearch}"
+                       AutomationProperties.Name="{x:Static l:Strings.Ui_BanSearch}" />
+              <WrapPanel ItemSpacing="8" LineSpacing="8">
+                <ComboBox x:Name="BanStatusFilter" ItemsSource="{Binding BanStatusFilters}" SelectedItem="{Binding SelectedBanStatusFilter}"
+                          MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_StatusFilter}" />
+                <ComboBox x:Name="BanTypeFilter" ItemsSource="{Binding BanTypeFilters}" SelectedItem="{Binding SelectedBanTypeFilter}"
+                          MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_BanTypeFilter}" />
+                <ComboBox x:Name="BanSortOrder" ItemsSource="{Binding BanSortOrders}" SelectedItem="{Binding SelectedBanSortOrder}"
+                          MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_SortOrder}" />
+              </WrapPanel>
+              <TextBlock Classes="caption" Text="{Binding BanCountText}" TextWrapping="Wrap" />
             </StackPanel>
-            <ScrollViewer>
-              <ItemsControl ItemsSource="{Binding Bans}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Spacing="8" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:BanViewModel">
-                    <Border Classes="card" Padding="12,10">
-                      <DockPanel>
-                        <Button Classes="cardAction" Command="{Binding UnbanCommand}">
-                          <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
-                            <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
+            <Panel>
+              <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding HasNoBans}">
+                <PathIcon Classes="muted" Data="{StaticResource Icon.Prohibited}" Width="32" Height="32" />
+                <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NobodyBanned}" HorizontalAlignment="Center" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBanMatches}" TextWrapping="Wrap" TextAlignment="Center"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding HasNoBanMatches}" />
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Bans}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Spacing="8" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BanViewModel">
+                      <Border Classes="card" Padding="12,10">
+                        <DockPanel>
+                          <!-- only on active bans and with UserBan; beside the details, under narrow below them -->
+                          <Button Classes="cardAction" Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                              <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
+                            </StackPanel>
+                          </Button>
+                          <PathIcon DockPanel.Dock="Left" Classes.danger="{Binding IsActive}" Classes.muted="{Binding !IsActive}"
+                                    Data="{StaticResource Icon.Prohibited}" Margin="0,2,12,0" VerticalAlignment="Top" />
+                          <StackPanel Spacing="6">
+                            <WrapPanel ItemSpacing="8">
+                              <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextWrapping="Wrap" />
+                              <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
+                                         VerticalAlignment="Center" ToolTip.Tip="{Binding Fingerprint}" />
+                            </WrapPanel>
+                            <TextBlock Classes="caption" Classes.danger="{Binding IsActive}" Text="{Binding StatusText}" TextWrapping="Wrap" />
+                            <!-- two or more columns when wide, one under narrow -->
+                            <WrapPanel Classes="userDetails" ItemSpacing="16" LineSpacing="6">
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanReasonLabel}" />
+                                <TextBlock Classes="body" Text="{Binding ReasonText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel IsVisible="{Binding HasIp}">
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanIp}" />
+                                <TextBlock Classes="body" Text="{Binding Ip}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanCreatedBy}" />
+                                <TextBlock Classes="body" Text="{Binding CreatedBy}" TextWrapping="Wrap" ToolTip.Tip="{Binding CreatedByFingerprintText}" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanCreatedAt}" />
+                                <TextBlock Classes="body" Text="{Binding CreatedAtText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanDuration}" />
+                                <TextBlock Classes="body" Text="{Binding DurationText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanEnd}" />
+                                <TextBlock Classes="body" Text="{Binding EndText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel IsVisible="{Binding HasRemaining}">
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanRemaining}" />
+                                <TextBlock Classes="body" Text="{Binding RemainingText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel>
+                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanAttempts}" />
+                                <TextBlock Classes="body" Text="{Binding AttemptsText}" TextWrapping="Wrap" />
+                              </StackPanel>
+                            </WrapPanel>
+                            <StackPanel>
+                              <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_IdentityFingerprint}" />
+                              <SelectableTextBlock Classes="caption" Text="{Binding Fingerprint}" TextWrapping="Wrap"
+                                                   FontFamily="Cascadia Mono,Consolas,monospace" />
+                            </StackPanel>
                           </StackPanel>
-                        </Button>
-                        <PathIcon DockPanel.Dock="Left" Classes="danger" Data="{StaticResource Icon.Prohibited}" Margin="0,0,12,0" VerticalAlignment="Center" />
-                        <TextBlock Classes="body" Text="{Binding Text}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                      </DockPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-          </Panel>
+                        </DockPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Panel>
+          </DockPanel>
         </TabItem>
 
         <!-- ===== Server ===== -->

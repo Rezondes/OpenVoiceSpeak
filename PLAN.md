@@ -4993,28 +4993,28 @@ Testbefehl: `dotnet test`
 
 ### Acceptance Criteria
 
-- [ ] AC1: New bans store:
+- [x] AC1: New bans store:
   - creation time and the creator's fingerprint (besides the existing nickname)
   - the original duration (null = permanent) and whether the IP is included
   Existing bans keep working and show "unknown" for the missing values.
-- [ ] AC2: Lifting a ban (Unban) and expiry no longer delete the record. The ban becomes inactive and keeps:
+- [x] AC2: Lifting a ban (Unban) and expiry no longer delete the record. The ban becomes inactive and keeps:
   - for Unban: who lifted it (nickname) and when
   - for expiry: status "expired"
   `Admit` only blocks on active bans. History entries are removed after the log retention period (`LogDays` from Package 69, 0 = keep forever) and when the user's data is deleted (Package 72).
-- [ ] AC3: Every rejected join because of an active ban increments that ban's attempt counter and stores time and IP of the last attempt. This is saved at most once per minute per ban, not on every attempt.
-- [ ] AC4: Each ban card shows:
+- [x] AC3: Every rejected join because of an active ban increments that ban's attempt counter and stores time and IP of the last attempt. This is saved at most once per minute per ban, not on every attempt.
+- [x] AC4: Each ban card shows:
   - nickname, short fingerprint (full one in the tooltip, copyable)
   - IP if included, reason
   - created by and at, duration and end ("dauerhaft" or date), remaining time for active bans
   - status (active, expired, lifted by X at Y)
   - blocked attempts with the last time and IP
-- [ ] AC5: A search box filters immediately and case-insensitively by nickname, fingerprint, IP, reason, creator and lifter.
-- [ ] AC6: Filters:
+- [x] AC5: A search box filters immediately and case-insensitively by nickname, fingerprint, IP, reason, creator and lifter.
+- [x] AC6: Filters:
   - status: active, expired, lifted, all; default is active
   - type: permanent, temporary, with IP, all
   Sorting: newest first (default), ending soonest, most blocked attempts, name. The hit count is shown above the list ("3 von 12 Bans").
-- [ ] AC7: "Entbannen" stays only on active bans and needs `UserBan`. Without `UserBan` the list is read-only. Search and filter are kept when the list refreshes after an action.
-- [ ] AC8: The Bans tab fits from 360 px (A96, `LayoutAssert.FitsHorizontally` in `ResponsiveTests.Admin_EveryTabFits`). Texts in German and English.
+- [x] AC7: "Entbannen" stays only on active bans and needs `UserBan`. Without `UserBan` the list is read-only. Search and filter are kept when the list refreshes after an action.
+- [x] AC8: The Bans tab fits from 360 px (A96, `LayoutAssert.FitsHorizontally` in `ResponsiveTests.Admin_EveryTabFits`). Texts in German and English.
 
 ### Tests (TDD)
 
