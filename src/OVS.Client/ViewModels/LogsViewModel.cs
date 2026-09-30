@@ -85,7 +85,7 @@ public sealed partial class LogsViewModel : ObservableObject
         switch (message)
         {
             case LogList list:
-                if (filePages.Add(list.Offset, list.Total, list.Files, o => _ = server.SendAsync(new ListLogs(o))) is not { } files) break;
+                if (filePages.Add(list.RequestId, list.Offset, list.Total, list.Files, (id, o) => _ = server.SendAsync(new ListLogs(o), id)) is not { } files) break;
                 allFiles = files;
                 selected.IntersectWith(allFiles.Select(f => f.Id)); // files gone meanwhile (retention) drop out
                 RebuildSources();

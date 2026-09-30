@@ -356,9 +356,10 @@ public sealed partial class ServerViewModel : ObservableObject
     // ---- Requests ----
 
     /// <summary>Sends a request and returns the id it got, so an answer or error can be matched (Package 73).</summary>
-    public async Task<string> SendAsync(Request request)
+    /// <param name="id">A fixed id instead of a new one, e.g. the round a later list page belongs to.</param>
+    public async Task<string> SendAsync(Request request, string? id = null)
     {
-        var id = $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}";
+        id ??= $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}";
         try
         {
             await send(request with { RequestId = id });

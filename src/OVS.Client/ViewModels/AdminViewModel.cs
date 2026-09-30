@@ -245,18 +245,18 @@ public sealed partial class AdminViewModel : ObservableObject
                 Reply(id).TrySetResult(message);
                 break;
             case UserList list:
-                if (userPages.Add(list.Offset, list.Total, list.Users, o => _ = server.SendAsync(new ListUsers(o))) is not { } users) break;
+                if (userPages.Add(list.RequestId, list.Offset, list.Total, list.Users, (id, o) => _ = server.SendAsync(new ListUsers(o), id)) is not { } users) break;
                 ConfirmGroupChanges(users);
                 knownUsers = users;
                 RebuildUsers();
                 break;
             case BackupList list:
-                if (backupPages.Add(list.Offset, list.Total, list.Backups, o => _ = server.SendAsync(new ListBackups(o))) is not { } backups) break;
+                if (backupPages.Add(list.RequestId, list.Offset, list.Total, list.Backups, (id, o) => _ = server.SendAsync(new ListBackups(o), id)) is not { } backups) break;
                 backupInfos = backups;
                 RebuildBackups();
                 break;
             case BanList list:
-                if (banPages.Add(list.Offset, list.Total, list.Bans, o => _ = server.SendAsync(new ListBans(o))) is not { } bans) break;
+                if (banPages.Add(list.RequestId, list.Offset, list.Total, list.Bans, (id, o) => _ = server.SendAsync(new ListBans(o), id)) is not { } bans) break;
                 allBans = bans;
                 RebuildBans();
                 break;

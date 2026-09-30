@@ -1118,6 +1118,27 @@ public class AdminViewModelTests
         Assert.Equal(5, vm.Users.Count);
     }
 
+    /// <summary>A user joins while a long list is still fetched: the pages of both rounds must not mix.</summary>
+    [Fact]
+    public void UserList_JoinMidFetch_NoUserMissingOrTwice()
+    {
+        var before = Enumerable.Range(0, 450).Select(i => Known($"fp{i:D3}", $"Nutzer{i:D3}")).ToList();
+        var after = before.Prepend(Known("fpNew", "Aaron")).ToList(); // shifts every later page by one
+        UserList PageOf(List<KnownUserInfo> all, string? id, int offset) => new(id, all.Skip(offset).Take(200).ToList(), offset, all.Count);
+        var (vm, server, sent) = Create(P.UsersView | P.Speak);
+
+        server.Apply(PageOf(before, "r0", 0));
+        server.Apply(new UserJoined(Online(2, "fpNew", "Aaron")));
+        var fresh = sent.OfType<ListUsers>().Single(l => l.Offset == 0).RequestId;
+        server.Apply(PageOf(after, fresh, 0));
+        server.Apply(PageOf(before, "r0", 200)); // the old round's answer arrives late
+        server.Apply(PageOf(after, fresh, 200));
+        Assert.Contains(sent.OfType<ListUsers>(), l => l.Offset == 400 && l.RequestId == fresh);
+        server.Apply(PageOf(after, fresh, 400));
+
+        Assert.Equal(after.Select(u => u.Fingerprint).Order(), vm.Users.Select(u => u.Fingerprint).Order());
+    }
+
     /// <summary>Package 83: the server's rules for names, welcome text and password, shown before sending.</summary>
     [Fact]
     public async Task SaveServerSettings_InvalidInput_ErrorNothingSent()
