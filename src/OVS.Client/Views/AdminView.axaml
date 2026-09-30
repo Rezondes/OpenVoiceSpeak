@@ -474,7 +474,7 @@
         <TabItem Header="{x:Static l:Strings.Ui_Server}" IsVisible="{Binding ShowServer}">
           <ScrollViewer>
             <!-- Package 74: both cards share one width. Package 89: settings with ServerConfig, backups with BackupsManage -->
-            <StackPanel Spacing="12" MaxWidth="560" HorizontalAlignment="Left">
+            <StackPanel Spacing="12">
               <Border Classes="card" IsVisible="{Binding ShowServerSettings}">
                 <StackPanel Spacing="12">
                   <!-- Server logo (Package 30): pick a file or drop it onto the preview -->
