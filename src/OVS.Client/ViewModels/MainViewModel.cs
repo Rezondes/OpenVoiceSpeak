@@ -505,13 +505,17 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
+    /// <summary>The server answers the same logo once per 10 s; a second more to be clear of the boundary.</summary>
+    static readonly TimeSpan IconRetryDelay = TimeSpan.FromSeconds(11);
+
     /// <summary>
     /// Keeps the logo in step with the server's hash (Package 30): from the cache when it matches, otherwise
     /// downloaded once and cached for next time and for the bookmark tile.
     /// </summary>
-    void TrackServerIcon(ServerViewModel vm, string host, int port)
+    public void TrackServerIcon(ServerViewModel vm, string host, int port)
     {
-        string? requested = null;
+        string? requested = null, retried = null;
+        Task<string>? pending = null;
         void Sync()
         {
             var hash = vm.IconHash;
@@ -529,9 +533,28 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             }
             if (requested == hash) return;
             requested = hash;
-            _ = vm.SendAsync(new GetServerIcon());
+            pending = vm.SendAsync(new GetServerIcon());
         }
         vm.StateChanged += Sync;
+        vm.AdminMessage += m =>
+        {
+            // Refused within the server's interval: asked once more afterwards, if that logo is still wanted.
+            if (m is not Error { Code: Codes.RateLimited } e || pending is not { IsCompletedSuccessfully: true } p || p.Result != e.RequestId) return;
+            var hash = requested;
+            if (retried == hash) return;
+            retried = hash;
+            _ = RetryAsync(hash);
+        };
+        async Task RetryAsync(string? hash)
+        {
+            await Task.Delay(IconRetryDelay, vm.Time);
+            post(() =>
+            {
+                if (Server != vm || vm.IconHash != hash) return;
+                requested = null;
+                Sync();
+            });
+        }
         vm.IconReceived += icon =>
         {
             if (icon.PngBase64 is null || icon.Hash != vm.IconHash) return;

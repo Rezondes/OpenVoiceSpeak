@@ -1,5 +1,6 @@
 using OVS.Client.Audio;
 using OVS.Client.Input;
+using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
@@ -364,6 +365,58 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return new StreamReader(stream).ReadToEnd();
         }));
         Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Server-Logo anfordern")));
+    }
+
+    /// <summary>A refused logo request is sent once more after the server's interval, if the logo is still wanted.</summary>
+    [Fact]
+    public async Task ServerIcon_RateLimited_RetriedOnceAfterInterval()
+    {
+        var time = new ManualTimeProvider();
+        var sent = new List<Request>();
+        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "", false, IconHash: "abc"), FakeServers.Lobby,
+            [new ChannelInfo(FakeServers.Lobby, "Lobby", "", 0)], [], [],
+            [new UserInfo(1, "fp1", "ich", FakeServers.Lobby, false, false, false, OVS.Shared.Permissions.Permission.None, [])]);
+        var server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        {
+            lock (sent) sent.Add(r);
+            return Task.CompletedTask;
+        }, time);
+        int Requests()
+        {
+            lock (sent) return sent.Count(r => r is GetServerIcon);
+        }
+        string LastId()
+        {
+            lock (sent) return sent.Last(r => r is GetServerIcon).RequestId!;
+        }
+        async Task<int> AfterRefusal()
+        {
+            var id = LastId();
+            await OnUi(() =>
+            {
+                server.Apply(new Error(id, Codes.RateLimited));
+                return 0;
+            });
+            var before = Requests();
+            time.Advance(TimeSpan.FromSeconds(11));
+            for (int i = 0; i < 20 && Requests() == before; i++)
+            {
+                await Task.Delay(50);
+                await OnUi(() => 0); // lets the posted retry run
+            }
+            return Requests();
+        }
+
+        await OnUi(() =>
+        {
+            vm.Server = server;
+            vm.Server = server;
+            vm.TrackServerIcon(server, "127.0.0.1", 1);
+            return 0;
+        });
+        Assert.Equal(1, Requests());
+        Assert.Equal(2, await AfterRefusal());
+        Assert.Equal(2, await AfterRefusal()); // only once
     }
 
     [Fact]

@@ -461,10 +461,20 @@ public sealed partial class ServerState
 
     static bool ThrottleHeavy(Session s, Request r) => Throttle(s, r, 1 / Limits.HeavyInterval.TotalSeconds);
 
-    /// <summary>Needs no right, but one answer can be ~700 KB: from the cached string, once per IconInterval.</summary>
+    /// <summary>
+    /// Needs no right, but one answer can be ~700 KB: from the cached string, once per IconInterval.
+    /// A logo this session has not been sent yet is always answered, so a change reaches it at once.
+    /// </summary>
     void OnGetServerIcon(Session s, GetServerIcon r)
     {
-        if (Throttle(s, r, 1 / Limits.IconInterval.TotalSeconds)) s.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64));
+        bool allowed = s.TryTakeCostly(r.GetType(), 1 / Limits.IconInterval.TotalSeconds, 1);
+        if (!allowed && icon.Hash == s.ServedIconHash)
+        {
+            Fail(s, r, Codes.RateLimited);
+            return;
+        }
+        s.ServedIconHash = icon.Hash;
+        s.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64));
     }
 
     // ---- Voice ----

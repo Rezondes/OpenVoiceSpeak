@@ -48,6 +48,8 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public DateTimeOffset ConnectedAt { get; } = time.GetUtcNow();
     /// <summary>Guarded by the ServerState lock.</summary>
     public int ChatMessages { get; set; }
+    /// <summary>Hash of the logo last sent to this session; guarded by the ServerState lock.</summary>
+    public string? ServedIconHash { get; set; }
     long voiceFrames;
 
     /// <summary>Called by the UDP loop for each relayed voice packet; no lock on that path.</summary>

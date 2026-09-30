@@ -95,6 +95,31 @@ public sealed class LimitsTests
     }
 
     [Fact]
+    public async Task ServerIcon_ChangedLogo_AnsweredWithinInterval()
+    {
+        var admin = ClientIdentity.Create();
+        var time = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), dataDir: NewDataDirWithIcon(), time: time);
+        await using var client = await TestClient.ConnectAsync(server, "chef", admin);
+        await client.SendAsync(new GetServerIcon { RequestId = "i1" });
+        var first = await client.WaitForAsync<ServerIcon>(i => i.RequestId == "i1");
+
+        // Changed right after the fetch: the first request for the new logo is answered at once, a repeat is not.
+        await client.SendAsync(new SetServerIcon(Convert.ToBase64String(Png(1024))));
+        var changed = await client.WaitForAsync<ServerSettingsChanged>(c => c.Settings.IconHash != first.Hash);
+        await client.SendAsync(new GetServerIcon { RequestId = "i2" });
+        Assert.Equal(changed.Settings.IconHash, (await client.WaitForAsync<ServerIcon>(i => i.RequestId == "i2")).Hash);
+        await client.SendAsync(new GetServerIcon { RequestId = "i3" });
+        Assert.Equal(Codes.RateLimited, (await client.ErrorAsync("i3")).Code);
+
+        // Changed twice within the interval: still answered.
+        await client.SendAsync(new SetServerIcon(Convert.ToBase64String(Png(2048))));
+        var again = await client.WaitForAsync<ServerSettingsChanged>(c => c.Settings.IconHash != changed.Settings.IconHash);
+        await client.SendAsync(new GetServerIcon { RequestId = "i4" });
+        Assert.Equal(again.Settings.IconHash, (await client.WaitForAsync<ServerIcon>(i => i.RequestId == "i4")).Hash);
+    }
+
+    [Fact]
     public async Task CostlyRequests_OwnLimits()
     {
         var admin = ClientIdentity.Create();
