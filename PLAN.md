@@ -6001,13 +6001,13 @@ These actions send a request and show nothing until the server's state change ar
 
 ### Acceptance Criteria
 
-- [ ] AC1: Joining a channel marks the target row with a small spinner until the own channel changes (or an error arrives); a second join request meanwhile is ignored.
-- [ ] AC2: A sent chat message appears at once in the history, greyed with a small clock, and turns normal when the server echo arrives; on error it shows "nicht gesendet" with a retry button and the text stays.
-- [ ] AC3: Dialogs that send (channel create/edit, ban, redeem token) keep their card open with a busy primary button until the server confirms, then close; errors show inside the dialog.
-- [ ] AC4: Group save, logo upload, user card actions (ban, unban, delete, lift mute, group toggles), link apply and reorder show a spinner on the triggering control until confirmed; reorder keeps the new order visible (from Package 96) and reverts with an error if refused.
-- [ ] AC5: Settings "Speichern" shows a busy button while audio devices restart and closes afterwards; the update check shows a spinner next to its text.
-- [ ] AC6: Every waiting action in the client has a visible reaction within 400 ms; a UI test walks through all of them with a fake server that answers after 1 s and asserts a visible busy indicator after 400 ms each.
-- [ ] AC7: Texts in German and English, everything fits at 360 px.
+- [x] AC1: Joining a channel marks the target row with a small spinner until the own channel changes (or an error arrives); a second join request meanwhile is ignored.
+- [x] AC2: A sent chat message appears at once in the history, greyed with a small clock, and turns normal when the server echo arrives; on error it shows "nicht gesendet" with a retry button and the text stays.
+- [x] AC3: Dialogs that send (channel create/edit, ban, redeem token) keep their card open with a busy primary button until the server confirms, then close; errors show inside the dialog.
+- [x] AC4: Group save, logo upload, user card actions (ban, unban, delete, lift mute, group toggles), link apply and reorder show a spinner on the triggering control until confirmed; reorder keeps the new order visible (from Package 96) and reverts with an error if refused. (A user card shows one spinner for whichever of its actions runs, beside its buttons, which are disabled meanwhile.)
+- [x] AC5: Settings "Speichern" shows a busy button while audio devices restart and closes afterwards; the update check shows a spinner next to its text.
+- [x] AC6: Every waiting action in the client has a visible reaction within 400 ms; a UI test walks through all of them with a fake server that answers after 1 s and asserts a visible busy indicator after 400 ms each.
+- [x] AC7: Texts in German and English, everything fits at 360 px.
 
 ### Tests (TDD)
 

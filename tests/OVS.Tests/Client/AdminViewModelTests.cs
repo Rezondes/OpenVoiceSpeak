@@ -707,11 +707,12 @@ public class AdminViewModelTests
     [Fact]
     public async Task MoveGroupUpDown_SendsFullOrder()
     {
-        var (vm, _, sent) = Create(P.All);
+        var (vm, server, sent) = Create(P.All);
         vm.SelectedGroup = Group(vm, "Gast");
         Assert.False(vm.MoveGroupUpCommand.CanExecute(null));
         await vm.MoveGroupDownCommand.ExecuteAsync(null);
         Assert.Equal(new[] { ModGroup, WellKnownGroups.Guest, WellKnownGroups.Admin }, ((ReorderGroups)sent[^1]).GroupIds);
+        server.Apply(new Error(sent[^1].RequestId, Codes.PermissionDenied)); // Package 98: refused, the server's order is back
 
         vm.SelectedGroup = Group(vm, "Admin");
         Assert.False(vm.MoveGroupDownCommand.CanExecute(null));
@@ -944,7 +945,7 @@ public class AdminViewModelTests
         bool? ipOffered = null;
         var dialogs = new Dialogs
         {
-            Ban = (_, ipKnown) =>
+            Ban = (_, ipKnown, _) =>
             {
                 ipOffered = ipKnown;
                 return Task.FromResult<BanChoice?>(choice);
@@ -1217,7 +1218,7 @@ public class AdminViewModelTests
     public async Task UnbanThenBan_BanListRefreshedOnce()
     {
         var ban = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
-        var dialogs = new Dialogs { Ban = (_, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) };
+        var dialogs = new Dialogs { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.Speak, dialogs: dialogs);
         server.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
             Known("fpB", "Bert", bans: [ban]) with { CanBeModeratedByMe = true }]));
@@ -1341,5 +1342,80 @@ public class AdminViewModelTests
         server.Apply(new Error(restore.RequestId, Codes.NotFound)); // refused: the card comes back with the error
         Assert.False(vm.Restoring.IsBusy);
         Assert.Equal(OVS.Client.ErrorTexts.For(Codes.NotFound), vm.Restoring.Error);
+    }
+
+    /// <summary>Package 98 (AC4): the user card's actions spin until a user list asked for after them shows the change.</summary>
+    [Fact]
+    public async Task CardActions_BusyUntilConfirmed()
+    {
+        var dialogs = new Dialogs { Confirm = _ => Task.FromResult(true), ConfirmDeleteUser = _ => Task.FromResult(true) };
+        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.UserDelete | P.UserMute | P.GroupsAssign | P.Speak | P.UserKick,
+            dialogs: dialogs);
+        var time = (ManualTimeProvider)server.Time;
+        var xaver = Known("fpX", "Xaver") with { CanBeModeratedByMe = true, ServerMuted = true };
+        server.Apply(new UserList("r", [xaver]));
+        KnownUserViewModel Card() => vm.Users.Single(u => u.Fingerprint == "fpX");
+
+        await Card().LiftMuteCommand.ExecuteAsync(null);
+        Assert.Single(sent.OfType<SetStoredServerMute>());
+        time.Advance(ShowAfter);
+        Assert.True(Card().Busy.IsBusy);
+        server.Apply(new UserList("r", [xaver])); // an older list: still waiting
+        Assert.True(Card().Busy.IsBusy);
+        var asked = sent.OfType<ListUsers>().Last().RequestId;
+        server.Apply(new UserList(asked, [xaver with { ServerMuted = false }]));
+        Assert.False(Card().Busy.IsBusy);
+
+        // a group toggle, refused: the card stops and shows why
+        time.Advance(TimeSpan.FromSeconds(1));
+        var box = Card().Toggles.Single(t => t.Name == "Moderator");
+        box.IsChecked = true;
+        await box.ToggleCommand.ExecuteAsync(null);
+        var assign = sent.OfType<AssignGroup>().Single();
+        time.Advance(ShowAfter);
+        Assert.True(Card().Busy.IsBusy);
+        server.Apply(new Error(assign.RequestId, Codes.PermissionDenied));
+        Assert.False(Card().Busy.IsBusy);
+        Assert.Equal(OVS.Client.ErrorTexts.For(Codes.PermissionDenied), Card().Busy.Error);
+
+        // deleting: busy until the next list, where the card is gone
+        time.Advance(TimeSpan.FromSeconds(1));
+        await Card().DeleteCommand.ExecuteAsync(null);
+        time.Advance(ShowAfter);
+        Assert.True(Card().Busy.IsBusy);
+        server.Apply(new UserList(sent.OfType<ListUsers>().Last().RequestId, []));
+        Assert.Empty(vm.Users);
+    }
+
+    /// <summary>Package 98 (AC4): group save spins until the server's groups arrive; a new group no longer disappears meanwhile.</summary>
+    [Fact]
+    public async Task GroupSave_AndReorder_BusyUntilGroupsChanged()
+    {
+        var (vm, server, sent) = Create(P.All);
+        var time = (ManualTimeProvider)server.Time;
+        vm.NewGroupCommand.Execute(null);
+        vm.SelectedGroup!.Name = "Team";
+        await vm.SaveGroupCommand.ExecuteAsync(null);
+        Assert.IsType<CreateGroup>(sent[^1]);
+        Assert.Contains(vm.Groups, g => g.Id is null && g.Name == "Team"); // stays until the server has it
+        time.Advance(ShowAfter);
+        Assert.True(vm.GroupSave.IsBusy);
+        var team = Guid.NewGuid();
+        server.Apply(new GroupsChanged([.. server.Mirror.Groups, new GroupInfo(team, "Team", P.Speak, true)]));
+        Assert.False(vm.GroupSave.IsBusy);
+        Assert.DoesNotContain(vm.Groups, g => g.Id is null);
+        Assert.Equal(team, vm.SelectedGroup?.Id);
+
+        // reorder: the new order at once, back when refused
+        Guid?[] Order() => vm.Groups.Select(g => g.Id).ToArray();
+        var before = Order();
+        await vm.MoveGroupAsync(vm.Groups.Single(g => g.Id == team), vm.Groups[0], after: false);
+        var reorder = Assert.IsType<ReorderGroups>(sent[^1]);
+        Assert.Equal(team, Order()[0]);
+        time.Advance(ShowAfter);
+        Assert.True(vm.GroupReorder.IsBusy);
+        server.Apply(new Error(reorder.RequestId, Codes.PermissionDenied));
+        Assert.Equal(before, Order());
+        Assert.False(vm.GroupReorder.IsBusy);
     }
 }

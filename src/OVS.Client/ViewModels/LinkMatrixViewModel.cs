@@ -23,8 +23,12 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     public LinkMatrixViewModel(ServerViewModel server)
     {
         this.server = server;
+        Applying = server.NewPending();
         Rebuild();
     }
+
+    /// <summary>Package 98: "Übernehmen" spins until the server's link changes match what was sent.</summary>
+    public Pending Applying { get; }
 
     public ObservableCollection<LinkRowViewModel> Rows { get; } = [];
     public bool HasPending => PendingCount > 0;
@@ -99,13 +103,15 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     }
 
     [RelayCommand]
-    async Task Apply()
+    Task Apply()
     {
         var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
         var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
-        if (add.Count + remove.Count == 0) return;
-        await server.SendAsync(new SetChannelLinks(add, remove));
+        if (add.Count + remove.Count == 0 || Applying.IsRunning) return Task.CompletedTask;
         // The server's ChannelsLinked/Unlinked make them real; until then they stay marked.
+        server.SendConfirmed(new SetChannelLinks(add, remove), _ => add.All(l => OnServer(Norm(l.A, l.B))) && remove.All(l => !OnServer(Norm(l.A, l.B))),
+            Applying, notify: false);
+        return Task.CompletedTask;
     }
 
     [RelayCommand]

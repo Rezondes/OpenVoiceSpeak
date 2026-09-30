@@ -10,7 +10,7 @@ public static class FakeServers
 {
     public static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid();
 
-    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null)
+    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, Dialogs? dialogs = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "Start", 0), new ChannelInfo(Raid, "Raid", "", 1)],
@@ -25,7 +25,7 @@ public static class FakeServers
         {
             sent?.Add(r);
             return Task.CompletedTask;
-        }, time ?? TimeProvider.System);
+        }, time ?? TimeProvider.System, dialogs);
     }
 
     /// <summary>Package 67: own user "ich" (admin) in the first channel, which is the default; all channels linked with each other.</summary>

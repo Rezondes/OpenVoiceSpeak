@@ -64,7 +64,11 @@
           <Grid Classes="adminGroups" ColumnDefinitions="Auto,*" RowDefinitions="2*,3*">
             <Border Classes="card groupList" Padding="6">
               <DockPanel>
+                <!-- Package 98: a moved group waits for the server; refused, it goes back and says why -->
+                <TextBlock DockPanel.Dock="Bottom" Classes="caption danger" Text="{Binding GroupReorder.Error}" TextWrapping="Wrap" Margin="4,6,4,0"
+                           IsVisible="{Binding GroupReorder.HasError}" />
                 <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                  <v:BusySpinner DockPanel.Dock="Right" Margin="6,0" IsVisible="{Binding GroupReorder.IsBusy}" />
                   <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding MoveGroupDownCommand}"
                           ToolTip.Tip="{x:Static l:Strings.Ui_MoveDown}" AutomationProperties.Name="{x:Static l:Strings.Ui_GroupDown}">
                     <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
@@ -96,10 +100,14 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Bottom" Classes="danger" Text="{Binding GroupError}" TextWrapping="Wrap" Margin="0,8,0,0"
                            IsVisible="{Binding GroupError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <TextBlock DockPanel.Dock="Bottom" Classes="danger" Text="{Binding GroupSave.Error}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           IsVisible="{Binding GroupSave.HasError}" />
                 <WrapPanel DockPanel.Dock="Bottom" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0">
-                  <Button Classes="accent" Command="{Binding SaveGroupCommand}">
+                  <!-- Package 98: busy until the server's groups arrive -->
+                  <Button Name="SaveGroupButton" Classes="accent" Command="{Binding SaveGroupCommand}" IsEnabled="{Binding !GroupSave.IsBusy}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
+                      <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !GroupSave.IsBusy}" />
+                      <v:BusySpinner IsVisible="{Binding GroupSave.IsBusy}" />
                       <TextBlock Text="{x:Static l:Strings.Ui_SaveGroup}" />
                     </StackPanel>
                   </Button>
@@ -270,8 +278,14 @@
                               <SelectableTextBlock Classes="caption" Text="{Binding Fingerprint}" TextWrapping="Wrap"
                                                    FontFamily="Cascadia Mono,Consolas,monospace" />
                             </StackPanel>
+                            <!-- Package 98: the card's action waits for a user list that shows it; refused, the reason -->
+                            <StackPanel Name="CardBusy" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Busy.IsBusy}">
+                              <v:BusySpinner />
+                              <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Busy}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Classes="caption danger" Text="{Binding Busy.Error}" TextWrapping="Wrap" IsVisible="{Binding Busy.HasError}" />
                             <!-- Package 72: works for offline users too; deleting asks first -->
-                            <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="0,4,0,0" IsVisible="{Binding HasActions}">
+                            <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="0,4,0,0" IsVisible="{Binding HasActions}" IsEnabled="{Binding !Busy.IsBusy}">
                               <Button Command="{Binding BanCommand}" IsVisible="{Binding CanBan}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                   <PathIcon Classes="sm" Data="{StaticResource Icon.Prohibited}" />
@@ -351,9 +365,10 @@
                       <Border Classes="card" Padding="12,10">
                         <DockPanel>
                           <!-- only on active bans and with UserBan; beside the details, under narrow below them -->
-                          <Button Classes="cardAction" Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}">
+                          <Button Classes="cardAction" Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}" IsEnabled="{Binding !Busy.IsBusy}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                              <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                              <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" IsVisible="{Binding !Busy.IsBusy}" />
+                              <v:BusySpinner IsVisible="{Binding Busy.IsBusy}" /> <!-- Package 98: until the new ban list -->
                               <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
                             </StackPanel>
                           </Button>
@@ -436,14 +451,18 @@
                   <TextBlock Text="{x:Static l:Strings.Ui_UnlinkSelected}" />
                 </StackPanel>
               </Button>
-              <Button Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding HasPending}">
+              <!-- Package 98: busy until the server's link changes match what was sent -->
+              <Button Name="ApplyLinksButton" Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding HasPending}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !Applying.IsBusy}" />
+                  <v:BusySpinner IsVisible="{Binding Applying.IsBusy}" />
                   <TextBlock Text="{x:Static l:Strings.Ui_Apply}" />
                 </StackPanel>
               </Button>
               <Button Classes="subtle" Command="{Binding DiscardCommand}" IsEnabled="{Binding HasPending}" Content="{x:Static l:Strings.Ui_Discard}" />
               <TextBlock Classes="caption" Text="{Binding PendingText}" VerticalAlignment="Center" />
+              <TextBlock Classes="caption danger" Text="{Binding Applying.Error}" TextWrapping="Wrap" VerticalAlignment="Center"
+                         IsVisible="{Binding Applying.HasError}" />
             </WrapPanel>
             <!-- Package 78: the whole matrix scrolls up and down, only the cells sideways; the row titles stay put -->
             <Border Classes="card" Padding="8">
@@ -520,6 +539,10 @@
                         <Panel>
                           <PathIcon Classes="muted" Data="{StaticResource Icon.Add}" IsVisible="{Binding IconPng, Converter={x:Static ObjectConverters.IsNull}}" />
                           <Image Source="{Binding IconPng, Converter={x:Static v:Ui.PngToBitmap}}" Stretch="UniformToFill" />
+                          <!-- Package 98: the new logo is on its way until the server's settings carry it -->
+                          <Border Name="IconBusy" Background="{DynamicResource Ovs.Scrim}" IsVisible="{Binding IconUpload.IsBusy}">
+                            <v:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+                          </Border>
                         </Panel>
                       </Border>
                       <StackPanel Margin="14,0,0,0" Spacing="8" VerticalAlignment="Center">
@@ -542,6 +565,7 @@
                     </DockPanel>
                     <TextBlock Classes="danger" Text="{Binding IconError}" TextWrapping="Wrap"
                                IsVisible="{Binding IconError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <TextBlock Classes="danger" Text="{Binding IconUpload.Error}" TextWrapping="Wrap" IsVisible="{Binding IconUpload.HasError}" />
                   </StackPanel>
                   <Border Classes="divider" />
 

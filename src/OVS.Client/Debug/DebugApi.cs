@@ -168,31 +168,31 @@ public sealed class DebugApi : IDisposable
                 await server.SendAsync(new RedeemAdminToken(Text(body, "token")));
                 break;
             case "/create-channel":
-                await server.CreateChannelAsync(Text(body, "name"), Optional(body, "description")?.GetString() ?? "");
+                await server.SendAsync(new CreateChannel(Text(body, "name"), Optional(body, "description")?.GetString() ?? ""));
                 break;
             case "/delete-channel":
-                await server.DeleteChannelAsync(Channel(server, Text(body, "channel")).Id);
+                await server.SendAsync(new DeleteChannel(Channel(server, Text(body, "channel")).Id));
                 break;
             case "/link":
-                await server.LinkAsync(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id);
+                await server.SendAsync(new LinkChannels(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id));
                 break;
             case "/unlink":
-                await server.UnlinkAsync(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id);
+                await server.SendAsync(new UnlinkChannels(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id));
                 break;
             case "/move":
-                await server.MoveAsync(User(server, Text(body, "user")).SessionId, Channel(server, Text(body, "channel")).Id);
+                await server.SendAsync(new MoveUser(User(server, Text(body, "user")).SessionId, Channel(server, Text(body, "channel")).Id));
                 break;
             case "/kick":
-                await server.KickAsync(User(server, Text(body, "user")).SessionId, Optional(body, "reason")?.GetString() ?? "");
+                await server.SendAsync(new Kick(User(server, Text(body, "user")).SessionId, Optional(body, "reason")?.GetString() ?? ""));
                 break;
             case "/ban":
-                await server.BanAsync(User(server, Text(body, "user")).SessionId, new BanChoice(
+                await server.SendAsync(new Ban(User(server, Text(body, "user")).SessionId,
                     Optional(body, "reason")?.GetString() ?? "",
                     Optional(body, "minutes")?.GetInt32(),
                     Optional(body, "ip")?.GetBoolean() ?? false));
                 break;
             case "/server-mute":
-                await server.ServerMuteAsync(User(server, Text(body, "user")).SessionId, body.GetProperty("value").GetBoolean());
+                await server.SendAsync(new SetServerMute(User(server, Text(body, "user")).SessionId, body.GetProperty("value").GetBoolean()));
                 break;
             case "/chat":
                 var target = Enum.TryParse<ChatTarget>(Text(body, "target"), ignoreCase: true, out var t)

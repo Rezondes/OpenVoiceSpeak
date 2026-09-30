@@ -61,6 +61,9 @@ public sealed partial class AdminViewModel : ObservableObject
         BackupsLoad = server.NewPending();
         BackupCreate = server.NewPending();
         Restoring = server.NewPending();
+        GroupSave = server.NewPending();
+        GroupReorder = server.NewPending();
+        IconUpload = server.NewPending();
         userRefresh = new("u", () => !detached && ShowUsers, id => server.SendAsync(new ListUsers(), id, UsersLoad), server.Time);
         banRefresh = new("b", () => !detached && ShowBans, id => server.SendAsync(new ListBans(), id, BansLoad), server.Time);
         // Package 97: a list that never came no longer blocks the next request ("Aktualisieren" retries)
@@ -134,6 +137,10 @@ public sealed partial class AdminViewModel : ObservableObject
     public Pending BackupsLoad { get; }
     public Pending BackupCreate { get; }
     public Pending Restoring { get; }
+    /// <summary>Package 98: group save and order, and the server logo, until the server's update shows them.</summary>
+    public Pending GroupSave { get; }
+    public Pending GroupReorder { get; }
+    public Pending IconUpload { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
     /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
@@ -189,14 +196,21 @@ public sealed partial class AdminViewModel : ObservableObject
     public Task UploadIconAsync(byte[]? png, string? error)
     {
         IconError = error;
-        return png is null ? Task.CompletedTask : server.SendAsync(new SetServerIcon(Convert.ToBase64String(png)));
+        if (png is not null) SendIcon(Convert.ToBase64String(png));
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    Task RemoveIcon()
+    void RemoveIcon()
     {
         IconError = null;
-        return server.SendAsync(new SetServerIcon(null));
+        SendIcon(null);
+    }
+
+    /// <summary>Package 98: the logo spins until the server's new settings carry it.</summary>
+    void SendIcon(string? pngBase64)
+    {
+        if (!IconUpload.IsRunning) server.SendConfirmed(new SetServerIcon(pngBase64), m => m is ServerSettingsChanged, IconUpload, notify: false);
     }
 
     public async Task RequestListsAsync()
@@ -266,6 +280,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 if (userPages.Add(list.RequestId, list.Offset, list.Total, list.Users, (id, o) => _ = server.SendAsync(new ListUsers(o), id)) is not { } users) break;
                 userRefresh.Completed();
                 UsersLoad.Done();
+                ConfirmCards(userRefresh.RoundOf(list.RequestId));
                 ConfirmGroupChanges(users, userRefresh.RoundOf(list.RequestId));
                 knownUsers = users;
                 RebuildUsers();
@@ -281,6 +296,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 if (banPages.Add(list.RequestId, list.Offset, list.Total, list.Bans, (id, o) => _ = server.SendAsync(new ListBans(o), id)) is not { } bans) break;
                 banRefresh.Completed();
                 BansLoad.Done();
+                foreach (var busy in banBusy.Values) busy.Done(); // Package 98: an unban is answered with the new list
                 allBans = bans;
                 RebuildBans();
                 break;
@@ -295,7 +311,9 @@ public sealed partial class AdminViewModel : ObservableObject
         var selected = SelectedGroup?.Id;
         var unsaved = Groups.Where(g => g.Id is null).ToList();
         Groups.Clear();
-        foreach (var g in server.Mirror.Groups) Groups.Add(new GroupEditViewModel(g.Id, g.Name, g.Permissions, Actor));
+        // Package 98: a moved group stays in its new place until the server confirms or refuses it
+        foreach (var g in server.Mirror.Groups.OrderBy(g => pendingGroupOrder?.IndexOf(g.Id) is >= 0 and var i ? i : int.MaxValue))
+            Groups.Add(new GroupEditViewModel(g.Id, g.Name, g.Permissions, Actor));
         foreach (var g in unsaved) Groups.Add(g);
         SelectedGroup = Groups.FirstOrDefault(g => g.Id == selected && selected is not null) ?? SelectedGroup switch
         {
@@ -349,7 +367,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 g.AssignableByMe && weaker, // Package 92: judged by the server, group rights only reach GroupsView holders
                 t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
             var bans = (user.Bans ?? []).Where(b => b.LiftedAt is null && (b.ExpiresAt is null || b.ExpiresAt > now)).ToList();
-            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this,
+            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this, CardBusy(user.Fingerprint),
                 canBan: Actor.Has(Permission.UserBan) && weaker && !lastAdmin && bans.Count == 0,
                 canUnban: Actor.Has(Permission.UserBan) && weaker && bans.Count > 0,
                 canDelete: Actor.Has(Permission.UserDelete) && weaker && !lastAdmin,
@@ -389,9 +407,9 @@ public sealed partial class AdminViewModel : ObservableObject
         var type = SelectedBanTypeFilter?.Value ?? BanTypeFilter.All;
         var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan) && MayActOnBanned(ban.Fingerprint), async () =>
         {
-            await server.SendAsync(new Unban(ban.Id)); // answered with the new ban list
+            await server.SendAsync(new Unban(ban.Id), pending: BanBusy(ban.Id)); // answered with the new ban list
             await userRefresh.RequestAsync(); // Package 72: the user cards follow
-        })).ToList();
+        }, BanBusy(ban.Id))).ToList();
         var visible = all.Where(b => b.Matches(search) && status switch
         {
             BanStatusFilter.Active => b.Status == BanStatus.Active,
@@ -431,32 +449,68 @@ public sealed partial class AdminViewModel : ObservableObject
 
     // ---- Package 72: ban, unban and delete from a user card, online or offline ----
 
-    internal async Task BanUserAsync(KnownUserViewModel user)
+    /// <summary>Package 98: the ban dialog stays open until a user list shows the ban.</summary>
+    internal Task BanUserAsync(KnownUserViewModel user)
     {
         var ipKnown = user.Info.LastIp is not null;
-        if (server.Dialogs.Ban is not { } ban || await ban(user.Nickname, ipKnown) is not { } choice) return;
-        await server.SendAsync(new BanUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown));
-        await RefreshUsersAndBansAsync();
+        return ServerViewModel.Ask<BanChoice>(server.Dialogs.Ban is { } ban ? submit => ban(user.Nickname, ipKnown, submit) : null,
+            choice => CardAction(user.Fingerprint, new BanUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown), bans: true));
     }
 
-    internal async Task UnbanUserAsync(KnownUserViewModel user)
+    internal Task UnbanUserAsync(KnownUserViewModel user)
     {
-        foreach (var ban in user.Bans) await server.SendAsync(new Unban(ban.Id)); // each answered with the new ban list
-        await userRefresh.RequestAsync();
+        foreach (var ban in user.Bans) CardAction(user.Fingerprint, new Unban(ban.Id)); // each answered with the new ban list
+        return Task.CompletedTask;
     }
 
     /// <summary>Package 85: works offline too; the card follows with the next user list.</summary>
-    internal async Task LiftMuteAsync(KnownUserViewModel user)
+    internal Task LiftMuteAsync(KnownUserViewModel user)
     {
-        await server.SendAsync(new SetStoredServerMute(user.Fingerprint, false));
-        await userRefresh.RequestAsync();
+        CardAction(user.Fingerprint, new SetStoredServerMute(user.Fingerprint, false));
+        return Task.CompletedTask;
     }
 
     internal async Task DeleteUserAsync(KnownUserViewModel user)
     {
         if (server.Dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
-        await server.SendAsync(new DeleteUser(user.Fingerprint));
-        await RefreshUsersAndBansAsync();
+        CardAction(user.Fingerprint, new DeleteUser(user.Fingerprint), bans: true);
+    }
+
+    // ---- Package 98 (A113): a card's actions spin until a user list asked for after them shows the result ----
+
+    readonly Dictionary<string, Pending> cardBusy = [];
+    /// <summary>Per card: the user list requests sent before its last action; a list of a later request settles it.</summary>
+    readonly Dictionary<string, int> cardAskedBefore = [];
+    readonly Dictionary<Guid, Pending> banBusy = [];
+
+    Pending CardBusy(string fingerprint) => cardBusy.TryGetValue(fingerprint, out var busy) ? busy : cardBusy[fingerprint] = server.NewPending();
+    Pending BanBusy(Guid banId) => banBusy.TryGetValue(banId, out var busy) ? busy : banBusy[banId] = server.NewPending();
+
+    /// <summary>Sends under the card's mark, then asks for the list (and with bans the ban list) that shows the result.</summary>
+    Pending CardAction(string fingerprint, Request request, bool bans = false)
+    {
+        var busy = CardBusy(fingerprint);
+        cardAskedBefore[fingerprint] = userRefresh.Sent;
+        _ = SendAsync();
+        return busy;
+
+        async Task SendAsync()
+        {
+            await server.SendAsync(request, pending: busy);
+            if (bans) await RefreshUsersAndBansAsync();
+            else await userRefresh.RequestAsync();
+        }
+    }
+
+    /// <param name="round">The number of the user list request a complete list answers, 0 when unknown.</param>
+    void ConfirmCards(int round)
+    {
+        foreach (var (fingerprint, asked) in cardAskedBefore.ToList())
+        {
+            if (round <= asked) continue;
+            cardAskedBefore.Remove(fingerprint);
+            if (cardBusy.GetValueOrDefault(fingerprint) is { IsRunning: true } busy) busy.Done();
+        }
     }
 
     // ---- Package 74: backups ----
@@ -649,7 +703,9 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         bool own = fingerprint == server.Mirror.Self?.Fingerprint;
         if (own) server.OwnGroupChangePending = true; // set before sending: the server's update can come at once
-        var id = await server.SendAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId));
+        cardAskedBefore[fingerprint] = userRefresh.Sent; // Package 98: the card spins until a later list shows it
+        var id = await server.SendAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId),
+            pending: CardBusy(fingerprint));
         pendingGroupChanges.Add((id, fingerprint, toggle.GroupId, toggle.IsChecked, userRefresh.Sent));
         UpdateOwnGroupChangePending();
         await userRefresh.RequestAsync();
@@ -688,16 +744,21 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         if (SelectedGroup is not { IsReadOnly: false } g) return Task.CompletedTask;
         GroupError = TextRules.Name(g.Name, ProtocolInfo.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
-        if (GroupError is not null) return Task.CompletedTask;
-        return g.Id is { } id
-            ? server.SendAsync(new UpdateGroup(id, g.Name, g.Permissions))
-            : SaveNewGroupAsync(g);
+        if (GroupError is not null || GroupSave.IsRunning) return Task.CompletedTask;
+        // Package 98: busy until the server's groups arrive; a refused group stays for correcting
+        var sent = server.SendConfirmed(g.Id is { } id ? new UpdateGroup(id, g.Name, g.Permissions) : new CreateGroup(g.Name, g.Permissions),
+            m => m is GroupsChanged, GroupSave, notify: false);
+        if (g.Id is null) _ = ReplaceDraftAsync(g, sent);
+        return Task.CompletedTask;
     }
 
-    async Task SaveNewGroupAsync(GroupEditViewModel g)
+    /// <summary>The draft stays until the server has the group, then gives way to it.</summary>
+    async Task ReplaceDraftAsync(GroupEditViewModel draft, Pending sent)
     {
-        Groups.Remove(g); // the server's GroupsChanged brings it back with an id
-        await server.SendAsync(new CreateGroup(g.Name, g.Permissions));
+        if (await sent.Completion is not null) return;
+        bool selected = SelectedGroup == draft;
+        Groups.Remove(draft);
+        if (selected) SelectedGroup = Groups.LastOrDefault(g => g.Id is not null && g.Name == draft.Name) ?? Groups.FirstOrDefault();
     }
 
     // ---- Package 37: order ----
@@ -714,14 +775,33 @@ public sealed partial class AdminViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanMoveGroupDown))]
     Task MoveGroupDown() => SelectedGroup is { } g ? MoveGroupAsync(g, SavedGroups[SavedGroups.IndexOf(g) + 1], after: true) : Task.CompletedTask;
 
-    /// <summary>Puts source right before or after target and sends the complete order of the saved groups.</summary>
+    /// <summary>The group order sent last, shown until the server confirms or refuses it.</summary>
+    List<Guid>? pendingGroupOrder;
+
+    /// <summary>
+    /// Puts source right before or after target and sends the complete order of the saved groups. Package 98: the new
+    /// order shows at once, busy until the server's groups come; refused or unanswered, it goes back.
+    /// </summary>
     public Task MoveGroupAsync(GroupEditViewModel source, GroupEditViewModel target, bool after)
     {
         var saved = SavedGroups;
         if (!Actor.Has(Permission.GroupsManage) || source == target || source.Id is null || target.Id is null) return Task.CompletedTask;
         var order = saved.Where(g => g != source).ToList();
         order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
-        return order.SequenceEqual(saved) ? Task.CompletedTask : server.SendAsync(new ReorderGroups(order.Select(g => g.Id!.Value).ToList()));
+        if (order.SequenceEqual(saved)) return Task.CompletedTask;
+        var ids = order.Select(g => g.Id!.Value).ToList();
+        pendingGroupOrder = ids;
+        RebuildGroups();
+        _ = EndGroupReorderAsync(server.SendConfirmed(new ReorderGroups(ids), m => m is GroupsChanged, GroupReorder, notify: false), ids);
+        return Task.CompletedTask;
+    }
+
+    async Task EndGroupReorderAsync(Pending sent, List<Guid> ids)
+    {
+        await sent.Completion;
+        if (pendingGroupOrder != ids) return; // a newer order is on its way
+        pendingGroupOrder = null;
+        RebuildGroups();
     }
 
     bool CanDeleteGroup => SelectedGroup is { CanDelete: true };
@@ -875,10 +955,12 @@ public sealed record Choice<T>(T Value, string Label)
 }
 
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
+/// <param name="busy">Package 98: the card's actions, running until a user list shows their result.</param>
 public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggle> toggles, IReadOnlyList<BanInfo> bans,
-    AdminViewModel? owner = null, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false)
+    AdminViewModel? owner = null, Pending? busy = null, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false)
 {
     public KnownUserInfo Info { get; } = info;
+    public Pending Busy { get; } = busy ?? new Pending(TimeProvider.System);
     public string Fingerprint => Info.Fingerprint;
     public string Nickname => Info.LastNickname;
     public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;
@@ -982,9 +1064,11 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
 
 /// <summary>Package 80: one card of the ban overview with everything the server stores about the ban (A97).</summary>
 /// <param name="now">The client's time when the list was built: status and remaining time as of then.</param>
-public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban) : ObservableObject
+/// <param name="busy">Package 98: the unban, running until the new ban list comes.</param>
+public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, Pending? busy = null) : ObservableObject
 {
     public BanInfo Ban { get; } = ban;
+    public Pending Busy { get; } = busy ?? new Pending(TimeProvider.System);
     public string Nickname => Ban.Nickname;
     public string Fingerprint => Ban.Fingerprint;
     public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;

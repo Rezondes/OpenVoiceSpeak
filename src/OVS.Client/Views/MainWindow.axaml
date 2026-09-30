@@ -209,6 +209,8 @@
                       <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Classes="caption channelCount" VerticalAlignment="Center" Margin="8,0,0,0"
                                    Text="{Binding SlotText}" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
+                        <!-- Package 98: joining, moving or deleting waits for the server -->
+                        <v:BusySpinner DockPanel.Dock="Right" Margin="8,0,0,0" IsVisible="{Binding IsBusy}" />
                         <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->
                         <Panel DockPanel.Dock="Left" Margin="0,0,8,0">
                           <PathIcon Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
@@ -274,6 +276,7 @@
                             </Border.ContextMenu>
                             <DockPanel>
                               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <v:BusySpinner IsVisible="{Binding IsBusy}" /> <!-- Package 98: the server mute waits for the server -->
                                 <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsSpeakingViaLink}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_TalkingViaLink}" />
                                 <PathIcon Classes="sm muted" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsVolumeChanged}"

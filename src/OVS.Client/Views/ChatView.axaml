@@ -95,13 +95,24 @@
               </Grid>
 
               <!-- Package 64: own message on the right: accent bubble, no avatar or name, time below the text -->
-              <Grid IsVisible="{Binding IsOwnMessage}" ColumnDefinitions="3*,2*,15*">
-                <Border Classes="bubble own" HorizontalAlignment="Right">
+              <!-- Package 98: greyed with a clock until the server's echo; refused, "nicht gesendet" with a retry below -->
+              <Grid IsVisible="{Binding IsOwnMessage}" ColumnDefinitions="3*,2*,15*" RowDefinitions="Auto,Auto">
+                <Border Classes="bubble own" HorizontalAlignment="Right" Classes.sending="{Binding Sending.IsWaiting, FallbackValue=False}">
                   <StackPanel Spacing="2">
                     <SelectableTextBlock Classes="message" Text="{Binding Text}" />
-                    <TextBlock Classes="caption" Text="{Binding TimeText}" HorizontalAlignment="Right" />
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                      <PathIcon Classes="sm" Data="{StaticResource Icon.Clock}" Width="12" Height="12" ToolTip.Tip="{x:Static l:Strings.Chat_Sending}"
+                                IsVisible="{Binding Sending.IsWaiting, FallbackValue=False}" />
+                      <TextBlock Classes="caption" Text="{Binding TimeText}" />
+                    </StackPanel>
                   </StackPanel>
                 </Border>
+                <WrapPanel Name="NotSent" Grid.Row="1" Grid.ColumnSpan="3" ItemSpacing="8" HorizontalAlignment="Right" Margin="0,4,0,0"
+                           IsVisible="{Binding Sending.IsFailed, FallbackValue=False}">
+                  <PathIcon Classes="sm danger" Data="{StaticResource Icon.ErrorCircle}" VerticalAlignment="Center" />
+                  <TextBlock Classes="caption danger" Text="{x:Static l:Strings.Chat_NotSent}" VerticalAlignment="Center" />
+                  <Button Classes="subtle" Command="{Binding Sending.RetryCommand, FallbackValue={x:Null}}" Content="{x:Static l:Strings.Chat_Retry}" />
+                </WrapPanel>
               </Grid>
 
               <!-- System notice, as in the former activity feed -->

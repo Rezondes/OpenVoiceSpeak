@@ -43,9 +43,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] bool blurBackground;
 
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
-    public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, KeyPoller? keys = null)
+    /// <param name="time">Package 98: the clock of the waiting states (tests use a manual one).</param>
+    public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, KeyPoller? keys = null,
+        TimeProvider? time = null)
     {
         this.keys = keys;
+        Saving = new Pending(time ?? TimeProvider.System, Pending.UiPost());
+        Checking = new Pending(time ?? TimeProvider.System, Pending.UiPost());
         basis = current;
         (savedInputId, savedOutputId) = (current.InputDeviceId, current.OutputDeviceId);
         (inputs, selectedInput, bool inputFellBack) = DeviceOptions(savedInputId, inputDevices);
@@ -84,12 +88,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Package 43: "Nach Updates suchen"; the answer is shown under the button.</summary>
     public Func<Task<string>>? CheckNow { get; set; }
 
+    /// <summary>Package 98: "Speichern" while the audio devices restart, and the update check.</summary>
+    public Pending Saving { get; }
+    public Pending Checking { get; }
+
     [RelayCommand]
     async Task CheckUpdates()
     {
-        if (CheckNow is not { } check) return;
+        if (CheckNow is not { } check || Checking.IsRunning) return;
+        Checking.Start();
         UpdateStatus = Strings.Update_Checking;
         UpdateStatus = await check();
+        Checking.Done();
     }
 
     // ---- About (Package 42) ----
@@ -270,10 +280,20 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public event Action<bool>? CloseRequested;
 
+    /// <summary>Package 98: applies the settings (the audio devices restart meanwhile); the page closes once it is done.</summary>
+    public Func<Task>? ApplySaved { get; set; }
+
     [RelayCommand]
-    void Save()
+    async Task Save()
     {
-        if (CanSave) CloseRequested?.Invoke(true);
+        if (!CanSave || Saving.IsRunning) return;
+        if (ApplySaved is { } apply)
+        {
+            Saving.Start();
+            await apply();
+            Saving.Done();
+        }
+        CloseRequested?.Invoke(true);
     }
 
     [RelayCommand]

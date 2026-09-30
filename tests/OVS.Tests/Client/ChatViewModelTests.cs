@@ -66,6 +66,43 @@ public class ChatViewModelTests
         Assert.Equal(0, f.Chat.General.Unread); // the open tab counts nothing
     }
 
+    /// <summary>Package 98 (AC2): a sent message shows at once, greyed until the server's echo; refused, it can be sent again.</summary>
+    [Fact]
+    public async Task SentMessage_PendingUntilEcho_ErrorRetry()
+    {
+        var f = Create(Guest | P.ChatServer);
+        var time = (ManualTimeProvider)f.Server.Time;
+        f.Chat.Draft = "Hallo";
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        var first = Assert.Single(f.Chat.General.Entries);
+        Assert.True(first is { IsOwnMessage: true, Text: "Hallo" });
+        Assert.True(first.Sending!.IsWaiting);
+        f.Receive(ChatTarget.Server, 1, "Hallo"); // the echo: no second copy
+        Assert.Same(first, Assert.Single(f.Chat.General.Entries));
+        Assert.False(first.Sending.IsWaiting || first.Sending.IsFailed);
+
+        // refused: "nicht gesendet" with a retry, the text stays
+        f.Chat.Draft = "Zweite";
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        var second = f.Chat.General.Entries[^1];
+        f.Server.Apply(new Error(f.LastChat.RequestId, Codes.RateLimited));
+        Assert.True(second.Sending!.IsFailed);
+        Assert.False(second.Sending.IsWaiting);
+        Assert.Equal("Zweite", second.Text);
+        await second.Sending.RetryCommand.ExecuteAsync(null);
+        Assert.Equal(2, f.Sent.OfType<SendChat>().Count(c => c.Text == "Zweite"));
+        Assert.True(second.Sending.IsWaiting);
+        f.Receive(ChatTarget.Server, 1, "Zweite");
+        Assert.False(second.Sending.IsWaiting || second.Sending.IsFailed);
+        Assert.Equal(2, f.Chat.General.Entries.Count);
+
+        // no echo within 10 s: not sent either
+        f.Chat.Draft = "Dritte";
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        time.Advance(TimeSpan.FromSeconds(10));
+        Assert.True(f.Chat.General.Entries[^1].Sending!.IsFailed);
+    }
+
     [Fact]
     public async Task Send_EmptyIgnored_TooLongBlocked()
     {

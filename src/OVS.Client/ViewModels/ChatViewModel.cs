@@ -12,7 +12,8 @@ public enum ChatTabKind { General, Channel, Private }
 /// One line in a chat tab: a message (From set), a system notice (Notice set) or a plain marker such as
 /// "you entered the channel" (neither).
 /// </summary>
-public sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null)
+/// <param name="Sending">Package 98: an own message on its way to the server, shown before the server's echo.</param>
+public sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, ChatSending? Sending = null)
 {
     public string TimeText => Time.ToString("HH:mm");
     public bool IsMessage => From is not null;
@@ -24,6 +25,34 @@ public sealed record ChatEntry(DateTime Time, string Text, string? From = null, 
     public bool IsWelcome => Notice is NoticeKind.Welcome;
     public bool IsWarning => Notice is NoticeKind.Warning;
     public bool IsError => Notice is NoticeKind.Error;
+}
+
+/// <summary>
+/// Package 98 (A113): an own message shown at once, greyed with a clock until the server's echo; refused or without an
+/// echo within 10 s it is marked "nicht gesendet" and can be sent again.
+/// </summary>
+public sealed partial class ChatSending : ObservableObject
+{
+    readonly Func<Pending, Task> send;
+
+    public ChatSending(Pending pending, Func<Pending, Task> send)
+    {
+        Pending = pending;
+        this.send = send;
+        pending.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(Pending.IsRunning) or nameof(Pending.Error))) return;
+            OnPropertyChanged(nameof(IsWaiting));
+            OnPropertyChanged(nameof(IsFailed));
+        };
+    }
+
+    public Pending Pending { get; }
+    public bool IsWaiting => Pending.IsRunning;
+    public bool IsFailed => Pending.HasError;
+
+    [RelayCommand]
+    Task Retry() => IsWaiting ? Task.CompletedTask : send(Pending);
 }
 
 /// <param name="partner">Private tabs (Package 33): the partner's fingerprint, so the tab survives a reconnect.</param>
@@ -141,21 +170,24 @@ public sealed partial class ChatViewModel : ObservableObject
     void OnChat(ChatMessage m)
     {
         var entry = new ChatEntry(m.SentAt.LocalDateTime, m.Text, m.FromNickname, m.FromSessionId == server.Mirror.SelfId);
-        switch (m.Target)
+        var tab = m.Target switch
         {
-            case ChatTarget.Server:
-                Add(General, entry);
-                break;
-            case ChatTarget.Channel when m.ChannelId == channelId: // a message from the channel just left is dropped
-                Add(ChannelTab, entry);
-                break;
-            case ChatTarget.Private:
-                // The server sends a message before its sender can leave, so the partner is always known here.
-                var partnerId = entry.IsOwn ? m.ToSessionId : m.FromSessionId;
-                if (partnerId is { } id && server.Mirror.Users.GetValueOrDefault(id) is { } partner)
-                    Add(PrivateTab(partner.Fingerprint), entry); // an incoming message opens the tab in the background
-                break;
+            ChatTarget.Server => General,
+            ChatTarget.Channel when m.ChannelId == channelId => ChannelTab, // a message from the channel just left is dropped
+            // The server sends a message before its sender can leave, so the partner is always known here.
+            // An incoming message opens the tab in the background.
+            ChatTarget.Private when (entry.IsOwn ? m.ToSessionId : m.FromSessionId) is { } id && server.Mirror.Users.GetValueOrDefault(id) is { } partner
+                => PrivateTab(partner.Fingerprint),
+            _ => null,
+        };
+        if (tab is null) return;
+        // Package 98: the echo of an own message already shown: it turns normal instead of showing twice
+        if (entry.IsOwn && tab.Entries.FirstOrDefault(e => e.Sending is { } s && (s.IsWaiting || s.IsFailed) && e.Text == m.Text) is { Sending: { } sent })
+        {
+            sent.Pending.Done();
+            return;
         }
+        Add(tab, entry);
     }
 
     /// <summary>"Privatnachricht" on a user: opens or brings back the tab and switches to it.</summary>
@@ -230,6 +262,10 @@ public sealed partial class ChatViewModel : ObservableObject
         };
         Draft = "";
         ComposerError = null;
-        await server.SendChatAsync(target, text, tab.PartnerSession);
+        // Package 98: shown at once, greyed until the server's echo
+        Task Send(Pending pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
+        var sending = new ChatSending(server.NewPending(), Send);
+        Add(tab, new ChatEntry(DateTime.Now, text, server.Mirror.Self?.Nickname ?? "", IsOwn: true, Sending: sending));
+        await Send(sending.Pending);
     }
 }

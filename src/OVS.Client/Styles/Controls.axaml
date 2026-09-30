@@ -704,6 +704,13 @@
     <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
     <Setter Property="Opacity" Value="0.75" />
   </Style>
+  <Style Selector="Border.bubble.own PathIcon">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.OnAccent}" />
+  </Style>
+  <!-- Package 98: an own message on its way to the server, greyed until the echo -->
+  <Style Selector="Border.bubble.own.sending">
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
   <!-- Package 79: 75 % of the history for a bubble, 85 % under narrow (columns 15*,2*,3* and 3*,2*,15*) -->
   <Style Selector="Grid > DockPanel.otherMessage">
     <Setter Property="Grid.ColumnSpan" Value="1" />

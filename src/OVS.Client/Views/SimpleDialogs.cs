@@ -24,17 +24,55 @@ public static class SimpleDialogs
 {
     internal enum Kind { Normal, Danger }
 
+    /// <param name="submit">
+    /// Package 98: sends the answer and returns its waiting mark. The card stays open with a busy primary button until the
+    /// mark ends: confirmed it closes, refused or unanswered it shows the error and can be sent again.
+    /// </param>
     internal static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
-        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null) where T : class
+        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null, Func<T, Pending>? submit = null) where T : class
     {
         T? result = null;
-        void Accept()
+        var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var failed = Text("", "danger");
+        failed.IsVisible = false;
+        Pending? sending = null;
+        var closed = new TaskCompletionSource(); // cancelled meanwhile: nobody waits for the answer any more
+        async void Accept()
         {
-            result = accept();
-            if (result is not null) host.Close();
+            if (sending?.IsRunning == true || accept() is not { } answer) return;
+            if (submit is null)
+            {
+                result = answer;
+                host.Close();
+                return;
+            }
+            failed.IsVisible = false;
+            sending = submit(answer);
+            void OnBusy(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+            {
+                if (e.PropertyName != nameof(Pending.IsBusy)) return;
+                ok.IsEnabled = !sending.IsBusy;
+                ok.Content = sending.IsBusy
+                    ? new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new BusySpinner(), new TextBlock { Text = okText } } }
+                    : okText;
+            }
+            sending.PropertyChanged += OnBusy;
+            var ended = sending.Completion;
+            await Task.WhenAny(ended, closed.Task);
+            sending.PropertyChanged -= OnBusy;
+            if (closed.Task.IsCompleted) return; // the card is gone
+            var error = ended.Result;
+            if (error is null)
+            {
+                result = answer;
+                host.Close();
+                return;
+            }
+            failed.Text = error;
+            failed.IsVisible = true;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => failed.BringIntoView(), Avalonia.Threading.DispatcherPriority.Background); // below a long form
         }
 
-        var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Classes.Add(kind == Kind.Danger ? "danger" : "accent");
         var cancel = new Button { Content = cancelText ?? Strings.Dlg_Cancel, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Click += (_, _) => Accept();
@@ -71,6 +109,7 @@ public static class SimpleDialogs
                         {
                             new DockPanel { Children = { Dock(badge, Avalonia.Controls.Dock.Left), heading } },
                             body,
+                            failed, // Package 98: why the server refused it
                         },
                     },
                 },
@@ -80,6 +119,7 @@ public static class SimpleDialogs
         var firstInput = body.GetLogicalDescendants().Prepend(body).OfType<InputElement>()
             .FirstOrDefault(c => c is TextBox or ComboBox or ListBox or NumericUpDown);
         await host.ShowAsync(frame, okIsDefault ? Accept : host.Close, (Control?)firstInput ?? (okIsDefault ? ok : cancel));
+        closed.SetResult();
         return result;
     }
 
@@ -121,21 +161,22 @@ public static class SimpleDialogs
         return panel;
     }
 
-    public static Task<string?> AskText(OverlayHost overlay, string title, string prompt)
+    public static Task<string?> AskText(OverlayHost overlay, string title, string prompt, Func<string, Pending>? submit = null)
     {
         var box = new TextBox();
-        return Show(overlay, title, title == Strings.Dialog_RedeemToken ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "");
+        return Show(overlay, title, title == Strings.Dialog_RedeemToken ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "", submit: submit);
     }
 
-    public static Task<ChannelViewModel?> PickChannel(OverlayHost overlay, string title, IReadOnlyList<ChannelViewModel> channels)
+    public static Task<ChannelViewModel?> PickChannel(OverlayHost overlay, string title, IReadOnlyList<ChannelViewModel> channels,
+        Func<ChannelViewModel, Pending>? submit = null)
     {
         if (channels.Count == 0) return Show<ChannelViewModel>(overlay, title, "Speaker", Text(Strings.Dlg_NoChannel, "muted"), () => null);
         var list = new ListBox { ItemsSource = channels.Select(c => c.Name).ToList(), MaxHeight = 320, SelectedIndex = 0, CornerRadius = new CornerRadius(8) };
-        return Show(overlay, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, Strings.Dlg_Select);
+        return Show(overlay, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null, Strings.Dlg_Select, submit: submit);
     }
 
     /// <param name="ipKnown">Package 72: an offline user without a stored IP cannot be banned by IP.</param>
-    public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname, bool ipKnown = true)
+    public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname, bool ipKnown = true, Func<BanChoice, Pending>? submit = null)
     {
         var durations = BanChoice.Durations;
         var reason = new TextBox();
@@ -145,7 +186,7 @@ public static class SimpleDialogs
         if (!ipKnown) body.Children.Add(Text(Strings.Dlg_BanIpUnknown, "caption"));
         return Show(overlay, string.Format(Strings.Dlg_BanTitle, nickname), "Prohibited", body,
             () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Minutes, includeIp.IsChecked == true),
-            Strings.Dlg_Ban, kind: Kind.Danger);
+            Strings.Dlg_Ban, kind: Kind.Danger, submit: submit);
     }
 
     /// <summary>Only used for destructive actions, hence the red button.</summary>
@@ -315,6 +356,25 @@ public static class SimpleDialogs
         return await Show(overlay, Strings.Tofu_Title, mismatch ? "Warning" : "LockClosed", Stack(message, Field("Fingerprint", code)), () => "ok",
             mismatch ? Strings.Tofu_TrustAnyway : Strings.Tofu_Trust, prompt.AcceptIsDefault, mismatch ? Kind.Danger : Kind.Normal) is not null;
     }
+
+    /// <summary>The dialogs of the main window's overlay, as the view models ask for them (App, and the UI tests).</summary>
+    /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>
+    public static Dialogs For(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
+    {
+        EditChannel = (current, mode, submit) => ChannelDialog.ShowAsync(overlay, current, mode, groups(), submit),
+        PickChannel = (title, channels, submit) => PickChannel(overlay, title, channels, submit),
+        AskText = (title, prompt, submit) => AskText(overlay, title, prompt, submit),
+        Ban = (nickname, ipKnown, submit) => Ban(overlay, nickname, ipKnown, submit),
+        Confirm = text => Confirm(overlay, text),
+        ConfirmDeleteUser = nickname => ConfirmDeleteUser(overlay, nickname),
+        ConfirmRestore = title => ConfirmRestore(overlay, title),
+        ConfirmBackupDownload = () => ConfirmBackupDownload(overlay),
+        AskPassword = name => AskPassword(overlay, name),
+        AskChannelPassword = name => AskChannelPassword(overlay, name), // Package 94
+        EditBookmark = bookmark => EditBookmark(overlay, bookmark),
+        EditKeyBinding = (binding, capture) => EditKeyBinding(overlay, binding, capture),
+        OfferUpdate = offer => OfferUpdate(overlay, offer),
+    };
 
     public static Task<ConnectChoice?> Connect(OverlayHost overlay, ClientSettings settings, Bookmark? preselect = null)
     {

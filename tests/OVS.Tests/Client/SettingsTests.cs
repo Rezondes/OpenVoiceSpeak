@@ -508,4 +508,34 @@ public sealed class SettingsTests : IDisposable
         foreach (var code in Codes.All()) Assert.True(ErrorTexts.Has(code), code);
         Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(Codes.PermissionDenied, "x")); // server details stay out of the UI (A45)
     }
+
+    /// <summary>Package 98 (AC5): "Speichern" is busy while the audio devices restart and closes afterwards; the update check spins.</summary>
+    [Fact]
+    public async Task Save_BusyWhileDevicesRestart()
+    {
+        var time = new OVS.Tests.TestSupport.ManualTimeProvider();
+        var vm = new SettingsViewModel(new ClientSettings(), [], [], time: time);
+        var restart = new TaskCompletionSource();
+        vm.ApplySaved = () => restart.Task;
+        bool? closed = null;
+        vm.CloseRequested += ok => closed = ok;
+        var saving = vm.SaveCommand.ExecuteAsync(null);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        Assert.True(vm.Saving.IsBusy);
+        Assert.Null(closed);
+        restart.SetResult();
+        await saving;
+        Assert.False(vm.Saving.IsBusy);
+        Assert.True(closed);
+
+        var check = new TaskCompletionSource<string>();
+        vm.CheckNow = () => check.Task;
+        var checking = vm.CheckUpdatesCommand.ExecuteAsync(null);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        Assert.True(vm.Checking.IsBusy);
+        check.SetResult("Aktuell");
+        await checking;
+        Assert.False(vm.Checking.IsBusy);
+        Assert.Equal("Aktuell", vm.UpdateStatus);
+    }
 }

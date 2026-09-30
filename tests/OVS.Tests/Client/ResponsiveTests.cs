@@ -34,7 +34,8 @@ public sealed class ResponsiveTests : IDisposable
 
     MainWindow Open(double width, ServerViewModel? server, out MainViewModel vm)
     {
-        vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        // the device list loads in the background (Package 52): its result comes back through the dispatcher, not on a pool thread
+        vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
         vm.Server = server;
@@ -284,7 +285,9 @@ public sealed class ResponsiveTests : IDisposable
         // the button bar stays in view
         foreach (var text in new[] { Strings.Dlg_Cancel, Strings.Dlg_Save })
         {
-            var button = page.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == text);
+            // Package 98: "Speichern" holds its text beside a spinner
+            var button = page.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == text
+                || b.Content is Panel p && p.Children.OfType<TextBlock>().Any(t => t.Text == text));
             Assert.True(button.IsEffectivelyVisible);
             var y = button.TranslatePoint(default, main)!.Value.Y;
             Assert.True(y >= 0 && y + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {y}");
@@ -764,6 +767,83 @@ public sealed class ResponsiveTests : IDisposable
             Assert.Equal(12, history.TranslatePoint(default, chat)!.Value.X, 1);
         }
         LayoutAssert.FitsHorizontally(chat, strip);
+        main.Close();
+        return 0;
+    });
+
+    /// <summary>Package 98 (AC7): the waiting states outside the administration: busy rows, a sent and a failed message, a busy dialog and settings.</summary>
+    [AvaloniaTheory]
+    [InlineData(360, "de-DE")]
+    [InlineData(1100, "de-DE")]
+    [InlineData(360, "en-US")]
+    [InlineData(1100, "en-US")]
+    public void WaitingStates_Fit(double width, string culture) => TestCulture.With(culture, () =>
+    {
+        var time = new ManualTimeProvider();
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
+        main.Show();
+        ServerViewModel? server = null;
+        server = FakeServers.Admin(time: time, dialogs: SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
+        vm.Server = server;
+        Dispatcher.UIThread.RunJobs();
+
+        // a sent message still waiting and a refused one with its retry, both long
+        foreach (var text in new[] { new string('w', 300), "Diese Nachricht kam nicht an, weil zu viele in kurzer Zeit geschickt wurden." })
+        {
+            vm.Chat!.Draft = text;
+            _ = vm.Chat.SendCommand.ExecuteAsync(null);
+        }
+        server.Apply(new OVS.Shared.Protocol.Error(vm.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.Codes.RateLimited));
+        // rows that spin: joining a channel, a server mute
+        _ = server.Channels.Single(c => c.Name == "Raid").JoinCommand.ExecuteAsync(null);
+        _ = server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);
+        LayoutAssert.FitsHorizontally(main);
+        if (width < 700) Click(main, MenuButton(main)); // the channel tree lives in the drawer
+        Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible));
+        LayoutAssert.FitsHorizontally(main);
+        if (width < 700) Click(main, MenuButton(main));
+
+        // a sending dialog with its busy button and the error of an earlier try
+        _ = server.NewChannelCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+        main.Overlay.GetVisualDescendants().OfType<TextBox>().First().Text = "Neu";
+        var create = main.Overlay.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == Strings.Dlg_Create);
+        create.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        time.Advance(TimeSpan.FromSeconds(10));
+        create.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
+        CardInside(main, DialogCard(main), 460);
+        LayoutAssert.FitsHorizontally(main.Overlay);
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
+
+        // the settings: saving while the devices restart, the update check
+        var restart = new TaskCompletionSource();
+        var check = new TaskCompletionSource<string>();
+        vm.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
+        vm.Page = Page.Settings;
+        _ = vm.SettingsPage.SaveCommand.ExecuteAsync(null);
+        _ = vm.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        Dispatcher.UIThread.RunJobs();
+        var settings = main.GetVisualDescendants().OfType<SettingsView>().Single();
+        Assert.True(settings.FindControl<Control>("UpdateCheckBusy")?.IsEffectivelyVisible);
+        Assert.Contains(settings.FindControl<Button>("SaveSettingsButton")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
+        foreach (var scroller in settings.GetVisualDescendants().OfType<ScrollViewer>().Where(s => s.Viewport.Height > 0).ToList())
+        {
+            scroller.Offset = new Vector(0, scroller.Extent.Height);
+            Dispatcher.UIThread.RunJobs();
+        }
+        LayoutAssert.FitsHorizontally(main);
+        restart.SetResult(); // nothing may be left waiting when the test ends
+        check.SetResult("");
+        Dispatcher.UIThread.RunJobs();
         main.Close();
         return 0;
     });

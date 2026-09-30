@@ -29,11 +29,16 @@ public sealed record BanChoice(string Reason, int? DurationMinutes, bool Include
 public sealed class Dialogs
 {
     /// <summary>Package 54: one dialog for creating (empty) and editing (prefilled); the mode sets title and button.</summary>
-    public Func<ChannelEdit, ChannelDialogMode, Task<ChannelEdit?>>? EditChannel { get; init; }
-    public Func<string, IReadOnlyList<ChannelViewModel>, Task<ChannelViewModel?>>? PickChannel { get; init; }
-    public Func<string, string, Task<string?>>? AskText { get; init; }
+    /// <remarks>
+    /// Package 98: the dialogs that send get the send as their last argument. It returns the waiting mark; the dialog keeps
+    /// its card open with a busy button until the mark ends, closes when confirmed and shows the error otherwise. A dialog
+    /// that never calls it (a test fake) has the answer sent after it closed.
+    /// </remarks>
+    public Func<ChannelEdit, ChannelDialogMode, Func<ChannelEdit, Pending>?, Task<ChannelEdit?>>? EditChannel { get; init; }
+    public Func<string, IReadOnlyList<ChannelViewModel>, Func<ChannelViewModel, Pending>?, Task<ChannelViewModel?>>? PickChannel { get; init; }
+    public Func<string, string, Func<string, Pending>?, Task<string?>>? AskText { get; init; }
     /// <summary>Nickname, and whether an IP is known to ban as well (Package 72: not for every offline user).</summary>
-    public Func<string, bool, Task<BanChoice?>>? Ban { get; init; }
+    public Func<string, bool, Func<BanChoice, Pending>?, Task<BanChoice?>>? Ban { get; init; }
     public Func<string, Task<bool>>? Confirm { get; init; }
     /// <summary>Package 72: the red "Alle Daten von {0} löschen?" dialog.</summary>
     public Func<string, Task<bool>>? ConfirmDeleteUser { get; init; }
@@ -159,6 +164,21 @@ public sealed partial class ServerViewModel : ObservableObject
 
     public void Apply(Message message)
     {
+        ApplyMessage(message);
+        // Package 98: actions without an answer of their own end with the message that shows them done
+        foreach (var c in confirming.ToList())
+        {
+            if (!c.Pending.IsRunning) confirming.Remove(c);
+            else if (c.Confirms(message))
+            {
+                confirming.Remove(c);
+                c.Pending.Done();
+            }
+        }
+    }
+
+    void ApplyMessage(Message message)
+    {
         switch (message)
         {
             case Error e:
@@ -251,7 +271,7 @@ public sealed partial class ServerViewModel : ObservableObject
         foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).ToList()) userVms.Remove(id);
 
         var desired = new List<ChannelViewModel>();
-        foreach (var c in Mirror.Channels.Values.OrderBy(c => c.Order).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var c in ServerOrder().OrderBy(c => pendingOrder?.IndexOf(c.Id) is >= 0 and var i ? i : int.MaxValue)) // Package 98
         {
             if (!channelVms.TryGetValue(c.Id, out var channel)) channelVms[c.Id] = channel = new ChannelViewModel(this, c.Id);
             var linked = Mirror.LinkedChannels(c.Id).Select(id => Mirror.Channels.GetValueOrDefault(id)?.Name).OfType<string>().Order().ToList();
@@ -278,6 +298,8 @@ public sealed partial class ServerViewModel : ObservableObject
         RefreshSpeaking();
         StateChanged?.Invoke();
     }
+
+    IEnumerable<ChannelInfo> ServerOrder() => Mirror.Channels.Values.OrderBy(c => c.Order).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
 
     /// <summary>Moves/inserts/removes so the collection equals desired, keeping existing instances (and selection).</summary>
     static void Sync<T>(ObservableCollection<T> target, IReadOnlyList<T> desired) where T : class
@@ -398,9 +420,38 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>A waiting mark on this server's clock, its timers handed to the UI thread.</summary>
     public Pending NewPending() => new(time, action => Post(action));
 
+    /// <summary>Package 98: marks that end with a message showing the action done (most requests have no answer of their own).</summary>
+    readonly List<(Pending Pending, Func<Message, bool> Confirms)> confirming = [];
+
+    /// <summary>
+    /// Package 98: sends under a waiting mark that ends once a message confirms it, or with the server's error for it or
+    /// the timeout. Unless a dialog shows it (notify false), the timeout's error shows as a notice like the server's errors.
+    /// </summary>
+    /// <param name="busy">Gets IsBusy of the mark, e.g. for the spinner on a row.</param>
+    public Pending SendConfirmed(Request request, Func<Message, bool> confirms, Pending? pending = null, Action<bool>? busy = null, bool notify = true)
+    {
+        pending ??= NewPending();
+        if (busy is not null) pending.Show(busy);
+        if (notify) pending.TimedOut += () => Notice?.Invoke(Strings.Pending_NoAnswer);
+        confirming.Add((pending, confirms));
+        _ = SendAsync(request, pending: pending);
+        return pending;
+    }
+
+    /// <summary>Package 98: asks with a dialog that sends itself (see <see cref="Dialogs"/>); a dialog that cannot wait has it sent afterwards.</summary>
+    internal static async Task Ask<T>(Func<Func<T, Pending>, Task<T?>>? ask, Func<T, Pending> send) where T : class
+    {
+        if (ask is null) return;
+        Pending? sent = null;
+        if (await ask(value => sent = send(value)) is { } result && sent is null) send(result);
+    }
+
+    bool IsSelf(UserInfo user) => user.SessionId == Mirror.SelfId;
+
     /// <summary>Package 94: asks for the password of a password-locked channel unless remembered, the bypass right or an admin.</summary>
     public async Task JoinAsync(Guid channelId)
     {
+        if (IsJoining) return; // Package 98
         string? password = null;
         if (Mirror.Channels.GetValueOrDefault(channelId) is { HasPassword: true } channel && !IsAdmin
             && !SelfPermissions.Has(Permission.ChannelPasswordBypass) && Mirror.Self?.ChannelId != channelId
@@ -411,29 +462,76 @@ public sealed partial class ServerViewModel : ObservableObject
         }
         pendingJoin = channelId;
         pendingPassword = password is null ? null : (channelId, password);
-        await SendAsync(new JoinChannel(channelId, password));
+        if (Mirror.Self?.ChannelId is not { } before || before == channelId)
+        {
+            await SendAsync(new JoinChannel(channelId, password));
+            return;
+        }
+        // Package 98: the row spins until the own channel changes; a second join meanwhile is ignored
+        var row = channelVms.GetValueOrDefault(channelId);
+        joining = SendConfirmed(new JoinChannel(channelId, password), m => m is UserUpdated u && IsSelf(u.User) && u.User.ChannelId != before,
+            busy: on => row?.IsBusy = on);
     }
-    public Task CreateChannelAsync(string name, string description, bool isMuted = false, int maxUsers = 0,
-        IReadOnlyList<Guid>? allowedGroupIds = null, string? password = null) =>
-        SendAsync(new CreateChannel(name, description, isMuted, maxUsers, allowedGroupIds, password));
-    public Task EditChannelAsync(Guid id, ChannelEdit edit, int order) =>
-        SendAsync(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password));
-    public Task DeleteChannelAsync(Guid id) => SendAsync(new DeleteChannel(id));
 
-    /// <summary>Package 36: puts source right before or after target and sends the complete new order.</summary>
+    Pending? joining;
+    public bool IsJoining => joining?.IsRunning == true;
+
+    public Pending CreateChannel(ChannelEdit e) =>
+        SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password),
+            m => m is ChannelAdded a && a.Channel.Name == e.Name, notify: false);
+    public Pending EditChannel(Guid id, ChannelEdit edit, int order) =>
+        SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password),
+            m => m is ChannelUpdated u && u.Channel.Id == id, notify: false);
+    public Pending DeleteChannel(Guid id)
+    {
+        var row = channelVms.GetValueOrDefault(id); // gone from the tree when confirmed
+        return SendConfirmed(new DeleteChannel(id), m => m is ChannelRemoved r && r.ChannelId == id, busy: on => row?.IsBusy = on);
+    }
+
+    /// <summary>The order sent last, shown until the server confirms or refuses it.</summary>
+    List<Guid>? pendingOrder;
+
+    /// <summary>
+    /// Package 36: puts source right before or after target and sends the complete new order. Package 98: the new order
+    /// shows at once and the moved row spins until the server's updates match it; refused or unanswered, it goes back.
+    /// </summary>
     public Task MoveChannelAsync(ChannelViewModel source, ChannelViewModel target, bool after)
     {
         if (source == target) return Task.CompletedTask;
         var order = Channels.Where(c => c != source).ToList();
         order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
-        return order.SequenceEqual(Channels) ? Task.CompletedTask : SendAsync(new ReorderChannels(order.Select(c => c.Id).ToList()));
+        if (order.SequenceEqual(Channels)) return Task.CompletedTask;
+        var ids = order.Select(c => c.Id).ToList();
+        pendingOrder = ids;
+        Rebuild();
+        var sent = SendConfirmed(new ReorderChannels(ids), _ => ServerOrder().Select(c => c.Id).SequenceEqual(ids), busy: on => source.IsBusy = on);
+        _ = EndReorderAsync(sent, ids);
+        return Task.CompletedTask;
     }
-    public Task LinkAsync(Guid a, Guid b) => SendAsync(new LinkChannels(a, b));
-    public Task UnlinkAsync(Guid a, Guid b) => SendAsync(new UnlinkChannels(a, b));
-    public Task MoveAsync(uint sessionId, Guid channelId) => SendAsync(new MoveUser(sessionId, channelId));
-    public Task KickAsync(uint sessionId, string reason) => SendAsync(new Kick(sessionId, reason));
-    public Task BanAsync(uint sessionId, BanChoice choice) => SendAsync(new Ban(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp));
-    public Task ServerMuteAsync(uint sessionId, bool muted) => SendAsync(new SetServerMute(sessionId, muted));
+
+    async Task EndReorderAsync(Pending sent, List<Guid> ids)
+    {
+        await sent.Completion;
+        if (pendingOrder != ids) return; // a newer order is on its way
+        pendingOrder = null;
+        Rebuild(); // done: the server's order is the same; refused or no answer: back to it
+    }
+
+    public Pending Link(Guid a, Guid b) =>
+        SendConfirmed(new LinkChannels(a, b), m => m is ChannelsLinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
+    public Pending Unlink(Guid a, Guid b) =>
+        SendConfirmed(new UnlinkChannels(a, b), m => m is ChannelsUnlinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
+    public Pending Move(uint sessionId, Guid channelId) =>
+        SendConfirmed(new MoveUser(sessionId, channelId), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ChannelId == channelId, notify: false);
+    public Pending Kick(uint sessionId, string reason) => SendConfirmed(new Kick(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+    public Pending Ban(uint sessionId, BanChoice choice) =>
+        SendConfirmed(new Ban(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+    public Pending ServerMute(uint sessionId, bool muted)
+    {
+        var row = userVms.GetValueOrDefault(sessionId);
+        return SendConfirmed(new SetServerMute(sessionId, muted), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ServerMuted == muted,
+            busy: on => row?.IsBusy = on);
+    }
 
     /// <summary>Package 53: both at once and without tones, for the self test and to restore the state before it.</summary>
     public Task SetSelfStateAsync(bool muted, bool deafened)
@@ -480,18 +578,14 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    async Task NewChannel()
-    {
-        if (Dialogs.EditChannel is { } edit && await edit(new ChannelEdit("", ""), ChannelDialogMode.Create) is { } result)
-            await CreateChannelAsync(result.Name, result.Description, result.IsMuted, result.MaxUsers, result.AllowedGroupIds, result.Password);
-    }
+    Task NewChannel() =>
+        Ask<ChannelEdit>(Dialogs.EditChannel is { } edit ? submit => edit(new ChannelEdit("", ""), ChannelDialogMode.Create, submit) : null, CreateChannel);
 
+    /// <summary>Package 98: the dialog waits until the own user comes back with the new groups (or the token is refused).</summary>
     [RelayCommand]
-    async Task RedeemToken()
-    {
-        if (Dialogs.AskText is { } ask && await ask(Strings.Dialog_RedeemToken, Strings.Dialog_RedeemTokenPrompt) is { Length: > 0 } token)
-            await SendAsync(new RedeemAdminToken(token.Trim()));
-    }
+    Task RedeemToken() =>
+        Ask<string>(Dialogs.AskText is { } ask ? submit => ask(Strings.Dialog_RedeemToken, Strings.Dialog_RedeemTokenPrompt, submit) : null,
+            token => SendConfirmed(new RedeemAdminToken(token.Trim()), m => m is UserUpdated u && IsSelf(u.User), notify: false));
 }
 
 public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : ObservableObject
@@ -521,6 +615,8 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [ObservableProperty] string lockText = "";
     /// <summary>Package 93: "Beitreten" and the double click, only with one of the lock's groups or as admin (a password is asked for).</summary>
     [ObservableProperty] bool canJoin = true;
+    /// <summary>Package 98: a spinner on the row while joining it, moving it or deleting it waits for the server.</summary>
+    [ObservableProperty] bool isBusy;
     /// <summary>Package 93: null = no group lock, empty = admins only.</summary>
     public IReadOnlyList<Guid>? AllowedGroupIds { get; private set; }
     /// <summary>Package 94: joining needs a password (without the bypass right).</summary>
@@ -594,33 +690,30 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     Task Create() => owner.NewChannelCommand.ExecuteAsync(null);
 
     [RelayCommand]
-    async Task Edit()
+    Task Edit()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        if (owner.Dialogs.EditChannel is { } edit && await edit(new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds, HasPassword), mode) is { } result)
-            await owner.EditChannelAsync(Id, result, Order);
+        var current = new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds, HasPassword);
+        return ServerViewModel.Ask<ChannelEdit>(owner.Dialogs.EditChannel is { } edit ? submit => edit(current, mode, submit) : null,
+            result => owner.EditChannel(Id, result, Order));
     }
 
     [RelayCommand]
     async Task Delete()
     {
         if (owner.Dialogs.Confirm is { } confirm && await confirm(string.Format(Strings.Confirm_DeleteChannel, Name)))
-            await owner.DeleteChannelAsync(Id);
+            owner.DeleteChannel(Id);
     }
 
     [RelayCommand]
-    async Task Link()
-    {
-        if (owner.Dialogs.PickChannel is { } pick && await pick(string.Format(Strings.Dialog_LinkWith, Name), owner.LinkCandidates(this)) is { } other)
-            await owner.LinkAsync(Id, other.Id);
-    }
+    Task Link() =>
+        ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
+            ? submit => pick(string.Format(Strings.Dialog_LinkWith, Name), owner.LinkCandidates(this), submit) : null, other => owner.Link(Id, other.Id));
 
     [RelayCommand]
-    async Task Unlink()
-    {
-        if (owner.Dialogs.PickChannel is { } pick && await pick(string.Format(Strings.Dialog_Unlink, Name), owner.LinkedChannelVms(this)) is { } other)
-            await owner.UnlinkAsync(Id, other.Id);
-    }
+    Task Unlink() =>
+        ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
+            ? submit => pick(string.Format(Strings.Dialog_Unlink, Name), owner.LinkedChannelVms(this), submit) : null, other => owner.Unlink(Id, other.Id));
 }
 
 public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId) : ObservableObject
@@ -644,6 +737,8 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [ObservableProperty] bool canKick;
     [ObservableProperty] bool canBan;
     [ObservableProperty] bool canMessage;
+    /// <summary>Package 98: a spinner on the row while the server mute waits for the server.</summary>
+    [ObservableProperty] bool isBusy;
 
     /// <summary>Package 51: this person's volume for me, 0 to 200 %.</summary>
     [ObservableProperty]
@@ -715,30 +810,29 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     }
 
     [RelayCommand]
-    async Task Move()
+    Task Move()
     {
         var targets = owner.Channels.Where(c => c.Id != ChannelId).ToList();
-        if (owner.Dialogs.PickChannel is { } pick && await pick(string.Format(Strings.Dialog_MoveTo, Nickname), targets) is { } channel)
-            await owner.MoveAsync(SessionId, channel.Id);
+        return ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
+            ? submit => pick(string.Format(Strings.Dialog_MoveTo, Nickname), targets, submit) : null, channel => owner.Move(SessionId, channel.Id));
     }
 
     [RelayCommand]
     void Message() => owner.RequestPrivateChat(this);
 
     [RelayCommand]
-    Task ToggleServerMute() => owner.ServerMuteAsync(SessionId, !ServerMuted);
-
-    [RelayCommand]
-    async Task Kick()
+    Task ToggleServerMute()
     {
-        if (owner.Dialogs.AskText is { } ask && await ask(string.Format(Strings.Dialog_Kick, Nickname), Strings.Dialog_KickReason) is { } reason)
-            await owner.KickAsync(SessionId, reason);
+        owner.ServerMute(SessionId, !ServerMuted);
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    async Task Ban()
-    {
-        if (owner.Dialogs.Ban is { } ban && await ban(Nickname, true) is { } choice)
-            await owner.BanAsync(SessionId, choice);
-    }
+    Task Kick() =>
+        ServerViewModel.Ask<string>(owner.Dialogs.AskText is { } ask
+            ? submit => ask(string.Format(Strings.Dialog_Kick, Nickname), Strings.Dialog_KickReason, submit) : null, reason => owner.Kick(SessionId, reason));
+
+    [RelayCommand]
+    Task Ban() =>
+        ServerViewModel.Ask<BanChoice>(owner.Dialogs.Ban is { } ban ? submit => ban(Nickname, true, submit) : null, choice => owner.Ban(SessionId, choice));
 }

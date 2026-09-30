@@ -1006,6 +1006,276 @@ public sealed class UiSmokeTests : IDisposable
         }
     }
 
+    // ---- Package 98 (A113): waiting states ----
+
+    /// <summary>
+    /// The main window with the admin fake server on a manual clock, its dialogs the real ones of the overlay. The
+    /// server is made on the UI thread, so the waiting marks' timers come back through the dispatcher.
+    /// </summary>
+    (MainWindow Main, MainViewModel Vm, ServerViewModel Server, List<Request> Sent, ManualTimeProvider Time) OpenWaiting(double width = 1000)
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
+        main.Show();
+        var sent = new List<Request>();
+        var time = new ManualTimeProvider();
+        ServerViewModel? server = null;
+        server = FakeServers.Admin(sent, time, SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
+        vm.Server = server;
+        Dispatcher.UIThread.RunJobs();
+        return (main, vm, server, sent, time);
+    }
+
+    static void Advance(ManualTimeProvider time, int ms)
+    {
+        time.Advance(TimeSpan.FromMilliseconds(ms));
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    static Button OverlayButton(MainWindow main, string text) =>
+        main.Overlay.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == text
+            || b.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == text && t.IsEffectivelyVisible));
+
+    static void Click(Button button)
+    {
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    static bool SpinnerIn(Visual root) => root.GetVisualDescendants().OfType<BusySpinner>().Any(s => s.IsEffectivelyVisible);
+
+    /// <summary>Package 98 (AC3): a dialog that sends keeps its card open with a busy button until the server confirms; errors show inside.</summary>
+    [AvaloniaFact]
+    public void SendingDialogs_StayOpenBusyUntilConfirmed()
+    {
+        var (main, _, server, sent, time) = OpenWaiting();
+
+        // create a channel: busy, then closed by the server's ChannelAdded
+        _ = server.NewChannelCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+        main.Overlay.GetVisualDescendants().OfType<TextBox>().First().Text = "Neu";
+        Click(OverlayButton(main, "Anlegen"));
+        Assert.Single(sent.OfType<CreateChannel>());
+        Assert.True(main.Overlay.IsOpen);
+        Advance(time, 150);
+        var create = OverlayButton(main, "Anlegen");
+        Assert.False(create.IsEnabled);
+        Assert.True(SpinnerIn(create));
+        Click(create); // a second click meanwhile sends nothing
+        Assert.Single(sent.OfType<CreateChannel>());
+        server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 2)));
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(main.Overlay.IsOpen);
+
+        // ban: refused, the card stays with the reason and the button works again
+        var anna = server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna");
+        _ = anna.BanCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+        Click(OverlayButton(main, "Bannen"));
+        Advance(time, 150);
+        Assert.True(SpinnerIn(main.Overlay));
+        server.Apply(new Error(sent.OfType<Ban>().Single().RequestId, Codes.PermissionDenied));
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(main.Overlay.IsOpen);
+        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == ErrorTexts.For(Codes.PermissionDenied) && t.IsEffectivelyVisible);
+        Assert.True(OverlayButton(main, "Bannen").IsEnabled);
+        Assert.False(SpinnerIn(main.Overlay));
+
+        // no answer at all: after 10 s the card says so and stays
+        Click(OverlayButton(main, "Bannen"));
+        Advance(time, 10_000);
+        Assert.True(main.Overlay.IsOpen);
+        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == OVS.Client.Localization.Strings.Pending_NoAnswer && t.IsEffectivelyVisible);
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
+
+        // redeem a token: closed once the own user comes back
+        _ = server.RedeemTokenCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+        main.Overlay.GetVisualDescendants().OfType<TextBox>().Single().Text = "geheim";
+        Click(OverlayButton(main, "OK"));
+        Advance(time, 150);
+        Assert.True(main.Overlay.IsOpen);
+        server.Apply(new UserUpdated(server.Mirror.Self!));
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(main.Overlay.IsOpen);
+        main.Close();
+    }
+
+    /// <summary>
+    /// Package 98 (AC6): every action that waits shows something within 400 ms. A fake server answers each after 1 s;
+    /// the busy indicator must be there after 400 ms and gone after the answer.
+    /// </summary>
+    [AvaloniaFact]
+    public void EveryWaitingAction_VisibleWithin400ms()
+    {
+        var (main, vm, server, sent, time) = OpenWaiting();
+        var checkedActions = new List<string>();
+        Request Last<T>() where T : Request => sent.OfType<T>().Last();
+        ChannelViewModel Channel(string name) => server.Channels.Single(c => c.Name == name);
+        UserViewModel User(string name) => server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == name);
+        UserInfo Info(string name) => server.Mirror.Users.Values.Single(u => u.Nickname == name);
+        bool Clock() => main.GetVisualDescendants().OfType<PathIcon>().Any(i => ToolTip.GetTip(i) as string == OVS.Client.Localization.Strings.Chat_Sending && i.IsEffectivelyVisible);
+        bool Busy() => SpinnerIn(main) || Clock();
+
+        void Waits(string name, Action start, Func<IEnumerable<Message>> answer)
+        {
+            start();
+            Dispatcher.UIThread.RunJobs();
+            Advance(time, 400);
+            Assert.True(Busy(), $"{name}: nothing shows after 400 ms");
+            Advance(time, 600);
+            foreach (var message in answer()) server.Apply(message);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(Busy(), $"{name}: still busy after the answer: " + string.Join(", ", main.GetVisualDescendants().OfType<BusySpinner>()
+                .Where(s => s.IsEffectivelyVisible).Select(s => s.GetVisualAncestors().OfType<Control>().FirstOrDefault(c => c.Name is not null)?.Name ?? "?")));
+            checkedActions.Add(name);
+        }
+        void Dialog(string ok, Action<Visual>? fill = null)
+        {
+            Dispatcher.UIThread.RunJobs();
+            fill?.Invoke(main.Overlay);
+            Click(OverlayButton(main, ok));
+        }
+
+        // ---- the channel tree and the chat ----
+        Waits("join", () => _ = Channel("Raid").JoinCommand.ExecuteAsync(null), () => [new UserUpdated(Info("ich") with { ChannelId = FakeServers.Raid })]);
+        Waits("chat", () =>
+        {
+            vm.Chat!.Draft = "Hallo";
+            _ = vm.Chat.SendCommand.ExecuteAsync(null);
+        }, () => [new ChatMessage(ChatTarget.Server, 1, "ich", null, null, "Hallo", DateTimeOffset.Now)]);
+        Waits("server mute", () => _ = User("anna").ToggleServerMuteCommand.ExecuteAsync(null), () => [new UserUpdated(Info("anna") with { ServerMuted = !Info("anna").ServerMuted })]);
+        Waits("reorder", () => _ = server.MoveChannelAsync(Channel("Raid"), Channel("Lobby"), after: false),
+            () => [new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 0)), new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 1))]);
+        var created = Guid.NewGuid();
+        Waits("create channel", () =>
+        {
+            _ = server.NewChannelCommand.ExecuteAsync(null);
+            Dialog("Anlegen", o => o.GetVisualDescendants().OfType<TextBox>().First().Text = "Neu");
+        }, () => [new ChannelAdded(new ChannelInfo(created, "Neu", "", 2))]);
+        Waits("edit channel", () =>
+        {
+            _ = Channel("Neu").EditCommand.ExecuteAsync(null);
+            Dialog("Speichern");
+        }, () => [new ChannelUpdated(new ChannelInfo(created, "Neu", "", 2))]);
+        Waits("unlink", () =>
+        {
+            _ = Channel("Lobby").UnlinkCommand.ExecuteAsync(null);
+            Dialog("Auswählen");
+        }, () => [new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid)]);
+        Waits("link", () =>
+        {
+            _ = Channel("Lobby").LinkCommand.ExecuteAsync(null);
+            Dialog("Auswählen");
+        }, () => [new ChannelsLinked(FakeServers.Lobby, (Guid)((LinkChannels)Last<LinkChannels>()).B)]);
+        Waits("move user", () =>
+        {
+            _ = User("anna").MoveCommand.ExecuteAsync(null);
+            Dialog("Auswählen");
+        }, () => [new UserUpdated(Info("anna") with { ChannelId = ((MoveUser)Last<MoveUser>()).ChannelId })]);
+        Waits("redeem token", () =>
+        {
+            _ = server.RedeemTokenCommand.ExecuteAsync(null);
+            Dialog("OK", o => o.GetVisualDescendants().OfType<TextBox>().Single().Text = "geheim");
+        }, () => [new UserUpdated(Info("ich"))]);
+        Waits("delete channel", () =>
+        {
+            _ = Channel("Neu").DeleteCommand.ExecuteAsync(null);
+            Dialog("Ja, löschen");
+        }, () => [new ChannelRemoved(created)]);
+        Waits("kick", () =>
+        {
+            _ = User("anna").KickCommand.ExecuteAsync(null);
+            Dialog("OK");
+        }, () => [new UserLeft(2)]);
+        server.Apply(new UserJoined(new UserInfo(3, "fp3", "bert", FakeServers.Lobby, false, false, false, Permission.None, [WellKnownGroups.Guest],
+            CanBeModeratedByMe: true)));
+        Waits("ban", () =>
+        {
+            _ = User("bert").BanCommand.ExecuteAsync(null);
+            Dialog("Bannen");
+        }, () => [new UserLeft(3)]);
+
+        // ---- the administration ----
+        Waits("admin lists", () =>
+        {
+            _ = vm.OpenAdminAsync();
+            Dispatcher.UIThread.RunJobs();
+            main.GetVisualDescendants().OfType<AdminView>().Single().GetVisualDescendants().OfType<TabItem>().Single(t => t.Header as string == "Nutzer").IsSelected = true;
+        }, () =>
+        [
+            new UserList(Last<ListUsers>().RequestId, [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], ServerMuted: true, CanBeModeratedByMe: true)]),
+            new BanList(Last<ListBans>().RequestId, [new BanInfo(Guid.NewGuid(), "fp4", "troll", null, "Spam", "ich", null)]),
+            new BackupList(Last<ListBackups>().RequestId, []),
+            new LogList(Last<ListLogs>().RequestId, []),
+        ]);
+        var admin = vm.AdminPage!;
+        var page = main.GetVisualDescendants().OfType<AdminView>().Single();
+        void Tab(string header)
+        {
+            page.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header as string == header).IsSelected = true;
+            Dispatcher.UIThread.RunJobs();
+        }
+        Tab("Gruppen");
+        Waits("group save", () =>
+        {
+            admin.SelectedGroup = admin.Groups.Single(g => g.Name == "Gast");
+            _ = admin.SaveGroupCommand.ExecuteAsync(null);
+        }, () => [new GroupsChanged(server.Mirror.Groups)]);
+        Waits("group order", () => _ = admin.MoveGroupAsync(admin.Groups.Single(g => g.Name == "Admin"), admin.Groups[0], after: false),
+            () => [new GroupsChanged([.. Enumerable.Reverse(server.Mirror.Groups)])]);
+        Tab("Nutzer");
+        // the group changes asked for the user list again (the rights on others may change): answered first, also the wish
+        // that came meanwhile and follows a second later
+        for (var i = 0; i < 2; i++)
+        {
+            server.Apply(new UserList(Last<ListUsers>().RequestId, [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], ServerMuted: true, CanBeModeratedByMe: true)]));
+            Advance(time, 1000);
+        }
+        Waits("user card", () => _ = admin.Users.Single().LiftMuteCommand.ExecuteAsync(null),
+            () => [new UserList(Last<ListUsers>().RequestId, [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])]);
+        Tab("Bans");
+        Waits("unban", () => _ = admin.Bans.Single().UnbanCommand.ExecuteAsync(null), () => [new BanList(Last<Unban>().RequestId, [])]);
+        Tab("Links");
+        Waits("link apply", () =>
+        {
+            admin.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
+            _ = admin.Links.ApplyCommand.ExecuteAsync(null);
+        }, () => [new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid)]);
+        Tab("Server");
+        page.FindControl<Button>("NewBackupButton")!.BringIntoView();
+        Waits("backup", () => _ = admin.NewBackupCommand.ExecuteAsync(null), () => [new BackupList(null, [])]);
+        page.FindControl<Border>("IconDrop")!.BringIntoView();
+        Waits("logo", () => _ = admin.UploadIconAsync(TestImages.Encode(64, 64), null), () => [new ServerSettingsChanged(server.Mirror.Settings)]);
+        Tab("Logs");
+        Waits("log search", () =>
+        {
+            admin.Logs.SearchText = "fehler";
+            _ = admin.Logs.SearchCommand.ExecuteAsync(null);
+        }, () => [new LogSearchResult(Last<SearchLogs>().RequestId, [], false, false)]);
+        vm.ClosePage();
+
+        // ---- the settings: saving while the audio devices restart, the update check ----
+        var restart = new TaskCompletionSource();
+        var check = new TaskCompletionSource<string>();
+        vm.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
+        vm.Page = Page.Settings;
+        Dispatcher.UIThread.RunJobs();
+        Waits("update check", () => _ = vm.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null), () =>
+        {
+            check.SetResult("Aktuell");
+            return [];
+        });
+        Waits("settings save", () => _ = vm.SettingsPage.SaveCommand.ExecuteAsync(null), () =>
+        {
+            restart.SetResult();
+            return [];
+        });
+        Assert.Equal(24, checkedActions.Count);
+        main.Close();
+    }
+
     [Fact]
     public void Avatar_SameNicknameSameColor_InitialUpperCase()
     {

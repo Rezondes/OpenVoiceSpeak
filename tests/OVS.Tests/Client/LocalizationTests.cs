@@ -70,6 +70,9 @@ public class LocalizationTests
         Assert.Equal("Keine Antwort vom Server. Versuche es noch einmal.", Strings.Pending_NoAnswer);
         Assert.Equal("No answer from the server. Please try again.", TestCulture.With("en-US", () => Strings.Pending_NoAnswer));
         Assert.Equal("Searching ...", TestCulture.With("en-US", () => Strings.Ui_LogSearching));
+        // Package 98: a chat message that did not reach the server
+        Assert.Equal("nicht gesendet", Strings.Chat_NotSent);
+        Assert.Equal(("not sent", "Send again"), TestCulture.With("en-US", () => (Strings.Chat_NotSent, Strings.Chat_Retry)));
     }
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>

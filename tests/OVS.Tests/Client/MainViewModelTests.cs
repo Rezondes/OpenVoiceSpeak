@@ -506,7 +506,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await ConnectAsync(saveBookmark: false);
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Server!.CreateChannelAsync("Raid", ""); // a guest may not
+            await vm.Server!.SendAsync(new CreateChannel("Raid", "")); // a guest may not
             return null;
         });
         Notice? error = null;

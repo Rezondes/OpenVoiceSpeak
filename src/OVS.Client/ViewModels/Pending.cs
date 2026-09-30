@@ -17,6 +17,7 @@ public sealed partial class Pending(TimeProvider time, Action<Action>? post = nu
 
     ITimer? show, timeout;
     int round;
+    TaskCompletionSource<string?>? completion;
 
     [ObservableProperty] bool isRunning;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsFirstLoad), nameof(IsRefreshing), nameof(HasState))] bool isBusy;
@@ -44,9 +45,13 @@ public sealed partial class Pending(TimeProvider time, Action<Action>? post = nu
     /// <summary>The 10 s passed without an answer (e.g. to put back what was shown ahead of the answer).</summary>
     public event Action? TimedOut;
 
+    /// <summary>Package 98: how the current run ended: null when done, else the error (refused or timed out).</summary>
+    public Task<string?> Completion => completion?.Task ?? Task.FromResult(Error);
+
     public void Start(string? requestId = null)
     {
         Stop();
+        if (completion is not { Task.IsCompleted: false }) completion = new(); // a retry while running keeps who waits
         var mine = round;
         RequestId = requestId;
         Error = null;
@@ -71,6 +76,7 @@ public sealed partial class Pending(TimeProvider time, Action<Action>? post = nu
         HasSucceeded = true;
         Stop();
         Error = null;
+        completion?.TrySetResult(null);
     }
 
     /// <summary>Ends a running action with a visible error; the action can be started again.</summary>
@@ -79,7 +85,19 @@ public sealed partial class Pending(TimeProvider time, Action<Action>? post = nu
         if (!IsRunning) return;
         Stop();
         Error = error;
+        completion?.TrySetResult(error);
     }
+
+    /// <summary>Package 98: the flag of a row (a channel, a user) follows IsBusy.</summary>
+    public void Show(Action<bool> busy) => PropertyChanged += (_, e) =>
+    {
+        if (e.PropertyName == nameof(IsBusy)) busy(IsBusy);
+    };
+
+    /// <summary>Package 98: on Avalonia's UI thread, work goes back there; elsewhere (view model tests) it runs inline.</summary>
+    public static Action<Action> UiPost() => SynchronizationContext.Current is Avalonia.Threading.AvaloniaSynchronizationContext ui
+        ? action => ui.Post(_ => action(), null)
+        : action => action();
 
     void Stop()
     {

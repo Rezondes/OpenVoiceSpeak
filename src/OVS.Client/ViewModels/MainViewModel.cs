@@ -176,7 +176,20 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Package 61: how see-through the backgrounds are right now (saved, or previewed on the settings page).</summary>
     [ObservableProperty] BackgroundAppearance appearance = new(1f, false);
 
-    public void ApplySettings(ClientSettings settings)
+    public void ApplySettings(ClientSettings settings) => Applied(Prepare(settings)());
+
+    /// <summary>
+    /// Package 98: the same, with the audio devices restarted off the UI thread (the engine locks itself), so the
+    /// settings page can show "Speichern" busy meanwhile. Without devices nothing takes long and it all happens at once.
+    /// </summary>
+    public async Task ApplySettingsAsync(ClientSettings settings)
+    {
+        var configure = Prepare(settings);
+        Applied(useAudioDevices ? await Task.Run(configure) : configure());
+    }
+
+    /// <summary>Everything but the audio devices; returns their restart.</summary>
+    Func<string?> Prepare(ClientSettings settings)
     {
         Settings = settings.Clamp();
         Appearance = BackgroundAppearance.From(Settings);
@@ -187,7 +200,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
                   $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
                   $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB");
-        if (Audio.Configure(Settings) is { } warning) AddNotice(warning, NoticeKind.Warning);
+        var applied = Settings;
+        return () => Audio.Configure(applied);
+    }
+
+    void Applied(string? warning)
+    {
+        if (warning is not null) AddNotice(warning, NoticeKind.Warning);
         OnPropertyChanged(nameof(Settings));
         OnPropertyChanged(nameof(TalkHint));
         OnPropertyChanged(nameof(HasNoPttBinding));
@@ -300,7 +319,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task<string> CheckForUpdatesAsync()
     {
         if (Updates is not { IsEnabled: true } updates) return Strings.Update_LocalBuild;
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var timeout = new CancellationTokenSource(Pending.Timeout); // Package 98 (A113): 10 s like every other wait
         var result = await updates.CheckAsync(timeout.Token);
         if (result.Error is { } error)
         {
@@ -587,10 +606,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             },
             SetSelfTest = SetSelfTestAsync,
         };
+        vm.ApplySaved = () => ApplySettingsAsync(vm.ToSettings(Settings)); // Package 98: before the page closes
         vm.CloseRequested += save =>
         {
-            if (save) ApplySettings(vm.ToSettings(Settings));
-            else // "Verwerfen": back to what is saved
+            if (!save) // "Verwerfen": back to what is saved
             {
                 Audio.ApplyLive(Settings);
                 Appearance = BackgroundAppearance.From(Settings);

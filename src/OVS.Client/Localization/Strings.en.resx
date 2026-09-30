@@ -566,4 +566,7 @@
   <data name="Ui_LogSearching" xml:space="preserve"><value>Searching ...</value></data>
   <data name="Ui_Restoring" xml:space="preserve"><value>Restoring ...</value></data>
   <data name="Ui_Busy" xml:space="preserve"><value>Please wait</value></data>
+  <data name="Chat_Sending" xml:space="preserve"><value>Sending ...</value></data>
+  <data name="Chat_NotSent" xml:space="preserve"><value>not sent</value></data>
+  <data name="Chat_Retry" xml:space="preserve"><value>Send again</value></data>
 </root>

@@ -371,7 +371,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task LinkCommand_UsesPickedChannel()
     {
-        var dialogs = new Dialogs { PickChannel = (_, candidates) => Task.FromResult<ChannelViewModel?>(candidates.Single(c => c.Name == "Bravo")) };
+        var dialogs = new Dialogs { PickChannel = (_, candidates, _) => Task.FromResult<ChannelViewModel?>(candidates.Single(c => c.Name == "Bravo")) };
         var f = Create(P.All, dialogs: dialogs);
         await f.Channel(Lobby).LinkCommand.ExecuteAsync(null);
         Assert.Equal(new LinkChannels(Lobby, Bravo), f.Sent[^1] with { RequestId = null });
@@ -384,7 +384,7 @@ public class ServerViewModelTests
         (ChannelEdit Current, ChannelDialogMode Mode)? shown = null;
         var dialogs = new Dialogs
         {
-            EditChannel = (current, mode) =>
+            EditChannel = (current, mode, _) =>
             {
                 shown = (current, mode);
                 return Task.FromResult<ChannelEdit?>(new ChannelEdit("Neu", "Beschreibung", IsMuted: true, MaxUsers: 3));
@@ -403,7 +403,7 @@ public class ServerViewModelTests
         ChannelDialogMode? shownMode = null;
         var dialogs = new Dialogs
         {
-            EditChannel = (current, mode) =>
+            EditChannel = (current, mode, _) =>
             {
                 shownMode = mode;
                 return Task.FromResult<ChannelEdit?>(current with { IsMuted = true });
@@ -431,6 +431,7 @@ public class ServerViewModelTests
 
         await f.Channel(Bravo).MoveUpCommand.ExecuteAsync(null);
         Assert.Equal(new[] { Lobby, Bravo, Alpha }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied)); // Package 98: refused, the server's order is back
         await f.Channel(Lobby).MoveDownCommand.ExecuteAsync(null);
         Assert.Equal(new[] { Alpha, Lobby, Bravo }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
 
@@ -444,8 +445,10 @@ public class ServerViewModelTests
         var f = Create(P.ChannelEdit);
         await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
         Assert.Equal(new[] { Bravo, Lobby, Alpha }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied)); // Package 98: refused, the server's order is back
         await f.Vm.MoveChannelAsync(f.Channel(Lobby), f.Channel(Bravo), after: true);
         Assert.Equal(new[] { Alpha, Bravo, Lobby }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied));
 
         int before = f.Sent.Count;
         await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Lobby), after: true); // already there
@@ -652,7 +655,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task Ban_SendsDurationAndIpFlag()
     {
-        var dialogs = new Dialogs { Ban = (_, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
+        var dialogs = new Dialogs { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
         var f = Create(Moderator, dialogs: dialogs, others: U(2, "gast", Lobby));
         await f.User(2).BanCommand.ExecuteAsync(null);
         Assert.Equal(new Ban(2, "spam", 60, true), f.Sent[^1] with { RequestId = null });
@@ -666,5 +669,123 @@ public class ServerViewModelTests
         await f.Channel(Alpha).DeleteCommand.ExecuteAsync(null);
         await f.Vm.NewChannelCommand.ExecuteAsync(null);
         Assert.Empty(f.Sent);
+    }
+
+    // ---- Package 98 (A113): waiting states ----
+
+    static readonly TimeSpan ShowAfter = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>Package 98 (AC1): the target row spins until the own channel changes or an error comes; a second join meanwhile is ignored.</summary>
+    [Fact]
+    public async Task JoinChannel_RowBusyUntilMoved_SecondJoinIgnored()
+    {
+        var f = Create();
+        var notices = new List<string>();
+        f.Vm.Notice += notices.Add;
+        var bravo = f.Channel(Bravo);
+        await bravo.JoinCommand.ExecuteAsync(null);
+        f.Time.Advance(ShowAfter - TimeSpan.FromMilliseconds(1));
+        Assert.False(bravo.IsBusy); // a fast answer never flickers
+        f.Time.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.True(bravo.IsBusy);
+        await f.Channel(Alpha).JoinCommand.ExecuteAsync(null);
+        Assert.Single(f.Sent.OfType<JoinChannel>());
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        Assert.False(bravo.IsBusy);
+        Assert.True(bravo.IsCurrent);
+
+        // refused: the spinner goes and the reason shows; joining works again
+        var alpha = f.Channel(Alpha);
+        await alpha.JoinCommand.ExecuteAsync(null);
+        f.Time.Advance(ShowAfter);
+        Assert.True(alpha.IsBusy);
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.ChannelFull));
+        Assert.False(alpha.IsBusy);
+        Assert.Equal(ErrorTexts.For(Codes.ChannelFull), notices[^1]);
+
+        // no answer at all: a visible error after 10 s, then it can be tried again
+        await alpha.JoinCommand.ExecuteAsync(null);
+        f.Time.Advance(TimeSpan.FromSeconds(10));
+        Assert.False(alpha.IsBusy);
+        Assert.Equal(OVS.Client.Localization.Strings.Pending_NoAnswer, notices[^1]);
+        await alpha.JoinCommand.ExecuteAsync(null);
+        Assert.Equal(4, f.Sent.OfType<JoinChannel>().Count());
+    }
+
+    /// <summary>Package 98 (AC4): a dropped channel stays in its new place until the server confirms; refused, it goes back.</summary>
+    [Fact]
+    public async Task Reorder_RevertsOnError()
+    {
+        var f = Create(P.ChannelEdit);
+        Guid[] Order() => f.Vm.Channels.Select(c => c.Id).ToArray();
+        Assert.Equal([Lobby, Alpha, Bravo], Order());
+
+        await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
+        var refused = Assert.IsType<ReorderChannels>(f.Sent[^1]);
+        Assert.Equal([Bravo, Lobby, Alpha], Order()); // at once, no jump back
+        f.Vm.Apply(new UserJoined(U(2, "anna", Lobby))); // something else changes meanwhile: the new order stays
+        Assert.Equal([Bravo, Lobby, Alpha], Order());
+        f.Time.Advance(ShowAfter);
+        Assert.True(f.Channel(Bravo).IsBusy);
+        f.Vm.Apply(new Error(refused.RequestId, Codes.PermissionDenied));
+        Assert.Equal([Lobby, Alpha, Bravo], Order());
+        Assert.False(f.Channel(Bravo).IsBusy);
+
+        // accepted: the server's updates confirm the order
+        await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
+        f.Time.Advance(ShowAfter);
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 0)));
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Lobby, "Lobby", "", 1)));
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Alpha, "alpha", "", 2)));
+        Assert.Equal([Bravo, Lobby, Alpha], Order());
+        Assert.False(f.Channel(Bravo).IsBusy);
+        f.Time.Advance(TimeSpan.FromSeconds(10)); // no late timeout puts anything back
+        Assert.Equal([Bravo, Lobby, Alpha], Order());
+
+        // no answer: back after 10 s
+        await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Bravo), after: false);
+        Assert.Equal([Alpha, Bravo, Lobby], Order());
+        f.Time.Advance(TimeSpan.FromSeconds(10));
+        Assert.Equal([Bravo, Lobby, Alpha], Order());
+    }
+
+    /// <summary>Package 98 (AC3, AC4): a sending dialog gets the send as its submit and waits; the tree's actions spin on their row.</summary>
+    [Fact]
+    public async Task SendingDialogs_WaitForTheConfirmation_RowActionsSpin()
+    {
+        Pending? waited = null;
+        var dialogs = new Dialogs
+        {
+            EditChannel = (current, _, submit) =>
+            {
+                waited = submit!(current with { Name = "Neu" });
+                return Task.FromResult<ChannelEdit?>(current with { Name = "Neu" });
+            },
+            Confirm = _ => Task.FromResult(true),
+        };
+        var f = Create(Moderator | P.ChannelCreate | P.ChannelDelete, dialogs: dialogs, others: U(2, "gast", Lobby));
+        await f.Vm.NewChannelCommand.ExecuteAsync(null);
+        Assert.Single(f.Sent.OfType<CreateChannel>()); // sent once, by the dialog's submit
+        Assert.True(waited!.IsRunning);
+        var created = Guid.NewGuid();
+        f.Vm.Apply(new ChannelAdded(new ChannelInfo(created, "Neu", "", 3)));
+        Assert.False(waited.IsRunning);
+        Assert.Null(await waited.Completion);
+
+        // the mute toggle spins on the user's row until the server's update
+        var gast = f.User(2);
+        await gast.ToggleServerMuteCommand.ExecuteAsync(null);
+        f.Time.Advance(ShowAfter);
+        Assert.True(gast.IsBusy);
+        f.Vm.Apply(new UserUpdated(U(2, "gast", Lobby) with { ServerMuted = true }));
+        Assert.False(gast.IsBusy);
+
+        // deleting a channel spins on its row until it is gone
+        var channel = f.Channel(created);
+        await channel.DeleteCommand.ExecuteAsync(null);
+        f.Time.Advance(ShowAfter);
+        Assert.True(channel.IsBusy);
+        f.Vm.Apply(new ChannelRemoved(created));
+        Assert.False(channel.IsBusy);
     }
 }

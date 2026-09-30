@@ -163,7 +163,7 @@ public sealed class ClientLogTests : IDisposable
         try
         {
             await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
-            await Run(ui, () => vm.Server!.CreateChannelAsync("Raid", ""));
+            await Run(ui, () => vm.Server!.SendAsync(new CreateChannel("Raid", "")));
             await Eventually(null, "Channel 'Raid' angelegt");
             var raid = await ui.InvokeAsync(() => Task.FromResult(vm.Server!.Channels.Single(c => c.Name == "Raid").Id));
             await Run(ui, () => vm.Server!.JoinAsync(raid));
