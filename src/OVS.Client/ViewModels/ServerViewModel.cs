@@ -35,6 +35,8 @@ public sealed class Dialogs
     public Func<string, Task<bool>>? ConfirmDeleteUser { get; init; }
     /// <summary>Package 74: the red question before a backup replaces the server's state (argument: the backup's title).</summary>
     public Func<string, Task<bool>>? ConfirmRestore { get; init; }
+    /// <summary>Package 89 (A101): the warning before a download, the file holds the server's private key and user data.</summary>
+    public Func<Task<bool>>? ConfirmBackupDownload { get; init; }
     /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
     public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }
     public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
@@ -90,7 +92,8 @@ public sealed partial class ServerViewModel : ObservableObject
     public bool HasSpeakLinked => SelfPermissions.Has(Permission.SpeakLinked);
     /// <summary>Package 76: as soon as any administration tab would show.</summary>
     public bool CanAdminister =>
-        (SelfPermissions & (Permission.GroupsView | Permission.UsersView | Permission.BansView | Permission.ServerConfig | Permission.ChannelLink | Permission.LogsView)) != 0;
+        (SelfPermissions & (Permission.GroupsView | Permission.UsersView | Permission.BansView | Permission.ServerConfig | Permission.ChannelLink
+                            | Permission.LogsView | Permission.BackupsManage)) != 0;
     public bool CanRedeemToken => !IsAdmin;
 
     partial void OnIsAdminChanged(bool value) => OnPropertyChanged(nameof(CanRedeemToken));

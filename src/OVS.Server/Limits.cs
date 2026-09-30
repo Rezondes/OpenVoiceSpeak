@@ -44,4 +44,8 @@ public static class Limits
     public static readonly TimeSpan PruneGuestsAfter = TimeSpan.FromDays(90);
     /// <summary>Entries per page of UserList, BanList, LogList and BackupList.</summary>
     public const int ListPageSize = 200;
+
+    // ---- Package 89 (A101): the backups folder ----
+    public const int MaxBackups = 50;
+    public const long MaxBackupBytes = 2L * 1024 * 1024 * 1024;
 }

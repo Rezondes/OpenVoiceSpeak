@@ -30,7 +30,8 @@ public enum Permission
     UserDelete = 1 << 22,   // delete a user's stored data (Package 72)
     LogsView = 1 << 23,     // Package 81 (A98): list, read and search the server and channel logs
     LogsDownload = 1 << 24, // Package 82 (A99): save log files on the own PC (the tab needs LogsView)
-    All = (1 << 25) - 1,
+    BackupsManage = 1 << 25, // Package 89 (A101): list, create, download and delete backups; upload and restore need the Admin group
+    All = (1 << 26) - 1,
 }
 
 /// <summary>Fixed ids of the two protected groups, known to server and client.</summary>

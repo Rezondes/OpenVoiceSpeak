@@ -185,7 +185,7 @@ public sealed class DataStoreTests : IDisposable
 
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.True(loaded.Migrate(Config));
-        Assert.Equal(4, loaded.DataVersion);
+        Assert.Equal(ServerData.CurrentVersion, loaded.DataVersion);
         var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
         Assert.Equal(Permission.GroupsManage | Permission.Speak | Permission.GroupsView | Permission.GroupsCreate | Permission.GroupsDelete, perms["Verwalter"]);
         Assert.Equal(Permission.GroupsAssign | Permission.UsersView, perms["Zuweiser"]);
@@ -194,6 +194,38 @@ public sealed class DataStoreTests : IDisposable
         Assert.Equal(Permission.All, perms["Alles"]);
         Assert.All(loaded.Groups.Where(g => g.Name != "Alles"), g => Assert.Equal(Permission.None, g.Permissions & (Permission.UserDelete | Permission.LogsView | Permission.LogsDownload)));
         Assert.False(loaded.Migrate(Config)); // once
+    }
+
+    /// <summary>Package 89 (A101): an update to data version 5 gives BackupsManage once to every group that has ServerConfig.</summary>
+    [Fact]
+    public void Migration_ServerConfigGroupsGetBackupsManage()
+    {
+        var store = new DataStore(FilePath);
+        var data = ServerData.CreateDefault(Config);
+        data.DataVersion = 4;
+        data.Groups.Add(new Group(Guid.NewGuid(), "Konfig", Permission.ServerConfig | Permission.Speak));
+        data.Groups.Add(new Group(Guid.NewGuid(), "Normal", Permission.Speak | Permission.LogsView));
+        data.Groups.Add(new Group(Guid.NewGuid(), "Alles", Permission.None));
+        store.Save(data);
+        // "All" as a version 4 file stores it for every right of that time
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
+        json["groups"]!.AsArray().Single(g => g!["name"]!.GetValue<string>() == "Alles")!["permissions"] = "All";
+        File.WriteAllText(FilePath, json.ToJsonString());
+
+        var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
+        Assert.True(loaded.Migrate(Config));
+        Assert.Equal(5, loaded.DataVersion);
+        var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
+        Assert.Equal(Permission.ServerConfig | Permission.Speak | Permission.BackupsManage, perms["Konfig"]);
+        Assert.Equal(Permission.Speak | Permission.LogsView, perms["Normal"]);
+        Assert.Equal(Permission.All, perms["Alles"]);
+        Assert.True(perms["Admin"].Has(Permission.BackupsManage));
+        Assert.False(perms["Moderator"].Has(Permission.BackupsManage));
+        Assert.False(perms["Gast"].Has(Permission.BackupsManage));
+        Assert.False(loaded.Migrate(Config)); // once
+
+        // new servers: only Admin
+        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(g => g.Permissions.Has(Permission.BackupsManage)).Select(g => g.Name));
     }
 
     [Fact]

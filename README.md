@@ -105,12 +105,18 @@ Ordnernamen (`openvoicespeak_ovs-data` bei einem Ordner namens `openvoicespeak`,
 `backups/<JJJJ-MM-TT_hh-mm-ss>.ovsbackup` an, ein Zip mit `manifest.json`, `server-data.json`, `cert.pfx` und, falls
 vorhanden, `server-icon.png`. Logs kommen nicht mit. Die Liste zeigt Datum, Grösse und Serverversion, neueste zuerst;
 jedes Backup lässt sich nach Rückfrage löschen. "Wiederherstellen" fragt vorher rot nach: Der Server prüft das Archiv
-(ein ungültiges oder zu neues ändert nichts), legt ein Sicherheits-Backup `vor-wiederherstellung_<Zeit>.ovsbackup` an,
-trennt alle, ersetzt die Dateien und startet im selben Prozess neu. Ältere Backups werden dabei wie gewohnt migriert,
-der Zertifikats-Fingerabdruck ist danach der aus dem Backup. Nötig ist das Recht "Servereinstellungen ändern". Automatische,
-zeitgesteuerte Backups gibt es nicht.
+vollständig (alle Listen vorhanden, gültige Namen, eindeutige IDs, passende Verweise auf Gruppen und Channels, mindestens
+ein Mitglied der Gruppe Admin; ein ungültiges oder zu neues ändert nichts und hält den Server nie vom Starten ab), legt ein
+Sicherheits-Backup `vor-wiederherstellung_<Zeit>.ovsbackup` an, trennt alle, ersetzt die Dateien und startet im selben
+Prozess neu. Ältere Backups werden dabei wie gewohnt migriert, der Zertifikats-Fingerabdruck ist danach der aus dem Backup.
+Anlegen, Herunterladen und Löschen brauchen das Recht "Backups verwalten"; Hochladen und Wiederherstellen dürfen nur
+Mitglieder der Gruppe Admin, weil ein Backup alles ersetzt. Auf dem Server liegen höchstens 50 Backups mit zusammen
+höchstens 2 GB, darüber hinaus lehnt er Anlegen und Hochladen ab, bis alte gelöscht sind. Automatische, zeitgesteuerte
+Backups gibt es nicht.
 
-"Herunterladen" speichert ein Backup auf dem eigenen PC (bytegleich, erst am Ende an den gewählten Ort verschoben).
+"Herunterladen" speichert ein Backup auf dem eigenen PC (bytegleich, erst am Ende an den gewählten Ort verschoben). Vorher
+warnt der Client: Die Datei enthält den privaten Schlüssel des Servers (damit bleibt der Fingerabdruck bei einem Umzug
+gleich) und alle Nutzerdaten mit Passwort-Hash und IP-Adressen, sie gehört also sicher verwahrt.
 "Backup hochladen ..." schickt eine `.ovsbackup`-Datei (höchstens 50 MB) zum Server, der sie wie beim Wiederherstellen
 prüft und als `backups/hochgeladen_<Zeit>.ovsbackup` ablegt; "Hochladen und wiederherstellen ..." fragt danach dieselbe
 rote Rückfrage und stellt es direkt wieder her. Beides läuft in Stücken von 512 KB über die normale Verbindung (kein
@@ -200,8 +206,9 @@ Ein Server kann ein eigenes Logo haben: Unter "Verwaltung ...", Server lädst du
 | Nutzer löschen | alle gespeicherten Daten eines Nutzers löschen | Admin |
 | Logs ansehen | Tab "Logs": Server- und Channel-Logs lesen und durchsuchen | Admin |
 | Logs herunterladen | ausgewählte Logs auf dem eigenen PC speichern (braucht "Logs ansehen") | Admin |
+| Backups verwalten | Backups anlegen, herunterladen und löschen (Hochladen und Wiederherstellen nur für die Gruppe Admin) | Admin |
 
-Vergeben lassen sich nur Rechte, die man selbst hat, und bearbeiten lassen sich nur Nutzer und Gruppen ohne mehr Rechte als man selbst. Bestehende Server geben beim Update jeder Gruppe einmalig die passenden Sehen-Rechte zu ihren Rechten ("Gruppen bearbeiten" bekommt Sehen, Anlegen und Löschen dazu, "Gruppen zuweisen" die Nutzerübersicht, "Nutzer bannen" die Bans), damit niemand etwas verliert.
+Vergeben lassen sich nur Rechte, die man selbst hat, und bearbeiten lassen sich nur Nutzer und Gruppen ohne mehr Rechte als man selbst. Bestehende Server geben beim Update jeder Gruppe einmalig die passenden Sehen-Rechte zu ihren Rechten ("Gruppen bearbeiten" bekommt Sehen, Anlegen und Löschen dazu, "Gruppen zuweisen" die Nutzerübersicht, "Nutzer bannen" die Bans), damit niemand etwas verliert. Ebenso bekommt jede Gruppe mit "Servereinstellungen ändern" einmalig "Backups verwalten".
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 

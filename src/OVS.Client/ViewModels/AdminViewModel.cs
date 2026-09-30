@@ -102,7 +102,12 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool ShowGroups => Actor.Has(Permission.GroupsView);
     public bool ShowUsers => Actor.Has(Permission.UsersView);
     public bool ShowBans => Actor.Has(Permission.BansView);
-    public bool ShowServer => Actor.Has(Permission.ServerConfig);
+    /// <summary>Package 89: the server tab holds the settings (ServerConfig) and the backups (BackupsManage).</summary>
+    public bool ShowServer => ShowServerSettings || ShowBackups;
+    public bool ShowServerSettings => Actor.Has(Permission.ServerConfig);
+    public bool ShowBackups => Actor.Has(Permission.BackupsManage);
+    /// <summary>Package 89 (A101): members of the Admin group only, as on the server; all rights alone are not enough.</summary>
+    public bool CanUploadRestore => server.IsAdmin;
     public bool ShowLinks => Actor.Has(Permission.ChannelLink);
     public bool ShowLogs => Actor.Has(Permission.LogsView); // Package 81
     public LinkMatrixViewModel Links { get; }
@@ -173,7 +178,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         if (ShowUsers) await server.SendAsync(new ListUsers());
         if (ShowBans) await server.SendAsync(new ListBans());
-        if (ShowServer) await server.SendAsync(new ListBackups());
+        if (ShowBackups) await server.SendAsync(new ListBackups());
         if (ShowLogs) await Logs.RequestAsync();
     }
 
@@ -195,7 +200,10 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowUsers));
         OnPropertyChanged(nameof(ShowBans));
         OnPropertyChanged(nameof(ShowServer));
+        OnPropertyChanged(nameof(ShowServerSettings));
+        OnPropertyChanged(nameof(ShowBackups));
         OnPropertyChanged(nameof(ShowLogs));
+        if (CanUploadRestore != backupsForAdmin) RebuildBackups(); // Package 89: restore buttons come and go with the Admin group
         Logs.RightsChanged(); // Package 82
         NewGroupCommand.NotifyCanExecuteChanged();
         MoveGroupUpCommand.NotifyCanExecuteChanged();
@@ -233,9 +241,8 @@ public sealed partial class AdminViewModel : ObservableObject
                 break;
             case BackupList list:
                 if (backupPages.Add(list.Offset, list.Total, list.Backups, o => _ = server.SendAsync(new ListBackups(o))) is not { } backups) break;
-                Backups.Clear();
-                foreach (var backup in backups) Backups.Add(new BackupViewModel(backup, DeleteBackupAsync, RestoreBackupAsync));
-                OnPropertyChanged(nameof(HasNoBackups));
+                backupInfos = backups;
+                RebuildBackups();
                 break;
             case BanList list:
                 if (banPages.Add(list.Offset, list.Total, list.Bans, o => _ = server.SendAsync(new ListBans(o))) is not { } bans) break;
@@ -415,6 +422,21 @@ public sealed partial class AdminViewModel : ObservableObject
 
     // ---- Package 74: backups ----
 
+    IReadOnlyList<BackupInfo> backupInfos = [];
+    bool backupsForAdmin;
+
+    void RebuildBackups()
+    {
+        backupsForAdmin = CanUploadRestore;
+        OnPropertyChanged(nameof(CanUploadRestore));
+        Backups.Clear();
+        foreach (var backup in backupInfos) Backups.Add(new BackupViewModel(backup, DeleteBackupAsync, RestoreBackupAsync, backupsForAdmin));
+        OnPropertyChanged(nameof(HasNoBackups));
+    }
+
+    /// <summary>Package 89 (A101): asked before the file picker; the archive holds the certificate with its private key and all user data.</summary>
+    public async Task<bool> ConfirmDownloadAsync() => server.Dialogs.ConfirmBackupDownload is { } warn && await warn();
+
     /// <summary>Answered with the new list.</summary>
     [RelayCommand]
     Task NewBackup() => server.SendAsync(new CreateBackup());
@@ -428,6 +450,7 @@ public sealed partial class AdminViewModel : ObservableObject
     /// <summary>Everyone, this client too, is disconnected with Restoring once the server accepted the backup.</summary>
     async Task RestoreBackupAsync(BackupViewModel backup)
     {
+        if (!CanUploadRestore) return;
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(backup.Title)) return;
         await server.SendAsync(new RestoreBackup(backup.Info.FileName));
     }
@@ -532,7 +555,7 @@ public sealed partial class AdminViewModel : ObservableObject
     /// <summary>Sends the file in chunks, each after the server's answer; with restore, asks the red question of Package 74 once it is stored.</summary>
     public async Task UploadBackupAsync(string path, bool restore)
     {
-        if (IsTransferring) return;
+        if (IsTransferring || !CanUploadRestore) return;
         IsTransferring = true;
         Progress(Strings.Backup_Uploading, 0, 1);
         BackupInfo? uploaded = null;
@@ -875,10 +898,12 @@ public sealed partial class GroupToggle(Guid groupId, string name, bool isChecke
 }
 
 /// <summary>Package 74: one backup on the server: date as title, size and server version below.</summary>
-public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewModel, Task> delete, Func<BackupViewModel, Task> restore)
+/// <param name="canRestore">Package 89: only members of the Admin group see the restore button.</param>
+public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewModel, Task> delete, Func<BackupViewModel, Task> restore, bool canRestore = false)
     : ObservableObject
 {
     public BackupInfo Info { get; } = info;
+    public bool CanRestore { get; } = canRestore;
     public string Title => TitleOf(Info);
     public static string TitleOf(BackupInfo info) => info.CreatedAt.ToLocalTime().ToString("G") +
                                                      (info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");

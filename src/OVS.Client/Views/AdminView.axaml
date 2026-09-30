@@ -458,9 +458,9 @@
 
         <TabItem Header="{x:Static l:Strings.Ui_Server}" IsVisible="{Binding ShowServer}">
           <ScrollViewer>
-            <!-- Package 74: both cards share one width -->
+            <!-- Package 74: both cards share one width. Package 89: settings with ServerConfig, backups with BackupsManage -->
             <StackPanel Spacing="12" MaxWidth="560" HorizontalAlignment="Left">
-              <Border Classes="card">
+              <Border Classes="card" IsVisible="{Binding ShowServerSettings}">
                 <StackPanel Spacing="12">
                   <!-- Server logo (Package 30): pick a file or drop it onto the preview -->
                   <StackPanel Spacing="4">
@@ -556,7 +556,7 @@
                 </StackPanel>
               </Border>
               <!-- Package 74: backups on the server, restored after a red question -->
-              <Border Classes="card">
+              <Border Classes="card" IsVisible="{Binding ShowBackups}">
                 <StackPanel Spacing="8">
                   <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Backups}" />
                   <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackupsHint}" />
@@ -568,13 +568,14 @@
                         <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
                       </StackPanel>
                     </Button>
-                    <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}">
+                    <!-- Package 89 (A101): upload and restore only for members of the Admin group -->
+                    <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
                       <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
                         <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
                       </StackPanel>
                     </Button>
-                    <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}">
+                    <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
                       <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
                         <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
@@ -607,7 +608,7 @@
                                   <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
                                 </StackPanel>
                               </Button>
-                              <Button Classes="danger" Command="{Binding RestoreCommand}">
+                              <Button Classes="danger" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                   <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
                                   <TextBlock Text="{x:Static l:Strings.Ui_Restore}" />

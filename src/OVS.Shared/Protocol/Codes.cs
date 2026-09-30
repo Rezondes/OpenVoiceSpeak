@@ -42,6 +42,7 @@ public static class Codes
     public const string InvalidBackup = nameof(InvalidBackup); // Package 74
     public const string BackupTooLarge = nameof(BackupTooLarge); // Package 75: an upload over MaxBackupUploadBytes
     public const string LogsTooLarge = nameof(LogsTooLarge); // Package 82: a log download over MaxLogDownloadBytes
+    public const string BackupQuotaExceeded = nameof(BackupQuotaExceeded); // Package 89: too many backups or too many bytes in total
 
     public static IEnumerable<string> All() =>
         typeof(Codes).GetFields().Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!);

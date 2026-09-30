@@ -5524,12 +5524,12 @@ All backup requests need `ServerConfig` (BackupCommands.cs). A holder of that ri
 
 ### Acceptance Criteria
 
-- [ ] AC1: New right "Backups verwalten" (`BackupsManage`): list, create, download and delete backups. Groups that have `ServerConfig` today get it once on update (so nobody loses a function); new servers: Admin only.
-- [ ] AC2: Uploading and restoring require membership in the Admin group, checked on the server for every upload chunk and on restore. The buttons are hidden for everyone else.
-- [ ] AC3: A restored or uploaded archive is fully validated before anything is replaced: every collection present, every name valid under the Package 83 rules, ids unique, references (group ids, channel ids, default channel) consistent, at least one Admin-group member. Any failure, including unexpected exceptions, gives `InvalidBackup` and leaves no temp file. The server can never end up unable to start because of a restored archive.
-- [ ] AC4: `manifest.json` is limited to 16 KB; the listing is cached and refreshed only when files change. At most 50 backups and 2 GB in total; creating or uploading beyond that gives `BackupQuotaExceeded` with a hint to delete old ones.
-- [ ] AC5: Downloads keep the certificate (so a server move keeps its fingerprint); the download dialog warns that the file contains the server's private key and user data and must be stored safely.
-- [ ] AC6: Texts in German and English, README rights table and backup section updated.
+- [x] AC1: New right "Backups verwalten" (`BackupsManage`): list, create, download and delete backups. Groups that have `ServerConfig` today get it once on update (so nobody loses a function); new servers: Admin only.
+- [x] AC2: Uploading and restoring require membership in the Admin group, checked on the server for every upload chunk and on restore. The buttons are hidden for everyone else.
+- [x] AC3: A restored or uploaded archive is fully validated before anything is replaced: every collection present, every name valid under the Package 83 rules, ids unique, references (group ids, channel ids, default channel) consistent, at least one Admin-group member. Any failure, including unexpected exceptions, gives `InvalidBackup` and leaves no temp file. The server can never end up unable to start because of a restored archive.
+- [x] AC4: `manifest.json` is limited to 16 KB; the listing is cached and refreshed only when files change. At most 50 backups and 2 GB in total; creating or uploading beyond that gives `BackupQuotaExceeded` with a hint to delete old ones.
+- [x] AC5: Downloads keep the certificate (so a server move keeps its fingerprint); the download dialog warns that the file contains the server's private key and user data and must be stored safely.
+- [x] AC6: Texts in German and English, README rights table and backup section updated.
 
 ### Tests (TDD)
 

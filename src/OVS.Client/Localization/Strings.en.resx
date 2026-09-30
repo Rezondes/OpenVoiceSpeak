@@ -535,4 +535,8 @@
   <data name="Logs_SaveTitle" xml:space="preserve"><value>Save logs</value></data>
   <data name="Logs_LogFilter" xml:space="preserve"><value>Log file</value></data>
   <data name="Logs_ZipFilter" xml:space="preserve"><value>Zip archive</value></data>
+  <data name="Perm_BackupsManage" xml:space="preserve"><value>Manage backups</value></data>
+  <data name="Error_BackupQuotaExceeded" xml:space="preserve"><value>The backup limit is reached (at most 50 backups, 2 GB in total). Delete old backups first.</value></data>
+  <data name="Backup_DownloadTitle" xml:space="preserve"><value>Download the backup?</value></data>
+  <data name="Backup_DownloadWarning" xml:space="preserve"><value>The file contains the server's private key and all user data, including the password hash and IP addresses. Store it safely and do not share it.</value></data>
 </root>

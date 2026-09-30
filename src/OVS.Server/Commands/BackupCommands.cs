@@ -4,7 +4,10 @@ using OVS.Shared.Protocol;
 
 namespace OVS.Server;
 
-/// <summary>Package 74: backups from the administration, all with the right ServerConfig.</summary>
+/// <summary>
+/// Package 74: backups from the administration. Package 89 (A101): list, create, download and delete with BackupsManage;
+/// upload and restore replace everything, so only for members of the Admin group, not for every holder of all rights.
+/// </summary>
 public sealed partial class ServerState
 {
     BackupContent? pendingRestore;
@@ -26,18 +29,32 @@ public sealed partial class ServerState
         s.Send(new BackupList(r.RequestId, Page(all, offset), offset, all.Count));
     }
 
+    /// <summary>Package 89: checked on every request, so leaving the group stops an upload at its next chunk.</summary>
+    bool RequireAdminGroup(Session s, Request r)
+    {
+        if (s.GroupIds.Contains(WellKnownGroups.Admin)) return true;
+        Fail(s, r, Codes.PermissionDenied);
+        return false;
+    }
+
     void OnListBackups(Session s, ListBackups r)
     {
-        if (Require(s, r, Permission.ServerConfig) && ThrottleList(s, r, r.Offset)) SendBackups(s, r);
+        if (Require(s, r, Permission.BackupsManage) && ThrottleList(s, r, r.Offset)) SendBackups(s, r);
     }
 
     void OnCreateBackup(Session s, CreateBackup r)
     {
-        if (!Require(s, r, Permission.ServerConfig) || !ThrottleHeavy(s, r)) return;
+        if (!Require(s, r, Permission.BackupsManage) || !ThrottleHeavy(s, r)) return;
         try
         {
             var created = backups.Create();
             logs.Server($"Backup {created.FileName} angelegt von {s.Nickname}");
+        }
+        catch (BackupQuotaException e)
+        {
+            logs.Server($"Backup anlegen abgelehnt ({s.Nickname}), Backup-Limit erreicht: {e.Message}");
+            Fail(s, r, Codes.BackupQuotaExceeded, e.Message);
+            return;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -50,7 +67,7 @@ public sealed partial class ServerState
 
     void OnDeleteBackup(Session s, DeleteBackup r)
     {
-        if (!Require(s, r, Permission.ServerConfig)) return;
+        if (!Require(s, r, Permission.BackupsManage)) return;
         if (backups.Find(r.FileName) is not { } path)
         {
             Fail(s, r, Codes.NotFound);
@@ -66,7 +83,7 @@ public sealed partial class ServerState
     /// <summary>One chunk per request: the client asks for the next one, so the outbox never fills up (A91).</summary>
     void OnDownloadBackup(Session s, DownloadBackup r)
     {
-        if (!Require(s, r, Permission.ServerConfig)) return;
+        if (!Require(s, r, Permission.BackupsManage)) return;
         if (backups.Find(r.FileName) is not { } path)
         {
             Fail(s, r, Codes.NotFound);
@@ -88,7 +105,11 @@ public sealed partial class ServerState
     /// </summary>
     void OnUploadBackupChunk(Session s, UploadBackupChunk r)
     {
-        if (!Require(s, r, Permission.ServerConfig)) return;
+        if (!RequireAdminGroup(s, r))
+        {
+            DropUpload(s);
+            return;
+        }
         if (!BackupStore.IsUploadId(r.UploadId) || r.DataBase64.Length > (ProtocolInfo.BackupChunkBytes + 2) / 3 * 4)
         {
             Fail(s, r, Codes.InvalidValue);
@@ -129,6 +150,13 @@ public sealed partial class ServerState
             Fail(s, r, Codes.BackupTooLarge);
             return;
         }
+        if (backups.QuotaProblem(received + bytes.Length) is { } quota) // Package 89: before the bytes are written
+        {
+            DropUpload(s);
+            logs.Server($"Backup-Upload von {s.Nickname} abgelehnt, Backup-Limit erreicht: {quota}");
+            Fail(s, r, Codes.BackupQuotaExceeded, quota);
+            return;
+        }
         try
         {
             using (var file = new FileStream(path, received == 0 ? FileMode.Create : FileMode.Append, FileAccess.Write))
@@ -154,6 +182,13 @@ public sealed partial class ServerState
         {
             info = backups.AcceptUpload(path);
         }
+        catch (BackupQuotaException e)
+        {
+            BackupStore.DeleteQuietly(path);
+            logs.Server($"Backup-Upload von {s.Nickname} abgelehnt, Backup-Limit erreicht: {e.Message}");
+            Fail(s, r, Codes.BackupQuotaExceeded, e.Message);
+            return;
+        }
         catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
         {
             BackupStore.DeleteQuietly(path);
@@ -177,7 +212,7 @@ public sealed partial class ServerState
     /// <summary>Checks the archive first; only a valid one leads to the safety backup, the disconnect and the restart.</summary>
     void OnRestoreBackup(Session s, RestoreBackup r)
     {
-        if (!Require(s, r, Permission.ServerConfig)) return;
+        if (!RequireAdminGroup(s, r)) return;
         if (backups.Find(r.FileName) is not { } path)
         {
             Fail(s, r, Codes.NotFound);
@@ -198,6 +233,12 @@ public sealed partial class ServerState
         try
         {
             safety = backups.Create(BackupStore.SafetyPrefix);
+        }
+        catch (BackupQuotaException e) // Package 89: no restore without the safety backup
+        {
+            logs.Server($"Sicherheits-Backup nicht möglich, Backup-Limit erreicht, keine Wiederherstellung ({s.Nickname}): {e.Message}");
+            Fail(s, r, Codes.BackupQuotaExceeded, e.Message);
+            return;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

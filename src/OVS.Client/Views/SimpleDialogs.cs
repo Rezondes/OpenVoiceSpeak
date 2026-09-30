@@ -271,6 +271,10 @@ public static class SimpleDialogs
         await Show(overlay, string.Format(Strings.Backup_RestoreTitle, backupTitle), "ArrowSync", Text(Strings.Backup_ConfirmRestore), () => "ok",
             Strings.Ui_Restore, okIsDefault: false, kind: Kind.Danger) is not null;
 
+    /// <summary>Package 89 (A101): before every backup download, since the certificate stays in the archive for a server move.</summary>
+    public static async Task<bool> ConfirmBackupDownload(OverlayHost overlay) =>
+        await Show(overlay, Strings.Backup_DownloadTitle, "LockClosed", Text(Strings.Backup_DownloadWarning), () => "ok", Strings.Ui_Download) is not null;
+
     public static async Task<bool> Tofu(OverlayHost overlay, TofuPrompt prompt)
     {
         var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(i => prompt.Fingerprint.Substring(i * 8, 8)));

@@ -110,6 +110,7 @@ public partial class AdminView : UserControl
     {
         if ((sender as Control)?.DataContext is not BackupViewModel backup || Vm is not { } vm
             || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
+        if (!await vm.ConfirmDownloadAsync()) return; // Package 89: the warning comes before the file picker
         var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = Strings.Backup_SaveTitle,

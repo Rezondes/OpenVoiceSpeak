@@ -4,12 +4,16 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using OVS.Server.Tls;
 using OVS.Shared;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 
 namespace OVS.Server.Data;
 
 /// <summary>Package 74: what an archive says about itself (manifest.json).</summary>
 public sealed record BackupManifest(int FormatVersion, int DataVersion, string ServerVersion, DateTimeOffset CreatedAt);
+
+/// <summary>Package 89: creating or uploading would pass the count or size limit of the backups folder.</summary>
+public sealed class BackupQuotaException(string message) : Exception(message);
 
 /// <summary>Package 74: the checked contents of an archive, ready to replace the live files.</summary>
 public sealed record BackupContent(BackupManifest Manifest, byte[] Data, byte[] Certificate, byte[]? Icon);
@@ -19,7 +23,7 @@ public sealed record BackupContent(BackupManifest Manifest, byte[] Data, byte[] 
 /// fingerprint stays the same) and logo, never the logs. Requests only ever name a file from List(); archive entries
 /// are only read by their known names, never extracted by their path.
 /// </summary>
-public sealed class BackupStore(string dataDir, TimeProvider time)
+public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount = Limits.MaxBackups, long maxBytes = Limits.MaxBackupBytes)
 {
     public const string FolderName = "backups";
     public const string Extension = ".ovsbackup";
@@ -28,6 +32,9 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
     const string ManifestEntry = "manifest.json";
     // ponytail: every entry is read into memory; the real files are a few MB, the cap stops a zip bomb
     const long MaxEntryBytes = 64L * 1024 * 1024;
+    const long MaxManifestBytes = 16 * 1024; // Package 89: the listing reads every manifest
+    /// <summary>Package 89: the last listing and the folder's write time it belongs to; any added, removed or renamed file changes that time.</summary>
+    (DateTime Stamp, IReadOnlyList<BackupInfo> Backups)? cache;
 
     public string Folder => Path.Combine(dataDir, FolderName);
 
@@ -46,8 +53,22 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
             var icon = Path.Combine(dataDir, ServerIconStore.FileName);
             if (File.Exists(icon)) Add(zip, ServerIconStore.FileName, File.ReadAllBytes(icon));
         }
+        if (QuotaProblem(new FileInfo(tmp).Length) is { } problem)
+        {
+            DeleteQuietly(tmp);
+            throw new BackupQuotaException(problem);
+        }
         File.Move(tmp, path);
+        cache = null;
         return new BackupInfo(name, now, new FileInfo(path).Length, manifest.ServerVersion);
+    }
+
+    /// <summary>Package 89 (A103): why one more archive of this size does not fit (count or total size), null when it does.</summary>
+    public string? QuotaProblem(long size)
+    {
+        var all = List();
+        if (all.Count >= maxCount) return $"höchstens {maxCount} Backups";
+        return all.Sum(b => b.Size) + size > maxBytes ? $"höchstens {maxBytes / (1024 * 1024)} MB Backups insgesamt" : null;
     }
 
     /// <summary>A free name of the form prefix + local time, with _2, _3 ... when that second is taken already.</summary>
@@ -75,12 +96,14 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
         return Path.Combine(Folder, UploadPrefix + id);
     }
 
-    /// <summary>Checks a finished upload like a restore would, then gives it a normal backup name. Throws InvalidDataException.</summary>
+    /// <summary>Checks a finished upload like a restore would, then gives it a normal backup name. Throws InvalidDataException or BackupQuotaException.</summary>
     public BackupInfo AcceptUpload(string uploadPath)
     {
         var manifest = Read(uploadPath).Manifest;
+        if (QuotaProblem(new FileInfo(uploadPath).Length) is { } problem) throw new BackupQuotaException(problem);
         var (name, path) = NewName(UploadedPrefix, time.GetUtcNow());
         File.Move(uploadPath, path);
+        cache = null;
         return new BackupInfo(name, manifest.CreatedAt, new FileInfo(path).Length, manifest.ServerVersion);
     }
 
@@ -119,11 +142,16 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
         stream.Write(bytes);
     }
 
-    /// <summary>Every archive directly in the folder, newest first. A broken one still shows, so it can be deleted.</summary>
+    /// <summary>
+    /// Every archive directly in the folder, newest first. A broken one still shows, so it can be deleted.
+    /// Package 89: cached until a file in the folder is added, removed or renamed, so a request no longer opens every archive.
+    /// </summary>
     public IReadOnlyList<BackupInfo> List()
     {
         if (!Directory.Exists(Folder)) return [];
-        return Directory.GetFiles(Folder, "*" + Extension, SearchOption.TopDirectoryOnly)
+        var stamp = Directory.GetLastWriteTimeUtc(Folder); // before the scan: a change during it is seen next time
+        if (cache is { } c && c.Stamp == stamp) return c.Backups;
+        var list = Directory.GetFiles(Folder, "*" + Extension, SearchOption.TopDirectoryOnly)
             .Where(f => f.EndsWith(Extension, StringComparison.Ordinal)) // the pattern would also match ".ovsbackupX" on Windows
             .Select(f =>
             {
@@ -133,6 +161,8 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
             })
             .OrderByDescending(b => b.CreatedAt).ThenByDescending(b => b.FileName, StringComparer.Ordinal)
             .ToList();
+        cache = (stamp, list);
+        return list;
     }
 
     /// <summary>The full path of a listed archive; anything else (other folders, other files, "..") is null.</summary>
@@ -144,9 +174,9 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
         try
         {
             using var zip = ZipFile.OpenRead(path);
-            return ParseManifest(ReadEntry(zip, ManifestEntry));
+            return ParseManifest(ReadEntry(zip, ManifestEntry, MaxManifestBytes));
         }
-        catch (Exception e) when (e is InvalidDataException or IOException or JsonException)
+        catch (Exception) // Package 89: whatever is wrong with it, the archive is listed without a version
         {
             return null;
         }
@@ -155,51 +185,104 @@ public sealed class BackupStore(string dataDir, TimeProvider time)
     static BackupManifest? ParseManifest(byte[]? bytes) =>
         bytes is null ? null : JsonSerializer.Deserialize<BackupManifest>(bytes, ProtocolJson.Options);
 
-    /// <summary>An entry by its exact name, at most MaxEntryBytes; null when missing.</summary>
-    static byte[]? ReadEntry(ZipArchive zip, string name)
+    /// <summary>An entry by its exact name, at most max bytes; null when missing.</summary>
+    static byte[]? ReadEntry(ZipArchive zip, string name, long max = MaxEntryBytes)
     {
         var entry = zip.GetEntry(name);
         if (entry is null) return null;
-        if (entry.Length > MaxEntryBytes) throw new InvalidDataException($"{name} ist zu gross");
+        if (entry.Length > max) throw new InvalidDataException($"{name} ist zu gross");
         using var stream = entry.Open();
         using var copy = new MemoryStream();
         var buffer = new byte[81920];
         int read;
         while ((read = stream.Read(buffer)) > 0)
         {
-            if (copy.Length + read > MaxEntryBytes) throw new InvalidDataException($"{name} ist zu gross"); // Length can lie
+            if (copy.Length + read > max) throw new InvalidDataException($"{name} ist zu gross"); // Length can lie
             copy.Write(buffer, 0, read);
         }
         return copy.ToArray();
     }
 
     /// <summary>Reads and checks an archive completely without touching the live files.</summary>
-    /// <exception cref="InvalidDataException">With a German reason for the log.</exception>
+    /// <exception cref="InvalidDataException">With a German reason for the log; Package 89: for every failure, expected or not.</exception>
     public static BackupContent Read(string path)
     {
         try
         {
             using var zip = ZipFile.OpenRead(path);
-            var manifest = ParseManifest(ReadEntry(zip, ManifestEntry)) ?? throw new InvalidDataException("manifest.json fehlt");
+            var manifest = ParseManifest(ReadEntry(zip, ManifestEntry, MaxManifestBytes)) ?? throw new InvalidDataException("manifest.json fehlt");
+            if (manifest.ServerVersion is null) throw new InvalidDataException("manifest.json ohne Serverversion");
             if (manifest.FormatVersion != FormatVersion) throw new InvalidDataException($"unbekanntes Format {manifest.FormatVersion}");
             if (manifest.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"Datenversion {manifest.DataVersion} ist neuer als {ServerData.CurrentVersion}");
             var dataBytes = ReadEntry(zip, DataStore.FileName) ?? throw new InvalidDataException($"{DataStore.FileName} fehlt");
             var data = JsonSerializer.Deserialize<ServerData>(dataBytes, ProtocolJson.Options) ?? throw new InvalidDataException($"{DataStore.FileName} ist leer");
             if (data.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"Datenversion {data.DataVersion} ist neuer als {ServerData.CurrentVersion}");
-            if (data.Channels.All(c => c.Id != data.DefaultChannelId)) throw new InvalidDataException("Standard-Channel fehlt");
+            Validate(data);
             var cert = ReadEntry(zip, ServerCertificate.FileName) ?? throw new InvalidDataException($"{ServerCertificate.FileName} fehlt");
             using (X509CertificateLoader.LoadPkcs12(cert, null)) { } // readable, or CryptographicException
             var icon = ReadEntry(zip, ServerIconStore.FileName);
             if (icon is not null && ServerIconFormat.Validate(icon) is { } why) throw new InvalidDataException($"Logo ungültig: {why}");
             return new BackupContent(manifest, dataBytes, cert, icon);
         }
-        catch (Exception e) when (e is JsonException or CryptographicException or IOException and not FileNotFoundException)
+        catch (Exception e) when (e is not InvalidDataException) // Package 89: nothing unexpected gets past the check
         {
             throw new InvalidDataException(e.Message, e);
         }
     }
 
-    public void Delete(string path) => File.Delete(path);
+    /// <summary>
+    /// Package 89 (A101): everything a start of the server relies on, so a restored archive can never keep it from starting:
+    /// every list present without empty entries, names under the server's own rules, unique ids, references that exist and
+    /// at least one member of the Admin group.
+    /// </summary>
+    /// <exception cref="InvalidDataException">With a German reason for the log.</exception>
+    public static void Validate(ServerData d)
+    {
+        Check(new object?[] { d.Settings, d.Channels, d.Links, d.Groups, d.Users, d.Bans }.All(o => o is not null), "Einstellungen oder eine Liste fehlen");
+        Check(!d.Channels.Contains(null!) && !d.Links.Contains(null!) && !d.Groups.Contains(null!) && !d.Users.Contains(null!) && !d.Bans.Contains(null!),
+            "leerer Eintrag in einer Liste");
+        var s = d.Settings;
+        Check(ServerState.ValidName(s.Name, 64) is not null && s.WelcomeText is { Length: <= 500 }, "Servername oder Willkommenstext ungültig");
+        Check(s.PasswordHash is null || s.PasswordHash is { Length: 64 } && s.PasswordHash.All(char.IsAsciiHexDigit), "Passwort-Hash ungültig");
+
+        Check(d.Channels.All(c => ServerState.ValidName(c.Name, 64) is not null && c.Description is { Length: <= 500 }), "Channel-Name ungültig");
+        Unique(d.Channels.Select(c => c.Id), "Channel-Id doppelt");
+        var channels = d.Channels.Select(c => c.Id).ToHashSet();
+        Check(channels.Contains(d.DefaultChannelId), "Standard-Channel fehlt");
+        Check(d.Links.All(l => channels.Contains(l.A) && channels.Contains(l.B)), "Link auf einen unbekannten Channel");
+
+        Check(d.Groups.All(g => ServerState.ValidName(g.Name, 32) is not null && g.Permissions.IsSubsetOf(Permission.All)), "Gruppe ungültig");
+        Unique(d.Groups.Select(g => g.Id), "Gruppen-Id doppelt");
+        var groups = d.Groups.Select(g => g.Id).ToHashSet();
+        Check(groups.Contains(WellKnownGroups.Guest) && groups.Contains(WellKnownGroups.Admin), "Gast- oder Admin-Gruppe fehlt");
+
+        Check(d.Users.All(u => u.Fingerprint is { Length: > 0 } && u.GroupIds is not null && u.PreviousNicknames is not null
+                               && !u.PreviousNicknames.Contains(null!)), "Nutzer unvollständig");
+        Check(d.Users.All(u => u.LastNickname is "" || ServerState.ValidName(u.LastNickname, 32) is not null), "Nickname ungültig");
+        Unique(d.Users.Select(u => u.Fingerprint), "Nutzer doppelt");
+        Check(d.Users.All(u => u.GroupIds.All(groups.Contains)), "Nutzer in einer unbekannten Gruppe");
+        Check(d.Users.Any(u => u.GroupIds.Contains(WellKnownGroups.Admin)), "kein Mitglied der Admin-Gruppe");
+
+        Check(d.Bans.All(b => b.Fingerprint is not null && b.Nickname is not null && b.Reason is not null && b.CreatedBy is not null), "Ban unvollständig");
+        Unique(d.Bans.Select(b => b.Id), "Ban-Id doppelt");
+
+        static void Check(bool ok, string reason)
+        {
+            if (!ok) throw new InvalidDataException(reason);
+        }
+
+        static void Unique<T>(IEnumerable<T> ids, string reason)
+        {
+            var seen = new HashSet<T>();
+            Check(ids.All(seen.Add), reason);
+        }
+    }
+
+    public void Delete(string path)
+    {
+        File.Delete(path);
+        cache = null;
+    }
 
     /// <summary>Replaces the live files with the checked contents, each written to a .tmp and then moved.</summary>
     public static void Apply(string dataDir, BackupContent content)

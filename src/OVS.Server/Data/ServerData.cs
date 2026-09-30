@@ -134,9 +134,9 @@ public sealed class ServerData
 {
     /// <summary>
     /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69),
-    /// 4 = separate view, create and delete rights (76). New servers start at the current version.
+    /// 4 = separate view, create and delete rights (76), 5 = the backup right (89). New servers start at the current version.
     /// </summary>
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
     public int DataVersion { get; set; } = 1;
 
     public ServerSettings Settings { get; set; } = new();
@@ -185,6 +185,9 @@ public sealed class ServerData
         if (DataVersion < 3) Settings.TakeStartValues(config);
         if (DataVersion < 4) // Package 76 (A92): nobody loses a possibility; a stored "All" already reads as every new right
             for (int i = 0; i < Groups.Count; i++) Groups[i] = Groups[i] with { Permissions = WithViewRights(Groups[i].Permissions) };
+        if (DataVersion < 5) // Package 89 (A101): backups were part of ServerConfig; a stored "All" already reads as the new right
+            for (int i = 0; i < Groups.Count; i++)
+                if (Groups[i].Permissions.Has(Permission.ServerConfig)) Groups[i] = Groups[i] with { Permissions = Groups[i].Permissions | Permission.BackupsManage };
         DataVersion = CurrentVersion;
         return true;
     }

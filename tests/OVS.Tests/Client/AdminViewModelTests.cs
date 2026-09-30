@@ -13,8 +13,9 @@ public class AdminViewModelTests
     static readonly Guid ModGroup = Guid.NewGuid();
 
     /// <param name="reply">Package 75: the server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
+    /// <param name="groupIds">Package 89: the own groups; upload and restore need the Admin group.</param>
     static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false, ServerLimits? limits = null,
-        Dialogs? dialogs = null, Func<Request, Message?>? reply = null)
+        Dialogs? dialogs = null, Func<Request, Message?>? reply = null, IReadOnlyList<Guid>? groupIds = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword, null, limits), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
@@ -23,7 +24,7 @@ public class AdminViewModelTests
                 new GroupInfo(ModGroup, "Moderator", P.Speak | P.UserKick),
                 new GroupInfo(WellKnownGroups.Admin, "Admin", P.All),
             ],
-            [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, selfPerms, [])]);
+            [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, selfPerms, groupIds ?? [])]);
         var sent = new List<Request>();
         ServerViewModel? server = null;
         server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
@@ -91,6 +92,7 @@ public class AdminViewModelTests
     [InlineData(P.BansView, false, false, true, false, false)]
     [InlineData(P.ServerConfig, false, false, false, true, false)]
     [InlineData(P.LogsView, false, false, false, false, true)] // Package 81
+    [InlineData(P.BackupsManage, false, false, false, true, false)] // Package 89: the server tab with the backups card only
     [InlineData(P.GroupsAssign, false, false, false, false, false)]
     [InlineData(P.GroupsManage | P.GroupsCreate | P.GroupsDelete | P.UserBan | P.UserKick | P.UserDelete, false, false, false, false, false)]
     public async Task Tabs_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server, bool logs)
@@ -232,7 +234,7 @@ public class AdminViewModelTests
             Confirm = text => { asked.Add("delete " + text); return Task.FromResult(answer); },
             ConfirmRestore = name => { asked.Add("restore " + name); return Task.FromResult(answer); },
         };
-        var (vm, server, sent) = Create(P.ServerConfig | P.Speak, dialogs: dialogs);
+        var (vm, server, sent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
         await vm.RequestListsAsync();
         Assert.Contains(sent, r => r is ListBackups);
 
@@ -268,6 +270,62 @@ public class AdminViewModelTests
         Assert.DoesNotContain(otherSent, r => r is ListBackups);
     }
 
+    /// <summary>
+    /// Package 89 (A101): the backups card with BackupsManage alone, upload and restore only for members of the Admin group,
+    /// and a warning before every download (the file holds the private key and user data).
+    /// </summary>
+    [Fact]
+    public async Task BackupButtons_ByRightAndAdminGroup_DownloadWarns()
+    {
+        int warned = 0;
+        bool answer = false;
+        var dialogs = new Dialogs
+        {
+            ConfirmBackupDownload = () => { warned++; return Task.FromResult(answer); },
+            ConfirmRestore = _ => Task.FromResult(true),
+        };
+        var info = new BackupInfo("2026-02-01_10-00-00.ovsbackup", DateTimeOffset.UtcNow, 800, "dev.0000");
+
+        var (keeper, keeperServer, keeperSent) = Create(P.BackupsManage | P.Speak, dialogs: dialogs);
+        Assert.Equal((true, true, false, false), (keeper.ShowServer, keeper.ShowBackups, keeper.ShowServerSettings, keeper.CanUploadRestore));
+        Assert.True(keeperServer.CanAdminister);
+        await keeper.RequestListsAsync();
+        Assert.Contains(keeperSent, r => r is ListBackups);
+        keeperServer.Apply(new BackupList("r", [info]));
+        Assert.False(keeper.Backups[0].CanRestore);
+        await keeper.Backups[0].RestoreCommand.ExecuteAsync(null);
+        Assert.DoesNotContain(keeperSent, r => r is RestoreBackup);
+
+        // the download asks first; no means no file picker and no transfer
+        Assert.False(await keeper.ConfirmDownloadAsync());
+        answer = true;
+        Assert.True(await keeper.ConfirmDownloadAsync());
+        Assert.Equal(2, warned);
+        var (bare, _, _) = Create(P.BackupsManage);
+        Assert.False(await bare.ConfirmDownloadAsync()); // no dialog: cancelled
+
+        // ServerConfig alone: the settings, no backups
+        var (config, _, configSent) = Create(P.ServerConfig);
+        Assert.Equal((true, false, true), (config.ShowServer, config.ShowBackups, config.ShowServerSettings));
+        await config.RequestListsAsync();
+        Assert.DoesNotContain(configSent, r => r is ListBackups);
+
+        // all rights without the Admin group: still no upload or restore
+        var (almighty, _, _) = Create(P.All, dialogs: dialogs);
+        Assert.False(almighty.CanUploadRestore);
+
+        // a member of the Admin group, until they leave it
+        var (admin, adminServer, adminSent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
+        Assert.True(admin.CanUploadRestore);
+        adminServer.Apply(new BackupList("r", [info]));
+        Assert.True(admin.Backups[0].CanRestore);
+        await admin.Backups[0].RestoreCommand.ExecuteAsync(null);
+        Assert.Contains(adminSent, r => r is RestoreBackup);
+        adminServer.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [])));
+        Assert.False(admin.CanUploadRestore);
+        Assert.False(admin.Backups[0].CanRestore);
+    }
+
     /// <summary>Package 75: the backup arrives chunk by chunk, each asked for, and is only moved to the chosen path when complete.</summary>
     [Fact]
     public async Task Download_SavesToChosenPath_Progress()
@@ -290,7 +348,7 @@ public class AdminViewModelTests
                 return new BackupChunk(r.RequestId, d.FileName, d.Offset, archive.Length, Convert.ToBase64String(archive, (int)d.Offset, size),
                     d.Offset + size >= archive.Length);
             }
-            var (admin, server, sent) = Create(P.ServerConfig | P.Speak, reply: Reply);
+            var (admin, server, sent) = Create(P.BackupsManage | P.Speak, reply: Reply);
             vm = admin;
             server.Apply(new BackupList("r", [info]));
 
@@ -349,7 +407,7 @@ public class AdminViewModelTests
                 if (!c.IsLast) return new UploadBackupAck(r.RequestId, c.UploadId, received.Length);
                 return invalid ? new Error(r.RequestId, Codes.InvalidBackup) : new BackupUploaded(r.RequestId, info);
             }
-            var (admin, _, sent) = Create(P.ServerConfig | P.Speak, dialogs: dialogs, reply: Reply);
+            var (admin, _, sent) = Create(P.All, dialogs: dialogs, reply: Reply, groupIds: [WellKnownGroups.Admin]);
             vm = admin;
 
             // only upload: no question, no restore

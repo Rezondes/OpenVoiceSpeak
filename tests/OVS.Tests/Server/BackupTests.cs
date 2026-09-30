@@ -545,4 +545,243 @@ public sealed class BackupTests : IDisposable
         }
         Assert.Equal(ServerData.CurrentVersion, DataOf(File.ReadAllBytes(Path.Combine(dir, DataStore.FileName))).DataVersion);
     }
+
+    // ---- Package 89 (A101): the right BackupsManage, upload and restore only for the Admin group, full validation ----
+
+    static Action<ServerData> AddGroup(string name, Permission permissions) =>
+        d => d.Groups.Add(new OVS.Server.Permissions.Group(Guid.NewGuid(), name, permissions));
+
+    [Fact]
+    public async Task BackupsManage_Required_ServerConfigAloneNotEnough()
+    {
+        var config = ClientIdentity.Create();
+        var keeper = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(d =>
+        {
+            AddGroup("Konfig", Permission.ServerConfig)(d);
+            AddGroup("Sicherung", Permission.BackupsManage)(d);
+            TestServer.Grant(config, "Konfig")(d);
+            TestServer.Grant(keeper, "Sicherung")(d);
+        });
+        await using var c = await TestClient.ConnectAsync(server, "konfig", config);
+        await using var k = await TestClient.ConnectAsync(server, "sicherung", keeper);
+
+        await k.SendAsync(new CreateBackup { RequestId = "c" });
+        var name = Assert.Single((await k.WaitForAsync<BackupList>(l => l.RequestId == "c")).Backups).FileName;
+        Assert.Contains(server.Log, l => l.Contains($"Backup {name} angelegt von sicherung"));
+        int n = 0;
+        foreach (Request request in new Request[] { new ListBackups(), new CreateBackup(), new DownloadBackup(name, 0), new DeleteBackup(name) })
+        {
+            var id = $"c{n++}";
+            await c.SendAsync(request with { RequestId = id });
+            Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync(id)).Code);
+        }
+
+        await k.SendAsync(new ListBackups { RequestId = "l" });
+        Assert.Single((await k.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups);
+        await k.SendAsync(new DownloadBackup(name, 0) { RequestId = "d" });
+        Assert.True((await k.WaitForAsync<BackupChunk>(ch => ch.RequestId == "d")).IsLast);
+        // uploading and restoring are not part of the right
+        await k.SendAsync(new RestoreBackup(name) { RequestId = "r" });
+        Assert.Equal(Codes.PermissionDenied, (await k.ErrorAsync("r")).Code);
+        var bytes = File.ReadAllBytes(Path.Combine(server.DataDir, "backups", name));
+        Assert.Equal(Codes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(k, bytes)).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+        await k.SendAsync(new DeleteBackup(name) { RequestId = "x" });
+        Assert.Empty((await k.WaitForAsync<BackupList>(l => l.RequestId == "x")).Backups);
+        await k.AssertNoMessageAsync<Disconnected>();
+    }
+
+    [Fact]
+    public async Task UploadAndRestore_OnlyAdminGroup_CheckedPerChunk()
+    {
+        var second = ClientIdentity.Create();
+        var almighty = ClientIdentity.Create();
+        var (server, admin) = await StartWithAdminAsync(seed: d =>
+        {
+            TestServer.Grant(second, "Admin")(d);
+            AddGroup("Alles", Permission.All)(d);
+            TestServer.Grant(almighty, "Alles")(d);
+        });
+        await using var _ = server;
+        await using var a = admin;
+        await using var two = await TestClient.ConnectAsync(server, "zweiter", second);
+        await using var all = await TestClient.ConnectAsync(server, "allmacht", almighty);
+        await admin.SendAsync(new CreateBackup());
+        var name = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName;
+        var backups = Path.Combine(server.DataDir, "backups");
+        var bytes = File.ReadAllBytes(Path.Combine(backups, name));
+
+        // every right, but not in the Admin group
+        Assert.Equal(Codes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(all, bytes)).Code);
+        await all.SendAsync(new RestoreBackup(name) { RequestId = "r" });
+        Assert.Equal(Codes.PermissionDenied, (await all.ErrorAsync("r")).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+        await all.SendAsync(new ListBackups { RequestId = "l" });
+        Assert.Single((await all.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups);
+
+        // checked on every chunk: out of the Admin group in the middle of an upload, the next chunk is refused and the file goes
+        var id = Guid.NewGuid().ToString("N");
+        await two.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(bytes, 0, 100), false) { RequestId = "c0" });
+        await two.WaitForAsync<UploadBackupAck>(r => r.RequestId == "c0");
+        Assert.Single(UploadFiles(server.DataDir));
+        await admin.SendAsync(new UnassignGroup(second.Fingerprint, WellKnownGroups.Admin));
+        await two.WaitForAsync<UserUpdated>(u => u.User.Nickname == "zweiter" && !u.User.GroupIds.Contains(WellKnownGroups.Admin));
+        await two.SendAsync(new UploadBackupChunk(id, 100, Convert.ToBase64String(bytes, 100, bytes.Length - 100), true) { RequestId = "c1" });
+        Assert.Equal(Codes.PermissionDenied, (await two.ErrorAsync("c1")).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+        Assert.Single(Directory.GetFiles(backups, "*.ovsbackup"));
+
+        // a member of the Admin group can
+        Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));
+    }
+
+    /// <summary>Content that passed the old checks but broke every later start, or references that do not fit together.</summary>
+    static void Break(ServerData d, string variant)
+    {
+        switch (variant)
+        {
+            case "users-null": d.Users = null!; break;
+            case "settings-null": d.Settings = null!; break;
+            case "channels-null": d.Channels = null!; break;
+            case "links-null": d.Links = null!; break;
+            case "groups-null": d.Groups = null!; break;
+            case "bans-null": d.Bans = null!; break;
+            case "user-entry-null": d.Users.Add(null!); break;
+            case "user-groups-null": d.Users[0].GroupIds = null!; break;
+            case "channel-name-empty": d.Channels[0].Name = " "; break;
+            case "channel-name-control": d.Channels[0].Name = "a\u0007b"; break;
+            case "group-name-too-long": d.Groups[1] = d.Groups[1] with { Name = new string('g', 33) }; break;
+            case "server-name-null": d.Settings.Name = null!; break;
+            case "channel-id-twice": d.Channels.Add(new ChannelRecord { Id = d.Channels[0].Id, Name = "Zweite" }); break;
+            case "group-id-twice": d.Groups.Add(d.Groups[1] with { Name = "Kopie" }); break;
+            case "user-twice": d.Users.Add(new UserRecord { Fingerprint = d.Users[0].Fingerprint, LastNickname = "doppelt" }); break;
+            case "dangling-group": d.Users[0].GroupIds.Add(Guid.NewGuid()); break;
+            case "dangling-link": d.Links.Add(ChannelLink.Of(d.Channels[0].Id, Guid.NewGuid())); break;
+            case "no-default-channel": d.DefaultChannelId = Guid.NewGuid(); break;
+            case "no-admin": d.Users.ForEach(u => u.GroupIds.Remove(WellKnownGroups.Admin)); break;
+            case "bad-password-hash": d.Settings.PasswordHash = "kein-hash"; break;
+            default: throw new ArgumentException(variant);
+        }
+    }
+
+    [Theory]
+    [InlineData("users-null")]
+    [InlineData("settings-null")]
+    [InlineData("channels-null")]
+    [InlineData("links-null")]
+    [InlineData("groups-null")]
+    [InlineData("bans-null")]
+    [InlineData("user-entry-null")]
+    [InlineData("user-groups-null")]
+    [InlineData("channel-name-empty")]
+    [InlineData("channel-name-control")]
+    [InlineData("group-name-too-long")]
+    [InlineData("server-name-null")]
+    [InlineData("channel-id-twice")]
+    [InlineData("group-id-twice")]
+    [InlineData("user-twice")]
+    [InlineData("dangling-group")]
+    [InlineData("dangling-link")]
+    [InlineData("no-default-channel")]
+    [InlineData("no-admin")]
+    [InlineData("bad-password-hash")]
+    public async Task Restore_InvalidContent_RejectedServerStillStarts(string variant)
+    {
+        var (server, admin) = await StartWithAdminAsync(); // disposed through RestartAsync at the end
+        await admin.SendAsync(new CreateBackup());
+        var backups = Path.Combine(server.DataDir, "backups");
+        var good = Entries(Path.Combine(backups, Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName));
+        var data = DataOf(good["server-data.json"]);
+        Break(data, variant);
+        var archive = Path.Combine(dir, variant + ".ovsbackup");
+        WriteArchive(archive, new(good) { ["server-data.json"] = JsonSerializer.SerializeToUtf8Bytes(data, ProtocolJson.Options) });
+
+        // uploaded: refused with the same check, no file left
+        Assert.Equal(Codes.InvalidBackup, Assert.IsType<Error>(await UploadAsync(admin, File.ReadAllBytes(archive))).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+        Assert.Contains(server.Log, l => l.Contains("Hochgeladenes Backup ist ungültig"));
+
+        // put on the server by hand: the restore is refused and nothing is applied
+        File.Copy(archive, Path.Combine(backups, "kaputt.ovsbackup"));
+        var dataBefore = File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName));
+        await admin.SendAsync(new RestoreBackup("kaputt.ovsbackup") { RequestId = "r" });
+        Assert.Equal(Codes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
+        await admin.AssertNoMessageAsync<Disconnected>();
+        Assert.Equal(dataBefore, File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName)));
+        Assert.DoesNotContain(Directory.GetFiles(backups), f => Path.GetFileName(f).StartsWith("vor-wiederherstellung_"));
+        await admin.DisposeAsync();
+
+        // and the server still starts
+        await using var restarted = await server.RestartAsync();
+        await using var anna = await TestClient.ConnectAsync(restarted, "anna");
+        Assert.Contains(anna.Welcome.Snapshot.Channels, c => c.Name == "Lobby");
+    }
+
+    [Fact]
+    public async Task ManifestCap_Quota_ListingCached()
+    {
+        var time = new ManualTimeProvider(); // Package 86: one CreateBackup per 10 s and session
+        var (server, admin) = await StartWithAdminAsync(time);
+        await using var _ = server;
+        await using var a = admin;
+        await admin.SendAsync(new CreateBackup());
+        var first = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName;
+        var backups = Path.Combine(server.DataDir, "backups");
+        var bytes = File.ReadAllBytes(Path.Combine(backups, first));
+        var good = Entries(Path.Combine(backups, first));
+
+        // a manifest over 16 KB is never read: listed without a version, refused for a restore
+        var big = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            formatVersion = 1, dataVersion = ServerData.CurrentVersion, serverVersion = new string('x', 17 * 1024), createdAt = DateTimeOffset.UtcNow,
+        });
+        WriteArchive(Path.Combine(backups, "gross.ovsbackup"), new(good) { ["manifest.json"] = big });
+        await admin.SendAsync(new ListBackups { RequestId = "l" });
+        Assert.Equal("?", (await admin.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups.Single(b => b.FileName == "gross.ovsbackup").ServerVersion);
+        await admin.SendAsync(new RestoreBackup("gross.ovsbackup") { RequestId = "r" });
+        Assert.Equal(Codes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
+
+        // at most 50 backups: creating and uploading beyond that are refused
+        for (int i = 0; i < 48; i++) File.WriteAllBytes(Path.Combine(backups, $"alt-{i:00}.ovsbackup"), [1]);
+        time.Advance(TimeSpan.FromMinutes(1));
+        await admin.SendAsync(new CreateBackup { RequestId = "q" });
+        Assert.Equal(Codes.BackupQuotaExceeded, (await admin.ErrorAsync("q")).Code);
+        Assert.Equal(Codes.BackupQuotaExceeded, Assert.IsType<Error>(await UploadAsync(admin, bytes)).Code);
+        Assert.Empty(UploadFiles(server.DataDir));
+        Assert.Equal(50, Directory.GetFiles(backups, "*.ovsbackup").Length);
+        Assert.Contains(server.Log, l => l.Contains("Backup-Limit erreicht"));
+        await admin.SendAsync(new DeleteBackup("alt-00.ovsbackup") { RequestId = "d" });
+        Assert.Equal(49, (await admin.WaitForAsync<BackupList>(l => l.RequestId == "d")).Total);
+        Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));
+
+        // at most MaxBytes in total (a small limit here instead of 2 GB)
+        var data = Directory.CreateDirectory(Path.Combine(dir, "daten")).FullName;
+        foreach (var file in new[] { DataStore.FileName, "cert.pfx" }) File.Copy(Path.Combine(server.DataDir, file), Path.Combine(data, file));
+        var probe = new BackupStore(data, time).Create();
+        var store = new BackupStore(data, time, maxCount: 50, maxBytes: probe.Size * 2 + probe.Size / 2);
+        time.Advance(TimeSpan.FromSeconds(1));
+        store.Create();
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Throws<BackupQuotaException>(() => store.Create());
+        Assert.Equal(2, store.List().Count);
+        Assert.Empty(Directory.GetFiles(Path.Combine(data, "backups"), "*.tmp"));
+
+        // the listing is cached: an archive changed in place (the folder itself unchanged) keeps its listed version
+        var listed = store.List();
+        var path = Path.Combine(store.Folder, listed[0].FileName);
+        var changed = Path.Combine(dir, "geaendert.zip");
+        WriteArchive(changed, new(Entries(path))
+        {
+            ["manifest.json"] = JsonSerializer.SerializeToUtf8Bytes(new { formatVersion = 1, dataVersion = 1, serverVersion = "geaendert", createdAt = listed[0].CreatedAt }),
+        });
+        File.WriteAllBytes(path, File.ReadAllBytes(changed));
+        Assert.Equal(listed, store.List());
+        // refreshed once the store changes files
+        store.Delete(Path.Combine(store.Folder, listed[1].FileName));
+        Assert.Equal("geaendert", Assert.Single(store.List()).ServerVersion);
+        // and when a file is added or removed from outside
+        File.Delete(path);
+        Assert.Empty(store.List());
+    }
 }

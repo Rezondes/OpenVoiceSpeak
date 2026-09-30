@@ -50,6 +50,7 @@ public static class PermissionLabels
         (Permission.ServerConfig, Strings.Perm_ServerConfig),
         (Permission.LogsView, Strings.Perm_LogsView),
         (Permission.LogsDownload, Strings.Perm_LogsDownload),
+        (Permission.BackupsManage, Strings.Perm_BackupsManage), // Package 89
         (Permission.ChatServer, Strings.Perm_ChatServer),
         (Permission.ChatChannel, Strings.Perm_ChatChannel),
         (Permission.ChatPrivate, Strings.Perm_ChatPrivate),

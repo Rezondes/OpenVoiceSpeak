@@ -583,6 +583,7 @@ public sealed class ResponsiveTests : IDisposable
         "AskText" => SimpleDialogs.AskText(o, Strings.Dialog_RedeemToken, "Token:"),
         "Password" => SimpleDialogs.AskPassword(o, "Gilde"),
         "Bookmark" => SimpleDialogs.EditBookmark(o, settings.Bookmarks[0]),
+        "BackupDownload" => SimpleDialogs.ConfirmBackupDownload(o), // Package 89
         _ => throw new ArgumentException(name),
     };
 
@@ -609,7 +610,7 @@ public sealed class ResponsiveTests : IDisposable
     public static TheoryData<string, string> Dialogs()
     {
         var data = new TheoryData<string, string>();
-        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "Bookmark" })
+        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "Bookmark", "BackupDownload" })
             foreach (var culture in new[] { "de-DE", "en-US" })
                 data.Add(dialog, culture);
         return data;
