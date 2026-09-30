@@ -38,6 +38,7 @@ public sealed partial class ServerState
     DateTimeOffset nextIdentitySweep;
     ITimer? saveTimer; // Package 87: the debounced save of logins and logouts
     bool savePending;
+    bool saveFailed; // the last write of the data file failed; logged once, and once more when a save succeeds again
     DateTimeOffset nextPrune;
     readonly Dictionary<Guid, DateTimeOffset> attemptSaved = []; // Package 80: last save of a ban's blocked attempts
     DateTimeOffset nextPasswordSweep;
@@ -273,7 +274,17 @@ public sealed partial class ServerState
             }
             logs.Server($"{why}, {sessions.Count} Nutzer getrennt");
             saveTimer?.Dispose(); // Package 87: nothing is written after this save (a restore replaces the file next)
-            if (sessions.Count > 0 || savePending) Persist();
+            if (sessions.Count > 0 || savePending)
+            {
+                try
+                {
+                    Persist();
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    logs.Server($"Serverdaten beim Beenden nicht gespeichert: {e.Message}");
+                }
+            }
             sessions.Clear();
             voiceSessions.Clear();
         }
@@ -503,8 +514,17 @@ public sealed partial class ServerState
             data.Bans.RemoveAll(b => b.EndedAt(now) < cutoff);
         }
         if (now >= nextPrune) PruneGuests(now);
+        BeforeSave?.Invoke();
         store.Save(data);
+        if (saveFailed)
+        {
+            saveFailed = false;
+            logs.Server("Serverdaten werden wieder gespeichert");
+        }
     }
+
+    /// <summary>Tests only: runs before every write of the data file; throwing simulates a locked file or a full disk.</summary>
+    public Action? BeforeSave { get; set; }
 
     /// <summary>Package 87: writes a pending debounced save now (tests and tools that read the data file).</summary>
     public void FlushPendingSave()
@@ -521,7 +541,21 @@ public sealed partial class ServerState
         saveTimer ??= time.CreateTimer(_ =>
         {
             lock (gate)
-                if (savePending && closedWith is null) Persist();
+            {
+                if (!savePending || closedWith is not null) return;
+                try
+                {
+                    Persist();
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // A virus scanner or backup tool holds the file, or the disk is full: keep the changes and try again.
+                    savePending = true;
+                    if (!saveFailed) logs.Server($"Serverdaten nicht gespeichert, neuer Versuch alle {Limits.SaveDelay.TotalSeconds:0} s: {e.Message}");
+                    saveFailed = true;
+                    saveTimer!.Change(Limits.SaveDelay, Timeout.InfiniteTimeSpan);
+                }
+            }
         }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         saveTimer.Change(Limits.SaveDelay, Timeout.InfiniteTimeSpan);
     }

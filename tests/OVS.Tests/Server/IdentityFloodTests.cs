@@ -101,6 +101,32 @@ public sealed class IdentityFloodTests
     }
 
     [Fact]
+    public async Task DebouncedSave_Fails_LoggedAndRetried()
+    {
+        var time = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(time: time);
+        bool failing = true;
+        server.State.BeforeSave = () => { if (failing) throw new IOException("Datei gesperrt"); };
+
+        var (session, _) = server.State.Admit(Fp(1), "neu", IPAddress.Loopback, null);
+        time.Advance(Limits.SaveDelay); // on the timer thread an escaping exception would end the server
+        time.Advance(Limits.SaveDelay); // still locked: retried, but logged only once
+        Assert.Single(server.Log, l => l.Contains("nicht gespeichert") && l.Contains("Datei gesperrt"));
+        Assert.DoesNotContain(OnDisk(server).Users, u => u.Fingerprint == Fp(1));
+
+        failing = false;
+        time.Advance(Limits.SaveDelay);
+        Assert.Contains(OnDisk(server).Users, u => u.Fingerprint == Fp(1));
+        Assert.Single(server.Log, l => l.Contains("wieder gespeichert"));
+
+        // the final save on shutdown logs a failure instead of throwing
+        failing = true;
+        server.State.Remove(session!);
+        await server.Control.StopAsync();
+        Assert.Contains(server.Log, l => l.Contains("beim Beenden nicht gespeichert"));
+    }
+
+    [Fact]
     public async Task LargeLists_Paged_UnderFrameLimit()
     {
         var admin = ClientIdentity.Create();
