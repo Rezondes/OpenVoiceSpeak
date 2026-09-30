@@ -184,7 +184,7 @@ public class AdminViewModelTests
     [Fact]
     public async Task AssignGroup_SendsRequest_DisablesHigherGroups()
     {
-        var (vm, server, sent) = Create(P.GroupsAssign | P.Speak);
+        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak);
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
 
         var user = Assert.Single(vm.Users);
@@ -232,6 +232,7 @@ public class AdminViewModelTests
 
         server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.UsersView | P.GroupsAssign | P.Speak | P.UserKick, [ModGroup])));
         Assert.Single(sent.OfType<ListUsers>());
+        server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [])); // answered: the next one may go
 
         time.Advance(TimeSpan.FromSeconds(1));
         server.Apply(new GroupsChanged([new GroupInfo(WellKnownGroups.Guest, "Gast", P.None, true)]));
@@ -243,7 +244,7 @@ public class AdminViewModelTests
     [Fact]
     public async Task AssignGroup_SoundWhenListConfirms_NotOnError()
     {
-        var (vm, server, sent) = Create(P.GroupsAssign | P.Speak | P.UserKick);
+        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
         var heard = new List<OVS.Client.Audio.SoundEvent>();
         server.SoundRequested += heard.Add;
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
@@ -261,7 +262,7 @@ public class AdminViewModelTests
         var guest = Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Gast");
         guest.IsChecked = false;
         await guest.ToggleCommand.ExecuteAsync(null);
-        server.Apply(new Error(sent[^2].RequestId, Codes.LastAdmin));
+        server.Apply(new Error(sent.OfType<UnassignGroup>().Single().RequestId, Codes.LastAdmin));
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [ModGroup])])); // even if it changed some other way
         Assert.Single(heard);
     }
@@ -867,6 +868,7 @@ public class AdminViewModelTests
         server.Apply(new UserLeft(2));
         Assert.Single(sent.OfType<ListUsers>()); // at most once per second
         Assert.Empty(vm.Users);
+        server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [Known("fpA", "Anton"), Known("fpB", "Berta")])); // and one at a time
         time.Advance(TimeSpan.FromSeconds(1));
         for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
@@ -1137,6 +1139,94 @@ public class AdminViewModelTests
         server.Apply(PageOf(after, fresh, 400));
 
         Assert.Equal(after.Select(u => u.Fingerprint).Order(), vm.Users.Select(u => u.Fingerprint).Order());
+    }
+
+    /// <summary>Quickly ticked group boxes: the list refreshes are coalesced, so the server's list limit (2/s, burst 4) is never hit.</summary>
+    [Fact]
+    public async Task QuickGroupToggles_CoalesceUserLists_NoRateLimit()
+    {
+        var groups = new List<Guid> { WellKnownGroups.Guest };
+        ManualTimeProvider? clock = null;
+        double tokens = 4;
+        DateTimeOffset? refilled = null;
+        Message? Serve(Request r)
+        {
+            switch (r)
+            {
+                case AssignGroup a: groups.Add(a.GroupId); return null;
+                case UnassignGroup u: groups.Remove(u.GroupId); return null;
+                case ListUsers l:
+                    var now = clock!.GetUtcNow();
+                    if (refilled is { } at) tokens = Math.Min(4, tokens + (now - at).TotalSeconds * 2);
+                    refilled = now;
+                    if (tokens < 1) return new Error(l.RequestId, Codes.RateLimited);
+                    tokens--;
+                    return new UserList(l.RequestId, [new KnownUserInfo("fpX", "Xaver", [.. groups], CanBeModeratedByMe: true)]);
+                default: return null;
+            }
+        }
+        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick, reply: Serve);
+        clock = (ManualTimeProvider)server.Time;
+        var notices = new List<string>();
+        server.Notice += notices.Add;
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
+        GroupToggle Box(string name) => Assert.Single(vm.Users).Toggles.Single(t => t.Name == name);
+
+        foreach (var (name, on) in new[] { ("Moderator", true), ("Gast", false), ("Moderator", false), ("Gast", true), ("Moderator", true) })
+        {
+            var box = Box(name);
+            box.IsChecked = on;
+            await box.ToggleCommand.ExecuteAsync(null);
+        }
+        Assert.Equal((true, true), (Box("Gast").IsChecked, Box("Moderator").IsChecked));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+
+        Assert.Empty(notices);
+        Assert.InRange(sent.OfType<ListUsers>().Count(), 1, 2);
+        Assert.Equal((true, true), (Box("Gast").IsChecked, Box("Moderator").IsChecked));
+    }
+
+    /// <summary>A just ticked box keeps its state until a list asked for after the tick arrives; an older list does not flip it back.</summary>
+    [Fact]
+    public async Task GroupToggle_NotRevertedByAnOlderList()
+    {
+        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
+        var time = (ManualTimeProvider)server.Time;
+        var before = new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true);
+        server.Apply(new UserJoined(Online(2, "fpX", "Xaver"))); // a refresh is on its way when the box is ticked
+        var older = sent.OfType<ListUsers>().Single().RequestId;
+        server.Apply(new UserList("r", [before]));
+        GroupToggle Mod() => Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Moderator");
+
+        Mod().IsChecked = true;
+        await Mod().ToggleCommand.ExecuteAsync(null);
+        server.Apply(new UserList(older, [before])); // asked for before the tick
+        Assert.True(Mod().IsChecked);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+        var newer = sent.OfType<ListUsers>().Last().RequestId;
+        Assert.NotEqual(older, newer);
+        server.Apply(new UserList(newer, [before])); // asked for after the tick: this one counts, even without the group
+        Assert.False(Mod().IsChecked);
+    }
+
+    /// <summary>Unban and ban right after each other: the ban list is asked for once (the unban is answered with it).</summary>
+    [Fact]
+    public async Task UnbanThenBan_BanListRefreshedOnce()
+    {
+        var ban = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
+        var dialogs = new Dialogs { Ban = (_, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) };
+        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.Speak, dialogs: dialogs);
+        server.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
+            Known("fpB", "Bert", bans: [ban]) with { CanBeModeratedByMe = true }]));
+
+        await vm.Users.Single(u => u.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
+        await vm.Users.Single(u => u.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
+
+        Assert.Single(sent.OfType<ListBans>());
+        Assert.Single(sent.OfType<ListUsers>());
     }
 
     /// <summary>Package 83: the server's rules for names, welcome text and password, shown before sending.</summary>
