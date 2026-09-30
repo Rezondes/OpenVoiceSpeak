@@ -133,6 +133,22 @@ public partial class AdminView : UserControl
             await vm.UploadBackupAsync(path, restore: sender == UploadRestoreButton);
     }
 
+    // ---- Package 82: the checked log files as one .log or a zip, through the same save dialog ----
+
+    async void OnDownloadLogs(object? sender, RoutedEventArgs e)
+    {
+        if (Vm?.Logs is not { CanDownload: true } logs || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
+        var zip = logs.IsZipDownload;
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = Strings.Logs_SaveTitle,
+            SuggestedFileName = logs.DownloadName,
+            DefaultExtension = zip ? "zip" : "log",
+            FileTypeChoices = [zip ? new FilePickerFileType(Strings.Logs_ZipFilter) { Patterns = ["*.zip"] } : new FilePickerFileType(Strings.Logs_LogFilter) { Patterns = ["*.log"] }],
+        });
+        if (file?.TryGetLocalPath() is { } path) await logs.DownloadAsync(path);
+    }
+
     void OnIconDragOver(object? sender, DragEventArgs e) =>
         e.DragEffects = e.DataTransfer.TryGetFile() is not null ? DragDropEffects.Copy : DragDropEffects.None;
 

@@ -375,6 +375,8 @@ public sealed class ResponsiveTests : IDisposable
             i % 3 == 0 ? OVS.Shared.Protocol.LogKind.Server : OVS.Shared.Protocol.LogKind.Channel, i % 3 == 0 ? null : channel,
             i % 3 == 0 ? null : i == 11 ? "Ein gelöschter Channel mit einem sehr langen Namen" : "Raidgruppe Nummer 2",
             now.AddDays(-i), now.AddDays(-i).AddHours(5), 1_234_567L * (i + 1))).ToList()));
+        // Package 82: some files checked (the Server tab's transfer above shows here too)
+        foreach (var file in admin.Logs.Files.Where((_, i) => i % 2 == 0)) file.IsSelected = true;
         admin.Logs.OpenCommand.Execute(admin.Logs.Files[0]);
         server.Apply(new OVS.Shared.Protocol.LogPage(null, admin.Logs.Files[0].Info.Id, 3, 3, 2001, Enumerable.Range(2001, 40)
             .Select(n => n % 5 == 0 ? $"2026-09-30 12:00:{n % 60:00}.000 Mitspieler{n} verbunden (" + new string('a', 64) + ", 2001:db8:85a3::8a2e:370:7334) " + new string('x', 300)
@@ -456,8 +458,9 @@ public sealed class ResponsiveTests : IDisposable
         Assert.NotEmpty(page.FindControl<ListBox>("LogLines")!.GetRealizedContainers());
         admin.Logs.CloseFileCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();
-        foreach (var name in new[] { "LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList" })
+        foreach (var name in new[] { "LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList", "LogDownloadBar", "LogDownloadButton", "LogTransfer" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
+        Assert.Contains(page.FindControl<ListBox>("LogFileList")!.GetVisualDescendants().OfType<CheckBox>(), c => c.IsEffectivelyVisible && c.IsChecked == true);
         LayoutAssert.FitsHorizontally(main);
         admin.Logs.Apply(new OVS.Shared.Protocol.LogSearchResult(null, admin.Logs.Files.Take(8).Select((f, i) =>
             new OVS.Shared.Protocol.LogHit(f.Info.Id, 1000 + i, "2026-09-30 12:00:00.000 [Raidgruppe Nummer 2] Mitspieler3: " + new string('y', 400))).ToList(), true, false));

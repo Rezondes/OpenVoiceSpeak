@@ -45,6 +45,7 @@ public sealed partial class ServerState
         backups = new BackupStore(config.DataDir, time);
         backups.RemoveUploads(); // Package 75: what a crash left behind
         LogReader = new LogReader(config.DataDir, time); // Package 81
+        LogReader.RemoveExports(); // Package 82: what a crash left behind
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         if (data.Migrate(config)) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
@@ -226,6 +227,7 @@ public sealed partial class ServerState
             {
                 s.Close(final);
                 DropUpload(s);
+                s.DropLogDownload(ended: true); // Package 82
                 AddSessionStats(s, now);
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
@@ -245,6 +247,7 @@ public sealed partial class ServerState
     {
         session.Close(final);
         DropUpload(session); // Package 75: an abandoned upload leaves no file
+        session.DropLogDownload(ended: true); // Package 82: nor a prepared log download
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
         AddSessionStats(session, time.GetUtcNow());
@@ -325,6 +328,8 @@ public sealed partial class ServerState
                 case ListLogs r: OnListLogs(session, r); break;
                 case ReadLog r: OnReadLog(session, r); break;
                 case SearchLogs r: OnSearchLogs(session, r); break;
+                case PrepareLogDownload r: OnPrepareLogDownload(session, r); break;
+                case DownloadLogChunk r: OnDownloadLogChunk(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }

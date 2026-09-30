@@ -163,7 +163,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 LastBanList = list;
                 AdminMessage?.Invoke(message);
                 return;
-            case BackupList or BackupChunk or UploadBackupAck or BackupUploaded or LogList or LogPage or LogSearchResult: // Packages 74, 75 and 81
+            case BackupList or BackupChunk or UploadBackupAck or BackupUploaded or LogList or LogPage or LogSearchResult or LogDownloadReady or LogChunk: // Packages 74, 75, 81, 82
                 AdminMessage?.Invoke(message);
                 return;
             case ServerIcon icon:

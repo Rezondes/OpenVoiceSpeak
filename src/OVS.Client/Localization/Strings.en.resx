@@ -524,4 +524,15 @@
   <data name="Ui_LogNoHits" xml:space="preserve"><value>No hits.</value></data>
   <data name="Ui_LogBackToFiles" xml:space="preserve"><value>Back to the files</value></data>
   <data name="Ui_LogLine" xml:space="preserve"><value>Line {0}</value></data>
+  <data name="Perm_LogsDownload" xml:space="preserve"><value>Download logs</value></data>
+  <data name="Error_LogsTooLarge" xml:space="preserve"><value>The selection is larger than 200 MB. Choose a shorter period.</value></data>
+  <data name="Ui_LogSelectAll" xml:space="preserve"><value>All in the period</value></data>
+  <data name="Ui_LogSelectNone" xml:space="preserve"><value>None</value></data>
+  <data name="Ui_LogSelection" xml:space="preserve"><value>{0} selected</value></data>
+  <data name="Ui_LogSelectFile" xml:space="preserve"><value>Select file</value></data>
+  <data name="Logs_Downloading" xml:space="preserve"><value>Downloading logs: {0} %</value></data>
+  <data name="Logs_TransferFailed" xml:space="preserve"><value>The log transfer failed.</value></data>
+  <data name="Logs_SaveTitle" xml:space="preserve"><value>Save logs</value></data>
+  <data name="Logs_LogFilter" xml:space="preserve"><value>Log file</value></data>
+  <data name="Logs_ZipFilter" xml:space="preserve"><value>Zip archive</value></data>
 </root>

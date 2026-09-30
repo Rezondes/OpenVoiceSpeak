@@ -88,7 +88,7 @@ Der Server beginnt bei jedem Start neue Logdateien im Datenverzeichnis, benannt 
 docker run --rm -v openvoicespeak_ovs-data:/data alpine sh -c 'tail -n 50 "$(ls /data/logs/server/*.log | tail -n 1)"'
 ```
 
-Ohne Docker-Zugang geht es auch im Client: Unter "Verwaltung ...", Logs (Recht "Logs ansehen", standardmässig nur Admin) stehen alle Server- und Channel-Logs, neueste zuerst, filterbar nach Art (Server oder ein Channel) und Zeitraum. Eine Datei öffnet sich seitenweise mit 1000 Zeilen, die letzte Seite zuerst; ein Filter zeigt nur passende Zeilen mit markierten Treffern. Die Suche läuft auf dem Server über alle Dateien (Text ohne Gross- und Kleinschreibung, höchstens 500 Treffer, Abbruch nach 5 Sekunden), ein Klick auf einen Treffer öffnet die Datei an dieser Zeile. Logs enthalten IPs, Fingerabdrücke und Chattexte, vergib das Recht also nur an Leute, denen du das anvertraust.
+Ohne Docker-Zugang geht es auch im Client: Unter "Verwaltung ...", Logs (Recht "Logs ansehen", standardmässig nur Admin) stehen alle Server- und Channel-Logs, neueste zuerst, filterbar nach Art (Server oder ein Channel) und Zeitraum. Eine Datei öffnet sich seitenweise mit 1000 Zeilen, die letzte Seite zuerst; ein Filter zeigt nur passende Zeilen mit markierten Treffern. Die Suche läuft auf dem Server über alle Dateien (Text ohne Gross- und Kleinschreibung, höchstens 500 Treffer, Abbruch nach 5 Sekunden), ein Klick auf einen Treffer öffnet die Datei an dieser Zeile. Mit dem Recht "Logs herunterladen" (ebenfalls nur Admin) wählst du Dateien per Häkchen aus ("Alle im Zeitraum" nimmt alle, die die Filter zeigen) und speicherst sie: eine Datei als `.log` unter ihrem Namen, mehrere als `ovs-logs_<von>_<bis>.zip` mit den Ordnern `server/` und `channels/<Channelname>_<ID>/`. Der Server nimmt den Stand zum Zeitpunkt der Anfrage, höchstens 200 MB, und überträgt ihn in Stücken wie ein Backup; den Zwischenstand in `logs-export/` löscht er danach wieder. Logs enthalten IPs, Fingerabdrücke und Chattexte, vergib das Recht also nur an Leute, denen du das anvertraust.
 
 ### Daten, Backup, Update
 
@@ -199,6 +199,7 @@ Ein Server kann ein eigenes Logo haben: Unter "Verwaltung ...", Server lädst du
 | Nutzer bannen und entbannen | "Bannen", "Entbannen" | Moderator, Admin |
 | Nutzer löschen | alle gespeicherten Daten eines Nutzers löschen | Admin |
 | Logs ansehen | Tab "Logs": Server- und Channel-Logs lesen und durchsuchen | Admin |
+| Logs herunterladen | ausgewählte Logs auf dem eigenen PC speichern (braucht "Logs ansehen") | Admin |
 
 Vergeben lassen sich nur Rechte, die man selbst hat, und bearbeiten lassen sich nur Nutzer und Gruppen ohne mehr Rechte als man selbst. Bestehende Server geben beim Update jeder Gruppe einmalig die passenden Sehen-Rechte zu ihren Rechten ("Gruppen bearbeiten" bekommt Sehen, Anlegen und Löschen dazu, "Gruppen zuweisen" die Nutzerübersicht, "Nutzer bannen" die Bans), damit niemand etwas verliert.
 

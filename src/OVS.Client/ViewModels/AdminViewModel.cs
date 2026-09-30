@@ -87,7 +87,7 @@ public sealed partial class AdminViewModel : ObservableObject
         hasPassword = server.Mirror.Settings.HasPassword;
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
-        Logs = new LogsViewModel(server);
+        Logs = new LogsViewModel(server, this);
         RebuildGroups();
         RebuildGroupFilters();
         RebuildUsers();
@@ -192,6 +192,7 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowBans));
         OnPropertyChanged(nameof(ShowServer));
         OnPropertyChanged(nameof(ShowLogs));
+        Logs.RightsChanged(); // Package 82
         NewGroupCommand.NotifyCanExecuteChanged();
         MoveGroupUpCommand.NotifyCanExecuteChanged();
         MoveGroupDownCommand.NotifyCanExecuteChanged();
@@ -212,6 +213,12 @@ public sealed partial class AdminViewModel : ObservableObject
                 Reply(id).TrySetResult(message);
                 break;
             case BackupUploaded { RequestId: { } id }:
+                Reply(id).TrySetResult(message);
+                break;
+            case LogDownloadReady { RequestId: { } id }: // Package 82
+                Reply(id).TrySetResult(message);
+                break;
+            case LogChunk { RequestId: { } id }:
                 Reply(id).TrySetResult(message);
                 break;
             case UserList list:
@@ -435,7 +442,7 @@ public sealed partial class AdminViewModel : ObservableObject
     }
 
     /// <summary>The server's answer to one request, or null (error, timeout, page closed). The server shows its own errors as a notice.</summary>
-    async Task<Message?> RequestAsync(Request request)
+    async Task<Message?> RequestAsync(Request request, string? failedText = null)
     {
         var id = await server.SendAsync(request);
         try
@@ -445,7 +452,7 @@ public sealed partial class AdminViewModel : ObservableObject
         }
         catch (TimeoutException)
         {
-            server.ShowNotice(Strings.Backup_TransferFailed);
+            server.ShowNotice(failedText ?? Strings.Backup_TransferFailed);
             return null;
         }
         catch (OperationCanceledException)
@@ -470,24 +477,11 @@ public sealed partial class AdminViewModel : ObservableObject
         if (IsTransferring) return;
         IsTransferring = true;
         Progress(Strings.Backup_Downloading, 0, 1);
-        var temp = target + ".part";
-        bool done = false;
         try
         {
-            await using (var file = File.Create(temp))
-            {
-                while (true)
-                {
-                    if (await RequestAsync(new DownloadBackup(backup.Info.FileName, file.Length)) is not BackupChunk chunk || chunk.Offset != file.Length) return;
-                    var bytes = Convert.FromBase64String(chunk.DataBase64);
-                    await file.WriteAsync(bytes);
-                    Progress(Strings.Backup_Downloading, file.Length, chunk.TotalSize);
-                    if (chunk.IsLast) break;
-                    if (bytes.Length == 0) return;
-                }
-            }
-            File.Move(temp, target, overwrite: true);
-            done = true;
+            await ChunkedDownload.RunAsync(target,
+                async offset => await RequestAsync(new DownloadBackup(backup.Info.FileName, offset)) is BackupChunk c ? new(c.Offset, c.TotalSize, c.DataBase64, c.IsLast) : null,
+                (done, total) => Progress(Strings.Backup_Downloading, done, total));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException)
         {
@@ -495,7 +489,34 @@ public sealed partial class AdminViewModel : ObservableObject
         }
         finally
         {
-            if (!done) DeleteQuietly(temp);
+            replies.Clear(); // answers to other failed requests that came in meanwhile
+            IsTransferring = false;
+        }
+    }
+
+    /// <summary>
+    /// Package 82 (A99): the server copies the chosen log files (one .log or a zip), then they come chunk by chunk like a backup,
+    /// with the same progress; one transfer at a time.
+    /// </summary>
+    internal async Task DownloadLogsAsync(IReadOnlyList<string> fileIds, string target)
+    {
+        if (IsTransferring || fileIds.Count == 0) return;
+        IsTransferring = true;
+        Progress(Strings.Logs_Downloading, 0, 1);
+        try
+        {
+            if (await RequestAsync(new PrepareLogDownload(fileIds), Strings.Logs_TransferFailed) is not LogDownloadReady ready) return;
+            await ChunkedDownload.RunAsync(target,
+                async offset => await RequestAsync(new DownloadLogChunk(ready.DownloadId, offset), Strings.Logs_TransferFailed) is LogChunk c
+                    ? new(c.Offset, c.TotalSize, c.DataBase64, c.IsLast) : null,
+                (done, total) => Progress(Strings.Logs_Downloading, done, total));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException)
+        {
+            server.ShowNotice(Strings.Logs_TransferFailed);
+        }
+        finally
+        {
             replies.Clear(); // answers to other failed requests that came in meanwhile
             IsTransferring = false;
         }
@@ -541,17 +562,6 @@ public sealed partial class AdminViewModel : ObservableObject
         if (!restore || uploaded is null) return;
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
         await server.SendAsync(new RestoreBackup(uploaded.FileName));
-    }
-
-    static void DeleteQuietly(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-        }
     }
 
     bool CanAssign(GroupInfo g) =>
@@ -719,6 +729,54 @@ public sealed partial class PermissionToggle(Permission permission, string label
     public Permission Permission { get; } = permission;
     public string Label { get; } = label;
     public bool IsEnabled { get; } = isEnabled;
+}
+
+/// <summary>Packages 75 and 82: pulls a file chunk by chunk into target.part and moves it into place only after the last chunk,
+/// so a failed transfer leaves no half file and the file there before untouched.</summary>
+static class ChunkedDownload
+{
+    public sealed record Chunk(long Offset, long Total, string DataBase64, bool IsLast);
+
+    /// <param name="next">Asks for the chunk at an offset; null stops (error, timeout, page closed).</param>
+    /// <returns>True once the file is in place. IO and base64 errors throw, after removing the temporary file.</returns>
+    public static async Task<bool> RunAsync(string target, Func<long, Task<Chunk?>> next, Action<long, long> progress)
+    {
+        var temp = target + ".part";
+        bool done = false;
+        try
+        {
+            await using (var file = File.Create(temp))
+            {
+                while (true)
+                {
+                    if (await next(file.Length) is not { } chunk || chunk.Offset != file.Length) return false;
+                    var bytes = Convert.FromBase64String(chunk.DataBase64);
+                    await file.WriteAsync(bytes);
+                    progress(file.Length, chunk.Total);
+                    if (chunk.IsLast) break;
+                    if (bytes.Length == 0) return false;
+                }
+            }
+            File.Move(temp, target, overwrite: true);
+            done = true;
+            return true;
+        }
+        finally
+        {
+            if (!done) DeleteQuietly(temp);
+        }
+    }
+
+    static void DeleteQuietly(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
 }
 
 public enum UserStatusFilter { All, Online, Offline, Banned }

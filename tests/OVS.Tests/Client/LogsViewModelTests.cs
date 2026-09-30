@@ -21,17 +21,18 @@ public class LogsViewModelTests
     static readonly LogFileInfo OldServerFile = new("server/2026-01-01_12-00-00.log", LogKind.Server, null, null, Day(1), Day(2, 18), 5_000_000);
 
     /// <summary>A server that answers ReadLog with 3 pages of numbered lines ("Zeile n", every 7th line "FEHLER"), and SearchLogs with the given result.</summary>
-    static (LogsViewModel Logs, List<Request> Sent) Create(LogSearchResult? searchResult = null)
+    static (LogsViewModel Logs, List<Request> Sent) Create(LogSearchResult? searchResult = null, Permission perms = Permission.LogsView,
+        Func<Request, Message?>? reply = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "", false), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [], [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
-            [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, Permission.LogsView, [])]);
+            [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, perms, [])]);
         var sent = new List<Request>();
         ServerViewModel? server = null;
         server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
         {
             sent.Add(r);
-            Message? answer = r switch
+            Message? answer = reply?.Invoke(r) ?? r switch
             {
                 ListLogs => new LogList(r.RequestId, [ServerFile, RaidFile, OldServerFile, OldFile]),
                 ReadLog read => Page(read),
@@ -174,5 +175,100 @@ public class LogsViewModelTests
         logs.ClearSearchCommand.Execute(null);
         Assert.False(logs.ShowHits);
         Assert.Empty(logs.Hits);
+    }
+
+    // ---- Package 82: download ----
+
+    [Fact]
+    public void Selection_AllInPeriod_None_SingleVsZip()
+    {
+        var (viewer, _) = Create();
+        Assert.False(viewer.ShowDownload); // LogsView alone: no checkboxes, no download
+        Assert.All(viewer.Files, f => Assert.False(f.CanSelect));
+
+        var (logs, _) = Create(perms: Permission.LogsView | Permission.LogsDownload);
+        Assert.True(logs.ShowDownload);
+        Assert.All(logs.Files, f => Assert.True(f.CanSelect));
+        Assert.False(logs.CanDownload);
+        logs.Files[0].IsSelected = true;
+        Assert.True(logs.CanDownload);
+        Assert.False(logs.IsZipDownload);
+        Assert.Equal("2026-01-10_12-00-00.log", logs.DownloadName);
+        Assert.Equal("1 ausgewählt", logs.SelectionText);
+
+        // "Alle im Zeitraum" adds what the filters show; the selection survives filtering and a new list
+        logs.FromDate = new DateTime(2026, 1, 2);
+        logs.ToDate = new DateTime(2026, 1, 6);
+        logs.SelectAllInPeriodCommand.Execute(null);
+        Assert.Equal([RaidFile.Id, OldServerFile.Id], logs.Files.Where(f => f.IsSelected).Select(f => f.Info.Id));
+        logs.FromDate = logs.ToDate = null;
+        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id], logs.Files.Where(f => f.IsSelected).Select(f => f.Info.Id));
+        logs.Apply(new LogList(null, [ServerFile, RaidFile, OldServerFile, OldFile]));
+        Assert.Equal(3, logs.Files.Count(f => f.IsSelected));
+        Assert.True(logs.IsZipDownload);
+        Assert.Equal("ovs-logs_2026-01-01_2026-01-10.zip", logs.DownloadName);
+        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id], logs.SelectedIds);
+
+        logs.SelectNoneCommand.Execute(null);
+        Assert.DoesNotContain(logs.Files, f => f.IsSelected);
+        Assert.False(logs.CanDownload);
+    }
+
+    [Fact]
+    public async Task Download_PartFileMovedAtEnd_Progress()
+    {
+        var dir = Directory.CreateTempSubdirectory("ovs-logdownload-").FullName;
+        try
+        {
+            var zip = new byte[1_200_000];
+            Random.Shared.NextBytes(zip);
+            string? target = null;
+            bool fail = false;
+            LogsViewModel? logs = null;
+            var progress = new List<(bool Busy, double Percent, bool PartExists, bool TargetExists)>();
+            Message? Reply(Request r)
+            {
+                switch (r)
+                {
+                    case PrepareLogDownload p:
+                        Assert.Equal([ServerFile.Id, RaidFile.Id], p.FileIds);
+                        return new LogDownloadReady(r.RequestId, "d1", "ovs-logs.zip", zip.Length);
+                    case DownloadLogChunk c:
+                        Assert.Equal("d1", c.DownloadId);
+                        progress.Add((logs!.Owner!.IsTransferring, logs.Owner.TransferPercent, File.Exists(target + ".part"), File.Exists(target)));
+                        if (fail && c.Offset > 0) return new Error(r.RequestId, Codes.NotFound);
+                        var size = (int)Math.Min(ProtocolInfo.BackupChunkBytes, zip.Length - c.Offset);
+                        return new LogChunk(r.RequestId, "d1", c.Offset, zip.Length, Convert.ToBase64String(zip, (int)c.Offset, size), c.Offset + size >= zip.Length);
+                    default:
+                        return null;
+                }
+            }
+            var (created, sent) = Create(perms: Permission.LogsView | Permission.LogsDownload, reply: Reply);
+            logs = created;
+            logs.Files[0].IsSelected = logs.Files[1].IsSelected = true;
+            target = Path.Combine(dir, "logs.zip");
+
+            await logs.DownloadAsync(target);
+            Assert.Equal(zip, File.ReadAllBytes(target));
+            Assert.Equal([0L, 524_288L, 1_048_576L], sent.OfType<DownloadLogChunk>().Select(c => c.Offset));
+            Assert.Equal([0d, 43.7, 87.4], progress.Select(p => Math.Round(p.Percent, 1)));
+            Assert.All(progress, p => Assert.True(p.Busy && !p.TargetExists));
+            Assert.All(progress.Skip(1), p => Assert.True(p.PartExists));
+            Assert.Equal(string.Format(OVS.Client.Localization.Strings.Logs_Downloading, 100), logs.Owner!.TransferText);
+            Assert.False(logs.Owner.IsTransferring);
+            Assert.Equal([target], Directory.GetFiles(dir));
+
+            // a failed chunk leaves the file there before untouched and no half file
+            File.WriteAllText(target, "alt");
+            fail = true;
+            await logs.DownloadAsync(target);
+            Assert.Equal("alt", File.ReadAllText(target));
+            Assert.Equal([target], Directory.GetFiles(dir));
+            Assert.False(logs.Owner.IsTransferring);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
     }
 }

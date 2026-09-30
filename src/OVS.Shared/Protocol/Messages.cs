@@ -62,6 +62,10 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(LogPage), "logPage")]
 [JsonDerivedType(typeof(SearchLogs), "searchLogs")]
 [JsonDerivedType(typeof(LogSearchResult), "logSearchResult")]
+[JsonDerivedType(typeof(PrepareLogDownload), "prepareLogDownload")] // Package 82
+[JsonDerivedType(typeof(LogDownloadReady), "logDownloadReady")]
+[JsonDerivedType(typeof(DownloadLogChunk), "downloadLogChunk")]
+[JsonDerivedType(typeof(LogChunk), "logChunk")]
 // Moderation
 [JsonDerivedType(typeof(Kick), "kick")]
 [JsonDerivedType(typeof(Ban), "ban")]
@@ -213,6 +217,15 @@ public sealed record SearchLogs(string Query, LogKind? Kind = null, Guid? Channe
 public sealed record LogHit(string FileId, int Line, string Text);
 /// <summary>Newest first. Truncated: there were more than ProtocolInfo.MaxLogHits; TimedOut: the search stopped after its time limit.</summary>
 public sealed record LogSearchResult(string? RequestId, IReadOnlyList<LogHit> Hits, bool Truncated, bool TimedOut) : Message;
+// Package 82 (A99, rights LogsView and LogsDownload): a snapshot on the server, then pulled in chunks like a backup
+/// <summary>One file comes as .log, several as one zip (server/..., channels/&lt;name&gt;_&lt;id&gt;/...). Answered with LogDownloadReady.</summary>
+public sealed record PrepareLogDownload(IReadOnlyList<string> FileIds) : Request;
+/// <param name="DownloadId">Names the snapshot in DownloadLogChunk; one per session, a new one replaces it.</param>
+/// <param name="FileName">The file's own name, or ovs-logs_&lt;from&gt;_&lt;to&gt;.zip.</param>
+public sealed record LogDownloadReady(string? RequestId, string DownloadId, string FileName, long Size) : Message;
+/// <summary>Asks for the chunk at Offset; answered with one LogChunk. The snapshot is deleted after the last one.</summary>
+public sealed record DownloadLogChunk(string DownloadId, long Offset) : Request;
+public sealed record LogChunk(string? RequestId, string DownloadId, long Offset, long TotalSize, string DataBase64, bool IsLast) : Message;
 
 // ---- Moderation ----
 /// <summary>Package 80 (A97): active, expired and lifted bans; the new values are null or 0 for bans saved before.</summary>

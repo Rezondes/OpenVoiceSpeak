@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Localization;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
@@ -12,10 +13,13 @@ public sealed record LogSource(LogKind? Kind, Guid? ChannelId);
 /// <summary>
 /// Package 81 (A98): the Logs tab. The server's file list with type and period filters, one opened file page by page
 /// with a line filter, and the search over all files. Files are only ever named by the id from the server's list.
+/// Package 82 (A99): with LogsDownload, files are selected with checkboxes and saved as one .log or a zip.
 /// </summary>
 public sealed partial class LogsViewModel : ObservableObject
 {
     readonly ServerViewModel server;
+    readonly HashSet<string> selected = [];
+    bool downloadRight;
     IReadOnlyList<LogFileInfo> allFiles = [];
     IReadOnlyList<string> pageLines = [];
     int? targetLine;
@@ -46,9 +50,12 @@ public sealed partial class LogsViewModel : ObservableObject
     [ObservableProperty] bool showHits;
     [ObservableProperty] string hitsText = "";
 
-    public LogsViewModel(ServerViewModel server)
+    /// <param name="owner">The administration page; its transfer machinery and progress carry the download.</param>
+    public LogsViewModel(ServerViewModel server, AdminViewModel? owner = null)
     {
         this.server = server;
+        Owner = owner;
+        downloadRight = ShowDownload;
         RebuildSources();
         selectedSource = Sources[0];
     }
@@ -67,6 +74,8 @@ public sealed partial class LogsViewModel : ObservableObject
     public bool HasLines => Lines.Count > 0;
     public ObservableCollection<LogHitViewModel> Hits { get; } = [];
 
+    public AdminViewModel? Owner { get; }
+
     public Task RequestAsync() => server.SendAsync(new ListLogs());
 
     /// <summary>The server's answers, passed on by the administration page.</summary>
@@ -76,6 +85,7 @@ public sealed partial class LogsViewModel : ObservableObject
         {
             case LogList list:
                 allFiles = list.Files;
+                selected.IntersectWith(allFiles.Select(f => f.Id)); // files gone meanwhile (retention) drop out
                 RebuildSources();
                 RebuildFiles();
                 break;
@@ -133,12 +143,76 @@ public sealed partial class LogsViewModel : ObservableObject
     void RebuildFiles()
     {
         Files.Clear();
-        foreach (var file in allFiles.Where(Passes)) Files.Add(new LogFileViewModel(file));
+        foreach (var file in allFiles.Where(Passes)) Files.Add(new LogFileViewModel(file, ShowDownload, selected.Contains(file.Id), OnSelectionChanged));
         SelectedFile = Files.FirstOrDefault(f => f.Info.Id == OpenFile?.Info.Id);
         FileCountText = string.Format(Strings.Ui_LogFileCount, Files.Count, allFiles.Count);
         OnPropertyChanged(nameof(HasNoFiles));
         OnPropertyChanged(nameof(HasNoFileMatches));
     }
+
+    // ---- Package 82: selection and download ----
+
+    public bool ShowDownload => server.SelfPermissions.Has(Permission.LogsDownload);
+    public bool CanDownload => ShowDownload && selected.Count > 0;
+    public bool IsZipDownload => selected.Count > 1;
+    public string SelectionText => string.Format(Strings.Ui_LogSelection, selected.Count);
+    /// <summary>The chosen files, newest first like the list.</summary>
+    public IReadOnlyList<string> SelectedIds => allFiles.Where(f => selected.Contains(f.Id)).Select(f => f.Id).ToList();
+
+    /// <summary>The file's own name for one file, else ovs-logs_&lt;from&gt;_&lt;to&gt;.zip like the server names it.</summary>
+    public string DownloadName
+    {
+        get
+        {
+            var files = allFiles.Where(f => selected.Contains(f.Id)).ToList();
+            if (files.Count == 1) return files[0].Id[(files[0].Id.LastIndexOf('/') + 1)..];
+            if (files.Count == 0) return "";
+            return $"ovs-logs_{files.Min(f => f.Start).ToLocalTime():yyyy-MM-dd}_{files.Max(f => f.LastWrite).ToLocalTime():yyyy-MM-dd}.zip";
+        }
+    }
+
+    /// <summary>The own rights changed: checkboxes come and go with LogsDownload.</summary>
+    public void RightsChanged()
+    {
+        if (ShowDownload == downloadRight) return;
+        downloadRight = ShowDownload;
+        if (!downloadRight) selected.Clear();
+        RebuildFiles();
+        SelectionChanged();
+    }
+
+    void OnSelectionChanged(LogFileViewModel file)
+    {
+        if (file.IsSelected) selected.Add(file.Info.Id);
+        else selected.Remove(file.Info.Id);
+        SelectionChanged();
+    }
+
+    void SelectionChanged()
+    {
+        OnPropertyChanged(nameof(ShowDownload));
+        OnPropertyChanged(nameof(CanDownload));
+        OnPropertyChanged(nameof(IsZipDownload));
+        OnPropertyChanged(nameof(SelectionText));
+    }
+
+    /// <summary>Adds every file the type and period filters show.</summary>
+    [RelayCommand]
+    void SelectAllInPeriod()
+    {
+        foreach (var file in Files) file.IsSelected = true;
+    }
+
+    [RelayCommand]
+    void SelectNone()
+    {
+        selected.Clear();
+        foreach (var file in Files) file.IsSelected = false;
+        SelectionChanged();
+    }
+
+    /// <summary>Saves the selection to target (chosen in the save dialog).</summary>
+    public Task DownloadAsync(string target) => Owner?.DownloadLogsAsync(SelectedIds, target) ?? Task.CompletedTask;
 
     string TitleOf(string fileId) => allFiles.FirstOrDefault(f => f.Id == fileId) is { } f ? LogFileViewModel.TitleOf(f) : fileId;
 
@@ -254,9 +328,15 @@ public sealed partial class LogsViewModel : ObservableObject
     }
 }
 
-/// <summary>One file of the list: server or channel name, start and size.</summary>
-public sealed class LogFileViewModel(LogFileInfo info)
+/// <summary>One file of the list: server or channel name, start and size; Package 82: a checkbox with LogsDownload.</summary>
+public sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = false, bool isSelected = false, Action<LogFileViewModel>? selectionChanged = null)
+    : ObservableObject
 {
+    [ObservableProperty] bool isSelected = isSelected;
+
+    partial void OnIsSelectedChanged(bool value) => selectionChanged?.Invoke(this);
+
+    public bool CanSelect { get; } = canSelect;
     public LogFileInfo Info { get; } = info;
     public string Title => TitleOf(Info);
     public bool IsServer => Info.Kind == LogKind.Server;

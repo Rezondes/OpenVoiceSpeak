@@ -524,4 +524,15 @@
   <data name="Ui_LogNoHits" xml:space="preserve"><value>Keine Treffer.</value></data>
   <data name="Ui_LogBackToFiles" xml:space="preserve"><value>Zur Dateiliste</value></data>
   <data name="Ui_LogLine" xml:space="preserve"><value>Zeile {0}</value></data>
+  <data name="Perm_LogsDownload" xml:space="preserve"><value>Logs herunterladen</value></data>
+  <data name="Error_LogsTooLarge" xml:space="preserve"><value>Die Auswahl ist grösser als 200 MB. Wähle einen kürzeren Zeitraum.</value></data>
+  <data name="Ui_LogSelectAll" xml:space="preserve"><value>Alle im Zeitraum</value></data>
+  <data name="Ui_LogSelectNone" xml:space="preserve"><value>Keine</value></data>
+  <data name="Ui_LogSelection" xml:space="preserve"><value>{0} ausgewählt</value></data>
+  <data name="Ui_LogSelectFile" xml:space="preserve"><value>Datei auswählen</value></data>
+  <data name="Logs_Downloading" xml:space="preserve"><value>Logs herunterladen: {0} %</value></data>
+  <data name="Logs_TransferFailed" xml:space="preserve"><value>Die Übertragung der Logs ist fehlgeschlagen.</value></data>
+  <data name="Logs_SaveTitle" xml:space="preserve"><value>Logs speichern</value></data>
+  <data name="Logs_LogFilter" xml:space="preserve"><value>Logdatei</value></data>
+  <data name="Logs_ZipFilter" xml:space="preserve"><value>Zip-Archiv</value></data>
 </root>

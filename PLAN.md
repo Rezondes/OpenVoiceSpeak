@@ -5149,14 +5149,14 @@ After Package 81 the client knows the log files by id. Backups (Package 75) alre
 
 ### Acceptance Criteria
 
-- [ ] AC1: New right "Logs herunterladen" (`LogsDownload`), selectable in the group editor. Only Admin has it by default, existing groups get nothing new. Download buttons are only visible with the right, and the server checks it on every download request. Without `LogsView` the tab stays hidden, so downloading also needs the view right.
-- [ ] AC2: Files in the list can be selected with checkboxes. There are shortcuts "Alle im Zeitraum" and "Keine".
+- [x] AC1: New right "Logs herunterladen" (`LogsDownload`), selectable in the group editor. Only Admin has it by default, existing groups get nothing new. Download buttons are only visible with the right, and the server checks it on every download request. Without `LogsView` the tab stays hidden, so downloading also needs the view right.
+- [x] AC2: Files in the list can be selected with checkboxes. There are shortcuts "Alle im Zeitraum" and "Keine".
   - "Herunterladen" saves one selected file as `.log` under its original name.
   - Several files are saved as one `.zip` named `ovs-logs_<from>_<to>.zip`, which keeps the folder structure `server/...` and `channels/<channel name>_<id>/...`.
-- [ ] AC3: The server takes a consistent snapshot: files are copied at the moment of the request, and lines written later are not included. For a zip, the archive is built in a temporary file below `<DataDir>/logs-export/`, deleted after the transfer, when the session ends, and at the next start.
-- [ ] AC4: The transfer runs in chunks of 512 KB, one request per chunk, with progress in percent. The client writes to `<target>.part` and moves it into place at the end, so a failed transfer leaves no half file. A zip over 200 MB is refused (`LogsTooLarge`), and the user is told to choose a shorter period.
-- [ ] AC5: Voice and chat keep working during a download (reading and zipping outside the state lock).
-- [ ] AC6: The selection column and download controls fit from 360 px (A96). Texts in German and English, README updated.
+- [x] AC3: The server takes a consistent snapshot: files are copied at the moment of the request, and lines written later are not included. For a zip, the archive is built in a temporary file below `<DataDir>/logs-export/`, deleted after the transfer, when the session ends, and at the next start.
+- [x] AC4: The transfer runs in chunks of 512 KB, one request per chunk, with progress in percent. The client writes to `<target>.part` and moves it into place at the end, so a failed transfer leaves no half file. A zip over 200 MB is refused (`LogsTooLarge`), and the user is told to choose a shorter period.
+- [x] AC5: Voice and chat keep working during a download (reading and zipping outside the state lock).
+- [x] AC6: The selection column and download controls fit from 360 px (A96). Texts in German and English, README updated.
 
 ### Tests (TDD)
 

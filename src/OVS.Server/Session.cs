@@ -91,6 +91,50 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         return true;
     }
 
+    // ---- Package 82: the prepared log download (one per session), a file in logs-export deleted with the session ----
+
+    (string Id, string Path)? logDownload;
+    bool logDownloadsEnded;
+
+    /// <summary>Replaces the prepared download (its file is deleted); false once the session ended, the caller deletes the file then.</summary>
+    public bool SetLogDownload(string id, string path)
+    {
+        lock (logJobGate)
+        {
+            if (logDownloadsEnded) return false;
+            if (logDownload is { } old) DeleteQuietly(old.Path);
+            logDownload = (id, path);
+            return true;
+        }
+    }
+
+    public string? LogDownloadPath(string? id)
+    {
+        lock (logJobGate) return logDownload is { } d && d.Id == id ? d.Path : null;
+    }
+
+    /// <summary>After the last chunk (finished only) or when the session ends (ended, later downloads are refused).</summary>
+    public void DropLogDownload(bool ended = false)
+    {
+        lock (logJobGate)
+        {
+            logDownloadsEnded |= ended;
+            if (logDownload is { } d) DeleteQuietly(d.Path);
+            logDownload = null;
+        }
+    }
+
+    static void DeleteQuietly(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
     public ChannelReader<Message> Outgoing => outbox.Reader;
 
     /// <summary>Never blocks. A client too slow to drain 1024 queued messages gets disconnected.</summary>

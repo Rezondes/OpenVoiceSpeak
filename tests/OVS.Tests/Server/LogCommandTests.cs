@@ -1,5 +1,9 @@
+using System.IO.Compression;
 using System.Text.Json;
+using OVS.Server.Data;
+using OVS.Server.Permissions;
 using OVS.Shared.Identity;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
 
@@ -235,5 +239,187 @@ public sealed class LogCommandTests
         release.Set();
         var result = await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == "s", 10_000);
         Assert.Equal(500, result.Hits.Count);
+    }
+
+    // ---- Package 82: download ----
+
+    static string ExportDir(TestServer server) => Path.Combine(server.DataDir, "logs-export");
+
+    static async Task<LogDownloadReady> PrepareAsync(TestClient client, params string[] ids)
+    {
+        var id = Guid.NewGuid().ToString("N");
+        await client.SendAsync(new PrepareLogDownload(ids) { RequestId = id });
+        return await client.WaitForAsync<LogDownloadReady>(r => r.RequestId == id, 10_000);
+    }
+
+    /// <summary>Pulls every chunk, one request each.</summary>
+    static async Task<byte[]> PullAsync(TestClient client, LogDownloadReady ready)
+    {
+        using var data = new MemoryStream();
+        while (true)
+        {
+            var id = Guid.NewGuid().ToString("N");
+            await client.SendAsync(new DownloadLogChunk(ready.DownloadId, data.Length) { RequestId = id });
+            var chunk = await client.WaitForAsync<LogChunk>(c => c.RequestId == id, 10_000);
+            Assert.Equal((data.Length, ready.Size), (chunk.Offset, chunk.TotalSize));
+            data.Write(Convert.FromBase64String(chunk.DataBase64));
+            if (chunk.IsLast) return data.ToArray();
+        }
+    }
+
+    static byte[] ReadShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    }
+
+    [Fact]
+    public async Task DownloadSingleFile_ByteIdenticalSnapshot()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var a = admin;
+        var live = (await ListAsync(admin)).First(f => f.Kind == LogKind.Server); // the file the server is writing
+        var path = Path.Combine(server.DataDir, "logs", live.Id);
+        var before = ReadShared(path);
+
+        var ready = await PrepareAsync(admin, live.Id);
+        Assert.Equal(Path.GetFileName(path), ready.FileName);
+        await using (await TestClient.ConnectAsync(server, "spaeter")) { } // lines written after the request
+        await Task.Delay(100);
+        var bytes = await PullAsync(admin, ready);
+        Assert.Equal(before, bytes);
+        Assert.True(ReadShared(path).Length > before.Length);
+        Assert.Empty(Directory.GetFiles(ExportDir(server))); // deleted once the last chunk went out
+        Assert.Contains(server.Log, l => l.Contains($"Logs heruntergeladen von chef: {Path.GetFileName(path)}"));
+    }
+
+    [Fact]
+    public async Task DownloadSelection_ZipWithFolders_TempRemoved()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await admin.SendAsync(new CreateChannel("Raid/1 ..", ""));
+        var raid = (await admin.WaitForAsync<ChannelAdded>()).Channel.Id;
+        var gone = Guid.NewGuid();
+        var dir = ServerLogDir(server);
+        var files = new Dictionary<string, string>
+        {
+            ["server/2025-01-01_00-00-00.log"] = "server alt\n",
+            [$"channels/{raid}/2025-02-01_00-00-00.log"] = "2025-02-01 00:00:00.000 [Raid/1 ..] eins\n",
+            [$"channels/{gone}/2025-03-01_00-00-00.log"] = "2025-03-01 00:00:00.000 [Weg] zwei\n",
+        };
+        foreach (var (id, text) in files)
+        {
+            var file = Path.Combine(server.DataDir, "logs", id);
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, text);
+        }
+        File.SetLastWriteTime(Path.Combine(dir, "2025-01-01_00-00-00.log"), new DateTime(2025, 1, 1, 12, 0, 0));
+        File.SetLastWriteTime(Path.Combine(server.DataDir, "logs", "channels", raid.ToString(), "2025-02-01_00-00-00.log"), new DateTime(2025, 2, 1, 12, 0, 0));
+        File.SetLastWriteTime(Path.Combine(server.DataDir, "logs", "channels", gone.ToString(), "2025-03-01_00-00-00.log"), new DateTime(2025, 3, 2, 12, 0, 0));
+
+        var ready = await PrepareAsync(admin, [.. files.Keys]);
+        Assert.Equal("ovs-logs_2025-01-01_2025-03-02.zip", ready.FileName);
+        Assert.Single(Directory.GetFiles(ExportDir(server)));
+        var zipBytes = await PullAsync(admin, ready);
+        using (var zip = new ZipArchive(new MemoryStream(zipBytes)))
+        {
+            var entries = zip.Entries.ToDictionary(e => e.FullName, e => new StreamReader(e.Open()).ReadToEnd());
+            Assert.Equal(new Dictionary<string, string>
+            {
+                ["server/2025-01-01_00-00-00.log"] = "server alt\n",
+                [$"channels/Raid_1_{raid}/2025-02-01_00-00-00.log"] = "2025-02-01 00:00:00.000 [Raid/1 ..] eins\n",
+                [$"channels/Weg_{gone}/2025-03-01_00-00-00.log"] = "2025-03-01 00:00:00.000 [Weg] zwei\n",
+            }, entries);
+        }
+        Assert.Empty(Directory.GetFiles(ExportDir(server)));
+
+        // the session ends: its prepared download goes with it
+        await PrepareAsync(admin, [.. files.Keys]);
+        Assert.Single(Directory.GetFiles(ExportDir(server)));
+        await admin.DisposeAsync();
+        for (int i = 0; i < 50 && Directory.GetFiles(ExportDir(server)).Length > 0; i++) await Task.Delay(20);
+        Assert.Empty(Directory.GetFiles(ExportDir(server)));
+
+        // what a crash left behind is removed at the next start
+        File.WriteAllText(Path.Combine(ExportDir(server), "0123456789abcdef0123456789abcdef.zip"), "rest");
+        await using var restarted = await server.RestartAsync();
+        Assert.Empty(Directory.GetFiles(ExportDir(restarted)));
+    }
+
+    [Fact]
+    public async Task Download_RequiresLogsDownload_TooLargeRejected()
+    {
+        var reader = ClientIdentity.Create();
+        var admin = ClientIdentity.Create();
+        var server = await TestServer.StartAsync(data =>
+        {
+            TestServer.Grant(admin, "Admin")(data);
+            var group = new Group(Guid.NewGuid(), "Leser", Permission.LogsView | Permission.Speak);
+            data.Groups.Add(group);
+            data.Users.Add(new UserRecord { Fingerprint = reader.Fingerprint, LastNickname = "leser", GroupIds = [group.Id] });
+        });
+        await using var _ = server;
+        await using var chef = await TestClient.ConnectAsync(server, "chef", admin);
+        await using var leser = await TestClient.ConnectAsync(server, "leser", reader);
+        var id = (await ListAsync(leser))[0].Id; // viewing works
+        foreach (var request in new Request[] { new PrepareLogDownload([id]), new DownloadLogChunk("0123456789abcdef0123456789abcdef", 0) })
+        {
+            await leser.SendAsync(request with { RequestId = "d" });
+            Assert.Equal(Codes.PermissionDenied, (await leser.ErrorAsync("d")).Code);
+        }
+
+        // more than 200 MB together is refused, nothing is copied
+        var dir = ServerLogDir(server);
+        foreach (var name in new[] { "2025-01-01_00-00-00.log", "2025-01-02_00-00-00.log" })
+            using (var big = File.Create(Path.Combine(dir, name))) big.SetLength(101L * 1024 * 1024);
+        await chef.SendAsync(new PrepareLogDownload(["server/2025-01-01_00-00-00.log", "server/2025-01-02_00-00-00.log"]) { RequestId = "gross" });
+        Assert.Equal(Codes.LogsTooLarge, (await chef.ErrorAsync("gross")).Code);
+        Assert.False(Directory.Exists(ExportDir(server)) && Directory.EnumerateFileSystemEntries(ExportDir(server)).Any());
+
+        // unknown or no files, unknown download
+        await chef.SendAsync(new PrepareLogDownload([id, "../server-data.json"]) { RequestId = "fremd" });
+        Assert.Equal(Codes.NotFound, (await chef.ErrorAsync("fremd")).Code);
+        await chef.SendAsync(new PrepareLogDownload([]) { RequestId = "leer" });
+        Assert.Equal(Codes.InvalidValue, (await chef.ErrorAsync("leer")).Code);
+        await chef.SendAsync(new DownloadLogChunk("0123456789abcdef0123456789abcdef", 0) { RequestId = "unbekannt" });
+        Assert.Equal(Codes.NotFound, (await chef.ErrorAsync("unbekannt")).Code);
+    }
+
+    [Fact]
+    public async Task Download_ChunkedPullBased_ChatStillFlows()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var a = admin;
+        await using var other = await TestClient.ConnectAsync(server, "anna");
+        var content = new byte[3 * ProtocolInfo.BackupChunkBytes / 2 + 17];
+        Random.Shared.NextBytes(content);
+        File.WriteAllBytes(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), content);
+        using var entered = new SemaphoreSlim(0);
+        using var release = new ManualResetEventSlim();
+        server.State.LogReader.ReadHook = _ =>
+        {
+            entered.Release();
+            release.Wait(TimeSpan.FromSeconds(10));
+        };
+
+        await admin.SendAsync(new PrepareLogDownload(["server/2025-01-01_00-00-00.log"]) { RequestId = "p" });
+        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(5)), "copy did not start");
+        await other.SendAsync(new SendChat(ChatTarget.Channel, null, "noch da?")); // the copy is paused: chat still flows
+        await admin.WaitForAsync<ChatMessage>(m => m.Text == "noch da?");
+        release.Set();
+        var ready = await admin.WaitForAsync<LogDownloadReady>(r => r.RequestId == "p", 10_000);
+        Assert.Equal(content.Length, ready.Size);
+
+        // one chunk per request, nothing more without asking
+        await admin.SendAsync(new DownloadLogChunk(ready.DownloadId, 0) { RequestId = "c1" });
+        var first = await admin.WaitForAsync<LogChunk>(c => c.RequestId == "c1");
+        Assert.Equal(ProtocolInfo.BackupChunkBytes, Convert.FromBase64String(first.DataBase64).Length);
+        Assert.False(first.IsLast);
+        await admin.AssertNoMessageAsync<LogChunk>();
+        Assert.Equal(content, await PullAsync(admin, ready));
     }
 }

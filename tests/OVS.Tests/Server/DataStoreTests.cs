@@ -192,7 +192,7 @@ public sealed class DataStoreTests : IDisposable
         Assert.Equal(Permission.UserBan | Permission.UserKick | Permission.BansView, perms["Banner"]);
         Assert.Equal(Permission.Speak | Permission.ChatChannel, perms["Normal"]);
         Assert.Equal(Permission.All, perms["Alles"]);
-        Assert.All(loaded.Groups.Where(g => g.Name != "Alles"), g => Assert.Equal(Permission.None, g.Permissions & (Permission.UserDelete | Permission.LogsView)));
+        Assert.All(loaded.Groups.Where(g => g.Name != "Alles"), g => Assert.Equal(Permission.None, g.Permissions & (Permission.UserDelete | Permission.LogsView | Permission.LogsDownload)));
         Assert.False(loaded.Migrate(Config)); // once
     }
 

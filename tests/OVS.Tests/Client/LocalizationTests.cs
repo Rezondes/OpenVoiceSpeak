@@ -61,6 +61,11 @@ public class LocalizationTests
         Assert.Equal("Logs ansehen", PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsView).Label);
         Assert.Equal("View logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsView).Label));
         Assert.Equal("Page 2 of 3", TestCulture.With("en-US", () => string.Format(Strings.Ui_LogPage, 2, 3)));
+        // Package 82: the log download
+        Assert.Equal("Download logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsDownload).Label));
+        Assert.Equal("Die Auswahl ist grösser als 200 MB. Wähle einen kürzeren Zeitraum.", ErrorTexts.For(Codes.LogsTooLarge));
+        Assert.Equal("The selection is larger than 200 MB. Choose a shorter period.", TestCulture.With("en-US", () => ErrorTexts.For(Codes.LogsTooLarge)));
+        Assert.Equal("Downloading logs: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Logs_Downloading, 42)));
     }
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>

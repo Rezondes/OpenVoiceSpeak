@@ -658,6 +658,26 @@
                                     Width="150" AutomationProperties.Name="{x:Static l:Strings.Ui_LogTo}" />
               </WrapPanel>
               <TextBlock Classes="caption" Text="{Binding FileCountText}" TextWrapping="Wrap" />
+              <!-- Package 82: with LogsDownload, the checked files as one .log or a zip; the progress is the page's transfer -->
+              <WrapPanel Name="LogDownloadBar" ItemSpacing="8" LineSpacing="6" IsVisible="{Binding ShowDownload}">
+                <Button Command="{Binding SelectAllInPeriodCommand}">
+                  <TextBlock Text="{x:Static l:Strings.Ui_LogSelectAll}" />
+                </Button>
+                <Button Classes="subtle" Command="{Binding SelectNoneCommand}">
+                  <TextBlock Text="{x:Static l:Strings.Ui_LogSelectNone}" />
+                </Button>
+                <Button Name="LogDownloadButton" Click="OnDownloadLogs" IsEnabled="{Binding CanDownload}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                    <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
+                  </StackPanel>
+                </Button>
+                <TextBlock Classes="caption" Text="{Binding SelectionText}" VerticalAlignment="Center" />
+              </WrapPanel>
+              <StackPanel Name="LogTransfer" Spacing="4" IsVisible="{Binding Owner.IsTransferring}">
+                <TextBlock Classes="caption" Text="{Binding Owner.TransferText}" />
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Owner.TransferPercent}" Height="8" CornerRadius="4" />
+              </StackPanel>
             </StackPanel>
             <!-- file list (or the hits of a search) beside the opened file; under narrow one after the other (styles in Controls.axaml) -->
             <Grid Classes="adminLogs" ColumnDefinitions="Auto,*" RowDefinitions="2*,3*">
@@ -672,6 +692,8 @@
                       <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:LogFileViewModel">
                           <DockPanel>
+                            <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsSelected}" IsVisible="{Binding CanSelect}" MinWidth="0"
+                                      Margin="0,0,4,0" VerticalAlignment="Top" AutomationProperties.Name="{x:Static l:Strings.Ui_LogSelectFile}" />
                             <PathIcon DockPanel.Dock="Left" Classes="sm muted" Margin="0,2,8,0" VerticalAlignment="Top"
                                       Data="{StaticResource Icon.Document}" IsVisible="{Binding IsServer}" />
                             <PathIcon DockPanel.Dock="Left" Classes="sm muted" Margin="0,2,8,0" VerticalAlignment="Top"

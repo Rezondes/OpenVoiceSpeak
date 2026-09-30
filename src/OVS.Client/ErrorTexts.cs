@@ -49,6 +49,7 @@ public static class PermissionLabels
         (Permission.GroupsAssign, Strings.Perm_GroupsAssign),
         (Permission.ServerConfig, Strings.Perm_ServerConfig),
         (Permission.LogsView, Strings.Perm_LogsView),
+        (Permission.LogsDownload, Strings.Perm_LogsDownload),
         (Permission.ChatServer, Strings.Perm_ChatServer),
         (Permission.ChatChannel, Strings.Perm_ChatChannel),
         (Permission.ChatPrivate, Strings.Perm_ChatPrivate),
