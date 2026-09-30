@@ -863,8 +863,10 @@ public sealed class BackupTests : IDisposable
         Assert.Equal(2, store.List().Count);
         Assert.Empty(Directory.GetFiles(Path.Combine(data, "backups"), "*.tmp"));
 
-        // the listing is cached: an archive changed in place (the folder itself unchanged) keeps its listed version
+        // the listing re-reads only archives whose size or time changed, and sees every change at once, even two
+        // within the folder's timestamp resolution (a CI runner once listed a file that was already gone)
         var listed = store.List();
+        Assert.Equal(listed, store.List());
         var path = Path.Combine(store.Folder, listed[0].FileName);
         var changed = Path.Combine(dir, "geaendert.zip");
         WriteArchive(changed, new(Entries(path))
@@ -872,12 +874,9 @@ public sealed class BackupTests : IDisposable
             ["manifest.json"] = JsonSerializer.SerializeToUtf8Bytes(new { formatVersion = 1, dataVersion = 1, serverVersion = "geaendert", createdAt = listed[0].CreatedAt }),
         });
         File.WriteAllBytes(path, File.ReadAllBytes(changed));
-        Assert.Equal(listed, store.List());
-        // refreshed once the store changes files
+        Assert.Equal("geaendert", store.List().Single(b => b.FileName == listed[0].FileName).ServerVersion);
         store.Delete(Path.Combine(store.Folder, listed[1].FileName));
-        Assert.Equal("geaendert", Assert.Single(store.List()).ServerVersion);
-        // and when a file is added or removed from outside
-        File.Delete(path);
+        File.Delete(path); // right after the store's own change, from outside
         Assert.Empty(store.List());
     }
 

@@ -35,7 +35,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     const long MaxEntryBytes = 64L * 1024 * 1024;
     const long MaxManifestBytes = 16 * 1024; // Package 89: the listing reads every manifest
     /// <summary>Package 89: the last listing and the folder's write time it belongs to; any added, removed or renamed file changes that time.</summary>
-    (DateTime Stamp, IReadOnlyList<BackupInfo> Backups)? cache;
+    Dictionary<string, (long Length, DateTime Written, BackupInfo Info)>? cache;
 
     public string Folder => Path.Combine(dataDir, FolderName);
 
@@ -150,25 +150,32 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
 
     /// <summary>
     /// Every archive directly in the folder, newest first. A broken one still shows, so it can be deleted.
-    /// Package 89: cached until a file in the folder is added, removed or renamed, so a request no longer opens every archive.
+    /// Package 89: a manifest is read only for a new archive or one whose size or write time changed, so a request no
+    /// longer opens every archive. The file names are read every time: the folder's own write time is too coarse to tell
+    /// two changes close together apart.
     /// </summary>
     public IReadOnlyList<BackupInfo> List()
     {
         if (!Directory.Exists(Folder)) return [];
-        var stamp = Directory.GetLastWriteTimeUtc(Folder); // before the scan: a change during it is seen next time
-        if (cache is { } c && c.Stamp == stamp) return c.Backups;
-        var list = Directory.GetFiles(Folder, "*" + Extension, SearchOption.TopDirectoryOnly)
-            .Where(f => f.EndsWith(Extension, StringComparison.Ordinal)) // the pattern would also match ".ovsbackupX" on Windows
-            .Select(f =>
+        var known = cache ?? [];
+        var seen = new Dictionary<string, (long Length, DateTime Written, BackupInfo Info)>(StringComparer.Ordinal);
+        foreach (var f in Directory.GetFiles(Folder, "*" + Extension, SearchOption.TopDirectoryOnly))
+        {
+            if (!f.EndsWith(Extension, StringComparison.Ordinal)) continue; // the pattern would also match ".ovsbackupX" on Windows
+            var file = new FileInfo(f);
+            if (known.TryGetValue(file.Name, out var entry) && entry.Length == file.Length && entry.Written == file.LastWriteTimeUtc)
             {
-                var file = new FileInfo(f);
-                var manifest = TryReadManifest(f);
-                return new BackupInfo(file.Name, manifest?.CreatedAt ?? file.LastWriteTimeUtc, file.Length, manifest?.ServerVersion ?? "?");
-            })
+                seen[file.Name] = entry;
+                continue;
+            }
+            var manifest = TryReadManifest(f);
+            var info = new BackupInfo(file.Name, manifest?.CreatedAt ?? file.LastWriteTimeUtc, file.Length, manifest?.ServerVersion ?? "?");
+            seen[file.Name] = (file.Length, file.LastWriteTimeUtc, info);
+        }
+        cache = seen;
+        return seen.Values.Select(e => e.Info)
             .OrderByDescending(b => b.CreatedAt).ThenByDescending(b => b.FileName, StringComparer.Ordinal)
             .ToList();
-        cache = (stamp, list);
-        return list;
     }
 
     /// <summary>The full path of a listed archive; anything else (other folders, other files, "..") is null.</summary>
