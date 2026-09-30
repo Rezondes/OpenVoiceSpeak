@@ -134,6 +134,44 @@ public sealed class RequestValidationTests
             Assert.Equal(Codes.NicknameTaken, Assert.IsType<Rejected>(await copy.HandshakeAsync("\uFF21NNA", pump: false)).Code);
     }
 
+    /// <summary>Old data can hold one stored name twice: it belongs to the record that logged in last.</summary>
+    [Fact]
+    public async Task Nickname_StoredTwice_ReservedForLatestLogin()
+    {
+        var now = DateTimeOffset.UtcNow;
+        ClientIdentity a = ClientIdentity.Create(), b = ClientIdentity.Create(), never = ClientIdentity.Create(),
+            neverMax = ClientIdentity.Create(), oldMax = ClientIdentity.Create();
+        UserRecord Record(ClientIdentity id, string name, DateTimeOffset? lastLogin, DateTimeOffset firstSeen) => new()
+        {
+            Fingerprint = id.Fingerprint, LastNickname = name, GroupIds = [WellKnownGroups.Guest], LastLogin = lastLogin, FirstSeen = firstSeen,
+        };
+        var (server, admin) = await StartWithAdminAsync(d => d.Users.AddRange(
+        [
+            Record(a, "Steven", now.AddDays(-1), now.AddDays(-30)),
+            Record(b, "Steven", now, now.AddDays(-2)),
+            Record(never, "steven", null, now.AddDays(-60)),
+            Record(neverMax, "Max", null, now.AddDays(-60)),
+            Record(oldMax, "Max", now.AddDays(-60), now.AddDays(-60)),
+        ]));
+        await using var _ = server;
+        await using var adminClient = admin;
+
+        async Task Refused(ClientIdentity? id, string name)
+        {
+            var client = await TestClient.OpenAsync(server.Port, id);
+            await using (client)
+                Assert.Equal(Codes.NicknameTaken, Assert.IsType<Rejected>(await client.HandshakeAsync(name, pump: false)).Code);
+        }
+
+        await using (await TestClient.ConnectAsync(server, "Steven", b)) { }
+        await Refused(a, "Steven");
+        await Refused(null, "Steven");
+        await Refused(never, "Steven"); // without a login it counts as the oldest
+
+        await Refused(neverMax, "Max");
+        await using (await TestClient.ConnectAsync(server, "Max", oldMax)) { }
+    }
+
     [Fact]
     public async Task MultilineTexts_AllowNewlineRejectOtherControls()
     {

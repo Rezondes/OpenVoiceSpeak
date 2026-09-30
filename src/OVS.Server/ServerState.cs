@@ -211,8 +211,12 @@ public sealed partial class ServerState
             // Package 83: normalized, and an offline user's last name is taken as well
             // ponytail: one linear pass over all users per login; index the keys if the user list grows into the tens of thousands
             var key = NicknameKey(nickname);
-            if (sessions.Values.Any(s => s != replaced && NicknameKey(s.Nickname) == key)
-                || data.Users.Any(u => u.Fingerprint != fingerprint && u.LastNickname.Length > 0 && NicknameKey(u.LastNickname) == key))
+            // A stored name can be held by several records from older data: it belongs to the one that logged in last
+            // (no login counts as oldest, then the one seen first), so the others cannot lock each other out.
+            var owner = data.Users.Where(u => u.LastNickname.Length > 0 && NicknameKey(u.LastNickname) == key)
+                .OrderByDescending(u => u.LastLogin ?? DateTimeOffset.MinValue).ThenBy(u => u.FirstSeen).ThenBy(u => u.Fingerprint, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (sessions.Values.Any(s => s != replaced && NicknameKey(s.Nickname) == key) || owner is not null && owner.Fingerprint != fingerprint)
                 return (null, new Rejected(Codes.NicknameTaken));
 
             var user = FindUser(fingerprint);
