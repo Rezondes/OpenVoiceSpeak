@@ -10,8 +10,21 @@ public sealed partial class ServerState
 {
     void OnRedeemAdminToken(Session s, RedeemAdminToken r)
     {
+        // Package 86: at most AdminTokenFailures wrong tokens per source and window, even across sessions
+        var source = PasswordSource(s.Ip);
+        var now = time.GetUtcNow();
+        if (adminTokenFailures.TryGetValue(source, out var f) && now - f.First >= Limits.AdminTokenWindow)
+            adminTokenFailures.Remove(source);
+        if (adminTokenFailures.GetValueOrDefault(source).Count >= Limits.AdminTokenFailures)
+        {
+            Fail(s, r, Codes.RateLimited);
+            return;
+        }
         if (!adminToken.TryRedeem(r.Token))
         {
+            var (count, first) = adminTokenFailures.GetValueOrDefault(source, (0, now));
+            adminTokenFailures[source] = (count + 1, first);
+            logs.Server($"Admin-Token falsch von {s.Nickname} ({s.Ip})");
             Fail(s, r, Codes.InvalidToken);
             return;
         }
@@ -143,7 +156,7 @@ public sealed partial class ServerState
 
     void OnListUsers(Session s, ListUsers r)
     {
-        if (!Require(s, r, Permission.UsersView)) return; // Package 76: the IP is only for those who may see the overview (A86)
+        if (!Require(s, r, Permission.UsersView) || !ThrottleList(s, r)) return; // Package 76: the IP is only for those who may see the overview (A86)
         var now = time.GetUtcNow();
         var online = sessions.Values.ToDictionary(x => x.Fingerprint);
         var bans = data.Bans.Where(b => b.IsActive(now)).ToLookup(b => b.Fingerprint);

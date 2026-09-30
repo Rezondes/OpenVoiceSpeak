@@ -53,7 +53,7 @@ public sealed class TestClient : IAsyncDisposable
 
     /// <returns>Welcome on success, otherwise the Rejected message.</returns>
     public async Task<Message> HandshakeAsync(string nickname, string? password = null, int version = ProtocolInfo.Version,
-        bool badSignature = false, byte[]? certHash = null)
+        bool badSignature = false, byte[]? certHash = null, bool pump = true)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await writer.WriteAsync(new ClientHello(version, nickname, Convert.ToBase64String(Identity.PublicKey), password), cts.Token);
@@ -68,7 +68,7 @@ public sealed class TestClient : IAsyncDisposable
         if (result is Welcome welcome)
         {
             Welcome = welcome;
-            pump = Task.Run(PumpAsync);
+            if (pump) this.pump = Task.Run(PumpAsync); // Package 86: without it the client never reads again
         }
         return result;
     }

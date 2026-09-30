@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using OVS.Server;
 using OVS.Server.Data;
 using OVS.Server.Permissions;
 using OVS.Shared.Identity;
@@ -299,7 +300,8 @@ public sealed class LogCommandTests
     [Fact]
     public async Task DownloadSelection_ZipWithFolders_TempRemoved()
     {
-        var (server, admin) = await StartWithAdminAsync();
+        var time = new ManualTimeProvider(); // Package 86: one download per 10 s and session
+        var (server, admin) = await StartWithAdminAsync(time);
         await admin.SendAsync(new CreateChannel("Raid/1 ..", ""));
         var raid = (await admin.WaitForAsync<ChannelAdded>()).Channel.Id;
         var gone = Guid.NewGuid();
@@ -337,6 +339,7 @@ public sealed class LogCommandTests
         Assert.Empty(Directory.GetFiles(ExportDir(server)));
 
         // the session ends: its prepared download goes with it
+        time.Advance(Limits.HeavyInterval);
         await PrepareAsync(admin, [.. files.Keys]);
         Assert.Single(Directory.GetFiles(ExportDir(server)));
         await admin.DisposeAsync();
@@ -354,13 +357,14 @@ public sealed class LogCommandTests
     {
         var reader = ClientIdentity.Create();
         var admin = ClientIdentity.Create();
+        var time = new ManualTimeProvider(); // Package 86: one download per 10 s and session
         var server = await TestServer.StartAsync(data =>
         {
             TestServer.Grant(admin, "Admin")(data);
             var group = new Group(Guid.NewGuid(), "Leser", Permission.LogsView | Permission.Speak);
             data.Groups.Add(group);
             data.Users.Add(new UserRecord { Fingerprint = reader.Fingerprint, LastNickname = "leser", GroupIds = [group.Id] });
-        });
+        }, time: time);
         await using var _ = server;
         await using var chef = await TestClient.ConnectAsync(server, "chef", admin);
         await using var leser = await TestClient.ConnectAsync(server, "leser", reader);
@@ -380,6 +384,7 @@ public sealed class LogCommandTests
         Assert.False(Directory.Exists(ExportDir(server)) && Directory.EnumerateFileSystemEntries(ExportDir(server)).Any());
 
         // unknown or no files, unknown download
+        time.Advance(Limits.HeavyInterval);
         await chef.SendAsync(new PrepareLogDownload([id, "../server-data.json"]) { RequestId = "fremd" });
         Assert.Equal(Codes.NotFound, (await chef.ErrorAsync("fremd")).Code);
         await chef.SendAsync(new PrepareLogDownload([]) { RequestId = "leer" });

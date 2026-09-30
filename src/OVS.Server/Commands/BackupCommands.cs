@@ -22,12 +22,12 @@ public sealed partial class ServerState
 
     void OnListBackups(Session s, ListBackups r)
     {
-        if (Require(s, r, Permission.ServerConfig)) SendBackups(s, r);
+        if (Require(s, r, Permission.ServerConfig) && ThrottleList(s, r)) SendBackups(s, r);
     }
 
     void OnCreateBackup(Session s, CreateBackup r)
     {
-        if (!Require(s, r, Permission.ServerConfig)) return;
+        if (!Require(s, r, Permission.ServerConfig) || !ThrottleHeavy(s, r)) return;
         try
         {
             var created = backups.Create();

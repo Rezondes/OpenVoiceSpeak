@@ -107,7 +107,7 @@ public sealed partial class ServerState
 
     void OnListBans(Session s, ListBans r)
     {
-        if (!Require(s, r, Permission.BansView)) return;
+        if (!Require(s, r, Permission.BansView) || !ThrottleList(s, r)) return;
         SendBanList(s, r.RequestId);
     }
 

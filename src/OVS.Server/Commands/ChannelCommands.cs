@@ -19,11 +19,9 @@ public sealed partial class ServerState
             return;
         }
         var from = s.ChannelId;
-        if (from != r.ChannelId)
-        {
-            ChannelLog(from, $"{s.Nickname} hat den Channel verlassen (wechselt nach {ChannelName(r.ChannelId)})");
-            ChannelLog(r.ChannelId, $"{s.Nickname} hat den Channel betreten (kommt aus {ChannelName(from)})");
-        }
+        if (from == r.ChannelId) return; // Package 86: no broadcast for a no-op
+        ChannelLog(from, $"{s.Nickname} hat den Channel verlassen (wechselt nach {ChannelName(r.ChannelId)})");
+        ChannelLog(r.ChannelId, $"{s.Nickname} hat den Channel betreten (kommt aus {ChannelName(from)})");
         s.ChannelId = r.ChannelId;
         Broadcast(new UserUpdated(Info(s)));
     }
@@ -188,8 +186,10 @@ public sealed partial class ServerState
 
     void OnSetSelfState(Session s, SetSelfState r)
     {
+        bool muted = r.Muted || r.Deafened;
+        if (s.SelfDeafened == r.Deafened && s.SelfMuted == muted) return; // Package 86: no broadcast for a no-op
         s.SelfDeafened = r.Deafened;
-        s.SelfMuted = r.Muted || r.Deafened;
+        s.SelfMuted = muted;
         Broadcast(new UserUpdated(Info(s)));
     }
 

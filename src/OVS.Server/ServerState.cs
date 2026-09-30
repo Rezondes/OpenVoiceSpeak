@@ -29,6 +29,7 @@ public sealed partial class ServerState
     readonly Dictionary<uint, Session> sessions = [];
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> passwordFailures = [];
+    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per PasswordSource
     readonly Dictionary<Guid, DateTimeOffset> attemptSaved = []; // Package 80: last save of a ban's blocked attempts
     DateTimeOffset nextPasswordSweep;
     readonly AdminToken adminToken = new();
@@ -104,6 +105,11 @@ public sealed partial class ServerState
             connectionsPerIp[ip] = count;
             return count <= MaxConnectionsPerIp;
         }
+    }
+
+    public int ConnectionsFrom(IPAddress ip)
+    {
+        lock (gate) return connectionsPerIp.GetValueOrDefault(ip);
     }
 
     public void ReleaseConnection(IPAddress ip)
@@ -259,6 +265,7 @@ public sealed partial class ServerState
             Codes.Banned => "gebannt",
             Codes.ReplacedByNewConnection => "durch neue Verbindung ersetzt",
             Codes.UserDeleted => "Nutzerdaten gelöscht",
+            Codes.RateLimited => "zu viele Anfragen", // Package 86
             _ => d.Reason,
         };
         logs.Server($"{session.Nickname} getrennt ({reason})");
@@ -288,6 +295,7 @@ public sealed partial class ServerState
         lock (gate)
         {
             if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
+            if (message is Request request && !Admissible(session, request)) return;
             switch (message)
             {
                 case JoinChannel r: OnJoinChannel(session, r); break;
@@ -307,7 +315,7 @@ public sealed partial class ServerState
                 case RedeemAdminToken r: OnRedeemAdminToken(session, r); break;
                 case UpdateServerSettings r: OnUpdateServerSettings(session, r); break;
                 case SetServerIcon r: OnSetServerIcon(session, r); break;
-                case GetServerIcon r: session.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64)); break;
+                case GetServerIcon r: OnGetServerIcon(session, r); break;
                 case Kick r: OnKick(session, r); break;
                 case Ban r: OnBan(session, r); break;
                 case Unban r: OnUnban(session, r); break;
@@ -333,6 +341,46 @@ public sealed partial class ServerState
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }
+    }
+
+    // ---- Package 86: request limits (call under gate) ----
+
+    /// <summary>The per-session budget and the RequestId length; false when the request was answered or the session dropped.</summary>
+    bool Admissible(Session s, Request r)
+    {
+        var id = r.RequestId is { Length: > Limits.MaxRequestIdLength } tooLong ? tooLong[..Limits.MaxRequestIdLength] : r.RequestId;
+        // Transfers are pull-based (one chunk per answer) and need the budget less than their speed does.
+        bool transfer = r is DownloadBackup or UploadBackupChunk or DownloadLogChunk;
+        switch (transfer ? null : s.TakeRequest())
+        {
+            case true:
+                RemoveLocked(s, new Disconnected(Codes.RateLimited));
+                return false;
+            case false:
+                s.Send(new Error(id, Codes.RateLimited));
+                return false;
+        }
+        if (id == r.RequestId) return true;
+        s.Send(new Error(id, Codes.InvalidValue, $"RequestId länger als {Limits.MaxRequestIdLength} Zeichen"));
+        return false;
+    }
+
+    /// <summary>The own limit of a costly request kind, per session; answers RateLimited when it is used up.</summary>
+    static bool Throttle(Session s, Request r, double perSecond, double burst = 1)
+    {
+        if (s.TryTakeCostly(r.GetType(), perSecond, burst)) return true;
+        Fail(s, r, Codes.RateLimited);
+        return false;
+    }
+
+    static bool ThrottleList(Session s, Request r) => Throttle(s, r, Limits.ListsPerSecond, Limits.ListBurst);
+
+    static bool ThrottleHeavy(Session s, Request r) => Throttle(s, r, 1 / Limits.HeavyInterval.TotalSeconds);
+
+    /// <summary>Needs no right, but one answer can be ~700 KB: from the cached string, once per IconInterval.</summary>
+    void OnGetServerIcon(Session s, GetServerIcon r)
+    {
+        if (Throttle(s, r, 1 / Limits.IconInterval.TotalSeconds)) s.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64));
     }
 
     // ---- Voice ----
@@ -371,7 +419,9 @@ public sealed partial class ServerState
 
     void Broadcast(Message message)
     {
-        foreach (var s in sessions.Values) s.Send(message);
+        if (sessions.Count == 0) return;
+        var frame = Session.Encode(message); // Package 86: once for everyone
+        foreach (var s in sessions.Values) s.SendFrame(frame);
     }
 
     /// <summary>

@@ -17,15 +17,19 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
     readonly byte[] certHash = CertFingerprint.Hash(certificate);
     readonly CancellationTokenSource stopping = new();
     readonly ConcurrentDictionary<Task, byte> connections = new();
+    SemaphoreSlim? handshakes; // Package 86: created on Start, after MaxPendingHandshakes is set
     Task? acceptLoop;
 
     public TimeSpan HandshakeTimeout { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(15);
+    public TimeSpan WriteTimeout { get; init; } = Limits.WriteTimeout;
+    public int MaxPendingHandshakes { get; init; } = Limits.MaxPendingHandshakes;
 
     public IPEndPoint LocalEndPoint => (IPEndPoint)listener.LocalEndpoint;
 
     public void Start()
     {
+        handshakes = new SemaphoreSlim(MaxPendingHandshakes);
         listener.Start();
         acceptLoop = Task.Run(AcceptLoopAsync);
     }
@@ -61,17 +65,41 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             {
                 return;
             }
-            var task = Task.Run(() => HandleAsync(tcp));
+            // Package 86: refused before TLS, so neither a crowd from one IP nor a handshake flood costs crypto work
+            IPAddress ip;
+            try
+            {
+                ip = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
+            }
+            catch (Exception e) when (e is SocketException or ObjectDisposedException)
+            {
+                tcp.Dispose();
+                continue;
+            }
+            if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+            if (!state.TryAddConnection(ip))
+            {
+                state.ReleaseConnection(ip);
+                state.LogRejected(ip, Codes.TooManyConnections, null, null);
+                tcp.Dispose();
+                continue;
+            }
+            if (!handshakes!.Wait(0))
+            {
+                state.ReleaseConnection(ip);
+                tcp.Dispose();
+                continue;
+            }
+            var task = Task.Run(() => HandleAsync(tcp, ip));
             connections.TryAdd(task, 0);
             _ = task.ContinueWith(t => connections.TryRemove(t, out _), TaskScheduler.Default);
         }
     }
 
-    async Task HandleAsync(TcpClient tcp)
+    /// <summary>Owns one connection slot of ip and one handshake slot, both taken by the accept loop.</summary>
+    async Task HandleAsync(TcpClient tcp, IPAddress ip)
     {
-        var ip = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
-        if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
-        bool allowed = state.TryAddConnection(ip);
+        bool handshaking = true;
         Session? session = null;
         string reason = "Verbindung abgebrochen";
         Task? writeLoop = null;
@@ -85,16 +113,13 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             var reader = new FrameReader(ssl);
             var writer = new FrameWriter(ssl);
 
-            if (!allowed)
-            {
-                state.LogRejected(ip, Codes.TooManyConnections, null, null);
-                await writer.WriteAsync(new Rejected(Codes.TooManyConnections), handshake.Token);
-                return;
-            }
-
             session = await HandshakeAsync(reader, writer, ip, handshake.Token);
+            handshakes!.Release();
+            handshaking = false;
             if (session is null) return;
 
+            // Package 86: an overflowing outbox or a stuck write closes the socket at once, which ends both loops
+            using var abort = session.Aborted.Register(tcp.Close);
             writeLoop = WriteLoopAsync(session, writer, tcp);
             try
             {
@@ -112,9 +137,10 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         }
         finally
         {
-            if (session is not null) state.Remove(session, reason);
+            if (handshaking) handshakes!.Release();
+            if (session is not null) state.Remove(session, session.AbortReason ?? reason);
+            state.ReleaseConnection(ip); // Package 86: before the write loop, which may still wait for its timeout
             if (writeLoop is not null) await writeLoop;
-            state.ReleaseConnection(ip);
             session?.Dispose();
             tcp.Dispose();
         }
@@ -166,12 +192,25 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         }
     }
 
-    static async Task WriteLoopAsync(Session session, FrameWriter writer, TcpClient tcp)
+    async Task WriteLoopAsync(Session session, FrameWriter writer, TcpClient tcp)
     {
         try
         {
-            await foreach (var message in session.Outgoing.ReadAllAsync())
-                await writer.WriteAsync(message);
+            await foreach (var frame in session.Outgoing.ReadAllAsync())
+            {
+                var write = writer.WriteFrameAsync(frame);
+                try
+                {
+                    await write.WaitAsync(WriteTimeout);
+                }
+                catch (TimeoutException)
+                {
+                    _ = write.ContinueWith(t => t.Exception, TaskContinuationOptions.OnlyOnFaulted); // fails once the socket is closed
+                    session.Abort("Schreiben zu langsam");
+                    return;
+                }
+                session.Written(frame);
+            }
         }
         catch (Exception e) when (e is IOException or ObjectDisposedException or ProtocolException or SocketException)
         {

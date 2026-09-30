@@ -5379,12 +5379,12 @@ Audit findings:
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every session has a request budget (token bucket, for example 20 requests per second with a burst of 40, Ping exempt). Exceeding it answers `RateLimited`; sustained abuse (budget exhausted for 10 s) disconnects with a log line.
-- [ ] AC2: Expensive requests have their own lower limits: `GetServerIcon` at most once per 10 s per session and answered from a cached string; `ListUsers`, `ListBans`, `ListLogs`, `ListBackups` at most 2 per second; `CreateBackup` and `PrepareLogDownload` at most 1 per 10 s; `RedeemAdminToken` at most 5 failures per 10 minutes per IP, failures logged.
-- [ ] AC3: `JoinChannel` into the current channel and `SetSelfState` without a change do nothing (no broadcast, no log line).
-- [ ] AC4: The outbox is limited by bytes too (for example 8 MB); exceeding it disconnects the session. Each write has a timeout (for example 10 s); on timeout the connection is closed immediately and its slot released, without waiting for the write loop.
-- [ ] AC5: `RequestId` longer than 64 characters is rejected (`InvalidValue` with the id cut).
-- [ ] AC6: Connections over the per-IP limit are closed before TLS. At most 64 handshakes run at the same time server-wide; more are closed right away.
+- [x] AC1: Every session has a request budget (token bucket, for example 20 requests per second with a burst of 40, Ping exempt). Exceeding it answers `RateLimited`; sustained abuse (budget exhausted for 10 s) disconnects with a log line.
+- [x] AC2: Expensive requests have their own lower limits: `GetServerIcon` at most once per 10 s per session and answered from a cached string; `ListUsers`, `ListBans`, `ListLogs`, `ListBackups` at most 2 per second; `CreateBackup` and `PrepareLogDownload` at most 1 per 10 s; `RedeemAdminToken` at most 5 failures per 10 minutes per IP, failures logged.
+- [x] AC3: `JoinChannel` into the current channel and `SetSelfState` without a change do nothing (no broadcast, no log line).
+- [x] AC4: The outbox is limited by bytes too (for example 8 MB); exceeding it disconnects the session. Each write has a timeout (for example 10 s); on timeout the connection is closed immediately and its slot released, without waiting for the write loop.
+- [x] AC5: `RequestId` longer than 64 characters is rejected (`InvalidValue` with the id cut).
+- [x] AC6: Connections over the per-IP limit are closed before TLS. At most 64 handshakes run at the same time server-wide; more are closed right away.
 
 ### Tests (TDD)
 

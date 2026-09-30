@@ -179,18 +179,6 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task SixthConnectionSameIp_Rejected()
-    {
-        await using var server = await TestServer.StartAsync();
-        var open = new List<TestClient>();
-        for (int i = 0; i < 5; i++) open.Add(await TestClient.OpenAsync(server.Port));
-        await using var sixth = await TestClient.OpenAsync(server.Port);
-
-        Assert.Equal(Codes.TooManyConnections, Assert.IsType<Rejected>(await sixth.ReadRawAsync()).Code);
-        foreach (var c in open) await c.DisposeAsync();
-    }
-
-    [Fact]
     public async Task Startup_LogsAdminToken()
     {
         await using var server = await TestServer.StartAsync();

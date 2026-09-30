@@ -15,7 +15,7 @@ public sealed partial class ServerState
 
     void OnListLogs(Session s, ListLogs r)
     {
-        if (!Require(s, r, Permission.LogsView)) return;
+        if (!Require(s, r, Permission.LogsView) || !ThrottleList(s, r)) return;
         var names = data.Channels.ToDictionary(c => c.Id, c => c.Name);
         QueueLogJob(s, r, () => new LogList(r.RequestId, LogReader.List(names)));
     }
@@ -57,6 +57,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, "keine oder doppelte Dateien");
             return;
         }
+        if (!ThrottleHeavy(s, r)) return; // Package 86
         var names = data.Channels.ToDictionary(c => c.Id, c => c.Name);
         QueueLogJob(s, r, () =>
         {

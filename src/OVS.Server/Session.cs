@@ -11,7 +11,10 @@ namespace OVS.Server;
 public sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey, TimeProvider time)
     : IDisposable
 {
-    readonly Channel<Message> outbox = Channel.CreateBounded<Message>(new BoundedChannelOptions(1024) { SingleReader = true });
+    readonly Channel<byte[]> outbox = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(Limits.MaxOutboxMessages) { SingleReader = true });
+    readonly CancellationTokenSource aborted = new();
+    long queuedBytes;
+    volatile bool closing; // after Close or Abort: later messages are dropped quietly
 
     public uint Id { get; } = id;
     public string Fingerprint { get; } = fingerprint;
@@ -135,19 +138,94 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         }
     }
 
-    public ChannelReader<Message> Outgoing => outbox.Reader;
+    // ---- Package 86: request budget, guarded by the ServerState lock ----
 
-    /// <summary>Never blocks. A client too slow to drain 1024 queued messages gets disconnected.</summary>
-    public void Send(Message message)
+    readonly RateLimiter requests = new(time, Limits.RequestsPerSecond, Limits.RequestBurst);
+    readonly Dictionary<Type, RateLimiter> costly = [];
+    DateTimeOffset floodSince, lastRefused;
+
+    /// <summary>Takes one request from the budget. Null when it may run, else false (refuse) or true (sustained flood, disconnect).</summary>
+    public bool? TakeRequest()
     {
-        if (!outbox.Writer.TryWrite(message)) outbox.Writer.TryComplete();
+        if (requests.TryTake()) return null;
+        var now = time.GetUtcNow();
+        if (now - lastRefused > Limits.FloodPause) floodSince = now;
+        lastRefused = now;
+        return now - floodSince >= Limits.FloodDisconnectAfter;
     }
 
+    /// <summary>The own bucket of a costly request kind, created on first use.</summary>
+    public bool TryTakeCostly(Type kind, double perSecond, double burst)
+    {
+        if (!costly.TryGetValue(kind, out var limiter)) costly[kind] = limiter = new RateLimiter(time, perSecond, burst);
+        return limiter.TryTake();
+    }
+
+    // ---- Outbox: encoded frames, limited by count and bytes (Package 86) ----
+
+    /// <summary>Frames for the write loop; call Written after each one.</summary>
+    public ChannelReader<byte[]> Outgoing => outbox.Reader;
+
+    /// <summary>Cancelled when the session must go at once (outbox over its limits); the connection closes without draining.</summary>
+    public CancellationToken Aborted => aborted.Token;
+
+    /// <summary>Why Aborted fired, for the log.</summary>
+    public string? AbortReason { get; private set; }
+
+    public long QueuedBytes => Interlocked.Read(ref queuedBytes);
+
+    public void Written(byte[] frame) => Interlocked.Add(ref queuedBytes, -frame.Length);
+
+    /// <summary>Never blocks, safe from any thread. A client that falls too far behind is aborted.</summary>
+    public void Send(Message message) => SendFrame(Encode(message));
+
+    /// <summary>Package 86: Broadcast encodes once for everyone. Null (too large for a frame) aborts like an overflow.</summary>
+    public void SendFrame(byte[]? frame)
+    {
+        if (closing) return;
+        if (frame is null)
+        {
+            Abort("Nachricht zu gross");
+            return;
+        }
+        if (Interlocked.Add(ref queuedBytes, frame.Length) <= Limits.MaxOutboxBytes && outbox.Writer.TryWrite(frame)) return;
+        Interlocked.Add(ref queuedBytes, -frame.Length);
+        if (!closing) Abort("Sendepuffer voll");
+    }
+
+    /// <summary>The frame of a message, null when it exceeds the frame limit.</summary>
+    public static byte[]? Encode(Message message)
+    {
+        try
+        {
+            return FrameWriter.Encode(message);
+        }
+        catch (ProtocolException)
+        {
+            return null;
+        }
+    }
+
+    public void Abort(string reason)
+    {
+        lock (aborted)
+        {
+            if (aborted.IsCancellationRequested) return;
+            AbortReason = reason;
+            closing = true;
+            outbox.Writer.TryComplete();
+            aborted.Cancel();
+        }
+    }
+
+    /// <summary>Queues final (even past the byte limit) and ends the outbox; the write loop drains it, then closes.</summary>
     public void Close(Message? final = null)
     {
-        if (final is not null) outbox.Writer.TryWrite(final);
+        if (!closing && final is not null && Encode(final) is { } frame && outbox.Writer.TryWrite(frame))
+            Interlocked.Add(ref queuedBytes, frame.Length);
+        closing = true;
         outbox.Writer.TryComplete();
     }
 
-    public void Dispose() => Crypto.Dispose();
+    public void Dispose() => Crypto.Dispose(); // aborted stays usable: log jobs may still send after the end
 }

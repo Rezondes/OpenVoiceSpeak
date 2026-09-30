@@ -18,10 +18,12 @@ public sealed class ServerIconStore
             png = ServerIconFormat.Validate(bytes) is null ? bytes : null; // a broken file behaves like no logo
         }
         Hash = png is null ? null : ServerIconFormat.Hash(png);
+        Base64 = png is null ? null : Convert.ToBase64String(png);
     }
 
     public string? Hash { get; private set; }
-    public string? Base64 => png is null ? null : Convert.ToBase64String(png);
+    /// <summary>Package 86: built once per logo, not per request.</summary>
+    public string? Base64 { get; private set; }
 
     /// <summary>Stores a validated PNG (write, then rename), or removes the logo with null.</summary>
     public void Set(byte[]? value)
@@ -38,5 +40,6 @@ public sealed class ServerIconStore
         }
         png = value;
         Hash = value is null ? null : ServerIconFormat.Hash(value);
+        Base64 = value is null ? null : Convert.ToBase64String(value);
     }
 }

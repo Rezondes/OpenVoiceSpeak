@@ -42,10 +42,10 @@ public sealed class BackupTests : IDisposable
 
     static ServerData DataOf(byte[] json) => JsonSerializer.Deserialize<ServerData>(json, ProtocolJson.Options)!;
 
-    static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync(TimeProvider? time = null)
+    static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync(TimeProvider? time = null, Action<ServerData>? seed = null)
     {
         var admin = ClientIdentity.Create();
-        var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time);
+        var server = await TestServer.StartAsync(d => { TestServer.Grant(admin, "Admin")(d); seed?.Invoke(d); }, time: time);
         return (server, await TestClient.ConnectAsync(server, "chef", admin));
     }
 
@@ -86,7 +86,8 @@ public sealed class BackupTests : IDisposable
     public async Task List_NewestFirst_Delete()
     {
         var time = new ManualTimeProvider();
-        var (server, admin) = await StartWithAdminAsync(time);
+        var other = ClientIdentity.Create(); // Package 86: one backup per 10 s and session, so a second admin
+        var (server, admin) = await StartWithAdminAsync(time, TestServer.Grant(other, "Admin"));
         await using var _ = server;
         await using var a = admin;
         await admin.SendAsync(new CreateBackup());
@@ -94,8 +95,9 @@ public sealed class BackupTests : IDisposable
         time.Advance(TimeSpan.FromMinutes(1));
         await admin.SendAsync(new CreateBackup());
         await admin.WaitForAsync<BackupList>();
-        await admin.SendAsync(new CreateBackup()); // same second: a name of its own
-        await admin.WaitForAsync<BackupList>();
+        await using var second = await TestClient.ConnectAsync(server, "zweiter", other);
+        await second.SendAsync(new CreateBackup()); // same second: a name of its own
+        await second.WaitForAsync<BackupList>();
 
         await admin.SendAsync(new ListBackups { RequestId = "l" });
         var list = (await admin.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups;

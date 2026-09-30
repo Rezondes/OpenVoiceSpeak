@@ -59,7 +59,10 @@ public sealed class FrameWriter(Stream stream)
 {
     readonly SemaphoreSlim gate = new(1, 1);
 
-    public async Task WriteAsync(Message message, CancellationToken ct = default)
+    public Task WriteAsync(Message message, CancellationToken ct = default) => WriteFrameAsync(Encode(message), ct);
+
+    /// <summary>Length header plus JSON; throws a ProtocolException above the frame limit.</summary>
+    public static byte[] Encode(Message message)
     {
         var payload = JsonSerializer.SerializeToUtf8Bytes(message, ProtocolJson.Options);
         if (payload.Length > FrameReader.MaxFrameSize)
@@ -68,7 +71,12 @@ public sealed class FrameWriter(Stream stream)
         var frame = new byte[4 + payload.Length];
         BinaryPrimitives.WriteUInt32BigEndian(frame, (uint)payload.Length);
         payload.CopyTo(frame, 4);
+        return frame;
+    }
 
+    /// <summary>Writes a frame made by Encode.</summary>
+    public async Task WriteFrameAsync(byte[] frame, CancellationToken ct = default)
+    {
         await gate.WaitAsync(ct);
         try
         {

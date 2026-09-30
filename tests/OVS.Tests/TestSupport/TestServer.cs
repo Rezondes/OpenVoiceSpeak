@@ -27,7 +27,8 @@ public sealed class TestServer : IAsyncDisposable
 
     public static Task<TestServer> StartAsync(
         Action<ServerData>? seed = null, string? dataDir = null, int maxUsers = 50, string password = "",
-        TimeProvider? time = null, TimeSpan? idleTimeout = null, TimeSpan? handshakeTimeout = null)
+        TimeProvider? time = null, TimeSpan? idleTimeout = null, TimeSpan? handshakeTimeout = null,
+        TimeSpan? writeTimeout = null, int? maxPendingHandshakes = null)
     {
         dataDir ??= Path.Combine(Path.GetTempPath(), "ovs-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dataDir);
@@ -56,6 +57,8 @@ public sealed class TestServer : IAsyncDisposable
             {
                 IdleTimeout = idleTimeout ?? TimeSpan.FromSeconds(15),
                 HandshakeTimeout = handshakeTimeout ?? TimeSpan.FromSeconds(10),
+                WriteTimeout = writeTimeout ?? Limits.WriteTimeout,
+                MaxPendingHandshakes = maxPendingHandshakes ?? Limits.MaxPendingHandshakes,
             };
             UdpVoiceServer voice;
             try
