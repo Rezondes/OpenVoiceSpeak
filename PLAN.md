@@ -23,6 +23,8 @@
 > **Packages 80 to 82 (written in English from here on, at the user's request):** 80 is the ban overview, 81 and 82 are the log viewer split into viewing/searching and downloading. 80 and 81 can start in parallel, 82 needs 81.
 >
 > **Packages 83 to 92 (security audit):** the request "check that every permission is enforced on the server" was audited first (two read-only passes over all requests, the voice path, handshake, backups and logs). The voice path and sender identity are sound; the findings were split by theme into ten packages at the user's request. 92 needs 84, 87 needs 86; all others can run in parallel. Recommended order by severity: 86, 89, 85, 84, 87, 83, 88, 90, 91, 92.
+>
+> **Packages 93 and 94 (channel locks):** the request was split at the user's request into the group lock (93) and the password lock with its bypass right (94). 94 needs 93.
 
 ## Überblick
 
@@ -120,6 +122,8 @@
 | 90 | Log and console hygiene | Nothing a client sends can forge or corrupt lines in the console, the Docker log or the log files. | - |
 | 91 | Salted server password hash | The server password is stored as a salted, slow hash, and existing hashes are upgraded without the admin re-entering the password. | - |
 | 92 | Clients get only the rights data they need | Without "Gruppen sehen", clients no longer receive other groups' permission bits or other users' full rights; they get only what the UI needs. | 84 |
+| 93 | Channels locked to groups | A channel can be restricted to one or more groups, so only users with at least one of these groups (and admins) can join it, shown with a lock icon behind the channel name. | - |
+| 94 | Channels locked with a password | A channel can additionally or alternatively be protected by a password, which users with the new right "Passwort-Lock umgehen" and admins do not need to enter. | 93 |
 
 ## Annahmen
 
@@ -243,6 +247,11 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A103 Limits.** Concrete numbers in Packages 86 to 88 (request budget 20/s burst 40, outbox 8 MB, write timeout 10 s, 64 pending handshakes, 10 new identities per IP per hour, lists paged by 200, 50 backups / 2 GB) are starting values; they live as constants in one place so they can be tuned.
 - **A104 Public data.** Fingerprints stay visible to all clients (hashes of public keys, needed for private chat and per-user volume). Permission bits of other users and groups are sent only to `GroupsView` holders (Package 92).
 - **A105 Not changed by design.** There is no per-channel join or listen right; anyone can join and hear any channel. Fingerprint bans are avoided by a new key pair; only IP bans help there. Opus payloads are relayed unchecked; clients must tolerate malformed frames.
+- **A106 Moving into a group-locked channel.** Allowed only if the mover could join the channel by group themselves; the moved user's groups are not checked (user's decision). Admins are always allowed.
+- **A107 Moving into a password-locked channel.** Nobody can move another user into a password-locked channel, except Admin-group members, who are exempt from all locks.
+- **A108 Lock changes and visibility.** Adding, changing or removing a lock, or a user losing a group, never moves anybody out of the channel; locks only apply to later joins and moves. Locked channels stay fully visible (name, description, users, lock icon with tooltip), and channel links route voice as before.
+- **A109 Lock details.** Any groups can be chosen for a group lock; deleting a group removes it from lock lists, and a lock left with no groups means "admins only". The default channel can have neither lock (like the user limit). Channel passwords are stored as salted PBKDF2 like the server password, never sent to clients, and remembered in the client only in memory for the current connection. "Admin" means membership in the Admin group.
+- **A110 Admins move anyone anywhere.** Members of the Admin group ignore every permission check, as before: they can join any channel and move any user into any channel, whether it has a group lock, a password lock, a user limit, or all of them at once. The moved user's groups, the password and the limit are not checked in that case.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -5680,3 +5689,129 @@ Test command: `dotnet test tests/OVS.Tests`
 ### Out of Scope
 
 - Hiding fingerprints (they are public keys' hashes, A104)
+
+---
+
+## Package 93: Channels locked to groups
+
+**Goal:** A channel can be restricted to one or more groups, so only users with at least one of these groups (and admins) can join it, shown with a lock icon behind the channel name.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/Data/ServerData.cs` (change): `ChannelRecord.AllowedGroupIds` and `GroupLocked`
+- `src/OVS.Server/Commands/ChannelCommands.cs` (change): `OnCreateChannel`, `OnEditChannel`, `OnJoinChannel`, `OnMoveUser`
+- `src/OVS.Server/Commands/AdminCommands.cs` (change): deleting a group removes it from channel locks
+- `src/OVS.Shared/Protocol/Messages.cs`, `Codes.cs` (change): `ChannelInfo`, `CreateChannel`, `EditChannel` with the group list; code `ChannelLocked`
+- `src/OVS.Client/ViewModels/ChannelDialogViewModel.cs`, `src/OVS.Client/Views/ChannelDialog.axaml` (change): group selection
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `ChannelViewModel.IsGroupLocked`, lock tooltip, join availability
+- `src/OVS.Client/Views/MainWindow.axaml`, `SidebarWidth.cs` (change): lock icon behind the name, width fitting counts it
+- `src/OVS.Client/ErrorTexts.cs`, `Localization/Strings.resx`, `Strings.en.resx` (change)
+- `README.md` (change)
+- `tests/OVS.Tests/Server/ChannelLockTests.cs` (new), `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `ChannelDialogTests` (where the dialog view model is tested), `UiSmokeTests.cs`, `ResponsiveTests.cs`, `SidebarWidthTests.cs` (change)
+
+### Context
+
+`ChannelRecord` (ServerData.cs) has `Name`, `Description`, `Order`, `IsMuted`, `MaxUsers`. The only join restriction today is the user limit: `OnJoinChannel` and `OnMoveUser` refuse a full channel unless the actor has `ChannelJoinFull` (`IsFull`, ChannelCommands.cs). The default channel cannot get a limit (server check on `data.DefaultChannelId`, client `ChannelDialogViewModel.CanLimitUsers` for `ChannelDialogMode.EditDefault`). Admin-group members hold `Permission.All` and are exempt from restrictions. Since Package 92, every client receives group ids and names (without permission bits), so a client can show group names in a tooltip. The channel row shows home, mute and link icons (Packages 66, 67); `Icon.LockClosed` exists. Channel links route voice independent of who may join.
+
+### Acceptance Criteria
+
+- [ ] AC1: Creating or editing a channel (rights `ChannelCreate`/`ChannelEdit`) can set a list of allowed groups (any existing groups, several at once). An empty list means no group lock. The server rejects unknown group ids (`InvalidValue`) and any group lock on the default channel (`InvalidValue`).
+- [ ] AC2: Joining a group-locked channel requires membership in at least one listed group; otherwise `ChannelLocked`. No right bypasses the group lock. Members of the Admin group can always join.
+- [ ] AC3: Moving another user into a group-locked channel is allowed only if the mover could join it by group themselves (A106); the moved user's groups are not checked. Admins can always move.
+- [ ] AC4: Adding, changing or removing a group lock does not move anybody out of the channel, and losing a group does not either; the lock only applies to later joins and moves.
+- [ ] AC5: Deleting a group removes it from every channel's list. If a list becomes empty that way, the channel stays locked and only admins can join (shown as "nur Admins" in the tooltip), until someone edits the lock.
+- [ ] AC6: Everyone sees locked channels as before (name, description, users, links unchanged). A lock icon stands behind the name next to the home and link icons; its tooltip names the allowed groups. The sidebar width fitting from Package 67 counts the icon.
+- [ ] AC7: The client offers "Beitreten" and double-click join only when the own groups allow it (or the user is an admin); a refused join still shows the server's error text. The channel dialog shows a checkbox list of groups under "Nur für Gruppen", disabled with a hint for the default channel.
+- [ ] AC8: Texts in German and English, README updated, the dialog and the icon fit from 360 px (A96).
+
+### Tests (TDD)
+
+1. `ChannelLockTests > "CreateEdit_GroupLock_Validated_NotOnDefault"` (AC1)
+2. `ChannelLockTests > "Join_RequiresOneListedGroup_AdminAlways"` (AC2)
+   - Given: channel locked to Moderator and Raid; users with Guest only, with Raid, with Moderator; an admin
+   - Expected: Guest gets `ChannelLocked`, the others join
+3. `ChannelLockTests > "Move_OnlyIfMoverQualifies_TargetNotChecked"` (AC3)
+4. `ChannelLockTests > "LockChange_NobodyMovedOut"` (AC4)
+5. `ChannelLockTests > "GroupDeleted_RemovedFromLocks_EmptyMeansAdminsOnly"` (AC5)
+6. `ServerViewModelTests > "LockedChannel_IconTooltipAndJoinAvailability"` (AC6, AC7)
+7. `SidebarWidthTests` extended with the lock icon (AC6)
+8. Channel dialog view model test: group list, disabled for the default channel (AC7)
+9. `ResponsiveTests.Dialogs_FitAt360` for the channel dialog with many groups, `LocalizationTests`, `ErrorTexts_EveryCodeHasText` (AC8)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 5 (red): fields (optional, old data loads without a version bump), protocol, one server helper `CanEnterByGroup(session, channel)` used by join and move.
+2. Tests 6 to 8 (red): client view models, icon, width constants, dialog.
+3. Test 9, texts, README, headless screenshot of the sidebar and dialog at 360 and 1100 px.
+
+### Out of Scope
+
+- Password lock and its bypass right (Package 94)
+- Hiding locked channels or their users (A108)
+
+---
+
+## Package 94: Channels locked with a password
+
+**Goal:** A channel can additionally or alternatively be protected by a password, which users with the new right "Passwort-Lock umgehen" and admins do not need to enter.
+
+**Dependencies:** Package 93 (shares the lock icon, dialog section and join checks)
+
+**Affected files:**
+- `src/OVS.Shared/Permissions/Permission.cs` (change): `ChannelPasswordBypass = 1 << 26`, `All = (1 << 27) - 1`
+- `src/OVS.Server/Data/ServerData.cs` (change): `ChannelRecord.PasswordHash`
+- `src/OVS.Server/Commands/ChannelCommands.cs` (change): password on create/edit, check on join, move refusal
+- `src/OVS.Shared/Protocol/Messages.cs`, `Codes.cs` (change): `JoinChannel.Password`, `ChannelInfo.HasPassword`, `CreateChannel`/`EditChannel.Password`; codes `ChannelPasswordRequired`, `WrongChannelPassword`
+- `src/OVS.Client/ViewModels/ChannelDialogViewModel.cs`, `src/OVS.Client/Views/ChannelDialog.axaml` (change): password field with "remove password"
+- `src/OVS.Client/ViewModels/ServerViewModel.cs`, `src/OVS.Client/Views/SimpleDialogs.cs`, `src/OVS.Client/App.axaml.cs` (change): password prompt on join, remembered for the session
+- `src/OVS.Client/ErrorTexts.cs`, `Localization/Strings.resx`, `Strings.en.resx` (change): texts and `Perm_ChannelPasswordBypass`
+- `README.md` (change)
+- `tests/OVS.Tests/Server/ChannelLockTests.cs`, `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `AdminViewModelTests.cs` (group editor lists the new right), `ResponsiveTests.cs` (change)
+
+### Context
+
+After Package 93 channels can be group-locked. The server password is stored as salted PBKDF2 since Package 91 (`ServerSettings.Hash`/`Verify` in ServerData.cs, about 9 ms per hash, constant-time verification, 1..128 characters per Package 83). Server-password guessing is throttled per address. The client already has an in-window password prompt for the server password (`SimpleDialogs.AskPassword`) and the "set / remove password" pattern in the admin server settings (`UpdateServerSettings.Password`: null unchanged, "" remove). Permission bits are used up to `BackupsManage = 1 << 25`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Creating or editing a channel can set, change or remove a password (null = unchanged, empty = remove, 1..128 characters). It is stored as a salted PBKDF2 hash like the server password and never sent to clients; clients only see `HasPassword`. The default channel cannot get a password (`InvalidValue`).
+- [ ] AC2: Joining a password-locked channel requires the correct password (`ChannelPasswordRequired` without, `WrongChannelPassword` with a wrong one). Users with the new right "Passwort-Lock umgehen" (`ChannelPasswordBypass`) and Admin-group members join without it.
+- [ ] AC3: The bypass right does not bypass the group lock: a channel with both locks needs a listed group AND (the password or the bypass right). Admins are exempt from both.
+- [ ] AC4: Nobody can move another user into a password-locked channel (`ChannelPasswordRequired`), except Admin-group members (A107).
+- [ ] AC10: Admin-group members can move any user into any channel regardless of group lock, password lock and user limit, also all three at once (A110).
+- [ ] AC5: Wrong channel passwords are throttled: after 5 wrong attempts per session and channel within 5 minutes, further attempts get `RateLimited` for 5 minutes. Attempts are logged without the password.
+- [ ] AC6: Adding or changing a password does not move anybody out of the channel (A108 via Package 93 AC4).
+- [ ] AC7: The new right appears in the group editor; only Admin has it on new and existing servers (through `All`), other groups get nothing new.
+- [ ] AC8: Client: joining a password-locked channel without the bypass right asks for the password in an in-window dialog; a correct password is remembered in memory for this connection and not stored on disk. The lock icon's tooltip says "Passwort" (and the groups, if also group-locked). The channel dialog has a password field with "Passwort entfernen" when one is set.
+- [ ] AC9: Texts in German and English, README rights table and channel section updated; the prompt and dialog fit from 360 px.
+
+### Tests (TDD)
+
+1. `ChannelLockTests > "Password_SetChangeRemove_HashedNeverSent_NotOnDefault"` (AC1)
+2. `ChannelLockTests > "Join_PasswordRequired_WrongRefused_BypassAndAdminJoin"` (AC2)
+3. `ChannelLockTests > "BothLocks_BypassSkipsOnlyPassword"` (AC3)
+4. `ChannelLockTests > "Move_IntoPasswordChannel_RefusedExceptAdmin"` (AC4)
+4a. `ChannelLockTests > "Admin_MovesGuestIntoFullGroupAndPasswordLockedChannel"` (AC10)
+   - Given: a channel locked to a group the guest lacks, with a password and a user limit that is reached; an admin who is not in the lock's groups
+   - Expected: the admin moves the guest in; a moderator with `UserMove` and `ChannelJoinFull` is refused for the same move
+5. `ChannelLockTests > "WrongPasswords_Throttled_NotLogged"` (AC5)
+6. `ChannelLockTests > "PasswordChange_NobodyMovedOut"` (AC6)
+7. `PermissionRulesTests`, `DataStoreTests` (only Admin gets the new bit), `AdminViewModelTests > "GroupEditor_ListsNewRights"` (AC7)
+8. `ServerViewModelTests > "JoinPasswordChannel_PromptsOnce_RememberedForSession"` (AC8)
+9. `ResponsiveTests.Dialogs_FitAt360` with the prompt, `LocalizationTests`, `ErrorTexts_EveryCodeHasText` (AC9)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 6 (red): field, protocol, checks in the shared join helper from 93, throttle per session and channel.
+2. Test 7 (red): permission bit, labels.
+3. Tests 8 and 9 (red): prompt via a new `Dialogs.AskChannelPassword`, per-connection memory in `ServerViewModel`, dialog field, texts, README; headless screenshot at 360 and 1100 px.
+
+### Out of Scope
+
+- Storing channel passwords on disk in the client
+- A right that bypasses the group lock (explicitly not wanted)
