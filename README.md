@@ -68,6 +68,8 @@ Nur `OVS_PORT`, `OVS_DATA_DIR` und `TZ` gehören dauerhaft zur Umgebung. Alle an
 Für die Startwerte und den Port haben Umgebungsvariablen Vorrang vor `server-config.json`
 (`{"port":7000,"maxUsers":50,"logDays":30,"logRotateDaily":true,"autoRestart":false,"autoRestartTime":"04:00:00"}`).
 
+Das Serverpasswort speichert der Server nur als gesalzenen Hash (PBKDF2-SHA256 mit 100.000 Runden) in `server-data.json`. Ein Hash aus einer älteren Version (ungesalzenes SHA-256) gilt weiter und wird bei der ersten Anmeldung mit dem richtigen Passwort automatisch umgestellt und gespeichert, ohne dass du das Passwort neu eingeben musst. Ein leeres Passwort bedeutet: kein Passwort.
+
 ### Automatischer Neustart
 
 Ist der automatische Neustart an (Verwaltung, Server, oder Startwert `OVS_AUTO_RESTART=true`), startet der Server jeden Tag zur eingestellten Uhrzeit neu, ohne dass der Prozess oder Container endet. Ein- und Ausschalten und eine neue Uhrzeit gelten sofort.

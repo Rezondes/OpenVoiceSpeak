@@ -243,7 +243,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
             "leerer Eintrag in einer Liste");
         var s = d.Settings;
         Check(StoredName(s.Name, 64) && s.WelcomeText is { Length: <= 500 }, "Servername oder Willkommenstext ungültig");
-        Check(s.PasswordHash is null || s.PasswordHash is { Length: 64 } && s.PasswordHash.All(char.IsAsciiHexDigit), "Passwort-Hash ungültig");
+        Check(s.PasswordHash is null || ServerSettings.IsValidHash(s.PasswordHash), "Passwort-Hash ungültig"); // Package 91: both formats
 
         Check(d.Channels.All(c => StoredName(c.Name, 64) && c.Description is { Length: <= 500 }), "Channel-Name ungültig");
         Unique(d.Channels.Select(c => c.Id), "Channel-Id doppelt");

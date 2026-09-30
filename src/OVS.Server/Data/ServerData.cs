@@ -33,14 +33,63 @@ public sealed class ServerSettings
 
     public ServerLimits Limits => new(MaxUsers, LogDays, LogRotateDaily, AutoRestart, AutoRestartTime);
 
-    public static string? Hash(string password) =>
-        password.Length == 0 ? null : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(password)));
+    // ---- Package 91: the server password as salted PBKDF2-SHA256, "pbkdf2$<iterations>$<salt>$<hash>" (Base64) ----
 
+    public const int HashIterations = 100_000;
+    const int SaltBytes = 16, KeyBytes = 32;
+    /// <summary>A stored value asking for more is refused, so a crafted backup cannot make every login expensive.</summary>
+    const int MaxHashIterations = 10_000_000;
+
+    /// <summary>Null for an empty password, which means no password.</summary>
+    public static string? Hash(string password)
+    {
+        if (password.Length == 0) return null;
+        var salt = RandomNumberGenerator.GetBytes(SaltBytes);
+        var key = Derive(password, salt, HashIterations);
+        return $"pbkdf2${HashIterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(key)}";
+    }
+
+    /// <summary>True for the PBKDF2 format and for the unsalted SHA-256 hex of older versions (upgraded on the next login).</summary>
+    public static bool IsValidHash(string? hash) => IsLegacy(hash) || TryParse(hash, out _, out _, out _);
+
+    /// <summary>The unsalted SHA-256 hex from before Package 91.</summary>
+    public bool HasLegacyHash => IsLegacy(PasswordHash);
+
+    /// <summary>Constant-time in both formats; true when there is no password.</summary>
     public bool CheckPassword(string? password)
     {
         if (PasswordHash is null) return true;
-        var given = SHA256.HashData(Encoding.UTF8.GetBytes(password ?? ""));
-        return CryptographicOperations.FixedTimeEquals(given, Convert.FromHexString(PasswordHash));
+        var given = Encoding.UTF8.GetBytes(password ?? "");
+        if (IsLegacy(PasswordHash))
+            return CryptographicOperations.FixedTimeEquals(SHA256.HashData(given), Convert.FromHexString(PasswordHash));
+        return TryParse(PasswordHash, out int iterations, out var salt, out var key)
+            && CryptographicOperations.FixedTimeEquals(Rfc2898DeriveBytes.Pbkdf2(given, salt, iterations, HashAlgorithmName.SHA256, KeyBytes), key);
+    }
+
+    static byte[] Derive(string password, byte[] salt, int iterations) =>
+        Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, iterations, HashAlgorithmName.SHA256, KeyBytes);
+
+    static bool IsLegacy(string? hash) => hash is { Length: 64 } && hash.All(char.IsAsciiHexDigit);
+
+    static bool TryParse(string? hash, out int iterations, out byte[] salt, out byte[] key)
+    {
+        iterations = 0;
+        salt = key = [];
+        var parts = hash?.Split('$');
+        if (parts is not ["pbkdf2", var count, var saltText, var keyText]
+            || !int.TryParse(count, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out iterations)
+            || iterations is < HashIterations or > MaxHashIterations)
+            return false;
+        try
+        {
+            salt = Convert.FromBase64String(saltText);
+            key = Convert.FromBase64String(keyText);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        return salt.Length == SaltBytes && key.Length == KeyBytes;
     }
 }
 

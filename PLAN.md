@@ -5615,9 +5615,9 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: New and changed passwords are stored as PBKDF2-SHA256 with a random 16-byte salt and at least 100,000 iterations, in a self-describing format (for example `pbkdf2$<iterations>$<salt>$<hash>`).
-- [ ] AC2: Verification stays constant-time and works for both formats; a successful login with an old SHA-256 hash replaces it with the new format and saves.
-- [ ] AC3: No password (empty) keeps meaning "no password".
+- [x] AC1: New and changed passwords are stored as PBKDF2-SHA256 with a random 16-byte salt and at least 100,000 iterations, in a self-describing format (for example `pbkdf2$<iterations>$<salt>$<hash>`).
+- [x] AC2: Verification stays constant-time and works for both formats; a successful login with an old SHA-256 hash replaces it with the new format and saves.
+- [x] AC3: No password (empty) keeps meaning "no password".
 
 ### Tests (TDD)
 

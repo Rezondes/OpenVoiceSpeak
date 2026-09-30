@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using OVS.Server.Data;
 using OVS.Server.Tls;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
@@ -198,5 +199,40 @@ public class HandshakeTests
         Assert.True(state.TryAddConnection(IPAddress.Parse("2001:db8:5:7::1")));
         state.ReleaseConnection(IPAddress.Parse("2001:db8:5:6:abcd::1"));
         Assert.Equal(5, state.ConnectionsFrom(IPAddress.Parse("2001:db8:5:6::1")));
+    }
+
+    static ServerData OnDisk(TestServer server) =>
+        new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException());
+
+    /// <summary>Package 91: an unsalted SHA-256 hash from before still lets the right password in and is then replaced by PBKDF2.</summary>
+    [Fact]
+    public async Task OldSha256Hash_LoginWorks_UpgradedAfter()
+    {
+        var legacy = Convert.ToHexStringLower(SHA256.HashData("alt"u8));
+        await using var server = await TestServer.StartAsync(d => d.Settings.PasswordHash = legacy);
+
+        await using (var wrong = await TestClient.OpenAsync(server.Port))
+            Assert.Equal(Codes.WrongPassword, Assert.IsType<Rejected>(await wrong.HandshakeAsync("anna", "falsch")).Code);
+        Assert.Equal(legacy, OnDisk(server).Settings.PasswordHash); // a wrong password changes nothing
+
+        await using (var right = await TestClient.OpenAsync(server.Port))
+            Assert.IsType<Welcome>(await right.HandshakeAsync("anna", "alt"));
+        var upgraded = OnDisk(server).Settings; // saved at once, not only with the next debounced save
+        Assert.StartsWith("pbkdf2$", upgraded.PasswordHash);
+        Assert.True(upgraded.CheckPassword("alt"));
+
+        await using var again = await TestClient.OpenAsync(server.Port);
+        Assert.IsType<Welcome>(await again.HandshakeAsync("bert", "alt"));
+    }
+
+    /// <summary>Package 91: no password stays no password, stored as none and open to everyone.</summary>
+    [Fact]
+    public async Task EmptyPassword_StillOpenServer()
+    {
+        await using var server = await TestServer.StartAsync(password: "");
+        Assert.Null(OnDisk(server).Settings.PasswordHash);
+        await using var client = await TestClient.OpenAsync(server.Port);
+        Assert.IsType<Welcome>(await client.HandshakeAsync("anna", "irgendwas"));
+        Assert.Null(OnDisk(server).Settings.PasswordHash);
     }
 }

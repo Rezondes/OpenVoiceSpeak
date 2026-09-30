@@ -190,10 +190,18 @@ public sealed partial class ServerState
             // A source that guessed wrong too often is turned away before its password is even looked at.
             if (data.Settings.PasswordHash is not null && PasswordBlocked(source, now))
                 return (null, new Rejected(Codes.TooManyPasswordAttempts));
+            // Package 91: PBKDF2 with 100,000 iterations, about 10 ms on a desktop CPU, under the lock
+            // ponytail: verified under the global lock; move it before the lock if slow hosts make logins stall the server
             if (!data.Settings.CheckPassword(password))
             {
                 RecordPasswordFailure(source, now);
                 return (null, new Rejected(Codes.WrongPassword));
+            }
+            if (data.Settings.HasLegacyHash) // Package 91: the right password turns the old unsalted hash into the new format
+            {
+                data.Settings.PasswordHash = ServerSettings.Hash(password ?? "");
+                Persist();
+                logs.Server("Serverpasswort-Hash auf PBKDF2 umgestellt");
             }
 
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);

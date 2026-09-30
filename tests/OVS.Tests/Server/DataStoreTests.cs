@@ -237,4 +237,40 @@ public sealed class DataStoreTests : IDisposable
         Assert.Equal((12, 0, true, true, new TimeOnly(5, 0)),
             (data.Settings.MaxUsers, data.Settings.LogDays, data.Settings.LogRotateDaily, data.Settings.AutoRestart, data.Settings.AutoRestartTime));
     }
+
+    /// <summary>Package 91: PBKDF2-SHA256 with a random salt; the same password twice gives two different values that both verify.</summary>
+    [Fact]
+    public void PasswordHash_Pbkdf2_SaltedUnique()
+    {
+        var first = ServerSettings.Hash("geheim");
+        var second = ServerSettings.Hash("geheim");
+        Assert.NotNull(first);
+        Assert.NotEqual(first, second);
+        foreach (var hash in new[] { first!, second! })
+        {
+            var parts = hash.Split('$');
+            Assert.Equal(4, parts.Length);
+            Assert.Equal("pbkdf2", parts[0]);
+            Assert.True(int.Parse(parts[1]) >= 100_000);
+            Assert.Equal(16, Convert.FromBase64String(parts[2]).Length);
+            Assert.Equal(32, Convert.FromBase64String(parts[3]).Length);
+            var settings = new ServerSettings { PasswordHash = hash };
+            Assert.True(settings.CheckPassword("geheim"));
+            Assert.False(settings.CheckPassword("Geheim"));
+            Assert.False(settings.CheckPassword(null));
+            Assert.True(ServerSettings.IsValidHash(hash)); // a backup holding it passes the restore check
+        }
+        Assert.Null(ServerSettings.Hash(""));
+
+        // the old unsalted SHA-256 hex still verifies and is still valid in a backup, garbage is neither
+        var legacy = new ServerSettings { PasswordHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("alt"u8)) };
+        Assert.True(legacy.CheckPassword("alt"));
+        Assert.False(legacy.CheckPassword("neu"));
+        Assert.True(ServerSettings.IsValidHash(legacy.PasswordHash));
+        foreach (var bad in new[] { "pbkdf2$1$AAAA$AAAA", "pbkdf2$100000$x$y", "md5$1$2$3", "abc", "" })
+        {
+            Assert.False(ServerSettings.IsValidHash(bad));
+            Assert.False(new ServerSettings { PasswordHash = bad }.CheckPassword("alt"));
+        }
+    }
 }
