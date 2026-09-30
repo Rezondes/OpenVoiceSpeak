@@ -25,6 +25,8 @@
 > **Packages 83 to 92 (security audit):** the request "check that every permission is enforced on the server" was audited first (two read-only passes over all requests, the voice path, handshake, backups and logs). The voice path and sender identity are sound; the findings were split by theme into ten packages at the user's request. 92 needs 84, 87 needs 86; all others can run in parallel. Recommended order by severity: 86, 89, 85, 84, 87, 83, 88, 90, 91, 92.
 >
 > **Packages 93 and 94 (channel locks):** the request was split at the user's request into the group lock (93) and the password lock with its bypass right (94). 94 needs 93.
+>
+> **Packages 95 to 98:** 95 logo, 96 drag and drop, 97 and 98 the 400 ms waiting rule (split at the user's request into the shared mechanism with the admin page, and all other places). 98 needs 97; 95, 96 and 97 can run in parallel.
 
 ## Überblick
 
@@ -124,6 +126,10 @@
 | 92 | Clients get only the rights data they need | Without "Gruppen sehen", clients no longer receive other groups' permission bits or other users' full rights; they get only what the UI needs. | 84 |
 | 93 | Channels locked to groups | A channel can be restricted to one or more groups, so only users with at least one of these groups (and admins) can join it, shown with a lock icon behind the channel name. | - |
 | 94 | Channels locked with a password | A channel can additionally or alternatively be protected by a password, which users with the new right "Passwort-Lock umgehen" and admins do not need to enter. | 93 |
+| 95 | The same logo at every size | The exe icon, the window and taskbar icon and the title bar show the same logo with the sound wave as the start screen, generated from `logo.svg` so they can never drift apart. | - |
+| 96 | One drag and drop behaviour everywhere | Every reorder drag in the app shows a lifted, slightly tilted preview of the dragged item and a placeholder gap of the item's height where it will land. | - |
+| 97 | Waiting states, shared mechanism and admin page | A shared pending mechanism shows a visible reaction within 400 ms of every action that waits, and the administration page (lists, log search, backups) uses it. | - |
+| 98 | Waiting states everywhere else | Every other action that waits for the server shows a visible reaction within 400 ms. | 97 |
 
 ## Annahmen
 
@@ -252,6 +258,9 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A108 Lock changes and visibility.** Adding, changing or removing a lock, or a user losing a group, never moves anybody out of the channel; locks only apply to later joins and moves. Locked channels stay fully visible (name, description, users, lock icon with tooltip), and channel links route voice as before.
 - **A109 Lock details.** Any groups can be chosen for a group lock; deleting a group removes it from lock lists, and a lock left with no groups means "admins only". The default channel can have neither lock (like the user limit). Channel passwords are stored as salted PBKDF2 like the server password, never sent to clients, and remembered in the client only in memory for the current connection. "Admin" means membership in the Admin group.
 - **A110 Admins move anyone anywhere.** Members of the Admin group ignore every permission check, as before: they can join any channel and move any user into any channel, whether it has a group lock, a password lock, a user limit, or all of them at once. The moved user's groups, the password and the limit are not checked in that case.
+- **A111 Logo.** One design at every size, with the sound wave everywhere (the user's choice); small sizes get thicker wave strokes. The icon files are generated from `logo.svg` by a checked-in tool.
+- **A112 Drag and drop rules (apply to every reorder drag).** Preview lifted into an overlay: scale 1.03, shadow +8 px, tilt 3 degrees; placeholder gap with the dragged item's height at the target, which the item takes after the drop without jumping. OS file drags (logo drop zone) only get a hover highlight, because their preview belongs to the operating system.
+- **A113 Waiting rule.** Every action that waits shows a visible reaction within 400 ms (spinner, loading state, pending marker or progress). The busy UI appears after 150 ms if the action is not done, so fast actions do not flicker; no answer within 10 s ends in a visible, retryable error.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -5815,3 +5824,210 @@ Test command: `dotnet test tests/OVS.Tests`
 
 - Storing channel passwords on disk in the client
 - A right that bypasses the group lock (explicitly not wanted)
+
+---
+
+## Package 95: The same logo at every size
+
+**Goal:** The exe icon, the window and taskbar icon and the title bar show the same logo with the sound wave as the start screen, generated from `logo.svg` so they can never drift apart.
+
+**Dependencies:** none
+
+**Affected files:**
+- `tools/render-icon/` (new): small console program or script that renders `src/OVS.Client/Assets/logo.svg` to all ICO sizes
+- `src/OVS.Client/Assets/ovs.ico` (regenerated), `docs/logo.png` (regenerated)
+- `src/OVS.Client/Views/TitleBar.axaml` (change): `LogoMark` without `ShowWave="False"`
+- `src/OVS.Client/Views/LogoMark.axaml`, `LogoMark.axaml.cs` (change): thicker wave strokes below a size threshold
+- `src/OVS.Client/Assets/logo.svg`, `website/public/logo.svg` (change): header comment
+- `tests/OVS.Tests/Client/LogoTests.cs`, `UiSmokeTests.cs` (change)
+- `README.md` (change): how to regenerate the icon
+
+### Context
+
+There is one design: a headset with a three-bar sound wave, white on a #2F6FEB rounded square (`Assets/logo.svg`, drawn in XAML by `Views/LogoMark.axaml` with identical path data). `ovs.ico` (exe icon via `ApplicationIcon` in `OVS.Client.csproj`, window icon via `MainWindow.axaml`) has frames 16, 24, 32, 48, 64 and 256 px; the 16 and 24 px frames were rendered once by hand without the wave (Package 28). The title bar uses `LogoMark` at 18 px with `ShowWave="False"`. That is why the taskbar, Explorer and title bar look different from the big logo on the start screen. There is no generator script.
+
+### Acceptance Criteria
+
+- [ ] AC1: Every ICO frame (16, 24, 32, 48, 64, 256 px) shows the headset with the wave, rendered from `logo.svg` by the new tool; at 16 and 24 px the wave strokes are thickened just enough to stay visible (one pixel or more at 16 px).
+- [ ] AC2: The title bar shows the logo with the wave; below 32 px `LogoMark` uses the same thicker wave strokes as the small icon frames.
+- [ ] AC3: `docs/logo.png` equals the 256 px frame.
+- [ ] AC4: Running the tool twice gives byte-identical files; the README says how to run it after changing `logo.svg`.
+- [ ] AC5 (manual): exe in Explorer, taskbar, window title bar and start screen show the same design at 100 % and 150 % display scaling.
+
+### Tests (TDD)
+
+1. `LogoTests > "IcoFrames_ShowWave"` (AC1): decode each frame, the pixels in the wave area (known coordinates from the SVG, scaled) contain white pixels
+2. `LogoTests > "IcoMatchesSvgRender"` (AC1, AC4): rendering `logo.svg` with the tool code at 64 px equals the 64 px frame within a small tolerance
+3. `UiSmokeTests` (AC2): the title bar `LogoMark` has the wave visible
+4. `LogoTests > "DocsLogo_Equals256Frame"` (AC3)
+5. Manual check AC5
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 4 (red).
+2. Tool: render the SVG paths with SkiaSharp (already available through Avalonia) or by rendering `LogoMark` headless, write a PNG-compressed ICO; thicker wave below 32 px.
+3. Regenerate `ovs.ico` and `docs/logo.png`, tests green; title bar and `LogoMark` small-size strokes, test 3.
+4. README, manual check.
+
+### Out of Scope
+
+- A new logo design
+
+---
+
+## Package 96: One drag and drop behaviour everywhere
+
+**Goal:** Every reorder drag in the app shows a lifted, slightly tilted preview of the dragged item and a placeholder gap of the item's height where it will land.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Views/ReorderDrag.cs` (new): shared drag controller (threshold, capture, preview, placeholder, target index)
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs` (change): channel tree uses it
+- `src/OVS.Client/Views/AdminView.axaml`, `AdminView.axaml.cs` (change): group list uses it; logo drop zone highlight
+- `src/OVS.Client/Styles/Controls.axaml` (change): preview and placeholder styles, `dropLine` removed
+- `tests/OVS.Tests/Client/ReorderDragTests.cs` (new), `UiSmokeTests.cs` (change)
+
+### Context
+
+Two reorder drags exist, copy-pasted: the channel tree (`MainWindow.axaml.cs` around lines 74-131) and the group list (`AdminView.axaml.cs` around lines 34-90). Both start after a 6 px move, pick the target by comparing Y with the realized containers, and show only a 2 px accent line (`Border.dropLine`, bound to `IsDropAbove`/`IsDropBelow`); the dragged item stays in place unchanged, there is no pointer capture, no preview and no gap. The server-logo field in the admin Server tab accepts a file drop (OS drag, no hover highlight). Tests: `ChannelTree_DragRaidAboveLobby_SendsOrder`, `GroupList_DragAdminAboveGuest_SendsOrder`.
+
+### Acceptance Criteria
+
+- [ ] AC1: While dragging, a preview of the dragged item follows the pointer in an overlay layer: scale 1.03, a shadow 8 px stronger (larger blur and offset) than the item's normal elevation, rotated 3°, fully opaque; the original item is dimmed in its slot.
+- [ ] AC2: Instead of the line, a placeholder gap with exactly the dragged item's height opens at the target position; the other items move aside. After the drop the item sits where the placeholder was, with the same height, so nothing jumps.
+- [ ] AC3: Esc or releasing outside the list cancels: preview and placeholder disappear, the order is unchanged and nothing is sent.
+- [ ] AC4: Both the channel tree and the group list use the shared controller; the old `dropLine` code is removed; the existing reorder requests (`MoveChannelAsync`, `MoveGroupAsync`) are sent exactly as before.
+- [ ] AC5: The logo drop zone highlights while a file is dragged over it (the OS drag preview itself is outside the app's control).
+- [ ] AC6: With the Windows setting for reduced animations the preview is not tilted and items jump instead of animating; scale and shadow stay.
+
+### Tests (TDD)
+
+1. `ReorderDragTests > "Preview_Scale103_Tilt3_ShadowPlus8"` (AC1): start a drag headless, the preview control has `ScaleTransform` 1.03, `RotateTransform` 3 and the shadow values
+2. `ReorderDragTests > "Placeholder_HasDraggedItemHeight_AtTarget"` (AC2): a channel with users (tall item) dragged above another; the gap's height equals the dragged container's height
+3. `ReorderDragTests > "Drop_ItemTakesPlaceholderSlot_NoJump"` (AC2)
+4. `ReorderDragTests > "EscOrOutside_Cancels_NothingSent"` (AC3)
+5. existing `ChannelTree_DragRaidAboveLobby_SendsOrder` and `GroupList_DragAdminAboveGuest_SendsOrder` stay green (AC4)
+6. `UiSmokeTests > "LogoDropZone_HighlightsOnDragOver"` (AC5)
+7. `ReorderDragTests > "ReducedMotion_NoTilt"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 4 (red): `ReorderDrag` controller on an `ItemsControl`, preview in an overlay layer, placeholder by a margin on the container at the target index.
+2. Move both lists onto it, remove the duplicated code and `dropLine`; tests 5.
+3. Logo drop highlight, reduced motion; tests 6 and 7; headless screenshot of a drag in progress at 1100 px.
+
+### Out of Scope
+
+- Dragging users between channels (not a feature today)
+- Drag and drop on touch screens
+
+---
+
+## Package 97: Waiting states, shared mechanism and admin page
+
+**Goal:** A shared pending mechanism shows a visible reaction within 400 ms of every action that waits, and the administration page (lists, log search, backups) uses it.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/Pending.cs` (new): tracks pending requests, flips `IsBusy` after a short delay, times out
+- `src/OVS.Client/Styles/Controls.axaml`, `src/OVS.Client/Views/Spinner.axaml` (new): small spinner and busy styles for buttons, rows and list areas
+- `src/OVS.Client/ViewModels/AdminViewModel.cs`, `LogsViewModel.cs`, `ListPages.cs` (change): loading state per list, search, backup create and restore
+- `src/OVS.Client/Views/AdminView.axaml` (change)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/PendingTests.cs` (new), `AdminViewModelTests.cs`, `LogsViewModelTests.cs`, `ResponsiveTests.cs` (change)
+
+### Context
+
+There is no shared busy component. Only connecting (`IsConnecting`, indeterminate bar) and file transfers (`IsTransferring`, percent bar) show progress. On the admin page, `RequestListsAsync` loads users, bans, backups and logs with no loading state (lists are just empty until they arrive); `ListRefresh` tracks `inFlight` internally but does not expose it. Log search (`LogsViewModel`) is fire-and-forget without feedback. Creating a backup shows nothing until the list changes; restoring shows nothing until the server disconnects the client.
+
+### Acceptance Criteria
+
+- [ ] AC1: `Pending` marks an action busy when it starts; its UI (spinner on the triggering button or area, button disabled) becomes visible after 150 ms at the latest if the action is not done by then, so it is visible within 400 ms and fast actions do not flicker. When the answer (or an error) arrives, the busy state ends.
+- [ ] AC2: If no answer arrives within 10 s, the busy state ends with a visible error ("Keine Antwort vom Server") and the action can be retried.
+- [ ] AC3: Every admin list (users, bans, backups, logs) shows a loading state (spinner in the list area plus "Wird geladen ...") while its first page is on the way, and keeps showing the old content with a small spinner during a refresh.
+- [ ] AC4: Log search shows a spinner and "Suche läuft ..." until results arrive; the search button is disabled meanwhile.
+- [ ] AC5: "Backup anlegen" shows a spinner on the button until the new list arrives; "Wiederherstellen" shows a full-card "Wird wiederhergestellt ..." state until the disconnect.
+- [ ] AC6: Busy states fit at 360 px (A96); texts in German and English.
+
+### Tests (TDD)
+
+1. `PendingTests > "BusyVisibleWithin150ms_NotForFastActions"` (AC1): with a manual clock, an action answered after 100 ms never shows busy, one answered after 1 s shows busy from 150 ms on
+2. `PendingTests > "NoAnswer_TimesOutWithError_Retryable"` (AC2)
+3. `AdminViewModelTests > "Lists_ShowLoadingUntilFirstPage_RefreshKeepsContent"` (AC3)
+4. `LogsViewModelTests > "Search_BusyUntilResult"` (AC4)
+5. `AdminViewModelTests > "BackupCreateAndRestore_ShowBusy"` (AC5)
+6. `ResponsiveTests.Admin_EveryTabFits` with busy states, `LocalizationTests` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): `Pending` with the dispatcher and an injectable time provider; match answers by request id (as `ServerViewModel.SendAsync` returns it).
+2. Spinner control and styles.
+3. Tests 3 to 5 (red): admin page and logs.
+4. Test 6, texts, headless screenshots of the loading states.
+
+### Out of Scope
+
+- The other places (Package 98)
+
+---
+
+## Package 98: Waiting states everywhere else
+
+**Goal:** Every other action that waits for the server shows a visible reaction within 400 ms.
+
+**Dependencies:** Package 97 (shared `Pending` mechanism and spinner)
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): join channel, redeem token, reorder, moderation actions, link apply
+- `src/OVS.Client/ViewModels/ChatViewModel.cs`, `src/OVS.Client/Views/ChatView.axaml` (change): pending chat messages
+- `src/OVS.Client/ViewModels/ChannelDialogViewModel.cs`, `src/OVS.Client/Views/SimpleDialogs.cs`, `OverlayHost.cs` (change): dialogs stay open with a busy button until the server confirms
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (change): group save, logo upload, user and ban actions
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `MainViewModel.cs` (change): settings save while audio devices restart, update check
+- `src/OVS.Client/Views/MainWindow.axaml`, `AdminView.axaml`, `SettingsView.axaml` (change)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `ChatViewModelTests.cs`, `AdminViewModelTests.cs`, `SettingsTests.cs`, `UiSmokeTests.cs`, `ResponsiveTests.cs` (change)
+
+### Context
+
+These actions send a request and show nothing until the server's state change arrives: join channel (`ServerViewModel`, `pendingJoin`), chat send (draft cleared at once, no pending message), channel create/edit dialogs, group save (a new group disappears and reappears), redeem token, logo upload, ban/kick/move/delete/mute, link matrix apply, channel and group reorder. Settings save closes synchronously while audio devices restart; the update check only changes a text.
+
+### Acceptance Criteria
+
+- [ ] AC1: Joining a channel marks the target row with a small spinner until the own channel changes (or an error arrives); a second join request meanwhile is ignored.
+- [ ] AC2: A sent chat message appears at once in the history, greyed with a small clock, and turns normal when the server echo arrives; on error it shows "nicht gesendet" with a retry button and the text stays.
+- [ ] AC3: Dialogs that send (channel create/edit, ban, redeem token) keep their card open with a busy primary button until the server confirms, then close; errors show inside the dialog.
+- [ ] AC4: Group save, logo upload, user card actions (ban, unban, delete, lift mute, group toggles), link apply and reorder show a spinner on the triggering control until confirmed; reorder keeps the new order visible (from Package 96) and reverts with an error if refused.
+- [ ] AC5: Settings "Speichern" shows a busy button while audio devices restart and closes afterwards; the update check shows a spinner next to its text.
+- [ ] AC6: Every waiting action in the client has a visible reaction within 400 ms; a UI test walks through all of them with a fake server that answers after 1 s and asserts a visible busy indicator after 400 ms each.
+- [ ] AC7: Texts in German and English, everything fits at 360 px.
+
+### Tests (TDD)
+
+1. `ServerViewModelTests > "JoinChannel_RowBusyUntilMoved_SecondJoinIgnored"` (AC1)
+2. `ChatViewModelTests > "SentMessage_PendingUntilEcho_ErrorRetry"` (AC2)
+3. `UiSmokeTests > "SendingDialogs_StayOpenBusyUntilConfirmed"` (AC3)
+4. `AdminViewModelTests > "CardActions_BusyUntilConfirmed"`, `ServerViewModelTests > "Reorder_RevertsOnError"` (AC4)
+5. `SettingsTests > "Save_BusyWhileDevicesRestart"` (AC5)
+6. `UiSmokeTests > "EveryWaitingAction_VisibleWithin400ms"` (AC6)
+7. `ResponsiveTests`, `LocalizationTests` (AC7)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): join and chat.
+2. Tests 3 and 4 (red): dialogs and admin actions.
+3. Test 5 (red): settings and update check.
+4. Test 6 as the catch-all, test 7, headless screenshots.
+
+### Out of Scope
+
+- Server-side changes (where an action has no explicit answer, the confirmation is the matching state change or error)
