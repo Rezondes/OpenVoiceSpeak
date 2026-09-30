@@ -30,6 +30,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     public const string SafetyPrefix = "vor-wiederherstellung_";
     public const int FormatVersion = 1;
     const string ManifestEntry = "manifest.json";
+    const string TmpSuffix = ".tmp";
     // ponytail: every entry is read into memory; the real files are a few MB, the cap stops a zip bomb
     const long MaxEntryBytes = 64L * 1024 * 1024;
     const long MaxManifestBytes = 16 * 1024; // Package 89: the listing reads every manifest
@@ -44,21 +45,25 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         var now = time.GetUtcNow();
         var manifest = new BackupManifest(FormatVersion, ServerData.CurrentVersion, BuildInfo.Current.Version, now);
         var (name, path) = NewName(prefix, now);
-        var tmp = path + ".tmp";
-        using (var zip = ZipFile.Open(tmp, ZipArchiveMode.Create))
+        var tmp = path + TmpSuffix;
+        try
         {
-            Add(zip, ManifestEntry, JsonSerializer.SerializeToUtf8Bytes(manifest, ProtocolJson.Options));
-            Add(zip, DataStore.FileName, File.ReadAllBytes(Path.Combine(dataDir, DataStore.FileName)));
-            Add(zip, ServerCertificate.FileName, File.ReadAllBytes(Path.Combine(dataDir, ServerCertificate.FileName)));
-            var icon = Path.Combine(dataDir, ServerIconStore.FileName);
-            if (File.Exists(icon)) Add(zip, ServerIconStore.FileName, File.ReadAllBytes(icon));
+            using (var zip = ZipFile.Open(tmp, ZipArchiveMode.Create))
+            {
+                Add(zip, ManifestEntry, JsonSerializer.SerializeToUtf8Bytes(manifest, ProtocolJson.Options));
+                Add(zip, DataStore.FileName, File.ReadAllBytes(Path.Combine(dataDir, DataStore.FileName)));
+                Add(zip, ServerCertificate.FileName, File.ReadAllBytes(Path.Combine(dataDir, ServerCertificate.FileName)));
+                var icon = Path.Combine(dataDir, ServerIconStore.FileName);
+                if (File.Exists(icon)) Add(zip, ServerIconStore.FileName, File.ReadAllBytes(icon));
+            }
+            if (QuotaProblem(new FileInfo(tmp).Length) is { } problem) throw new BackupQuotaException(problem);
+            File.Move(tmp, path);
         }
-        if (QuotaProblem(new FileInfo(tmp).Length) is { } problem)
+        catch
         {
-            DeleteQuietly(tmp);
-            throw new BackupQuotaException(problem);
+            DeleteQuietly(tmp); // a full disk or an unreadable file leaves no half archive
+            throw;
         }
-        File.Move(tmp, path);
         cache = null;
         return new BackupInfo(name, now, new FileInfo(path).Length, manifest.ServerVersion);
     }
@@ -107,11 +112,12 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         return new BackupInfo(name, manifest.CreatedAt, new FileInfo(path).Length, manifest.ServerVersion);
     }
 
-    /// <summary>Unfinished uploads a crash or a lost connection left behind.</summary>
+    /// <summary>Unfinished uploads a crash or a lost connection left behind, and half written archives.</summary>
     public void RemoveUploads()
     {
         if (!Directory.Exists(Folder)) return;
         foreach (var file in Directory.GetFiles(Folder, UploadPrefix + "*")) DeleteQuietly(file);
+        foreach (var file in Directory.GetFiles(Folder, "*" + Extension + TmpSuffix)) DeleteQuietly(file);
     }
 
     public static void DeleteQuietly(string path)

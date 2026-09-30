@@ -877,4 +877,21 @@ public sealed class BackupTests : IDisposable
         File.Delete(path);
         Assert.Empty(store.List());
     }
+
+    [Fact]
+    public async Task Create_Failing_LeavesNoTmp_StartRemovesLeftovers()
+    {
+        File.WriteAllText(Path.Combine(dir, DataStore.FileName), "{}");
+        var store = new BackupStore(dir, new ManualTimeProvider());
+        Assert.Throws<FileNotFoundException>(() => store.Create()); // no cert.pfx: writing the archive fails
+        Assert.Empty(Directory.GetFiles(store.Folder));
+
+        // what a crash or an older version left behind goes at the next start
+        File.Delete(Path.Combine(dir, DataStore.FileName));
+        File.WriteAllText(Path.Combine(store.Folder, "2026-01-01_12-00-00.ovsbackup.tmp"), "x");
+        File.WriteAllText(Path.Combine(store.Folder, BackupStore.UploadPrefix + new string('a', 32)), "x");
+        File.WriteAllText(Path.Combine(store.Folder, "behalten.ovsbackup"), "x");
+        await using var server = await TestServer.StartAsync(dataDir: dir);
+        Assert.Equal(["behalten.ovsbackup"], Directory.GetFiles(store.Folder).Select(Path.GetFileName));
+    }
 }
