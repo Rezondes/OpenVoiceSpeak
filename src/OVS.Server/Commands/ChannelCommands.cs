@@ -251,6 +251,7 @@ public sealed partial class ServerState
             return;
         }
         if (!CanModerate(s, r, target.Permissions, target.Fingerprint)) return; // Package 84: never oneself, that is JoinChannel
+        if (target.ChannelId == r.ChannelId) return; // already there: nothing to check, announce or log
         if (LockRefusal(s, FindChannel(r.ChannelId)!, null, moving: true) is { } locked)
         {
             Fail(s, r, locked); // Package 93 (A106): the mover must be able to join, the one being moved is not checked
@@ -262,11 +263,8 @@ public sealed partial class ServerState
             return;
         }
         var from = target.ChannelId;
-        if (from != r.ChannelId)
-        {
-            ChannelLog(from, $"{target.Nickname} wurde von {s.Nickname} nach {ChannelName(r.ChannelId)} verschoben");
-            ChannelLog(r.ChannelId, $"{target.Nickname} wurde von {s.Nickname} aus {ChannelName(from)} hierher verschoben");
-        }
+        ChannelLog(from, $"{target.Nickname} wurde von {s.Nickname} nach {ChannelName(r.ChannelId)} verschoben");
+        ChannelLog(r.ChannelId, $"{target.Nickname} wurde von {s.Nickname} aus {ChannelName(from)} hierher verschoben");
         target.ChannelId = r.ChannelId;
         BroadcastUser(target);
     }

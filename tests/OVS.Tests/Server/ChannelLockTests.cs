@@ -163,6 +163,20 @@ public sealed class ChannelLockTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Move_TargetAlreadyInLockedChannel_SilentNoOp()
+    {
+        var raidOnly = await CreateAsync("Raid", RaidGroup);
+        await a.SendAsync(new MoveUser(g.Id, raidOnly.Id));
+        await m.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ChannelId == raidOnly.Id);
+
+        // the mover could not join, but the guest is there already: no error and no broadcast
+        await m.SendAsync(new MoveUser(g.Id, raidOnly.Id) { RequestId = "mv" });
+        await m.SendAsync(new MoveUser(g.Id, Guid.NewGuid()) { RequestId = "probe" });
+        while (await m.NextAsync() is { } message and not Error { RequestId: "probe" })
+            Assert.False(message is Error { RequestId: "mv" } or UserUpdated, $"unexpected {message}");
+    }
+
+    [Fact]
     public async Task LockChange_NobodyMovedOut()
     {
         var open = await CreateAsync("Offen");
