@@ -495,4 +495,33 @@
   <data name="VoiceHint_NoLinkRight" xml:space="preserve"><value>Kein Recht für Link-Übertragungen: du sprichst nur im eigenen Channel.</value></data>
   <data name="Window_Maximize" xml:space="preserve"><value>Maximieren</value></data>
   <data name="Window_Restore" xml:space="preserve"><value>Wiederherstellen</value></data>
+  <data name="Perm_LogsView" xml:space="preserve"><value>Logs ansehen</value></data>
+  <data name="Ui_Logs" xml:space="preserve"><value>Logs</value></data>
+  <data name="Ui_LogSourceAll" xml:space="preserve"><value>Alle Logs</value></data>
+  <data name="Ui_LogSourceServer" xml:space="preserve"><value>Server</value></data>
+  <data name="Ui_LogSourceFilter" xml:space="preserve"><value>Art der Logs</value></data>
+  <data name="Ui_LogDeletedChannel" xml:space="preserve"><value>Gelöschter Channel</value></data>
+  <data name="Ui_LogFrom" xml:space="preserve"><value>Von</value></data>
+  <data name="Ui_LogTo" xml:space="preserve"><value>Bis</value></data>
+  <data name="Ui_LogFileCount" xml:space="preserve"><value>{0} von {1} Dateien</value></data>
+  <data name="Ui_NoLogs" xml:space="preserve"><value>Noch keine Logdateien.</value></data>
+  <data name="Ui_NoLogMatches" xml:space="preserve"><value>Keine Datei passt zu den Filtern.</value></data>
+  <data name="Ui_LogChooseFile" xml:space="preserve"><value>Wähle eine Datei aus der Liste.</value></data>
+  <data name="Ui_LogPage" xml:space="preserve"><value>Seite {0} von {1}</value></data>
+  <data name="Ui_LogOlder" xml:space="preserve"><value>Ältere laden</value></data>
+  <data name="Ui_LogNewer" xml:space="preserve"><value>Neuere laden</value></data>
+  <data name="Ui_LogFirst" xml:space="preserve"><value>Zum Anfang</value></data>
+  <data name="Ui_LogLast" xml:space="preserve"><value>Zum Ende</value></data>
+  <data name="Ui_LogReload" xml:space="preserve"><value>Neu laden</value></data>
+  <data name="Ui_LogCloseFile" xml:space="preserve"><value>Datei schliessen</value></data>
+  <data name="Ui_LogLineFilter" xml:space="preserve"><value>Zeilen filtern</value></data>
+  <data name="Ui_LogNoLines" xml:space="preserve"><value>Keine passenden Zeilen.</value></data>
+  <data name="Ui_LogSearch" xml:space="preserve"><value>In allen Logs suchen</value></data>
+  <data name="Ui_Search" xml:space="preserve"><value>Suchen</value></data>
+  <data name="Ui_LogHits" xml:space="preserve"><value>{0} Treffer</value></data>
+  <data name="Ui_LogHitsTruncated" xml:space="preserve"><value>Mehr als {0} Treffer, gezeigt werden die neuesten {0}. Suche genauer oder wähle einen kürzeren Zeitraum.</value></data>
+  <data name="Ui_LogHitsTimedOut" xml:space="preserve"><value>Suche nach 5 Sekunden beendet, {0} Treffer bis dahin.</value></data>
+  <data name="Ui_LogNoHits" xml:space="preserve"><value>Keine Treffer.</value></data>
+  <data name="Ui_LogBackToFiles" xml:space="preserve"><value>Zur Dateiliste</value></data>
+  <data name="Ui_LogLine" xml:space="preserve"><value>Zeile {0}</value></data>
 </root>

@@ -88,6 +88,8 @@ Der Server beginnt bei jedem Start neue Logdateien im Datenverzeichnis, benannt 
 docker run --rm -v openvoicespeak_ovs-data:/data alpine sh -c 'tail -n 50 "$(ls /data/logs/server/*.log | tail -n 1)"'
 ```
 
+Ohne Docker-Zugang geht es auch im Client: Unter "Verwaltung ...", Logs (Recht "Logs ansehen", standardmässig nur Admin) stehen alle Server- und Channel-Logs, neueste zuerst, filterbar nach Art (Server oder ein Channel) und Zeitraum. Eine Datei öffnet sich seitenweise mit 1000 Zeilen, die letzte Seite zuerst; ein Filter zeigt nur passende Zeilen mit markierten Treffern. Die Suche läuft auf dem Server über alle Dateien (Text ohne Gross- und Kleinschreibung, höchstens 500 Treffer, Abbruch nach 5 Sekunden), ein Klick auf einen Treffer öffnet die Datei an dieser Zeile. Logs enthalten IPs, Fingerabdrücke und Chattexte, vergib das Recht also nur an Leute, denen du das anvertraust.
+
 ### Daten, Backup, Update
 
 Alles Dauerhafte liegt im Volume `ovs-data`. Docker Compose stellt den Projektnamen voran, also den
@@ -178,7 +180,7 @@ Heraus kommt eine einzelne `publish/client/OVS.Client.exe`.
 - Unter "Verwaltung ...", Links siehst du alle Channel-Links als Matrix. Wähle mehrere Channels aus und verlinke sie mit einem Klick jeder mit jedem. Änderungen gelten erst nach "Übernehmen".
 - Unter "Verwaltung ...", Nutzer steht jeder bekannte Nutzer mit Online-Status, Gruppen, erstem und letztem Login, Anzahl Logins, Online- und Sprechzeit, Chatnachrichten, letzter IP, früheren Nicknames, Fingerabdruck und einem aktiven Bann. Das Suchfeld findet Name, frühere Namen, Fingerabdruck und IP, dazu filterst du nach Status und Gruppe und sortierst nach Name, letztem Login oder Online-Zeit. Die Liste folgt, wenn jemand kommt oder geht. Mit den nötigen Rechten bannst und entbannst du dort auch Nutzer, die gerade offline sind ("IP mitbannen" nimmt dann die zuletzt bekannte IP), und löschst nach einer Rückfrage alle Daten eines Nutzers: Datensatz, Gruppen, Statistiken und Bans. Verbindet er sich wieder, gilt er als neuer Gast. Die Logdateien bleiben.
 - In der Verwaltung ordnest du Gruppen per Maus oder mit den Pfeilen unter der Liste. Die Reihenfolge gilt überall, wo Gruppen erscheinen, und ändert keine Rechte.
-- Rechts oben stehen Ping, "Verwaltung ..." (mit den nötigen Rechten: Gruppen, Nutzer, Bans, Servereinstellungen und Server-Logo) und "Trennen". Darunter liegt der Chat mit den Tabs "Allgemein" (serverweite Nachrichten, Willkommensnachricht, Warnungen und Fehler) und dem aktuellen Channel. Enter sendet, Umschalt+Enter macht eine neue Zeile. Der Channel-Tab beginnt bei jedem Channelwechsel leer, Tabs im Hintergrund zeigen die Zahl ungelesener Nachrichten. Per Rechtsklick auf einen Nutzer, "Privatnachricht", öffnest du einen privaten Tab "@Nickname". Eingehende private Nachrichten öffnen ihn im Hintergrund. Private Tabs lassen sich schliessen und behalten ihren Verlauf, solange du verbunden bist. Ist der Partner offline, ist die Eingabe gesperrt.
+- Rechts oben stehen Ping, "Verwaltung ..." (mit den nötigen Rechten: Gruppen, Nutzer, Bans, Servereinstellungen, Server-Logo und Logs) und "Trennen". Darunter liegt der Chat mit den Tabs "Allgemein" (serverweite Nachrichten, Willkommensnachricht, Warnungen und Fehler) und dem aktuellen Channel. Enter sendet, Umschalt+Enter macht eine neue Zeile. Der Channel-Tab beginnt bei jedem Channelwechsel leer, Tabs im Hintergrund zeigen die Zahl ungelesener Nachrichten. Per Rechtsklick auf einen Nutzer, "Privatnachricht", öffnest du einen privaten Tab "@Nickname". Eingehende private Nachrichten öffnen ihn im Hintergrund. Private Tabs lassen sich schliessen und behalten ihren Verlauf, solange du verbunden bist. Ist der Partner offline, ist die Eingabe gesperrt.
 
 Ein Server kann ein eigenes Logo haben: Unter "Verwaltung ...", Server lädst du ein PNG oder JPG hoch (quadratisch, höchstens 3 MB, per Dateiauswahl oder durch Ziehen auf das Vorschaufeld). Der Client verkleinert es auf 256 x 256 Pixel. Alle verbundenen Clients sehen es sofort in der Seitenleiste, die Lesezeichen-Kacheln zeigen das zuletzt gesehene Logo.
 
@@ -196,6 +198,7 @@ Ein Server kann ein eigenes Logo haben: Unter "Verwaltung ...", Server lädst du
 | Nutzer kicken | "Kicken" | Moderator, Admin |
 | Nutzer bannen und entbannen | "Bannen", "Entbannen" | Moderator, Admin |
 | Nutzer löschen | alle gespeicherten Daten eines Nutzers löschen | Admin |
+| Logs ansehen | Tab "Logs": Server- und Channel-Logs lesen und durchsuchen | Admin |
 
 Vergeben lassen sich nur Rechte, die man selbst hat, und bearbeiten lassen sich nur Nutzer und Gruppen ohne mehr Rechte als man selbst. Bestehende Server geben beim Update jeder Gruppe einmalig die passenden Sehen-Rechte zu ihren Rechten ("Gruppen bearbeiten" bekommt Sehen, Anlegen und Löschen dazu, "Gruppen zuweisen" die Nutzerübersicht, "Nutzer bannen" die Bans), damit niemand etwas verliert.
 

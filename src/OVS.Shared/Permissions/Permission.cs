@@ -28,7 +28,8 @@ public enum Permission
     GroupsCreate = 1 << 20,
     GroupsDelete = 1 << 21,
     UserDelete = 1 << 22,   // delete a user's stored data (Package 72)
-    All = (1 << 23) - 1,
+    LogsView = 1 << 23,     // Package 81 (A98): list, read and search the server and channel logs
+    All = (1 << 24) - 1,
 }
 
 /// <summary>Fixed ids of the two protected groups, known to server and client.</summary>

@@ -5076,21 +5076,21 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: New right "Logs ansehen" (`LogsView`), selectable in the group editor. Only Admin has it by default (through `All`), existing groups get nothing new. The tab "Logs" is visible only with this right, and the server checks it on every log request (`PermissionDenied` otherwise).
-- [ ] AC2: The file list shows, newest first:
+- [x] AC1: New right "Logs ansehen" (`LogsView`), selectable in the group editor. Only Admin has it by default (through `All`), existing groups get nothing new. The tab "Logs" is visible only with this right, and the server checks it on every log request (`PermissionDenied` otherwise).
+- [x] AC2: The file list shows, newest first:
   - type: server or channel with the channel's current name, or the name found in the file for deleted channels
   - start time and size
   Filters: type (all, server, one channel) and period (from, to).
-- [ ] AC3: Opening a file shows its lines in pages of 1000 lines (the last page first). Controls: "Ältere laden", "Neuere laden", jump to start and end. The currently written file can be refreshed.
-- [ ] AC4: A filter box inside the opened file shows only matching lines, case-insensitive, with the matches highlighted.
-- [ ] AC5: Search across all files: query text (case-insensitive, plain text, no regex), optionally limited by the type and period filters. The server returns at most 500 hits (file, line number, line) newest first and says if there were more. Clicking a hit opens the file at that line with the line highlighted.
-- [ ] AC6: Security:
+- [x] AC3: Opening a file shows its lines in pages of 1000 lines (the last page first). Controls: "Ältere laden", "Neuere laden", jump to start and end. The currently written file can be refreshed.
+- [x] AC4: A filter box inside the opened file shows only matching lines, case-insensitive, with the matches highlighted.
+- [x] AC5: Search across all files: query text (case-insensitive, plain text, no regex), optionally limited by the type and period filters. The server returns at most 500 hits (file, line number, line) newest first and says if there were more. Clicking a hit opens the file at that line with the line highlighted.
+- [x] AC6: Security:
   - Files are addressed only by an id from the server's own listing; paths from the client are never used.
   - Only `*.log` files below `<DataDir>/logs` are reachable.
   - Pages and search results stay below the message size limit: long lines are cut at 2000 characters with a marker.
   - A search stops after 5 seconds and returns what it found so far.
-- [ ] AC7: Reading and searching happen outside the global state lock, so voice and chat keep running while a large file is read.
-- [ ] AC8: The Logs tab fits from 360 px (A96): the file list and viewer stack under `narrow`, and long lines wrap or scroll horizontally inside the viewer. Texts in German and English, README rights table updated.
+- [x] AC7: Reading and searching happen outside the global state lock, so voice and chat keep running while a large file is read.
+- [x] AC8: The Logs tab fits from 360 px (A96): the file list and viewer stack under `narrow`, and long lines wrap or scroll horizontally inside the viewer. (Done as one after the other under `narrow`: the list with the filters, an opened file on the whole page until it is closed; long lines wrap.) Texts in German and English, README rights table updated.
 
 ### Tests (TDD)
 

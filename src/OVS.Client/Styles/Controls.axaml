@@ -456,6 +456,58 @@
     <Setter Property="Grid.ColumnSpan" Value="2" />
     <Setter Property="Margin" Value="0,12,0,0" />
   </Style>
+  <!-- Package 81: log files (300 px) beside the opened file; under narrow one after the other: the list (or the hits)
+       with the filters, and an opened file alone on the whole page until it is closed again -->
+  <Style Selector="Grid.adminLogs > Border.logList">
+    <Setter Property="Width" Value="300" />
+    <Setter Property="Grid.RowSpan" Value="2" />
+  </Style>
+  <Style Selector="Grid.adminLogs > Border.logViewer">
+    <Setter Property="Grid.Column" Value="1" />
+    <Setter Property="Grid.RowSpan" Value="2" />
+    <Setter Property="Margin" Value="12,0,0,0" />
+  </Style>
+  <Style Selector="Window.narrow Grid.adminLogs > Border.logList">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Grid.RowSpan" Value="1" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+  </Style>
+  <Style Selector="Window.narrow Grid.adminLogs > Border.logViewer">
+    <Setter Property="Grid.Row" Value="1" />
+    <Setter Property="Grid.Column" Value="0" />
+    <Setter Property="Grid.RowSpan" Value="1" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+    <Setter Property="Margin" Value="0,12,0,0" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.logsPage:not(.fileOpen) Grid.adminLogs > Border.logList">
+    <Setter Property="Grid.RowSpan" Value="2" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.logsPage:not(.fileOpen) Grid.adminLogs > Border.logViewer">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.logsPage.fileOpen > StackPanel.logFilters">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.logsPage.fileOpen Grid.adminLogs > Border.logList">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Window.narrow DockPanel.logsPage.fileOpen Grid.adminLogs > Border.logViewer">
+    <Setter Property="Grid.Row" Value="0" />
+    <Setter Property="Grid.RowSpan" Value="2" />
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector="TextBlock.logText">
+    <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+  <!-- no horizontal scrolling: long lines wrap inside the viewer -->
+  <Style Selector="ListBox.logLines">
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+  </Style>
+  <Style Selector="ListBox.logLines ListBoxItem">
+    <Setter Property="Padding" Value="4,1" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
   <Style Selector="UniformGrid.rights">
     <Setter Property="Columns" Value="2" />
   </Style>

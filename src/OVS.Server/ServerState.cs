@@ -44,6 +44,7 @@ public sealed partial class ServerState
         icon = new ServerIconStore(config.DataDir);
         backups = new BackupStore(config.DataDir, time);
         backups.RemoveUploads(); // Package 75: what a crash left behind
+        LogReader = new LogReader(config.DataDir, time); // Package 81
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         if (data.Migrate(config)) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
@@ -321,6 +322,9 @@ public sealed partial class ServerState
                 case RestoreBackup r: OnRestoreBackup(session, r); break;
                 case DownloadBackup r: OnDownloadBackup(session, r); break;
                 case UploadBackupChunk r: OnUploadBackupChunk(session, r); break;
+                case ListLogs r: OnListLogs(session, r); break;
+                case ReadLog r: OnReadLog(session, r); break;
+                case SearchLogs r: OnSearchLogs(session, r); break;
                 case Request r: Fail(session, r, Codes.UnknownRequest); break;
             }
         }

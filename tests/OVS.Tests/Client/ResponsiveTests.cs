@@ -368,6 +368,18 @@ public sealed class ResponsiveTests : IDisposable
             new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 800_000, "dev.0000"),
             new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-2), 900, "dev.0000"),
         ]));
+        // Package 81: log files of the server and of channels with long names, one opened on a page with long lines
+        var channel = server.Mirror.Channels.Values.First(c => c.Name.StartsWith("Raid")).Id;
+        server.Apply(new OVS.Shared.Protocol.LogList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.LogFileInfo(
+            i % 3 == 0 ? $"server/2026-09-{30 - i:00}_12-00-00.log" : $"channels/{channel}/2026-09-{30 - i:00}_12-00-00.log",
+            i % 3 == 0 ? OVS.Shared.Protocol.LogKind.Server : OVS.Shared.Protocol.LogKind.Channel, i % 3 == 0 ? null : channel,
+            i % 3 == 0 ? null : i == 11 ? "Ein gelöschter Channel mit einem sehr langen Namen" : "Raidgruppe Nummer 2",
+            now.AddDays(-i), now.AddDays(-i).AddHours(5), 1_234_567L * (i + 1))).ToList()));
+        admin.Logs.OpenCommand.Execute(admin.Logs.Files[0]);
+        server.Apply(new OVS.Shared.Protocol.LogPage(null, admin.Logs.Files[0].Info.Id, 3, 3, 2001, Enumerable.Range(2001, 40)
+            .Select(n => n % 5 == 0 ? $"2026-09-30 12:00:{n % 60:00}.000 Mitspieler{n} verbunden (" + new string('a', 64) + ", 2001:db8:85a3::8a2e:370:7334) " + new string('x', 300)
+                : $"2026-09-30 12:00:{n % 60:00}.000 Zeile {n}").ToList()));
+        admin.Logs.LineFilter = "0";
         Dispatcher.UIThread.RunJobs();
         page = main.GetVisualDescendants().OfType<AdminView>().Single();
         return main;
@@ -437,9 +449,61 @@ public sealed class ResponsiveTests : IDisposable
         foreach (var name in new[] { "UploadBackupButton", "UploadRestoreButton", "BackupTransfer" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.TransferText && t.IsEffectivelyVisible);
+        // Package 81: the Logs tab with the opened file (checked above), then with the hits of a search instead of the files
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Logs));
+        foreach (var name in new[] { "LogPager", "LogLineFilter", "LogLines" })
+            Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
+        Assert.NotEmpty(page.FindControl<ListBox>("LogLines")!.GetRealizedContainers());
+        admin.Logs.CloseFileCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        foreach (var name in new[] { "LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList" })
+            Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
+        LayoutAssert.FitsHorizontally(main);
+        admin.Logs.Apply(new OVS.Shared.Protocol.LogSearchResult(null, admin.Logs.Files.Take(8).Select((f, i) =>
+            new OVS.Shared.Protocol.LogHit(f.Info.Id, 1000 + i, "2026-09-30 12:00:00.000 [Raidgruppe Nummer 2] Mitspieler3: " + new string('y', 400))).ToList(), true, false));
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(page.FindControl<Control>("LogHitsText")?.IsEffectivelyVisible);
+        Assert.NotEmpty(page.FindControl<ListBox>("LogHitList")!.GetRealizedContainers());
+        LayoutAssert.FitsHorizontally(main);
         main.Close();
         return 0;
     });
+
+    /// <summary>Package 81 (AC8): the file list beside the opened file; under narrow one after the other, each on the whole page.</summary>
+    [AvaloniaTheory]
+    [InlineData(360, true)]
+    [InlineData(1100, false)]
+    public void Admin_Logs_StackedWhenNarrow(double width, bool stacked)
+    {
+        var main = OpenAdmin(width, out var page);
+        var tabs = AdminTabs(page);
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Logs));
+        var list = page.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("logList"));
+        var viewer = page.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("logViewer"));
+        var lines = page.FindControl<ListBox>("LogLines")!;
+        if (stacked)
+        {
+            // an opened file takes the whole page, closing it brings back the filters and the list above the viewer
+            Assert.False(list.IsEffectivelyVisible);
+            Assert.False(page.FindControl<Control>("LogSearch")!.IsEffectivelyVisible);
+            Assert.True(lines.GetRealizedContainers().Count() >= 5, $"{lines.GetRealizedContainers().Count()} Zeilen sichtbar");
+        }
+        else
+        {
+            Assert.True(viewer.TranslatePoint(default, main)!.Value.X >= list.TranslatePoint(default, main)!.Value.X + list.Bounds.Width);
+            Assert.Equal(300, list.Bounds.Width, 1);
+        }
+        // long lines wrap inside the viewer instead of widening it
+        Assert.True(lines.Bounds.Width <= viewer.Bounds.Width);
+        Assert.Contains(lines.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.TextLayout.TextLines.Count > 1);
+        var admin = (AdminViewModel)page.DataContext!;
+        admin.Logs.CloseFileCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(list.IsEffectivelyVisible && page.FindControl<Control>("LogSearch")!.IsEffectivelyVisible);
+        if (stacked) Assert.False(viewer.IsEffectivelyVisible);
+        else Assert.True(viewer.IsEffectivelyVisible);
+        main.Close();
+    }
 
     [AvaloniaTheory]
     [InlineData(360, true)]

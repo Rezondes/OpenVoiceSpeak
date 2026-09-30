@@ -57,6 +57,10 @@ public class LocalizationTests
         Assert.Equal("The backup is larger than 50 MB.", TestCulture.With("en-US", () => ErrorTexts.For(Codes.BackupTooLarge)));
         Assert.Equal("Upload and restore ...", TestCulture.With("en-US", () => Strings.Ui_UploadAndRestore));
         Assert.Equal("Uploading: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Backup_Uploading, 42)));
+        // Package 81: the log viewer
+        Assert.Equal("Logs ansehen", PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsView).Label);
+        Assert.Equal("View logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsView).Label));
+        Assert.Equal("Page 2 of 3", TestCulture.With("en-US", () => string.Format(Strings.Ui_LogPage, 2, 3)));
     }
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>

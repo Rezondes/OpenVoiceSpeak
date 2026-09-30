@@ -630,6 +630,145 @@
             </StackPanel>
           </ScrollViewer>
         </TabItem>
+
+        <!-- ===== Logs (Package 81, A98: server and channel logs, page by page, search over all files) ===== -->
+        <TabItem Header="{x:Static l:Strings.Ui_Logs}" IsVisible="{Binding ShowLogs}">
+          <DockPanel DataContext="{Binding Logs}" x:DataType="vm:LogsViewModel" Classes="logsPage" Classes.fileOpen="{Binding IsFileOpen}">
+            <StackPanel DockPanel.Dock="Top" Classes="logFilters" Spacing="8" Margin="0,0,0,12">
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Command="{Binding SearchCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.Search}" />
+                    <TextBlock Text="{x:Static l:Strings.Ui_Search}" />
+                  </StackPanel>
+                </Button>
+                <TextBox x:Name="LogSearch" Text="{Binding SearchText}" Watermark="{x:Static l:Strings.Ui_LogSearch}"
+                         AutomationProperties.Name="{x:Static l:Strings.Ui_LogSearch}">
+                  <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                  </TextBox.KeyBindings>
+                </TextBox>
+              </DockPanel>
+              <WrapPanel ItemSpacing="8" LineSpacing="8">
+                <ComboBox x:Name="LogSourceFilter" ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}"
+                          MinWidth="140" AutomationProperties.Name="{x:Static l:Strings.Ui_LogSourceFilter}" />
+                <CalendarDatePicker x:Name="LogFrom" SelectedDate="{Binding FromDate}" Watermark="{x:Static l:Strings.Ui_LogFrom}"
+                                    Width="150" AutomationProperties.Name="{x:Static l:Strings.Ui_LogFrom}" />
+                <CalendarDatePicker x:Name="LogTo" SelectedDate="{Binding ToDate}" Watermark="{x:Static l:Strings.Ui_LogTo}"
+                                    Width="150" AutomationProperties.Name="{x:Static l:Strings.Ui_LogTo}" />
+              </WrapPanel>
+              <TextBlock Classes="caption" Text="{Binding FileCountText}" TextWrapping="Wrap" />
+            </StackPanel>
+            <!-- file list (or the hits of a search) beside the opened file; under narrow one after the other (styles in Controls.axaml) -->
+            <Grid Classes="adminLogs" ColumnDefinitions="Auto,*" RowDefinitions="2*,3*">
+              <Border Classes="card logList" Padding="6">
+                <Panel>
+                  <Panel IsVisible="{Binding !ShowHits}">
+                    <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoLogs}" TextWrapping="Wrap" TextAlignment="Center"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8" IsVisible="{Binding HasNoFiles}" />
+                    <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoLogMatches}" TextWrapping="Wrap" TextAlignment="Center"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8" IsVisible="{Binding HasNoFileMatches}" />
+                    <ListBox x:Name="LogFileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" Background="Transparent">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LogFileViewModel">
+                          <DockPanel>
+                            <PathIcon DockPanel.Dock="Left" Classes="sm muted" Margin="0,2,8,0" VerticalAlignment="Top"
+                                      Data="{StaticResource Icon.Document}" IsVisible="{Binding IsServer}" />
+                            <PathIcon DockPanel.Dock="Left" Classes="sm muted" Margin="0,2,8,0" VerticalAlignment="Top"
+                                      Data="{StaticResource Icon.Chat}" IsVisible="{Binding !IsServer}" />
+                            <StackPanel>
+                              <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                              <TextBlock Classes="caption" Text="{Binding Details}" TextWrapping="Wrap" />
+                            </StackPanel>
+                          </DockPanel>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                  </Panel>
+                  <DockPanel IsVisible="{Binding ShowHits}">
+                    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="4,2,4,6">
+                      <Button Classes="subtle" Command="{Binding ClearSearchCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                          <TextBlock Text="{x:Static l:Strings.Ui_LogBackToFiles}" />
+                        </StackPanel>
+                      </Button>
+                      <TextBlock Name="LogHitsText" Classes="caption" Text="{Binding HitsText}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ListBox x:Name="LogHitList" ItemsSource="{Binding Hits}" SelectedItem="{Binding SelectedHit}" Background="Transparent">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LogHitViewModel">
+                          <StackPanel>
+                            <WrapPanel ItemSpacing="8">
+                              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                              <TextBlock Classes="caption" Text="{Binding LineText}" VerticalAlignment="Center" />
+                            </WrapPanel>
+                            <TextBlock Classes="caption logText" Text="{Binding Text}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                  </DockPanel>
+                </Panel>
+              </Border>
+              <Border Classes="card logViewer" Padding="12,10">
+                <Panel>
+                  <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_LogChooseFile}" TextWrapping="Wrap" TextAlignment="Center"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsFileOpen}" />
+                  <DockPanel IsVisible="{Binding IsFileOpen}">
+                    <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8">
+                      <DockPanel>
+                        <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CloseFileCommand}"
+                                ToolTip.Tip="{x:Static l:Strings.Ui_LogCloseFile}" AutomationProperties.Name="{x:Static l:Strings.Ui_LogCloseFile}">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                        </Button>
+                        <TextBlock Text="{Binding OpenTitle}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                      </DockPanel>
+                      <WrapPanel Name="LogPager" ItemSpacing="6" LineSpacing="6">
+                        <Button Classes="icon" Command="{Binding FirstCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_LogFirst}"
+                                AutomationProperties.Name="{x:Static l:Strings.Ui_LogFirst}">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
+                        </Button>
+                        <Button Command="{Binding OlderCommand}">
+                          <TextBlock Text="{x:Static l:Strings.Ui_LogOlder}" />
+                        </Button>
+                        <TextBlock Classes="caption" Text="{Binding PageText}" VerticalAlignment="Center" />
+                        <Button Command="{Binding NewerCommand}">
+                          <TextBlock Text="{x:Static l:Strings.Ui_LogNewer}" />
+                        </Button>
+                        <Button Classes="icon" Command="{Binding LastCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_LogLast}"
+                                AutomationProperties.Name="{x:Static l:Strings.Ui_LogLast}">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                        </Button>
+                        <Button Classes="icon" Command="{Binding ReloadCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_LogReload}"
+                                AutomationProperties.Name="{x:Static l:Strings.Ui_LogReload}">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                        </Button>
+                      </WrapPanel>
+                      <TextBox x:Name="LogLineFilter" Text="{Binding LineFilter}" Watermark="{x:Static l:Strings.Ui_LogLineFilter}"
+                               AutomationProperties.Name="{x:Static l:Strings.Ui_LogLineFilter}" />
+                    </StackPanel>
+                    <Panel>
+                      <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_LogNoLines}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 TextWrapping="Wrap" IsVisible="{Binding !HasLines}" />
+                      <!-- long lines wrap; the selected line is the one a search hit opened -->
+                      <ListBox x:Name="LogLines" Classes="logLines" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" Background="Transparent">
+                        <ListBox.ItemTemplate>
+                          <DataTemplate x:DataType="vm:LogLineViewModel">
+                            <DockPanel>
+                              <TextBlock DockPanel.Dock="Left" Classes="caption logText" Text="{Binding Number}" Width="52" Margin="0,0,8,0" TextAlignment="Right" />
+                              <TextBlock Classes="logText" Inlines="{Binding Segments, Converter={x:Static v:Ui.LogSegments}}" TextWrapping="Wrap" />
+                            </DockPanel>
+                          </DataTemplate>
+                        </ListBox.ItemTemplate>
+                      </ListBox>
+                    </Panel>
+                  </DockPanel>
+                </Panel>
+              </Border>
+            </Grid>
+          </DockPanel>
+        </TabItem>
       </TabControl>
     </DockPanel>
   </DockPanel>

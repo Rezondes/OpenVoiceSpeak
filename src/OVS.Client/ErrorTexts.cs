@@ -48,6 +48,7 @@ public static class PermissionLabels
         (Permission.GroupsDelete, Strings.Perm_GroupsDelete),
         (Permission.GroupsAssign, Strings.Perm_GroupsAssign),
         (Permission.ServerConfig, Strings.Perm_ServerConfig),
+        (Permission.LogsView, Strings.Perm_LogsView),
         (Permission.ChatServer, Strings.Perm_ChatServer),
         (Permission.ChatChannel, Strings.Perm_ChatChannel),
         (Permission.ChatPrivate, Strings.Perm_ChatPrivate),

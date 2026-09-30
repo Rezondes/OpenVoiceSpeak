@@ -87,6 +87,7 @@ public sealed partial class AdminViewModel : ObservableObject
         hasPassword = server.Mirror.Settings.HasPassword;
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
+        Logs = new LogsViewModel(server);
         RebuildGroups();
         RebuildGroupFilters();
         RebuildUsers();
@@ -99,7 +100,9 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool ShowBans => Actor.Has(Permission.BansView);
     public bool ShowServer => Actor.Has(Permission.ServerConfig);
     public bool ShowLinks => Actor.Has(Permission.ChannelLink);
+    public bool ShowLogs => Actor.Has(Permission.LogsView); // Package 81
     public LinkMatrixViewModel Links { get; }
+    public LogsViewModel Logs { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
     /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
@@ -167,6 +170,7 @@ public sealed partial class AdminViewModel : ObservableObject
         if (ShowUsers) await server.SendAsync(new ListUsers());
         if (ShowBans) await server.SendAsync(new ListBans());
         if (ShowServer) await server.SendAsync(new ListBackups());
+        if (ShowLogs) await Logs.RequestAsync();
     }
 
     void OnStateChanged()
@@ -187,6 +191,7 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowUsers));
         OnPropertyChanged(nameof(ShowBans));
         OnPropertyChanged(nameof(ShowServer));
+        OnPropertyChanged(nameof(ShowLogs));
         NewGroupCommand.NotifyCanExecuteChanged();
         MoveGroupUpCommand.NotifyCanExecuteChanged();
         MoveGroupDownCommand.NotifyCanExecuteChanged();
@@ -222,6 +227,9 @@ public sealed partial class AdminViewModel : ObservableObject
             case BanList list:
                 allBans = list.Bans;
                 RebuildBans();
+                break;
+            case LogList or LogPage or LogSearchResult: // Package 81
+                Logs.Apply(message);
                 break;
         }
     }
@@ -814,7 +822,7 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
     /// <summary>The prefix the server gives the backup it takes before a restore.</summary>
     const string SafetyPrefix = "vor-wiederherstellung_";
 
-    static string Size(long bytes) =>
+    internal static string Size(long bytes) =>
         bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.0} MB" : $"{Math.Max(1, (bytes + 1023) / 1024)} KB";
 
     [RelayCommand]

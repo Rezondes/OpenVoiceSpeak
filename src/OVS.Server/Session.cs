@@ -61,6 +61,36 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         return true;
     }
 
+    // ---- Package 81: log pages and searches, one after the other on the thread pool, never under the state lock ----
+
+    const int MaxQueuedLogJobs = 4;
+    readonly object logJobGate = new();
+    Task logJobs = Task.CompletedTask;
+    int queuedLogJobs;
+
+    /// <summary>Runs job after the session's earlier ones; false when MaxQueuedLogJobs are waiting already.</summary>
+    public bool TryQueueLogJob(Action job)
+    {
+        if (Interlocked.Increment(ref queuedLogJobs) > MaxQueuedLogJobs)
+        {
+            Interlocked.Decrement(ref queuedLogJobs);
+            return false;
+        }
+        lock (logJobGate)
+            logJobs = logJobs.ContinueWith(_ =>
+            {
+                try
+                {
+                    job();
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref queuedLogJobs);
+                }
+            }, TaskScheduler.Default);
+        return true;
+    }
+
     public ChannelReader<Message> Outgoing => outbox.Reader;
 
     /// <summary>Never blocks. A client too slow to drain 1024 queued messages gets disconnected.</summary>

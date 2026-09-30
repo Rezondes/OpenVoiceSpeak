@@ -90,7 +90,7 @@ public sealed partial class ServerViewModel : ObservableObject
     public bool HasSpeakLinked => SelfPermissions.Has(Permission.SpeakLinked);
     /// <summary>Package 76: as soon as any administration tab would show.</summary>
     public bool CanAdminister =>
-        (SelfPermissions & (Permission.GroupsView | Permission.UsersView | Permission.BansView | Permission.ServerConfig | Permission.ChannelLink)) != 0;
+        (SelfPermissions & (Permission.GroupsView | Permission.UsersView | Permission.BansView | Permission.ServerConfig | Permission.ChannelLink | Permission.LogsView)) != 0;
     public bool CanRedeemToken => !IsAdmin;
 
     partial void OnIsAdminChanged(bool value) => OnPropertyChanged(nameof(CanRedeemToken));
@@ -163,7 +163,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 LastBanList = list;
                 AdminMessage?.Invoke(message);
                 return;
-            case BackupList or BackupChunk or UploadBackupAck or BackupUploaded: // Packages 74 and 75
+            case BackupList or BackupChunk or UploadBackupAck or BackupUploaded or LogList or LogPage or LogSearchResult: // Packages 74, 75 and 81
                 AdminMessage?.Invoke(message);
                 return;
             case ServerIcon icon:

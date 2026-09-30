@@ -86,17 +86,20 @@ public class AdminViewModelTests
 
     /// <summary>Package 76: every tab has its own view right; acting rights alone open nothing.</summary>
     [Theory]
-    [InlineData(P.GroupsView, true, false, false, false)]
-    [InlineData(P.UsersView, false, true, false, false)]
-    [InlineData(P.BansView, false, false, true, false)]
-    [InlineData(P.ServerConfig, false, false, false, true)]
-    [InlineData(P.GroupsAssign, false, false, false, false)]
-    [InlineData(P.GroupsManage | P.GroupsCreate | P.GroupsDelete | P.UserBan | P.UserKick | P.UserDelete, false, false, false, false)]
-    public void Tabs_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server)
+    [InlineData(P.GroupsView, true, false, false, false, false)]
+    [InlineData(P.UsersView, false, true, false, false, false)]
+    [InlineData(P.BansView, false, false, true, false, false)]
+    [InlineData(P.ServerConfig, false, false, false, true, false)]
+    [InlineData(P.LogsView, false, false, false, false, true)] // Package 81
+    [InlineData(P.GroupsAssign, false, false, false, false, false)]
+    [InlineData(P.GroupsManage | P.GroupsCreate | P.GroupsDelete | P.UserBan | P.UserKick | P.UserDelete, false, false, false, false, false)]
+    public async Task Tabs_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server, bool logs)
     {
-        var (vm, serverVm, _) = Create(perms);
-        Assert.Equal((groups, users, bans, server), (vm.ShowGroups, vm.ShowUsers, vm.ShowBans, vm.ShowServer));
-        Assert.Equal(groups || users || bans || server, serverVm.CanAdminister);
+        var (vm, serverVm, sent) = Create(perms);
+        Assert.Equal((groups, users, bans, server, logs), (vm.ShowGroups, vm.ShowUsers, vm.ShowBans, vm.ShowServer, vm.ShowLogs));
+        Assert.Equal(groups || users || bans || server || logs, serverVm.CanAdminister);
+        await vm.RequestListsAsync();
+        Assert.Equal(logs, sent.OfType<ListLogs>().Any());
     }
 
     /// <summary>Package 76 (AC4): without the acting right the overview stays readable, only the action is locked.</summary>

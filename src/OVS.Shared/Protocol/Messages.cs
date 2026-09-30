@@ -55,6 +55,13 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(UploadBackupChunk), "uploadBackupChunk")]
 [JsonDerivedType(typeof(UploadBackupAck), "uploadBackupAck")]
 [JsonDerivedType(typeof(BackupUploaded), "backupUploaded")]
+// Logs (Package 81)
+[JsonDerivedType(typeof(ListLogs), "listLogs")]
+[JsonDerivedType(typeof(LogList), "logList")]
+[JsonDerivedType(typeof(ReadLog), "readLog")]
+[JsonDerivedType(typeof(LogPage), "logPage")]
+[JsonDerivedType(typeof(SearchLogs), "searchLogs")]
+[JsonDerivedType(typeof(LogSearchResult), "logSearchResult")]
 // Moderation
 [JsonDerivedType(typeof(Kick), "kick")]
 [JsonDerivedType(typeof(Ban), "ban")]
@@ -185,6 +192,27 @@ public sealed record UploadBackupChunk(string UploadId, long Offset, string Data
 /// <param name="Received">The bytes stored so far, the offset of the next chunk.</param>
 public sealed record UploadBackupAck(string? RequestId, string UploadId, long Received) : Message;
 public sealed record BackupUploaded(string? RequestId, BackupInfo Backup) : Message;
+
+// ---- Logs (Package 81, A98: right LogsView) ----
+public enum LogKind { Server, Channel }
+/// <param name="Id">The file's name relative to the server's logs folder ("server/..." or "channels/&lt;id&gt;/..."); requests name a file only by it.</param>
+/// <param name="ChannelName">The channel's current name, or the one in the file for a deleted channel; null for server logs.</param>
+/// <param name="Start">The start in the file name; LastWrite is the time of its last line.</param>
+public sealed record LogFileInfo(string Id, LogKind Kind, Guid? ChannelId, string? ChannelName, DateTimeOffset Start, DateTimeOffset LastWrite, long Size);
+public sealed record ListLogs : Request;
+/// <summary>Newest first.</summary>
+public sealed record LogList(string? RequestId, IReadOnlyList<LogFileInfo> Files) : Message;
+/// <summary>Asks for one page of ProtocolInfo.LogPageLines lines; Page null = the last page.</summary>
+public sealed record ReadLog(string FileId, int? Page = null) : Request;
+/// <param name="Page">1-based, of PageCount.</param>
+/// <param name="FirstLine">The 1-based number of Lines[0] in the file.</param>
+public sealed record LogPage(string? RequestId, string FileId, int Page, int PageCount, int FirstLine, IReadOnlyList<string> Lines) : Message;
+/// <summary>Plain text, case-insensitive, over every file that passes the optional filters (Kind, ChannelId, period of the file).</summary>
+public sealed record SearchLogs(string Query, LogKind? Kind = null, Guid? ChannelId = null, DateTimeOffset? From = null, DateTimeOffset? To = null) : Request;
+/// <param name="Line">1-based line number in the file.</param>
+public sealed record LogHit(string FileId, int Line, string Text);
+/// <summary>Newest first. Truncated: there were more than ProtocolInfo.MaxLogHits; TimedOut: the search stopped after its time limit.</summary>
+public sealed record LogSearchResult(string? RequestId, IReadOnlyList<LogHit> Hits, bool Truncated, bool TimedOut) : Message;
 
 // ---- Moderation ----
 /// <summary>Package 80 (A97): active, expired and lifted bans; the new values are null or 0 for bans saved before.</summary>

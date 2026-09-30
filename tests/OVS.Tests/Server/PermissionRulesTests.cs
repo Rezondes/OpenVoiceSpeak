@@ -82,7 +82,10 @@ public class PermissionRulesTests
         Assert.Equal(P.None, Moderator.Permissions & (P.UsersView | P.GroupsView | P.GroupsCreate | P.GroupsDelete | P.UserDelete));
         Assert.Equal(P.Speak | P.ChatChannel | P.ChatPrivate, Guest.Permissions);
         Assert.True(Effective([AdminGroupId], Groups).Has(P.UsersView | P.BansView | P.GroupsView | P.GroupsCreate | P.GroupsDelete | P.UserDelete));
-        Assert.Equal((P)((1 << 23) - 1), P.All);
+        Assert.Equal((P)((1 << 24) - 1), P.All);
+        // Package 81 (A98): the logs only for Admin
+        Assert.Equal(P.None, (Moderator.Permissions | Guest.Permissions) & P.LogsView);
+        Assert.True(Effective([AdminGroupId], Groups).Has(P.LogsView));
     }
 
     [Fact]
