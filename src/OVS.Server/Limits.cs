@@ -33,4 +33,15 @@ public static class Limits
     public static readonly TimeSpan WriteTimeout = TimeSpan.FromSeconds(10);
     /// <summary>TLS plus protocol handshakes running at the same time, server-wide.</summary>
     public const int MaxPendingHandshakes = 64;
+
+    // ---- Package 87: identities and lists ----
+    /// <summary>Unknown fingerprints admitted per IP (IPv6: per /64) and hour; known ones are never counted.</summary>
+    public const int NewIdentitiesPerHour = 10;
+    public static readonly TimeSpan NewIdentityWindow = TimeSpan.FromHours(1);
+    /// <summary>Logins and logouts are saved at most this often (always on shutdown).</summary>
+    public static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(2);
+    /// <summary>Guest-only records without bans that were not seen this long are removed (checked daily).</summary>
+    public static readonly TimeSpan PruneGuestsAfter = TimeSpan.FromDays(90);
+    /// <summary>Entries per page of UserList, BanList, LogList and BackupList.</summary>
+    public const int ListPageSize = 200;
 }

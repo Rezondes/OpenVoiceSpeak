@@ -12,9 +12,12 @@ public sealed class UserStatsTests
 {
     static readonly byte[] Opus = RandomNumberGenerator.GetBytes(40);
 
-    static UserRecord Stored(TestServer server, ClientIdentity who) =>
-        new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException())
+    static UserRecord Stored(TestServer server, ClientIdentity who)
+    {
+        server.State.FlushPendingSave(); // Package 87: logins and logouts are saved debounced
+        return new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException())
             .Users.Single(u => u.Fingerprint == who.Fingerprint);
+    }
 
     static async Task UntilAsync(Func<bool> condition)
     {

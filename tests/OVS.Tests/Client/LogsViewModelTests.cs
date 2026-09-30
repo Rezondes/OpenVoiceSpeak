@@ -271,4 +271,14 @@ public class LogsViewModelTests
             Directory.Delete(dir, true);
         }
     }
+
+    /// <summary>Package 87 (AC4): the file list arrives in pages and is shown once complete.</summary>
+    [Fact]
+    public void FileList_FetchesAllPages()
+    {
+        LogFileInfo[] files = [ServerFile, RaidFile, OldServerFile, OldFile];
+        var (logs, sent) = Create(reply: r => r is ListLogs l ? new LogList(r.RequestId, files.Skip(l.Offset).Take(3).ToList(), l.Offset, files.Length) : null);
+        Assert.Equal([0, 3], sent.OfType<ListLogs>().Select(l => l.Offset));
+        Assert.Equal(4, logs.Files.Count);
+    }
 }

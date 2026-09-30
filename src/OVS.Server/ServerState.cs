@@ -30,6 +30,11 @@ public sealed partial class ServerState
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> passwordFailures = [];
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per PasswordSource
+    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool Logged)> newIdentities = []; // Package 87, per PasswordSource
+    DateTimeOffset nextIdentitySweep;
+    ITimer? saveTimer; // Package 87: the debounced save of logins and logouts
+    bool savePending;
+    DateTimeOffset nextPrune;
     readonly Dictionary<Guid, DateTimeOffset> attemptSaved = []; // Package 80: last save of a ban's blocked attempts
     DateTimeOffset nextPasswordSweep;
     readonly AdminToken adminToken = new();
@@ -48,7 +53,8 @@ public sealed partial class ServerState
         LogReader = new LogReader(config.DataDir, time); // Package 81
         LogReader.RemoveExports(); // Package 82: what a crash left behind
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
-        if (data.Migrate(config)) store.Save(data);
+        bool pruned = PruneGuests(time.GetUtcNow());
+        if (data.Migrate(config) || pruned) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
         HintIgnoredStartValues();
         if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
@@ -184,16 +190,18 @@ public sealed partial class ServerState
             if (sessions.Values.Any(s => s != replaced && string.Equals(s.Nickname, nickname, StringComparison.OrdinalIgnoreCase)))
                 return (null, new Rejected(Codes.NicknameTaken));
 
+            var user = FindUser(fingerprint);
+            if (user is null && !CountNewIdentity(source, ip, now)) return (null, new Rejected(Codes.RateLimited));
+
             if (replaced is not null) RemoveLocked(replaced, new Disconnected(Codes.ReplacedByNewConnection));
 
-            var user = FindUser(fingerprint);
             if (user is null)
             {
                 user = new UserRecord { Fingerprint = fingerprint, GroupIds = [GuestGroupId], FirstSeen = now };
                 data.Users.Add(user);
             }
             user.Login(nickname, ipText, now);
-            Persist();
+            PersistSoon(); // Package 87: a connect loop no longer costs an fsync per connection
 
             var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32), time)
             {
@@ -238,7 +246,8 @@ public sealed partial class ServerState
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
             logs.Server($"{why}, {sessions.Count} Nutzer getrennt");
-            if (sessions.Count > 0) Persist();
+            saveTimer?.Dispose(); // Package 87: nothing is written after this save (a restore replaces the file next)
+            if (sessions.Count > 0 || savePending) Persist();
             sessions.Clear();
         }
     }
@@ -257,7 +266,7 @@ public sealed partial class ServerState
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
         AddSessionStats(session, time.GetUtcNow());
-        Persist();
+        PersistSoon();
         Broadcast(new UserLeft(session.Id));
         if (final is Disconnected d) reason = d.Reason switch
         {
@@ -373,7 +382,8 @@ public sealed partial class ServerState
         return false;
     }
 
-    static bool ThrottleList(Session s, Request r) => Throttle(s, r, Limits.ListsPerSecond, Limits.ListBurst);
+    /// <summary>Package 87: only the first page counts, the others follow from it and are cheap.</summary>
+    static bool ThrottleList(Session s, Request r, int offset) => offset > 0 || Throttle(s, r, Limits.ListsPerSecond, Limits.ListBurst);
 
     static bool ThrottleHeavy(Session s, Request r) => Throttle(s, r, 1 / Limits.HeavyInterval.TotalSeconds);
 
@@ -430,14 +440,70 @@ public sealed partial class ServerState
     /// </summary>
     void Persist()
     {
+        savePending = false; // a full save takes a pending debounced one along
+        var now = time.GetUtcNow();
         if (data.Settings.LogDays > 0)
         {
-            var now = time.GetUtcNow();
             var cutoff = now.AddDays(-data.Settings.LogDays);
             data.Bans.RemoveAll(b => b.EndedAt(now) < cutoff);
         }
+        if (now >= nextPrune) PruneGuests(now);
         store.Save(data);
     }
+
+    /// <summary>Package 87: writes a pending debounced save now (tests and tools that read the data file).</summary>
+    public void FlushPendingSave()
+    {
+        lock (gate)
+            if (savePending) Persist();
+    }
+
+    /// <summary>Package 87: saves within SaveDelay, once for all changes until then; CloseAll saves what is pending.</summary>
+    void PersistSoon()
+    {
+        if (savePending) return;
+        savePending = true;
+        saveTimer ??= time.CreateTimer(_ =>
+        {
+            lock (gate)
+                if (savePending && closedWith is null) Persist();
+        }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        saveTimer.Change(Limits.SaveDelay, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>Package 87: drops unused guest records, checked at start and then once a day; true when some went.</summary>
+    bool PruneGuests(DateTimeOffset now)
+    {
+        nextPrune = now + TimeSpan.FromDays(1);
+        int removed = data.PruneGuests(now - Limits.PruneGuestsAfter);
+        if (removed > 0)
+            logs.Server($"{removed} ungenutzte Gast-Einträge entfernt (nur Gast, kein Bann, über {Limits.PruneGuestsAfter.TotalDays:0} Tage nicht angemeldet)");
+        return removed > 0;
+    }
+
+    /// <summary>Package 87: counts an unknown fingerprint of this source; false (and one log line per window) above the limit.</summary>
+    bool CountNewIdentity(IPAddress source, IPAddress ip, DateTimeOffset now)
+    {
+        if (now >= nextIdentitySweep)
+        {
+            foreach (var (key, e) in newIdentities)
+                if (now - e.First >= Limits.NewIdentityWindow) newIdentities.Remove(key);
+            nextIdentitySweep = now + Limits.NewIdentityWindow;
+        }
+        (int Count, DateTimeOffset First, bool Logged) entry = newIdentities.TryGetValue(source, out var old) && now - old.First < Limits.NewIdentityWindow ? old : (0, now, false);
+        if (entry.Count >= Limits.NewIdentitiesPerHour)
+        {
+            if (!entry.Logged)
+                logs.Server($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({Limits.NewIdentitiesPerHour} pro Stunde)");
+            newIdentities[source] = entry with { Logged = true };
+            return false;
+        }
+        newIdentities[source] = entry with { Count = entry.Count + 1 };
+        return true;
+    }
+
+    /// <summary>Package 87: at most ListPageSize entries from offset, so no list outgrows a frame.</summary>
+    static List<T> Page<T>(IEnumerable<T> all, int offset) => all.Skip(offset).Take(Limits.ListPageSize).ToList();
 
     /// <summary>Package 80 (A97): counts a join the ban turned away; written at most once per minute per ban, later saves take the rest along.</summary>
     void RecordBlockedAttempt(BanRecord ban, string ip, DateTimeOffset now)

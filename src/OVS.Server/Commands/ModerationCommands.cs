@@ -107,8 +107,8 @@ public sealed partial class ServerState
 
     void OnListBans(Session s, ListBans r)
     {
-        if (!Require(s, r, Permission.BansView) || !ThrottleList(s, r)) return;
-        SendBanList(s, r.RequestId);
+        if (!Require(s, r, Permission.BansView) || !ThrottleList(s, r, r.Offset)) return;
+        SendBanList(s, r.RequestId, Math.Max(0, r.Offset));
     }
 
     void OnSetServerMute(Session s, SetServerMute r)
@@ -119,8 +119,9 @@ public sealed partial class ServerState
         Broadcast(new UserUpdated(Info(target)));
     }
 
-    /// <summary>Package 80: active bans and the history; the client filters.</summary>
-    void SendBanList(Session s, string? requestId) => s.Send(new BanList(requestId, data.Bans.Select(ToInfo).ToList()));
+    /// <summary>Package 80: active bans and the history; the client filters. Package 87: one page, the client asks for the rest.</summary>
+    void SendBanList(Session s, string? requestId, int offset = 0) =>
+        s.Send(new BanList(requestId, Page(data.Bans, offset).Select(ToInfo).ToList(), offset, data.Bans.Count));
 
     static BanInfo ToInfo(BanRecord b) => new(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt,
         b.CreatedAt, b.CreatedByFingerprint, b.DurationMinutes, b.LiftedAt, b.LiftedBy, b.BlockedAttempts, b.LastAttempt, b.LastAttemptIp);

@@ -21,6 +21,7 @@ public sealed partial class LogsViewModel : ObservableObject
     readonly HashSet<string> selected = [];
     bool downloadRight;
     IReadOnlyList<LogFileInfo> allFiles = [];
+    readonly ListPages<LogFileInfo> filePages = new(); // Package 87
     IReadOnlyList<string> pageLines = [];
     int? targetLine;
 
@@ -84,7 +85,8 @@ public sealed partial class LogsViewModel : ObservableObject
         switch (message)
         {
             case LogList list:
-                allFiles = list.Files;
+                if (filePages.Add(list.Offset, list.Total, list.Files, o => _ = server.SendAsync(new ListLogs(o))) is not { } files) break;
+                allFiles = files;
                 selected.IntersectWith(allFiles.Select(f => f.Id)); // files gone meanwhile (retention) drop out
                 RebuildSources();
                 RebuildFiles();

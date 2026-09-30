@@ -33,6 +33,7 @@ public class StateSyncTests
     {
         await using var server = await TestServer.StartAsync();
         await using var a = await TestClient.ConnectAsync(server, "anna");
+        server.State.FlushPendingSave(); // Package 87: logins are saved debounced
         var data = new OVS.Server.Data.DataStore(Path.Combine(server.DataDir, "server-data.json")).LoadOrCreate(() => throw new InvalidOperationException());
         var user = data.Users.Single(u => u.Fingerprint == a.Identity.Fingerprint);
         Assert.Equal("anna", user.LastNickname);

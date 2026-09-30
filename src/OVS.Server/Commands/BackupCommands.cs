@@ -18,11 +18,17 @@ public sealed partial class ServerState
         get { lock (gate) return pendingRestore; }
     }
 
-    void SendBackups(Session s, Request r) => s.Send(new BackupList(r.RequestId, backups.List()));
+    /// <summary>Package 87: one page, the first one unless r asks for another.</summary>
+    void SendBackups(Session s, Request r)
+    {
+        int offset = r is ListBackups l ? Math.Max(0, l.Offset) : 0;
+        var all = backups.List();
+        s.Send(new BackupList(r.RequestId, Page(all, offset), offset, all.Count));
+    }
 
     void OnListBackups(Session s, ListBackups r)
     {
-        if (Require(s, r, Permission.ServerConfig) && ThrottleList(s, r)) SendBackups(s, r);
+        if (Require(s, r, Permission.ServerConfig) && ThrottleList(s, r, r.Offset)) SendBackups(s, r);
     }
 
     void OnCreateBackup(Session s, CreateBackup r)

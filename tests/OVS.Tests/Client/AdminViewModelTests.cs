@@ -935,4 +935,21 @@ public class AdminViewModelTests
         Assert.True(admin.ShowLinks);
         Assert.True(server.CanAdminister); // the administration opens for this right alone
     }
+
+    /// <summary>Package 87 (AC4): a long list arrives in pages; the page asks for the rest and shows it once complete.</summary>
+    [Fact]
+    public void UserList_FetchesAllPages()
+    {
+        var users = Enumerable.Range(0, 5).Select(i => new KnownUserInfo($"fp{i}", $"Nutzer{i}", [WellKnownGroups.Guest])).ToList();
+        UserList PageAt(string? id, int offset) => new(id, users.Skip(offset).Take(2).ToList(), offset, users.Count);
+        var (vm, server, sent) = Create(P.UsersView | P.Speak, reply: r => r is ListUsers l && l.Offset > 0 ? PageAt(l.RequestId, l.Offset) : null);
+
+        server.Apply(PageAt("r", 0));
+        Assert.Equal([2, 4], sent.OfType<ListUsers>().Select(l => l.Offset));
+        Assert.Equal(users.Select(u => u.Fingerprint), vm.Users.Select(u => u.Fingerprint).Order());
+
+        // a stale page of an older round is ignored
+        server.Apply(PageAt("alt", 4));
+        Assert.Equal(5, vm.Users.Count);
+    }
 }

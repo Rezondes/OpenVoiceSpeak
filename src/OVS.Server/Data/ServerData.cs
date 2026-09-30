@@ -147,6 +147,18 @@ public sealed class ServerData
     public List<UserRecord> Users { get; set; } = [];
     public List<BanRecord> Bans { get; set; } = [];
 
+    /// <summary>
+    /// Package 87: removes users that have nothing but the Guest group, no ban (active or past) and were last seen
+    /// before cutoff. The group history is not stored, so "only ever Guest" is read as "Guest now". A record without
+    /// any date (older than Package 70) is kept: its age is unknown. Returns the count.
+    /// </summary>
+    public int PruneGuests(DateTimeOffset cutoff)
+    {
+        var banned = Bans.Select(b => b.Fingerprint).ToHashSet();
+        return Users.RemoveAll(u => u.GroupIds.All(g => g == PermissionRules.GuestGroupId) && !banned.Contains(u.Fingerprint)
+                                    && (u.LastLogin ?? u.FirstSeen) is var seen && seen != default && seen < cutoff);
+    }
+
     public static ServerData CreateDefault(ServerConfig config)
     {
         var lobby = new ChannelRecord { Id = Guid.NewGuid(), Name = "Lobby" };

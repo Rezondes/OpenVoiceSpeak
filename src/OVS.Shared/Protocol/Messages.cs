@@ -160,8 +160,11 @@ public sealed record ReorderGroups(IReadOnlyList<Guid> GroupIds) : Request;
 public sealed record DeleteGroup(Guid GroupId) : Request;
 public sealed record AssignGroup(string Fingerprint, Guid GroupId) : Request;
 public sealed record UnassignGroup(string Fingerprint, Guid GroupId) : Request;
-public sealed record ListUsers : Request;
-public sealed record UserList(string? RequestId, IReadOnlyList<KnownUserInfo> Users) : Message;
+/// <param name="Offset">Package 87: every list comes in pages; Offset is the first entry wanted, the server picks the page size.</param>
+public sealed record ListUsers(int Offset = 0) : Request;
+/// <param name="Offset">Package 87: the position of the first entry in the whole list.</param>
+/// <param name="Total">Package 87: entries in the whole list; more pages follow while Offset + Users.Count is below it.</param>
+public sealed record UserList(string? RequestId, IReadOnlyList<KnownUserInfo> Users, int Offset = 0, int Total = 0) : Message;
 public sealed record RedeemAdminToken(string Token) : Request;
 /// <param name="Password">null = unchanged, "" = remove, anything else = new password.</param>
 /// <param name="Limits">Package 69: null = unchanged.</param>
@@ -177,7 +180,8 @@ public sealed record ServerIcon(string? RequestId, string? Hash, string? PngBase
 // ---- Backups (Package 74, right ServerConfig) ----
 /// <param name="FileName">Only the name inside the server's backups folder; requests name a backup by it.</param>
 public sealed record BackupInfo(string FileName, DateTimeOffset CreatedAt, long Size, string ServerVersion);
-public sealed record ListBackups : Request;
+/// <param name="Offset">Package 87: paged like <see cref="ListUsers"/>.</param>
+public sealed record ListBackups(int Offset = 0) : Request;
 /// <summary>Answered with the new BackupList.</summary>
 public sealed record CreateBackup : Request;
 /// <summary>Answered with the new BackupList.</summary>
@@ -185,7 +189,7 @@ public sealed record DeleteBackup(string FileName) : Request;
 /// <summary>Takes a safety backup, disconnects everyone with Restoring and restarts the server on the backup's state.</summary>
 public sealed record RestoreBackup(string FileName) : Request;
 /// <summary>Newest first.</summary>
-public sealed record BackupList(string? RequestId, IReadOnlyList<BackupInfo> Backups) : Message;
+public sealed record BackupList(string? RequestId, IReadOnlyList<BackupInfo> Backups, int Offset = 0, int Total = 0) : Message;
 // Package 75 (A91): transfers in chunks of ProtocolInfo.BackupChunkBytes, always one request per chunk, so the outbox never fills up
 /// <summary>Asks for the chunk at Offset; answered with one BackupChunk.</summary>
 public sealed record DownloadBackup(string FileName, long Offset) : Request;
@@ -203,9 +207,10 @@ public enum LogKind { Server, Channel }
 /// <param name="ChannelName">The channel's current name, or the one in the file for a deleted channel; null for server logs.</param>
 /// <param name="Start">The start in the file name; LastWrite is the time of its last line.</param>
 public sealed record LogFileInfo(string Id, LogKind Kind, Guid? ChannelId, string? ChannelName, DateTimeOffset Start, DateTimeOffset LastWrite, long Size);
-public sealed record ListLogs : Request;
+/// <param name="Offset">Package 87: paged like <see cref="ListUsers"/>.</param>
+public sealed record ListLogs(int Offset = 0) : Request;
 /// <summary>Newest first.</summary>
-public sealed record LogList(string? RequestId, IReadOnlyList<LogFileInfo> Files) : Message;
+public sealed record LogList(string? RequestId, IReadOnlyList<LogFileInfo> Files, int Offset = 0, int Total = 0) : Message;
 /// <summary>Asks for one page of ProtocolInfo.LogPageLines lines; Page null = the last page.</summary>
 public sealed record ReadLog(string FileId, int? Page = null) : Request;
 /// <param name="Page">1-based, of PageCount.</param>
@@ -240,8 +245,9 @@ public sealed record Unban(Guid BanId) : Request;
 public sealed record BanUser(string Fingerprint, string Reason, int? DurationMinutes, bool IncludeIp) : Request;
 /// <summary>Package 72: removes the user record and every ban on this fingerprint (A88).</summary>
 public sealed record DeleteUser(string Fingerprint) : Request;
-public sealed record ListBans : Request;
-public sealed record BanList(string? RequestId, IReadOnlyList<BanInfo> Bans) : Message;
+/// <param name="Offset">Package 87: paged like <see cref="ListUsers"/>.</param>
+public sealed record ListBans(int Offset = 0) : Request;
+public sealed record BanList(string? RequestId, IReadOnlyList<BanInfo> Bans, int Offset = 0, int Total = 0) : Message;
 public sealed record SetServerMute(uint SessionId, bool Muted) : Request;
 
 // ---- Links ----

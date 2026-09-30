@@ -5431,11 +5431,11 @@ Every successful login with a new fingerprint creates a permanent `UserRecord` a
 
 ### Acceptance Criteria
 
-- [ ] AC1: At most 10 new identities per IP (IPv6: per /64) per hour are admitted; more get `RateLimited` with a log line. Known fingerprints are never throttled.
-- [ ] AC2: Saving after login and logout is debounced (at most once per 2 s, and always on shutdown), so a connect loop no longer causes an fsync per connection.
-- [ ] AC3: Records of users who only ever had the Guest group, have no bans and have not logged in for 90 days are pruned automatically (logged).
-- [ ] AC4: All four lists are paged (for example 200 entries per page, plus the total). The client fetches all pages and shows the full list; no single message can exceed the frame limit.
-- [ ] AC5: With 5000 users, 2000 bans and 2000 log files the admin page loads without disconnecting.
+- [x] AC1: At most 10 new identities per IP (IPv6: per /64) per hour are admitted; more get `RateLimited` with a log line. Known fingerprints are never throttled.
+- [x] AC2: Saving after login and logout is debounced (at most once per 2 s, and always on shutdown), so a connect loop no longer causes an fsync per connection.
+- [x] AC3: Records of users who only ever had the Guest group, have no bans and have not logged in for 90 days are pruned automatically (logged).
+- [x] AC4: All four lists are paged (for example 200 entries per page, plus the total). The client fetches all pages and shows the full list; no single message can exceed the frame limit.
+- [x] AC5: With 5000 users, 2000 bans and 2000 log files the admin page loads without disconnecting.
 
 ### Tests (TDD)
 

@@ -12,6 +12,10 @@ public sealed partial class AdminViewModel : ObservableObject
 {
     readonly ServerViewModel server;
     IReadOnlyList<KnownUserInfo> knownUsers = [];
+    // Package 87: the lists come in pages, collected until complete
+    readonly ListPages<KnownUserInfo> userPages = new();
+    readonly ListPages<BanInfo> banPages = new();
+    readonly ListPages<BackupInfo> backupPages = new();
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveGroupCommand), nameof(DeleteGroupCommand), nameof(MoveGroupUpCommand), nameof(MoveGroupDownCommand))]
@@ -222,17 +226,20 @@ public sealed partial class AdminViewModel : ObservableObject
                 Reply(id).TrySetResult(message);
                 break;
             case UserList list:
-                ConfirmGroupChanges(list.Users);
-                knownUsers = list.Users;
+                if (userPages.Add(list.Offset, list.Total, list.Users, o => _ = server.SendAsync(new ListUsers(o))) is not { } users) break;
+                ConfirmGroupChanges(users);
+                knownUsers = users;
                 RebuildUsers();
                 break;
             case BackupList list:
+                if (backupPages.Add(list.Offset, list.Total, list.Backups, o => _ = server.SendAsync(new ListBackups(o))) is not { } backups) break;
                 Backups.Clear();
-                foreach (var backup in list.Backups) Backups.Add(new BackupViewModel(backup, DeleteBackupAsync, RestoreBackupAsync));
+                foreach (var backup in backups) Backups.Add(new BackupViewModel(backup, DeleteBackupAsync, RestoreBackupAsync));
                 OnPropertyChanged(nameof(HasNoBackups));
                 break;
             case BanList list:
-                allBans = list.Bans;
+                if (banPages.Add(list.Offset, list.Total, list.Bans, o => _ = server.SendAsync(new ListBans(o))) is not { } bans) break;
+                allBans = bans;
                 RebuildBans();
                 break;
             case LogList or LogPage or LogSearchResult: // Package 81

@@ -15,9 +15,14 @@ public sealed partial class ServerState
 
     void OnListLogs(Session s, ListLogs r)
     {
-        if (!Require(s, r, Permission.LogsView) || !ThrottleList(s, r)) return;
+        if (!Require(s, r, Permission.LogsView) || !ThrottleList(s, r, r.Offset)) return;
         var names = data.Channels.ToDictionary(c => c.Id, c => c.Name);
-        QueueLogJob(s, r, () => new LogList(r.RequestId, LogReader.List(names)));
+        int offset = Math.Max(0, r.Offset);
+        QueueLogJob(s, r, () =>
+        {
+            var all = LogReader.List(names);
+            return new LogList(r.RequestId, Page(all, offset), offset, all.Count); // Package 87
+        });
     }
 
     void OnReadLog(Session s, ReadLog r)
