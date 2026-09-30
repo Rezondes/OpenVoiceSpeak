@@ -408,12 +408,23 @@
   <Style Selector="Window.narrow TabItem">
     <Setter Property="Padding" Value="8,0" />
   </Style>
-  <!-- Where a dragged channel or group lands (Package 36, 37) -->
-  <Style Selector="Border.dropLine">
-    <Setter Property="Height" Value="2" />
-    <Setter Property="CornerRadius" Value="1" />
-    <Setter Property="Margin" Value="6,1" />
-    <Setter Property="Background" Value="{DynamicResource Ovs.Accent}" />
+  <!-- Package 96 (A112): the lifted item of a reorder drag (Views/ReorderDrag.cs). Rows rest without a shadow,
+       the preview gets 8 px of offset and blur; scale and tilt come from the code (no tilt with reduced animations). -->
+  <Style Selector="Border.dragPreview">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Surface}" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="BoxShadow" Value="0 8 8 0 #59000000" />
+  </Style>
+  <!-- Package 30, 96: a file drop zone, lit up while a file is dragged over it -->
+  <Style Selector="Border.dropZone">
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+  </Style>
+  <Style Selector="Border.dropZone.dropHover">
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Accent}" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
   </Style>
 
   <!-- One field of the link matrix; pending changes are tinted (Package 38) -->

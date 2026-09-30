@@ -784,9 +784,6 @@ public sealed partial class GroupEditViewModel : ObservableObject
     public IReadOnlyList<PermissionToggle> Toggles { get; }
     public Permission Permissions => Toggles.Where(t => t.IsChecked).Aggregate(Permission.None, (acc, t) => acc | t.Permission);
     public string DisplayName => Id is null ? string.Format(Strings.Group_Unsaved, Name) : Name;
-    /// <summary>Package 37: where a dragged group would land.</summary>
-    [ObservableProperty] bool isDropAbove;
-    [ObservableProperty] bool isDropBelow;
 }
 
 public sealed partial class PermissionToggle(Permission permission, string label, bool isChecked, bool isEnabled) : ObservableObject

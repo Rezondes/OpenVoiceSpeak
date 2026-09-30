@@ -60,14 +60,9 @@
                 <ListBox x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:GroupEditViewModel">
-                      <StackPanel Background="Transparent" PointerPressed="OnGroupPointerPressed" PointerMoved="OnGroupPointerMoved"
-                                  PointerReleased="OnGroupPointerReleased" PointerCaptureLost="OnGroupPointerCaptureLost">
-                        <Border Classes="dropLine" IsVisible="{Binding IsDropAbove}" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <PathIcon Classes="sm muted" Data="{StaticResource Icon.People}" />
-                          <TextBlock Text="{Binding DisplayName}" />
-                        </StackPanel>
-                        <Border Classes="dropLine" IsVisible="{Binding IsDropBelow}" />
+                      <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
+                        <PathIcon Classes="sm muted" Data="{StaticResource Icon.People}" />
+                        <TextBlock Text="{Binding DisplayName}" />
                       </StackPanel>
                     </DataTemplate>
                   </ListBox.ItemTemplate>
@@ -481,8 +476,7 @@
                   <StackPanel Spacing="4">
                     <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_ServerLogo}" />
                     <DockPanel>
-                      <Border x:Name="IconDrop" DockPanel.Dock="Left" Width="72" Height="72" CornerRadius="16" ClipToBounds="True"
-                              BorderThickness="1" BorderBrush="{DynamicResource Ovs.Border}" Background="{DynamicResource Ovs.SurfaceHover}"
+                      <Border x:Name="IconDrop" Classes="dropZone" DockPanel.Dock="Left" Width="72" Height="72" CornerRadius="16" ClipToBounds="True"
                               DragDrop.AllowDrop="True" ToolTip.Tip="{x:Static l:Strings.Ui_DropImage}">
                         <Panel>
                           <PathIcon Classes="muted" Data="{StaticResource Icon.Add}" IsVisible="{Binding IconPng, Converter={x:Static ObjectConverters.IsNull}}" />

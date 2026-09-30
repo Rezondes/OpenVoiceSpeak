@@ -20,6 +20,9 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnKeyDown);
         DataContextChanged += (_, _) => WatchServer();
         LayoutUpdated += (_, _) => ApplyResponsive();
+        // Package 36, 96: drag a channel to a new position (needs "Channels bearbeiten")
+        _ = new ReorderDrag(ChannelItems, item => item is ChannelViewModel { CanEdit: true },
+            (source, target, after) => Vm.Server?.MoveChannelAsync((ChannelViewModel)source, (ChannelViewModel)target, after) ?? Task.CompletedTask);
     }
 
     MainViewModel Vm => (MainViewModel)DataContext!;
@@ -69,65 +72,6 @@ public partial class MainWindow : Window
         if ((sender as Control)?.DataContext is not ChannelViewModel channel) return;
         channel.JoinCommand.Execute(null);
         SetDrawer(false);
-    }
-
-    // ---- Package 36: drag a channel onto another to reorder (needs "Channels bearbeiten") ----
-
-    const double DragThreshold = 6;
-    ChannelViewModel? dragSource, dropTarget;
-    Point dragStart;
-    bool dragging, dropAfter;
-
-    void OnChannelPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if ((sender as Control)?.DataContext is not ChannelViewModel { CanEdit: true } channel) return;
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        dragSource = channel;
-        dragStart = e.GetPosition(ChannelItems);
-    }
-
-    void OnChannelPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (dragSource is null) return;
-        var position = e.GetPosition(ChannelItems);
-        if (!dragging && Math.Abs(position.Y - dragStart.Y) < DragThreshold && Math.Abs(position.X - dragStart.X) < DragThreshold) return;
-        dragging = true;
-        // Each channel block is its row plus its users; the upper half means "before", the lower half "after".
-        var blocks = ChannelItems.GetRealizedContainers()
-            .Select(c => (Channel: c.DataContext as ChannelViewModel, Top: c.TranslatePoint(default, ChannelItems)?.Y ?? 0, c.Bounds.Height))
-            .Where(b => b.Channel is not null).ToList();
-        if (blocks.Count == 0) return;
-        var hit = blocks.FirstOrDefault(b => position.Y < b.Top + b.Height);
-        if (hit.Channel is null) hit = blocks[^1];
-        ShowDrop(hit.Channel, position.Y > hit.Top + hit.Height / 2);
-    }
-
-    void ShowDrop(ChannelViewModel? target, bool after)
-    {
-        if (dropTarget is not null) dropTarget.IsDropAbove = dropTarget.IsDropBelow = false;
-        dropTarget = target == dragSource ? null : target;
-        dropAfter = after;
-        if (dropTarget is null) return;
-        dropTarget.IsDropAbove = !after;
-        dropTarget.IsDropBelow = after;
-    }
-
-    async void OnChannelPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        var (source, target, after, wasDragging) = (dragSource, dropTarget, dropAfter, dragging);
-        EndDrag();
-        if (!wasDragging) return;
-        e.Handled = true;
-        if (source is not null && target is not null && Vm.Server is { } server) await server.MoveChannelAsync(source, target, after);
-    }
-
-    void OnChannelPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e) => EndDrag();
-
-    void EndDrag()
-    {
-        ShowDrop(null, false);
-        dragSource = null;
-        dragging = false;
     }
 
     // ---- Package 67 (A81): sidebar as wide as the widest channel row, until the user drags it ----

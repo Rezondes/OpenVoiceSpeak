@@ -548,11 +548,12 @@ public sealed class UiSmokeTests : IDisposable
         main.MouseMove(raid + new Point(0, -10));
         main.MouseMove(lobby + new Point(0, -8)); // upper half of the lobby row
         Dispatcher.UIThread.RunJobs();
-        Assert.True(vm.Server.Channels.Single(c => c.Name == "Lobby").IsDropAbove);
+        Thickness LobbyMargin() => main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(vm.Server.Channels.Single(c => c.Name == "Lobby"))!.Margin;
+        Assert.True(LobbyMargin().Top > 0); // Package 96: the gap opens above the lobby
         main.MouseUp(lobby + new Point(0, -8), MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(new[] { FakeServers.Raid, FakeServers.Lobby }, sent.OfType<ReorderChannels>().Single().ChannelIds);
-        Assert.False(vm.Server.Channels.Single(c => c.Name == "Lobby").IsDropAbove);
+        Assert.Equal(default, LobbyMargin());
         main.Close();
     }
 
@@ -580,6 +581,38 @@ public sealed class UiSmokeTests : IDisposable
         main.MouseUp(guest + new Point(0, -6), MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(new[] { WellKnownGroups.Admin, WellKnownGroups.Guest }, sent.OfType<ReorderGroups>().Single().GroupIds);
+        main.Close();
+    }
+
+    /// <summary>Package 96: the server logo field lights up while a file is dragged over it, and goes back when it leaves.</summary>
+    [AvaloniaFact]
+    public void LogoDropZone_HighlightsOnDragOver()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        _ = vm.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Server").IsSelected = true;
+        Dispatcher.UIThread.RunJobs();
+        var zone = main.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "IconDrop");
+        var idle = zone.BorderBrush;
+        void Raise(RoutedEvent<DragEventArgs> routed, IDataTransfer data) =>
+            zone.RaiseEvent(new DragEventArgs(routed, data, zone, new Point(10, 10), KeyModifiers.None));
+        var file = new DataTransfer();
+        file.Add(DataTransferItem.Create(DataFormat.File, () => (Avalonia.Platform.Storage.IStorageItem?)null));
+        var text = new DataTransfer();
+        text.Add(DataTransferItem.CreateText("kein Bild"));
+
+        Raise(DragDrop.DragOverEvent, text);
+        Assert.DoesNotContain("dropHover", zone.Classes);
+        Raise(DragDrop.DragOverEvent, file);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("dropHover", zone.Classes);
+        Assert.NotEqual(idle, zone.BorderBrush);
+        Raise(DragDrop.DragLeaveEvent, file);
+        Assert.DoesNotContain("dropHover", zone.Classes);
+        Assert.Equal(idle, zone.BorderBrush);
         main.Close();
     }
 

@@ -175,10 +175,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">
-                    <Border Classes="dropLine" IsVisible="{Binding IsDropAbove}" />
                     <Border Classes="row" Classes.current="{Binding IsCurrent}" DoubleTapped="OnChannelDoubleTapped"
-                            PointerPressed="OnChannelPointerPressed" PointerMoved="OnChannelPointerMoved"
-                            PointerReleased="OnChannelPointerReleased" PointerCaptureLost="OnChannelPointerCaptureLost"
                             ToolTip.Tip="{Binding Tooltip}">
                       <Border.ContextMenu>
                         <ContextMenu>
@@ -305,7 +302,6 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Border Classes="dropLine" IsVisible="{Binding IsDropBelow}" />
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

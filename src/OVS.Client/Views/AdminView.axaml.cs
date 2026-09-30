@@ -26,68 +26,14 @@ public partial class AdminView : UserControl
             if (e.Source == Tabs) Tabs.ContainerFromIndex(Tabs.SelectedIndex)?.BringIntoView();
         };
         IconDrop.AddHandler(DragDrop.DragOverEvent, OnIconDragOver);
+        IconDrop.AddHandler(DragDrop.DragLeaveEvent, (_, _) => IconDrop.Classes.Remove("dropHover"));
         IconDrop.AddHandler(DragDrop.DropEvent, OnIconDrop);
+        // Package 37, 96: drag a group to a new position (needs "Gruppen verwalten", shown only then)
+        _ = new ReorderDrag(GroupList, item => item is GroupEditViewModel { Id: not null },
+            (source, target, after) => Vm?.MoveGroupAsync((GroupEditViewModel)source, (GroupEditViewModel)target, after) ?? Task.CompletedTask);
     }
 
     AdminViewModel? Vm => DataContext as AdminViewModel;
-
-    // ---- Package 37: drag a group to a new position (needs "Gruppen verwalten", shown only then) ----
-
-    const double DragThreshold = 6;
-    GroupEditViewModel? dragSource, dropTarget;
-    Avalonia.Point dragStart;
-    bool dragging, dropAfter;
-
-    void OnGroupPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if ((sender as Control)?.DataContext is not GroupEditViewModel { Id: not null } group) return;
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        dragSource = group;
-        dragStart = e.GetPosition(GroupList);
-    }
-
-    void OnGroupPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (dragSource is null) return;
-        var position = e.GetPosition(GroupList);
-        if (!dragging && Math.Abs(position.Y - dragStart.Y) < DragThreshold) return;
-        dragging = true;
-        var items = GroupList.GetRealizedContainers()
-            .Select(c => (Group: c.DataContext as GroupEditViewModel, Top: c.TranslatePoint(default, GroupList)?.Y ?? 0, c.Bounds.Height))
-            .Where(i => i.Group is { Id: not null }).ToList();
-        if (items.Count == 0) return;
-        var hit = items.FirstOrDefault(i => position.Y < i.Top + i.Height);
-        if (hit.Group is null) hit = items[^1];
-        ShowDrop(hit.Group, position.Y > hit.Top + hit.Height / 2);
-    }
-
-    void ShowDrop(GroupEditViewModel? target, bool after)
-    {
-        if (dropTarget is not null) dropTarget.IsDropAbove = dropTarget.IsDropBelow = false;
-        dropTarget = target == dragSource ? null : target;
-        dropAfter = after;
-        if (dropTarget is null) return;
-        dropTarget.IsDropAbove = !after;
-        dropTarget.IsDropBelow = after;
-    }
-
-    async void OnGroupPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        var (source, target, after, wasDragging) = (dragSource, dropTarget, dropAfter, dragging);
-        EndDrag();
-        if (!wasDragging || source is null || target is null || Vm is not { } vm) return;
-        e.Handled = true;
-        await vm.MoveGroupAsync(source, target, after);
-    }
-
-    void OnGroupPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e) => EndDrag();
-
-    void EndDrag()
-    {
-        ShowDrop(null, false);
-        dragSource = null;
-        dragging = false;
-    }
 
     /// <summary>The Windows file dialog is the one agreed exception to "no second window" (A20).</summary>
     async void OnPickIcon(object? sender, RoutedEventArgs e)
@@ -150,11 +96,17 @@ public partial class AdminView : UserControl
         if (file?.TryGetLocalPath() is { } path) await logs.DownloadAsync(path);
     }
 
-    void OnIconDragOver(object? sender, DragEventArgs e) =>
-        e.DragEffects = e.DataTransfer.TryGetFile() is not null ? DragDropEffects.Copy : DragDropEffects.None;
+    /// <summary>Package 96: the drop zone lights up while a file is over it; the OS draws the drag preview itself.</summary>
+    void OnIconDragOver(object? sender, DragEventArgs e)
+    {
+        bool file = e.DataTransfer.Contains(DataFormat.File);
+        e.DragEffects = file ? DragDropEffects.Copy : DragDropEffects.None;
+        IconDrop.Classes.Set("dropHover", file);
+    }
 
     async void OnIconDrop(object? sender, DragEventArgs e)
     {
+        IconDrop.Classes.Remove("dropHover");
         if (e.DataTransfer.TryGetFile()?.TryGetLocalPath() is { } path) await UploadAsync(path);
     }
 

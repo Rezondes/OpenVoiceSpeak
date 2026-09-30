@@ -5896,12 +5896,12 @@ Two reorder drags exist, copy-pasted: the channel tree (`MainWindow.axaml.cs` ar
 
 ### Acceptance Criteria
 
-- [ ] AC1: While dragging, a preview of the dragged item follows the pointer in an overlay layer: scale 1.03, a shadow 8 px stronger (larger blur and offset) than the item's normal elevation, rotated 3°, fully opaque; the original item is dimmed in its slot.
-- [ ] AC2: Instead of the line, a placeholder gap with exactly the dragged item's height opens at the target position; the other items move aside. After the drop the item sits where the placeholder was, with the same height, so nothing jumps.
-- [ ] AC3: Esc or releasing outside the list cancels: preview and placeholder disappear, the order is unchanged and nothing is sent.
-- [ ] AC4: Both the channel tree and the group list use the shared controller; the old `dropLine` code is removed; the existing reorder requests (`MoveChannelAsync`, `MoveGroupAsync`) are sent exactly as before.
-- [ ] AC5: The logo drop zone highlights while a file is dragged over it (the OS drag preview itself is outside the app's control).
-- [ ] AC6: With the Windows setting for reduced animations the preview is not tilted and items jump instead of animating; scale and shadow stay.
+- [x] AC1: While dragging, a preview of the dragged item follows the pointer in an overlay layer: scale 1.03, a shadow 8 px stronger (larger blur and offset) than the item's normal elevation, rotated 3°, fully opaque; the original item is dimmed in its slot.
+- [x] AC2: Instead of the line, a placeholder gap with exactly the dragged item's height opens at the target position; the other items move aside. After the drop the item sits where the placeholder was, with the same height, so nothing jumps.
+- [x] AC3: Esc or releasing outside the list cancels: preview and placeholder disappear, the order is unchanged and nothing is sent.
+- [x] AC4: Both the channel tree and the group list use the shared controller; the old `dropLine` code is removed; the existing reorder requests (`MoveChannelAsync`, `MoveGroupAsync`) are sent exactly as before.
+- [x] AC5: The logo drop zone highlights while a file is dragged over it (the OS drag preview itself is outside the app's control).
+- [x] AC6: With the Windows setting for reduced animations the preview is not tilted and items jump instead of animating; scale and shadow stay. (the tests replace the Windows query `SPI_GETCLIENTAREAANIMATION`; the real setting is only checked by hand)
 
 ### Tests (TDD)
 

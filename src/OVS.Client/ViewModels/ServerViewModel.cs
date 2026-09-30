@@ -490,9 +490,6 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [ObservableProperty] bool canUnlink;
     [ObservableProperty] bool canMoveUp;
     [ObservableProperty] bool canMoveDown;
-    /// <summary>Package 36: where a dragged channel would land, shown as a line above or below this one.</summary>
-    [ObservableProperty] bool isDropAbove;
-    [ObservableProperty] bool isDropBelow;
     /// <summary>Package 93: the lock icon behind the name and its tooltip.</summary>
     [ObservableProperty] bool isLocked;
     [ObservableProperty] string lockText = "";
