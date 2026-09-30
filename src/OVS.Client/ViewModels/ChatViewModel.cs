@@ -214,7 +214,13 @@ public sealed partial class ChatViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSend))]
     async Task Send()
     {
-        var text = Draft.Trim();
+        // Package 83: the server's text rules, so the draft stays for correcting
+        if (TextRules.Text(Draft, ProtocolInfo.MaxChatLength) is not { } checkedText)
+        {
+            ComposerError = Strings.Chat_InvalidChars;
+            return;
+        }
+        var text = checkedText.Trim();
         var tab = Selected;
         var target = tab.Kind switch
         {

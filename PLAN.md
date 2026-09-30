@@ -5227,12 +5227,12 @@ Audit findings (both passes agree):
 
 ### Acceptance Criteria
 
-- [ ] AC1: A request with a null value in a non-nullable field, an unknown enum value or a malformed list is rejected with `InvalidValue`, and the connection stays open. No handler throws for any such input.
-- [ ] AC2: Unexpected exceptions inside a handler are logged (German server log line with the request type) and answered with `InvalidValue`. Only protocol violations on the frame level still close the connection.
-- [ ] AC3: Names (nickname, channel, group, server) reject control characters, Unicode format characters (category Cf: zero-width, bidi controls) and U+2028/2029, and are trimmed. Nickname uniqueness compares NFKC-normalized, case-insensitive names against online users AND the stored `LastNickname` of other users (so an offline admin's name cannot be taken by a new identity).
-- [ ] AC4: Multi-line texts (welcome text, channel description) allow `\n` but reject other C0/C1 control characters and bidi controls. Chat text allows `\n` and rejects the same set.
-- [ ] AC5: `EditChannel.Order` is ignored (order only changes through `ReorderChannels`) or validated to 0..channel count; `CreateChannel` never overflows. The server password is limited to 1..128 characters when set.
-- [ ] AC6: `SendChat` with a target outside the enum is rejected with `InvalidValue` and not counted against the rate limit.
+- [x] AC1: A request with a null value in a non-nullable field, an unknown enum value or a malformed list is rejected with `InvalidValue`, and the connection stays open. No handler throws for any such input.
+- [x] AC2: Unexpected exceptions inside a handler are logged (German server log line with the request type) and answered with `InvalidValue`. Only protocol violations on the frame level still close the connection.
+- [x] AC3: Names (nickname, channel, group, server) reject control characters, Unicode format characters (category Cf: zero-width, bidi controls) and U+2028/2029, and are trimmed. Nickname uniqueness compares NFKC-normalized, case-insensitive names against online users AND the stored `LastNickname` of other users (so an offline admin's name cannot be taken by a new identity).
+- [x] AC4: Multi-line texts (welcome text, channel description) allow `\n` but reject other C0/C1 control characters and bidi controls. Chat text allows `\n` and rejects the same set.
+- [x] AC5: `EditChannel.Order` is ignored (order only changes through `ReorderChannels`) or validated to 0..channel count; `CreateChannel` never overflows. The server password is limited to 1..128 characters when set.
+- [x] AC6: `SendChat` with a target outside the enum is rejected with `InvalidValue` and not counted against the rate limit.
 
 ### Tests (TDD)
 

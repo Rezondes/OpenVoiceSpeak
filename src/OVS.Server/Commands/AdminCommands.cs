@@ -177,15 +177,20 @@ public sealed partial class ServerState
     void OnUpdateServerSettings(Session s, UpdateServerSettings r)
     {
         if (!Require(s, r, Permission.ServerConfig)) return;
-        var name = ValidName(r.Name, 64);
+        var name = ValidName(r.Name, ProtocolInfo.MaxNameLength);
         if (name is null)
         {
             Fail(s, r, Codes.InvalidName);
             return;
         }
-        if ((r.WelcomeText ?? "").Length > 500)
+        if (TextRules.Text(r.WelcomeText ?? "", ProtocolInfo.MaxTextLength) is not { } welcome) // Package 83: multi-line, no control or bidi characters
         {
-            Fail(s, r, Codes.InvalidValue, "Willkommenstext zu lang");
+            Fail(s, r, Codes.InvalidValue, "Willkommenstext zu lang oder mit unerlaubten Zeichen");
+            return;
+        }
+        if (r.Password is { Length: > ProtocolInfo.MaxPasswordLength }) // Package 83: "" still removes it
+        {
+            Fail(s, r, Codes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolInfo.MaxPasswordLength} Zeichen.");
             return;
         }
         if (r.Limits is { } l && (l.MaxUsers is < 1 or > 100_000 || l.LogDays is < 0 or > 3650))
@@ -193,7 +198,6 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, l.MaxUsers is < 1 or > 100_000 ? "Maximale Nutzer: 1 bis 100000" : "Logs aufbewahren: 0 bis 3650 Tage");
             return;
         }
-        var welcome = r.WelcomeText ?? "";
         var changes = new List<string>();
         if (data.Settings.Name != name) changes.Add($"Name '{data.Settings.Name}' -> '{name}'");
         if (data.Settings.WelcomeText != welcome) changes.Add("Willkommenstext geändert");
@@ -252,7 +256,7 @@ public sealed partial class ServerState
 
     bool ValidateGroupName(Session s, Request r, Guid? self, string? rawName, out string name)
     {
-        name = ValidName(rawName, 32) ?? "";
+        name = ValidName(rawName, ProtocolInfo.MaxGroupNameLength) ?? "";
         if (name.Length == 0)
         {
             Fail(s, r, Codes.InvalidName);

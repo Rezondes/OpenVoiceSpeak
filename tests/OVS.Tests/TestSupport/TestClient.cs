@@ -104,6 +104,16 @@ public sealed class TestClient : IAsyncDisposable
 
     public Task SendAsync(Message message) => writer.WriteAsync(message);
 
+    /// <summary>Package 83: a hand-written JSON frame, for payloads no Message record can express.</summary>
+    public Task SendRawAsync(string json)
+    {
+        var payload = System.Text.Encoding.UTF8.GetBytes(json);
+        var frame = new byte[4 + payload.Length];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(frame, (uint)payload.Length);
+        payload.CopyTo(frame, 4);
+        return writer.WriteFrameAsync(frame);
+    }
+
     /// <summary>Next message, or null when the connection closed. Throws on timeout.</summary>
     public async Task<Message?> NextAsync(int timeoutMs = 3000)
     {

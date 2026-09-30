@@ -19,10 +19,11 @@ public sealed partial class ServerState
         };
         if (!Require(s, r, right)) return;
 
-        var text = (r.Text ?? "").Trim();
-        if (text.Length == 0 || text.Length > ProtocolInfo.MaxChatLength)
+        // Package 83: line breaks are fine, other control and bidi characters are not
+        var text = TextRules.Text(r.Text, ProtocolInfo.MaxChatLength)?.Trim() ?? "";
+        if (text.Length == 0)
         {
-            Fail(s, r, Codes.InvalidValue, $"Eine Nachricht hat 1 bis {ProtocolInfo.MaxChatLength} Zeichen.");
+            Fail(s, r, Codes.InvalidValue, $"Eine Nachricht hat 1 bis {ProtocolInfo.MaxChatLength} Zeichen, ohne Steuerzeichen.");
             return;
         }
 

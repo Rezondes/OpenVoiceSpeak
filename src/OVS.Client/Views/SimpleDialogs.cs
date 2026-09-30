@@ -12,6 +12,7 @@ using KeyBinding = OVS.Client.Input.KeyBinding;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
+using OVS.Shared.Protocol;
 
 namespace OVS.Client.Views;
 
@@ -184,7 +185,8 @@ public static class SimpleDialogs
         var body = Stack(Field("Name", name), address, Field("Nickname", nickname),
             Field(Strings.Dlg_ServerPassword, password, Strings.Dlg_PasswordEditHint), save);
         return Show(overlay, Strings.Dlg_EditBookmark, "Edit", body, () =>
-            string.IsNullOrWhiteSpace(name.Text) || string.IsNullOrWhiteSpace(host.Text) || string.IsNullOrWhiteSpace(nickname.Text)
+            string.IsNullOrWhiteSpace(name.Text) || string.IsNullOrWhiteSpace(host.Text)
+            || TextRules.Name(nickname.Text, ProtocolInfo.MaxNicknameLength) is null // Package 83: the server's nickname rule
                 ? null
                 : new BookmarkEdit(name.Text.Trim(), host.Text.Trim(), (int)(port.Value ?? 7000), nickname.Text.Trim(), password.Text, save.IsChecked == true),
             Strings.Dlg_Save);
@@ -357,6 +359,7 @@ public static class SimpleDialogs
             {
                 string? problem = string.IsNullOrWhiteSpace(host.Text) ? Strings.Dlg_AddressMissing
                     : string.IsNullOrWhiteSpace(nickname.Text) ? Strings.Dlg_NicknameMissing
+                    : TextRules.Name(nickname.Text, ProtocolInfo.MaxNicknameLength) is null ? Strings.Dlg_NicknameInvalid // Package 83
                     : null;
                 error.Text = problem ?? "";
                 error.IsVisible = problem is not null;

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Text;
 using OVS.Server.Data;
 using OVS.Server.Logging;
 using OVS.Server.Voice;
@@ -187,7 +188,11 @@ public sealed partial class ServerState
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
             if (sessions.Count - (replaced is null ? 0 : 1) >= data.Settings.MaxUsers)
                 return (null, new Rejected(Codes.ServerFull));
-            if (sessions.Values.Any(s => s != replaced && string.Equals(s.Nickname, nickname, StringComparison.OrdinalIgnoreCase)))
+            // Package 83: normalized, and an offline user's last name is taken as well
+            // ponytail: one linear pass over all users per login; index the keys if the user list grows into the tens of thousands
+            var key = NicknameKey(nickname);
+            if (sessions.Values.Any(s => s != replaced && NicknameKey(s.Nickname) == key)
+                || data.Users.Any(u => u.Fingerprint != fingerprint && u.LastNickname.Length > 0 && NicknameKey(u.LastNickname) == key))
                 return (null, new Rejected(Codes.NicknameTaken));
 
             var user = FindUser(fingerprint);
@@ -300,57 +305,85 @@ public sealed partial class ServerState
 
     // ---- Requests ----
 
+    /// <summary>Package 83: a test hook, runs under the lock right before a request's handler.</summary>
+    public Action<Request>? BeforeRequest { get; set; }
+
+    /// <summary>Package 83: stands in for a frame that was a JSON object but no valid request; never on the wire.</summary>
+    internal sealed record MalformedRequest(string Problem) : Request;
+
     public void Handle(Session session, Message message)
     {
         lock (gate)
         {
             if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
-            if (message is Request request && !Admissible(session, request)) return;
-            switch (message)
+            if (message is not Request request) return;
+            if (!Admissible(session, request)) return;
+            // Package 83: a malformed request is answered before any handler or limit of its own sees it
+            if (((request as MalformedRequest)?.Problem ?? RequestShape.Problem(request)) is { } problem)
             {
-                case JoinChannel r: OnJoinChannel(session, r); break;
-                case CreateChannel r: OnCreateChannel(session, r); break;
-                case EditChannel r: OnEditChannel(session, r); break;
-                case ReorderChannels r: OnReorderChannels(session, r); break;
-                case DeleteChannel r: OnDeleteChannel(session, r); break;
-                case MoveUser r: OnMoveUser(session, r); break;
-                case SetSelfState r: OnSetSelfState(session, r); break;
-                case CreateGroup r: OnCreateGroup(session, r); break;
-                case ReorderGroups r: OnReorderGroups(session, r); break;
-                case UpdateGroup r: OnUpdateGroup(session, r); break;
-                case DeleteGroup r: OnDeleteGroup(session, r); break;
-                case AssignGroup r: OnAssignGroup(session, r); break;
-                case UnassignGroup r: OnUnassignGroup(session, r); break;
-                case ListUsers r: OnListUsers(session, r); break;
-                case RedeemAdminToken r: OnRedeemAdminToken(session, r); break;
-                case UpdateServerSettings r: OnUpdateServerSettings(session, r); break;
-                case SetServerIcon r: OnSetServerIcon(session, r); break;
-                case GetServerIcon r: OnGetServerIcon(session, r); break;
-                case Kick r: OnKick(session, r); break;
-                case Ban r: OnBan(session, r); break;
-                case Unban r: OnUnban(session, r); break;
-                case BanUser r: OnBanUser(session, r); break;
-                case DeleteUser r: OnDeleteUser(session, r); break;
-                case ListBans r: OnListBans(session, r); break;
-                case SetServerMute r: OnSetServerMute(session, r); break;
-                case SetStoredServerMute r: OnSetStoredServerMute(session, r); break;
-                case LinkChannels r: OnLinkChannels(session, r); break;
-                case SetChannelLinks r: OnSetChannelLinks(session, r); break;
-                case UnlinkChannels r: OnUnlinkChannels(session, r); break;
-                case SendChat r: OnSendChat(session, r); break;
-                case ListBackups r: OnListBackups(session, r); break;
-                case CreateBackup r: OnCreateBackup(session, r); break;
-                case DeleteBackup r: OnDeleteBackup(session, r); break;
-                case RestoreBackup r: OnRestoreBackup(session, r); break;
-                case DownloadBackup r: OnDownloadBackup(session, r); break;
-                case UploadBackupChunk r: OnUploadBackupChunk(session, r); break;
-                case ListLogs r: OnListLogs(session, r); break;
-                case ReadLog r: OnReadLog(session, r); break;
-                case SearchLogs r: OnSearchLogs(session, r); break;
-                case PrepareLogDownload r: OnPrepareLogDownload(session, r); break;
-                case DownloadLogChunk r: OnDownloadLogChunk(session, r); break;
-                case Request r: Fail(session, r, Codes.UnknownRequest); break;
+                Fail(session, request, Codes.InvalidValue, problem);
+                return;
             }
+            try
+            {
+                BeforeRequest?.Invoke(request);
+                Dispatch(session, request);
+            }
+            catch (Exception e)
+            {
+                // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
+                logs.Server($"Fehler bei Anfrage {request.GetType().Name} von {session.Nickname}: {e.GetType().Name}: {e.Message}");
+                Fail(session, request, Codes.InvalidValue);
+            }
+        }
+    }
+
+    void Dispatch(Session session, Request message)
+    {
+        switch (message)
+        {
+            case JoinChannel r: OnJoinChannel(session, r); break;
+            case CreateChannel r: OnCreateChannel(session, r); break;
+            case EditChannel r: OnEditChannel(session, r); break;
+            case ReorderChannels r: OnReorderChannels(session, r); break;
+            case DeleteChannel r: OnDeleteChannel(session, r); break;
+            case MoveUser r: OnMoveUser(session, r); break;
+            case SetSelfState r: OnSetSelfState(session, r); break;
+            case CreateGroup r: OnCreateGroup(session, r); break;
+            case ReorderGroups r: OnReorderGroups(session, r); break;
+            case UpdateGroup r: OnUpdateGroup(session, r); break;
+            case DeleteGroup r: OnDeleteGroup(session, r); break;
+            case AssignGroup r: OnAssignGroup(session, r); break;
+            case UnassignGroup r: OnUnassignGroup(session, r); break;
+            case ListUsers r: OnListUsers(session, r); break;
+            case RedeemAdminToken r: OnRedeemAdminToken(session, r); break;
+            case UpdateServerSettings r: OnUpdateServerSettings(session, r); break;
+            case SetServerIcon r: OnSetServerIcon(session, r); break;
+            case GetServerIcon r: OnGetServerIcon(session, r); break;
+            case Kick r: OnKick(session, r); break;
+            case Ban r: OnBan(session, r); break;
+            case Unban r: OnUnban(session, r); break;
+            case BanUser r: OnBanUser(session, r); break;
+            case DeleteUser r: OnDeleteUser(session, r); break;
+            case ListBans r: OnListBans(session, r); break;
+            case SetServerMute r: OnSetServerMute(session, r); break;
+            case SetStoredServerMute r: OnSetStoredServerMute(session, r); break;
+            case LinkChannels r: OnLinkChannels(session, r); break;
+            case SetChannelLinks r: OnSetChannelLinks(session, r); break;
+            case UnlinkChannels r: OnUnlinkChannels(session, r); break;
+            case SendChat r: OnSendChat(session, r); break;
+            case ListBackups r: OnListBackups(session, r); break;
+            case CreateBackup r: OnCreateBackup(session, r); break;
+            case DeleteBackup r: OnDeleteBackup(session, r); break;
+            case RestoreBackup r: OnRestoreBackup(session, r); break;
+            case DownloadBackup r: OnDownloadBackup(session, r); break;
+            case UploadBackupChunk r: OnUploadBackupChunk(session, r); break;
+            case ListLogs r: OnListLogs(session, r); break;
+            case ReadLog r: OnReadLog(session, r); break;
+            case SearchLogs r: OnSearchLogs(session, r); break;
+            case PrepareLogDownload r: OnPrepareLogDownload(session, r); break;
+            case DownloadLogChunk r: OnDownloadLogChunk(session, r); break;
+            case Request r: Fail(session, r, Codes.UnknownRequest); break;
         }
     }
 
@@ -522,11 +555,20 @@ public sealed partial class ServerState
 
     ChannelRecord? FindChannel(Guid id) => data.Channels.FirstOrDefault(c => c.Id == id);
 
-    /// <summary>Trimmed name of 1..max chars without control characters, else null.</summary>
-    public static string? ValidName(string? name, int max)
+    /// <summary>Trimmed name of 1..max chars without control, format or separator characters (Package 83: TextRules), else null.</summary>
+    public static string? ValidName(string? name, int max) => TextRules.Name(name, max);
+
+    /// <summary>Package 83: the compare form of a nickname, compatibility-normalized (NFKC) and case-folded.</summary>
+    static string NicknameKey(string nickname)
     {
-        var n = name?.Trim();
-        return n is { Length: > 0 } && n.Length <= max && !n.Any(char.IsControl) ? n : null;
+        try
+        {
+            return nickname.Normalize(NormalizationForm.FormKC).ToUpperInvariant();
+        }
+        catch (ArgumentException) // a stored name from before Package 83 may hold a lone surrogate
+        {
+            return nickname.ToUpperInvariant();
+        }
     }
 
     /// <summary>Re-reads every online user's groups and broadcasts those whose permissions changed.</summary>

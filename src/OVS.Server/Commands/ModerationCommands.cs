@@ -134,10 +134,11 @@ public sealed partial class ServerState
     static BanInfo ToInfo(BanRecord b) => new(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt,
         b.CreatedAt, b.CreatedByFingerprint, b.DurationMinutes, b.LiftedAt, b.LiftedBy, b.BlockedAttempts, b.LastAttempt, b.LastAttemptIp);
 
-    /// <summary>The reason goes into the server log and the ban list: bounded, one line, no control characters. Empty is fine.</summary>
+    /// <summary>The reason goes into the server log and the ban list: bounded, one line, no control or bidi characters. Empty is fine.</summary>
     static bool ValidateReason(Session s, Request r, string? reason)
     {
-        if (reason is null || (reason.Length <= ProtocolInfo.MaxReasonLength && !reason.Any(c => char.IsControl(c) || c is '\u2028' or '\u2029'))) return true;
+        // Package 83: the text rules (also no bidi controls), and one line only
+        if (reason is null || TextRules.Text(reason, ProtocolInfo.MaxReasonLength) is { } text && !text.Contains('\n')) return true;
         Fail(s, r, Codes.InvalidValue, $"Ein Grund hat höchstens {ProtocolInfo.MaxReasonLength} Zeichen und keine Zeilenumbrüche oder Steuerzeichen.");
         return false;
     }

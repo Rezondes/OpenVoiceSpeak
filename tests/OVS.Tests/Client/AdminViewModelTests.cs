@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -1068,5 +1069,48 @@ public class AdminViewModelTests
         // a stale page of an older round is ignored
         server.Apply(PageAt("alt", 4));
         Assert.Equal(5, vm.Users.Count);
+    }
+
+    /// <summary>Package 83: the server's rules for names, welcome text and password, shown before sending.</summary>
+    [Fact]
+    public async Task SaveServerSettings_InvalidInput_ErrorNothingSent()
+    {
+        var (vm, _, sent) = Create(P.ServerConfig);
+        vm.ServerName = "Server" + (char)0x200B;
+        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        Assert.Equal(Strings.Dlg_NameInvalid, vm.SettingsError);
+
+        vm.ServerName = "Server";
+        vm.WelcomeText = "a" + (char)0x2066 + "b";
+        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        Assert.Equal(Strings.Dlg_TextInvalid, vm.SettingsError);
+
+        vm.WelcomeText = "Hallo";
+        vm.NewPassword = new string('p', ProtocolInfo.MaxPasswordLength + 1);
+        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        Assert.Equal(Strings.Ui_PasswordTooLong, vm.SettingsError);
+        Assert.Equal(new string('p', ProtocolInfo.MaxPasswordLength + 1), vm.NewPassword); // kept for correcting
+        Assert.DoesNotContain(sent, r => r is UpdateServerSettings);
+
+        vm.NewPassword = "kurz";
+        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        Assert.Null(vm.SettingsError);
+        Assert.Equal(new UpdateServerSettings("Server", "Hallo", "kurz"), sent[^1] with { RequestId = null });
+    }
+
+    [Fact]
+    public async Task SaveGroup_InvalidName_ErrorNothingSent()
+    {
+        var (vm, _, sent) = Create(P.All);
+        vm.NewGroupCommand.Execute(null);
+        vm.SelectedGroup!.Name = "Team" + (char)0x202E;
+        await vm.SaveGroupCommand.ExecuteAsync(null);
+        Assert.Equal(Strings.Dlg_NameInvalid, vm.GroupError);
+        Assert.DoesNotContain(sent, r => r is CreateGroup);
+
+        vm.SelectedGroup!.Name = "Team";
+        await vm.SaveGroupCommand.ExecuteAsync(null);
+        Assert.Null(vm.GroupError);
+        Assert.IsType<CreateGroup>(sent[^1]);
     }
 }

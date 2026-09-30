@@ -79,13 +79,23 @@ public class FrameCodecTests
     }
 
     [Theory]
-    [InlineData("{\"type\":\"doesNotExist\"}")]
-    [InlineData("{not json")]
-    [InlineData("{}")]
-    public async Task Read_UnknownTypeOrInvalidJson_Throws(string json)
+    [InlineData("{\"type\":\"doesNotExist\"}", true)]
+    [InlineData("{not json", false)]
+    [InlineData("{}", true)]
+    [InlineData("[1]", false)]
+    public async Task Read_UnknownTypeOrInvalidJson_Throws(string json, bool jsonObject)
     {
         var reader = new FrameReader(new MemoryStream(RawFrame(json)));
-        await Assert.ThrowsAsync<ProtocolException>(() => reader.ReadAsync());
+        var e = await Assert.ThrowsAnyAsync<ProtocolException>(() => reader.ReadAsync());
+        Assert.Equal(jsonObject, e is InvalidRequestException); // Package 83: an object is a bad request, anything else a broken frame
+    }
+
+    /// <summary>Package 83: the server answers a bad request under its own RequestId.</summary>
+    [Fact]
+    public async Task Read_InvalidRequest_CarriesRequestId()
+    {
+        var reader = new FrameReader(new MemoryStream(RawFrame("{\"type\":\"sendChat\",\"requestId\":\"r1\",\"target\":\"Nirgends\",\"text\":\"x\"}")));
+        Assert.Equal("r1", (await Assert.ThrowsAsync<InvalidRequestException>(() => reader.ReadAsync())).RequestId);
     }
 
     [Fact]

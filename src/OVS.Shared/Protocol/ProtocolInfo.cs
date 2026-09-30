@@ -2,11 +2,17 @@ namespace OVS.Shared.Protocol;
 
 public static class ProtocolInfo
 {
-    public const int Version = 10; // 2: server logo (30), 3: chat (31), 4: muted channels (34), 5: channel slots (35), 6: reorder channels (36), 7: reorder groups (37), 8: link matrix (38), 9: create with options (54), 10: server settings, user statistics, separate admin rights, user overview, offline ban and delete, backups with download and upload, ban details and history, log viewer and download, paged lists, backup right and quota, stored server mute (69, 70, 76, 71, 72, 74, 75, 80, 81, 82, 87, 89, 85; one unreleased step)
+    public const int Version = 10; // 2: server logo (30), 3: chat (31), 4: muted channels (34), 5: channel slots (35), 6: reorder channels (36), 7: reorder groups (37), 8: link matrix (38), 9: create with options (54), 10: server settings, user statistics, separate admin rights, user overview, offline ban and delete, backups with download and upload, ban details and history, log viewer and download, paged lists, backup right and quota, stored server mute, every request validated (69, 70, 76, 71, 72, 74, 75, 80, 81, 82, 87, 89, 85, 83; one unreleased step)
     public const int MaxChannelUsers = 999;
     public const int DefaultPort = 7000;
     public const int MaxChatLength = 2000;
     public const int MaxReasonLength = 200; // kick and ban reason
+    // Package 83: the limits of names and texts, checked with TextRules on the server and in the client's dialogs
+    public const int MaxNicknameLength = 32;
+    public const int MaxNameLength = 64; // channel and server name
+    public const int MaxGroupNameLength = 32;
+    public const int MaxTextLength = 500; // welcome text and channel description
+    public const int MaxPasswordLength = 128; // server password
     public const int ChatBurst = 5; // messages per ChatWindow
     public static readonly TimeSpan ChatWindow = TimeSpan.FromSeconds(5);
     public const int BackupChunkBytes = 512 * 1024; // Package 75 (A91): raw bytes per chunk, base64 fits the 1 MiB frame

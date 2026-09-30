@@ -161,7 +161,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         if (await reader.ReadAsync(ct) is not ClientHello hello) return await Reject(Codes.ProtocolError);
         if (hello.ProtocolVersion != ProtocolInfo.Version)
             return await Reject(Codes.VersionMismatch, $"Server spricht Protokollversion {ProtocolInfo.Version}");
-        var nickname = ServerState.ValidName(hello.Nickname, 32);
+        var nickname = ServerState.ValidName(hello.Nickname, ProtocolInfo.MaxNicknameLength);
         if (nickname is null) return await Reject(Codes.NicknameInvalid);
         logName = nickname;
         if (!TryBase64(hello.PublicKey, out var publicKey)) return await Reject(Codes.ProtocolError);
@@ -185,7 +185,15 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         {
             using var idle = CancellationTokenSource.CreateLinkedTokenSource(stopping.Token);
             idle.CancelAfter(IdleTimeout);
-            var message = await reader.ReadAsync(idle.Token);
+            Message? message;
+            try
+            {
+                message = await reader.ReadAsync(idle.Token);
+            }
+            catch (InvalidRequestException e) // Package 83: a bad request is answered, only a broken frame ends the connection
+            {
+                message = new ServerState.MalformedRequest(e.Message) { RequestId = e.RequestId };
+            }
             if (message is null) return;
             if (message is Ping) session.Send(new Pong());
             else state.Handle(session, message);

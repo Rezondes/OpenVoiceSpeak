@@ -339,7 +339,7 @@ public sealed class ServerLogsTests : IDisposable
             "[Lobby] Link zu Raid gesetzt von chef", "[Lobby] Link zu Raid 2 entfernt (Channel gelöscht)");
         await Eventually(() => ChannelLog(server, raid),
             "[Raid] Link zu Lobby gesetzt von chef",
-            "[Raid 2] Channel geändert von chef: Name 'Raid' -> 'Raid 2', Beschreibung geändert, Reihenfolge 1 -> 7",
+            "[Raid 2] Channel geändert von chef: Name 'Raid' -> 'Raid 2', Beschreibung geändert", // Package 83: the order stays
             "[Raid 2] Channel gelöscht von chef");
         await Eventually(() => ServerLog(server), "Channel 'Raid 2' gelöscht von chef");
     }

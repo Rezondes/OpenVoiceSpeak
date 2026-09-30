@@ -126,7 +126,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
         server = await server.RestartAsync();
         a = await TestClient.ConnectAsync(server, "admin", adminId);
         m = await TestClient.ConnectAsync(server, "mod", modId);
-        g = await TestClient.ConnectAsync(server, "gast");
+        g = await TestClient.ConnectAsync(server, "gast", g.Identity); // Package 83: the stored name belongs to this identity
         var link = Assert.Single(g.Welcome.Snapshot.Links);
         Assert.Equal(Norm(x, y), (link.A, link.B));
     }

@@ -29,15 +29,16 @@ public sealed partial class ServerState
     void OnCreateChannel(Session s, CreateChannel r)
     {
         if (!Require(s, r, Permission.ChannelCreate)) return;
-        if (!ValidateChannel(s, r, null, r.Name, r.Description, out var name)) return;
+        if (!ValidateChannel(s, r, null, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
 
         var channel = new ChannelRecord
         {
             Id = Guid.NewGuid(),
             Name = name,
-            Description = r.Description.Trim(),
-            Order = data.Channels.Max(c => c.Order) + 1,
+            Description = description,
+            // Package 83: a stored order at int.MaxValue must not wrap around to the top of the list
+            Order = (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1),
             IsMuted = r.IsMuted,
             MaxUsers = r.MaxUsers,
         };
@@ -58,20 +59,18 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
-        if (!ValidateChannel(s, r, channel.Id, r.Name, r.Description, out var name)) return;
+        if (!ValidateChannel(s, r, channel.Id, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, channel.Id, r.MaxUsers)) return;
 
-        var description = r.Description.Trim();
+        // Package 83: r.Order is ignored, the order only changes through ReorderChannels
         var changes = new List<string>();
         if (channel.Name != name) changes.Add($"Name '{channel.Name}' -> '{name}'");
         if (channel.Description != description) changes.Add("Beschreibung geändert");
-        if (channel.Order != r.Order) changes.Add($"Reihenfolge {channel.Order} -> {r.Order}");
         if (channel.IsMuted != r.IsMuted) changes.Add(r.IsMuted ? "stumm geschaltet" : "Stummschaltung aufgehoben");
         if (channel.MaxUsers != r.MaxUsers) changes.Add(r.MaxUsers == 0 ? "Nutzerlimit aufgehoben" : $"Nutzerlimit {r.MaxUsers}");
 
         channel.Name = name;
         channel.Description = description;
-        channel.Order = r.Order;
         channel.IsMuted = r.IsMuted;
         channel.MaxUsers = r.MaxUsers; // lowering it below the current count sends nobody away
         Persist();
@@ -189,19 +188,21 @@ public sealed partial class ServerState
         Broadcast(new UserUpdated(Info(s)));
     }
 
-    bool ValidateChannel(Session s, Request r, Guid? self, string? rawName, string? description, out string name)
+    bool ValidateChannel(Session s, Request r, Guid? self, string? rawName, string? rawDescription, out string name, out string description)
     {
-        name = ValidName(rawName, 64) ?? "";
+        name = ValidName(rawName, ProtocolInfo.MaxNameLength) ?? "";
+        description = "";
         if (name.Length == 0)
         {
             Fail(s, r, Codes.InvalidName);
             return false;
         }
-        if ((description ?? "").Length > 500)
+        if (TextRules.Text(rawDescription ?? "", ProtocolInfo.MaxTextLength) is not { } text) // Package 83: multi-line, no control or bidi characters
         {
-            Fail(s, r, Codes.InvalidValue, "Beschreibung zu lang");
+            Fail(s, r, Codes.InvalidValue, "Beschreibung zu lang oder mit unerlaubten Zeichen");
             return false;
         }
+        description = text.Trim();
         var n = name;
         if (data.Channels.Any(c => c.Id != self && string.Equals(c.Name, n, StringComparison.OrdinalIgnoreCase)))
         {

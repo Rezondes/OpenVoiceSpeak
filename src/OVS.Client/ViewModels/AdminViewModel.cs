@@ -152,6 +152,9 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool HasIcon => server.IconHash is not null;
     public string ServerInitial => server.ServerName;
     [ObservableProperty] string? iconError;
+    /// <summary>Package 83: why the server settings or the group would be refused, null while they are fine.</summary>
+    [ObservableProperty] string? settingsError;
+    [ObservableProperty] string? groupError;
 
     void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -658,6 +661,8 @@ public sealed partial class AdminViewModel : ObservableObject
     Task SaveGroup()
     {
         if (SelectedGroup is not { IsReadOnly: false } g) return Task.CompletedTask;
+        GroupError = TextRules.Name(g.Name, ProtocolInfo.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
+        if (GroupError is not null) return Task.CompletedTask;
         return g.Id is { } id
             ? server.SendAsync(new UpdateGroup(id, g.Name, g.Permissions))
             : SaveNewGroupAsync(g);
@@ -720,6 +725,12 @@ public sealed partial class AdminViewModel : ObservableObject
     [RelayCommand]
     Task SaveServerSettings()
     {
+        // Package 83: the server's rules, checked before anything is sent or cleared
+        SettingsError = TextRules.Name(ServerName, ProtocolInfo.MaxNameLength) is null ? Strings.Dlg_NameInvalid
+            : TextRules.Text(WelcomeText, ProtocolInfo.MaxTextLength) is null ? Strings.Dlg_TextInvalid
+            : !RemovePassword && NewPassword.Length > ProtocolInfo.MaxPasswordLength ? Strings.Ui_PasswordTooLong
+            : null;
+        if (SettingsError is not null) return Task.CompletedTask;
         string? password = RemovePassword ? "" : NewPassword.Length > 0 ? NewPassword : null;
         NewPassword = "";
         RemovePassword = false;

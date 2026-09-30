@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
 
@@ -48,5 +49,24 @@ public class ChannelDialogViewModelTests
         Assert.Equal(0m, vm.MaxUsers);
         vm.MaxUsers = null; // an emptied number field
         Assert.Equal(new ChannelEdit("Raid", "", false, 0), vm.Result());
+    }
+
+    /// <summary>Package 83: the server's name and text rules, shown before sending.</summary>
+    [Fact]
+    public void InvalidNameOrDescription_ErrorShown()
+    {
+        var vm = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
+        vm.Name = "Raid" + (char)0x202E; // a bidi override
+        Assert.Null(vm.Result());
+        Assert.Equal(Strings.Dlg_NameInvalid, vm.Error);
+
+        vm.Name = "Raid";
+        vm.Description = "a" + (char)7 + "b";
+        Assert.Null(vm.Result());
+        Assert.Equal(Strings.Dlg_TextInvalid, vm.Error);
+
+        vm.Description = "oben\r\nunten"; // a line break from the text box is fine
+        Assert.Equal(new ChannelEdit("Raid", "oben\r\nunten", false, 0), vm.Result());
+        Assert.Null(vm.Error);
     }
 }

@@ -242,29 +242,33 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         Check(!d.Channels.Contains(null!) && !d.Links.Contains(null!) && !d.Groups.Contains(null!) && !d.Users.Contains(null!) && !d.Bans.Contains(null!),
             "leerer Eintrag in einer Liste");
         var s = d.Settings;
-        Check(ServerState.ValidName(s.Name, 64) is not null && s.WelcomeText is { Length: <= 500 }, "Servername oder Willkommenstext ungültig");
+        Check(StoredName(s.Name, 64) && s.WelcomeText is { Length: <= 500 }, "Servername oder Willkommenstext ungültig");
         Check(s.PasswordHash is null || s.PasswordHash is { Length: 64 } && s.PasswordHash.All(char.IsAsciiHexDigit), "Passwort-Hash ungültig");
 
-        Check(d.Channels.All(c => ServerState.ValidName(c.Name, 64) is not null && c.Description is { Length: <= 500 }), "Channel-Name ungültig");
+        Check(d.Channels.All(c => StoredName(c.Name, 64) && c.Description is { Length: <= 500 }), "Channel-Name ungültig");
         Unique(d.Channels.Select(c => c.Id), "Channel-Id doppelt");
         var channels = d.Channels.Select(c => c.Id).ToHashSet();
         Check(channels.Contains(d.DefaultChannelId), "Standard-Channel fehlt");
         Check(d.Links.All(l => channels.Contains(l.A) && channels.Contains(l.B)), "Link auf einen unbekannten Channel");
 
-        Check(d.Groups.All(g => ServerState.ValidName(g.Name, 32) is not null && g.Permissions.IsSubsetOf(Permission.All)), "Gruppe ungültig");
+        Check(d.Groups.All(g => StoredName(g.Name, 32) && g.Permissions.IsSubsetOf(Permission.All)), "Gruppe ungültig");
         Unique(d.Groups.Select(g => g.Id), "Gruppen-Id doppelt");
         var groups = d.Groups.Select(g => g.Id).ToHashSet();
         Check(groups.Contains(WellKnownGroups.Guest) && groups.Contains(WellKnownGroups.Admin), "Gast- oder Admin-Gruppe fehlt");
 
         Check(d.Users.All(u => u.Fingerprint is { Length: > 0 } && u.GroupIds is not null && u.PreviousNicknames is not null
                                && !u.PreviousNicknames.Contains(null!)), "Nutzer unvollständig");
-        Check(d.Users.All(u => u.LastNickname is "" || ServerState.ValidName(u.LastNickname, 32) is not null), "Nickname ungültig");
+        Check(d.Users.All(u => u.LastNickname is "" || StoredName(u.LastNickname, 32)), "Nickname ungültig");
         Unique(d.Users.Select(u => u.Fingerprint), "Nutzer doppelt");
         Check(d.Users.All(u => u.GroupIds.All(groups.Contains)), "Nutzer in einer unbekannten Gruppe");
         Check(d.Users.Any(u => u.GroupIds.Contains(WellKnownGroups.Admin)), "kein Mitglied der Admin-Gruppe");
 
         Check(d.Bans.All(b => b.Fingerprint is not null && b.Nickname is not null && b.Reason is not null && b.CreatedBy is not null), "Ban unvollständig");
         Unique(d.Bans.Select(b => b.Id), "Ban-Id doppelt");
+
+        // Package 83: the looser rule names had before, not TextRules. Stored data with a name new input would refuse keeps
+        // loading on start, so a backup of it must stay restorable; control characters are still refused.
+        static bool StoredName(string? name, int max) => name?.Trim() is { Length: > 0 } n && n.Length <= max && !n.Any(char.IsControl);
 
         static void Check(bool ok, string reason)
         {

@@ -4,8 +4,22 @@ using System.Text.Json.Serialization;
 
 namespace OVS.Shared.Protocol;
 
-public sealed class ProtocolException(string message) : Exception(message);
+public class ProtocolException(string message) : Exception(message);
 
+/// <summary>
+/// Package 83: a frame that is a well-formed JSON object but no valid message (unknown type, wrong field type, unknown enum
+/// name). The server answers it like a bad request and keeps the connection; everyone else treats it as a ProtocolException.
+/// </summary>
+public sealed class InvalidRequestException(string? requestId, string message) : ProtocolException(message)
+{
+    public string? RequestId { get; } = requestId;
+}
+
+/// <remarks>
+/// Package 83: RespectNullableAnnotations stays off. It would turn every null in a non-nullable field into a JsonException,
+/// in both directions and for the client as well; the server instead checks each request after deserializing (RequestShape)
+/// and answers InvalidValue, so a bad field never costs the connection.
+/// </remarks>
 public static class ProtocolJson
 {
     public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
@@ -49,7 +63,23 @@ public sealed class FrameReader(Stream stream)
         }
         catch (Exception e) when (e is JsonException or NotSupportedException)
         {
-            throw new ProtocolException("Invalid message: " + e.Message);
+            throw Invalid(payload, "Invalid message: " + e.Message);
+        }
+    }
+
+    /// <summary>Package 83: an InvalidRequestException when the payload is at least a JSON object, else a plain ProtocolException.</summary>
+    static ProtocolException Invalid(byte[] payload, string message)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(payload);
+            if (json.RootElement.ValueKind != JsonValueKind.Object) return new ProtocolException(message);
+            var id = json.RootElement.TryGetProperty("requestId", out var r) && r.ValueKind == JsonValueKind.String ? r.GetString() : null;
+            return new InvalidRequestException(id, message);
+        }
+        catch (JsonException)
+        {
+            return new ProtocolException(message);
         }
     }
 }

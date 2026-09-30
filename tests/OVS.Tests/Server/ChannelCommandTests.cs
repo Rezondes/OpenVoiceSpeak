@@ -95,7 +95,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         var raid = await CreateAsync("Raid");
         await a.SendAsync(new EditChannel(raid.Id, "Raid 2", "neu", 5));
         var updated = await g.WaitForAsync<ChannelUpdated>();
-        Assert.Equal(new ChannelInfo(raid.Id, "Raid 2", "neu", 5), updated.Channel);
+        Assert.Equal(new ChannelInfo(raid.Id, "Raid 2", "neu", raid.Order), updated.Channel); // Package 83: the order stays
     }
 
     /// <summary>Package 34: the mute flag is stored, logged and in the snapshot of new clients.</summary>

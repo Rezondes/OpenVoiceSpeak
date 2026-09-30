@@ -28,5 +28,7 @@
                      AutomationProperties.Name="{x:Static l:Strings.Dlg_MaxUsers}" />
       <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding SlotsHint}" />
     </StackPanel>
+    <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
   </StackPanel>
 </UserControl>

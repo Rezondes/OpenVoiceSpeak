@@ -265,4 +265,22 @@ public class ChatViewModelTests
         Assert.NotNull(f.Private("@berta"));
         Assert.Null(f.Private("@bert"));
     }
+
+    /// <summary>Package 83: control and bidi characters are refused before sending, the draft stays.</summary>
+    [Fact]
+    public async Task Send_ForbiddenCharacters_ErrorDraftKept()
+    {
+        var f = Create(Guest | P.ChatServer);
+        var draft = "a" + (char)0x202E + "b";
+        f.Chat.Draft = draft;
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal(OVS.Client.Localization.Strings.Chat_InvalidChars, f.Chat.ComposerError);
+        Assert.Equal(draft, f.Chat.Draft);
+        Assert.Empty(f.Sent.OfType<SendChat>());
+
+        f.Chat.Draft = "zwei\r\nZeilen";
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal("zwei\nZeilen", f.LastChat.Text);
+        Assert.Null(f.Chat.ComposerError);
+    }
 }

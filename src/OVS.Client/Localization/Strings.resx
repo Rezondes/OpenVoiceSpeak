@@ -34,6 +34,7 @@
   <data name="Chat_NoRightPrivate" xml:space="preserve"><value>Dir fehlt das Recht, privat zu schreiben.</value></data>
   <data name="Chat_NoRightServer" xml:space="preserve"><value>Dir fehlt das Recht, serverweit zu schreiben.</value></data>
   <data name="Chat_NotOnline" xml:space="preserve"><value>{0} ist nicht online.</value></data>
+  <data name="Chat_InvalidChars" xml:space="preserve"><value>Die Nachricht enthält unerlaubte Steuer- oder Richtungszeichen.</value></data>
   <data name="Chat_Offline" xml:space="preserve"><value>{0} ist offline.</value></data>
   <data name="Confirm_DeleteBookmark" xml:space="preserve"><value>Lesezeichen "{0}" löschen?</value></data>
   <data name="Confirm_DeleteChannel" xml:space="preserve"><value>Channel "{0}" löschen? Nutzer darin landen im Standard-Channel.</value></data>
@@ -90,6 +91,9 @@
   <data name="Dlg_MaxUsersHint" xml:space="preserve"><value>Wer drin ist, bleibt auch bei einem kleineren Limit. Das Recht "Volle Channel betreten" umgeht es.</value></data>
   <data name="Dlg_MutedChannel" xml:space="preserve"><value>Stummer Channel: niemand wird gehört</value></data>
   <data name="Dlg_MutedHint" xml:space="preserve"><value>Auch Link-PTT aus diesem Channel wird nicht übertragen. Sprache aus verlinkten Channels ist hörbar.</value></data>
+  <data name="Dlg_NameInvalid" xml:space="preserve"><value>Der Name ist leer, zu lang oder enthält unerlaubte Zeichen (Steuerzeichen oder unsichtbare Zeichen).</value></data>
+  <data name="Dlg_NicknameInvalid" xml:space="preserve"><value>Der Nickname ist zu lang (höchstens 32 Zeichen) oder enthält unerlaubte Zeichen.</value></data>
+  <data name="Dlg_TextInvalid" xml:space="preserve"><value>Der Text ist zu lang oder enthält unerlaubte Steuerzeichen (Zeilenumbrüche sind erlaubt).</value></data>
   <data name="Dlg_NicknameMissing" xml:space="preserve"><value>Bitte einen Nickname eingeben.</value></data>
   <data name="Dlg_NoChannel" xml:space="preserve"><value>Kein passender Channel vorhanden.</value></data>
   <data name="Dlg_NoKeyYet" xml:space="preserve"><value>Noch keine Taste</value></data>
@@ -388,6 +392,7 @@
   <data name="Ui_Muted" xml:space="preserve"><value>Stumm</value></data>
   <data name="Ui_Name" xml:space="preserve"><value>Name</value></data>
   <data name="Ui_NewPassword" xml:space="preserve"><value>Neues Passwort (leer lassen = unverändert)</value></data>
+  <data name="Ui_PasswordTooLong" xml:space="preserve"><value>Das Passwort hat höchstens 128 Zeichen.</value></data>
   <data name="Ui_NoBackups" xml:space="preserve"><value>Noch keine Backups.</value></data>
   <data name="Ui_NoBookmarks" xml:space="preserve"><value>Noch keine Lesezeichen. Verbinde dich über "Verbinden ..." und speichere den Server als Lesezeichen.</value></data>
   <data name="Ui_NoKeyActions" xml:space="preserve"><value>Noch keine Tastenaktionen.</value></data>
