@@ -106,7 +106,23 @@ public class PermissionRulesTests
     {
         Assert.True(ModeratorPermissions.CanActOn(P.Speak));
         Assert.False(ModeratorPermissions.CanActOn(P.All));
-        Assert.True(P.All.CanActOn(P.All));
+    }
+
+    [Fact]
+    public void CanActOn_StrictSubsetOnly()
+    {
+        // Package 84 (A102): equal rights, two admins included, cannot act on each other
+        Assert.False(P.All.CanActOn(P.All));
+        Assert.False(ModeratorPermissions.CanActOn(ModeratorPermissions));
+        Assert.False(P.None.CanActOn(P.None));
+        Assert.True(P.All.CanActOn(ModeratorPermissions));
+        Assert.True(P.Speak.CanActOn(P.None));
+        Assert.False(P.Speak.CanActOn(P.ChatServer)); // neither contains the other
+
+        // never oneself, even with more rights than the target
+        Assert.True(P.All.CanModerate("a", P.Speak, "b"));
+        Assert.False(P.All.CanModerate("a", P.Speak, "a"));
+        Assert.False(P.All.CanModerate("a", P.All, "b"));
     }
 
     [Fact]

@@ -160,11 +160,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
-        if (!s.Permissions.CanActOn(target.Permissions))
-        {
-            Fail(s, r, Codes.PermissionDenied);
-            return;
-        }
+        if (!CanModerate(s, r, target.Permissions, target.Fingerprint)) return; // Package 84: never oneself, that is JoinChannel
         if (IsFull(FindChannel(r.ChannelId)!, target) && !s.Permissions.Has(Permission.ChannelJoinFull))
         {
             Fail(s, r, Codes.ChannelFull); // the mover needs the right, not the one being moved

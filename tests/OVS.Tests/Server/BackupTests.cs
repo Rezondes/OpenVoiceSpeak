@@ -625,7 +625,7 @@ public sealed class BackupTests : IDisposable
         await two.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(bytes, 0, 100), false) { RequestId = "c0" });
         await two.WaitForAsync<UploadBackupAck>(r => r.RequestId == "c0");
         Assert.Single(UploadFiles(server.DataDir));
-        await admin.SendAsync(new UnassignGroup(second.Fingerprint, WellKnownGroups.Admin));
+        LeaveAdminGroup(server.State, second.Fingerprint);
         await two.WaitForAsync<UserUpdated>(u => u.User.Nickname == "zweiter" && !u.User.GroupIds.Contains(WellKnownGroups.Admin));
         await two.SendAsync(new UploadBackupChunk(id, 100, Convert.ToBase64String(bytes, 100, bytes.Length - 100), true) { RequestId = "c1" });
         Assert.Equal(Codes.PermissionDenied, (await two.ErrorAsync("c1")).Code);
@@ -634,6 +634,21 @@ public sealed class BackupTests : IDisposable
 
         // a member of the Admin group can
         Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));
+    }
+
+    /// <summary>
+    /// Package 84 (A102): nobody outranks a member of the Admin group, so no request can take it away from another admin.
+    /// The test changes the stored groups itself, under the server's lock, and lets the server apply them as after a group change.
+    /// </summary>
+    static void LeaveAdminGroup(ServerState state, string fingerprint)
+    {
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        lock (typeof(ServerState).GetField("gate", flags)!.GetValue(state)!)
+        {
+            var data = (ServerData)typeof(ServerState).GetField("data", flags)!.GetValue(state)!;
+            data.Users.Single(u => u.Fingerprint == fingerprint).GroupIds.Remove(WellKnownGroups.Admin);
+            typeof(ServerState).GetMethod("RecomputePermissions", flags)!.Invoke(state, null);
+        }
     }
 
     /// <summary>Content that passed the old checks but broke every later start, or references that do not fit together.</summary>

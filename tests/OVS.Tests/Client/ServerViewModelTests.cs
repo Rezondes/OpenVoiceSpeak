@@ -241,11 +241,32 @@ public class ServerViewModelTests
         Assert.False(admin.CanKick || admin.CanBan || admin.CanMute || admin.CanMove);
 
         var self = f.User(1);
-        Assert.False(self.CanKick || self.CanBan || self.CanMute);
-        Assert.True(self.CanMove);
+        Assert.False(self.CanKick || self.CanBan || self.CanMute || self.CanMove); // Package 84: moving oneself is joining
 
         var plain = Create(others: U(2, "gast", Lobby));
         Assert.False(plain.User(2).CanKick || plain.User(2).CanMove);
+    }
+
+    /// <summary>Package 84 (A102): the menu offers exactly what the server allows, by the same rule.</summary>
+    [Fact]
+    public void ActionsMatchServerRule()
+    {
+        var others = new[]
+        {
+            U(2, "gast", Lobby), U(3, "mod2", Lobby, Moderator), U(4, "admin", Lobby, P.All),
+            U(5, "zweit", Lobby) with { Fingerprint = "fp1" }, // another session of the same identity
+            U(6, "anders", Lobby, P.Speak | P.ChatServer), // neither contains the other
+        };
+        var f = Create(Moderator, others: others);
+        foreach (var u in others)
+        {
+            var allowed = Moderator.CanModerate("fp1", u.Permissions, u.Fingerprint);
+            var vm = f.User(u.SessionId);
+            Assert.Equal([allowed, allowed, allowed, allowed], [vm.CanKick, vm.CanBan, vm.CanMute, vm.CanMove]);
+        }
+        Assert.True(f.User(2).CanKick);
+        Assert.False(f.User(3).CanKick || f.User(3).CanBan || f.User(3).CanMute || f.User(3).CanMove);
+        Assert.False(f.User(5).CanKick);
     }
 
     [Fact]

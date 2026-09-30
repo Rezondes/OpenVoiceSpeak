@@ -132,6 +132,7 @@ public sealed partial class ServerState
     {
         if (!Require(s, r, Permission.GroupsAssign)) return;
         if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out var group)) return;
+        if (!CanModerate(s, r, RightsOf(user.Fingerprint), user.Fingerprint)) return; // Package 84: only on weaker users
         if (user.GroupIds.Contains(r.GroupId)) return;
         user.GroupIds.Add(r.GroupId);
         Persist();
@@ -148,6 +149,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.LastAdmin);
             return;
         }
+        if (!CanModerate(s, r, RightsOf(user.Fingerprint), user.Fingerprint)) return; // Package 84: only on weaker users
         if (!user.GroupIds.Remove(r.GroupId)) return;
         Persist();
         logs.Server($"Gruppe '{group.Name}' von {user.LastNickname} entfernt von {s.Nickname}");

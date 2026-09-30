@@ -16,15 +16,15 @@ public sealed partial class ServerState
 
     void OnBan(Session s, Ban r)
     {
-        if (!Require(s, r, Permission.UserBan) || !FindTarget(s, r, r.SessionId, out var target) || !ValidateReason(s, r, r.Reason)) return;
-        if (!ValidateDuration(s, r, r.DurationMinutes)) return;
+        if (!Require(s, r, Permission.UserBan) || !FindTarget(s, r, r.SessionId, out var target, lastAdminFirst: true)
+            || !ValidateReason(s, r, r.Reason) || !ValidateDuration(s, r, r.DurationMinutes)) return;
         AddBan(s, target.Fingerprint, target.Nickname, r.IncludeIp ? target.Ip.ToString() : null, r.Reason, r.DurationMinutes, target);
     }
 
     /// <summary>Package 72: the same ban by fingerprint, for online and offline users alike.</summary>
     void OnBanUser(Session s, BanUser r)
     {
-        if (!Require(s, r, Permission.UserBan) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online)
+        if (!Require(s, r, Permission.UserBan) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online, lastAdminFirst: true)
             || !ValidateReason(s, r, r.Reason) || !ValidateDuration(s, r, r.DurationMinutes)) return;
         var ip = online?.Ip.ToString() ?? user.LastIp;
         if (r.IncludeIp && ip is null)
@@ -38,20 +38,7 @@ public sealed partial class ServerState
     /// <summary>Package 72 (A88): record, groups, statistics and bans go; the log files stay and age out.</summary>
     void OnDeleteUser(Session s, DeleteUser r)
     {
-        if (!Require(s, r, Permission.UserDelete)) return;
-        var user = FindUser(r.Fingerprint);
-        if (user is null)
-        {
-            Fail(s, r, Codes.NotFound);
-            return;
-        }
-        if (PermissionRules.WouldRemoveLastAdmin(data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds)),
-                user.Fingerprint, PermissionRules.AdminGroupId))
-        {
-            Fail(s, r, Codes.LastAdmin);
-            return;
-        }
-        if (!FindKnownTarget(s, r, r.Fingerprint, out _, out var online)) return;
+        if (!Require(s, r, Permission.UserDelete) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online, lastAdminFirst: true)) return;
         data.Users.Remove(user);
         int bans = data.Bans.RemoveAll(b => b.Fingerprint == user.Fingerprint); // Package 80: the history as well
         Persist();
@@ -98,11 +85,13 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
+        // Package 84 (A102): only who could ban the user now; offline the stored groups count, a deleted user has none
+        if (!CanModerate(s, r, RightsOf(ban.Fingerprint), ban.Fingerprint)) return;
         ban.LiftedAt = now; // Package 80 (A97): kept as history
         ban.LiftedBy = s.Nickname;
         Persist();
         logs.Server($"Bann von {ban.Nickname} aufgehoben von {s.Nickname}");
-        SendBanList(s, r.RequestId);
+        if (s.Permissions.Has(Permission.BansView)) SendBanList(s, r.RequestId); // Package 84: the list only for who may see it
     }
 
     void OnListBans(Session s, ListBans r)
@@ -135,10 +124,11 @@ public sealed partial class ServerState
     }
 
     /// <summary>
-    /// Package 72: a stored user, never the actor, and only one whose rights are a subset of the actor's.
+    /// Package 72: a stored user, never the actor, and only one whose rights are a strict subset of the actor's (Package 84).
     /// Online the session's rights count, offline those of the stored groups.
     /// </summary>
-    bool FindKnownTarget(Session s, Request r, string fingerprint, out UserRecord user, out Session? online)
+    /// <param name="lastAdminFirst">Package 84: ban and delete refuse the last member of the Admin group as such (LastAdmin).</param>
+    bool FindKnownTarget(Session s, Request r, string fingerprint, out UserRecord user, out Session? online, bool lastAdminFirst = false)
     {
         user = FindUser(fingerprint)!;
         online = sessions.Values.FirstOrDefault(x => x.Fingerprint == fingerprint);
@@ -147,27 +137,42 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return false;
         }
-        var rights = online?.Permissions ?? PermissionRules.Effective(user.GroupIds, data.Groups);
-        if (fingerprint == s.Fingerprint || !s.Permissions.CanActOn(rights))
+        if (lastAdminFirst && IsLastAdmin(fingerprint))
         {
-            Fail(s, r, Codes.PermissionDenied);
+            Fail(s, r, Codes.LastAdmin);
             return false;
         }
-        return true;
+        return CanModerate(s, r, online?.Permissions ?? PermissionRules.Effective(user.GroupIds, data.Groups), fingerprint);
     }
 
-    bool FindTarget(Session s, Request r, uint sessionId, out Session target)
+    bool FindTarget(Session s, Request r, uint sessionId, out Session target, bool lastAdminFirst = false)
     {
         if (!sessions.TryGetValue(sessionId, out target!))
         {
             Fail(s, r, Codes.NotFound);
             return false;
         }
-        if (!s.Permissions.CanActOn(target.Permissions))
+        if (lastAdminFirst && IsLastAdmin(target.Fingerprint))
         {
-            Fail(s, r, Codes.PermissionDenied);
+            Fail(s, r, Codes.LastAdmin);
             return false;
         }
-        return true;
+        return CanModerate(s, r, target.Permissions, target.Fingerprint);
     }
+
+    /// <summary>Package 84 (A102): the rank rule of every action on another user; fails the request with PermissionDenied.</summary>
+    bool CanModerate(Session s, Request r, Permission targetRights, string targetFingerprint)
+    {
+        if (s.Permissions.CanModerate(s.Fingerprint, targetRights, targetFingerprint)) return true;
+        Fail(s, r, Codes.PermissionDenied);
+        return false;
+    }
+
+    /// <summary>Package 84: online the session's rights, offline those of the stored groups, nothing for an unknown user.</summary>
+    Permission RightsOf(string fingerprint) =>
+        sessions.Values.FirstOrDefault(x => x.Fingerprint == fingerprint)?.Permissions
+        ?? (FindUser(fingerprint) is { } user ? PermissionRules.Effective(user.GroupIds, data.Groups) : Permission.None);
+
+    bool IsLastAdmin(string fingerprint) =>
+        PermissionRules.WouldRemoveLastAdmin(data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds)), fingerprint, PermissionRules.AdminGroupId);
 }

@@ -5278,12 +5278,12 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: `CanActOn` requires the target's rights to be a strict subset of the actor's rights. Two users with equal rights (for example two admins, or two moderators) cannot kick, ban, mute, move, regroup or delete each other.
-- [ ] AC2: No moderation action targets oneself on the server (`PermissionDenied`): Kick, Ban, BanUser, SetServerMute, MoveUser of another session id equal to one's own, AssignGroup/UnassignGroup on one's own fingerprint, DeleteUser. Moving oneself stays possible through `JoinChannel`.
-- [ ] AC3: Ban and BanUser can never hit the last member of the Admin group (`LastAdmin`), the same as DeleteUser and UnassignGroup.
-- [ ] AC4: AssignGroup and UnassignGroup require the actor to be able to act on the target (AC1) in addition to the existing group-subset rule.
-- [ ] AC5: Unban requires that the actor could ban that user now (rank rule against the banned user's stored rights) and replies only with an acknowledgement; the full `BanList` is sent only if the actor has `BansView`.
-- [ ] AC6: The client shows and enables exactly the actions the server would allow (same helper), so hidden buttons and server answers never disagree.
+- [x] AC1: `CanActOn` requires the target's rights to be a strict subset of the actor's rights. Two users with equal rights (for example two admins, or two moderators) cannot kick, ban, mute, move, regroup or delete each other.
+- [x] AC2: No moderation action targets oneself on the server (`PermissionDenied`): Kick, Ban, BanUser, SetServerMute, MoveUser of another session id equal to one's own, AssignGroup/UnassignGroup on one's own fingerprint, DeleteUser. Moving oneself stays possible through `JoinChannel`.
+- [x] AC3: Ban and BanUser can never hit the last member of the Admin group (`LastAdmin`), the same as DeleteUser and UnassignGroup.
+- [x] AC4: AssignGroup and UnassignGroup require the actor to be able to act on the target (AC1) in addition to the existing group-subset rule.
+- [x] AC5: Unban requires that the actor could ban that user now (rank rule against the banned user's stored rights) and replies only with an acknowledgement; the full `BanList` is sent only if the actor has `BansView`.
+- [x] AC6: The client shows and enables exactly the actions the server would allow (same helper), so hidden buttons and server answers never disagree.
 
 ### Tests (TDD)
 

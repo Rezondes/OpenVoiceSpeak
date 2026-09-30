@@ -251,6 +251,37 @@ public class AdminCommandTests
     }
 
     [Fact]
+    public async Task Unassign_FromStrongerUser_Denied()
+    {
+        // Package 84: the group must be within the actor's rights and the target weaker than the actor
+        var admin = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using var a = await TestClient.ConnectAsync(server, "admin", admin);
+        await using var z = await TestClient.ConnectAsync(server, "zuteiler");
+        await using var mod = await TestClient.ConnectAsync(server, "mod");
+        await using var guest = await TestClient.ConnectAsync(server, "gast");
+        var modGroup = a.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
+        await a.SendAsync(new CreateGroup("Zuteiler", PermissionRules.GuestPermissions | Permission.GroupsAssign));
+        var assigner = (await a.WaitForAsync<GroupsChanged>()).Groups.Single(g => g.Name == "Zuteiler").Id;
+        await a.SendAsync(new AssignGroup(z.Identity.Fingerprint, assigner));
+        await a.SendAsync(new AssignGroup(mod.Identity.Fingerprint, modGroup));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == mod.Id);
+
+        await z.SendAsync(new UnassignGroup(mod.Identity.Fingerprint, PermissionRules.GuestGroupId) { RequestId = "stronger" });
+        Assert.Equal(Codes.PermissionDenied, (await z.ErrorAsync("stronger")).Code);
+        await z.SendAsync(new AssignGroup(mod.Identity.Fingerprint, assigner) { RequestId = "strongerAssign" });
+        Assert.Equal(Codes.PermissionDenied, (await z.ErrorAsync("strongerAssign")).Code);
+
+        // a plain guest is weaker: allowed
+        await z.SendAsync(new AssignGroup(guest.Identity.Fingerprint, assigner));
+        Assert.Equal(PermissionRules.GuestPermissions | Permission.GroupsAssign,
+            (await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == guest.Id)).User.Permissions);
+        await a.SendAsync(new ListUsers { RequestId = "l" });
+        var users = (await a.WaitForAsync<UserList>(l => l.RequestId == "l")).Users;
+        Assert.Equal([PermissionRules.GuestGroupId, modGroup], users.Single(u => u.Fingerprint == mod.Identity.Fingerprint).GroupIds);
+    }
+
+    [Fact]
     public async Task ListUsers_WithoutGroupsAssign_PermissionDenied()
     {
         await using var server = await TestServer.StartAsync();

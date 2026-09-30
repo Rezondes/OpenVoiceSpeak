@@ -312,19 +312,18 @@ public sealed partial class AdminViewModel : ObservableObject
         var search = SearchText.Trim();
         var status = SelectedStatusFilter?.Value ?? UserStatusFilter.All;
         var group = SelectedGroupFilter?.Value;
-        var self = server.Mirror.Self?.Fingerprint;
         var admins = knownUsers.Count(u => u.GroupIds.Contains(WellKnownGroups.Admin));
         var all = knownUsers.Select(user =>
         {
-            var toggles = server.Mirror.Groups.Select(g => new GroupToggle(g.Id, g.Name, user.GroupIds.Contains(g.Id),
-                CanAssign(g), t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
-            var bans = (user.Bans ?? []).Where(b => b.LiftedAt is null && (b.ExpiresAt is null || b.ExpiresAt > now)).ToList();
-            // Package 72: the server checks the same; never oneself, only users without more rights, never the last admin
-            var weaker = user.Fingerprint != self && RightsOf(user.GroupIds).IsSubsetOf(Actor);
+            // Package 72, 84 (A102): the server checks the same; never oneself, only strictly weaker users, never the last admin
+            var weaker = MayActOn(RightsOf(user.GroupIds), user.Fingerprint);
             var lastAdmin = admins == 1 && user.GroupIds.Contains(WellKnownGroups.Admin);
+            var toggles = server.Mirror.Groups.Select(g => new GroupToggle(g.Id, g.Name, user.GroupIds.Contains(g.Id),
+                CanAssign(g) && weaker, t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
+            var bans = (user.Bans ?? []).Where(b => b.LiftedAt is null && (b.ExpiresAt is null || b.ExpiresAt > now)).ToList();
             return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this,
-                canBan: Actor.Has(Permission.UserBan) && weaker && bans.Count == 0,
-                canUnban: Actor.Has(Permission.UserBan) && bans.Count > 0,
+                canBan: Actor.Has(Permission.UserBan) && weaker && !lastAdmin && bans.Count == 0,
+                canUnban: Actor.Has(Permission.UserBan) && weaker && bans.Count > 0,
                 canDelete: Actor.Has(Permission.UserDelete) && weaker && !lastAdmin);
         }).ToList();
         var visible = all.Where(u => u.Matches(search) && (group is null || u.Info.GroupIds.Contains(group.Value)) && status switch
@@ -359,7 +358,7 @@ public sealed partial class AdminViewModel : ObservableObject
         var search = BanSearchText.Trim();
         var status = SelectedBanStatusFilter?.Value ?? BanStatusFilter.All;
         var type = SelectedBanTypeFilter?.Value ?? BanTypeFilter.All;
-        var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan), async () =>
+        var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan) && MayActOn(RightsOfBanned(ban.Fingerprint), ban.Fingerprint), async () =>
         {
             await server.SendAsync(new Unban(ban.Id)); // answered with the new ban list
             if (ShowUsers) await server.SendAsync(new ListUsers()); // Package 72: the user cards follow
@@ -391,6 +390,17 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(HasNoBans));
         OnPropertyChanged(nameof(HasNoBanMatches));
     }
+
+    /// <summary>Package 84 (A102): the server's rule for every action on another user.</summary>
+    bool MayActOn(Permission target, string fingerprint) => Actor.CanModerate(server.Mirror.Self?.Fingerprint ?? "", target, fingerprint);
+
+    /// <summary>
+    /// Package 84: like the server, the stored groups of the banned user; nothing when the user is unknown here
+    /// (without UsersView the list is missing, then the server has the last word).
+    /// </summary>
+    Permission RightsOfBanned(string fingerprint) =>
+        knownUsers.FirstOrDefault(u => u.Fingerprint == fingerprint) is { } user ? RightsOf(user.GroupIds)
+        : server.Mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == fingerprint)?.Permissions ?? Permission.None;
 
     /// <summary>What the stored groups give; the Admin group always everything (like PermissionRules.Effective).</summary>
     Permission RightsOf(IReadOnlyList<Guid> groupIds) => groupIds.Contains(WellKnownGroups.Admin)

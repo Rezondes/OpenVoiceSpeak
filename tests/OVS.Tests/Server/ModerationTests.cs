@@ -124,7 +124,8 @@ public sealed class ModerationTests : IAsyncLifetime
             _ => new SetServerMute(a.Id, true),
         };
         await m.SendAsync(r with { RequestId = "r" });
-        Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("r")).Code);
+        // Package 84: a ban on the last admin is refused as such before the rank is looked at
+        Assert.Equal(action == "ban" ? Codes.LastAdmin : Codes.PermissionDenied, (await m.ErrorAsync("r")).Code);
     }
 
     [Theory]
@@ -241,7 +242,9 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task BanUser_StrongerOrSelf_Denied()
     {
-        await m.SendAsync(new BanUser(adminId.Fingerprint, "x", null, false) { RequestId = "online" });
+        // Package 84: the stronger user has every right without being in the Admin group (the last admin is refused as such)
+        var chef = await ConnectChefAsync();
+        await m.SendAsync(new BanUser(chef.Identity.Fingerprint, "x", null, false) { RequestId = "online" });
         Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("online")).Code);
         await m.SendAsync(new BanUser(modId.Fingerprint, "x", null, false) { RequestId = "self" });
         Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("self")).Code);
@@ -251,11 +254,10 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("guest")).Code);
 
         // offline, the rights come from the stored groups
-        var adminSession = a.Id;
-        await a.DisposeAsync();
-        await m.WaitForAsync<UserLeft>(l => l.SessionId == adminSession);
-        a = m;
-        await m.SendAsync(new BanUser(adminId.Fingerprint, "x", null, false) { RequestId = "offline" });
+        var chefSession = chef.Id;
+        await chef.DisposeAsync();
+        await m.WaitForAsync<UserLeft>(l => l.SessionId == chefSession);
+        await m.SendAsync(new BanUser(chef.Identity.Fingerprint, "x", null, false) { RequestId = "offline" });
         Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("offline")).Code);
         Assert.Empty(await BansAsync(m));
     }
@@ -430,5 +432,145 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal((4, time.GetUtcNow(), "127.0.0.1"), (ban.BlockedAttempts, ban.LastAttempt, ban.LastAttemptIp));
         var stored = Assert.Single(StoredBans());
         Assert.Equal((4, time.GetUtcNow(), "127.0.0.1"), (stored.BlockedAttempts, stored.LastAttempt, stored.LastAttemptIp));
+    }
+
+    // ---- Package 84: one rank rule for every action on another user (A102) ----
+
+    Guid GroupId(string name) => a.Welcome.Snapshot.Groups.Single(x => x.Name == name).Id;
+
+    /// <summary>A new client the admin puts into the group.</summary>
+    async Task<TestClient> ConnectInGroupAsync(string nickname, Guid groupId)
+    {
+        var c = await TestClient.ConnectAsync(server, nickname, ClientIdentity.Create());
+        await a.SendAsync(new AssignGroup(c.Identity.Fingerprint, groupId));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == c.Id && u.User.GroupIds.Contains(groupId));
+        return c;
+    }
+
+    /// <summary>A group with every right that is not the Admin group: equal to an admin, never the last admin.</summary>
+    async Task<TestClient> ConnectChefAsync()
+    {
+        await a.SendAsync(new CreateGroup("Chef", Permission.All));
+        var chef = (await a.WaitForAsync<GroupsChanged>()).Groups.Single(x => x.Name == "Chef").Id;
+        return await ConnectInGroupAsync("chef", chef);
+    }
+
+    [Fact]
+    public async Task EqualRanks_CannotActOnEachOther()
+    {
+        await using var m2 = await ConnectInGroupAsync("mod2", GroupId("Moderator"));
+        var lobby = a.Welcome.Snapshot.DefaultChannelId;
+        Request[] requests =
+        [
+            new Kick(m2.Id, "x"), new Ban(m2.Id, "x", null, false), new BanUser(m2.Identity.Fingerprint, "x", null, false),
+            new SetServerMute(m2.Id, true), new MoveUser(m2.Id, lobby),
+        ];
+        for (int i = 0; i < requests.Length; i++)
+        {
+            await m.SendAsync(requests[i] with { RequestId = $"m{i}" });
+            Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync($"m{i}")).Code);
+        }
+
+        // two admins neither
+        await using var a2 = await ConnectInGroupAsync("admin2", PermissionRules.AdminGroupId);
+        Request[] onAdmin =
+        [
+            new Kick(a.Id, "x"), new SetServerMute(a.Id, true), new MoveUser(a.Id, lobby), new DeleteUser(adminId.Fingerprint),
+            new UnassignGroup(adminId.Fingerprint, PermissionRules.AdminGroupId), new AssignGroup(adminId.Fingerprint, GroupId("Moderator")),
+            new BanUser(adminId.Fingerprint, "x", null, false),
+        ];
+        for (int i = 0; i < onAdmin.Length; i++)
+        {
+            await a2.SendAsync(onAdmin[i] with { RequestId = $"a{i}" });
+            Assert.Equal(Codes.PermissionDenied, (await a2.ErrorAsync($"a{i}")).Code);
+        }
+        Assert.Contains(PermissionRules.AdminGroupId, (await UsersAsync(a)).Single(u => u.Fingerprint == adminId.Fingerprint).GroupIds);
+        Assert.Empty(await BansAsync(a));
+    }
+
+    [Theory]
+    [InlineData("kick")]
+    [InlineData("ban")]
+    [InlineData("banUser")]
+    [InlineData("unmute")]
+    [InlineData("move")]
+    [InlineData("assign")]
+    [InlineData("unassign")]
+    [InlineData("delete")]
+    public async Task SelfTargeting_Denied(string action)
+    {
+        var lobby = a.Welcome.Snapshot.DefaultChannelId;
+        if (action == "unmute")
+        {
+            await a.SendAsync(new SetServerMute(m.Id, true));
+            await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == m.Id && u.User.ServerMuted);
+        }
+        // the moderator for its own rights, a user with every right (not the Admin group) for group changes and delete
+        var actor = action is "assign" or "unassign" or "delete" ? await ConnectChefAsync() : m;
+        var fingerprint = actor.Identity.Fingerprint;
+        var groupsBefore = (await UsersAsync(a)).Single(u => u.Fingerprint == fingerprint).GroupIds;
+        Request r = action switch
+        {
+            "kick" => new Kick(actor.Id, "x"),
+            "ban" => new Ban(actor.Id, "x", null, false),
+            "banUser" => new BanUser(fingerprint, "x", null, false),
+            "unmute" => new SetServerMute(actor.Id, false),
+            "move" => new MoveUser(actor.Id, lobby),
+            "assign" => new AssignGroup(fingerprint, GroupId("Moderator")),
+            "unassign" => new UnassignGroup(fingerprint, groupsBefore[^1]),
+            _ => new DeleteUser(fingerprint),
+        };
+        await actor.SendAsync(r with { RequestId = "self" });
+        Assert.Equal(Codes.PermissionDenied, (await actor.ErrorAsync("self")).Code);
+        await a.AssertNoMessageAsync<UserUpdated>(); // still muted, not moved, no new rights
+        Assert.Equal(groupsBefore, (await UsersAsync(a)).Single(u => u.Fingerprint == fingerprint).GroupIds);
+        Assert.Empty(await BansAsync(a));
+        if (actor != m) await actor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task LastAdmin_CannotBeBanned()
+    {
+        await a.SendAsync(new Ban(a.Id, "x", null, false) { RequestId = "self" });
+        Assert.Equal(Codes.LastAdmin, (await a.ErrorAsync("self")).Code);
+        await a.SendAsync(new BanUser(adminId.Fingerprint, "x", null, false) { RequestId = "selfUser" });
+        Assert.Equal(Codes.LastAdmin, (await a.ErrorAsync("selfUser")).Code);
+        await m.SendAsync(new Ban(a.Id, "x", null, false) { RequestId = "online" });
+        Assert.Equal(Codes.LastAdmin, (await m.ErrorAsync("online")).Code);
+
+        var adminSession = a.Id;
+        await a.DisposeAsync();
+        await m.WaitForAsync<UserLeft>(l => l.SessionId == adminSession);
+        a = m;
+        await m.SendAsync(new BanUser(adminId.Fingerprint, "x", null, true) { RequestId = "offline" });
+        Assert.Equal(Codes.LastAdmin, (await m.ErrorAsync("offline")).Code);
+        Assert.Empty(await BansAsync(m));
+    }
+
+    [Fact]
+    public async Task Unban_StrongerBannedUser_Denied_NoBanListWithoutBansView()
+    {
+        await m.SendAsync(new Ban(g.Id, "x", null, false));
+        await g.WaitForAsync<Disconnected>();
+        g = m;
+        var ban = Assert.Single(await BansAsync(m));
+
+        // the banned guest became a moderator meanwhile: equal to m, who may no longer lift the ban
+        await a.SendAsync(new AssignGroup(guestId.Fingerprint, GroupId("Moderator")));
+        await UsersAsync(a); // the assignment is done
+        await m.SendAsync(new Unban(ban.Id) { RequestId = "equal" });
+        Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("equal")).Code);
+        Assert.Null(Assert.Single(await BansAsync(m)).LiftedAt);
+        await a.SendAsync(new UnassignGroup(guestId.Fingerprint, GroupId("Moderator")));
+
+        // with UserBan but without BansView: lifted, but the ban list is not sent
+        await a.SendAsync(new CreateGroup("Entbanner", PermissionRules.GuestPermissions | Permission.UserBan));
+        var group = (await a.WaitForAsync<GroupsChanged>(c => c.Groups.Any(x => x.Name == "Entbanner"))).Groups.Single(x => x.Name == "Entbanner").Id;
+        await using var u = await ConnectInGroupAsync("entbanner", group);
+        await u.SendAsync(new Unban(ban.Id) { RequestId = "lift" });
+        await u.AssertNoMessageAsync<BanList>();
+        await u.AssertNoMessageAsync<Error>();
+        Assert.Equal("entbanner", Assert.Single(await BansAsync(m)).LiftedBy);
+        Assert.IsType<Welcome>(await ReconnectGuestAsync());
     }
 }

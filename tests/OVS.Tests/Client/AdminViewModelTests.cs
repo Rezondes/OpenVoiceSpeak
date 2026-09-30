@@ -930,6 +930,37 @@ public class AdminViewModelTests
         Assert.Equal(count, sent.Count);
     }
 
+    /// <summary>Package 84 (A102): user cards, group toggles and ban cards offer exactly what the server allows, by the same rule.</summary>
+    [Fact]
+    public void ActionsMatchServerRule()
+    {
+        var banX = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null);
+        var banA = new BanInfo(Guid.NewGuid(), "fpA", "Anna", null, "", "mod", null);
+        KnownUserInfo[] users =
+        [
+            Known("fpX", "Xaver", bans: [banX]),
+            Known("fpA", "Anna", [WellKnownGroups.Admin], bans: [banA]), // two admins: equal rights
+            Known("fp1", "ich", [WellKnownGroups.Admin]),
+            Known("fpM", "Mod", [WellKnownGroups.Guest, ModGroup]),
+        ];
+        var (vm, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
+        server.Apply(new UserList("r", users));
+        server.Apply(new BanList("b", [banX, banA]));
+        foreach (var user in users)
+        {
+            var rights = user.GroupIds.Contains(WellKnownGroups.Admin) ? P.All : user.GroupIds.Contains(ModGroup) ? P.Speak | P.UserKick : P.Speak;
+            var allowed = P.All.CanModerate("fp1", rights, user.Fingerprint);
+            var card = vm.Users.Single(u => u.Fingerprint == user.Fingerprint);
+            Assert.Equal(allowed && card.IsBanned is false, card.CanBan);
+            Assert.Equal(allowed && card.IsBanned, card.CanUnban);
+            Assert.Equal(allowed, card.CanDelete);
+            Assert.All(card.Toggles, t => Assert.Equal(allowed, t.IsEnabled));
+        }
+        Assert.Equal((true, false), (vm.Users.Single(u => u.Nickname == "Xaver").CanUnban, vm.Users.Single(u => u.Nickname == "Anna").CanUnban));
+        Assert.False(vm.Users.Single(u => u.Nickname == "ich").CanDelete);
+        Assert.Equal((true, false), (vm.Bans.Single(b => b.Nickname == "Xaver").CanUnban, vm.Bans.Single(b => b.Nickname == "Anna").CanUnban));
+    }
+
     // ---- Package 38: link matrix ----
 
     static (LinkMatrixViewModel Matrix, ServerViewModel Server, List<Request> Sent, Guid[] Channels) Matrix(int channelCount, P perms = P.All)
