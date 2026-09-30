@@ -40,8 +40,9 @@ public class AdminCommandTests
 
         await a.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
         var update = await b.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id);
-        Assert.Equal(Permission.All, update.User.Permissions);
+        Assert.Equal(Permission.None, update.User.Permissions); // Package 92: others' rights stay with the server
         Assert.Contains(PermissionRules.AdminGroupId, update.User.GroupIds);
+        Assert.Equal(Permission.All, (await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id)).User.Permissions);
 
         await b.SendAsync(new RedeemAdminToken("egal") { RequestId = "t" });
         Assert.Equal(Codes.InvalidToken, (await b.ErrorAsync("t")).Code);
@@ -66,8 +67,10 @@ public class AdminCommandTests
         await using var g = await TestClient.ConnectAsync(server);
 
         await a.SendAsync(new CreateGroup("Team", Permission.Speak | Permission.SpeakLinked));
-        var changed = await g.WaitForAsync<GroupsChanged>();
+        var changed = await a.WaitForAsync<GroupsChanged>();
         Assert.Contains(changed.Groups, x => x.Name == "Team" && x.Permissions == (Permission.Speak | Permission.SpeakLinked));
+        // Package 92: everyone hears of it, the rights only reach GroupsView holders
+        Assert.Contains((await g.WaitForAsync<GroupsChanged>()).Groups, x => x.Name == "Team" && x.Permissions == Permission.None);
     }
 
     [Fact]
@@ -79,9 +82,9 @@ public class AdminCommandTests
         await using var g = await TestClient.ConnectAsync(server);
 
         await a.SendAsync(new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak | Permission.SpeakLinked));
-        var groups = await g.WaitForAsync<GroupsChanged>();
+        var groups = await a.WaitForAsync<GroupsChanged>(); // Package 92: the rights only reach GroupsView holders
         Assert.Equal(Permission.Speak | Permission.SpeakLinked, groups.Groups.Single(x => x.Id == PermissionRules.GuestGroupId).Permissions);
-        var update = await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id);
+        var update = await g.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id); // the own entry keeps the full rights
         Assert.Equal(Permission.Speak | Permission.SpeakLinked, update.User.Permissions);
     }
 
@@ -275,7 +278,7 @@ public class AdminCommandTests
         // a plain guest is weaker: allowed
         await z.SendAsync(new AssignGroup(guest.Identity.Fingerprint, assigner));
         Assert.Equal(PermissionRules.GuestPermissions | Permission.GroupsAssign,
-            (await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == guest.Id)).User.Permissions);
+            (await guest.WaitForAsync<UserUpdated>(u => u.User.SessionId == guest.Id)).User.Permissions); // Package 92: seen in the own entry
         await a.SendAsync(new ListUsers { RequestId = "l" });
         var users = (await a.WaitForAsync<UserList>(l => l.RequestId == "l")).Users;
         Assert.Equal([PermissionRules.GuestGroupId, modGroup], users.Single(u => u.Fingerprint == mod.Identity.Fingerprint).GroupIds);

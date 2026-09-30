@@ -23,7 +23,7 @@ public sealed partial class ServerState
         ChannelLog(from, $"{s.Nickname} hat den Channel verlassen (wechselt nach {ChannelName(r.ChannelId)})");
         ChannelLog(r.ChannelId, $"{s.Nickname} hat den Channel betreten (kommt aus {ChannelName(from)})");
         s.ChannelId = r.ChannelId;
-        Broadcast(new UserUpdated(Info(s)));
+        BroadcastUser(s);
     }
 
     void OnCreateChannel(Session s, CreateChannel r)
@@ -134,7 +134,7 @@ public sealed partial class ServerState
             ChannelLog(channel.Id, $"{user.Nickname} hat den Channel verlassen (Channel gelöscht)");
             ChannelLog(data.DefaultChannelId, $"{user.Nickname} hat den Channel betreten (Channel {channel.Name} wurde gelöscht)");
             user.ChannelId = data.DefaultChannelId;
-            Broadcast(new UserUpdated(Info(user)));
+            BroadcastUser(user);
         }
         foreach (var link in data.Links.Where(l => l.Touches(channel.Id)).ToList())
         {
@@ -172,7 +172,7 @@ public sealed partial class ServerState
             ChannelLog(r.ChannelId, $"{target.Nickname} wurde von {s.Nickname} aus {ChannelName(from)} hierher verschoben");
         }
         target.ChannelId = r.ChannelId;
-        Broadcast(new UserUpdated(Info(target)));
+        BroadcastUser(target);
     }
 
     /// <summary>Full for this user: limited and no free slot, not counting the user if already inside.</summary>
@@ -185,7 +185,7 @@ public sealed partial class ServerState
         if (s.SelfDeafened == r.Deafened && s.SelfMuted == muted) return; // Package 86: no broadcast for a no-op
         s.SelfDeafened = r.Deafened;
         s.SelfMuted = muted;
-        Broadcast(new UserUpdated(Info(s)));
+        BroadcastUser(s);
     }
 
     bool ValidateChannel(Session s, Request r, Guid? self, string? rawName, string? rawDescription, out string name, out string description)

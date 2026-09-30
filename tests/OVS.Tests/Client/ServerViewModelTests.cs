@@ -233,7 +233,8 @@ public class ServerViewModelTests
     [Fact]
     public void UserMenu_VisibilityByPermissionAndRank()
     {
-        var f = Create(Moderator, others: [U(2, "gast", Lobby), U(3, "admin", Lobby, P.All)]);
+        // Package 92: the rank comes from the server as a flag, others' rights are never sent
+        var f = Create(Moderator, others: [U(2, "gast", Lobby, P.None) with { CanBeModeratedByMe = true }, U(3, "admin", Lobby, P.None)]);
         var guest = f.User(2);
         Assert.True(guest.CanKick && guest.CanBan && guest.CanMute && guest.CanMove);
 
@@ -243,11 +244,14 @@ public class ServerViewModelTests
         var self = f.User(1);
         Assert.False(self.CanKick || self.CanBan || self.CanMute || self.CanMove); // Package 84: moving oneself is joining
 
-        var plain = Create(others: U(2, "gast", Lobby));
+        var plain = Create(others: U(2, "gast", Lobby, P.None) with { CanBeModeratedByMe = true }); // weaker, but no right to act
         Assert.False(plain.User(2).CanKick || plain.User(2).CanMove);
     }
 
-    /// <summary>Package 84 (A102): the menu offers exactly what the server allows, by the same rule.</summary>
+    /// <summary>
+    /// Package 84 (A102): the menu offers exactly what the server allows, by the same rule.
+    /// Package 92: the server sends the rule's result per recipient (StateSyncTests); here the rights become that flag.
+    /// </summary>
     [Fact]
     public void ActionsMatchServerRule()
     {
@@ -257,7 +261,10 @@ public class ServerViewModelTests
             U(5, "zweit", Lobby) with { Fingerprint = "fp1" }, // another session of the same identity
             U(6, "anders", Lobby, P.Speak | P.ChatServer), // neither contains the other
         };
-        var f = Create(Moderator, others: others);
+        var f = Create(Moderator, others: others.Select(u => u with
+        {
+            Permissions = P.None, CanBeModeratedByMe = Moderator.CanModerate("fp1", u.Permissions, u.Fingerprint),
+        }).ToArray());
         foreach (var u in others)
         {
             var allowed = Moderator.CanModerate("fp1", u.Permissions, u.Fingerprint);
@@ -416,7 +423,7 @@ public class ServerViewModelTests
         f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // given
         f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // repeated: no change
         f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest]))); // taken away
-        f.Vm.Apply(new UserUpdated(U(2, "anna", Lobby, P.All, [WellKnownGroups.Admin]))); // somebody else
+        f.Vm.Apply(new UserUpdated(U(2, "anna", Lobby, P.None, [WellKnownGroups.Admin]))); // somebody else (Package 92: without rights)
         Assert.Equal([SoundEvent.GroupChanged, SoundEvent.GroupChanged], heard);
     }
 

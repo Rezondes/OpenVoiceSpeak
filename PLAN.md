@@ -5656,11 +5656,11 @@ Every client receives all groups with their permission bitmasks in the Welcome a
 
 ### Acceptance Criteria
 
-- [ ] AC1: Users with `GroupsView` receive groups with permissions as today; everyone else receives groups with id, name and order only.
-- [ ] AC2: Other users' `UserInfo` no longer carries their permission bits. Instead each recipient gets per-target flags it needs: `CanBeModeratedByMe` (Package 84 rule) and `CanSpeakLinked` for the link indicator, plus the group ids for display. The own user still receives the full own permissions.
-- [ ] AC3: Flags are recomputed and sent when the recipient's or the target's rights change (the existing `RecomputePermissions` path).
-- [ ] AC4: The client's context menus, admin cards and indicators behave exactly as before for every combination covered by the existing tests.
-- [ ] AC5: Fingerprints stay in `UserInfo` (needed for private chat and user volume); this is documented as public data.
+- [x] AC1: Users with `GroupsView` receive groups with permissions as today; everyone else receives groups with id, name and order only.
+- [x] AC2: Other users' `UserInfo` no longer carries their permission bits. Instead each recipient gets per-target flags it needs: `CanBeModeratedByMe` (Package 84 rule) and `CanSpeakLinked` for the link indicator, plus the group ids for display. The own user still receives the full own permissions. (Implemented without `CanSpeakLinked`: the link indicator comes from the voice packet's via-link bit, the client never read others' `SpeakLinked`. Groups carry `AssignableByMe` and the user list `CanBeModeratedByMe`, so `UsersView` + `GroupsAssign` works without `GroupsView`.)
+- [x] AC3: Flags are recomputed and sent when the recipient's or the target's rights change (the existing `RecomputePermissions` path).
+- [x] AC4: The client's context menus, admin cards and indicators behave exactly as before for every combination covered by the existing tests.
+- [x] AC5: Fingerprints stay in `UserInfo` (needed for private chat and user volume); this is documented as public data.
 
 ### Tests (TDD)
 

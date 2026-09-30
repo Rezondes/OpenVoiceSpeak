@@ -82,7 +82,7 @@ public sealed class ClientLog
         if (before.SelfMuted != after.SelfMuted) changes.Add(after.SelfMuted ? "stumm" : "nicht mehr stumm");
         if (before.SelfDeafened != after.SelfDeafened) changes.Add(after.SelfDeafened ? "taub" : "nicht mehr taub");
         if (before.ServerMuted != after.ServerMuted) changes.Add(after.ServerMuted ? "vom Server stummgeschaltet" : "vom Server freigegeben");
-        if (!before.GroupIds.SequenceEqual(after.GroupIds) || before.Permissions != after.Permissions) changes.Add($"Rechte jetzt {after.Permissions}");
+        if (!before.GroupIds.SequenceEqual(after.GroupIds) || before.Permissions != after.Permissions) changes.Add(after.Permissions == OVS.Shared.Permissions.Permission.None ? "Gruppen geändert" : $"Rechte jetzt {after.Permissions}"); // Package 92: others come without rights
         return changes.Count == 0 ? $"{after.Nickname} aktualisiert" : $"{after.Nickname} {string.Join(", ", changes)}";
     }
 

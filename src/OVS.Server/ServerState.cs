@@ -238,7 +238,7 @@ public sealed partial class ServerState
             voiceSessions[session.Id] = session;
             session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
-                if (other != session) other.Send(new UserJoined(Info(session)));
+                if (other != session) other.Send(new UserJoined(Info(session, other))); // Package 92: per recipient
             logs.Server($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
             ChannelLog(session.ChannelId, $"{nickname} hat den Channel betreten (verbunden)");
             return (session, null);
@@ -591,9 +591,16 @@ public sealed partial class ServerState
         }
     }
 
-    /// <summary>Re-reads every online user's groups and broadcasts those whose permissions changed.</summary>
-    void RecomputePermissions()
+    /// <summary>
+    /// Re-reads every online user's groups and tells everyone what changed for them.
+    /// Package 92: per recipient; a recipient hears about another user only when its view of that user changed
+    /// (group ids or the CanBeModeratedByMe flag), so hidden rights changes leave no trace. Whoever got other rights
+    /// also gets the groups again (GroupsView and AssignableByMe depend on them); <paramref name="groupsChanged"/> sends them to everyone.
+    /// </summary>
+    void RecomputePermissions(bool groupsChanged = false)
     {
+        var before = sessions.Values.ToDictionary(s => s, s => (s.Permissions, s.GroupIds));
+        var changed = new HashSet<Session>();
         foreach (var s in sessions.Values)
         {
             var groups = FindUser(s.Fingerprint)?.GroupIds ?? [];
@@ -602,13 +609,45 @@ public sealed partial class ServerState
             bool limitsChanged = perms.Has(Permission.ServerConfig) != s.Permissions.Has(Permission.ServerConfig);
             s.Permissions = perms;
             s.GroupIds = groups.ToList();
-            Broadcast(new UserUpdated(Info(s)));
+            changed.Add(s);
             if (limitsChanged) s.Send(new ServerSettingsChanged(SettingsInfo(s))); // Package 69: the limits come and go with the right
+        }
+        foreach (var to in sessions.Values)
+            if (groupsChanged || (changed.Contains(to) && before[to].Permissions != to.Permissions)) to.Send(new GroupsChanged(GroupInfos(to)));
+        if (changed.Count == 0) return;
+        // ponytail: O(online^2) checks when every rights change touches everyone (e.g. the guest group edited); a rare admin action
+        foreach (var to in sessions.Values)
+        {
+            var (toBefore, _) = before[to];
+            foreach (var s in sessions.Values)
+            {
+                bool send = s == to ? changed.Contains(s)
+                    : !before[s].GroupIds.SequenceEqual(s.GroupIds)
+                      || toBefore.CanModerate(to.Fingerprint, before[s].Permissions, s.Fingerprint) != Moderates(to, s);
+                if (send) to.Send(new UserUpdated(Info(s, to)));
+            }
         }
     }
 
-    static UserInfo Info(Session s) =>
-        new(s.Id, s.Fingerprint, s.Nickname, s.ChannelId, s.SelfMuted, s.SelfDeafened, s.ServerMuted, s.Permissions, s.GroupIds);
+    /// <summary>Package 92: a user's state sent to everyone, each with its own view (at most three encodings).</summary>
+    void BroadcastUser(Session user)
+    {
+        byte[]? moderator = null, other = null;
+        foreach (var to in sessions.Values)
+        {
+            if (to == user) to.Send(new UserUpdated(Info(user, to)));
+            else if (Moderates(to, user)) to.SendFrame(moderator ??= Session.Encode(new UserUpdated(Info(user, to))));
+            else to.SendFrame(other ??= Session.Encode(new UserUpdated(Info(user, to))));
+        }
+    }
+
+    /// <summary>Package 92 (A102): the strict Package 84 rule, the same the moderation commands check.</summary>
+    static bool Moderates(Session actor, Session target) => actor.Permissions.CanModerate(actor.Fingerprint, target.Permissions, target.Fingerprint);
+
+    /// <summary>Package 92 (A104): the own entry with its full rights; others without their rights, but with the recipient's flag.</summary>
+    static UserInfo Info(Session s, Session to) =>
+        new(s.Id, s.Fingerprint, s.Nickname, s.ChannelId, s.SelfMuted, s.SelfDeafened, s.ServerMuted,
+            s == to ? s.Permissions : Permission.None, s.GroupIds, Moderates(to, s));
 
     static ChannelInfo Info(ChannelRecord c) => new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers);
 
@@ -622,15 +661,25 @@ public sealed partial class ServerState
         foreach (var s in sessions.Values) s.Send(new ServerSettingsChanged(SettingsInfo(s)));
     }
 
-    List<GroupInfo> GroupInfos() => data.Groups.Select(g => new GroupInfo(g.Id, g.Name, g.Permissions)).ToList();
+    /// <summary>Package 92 (A104): the rights of the groups only with GroupsView; everyone learns which groups it may assign.</summary>
+    List<GroupInfo> GroupInfos(Session to)
+    {
+        bool view = to.Permissions.Has(Permission.GroupsView);
+        return data.Groups.Select(g => new GroupInfo(g.Id, g.Name, view ? g.Permissions : Permission.None, CanAssign(to.Permissions, g))).ToList();
+    }
+
+    void BroadcastGroups()
+    {
+        foreach (var s in sessions.Values) s.Send(new GroupsChanged(GroupInfos(s)));
+    }
 
     ServerSnapshot Snapshot(Session to) => new(
         SettingsInfo(to),
         data.DefaultChannelId,
         data.Channels.Select(Info).ToList(),
         data.Links.Select(l => new LinkInfo(l.A, l.B)).ToList(),
-        GroupInfos(),
-        sessions.Values.Select(Info).ToList());
+        GroupInfos(to),
+        sessions.Values.Select(s => Info(s, to)).ToList());
 
     static string BanText(BanRecord ban) =>
         ban.ExpiresAt is { } until ? $"{ban.Reason} (bis {until:yyyy-MM-dd HH:mm} UTC)" : $"{ban.Reason} (dauerhaft)";

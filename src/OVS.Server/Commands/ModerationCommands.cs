@@ -124,7 +124,7 @@ public sealed partial class ServerState
         logs.Server($"{nickname} serverseitig {(muted ? "stummgeschaltet" : "wieder freigegeben")} von {s.Nickname}{(online is null ? " (offline)" : "")}");
         if (online is null) return;
         online.ServerMuted = muted;
-        Broadcast(new UserUpdated(Info(online)));
+        BroadcastUser(online);
     }
 
     /// <summary>Package 80: active bans and the history; the client filters. Package 87: one page, the client asks for the rest.</summary>

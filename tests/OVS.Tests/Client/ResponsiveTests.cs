@@ -349,7 +349,8 @@ public sealed class ResponsiveTests : IDisposable
                 DateTimeOffset.Now.AddDays(-40), DateTimeOffset.Now.AddHours(-i), i, TimeSpan.FromHours(30 + i), "2001:db8:85a3::8a2e:370:7334",
                 ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, i % 2 == 0, null,
                 i % 4 == 0 ? [new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null,
-                i % 5 == 0)) // Package 85: stored server mute with its banner and lift button
+                i % 5 == 0, // Package 85: stored server mute with its banner and lift button
+                CanBeModeratedByMe: i % 3 != 0)) // Package 92: as the server judges it, members of the Admin group are not weaker
             .ToList()));
         // Package 80: 12 bans of every status (active, expired, lifted, old without details), all shown
         var now = DateTimeOffset.Now;

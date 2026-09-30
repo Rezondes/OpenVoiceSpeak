@@ -117,11 +117,16 @@ public sealed record ServerLimits(int MaxUsers, int LogDays, bool LogRotateDaily
 /// <param name="MaxUsers">Package 35: 0 = unlimited.</param>
 public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0);
 public sealed record LinkInfo(Guid A, Guid B);
-public sealed record GroupInfo(Guid Id, string Name, Permission Permissions);
+/// <param name="Permissions">Package 92 (A104): only for recipients with GroupsView, None for everyone else.</param>
+/// <param name="AssignableByMe">Package 92: the recipient may assign this group (GroupsAssign and not stronger than the recipient).</param>
+public sealed record GroupInfo(Guid Id, string Name, Permission Permissions, bool AssignableByMe = false);
+/// <param name="Fingerprint">Package 92 (A104): public data, needed for private chat and the volume per person.</param>
+/// <param name="Permissions">Package 92: only in the recipient's own entry, None for everyone else.</param>
+/// <param name="CanBeModeratedByMe">Package 92: the recipient may act on this user (Package 84 rank rule, A102).</param>
 public sealed record UserInfo(
     uint SessionId, string Fingerprint, string Nickname, Guid ChannelId,
     bool SelfMuted, bool SelfDeafened, bool ServerMuted,
-    Permission Permissions, IReadOnlyList<Guid> GroupIds);
+    Permission Permissions, IReadOnlyList<Guid> GroupIds, bool CanBeModeratedByMe = false);
 public sealed record ServerSnapshot(
     ServerSettingsInfo Settings, Guid DefaultChannelId,
     IReadOnlyList<ChannelInfo> Channels, IReadOnlyList<LinkInfo> Links,
@@ -154,7 +159,8 @@ public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IRea
     DateTimeOffset FirstSeen = default, DateTimeOffset? LastLogin = null, int LoginCount = 0, TimeSpan OnlineTime = default,
     string? LastIp = null, IReadOnlyList<string>? PreviousNicknames = null, TimeSpan SpeechTime = default, int ChatMessages = 0,
     bool IsOnline = false, uint? SessionId = null, IReadOnlyList<BanInfo>? Bans = null, // Package 71: the active bans on this fingerprint
-    bool ServerMuted = false); // Package 85: the stored server mute, applied on every login
+    bool ServerMuted = false, // Package 85: the stored server mute, applied on every login
+    bool CanBeModeratedByMe = false); // Package 92: the requester may act on this user (A102), as the server checks it
 public sealed record CreateGroup(string Name, Permission Permissions) : Request;
 public sealed record UpdateGroup(Guid GroupId, string Name, Permission Permissions) : Request;
 /// <summary>Package 37: the complete new group order, every group exactly once. Display only, the rank stays with the rights.</summary>

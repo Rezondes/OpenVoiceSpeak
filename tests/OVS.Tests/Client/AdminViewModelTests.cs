@@ -21,9 +21,9 @@ public class AdminViewModelTests
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword, null, limits), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
             [
-                new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak),
-                new GroupInfo(ModGroup, "Moderator", P.Speak | P.UserKick),
-                new GroupInfo(WellKnownGroups.Admin, "Admin", P.All),
+                new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak, Assignable(P.Speak)),
+                new GroupInfo(ModGroup, "Moderator", P.Speak | P.UserKick, Assignable(P.Speak | P.UserKick)),
+                new GroupInfo(WellKnownGroups.Admin, "Admin", P.All, Assignable(P.All)),
             ],
             [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, selfPerms, groupIds ?? [])]);
         var sent = new List<Request>();
@@ -35,6 +35,9 @@ public class AdminViewModelTests
             return Task.CompletedTask;
         }, new ManualTimeProvider(), dialogs);
         return (new AdminViewModel(server), server, sent);
+
+        // Package 92: the server's judgement (PermissionRules.CanAssign), sent with every group
+        bool Assignable(P group) => selfPerms.Has(P.GroupsAssign) && group.IsSubsetOf(selfPerms);
     }
 
     static GroupEditViewModel Group(AdminViewModel vm, string name) => vm.Groups.Single(g => g.Name == name);
@@ -143,13 +146,13 @@ public class AdminViewModelTests
     public void UserTogglesAndUnban_ByRight()
     {
         var (view, server, _) = Create(P.UsersView | P.BansView | P.Speak);
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])); // weaker, no right to act
         Assert.All(Assert.Single(view.Users).Toggles, t => Assert.False(t.IsEnabled));
         server.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
         Assert.False(Assert.Single(view.Bans).UnbanCommand.CanExecute(null));
 
         var (act, actServer, _) = Create(P.UsersView | P.BansView | P.GroupsAssign | P.UserBan | P.Speak);
-        actServer.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+        actServer.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
         Assert.True(Assert.Single(act.Users).Toggles.Single(t => t.Name == "Gast").IsEnabled);
         actServer.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
         Assert.True(Assert.Single(act.Bans).UnbanCommand.CanExecute(null));
@@ -182,7 +185,7 @@ public class AdminViewModelTests
     public async Task AssignGroup_SendsRequest_DisablesHigherGroups()
     {
         var (vm, server, sent) = Create(P.GroupsAssign | P.Speak);
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
 
         var user = Assert.Single(vm.Users);
         var guest = user.Toggles.Single(t => t.Name == "Gast");
@@ -195,6 +198,45 @@ public class AdminViewModelTests
         await guest.ToggleCommand.ExecuteAsync(null);
         Assert.Equal(new UnassignGroup("fpX", WellKnownGroups.Guest), sent[^2] with { RequestId = null });
         Assert.IsType<ListUsers>(sent[^1]);
+    }
+
+    /// <summary>
+    /// Package 92: without GroupsView the groups come without rights; the toggles follow the server's AssignableByMe
+    /// and the user's rank flag, never a guess from missing bits.
+    /// </summary>
+    [Fact]
+    public void GroupToggles_WithoutGroupsView_FollowServerFlags()
+    {
+        var (vm, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
+        server.Apply(new GroupsChanged(
+        [
+            new GroupInfo(WellKnownGroups.Guest, "Gast", P.None, true),
+            new GroupInfo(ModGroup, "Moderator", P.None, false),
+            new GroupInfo(WellKnownGroups.Admin, "Admin", P.None, false),
+        ]));
+        server.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true }, Known("fpA", "Anna", [WellKnownGroups.Admin])]));
+        var xaver = vm.Users.Single(u => u.Nickname == "Xaver");
+        Assert.Equal([true, false, false], xaver.Toggles.Select(t => t.IsEnabled));
+        Assert.All(vm.Users.Single(u => u.Nickname == "Anna").Toggles, t => Assert.False(t.IsEnabled)); // stronger: nothing
+        Assert.False(vm.ShowGroups);
+    }
+
+    /// <summary>Package 92 (AC3): the list's rank flags were judged by the old rights; new own or group rights ask for it again.</summary>
+    [Fact]
+    public async Task UserList_AskedAgain_WhenOwnRightsOrGroupsChange()
+    {
+        var (_, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak);
+        var time = (ManualTimeProvider)server.Time;
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, true, false, false, P.UsersView | P.GroupsAssign | P.Speak, [])));
+        Assert.Empty(sent.OfType<ListUsers>()); // nothing about the rights changed
+
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.UsersView | P.GroupsAssign | P.Speak | P.UserKick, [ModGroup])));
+        Assert.Single(sent.OfType<ListUsers>());
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        server.Apply(new GroupsChanged([new GroupInfo(WellKnownGroups.Guest, "Gast", P.None, true)]));
+        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+        Assert.Equal(2, sent.OfType<ListUsers>().Count());
     }
 
     /// <summary>Package 73: the one acting hears a tone once the next user list shows the change, also offline; an error gives none.</summary>
@@ -874,12 +916,13 @@ public class AdminViewModelTests
         var ban2 = new BanInfo(Guid.NewGuid(), "fpB", "Bert", "10.0.0.7", "", "mod", T0.AddDays(3));
         KnownUserInfo[] users =
         [
-            Known("fpX", "Xaver"),
-            Known("fpB", "Bert", bans: [ban1, ban2]),
-            Known("fpM", "Mod", [WellKnownGroups.Guest, ModGroup]),
+            // Package 92: the server's rank judgement for an actor with Speak and UserKick
+            Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
+            Known("fpB", "Bert", bans: [ban1, ban2]) with { CanBeModeratedByMe = true },
+            Known("fpM", "Mod", [WellKnownGroups.Guest, ModGroup]) with { CanBeModeratedByMe = true },
             Known("fpA", "Anna", [WellKnownGroups.Admin]),
             Known("fp1", "ich", [ModGroup]),
-            new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest]),
+            new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest], CanBeModeratedByMe: true),
         ];
         static (bool Ban, bool Unban, bool Delete) Buttons(AdminViewModel vm, string nick)
         {
@@ -909,7 +952,7 @@ public class AdminViewModelTests
         server.Apply(new UserList("r", users));
         Assert.Equal((true, false, true), Buttons(vm, "Xaver"));
         Assert.Equal((false, true, true), Buttons(vm, "Bert"));   // banned: unban instead of ban
-        Assert.Equal((true, false, true), Buttons(vm, "Mod"));    // Speak and UserKick are a subset
+        Assert.Equal((true, false, true), Buttons(vm, "Mod"));    // Speak and UserKick are a subset (judged by the server)
         Assert.Equal((false, false, false), Buttons(vm, "Anna")); // stronger (Admin)
         Assert.Equal((false, false, false), Buttons(vm, "ich"));  // never oneself
 
@@ -931,7 +974,10 @@ public class AdminViewModelTests
         Assert.Equal(count, sent.Count);
     }
 
-    /// <summary>Package 84 (A102): user cards, group toggles and ban cards offer exactly what the server allows, by the same rule.</summary>
+    /// <summary>
+    /// Package 84 (A102): user cards, group toggles and ban cards offer exactly what the server allows, by the same rule.
+    /// Package 92: the server sends the rule's result with the list (StateSyncTests); here the stored rights become that flag.
+    /// </summary>
     [Fact]
     public void ActionsMatchServerRule()
     {
@@ -944,13 +990,14 @@ public class AdminViewModelTests
             Known("fp1", "ich", [WellKnownGroups.Admin]),
             Known("fpM", "Mod", [WellKnownGroups.Guest, ModGroup]),
         ];
+        static P Rights(KnownUserInfo user) =>
+            user.GroupIds.Contains(WellKnownGroups.Admin) ? P.All : user.GroupIds.Contains(ModGroup) ? P.Speak | P.UserKick : P.Speak;
         var (vm, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
-        server.Apply(new UserList("r", users));
+        server.Apply(new UserList("r", users.Select(u => u with { CanBeModeratedByMe = P.All.CanModerate("fp1", Rights(u), u.Fingerprint) }).ToList()));
         server.Apply(new BanList("b", [banX, banA]));
         foreach (var user in users)
         {
-            var rights = user.GroupIds.Contains(WellKnownGroups.Admin) ? P.All : user.GroupIds.Contains(ModGroup) ? P.Speak | P.UserKick : P.Speak;
-            var allowed = P.All.CanModerate("fp1", rights, user.Fingerprint);
+            var allowed = P.All.CanModerate("fp1", Rights(user), user.Fingerprint);
             var card = vm.Users.Single(u => u.Fingerprint == user.Fingerprint);
             Assert.Equal(allowed && card.IsBanned is false, card.CanBan);
             Assert.Equal(allowed && card.IsBanned, card.CanUnban);
@@ -968,9 +1015,9 @@ public class AdminViewModelTests
     {
         KnownUserInfo[] users =
         [
-            Known("fpX", "Xaver") with { ServerMuted = true },
+            Known("fpX", "Xaver") with { ServerMuted = true, CanBeModeratedByMe = true }, // Package 92: as the server judges it
             Known("fpA", "Anna", [WellKnownGroups.Admin]) with { ServerMuted = true },
-            Known("fpY", "Yvonne"),
+            Known("fpY", "Yvonne") with { CanBeModeratedByMe = true },
         ];
         var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
         viewServer.Apply(new UserList("r", users));

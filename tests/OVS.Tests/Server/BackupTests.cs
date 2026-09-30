@@ -647,7 +647,7 @@ public sealed class BackupTests : IDisposable
         {
             var data = (ServerData)typeof(ServerState).GetField("data", flags)!.GetValue(state)!;
             data.Users.Single(u => u.Fingerprint == fingerprint).GroupIds.Remove(WellKnownGroups.Admin);
-            typeof(ServerState).GetMethod("RecomputePermissions", flags)!.Invoke(state, null);
+            typeof(ServerState).GetMethod("RecomputePermissions", flags)!.Invoke(state, [false]);
         }
     }
 

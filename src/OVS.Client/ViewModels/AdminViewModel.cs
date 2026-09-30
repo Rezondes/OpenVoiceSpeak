@@ -46,6 +46,9 @@ public sealed partial class AdminViewModel : ObservableObject
     [ObservableProperty] Choice<BanSortOrder> selectedBanSortOrder;
     [ObservableProperty] string banCountText = "";
     HashSet<string> onlineFingerprints;
+    // Package 92: the rights the user list's rank flags were judged by; the list is asked for again when they change
+    Permission judgedActor;
+    List<GroupInfo> judgedGroups;
     DateTimeOffset lastUserRequest = DateTimeOffset.MinValue;
     bool userRequestPending, detached;
 
@@ -83,6 +86,8 @@ public sealed partial class AdminViewModel : ObservableObject
         selectedBanTypeFilter = BanTypeFilters[0];
         selectedBanSortOrder = BanSortOrders[0];
         onlineFingerprints = OnlineFingerprints();
+        judgedActor = Actor;
+        judgedGroups = server.Mirror.Groups;
         server.AdminMessage += OnAdminMessage;
         server.StateChanged += OnStateChanged;
         server.PropertyChanged += OnServerPropertyChanged;
@@ -192,8 +197,11 @@ public sealed partial class AdminViewModel : ObservableObject
         RebuildGroupFilters();
         // Package 71: online status at once from the live state, the stored data follows with a new list
         var online = OnlineFingerprints();
-        if (!online.SetEquals(onlineFingerprints)) _ = RequestUsersSoonAsync();
+        // Package 92: new own rights or group rights change on whom one may act; the server judges that anew
+        bool rejudge = Actor != judgedActor || server.Mirror.Groups != judgedGroups;
+        if (!online.SetEquals(onlineFingerprints) || rejudge) _ = RequestUsersSoonAsync();
         onlineFingerprints = online;
+        (judgedActor, judgedGroups) = (Actor, server.Mirror.Groups);
         RebuildUsers();
         Links.Rebuild();
         HasPassword = server.Mirror.Settings.HasPassword;
@@ -318,11 +326,13 @@ public sealed partial class AdminViewModel : ObservableObject
         var admins = knownUsers.Count(u => u.GroupIds.Contains(WellKnownGroups.Admin));
         var all = knownUsers.Select(user =>
         {
-            // Package 72, 84 (A102): the server checks the same; never oneself, only strictly weaker users, never the last admin
-            var weaker = MayActOn(RightsOf(user.GroupIds), user.Fingerprint);
+            // Package 72, 84 (A102): the server checks the same; never oneself, only strictly weaker users, never the last admin.
+            // Package 92: the rank comes judged with the list, the client knows no rights of others.
+            var weaker = user.CanBeModeratedByMe;
             var lastAdmin = admins == 1 && user.GroupIds.Contains(WellKnownGroups.Admin);
             var toggles = server.Mirror.Groups.Select(g => new GroupToggle(g.Id, g.Name, user.GroupIds.Contains(g.Id),
-                CanAssign(g) && weaker, t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
+                g.AssignableByMe && weaker, // Package 92: judged by the server, group rights only reach GroupsView holders
+                t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
             var bans = (user.Bans ?? []).Where(b => b.LiftedAt is null && (b.ExpiresAt is null || b.ExpiresAt > now)).ToList();
             return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this,
                 canBan: Actor.Has(Permission.UserBan) && weaker && !lastAdmin && bans.Count == 0,
@@ -362,7 +372,7 @@ public sealed partial class AdminViewModel : ObservableObject
         var search = BanSearchText.Trim();
         var status = SelectedBanStatusFilter?.Value ?? BanStatusFilter.All;
         var type = SelectedBanTypeFilter?.Value ?? BanTypeFilter.All;
-        var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan) && MayActOn(RightsOfBanned(ban.Fingerprint), ban.Fingerprint), async () =>
+        var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan) && MayActOnBanned(ban.Fingerprint), async () =>
         {
             await server.SendAsync(new Unban(ban.Id)); // answered with the new ban list
             if (ShowUsers) await server.SendAsync(new ListUsers()); // Package 72: the user cards follow
@@ -395,21 +405,14 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(HasNoBanMatches));
     }
 
-    /// <summary>Package 84 (A102): the server's rule for every action on another user.</summary>
-    bool MayActOn(Permission target, string fingerprint) => Actor.CanModerate(server.Mirror.Self?.Fingerprint ?? "", target, fingerprint);
-
     /// <summary>
-    /// Package 84: like the server, the stored groups of the banned user; nothing when the user is unknown here
-    /// (without UsersView the list is missing, then the server has the last word).
+    /// Package 84 (A102), 92: the server's judgement from the user list or the live state; anyone but oneself when the user
+    /// is unknown here (without UsersView the list is missing, then the server has the last word).
     /// </summary>
-    Permission RightsOfBanned(string fingerprint) =>
-        knownUsers.FirstOrDefault(u => u.Fingerprint == fingerprint) is { } user ? RightsOf(user.GroupIds)
-        : server.Mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == fingerprint)?.Permissions ?? Permission.None;
-
-    /// <summary>What the stored groups give; the Admin group always everything (like PermissionRules.Effective).</summary>
-    Permission RightsOf(IReadOnlyList<Guid> groupIds) => groupIds.Contains(WellKnownGroups.Admin)
-        ? Permission.All
-        : server.Mirror.Groups.Where(g => groupIds.Contains(g.Id)).Aggregate(Permission.None, (acc, g) => acc | g.Permissions);
+    bool MayActOnBanned(string fingerprint) =>
+        knownUsers.FirstOrDefault(u => u.Fingerprint == fingerprint)?.CanBeModeratedByMe
+        ?? server.Mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == fingerprint)?.CanBeModeratedByMe
+        ?? fingerprint != server.Mirror.Self?.Fingerprint;
 
     // ---- Package 72: ban, unban and delete from a user card, online or offline ----
 
@@ -614,9 +617,6 @@ public sealed partial class AdminViewModel : ObservableObject
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
         await server.SendAsync(new RestoreBackup(uploaded.FileName));
     }
-
-    bool CanAssign(GroupInfo g) =>
-        Actor.Has(Permission.GroupsAssign) && (g.Id == WellKnownGroups.Admin ? Permission.All : g.Permissions).IsSubsetOf(Actor);
 
     /// <summary>Package 73: group changes sent but not yet seen in a user list; the server sends no confirmation.</summary>
     readonly List<(string RequestId, string Fingerprint, Guid GroupId, bool Assigned)> pendingGroupChanges = [];

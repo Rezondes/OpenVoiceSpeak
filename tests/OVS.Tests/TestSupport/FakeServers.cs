@@ -15,10 +15,11 @@ public static class FakeServers
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "Start", 0), new ChannelInfo(Raid, "Raid", "", 1)],
             [new LinkInfo(Lobby, Raid)],
-            [new GroupInfo(WellKnownGroups.Guest, "Gast", Permission.Speak), new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
+            [new GroupInfo(WellKnownGroups.Guest, "Gast", Permission.Speak, true), new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All, true)],
             [
                 new UserInfo(1, "fp1", "ich", Lobby, false, false, false, Permission.All, [WellKnownGroups.Admin]),
-                new UserInfo(2, "fp2", "anna", Raid, true, true, true, Permission.Speak, [WellKnownGroups.Guest]),
+                // Package 92: others come without rights, with the server's judgement instead
+                new UserInfo(2, "fp2", "anna", Raid, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true),
             ]);
         return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
         {
@@ -33,7 +34,7 @@ public static class FakeServers
         var channels = names.Select((n, i) => new ChannelInfo(Guid.NewGuid(), n, "", i)).ToList();
         var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "", false), channels[0].Id, channels, links,
-            [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
+            [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All, true)],
             [new UserInfo(1, "fp1", "ich", channels[0].Id, false, false, false, Permission.All, [WellKnownGroups.Admin])]);
         return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);
     }
@@ -45,14 +46,14 @@ public static class FakeServers
         var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
         var groups = new List<GroupInfo>
         {
-            new(WellKnownGroups.Guest, "Gast", Permission.Speak),
-            new(Guid.NewGuid(), "Moderator", Permission.Speak | Permission.UserKick),
-            new(Guid.NewGuid(), "Veteranen der alten Gilde", Permission.Speak),
-            new(WellKnownGroups.Admin, "Admin", Permission.All),
+            new(WellKnownGroups.Guest, "Gast", Permission.Speak, true),
+            new(Guid.NewGuid(), "Moderator", Permission.Speak | Permission.UserKick, true),
+            new(Guid.NewGuid(), "Veteranen der alten Gilde", Permission.Speak, true),
+            new(WellKnownGroups.Admin, "Admin", Permission.All, true),
         };
         var users = Enumerable.Range(1, 20).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Mitspieler{i}",
-            channels[i % 8].Id, false, false, false, i == 1 ? Permission.All : Permission.Speak,
-            [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest])).ToList();
+            channels[i % 8].Id, false, false, false, i == 1 ? Permission.All : Permission.None, // Package 92: others without rights
+            [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: i != 1)).ToList();
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true, null, new ServerLimits(50, 30, true, true, new TimeOnly(4, 0))),
             channels[0].Id, channels, links, groups, users);
         return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);

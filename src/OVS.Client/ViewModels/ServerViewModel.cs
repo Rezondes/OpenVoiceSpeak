@@ -245,7 +245,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 .Select(u =>
                 {
                     if (!userVms.TryGetValue(u.SessionId, out var user)) userVms[u.SessionId] = user = new UserViewModel(this, u.SessionId);
-                    user.Update(u, u.SessionId == Mirror.SelfId, SelfPermissions, self?.Fingerprint ?? "", groups);
+                    user.Update(u, u.SessionId == Mirror.SelfId, SelfPermissions, groups);
                     return user;
                 })
                 .ToList();
@@ -593,15 +593,13 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     void ResetVolume() => VolumePercent = 100;
 
     public uint SessionId { get; } = sessionId;
-    public Permission Permissions { get; private set; }
     public Guid ChannelId { get; private set; }
 
-    internal void Update(UserInfo info, bool isSelf, Permission actor, string actorFingerprint, IReadOnlyList<GroupInfo> groups)
+    internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> groups)
     {
         Nickname = info.Nickname;
         Fingerprint = info.Fingerprint;
         ShowVolume(owner.VolumeOf(info.Fingerprint));
-        Permissions = info.Permissions;
         ChannelId = info.ChannelId;
         IsSelf = isSelf;
         ServerMuted = info.ServerMuted;
@@ -616,8 +614,9 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
             { SelfMuted: true } => Strings.UserStatus_Muted,
             _ => "",
         };
-        // Package 84 (A102): the server's rule, never oneself (moving oneself is joining), only strictly weaker users
-        bool rank = !isSelf && actor.CanModerate(actorFingerprint, info.Permissions, info.Fingerprint);
+        // Package 84 (A102): never oneself (moving oneself is joining), only strictly weaker users.
+        // Package 92: the server judges the rank per recipient, the client never sees others' rights.
+        bool rank = !isSelf && info.CanBeModeratedByMe;
         CanMove = actor.Has(Permission.UserMove) && rank;
         CanMute = actor.Has(Permission.UserMute) && rank;
         CanKick = actor.Has(Permission.UserKick) && rank;
