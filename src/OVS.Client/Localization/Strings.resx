@@ -362,6 +362,7 @@
   <data name="Ui_LastIp" xml:space="preserve"><value>Letzte IP</value></data>
   <data name="Ui_LastLogin" xml:space="preserve"><value>Letzter Login</value></data>
   <data name="Ui_LevelFmt" xml:space="preserve"><value>Pegel {0:0} dBFS</value></data>
+  <data name="Ui_LiftServerMute" xml:space="preserve"><value>Stummschaltung aufheben</value></data>
   <data name="Ui_LinkFmt" xml:space="preserve"><value>Link {0}</value></data>
   <data name="Ui_LinkSelected" xml:space="preserve"><value>Ausgewählte miteinander verlinken</value></data>
   <data name="Ui_LinkWithMenu" xml:space="preserve"><value>Verlinken mit ...</value></data>

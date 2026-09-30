@@ -348,7 +348,8 @@ public sealed class ResponsiveTests : IDisposable
             .Select(i => new OVS.Shared.Protocol.KnownUserInfo(new string((char)('a' + i % 6), 64), $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]],
                 DateTimeOffset.Now.AddDays(-40), DateTimeOffset.Now.AddHours(-i), i, TimeSpan.FromHours(30 + i), "2001:db8:85a3::8a2e:370:7334",
                 ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, i % 2 == 0, null,
-                i % 4 == 0 ? [new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null))
+                i % 4 == 0 ? [new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null,
+                i % 5 == 0)) // Package 85: stored server mute with its banner and lift button
             .ToList()));
         // Package 80: 12 bans of every status (active, expired, lifted, old without details), all shown
         var now = DateTimeOffset.Now;
@@ -451,6 +452,10 @@ public sealed class ResponsiveTests : IDisposable
         foreach (var name in new[] { "UploadBackupButton", "UploadRestoreButton", "BackupTransfer" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.TransferText && t.IsEffectivelyVisible);
+        // Package 85: the stored server mute on four cards, the lift button where the viewer outranks the user (checked for width above)
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Users));
+        Assert.Equal(4, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_ServerMuted && t.IsEffectivelyVisible));
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_LiftServerMute && t.IsEffectivelyVisible));
         // Package 81: the Logs tab with the opened file (checked above), then with the hits of a search instead of the files
         SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Logs));
         foreach (var name in new[] { "LogPager", "LogLineFilter", "LogLines" })

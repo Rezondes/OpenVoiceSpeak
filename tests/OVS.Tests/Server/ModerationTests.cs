@@ -170,14 +170,92 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ServerMute_NotPersisted_GoneAfterReconnect()
+    public async Task ServerMute_Persists_AcrossReconnect()
+    {
+        // Package 85: stored on the user's record, applied on the next login
+        await m.SendAsync(new SetServerMute(g.Id, true));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
+        Assert.True((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
+        Assert.True(StoredUser(guestId.Fingerprint).ServerMuted);
+        await g.DisposeAsync();
+
+        g = await TestClient.ConnectAsync(server, "gast", guestId);
+        Assert.True(g.Welcome.Snapshot.Users.Single(u => u.SessionId == g.Id).ServerMuted);
+        Assert.True((await a.WaitForAsync<UserJoined>(j => j.User.SessionId == g.Id)).User.ServerMuted);
+
+        // lifting is stored the same way
+        await m.SendAsync(new SetServerMute(g.Id, false));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && !u.User.ServerMuted);
+        Assert.False(StoredUser(guestId.Fingerprint).ServerMuted);
+        await g.DisposeAsync();
+        g = await TestClient.ConnectAsync(server, "gast", guestId);
+        Assert.False(g.Welcome.Snapshot.Users.Single(u => u.SessionId == g.Id).ServerMuted);
+    }
+
+    [Fact]
+    public async Task ServerMute_NoVoiceBeforeWelcome()
     {
         await m.SendAsync(new SetServerMute(g.Id, true));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
         await g.DisposeAsync();
+        g = await TestClient.ConnectAsync(server, "gast", guestId);
+        using var va = new TestVoice(a, server.VoiceEndPoint);
+        using var vg = new TestVoice(g, server.VoiceEndPoint);
+        await va.HelloAsync();
+
+        // voice right after the Hello of the new session is not relayed: the mute was there before the Welcome
+        await vg.HelloAsync();
+        await vg.SendAsync(OVS.Shared.Voice.PacketType.Voice, new byte[80], OVS.Shared.Voice.VoiceHeader.TargetChannel);
+        Assert.Null(await va.ReceiveVoiceAsync(500));
+
+        await m.SendAsync(new SetServerMute(g.Id, false));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && !u.User.ServerMuted);
+        await vg.SendAsync(OVS.Shared.Voice.PacketType.Voice, new byte[80], OVS.Shared.Voice.VoiceHeader.TargetChannel);
+        Assert.NotNull(await va.ReceiveVoiceAsync());
+    }
+
+    [Fact]
+    public async Task StoredServerMute_LiftedOffline_RankChecked()
+    {
+        await m.SendAsync(new SetServerMute(g.Id, true));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
+        await GuestOfflineAsync();
+
+        await m.SendAsync(new SetStoredServerMute(adminId.Fingerprint, true) { RequestId = "stronger" });
+        Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("stronger")).Code);
+        await m.SendAsync(new SetStoredServerMute(modId.Fingerprint, false) { RequestId = "self" });
+        Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("self")).Code);
+        await m.SendAsync(new SetStoredServerMute("unbekannt", false) { RequestId = "unknown" });
+        Assert.Equal(Codes.NotFound, (await m.ErrorAsync("unknown")).Code);
+
+        await m.SendAsync(new SetStoredServerMute(guestId.Fingerprint, false));
+        Assert.False((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
+        Assert.False(StoredUser(guestId.Fingerprint).ServerMuted);
+        Assert.Contains(server.Log, l => l.Contains("gast serverseitig wieder freigegeben von mod (offline)"));
+        await using var back = await TestClient.ConnectAsync(server, "gast", guestId);
+        Assert.False(back.Welcome.Snapshot.Users.Single(u => u.SessionId == back.Id).ServerMuted);
+
+        // online it acts on the session at once
+        await m.SendAsync(new SetStoredServerMute(guestId.Fingerprint, true));
+        Assert.True((await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == back.Id)).User.ServerMuted);
+
+        // without UserMute
+        await back.SendAsync(new SetStoredServerMute(modId.Fingerprint, true) { RequestId = "noRight" });
+        Assert.Equal(Codes.PermissionDenied, (await back.ErrorAsync("noRight")).Code);
+    }
+
+    [Fact]
+    public async Task DeleteUser_RemovesMute()
+    {
+        await m.SendAsync(new SetServerMute(g.Id, true));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
+        Assert.True((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
+        await a.SendAsync(new DeleteUser(guestId.Fingerprint));
+        await g.WaitForAsync<Disconnected>();
 
         g = await TestClient.ConnectAsync(server, "gast", guestId);
         Assert.False(g.Welcome.Snapshot.Users.Single(u => u.SessionId == g.Id).ServerMuted);
+        Assert.False((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
     }
 
     [Fact]
@@ -333,6 +411,10 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     // ---- Package 80: ban details and history (A97) ----
+
+    UserRecord StoredUser(string fingerprint) =>
+        new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Users
+            .Single(u => u.Fingerprint == fingerprint);
 
     List<BanRecord> StoredBans() =>
         new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Bans;

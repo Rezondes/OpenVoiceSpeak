@@ -182,6 +182,13 @@
                                 <TextBlock Classes="danger" Text="{Binding BanText}" TextWrapping="Wrap" />
                               </DockPanel>
                             </Border>
+                            <!-- Package 85: stored, so it also shows and can be lifted while the user is offline -->
+                            <Border Classes="banner warning" IsVisible="{Binding IsServerMuted}">
+                              <DockPanel>
+                                <PathIcon DockPanel.Dock="Left" Classes="sm" Data="{StaticResource Icon.SpeakerMute}" VerticalAlignment="Top" Margin="0,2,8,0" />
+                                <TextBlock Text="{x:Static l:Strings.Ui_ServerMuted}" TextWrapping="Wrap" />
+                              </DockPanel>
+                            </Border>
                             <ItemsControl ItemsSource="{Binding Toggles}">
                               <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -247,6 +254,12 @@
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                   <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
                                   <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
+                                </StackPanel>
+                              </Button>
+                              <Button Command="{Binding LiftMuteCommand}" IsVisible="{Binding CanLiftMute}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Speaker}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_LiftServerMute}" />
                                 </StackPanel>
                               </Button>
                               <Button Classes="danger" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}">

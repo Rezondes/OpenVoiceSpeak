@@ -324,7 +324,8 @@ public sealed partial class AdminViewModel : ObservableObject
             return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this,
                 canBan: Actor.Has(Permission.UserBan) && weaker && !lastAdmin && bans.Count == 0,
                 canUnban: Actor.Has(Permission.UserBan) && weaker && bans.Count > 0,
-                canDelete: Actor.Has(Permission.UserDelete) && weaker && !lastAdmin);
+                canDelete: Actor.Has(Permission.UserDelete) && weaker && !lastAdmin,
+                canLiftMute: Actor.Has(Permission.UserMute) && weaker && user.ServerMuted); // Package 85
         }).ToList();
         var visible = all.Where(u => u.Matches(search) && (group is null || u.Info.GroupIds.Contains(group.Value)) && status switch
         {
@@ -421,6 +422,13 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         foreach (var ban in user.Bans) await server.SendAsync(new Unban(ban.Id));
         await RequestListsAsync();
+    }
+
+    /// <summary>Package 85: works offline too; the card follows with the next user list.</summary>
+    internal async Task LiftMuteAsync(KnownUserViewModel user)
+    {
+        await server.SendAsync(new SetStoredServerMute(user.Fingerprint, false));
+        await server.SendAsync(new ListUsers());
     }
 
     internal async Task DeleteUserAsync(KnownUserViewModel user)
@@ -834,7 +842,7 @@ public sealed record Choice<T>(T Value, string Label)
 
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
 public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggle> toggles, IReadOnlyList<BanInfo> bans,
-    AdminViewModel? owner = null, bool canBan = false, bool canUnban = false, bool canDelete = false)
+    AdminViewModel? owner = null, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false)
 {
     public KnownUserInfo Info { get; } = info;
     public string Fingerprint => Info.Fingerprint;
@@ -850,7 +858,13 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     public bool CanBan { get; } = canBan;
     public bool CanUnban { get; } = canUnban;
     public bool CanDelete { get; } = canDelete;
-    public bool HasActions => CanBan || CanUnban || CanDelete;
+    /// <summary>Package 85: the stored server mute, applied again on every login.</summary>
+    public bool IsServerMuted => Info.ServerMuted;
+    public bool CanLiftMute { get; } = canLiftMute;
+    public bool HasActions => CanBan || CanUnban || CanDelete || CanLiftMute;
+
+    [RelayCommand(CanExecute = nameof(CanLiftMute))]
+    Task LiftMute() => owner?.LiftMuteAsync(this) ?? Task.CompletedTask;
 
     [RelayCommand(CanExecute = nameof(CanBan))]
     Task Ban() => owner?.BanUserAsync(this) ?? Task.CompletedTask;

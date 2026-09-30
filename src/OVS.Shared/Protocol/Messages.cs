@@ -75,6 +75,7 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(ListBans), "listBans")]
 [JsonDerivedType(typeof(BanList), "banList")]
 [JsonDerivedType(typeof(SetServerMute), "setServerMute")]
+[JsonDerivedType(typeof(SetStoredServerMute), "setStoredServerMute")] // Package 85
 // Links
 [JsonDerivedType(typeof(LinkChannels), "linkChannels")]
 [JsonDerivedType(typeof(SetChannelLinks), "setChannelLinks")]
@@ -152,7 +153,8 @@ public sealed record UserLeft(uint SessionId) : Message;
 public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IReadOnlyList<Guid> GroupIds,
     DateTimeOffset FirstSeen = default, DateTimeOffset? LastLogin = null, int LoginCount = 0, TimeSpan OnlineTime = default,
     string? LastIp = null, IReadOnlyList<string>? PreviousNicknames = null, TimeSpan SpeechTime = default, int ChatMessages = 0,
-    bool IsOnline = false, uint? SessionId = null, IReadOnlyList<BanInfo>? Bans = null); // Package 71: the active bans on this fingerprint
+    bool IsOnline = false, uint? SessionId = null, IReadOnlyList<BanInfo>? Bans = null, // Package 71: the active bans on this fingerprint
+    bool ServerMuted = false); // Package 85: the stored server mute, applied on every login
 public sealed record CreateGroup(string Name, Permission Permissions) : Request;
 public sealed record UpdateGroup(Guid GroupId, string Name, Permission Permissions) : Request;
 /// <summary>Package 37: the complete new group order, every group exactly once. Display only, the rank stays with the rights.</summary>
@@ -249,6 +251,8 @@ public sealed record DeleteUser(string Fingerprint) : Request;
 public sealed record ListBans(int Offset = 0) : Request;
 public sealed record BanList(string? RequestId, IReadOnlyList<BanInfo> Bans, int Offset = 0, int Total = 0) : Message;
 public sealed record SetServerMute(uint SessionId, bool Muted) : Request;
+/// <summary>Package 85: the stored server mute of a known user by fingerprint, online or offline; right UserMute and the rank rule.</summary>
+public sealed record SetStoredServerMute(string Fingerprint, bool Muted) : Request;
 
 // ---- Links ----
 public sealed record LinkChannels(Guid A, Guid B) : Request;

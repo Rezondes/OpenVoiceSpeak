@@ -135,6 +135,7 @@ public sealed class ClientLog
             Ban r => $"{Nick(r.SessionId)} bannen ({(r.DurationMinutes is { } m ? $"{m} Minuten" : "dauerhaft")}{(r.IncludeIp ? ", mit IP" : "")}): {r.Reason}",
             Unban r => $"Bann {r.BanId} aufheben",
             SetServerMute r => $"{Nick(r.SessionId)} serverseitig {(r.Muted ? "stummschalten" : "freigeben")}",
+            SetStoredServerMute r => $"Nutzer {r.Fingerprint[..Math.Min(12, r.Fingerprint.Length)]} serverseitig {(r.Muted ? "stummschalten" : "freigeben")}",
             _ => request.GetType().Name,
         };
         return $"Anfrage {request.RequestId}: {text}";

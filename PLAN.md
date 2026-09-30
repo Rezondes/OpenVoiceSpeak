@@ -5329,10 +5329,10 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Setting or lifting a server mute is stored on the user's record and saved.
-- [ ] AC2: On login a stored mute is applied before the Welcome, so the user never sends voice in between; the other clients see the user as server-muted.
-- [ ] AC3: The user overview shows "vom Server stummgeschaltet" and, with `UserMute`, allows lifting it for offline users too (rank rule from Package 84 applies).
-- [ ] AC4: Deleting the user's data (Package 72) removes the mute.
+- [x] AC1: Setting or lifting a server mute is stored on the user's record and saved.
+- [x] AC2: On login a stored mute is applied before the Welcome, so the user never sends voice in between; the other clients see the user as server-muted.
+- [x] AC3: The user overview shows "vom Server stummgeschaltet" and, with `UserMute`, allows lifting it for offline users too (rank rule from Package 84 applies).
+- [x] AC4: Deleting the user's data (Package 72) removes the mute.
 
 ### Tests (TDD)
 

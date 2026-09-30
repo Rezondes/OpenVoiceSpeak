@@ -82,6 +82,8 @@ public sealed class UserRecord
     /// <summary>Relayed voice only, 20 ms per packet.</summary>
     public TimeSpan SpeechTime { get; set; }
     public int ChatMessages { get; set; }
+    /// <summary>Package 85: a server mute outlasts the session; applied on login before the Welcome.</summary>
+    public bool ServerMuted { get; set; }
 
     public const int MaxPreviousNicknames = 5;
 

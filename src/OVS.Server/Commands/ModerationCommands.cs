@@ -103,9 +103,28 @@ public sealed partial class ServerState
     void OnSetServerMute(Session s, SetServerMute r)
     {
         if (!Require(s, r, Permission.UserMute) || !FindTarget(s, r, r.SessionId, out var target)) return;
-        target.ServerMuted = r.Muted;
-        logs.Server($"{target.Nickname} serverseitig {(r.Muted ? "stummgeschaltet" : "wieder freigegeben")} von {s.Nickname}");
-        Broadcast(new UserUpdated(Info(target)));
+        SetServerMuted(s, FindUser(target.Fingerprint), target, target.Nickname, r.Muted);
+    }
+
+    /// <summary>Package 85: the same by fingerprint, for offline users too (the user card).</summary>
+    void OnSetStoredServerMute(Session s, SetStoredServerMute r)
+    {
+        if (!Require(s, r, Permission.UserMute) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online)) return;
+        SetServerMuted(s, user, online, online?.Nickname ?? user.LastNickname, r.Muted);
+    }
+
+    /// <summary>Package 85: stored on the record so the next login starts muted; a running session follows at once.</summary>
+    void SetServerMuted(Session s, UserRecord? user, Session? online, string nickname, bool muted)
+    {
+        if (user is not null && user.ServerMuted != muted)
+        {
+            user.ServerMuted = muted;
+            Persist();
+        }
+        logs.Server($"{nickname} serverseitig {(muted ? "stummgeschaltet" : "wieder freigegeben")} von {s.Nickname}{(online is null ? " (offline)" : "")}");
+        if (online is null) return;
+        online.ServerMuted = muted;
+        Broadcast(new UserUpdated(Info(online)));
     }
 
     /// <summary>Package 80: active bans and the history; the client filters. Package 87: one page, the client asks for the rest.</summary>

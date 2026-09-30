@@ -961,6 +961,34 @@ public class AdminViewModelTests
         Assert.Equal((true, false), (vm.Bans.Single(b => b.Nickname == "Xaver").CanUnban, vm.Bans.Single(b => b.Nickname == "Anna").CanUnban));
     }
 
+    /// <summary>Package 85: the stored server mute on the card, lifted from there with UserMute, offline too, by the rank rule.</summary>
+    [Fact]
+    public async Task UserCard_ShowsServerMute_LiftOffline()
+    {
+        KnownUserInfo[] users =
+        [
+            Known("fpX", "Xaver") with { ServerMuted = true },
+            Known("fpA", "Anna", [WellKnownGroups.Admin]) with { ServerMuted = true },
+            Known("fpY", "Yvonne"),
+        ];
+        var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
+        viewServer.Apply(new UserList("r", users));
+        var seen = view.Users.Single(u => u.Nickname == "Xaver");
+        Assert.True(seen.IsServerMuted);
+        Assert.False(seen.CanLiftMute); // shown, but without UserMute not offered
+
+        var (vm, server, sent) = Create(P.UsersView | P.UserMute | P.Speak | P.UserKick);
+        server.Apply(new UserList("r", users));
+        var x = vm.Users.Single(u => u.Nickname == "Xaver");
+        Assert.Equal((true, true, true), (x.IsServerMuted, x.CanLiftMute, x.HasActions));
+        Assert.Equal((true, false), (vm.Users.Single(u => u.Nickname == "Anna").IsServerMuted, vm.Users.Single(u => u.Nickname == "Anna").CanLiftMute));
+        Assert.Equal((false, false), (vm.Users.Single(u => u.Nickname == "Yvonne").IsServerMuted, vm.Users.Single(u => u.Nickname == "Yvonne").CanLiftMute));
+
+        await x.LiftMuteCommand.ExecuteAsync(null);
+        Assert.Equal(new SetStoredServerMute("fpX", false), sent[^2] with { RequestId = null });
+        Assert.IsType<ListUsers>(sent[^1]);
+    }
+
     // ---- Package 38: link matrix ----
 
     static (LinkMatrixViewModel Matrix, ServerViewModel Server, List<Request> Sent, Guid[] Channels) Matrix(int channelCount, P perms = P.All)

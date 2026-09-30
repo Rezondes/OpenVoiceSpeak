@@ -208,6 +208,7 @@ public sealed partial class ServerState
                 ChannelId = data.DefaultChannelId,
                 GroupIds = user.GroupIds.ToList(),
                 Permissions = Effective(user.GroupIds, data.Groups),
+                ServerMuted = user.ServerMuted, // Package 85: set before the Welcome, so no voice slips through in between
             };
             sessions.Add(session.Id, session);
             session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
@@ -332,6 +333,7 @@ public sealed partial class ServerState
                 case DeleteUser r: OnDeleteUser(session, r); break;
                 case ListBans r: OnListBans(session, r); break;
                 case SetServerMute r: OnSetServerMute(session, r); break;
+                case SetStoredServerMute r: OnSetStoredServerMute(session, r); break;
                 case LinkChannels r: OnLinkChannels(session, r); break;
                 case SetChannelLinks r: OnSetChannelLinks(session, r); break;
                 case UnlinkChannels r: OnUnlinkChannels(session, r); break;

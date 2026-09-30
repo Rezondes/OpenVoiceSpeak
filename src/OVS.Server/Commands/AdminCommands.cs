@@ -170,7 +170,7 @@ public sealed partial class ServerState
             return new KnownUserInfo(u.Fingerprint, u.LastNickname, u.GroupIds.ToList(), u.FirstSeen, u.LastLogin, u.LoginCount,
                 u.OnlineTime + (live is null ? TimeSpan.Zero : now - live.ConnectedAt), u.LastIp, u.PreviousNicknames.ToList(),
                 u.SpeechTime + (live?.SpeechTime ?? TimeSpan.Zero), u.ChatMessages + (live?.ChatMessages ?? 0), live is not null, live?.Id,
-                bans[u.Fingerprint].Select(ToInfo).ToList());
+                bans[u.Fingerprint].Select(ToInfo).ToList(), u.ServerMuted);
         }).ToList(), offset, data.Users.Count));
     }
 
