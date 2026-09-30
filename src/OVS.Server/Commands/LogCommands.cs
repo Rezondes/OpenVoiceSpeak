@@ -46,8 +46,8 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, "Suchtext leer oder zu lang");
             return;
         }
-        logs.Server($"Logs durchsucht von {s.Nickname}"); // without the query, so a search never finds itself
-        QueueLogJob(s, r, () => LogReader.Search(r.RequestId, r));
+        // Package 90: only a search that was queued (and so runs) is logged; without the query, so a search never finds itself
+        if (QueueLogJob(s, r, () => LogReader.Search(r.RequestId, r))) logs.Server($"Logs durchsucht von {s.Nickname}");
     }
 
     // ---- Package 82 (A99): download, a snapshot in logs-export pulled chunk by chunk like a backup ----
@@ -94,7 +94,8 @@ public sealed partial class ServerState
     }
 
     /// <summary>Runs the file work after the session's earlier log jobs, off the lock; Session.Send is safe from any thread.</summary>
-    void QueueLogJob(Session s, Request r, Func<Message> work)
+    /// <returns>False when the session's queue was full and the request was answered with RateLimited.</returns>
+    bool QueueLogJob(Session s, Request r, Func<Message> work)
     {
         var queued = s.TryQueueLogJob(() =>
         {
@@ -108,5 +109,6 @@ public sealed partial class ServerState
             }
         });
         if (!queued) Fail(s, r, Codes.RateLimited);
+        return queued;
     }
 }

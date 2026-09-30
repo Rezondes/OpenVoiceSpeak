@@ -242,6 +242,33 @@ public sealed class LogCommandTests
         Assert.Equal(500, result.Hits.Count);
     }
 
+    /// <summary>Package 90: only a search that is actually run leaves a log line, a refused one (RateLimited) does not.</summary>
+    [Fact]
+    public async Task RefusedSearch_NotLogged()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var a = admin;
+        using var entered = new SemaphoreSlim(0);
+        using var release = new ManualResetEventSlim();
+        server.State.LogReader.ReadHook = _ =>
+        {
+            entered.Release();
+            release.Wait(TimeSpan.FromSeconds(10));
+        };
+
+        await admin.SendAsync(new SearchLogs("gesucht") { RequestId = "s0" });
+        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(5)), "search did not start");
+        for (int i = 1; i <= 5; i++) await admin.SendAsync(new SearchLogs("gesucht") { RequestId = $"s{i}" });
+        // s0 runs, s1 to s3 wait in the session's queue of 4, s4 and s5 are refused
+        Assert.Equal(Codes.RateLimited, (await admin.ErrorAsync("s4")).Code);
+        Assert.Equal(Codes.RateLimited, (await admin.ErrorAsync("s5")).Code);
+        release.Set();
+        for (int i = 0; i <= 3; i++) await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == $"s{i}", 10_000);
+
+        Assert.Equal(4, server.Log.Count(l => l.Contains("Logs durchsucht von chef")));
+    }
+
     // ---- Package 82: download ----
 
     static string ExportDir(TestServer server) => Path.Combine(server.DataDir, "logs-export");

@@ -75,7 +75,7 @@ public sealed class LogFiles
             {
                 if (failureReported) return;
                 failureReported = true;
-                onFailure($"{Stamp()} Log konnte nicht geschrieben werden: {e.Message}");
+                onFailure(OneLine($"{Stamp()} Log konnte nicht geschrieben werden: {e.Message}"));
             }
         }
     }
@@ -83,8 +83,10 @@ public sealed class LogFiles
     /// <summary>
     /// One entry stays one line: line breaks and other control characters in logged text (chat, reasons) become
     /// visible escapes such as \n or \u0085, so a message cannot forge further, timestamped lines. Other text is unchanged.
+    /// Package 90: also used for the server console; ESC (U+001B) and the C1 CSI (U+009B) are control characters as well,
+    /// so no ANSI escape sequence reaches a terminal or docker logs.
     /// </summary>
-    static string OneLine(string line)
+    public static string OneLine(string line)
     {
         if (!line.Any(IsBreaking)) return line;
         var text = new StringBuilder(line.Length + 16);

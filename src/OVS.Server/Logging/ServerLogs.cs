@@ -26,7 +26,7 @@ public sealed class ServerLogs
     /// <param name="toFile">False for secrets such as the admin token, which only belong on the console.</param>
     public void Server(string text, bool toFile = true, bool toConsole = true)
     {
-        var line = $"{files.Stamp()} {text}";
+        var line = LogFiles.OneLine($"{files.Stamp()} {text}"); // Package 90: the console (docker logs) gets the escaped line too
         if (toConsole) console(line);
         if (toFile) files.Append("server", "", line);
     }

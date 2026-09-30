@@ -5574,9 +5574,9 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Console and file receive the same escaped line: CR, LF, U+2028/2029, other control characters and ESC (ANSI sequences) are shown escaped.
-- [ ] AC2: A chat message containing a newline followed by a fake timestamp produces exactly one log line on the console and in the file.
-- [ ] AC3: The search log line is written only when the search is actually run.
+- [x] AC1: Console and file receive the same escaped line: CR, LF, U+2028/2029, other control characters and ESC (ANSI sequences) are shown escaped.
+- [x] AC2: A chat message containing a newline followed by a fake timestamp produces exactly one log line on the console and in the file.
+- [x] AC3: The search log line is written only when the search is actually run.
 
 ### Tests (TDD)
 

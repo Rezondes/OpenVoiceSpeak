@@ -145,6 +145,39 @@ public sealed class ServerLogsTests : IDisposable
         Assert.Equal("", lines[2]);
     }
 
+    /// <summary>Package 90: the console (docker logs) gets the same escaped line as the file, ANSI escape sequences included.</summary>
+    [Fact]
+    public void ConsoleLine_EscapedLikeFile()
+    {
+        var time = new ManualTimeProvider();
+        var console = new List<string>();
+        var logs = new ServerLogs(dir, 30, time, console.Add);
+        logs.Server("a\rb\nc\u2028d\u2029e\u001b[31mrot\u009b2J\u0007");
+
+        var line = Assert.Single(console);
+        Assert.EndsWith(@" a\rb\nc\u2028d\u2029e\u001B[31mrot\u009B2J\u0007", line);
+        Assert.DoesNotContain(line, c => char.IsControl(c) || c is '\u2028' or '\u2029');
+        var file = File.ReadAllText(Path.Combine(dir, "logs", "server", Start(time) + ".log"));
+        Assert.Equal(line + Environment.NewLine, file);
+    }
+
+    /// <summary>Package 90: a chat message cannot forge a timestamped line on the console or in the file.</summary>
+    [Fact]
+    public async Task ChatWithFakeLine_OneLineOnly()
+    {
+        var id = ClientIdentity.Create(); // server-wide chat needs a right a guest lacks
+        await using var server = await TestServer.StartAsync(TestServer.Grant(id, "Admin"));
+        await using var anna = await TestClient.ConnectAsync(server, "anna", id);
+        await anna.SendAsync(new SendChat(ChatTarget.Server, null, "hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht"));
+        await Eventually(() => ServerLog(server), "gefaelscht");
+
+        var console = Assert.Single(server.Log, l => l.Contains("gefaelscht"));
+        Assert.DoesNotContain(console, char.IsControl);
+        Assert.EndsWith(@"Chat von anna: hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht", console);
+        var file = Assert.Single(ServerLog(server).Split('\n'), l => l.Contains("gefaelscht"));
+        Assert.Equal(console, file.TrimEnd('\r'));
+    }
+
     static void Touch(string folder, string name)
     {
         Directory.CreateDirectory(folder);
