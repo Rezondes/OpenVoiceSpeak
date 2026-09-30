@@ -177,6 +177,20 @@ public sealed class ChannelLockTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Move_TargetAlreadyInPasswordChannel_SilentNoOp()
+    {
+        var secret = await CreateWithPasswordAsync("Geheim", "pw123");
+        await a.SendAsync(new MoveUser(g.Id, secret.Id));
+        await m.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ChannelId == secret.Id);
+
+        // nobody but admins may move into a password channel, but the guest is there already: no error and no broadcast
+        await m.SendAsync(new MoveUser(g.Id, secret.Id) { RequestId = "mv" });
+        await m.SendAsync(new MoveUser(g.Id, Guid.NewGuid()) { RequestId = "probe" });
+        while (await m.NextAsync() is { } message and not Error { RequestId: "probe" })
+            Assert.False(message is Error { RequestId: "mv" } or UserUpdated, $"unexpected {message}");
+    }
+
+    [Fact]
     public async Task LockChange_NobodyMovedOut()
     {
         var open = await CreateAsync("Offen");
