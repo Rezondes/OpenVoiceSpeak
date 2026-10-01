@@ -11,7 +11,7 @@
       <DockPanel>
         <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CancelCommand}"
                 ToolTip.Tip="{x:Static l:Strings.Ui_CloseEsc}" AutomationProperties.Name="{x:Static l:Strings.Ui_CloseSettings}">
-          <PathIcon Data="{StaticResource Icon.Dismiss}" />
+          <PathIcon Classes="turn" Data="{StaticResource Icon.Dismiss}" />
         </Button>
         <StackPanel Orientation="Horizontal" Spacing="12">
           <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
@@ -247,7 +247,7 @@
                               <Button Classes="icon" Command="{Binding ResetCommand}"
                                       ToolTip.Tip="{x:Static l:Strings.Ui_Reset}"
                                       AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ResetFmt}}">
-                                <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                                <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
                               </Button>
                             </WrapPanel>
                           </Grid>
@@ -321,7 +321,7 @@
               <DockPanel>
                 <Button DockPanel.Dock="Left" Command="{Binding CheckUpdatesCommand}" Margin="0,0,10,0" VerticalAlignment="Top">
                   <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                    <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
                     <TextBlock Text="{x:Static l:Strings.Ui_CheckUpdates}" />
                   </StackPanel>
                 </Button>

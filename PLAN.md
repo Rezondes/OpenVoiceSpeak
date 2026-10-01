@@ -6130,22 +6130,27 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Buttons (all variants), icon buttons and chips:
+- [x] AC1: Buttons (all variants), icon buttons and chips:
   - hover: lift by 1 px with a soft shadow and a brighter background, over `Motion.Fast`
   - press: scale to 0.96 and spring back with `BackEaseOut`
-- [ ] AC2: Rows (channels, users, bookmarks, admin list rows, sound rows):
+  - (the title-bar window buttons only fade their colour, link-like `Button.hint` keeps its underline; the only chip, the ping, lifts on hover)
+- [x] AC2: Rows (channels, users, bookmarks, admin list rows, sound rows):
   - hover: a background fade plus an accent bar of 3 px that grows in from the left
   - the current channel's accent bar stays visible
-- [ ] AC3: Keyboard focus shows an animated focus ring (fade plus 2 px grow) on every focusable control; it never appears for pointer focus.
-- [ ] AC4: Inputs, combo boxes, sliders, check boxes and toggle switches:
+  - (the bar is an inset box shadow, so no row template changed; admin list rows are the `ListBoxItem`s of the group, log file and search hit lists, a selected one keeps the bar; the dense log lines get no bar; user, ban and backup entries are cards and get their effects in Package 101 and 102; sound rows rest on the hover colour and light up one step further)
+- [x] AC3: Keyboard focus shows an animated focus ring (fade plus 2 px grow) on every focusable control; it never appears for pointer focus. (a `FocusAdornerTemplate` set on every control in the animated display; Avalonia shows the adorner only for keyboard focus)
+- [x] AC4: Inputs, combo boxes, sliders, check boxes and toggle switches:
   - the border colour fades on hover and focus
   - check marks and toggle knobs animate their change
   - slider thumbs grow on hover
-- [ ] AC5: Icons in icon buttons turn or nudge where it carries meaning:
+  - (the frame of `NumericUpDown` fades through its `ButtonSpinner`; no view uses a `ToggleSwitch` today, its knob only grows on hover beyond Fluent's own movement)
+  - tabs (administration, chat) lift their label on hover; menu and dropdown entries fade their background
+- [x] AC5: Icons in icon buttons turn or nudge where it carries meaning:
   - the settings cog turns 30° on hover
   - the close X turns 90°
   - the arrows nudge in their direction
-- [ ] AC6: In simplified mode none of these effects exist (`Simplified_LooksLikeBefore` stays green, and no new transitions are set on the controls).
+  - (the icons carry the classes `spin`, `turn`, `nudgeUp`, `nudgeDown`, `nudgeRight`, and `sync` for the reload arrows, which turn 180°)
+- [x] AC6: In simplified mode none of these effects exist (`Simplified_LooksLikeBefore` stays green, and no new transitions are set on the controls).
 
 ### Tests (TDD)
 

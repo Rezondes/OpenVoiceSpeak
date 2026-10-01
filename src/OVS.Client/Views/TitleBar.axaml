@@ -23,7 +23,7 @@
         </Button>
         <Button x:Name="CloseButton" Classes="caption close" Click="OnClose"
                 ToolTip.Tip="{x:Static l:Strings.Ui_Close}" AutomationProperties.Name="{x:Static l:Strings.Ui_Close}">
-          <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+          <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" />
         </Button>
       </StackPanel>
 

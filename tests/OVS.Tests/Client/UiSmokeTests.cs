@@ -98,9 +98,15 @@ public sealed class UiSmokeTests : IDisposable
         Assert.True(sink.Problems.Count == 0, string.Join(Environment.NewLine, sink.Problems.Distinct()));
     }
 
+    /// <summary>A frame once running transitions are over (restyling replays the 100 ms fades of the simplified look).</summary>
     static byte[] Pixels(Window window)
     {
-        Dispatcher.UIThread.RunJobs();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (watch.ElapsedMilliseconds < 300)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+        }
         using var frame = window.CaptureRenderedFrame()!;
         using var buffer = frame.Lock();
         var bytes = new byte[buffer.RowBytes * buffer.Size.Height];
@@ -126,13 +132,20 @@ public sealed class UiSmokeTests : IDisposable
         var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Appearance = vm.Appearance with { Display = DisplayMode.Simplified };
+        var settings = vm.Settings;
+        settings.Display = DisplayMode.Simplified; // saved, so closing the settings page keeps it
+        vm.ApplySettings(settings);
+        Assert.DoesNotContain("animated", main.Classes);
         var styles = Application.Current!.Styles;
         var motion = (Avalonia.Styling.Styles)styles[^1]; // App.axaml includes Motion.axaml last
-        Assert.All(AllStyles(motion), style => Assert.StartsWith("Window.animated", style.Selector?.ToString())); // A115
+        // A115: every part of every selector list starts with the class on the window
+        Assert.All(AllStyles(motion).SelectMany(style => style.Selector!.ToString()!.Split(',')), part => Assert.StartsWith("Window.animated", part.Trim()));
 
         void LooksLikeBefore(string page)
         {
+            // spinners keep turning between two frames (the admin lists wait for a server that never answers)
+            foreach (var spinner in main.GetVisualDescendants().OfType<BusySpinner>().ToList()) spinner.IsVisible = false;
+            main.FocusManager?.ClearFocus(); // and a text cursor blinks
             var simplified = Pixels(main);
             Assert.True(simplified.Distinct().Count() > 16, $"{page}: the frame is blank");
             int index = styles.IndexOf(motion);
@@ -149,8 +162,10 @@ public sealed class UiSmokeTests : IDisposable
         LooksLikeBefore("settings");
         vm.ClosePage();
         await vm.OpenAdminAsync();
+        await Task.Delay(400); // the waiting states show after 150 ms (Package 97); they must not appear between the frames
         LooksLikeBefore("admin");
-        vm.Appearance = vm.Appearance with { Display = DisplayMode.Animated };
+        Assert.DoesNotContain("animated", main.Classes);
+        Motion.IsAnimated = true;
         main.Close();
     }
 

@@ -89,7 +89,7 @@
                 </Panel>
               </ToggleButton>
               <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_Settings}" AutomationProperties.Name="{x:Static l:Strings.Ui_Settings}">
-                <PathIcon Data="{StaticResource Icon.Settings}" />
+                <PathIcon Classes="spin" Data="{StaticResource Icon.Settings}" />
               </Button>
             </StackPanel>
             <Border Classes="ring" Classes.speaking="{Binding Server.Self.IsSpeaking, FallbackValue=False}"

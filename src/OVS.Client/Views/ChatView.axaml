@@ -30,7 +30,7 @@
               </Border>
               <Button Classes="icon tabClose" Command="{Binding CloseCommand}" IsVisible="{Binding IsPrivate}"
                       ToolTip.Tip="{x:Static l:Strings.Ui_CloseTab}" AutomationProperties.Name="{Binding Title, StringFormat={x:Static l:Strings.Ui_CloseFmt}}">
-                <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" />
               </Button>
             </StackPanel>
           </DataTemplate>
@@ -54,7 +54,7 @@
       <DockPanel>
         <Button DockPanel.Dock="Right" Classes="accent" Command="{Binding SendCommand}" Margin="8,0,0,0" VerticalAlignment="Bottom"
                 MinHeight="36" ToolTip.Tip="{x:Static l:Strings.Ui_SendEnter}" AutomationProperties.Name="{x:Static l:Strings.Ui_Send}">
-          <PathIcon Data="{StaticResource Icon.Send}" />
+          <PathIcon Classes="nudgeRight" Data="{StaticResource Icon.Send}" />
         </Button>
         <TextBox x:Name="Composer" Text="{Binding Draft}" Watermark="{Binding Placeholder}" IsEnabled="{Binding CanWrite}"
                  AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="160" MinHeight="36"

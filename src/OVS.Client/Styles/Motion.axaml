@@ -5,4 +5,223 @@
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <!-- Box shadows take fixed colours; the accent and the shadow are the same in both themes. Both ends of a
+         transition have the same shape, so they blend instead of jumping. -->
+    <BoxShadows x:Key="Ovs.Motion.Flat">0 0 0 0 #00000000</BoxShadows>
+    <BoxShadows x:Key="Ovs.Motion.Lifted">0 3 10 0 #40000000</BoxShadows>
+    <BoxShadows x:Key="Ovs.Motion.NoBar">inset 0 0 0 0 #002F6FEB</BoxShadows>
+    <BoxShadows x:Key="Ovs.Motion.Bar">inset 3 0 0 0 #FF2F6FEB</BoxShadows>
+  </Styles.Resources>
+
+  <!-- ===== Package 100: buttons lift on hover and give way when pressed ===== -->
+  <Style Selector="Window.animated Button:not(.caption):not(.hint), Window.animated ToggleButton">
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="BackEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Button:not(.caption):not(.hint) /template/ ContentPresenter#PART_ContentPresenter, Window.animated ToggleButton /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.Flat}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" Easing="CubicEaseOut" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Button:not(.caption):not(.hint):pointerover, Window.animated ToggleButton:pointerover">
+    <Setter Property="RenderTransform" Value="translateY(-1px)" />
+  </Style>
+  <Style Selector="Window.animated Button:not(.caption):not(.hint):not(.icon):pointerover /template/ ContentPresenter#PART_ContentPresenter, Window.animated ToggleButton:not(.icon):pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.Lifted}" />
+  </Style>
+  <Style Selector="Window.animated Button:not(.caption):not(.hint):pressed, Window.animated ToggleButton:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.96)" />
+  </Style>
+  <Style Selector="Window.animated Button:disabled, Window.animated ToggleButton:disabled">
+    <Setter Property="RenderTransform" Value="none" />
+  </Style>
+  <!-- The window buttons in the title bar only fade their colour -->
+  <Style Selector="Window.animated Button.caption /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <!-- Chips (the ping) lift a little as well -->
+  <Style Selector="Window.animated Border.chip">
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.Flat}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="CubicEaseOut" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Border.chip:pointerover">
+    <Setter Property="RenderTransform" Value="translateY(-1px)" />
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.Lifted}" />
+  </Style>
+
+  <!-- ===== Package 100: icons that carry a meaning move on hover ===== -->
+  <Style Selector="Window.animated PathIcon.spin, Window.animated PathIcon.turn, Window.animated PathIcon.nudgeUp, Window.animated PathIcon.nudgeDown, Window.animated PathIcon.nudgeRight, Window.animated PathIcon.sync">
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="BackEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Button:pointerover PathIcon.spin">
+    <Setter Property="RenderTransform" Value="rotate(30deg)" />
+  </Style>
+  <Style Selector="Window.animated Button:pointerover PathIcon.turn">
+    <Setter Property="RenderTransform" Value="rotate(90deg)" />
+  </Style>
+  <Style Selector="Window.animated Button:pointerover PathIcon.nudgeUp">
+    <Setter Property="RenderTransform" Value="translateY(-2px)" />
+  </Style>
+  <Style Selector="Window.animated Button:pointerover PathIcon.nudgeDown">
+    <Setter Property="RenderTransform" Value="translateY(2px)" />
+  </Style>
+  <Style Selector="Window.animated Button:pointerover PathIcon.nudgeRight">
+    <Setter Property="RenderTransform" Value="translateX(2px)" />
+  </Style>
+  <Style Selector="Window.animated Button:pointerover PathIcon.sync">
+    <Setter Property="RenderTransform" Value="rotate(180deg)" />
+  </Style>
+
+  <!-- ===== Package 100: rows fade and grow an accent bar from the left ===== -->
+  <Style Selector="Window.animated Border.row, Window.animated Border.soundRow">
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.NoBar}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Border.row:pointerover, Window.animated Border.row.current, Window.animated Border.soundRow:pointerover">
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.Bar}" />
+  </Style>
+  <!-- a sound row rests on the hover colour already, so it lights up a step further -->
+  <Style Selector="Window.animated Border.soundRow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceSelected}" />
+  </Style>
+  <!-- Bookmarks in the sidebar and list entries in the administration (groups, log files, search hits; not the dense log lines) -->
+  <Style Selector="Window.animated Button.bookmark /template/ ContentPresenter#PART_ContentPresenter, Window.animated ListBox:not(.logLines) ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.NoBar}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut" />
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Button.bookmark:pointerover /template/ ContentPresenter#PART_ContentPresenter, Window.animated ListBox:not(.logLines) ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter, Window.animated ListBox:not(.logLines) ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.Bar}" />
+  </Style>
+  <!-- A bookmark is a row, not a raised button -->
+  <Style Selector="Window.animated Button.bookmark:pointerover">
+    <Setter Property="RenderTransform" Value="none" />
+  </Style>
+
+  <!-- Tabs (administration, chat) lift their label; menu and dropdown entries fade their background -->
+  <Style Selector="Window.animated TabItem, Window.animated TabStripItem">
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated TabItem:pointerover:not(:selected), Window.animated TabStripItem:pointerover:not(:selected)">
+    <Setter Property="RenderTransform" Value="translateY(-1px)" />
+  </Style>
+  <Style Selector="Window.animated MenuItem /template/ Border#PART_LayoutRoot, Window.animated TabStripItem /template/ Border#PART_LayoutRoot, Window.animated TabItem /template/ Border#PART_LayoutRoot">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated ComboBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <!-- ===== Package 100: an animated ring for keyboard focus (Avalonia shows the adorner only for keyboard focus) ===== -->
+  <Style Selector="Window.animated :is(Control)">
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Classes="focusRing" />
+      </FocusAdornerTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Border.focusRing">
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Accent}" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Margin" Value="-2" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Style.Animations>
+      <Animation Duration="0:0:0.12" Easing="CubicEaseOut" FillMode="Forward">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="Margin" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="Margin" Value="-2" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- ===== Package 100: inputs fade their frame, check marks and knobs animate, slider thumbs grow ===== -->
+  <Style Selector="Window.animated TextBox /template/ Border#PART_BorderElement, Window.animated ComboBox /template/ Border#Background, Window.animated CheckBox /template/ Border#NormalRectangle, Window.animated ToggleSwitch /template/ Border#OuterBorder, Window.animated ButtonSpinner /template/ Border">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" Easing="CubicEaseOut" />
+        <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated CheckBox /template/ Path#CheckGlyph, Window.animated RadioButton /template/ Ellipse#CheckGlyph">
+    <Setter Property="RenderTransform" Value="scale(0.4)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.12" Easing="CubicEaseOut" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="BackEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated CheckBox:checked /template/ Path#CheckGlyph, Window.animated CheckBox:indeterminate /template/ Path#CheckGlyph, Window.animated RadioButton:checked /template/ Ellipse#CheckGlyph">
+    <Setter Property="RenderTransform" Value="scale(1)" />
+  </Style>
+  <Style Selector="Window.animated ToggleSwitch /template/ Ellipse#SwitchKnobOn, Window.animated ToggleSwitch /template/ Ellipse#SwitchKnobOff">
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="BackEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated ToggleSwitch:pointerover /template/ Ellipse#SwitchKnobOn, Window.animated ToggleSwitch:pointerover /template/ Ellipse#SwitchKnobOff">
+    <Setter Property="RenderTransform" Value="scale(1.15)" />
+  </Style>
+  <Style Selector="Window.animated Slider /template/ Thumb#thumb">
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" Easing="BackEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.animated Slider:pointerover /template/ Thumb#thumb">
+    <Setter Property="RenderTransform" Value="scale(1.2)" />
+  </Style>
 </Styles>

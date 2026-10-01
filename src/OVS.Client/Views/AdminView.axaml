@@ -34,7 +34,7 @@
       <DockPanel>
         <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CloseCommand}"
                 ToolTip.Tip="{x:Static l:Strings.Ui_CloseEsc}" AutomationProperties.Name="{x:Static l:Strings.Ui_CloseAdmin}">
-          <PathIcon Data="{StaticResource Icon.Dismiss}" />
+          <PathIcon Classes="turn" Data="{StaticResource Icon.Dismiss}" />
         </Button>
         <StackPanel Orientation="Horizontal" Spacing="12">
           <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
@@ -49,7 +49,7 @@
       <DockPanel>
         <Button Command="{Binding RefreshCommand}" HorizontalAlignment="Left">
           <StackPanel Orientation="Horizontal" Spacing="6">
-            <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+            <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
             <TextBlock Text="{x:Static l:Strings.Ui_Refresh}" />
           </StackPanel>
         </Button>
@@ -71,11 +71,11 @@
                   <v:BusySpinner DockPanel.Dock="Right" Margin="6,0" IsVisible="{Binding GroupReorder.IsBusy}" />
                   <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding MoveGroupDownCommand}"
                           ToolTip.Tip="{x:Static l:Strings.Ui_MoveDown}" AutomationProperties.Name="{x:Static l:Strings.Ui_GroupDown}">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                    <PathIcon Classes="nudgeDown sm" Data="{StaticResource Icon.ArrowDown}" />
                   </Button>
                   <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding MoveGroupUpCommand}"
                           ToolTip.Tip="{x:Static l:Strings.Ui_MoveUp}" AutomationProperties.Name="{x:Static l:Strings.Ui_GroupUp}">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
+                    <PathIcon Classes="nudgeUp sm" Data="{StaticResource Icon.ArrowUp}" />
                   </Button>
                   <Button Classes="subtle" Command="{Binding NewGroupCommand}" HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -294,7 +294,7 @@
                               </Button>
                               <Button Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                                  <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" />
                                   <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
                                 </StackPanel>
                               </Button>
@@ -367,7 +367,7 @@
                           <!-- only on active bans and with UserBan; beside the details, under narrow below them -->
                           <Button Classes="cardAction" Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}" IsEnabled="{Binding !Busy.IsBusy}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                              <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" IsVisible="{Binding !Busy.IsBusy}" />
+                              <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" IsVisible="{Binding !Busy.IsBusy}" />
                               <v:BusySpinner IsVisible="{Binding Busy.IsBusy}" /> <!-- Package 98: until the new ban list -->
                               <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
                             </StackPanel>
@@ -654,13 +654,13 @@
                       <!-- Package 89 (A101): upload and restore only for members of the Admin group -->
                       <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
+                          <PathIcon Classes="nudgeUp sm" Data="{StaticResource Icon.ArrowUp}" />
                           <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
                         </StackPanel>
                       </Button>
                       <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                          <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
                           <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
                         </StackPanel>
                       </Button>
@@ -697,13 +697,13 @@
                               <WrapPanel ItemSpacing="8" LineSpacing="6">
                                 <Button Click="OnDownloadBackup">
                                   <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                                    <PathIcon Classes="nudgeDown sm" Data="{StaticResource Icon.ArrowDown}" />
                                     <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
                                   </StackPanel>
                                 </Button>
                                 <Button Classes="danger" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
                                   <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                                    <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
                                     <TextBlock Text="{x:Static l:Strings.Ui_Restore}" />
                                   </StackPanel>
                                 </Button>
@@ -771,7 +771,7 @@
                 </Button>
                 <Button Name="LogDownloadButton" Click="OnDownloadLogs" IsEnabled="{Binding CanDownload}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                    <PathIcon Classes="nudgeDown sm" Data="{StaticResource Icon.ArrowDown}" />
                     <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
                   </StackPanel>
                 </Button>
@@ -822,7 +822,7 @@
                     <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="4,2,4,6">
                       <Button Classes="subtle" Command="{Binding ClearSearchCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                          <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" />
                           <TextBlock Text="{x:Static l:Strings.Ui_LogBackToFiles}" />
                         </StackPanel>
                       </Button>
@@ -853,14 +853,14 @@
                       <DockPanel>
                         <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CloseFileCommand}"
                                 ToolTip.Tip="{x:Static l:Strings.Ui_LogCloseFile}" AutomationProperties.Name="{x:Static l:Strings.Ui_LogCloseFile}">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.Dismiss}" />
+                          <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" />
                         </Button>
                         <TextBlock Text="{Binding OpenTitle}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
                       </DockPanel>
                       <WrapPanel Name="LogPager" ItemSpacing="6" LineSpacing="6">
                         <Button Classes="icon" Command="{Binding FirstCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_LogFirst}"
                                 AutomationProperties.Name="{x:Static l:Strings.Ui_LogFirst}">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowUp}" />
+                          <PathIcon Classes="nudgeUp sm" Data="{StaticResource Icon.ArrowUp}" />
                         </Button>
                         <Button Command="{Binding OlderCommand}">
                           <TextBlock Text="{x:Static l:Strings.Ui_LogOlder}" />
@@ -871,11 +871,11 @@
                         </Button>
                         <Button Classes="icon" Command="{Binding LastCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_LogLast}"
                                 AutomationProperties.Name="{x:Static l:Strings.Ui_LogLast}">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                          <PathIcon Classes="nudgeDown sm" Data="{StaticResource Icon.ArrowDown}" />
                         </Button>
                         <Button Classes="icon" Command="{Binding ReloadCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_LogReload}"
                                 AutomationProperties.Name="{x:Static l:Strings.Ui_LogReload}">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowSync}" />
+                          <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
                         </Button>
                       </WrapPanel>
                       <TextBox x:Name="LogLineFilter" Text="{Binding LineFilter}" Watermark="{x:Static l:Strings.Ui_LogLineFilter}"
