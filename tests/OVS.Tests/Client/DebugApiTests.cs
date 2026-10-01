@@ -139,6 +139,26 @@ public sealed class DebugApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    /// <summary>Package 110: a name two channels carry is refused, naming both ids; the id still works.</summary>
+    [Fact]
+    public async Task AmbiguousChannelName_Refused()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+        await anna.Post("redeem", new { token = server.State.PendingAdminToken });
+        await anna.Until(s => s.GetProperty("server").GetProperty("isAdmin").GetBoolean());
+        await anna.Post("create-channel", new { name = "Raid" });
+        await anna.Post("create-channel", new { name = "raid" });
+        var state = await anna.Until(s => Channels(s).Count(c => string.Equals(c.GetProperty("name").GetString(), "raid", StringComparison.OrdinalIgnoreCase)) == 2);
+        var response = await anna.Http.PostAsJsonAsync("join", new { channel = "Raid" });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        var ids = Channels(state).Where(c => string.Equals(c.GetProperty("name").GetString(), "raid", StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.GetProperty("id").GetString()!).ToList();
+        Assert.All(ids, id => Assert.Contains(id, text));
+        await anna.Post("join", new { channel = ids[0] });
+        await anna.Until(s => Channels(s).Single(c => c.GetProperty("id").GetString() == ids[0]).GetProperty("isCurrent").GetBoolean());
+    }
+
     [Fact]
     public async Task FullFlow_Linking_PttAndLinkPtt()
     {

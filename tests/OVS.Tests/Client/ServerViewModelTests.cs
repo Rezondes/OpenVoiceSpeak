@@ -768,7 +768,9 @@ public class ServerViewModelTests
         Assert.Single(f.Sent.OfType<CreateChannel>()); // sent once, by the dialog's submit
         Assert.True(waited!.IsRunning);
         var created = Guid.NewGuid();
-        f.Vm.Apply(new ChannelAdded(new ChannelInfo(created, "Neu", "", 3)));
+        f.Vm.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 4))); // Package 110: someone else's "Neu"
+        Assert.True(waited.IsRunning);
+        f.Vm.Apply(new ChannelAdded(new ChannelInfo(created, "Neu", "", 3), f.Sent.OfType<CreateChannel>().Single().RequestId));
         Assert.False(waited.IsRunning);
         Assert.Null(await waited.Completion);
 

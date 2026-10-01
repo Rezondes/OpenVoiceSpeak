@@ -34,7 +34,7 @@ public sealed partial class ServerState
     void OnCreateChannel(Session s, CreateChannel r)
     {
         if (!Require(s, r, Permission.ChannelCreate)) return;
-        if (!ValidateChannel(s, r, null, r.Name, r.Description, out var name, out var description)) return;
+        if (!ValidateChannel(s, r, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
         if (!ValidateGroupLock(s, r, null, r.AllowedGroupIds, out var allowed)) return;
         if (!ValidatePassword(s, r, null, r.Password)) return;
@@ -57,7 +57,9 @@ public sealed partial class ServerState
             allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.PasswordHash is null ? null : "mit Passwort" }.OfType<string>().ToList();
         ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
         logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
-        Broadcast(new ChannelAdded(Info(channel)));
+        var added = new ChannelAdded(Info(channel));
+        BroadcastExcept(s, added);
+        s.Send(added with { RequestId = r.RequestId }); // Package 110: the creator recognises its own channel by the request
     }
 
     void OnEditChannel(Session s, EditChannel r)
@@ -69,7 +71,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
-        if (!ValidateChannel(s, r, channel.Id, r.Name, r.Description, out var name, out var description)) return;
+        if (!ValidateChannel(s, r, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, channel.Id, r.MaxUsers)) return;
         if (!ValidateGroupLock(s, r, channel.Id, r.AllowedGroupIds, out var allowed)) return;
         if (r.AllowedGroupIds is null) allowed = channel.AllowedGroupIds; // Package 93: null keeps the lock as it is
@@ -282,7 +284,7 @@ public sealed partial class ServerState
         BroadcastUser(s);
     }
 
-    bool ValidateChannel(Session s, Request r, Guid? self, string? rawName, string? rawDescription, out string name, out string description)
+    bool ValidateChannel(Session s, Request r, string? rawName, string? rawDescription, out string name, out string description)
     {
         name = ValidName(rawName, ProtocolInfo.MaxNameLength) ?? "";
         description = "";
@@ -297,12 +299,6 @@ public sealed partial class ServerState
             return false;
         }
         description = text.Trim();
-        var n = name;
-        if (data.Channels.Any(c => c.Id != self && string.Equals(c.Name, n, StringComparison.OrdinalIgnoreCase)))
-        {
-            Fail(s, r, Codes.NameTaken);
-            return false;
-        }
-        return true;
+        return true; // Package 110 (A119): channel names may repeat, every channel is known by its id
     }
 }

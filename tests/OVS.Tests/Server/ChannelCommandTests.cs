@@ -82,11 +82,31 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     [InlineData("", Codes.InvalidName)]
     [InlineData("   ", Codes.InvalidName)]
     [InlineData("12345678901234567890123456789012345678901234567890123456789012345", Codes.InvalidName)]
-    [InlineData("lobby", Codes.NameTaken)]
-    public async Task Create_InvalidOrDuplicateName_Error(string name, string code)
+    public async Task Create_InvalidName_Error(string name, string code)
     {
         await a.SendAsync(new CreateChannel(name, "") { RequestId = "c" });
         Assert.Equal(code, (await a.ErrorAsync("c")).Code);
+    }
+
+    /// <summary>Package 110 (A119): channel names may repeat; only the creator's copy names its request.</summary>
+    [Fact]
+    public async Task Create_SameNameAsExisting_Succeeds()
+    {
+        await a.SendAsync(new CreateChannel("lobby", "") { RequestId = "dup" });
+        var own = await a.WaitForAsync<ChannelAdded>();
+        var seen = await g.WaitForAsync<ChannelAdded>();
+        Assert.Equal(("lobby", "dup"), (own.Channel.Name, own.RequestId));
+        Assert.Null(seen.RequestId);
+        Assert.Equal(own.Channel, seen.Channel);
+        Assert.NotEqual(Lobby, own.Channel.Id);
+    }
+
+    [Fact]
+    public async Task Edit_ToNameOfOther_Succeeds()
+    {
+        var raid = await CreateAsync("Raid");
+        await a.SendAsync(new EditChannel(raid.Id, "Lobby", "", raid.Order));
+        Assert.Equal("Lobby", (await g.WaitForAsync<ChannelUpdated>()).Channel.Name);
     }
 
     [Fact]

@@ -522,6 +522,12 @@ public sealed partial class ServerState
     static void Fail(Session session, Request request, string code, string? detail = null) =>
         session.Send(new Error(request.RequestId, code, detail));
 
+    void BroadcastExcept(Session except, Message message)
+    {
+        var frame = Session.Encode(message);
+        foreach (var s in sessions.Values.Where(s => s != except)) s.SendFrame(frame);
+    }
+
     void Broadcast(Message message)
     {
         if (sessions.Count == 0) return;

@@ -153,7 +153,8 @@ public sealed record ReorderChannels(IReadOnlyList<Guid> ChannelIds) : Request;
 public sealed record DeleteChannel(Guid ChannelId) : Request;
 public sealed record MoveUser(uint SessionId, Guid ChannelId) : Request;
 public sealed record SetSelfState(bool Muted, bool Deafened) : Request;
-public sealed record ChannelAdded(ChannelInfo Channel) : Message;
+/// <param name="RequestId">Package 110: only in the creator's copy, so the creator knows its channel (names may repeat).</param>
+public sealed record ChannelAdded(ChannelInfo Channel, string? RequestId = null) : Message;
 public sealed record ChannelUpdated(ChannelInfo Channel) : Message;
 public sealed record ChannelRemoved(Guid ChannelId) : Message;
 public sealed record UserJoined(UserInfo User) : Message;

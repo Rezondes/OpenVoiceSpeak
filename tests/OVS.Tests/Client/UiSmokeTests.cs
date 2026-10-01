@@ -1147,7 +1147,7 @@ public sealed class UiSmokeTests : IDisposable
         Assert.True(SpinnerIn(create));
         Click(create); // a second click meanwhile sends nothing
         Assert.Single(sent.OfType<CreateChannel>());
-        server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 2)));
+        server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 2), sent.OfType<CreateChannel>().Single().RequestId));
         Dispatcher.UIThread.RunJobs();
         Assert.False(main.Overlay.IsOpen);
 
@@ -1237,7 +1237,7 @@ public sealed class UiSmokeTests : IDisposable
         {
             _ = server.NewChannelCommand.ExecuteAsync(null);
             Dialog("Anlegen", o => o.GetVisualDescendants().OfType<TextBox>().First().Text = "Neu");
-        }, () => [new ChannelAdded(new ChannelInfo(created, "Neu", "", 2))]);
+        }, () => [new ChannelAdded(new ChannelInfo(created, "Neu", "", 2), Last<CreateChannel>().RequestId)]);
         Waits("edit channel", () =>
         {
             _ = Channel("Neu").EditCommand.ExecuteAsync(null);

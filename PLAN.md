@@ -6653,8 +6653,8 @@ Test command: `dotnet test tests/OVS.Tests`
 
 **Affected files:**
 - `src/OVS.Server/Commands/ChannelCommands.cs` (change): `ValidateChannel` no longer refuses a name that another channel has
-- `src/OVS.Shared/Protocol/Messages.cs` (change): `CreateChannel` gets an optional `Guid? ClientTag`, and the server echoes it in `ChannelAdded(ChannelInfo Channel, Guid? ClientTag = null)`
-- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `CreateChannel` sends a fresh tag and confirms on `ChannelAdded` with that tag instead of the name
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `ChannelAdded(ChannelInfo Channel, string? RequestId = null)`; the creator's copy carries its request's id (as built: the existing `RequestId` instead of a new tag)
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `CreateChannel` confirms on the `ChannelAdded` that answers its own request id instead of the name
 - `src/OVS.Client/Debug/DebugApi.cs` (change): a channel key that matches several names is answered with an error naming the ids, instead of taking the first
 - `tests/OVS.Tests/Server/ChannelCommandTests.cs`, `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `tests/OVS.Tests/Client/DebugApiTests.cs` (change)
 
@@ -6664,11 +6664,11 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Creating a channel named like an existing one (also in other case) succeeds; both exist with their own ids.
-- [ ] AC2: Renaming a channel to the name of another channel succeeds.
-- [ ] AC3: The creator's dialog closes on its own new channel, not on a channel of the same name that someone else adds meanwhile.
-- [ ] AC4: Group names stay unique (`NameTaken` as before).
-- [ ] AC5: The debug API refuses an ambiguous channel name with a message listing the matching ids; an id still works.
+- [x] AC1: Creating a channel named like an existing one (also in other case) succeeds; both exist with their own ids.
+- [x] AC2: Renaming a channel to the name of another channel succeeds.
+- [x] AC3: The creator's dialog closes on its own new channel, not on a channel of the same name that someone else adds meanwhile. (as built: no new tag; the creator's copy of `ChannelAdded` carries the request's existing `RequestId`, the others get it without, and `CreateChannel` confirms when its `Pending` answers that id)
+- [x] AC4: Group names stay unique (`NameTaken` as before).
+- [x] AC5: The debug API refuses an ambiguous channel name with a message listing the matching ids; an id still works.
 
 ### Tests (TDD)
 
@@ -6676,8 +6676,8 @@ Test command: `dotnet test tests/OVS.Tests`
    - Given: a server with "Lobby"; create "lobby".
    - Expected: `ChannelAdded`, two channels with different ids.
 2. `ChannelCommandTests > "Edit_ToNameOfOther_Succeeds"` (AC2)
-3. `ServerViewModelTests > "CreateChannel_ConfirmsOnOwnTag_NotOnSameName"` (AC3)
-   - Given: a pending create of "Raid"; the server first sends `ChannelAdded` "Raid" with another tag, then the own one.
+3. `ServerViewModelTests > "SendingDialogs_WaitForTheConfirmation_RowActionsSpin"` (AC3, as built: folded into the existing test)
+   - Given: a pending create of "Neu"; the server first sends someone else's `ChannelAdded` "Neu", then the own one with the request id.
    - Expected: still pending after the first, confirmed after the second.
 4. `AdminCommandTests` existing `" gast "` → `NameTaken` stays green (AC4)
 5. `DebugApiTests > "AmbiguousChannelName_Refused"` (AC5)
@@ -6687,7 +6687,7 @@ Test command: `dotnet test tests/OVS.Tests`
 ### Steps
 
 1. Tests 1 and 2 (red): drop the duplicate check in `ValidateChannel`; the old `NameTaken` row in `ChannelCommandTests` changes to the new expectation.
-2. Test 3 (red): the tag on `CreateChannel` and `ChannelAdded` (everyone gets `ChannelAdded`; the tag means nothing to the others).
+2. Test 3 (red): the request id on the creator's `ChannelAdded` (the others get it without).
 3. Test 5 (red): the debug API.
 
 ### Out of Scope

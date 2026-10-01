@@ -336,9 +336,19 @@ public sealed class DebugApi : IDisposable
             ? value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText()
             : throw new DebugApiException($"Feld '{name}' fehlt");
 
-    static ChannelViewModel Channel(ServerViewModel server, string key) =>
-        server.Channels.Live().FirstOrDefault(c => c.Id.ToString() == key || string.Equals(c.Name, key, StringComparison.OrdinalIgnoreCase))
-        ?? throw new DebugApiException($"Channel '{key}' nicht gefunden");
+    /// <summary>By id or name; Package 110: a name several channels carry needs the id.</summary>
+    static ChannelViewModel Channel(ServerViewModel server, string key)
+    {
+        var live = server.Channels.Live().ToList();
+        if (live.FirstOrDefault(c => c.Id.ToString() == key) is { } byId) return byId;
+        var named = live.Where(c => string.Equals(c.Name, key, StringComparison.OrdinalIgnoreCase)).ToList();
+        return named.Count switch
+        {
+            1 => named[0],
+            0 => throw new DebugApiException($"Channel '{key}' nicht gefunden"),
+            _ => throw new DebugApiException($"Channel '{key}' gibt es mehrfach, bitte per Id: {string.Join(", ", named.Select(c => c.Id))}"),
+        };
+    }
 
     static UserViewModel User(ServerViewModel server, string key) =>
         server.Channels.Live().SelectMany(c => c.Users.Live())

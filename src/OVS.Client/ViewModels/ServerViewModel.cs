@@ -470,9 +470,13 @@ public sealed partial class ServerViewModel : ObservableObject
     Pending? joining;
     public bool IsJoining => joining?.IsRunning == true;
 
-    public Pending CreateChannel(ChannelEdit e) =>
-        SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password),
-            m => m is ChannelAdded a && a.Channel.Name == e.Name, notify: false);
+    /// <summary>Package 110: names may repeat, so the own channel is the one the server answers this request with.</summary>
+    public Pending CreateChannel(ChannelEdit e)
+    {
+        var pending = NewPending();
+        return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password),
+            m => m is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
+    }
     public Pending EditChannel(Guid id, ChannelEdit edit, int order) =>
         SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password),
             m => m is ChannelUpdated u && u.Channel.Id == id, notify: false);
