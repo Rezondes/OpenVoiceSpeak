@@ -127,7 +127,7 @@
               <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_BookmarksSection}" Margin="10,4,0,6" />
               <TextBlock Classes="caption" Margin="10,0" TextWrapping="Wrap" IsVisible="{Binding !HasBookmarks}"
                          Text="{x:Static l:Strings.Ui_NoBookmarks}" />
-              <ItemsControl ItemsSource="{Binding Bookmarks}">
+              <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Bookmarks}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:BookmarkItem">
                     <Button Classes="bookmark" Click="OnBookmarkClick" ToolTip.Tip="{Binding Address}"
@@ -171,7 +171,7 @@
             </StackPanel>
           </ScrollViewer>
           <ScrollViewer Padding="8,10" IsVisible="{Binding IsConnected}">
-            <ItemsControl x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
+            <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">
@@ -233,7 +233,7 @@
                       </DockPanel>
                     </Border>
 
-                    <ItemsControl ItemsSource="{Binding Users}" Margin="18,2,0,0">
+                    <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:UserViewModel">
                           <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupNames}">

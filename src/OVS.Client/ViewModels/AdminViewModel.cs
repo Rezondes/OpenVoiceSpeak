@@ -852,8 +852,10 @@ public sealed partial class AdminViewModel : ObservableObject
     Task Refresh() => RequestListsAsync();
 }
 
-public sealed partial class GroupEditViewModel : ObservableObject
+public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
 {
+    /// <summary>A new group not saved yet counts by itself.</summary>
+    public object MotionKey => Id ?? (object)this;
     [ObservableProperty] string name;
 
     public GroupEditViewModel(Guid? id, string name, Permission permissions, Permission actor)
@@ -957,9 +959,10 @@ public sealed record Choice<T>(T Value, string Label)
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
 /// <param name="busy">Package 98: the card's actions, running until a user list shows their result.</param>
 public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggle> toggles, IReadOnlyList<BanInfo> bans,
-    AdminViewModel? owner = null, Pending? busy = null, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false)
+    AdminViewModel? owner = null, Pending? busy = null, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
 {
     public KnownUserInfo Info { get; } = info;
+    public object MotionKey => Info.Fingerprint;
     public Pending Busy { get; } = busy ?? new Pending(TimeProvider.System);
     public string Fingerprint => Info.Fingerprint;
     public string Nickname => Info.LastNickname;
@@ -1040,8 +1043,9 @@ public sealed partial class GroupToggle(Guid groupId, string name, bool isChecke
 /// <summary>Package 74: one backup on the server: date as title, size and server version below.</summary>
 /// <param name="canRestore">Package 89: only members of the Admin group see the restore button.</param>
 public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewModel, Task> delete, Func<BackupViewModel, Task> restore, bool canRestore = false)
-    : ObservableObject
+    : ObservableObject, IMotionKey
 {
+    public object MotionKey => Info.FileName;
     public BackupInfo Info { get; } = info;
     public bool CanRestore { get; } = canRestore;
     public string Title => TitleOf(Info);
@@ -1065,8 +1069,9 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
 /// <summary>Package 80: one card of the ban overview with everything the server stores about the ban (A97).</summary>
 /// <param name="now">The client's time when the list was built: status and remaining time as of then.</param>
 /// <param name="busy">Package 98: the unban, running until the new ban list comes.</param>
-public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, Pending? busy = null) : ObservableObject
+public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, Pending? busy = null) : ObservableObject, IMotionKey
 {
+    public object MotionKey => Ban.Id;
     public BanInfo Ban { get; } = ban;
     public Pending Busy { get; } = busy ?? new Pending(TimeProvider.System);
     public string Nickname => Ban.Nickname;

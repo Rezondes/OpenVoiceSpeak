@@ -345,8 +345,9 @@ public sealed partial class LogsViewModel : ObservableObject
 
 /// <summary>One file of the list: server or channel name, start and size; Package 82: a checkbox with LogsDownload.</summary>
 public sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = false, bool isSelected = false, Action<LogFileViewModel>? selectionChanged = null)
-    : ObservableObject
+    : ObservableObject, IMotionKey
 {
+    public object MotionKey => Info.Id;
     [ObservableProperty] bool isSelected = isSelected;
 
     partial void OnIsSelectedChanged(bool value) => selectionChanged?.Invoke(this);

@@ -6193,12 +6193,12 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: A user who joins my view of a channel slides in under the channel; the row briefly flashes in the accent colour (once, 600 ms).
-- [ ] AC2: A newly created channel slides in at its position; the rows below it make room smoothly instead of jumping.
-- [ ] AC3: Bookmarks, admin rows and sound rows that are added slide in the same way.
-- [ ] AC4: The first fill of a list, and an admin rebuild with `Clear` plus `Add` where the item keys are unchanged, do not replay the enter animation for existing items; the whole list fades in once on the first fill.
-- [ ] AC5: With more than 8 items added at once, only the first 8 are staggered; the rest appear with the last batch, so a full list never takes longer than 8 × 30 ms + `Motion.Normal`.
-- [ ] AC6: In simplified mode items appear at once, as today.
+- [x] AC1: A user who joins my view of a channel slides in under the channel; the row briefly flashes in the accent colour (once, 600 ms).
+- [x] AC2: A newly created channel slides in at its position; the rows below it make room smoothly instead of jumping.
+- [x] AC3: Bookmarks, admin rows and sound rows that are added slide in the same way. (rebuilt lists (bookmarks, users, bans, backups, groups, log files, link rows) name a stable key with `IMotionKey`; the key bindings in the settings slide in too)
+- [x] AC4: The first fill of a list, and an admin rebuild with `Clear` plus `Add` where the item keys are unchanged, do not replay the enter animation for existing items; the whole list fades in once on the first fill. (also: an empty administration list that gets its first page from the server fades in as a whole, and entries that come while a list is hidden, such as the channel tree in the closed drawer, do not slide in when it shows; the channel tree's own first fill just shows, because a moved channel gets a new user list and connecting is Package 106)
+- [x] AC5: With more than 8 items added at once, only the first 8 are staggered; the rest appear with the last batch, so a full list never takes longer than 8 × 30 ms + `Motion.Normal`.
+- [x] AC6: In simplified mode items appear at once, as today.
 
 ### Tests (TDD)
 

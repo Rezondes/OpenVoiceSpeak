@@ -122,8 +122,9 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     }
 }
 
-public sealed partial class LinkRowViewModel(int number, Guid id, string name, bool isSelected, IReadOnlyList<LinkCellViewModel> cells) : ObservableObject
+public sealed partial class LinkRowViewModel(int number, Guid id, string name, bool isSelected, IReadOnlyList<LinkCellViewModel> cells) : ObservableObject, IMotionKey
 {
+    public object MotionKey => Id;
     [ObservableProperty] bool isSelected = isSelected;
 
     public int Number { get; } = number;

@@ -25,8 +25,9 @@ public sealed record BookmarkEdit(string Name, string Host, int Port, string Nic
 public sealed record ConnectChoice(string Host, int Port, string Nickname, string? Password, bool SaveBookmark, bool SavePassword = false);
 
 /// <summary>A bookmark tile: the bookmark and the logo last seen for that server.</summary>
-public sealed record BookmarkItem(Bookmark Bookmark, byte[]? Icon)
+public sealed record BookmarkItem(Bookmark Bookmark, byte[]? Icon) : IMotionKey
 {
+    public object MotionKey => $"{Bookmark.Host}:{Bookmark.Port}";
     public string Name => Bookmark.Name;
     public string Host => Bookmark.Host;
     public string Nickname => Bookmark.Nickname;

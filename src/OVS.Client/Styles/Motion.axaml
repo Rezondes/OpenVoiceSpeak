@@ -224,4 +224,19 @@
   <Style Selector="Window.animated Slider:pointerover /template/ Thumb#thumb">
     <Setter Property="RenderTransform" Value="scale(1.2)" />
   </Style>
+
+  <!-- ===== Package 101: someone who joins, a channel that is created, flashes once (Views/ItemMotion.cs) ===== -->
+  <!-- only the new entry's own row: a user, or the head of a new channel, not the user rows inside it -->
+  <Style Selector="Window.animated ContentPresenter.fresh > Border.row, Window.animated ContentPresenter.fresh > StackPanel > Border.row">
+    <Style.Animations>
+      <Animation Duration="0:0:0.6" Easing="CubicEaseOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="Background" Value="#662F6FEB" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Background" Value="#002F6FEB" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
 </Styles>

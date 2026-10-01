@@ -154,7 +154,7 @@
               <TextBlock Classes="caption" TextWrapping="Wrap"
                          Text="{x:Static l:Strings.Ui_KeysHelp}" />
               <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoKeyActions}" IsVisible="{Binding !HasKeyBindings}" />
-              <ItemsControl ItemsSource="{Binding KeyBindings}">
+              <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding KeyBindings}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="10" />
@@ -211,7 +211,7 @@
               <!-- Package 48: every sound on its own -->
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsEachHint}" Margin="0,6,0,0" />
               <!-- Package 77: below 670 px name and controls no longer fit side by side (German texts), the controls go below -->
-              <ItemsControl ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}" v:Responsive.StackBelow="670">
+              <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}" v:Responsive.StackBelow="670">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="6" />

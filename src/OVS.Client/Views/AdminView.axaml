@@ -84,7 +84,7 @@
                     </StackPanel>
                   </Button>
                 </DockPanel>
-                <ListBox x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
+                <ListBox v:ItemMotion.Enter="True" x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:GroupEditViewModel">
                       <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
@@ -186,7 +186,7 @@
               </TextBlock>
               <ContentControl Name="UsersLoadState" Content="{Binding UsersLoad}" ContentTemplate="{StaticResource ListLoad}" />
               <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding Users}">
+                <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Users}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <StackPanel Spacing="8" />
@@ -354,7 +354,7 @@
               <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBanMatches}" TextWrapping="Wrap" TextAlignment="Center"
                          HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding HasNoBanMatches}" />
               <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding Bans}">
+                <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Bans}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <StackPanel Spacing="8" />
@@ -470,7 +470,7 @@
                 <DockPanel>
                   <StackPanel DockPanel.Dock="Left">
                     <Border Classes="linkHeader" />
-                    <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:LinkRowViewModel">
                           <StackPanel Orientation="Horizontal" Height="32">
@@ -497,7 +497,7 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
-                      <ItemsControl ItemsSource="{Binding Rows}">
+                      <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:LinkRowViewModel">
                             <ItemsControl ItemsSource="{Binding Cells}">
@@ -680,7 +680,7 @@
                         </MultiBinding>
                       </TextBlock.IsVisible>
                     </TextBlock>
-                    <ItemsControl ItemsSource="{Binding Backups}">
+                    <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Backups}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                           <StackPanel Spacing="6" />
@@ -799,7 +799,7 @@
                     </TextBlock>
                     <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoLogMatches}" TextWrapping="Wrap" TextAlignment="Center"
                                HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8" IsVisible="{Binding HasNoFileMatches}" />
-                    <ListBox x:Name="LogFileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" Background="Transparent">
+                    <ListBox v:ItemMotion.Enter="True" x:Name="LogFileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" Background="Transparent">
                       <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:LogFileViewModel">
                           <DockPanel>
@@ -828,7 +828,7 @@
                       </Button>
                       <TextBlock Name="LogHitsText" Classes="caption" Text="{Binding HitsText}" TextWrapping="Wrap" />
                     </StackPanel>
-                    <ListBox x:Name="LogHitList" ItemsSource="{Binding Hits}" SelectedItem="{Binding SelectedHit}" Background="Transparent">
+                    <ListBox v:ItemMotion.Enter="True" x:Name="LogHitList" ItemsSource="{Binding Hits}" SelectedItem="{Binding SelectedHit}" Background="Transparent">
                       <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:LogHitViewModel">
                           <StackPanel>
