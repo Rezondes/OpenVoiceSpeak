@@ -663,6 +663,7 @@ public sealed class ResponsiveTests : IDisposable
         "ChannelPassword" => SimpleDialogs.AskChannelPassword(o, "Raidgruppe am Donnerstagabend"), // Package 94
         "Bookmark" => SimpleDialogs.EditBookmark(o, settings.Bookmarks[0]),
         "BackupDownload" => SimpleDialogs.ConfirmBackupDownload(o), // Package 89
+        "Leave" => SimpleDialogs.AskLeave(o), // Package 114: three buttons
         _ => throw new ArgumentException(name),
     };
 
@@ -689,7 +690,7 @@ public sealed class ResponsiveTests : IDisposable
     public static TheoryData<string, string> Dialogs()
     {
         var data = new TheoryData<string, string>();
-        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "ChannelPassword", "Bookmark", "BackupDownload" })
+        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "ChannelPassword", "Bookmark", "BackupDownload", "Leave" })
             foreach (var culture in new[] { "de-DE", "en-US" })
                 data.Add(dialog, culture);
         return data;

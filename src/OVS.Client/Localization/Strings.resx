@@ -581,4 +581,9 @@
   <data name="Dlg_KindSeparator" xml:space="preserve"><value>Trenner</value></data>
   <data name="Dlg_SeparatorHint" xml:space="preserve"><value>Ein Trenner ist nur eine Linie in der Channel-Liste. Niemand kann ihn betreten.</value></data>
   <data name="Error_NotJoinable" xml:space="preserve"><value>Einen Trenner kann man nicht betreten.</value></data>
+  <data name="Dlg_UnsavedTitle" xml:space="preserve"><value>Ungespeicherte Änderungen</value></data>
+  <data name="Dlg_UnsavedText" xml:space="preserve"><value>Es gibt Änderungen, die noch nicht gespeichert sind. Beim Verlassen ohne Speichern gehen sie verloren.</value></data>
+  <data name="Dlg_SaveAndLeave" xml:space="preserve"><value>Speichern und verlassen</value></data>
+  <data name="Dlg_LeaveWithoutSaving" xml:space="preserve"><value>Verlassen ohne Speichern</value></data>
+  <data name="Dlg_KeepEditing" xml:space="preserve"><value>Weiter bearbeiten</value></data>
 </root>

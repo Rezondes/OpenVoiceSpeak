@@ -29,7 +29,8 @@ public static class SimpleDialogs
     /// mark ends: confirmed it closes, refused or unanswered it shows the error and can be sent again.
     /// </param>
     internal static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
-        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null, Func<T, Pending>? submit = null) where T : class
+        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null, Func<T, Pending>? submit = null,
+        (string Text, T Value)? other = null) where T : class
     {
         T? result = null;
         var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
@@ -83,6 +84,14 @@ public static class SimpleDialogs
         var cancel = new Button { Content = cancelText ?? Strings.Dlg_Cancel, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Click += (_, _) => Accept();
         cancel.Click += (_, _) => host.Close();
+        // Package 114: a third answer between cancel and the default one
+        var third = other is { } choice ? new Button { Content = choice.Text, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center } : null;
+        if (third is not null)
+            third.Click += (_, _) =>
+            {
+                result = other!.Value.Value;
+                host.Close();
+            };
 
         var badge = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Margin = new Thickness(0, 0, 12, 0), Child = Icon(icon, kind == Kind.Danger ? "danger" : "accent") };
         badge.Bind(Border.BackgroundProperty, badge.GetResourceObservable(kind == Kind.Danger ? "Ovs.DangerSurface" : "Ovs.AccentSurface"));
@@ -94,8 +103,15 @@ public static class SimpleDialogs
         {
             Padding = new Thickness(24, 12),
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Child = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, ItemSpacing = 8, LineSpacing = 8, Children = { cancel, ok } },
+            Child = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, ItemSpacing = 8, LineSpacing = 8 },
         };
+        if (third is null) ((WrapPanel)buttonBar.Child).Children.AddRange([cancel, ok]);
+        else
+        {
+            // three answers do not fit one row of the card: one below the other, the default one first
+            foreach (var b in new[] { ok, third, cancel }) b.HorizontalAlignment = HorizontalAlignment.Stretch;
+            buttonBar.Child = new StackPanel { Spacing = 8, Children = { ok, third, cancel } };
+        }
         buttonBar.Bind(Border.BackgroundProperty, buttonBar.GetResourceObservable("Ovs.DialogBar"));
         buttonBar.Bind(Border.BorderBrushProperty, buttonBar.GetResourceObservable("Ovs.Border"));
 
@@ -311,6 +327,16 @@ public static class SimpleDialogs
         return await Show(overlay, Strings.Dlg_UpdateTitle, "ArrowSync", body, () => "ok", Strings.Dlg_InstallNow, cancelText: Strings.Dlg_Later) is not null;
     }
 
+    /// <summary>Package 114: leaving would lose unsaved changes. Enter saves, Esc keeps editing.</summary>
+    public static async Task<LeaveChoice> AskLeave(OverlayHost overlay) =>
+        await Show(overlay, Strings.Dlg_UnsavedTitle, "Warning", Text(Strings.Dlg_UnsavedText), () => "save", Strings.Dlg_SaveAndLeave,
+            cancelText: Strings.Dlg_KeepEditing, other: (Strings.Dlg_LeaveWithoutSaving, "discard")) switch
+        {
+            "save" => LeaveChoice.Save,
+            "discard" => LeaveChoice.Discard,
+            _ => LeaveChoice.Stay,
+        };
+
     public static async Task<bool> Confirm(OverlayHost overlay, string text) =>
         await Show(overlay, Strings.Dlg_Confirm, "Delete", Text(text), () => "ok", Strings.Dlg_YesDelete, kind: Kind.Danger) is not null;
 
@@ -380,6 +406,7 @@ public static class SimpleDialogs
         EditBookmark = bookmark => EditBookmark(overlay, bookmark),
         EditKeyBinding = (binding, capture) => EditKeyBinding(overlay, binding, capture),
         OfferUpdate = offer => OfferUpdate(overlay, offer),
+        AskLeave = () => AskLeave(overlay), // Package 114
     };
 
     public static Task<ConnectChoice?> Connect(OverlayHost overlay, ClientSettings settings, Bookmark? preselect = null)

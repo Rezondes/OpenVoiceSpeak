@@ -101,13 +101,19 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     [RelayCommand]
     Task Apply()
     {
+        SendPending();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Package 114: the marked changes to the server; null when there is nothing to send.</summary>
+    internal Pending? SendPending()
+    {
         var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
         var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
-        if (add.Count + remove.Count == 0 || Applying.IsRunning) return Task.CompletedTask;
+        if (add.Count + remove.Count == 0 || Applying.IsRunning) return null;
         // The server's ChannelsLinked/Unlinked make them real; until then they stay marked.
-        server.SendConfirmed(new SetChannelLinks(add, remove), _ => add.All(l => OnServer(Norm(l.A, l.B))) && remove.All(l => !OnServer(Norm(l.A, l.B))),
+        return server.SendConfirmed(new SetChannelLinks(add, remove), _ => add.All(l => OnServer(Norm(l.A, l.B))) && remove.All(l => !OnServer(Norm(l.A, l.B))),
             Applying, notify: false);
-        return Task.CompletedTask;
     }
 
     [RelayCommand]

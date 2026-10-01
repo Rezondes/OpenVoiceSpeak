@@ -233,6 +233,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     public async Task ConnectAsync(ConnectChoice choice)
     {
+        if (Server is not null && !await ConfirmLeaveAsync(adminOnly: true)) return; // Package 114: the administration goes with the server
         await DisconnectAsync();
         lastRejection = null;
         if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: false);
@@ -411,7 +412,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         return accepted;
     }
 
+    /// <summary>Package 114: the "Trennen" button asks first when the administration has unsaved changes.</summary>
     [RelayCommand]
+    async Task Disconnect()
+    {
+        if (!await ConfirmLeaveAsync(adminOnly: true)) return;
+        await DisconnectAsync();
+    }
+
     public Task DisconnectAsync()
     {
         if (connection is not null) Log.Write("Verbindung getrennt (eigene Aktion)");
@@ -600,7 +608,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     // ---- Pages ----
 
+    /// <summary>Package 114: the settings button and the hint ask first when the administration has unsaved changes.</summary>
     [RelayCommand]
+    async Task OpenSettingsAsync()
+    {
+        if (Page == Page.Settings || !await ConfirmLeaveAsync()) return;
+        OpenSettings();
+    }
+
     public void OpenSettings()
     {
         if (Page == Page.Settings) return;
@@ -620,6 +635,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         };
         vm.ApplySaved = () => ApplySettingsAsync(vm.ToSettings(Settings)); // Package 98: before the page closes
         vm.CloseRequested += _ => CloseSettings();
+        vm.LeaveRequested += () => _ = ClosePageAsync(); // Package 114: the X asks, "Abbrechen" does not
         Audio.InputLevel += OnInputLevel;
         SettingsPage = vm;
         Page = Page.Settings;
@@ -674,9 +690,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task OpenAdminAsync()
     {
         if (Server is not { CanAdminister: true } server || Page == Page.Admin) return;
+        if (!await ConfirmLeaveAsync()) return; // Package 114
         ClosePage();
         var vm = new AdminViewModel(server);
-        vm.CloseRequested += CloseAdmin;
+        vm.CloseRequested += () => _ = ClosePageAsync(); // Package 114
         AdminPage = vm;
         Page = Page.Admin;
         await vm.RequestListsAsync();
@@ -687,6 +704,35 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         AdminPage?.Detach();
         AdminPage = null;
         if (Page == Page.Admin) Page = Page.Home;
+    }
+
+    // ---- Package 114: unsaved changes ----
+
+    /// <summary>Settings or administration hold changes a way out would lose; adminOnly for disconnecting (settings stay).</summary>
+    public bool HasUnsavedChanges(bool adminOnly = false) =>
+        (!adminOnly && SettingsPage?.HasChanges == true) || AdminPage?.HasAnyChanges == true;
+
+    /// <summary>
+    /// Asks before a way out that would lose changes: keep editing (false), save and go once the server took it, or go
+    /// without saving (closing the page throws the edits away, as before). Without the dialog it goes without saving.
+    /// </summary>
+    public async Task<bool> ConfirmLeaveAsync(bool adminOnly = false)
+    {
+        if (!HasUnsavedChanges(adminOnly)) return true;
+        var choice = Dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard;
+        if (choice == LeaveChoice.Stay) return false;
+        if (choice == LeaveChoice.Discard) return true;
+        if (!adminOnly && SettingsPage is { HasChanges: true } settings && !await settings.SaveAsync()) return false;
+        if (AdminPage is { } admin)
+            foreach (var place in Enum.GetValues<AdminViewModel.Place>().Where(admin.HasChanges))
+                if (!await admin.SaveAsync(place)) return false; // its error shows on the page, which stays
+        return true;
+    }
+
+    /// <summary>Esc, the X and the administration's close button: ask first, then leave the page.</summary>
+    public async Task ClosePageAsync()
+    {
+        if (!IsHomePage && await ConfirmLeaveAsync()) ClosePage();
     }
 
     /// <summary>Esc: leaves settings without saving, or the administration.</summary>

@@ -60,6 +60,9 @@ public sealed class ClientSettings
     public const string FileName = "settings.json";
     static readonly JsonSerializerOptions Options = new(ProtocolJson.Options) { WriteIndented = true };
 
+    /// <summary>Package 114: the settings as they are saved, to tell whether two of them differ.</summary>
+    public string ToJson() => JsonSerializer.Serialize(this, Options);
+
     public List<Bookmark> Bookmarks { get; set; } = [];
     public string? InputDeviceId { get; set; }
     public string? OutputDeviceId { get; set; }

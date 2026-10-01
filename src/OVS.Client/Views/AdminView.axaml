@@ -59,7 +59,7 @@
     <DockPanel Classes="adminBody">
       <TabControl x:Name="Tabs" v:PageMotion.Tabs="True">
         <!-- ===== Groups ===== -->
-        <TabItem Header="{x:Static l:Strings.Ui_Groups}" IsVisible="{Binding ShowGroups}">
+        <TabItem x:Name="GroupsTab" Header="{x:Static l:Strings.Ui_Groups}" IsVisible="{Binding ShowGroups}">
           <!-- Package 78: list beside the editor, under narrow above it (styles in Controls.axaml) -->
           <Grid Classes="adminGroups" ColumnDefinitions="Auto,*" RowDefinitions="2*,3*">
             <Border Classes="card groupList" Padding="6">
@@ -434,7 +434,7 @@
 
         <!-- ===== Server ===== -->
         <!-- ===== Links (Package 38) ===== -->
-        <TabItem Header="{x:Static l:Strings.Ui_Links}" IsVisible="{Binding ShowLinks}">
+        <TabItem x:Name="LinksTab" Header="{x:Static l:Strings.Ui_Links}" IsVisible="{Binding ShowLinks}">
           <DockPanel DataContext="{Binding Links}" x:DataType="vm:LinkMatrixViewModel">
             <TextBlock DockPanel.Dock="Top" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,12"
                        Text="{x:Static l:Strings.Ui_LinksHelp}" />
@@ -524,7 +524,7 @@
           </DockPanel>
         </TabItem>
 
-        <TabItem Header="{x:Static l:Strings.Ui_Server}" IsVisible="{Binding ShowServer}">
+        <TabItem x:Name="ServerTab" Header="{x:Static l:Strings.Ui_Server}" IsVisible="{Binding ShowServer}">
           <ScrollViewer>
             <!-- Package 74: both cards share one width. Package 89: settings with ServerConfig, backups with BackupsManage -->
             <StackPanel Spacing="12">

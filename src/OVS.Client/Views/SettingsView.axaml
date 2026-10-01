@@ -9,7 +9,7 @@
     <!-- Page header: title and close (Esc closes as well). Package 77: paddings and narrow layouts in Controls.axaml -->
     <Border DockPanel.Dock="Top" Classes="settingsHeader" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
-        <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding CancelCommand}"
+        <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding LeaveCommand}"
                 ToolTip.Tip="{x:Static l:Strings.Ui_CloseEsc}" AutomationProperties.Name="{x:Static l:Strings.Ui_CloseSettings}">
           <PathIcon Classes="turn" Data="{StaticResource Icon.Dismiss}" />
         </Button>

@@ -25,6 +25,28 @@ public partial class AdminView : UserControl
         {
             if (e.Source == Tabs) Tabs.ContainerFromIndex(Tabs.SelectedIndex)?.BringIntoView();
         };
+        // Package 114: leaving a tab or a group with unsaved changes asks first; "Weiter bearbeiten" goes back
+        Tabs.SelectionChanged += async (_, e) =>
+        {
+            if (e.Source != Tabs || stepping || Vm is not { } vm || e.RemovedItems is not [TabItem left] || PlaceOf(left) is not { } place
+                || !vm.HasChanges(place))
+                return;
+            var wanted = Tabs.SelectedItem;
+            Step(() => Tabs.SelectedItem = left);
+            if (await vm.ConfirmLeaveAsync(place)) Step(() => Tabs.SelectedItem = wanted);
+        };
+        GroupList.SelectionChanged += async (_, e) =>
+        {
+            if (stepping || Vm is not { IsSelectingInCode: false } vm || e.RemovedItems is not [GroupEditViewModel { HasChanges: true } left]
+                || !vm.Groups.Contains(left))
+                return;
+            var wanted = vm.SelectedGroup;
+            Step(() => vm.SelectedGroup = left);
+            if (!await vm.ConfirmLeaveAsync(AdminViewModel.Place.Groups)) return;
+            // a save rebuilds the rows: the wanted group again by its id (a draft is only itself)
+            var again = wanted?.Id is { } id ? vm.Groups.Live().FirstOrDefault(g => g.Id == id) : vm.Groups.Contains(wanted!) ? wanted : null;
+            if (again is not null) Step(() => vm.SelectedGroup = again);
+        };
         IconDrop.AddHandler(DragDrop.DragOverEvent, OnIconDragOver);
         IconDrop.AddHandler(DragDrop.DragLeaveEvent, (_, _) => IconDrop.Classes.Remove("dropHover"));
         IconDrop.AddHandler(DragDrop.DropEvent, OnIconDrop);
@@ -34,6 +56,25 @@ public partial class AdminView : UserControl
     }
 
     AdminViewModel? Vm => DataContext as AdminViewModel;
+
+    bool stepping;
+
+    /// <summary>A selection change of the guard itself, which must not ask again.</summary>
+    void Step(Action change)
+    {
+        stepping = true;
+        try
+        {
+            change();
+        }
+        finally
+        {
+            stepping = false;
+        }
+    }
+
+    AdminViewModel.Place? PlaceOf(TabItem tab) =>
+        tab == GroupsTab ? AdminViewModel.Place.Groups : tab == LinksTab ? AdminViewModel.Place.Links : tab == ServerTab ? AdminViewModel.Place.Server : null;
 
     /// <summary>The Windows file dialog is the one agreed exception to "no second window" (A20).</summary>
     async void OnPickIcon(object? sender, RoutedEventArgs e)

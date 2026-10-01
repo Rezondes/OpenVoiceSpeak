@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnKeyDown);
+        Closing += OnClosing;
         DataContextChanged += (_, _) => WatchServer();
         LayoutUpdated += (_, _) => ApplyResponsive();
         // Package 36, 96: drag a channel to a new position (needs "Channels bearbeiten")
@@ -26,6 +27,27 @@ public partial class MainWindow : Window
     }
 
     MainViewModel Vm => (MainViewModel)DataContext!;
+
+    bool closeConfirmed, closeAsking;
+
+    /// <summary>Package 114: closing the window with unsaved changes asks first; "Weiter bearbeiten" keeps it open.</summary>
+    async void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (closeConfirmed || DataContext is not MainViewModel vm || !vm.HasUnsavedChanges()) return;
+        e.Cancel = true;
+        if (closeAsking) return; // closed again while asking: the open question answers it
+        closeAsking = true;
+        try
+        {
+            if (!await vm.ConfirmLeaveAsync()) return;
+        }
+        finally
+        {
+            closeAsking = false;
+        }
+        closeConfirmed = true;
+        Close();
+    }
 
     /// <summary>The modal layer for all dialogs (A20: no second window).</summary>
     public OverlayHost Overlay => OverlayLayer;
@@ -62,7 +84,7 @@ public partial class MainWindow : Window
     {
         if (e.Handled || e.Key != Key.Escape || Overlay.IsOpen) return;
         if (drawerOpen) SetDrawer(false);
-        else if (!Vm.IsHomePage) Vm.ClosePage();
+        else if (!Vm.IsHomePage) _ = Vm.ClosePageAsync(); // Package 114: asks first when something is not saved
         else return;
         e.Handled = true;
     }

@@ -581,4 +581,9 @@
   <data name="Dlg_KindSeparator" xml:space="preserve"><value>Separator</value></data>
   <data name="Dlg_SeparatorHint" xml:space="preserve"><value>A separator is only a line in the channel list. Nobody can join it.</value></data>
   <data name="Error_NotJoinable" xml:space="preserve"><value>A separator cannot be joined.</value></data>
+  <data name="Dlg_UnsavedTitle" xml:space="preserve"><value>Unsaved changes</value></data>
+  <data name="Dlg_UnsavedText" xml:space="preserve"><value>Some changes are not saved yet. Leaving without saving loses them.</value></data>
+  <data name="Dlg_SaveAndLeave" xml:space="preserve"><value>Save and leave</value></data>
+  <data name="Dlg_LeaveWithoutSaving" xml:space="preserve"><value>Leave without saving</value></data>
+  <data name="Dlg_KeepEditing" xml:space="preserve"><value>Keep editing</value></data>
 </root>

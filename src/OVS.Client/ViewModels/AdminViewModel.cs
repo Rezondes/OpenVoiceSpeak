@@ -105,8 +105,9 @@ public sealed partial class AdminViewModel : ObservableObject
         server.AdminMessage += OnAdminMessage;
         server.StateChanged += OnStateChanged;
         server.PropertyChanged += OnServerPropertyChanged;
-        serverName = server.Mirror.Settings.Name;
-        welcomeText = server.Mirror.Settings.WelcomeText;
+        serverName = loadedName = server.Mirror.Settings.Name;
+        welcomeText = loadedWelcome = server.Mirror.Settings.WelcomeText;
+        seenSettings = server.Mirror.Settings;
         hasPassword = server.Mirror.Settings.HasPassword;
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
@@ -238,6 +239,11 @@ public sealed partial class AdminViewModel : ObservableObject
         Links.Rebuild();
         HasPassword = server.Mirror.Settings.HasPassword;
         if (loadedLimits is null) LoadLimits(); // e.g. arriving with the ServerConfig right; later ones never overwrite edits
+        if (!ReferenceEquals(server.Mirror.Settings, seenSettings)) // Package 114
+        {
+            seenSettings = server.Mirror.Settings;
+            SettingsArrived();
+        }
         OnPropertyChanged(nameof(ShowLinks));
         OnPropertyChanged(nameof(ShowGroups));
         OnPropertyChanged(nameof(ShowUsers));
@@ -313,14 +319,157 @@ public sealed partial class AdminViewModel : ObservableObject
         var selected = SelectedGroup?.Id;
         var unsaved = Groups.Live().Where(g => g.Id is null).ToList();
         // Package 98: a moved group stays in its new place until the server confirms or refuses it
+        var live = Groups.Live().ToList();
         var groups = server.Mirror.Groups.OrderBy(g => pendingGroupOrder?.IndexOf(g.Id) is >= 0 and var i ? i : int.MaxValue)
-            .Select(g => new GroupEditViewModel(g.Id, g.Name, g.Permissions, Actor)).Concat(unsaved).ToList();
+            .Select(g => Rebuilt(live.FirstOrDefault(row => row.Id == g.Id), g))
+            .Concat(unsaved).ToList();
         CollectionSync.Sync(Groups, groups, server.Leave); // Package 102: a deleted group folds away
-        SelectedGroup = groups.FirstOrDefault(g => g.Id == selected && selected is not null) ?? SelectedGroup switch
+        SelectGroup(groups.FirstOrDefault(g => g.Id == selected && selected is not null) ?? SelectedGroup switch
         {
             { Id: null } s => s,
             _ => groups.FirstOrDefault(),
+        });
+    }
+
+    // ---- Package 114: unsaved changes ----
+
+    /// <summary>
+    /// A rebuilt row would replace the shown one (same key) and drop its edits. An edited row stays (the text box keeps
+    /// its focus) and follows the server in what the user did not touch; built for other rights or flags, a new row
+    /// takes over only the edits. An untouched row is built anew.
+    /// </summary>
+    GroupEditViewModel Rebuilt(GroupEditViewModel? old, GroupInfo server)
+    {
+        var fresh = new GroupEditViewModel(server.Id, server.Name, server.Permissions, Actor);
+        if (old is not { HasChanges: true }) return fresh;
+        if (old.BuiltFor != Actor || old.IsReadOnly != fresh.IsReadOnly || old.CanDelete != fresh.CanDelete) return fresh.CarryEdits(old);
+        old.Follow(server.Name, server.Permissions);
+        return old;
+    }
+
+    /// <summary>The places of this page that need a manual save (A122).</summary>
+    public enum Place { Groups, Links, Server }
+
+    /// <summary>True while the selection changes from code (a rebuild, a new group), not by the user.</summary>
+    public bool IsSelectingInCode { get; private set; }
+
+    void SelectGroup(GroupEditViewModel? group)
+    {
+        IsSelectingInCode = true;
+        try
+        {
+            SelectedGroup = group;
+        }
+        finally
+        {
+            IsSelectingInCode = false;
+        }
+    }
+
+    public bool HasChanges(Place place) => place switch
+    {
+        Place.Groups => Groups.Live().Any(g => g.HasChanges),
+        Place.Links => Links.HasPending,
+        _ => ServerSettingsChanged,
+    };
+
+    public bool HasAnyChanges => Enum.GetValues<Place>().Any(HasChanges);
+
+    /// <summary>What the server tab's fields were loaded with (the server's settings then).</summary>
+    string loadedName = "", loadedWelcome = "";
+    ServerSettingsInfo? seenSettings;
+
+    /// <summary>The server's normal form: a trimmed name, "\r\n" as "\n" (TextRules), so a saved edit is no change.</summary>
+    static string NormName(string? name) => name?.Trim() ?? "";
+    static string NormText(string? text) => (text ?? "").Replace("\r\n", "\n");
+
+    ServerLimits EditedLimits(ServerLimits l) =>
+        new((int)(MaxUsers ?? l.MaxUsers), (int)(LogDays ?? l.LogDays), LogRotateDaily, AutoRestart, AutoRestartTime is { } t ? TimeOnly.FromTimeSpan(t) : l.AutoRestartTime);
+
+    /// <summary>The server tab differs from what its fields were loaded with.</summary>
+    bool ServerSettingsChanged =>
+        ShowServerSettings && (NormName(ServerName) != NormName(loadedName) || NormText(WelcomeText) != NormText(loadedWelcome)
+                               || NewPassword.Length > 0 || RemovePassword || (loadedLimits is { } l && EditedLimits(l) != l));
+
+    /// <summary>
+    /// New settings from the server, field by field: an untouched field shows them (a change by another admin), and so
+    /// does an edited one that is now what the server has (the own save landed); an edit that still differs stays, and
+    /// so do the password fields (only a save empties them).
+    /// </summary>
+    void SettingsArrived()
+    {
+        var s = server.Mirror.Settings;
+        if (NormName(ServerName) == NormName(loadedName) || NormName(ServerName) == NormName(s.Name)) ServerName = loadedName = s.Name;
+        if (NormText(WelcomeText) == NormText(loadedWelcome) || NormText(WelcomeText) == NormText(s.WelcomeText)) WelcomeText = loadedWelcome = s.WelcomeText;
+        if (loadedLimits is { } l && s.Limits is { } now && now != l && (EditedLimits(l) == l || EditedLimits(l) == now))
+        {
+            loadedLimits = null;
+            LoadLimits();
+        }
+    }
+
+    void ReloadServerSettings()
+    {
+        ServerName = loadedName = server.Mirror.Settings.Name;
+        WelcomeText = loadedWelcome = server.Mirror.Settings.WelcomeText;
+        NewPassword = "";
+        RemovePassword = false;
+        SettingsError = null;
+        loadedLimits = null;
+        LoadLimits();
+    }
+
+    /// <summary>Saves the place and waits for the server; false when it refused, did not answer or the input is invalid.</summary>
+    public async Task<bool> SaveAsync(Place place)
+    {
+        // a save already on its way is waited for first, it may be the one the user means
+        if (place == Place.Groups && GroupSave.IsRunning) await GroupSave.Completion;
+        if (place == Place.Links && Links.Applying.IsRunning) await Links.Applying.Completion;
+        if (!HasChanges(place)) return true;
+        Pending? sent = place switch
+        {
+            Place.Groups => SelectedGroup is { HasChanges: true } ? SendGroup() : null,
+            Place.Links => Links.SendPending(),
+            _ => SendServerSettings(),
         };
+        return sent is not null && await sent.Completion is null;
+    }
+
+    public void Discard(Place place)
+    {
+        switch (place)
+        {
+            case Place.Groups:
+                foreach (var g in Groups.Live().Where(g => g.Id is not null)) g.Revert();
+                var drafts = Groups.Live().Where(g => g.Id is null).ToList();
+                if (drafts.Count == 0) break;
+                if (drafts.Contains(SelectedGroup!)) SelectGroup(null);
+                CollectionSync.Sync(Groups, Groups.Live().Except(drafts).ToList(), server.Leave);
+                if (SelectedGroup is null) SelectGroup(Groups.Live().FirstOrDefault());
+                break;
+            case Place.Links:
+                Links.DiscardCommand.Execute(null);
+                break;
+            default:
+                ReloadServerSettings();
+                break;
+        }
+    }
+
+    /// <summary>Asks before leaving the place (another tab, another group); false = stay.</summary>
+    public async Task<bool> ConfirmLeaveAsync(Place place)
+    {
+        if (!HasChanges(place)) return true;
+        switch (server.Dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard)
+        {
+            case LeaveChoice.Stay:
+                return false;
+            case LeaveChoice.Save:
+                return await SaveAsync(place);
+            default:
+                Discard(place);
+                return true;
+        }
     }
 
     // ---- Package 71: user overview ----
@@ -731,11 +880,12 @@ public sealed partial class AdminViewModel : ObservableObject
     bool CanNewGroup => Actor.Has(Permission.GroupsCreate);
 
     [RelayCommand(CanExecute = nameof(CanNewGroup))]
-    void NewGroup()
+    async Task NewGroup()
     {
+        if (!await ConfirmLeaveAsync(Place.Groups)) return; // Package 114: the edited group comes first
         var group = new GroupEditViewModel(null, Strings.Group_New, Permission.Speak, Actor);
         Groups.Add(group);
-        SelectedGroup = group;
+        SelectGroup(group);
     }
 
     bool CanSaveGroup => SelectedGroup is { IsReadOnly: false };
@@ -743,14 +893,21 @@ public sealed partial class AdminViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSaveGroup))]
     Task SaveGroup()
     {
-        if (SelectedGroup is not { IsReadOnly: false } g) return Task.CompletedTask;
+        SendGroup();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The selected group to the server; null when there is nothing to send or the name is invalid.</summary>
+    Pending? SendGroup()
+    {
+        if (SelectedGroup is not { IsReadOnly: false } g) return null;
         GroupError = TextRules.Name(g.Name, ProtocolInfo.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
-        if (GroupError is not null || GroupSave.IsRunning) return Task.CompletedTask;
+        if (GroupError is not null || GroupSave.IsRunning) return null;
         // Package 98: busy until the server's groups arrive; a refused group stays for correcting
         var sent = server.SendConfirmed(g.Id is { } id ? new UpdateGroup(id, g.Name, g.Permissions) : new CreateGroup(g.Name, g.Permissions),
             m => m is GroupsChanged, GroupSave, notify: false);
         if (g.Id is null) _ = ReplaceDraftAsync(g, sent);
-        return Task.CompletedTask;
+        return sent;
     }
 
     /// <summary>The draft stays until the server has the group, then gives way to it.</summary>
@@ -759,7 +916,7 @@ public sealed partial class AdminViewModel : ObservableObject
         if (await sent.Completion is not null) return;
         bool selected = SelectedGroup == draft;
         Groups.Remove(draft);
-        if (selected) SelectedGroup = Groups.Live().LastOrDefault(g => g.Id is not null && g.Name == draft.Name) ?? Groups.Live().FirstOrDefault();
+        if (selected) SelectGroup(Groups.Live().LastOrDefault(g => g.Id is not null && g.Name == draft.Name) ?? Groups.Live().FirstOrDefault());
     }
 
     // ---- Package 37: order ----
@@ -816,7 +973,7 @@ public sealed partial class AdminViewModel : ObservableObject
         else
         {
             // Package 109: a new group dropped before it was saved folds away like a deleted one
-            SelectedGroup = null;
+            SelectGroup(null);
             CollectionSync.Sync(Groups, Groups.Live().Where(other => other != g).ToList(), server.Leave);
         }
     }
@@ -838,12 +995,19 @@ public sealed partial class AdminViewModel : ObservableObject
     [RelayCommand]
     Task SaveServerSettings()
     {
+        SendServerSettings();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Package 114: waits for the server's new settings; null when the input breaks the server's rules.</summary>
+    Pending? SendServerSettings()
+    {
         // Package 83: the server's rules, checked before anything is sent or cleared
         SettingsError = TextRules.Name(ServerName, ProtocolInfo.MaxNameLength) is null ? Strings.Dlg_NameInvalid
             : TextRules.Text(WelcomeText, ProtocolInfo.MaxTextLength) is null ? Strings.Dlg_TextInvalid
             : !RemovePassword && NewPassword.Length > ProtocolInfo.MaxPasswordLength ? Strings.Ui_PasswordTooLong
             : null;
-        if (SettingsError is not null) return Task.CompletedTask;
+        if (SettingsError is not null) return null;
         string? password = RemovePassword ? "" : NewPassword.Length > 0 ? NewPassword : null;
         NewPassword = "";
         RemovePassword = false;
@@ -852,7 +1016,7 @@ public sealed partial class AdminViewModel : ObservableObject
             ? new ServerLimits((int)(MaxUsers ?? l.MaxUsers), (int)(LogDays ?? l.LogDays), LogRotateDaily, AutoRestart,
                 AutoRestartTime is { } t ? TimeOnly.FromTimeSpan(t) : l.AutoRestartTime)
             : null;
-        return server.SendAsync(new UpdateServerSettings(ServerName, WelcomeText, password, limits));
+        return server.SendConfirmed(new UpdateServerSettings(ServerName, WelcomeText, password, limits), m => m is ServerSettingsChanged);
     }
 
     [RelayCommand]
@@ -869,6 +1033,9 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
     {
         Id = id;
         this.name = name;
+        serverName = name;
+        serverPermissions = permissions;
+        BuiltFor = actor;
         // Admin is fixed; a group stronger than the actor could only be edited by escalating.
         // Package 76: saved groups need GroupsManage to edit and GroupsDelete to delete; an unsaved one is the actor's own draft.
         ReadOnlyReason = id is null ? null
@@ -890,6 +1057,45 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
     public bool CanDelete { get; }
     public IReadOnlyList<PermissionToggle> Toggles { get; }
     public Permission Permissions => Toggles.Where(t => t.IsChecked).Aggregate(Permission.None, (acc, t) => acc | t.Permission);
+
+    // ---- Package 114: what the server has, to tell an edit ----
+    string serverName = "";
+    Permission serverPermissions;
+
+    /// <summary>A new group is unsaved by itself; a saved one when its name or rights differ from the server's.</summary>
+    public bool HasChanges => Id is null || (!IsReadOnly && (Name != serverName || Permissions != serverPermissions));
+
+    internal void SetServer(string name, Permission permissions) => (serverName, serverPermissions) = (name, permissions);
+
+    /// <summary>The own rights this row was built for (what may be edited and deleted).</summary>
+    public Permission BuiltFor { get; }
+
+    /// <summary>Only what the user changed on the old row (against its server state), as far as this row allows it.</summary>
+    internal GroupEditViewModel CarryEdits(GroupEditViewModel old)
+    {
+        if (IsReadOnly) return this;
+        if (old.Name != old.serverName) Name = old.Name;
+        foreach (var t in Toggles.Where(t => t.IsEnabled))
+            if (old.Toggles.FirstOrDefault(o => o.Permission == t.Permission) is { } edited && edited.IsChecked != old.serverPermissions.Has(t.Permission))
+                t.IsChecked = edited.IsChecked;
+        return this;
+    }
+
+    /// <summary>New server state for an edited row: what the user did not touch follows it, the edits stay.</summary>
+    internal void Follow(string name, Permission permissions)
+    {
+        if (Name == serverName) Name = name;
+        foreach (var t in Toggles)
+            if (t.IsChecked == serverPermissions.Has(t.Permission)) t.IsChecked = permissions.Has(t.Permission);
+        SetServer(name, permissions);
+    }
+
+    /// <summary>Back to the server's name and rights.</summary>
+    internal void Revert()
+    {
+        Name = serverName;
+        foreach (var t in Toggles) t.IsChecked = serverPermissions.Has(t.Permission);
+    }
     public string DisplayName => Id is null ? string.Format(Strings.Group_Unsaved, Name) : Name;
 }
 

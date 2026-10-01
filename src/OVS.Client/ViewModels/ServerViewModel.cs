@@ -26,9 +26,14 @@ public sealed record BanChoice(string Reason, int? DurationMinutes, bool Include
         [(Strings.Ban_Hour, 60), (Strings.Ban_Day, 1440), (Strings.Ban_Week, 10080), (Strings.Ban_Permanent, null)];
 }
 
+/// <summary>Package 114: the answer to "Ungespeicherte Änderungen": keep editing, save and leave, or leave without saving.</summary>
+public enum LeaveChoice { Stay, Save, Discard }
+
 /// <summary>Dialogs the view provides. Unset entries mean "cancelled" (used by tests).</summary>
 public sealed class Dialogs
 {
+    /// <summary>Package 114: unsaved changes would be lost; unset means leave without saving (as before).</summary>
+    public Func<Task<LeaveChoice>>? AskLeave { get; init; }
     /// <summary>Package 54: one dialog for creating (empty) and editing (prefilled); the mode sets title and button.</summary>
     /// <remarks>
     /// Package 98: the dialogs that send get the send as their last argument. It returns the waiting mark; the dialog keeps

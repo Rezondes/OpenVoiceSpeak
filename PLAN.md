@@ -6903,14 +6903,18 @@ Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Pac
 
 ### Acceptance Criteria
 
-- [ ] AC1: With unsaved changes in one of the four places, every way out listed in A122 shows the modal; without changes nothing is asked.
-- [ ] AC2: "Weiter bearbeiten" (and Esc) stays exactly where one was: the same page, tab and group, with the edits untouched; the window stays open.
-- [ ] AC3: "Verlassen ohne Speichern" discards and carries out the action. On the settings page the live preview reverts as today.
-- [ ] AC4: "Speichern und verlassen" saves and carries out the action once the server confirms. A refused or unanswered save stays on the page with its error shown (Package 98) and does not leave.
-- [ ] AC5: "Abbrechen" on the settings page and "Verwerfen" in the link matrix discard without asking.
-- [ ] AC6: The texts exist in German and English, and the modal fits at 360 px.
+- [x] AC1: With unsaved changes in one of the four places, every way out listed in A122 shows the modal; without changes nothing is asked.
+- [x] AC2: "Weiter bearbeiten" (and Esc) stays exactly where one was: the same page, tab and group, with the edits untouched; the window stays open.
+- [x] AC3: "Verlassen ohne Speichern" discards and carries out the action. On the settings page the live preview reverts as today.
+- [x] AC4: "Speichern und verlassen" saves and carries out the action once the server confirms. A refused or unanswered save stays on the page with its error shown (Package 98) and does not leave.
+- [x] AC5: "Abbrechen" on the settings page and "Verwerfen" in the link matrix discard without asking.
+- [x] AC6: The texts exist in German and English, and the modal fits at 360 px.
 
 ### Tests (TDD)
+
+(as built: all of them in `tests/OVS.Tests/Client/LeaveGuardTests.cs`, with `ResponsiveTests.Dialogs_FitAt360` for the modal; the X of the settings page got its own `LeaveCommand`, "Abbrechen" keeps `CancelCommand`; with three answers the dialog stacks its buttons in full width, the default one first, because the card is at most 460 px wide)
+
+(as built, from three review rounds: the settings page compares with what it showed when it opened, not with the file, since the sliders do not round-trip exactly; the server tab and an edited group follow the server in the fields the user did not touch, so a save never undoes another admin; edited group rows survive server updates, which used to drop them silently; a device list arriving with the page open no longer crashes the change check)
 
 1. `SettingsTests > "HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert"` (AC1)
 2. `AdminViewModelTests > "HasChanges_GroupDraftServerSettingsLinks"` (AC1)

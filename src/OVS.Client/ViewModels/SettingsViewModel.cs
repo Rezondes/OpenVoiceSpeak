@@ -74,6 +74,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         blurBackground = current.BlurBackground;
         SoundRows = Enum.GetValues<SoundEvent>().Select(e => new SoundRow(e, current.SoundFor(e), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
+        untouched = ToSettings(basis).ToJson(); // Package 114: what the page shows before anyone touched it
     }
 
     // ---- Package 48: every sound on its own ----
@@ -198,12 +199,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         var (inputOptions, input, inputFellBack) = DeviceOptions(inputChosen ? SelectedInput?.Id : savedInputId, inputDevices);
         var (outputOptions, output, outputFellBack) = DeviceOptions(outputChosen ? SelectedOutput?.Id : savedOutputId, outputDevices);
+        bool changed = HasChanges; // before the lists change: a bound combo box clears its selection meanwhile
         showingDevices = true;
         Inputs = inputOptions;
         Outputs = outputOptions;
         SelectedInput = input; // replacing the items may have cleared the combo box's selection
         SelectedOutput = output;
         showingDevices = false;
+        if (!changed) untouched = ToSettings(basis).ToJson(); // the loaded list is no change of the user's
         DeviceHint = inputFellBack || outputFellBack ? Strings.Device_Missing : null;
     }
 
@@ -298,26 +301,48 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     async Task Save()
     {
-        if (!CanSave || Saving.IsRunning) return;
+        if (Saving.IsRunning) return;
+        if (await SaveAsync()) CloseRequested?.Invoke(true);
+    }
+
+    /// <summary>Package 114: applies and saves without closing; false while a key conflict keeps it from saving.</summary>
+    public async Task<bool> SaveAsync()
+    {
+        if (!CanSave) return false;
         if (ApplySaved is { } apply)
         {
             Saving.Start();
             await apply();
             Saving.Done();
         }
-        CloseRequested?.Invoke(true);
+        return true;
     }
 
+    /// <summary>"Abbrechen": discards on purpose, without asking (A122).</summary>
     [RelayCommand]
     void Cancel() => CloseRequested?.Invoke(false);
+
+    /// <summary>Package 114: the X of the page; asks first when something is not saved.</summary>
+    public event Action? LeaveRequested;
+
+    [RelayCommand]
+    void Leave() => LeaveRequested?.Invoke();
+
+    /// <summary>
+    /// Package 114: something differs from what the page showed when it opened. Not compared with the saved file: the
+    /// sliders turn floats into percent and back (not exact), and a missing device falls back to the default one.
+    /// </summary>
+    public bool HasChanges => ToSettings(basis).ToJson() != untouched;
+
+    string untouched;
 
     /// <summary>New settings based on the old ones (keeps bookmarks), clamped.</summary>
     public ClientSettings ToSettings(ClientSettings basis) => new ClientSettings
     {
         Bookmarks = basis.Bookmarks,
         UserVolumes = basis.UserVolumes,
-        InputDeviceId = SelectedInput.Id,
-        OutputDeviceId = SelectedOutput.Id,
+        InputDeviceId = SelectedInput?.Id, // null for a moment while a new device list replaces the items
+        OutputDeviceId = SelectedOutput?.Id,
         InputGain = (float)(InputGainPercent / 100),
         OutputVolume = (float)(OutputVolumePercent / 100),
         Mode = VoiceActivation ? TransmitMode.VoiceActivation : TransmitMode.PushToTalk,
