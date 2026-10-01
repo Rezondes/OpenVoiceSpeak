@@ -396,6 +396,29 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(100, vm.BackgroundOpacityPercent);
     }
 
+    /// <summary>Package 99 (A114): animated by default, also for a settings file from before; "Vereinfacht" survives a restart.</summary>
+    [Fact]
+    public void Display_DefaultsToAnimated_MissingKeyIsAnimated_SimplifiedRoundTrips()
+    {
+        Assert.Equal(DisplayMode.Animated, new ClientSettings().Display);
+        File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
+        Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
+        var vm = Vm(new ClientSettings());
+        Assert.Equal(DisplayMode.Animated, vm.SelectedDisplay.Value);
+        vm.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
+        vm.ToSettings(new ClientSettings()).Save(dir);
+        Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
+        Assert.Equal(DisplayMode.Simplified, Vm(ClientSettings.Load(dir, out _)).SelectedDisplay.Value);
+    }
+
+    /// <summary>Package 99: both choices have a name and a hint.</summary>
+    [Fact]
+    public void Display_ChoicesHaveNamesAndHints()
+    {
+        Assert.Equal([DisplayMode.Animated, DisplayMode.Simplified], SettingsViewModel.Displays.Select(d => d.Value));
+        Assert.All(SettingsViewModel.Displays, d => Assert.False(string.IsNullOrWhiteSpace(d.Name) || string.IsNullOrWhiteSpace(d.Hint)));
+    }
+
     /// <summary>Package 53: the sliders are heard at once, not only after "Speichern".</summary>
     [Fact]
     public void Sliders_ApplyLive()
@@ -416,6 +439,8 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(0.3f, live[^1].BackgroundOpacity, 3);
         vm.BlurBackground = true;
         Assert.True(live[^1].BlurBackground);
+        vm.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified); // Package 99
+        Assert.Equal(DisplayMode.Simplified, live[^1].Display);
     }
 
     /// <summary>Package 59: push-to-talk without a key cannot work; the settings say so and offer to set one.</summary>

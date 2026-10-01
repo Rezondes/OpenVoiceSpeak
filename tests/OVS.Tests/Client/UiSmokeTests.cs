@@ -98,6 +98,62 @@ public sealed class UiSmokeTests : IDisposable
         Assert.True(sink.Problems.Count == 0, string.Join(Environment.NewLine, sink.Problems.Distinct()));
     }
 
+    static byte[] Pixels(Window window)
+    {
+        Dispatcher.UIThread.RunJobs();
+        using var frame = window.CaptureRenderedFrame()!;
+        using var buffer = frame.Lock();
+        var bytes = new byte[buffer.RowBytes * buffer.Size.Height];
+        System.Runtime.InteropServices.Marshal.Copy(buffer.Address, bytes, 0, bytes.Length);
+        return bytes;
+    }
+
+    static IEnumerable<Style> AllStyles(IEnumerable<Avalonia.Styling.IStyle> styles) =>
+        styles.SelectMany(s => s switch
+        {
+            Style style => [style],
+            Avalonia.Styling.Styles nested => AllStyles(nested),
+            _ => [],
+        });
+
+    /// <summary>
+    /// Package 99 (A114): the simplified display is today's look, pixel for pixel. Every page renders exactly as it
+    /// does without the animated display's styles (<c>Styles/Motion.axaml</c>).
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Simplified_LooksLikeBefore()
+    {
+        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        vm.Appearance = vm.Appearance with { Display = DisplayMode.Simplified };
+        var styles = Application.Current!.Styles;
+        var motion = (Avalonia.Styling.Styles)styles[^1]; // App.axaml includes Motion.axaml last
+        Assert.All(AllStyles(motion), style => Assert.StartsWith("Window.animated", style.Selector?.ToString())); // A115
+
+        void LooksLikeBefore(string page)
+        {
+            var simplified = Pixels(main);
+            Assert.True(simplified.Distinct().Count() > 16, $"{page}: the frame is blank");
+            int index = styles.IndexOf(motion);
+            styles.Remove(motion);
+            var before = Pixels(main);
+            styles.Insert(index, motion);
+            Assert.True(simplified.SequenceEqual(before), page);
+        }
+
+        LooksLikeBefore("home");
+        vm.Server = FakeServers.Admin();
+        LooksLikeBefore("server");
+        vm.OpenSettings();
+        LooksLikeBefore("settings");
+        vm.ClosePage();
+        await vm.OpenAdminAsync();
+        LooksLikeBefore("admin");
+        vm.Appearance = vm.Appearance with { Display = DisplayMode.Animated };
+        main.Close();
+    }
+
     /// <summary>A missing icon key is neither an exception nor a log entry in Avalonia: the icon just stays empty.</summary>
     [AvaloniaFact]
     public void EveryIconInXaml_Exists()

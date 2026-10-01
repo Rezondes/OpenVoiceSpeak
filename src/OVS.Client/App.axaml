@@ -19,5 +19,6 @@
       </FluentTheme.Palettes>
     </FluentTheme>
     <StyleInclude Source="/Styles/Controls.axaml" />
+    <StyleInclude Source="/Styles/Motion.axaml" />
   </Application.Styles>
 </Application>

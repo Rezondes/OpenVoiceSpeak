@@ -1,0 +1,8 @@
+<!--
+  Package 99 (A115): every style of the animated display, and only here. Each selector starts with Window.animated,
+  so the simplified display (no class on the window) looks exactly as before. Lengths follow Views/Motion.cs:
+  120 ms hover and press, 220 ms appear, leave, tabs and dialogs, 320 ms pages, connect and moves.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+</Styles>

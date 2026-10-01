@@ -11,6 +11,7 @@ namespace OVS.Client.ViewModels;
 
 public sealed record AudioDeviceOption(string? Id, string Name);
 public sealed record ThemeOption(AppTheme Value, string Name);
+public sealed record DisplayOption(DisplayMode Value, string Name, string Hint);
 public sealed record LanguageOption(AppLanguage Value, string Name);
 
 public sealed partial class SettingsViewModel : ObservableObject
@@ -25,6 +26,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsPushToTalk), nameof(ShowPttHint))]
     bool voiceActivation;
     [ObservableProperty] ThemeOption selectedTheme;
+    [ObservableProperty] DisplayOption selectedDisplay;
     [ObservableProperty] LanguageOption selectedLanguage;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAboveThreshold))]
@@ -64,6 +66,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
+        selectedDisplay = Displays.First(d => d.Value == current.Display);
         selectedLanguage = Languages.First(l => l.Value == current.Language);
         checkForUpdates = current.CheckForUpdates;
         allSoundsOff = !current.SoundsEnabled;
@@ -112,6 +115,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     public static IReadOnlyList<ThemeOption> Themes =>
         [new(AppTheme.System, Strings.Theme_System), new(AppTheme.Light, Strings.Theme_Light), new(AppTheme.Dark, Strings.Theme_Dark)];
 
+    /// <summary>Package 99 (A114).</summary>
+    public static IReadOnlyList<DisplayOption> Displays =>
+    [
+        new(DisplayMode.Animated, Strings.Display_Animated, Strings.Display_AnimatedHint),
+        new(DisplayMode.Simplified, Strings.Display_Simplified, Strings.Display_SimplifiedHint),
+    ];
+
     /// <summary>Package 45: the language names stay in their own language, so everybody finds theirs.</summary>
     public static IReadOnlyList<LanguageOption> Languages =>
         [new(AppLanguage.System, Strings.Language_System), new(AppLanguage.German, "Deutsch"), new(AppLanguage.English, "English")];
@@ -158,6 +168,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     partial void OnBlurBackgroundChanged(bool value) => Preview();
+
+    partial void OnSelectedDisplayChanged(DisplayOption value) => Preview(); // Package 99: seen at once
 
     // ---- Devices (Package 52: the list loads in the background) ----
 
@@ -318,6 +330,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         SoundVolume = (float)(SoundVolumePercent / 100),
         BackgroundOpacity = (float)(BackgroundOpacityPercent / 100),
         BlurBackground = BlurBackground,
+        Display = SelectedDisplay.Value,
         Sounds = SoundRows.Select(r => (r.Event, Setting: r.ToSetting())).Where(r => !r.Setting.IsDefault).ToDictionary(r => r.Event, r => r.Setting),
     }.Clamp();
 }

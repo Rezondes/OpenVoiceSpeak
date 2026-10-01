@@ -86,11 +86,19 @@ public partial class MainWindow : Window
         watchedVm = DataContext as MainViewModel;
         if (watchedVm is not null) watchedVm.PropertyChanged += OnVmPropertyChanged;
         OnServerChanged();
+        ApplyDisplay();
+    }
+
+    /// <summary>Package 99: the chosen display, also while it is only previewed on the settings page.</summary>
+    void ApplyDisplay()
+    {
+        if (watchedVm is not null) Motion.Apply(this, watchedVm.Appearance.Display);
     }
 
     void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.Server)) OnServerChanged();
+        else if (e.PropertyName == nameof(MainViewModel.Appearance)) ApplyDisplay();
         else if (e.PropertyName == nameof(MainViewModel.Page) && watchedVm?.IsHomePage == false) SetDrawer(false);
     }
 

@@ -46,6 +46,9 @@ public static class PasswordProtector
 
 public enum AppTheme { System, Light, Dark }
 
+/// <summary>Package 99: "Animierte Darstellung" (default) or "Vereinfachte Darstellung" (the plain look from before).</summary>
+public enum DisplayMode { Animated, Simplified }
+
 /// <param name="File">Package 48: an own tone, a bare file name in the profile's "sounds" folder.</param>
 public sealed record SoundSetting(float Volume = 1f, bool Muted = false, string? File = null)
 {
@@ -106,6 +109,9 @@ public sealed class ClientSettings
     public float BackgroundOpacity { get; set; } = 1f;
     public bool BlurBackground { get; set; }
 
+    /// <summary>Package 99 (A114): the animated display, or today's plain look. A file from before has no key and loads animated.</summary>
+    public DisplayMode Display { get; set; } = DisplayMode.Animated;
+
     public ClientSettings Clamp()
     {
         BackgroundOpacity = Math.Clamp(BackgroundOpacity, 0f, 1f);
@@ -157,8 +163,8 @@ public sealed class ClientSettings
     }
 }
 
-/// <summary>Package 61: how see-through the window's backgrounds are.</summary>
-public sealed record BackgroundAppearance(float Opacity, bool Blur)
+/// <summary>Package 61: how see-through the window's backgrounds are; Package 99: and whether the display is animated.</summary>
+public sealed record BackgroundAppearance(float Opacity, bool Blur, DisplayMode Display = DisplayMode.Animated)
 {
-    public static BackgroundAppearance From(ClientSettings settings) => new(settings.BackgroundOpacity, settings.BlurBackground);
+    public static BackgroundAppearance From(ClientSettings settings) => new(settings.BackgroundOpacity, settings.BlurBackground, settings.Display);
 }

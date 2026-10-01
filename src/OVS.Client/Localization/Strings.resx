@@ -263,6 +263,11 @@
   <data name="TalkHint_VoiceActivation" xml:space="preserve"><value>Sprachaktivierung</value></data>
   <data name="Theme_Dark" xml:space="preserve"><value>Dunkel</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Hell</value></data>
+  <data name="Display_Label" xml:space="preserve"><value>Darstellung</value></data>
+  <data name="Display_Animated" xml:space="preserve"><value>Animierte Darstellung</value></data>
+  <data name="Display_AnimatedHint" xml:space="preserve"><value>Weiche Übergänge, Hover-Effekte und Animationen bei jeder Aktion.</value></data>
+  <data name="Display_Simplified" xml:space="preserve"><value>Vereinfachte Darstellung</value></data>
+  <data name="Display_SimplifiedHint" xml:space="preserve"><value>Der schlichte Stil ohne zusätzliche Animationen.</value></data>
   <data name="Theme_System" xml:space="preserve"><value>Wie Windows</value></data>
   <data name="Tofu_Changed" xml:space="preserve"><value>Das Zertifikat von {0}:{1} hat sich geändert. Das passiert, wenn der Server neu aufgesetzt wurde, kann aber auch ein Angriff sein. Frag im Zweifel den Serverbetreiber nach dem Fingerprint aus dem Serverlog.</value></data>
   <data name="Tofu_First" xml:space="preserve"><value>Erste Verbindung zu {0}:{1}. Vergleiche den Fingerprint mit der Zeile 'Zertifikat-Fingerprint' im Serverlog.</value></data>

@@ -607,15 +607,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             SetSelfTest = SetSelfTestAsync,
         };
         vm.ApplySaved = () => ApplySettingsAsync(vm.ToSettings(Settings)); // Package 98: before the page closes
-        vm.CloseRequested += save =>
-        {
-            if (!save) // "Verwerfen": back to what is saved
-            {
-                Audio.ApplyLive(Settings);
-                Appearance = BackgroundAppearance.From(Settings);
-            }
-            CloseSettings();
-        };
+        vm.CloseRequested += _ => CloseSettings();
         Audio.InputLevel += OnInputLevel;
         SettingsPage = vm;
         Page = Page.Settings;
@@ -652,8 +644,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Every way out of the settings ("Verwerfen", Esc, opening the administration) ends the live preview: what is
+    /// saved counts again. After "Speichern" that is the new settings.
+    /// </summary>
     void CloseSettings()
     {
+        Audio.ApplyLive(Settings);
+        Appearance = BackgroundAppearance.From(Settings);
         _ = SetSelfTestAsync(false);
         Audio.InputLevel -= OnInputLevel;
         SettingsPage = null;

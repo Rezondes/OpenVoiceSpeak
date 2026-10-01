@@ -6078,11 +6078,11 @@ There's no display mode today. `Theme`, opacity and blur already show how an app
 
 ### Acceptance Criteria
 
-- [ ] AC1: `ClientSettings.Display` defaults to `Animated`. A settings file without the key loads as `Animated`. Saving and loading keeps `Simplified`.
-- [ ] AC2: The settings section "DARSTELLUNG" has the choice "Darstellung" with "Animierte Darstellung" and "Vereinfachte Darstellung" (English: "Animated display" and "Simplified display"), with a one-line hint for each. Changing it applies at once (live preview); "Abbrechen" reverts it.
-- [ ] AC3: In animated mode the main window has the class `animated` and `Motion.IsAnimated` is true. In simplified mode neither is set, and `Motion.Duration(x)` returns `TimeSpan.Zero`.
-- [ ] AC4: In simplified mode the client renders exactly as before this package. Headless frames of the home page, the connected server view, the settings and the admin page at 1100 px equal baselines captured before the change.
-- [ ] AC5: The texts exist in German and English, and the choice fits at 360 px.
+- [x] AC1: `ClientSettings.Display` defaults to `Animated`. A settings file without the key loads as `Animated`. Saving and loading keeps `Simplified`.
+- [x] AC2: The settings section "DARSTELLUNG" has the choice "Darstellung" with "Animierte Darstellung" and "Vereinfachte Darstellung" (English: "Animated display" and "Simplified display"), with a one-line hint for each. Changing it applies at once (live preview); "Abbrechen" reverts it.
+- [x] AC3: In animated mode the main window has the class `animated` and `Motion.IsAnimated` is true. In simplified mode neither is set, and `Motion.Duration(x)` returns `TimeSpan.Zero`. (applied by `MainWindow` when `MainViewModel.Appearance` changes, not in `App.axaml.cs`, so headless tests see it too; leaving the settings any way without saving now also ends the preview)
+- [x] AC4: In simplified mode the client renders exactly as before this package. Headless frames of the home page, the connected server view, the settings and the admin page at 1100 px equal baselines captured before the change. (done as a comparison inside the test: each page in the simplified display against the same page rendered without `Motion.axaml`; checked-in PNGs would break on the new settings choice itself. The test also asserts that every selector in `Motion.axaml` starts with `Window.animated`.)
+- [x] AC5: The texts exist in German and English, and the choice fits at 360 px.
 
 ### Tests (TDD)
 

@@ -276,6 +276,17 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
+              <!-- Package 99: animated or the plain look from before -->
+              <TextBlock Classes="label" Text="{x:Static l:Strings.Display_Label}" Margin="0,10,0,0" />
+              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Displays}" SelectedItem="{Binding SelectedDisplay}" Classes="settingsChoice"
+                        AutomationProperties.Name="{x:Static l:Strings.Display_Label}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DisplayOption">
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding SelectedDisplay.Hint}" />
               <!-- Package 45 -->
               <TextBlock Classes="label" Text="{x:Static l:Strings.Settings_Language}" Margin="0,10,0,0" />
               <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding SelectedLanguage}" Classes="settingsChoice"

@@ -677,6 +677,49 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(0.6f, ClientSettings.Load(dir, out _).BackgroundOpacity, 3);
     }
 
+    /// <summary>Package 99: the display mode is previewed at once, "Verwerfen" brings the saved one back, "Speichern" keeps it.</summary>
+    [Fact]
+    public async Task Display_LivePreviewAndCancelRevert()
+    {
+        var simplified = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
+        Assert.Equal(DisplayMode.Animated, await OnUi(() => vm.Appearance.Display));
+        Assert.Equal(DisplayMode.Simplified, await OnUi(() =>
+        {
+            vm.OpenSettings();
+            vm.SettingsPage!.SelectedDisplay = simplified;
+            return vm.Appearance.Display;
+        }));
+        Assert.Equal(DisplayMode.Animated, await OnUi(() =>
+        {
+            vm.SettingsPage!.CancelCommand.Execute(null);
+            return vm.Appearance.Display;
+        }));
+        Assert.Equal(DisplayMode.Simplified, await OnUi(() =>
+        {
+            vm.OpenSettings();
+            vm.SettingsPage!.SelectedDisplay = simplified;
+            vm.SettingsPage.SaveCommand.Execute(null);
+            return vm.Appearance.Display;
+        }));
+        Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
+    }
+
+    /// <summary>Leaving the settings any other way (Esc, the administration) also drops the preview.</summary>
+    [Fact]
+    public async Task LeavingSettingsWithoutSaving_EndsThePreview()
+    {
+        var after = await OnUi(() =>
+        {
+            vm.OpenSettings();
+            vm.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
+            vm.SettingsPage.BlurBackground = true;
+            vm.ClosePage(); // what Esc does
+            return vm.Appearance;
+        });
+        Assert.Equal(new BackgroundAppearance(1f, false, DisplayMode.Animated), after);
+        Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
+    }
+
     /// <summary>Package 53: the self test mutes and deafens (also at the server) and puts everything back afterwards.</summary>
     [Fact]
     public async Task SelfTest_MutesAndDeafens_RestoresPreviousState()

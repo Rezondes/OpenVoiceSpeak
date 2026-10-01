@@ -1,7 +1,8 @@
 <!--
   Shared looks on top of FluentTheme: text roles, cards, rows, avatars, chips and button variants.
   Colors only through the tokens in Theme.axaml. Transitions stay short (at most 150 ms) and only
-  show a state change, such as hover or someone starting to speak.
+  show a state change, such as hover or someone starting to speak. This is the simplified display
+  (Package 99); everything the animated display adds lives in Motion.axaml.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
