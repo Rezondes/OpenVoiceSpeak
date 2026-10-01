@@ -173,6 +173,7 @@ public partial class MainWindow : Window
             ApplyDisplay();
         }
         else if (e.PropertyName == nameof(MainViewModel.Appearance)) ApplyDisplay();
+        else if (e.PropertyName is nameof(MainViewModel.TalkHint) or nameof(MainViewModel.HasNoPttBinding)) QueueFitSidebar(); // Package 113
         else if (e.PropertyName == nameof(MainViewModel.Page) && watchedVm?.IsHomePage == false) SetDrawer(false);
     }
 
@@ -227,7 +228,7 @@ public partial class MainWindow : Window
             return new SidebarRow(TextWidth(name), icons, TextWidth(count));
         }).ToList();
         if (rows.Count == 0) return;
-        sidebarFitted = sidebarWanted = SidebarWidth.For(rows);
+        sidebarFitted = sidebarWanted = SidebarWidth.For(rows, FooterNeed());
         ApplyResponsive();
     }
 
@@ -235,6 +236,19 @@ public partial class MainWindow : Window
     static double TextWidth(TextBlock? text) => string.IsNullOrEmpty(text?.Text) ? 0
         : new TextLayout(text.Text, new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, null)
             .WidthIncludingTrailingWhitespace;
+
+    /// <summary>
+    /// Package 113 (A121): the footer untrimmed: padding, avatar, the wider of the nickname and the talk hint (or the hint
+    /// button without a PTT key), and the buttons. The "Sendet" texts only show while talking and may trim; sending never
+    /// refits, so the width does not jump.
+    /// </summary>
+    double FooterNeed()
+    {
+        var hint = PttHint.IsVisible ? PttHint.DesiredSize.Width : TextWidth(TalkHintLine);
+        var texts = Math.Max(TextWidth(SelfName), hint);
+        return SidebarWidth.Border + SelfFooter.Padding.Left + SelfFooter.Padding.Right + SelfRing.DesiredSize.Width
+               + SelfTexts.Margin.Left + SelfTexts.Margin.Right + texts + FooterButtons.DesiredSize.Width;
+    }
 
     // ---- Package 68 (A82, A93, A94): width steps, upper bound of the sidebar, drawer below 700 px ----
 

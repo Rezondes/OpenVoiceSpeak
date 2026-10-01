@@ -12,11 +12,15 @@ public static class SidebarWidth
     /// Everything in a row besides name, small icons and count, matching MainWindow.axaml and Controls.axaml:
     /// sidebar border 1, ScrollViewer padding 2 × 8, row padding 2 × 8, channel icon 18 + 8 margin, gap 8 before the count.
     /// </summary>
-    public const double Fixed = 1 + 16 + 16 + 26 + 8;
+    public const double Fixed = Border + 16 + 16 + 26 + 8;
+
+    /// <summary>The sidebar's right border.</summary>
+    public const double Border = 1;
 
     /// <summary>A small icon (14) with its 6 px gap.</summary>
     public const double PerIcon = 6 + 14;
 
-    public static double For(IEnumerable<SidebarRow> rows) =>
-        Math.Max(Minimum, Math.Ceiling(rows.Select(r => r.Name + r.Icons * PerIcon + r.Count).DefaultIfEmpty(0).Max() + Fixed));
+    /// <param name="footer">Package 113: what the footer (own user, talk hint, buttons) needs, measured by the window.</param>
+    public static double For(IEnumerable<SidebarRow> rows, double footer = 0) =>
+        Math.Max(Math.Max(Minimum, Math.Ceiling(footer)), Math.Ceiling(rows.Select(r => r.Name + r.Icons * PerIcon + r.Count).DefaultIfEmpty(0).Max() + Fixed));
 }

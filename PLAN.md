@@ -289,7 +289,7 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A118 Scope.** Every area of the client animates (hover, lists, moves, pages, tabs, dialogs, popups, drawer, connect, chat, live status); client-only, no server or protocol change.
 - **A119 Duplicate names (Package 110).** Only channel names may repeat (case and spelling do not matter any more). Group names and nicknames stay unique.
 - **A120 Separators (Package 111).** A separator is a channel of kind `Separator`, created in the existing create dialog by choosing "Trenner" as the type. It has no name, description, limit, lock or link, can be moved (drag, up, down) and deleted like a channel, and has no "Bearbeiten". It is never the default channel. The protocol version goes up by one.
-- **A121 Sidebar footer (Package 113).** The fitted width also covers the footer: avatar, nickname, the widest of the talk hint and both "Sendet" texts (so the width never jumps while talking) and the three buttons. The window's own upper bound (`Responsive.SidebarMax`) still wins; below it texts trim as today. The header (server name) keeps trimming.
+- **A121 Sidebar footer (Package 113).** The fitted width also covers the footer: avatar, nickname, the wider of the talk hint and the nickname (as built: the "Sendet" texts trim while talking, the width never jumps because sending does not refit) and the three buttons. The window's own upper bound (`Responsive.SidebarMax`) still wins; below it texts trim as today. The header (server name) keeps trimming.
 - **A122 Unsaved changes (Package 114).** Places with a manual save: the settings page, the group editor, the server settings tab and the link matrix. Leaving means: changing page (menu, settings cog, Esc, the X of the settings page), switching admin tab, selecting another group, disconnecting, connecting to another server, closing the window. The buttons "Abbrechen" (settings) and "Verwerfen" (links) discard without asking, because they say so. "Speichern und verlassen" that the server refuses stays on the page with its error.
 - **A123 Tooltip fade (Package 115).** Only the animated display changes; the simplified display keeps the Fluent tooltip as it is.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
@@ -6841,11 +6841,11 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Connected at a 1100 px window width, with short channel names and a long nickname, the nickname and the talk hint are not trimmed after the fit.
-- [ ] AC2: While sending (the "Sendet ..." texts) the sidebar width does not change.
-- [ ] AC3: Changing the transmit mode in the settings refits the sidebar so the new hint fits. The modes are voice activation, push-to-talk with a key, and push-to-talk without a key.
-- [ ] AC4: When the window is too narrow for that width, `SidebarMax` still wins and the texts trim as today; the compact drawer (below 700 px) is unchanged.
-- [ ] AC5: The sidebar cannot be dragged narrower than the footer needs (it is the column's minimum, like the channel rows).
+- [x] AC1: Connected at a 1100 px window width, with short channel names and a long nickname, the nickname and the talk hint are not trimmed after the fit.
+- [x] AC2: While sending (the "Sendet ..." texts) the sidebar width does not change. (as built: the two "Sendet" texts are not part of the fit, "Sendet an eigenen Channel und Links" alone made every sidebar about 386 px wide; they show only while talking and may trim, and sending never refits)
+- [x] AC3: Changing the transmit mode in the settings refits the sidebar so the new hint fits. The modes are voice activation, push-to-talk with a key, and push-to-talk without a key.
+- [x] AC4: When the window is too narrow for that width, `SidebarMax` still wins and the texts trim as today; the compact drawer (below 700 px) is unchanged.
+- [x] AC5: The sidebar cannot be dragged narrower than the footer needs (it is the column's minimum, like the channel rows).
 
 ### Tests (TDD)
 

@@ -12,6 +12,7 @@ using OVS.Client.Localization;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
+using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;
@@ -923,6 +924,107 @@ public sealed class ResponsiveTests : IDisposable
         main.Close();
         return 0;
     });
+
+    // ---- Package 113: the fitted sidebar covers its footer ----
+
+    const string LongNick = "Hauptmann Langname der Dritte";
+
+    static ServerViewModel ShortChannelsLongNick()
+    {
+        var server = FakeServers.WithChannels("A", "B");
+        var self = server.Mirror.Users[server.Mirror.SelfId];
+        server.Apply(new UserUpdated(self with { Nickname = LongNick }));
+        return server;
+    }
+
+    static TextBlock Footer(MainWindow main, string name) => main.FindControl<TextBlock>(name)!;
+
+    /// <summary>The text block shows its whole text: its untrimmed width fits its bounds.</summary>
+    static void Untrimmed(TextBlock text)
+    {
+        var layout = new Avalonia.Media.TextFormatting.TextLayout(text.Text, new Avalonia.Media.Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
+            text.FontSize, null);
+        Assert.True(layout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5, $"{text.Name} {text.Text}: {layout.WidthIncludingTrailingWhitespace} in {text.Bounds.Width}");
+    }
+
+    [AvaloniaFact]
+    public void Connected_LongNickname_FooterNotTrimmed()
+    {
+        var main = Open(1100, ShortChannelsLongNick(), out _);
+        WaitFor(() => false, 200);
+        Assert.Equal(LongNick, Footer(main, "SelfName").Text);
+        Untrimmed(Footer(main, "SelfName"));
+        Untrimmed(Footer(main, "TalkHintLine"));
+        Assert.True(Sidebar(main).Bounds.Width > SidebarWidth.Minimum, "wider than the rows alone need");
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void Sending_WidthStays()
+    {
+        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var vm);
+        WaitFor(() => false, 200);
+        var before = Sidebar(main).Bounds.Width;
+        vm.TransmitText = Strings.Transmit_Linked;
+        WaitFor(() => false, 200);
+        Assert.Equal(before, Sidebar(main).Bounds.Width, 1);
+        main.Close();
+    }
+
+    /// <summary>
+    /// The case from the request: short channel names and a short nickname gave the 240 px minimum, and the hint
+    /// "Sprachaktivierung" was cut. Every transmit mode refits, so each hint shows whole.
+    /// </summary>
+    [AvaloniaFact]
+    public void ModeChange_Refits()
+    {
+        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var vm);
+        vm.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.TransmitMode.VoiceActivation });
+        WaitFor(() => false, 200);
+        Assert.Equal("ich", Footer(main, "SelfName").Text);
+        Assert.Equal(Strings.TalkHint_VoiceActivation, Footer(main, "TalkHintLine").Text);
+        Untrimmed(Footer(main, "TalkHintLine"));
+        Assert.True(Sidebar(main).Bounds.Width > SidebarWidth.Minimum, $"{Sidebar(main).Bounds.Width}: the footer, not the rows, sets the width");
+
+        vm.ApplySettings(new ClientSettings { KeyBindings = [] }); // push-to-talk without a key: the hint button
+        WaitFor(() => false, 200);
+        var hint = main.FindControl<Button>("PttHint")!;
+        Assert.True(hint.IsEffectivelyVisible);
+        Untrimmed(hint.GetVisualDescendants().OfType<TextBlock>().Single());
+        Assert.True(hint.Bounds.Width >= hint.DesiredSize.Width - 0.5, "the whole button shows");
+
+        vm.ApplySettings(new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.PushToTalk, new KeyChord(0x05))] });
+        WaitFor(() => false, 200);
+        Untrimmed(Footer(main, "TalkHintLine"));
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void NarrowWindow_MaxStillWins()
+    {
+        var main = Open(760, ShortChannelsLongNick(), out _);
+        WaitFor(() => false, 200);
+        var max = Responsive.SidebarMax(main.FindControl<Grid>("Shell")!.Bounds.Width, main.GetVisualDescendants().OfType<GridSplitter>().Single().Width,
+            0);
+        Assert.True(Sidebar(main).Bounds.Width <= max + 1);
+        LayoutAssert.FitsHorizontally(main);
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void Drag_NotBelowFooter()
+    {
+        var main = Open(1100, ShortChannelsLongNick(), out _);
+        WaitFor(() => false, 200);
+        var fitted = Sidebar(main).Bounds.Width;
+        var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();
+        SidebarColumn(main).Width = new GridLength(150);
+        splitter.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragCompletedEvent });
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(Sidebar(main).Bounds.Width >= fitted - 1, $"{Sidebar(main).Bounds.Width} < {fitted}");
+        Untrimmed(Footer(main, "SelfName"));
+        main.Close();
+    }
 }
 
 /// <summary>Package 68: the layout check itself finds what runs off the visible area.</summary>

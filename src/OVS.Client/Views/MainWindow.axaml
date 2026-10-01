@@ -68,10 +68,10 @@
         </Border>
 
         <!-- Own user and quick controls -->
-        <Border DockPanel.Dock="Bottom" Padding="10,8" Background="{DynamicResource Ovs.SidebarFooter}"
+        <Border x:Name="SelfFooter" DockPanel.Dock="Bottom" Padding="10,8" Background="{DynamicResource Ovs.SidebarFooter}"
                 BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
           <DockPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+            <StackPanel x:Name="FooterButtons" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
               <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfMuted, Mode=OneWay, FallbackValue=False}"
                             Command="{Binding Server.ToggleMuteCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
                             ToolTip.Tip="{x:Static l:Strings.Ui_MuteMic}" AutomationProperties.Name="{x:Static l:Strings.Ui_MuteMic}">
@@ -92,7 +92,7 @@
                 <PathIcon Classes="spin" Data="{StaticResource Icon.Settings}" />
               </Button>
             </StackPanel>
-            <Border Classes="ring" Classes.speaking="{Binding Server.Self.IsSpeaking, FallbackValue=False}"
+            <Border x:Name="SelfRing" Classes="ring" Classes.speaking="{Binding Server.Self.IsSpeaking, FallbackValue=False}"
                     Classes.link="{Binding Server.Self.IsSpeakingViaLink, FallbackValue=False}" VerticalAlignment="Center"
                     IsVisible="{Binding IsConnected}">
               <Border Classes="avatar" Width="30" Height="30"
@@ -100,14 +100,14 @@
                 <TextBlock Text="{Binding Server.Self.Nickname, Converter={x:Static v:Ui.Initials}, FallbackValue='?'}" FontSize="13" />
               </Border>
             </Border>
-            <StackPanel Margin="8,0,4,0" VerticalAlignment="Center">
-              <TextBlock Classes="h2" FontSize="14" Text="{Binding Server.Self.Nickname, FallbackValue={x:Static l:Strings.Status_NotConnected}}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Classes="caption speaking transmit" Text="{Binding TransmitText}" TextTrimming="CharacterEllipsis"
+            <StackPanel x:Name="SelfTexts" Margin="8,0,4,0" VerticalAlignment="Center">
+              <TextBlock x:Name="SelfName" Classes="h2" FontSize="14" Text="{Binding Server.Self.Nickname, FallbackValue={x:Static l:Strings.Status_NotConnected}}" TextTrimming="CharacterEllipsis" />
+              <TextBlock x:Name="TransmitLine" Classes="caption speaking transmit" Text="{Binding TransmitText}" TextTrimming="CharacterEllipsis"
                          IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <Panel IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                <TextBlock Classes="caption" Text="{Binding TalkHint}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNoPttBinding}" />
+                <TextBlock x:Name="TalkHintLine" Classes="caption" Text="{Binding TalkHint}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNoPttBinding}" />
                 <!-- Without a PTT key nobody can talk: the hint leads straight to the settings. -->
-                <Button Classes="hint" Command="{Binding OpenSettingsCommand}" IsVisible="{Binding HasNoPttBinding}"
+                <Button x:Name="PttHint" Classes="hint" Command="{Binding OpenSettingsCommand}" IsVisible="{Binding HasNoPttBinding}"
                         ToolTip.Tip="{x:Static l:Strings.Ui_AssignKeyHint}">
                   <StackPanel Orientation="Horizontal" Spacing="4">
                     <PathIcon Classes="sm warning" Data="{StaticResource Icon.Warning}" />
