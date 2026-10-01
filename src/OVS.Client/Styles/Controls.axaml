@@ -415,6 +415,15 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="BoxShadow" Value="0 8 8 0 #59000000" />
   </Style>
+  <!-- Package 96: where a reorder drag will land, a dashed frame of the item's size in the gap -->
+  <Style Selector="Rectangle.dropPlaceholder">
+    <Setter Property="Stroke" Value="{DynamicResource Ovs.Accent}" />
+    <Setter Property="StrokeThickness" Value="2" />
+    <Setter Property="StrokeDashArray" Value="4,3" />
+    <Setter Property="RadiusX" Value="6" />
+    <Setter Property="RadiusY" Value="6" />
+    <Setter Property="Fill" Value="{DynamicResource Ovs.AccentSurface}" />
+  </Style>
   <!-- Package 30, 96: a file drop zone, lit up while a file is dragged over it -->
   <Style Selector="Border.dropZone">
     <Setter Property="BorderThickness" Value="1" />

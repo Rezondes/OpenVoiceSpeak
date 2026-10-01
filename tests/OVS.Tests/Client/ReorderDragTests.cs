@@ -121,6 +121,59 @@ public sealed class ReorderDragTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void Placeholder_DashedFrame_FillsTheGap()
+    {
+        ReorderDrag.ReducedMotion = () => true;
+        var tree = Open();
+        var overlay = OverlayLayer.GetOverlayLayer(tree.List)!;
+        var lobbyTop = tree.Container("Lobby").TranslatePoint(default, overlay)!.Value.Y; // where the gap opens
+        var height = tree.Container("Raid").Bounds.Height;
+
+        tree.DragAbove("Raid", "Lobby");
+
+        var frame = Assert.Single(overlay.Children.OfType<Avalonia.Controls.Shapes.Rectangle>(), r => r.Classes.Contains("dropPlaceholder"));
+        Assert.True(frame.IsVisible);
+        Assert.NotEmpty(frame.StrokeDashArray!); // a dashed outline, not a plain gap
+        Assert.True(frame.StrokeThickness > 0);
+        Assert.Equal(height, frame.Height);
+        Assert.Equal(tree.Container("Raid").Bounds.Width, frame.Width, 1);
+        Assert.Equal(lobbyTop, Canvas.GetTop(frame), 1);
+
+        tree.Main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.DoesNotContain(overlay.Children, c => c.Classes.Contains("dropPlaceholder"));
+        tree.Main.Close();
+    }
+
+    [AvaloniaFact]
+    public void DragToEnd_GapAndFrameBelowLastItem()
+    {
+        ReorderDrag.ReducedMotion = () => true;
+        var tree = Open();
+        var overlay = OverlayLayer.GetOverlayLayer(tree.List)!;
+        var raid = tree.Container("Raid");
+        var below = raid.TranslatePoint(new Point(raid.Bounds.Width / 2, raid.Bounds.Height - 2), tree.Main)!.Value;
+        var raidBottom = raid.TranslatePoint(new Point(0, raid.Bounds.Height), overlay)!.Value.Y;
+        var height = tree.Container("Lobby").Bounds.Height;
+
+        var start = tree.Center("Lobby");
+        tree.Main.MouseDown(start, MouseButton.Left);
+        tree.Main.MouseMove(start + new Point(0, 10));
+        tree.Main.MouseMove(below);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(height, raid.Margin.Bottom); // the gap opens below the last item
+        var frame = Assert.Single(overlay.Children.OfType<Avalonia.Controls.Shapes.Rectangle>(), r => r.Classes.Contains("dropPlaceholder"));
+        Assert.True(frame.IsVisible);
+        Assert.Equal(raidBottom, Canvas.GetTop(frame), 1);
+
+        tree.Main.MouseUp(below, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new[] { FakeServers.Raid, FakeServers.Lobby }, tree.Sent.OfType<ReorderChannels>().Single().ChannelIds);
+        tree.Main.Close();
+    }
+
+    [AvaloniaFact]
     public void Drop_ItemTakesPlaceholderSlot_NoJump()
     {
         ReorderDrag.ReducedMotion = () => true;
@@ -179,15 +232,16 @@ public sealed class ReorderDragTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void ReducedMotion_NoTilt()
+    public void ReducedMotion_KeepsTilt_GapDoesNotSlide()
     {
         ReorderDrag.ReducedMotion = () => true;
         var tree = Open();
         tree.DragAbove("Raid", "Lobby");
 
+        // the tilt is a static pose, not an animation: it stays with reduced animations
         var (scale, rotate) = Transforms(tree.Preview!);
         Assert.Equal(1.03, scale!.ScaleX);
-        Assert.True(rotate is null || rotate.Angle == 0);
+        Assert.Equal(3, rotate!.Angle);
         Assert.Equal(8, tree.Preview!.BoxShadow[0].OffsetY);
         Assert.Null(tree.Container("Lobby").Transitions); // the gap opens at once instead of sliding
         tree.Main.Close();

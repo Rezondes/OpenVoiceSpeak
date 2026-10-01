@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -21,7 +22,10 @@ public sealed partial class ReorderDrag
 {
     public const double Threshold = 6, Scale = 1.03, Tilt = 3, DimmedOpacity = 0.4;
 
-    /// <summary>The Windows setting "Show animations in Windows" is off: no tilt, the gap opens without sliding. Tests replace it.</summary>
+    /// <summary>
+    /// The Windows setting "Show animations in Windows" is off: the gap opens without sliding. The tilt stays, it is a
+    /// static pose and not an animation. Tests replace it.
+    /// </summary>
     public static Func<bool> ReducedMotion { get; set; } = () =>
         OperatingSystem.IsWindows() && SystemParametersInfo(SpiGetClientAreaAnimation, 0, out var on, 0) && on == 0;
 
@@ -39,6 +43,7 @@ public sealed partial class ReorderDrag
     Point start, grab;
     bool dragging;
     Border? preview;
+    Rectangle? placeholder;
     int slot = -1; // gap before the container with this index; Count means after the last one
     TopLevel? top;
 
@@ -92,7 +97,7 @@ public sealed partial class ReorderDrag
         bool reduced = ReducedMotion();
         var transforms = new TransformGroup();
         transforms.Children.Add(new ScaleTransform(Scale, Scale));
-        if (!reduced) transforms.Children.Add(new RotateTransform(Tilt));
+        transforms.Children.Add(new RotateTransform(Tilt));
         preview = new Border
         {
             Classes = { "dragPreview" },
@@ -102,6 +107,16 @@ public sealed partial class ReorderDrag
             RenderTransform = transforms,
             Child = new Image { Source = Snapshot(source) },
         };
+        // the drop target: a dashed frame of the item's size where it will land, below the lifted preview
+        placeholder = new Rectangle
+        {
+            Classes = { "dropPlaceholder" },
+            Width = source.Bounds.Width,
+            Height = source.Bounds.Height,
+            IsHitTestVisible = false,
+            IsVisible = false,
+        };
+        overlay.Children.Add(placeholder);
         overlay.Children.Add(preview);
         source.Opacity = DimmedOpacity;
         foreach (var container in Containers())
@@ -153,8 +168,29 @@ public sealed partial class ReorderDrag
         var containers = Containers();
         double height = source?.Bounds.Height ?? 0;
         slot = newSlot;
+        // the gap opens above the target item, or below the last one when dropping at the end
         for (int i = 0; i < containers.Count; i++)
-            containers[i].Margin = i == slot ? new Thickness(0, height, 0, 0) : default;
+            containers[i].Margin = i == slot ? new Thickness(0, height, 0, 0)
+                : i == containers.Count - 1 && slot == containers.Count ? new Thickness(0, 0, 0, height)
+                : default;
+        PlacePlaceholder(containers, height);
+    }
+
+    /// <summary>The dashed frame sits exactly in the gap, at the items' natural positions (where the gap ends up).</summary>
+    void PlacePlaceholder(List<Control> containers, double height)
+    {
+        if (placeholder is null || placeholder.Parent is not Visual overlay) return;
+        if (slot < 0)
+        {
+            placeholder.IsVisible = false;
+            return;
+        }
+        var panelTop = list.ItemsPanelRoot?.TranslatePoint(default, list) ?? default;
+        double y = panelTop.Y + containers.Take(slot).Sum(c => c.Bounds.Height);
+        if (list.TranslatePoint(new Point(panelTop.X, y), overlay) is not { } at) return;
+        Canvas.SetLeft(placeholder, at.X);
+        Canvas.SetTop(placeholder, at.Y);
+        placeholder.IsVisible = true;
     }
 
     async void OnReleased(object? sender, PointerReleasedEventArgs e)
@@ -189,8 +225,9 @@ public sealed partial class ReorderDrag
             }
             if (source is not null) source.Opacity = 1;
             if (preview?.Parent is OverlayLayer overlay) overlay.Children.Remove(preview);
+            if (placeholder?.Parent is OverlayLayer layer) layer.Children.Remove(placeholder);
             top?.RemoveHandler(InputElement.KeyDownEvent, OnKeyDown);
         }
-        (source, preview, top, slot, dragging) = (null, null, null, -1, false);
+        (source, preview, placeholder, top, slot, dragging) = (null, null, null, null, -1, false);
     }
 }
