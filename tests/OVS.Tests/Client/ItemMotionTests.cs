@@ -415,6 +415,8 @@ public sealed class ItemMotionTests : IDisposable
         double landed = LastTop(ghost, out double start);
         Assert.True(Math.Abs(start - oldTop) < 10, $"starts on the old row: {start} vs {oldTop} (two frames have passed)");
         Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
+        Assert.Equal(1, Arrived(main, nickname).Opacity, 2); // shown in the frame the picture went: no gap
+        Assert.DoesNotContain("fresh", Arrived(main, nickname).Classes); // and no flash, the flight showed where it went
         Settle(250);
         var row = Arrived(main, nickname);
         Assert.Equal(row.TranslatePoint(default, overlay)!.Value.Y, landed, 1); // landed exactly on the new row
@@ -430,12 +432,13 @@ public sealed class ItemMotionTests : IDisposable
         server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
         Settle(60);
         Assert.Single(Ghosts(main, FlyGhost.HighlightClass));
-        Settle(140); // still flying; the row's own colour transition is over
+        Settle(70); // still flying, before the hand-over; the row's own colour transition is over
         var raidRow = ChannelContainer(main, "Raid").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
         Assert.Contains(FlyGhost.ArrivingClass, raidRow.Classes);
         Assert.Equal(Avalonia.Media.Colors.Transparent, (raidRow.Background as Avalonia.Media.ISolidColorBrush)?.Color); // waits for the highlight
         double landed = LastTop(Ghosts(main, FlyGhost.HighlightClass).Single(), out _);
         Assert.Empty(Ghosts(main, FlyGhost.HighlightClass));
+        Assert.DoesNotContain(FlyGhost.ArrivingClass, raidRow.Classes); // handed over before the ghost went: no gap
         Settle(250);
         var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
         Assert.Equal(raidRow.TranslatePoint(default, overlay)!.Value.Y, landed, 1); // lands on Raid although my old row above folded meanwhile

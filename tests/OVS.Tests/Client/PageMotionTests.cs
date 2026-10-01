@@ -169,6 +169,48 @@ public sealed class PageMotionTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task ListInsideTab_IsNoTabChange()
+    {
+        var main = Open(out var vm);
+        await vm.OpenAdminAsync();
+        Settle(400);
+        var admin = main.GetVisualDescendants().OfType<AdminView>().Single();
+        var tabs = admin.FindControl<TabControl>("Tabs")!;
+        var groups = admin.FindControl<ListBox>("GroupList")!;
+        Assert.True(groups.ItemCount >= 2);
+        groups.SelectedIndex = 0;
+        Settle(400);
+        groups.SelectedIndex = 1; // its SelectionChanged bubbles up to the tabs
+        Frame();
+        var content = tabs.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PART_SelectedContentHost");
+        Assert.Equal((1d, 0d), (content.Opacity, OffsetX(content))); // the tab's content stays where it is
+        Assert.Empty(Ghosts(main, PageMotion.PipeGhostClass));
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void PagePicture_NeverComesBack()
+    {
+        var main = Open(out var vm);
+        vm.OpenSettings();
+        var layer = main.FindControl<Border>("PageGhost")!;
+        double last = 1;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (watch.ElapsedMilliseconds < 1000)
+        {
+            Frame();
+            if (layer.Child is Image picture)
+            {
+                Assert.True(picture.Opacity <= last + 0.001, $"the old page's picture fades and stays faded ({picture.Opacity} after {last})");
+                last = picture.Opacity;
+            }
+            Thread.Sleep(1);
+        }
+        Assert.False(PageGhostShown(main));
+        main.Close();
+    }
+
+    [AvaloniaFact]
     public void SettingsSections_FadeUpOnce()
     {
         var main = Open(out var vm);

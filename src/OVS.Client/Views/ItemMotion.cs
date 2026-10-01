@@ -175,16 +175,16 @@ public static class ItemMotion
 
     /// <summary>
     /// The picture flies to where the new row is in each frame (it still opens, the old one still folds); the row shows
-    /// once the picture has landed on it, and flashes.
+    /// in the frame the picture lands on it. No flash: the flight already shows where it went.
     /// </summary>
-    static async Task Land(Control container, Departure departure)
-    {
-        await FlyGhost.Row(departure.Overlay, departure.Picture, departure.From, () =>
-            container.TranslatePoint(default, departure.Overlay) is { } at ? new Point(at.X, at.Y - (container.RenderTransform?.Value.M32 ?? 0)) : null);
-        flown.Remove(container);
-        container.ClearValue(Visual.OpacityProperty);
-        await Flash(container);
-    }
+    static Task Land(Control container, Departure departure) =>
+        FlyGhost.Row(departure.Overlay, departure.Picture, departure.From, () =>
+            container.TranslatePoint(default, departure.Overlay) is { } at ? new Point(at.X, at.Y - (container.RenderTransform?.Value.M32 ?? 0)) : null,
+            () =>
+            {
+                flown.Remove(container);
+                container.ClearValue(Visual.OpacityProperty);
+            });
 
     /// <summary>Folds the row away: it fades, drifts to the left and closes its height; it cannot be clicked any more.</summary>
     static void Leave(Control container)
@@ -514,7 +514,7 @@ public static class ItemMotion
         container.Classes.Set("entering", false);
         entering.Remove(container);
         container.ClearValue(Visual.ClipToBoundsProperty);
-        if (flying) return; // Land shows it and lets it flash
+        if (flying) return; // Land shows it
         container.ClearValue(Visual.OpacityProperty);
         if (flash) await Flash(container);
     }
