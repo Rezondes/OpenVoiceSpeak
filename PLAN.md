@@ -29,6 +29,8 @@
 > **Packages 95 to 98:** 95 logo, 96 drag and drop, 97 and 98 the 400 ms waiting rule (split at the user's request into the shared mechanism with the admin page, and all other places). 98 needs 97; 95, 96 and 97 can run in parallel.
 >
 > **Packages 99 to 109 (animated display):** the request "more animations, away from the plain style" was cut into one package per area. Rendering stays on Skia (Impeller was considered and declined). 99 adds the setting "Vereinfachte Darstellung" (today's look) / "Animierte Darstellung" and must come first; 100, 101, 102, 104, 105 and 108 can then run in parallel; 103 needs 101 and 102, 106 needs 101 and 104, 107 needs 101; 109 (every action animated) comes last.
+>
+> **Packages 110 to 115:** one package per point of the request, in its order (no reordering needed). 111 (separators) needs 110 (duplicate names), because every separator carries the same empty name; 113 (sidebar width) and 111 both touch `MainWindow.FitSidebar`, so 113 should come after 111 or be merged carefully. All others can run in parallel.
 
 ## Überblick
 
@@ -143,6 +145,12 @@
 | 107 | Chat animations | In the animated display chat messages, notices and the send state animate. | 101 |
 | 108 | Live status animations | In the animated display speaking, mute, deafen, slots, busy and level states animate continuously and smoothly. | 99 |
 | 109 | Every action animated | A walk-through test proves that every user action has its animation in the animated display, none in the simplified one, and that load stays bounded. | 100 to 108 |
+| 110 | Duplicate channel names | Several channels may carry the same name, and the client still recognises its own newly created channel. | - |
+| 111 | Separator channels | Admins can put separators into the channel list: a full-width line that nobody can join, link or chat in. | 110 |
+| 112 | No empty channel tooltip | Hovering a channel without description and without links shows no tooltip at all. | - |
+| 113 | Sidebar fits its footer | After connecting, the fitted sidebar is wide enough for the own nickname, the talk hint and the footer buttons. | - |
+| 114 | Ask before losing unsaved changes | Leaving a page or admin tab with unsaved changes asks whether to save and leave, leave without saving, or keep editing. | - |
+| 115 | Tooltips fade in once | In the animated display a tooltip fades in once and stays, without blinking a second time. | - |
 
 ## Annahmen
 
@@ -279,6 +287,11 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A116 Motion tokens.** `Motion.Fast` 120 ms (hover, press), `Motion.Normal` 220 ms (appear, leave, tabs, dialogs), `Motion.Slow` 320 ms (pages, connect, move); easing `CubicEaseOut`, "pop" effects a light `BackEaseOut`. Lists stagger by 30 ms, at most 8 items per batch.
 - **A117 Animations never change state.** Every action ends in the same final state in both displays; leaving items are invisible to commands, counts and the debug API; first fills and rebuilds do not replay enter animations; looping animations run only while their state is active.
 - **A118 Scope.** Every area of the client animates (hover, lists, moves, pages, tabs, dialogs, popups, drawer, connect, chat, live status); client-only, no server or protocol change.
+- **A119 Duplicate names (Package 110).** Only channel names may repeat (case and spelling do not matter any more). Group names and nicknames stay unique.
+- **A120 Separators (Package 111).** A separator is a channel of kind `Separator`, created in the existing create dialog by choosing "Trenner" as the type. It has no name, description, limit, lock or link, can be moved (drag, up, down) and deleted like a channel, and has no "Bearbeiten". It is never the default channel. The protocol version goes up by one.
+- **A121 Sidebar footer (Package 113).** The fitted width also covers the footer: avatar, nickname, the widest of the talk hint and both "Sendet" texts (so the width never jumps while talking) and the three buttons. The window's own upper bound (`Responsive.SidebarMax`) still wins; below it texts trim as today. The header (server name) keeps trimming.
+- **A122 Unsaved changes (Package 114).** Places with a manual save: the settings page, the group editor, the server settings tab and the link matrix. Leaving means: changing page (menu, settings cog, Esc, the X of the settings page), switching admin tab, selecting another group, disconnecting, connecting to another server, closing the window. The buttons "Abbrechen" (settings) and "Verwerfen" (links) discard without asking, because they say so. "Speichern und verlassen" that the server refuses stays on the page with its error.
+- **A123 Tooltip fade (Package 115).** Only the animated display changes; the simplified display keeps the Fluent tooltip as it is.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -6629,3 +6642,343 @@ Test command: `dotnet test tests/OVS.Tests`
 ### Out of Scope
 
 - New animations beyond closing gaps
+
+---
+
+## Package 110: Duplicate channel names
+
+**Goal:** Several channels may carry the same name, and the client still recognises its own newly created channel.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/Commands/ChannelCommands.cs` (change): `ValidateChannel` no longer refuses a name that another channel has
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `CreateChannel` gets an optional `Guid? ClientTag`, and the server echoes it in `ChannelAdded(ChannelInfo Channel, Guid? ClientTag = null)`
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `CreateChannel` sends a fresh tag and confirms on `ChannelAdded` with that tag instead of the name
+- `src/OVS.Client/Debug/DebugApi.cs` (change): a channel key that matches several names is answered with an error naming the ids, instead of taking the first
+- `tests/OVS.Tests/Server/ChannelCommandTests.cs`, `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `tests/OVS.Tests/Client/DebugApiTests.cs` (change)
+
+### Context
+
+`ChannelCommands.ValidateChannel` (line 301) refuses a name another channel has (case-insensitive) with `NameTaken`, for create and edit. Internally every channel is identified by its `Guid` (data, links, logs, voice routing), so nothing on the server needs unique names. Two client places rely on them: `ServerViewModel.CreateChannel` (line 475) recognises its new channel by `a.Channel.Name == e.Name`, and `DebugApi` (line 340) resolves a name to the first match. `ChannelCommandTests` has `[InlineData("lobby", Codes.NameTaken)]` (line 85). Groups keep their own uniqueness check in `AdminCommands.cs:273` (A119).
+
+### Acceptance Criteria
+
+- [ ] AC1: Creating a channel named like an existing one (also in other case) succeeds; both exist with their own ids.
+- [ ] AC2: Renaming a channel to the name of another channel succeeds.
+- [ ] AC3: The creator's dialog closes on its own new channel, not on a channel of the same name that someone else adds meanwhile.
+- [ ] AC4: Group names stay unique (`NameTaken` as before).
+- [ ] AC5: The debug API refuses an ambiguous channel name with a message listing the matching ids; an id still works.
+
+### Tests (TDD)
+
+1. `ChannelCommandTests > "Create_SameNameAsExisting_Succeeds"` (AC1)
+   - Given: a server with "Lobby"; create "lobby".
+   - Expected: `ChannelAdded`, two channels with different ids.
+2. `ChannelCommandTests > "Edit_ToNameOfOther_Succeeds"` (AC2)
+3. `ServerViewModelTests > "CreateChannel_ConfirmsOnOwnTag_NotOnSameName"` (AC3)
+   - Given: a pending create of "Raid"; the server first sends `ChannelAdded` "Raid" with another tag, then the own one.
+   - Expected: still pending after the first, confirmed after the second.
+4. `AdminCommandTests` existing `" gast "` → `NameTaken` stays green (AC4)
+5. `DebugApiTests > "AmbiguousChannelName_Refused"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): drop the duplicate check in `ValidateChannel`; the old `NameTaken` row in `ChannelCommandTests` changes to the new expectation.
+2. Test 3 (red): the tag on `CreateChannel` and `ChannelAdded` (everyone gets `ChannelAdded`; the tag means nothing to the others).
+3. Test 5 (red): the debug API.
+
+### Out of Scope
+
+- Separators (Package 111)
+- Duplicate group names (A119)
+
+---
+
+## Package 111: Separator channels
+
+**Goal:** Admins can put separators into the channel list: a full-width line that nobody can join, link or chat in.
+
+**Dependencies:** Package 110 (every separator has the same empty name)
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `enum ChannelKind { Voice, Separator }`; `ChannelInfo` and `CreateChannel` get `ChannelKind Kind = ChannelKind.Voice`
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (change): `Version` up by one, with the comment
+- `src/OVS.Shared/Protocol/Codes.cs` (change): `NotJoinable`
+- `src/OVS.Server/Data/ServerData.cs` (change): `ChannelRecord.Kind` (older files load as `Voice`, no new data version)
+- `src/OVS.Server/Commands/ChannelCommands.cs` (change):
+  - create a separator: name and description empty; no limit, lock or password; no channel log file
+  - refuse `EditChannel` on a separator, and `JoinChannel` or `MoveUser` into one
+- `src/OVS.Server/Commands/LinkCommands.cs` (change): links touching a separator are refused with `InvalidLink`
+- `src/OVS.Server/Data/BackupStore.cs` (change): validation accepts a separator with an empty name, and refuses one that is the default channel or linked
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change):
+  - `ChannelViewModel.IsSeparator`; a separator has no join, edit, link, users or slot text
+  - move targets (`PickChannel`) skip separators
+- `src/OVS.Client/ViewModels/ChannelDialogViewModel.cs`, `src/OVS.Client/Views/SimpleDialogs.cs` (change): in create mode a type choice "Sprach-Channel" / "Trenner"; with "Trenner" every other field hides
+- `src/OVS.Client/ViewModels/LinkMatrixViewModel.cs` (change): separators are no rows
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs` (change):
+  - the separator row: a full-width line, no icon left, no count right
+  - its context menu has only "Channel erstellen", "Nach oben", "Nach unten" and "Löschen"
+  - a double click does nothing
+  - `FitSidebar` skips separator rows
+- `src/OVS.Client/Debug/DebugApi.cs` (change): channels report their kind
+- `src/OVS.Client/ErrorTexts.cs`, `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- Tests (change):
+  - `tests/OVS.Tests/Server/`: `ChannelCommandTests.cs`, `LinkCommandTests.cs`, `BackupTests.cs`, `DataStoreTests.cs`
+  - `tests/OVS.Tests/Client/`: `ServerViewModelTests.cs`, `ChannelDialogViewModelTests.cs`, `UiSmokeTests.cs`, `DebugApiTests.cs`, `LocalizationTests.cs`
+
+### Context
+
+There is one kind of channel today:
+- `ChannelInfo` (Messages.cs:121) and `ChannelRecord` (ServerData.cs:99) describe it.
+- `ChannelCommands` handles join, create, edit, move and delete.
+- The client shows each channel through the `ChannelViewModel` template in `MainWindow.axaml` (lines 177 to 236): speaker icon left, slot count right, the name, small icons and a context menu.
+
+`ControlServer` refuses any other protocol version (`ControlServer.cs:162`), so client and server move to the new version together. Separators go through the same order, reorder (`ReorderChannels`, Package 96 drag), delete and animation paths as channels.
+
+### Acceptance Criteria
+
+- [ ] AC1: The create dialog offers the type "Sprach-Channel" (the default) or "Trenner". A separator is created with one click on "Erstellen", needs `ChannelCreate`, and lands at the end like a channel.
+- [ ] AC2: In the channel tree a separator is a single horizontal line across the row: no icon left, no number right, no name, no tooltip, no users below.
+- [ ] AC3: Nobody can join a separator, not even admins:
+  - there is no "Beitreten", and a double click does nothing
+  - the server answers `JoinChannel` or `MoveUser` to it with `NotJoinable`
+- [ ] AC4: A separator can be dragged, moved up and down, and deleted with the usual rights. It cannot be:
+  - edited (`EditChannel` gives `InvalidValue`)
+  - linked (`InvalidLink`)
+  - a move target
+- [ ] AC5: A server data file or a backup without `Kind` loads every channel as a voice channel. A backup with a linked separator, or a separator as the default channel, is refused (`InvalidBackup`).
+- [ ] AC6: The fitted sidebar width ignores separators; the texts exist in German and English.
+
+### Tests (TDD)
+
+1. `ChannelCommandTests > "CreateSeparator_EmptyNameNoOptions_BroadcastsKind"` (AC1)
+2. `ChannelCommandTests > "Separator_JoinMoveEdit_Refused"` (AC3, AC4)
+3. `LinkCommandTests > "LinkToSeparator_InvalidLink"` (AC4)
+4. `DataStoreTests > "OldFile_ChannelsLoadAsVoice"` and `BackupTests > "SeparatorLinkedOrDefault_InvalidBackup"` (AC5)
+5. `ChannelDialogViewModelTests > "Create_Separator_HidesFieldsAndSendsKind"` (AC1)
+6. `ServerViewModelTests > "Separator_NoJoinNoEditNoLink_NotAMoveTarget"` (AC3, AC4)
+7. `UiSmokeTests > "Separator_IsALine_NoIconNoCount"` (AC2)
+   - Given: a headless channel tree with one separator.
+   - Expected: its row has no `channelIcon` and no `channelCount`, and one line element spans the row width.
+8. `UiSmokeTests > "Separator_DoubleClick_DoesNotJoin"`; `ReorderDragTests` stay green with a separator in the list (AC3, AC4)
+9. `ResponsiveTests > "FitSidebar_IgnoresSeparators"` and `LocalizationTests` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 4 (red): the protocol, the data, the server rules, the backup validation and the protocol version.
+2. Tests 5 and 6 (red): the dialog and the view model.
+3. Tests 7 to 9 (red): the row template, the double click, the sidebar fit and the texts. Take headless screenshots of a tree with separators in light and dark.
+
+### Out of Scope
+
+- Separators with a text label (the request asks for a plain line)
+- Collapsible sections
+
+---
+
+## Package 112: No empty channel tooltip
+
+**Goal:** Hovering a channel without description and without links shows no tooltip at all.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `ChannelViewModel.Tooltip` returns `null` instead of an empty text
+- `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `UiSmokeTests.cs` (change)
+
+### Context
+
+The channel row binds `ToolTip.Tip="{Binding Tooltip}"` (`MainWindow.axaml:180`). `ChannelViewModel.Tooltip` (`ServerViewModel.cs:623`) returns `Description` when the channel is not linked, and that is `""` without a description. Avalonia shows a tooltip for an empty string (an empty box); only `null` shows none.
+
+### Acceptance Criteria
+
+- [ ] AC1: A channel with neither description nor links has `Tooltip == null`, and hovering its row opens no tooltip.
+- [ ] AC2: A channel with a description, with links, or with both shows the same tooltip text as today.
+- [ ] AC3: A description of only spaces counts as none.
+
+### Tests (TDD)
+
+1. `ServerViewModelTests > "Tooltip_NoDescriptionNoLinks_IsNull"` (AC1, AC3): the reproduction, red first
+2. `ServerViewModelTests > "Tooltip_DescriptionOrLinks_Unchanged"` (AC2)
+3. `UiSmokeTests > "ChannelRow_NoDescription_NoTooltipOpens"` (AC1): hover the row headless; `ToolTip.GetIsOpen` stays false
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 3 (red), then the one-line change in `Tooltip`.
+2. Test 2 stays green.
+
+### Out of Scope
+
+- Tooltips elsewhere (Package 115 handles their animation)
+
+---
+
+## Package 113: Sidebar fits its footer
+
+**Goal:** After connecting, the fitted sidebar is wide enough for the own nickname, the talk hint and the footer buttons.
+
+**Dependencies:** none (if Package 111 also runs, do 111 first: both change `FitSidebar`)
+
+**Affected files:**
+- `src/OVS.Client/Views/SidebarWidth.cs` (change): `For(rows, footer)` takes the footer's need as a second lower bound
+- `src/OVS.Client/Views/MainWindow.axaml` (change): names for the footer parts (`SelfFooter`, `SelfTexts`, `FooterButtons`)
+- `src/OVS.Client/Views/MainWindow.axaml.cs` (change): `FitSidebar` measures the footer and refits when the nickname or the talk hint changes. The footer's need is:
+  - its padding, the avatar ring and the text margins
+  - the widest untrimmed text among the nickname, the current talk hint (`TalkHint`, including the warning hint button), `Transmit_Channel` and `Transmit_Linked`
+  - the buttons' desired width
+- `tests/OVS.Tests/Client/SidebarWidthTests.cs`, `ResponsiveTests.cs` (change)
+
+### Context
+
+`FitSidebar` (`MainWindow.axaml.cs`) sets the fitted width from the channel rows only (`SidebarWidth.For`, minimum 240). The footer (`MainWindow.axaml` lines 70 to 118) holds the avatar, the nickname and the talk hint beside three icon buttons. The talk hint reads "Sprachaktivierung", "Push-to-Talk: ..." or, while sending, "Sendet an eigenen Channel und Links". With short channel names the fitted width is narrower than the footer, so the nickname and the hint trim. `ApplyResponsive` keeps the fitted width as the column's minimum, bounded by `Responsive.SidebarMax` (A121).
+
+### Acceptance Criteria
+
+- [ ] AC1: Connected at a 1100 px window width, with short channel names and a long nickname, the nickname and the talk hint are not trimmed after the fit.
+- [ ] AC2: While sending (the "Sendet ..." texts) the sidebar width does not change.
+- [ ] AC3: Changing the transmit mode in the settings refits the sidebar so the new hint fits. The modes are voice activation, push-to-talk with a key, and push-to-talk without a key.
+- [ ] AC4: When the window is too narrow for that width, `SidebarMax` still wins and the texts trim as today; the compact drawer (below 700 px) is unchanged.
+- [ ] AC5: The sidebar cannot be dragged narrower than the footer needs (it is the column's minimum, like the channel rows).
+
+### Tests (TDD)
+
+1. `SidebarWidthTests > "For_FooterWiderThanRows_UsesFooter"` (AC1)
+2. `ResponsiveTests > "Connected_LongNickname_FooterNotTrimmed"` (AC1)
+   - Given: a headless connected window at 1100 px with short channel names and a long nickname.
+   - Expected: the desired widths of the nickname and hint text blocks fit their bounds.
+3. `ResponsiveTests > "Sending_WidthStays"` (AC2)
+4. `ResponsiveTests > "ModeChange_Refits"` (AC3)
+5. `ResponsiveTests > "NarrowWindow_MaxStillWins"` (AC4); the existing drawer tests stay green
+6. `ResponsiveTests > "Drag_NotBelowFooter"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): the second bound in `SidebarWidth.For`.
+2. Tests 2 to 4 (red): the footer measurement in `FitSidebar`, and the refit on `TalkHint` and nickname changes.
+3. Tests 5 and 6.
+
+### Out of Scope
+
+- The sidebar header (the server name keeps trimming, A121)
+
+---
+
+## Package 114: Ask before losing unsaved changes
+
+**Goal:** Leaving a page or admin tab with unsaved changes asks whether to save and leave, leave without saving, or keep editing.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): `HasChanges`, true when the edited settings differ from the saved ones (compared as their saved JSON)
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (change):
+  - `HasChanges` for the selected group: its name or rights differ from the server's, or it is a new draft
+  - `HasChanges` for the server settings tab: name, welcome text, password fields or limits differ from the loaded ones
+  - `SaveCurrentAsync` per place, which returns whether the server took it
+- `src/OVS.Client/ViewModels/LinkMatrixViewModel.cs` (change): `HasPending` counts as unsaved
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): one guard, `ConfirmLeaveAsync()`, before every way out: `OpenSettings`, `OpenAdminAsync`, `ClosePage`, `DisconnectAsync`, connecting elsewhere and closing the window
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): the dialog hook `AskLeave` in the dialogs record, beside `Confirm`
+- `src/OVS.Client/Views/SimpleDialogs.cs` (change): the modal with three buttons, "Speichern und verlassen", "Verlassen ohne Speichern" and "Weiter bearbeiten" (Esc keeps editing)
+- `src/OVS.Client/Views/AdminView.axaml.cs` (change): a tab switch or another group selection with unsaved changes asks first, and on "Weiter bearbeiten" goes back to the old tab or group
+- `src/OVS.Client/Views/MainWindow.axaml.cs` (change): the window's `Closing` asks (cancel, ask, close again)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/MainViewModelTests.cs`, `SettingsTests.cs`, `AdminViewModelTests.cs`, `UiSmokeTests.cs`, `LocalizationTests.cs`, `ResponsiveTests.cs` (change)
+
+### Context
+
+Nothing tracks unsaved changes today:
+- **Settings page:** it edits a copy (`SettingsViewModel`, live preview) that `CloseSettings` throws away (`MainViewModel.cs:663`). Esc, the X and opening the administration all close it silently.
+- **Administration:** the group editor (`SaveGroup`), the server settings (`SaveServerSettings`) and the link matrix (`Apply`, `HasPending`) need a manual save (A122). Switching tab, group or page drops the edits.
+
+Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Package 97) tells whether a save went through.
+
+### Acceptance Criteria
+
+- [ ] AC1: With unsaved changes in one of the four places, every way out listed in A122 shows the modal; without changes nothing is asked.
+- [ ] AC2: "Weiter bearbeiten" (and Esc) stays exactly where one was: the same page, tab and group, with the edits untouched; the window stays open.
+- [ ] AC3: "Verlassen ohne Speichern" discards and carries out the action. On the settings page the live preview reverts as today.
+- [ ] AC4: "Speichern und verlassen" saves and carries out the action once the server confirms. A refused or unanswered save stays on the page with its error shown (Package 98) and does not leave.
+- [ ] AC5: "Abbrechen" on the settings page and "Verwerfen" in the link matrix discard without asking.
+- [ ] AC6: The texts exist in German and English, and the modal fits at 360 px.
+
+### Tests (TDD)
+
+1. `SettingsTests > "HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert"` (AC1)
+2. `AdminViewModelTests > "HasChanges_GroupDraftServerSettingsLinks"` (AC1)
+3. `MainViewModelTests > "LeaveWithChanges_Asks_KeepEditingStays"` (AC1, AC2)
+   - Given: a fake `AskLeave` that answers each choice in turn.
+   - Expected: correct behaviour for a page change, a disconnect and a window close.
+4. `MainViewModelTests > "LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"` (AC3, AC4)
+5. `UiSmokeTests > "AdminTabSwitch_WithChanges_AsksAndStays"` and `"OtherGroup_WithChanges_AsksAndStays"` (AC1, AC2)
+6. `MainViewModelTests > "CancelAndDiscardButtons_DoNotAsk"` (AC5)
+7. `LocalizationTests` and `ResponsiveTests > "LeaveDialog_Fits360"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): `HasChanges` in the three view models.
+2. Tests 3, 4 and 6 (red): the guard in `MainViewModel` and the dialog hook.
+3. Test 5 (red): tab and group switches in `AdminView`, and the window's `Closing`.
+4. Test 7: the texts and the modal.
+
+### Out of Scope
+
+- Dialogs (they have their own Abbrechen)
+- Changes that save at once (user groups, bans, the server icon)
+
+---
+
+## Package 115: Tooltips fade in once
+
+**Goal:** In the animated display a tooltip fades in once and stays, without blinking a second time.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Views/Motion.cs` (change): the popup fade (the `Popup.IsOpenProperty` handler)
+- `src/OVS.Client/Styles/Motion.axaml` (change, if the cause is the theme's own transition)
+- `tests/OVS.Tests/Client/OverlayMotionTests.cs` (change)
+
+### Context
+
+Package 105 fades every popup in from `Motion.cs`: opacity 0 to 1 and a 4 px slide over `Motion.Normal`, with `FillMode.Backward`. The Fluent `ToolTip` theme has its own opacity transition when it opens.
+
+The likely cause of the second blink is that both run on the tooltip: when the code animation ends, its value is removed and the theme's transition shows once more. The first test must reproduce the blink before anything is changed. If the cause turns out to be a different one (for example a tooltip that closes and opens again), the fix follows that cause.
+
+### Acceptance Criteria
+
+- [ ] AC1: In the animated display a tooltip's opacity only rises from opening until it is fully shown, then stays at 1 until it closes (no dip, no second fade).
+- [ ] AC2: The slide from the anchor (Package 105) stays.
+- [ ] AC3: Context menus, flyouts and dropdowns keep their open animation, without a blink either.
+- [ ] AC4: The simplified display is unchanged (`Simplified_LooksLikeBefore` stays green).
+
+### Tests (TDD)
+
+1. `OverlayMotionTests > "ToolTip_FadesInOnce_NoSecondBlink"` (AC1): the reproduction, red first
+   - Given: a tooltip opened headless in the animated display.
+   - Expected: sampled every frame for 600 ms, the effective opacity of the tooltip and its content never drops after rising.
+2. `OverlayMotionTests > "Popups_FadeAndSlide"` stays green (AC2)
+3. `OverlayMotionTests > "ContextMenu_FadesInOnce"` (AC3)
+4. `UiSmokeTests.Simplified_LooksLikeBefore` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): find the cause from the sampled values.
+2. Fix it at the cause. Most likely, in the animated display either the code fade replaces the tooltip theme's own transition, or the code does not animate opacity where the theme already does.
+3. Tests 2 to 4.
+
+### Out of Scope
+
+- Tooltip timing (the delay before showing)
