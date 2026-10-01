@@ -27,6 +27,8 @@
 > **Packages 93 and 94 (channel locks):** the request was split at the user's request into the group lock (93) and the password lock with its bypass right (94). 94 needs 93.
 >
 > **Packages 95 to 98:** 95 logo, 96 drag and drop, 97 and 98 the 400 ms waiting rule (split at the user's request into the shared mechanism with the admin page, and all other places). 98 needs 97; 95, 96 and 97 can run in parallel.
+>
+> **Packages 99 to 109 (animated display):** the request "more animations, away from the plain style" was cut into one package per area. Rendering stays on Skia (Impeller was considered and declined). 99 adds the setting "Vereinfachte Darstellung" (today's look) / "Animierte Darstellung" and must come first; 100, 101, 102, 104, 105 and 108 can then run in parallel; 103 needs 101 and 102, 106 needs 101 and 104, 107 needs 101; 109 (every action animated) comes last.
 
 ## Überblick
 
@@ -130,6 +132,17 @@
 | 96 | One drag and drop behaviour everywhere | Every reorder drag in the app shows a lifted, slightly tilted preview of the dragged item and a placeholder gap of the item's height where it will land. | - |
 | 97 | Waiting states, shared mechanism and admin page | A shared pending mechanism shows a visible reaction within 400 ms of every action that waits, and the administration page (lists, log search, backups) uses it. | - |
 | 98 | Waiting states everywhere else | Every other action that waits for the server shows a visible reaction within 400 ms. | 97 |
+| 99 | Display mode setting and motion switch | Users choose between "Vereinfachte Darstellung" and "Animierte Darstellung" in the settings, and the whole client follows that choice live. | - |
+| 100 | Hover, press and focus effects | In the animated display every interactive control reacts to hover, press and keyboard focus with a smooth effect. | 99 |
+| 101 | Items appear animated | In the animated display every new item (user, channel, bookmark, admin row) fades and slides into its list. | 99 |
+| 102 | Items leave animated | In the animated display every removed item collapses and fades out of its list before it disappears. | 99 |
+| 103 | Items move animated | In the animated display items that change position or channel glide to their new place. | 101, 102 |
+| 104 | Page and tab transitions | In the animated display switching pages and tabs cross-fades and slides. | 99 |
+| 105 | Dialogs, popups and drawer | In the animated display dialogs, menus, dropdowns, tooltips and the compact sidebar drawer open and close animated. | 99 |
+| 106 | Connect and disconnect | In the animated display connecting builds the server view up step by step, and disconnecting folds it away. | 101, 104 |
+| 107 | Chat animations | In the animated display chat messages, notices and the send state animate. | 101 |
+| 108 | Live status animations | In the animated display speaking, mute, deafen, slots, busy and level states animate continuously and smoothly. | 99 |
+| 109 | Every action animated | A walk-through test proves that every user action has its animation in the animated display, none in the simplified one, and that load stays bounded. | 100 to 108 |
 
 ## Annahmen
 
@@ -261,6 +274,11 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A111 Logo.** One design at every size, with the sound wave everywhere (the user's choice); small sizes get thicker wave strokes. The icon files are generated from `logo.svg` by a checked-in tool.
 - **A112 Drag and drop rules (apply to every reorder drag).** Preview lifted into an overlay: scale 1.03, shadow +8 px, tilt 3 degrees; placeholder gap with the dragged item's height at the target, which the item takes after the drop without jumping. OS file drags (logo drop zone) only get a hover highlight, because their preview belongs to the operating system.
 - **A113 Waiting rule.** Every action that waits shows a visible reaction within 400 ms (spinner, loading state, pending marker or progress). The busy UI appears after 150 ms if the action is not done, so fast actions do not flicker; no answer within 10 s ends in a visible, retryable error.
+- **A114 Display mode.** The setting "Darstellung" offers "Animierte Darstellung" (default for everyone, also for settings files without the key) and "Vereinfachte Darstellung" (today's look, pixel for pixel). It applies live. The Windows setting "Show animations" does not override it; the drag from Package 96 keeps its own behaviour.
+- **A115 One place for animated styles.** All new animated styles live in `Styles/Motion.axaml`, scoped under the window class `animated` (set by `Motion.Apply`, like `Responsive.Apply`). Code-driven animations ask `Motion.IsAnimated` / `Motion.Duration(...)`, which is zero in the simplified display.
+- **A116 Motion tokens.** `Motion.Fast` 120 ms (hover, press), `Motion.Normal` 220 ms (appear, leave, tabs, dialogs), `Motion.Slow` 320 ms (pages, connect, move); easing `CubicEaseOut`, "pop" effects a light `BackEaseOut`. Lists stagger by 30 ms, at most 8 items per batch.
+- **A117 Animations never change state.** Every action ends in the same final state in both displays; leaving items are invisible to commands, counts and the debug API; first fills and rebuilds do not replay enter animations; looping animations run only while their state is active.
+- **A118 Scope.** Every area of the client animates (hover, lists, moves, pages, tabs, dialogs, popups, drawer, connect, chat, live status); client-only, no server or protocol change.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -6031,3 +6049,576 @@ Test command: `dotnet test tests/OVS.Tests`
 ### Out of Scope
 
 - Server-side changes (where an action has no explicit answer, the confirmation is the matching state change or error)
+
+---
+
+## Package 99: Display mode setting and motion switch
+
+**Goal:** Users choose between "Vereinfachte Darstellung" and "Animierte Darstellung" in the settings, and the whole client follows that choice live.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `enum DisplayMode { Animated, Simplified }`, property `Display` (default `Animated`)
+- `src/OVS.Client/Views/Motion.cs` (new):
+  - `Motion.IsAnimated`
+  - `Motion.Apply(Window, DisplayMode)` sets or clears the window class `animated`
+  - the duration and easing tokens
+  - `Motion.Duration(normal)`, which returns zero in simplified mode, for code-driven animations
+- `src/OVS.Client/Styles/Motion.axaml` (new, still empty except for a header comment); `App.axaml` (change) includes it after `Controls.axaml`
+- `src/OVS.Client/App.axaml.cs` (change): apply the mode at start and on `Settings` changes or live preview
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (change): a "Darstellung" choice under "Design", with a live preview
+- `src/OVS.Client/Styles/Controls.axaml` (change): the header comment points to `Motion.axaml` for the animated display
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/SettingsTests.cs`, `MotionTests.cs` (new), `UiSmokeTests.cs`, `LocalizationTests.cs`, `ResponsiveTests.cs` (change)
+
+### Context
+
+There's no display mode today. `Theme`, opacity and blur already show how an appearance setting flows: `ClientSettings` → `SettingsViewModel` (`LivePreview`, `ToSettings`) → `MainViewModel.Settings` and `Appearance` → `App.axaml.cs`. `Responsive.Apply` shows the window-class pattern that styles react to.
+
+### Acceptance Criteria
+
+- [ ] AC1: `ClientSettings.Display` defaults to `Animated`. A settings file without the key loads as `Animated`. Saving and loading keeps `Simplified`.
+- [ ] AC2: The settings section "DARSTELLUNG" has the choice "Darstellung" with "Animierte Darstellung" and "Vereinfachte Darstellung" (English: "Animated display" and "Simplified display"), with a one-line hint for each. Changing it applies at once (live preview); "Abbrechen" reverts it.
+- [ ] AC3: In animated mode the main window has the class `animated` and `Motion.IsAnimated` is true. In simplified mode neither is set, and `Motion.Duration(x)` returns `TimeSpan.Zero`.
+- [ ] AC4: In simplified mode the client renders exactly as before this package. Headless frames of the home page, the connected server view, the settings and the admin page at 1100 px equal baselines captured before the change.
+- [ ] AC5: The texts exist in German and English, and the choice fits at 360 px.
+
+### Tests (TDD)
+
+1. `SettingsTests > "Display_DefaultsToAnimated_MissingKeyIsAnimated_SimplifiedRoundTrips"` (AC1)
+   - Given: a fresh `ClientSettings`, a JSON file without `Display`, and a settings object with `Simplified` that is saved and loaded again.
+   - Expected: `Animated`, `Animated`, `Simplified`.
+2. `SettingsTests > "Display_LivePreviewAndCancelRevert"` (AC2)
+   - Given: the settings page switches to Simplified.
+   - Expected: `LivePreview` gets `Simplified`; after cancelling, the applied mode is `Animated` again.
+3. `MotionTests > "Apply_SetsWindowClassAndDurations"` (AC3)
+4. `UiSmokeTests > "Simplified_LooksLikeBefore"` (AC4)
+   - Given: baselines in `tests/OVS.Tests/Client/Baselines/`, captured once from the current `main` before any change.
+   - Expected: pixel-equal frames.
+5. `LocalizationTests`, `ResponsiveTests.Settings_Fits360` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Capture the baselines (test 4) on the unchanged code and commit them with the test.
+2. Tests 1 and 2 (red): the enum, the property, the settings choice and the live preview.
+3. Test 3 (red): `Motion.cs`, `Motion.axaml`, and the apply call in `App.axaml.cs`.
+4. Test 5, then the texts.
+
+### Out of Scope
+
+- Any actual animation (Packages 100 to 108)
+- Changing `ReorderDrag` (Package 96 stays as it is)
+
+---
+
+## Package 100: Hover, press and focus effects
+
+**Goal:** In the animated display every interactive control reacts to hover, press and keyboard focus with a smooth effect.
+
+**Dependencies:** Package 99
+
+**Affected files:**
+- `src/OVS.Client/Styles/Motion.axaml` (change)
+- `tests/OVS.Tests/Client/MotionStyleTests.cs` (new)
+
+### Context
+
+`Controls.axaml` styles rows (`Border.row`, with a 100 ms background brush), rings, chips, button variants, icons, the sidebar, bookmarks, admin cards and settings controls. Hover today only changes a background colour. Avalonia transitions (`TransformOperationsTransition`, `DoubleTransition`, `BoxShadowsTransition`, `BrushTransition`) can be set as style setters under `Window.animated`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Buttons (all variants), icon buttons and chips:
+  - hover: lift by 1 px with a soft shadow and a brighter background, over `Motion.Fast`
+  - press: scale to 0.96 and spring back with `BackEaseOut`
+- [ ] AC2: Rows (channels, users, bookmarks, admin list rows, sound rows):
+  - hover: a background fade plus an accent bar of 3 px that grows in from the left
+  - the current channel's accent bar stays visible
+- [ ] AC3: Keyboard focus shows an animated focus ring (fade plus 2 px grow) on every focusable control; it never appears for pointer focus.
+- [ ] AC4: Inputs, combo boxes, sliders, check boxes and toggle switches:
+  - the border colour fades on hover and focus
+  - check marks and toggle knobs animate their change
+  - slider thumbs grow on hover
+- [ ] AC5: Icons in icon buttons turn or nudge where it carries meaning:
+  - the settings cog turns 30° on hover
+  - the close X turns 90°
+  - the arrows nudge in their direction
+- [ ] AC6: In simplified mode none of these effects exist (`Simplified_LooksLikeBefore` stays green, and no new transitions are set on the controls).
+
+### Tests (TDD)
+
+1. `MotionStyleTests > "Button_Animated_HasHoverAndPressTransitions_SimplifiedHasNone"` (AC1, AC6): a headless window in each mode; read `Transitions` and the `:pressed` `RenderTransform` of a button.
+2. `MotionStyleTests > "Row_HoverAccentBarGrows"` (AC2): hover a row, tick the render timer and assert the width of the accent bar over time (0 → 3).
+3. `MotionStyleTests > "FocusRing_KeyboardOnly"` (AC3)
+4. `MotionStyleTests > "Inputs_HaveStateTransitions"` (AC4)
+5. `MotionStyleTests > "IconButtons_TurnOnHover"` (AC5)
+6. `UiSmokeTests.Simplified_LooksLikeBefore` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 6 (red): the button styles in `Motion.axaml`.
+2. Tests 2 to 5 (red): rows, focus, inputs and icons.
+3. Headless screenshots of hover and press at 1100 px, in light and dark.
+
+### Out of Scope
+
+- Lists changing (Packages 101 to 103)
+
+---
+
+## Package 101: Items appear animated
+
+**Goal:** In the animated display every new item (user, channel, bookmark, admin row) fades and slides into its list.
+
+**Dependencies:** Package 99
+
+**Affected files:**
+- `src/OVS.Client/Views/ItemMotion.cs` (new): attached property `ItemMotion.Enter="True"` for an `ItemsControl`. When a container is prepared for an item added after the first layout, it plays the enter animation: opacity 0 → 1, translate Y 6 → 0, height grows from 0, over `Motion.Normal`, with a stagger of 30 ms per item and at most 8 items per batch.
+- `src/OVS.Client/Views/MainWindow.axaml`, `AdminView.axaml`, `SettingsView.axaml` (change): set it on the channel tree, the users per channel, bookmarks, admin lists (users, bans, groups, backups, logs, links) and sound rows
+- `src/OVS.Client/Styles/Motion.axaml` (change): a "new" highlight flash for joined users and created channels
+- `tests/OVS.Tests/Client/ItemMotionTests.cs` (new)
+
+### Context
+
+`ServerViewModel.Sync` inserts new instances; `AdminViewModel` uses `Clear` plus `Add`. A view-side enter animation reacts to `ContainerPrepared`. The first fill of a list must not animate item by item: a list that loads shows as one fade, and a rebuild with `Clear` plus `Add` must not replay rows that were already there.
+
+### Acceptance Criteria
+
+- [ ] AC1: A user who joins my view of a channel slides in under the channel; the row briefly flashes in the accent colour (once, 600 ms).
+- [ ] AC2: A newly created channel slides in at its position; the rows below it make room smoothly instead of jumping.
+- [ ] AC3: Bookmarks, admin rows and sound rows that are added slide in the same way.
+- [ ] AC4: The first fill of a list, and an admin rebuild with `Clear` plus `Add` where the item keys are unchanged, do not replay the enter animation for existing items; the whole list fades in once on the first fill.
+- [ ] AC5: With more than 8 items added at once, only the first 8 are staggered; the rest appear with the last batch, so a full list never takes longer than 8 × 30 ms + `Motion.Normal`.
+- [ ] AC6: In simplified mode items appear at once, as today.
+
+### Tests (TDD)
+
+1. `ItemMotionTests > "NewUser_SlidesInAndFlashes"` (AC1): a headless channel tree; add a user to the mirror and tick the timer; the container's opacity and translate go from (0, 6) to (1, 0).
+2. `ItemMotionTests > "NewChannel_RowsBelowMoveSmoothly"` (AC2)
+3. `ItemMotionTests > "AdminRowAdded_SlidesIn"` (AC3)
+4. `ItemMotionTests > "FirstFillAndRebuild_NoReplay"` (AC4)
+5. `ItemMotionTests > "ManyItems_StaggerCapped"` (AC5)
+6. `ItemMotionTests > "Simplified_AppearsAtOnce"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 6 (red): `ItemMotion` on the user lists.
+2. Tests 2 to 5 (red): channels, admin lists, first fill, rebuild keys (by the row's id) and the stagger cap.
+3. Wire it into all lists; take headless screenshots mid-animation.
+
+### Out of Scope
+
+- Removal (Package 102); chat entries (Package 107)
+
+---
+
+## Package 102: Items leave animated
+
+**Goal:** In the animated display every removed item collapses and fades out of its list before it disappears.
+
+**Dependencies:** Package 99
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/CollectionSync.cs` (new): `ServerViewModel.Sync` moves here as a shared `CollectionSync.Sync(target, desired, leave)`.
+  - With a leave delay, a removed item gets `ILeaving.IsLeaving = true` and stays in the collection until the delay has passed, then it is removed.
+  - An item that comes back meanwhile is revived (same instance, `IsLeaving = false`).
+  - The delay uses a `TimeProvider` and the UI `post`, like `Pending`.
+- `src/OVS.Client/ViewModels/ServerViewModel.cs`, `AdminViewModel.cs`, `MainViewModel.cs` (bookmarks) (change): use it; `ChannelViewModel` and `UserViewModel` implement `ILeaving`
+- `src/OVS.Client/Styles/Motion.axaml` (change): `:is(Control).leaving` collapses the height to 0, fades the opacity to 0 and moves the item 8 px to the left, over `Motion.Normal`; leaving rows are not hit-testable
+- `src/OVS.Client/Debug/DebugApi.cs` (change): leaving items are not reported
+- `tests/OVS.Tests/Client/CollectionSyncTests.cs` (new), `ServerViewModelTests.cs`, `UiSmokeTests.cs` (change)
+
+### Context
+
+`Sync` removes rows from the end at once (`ServerViewModel.cs:290`), so there's nothing left to animate. Everything that reads `Channels` or `Users` (commands such as `MoveUp` and `MoveDown`, `PickChannel` targets, `SlotText`, `DebugApi`, tests) must ignore leaving items.
+
+### Acceptance Criteria
+
+- [ ] AC1: In animated mode, a user who leaves my view of a channel (disconnect, switch away, kick) collapses and fades out over `Motion.Normal` and is removed after that.
+- [ ] AC2: A deleted channel collapses with its users; the rows below move up smoothly.
+- [ ] AC3: Removed bookmarks and admin rows (unban, delete user, delete backup, remove group) leave the same way.
+- [ ] AC4: An item that comes back while leaving is the same instance again (no double row, no flicker).
+- [ ] AC5: Leaving items are excluded from commands, counts (`SlotText`), move targets, `DebugApi` output and selection; they cannot be clicked.
+- [ ] AC6: In simplified mode items are removed at once, as today; all existing `ServerViewModelTests` and `UiSmokeTests` stay green in both modes.
+
+### Tests (TDD)
+
+1. `CollectionSyncTests > "Removed_MarkedLeaving_RemovedAfterDelay"` (AC1): use a fake `TimeProvider`.
+2. `CollectionSyncTests > "ReturnsWhileLeaving_SameInstanceRevived"` (AC4)
+3. `CollectionSyncTests > "NoDelay_RemovedAtOnce"` (AC6)
+4. `CollectionSyncTests > "Moves_IgnoreLeavingItems"`: the order is correct when the desired items and leaving items are mixed.
+5. `ServerViewModelTests > "LeavingUser_NotCountedNotTargetNotInDebugApi"` (AC5)
+6. `UiSmokeTests > "DeletedChannel_CollapsesThenGone"` (AC2), `"AdminRowRemoved_Leaves"` (AC3)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 4 (red): `CollectionSync`; move `ServerViewModel.Sync` into it without changing behaviour (the old tests stay green).
+2. Test 5 (red): the exclusions in `ServerViewModel` and `DebugApi`.
+3. Test 6 (red): the styles and the admin lists and bookmarks.
+
+### Out of Scope
+
+- Animating the move to another channel itself (Package 103)
+
+---
+
+## Package 103: Items move animated
+
+**Goal:** In the animated display items that change position or channel glide to their new place.
+
+**Dependencies:** Packages 101 and 102
+
+**Affected files:**
+- `src/OVS.Client/Views/ItemMotion.cs` (change): attached `ItemMotion.Flip="True"`. Before a collection change it records the positions of the realized containers; after the layout it sets a `TranslateTransform` from the old offset and animates it to 0 over `Motion.Slow` (the FLIP technique).
+- `src/OVS.Client/Views/FlyGhost.cs` (new): a snapshot of a row flies in the overlay layer from its old to its new screen position. It reuses `ReorderDrag.Snapshot`, which becomes `internal static`.
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs`, `AdminView.axaml` (change)
+- `tests/OVS.Tests/Client/ItemMotionTests.cs` (change), `ReorderDragTests.cs` (stays green)
+
+### Context
+
+Reordering by another admin, or a move confirmed by the server, arrives as a `Sync` `Move` and the rows jump. A user who switches channel is removed from one `Users` list and inserted into another. Package 96's drag already has its own placeholder; after the drop the server order arrives and must not cause a second jump.
+
+### Acceptance Criteria
+
+- [ ] AC1: A channel reorder from the server glides: every moved row slides from its old to its new position over `Motion.Slow`.
+- [ ] AC2: A user who switches channel (themselves, moved by someone, or by a link) flies as a ghost from the old row to the new one. The old slot collapses (Package 102) and the new slot opens (Package 101); at the end the real row flashes once.
+- [ ] AC3: My own switch also gives the current-channel highlight a sliding move to the new channel.
+- [ ] AC4: Group reorder in Administration glides the same way.
+- [ ] AC5: After a drag drop (Package 96) the confirming server order causes no second jump or glide.
+- [ ] AC6: If the old or new position is scrolled out of view, the item only appears or leaves (no ghost across the screen edge).
+- [ ] AC7: In simplified mode rows jump as today.
+
+### Tests (TDD)
+
+1. `ItemMotionTests > "ServerReorder_RowsGlideFromOldOffset"` (AC1): the `TranslateTransform` right after the change equals the old offset and is 0 after the duration.
+2. `ItemMotionTests > "UserSwitch_GhostFliesOldToNew"` (AC2): the overlay contains a ghost whose start and end positions match both rows.
+3. `ItemMotionTests > "OwnSwitch_CurrentHighlightSlides"` (AC3)
+4. `ItemMotionTests > "GroupReorder_Glides"` (AC4)
+5. `ReorderDragTests > "DropThenServerOrder_NoSecondMove"` (AC5)
+6. `ItemMotionTests > "OffscreenEnd_NoGhost"` (AC6)
+7. `ItemMotionTests > "Simplified_Jumps"` (AC7)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 4 and 7 (red): FLIP on the channel tree and the group list.
+2. Tests 2, 3 and 6 (red): `FlyGhost` with the shared snapshot.
+3. Test 5 (red); headless screenshots mid-flight.
+
+### Out of Scope
+
+- Dragging users between channels (still not a feature)
+
+---
+
+## Package 104: Page and tab transitions
+
+**Goal:** In the animated display switching pages and tabs cross-fades and slides.
+
+**Dependencies:** Package 99
+
+**Affected files:**
+- `src/OVS.Client/Views/MainWindow.axaml` (change): the Home, Settings and Admin panels become one `TransitioningContentControl` with a page selector. Instances are kept, so the state isn't lost.
+- `src/OVS.Client/Views/PageMotion.cs` (new): a transition that is a slide of 24 px plus a fade over `Motion.Slow`. Settings and Admin enter from the right; going back to Home reverses it. In simplified mode it is `null` (instant).
+- `src/OVS.Client/Views/AdminView.axaml`, `ChatView.axaml`, `SettingsView.axaml` (change): admin tab content and chat tabs cross-fade; the tab underline slides to the selected tab; settings sections reveal on scroll (a fade-up as they come into view)
+- `tests/OVS.Tests/Client/PageMotionTests.cs` (new), `UiSmokeTests.cs`, `ResponsiveTests.cs` (change)
+
+### Context
+
+`MainViewModel.Page` switches panels by `IsVisible` (`MainWindow.axaml` lines 321 to 414), and `IsVisible = false` cannot fade out. Pages keep their view models (`SettingsPage`, `AdminPage`). The admin `TabControl` and the chat tabs switch content at once.
+
+### Acceptance Criteria
+
+- [ ] AC1: Opening Settings or Administration slides and fades the page in from the right while the previous page fades out; closing goes the reverse way. The duration is `Motion.Slow`.
+- [ ] AC2: Page state is kept across transitions (scroll position, inputs, the selected admin tab), exactly as today.
+- [ ] AC3: Switching admin tabs cross-fades the content and slides the selection indicator; switching chat tabs does the same.
+- [ ] AC4: Settings sections fade up once as they first scroll into view.
+- [ ] AC5: Fast double switches (Settings → Home → Admin within 100 ms) end on the right page with no leftover half-faded page.
+- [ ] AC6: In simplified mode everything switches instantly, as today; `ResponsiveTests` stay green in both modes.
+
+### Tests (TDD)
+
+1. `PageMotionTests > "OpenSettings_SlidesInFromRight_CloseReverses"` (AC1)
+2. `UiSmokeTests > "PageSwitch_KeepsState"` (AC2)
+3. `PageMotionTests > "AdminAndChatTabs_CrossFadeAndIndicatorSlides"` (AC3)
+4. `PageMotionTests > "SettingsSections_FadeUpOnce"` (AC4)
+5. `PageMotionTests > "RapidSwitch_EndsClean"` (AC5)
+6. `PageMotionTests > "Simplified_Instant"`, `ResponsiveTests` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 2, 5 and 6 (red): the pages in `MainWindow`.
+2. Tests 3 and 4 (red): tabs and sections.
+3. Headless screenshots mid-transition at 1100 px and 360 px.
+
+### Out of Scope
+
+- The switch between home and the connected server view (Package 106)
+
+---
+
+## Package 105: Dialogs, popups and drawer
+
+**Goal:** In the animated display dialogs, menus, dropdowns, tooltips and the compact sidebar drawer open and close animated.
+
+**Dependencies:** Package 99
+
+**Affected files:**
+- `src/OVS.Client/Views/OverlayHost.cs` (change):
+  - the scrim fades in
+  - the card scales from 0.94 to 1 with a fade over `Motion.Normal` (`BackEaseOut`)
+  - closing reverses it, and the content is released after the animation
+  - a queued dialog starts after the previous one has closed
+  - a refused input shakes the card (3 × 6 px)
+- `src/OVS.Client/Styles/Motion.axaml` (change): context menus, flyouts, combo box dropdowns and tooltips fade and slide 4 px from their anchor
+- `src/OVS.Client/Views/MainWindow.axaml.cs`, `SidebarWidth.cs` (change): the compact drawer slides in from the left over `Motion.Normal` with its scrim; closing slides out
+- `tests/OVS.Tests/Client/OverlayMotionTests.cs` (new), `UiSmokeTests.cs` (change)
+
+### Context
+
+`OverlayHost` toggles `IsVisible` and serializes dialogs with a semaphore. Error states inside dialogs come from Package 98, which keeps dialogs open on errors. Popups are the Fluent defaults. The drawer appears below `Responsive.CompactBelow`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Every dialog opens with a scrim fade plus a card pop, and closes in reverse; focus and the Enter and Esc handling work as before, already during the animation.
+- [ ] AC2: A second dialog waiting its turn starts only after the first has finished closing; there are never two cards at once.
+- [ ] AC3: A refused input in a dialog (server error, wrong password) shakes the card once.
+- [ ] AC4: Context menus, flyouts, dropdowns and tooltips fade and slide from their anchor.
+- [ ] AC5: In compact width the drawer slides in and out with its scrim; a click beside it closes it, animated.
+- [ ] AC6: In simplified mode everything appears instantly; all existing dialog tests stay green in both modes.
+
+### Tests (TDD)
+
+1. `OverlayMotionTests > "Open_ScrimFadesCardPops_CloseReverses"` (AC1)
+2. `OverlayMotionTests > "Queued_StartsAfterClose"` (AC2)
+3. `OverlayMotionTests > "Error_ShakesCard"` (AC3)
+4. `OverlayMotionTests > "Popups_FadeAndSlide"` (AC4)
+5. `UiSmokeTests > "Drawer_SlidesInAndOut"` (AC5)
+6. `OverlayMotionTests > "Simplified_Instant"` plus the existing dialog tests (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 2 and 6 (red): `OverlayHost`.
+2. Tests 3 to 5 (red): the shake, popups and the drawer.
+3. Headless screenshots of a dialog mid-pop.
+
+### Out of Scope
+
+- Dialog content and its texts
+
+---
+
+## Package 106: Connect and disconnect
+
+**Goal:** In the animated display connecting builds the server view up step by step, and disconnecting folds it away.
+
+**Dependencies:** Packages 101 and 104
+
+**Affected files:**
+- `src/OVS.Client/Views/MainWindow.axaml`, `MainWindow.axaml.cs` (change)
+- `src/OVS.Client/Styles/Motion.axaml` (change)
+- `tests/OVS.Tests/Client/ConnectMotionTests.cs` (new)
+
+### Context
+
+The home panel shows the `LogoMark` and an indeterminate `ProgressBar` while connecting (`MainWindow.axaml:326` and `:329`). `IsConnected` switches the sidebar header, the channel tree and the main area by `IsVisible` (lines 63, 97, 173 and 346).
+
+### Acceptance Criteria
+
+- [ ] AC1: While connecting, the logo's sound wave pulses and the progress bar is replaced by a slim animated bar; a failed connect shakes the home card once and shows the error with a fade.
+- [ ] AC2: On connect:
+  - the home content fades out
+  - the sidebar header and the server name fade in
+  - the channel tree builds up channel by channel (the stagger from Package 101, capped)
+  - the chat area slides up from below
+  - the whole sequence takes at most 700 ms
+- [ ] AC3: On disconnect (by the user, kicked, or lost): the tree and chat fold away (fade plus collapse), the home page returns with the reason; with a lost connection the server name grey-pulses while reconnecting.
+- [ ] AC4: Switching directly between two servers (bookmark click while connected) plays disconnect then connect without a blank frame.
+- [ ] AC5: In simplified mode everything switches instantly, as today.
+
+### Tests (TDD)
+
+1. `ConnectMotionTests > "Connecting_PulsesAndFailShakes"` (AC1)
+2. `ConnectMotionTests > "Connect_SequenceWithin700ms"` (AC2): a fake server; tick the timer and assert the order and the end state at 700 ms.
+3. `ConnectMotionTests > "Disconnect_FoldsAwayHomeWithReason"` (AC3)
+4. `ConnectMotionTests > "ServerSwitch_NoBlankFrame"` (AC4)
+5. `ConnectMotionTests > "Simplified_Instant"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 2 and 5 (red): the connect sequence.
+2. Tests 1, 3 and 4 (red).
+3. Headless screenshots of the sequence.
+
+### Out of Scope
+
+- The connection logic itself (unchanged)
+
+---
+
+## Package 107: Chat animations
+
+**Goal:** In the animated display chat messages, notices and the send state animate.
+
+**Dependencies:** Package 101
+
+**Affected files:**
+- `src/OVS.Client/Views/ChatView.axaml`, `ChatView.axaml.cs` (change)
+- `src/OVS.Client/Styles/Motion.axaml` (change)
+- `tests/OVS.Tests/Client/ChatMotionTests.cs` (new)
+
+### Context
+
+`ChatView.axaml` lists `Selected.Entries` in an `ItemsControl` (`chatHistory`). Pending messages are greyed with a clock until the echo arrives (Package 98). Notices (`NoticeKind`) appear in "Allgemein". The view scrolls to the end on new entries.
+
+### Acceptance Criteria
+
+- [ ] AC1: A new message slides up and fades in. My own messages come from the composer side; other people's messages come from the left.
+- [ ] AC2: Scrolling to the newest message is smooth (`Motion.Normal`) instead of jumping; if the user has scrolled up, nothing scrolls and a "new messages" pill bounces in.
+- [ ] AC3: A pending message turns from grey to normal with a fade, and the clock morphs into a check that fades out; "nicht gesendet" shakes once.
+- [ ] AC4: Warning and error notices slide in with a short colour pulse on their left edge.
+- [ ] AC5: An unread badge on a chat tab pops in, and its count ticks.
+- [ ] AC6: Loading the history of a tab does not animate every entry (one fade for the whole history).
+- [ ] AC7: In simplified mode the chat behaves as today.
+
+### Tests (TDD)
+
+1. `ChatMotionTests > "NewMessage_SlidesIn_OwnFromComposer"` (AC1)
+2. `ChatMotionTests > "ScrolledUp_NoAutoScroll_PillAppears"` (AC2)
+3. `ChatMotionTests > "Pending_FadesToSent_ErrorShakes"` (AC3)
+4. `ChatMotionTests > "Notice_SlidesInWithPulse"` (AC4)
+5. `ChatMotionTests > "UnreadBadge_Pops"` (AC5)
+6. `ChatMotionTests > "HistoryLoad_OneFade"` (AC6)
+7. `ChatMotionTests > "Simplified_AsToday"` (AC7)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 6 and 7 (red).
+2. Tests 2 to 5 (red).
+3. Texts for the pill in German and English; take headless screenshots.
+
+### Out of Scope
+
+- New chat features (reactions, typing indicators)
+
+---
+
+## Package 108: Live status animations
+
+**Goal:** In the animated display speaking, mute, deafen, slots, busy and level states animate continuously and smoothly.
+
+**Dependencies:** Package 99
+
+**Affected files:**
+- `src/OVS.Client/Styles/Motion.axaml` (change)
+- `src/OVS.Client/Views/BusySpinner.axaml` (change): a smoother spinner in animated mode
+- `src/OVS.Client/Views/MainWindow.axaml`, `SettingsView.axaml` (change)
+- `tests/OVS.Tests/Client/LiveMotionTests.cs` (new)
+
+### Context
+
+`Border.ring.speaking` fades its border in 120 ms (`Controls.axaml:200`). Mute and deafen show `PathIcon`s by `IsVisible`. `SlotText` is plain text. The input level meter in the settings follows `InputLevelDb`. The busy flags come from `Pending`.
+
+### Acceptance Criteria
+
+- [ ] AC1: A speaking user's ring glows and breathes softly (a scale of 1.0 to 1.06 with an outer glow, a 900 ms loop) while speaking, and fades out after the speaking stops. Speech heard through a link uses the link colour.
+- [ ] AC2: The mute, deafen and server-mute icons pop in or out (scale plus fade) instead of switching; my own mute button in the bottom bar flips its icon with a short rotation.
+- [ ] AC3: The slot counter (`3/10`) ticks to the new number; a full channel pulses its counter once.
+- [ ] AC4: The input level meter moves smoothly (fast attack, slower release, about 80 ms and 300 ms) instead of stepping; the push-to-talk indicator pulses while sending.
+- [ ] AC5: Busy spinners rotate smoothly, and busy buttons show a shimmer; when the busy state ends, they cross-fade back.
+- [ ] AC6: Idle CPU stays flat: when nobody speaks and nothing is busy, no looping animation runs (the loops start and stop with their states).
+- [ ] AC7: In simplified mode all of this looks as today.
+
+### Tests (TDD)
+
+1. `LiveMotionTests > "Speaking_RingBreathesWhileSpeaking_StopsAfter"` (AC1)
+2. `LiveMotionTests > "MuteIcons_PopInOut"` (AC2)
+3. `LiveMotionTests > "SlotCounter_TicksAndPulsesWhenFull"` (AC3)
+4. `LiveMotionTests > "LevelMeter_AttackRelease"` (AC4)
+5. `LiveMotionTests > "Busy_ShimmerCrossFadesBack"` (AC5)
+6. `LiveMotionTests > "Idle_NoRunningLoops"` (AC6): count the running animations on an idle connected view = 0.
+7. `LiveMotionTests > "Simplified_AsToday"` (AC7)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 6 and 7 (red): the speaking ring.
+2. Tests 2 to 5 (red).
+3. Headless screenshots of a speaking row.
+
+### Out of Scope
+
+- Audio-related logic (only the display changes)
+
+---
+
+## Package 109: Every action animated
+
+**Goal:** A walk-through test proves that every user action has its animation in the animated display, none in the simplified one, and that load stays bounded.
+
+**Dependencies:** Packages 100 to 108
+
+**Affected files:**
+- `tests/OVS.Tests/Client/MotionCoverageTests.cs` (new)
+- `src/OVS.Client/Views/Motion.cs` (change): a test hook that counts the animations started per action
+- any view or style file where the walk-through finds a gap
+
+### Context
+
+Packages 100 to 108 each cover one area. The user asked for every action in the app to animate, so one catch-all check is needed, similar to `EveryWaitingAction_VisibleWithin400ms` from Package 98.
+
+### Acceptance Criteria
+
+- [ ] AC1: A list of every user action in the client exists in the test, including:
+  - connect, disconnect, join channel, switch channel
+  - create, edit, delete and move a channel
+  - create, delete and reorder groups
+  - ban, unban, kick, move and mute a user
+  - send a chat message, switch tabs
+  - open and close Settings and Administration
+  - open and close every dialog, menu and dropdown
+  - toggle mute and deafen
+  - add and remove bookmarks
+  - create and restore backups, upload a logo, link channels
+  - every settings control
+- [ ] AC2: In animated mode, each action in the list starts at least one animation (counted by the hook) and ends in the same final state as in simplified mode.
+- [ ] AC3: In simplified mode none of the new animations start for any action, and `Simplified_LooksLikeBefore` stays green.
+- [ ] AC4: Load: 50 users joining and 50 leaving within one second ends in a correct tree within `Motion.Slow` + 8 × 30 ms after the last change; no animation is queued beyond that.
+- [ ] AC5: A manual check (outside the tests, a 2 minute session at 1100 px and at 360 px) feels smooth, with no stutter on a mid-range laptop; findings go into the package notes.
+
+### Tests (TDD)
+
+1. `MotionCoverageTests > "EveryAction_AnimatesInAnimatedMode"` (AC1, AC2)
+2. `MotionCoverageTests > "EveryAction_NoNewAnimationInSimplifiedMode"` (AC3)
+3. `MotionCoverageTests > "JoinLeaveStorm_EndsBounded"` (AC4)
+4. Manual check (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): fill the gaps it finds.
+2. Tests 2 and 3 (red).
+3. The manual check; record the result.
+
+### Out of Scope
+
+- New animations beyond closing gaps
