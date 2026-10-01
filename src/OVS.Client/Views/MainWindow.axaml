@@ -214,21 +214,21 @@
                         <v:BusySpinner DockPanel.Dock="Right" Margin="8,0,0,0" IsVisible="{Binding IsBusy}" />
                         <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->
                         <Panel DockPanel.Dock="Left" Margin="0,0,8,0">
-                          <PathIcon Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
-                          <PathIcon Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
+                          <PathIcon v:LiveMotion.Pop="True" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
+                          <PathIcon v:LiveMotion.Pop="True" Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
                                     ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" />
                         </Panel>
                         <!-- Package 67: left-aligned, so home and link icon follow the name and the name trims when space runs out -->
                         <DockPanel HorizontalAlignment="Left">
                           <!-- Package 93: the lock names who may join -->
-                          <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.LockClosed}" IsVisible="{Binding IsLocked}"
+                          <PathIcon v:LiveMotion.Pop="True" DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.LockClosed}" IsVisible="{Binding IsLocked}"
                                     ToolTip.Tip="{Binding LockText}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                          <PathIcon DockPanel.Dock="Right" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsLinked}"
+                          <PathIcon v:LiveMotion.Pop="True" DockPanel.Dock="Right" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsLinked}"
                                     ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}"
                                     Margin="6,0,0,0" VerticalAlignment="Center" />
                           <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
                                     ToolTip.Tip="{x:Static l:Strings.Ui_DefaultChannel}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                          <TextBlock Classes="channelName" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"
+                          <TextBlock Classes="channelName" Text="{Binding Name}" v:LiveMotion.Fade="True" FontWeight="SemiBold" VerticalAlignment="Center"
                                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}" />
                         </DockPanel>
                       </DockPanel>
@@ -332,7 +332,8 @@
             <v:LogoMark Width="80" Height="80" HorizontalAlignment="Center" Classes.connecting="{Binding IsConnecting}" />
             <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
             <TextBlock x:Name="StatusText" Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
-            <ProgressBar Classes="connect" IsIndeterminate="True" IsVisible="{Binding IsConnecting}" Width="220" />
+            <!-- Package 109 (A117): indeterminate only while connecting, so its loop stops with the connecting -->
+            <ProgressBar Classes="connect" IsIndeterminate="{Binding IsConnecting}" IsVisible="{Binding IsConnecting}" Width="220" />
             <Button Classes="accent" HorizontalAlignment="Center" Click="OnConnectClick" IsEnabled="{Binding !IsConnecting}"
                     Margin="0,4,0,0">
               <StackPanel Orientation="Horizontal" Spacing="8">

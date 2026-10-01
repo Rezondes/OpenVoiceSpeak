@@ -813,7 +813,12 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         if (SelectedGroup is not { CanDelete: true } g) return;
         if (g.Id is { } id) await server.SendAsync(new DeleteGroup(id));
-        else Groups.Remove(g);
+        else
+        {
+            // Package 109: a new group dropped before it was saved folds away like a deleted one
+            SelectedGroup = null;
+            CollectionSync.Sync(Groups, Groups.Live().Where(other => other != g).ToList(), server.Leave);
+        }
     }
 
     public bool HasLimits => loadedLimits is not null;

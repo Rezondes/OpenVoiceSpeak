@@ -885,7 +885,8 @@
                       <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_LogNoLines}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                  TextWrapping="Wrap" IsVisible="{Binding !HasLines}" />
                       <!-- long lines wrap; the selected line is the one a search hit opened -->
-                      <ListBox x:Name="LogLines" Classes="logLines" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" Background="Transparent">
+                      <!-- Package 109: a page of lines that arrives fades in -->
+                      <ListBox v:ItemMotion.Enter="True" x:Name="LogLines" Classes="logLines" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" Background="Transparent">
                         <ListBox.ItemTemplate>
                           <DataTemplate x:DataType="vm:LogLineViewModel">
                             <DockPanel>

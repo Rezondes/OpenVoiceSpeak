@@ -61,7 +61,7 @@ public static class FlyGhost
             }
         }
         Frame(default);
-        return done.Task;
+        return Motion.Count(done.Task);
     }
 
     /// <summary>A picture of a row flying to its new place; the picture is let go once it has landed.</summary>

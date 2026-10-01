@@ -1435,4 +1435,37 @@ public class AdminViewModelTests
         Assert.True(CollectionSync.IsLeaving(view.Bans, view.Bans.Single(b => b.Nickname == "Xaver")));
         Assert.False(view.HasNoBanMatches);
     }
+
+    /// <summary>Package 109: a new group dropped before it was saved folds away like a deleted one.</summary>
+    [Fact]
+    public void UnsavedGroup_Dropped_FoldsAway()
+    {
+        var (view, server, _) = Create(P.GroupsView | P.GroupsCreate | P.Speak);
+        server.Post = a => a();
+        server.Leave.Delay = TimeSpan.FromMilliseconds(220);
+        view.NewGroupCommand.Execute(null);
+        var fresh = view.SelectedGroup!;
+        Assert.Null(fresh.Id);
+        view.DeleteGroupCommand.Execute(null);
+        Assert.Null(view.SelectedGroup);
+        Assert.Contains(fresh, view.Groups); // still there, folding away
+        Assert.True(CollectionSync.IsLeaving(view.Groups, fresh));
+        Assert.DoesNotContain(fresh, view.Groups.Live());
+
+        server.Apply(new GroupsChanged(server.Mirror.Groups.ToList())); // a rebuild meanwhile does not bring it back
+        Assert.DoesNotContain(fresh, view.Groups.Live());
+        ((ManualTimeProvider)server.Time).Advance(TimeSpan.FromMilliseconds(220));
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (view.Groups.Contains(fresh) && watch.ElapsedMilliseconds < 5000) Thread.Sleep(10); // the removal runs on the pool
+        Assert.DoesNotContain(fresh, view.Groups);
+        Assert.Equal(["Gast", "Moderator", "Admin"], view.Groups.Select(g => g.Name));
+
+        // no delay (the simplified display): gone at once
+        server.Leave.Delay = TimeSpan.Zero;
+        view.NewGroupCommand.Execute(null);
+        var second = view.SelectedGroup!;
+        view.DeleteGroupCommand.Execute(null);
+        Assert.DoesNotContain(second, view.Groups);
+        Assert.Null(view.SelectedGroup);
+    }
 }

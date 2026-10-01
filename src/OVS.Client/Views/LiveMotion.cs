@@ -28,6 +28,9 @@ public static class LiveMotion
     /// <summary>A counter ("3/10" or "3") that ticks to its new number and pulses once when it gets full.</summary>
     public static readonly AttachedProperty<bool> TickProperty = AvaloniaProperty.RegisterAttached<TextBlock, bool>("Tick", typeof(LiveMotion));
 
+    /// <summary>Package 109: a text that fades in anew when it changes (a renamed channel).</summary>
+    public static readonly AttachedProperty<bool> FadeProperty = AvaloniaProperty.RegisterAttached<TextBlock, bool>("Fade", typeof(LiveMotion));
+
     /// <summary>
     /// The level a meter shows: at once in the simplified display, followed smoothly in the animated one. NaN (the
     /// default, also while the meter has no model) keeps what it shows.
@@ -40,6 +43,8 @@ public static class LiveMotion
     public static void SetTurn(Control control, bool value) => control.SetValue(TurnProperty, value);
     public static bool GetTick(TextBlock text) => text.GetValue(TickProperty);
     public static void SetTick(TextBlock text, bool value) => text.SetValue(TickProperty, value);
+    public static bool GetFade(TextBlock text) => text.GetValue(FadeProperty);
+    public static void SetFade(TextBlock text, bool value) => text.SetValue(FadeProperty, value);
     public static double GetLevel(RangeBase meter) => meter.GetValue(LevelProperty);
     public static void SetLevel(RangeBase meter, double value) => meter.SetValue(LevelProperty, value);
 
@@ -56,16 +61,22 @@ public static class LiveMotion
             bool turn = GetTurn(control);
             if (!turn && !GetPop(control) || !Motion.IsAnimated || !control.IsAttachedToVisualTree()) return; // not while a row is built
             bool shown = e.GetNewValue<bool>();
-            if (turn && shown) Run(control, Motion.Normal, Motion.Pop, (Visual.OpacityProperty, 0d, 1d), (RotateTransform.AngleProperty, TurnFrom, 0d));
-            else if (!turn && shown) Run(control, Motion.Normal, Motion.Pop, (Visual.OpacityProperty, 0d, 1d),
+            if (turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d), (RotateTransform.AngleProperty, TurnFrom, 0d));
+            else if (!turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d),
                 (ScaleTransform.ScaleXProperty, PopFrom, 1d), (ScaleTransform.ScaleYProperty, PopFrom, 1d));
-            else if (!turn) PopOut(control);
+            else if (!turn)
+            {
+                Replace(control); // hidden: its pop-in ends
+                PopOut(control);
+            }
         });
         TextBlock.TextProperty.Changed.AddClassHandler<TextBlock>((text, e) =>
         {
             if (GetTick(text) && Motion.IsAnimated && text.IsAttachedToVisualTree()
                 && Count(e.GetOldValue<string?>()) is { } before && Count(e.GetNewValue<string?>()) is { } after)
                 Tick(text, before, after);
+            else if (GetFade(text) && Motion.IsAnimated && text.IsAttachedToVisualTree() && e.GetOldValue<string?>() is not null)
+                FadeIn(text);
         });
         LevelProperty.Changed.AddClassHandler<RangeBase>((meter, e) => Follow(meter, e.GetNewValue<double>()));
     }
@@ -77,9 +88,10 @@ public static class LiveMotion
     }
 
     static Task Run(Animatable target, TimeSpan duration, Easing easing, params (AvaloniaProperty Property, double From, double To)[] values) =>
-        Run(target, duration, easing, FillMode.Backward, values);
+        Run(target, duration, easing, FillMode.Backward, default, values);
 
-    static Task Run(Animatable target, TimeSpan duration, Easing easing, FillMode fill, params (AvaloniaProperty Property, double From, double To)[] values)
+    static Task Run(Animatable target, TimeSpan duration, Easing easing, FillMode fill, CancellationToken cancel,
+        params (AvaloniaProperty Property, double From, double To)[] values)
     {
         var start = new KeyFrame { Cue = new Cue(0) };
         var end = new KeyFrame { Cue = new Cue(1) };
@@ -88,7 +100,21 @@ public static class LiveMotion
             start.Setters.Add(new Setter(property, from));
             end.Setters.Add(new Setter(property, to));
         }
-        return new Animation { Duration = duration, Easing = easing, FillMode = fill, Children = { start, end } }.Play(target);
+        return new Animation { Duration = duration, Easing = easing, FillMode = fill, Children = { start, end } }.Play(target, cancel);
+    }
+
+    static readonly ConditionalWeakTable<Control, CancellationTokenSource> moving = [];
+
+    /// <summary>
+    /// Package 109: a control's new state ends its last movement at once (a counter that changes often, an icon that
+    /// shows and hides quickly); otherwise the movements would stack up and end one per frame long after the last change.
+    /// </summary>
+    static CancellationToken Replace(Control control)
+    {
+        if (moving.TryGetValue(control, out var last)) last.Cancel();
+        var next = new CancellationTokenSource();
+        moving.AddOrUpdate(control, next);
+        return next.Token;
     }
 
     /// <summary>
@@ -114,7 +140,7 @@ public static class LiveMotion
         Canvas.SetTop(ghost, at.Y);
         overlay.Children.Add(ghost);
         // forward: the copy stays faded until it is taken away
-        await Run(ghost, Motion.Normal, Motion.Ease, FillMode.Forward, (Visual.OpacityProperty, 1d, 0d),
+        await Run(ghost, Motion.Normal, Motion.Ease, FillMode.Forward, default, (Visual.OpacityProperty, 1d, 0d),
             (ScaleTransform.ScaleXProperty, 1d, PopFrom), (ScaleTransform.ScaleYProperty, 1d, PopFrom));
         overlay.Children.Remove(ghost);
     }
@@ -133,13 +159,14 @@ public static class LiveMotion
     static void Tick(TextBlock text, (int Count, int Max) before, (int Count, int Max) after)
     {
         if (after == before) return;
+        var cancel = Replace(text);
         // a higher number comes up from below, a lower one down from above
-        Run(text, Motion.Normal, Motion.Ease, (TranslateTransform.YProperty, after.Count >= before.Count ? TickBy : -TickBy, 0d), (Visual.OpacityProperty, 0d, 1d));
+        Run(text, Motion.Normal, Motion.Ease, FillMode.Backward, cancel, (TranslateTransform.YProperty, after.Count >= before.Count ? TickBy : -TickBy, 0d), (Visual.OpacityProperty, 0d, 1d));
         if (!IsFull(after) || IsFull(before)) return;
         var pulse = new Animation { Duration = Motion.Slow, Easing = Motion.Ease };
         foreach (var (cue, scale) in new[] { (0d, 1d), (0.4, FullPulse), (1d, 1d) })
             pulse.Children.Add(new KeyFrame { Cue = new Cue(cue), Setters = { new Setter(ScaleTransform.ScaleXProperty, scale), new Setter(ScaleTransform.ScaleYProperty, scale) } });
-        _ = pulse.Play(text);
+        _ = pulse.Play(text, cancel);
     }
 
     sealed class Follower

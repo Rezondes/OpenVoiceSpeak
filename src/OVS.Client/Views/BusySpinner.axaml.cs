@@ -17,7 +17,7 @@ public partial class BusySpinner : UserControl
     static BusySpinner() => IsVisibleProperty.Changed.AddClassHandler<Visual>((visual, _) =>
     {
         if (!visual.IsAttachedToVisualTree()) return;
-        foreach (var spinner in visual.GetSelfAndVisualDescendants().OfType<BusySpinner>().ToList()) spinner.Update(); // updating may change the tree
+        foreach (var spinner in visual.GetSelfAndVisualDescendants().OfType<BusySpinner>().ToList()) spinner.Update(fade: true); // updating may change the tree
     });
 
     public BusySpinner() => InitializeComponent();
@@ -25,22 +25,26 @@ public partial class BusySpinner : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        Update();
+        Update(fade: false); // built or rebuilt (a row, a tab's content): it just shows (A117)
     }
 
-    void Update()
+    /// <param name="fade">
+    /// Package 109: it or an area around it was shown: a spinner that comes into view this way fades in, also with the area
+    /// that shows the wait (the logo waiting for the server, a card's action); not when it is built or rebuilt.
+    /// </param>
+    void Update(bool fade)
     {
         bool turning = this.GetSelfAndVisualAncestors().All(v => v.IsVisible);
+        if (fade && turning && !Classes.Contains(TurningClass)) LiveMotion.FadeIn(this);
         Classes.Set(TurningClass, turning);
         this.FindAncestorOfType<Button>()?.Classes.Set(BusyClass, turning);
     }
 
-    /// <summary>Package 108: the spinner fades in; when it goes, the button's content fades back in its place.</summary>
+    /// <summary>Package 108: when the spinner goes, the button's content fades back in its place (it fades in in <see cref="Update"/>).</summary>
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (change.Property != IsVisibleProperty || !this.IsAttachedToVisualTree()) return;
-        if (change.GetNewValue<bool>()) LiveMotion.FadeIn(this);
-        else LiveMotion.FadeIn(this.FindAncestorOfType<Button>()?.Presenter?.Child, 0.3);
+        if (!change.GetNewValue<bool>()) LiveMotion.FadeIn(this.FindAncestorOfType<Button>()?.Presenter?.Child, 0.3);
     }
 }

@@ -366,8 +366,11 @@ public sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = 
 public sealed record LogSegment(string Text, bool IsMatch);
 
 /// <summary>One line of the opened page; IsTarget for the line a search hit opened.</summary>
-public sealed class LogLineViewModel
+public sealed class LogLineViewModel : IMotionKey
 {
+    /// <summary>Package 109: a line stays the same line while the filter changes; another page or file brings new ones.</summary>
+    public object MotionKey => (Number, Text);
+
     public LogLineViewModel(int number, string text, string filter, bool isTarget)
     {
         Number = number;

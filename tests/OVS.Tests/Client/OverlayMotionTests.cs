@@ -171,8 +171,55 @@ public sealed class OverlayMotionTests : IDisposable
         Assert.True((child.RenderTransform?.Value.M32 ?? 0) < 0, "slides down out of the box");
         Settle(350);
         Assert.Equal(1, child.Opacity, 2);
+
+        // Package 109: closed at once, a picture of it fades where it was
         combo.IsDropDownOpen = false;
+        Frame();
+        Assert.False(popup.IsOpen);
+        var overlay = OverlayLayer.GetOverlayLayer(window)!;
+        var ghost = Assert.Single(overlay.Children.OfType<Image>(), i => i.Classes.Contains(Motion.PopupGhostClass));
+        using (var png = new MemoryStream())
+        {
+            ((Avalonia.Media.Imaging.RenderTargetBitmap)ghost.Source!).Save(png);
+            png.Position = 0;
+            using var picture = SkiaSharp.SKBitmap.Decode(png);
+            Assert.True(picture.Pixels.Count(p => p.Alpha > 0) > picture.Pixels.Length / 4, "a picture of the list, not an empty frame");
+        }
+        double faded = 1;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (ghost.Parent is not null && watch.ElapsedMilliseconds < 500)
+        {
+            faded = Math.Min(faded, ghost.Opacity);
+            Frame();
+            Thread.Sleep(1);
+        }
+        Assert.True(faded < 0.9, $"it fades ({faded})");
+        Assert.Empty(overlay.Children.OfType<Image>()); // and goes
+
+        Motion.Apply(window, DisplayMode.Simplified);
+        combo.IsDropDownOpen = true;
+        Settle(100);
+        combo.IsDropDownOpen = false;
+        Frame();
+        Assert.Empty(overlay.Children.OfType<Image>()); // the simplified display takes it away at once
         window.Close();
+    }
+
+    /// <summary>Package 109: a menu that closes for a dialog (an entry that asks) leaves no picture above the dialog.</summary>
+    [AvaloniaFact]
+    public void PopupClosedForADialog_NoPictureOverIt()
+    {
+        var main = Open(out _);
+        var row = main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row") && b.ContextMenu is not null);
+        row.ContextMenu!.Open(row);
+        Settle(300);
+        row.ContextMenu.Close();
+        _ = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
+        Settle(200);
+        Assert.True(main.Overlay.IsOpen);
+        Assert.DoesNotContain(OverlayLayer.GetOverlayLayer(main)!.Children.OfType<Image>(), i => i.Classes.Contains(Motion.PopupGhostClass));
+        main.Overlay.Close();
+        main.Close();
     }
 
     [AvaloniaFact]

@@ -128,9 +128,10 @@ public sealed partial class ReorderDrag
     }
 
     /// <summary>A picture of the control as it looks now (also the flying row of Package 103).</summary>
-    internal static RenderTargetBitmap Snapshot(Control control)
+    /// <param name="scale">For a control no longer shown (a closed popup): the scaling of the window it is drawn in.</param>
+    internal static RenderTargetBitmap Snapshot(Control control, double? scale = null)
     {
-        double scaling = TopLevel.GetTopLevel(control)?.RenderScaling ?? 1;
+        double scaling = scale ?? TopLevel.GetTopLevel(control)?.RenderScaling ?? 1;
         var size = new PixelSize(Math.Max(1, (int)Math.Ceiling(control.Bounds.Width * scaling)), Math.Max(1, (int)Math.Ceiling(control.Bounds.Height * scaling)));
         var bitmap = new RenderTargetBitmap(size, new Vector(96 * scaling, 96 * scaling));
         // Subpixel text on a transparent bitmap gets dark fringes; grayscale antialiasing stays clean on any background.

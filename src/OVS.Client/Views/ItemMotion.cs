@@ -78,7 +78,19 @@ public static class ItemMotion
 
     /// <summary>Package 102: the lists showing a collection, to find the row of an entry that starts leaving.</summary>
     static readonly ConditionalWeakTable<object, List<WeakReference<ItemsControl>>> showing = [];
-    static readonly ConditionalWeakTable<Control, CancellationTokenSource> folding = [], gliding = [];
+    static readonly ConditionalWeakTable<Control, CancellationTokenSource> folding = [], gliding = [], entering = [];
+
+    /// <summary>
+    /// Package 109: a row that starts leaving (or is handed to another entry) while it still slides in ends its entry at
+    /// once; otherwise the entry would run on in a row that is gone and end long after the change (AC4: nothing queued).
+    /// </summary>
+    static void EndEntry(Control container)
+    {
+        if (!entering.TryGetValue(container, out var cancel)) return;
+        cancel.Cancel();
+        entering.Remove(container);
+        container.Classes.Set("entering", false);
+    }
 
     static ItemMotion()
     {
@@ -178,6 +190,7 @@ public static class ItemMotion
     static void Leave(Control container)
     {
         Stay(container);
+        EndEntry(container);
         container.IsHitTestVisible = false;
         container.Classes.Set("leaving", true);
         if (!Motion.IsAnimated) return;
@@ -236,6 +249,7 @@ public static class ItemMotion
     static void Reset(Control container)
     {
         Stay(container);
+        EndEntry(container);
         if (gliding.TryGetValue(container, out var cancel))
         {
             cancel.Cancel();
@@ -463,6 +477,8 @@ public static class ItemMotion
         container.Measure(new Size(container.Parent is Layoutable parent && parent.Bounds.Width > 0 ? parent.Bounds.Width : double.PositiveInfinity,
             double.PositiveInfinity));
         double height = container.DesiredSize.Height;
+        var cancel = new CancellationTokenSource();
+        entering.AddOrUpdate(container, cancel);
         await new Animation
         {
             Duration = Motion.Normal,
@@ -492,9 +508,12 @@ public static class ItemMotion
                     },
                 },
             },
-        }.Play(container);
-        container.ClearValue(Visual.ClipToBoundsProperty);
+        }.Play(container, cancel.Token);
+        // ended early: EndEntry cleared the mark already, and a recycled row may carry a new entry's mark by now
+        if (cancel.IsCancellationRequested) return; // it leaves now (or holds another entry): the fold takes over
         container.Classes.Set("entering", false);
+        entering.Remove(container);
+        container.ClearValue(Visual.ClipToBoundsProperty);
         if (flying) return; // Land shows it and lets it flash
         container.ClearValue(Visual.OpacityProperty);
         if (flash) await Flash(container);
