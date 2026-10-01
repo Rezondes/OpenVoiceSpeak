@@ -6396,12 +6396,12 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every dialog opens with a scrim fade plus a card pop, and closes in reverse; focus and the Enter and Esc handling work as before, already during the animation.
-- [ ] AC2: A second dialog waiting its turn starts only after the first has finished closing; there are never two cards at once.
-- [ ] AC3: A refused input in a dialog (server error, wrong password) shakes the card once.
-- [ ] AC4: Context menus, flyouts, dropdowns and tooltips fade and slide from their anchor.
-- [ ] AC5: In compact width the drawer slides in and out with its scrim; a click beside it closes it, animated.
-- [ ] AC6: In simplified mode everything appears instantly; all existing dialog tests stay green in both modes.
+- [x] AC1: Every dialog opens with a scrim fade plus a card pop, and closes in reverse; focus and the Enter and Esc handling work as before, already during the animation. (closing counts at once: the answer, keys and clicks; only the picture plays back)
+- [x] AC2: A second dialog waiting its turn starts only after the first has finished closing; there are never two cards at once. (a dialog asked for while the last one folds away ends that fold at once instead of waiting)
+- [x] AC3: A refused input in a dialog (server error, wrong password) shakes the card once.
+- [x] AC4: Context menus, flyouts, dropdowns and tooltips fade and slide from their anchor. (one handler on every popup; they close at once, as Avalonia takes popups away)
+- [x] AC5: In compact width the drawer slides in and out with its scrim; a click beside it closes it, animated. (closed counts at once for keys and clicks; the test lives in `OverlayMotionTests`, and the layout tests wait for the slide)
+- [x] AC6: In simplified mode everything appears instantly; all existing dialog tests stay green in both modes.
 
 ### Tests (TDD)
 

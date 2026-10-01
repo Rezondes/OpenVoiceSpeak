@@ -212,6 +212,10 @@ public static class ItemMotion
         {
             cancel.Cancel();
             folding.Remove(container);
+            // a finished fold keeps its last values (faded, no height, moved left)
+            container.ClearValue(Visual.OpacityProperty);
+            container.ClearValue(Layoutable.MaxHeightProperty);
+            container.ClearValue(Visual.RenderTransformProperty);
         }
         container.ClearValue(InputElement.IsHitTestVisibleProperty);
         container.ClearValue(Visual.ClipToBoundsProperty);

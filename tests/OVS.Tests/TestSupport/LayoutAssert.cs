@@ -54,6 +54,15 @@ public static class LayoutAssert
         return X(visual, top) is { } x ? (x, x + width) : null;
     }
 
+    /// <summary>Package 105: the top edge from the layout, relative to an ancestor (null when it is none).</summary>
+    public static double? Y(Visual visual, Visual ancestor)
+    {
+        double y = 0;
+        Visual? at = visual;
+        for (; at is not null && at != ancestor; at = at.GetVisualParent()) y += at.Bounds.Y;
+        return at == ancestor ? y : null;
+    }
+
     /// <summary>Package 104: the left edge from the layout, relative to an ancestor (null when it is none).</summary>
     public static double? X(Visual visual, Visual ancestor)
     {

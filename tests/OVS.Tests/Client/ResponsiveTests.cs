@@ -50,6 +50,19 @@ public sealed class ResponsiveTests : IDisposable
     }
 
     static Border Sidebar(MainWindow main) => main.FindControl<Border>("Sidebar")!;
+
+    /// <summary>Package 105: closing counts at once, the drawer only slides away for a moment (in the animated display).</summary>
+    static void AssertDrawerClosed(MainWindow main)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (Sidebar(main).IsEffectivelyVisible && watch.ElapsedMilliseconds < 1000)
+        {
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1);
+        }
+        Assert.False(Sidebar(main).IsEffectivelyVisible);
+    }
     static ColumnDefinition SidebarColumn(MainWindow main) => ((Grid)Sidebar(main).Parent!).ColumnDefinitions[0];
 
     /// <summary>The header button whose text (or automation name) is the given resource text.</summary>
@@ -143,9 +156,16 @@ public sealed class ResponsiveTests : IDisposable
         Assert.True(Sidebar(main).IsEffectivelyVisible);
         Assert.True(scrim.IsEffectivelyVisible);
         Assert.True(Sidebar(main).Bounds.Width <= 312, $"{Sidebar(main).Bounds.Width}");
-        Assert.Equal(0, Sidebar(main).TranslatePoint(default, main)!.Value.X - main.GetVisualDescendants().OfType<Grid>().First().TranslatePoint(default, main)!.Value.X, 1);
+        Assert.Equal(0, LayoutAssert.X(Sidebar(main), main)!.Value - LayoutAssert.X(main.GetVisualDescendants().OfType<Grid>().First(), main)!.Value, 1); // where it ends up, not mid-slide
 
-        // double click on Raid joins it and closes the drawer
+        // double click on Raid joins it and closes the drawer (once it has slid in)
+        var slid = System.Diagnostics.Stopwatch.StartNew();
+        while (slid.ElapsedMilliseconds < 350)
+        {
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1);
+        }
         var raid = main.GetVisualDescendants().OfType<Border>()
             .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel { Name: "Raid" });
         var point = raid.TranslatePoint(new Point(raid.Bounds.Width / 2, raid.Bounds.Height / 2), main)!.Value;
@@ -154,12 +174,12 @@ public sealed class ResponsiveTests : IDisposable
         main.MouseDown(point, MouseButton.Left);
         main.MouseUp(point, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
-        Assert.False(Sidebar(main).IsEffectivelyVisible);
+        AssertDrawerClosed(main);
 
         Click(main, MenuButton(main));
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
-        Assert.False(Sidebar(main).IsEffectivelyVisible);
+        AssertDrawerClosed(main);
         Assert.True(vm.IsHomePage);
 
         Click(main, MenuButton(main));
@@ -167,12 +187,12 @@ public sealed class ResponsiveTests : IDisposable
         main.MouseDown(outside, MouseButton.Left);
         main.MouseUp(outside, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
-        Assert.False(Sidebar(main).IsEffectivelyVisible);
+        AssertDrawerClosed(main);
 
         Click(main, MenuButton(main));
         vm.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        Assert.False(Sidebar(main).IsEffectivelyVisible);
+        AssertDrawerClosed(main);
         vm.ClosePage();
 
         // wide again: the sidebar is back in its column
@@ -250,7 +270,7 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Contains(Sidebar(main).GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == "Gilde");
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
-        Assert.False(Sidebar(main).IsEffectivelyVisible);
+        AssertDrawerClosed(main);
 
         Resize(main, 1100);
         Assert.DoesNotContain("compact", main.Classes);
@@ -652,7 +672,7 @@ public sealed class ResponsiveTests : IDisposable
     /// <summary>At most as wide as before, at least 16 px from every window edge.</summary>
     static void CardInside(MainWindow main, Border card, double maxWidth)
     {
-        var at = card.TranslatePoint(default, main)!.Value;
+        var at = new Point(LayoutAssert.X(card, main)!.Value, LayoutAssert.Y(card, main)!.Value); // Package 105: not where the pop draws it
         Assert.True(card.Bounds.Width <= maxWidth + 0.5, $"Karte {card.Bounds.Width}");
         Assert.True(at.X >= 16 - 0.5 && at.X + card.Bounds.Width <= main.Bounds.Width - 16 + 0.5, $"Karte bei {at.X}..{at.X + card.Bounds.Width}, Fenster {main.Bounds.Width}");
         Assert.True(at.Y >= 16 - 0.5 && at.Y + card.Bounds.Height <= main.Bounds.Height - 16 + 0.5, $"Karte bei y {at.Y}..{at.Y + card.Bounds.Height}, Fenster {main.Bounds.Height}");

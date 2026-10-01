@@ -509,4 +509,22 @@ public sealed class ItemMotionTests : IDisposable
         Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
         main.Close();
     }
+
+    /// <summary>A row back after its fold has finished is whole again (a finished fold keeps its last values).</summary>
+    [AvaloniaFact]
+    public void BackAfterTheFoldFinished_IsWhole()
+    {
+        var rows = new ObservableCollection<Row> { new("a"), new("b") };
+        var (_, list) = Host(rows);
+        var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = TimeSpan.FromSeconds(5) }; // stays long after its fold
+        CollectionSync.Sync(rows, [new Row("a", 1)], leave);
+        Settle(400); // folded
+        Assert.Equal(0, Container(list, "b").Opacity, 2);
+        CollectionSync.Sync(rows, [new Row("a", 2), new Row("b", 2)], leave);
+        Settle(100);
+        var b = Container(list, "b");
+        Assert.Equal(1, b.Opacity, 2);
+        Assert.Equal(30, b.Bounds.Height, 1);
+        Assert.Equal(0, OffsetX(b));
+    }
 }

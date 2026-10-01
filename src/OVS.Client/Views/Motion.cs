@@ -1,5 +1,10 @@
+using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Media;
+using Avalonia.Styling;
 using OVS.Client.Settings;
 
 namespace OVS.Client.Views;
@@ -22,6 +27,30 @@ public static class Motion
 
     /// <summary>The usual curve; <see cref="Pop"/> overshoots a little for things that pop in.</summary>
     public static readonly Easing Ease = new CubicEaseOut(), Pop = new BackEaseOut();
+
+    /// <summary>Package 105: how far a popup slides from its anchor while it fades in.</summary>
+    public const double PopupSlide = 4;
+
+    /// <summary>
+    /// Package 105: every popup (context menus, flyouts, dropdowns, tooltips) fades in and slides out of its anchor:
+    /// down below it, up above it. They close at once, as Avalonia takes them away.
+    /// </summary>
+    static Motion() => Popup.IsOpenProperty.Changed.AddClassHandler<Popup>((popup, e) =>
+    {
+        if (!IsAnimated || !e.GetNewValue<bool>() || popup.Child is not { } child) return;
+        double from = popup.Placement.ToString().StartsWith("Top", StringComparison.Ordinal) ? PopupSlide : -PopupSlide;
+        _ = new Animation
+        {
+            Duration = Normal,
+            Easing = Ease,
+            FillMode = FillMode.Backward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d), new Setter(TranslateTransform.YProperty, from) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d), new Setter(TranslateTransform.YProperty, 0d) } },
+            },
+        }.RunAsync(child);
+    });
 
     /// <summary>The display the user chose; tests set it directly.</summary>
     public static bool IsAnimated { get; set; } = true;

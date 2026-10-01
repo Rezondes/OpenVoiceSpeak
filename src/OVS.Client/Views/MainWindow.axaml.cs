@@ -209,8 +209,70 @@ public partial class MainWindow : Window
 
     void SetDrawer(bool open)
     {
+        bool was = drawerOpen;
         drawerOpen = open && Classes.Contains("compact");
-        Classes.Set("drawer", drawerOpen);
+        if (drawerOpen == was || !Motion.IsAnimated || !Classes.Contains("compact"))
+        {
+            drawerCancel?.Cancel();
+            StillDrawer();
+            Classes.Set("drawer", drawerOpen);
+            return;
+        }
+        _ = SlideDrawer(drawerOpen);
+    }
+
+    CancellationTokenSource? drawerCancel;
+
+    /// <summary>
+    /// Package 105: the drawer slides in from the left with its scrim; closing slides it out. Closed counts at once
+    /// (keys, clicks); the sidebar only stays visible until it has slid away.
+    /// </summary>
+    async Task SlideDrawer(bool open)
+    {
+        drawerCancel?.Cancel();
+        var cancel = drawerCancel = new CancellationTokenSource();
+        if (open) Classes.Set("drawer", true);
+        Sidebar.IsHitTestVisible = open;
+        UpdateLayout();
+        double width = Sidebar.Bounds.Width;
+        double from = open ? -width : 0, to = open ? 0 : -width;
+        var slide = new Avalonia.Animation.Animation
+        {
+            Duration = Motion.Normal,
+            Easing = Motion.Ease,
+            FillMode = open ? Avalonia.Animation.FillMode.Backward : Avalonia.Animation.FillMode.Forward,
+            Children =
+            {
+                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, from) } },
+                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, to) } },
+            },
+        }.RunAsync(Sidebar, cancel.Token);
+        var dim = new Avalonia.Animation.Animation
+        {
+            Duration = Motion.Normal,
+            Easing = Motion.Ease,
+            FillMode = open ? Avalonia.Animation.FillMode.Backward : Avalonia.Animation.FillMode.Forward,
+            Children =
+            {
+                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(OpacityProperty, open ? 0d : 1d) } },
+                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(OpacityProperty, open ? 1d : 0d) } },
+            },
+        }.RunAsync(DrawerScrim, cancel.Token);
+        await Task.WhenAll(slide, dim);
+        if (cancel.IsCancellationRequested) return;
+        if (!open) Classes.Set("drawer", false);
+        StillDrawer();
+    }
+
+    /// <summary>
+    /// The drawer as it rests: a finished slide-out keeps its last values (moved away, faded), so they go once it is
+    /// hidden; the next slide starts from its place.
+    /// </summary>
+    void StillDrawer()
+    {
+        Sidebar.ClearValue(IsHitTestVisibleProperty);
+        Sidebar.ClearValue(RenderTransformProperty);
+        DrawerScrim.ClearValue(OpacityProperty);
     }
 
     /// <summary>
@@ -236,7 +298,7 @@ public partial class MainWindow : Window
         if (!Sidebar.Width.Equals(drawer)) Sidebar.Width = drawer;
 
         Responsive.Apply(this, width, compact ? width : width - SidebarSplitter.Width - sidebarSet);
-        if (!compact && drawerOpen) SetDrawer(false);
+        if (!compact && (drawerOpen || Classes.Contains("drawer"))) SetDrawer(false); // also while it still slides away
     }
 
     /// <summary>

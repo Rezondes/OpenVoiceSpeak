@@ -39,7 +39,12 @@ public static class SimpleDialogs
         var closed = new TaskCompletionSource(); // cancelled meanwhile: nobody waits for the answer any more
         async void Accept()
         {
-            if (sending?.IsRunning == true || accept() is not { } answer) return;
+            if (sending?.IsRunning == true) return;
+            if (accept() is not { } answer)
+            {
+                host.Shake(); // Package 105: something is missing or wrong
+                return;
+            }
             if (submit is null)
             {
                 result = answer;
@@ -70,6 +75,7 @@ public static class SimpleDialogs
             }
             failed.Text = error;
             failed.IsVisible = true;
+            host.Shake(); // Package 105: the server said no
             Avalonia.Threading.Dispatcher.UIThread.Post(() => failed.BringIntoView(), Avalonia.Threading.DispatcherPriority.Background); // below a long form
         }
 
