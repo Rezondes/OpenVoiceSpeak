@@ -69,7 +69,7 @@ public partial class MainWindow : Window
 
     void OnChannelDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if ((sender as Control)?.DataContext is not ChannelViewModel channel) return;
+        if ((sender as Control)?.DataContext is not ChannelViewModel { IsSeparator: false } channel) return; // Package 111: nothing at all
         channel.JoinCommand.Execute(null);
         SetDrawer(false);
     }
@@ -217,7 +217,7 @@ public partial class MainWindow : Window
     void FitSidebar()
     {
         if (sidebarDragged || watchedServer is null || !IsVisible) return;
-        var rows = ChannelItems.GetRealizedContainers().Select(c =>
+        var rows = ChannelItems.GetRealizedContainers().Where(c => c.DataContext is not ChannelViewModel { IsSeparator: true }).Select(c =>
         {
             var texts = c.GetVisualDescendants().OfType<TextBlock>().ToList();
             var name = texts.FirstOrDefault(t => t.Classes.Contains("channelName"));

@@ -180,13 +180,13 @@
                             ToolTip.Tip="{Binding Tooltip}">
                       <Border.ContextMenu>
                         <ContextMenu>
-                          <MenuItem Header="{x:Static l:Strings.Ui_Join}" Command="{Binding JoinCommand}" IsEnabled="{Binding CanJoin}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_Join}" Command="{Binding JoinCommand}" IsEnabled="{Binding CanJoin}" IsVisible="{Binding IsVoice}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.DoorArrowRight}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
                           <MenuItem Header="{x:Static l:Strings.Ui_CreateChannelMenu}" Command="{Binding CreateCommand}" IsVisible="{Binding CanCreate}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Add}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="{x:Static l:Strings.Ui_EditMenu}" Command="{Binding EditCommand}" IsVisible="{Binding CanEdit}">
+                          <MenuItem Header="{x:Static l:Strings.Ui_EditMenu}" Command="{Binding EditCommand}" IsVisible="{Binding CanEditDetails}">
                             <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Edit}" Classes="sm" /></MenuItem.Icon>
                           </MenuItem>
                           <MenuItem Header="{x:Static l:Strings.Ui_MoveUp}" Command="{Binding MoveUpCommand}" IsVisible="{Binding CanEdit}" IsEnabled="{Binding CanMoveUp}">
@@ -207,7 +207,10 @@
                           </MenuItem>
                         </ContextMenu>
                       </Border.ContextMenu>
-                      <DockPanel>
+                      <Panel>
+                      <!-- Package 111: a separator is one line across the row, nothing else -->
+                      <Border Classes="separatorLine" IsVisible="{Binding IsSeparator}" />
+                      <DockPanel IsVisible="{Binding IsVoice}">
                         <TextBlock DockPanel.Dock="Right" Classes="caption channelCount" VerticalAlignment="Center" Margin="8,0,0,0"
                                    Text="{Binding SlotText}" v:LiveMotion.Tick="True" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
                         <!-- Package 98: joining, moving or deleting waits for the server -->
@@ -232,6 +235,7 @@
                                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}" />
                         </DockPanel>
                       </DockPanel>
+                      </Panel>
                     </Border>
 
                     <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" v:ItemMotion.Fly="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">

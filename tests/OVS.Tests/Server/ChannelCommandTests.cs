@@ -101,6 +101,44 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.NotEqual(Lobby, own.Channel.Id);
     }
 
+    /// <summary>Package 111 (A120): a separator has no name and no options, everyone learns its kind.</summary>
+    [Fact]
+    public async Task CreateSeparator_EmptyNameNoOptions_BroadcastsKind()
+    {
+        await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator) { RequestId = "s" });
+        var own = await a.WaitForAsync<ChannelAdded>();
+        var seen = await g.WaitForAsync<ChannelAdded>();
+        Assert.Equal((ChannelKind.Separator, "", "s"), (own.Channel.Kind, own.Channel.Name, own.RequestId));
+        Assert.Equal(own.Channel, seen.Channel);
+
+        await a.SendAsync(new CreateChannel("Name", "", Kind: ChannelKind.Separator) { RequestId = "n" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("n")).Code);
+        await a.SendAsync(new CreateChannel("", "", MaxUsers: 3, Kind: ChannelKind.Separator) { RequestId = "o" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("o")).Code);
+        await g.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator) { RequestId = "p" });
+        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("p")).Code);
+    }
+
+    [Fact]
+    public async Task Separator_JoinMoveEdit_Refused()
+    {
+        await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
+        var separator = (await a.WaitForAsync<ChannelAdded>(c => c.Channel.Kind == ChannelKind.Separator)).Channel;
+
+        await a.SendAsync(new JoinChannel(separator.Id) { RequestId = "j" });
+        Assert.Equal(Codes.NotJoinable, (await a.ErrorAsync("j")).Code); // also for an admin
+        await a.SendAsync(new MoveUser(g.Id, separator.Id) { RequestId = "m" });
+        Assert.Equal(Codes.NotJoinable, (await a.ErrorAsync("m")).Code);
+        await a.SendAsync(new EditChannel(separator.Id, "Name", "", separator.Order) { RequestId = "e" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("e")).Code);
+
+        // it moves and goes like any channel
+        await a.SendAsync(new ReorderChannels([separator.Id, Lobby]));
+        Assert.Equal(0, (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == separator.Id)).Channel.Order);
+        await a.SendAsync(new DeleteChannel(separator.Id));
+        Assert.Equal(separator.Id, (await g.WaitForAsync<ChannelRemoved>()).ChannelId);
+    }
+
     [Fact]
     public async Task Edit_ToNameOfOther_Succeeds()
     {

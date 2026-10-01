@@ -851,4 +851,36 @@ public class ServerViewModelTests
         await server.MoveChannelAsync(raid, lobby, after: true);
         Assert.Empty(sent.OfType<ReorderChannels>());
     }
+
+    /// <summary>Package 111: a separator cannot be joined, edited or linked and is no target; it can still be moved and deleted.</summary>
+    [Fact]
+    public async Task Separator_NoJoinNoEditNoLink_NotAMoveTarget()
+    {
+        IReadOnlyList<ChannelViewModel>? offered = null;
+        var dialogs = new Dialogs
+        {
+            PickChannel = (_, candidates, _) =>
+            {
+                offered = candidates;
+                return Task.FromResult<ChannelViewModel?>(null);
+            },
+        };
+        var f = Create(P.All, dialogs: dialogs, others: U(2, "anna", Lobby));
+        var id = Guid.NewGuid();
+        f.Vm.Apply(new ChannelAdded(new ChannelInfo(id, "", "", 5, Kind: ChannelKind.Separator)));
+        var separator = f.Channel(id);
+        Assert.True(separator.IsSeparator);
+        Assert.False(separator.IsVoice);
+        Assert.Equal((false, false, false), (separator.CanJoin, separator.CanEditDetails, separator.CanLink));
+        Assert.Equal((true, true), (separator.CanEdit, separator.CanDelete)); // moves and goes like a channel
+        Assert.Null(separator.Tooltip);
+        Assert.Equal("0", separator.SlotText);
+
+        await separator.JoinCommand.ExecuteAsync(null); // also the double click
+        Assert.Empty(f.Sent.OfType<JoinChannel>());
+        Assert.DoesNotContain(separator, f.Vm.LinkCandidates(f.Channel(Lobby)));
+        await f.User(2).MoveCommand.ExecuteAsync(null);
+        Assert.NotNull(offered);
+        Assert.DoesNotContain(separator, offered!);
+    }
 }

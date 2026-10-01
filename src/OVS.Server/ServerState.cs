@@ -339,12 +339,13 @@ public sealed partial class ServerState
         user.ChatMessages += chatMessages;
     }
 
+    /// <summary>Package 111: a separator has no log of its own (nothing happens in it).</summary>
     void ChannelLog(Guid channelId, string text)
     {
-        if (FindChannel(channelId) is { } channel) logs.Channel(channel.Id, channel.Name, text);
+        if (FindChannel(channelId) is { Kind: ChannelKind.Voice } channel) logs.Channel(channel.Id, channel.Name, text);
     }
 
-    string ChannelName(Guid id) => FindChannel(id)?.Name ?? "?";
+    string ChannelName(Guid id) => FindChannel(id) is { } c ? c.Kind == ChannelKind.Separator ? "(Trenner)" : c.Name : "?";
 
     // ---- Requests ----
 
@@ -718,7 +719,7 @@ public sealed partial class ServerState
             s == to ? s.Permissions : Permission.None, s.GroupIds, Moderates(to, s));
 
     static ChannelInfo Info(ChannelRecord c) =>
-        new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers, c.AllowedGroupIds?.ToList(), c.PasswordHash is not null);
+        new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers, c.AllowedGroupIds?.ToList(), c.PasswordHash is not null, c.Kind);
 
     /// <summary>Package 69: the limits only for those who may change them.</summary>
     ServerSettingsInfo SettingsInfo(Session to) =>

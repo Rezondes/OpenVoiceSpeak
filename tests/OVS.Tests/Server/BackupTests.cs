@@ -757,6 +757,17 @@ public sealed class BackupTests : IDisposable
             case "no-default-channel": d.DefaultChannelId = Guid.NewGuid(); break;
             case "no-admin": d.Users.ForEach(u => u.GroupIds.Remove(WellKnownGroups.Admin)); break;
             case "bad-password-hash": d.Settings.PasswordHash = "kein-hash"; break;
+            case "separator-default": // Package 111
+                d.Channels.Single(c => c.Id == d.DefaultChannelId).Name = "";
+                d.Channels.Single(c => c.Id == d.DefaultChannelId).Kind = ChannelKind.Separator;
+                break;
+            case "separator-linked":
+                var separator = new ChannelRecord { Id = Guid.NewGuid(), Order = 9, Kind = ChannelKind.Separator };
+                d.Channels.Add(separator);
+                d.Links.Add(ChannelLink.Of(d.DefaultChannelId, separator.Id));
+                break;
+            case "separator-named": d.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Name", Kind = ChannelKind.Separator }); break;
+            case "separator-with-options": d.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), MaxUsers = 5, Kind = ChannelKind.Separator }); break;
             default: throw new ArgumentException(variant);
         }
     }
@@ -782,6 +793,10 @@ public sealed class BackupTests : IDisposable
     [InlineData("no-default-channel")]
     [InlineData("no-admin")]
     [InlineData("bad-password-hash")]
+    [InlineData("separator-default")]
+    [InlineData("separator-linked")]
+    [InlineData("separator-named")]
+    [InlineData("separator-with-options")]
     public async Task Restore_InvalidContent_RejectedServerStillStarts(string variant)
     {
         var (server, admin) = await StartWithAdminAsync(); // disposed through RestartAsync at the end

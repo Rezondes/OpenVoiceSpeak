@@ -6705,7 +6705,7 @@ Test command: `dotnet test tests/OVS.Tests`
 
 **Affected files:**
 - `src/OVS.Shared/Protocol/Messages.cs` (change): `enum ChannelKind { Voice, Separator }`; `ChannelInfo` and `CreateChannel` get `ChannelKind Kind = ChannelKind.Voice`
-- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (change): `Version` up by one, with the comment
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (change): `Version` up by one, with the comment (as built: 10 was deployed on 2026-09-30, so 11)
 - `src/OVS.Shared/Protocol/Codes.cs` (change): `NotJoinable`
 - `src/OVS.Server/Data/ServerData.cs` (change): `ChannelRecord.Kind` (older files load as `Voice`, no new data version)
 - `src/OVS.Server/Commands/ChannelCommands.cs` (change):
@@ -6740,17 +6740,17 @@ There is one kind of channel today:
 
 ### Acceptance Criteria
 
-- [ ] AC1: The create dialog offers the type "Sprach-Channel" (the default) or "Trenner". A separator is created with one click on "Erstellen", needs `ChannelCreate`, and lands at the end like a channel.
-- [ ] AC2: In the channel tree a separator is a single horizontal line across the row: no icon left, no number right, no name, no tooltip, no users below.
-- [ ] AC3: Nobody can join a separator, not even admins:
+- [x] AC1: The create dialog offers the type "Sprach-Channel" (the default) or "Trenner". A separator is created with one click on "Erstellen", needs `ChannelCreate`, and lands at the end like a channel.
+- [x] AC2: In the channel tree a separator is a single horizontal line across the row: no icon left, no number right, no name, no tooltip, no users below.
+- [x] AC3: Nobody can join a separator, not even admins:
   - there is no "Beitreten", and a double click does nothing
   - the server answers `JoinChannel` or `MoveUser` to it with `NotJoinable`
-- [ ] AC4: A separator can be dragged, moved up and down, and deleted with the usual rights. It cannot be:
+- [x] AC4: A separator can be dragged, moved up and down, and deleted with the usual rights. It cannot be:
   - edited (`EditChannel` gives `InvalidValue`)
   - linked (`InvalidLink`)
   - a move target
-- [ ] AC5: A server data file or a backup without `Kind` loads every channel as a voice channel. A backup with a linked separator, or a separator as the default channel, is refused (`InvalidBackup`).
-- [ ] AC6: The fitted sidebar width ignores separators; the texts exist in German and English.
+- [x] AC5: (as built: `DataStoreTests > "OldFile_ChannelsLoadAsVoice_SeparatorRoundTrips"`; backup variants `separator-default`, `separator-linked`, `separator-named` in `BackupTests`) A server data file or a backup without `Kind` loads every channel as a voice channel. A backup with a linked separator, or a separator as the default channel, is refused (`InvalidBackup`).
+- [x] AC6: The fitted sidebar width ignores separators; the texts exist in German and English.
 
 ### Tests (TDD)
 
@@ -6763,8 +6763,8 @@ There is one kind of channel today:
 7. `UiSmokeTests > "Separator_IsALine_NoIconNoCount"` (AC2)
    - Given: a headless channel tree with one separator.
    - Expected: its row has no `channelIcon` and no `channelCount`, and one line element spans the row width.
-8. `UiSmokeTests > "Separator_DoubleClick_DoesNotJoin"`; `ReorderDragTests` stay green with a separator in the list (AC3, AC4)
-9. `ResponsiveTests > "FitSidebar_IgnoresSeparators"` and `LocalizationTests` (AC6)
+8. (as built) the double click runs `JoinCommand`, so `ServerViewModelTests > "Separator_NoJoinNoEditNoLink_NotAMoveTarget"` covers it (no join sent, no notice); reorder and delete of a separator are covered on the server in `ChannelCommandTests > "Separator_JoinMoveEdit_Refused"` (AC3, AC4)
+9. `UiSmokeTests > "Separator_IsALine_NoIconNoCount"` also checks that the fitted width ignores the separator; `LocalizationTests` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
 

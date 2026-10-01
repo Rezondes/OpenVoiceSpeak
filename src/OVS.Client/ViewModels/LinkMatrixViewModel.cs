@@ -59,7 +59,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     /// <summary>After any server change: new channels, names and links; own pending changes stay.</summary>
     internal void Rebuild()
     {
-        var channels = server.Channels.Live().ToList();
+        var channels = server.Channels.Live().Where(c => !c.IsSeparator).ToList(); // Package 111: nothing to link
         var ids = channels.Select(c => c.Id).ToHashSet();
         foreach (var (key, linked) in desired.ToList())
             if (!ids.Contains(key.Item1) || !ids.Contains(key.Item2) || linked == OnServer(key)) desired.Remove(key);

@@ -79,9 +79,14 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidLink);
             return false;
         }
-        if (FindChannel(a) is null || FindChannel(b) is null)
+        if (FindChannel(a) is not { } first || FindChannel(b) is not { } second)
         {
             Fail(s, r, Codes.NotFound);
+            return false;
+        }
+        if (first.Kind == ChannelKind.Separator || second.Kind == ChannelKind.Separator)
+        {
+            Fail(s, r, Codes.InvalidLink); // Package 111: nothing is spoken in a separator
             return false;
         }
         return true;

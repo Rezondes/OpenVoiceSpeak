@@ -258,11 +258,20 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         Check(StoredName(s.Name, 64) && s.WelcomeText is { Length: <= 500 }, "Servername oder Willkommenstext ungültig");
         Check(s.PasswordHash is null || ServerSettings.IsValidHash(s.PasswordHash), "Passwort-Hash ungültig"); // Package 91: both formats
 
-        Check(d.Channels.All(c => StoredName(c.Name, 64) && c.Description is { Length: <= 500 }), "Channel-Name ungültig");
+        // Package 111: a separator has an empty name and description, is never the default channel and never linked
+        Check(d.Channels.All(c => c.Kind switch
+        {
+            ChannelKind.Voice => StoredName(c.Name, 64) && c.Description is { Length: <= 500 },
+            ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, PasswordHash: null },
+            _ => false,
+        }), "Channel-Name ungültig");
         Unique(d.Channels.Select(c => c.Id), "Channel-Id doppelt");
         var channels = d.Channels.Select(c => c.Id).ToHashSet();
         Check(channels.Contains(d.DefaultChannelId), "Standard-Channel fehlt");
         Check(d.Links.All(l => channels.Contains(l.A) && channels.Contains(l.B)), "Link auf einen unbekannten Channel");
+        var separators = d.Channels.Where(c => c.Kind == ChannelKind.Separator).Select(c => c.Id).ToHashSet();
+        Check(!separators.Contains(d.DefaultChannelId), "Trenner als Standard-Channel");
+        Check(!d.Links.Any(l => separators.Contains(l.A) || separators.Contains(l.B)), "Link auf einen Trenner");
 
         Check(d.Groups.All(g => StoredName(g.Name, 32) && g.Permissions.IsSubsetOf(Permission.All)), "Gruppe ungültig");
         Unique(d.Groups.Select(g => g.Id), "Gruppen-Id doppelt");

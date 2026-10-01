@@ -996,6 +996,36 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 111: a separator is one line across its row: no icon, no number, no name; the fitted width ignores it.</summary>
+    [AvaloniaFact]
+    public void Separator_IsALine_NoIconNoCount()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        vm.Server = FakeServers.WithChannels(SquadChannels);
+        Dispatcher.UIThread.RunJobs();
+        var fitted = Sidebar(main).Bounds.Width;
+        var id = Guid.NewGuid();
+        vm.Server.Apply(new ChannelAdded(new ChannelInfo(id, "", "", 1, Kind: ChannelKind.Separator)));
+        Dispatcher.UIThread.RunJobs();
+        Thread.Sleep(400); // the new row slides in (animated display)
+        Dispatcher.UIThread.RunJobs();
+
+        var items = main.FindControl<ItemsControl>("ChannelItems")!;
+        var container = items.GetRealizedContainers().Single(c => c.DataContext is ChannelViewModel { Id: var cid } && cid == id);
+        var row = container.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
+        var line = row.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("separatorLine"));
+        Assert.True(line.IsEffectivelyVisible);
+        Assert.Equal(1, line.Bounds.Height);
+        Assert.True(line.Bounds.Width >= row.Bounds.Width - row.Padding.Left - row.Padding.Right - 1, "across the row");
+        Assert.DoesNotContain(row.GetVisualDescendants().OfType<Control>(), c => c.IsEffectivelyVisible
+            && (c.Classes.Contains("channelIcon") || c.Classes.Contains("channelCount") || c.Classes.Contains("channelName")));
+        Assert.Null(ToolTip.GetTip(row));
+        Assert.Equal(fitted, Sidebar(main).Bounds.Width, 1);
+        main.Close();
+    }
+
     /// <summary>Package 67: a width the user dragged stays until the next connect, even when channels change.</summary>
     [AvaloniaFact]
     public void UserDraggedWidth_KeptUntilReconnect()

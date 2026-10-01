@@ -156,6 +156,11 @@ public sealed class DebugApiTests : IAsyncLifetime
             .Select(c => c.GetProperty("id").GetString()!).ToList();
         Assert.All(ids, id => Assert.Contains(id, text));
         await anna.Post("join", new { channel = ids[0] });
+        Assert.All(Channels(state), c => Assert.False(c.GetProperty("isSeparator").GetBoolean()));
+
+        // Package 111: the state names separators
+        await anna.Post("request", new { type = "createChannel", name = "", description = "", kind = "Separator" });
+        await anna.Until(s => Channels(s).Any(c => c.GetProperty("isSeparator").GetBoolean() && c.GetProperty("name").GetString() == ""));
         await anna.Until(s => Channels(s).Single(c => c.GetProperty("id").GetString() == ids[0]).GetProperty("isCurrent").GetBoolean());
     }
 

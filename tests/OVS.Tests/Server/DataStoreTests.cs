@@ -48,6 +48,25 @@ public sealed class DataStoreTests : IDisposable
         Assert.False(File.Exists(FilePath + ".tmp"));
     }
 
+    /// <summary>Package 111: a file from before separators loads every channel as a voice channel; a separator round-trips.</summary>
+    [Fact]
+    public void OldFile_ChannelsLoadAsVoice_SeparatorRoundTrips()
+    {
+        var store = new DataStore(FilePath);
+        var data = store.LoadOrCreate(() => ServerData.CreateDefault(Config));
+        data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Order = 1, Kind = OVS.Shared.Protocol.ChannelKind.Separator });
+        store.Save(data);
+        Assert.Equal([OVS.Shared.Protocol.ChannelKind.Voice, OVS.Shared.Protocol.ChannelKind.Separator],
+            new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(c => c.Kind));
+
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
+        var channels = json.AsObject().First(p => p.Key.Equals("channels", StringComparison.OrdinalIgnoreCase)).Value!.AsArray();
+        channels.RemoveAt(1);
+        foreach (var channel in channels) channel!.AsObject().Remove(channel.AsObject().First(p => p.Key.Equals("kind", StringComparison.OrdinalIgnoreCase)).Key);
+        File.WriteAllText(FilePath, json.ToJsonString());
+        Assert.Equal(OVS.Shared.Protocol.ChannelKind.Voice, Assert.Single(new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels).Kind);
+    }
+
     [Fact]
     public void Load_CorruptFile_ThrowsAndLeavesFileUntouched()
     {

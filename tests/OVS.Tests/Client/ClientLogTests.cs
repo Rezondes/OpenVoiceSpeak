@@ -37,6 +37,8 @@ public sealed class ClientLogTests : IDisposable
     public static TheoryData<Message, string> Deltas => new()
     {
         { new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 2)), "Channel 'Neu' angelegt" },
+        { new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "", "", 2, Kind: ChannelKind.Separator)), "Trenner angelegt" },
+        { new ChannelUpdated(new ChannelInfo(Guid.NewGuid(), "", "", 3, Kind: ChannelKind.Separator)), "Trenner verschoben" },
         { new ChannelUpdated(new ChannelInfo(Raid, "Raid 2", "", 1)), "Channel 'Raid' umbenannt in 'Raid 2'" },
         { new ChannelRemoved(Raid), "Channel 'Raid' gelöscht" },
         { new UserJoined(User(3, Raid, "carla")), "carla verbunden, Channel 'Raid'" },

@@ -22,6 +22,12 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     [ObservableProperty] string description = current.Description;
     [ObservableProperty] bool isMuted = current.IsMuted;
     [ObservableProperty] decimal? maxUsers = current.MaxUsers;
+    /// <summary>Package 111: creating, the type: a voice channel or a separator (which has no fields).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsChannelFields))]
+    bool isSeparator;
+    public bool CanChooseKind => mode == ChannelDialogMode.Create;
+    public bool ShowsChannelFields => !IsSeparator;
     /// <summary>Package 83: why the entered channel would be refused by the server, null while it is fine.</summary>
     [ObservableProperty] string? error;
 
@@ -57,6 +63,11 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     /// </summary>
     public ChannelEdit? Result()
     {
+        if (IsSeparator && CanChooseKind)
+        {
+            Error = null;
+            return new ChannelEdit("", "", Kind: ChannelKind.Separator);
+        }
         // Package 83: the same TextRules as the server; an empty name stays quiet as before
         Error = string.IsNullOrWhiteSpace(Name) ? null
             : TextRules.Name(Name, ProtocolInfo.MaxNameLength) is null ? Strings.Dlg_NameInvalid

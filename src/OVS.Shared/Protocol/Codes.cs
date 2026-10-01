@@ -39,6 +39,7 @@ public static class Codes
     public const string UnknownRequest = nameof(UnknownRequest);
     public const string RateLimited = nameof(RateLimited);
     public const string ChannelFull = nameof(ChannelFull);
+    public const string NotJoinable = nameof(NotJoinable); // Package 111: a separator
     public const string ChannelLocked = nameof(ChannelLocked); // Package 93: not in one of the channel's groups
     public const string ChannelPasswordRequired = nameof(ChannelPasswordRequired); // Package 94: also for moving into such a channel
     public const string WrongChannelPassword = nameof(WrongChannelPassword); // Package 94

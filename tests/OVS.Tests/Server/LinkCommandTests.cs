@@ -50,6 +50,19 @@ public sealed class LinkCommandTests : IAsyncLifetime
         Assert.Equal(y, Assert.Single(server.State.LinkedChannels(x)));
     }
 
+    /// <summary>Package 111: nothing is spoken in a separator, so it has no links, alone or in the link matrix.</summary>
+    [Fact]
+    public async Task LinkToSeparator_InvalidLink()
+    {
+        await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
+        var separator = (await a.WaitForAsync<ChannelAdded>(c => c.Channel.Kind == ChannelKind.Separator)).Channel.Id;
+        await m.SendAsync(new LinkChannels(x, separator) { RequestId = "l" });
+        Assert.Equal(Codes.InvalidLink, (await m.ErrorAsync("l")).Code);
+        await m.SendAsync(new SetChannelLinks([new LinkInfo(separator, y)], []) { RequestId = "s" });
+        Assert.Equal(Codes.InvalidLink, (await m.ErrorAsync("s")).Code);
+        Assert.Empty(server.State.LinkedChannels(separator));
+    }
+
     [Fact]
     public async Task Link_SameChannel_InvalidLink()
     {

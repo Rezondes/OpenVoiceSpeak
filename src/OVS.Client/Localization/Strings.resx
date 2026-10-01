@@ -575,4 +575,10 @@
   <data name="Chat_Sending" xml:space="preserve"><value>Wird gesendet ...</value></data>
   <data name="Chat_NotSent" xml:space="preserve"><value>nicht gesendet</value></data>
   <data name="Chat_Retry" xml:space="preserve"><value>Erneut senden</value></data>
+  <data name="Confirm_DeleteSeparator" xml:space="preserve"><value>Den Trenner löschen?</value></data>
+  <data name="Dlg_ChannelKind" xml:space="preserve"><value>Art</value></data>
+  <data name="Dlg_KindVoice" xml:space="preserve"><value>Sprach-Channel</value></data>
+  <data name="Dlg_KindSeparator" xml:space="preserve"><value>Trenner</value></data>
+  <data name="Dlg_SeparatorHint" xml:space="preserve"><value>Ein Trenner ist nur eine Linie in der Channel-Liste. Niemand kann ihn betreten.</value></data>
+  <data name="Error_NotJoinable" xml:space="preserve"><value>Einen Trenner kann man nicht betreten.</value></data>
 </root>

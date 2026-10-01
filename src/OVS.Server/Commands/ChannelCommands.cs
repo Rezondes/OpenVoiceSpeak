@@ -13,6 +13,11 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
+        if (channel.Kind == ChannelKind.Separator)
+        {
+            Fail(s, r, Codes.NotJoinable); // Package 111: also for admins
+            return;
+        }
         var from = s.ChannelId;
         if (from == r.ChannelId) return; // Package 86: no broadcast for a no-op; Package 94: nor a password check
         if (LockRefusal(s, channel, r.Password, moving: false) is { } locked)
@@ -34,6 +39,16 @@ public sealed partial class ServerState
     void OnCreateChannel(Session s, CreateChannel r)
     {
         if (!Require(s, r, Permission.ChannelCreate)) return;
+        if (r.Kind == ChannelKind.Separator)
+        {
+            CreateSeparator(s, r);
+            return;
+        }
+        if (r.Kind != ChannelKind.Voice)
+        {
+            Fail(s, r, Codes.InvalidValue, "Unbekannte Channel-Art.");
+            return;
+        }
         if (!ValidateChannel(s, r, r.Name, r.Description, out var name, out var description)) return;
         if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
         if (!ValidateGroupLock(s, r, null, r.AllowedGroupIds, out var allowed)) return;
@@ -62,6 +77,29 @@ public sealed partial class ServerState
         s.Send(added with { RequestId = r.RequestId }); // Package 110: the creator recognises its own channel by the request
     }
 
+    /// <summary>Package 111 (A120): a separator has no name, description or options; a request with any of them is refused.</summary>
+    void CreateSeparator(Session s, CreateChannel r)
+    {
+        if (!string.IsNullOrEmpty(r.Name) || !string.IsNullOrEmpty(r.Description) || r.IsMuted || r.MaxUsers != 0
+            || r.AllowedGroupIds is { Count: > 0 } || !string.IsNullOrEmpty(r.Password))
+        {
+            Fail(s, r, Codes.InvalidValue, "Ein Trenner hat keinen Namen, keine Beschreibung und keine Optionen.");
+            return;
+        }
+        var separator = new ChannelRecord
+        {
+            Id = Guid.NewGuid(),
+            Order = (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1),
+            Kind = ChannelKind.Separator,
+        };
+        data.Channels.Add(separator);
+        Persist();
+        logs.Server($"Trenner angelegt von {s.Nickname}");
+        var added = new ChannelAdded(Info(separator));
+        BroadcastExcept(s, added);
+        s.Send(added with { RequestId = r.RequestId });
+    }
+
     void OnEditChannel(Session s, EditChannel r)
     {
         if (!Require(s, r, Permission.ChannelEdit)) return;
@@ -69,6 +107,11 @@ public sealed partial class ServerState
         if (channel is null)
         {
             Fail(s, r, Codes.NotFound);
+            return;
+        }
+        if (channel.Kind == ChannelKind.Separator)
+        {
+            Fail(s, r, Codes.InvalidValue, "Ein Trenner lässt sich nicht bearbeiten."); // Package 111
             return;
         }
         if (!ValidateChannel(s, r, r.Name, r.Description, out var name, out var description)) return;
@@ -238,7 +281,7 @@ public sealed partial class ServerState
             Broadcast(new ChannelsUnlinked(link.A, link.B));
         }
         ChannelLog(channel.Id, $"Channel gelöscht von {s.Nickname}");
-        logs.Server($"Channel '{channel.Name}' gelöscht von {s.Nickname}");
+        logs.Server(channel.Kind == ChannelKind.Separator ? $"Trenner gelöscht von {s.Nickname}" : $"Channel '{channel.Name}' gelöscht von {s.Nickname}");
         data.Channels.Remove(channel);
         Persist();
         Broadcast(new ChannelRemoved(channel.Id));
@@ -253,6 +296,11 @@ public sealed partial class ServerState
             return;
         }
         if (!CanModerate(s, r, target.Permissions, target.Fingerprint)) return; // Package 84: never oneself, that is JoinChannel
+        if (FindChannel(r.ChannelId)!.Kind == ChannelKind.Separator)
+        {
+            Fail(s, r, Codes.NotJoinable); // Package 111
+            return;
+        }
         if (target.ChannelId == r.ChannelId) return; // already there: nothing to check, announce or log
         if (LockRefusal(s, FindChannel(r.ChannelId)!, null, moving: true) is { } locked)
         {

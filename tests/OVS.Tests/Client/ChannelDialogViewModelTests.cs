@@ -135,4 +135,18 @@ public class ChannelDialogViewModelTests
         vm.Groups[1].IsChecked = true; // cannot happen through the disabled list, but never sent either
         Assert.Null(vm.Result()!.AllowedGroupIds);
     }
+
+    /// <summary>Package 111: creating, "Trenner" hides every field and gives a separator without name or options.</summary>
+    [Fact]
+    public void Create_Separator_HidesFieldsAndSendsKind()
+    {
+        var vm = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
+        Assert.True(vm.CanChooseKind);
+        Assert.True(vm.ShowsChannelFields);
+        Assert.Null(vm.Result()); // a voice channel still needs its name
+        vm.IsSeparator = true;
+        Assert.False(vm.ShowsChannelFields);
+        Assert.Equal(new ChannelEdit("", "", Kind: ChannelKind.Separator), vm.Result());
+        Assert.False(new ChannelDialogViewModel(new ChannelEdit("Raid", ""), ChannelDialogMode.Edit).CanChooseKind);
+    }
 }

@@ -6,6 +6,16 @@
              x:Class="OVS.Client.Views.ChannelDialog"
              x:DataType="vm:ChannelDialogViewModel">
   <StackPanel Spacing="12">
+    <!-- Package 111: creating, a voice channel or a separator -->
+    <StackPanel Spacing="4" IsVisible="{Binding CanChooseKind}">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_ChannelKind}" />
+      <StackPanel Orientation="Horizontal" Spacing="16">
+        <RadioButton GroupName="ChannelKind" Content="{x:Static l:Strings.Dlg_KindVoice}" IsChecked="{Binding !IsSeparator}" />
+        <RadioButton GroupName="ChannelKind" Content="{x:Static l:Strings.Dlg_KindSeparator}" IsChecked="{Binding IsSeparator}" />
+      </StackPanel>
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_SeparatorHint}" IsVisible="{Binding IsSeparator}" />
+    </StackPanel>
+    <StackPanel Spacing="12" IsVisible="{Binding ShowsChannelFields}">
     <StackPanel Spacing="4">
       <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Name}" />
       <TextBox Text="{Binding Name}" AutomationProperties.Name="{x:Static l:Strings.Ui_Name}" />
@@ -50,6 +60,7 @@
                AutomationProperties.Name="{x:Static l:Strings.Dlg_ChannelPassword}" />
       <CheckBox Content="{x:Static l:Strings.Dlg_RemovePassword}" IsChecked="{Binding RemovePassword}" IsVisible="{Binding HasPassword}" />
       <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_ChannelPasswordHint}" />
+    </StackPanel>
     </StackPanel>
     <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />

@@ -22,13 +22,18 @@ public sealed class ClientLog
     /// <returns>Null for messages that are logged elsewhere (errors appear as notices).</returns>
     public static string? Describe(Message message, StateMirror mirror)
     {
-        string Channel(Guid id) => $"'{mirror.Channels.GetValueOrDefault(id)?.Name ?? id.ToString()}'";
+        string Channel(Guid id) => mirror.Channels.GetValueOrDefault(id) is { Kind: ChannelKind.Separator } ? "(Trenner)" // Package 111
+            : $"'{mirror.Channels.GetValueOrDefault(id)?.Name ?? id.ToString()}'";
         string Nick(uint id) => mirror.Users.GetValueOrDefault(id)?.Nickname ?? $"#{id}";
 
         switch (message)
         {
+            case ChannelAdded { Channel.Kind: ChannelKind.Separator }:
+                return "Trenner angelegt";
             case ChannelAdded m:
                 return $"Channel '{m.Channel.Name}' angelegt";
+            case ChannelUpdated { Channel.Kind: ChannelKind.Separator }:
+                return "Trenner verschoben";
             case ChannelUpdated m:
                 var before = mirror.Channels.GetValueOrDefault(m.Channel.Id);
                 if (before is not null && before.IsMuted != m.Channel.IsMuted)
@@ -36,6 +41,8 @@ public sealed class ClientLog
                 return before is null || before.Name == m.Channel.Name
                     ? $"Channel '{m.Channel.Name}' geändert"
                     : $"Channel '{before.Name}' umbenannt in '{m.Channel.Name}'";
+            case ChannelRemoved m when mirror.Channels.GetValueOrDefault(m.ChannelId) is { Kind: ChannelKind.Separator }:
+                return "Trenner gelöscht";
             case ChannelRemoved m:
                 return $"Channel {Channel(m.ChannelId)} gelöscht";
             case UserJoined m:
@@ -89,7 +96,8 @@ public sealed class ClientLog
     /// <summary>An own request in words. Passwords and tokens are never part of the text.</summary>
     public static string Describe(Request request, StateMirror mirror)
     {
-        string Channel(Guid id) => $"'{mirror.Channels.GetValueOrDefault(id)?.Name ?? id.ToString()}'";
+        string Channel(Guid id) => mirror.Channels.GetValueOrDefault(id) is { Kind: ChannelKind.Separator } ? "(Trenner)" // Package 111
+            : $"'{mirror.Channels.GetValueOrDefault(id)?.Name ?? id.ToString()}'";
         string Nick(uint id) => mirror.Users.GetValueOrDefault(id)?.Nickname ?? $"#{id}";
         string Group(Guid id) => $"'{mirror.Groups.FirstOrDefault(g => g.Id == id)?.Name ?? id.ToString()}'";
         string Person(string fingerprint) =>
@@ -99,9 +107,10 @@ public sealed class ClientLog
         var text = request switch
         {
             JoinChannel r => $"Channel {Channel(r.ChannelId)} betreten",
+            CreateChannel { Kind: ChannelKind.Separator } => "Trenner anlegen",
             CreateChannel r => $"Channel '{r.Name}' anlegen",
             EditChannel r => $"Channel {Channel(r.ChannelId)} bearbeiten: Name '{r.Name}', Reihenfolge {r.Order}, stumm {YesNo(r.IsMuted)}, max. Nutzer {r.MaxUsers}",
-            DeleteChannel r => $"Channel {Channel(r.ChannelId)} löschen",
+            DeleteChannel r => mirror.Channels.GetValueOrDefault(r.ChannelId) is { Kind: ChannelKind.Separator } ? "Trenner löschen" : $"Channel {Channel(r.ChannelId)} löschen",
             SetChannelLinks r => $"Links ändern: {r.Add.Count} setzen, {r.Remove.Count} entfernen",
             ReorderChannels r => $"Channels umsortieren: {string.Join(", ", r.ChannelIds.Select(Channel))}",
             ReorderGroups r => $"Gruppen umsortieren: {string.Join(", ", r.GroupIds.Select(id => mirror.Groups.FirstOrDefault(g => g.Id == id)?.Name ?? "?"))}",

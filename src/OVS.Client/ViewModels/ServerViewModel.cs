@@ -14,8 +14,9 @@ namespace OVS.Client.ViewModels;
 /// <param name="AllowedGroupIds">Package 93: the channel's group lock; from the dialog null while unchanged, empty to remove it.</param>
 /// <param name="HasPassword">Package 94: into the dialog, whether the channel has a password.</param>
 /// <param name="Password">Package 94: out of the dialog, null = unchanged, empty = remove, else the new password.</param>
+/// <param name="Kind">Package 111: out of the create dialog, a voice channel or a separator.</param>
 public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null,
-    bool HasPassword = false, string? Password = null);
+    bool HasPassword = false, string? Password = null, ChannelKind Kind = ChannelKind.Voice);
 
 /// <summary>The channel dialog only offers the channel options when editing (Package 34).</summary>
 public enum ChannelDialogMode { Create, Edit, EditDefault }
@@ -310,7 +311,7 @@ public sealed partial class ServerViewModel : ObservableObject
     public IReadOnlyList<ChannelViewModel> LinkCandidates(ChannelViewModel channel)
     {
         var linked = Mirror.LinkedChannels(channel.Id).ToHashSet();
-        return Channels.Live().Where(c => c != channel && !linked.Contains(c.Id)).ToList();
+        return Channels.Live().Where(c => c != channel && !c.IsSeparator && !linked.Contains(c.Id)).ToList(); // Package 111
     }
 
     public IReadOnlyList<ChannelViewModel> LinkedChannelVms(ChannelViewModel channel)
@@ -474,7 +475,7 @@ public sealed partial class ServerViewModel : ObservableObject
     public Pending CreateChannel(ChannelEdit e)
     {
         var pending = NewPending();
-        return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password),
+        return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password, e.Kind),
             m => m is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
     }
     public Pending EditChannel(Guid id, ChannelEdit edit, int order) =>
@@ -604,7 +605,18 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     /// <summary>"3/5" for a limited channel, otherwise just the count.</summary>
     [ObservableProperty] string slotText = "0";
     [ObservableProperty] bool canCreate;
-    [ObservableProperty] bool canEdit;
+    /// <summary>The right to edit channels; also moves them (up, down, drag), separators too.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditDetails))]
+    bool canEdit;
+    /// <summary>Package 111: a line in the list that nobody can join, link or edit.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditDetails))]
+    [NotifyPropertyChangedFor(nameof(IsVoice))]
+    bool isSeparator;
+    public bool IsVoice => !IsSeparator;
+    /// <summary>"Bearbeiten": name and options, which a separator does not have.</summary>
+    public bool CanEditDetails => CanEdit && !IsSeparator;
     [ObservableProperty] bool canDelete;
     [ObservableProperty] bool canLink;
     [ObservableProperty] bool canUnlink;
@@ -624,10 +636,12 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
 
     public Guid Id { get; } = id;
     public ObservableCollection<UserViewModel> Users { get; } = [];
-    public string Tooltip => IsLinked ? $"{Description}\n{string.Format(Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description;
+    public string? Tooltip => IsSeparator ? null
+        : IsLinked ? $"{Description}\n{string.Format(Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description;
 
     internal void Update(ChannelInfo info, IReadOnlyList<string> linked, bool isDefault, bool isCurrent, Permission actor)
     {
+        IsSeparator = info.Kind == ChannelKind.Separator;
         Name = info.Name;
         Description = info.Description;
         Order = info.Order;
@@ -640,7 +654,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         CanCreate = actor.Has(Permission.ChannelCreate);
         CanEdit = actor.Has(Permission.ChannelEdit);
         CanDelete = actor.Has(Permission.ChannelDelete) && !isDefault;
-        CanLink = actor.Has(Permission.ChannelLink);
+        CanLink = actor.Has(Permission.ChannelLink) && !IsSeparator;
         CanUnlink = CanLink && IsLinked;
         OnPropertyChanged(nameof(Tooltip));
     }
@@ -659,7 +673,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
                 string.Join(", ", groups.Where(g => ids.Contains(g.Id)).Select(g => g.Name))), // in the server's group order
         };
         LockText = string.Join("\n", new[] { groupText, info.HasPassword ? Strings.Ui_LockedPassword : null }.OfType<string>());
-        CanJoin = isAdmin || info.AllowedGroupIds is not { } allowed || ownGroups.Any(allowed.Contains);
+        CanJoin = info.Kind == ChannelKind.Voice && (isAdmin || info.AllowedGroupIds is not { } allowed || ownGroups.Any(allowed.Contains));
     }
 
     bool first, last;
@@ -687,6 +701,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [RelayCommand]
     Task Join()
     {
+        if (IsSeparator) return Task.CompletedTask; // Package 111: a double click on the line does nothing
         if (CanJoin) return owner.JoinAsync(Id);
         owner.ShowNotice(ErrorTexts.For(Codes.ChannelLocked)); // Package 93: the server would refuse it anyway
         return Task.CompletedTask;
@@ -707,7 +722,8 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [RelayCommand]
     async Task Delete()
     {
-        if (owner.Dialogs.Confirm is { } confirm && await confirm(string.Format(Strings.Confirm_DeleteChannel, Name)))
+        var question = IsSeparator ? Strings.Confirm_DeleteSeparator : string.Format(Strings.Confirm_DeleteChannel, Name);
+        if (owner.Dialogs.Confirm is { } confirm && await confirm(question))
             owner.DeleteChannel(Id);
     }
 
@@ -818,7 +834,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [RelayCommand]
     Task Move()
     {
-        var targets = owner.Channels.Live().Where(c => c.Id != ChannelId).ToList();
+        var targets = owner.Channels.Live().Where(c => c.Id != ChannelId && !c.IsSeparator).ToList(); // Package 111
         return ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
             ? submit => pick(string.Format(Strings.Dialog_MoveTo, Nickname), targets, submit) : null, channel => owner.Move(SessionId, channel.Id));
     }

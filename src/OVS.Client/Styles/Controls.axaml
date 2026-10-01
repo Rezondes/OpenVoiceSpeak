@@ -178,6 +178,13 @@
       </Transitions>
     </Setter>
   </Style>
+  <!-- Package 111: a separator channel is one line across its row -->
+  <Style Selector="Border.separatorLine">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="0,7" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.Border}" />
+  </Style>
   <Style Selector="Border.row:pointerover">
     <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
   </Style>

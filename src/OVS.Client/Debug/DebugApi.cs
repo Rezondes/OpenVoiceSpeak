@@ -261,6 +261,7 @@ public sealed class DebugApi : IDisposable
                 {
                     c.Id,
                     c.Name,
+                    c.IsSeparator,
                     c.Description,
                     c.IsCurrent,
                     c.IsLinked,

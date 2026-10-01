@@ -575,4 +575,10 @@
   <data name="Chat_Sending" xml:space="preserve"><value>Sending ...</value></data>
   <data name="Chat_NotSent" xml:space="preserve"><value>not sent</value></data>
   <data name="Chat_Retry" xml:space="preserve"><value>Send again</value></data>
+  <data name="Confirm_DeleteSeparator" xml:space="preserve"><value>Delete the separator?</value></data>
+  <data name="Dlg_ChannelKind" xml:space="preserve"><value>Type</value></data>
+  <data name="Dlg_KindVoice" xml:space="preserve"><value>Voice channel</value></data>
+  <data name="Dlg_KindSeparator" xml:space="preserve"><value>Separator</value></data>
+  <data name="Dlg_SeparatorHint" xml:space="preserve"><value>A separator is only a line in the channel list. Nobody can join it.</value></data>
+  <data name="Error_NotJoinable" xml:space="preserve"><value>A separator cannot be joined.</value></data>
 </root>
