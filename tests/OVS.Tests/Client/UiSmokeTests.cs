@@ -996,6 +996,25 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 112: a channel without description and links has no tooltip on its row, so none opens.</summary>
+    [AvaloniaFact]
+    public void ChannelRow_NoDescription_NoTooltipOpens()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        vm.Server = FakeServers.WithChannels("Lobby", "Raid");
+        vm.Server.Apply(new ChannelsUnlinked(vm.Server.Channels[0].Id, vm.Server.Channels[1].Id));
+        Dispatcher.UIThread.RunJobs();
+        var row = main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromIndex(1)!
+            .GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
+        Assert.Null(ToolTip.GetTip(row));
+        ToolTip.SetIsOpen(row, true); // what hovering does once the delay is over
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(ToolTip.GetIsOpen(row));
+        main.Close();
+    }
+
     /// <summary>Package 111: a separator is one line across its row: no icon, no number, no name; the fitted width ignores it.</summary>
     [AvaloniaFact]
     public void Separator_IsALine_NoIconNoCount()

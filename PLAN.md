@@ -6797,15 +6797,15 @@ The channel row binds `ToolTip.Tip="{Binding Tooltip}"` (`MainWindow.axaml:180`)
 
 ### Acceptance Criteria
 
-- [ ] AC1: A channel with neither description nor links has `Tooltip == null`, and hovering its row opens no tooltip.
-- [ ] AC2: A channel with a description, with links, or with both shows the same tooltip text as today.
-- [ ] AC3: A description of only spaces counts as none.
+- [x] AC1: A channel with neither description nor links has `Tooltip == null`, and hovering its row opens no tooltip.
+- [x] AC2: A channel with a description, with links, or with both shows the same tooltip text as today.
+- [x] AC3: A description of only spaces counts as none. (as built, found in review: a user row in no known group had the same empty tooltip; `UserViewModel.GroupTip` is null then)
 
 ### Tests (TDD)
 
 1. `ServerViewModelTests > "Tooltip_NoDescriptionNoLinks_IsNull"` (AC1, AC3): the reproduction, red first
 2. `ServerViewModelTests > "Tooltip_DescriptionOrLinks_Unchanged"` (AC2)
-3. `UiSmokeTests > "ChannelRow_NoDescription_NoTooltipOpens"` (AC1): hover the row headless; `ToolTip.GetIsOpen` stays false
+3. `UiSmokeTests > "ChannelRow_NoDescription_NoTooltipOpens"` (AC1): hover the row headless; `ToolTip.GetIsOpen` stays false (as built: the row has no tip, and opening it as hovering does after its delay keeps it closed)
 
 Test command: `dotnet test tests/OVS.Tests`
 

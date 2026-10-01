@@ -636,8 +636,16 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
 
     public Guid Id { get; } = id;
     public ObservableCollection<UserViewModel> Users { get; } = [];
-    public string? Tooltip => IsSeparator ? null
-        : IsLinked ? $"{Description}\n{string.Format(Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description;
+    /// <summary>Package 112: null without description and links, so no empty tooltip opens.</summary>
+    public string? Tooltip
+    {
+        get
+        {
+            if (IsSeparator) return null;
+            var text = IsLinked ? $"{Description}{(char)10}{string.Format(Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description.Trim();
+            return text.Length > 0 ? text : null;
+        }
+    }
 
     internal void Update(ChannelInfo info, IReadOnlyList<string> linked, bool isDefault, bool isCurrent, Permission actor)
     {
@@ -745,7 +753,11 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     string nickname = "";
     [ObservableProperty] string fingerprint = "";
     [ObservableProperty] string statusText = "";
-    [ObservableProperty] string groupNames = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GroupTip))]
+    string groupNames = "";
+    /// <summary>Package 112: the row tooltip, null in no known group (an empty text opened an empty box).</summary>
+    public string? GroupTip => GroupNames.Length > 0 ? GroupNames : null;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanAdjustVolume))]
     bool isSelf;

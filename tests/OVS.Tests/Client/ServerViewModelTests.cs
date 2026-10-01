@@ -883,4 +883,30 @@ public class ServerViewModelTests
         Assert.NotNull(offered);
         Assert.DoesNotContain(separator, offered!);
     }
+
+    /// <summary>Package 112: without description and links there is no tooltip at all (an empty text showed an empty box).</summary>
+    [Fact]
+    public void Tooltip_NoDescriptionNoLinks_IsNull()
+    {
+        var f = Create();
+        Assert.Null(f.Channel(Bravo).Tooltip);
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "   ", 1)));
+        Assert.Null(f.Channel(Bravo).Tooltip); // only spaces count as none
+        // the same for a user row: in no known group, no tooltip
+        var g = Create(others: [U(2, "anna", Lobby, groups: [])]);
+        Assert.Null(g.User(2).GroupTip);
+        Assert.Equal("Gast", g.User(1).GroupTip);
+    }
+
+    [Fact]
+    public void Tooltip_DescriptionOrLinks_Unchanged()
+    {
+        var f = Create();
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "Nur Raid", 1)));
+        Assert.Equal("Nur Raid", f.Channel(Bravo).Tooltip);
+        f.Vm.Apply(new ChannelsLinked(Lobby, Alpha));
+        Assert.Equal(string.Format(OVS.Client.Localization.Strings.Tooltip_LinkedWith, "Lobby"), f.Channel(Alpha).Tooltip);
+        f.Vm.Apply(new ChannelsLinked(Bravo, Alpha));
+        Assert.Equal("Nur Raid" + (char)10 + string.Format(OVS.Client.Localization.Strings.Tooltip_LinkedWith, "alpha"), f.Channel(Bravo).Tooltip);
+    }
 }

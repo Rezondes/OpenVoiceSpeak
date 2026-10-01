@@ -241,7 +241,7 @@
                     <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" v:ItemMotion.Fly="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:UserViewModel">
-                          <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupNames}">
+                          <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupTip}">
                             <Border.ContextMenu>
                               <ContextMenu>
                                 <!-- Package 51: this person's volume for me; the menu stays open while dragging -->
