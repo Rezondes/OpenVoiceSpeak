@@ -278,4 +278,22 @@ public sealed class ReorderDragTests : IDisposable
         Assert.All(tree.Sent.OfType<ReorderChannels>(), r => Assert.DoesNotContain(FakeServers.Raid, r.ChannelIds));
         tree.Main.Close();
     }
+
+    /// <summary>Package 103: after a drop the new order does not move the rows a second time.</summary>
+    [AvaloniaFact]
+    public void DropThenServerOrder_NoSecondMove()
+    {
+        var tree = Open();
+        var end = tree.DragAbove("Raid", "Lobby");
+        tree.Main.MouseUp(end, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Single(tree.Sent.OfType<ReorderChannels>());
+        Assert.All(tree.List.GetRealizedContainers(), c => Assert.Equal(0, c.RenderTransform?.Value.M32 ?? 0));
+        tree.Vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 0))); // the server confirms
+        tree.Vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 1)));
+        Dispatcher.UIThread.RunJobs();
+        tree.Main.UpdateLayout();
+        Assert.All(tree.List.GetRealizedContainers(), c => Assert.Equal(0, c.RenderTransform?.Value.M32 ?? 0));
+        tree.Main.Close();
+    }
 }

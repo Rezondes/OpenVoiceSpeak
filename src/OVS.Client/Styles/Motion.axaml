@@ -239,4 +239,9 @@
       </Animation>
     </Style.Animations>
   </Style>
+
+  <!-- ===== Package 103: the current-channel highlight slides over (Views/FlyGhost.cs); the new row waits for it ===== -->
+  <Style Selector="Window.animated Border.row.current.arriving">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
 </Styles>

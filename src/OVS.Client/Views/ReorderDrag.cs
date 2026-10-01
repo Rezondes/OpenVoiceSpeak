@@ -127,7 +127,8 @@ public sealed partial class ReorderDrag
         return true;
     }
 
-    static RenderTargetBitmap Snapshot(Control control)
+    /// <summary>A picture of the control as it looks now (also the flying row of Package 103).</summary>
+    internal static RenderTargetBitmap Snapshot(Control control)
     {
         double scaling = TopLevel.GetTopLevel(control)?.RenderScaling ?? 1;
         var size = new PixelSize(Math.Max(1, (int)Math.Ceiling(control.Bounds.Width * scaling)), Math.Max(1, (int)Math.Ceiling(control.Bounds.Height * scaling)));
@@ -203,7 +204,9 @@ public sealed partial class ReorderDrag
         if (!inside || gap < 0 || dropped is null || list.ItemFromContainer(dropped) is not { } item) return;
         bool after = gap == containers.Count;
         var target = list.ItemFromContainer(containers[after ? gap - 1 : gap]);
-        if (target is not null) await move(item, target, after);
+        if (target is null) return;
+        ItemMotion.Hold(list); // Package 103: the row already sits where it was dropped, it must not glide there again
+        await move(item, target, after);
     }
 
     void OnKeyDown(object? sender, KeyEventArgs e)

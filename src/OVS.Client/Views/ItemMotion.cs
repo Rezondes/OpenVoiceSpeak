@@ -3,9 +3,11 @@ using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using OVS.Client.ViewModels;
@@ -17,8 +19,8 @@ namespace OVS.Client.Views;
 /// height, so the entries below make room instead of jumping. Entries that come together are staggered by 30 ms,
 /// at most 8 steps. The first fill of a list does not play this; it fades in once as a whole, and so does a list
 /// that was empty and gets a whole batch at once (the administration lists arriving from the server), except where
-/// every entry counts on its own (<see cref="FlashProperty"/>, the channel tree, whose first fill just shows). Rebuilt lists keep their entries
-/// by <see cref="IMotionKey"/>, so only really new ones play it.
+/// every entry counts on its own (<see cref="FlashProperty"/>, the channel tree, whose first fill just shows).
+/// Rebuilt lists keep their entries by <see cref="IMotionKey"/>, so only really new ones play it.
 /// </summary>
 public static class ItemMotion
 {
@@ -36,16 +38,37 @@ public static class ItemMotion
     public static readonly AttachedProperty<bool> FlashProperty =
         AvaloniaProperty.RegisterAttached<ItemsControl, bool>("Flash", typeof(ItemMotion));
 
+    /// <summary>Package 103: entries that change their place in the list glide there instead of jumping.</summary>
+    public static readonly AttachedProperty<bool> FlipProperty =
+        AvaloniaProperty.RegisterAttached<ItemsControl, bool>("Flip", typeof(ItemMotion));
+
+    /// <summary>Package 103: the users of a channel: one who leaves this list and comes into another flies there.</summary>
+    public static readonly AttachedProperty<bool> FlyProperty =
+        AvaloniaProperty.RegisterAttached<ItemsControl, bool>("Fly", typeof(ItemMotion));
+
     public static bool GetEnter(ItemsControl list) => list.GetValue(EnterProperty);
     public static void SetEnter(ItemsControl list, bool value) => list.SetValue(EnterProperty, value);
     public static bool GetFlash(ItemsControl list) => list.GetValue(FlashProperty);
     public static void SetFlash(ItemsControl list, bool value) => list.SetValue(FlashProperty, value);
+    public static bool GetFlip(ItemsControl list) => list.GetValue(FlipProperty);
+    public static void SetFlip(ItemsControl list, bool value) => list.SetValue(FlipProperty, value);
+    public static bool GetFly(ItemsControl list) => list.GetValue(FlyProperty);
+    public static void SetFly(ItemsControl list, bool value) => list.SetValue(FlyProperty, value);
+
+    /// <summary>
+    /// Package 103: the next change of the list's order is not animated: after a drop the row already sits where the
+    /// new order puts it (Package 96).
+    /// </summary>
+    public static void Hold(ItemsControl list)
+    {
+        if (trackers.TryGetValue(list, out var tracker)) tracker.Hold();
+    }
 
     static readonly ConditionalWeakTable<ItemsControl, Tracker> trackers = [];
 
     /// <summary>Package 102: the lists showing a collection, to find the row of an entry that starts leaving.</summary>
     static readonly ConditionalWeakTable<object, List<WeakReference<ItemsControl>>> showing = [];
-    static readonly ConditionalWeakTable<Control, CancellationTokenSource> folding = [];
+    static readonly ConditionalWeakTable<Control, CancellationTokenSource> folding = [], gliding = [];
 
     static ItemMotion()
     {
@@ -53,8 +76,14 @@ public static class ItemMotion
         {
             if (e.GetNewValue<bool>()) trackers.GetValue(list, l => new Tracker(l));
         });
+        FlipProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
+        {
+            if (e.GetNewValue<bool>()) trackers.GetValue(list, l => new Tracker(l)).WatchPlaces();
+        });
         CollectionSync.LeavingChanged += OnLeavingChanged;
     }
+
+    public static object? KeyOf(object? item) => item is IMotionKey keyed ? keyed.MotionKey : item;
 
     static void Show(object? source, ItemsControl list, bool on)
     {
@@ -70,9 +99,69 @@ public static class ItemMotion
         foreach (var weak in lists.ToList())
         {
             if (!weak.TryGetTarget(out var list) || list.ContainerFromItem(item) is not { } container) continue;
+            if (leaving && GetFly(list)) Depart(item, container);
             if (leaving) Leave(container);
             else Stay(container);
         }
+    }
+
+    // ---- Package 103: a user who switches channels flies from the old row to the new one ----
+
+    sealed record Departure(OverlayLayer Overlay, RenderTargetBitmap Picture, Rect From);
+
+    static readonly Dictionary<object, Departure> departures = new(ReferenceEqualityComparer.Instance);
+    static readonly Dictionary<object, Control> arrivals = new(ReferenceEqualityComparer.Instance);
+    static readonly ConditionalWeakTable<Control, object> flown = [];
+    static bool pairing;
+
+    /// <summary>The picture is taken now, before the row folds away; it flies only if the entry turns up elsewhere.</summary>
+    static void Depart(object item, Control container)
+    {
+        if (!Motion.IsAnimated || OverlayLayer.GetOverlayLayer(container) is not { } overlay || FlyGhost.VisibleRect(container, overlay) is not { } from) return;
+        if (departures.Remove(item, out var earlier)) earlier.Picture.Dispose();
+        departures[item] = new Departure(overlay, ReorderDrag.Snapshot(container), from);
+        QueuePairing();
+    }
+
+    static void Arrive(object item, Control container)
+    {
+        arrivals[item] = container;
+        QueuePairing();
+    }
+
+    /// <summary>Once the change is laid out: whoever left one list and came into another in the same change flies.</summary>
+    static void QueuePairing()
+    {
+        if (pairing) return;
+        pairing = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            pairing = false;
+            foreach (var (item, departure) in departures)
+            {
+                if (arrivals.TryGetValue(item, out var container) && FlyGhost.VisibleRect(container, departure.Overlay) is not null)
+                {
+                    flown.AddOrUpdate(container, item);
+                    _ = Land(container, departure);
+                }
+                else departure.Picture.Dispose(); // gone for good, or its new place cannot be seen
+            }
+            departures.Clear();
+            arrivals.Clear();
+        }, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// The picture flies to where the new row is in each frame (it still opens, the old one still folds); the row shows
+    /// once the picture has landed on it, and flashes.
+    /// </summary>
+    static async Task Land(Control container, Departure departure)
+    {
+        await FlyGhost.Row(departure.Overlay, departure.Picture, departure.From, () =>
+            container.TranslatePoint(default, departure.Overlay) is { } at ? new Point(at.X, at.Y - (container.RenderTransform?.Value.M32 ?? 0)) : null);
+        flown.Remove(container);
+        container.ClearValue(Visual.OpacityProperty);
+        await Flash(container);
     }
 
     /// <summary>Folds the row away: it fades, drifts to the left and closes its height; it cannot be clicked any more.</summary>
@@ -116,7 +205,7 @@ public static class ItemMotion
         }.RunAsync(container, cancel.Token);
     }
 
-    /// <summary>Came back while leaving: the row is whole again.</summary>
+    /// <summary>Came back while leaving, or handed to another entry: the row is whole again.</summary>
     static void Stay(Control container)
     {
         if (folding.TryGetValue(container, out var cancel))
@@ -129,20 +218,33 @@ public static class ItemMotion
         container.Classes.Set("leaving", false);
     }
 
-    public static object? KeyOf(object? item) => item is IMotionKey keyed ? keyed.MotionKey : item;
+    /// <summary>A recycled row starts whole and still, whatever its last entry was doing.</summary>
+    static void Reset(Control container)
+    {
+        Stay(container);
+        if (gliding.TryGetValue(container, out var cancel))
+        {
+            cancel.Cancel();
+            gliding.Remove(container);
+        }
+        container.ClearValue(Visual.OpacityProperty);
+        container.ClearValue(Layoutable.MaxHeightProperty);
+        flown.Remove(container);
+    }
 
     sealed class Tracker
     {
         readonly ItemsControl list;
         HashSet<object> known = []; // the entries as of the last settled change
-        bool filled, fading, batchQueued, settleQueued, fillBatch;
+        bool filled, fading, batchQueued, settleQueued, fillBatch, held, moved, watching;
         int batch;
+        Dictionary<object, double> places = []; // Package 103: where each entry sat after the last layout
 
         public Tracker(ItemsControl list)
         {
             this.list = list;
             list.ContainerPrepared += OnPrepared;
-            list.ContainerClearing += (_, e) => Stay(e.Container); // a recycled row starts whole
+            list.ContainerClearing += (_, e) => Reset(e.Container);
             Show(list.ItemsSource, list, true);
             list.Items.CollectionChanged += OnItemsChanged;
             list.PropertyChanged += (_, e) =>
@@ -160,7 +262,41 @@ public static class ItemMotion
             QueueSettle();
         }
 
-        void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => QueueSettle();
+        public void Hold()
+        {
+            held = true;
+            Dispatcher.UIThread.Post(() => held = false, DispatcherPriority.Background);
+        }
+
+        void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.Action == NotifyCollectionChangedAction.Move && GetFlip(list) && Motion.IsAnimated && !held) moved = true;
+            QueueSettle();
+        }
+
+        /// <summary>
+        /// Package 103 (FLIP): after every layout the list notes where each entry sits (a moved entry gets a new row
+        /// at once, so its old place cannot be asked for when the move is announced). After a change of order each
+        /// entry that moved glides from its old place to the new one.
+        /// </summary>
+        public void WatchPlaces()
+        {
+            if (watching) return;
+            watching = true;
+            list.LayoutUpdated += (_, _) =>
+            {
+                var now = new Dictionary<object, double>();
+                foreach (var container in list.GetRealizedContainers())
+                {
+                    if (KeyOf(list.ItemFromContainer(container)) is not { } key) continue;
+                    now.TryAdd(key, container.Bounds.Y);
+                    if (moved && !held && places.TryGetValue(key, out var was) && Math.Abs(was - container.Bounds.Y) >= 0.5)
+                        Glide(container, was - container.Bounds.Y);
+                }
+                moved = false;
+                places = now;
+            };
+        }
 
         /// <summary>
         /// Once a change is complete (after the layout that shows it) the list knows its entries again: a rebuild
@@ -210,7 +346,8 @@ public static class ItemMotion
                 QueueBatchEnd();
                 return;
             }
-            Enter(e.Container, batch++, GetFlash(list));
+            if (GetFly(list)) Arrive(item!, e.Container);
+            Enter(e.Container, batch++, GetFlash(list), GetFly(list));
             QueueBatchEnd();
         }
 
@@ -245,14 +382,44 @@ public static class ItemMotion
         }
     }
 
-    static async void Enter(Control container, int index, bool flash)
+    /// <summary>Package 103: the entry starts where it was and glides to its new place.</summary>
+    static void Glide(Control container, double from)
     {
+        var cancel = new CancellationTokenSource();
+        gliding.AddOrUpdate(container, cancel);
+        _ = new Animation
+        {
+            Duration = Motion.Slow,
+            Easing = Motion.Ease,
+            FillMode = FillMode.Backward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(TranslateTransform.YProperty, from) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.YProperty, 0d) } },
+            },
+        }.RunAsync(container, cancel.Token);
+    }
+
+    /// <param name="fly">
+    /// A list whose entries may fly in from another (Package 103): the entry waits hidden until the pairing has looked
+    /// for its departure; if a picture flies to it, it only opens its height and shows when the picture lands.
+    /// </param>
+    static async void Enter(Control container, int index, bool flash, bool fly)
+    {
+        container.ClipToBounds = true;
+        container.Classes.Set("entering", true);
+        if (fly)
+        {
+            container.Opacity = 0;
+            container.MaxHeight = 0;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); // after the pairing
+        }
+        bool flying = flown.TryGetValue(container, out _);
         var delay = TimeSpan.FromMilliseconds(Math.Min(index, StaggerSteps - 1) * StaggerMs);
+        container.ClearValue(Layoutable.MaxHeightProperty);
         container.Measure(new Size(container.Parent is Layoutable parent && parent.Bounds.Width > 0 ? parent.Bounds.Width : double.PositiveInfinity,
             double.PositiveInfinity));
         double height = container.DesiredSize.Height;
-        container.ClipToBounds = true;
-        container.Classes.Set("entering", true);
         await new Animation
         {
             Duration = Motion.Normal,
@@ -276,7 +443,7 @@ public static class ItemMotion
                     Cue = new Cue(1),
                     Setters =
                     {
-                        new Setter(Visual.OpacityProperty, 1d),
+                        new Setter(Visual.OpacityProperty, flying ? 0d : 1d), // a flown-in entry waits for its picture
                         new Setter(TranslateTransform.YProperty, 0d),
                         new Setter(Layoutable.MaxHeightProperty, height),
                     },
@@ -285,8 +452,15 @@ public static class ItemMotion
         }.RunAsync(container);
         container.ClearValue(Visual.ClipToBoundsProperty);
         container.Classes.Set("entering", false);
-        if (!flash) return;
-        container.Classes.Set("fresh", true); // Motion.axaml: the row flashes once in the accent colour
+        if (flying) return; // Land shows it and lets it flash
+        container.ClearValue(Visual.OpacityProperty);
+        if (flash) await Flash(container);
+    }
+
+    /// <summary>The row flashes once in the accent colour (Motion.axaml).</summary>
+    static async Task Flash(Control container)
+    {
+        container.Classes.Set("fresh", true);
         await Task.Delay(FlashMs);
         container.Classes.Set("fresh", false);
     }

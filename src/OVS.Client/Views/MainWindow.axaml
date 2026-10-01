@@ -171,7 +171,7 @@
             </StackPanel>
           </ScrollViewer>
           <ScrollViewer Padding="8,10" IsVisible="{Binding IsConnected}">
-            <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
+            <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">
@@ -233,7 +233,7 @@
                       </DockPanel>
                     </Border>
 
-                    <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">
+                    <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" v:ItemMotion.Fly="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:UserViewModel">
                           <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupNames}">

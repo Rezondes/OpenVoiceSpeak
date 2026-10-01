@@ -18,11 +18,17 @@ public class CollectionSyncTests
         return (new ObservableCollection<string>(items), new LeaveTimer(clock) { Delay = TimeSpan.FromMilliseconds(220) }, clock);
     }
 
-    /// <summary>The removal comes from Task.Delay on the manual clock: give its continuation a moment.</summary>
+    /// <summary>The removal comes from Task.Delay on the manual clock: its continuation runs on the pool.</summary>
     static void Pass(ManualTimeProvider clock, TimeSpan by)
     {
         clock.Advance(by);
         Thread.Sleep(50);
+    }
+
+    static void Eventually(Func<bool> done)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && watch.ElapsedMilliseconds < 5000) Thread.Sleep(10);
     }
 
     [Fact]
@@ -36,6 +42,7 @@ public class CollectionSyncTests
         Pass(clock, TimeSpan.FromMilliseconds(100));
         Assert.Contains("b", list);
         Pass(clock, TimeSpan.FromMilliseconds(200));
+        Eventually(() => list.Count == 2);
         Assert.Equal(["a", "c"], list);
         Assert.False(CollectionSync.IsLeaving(list, "b"));
     }

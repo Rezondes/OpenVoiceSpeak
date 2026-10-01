@@ -6293,13 +6293,13 @@ Reordering by another admin, or a move confirmed by the server, arrives as a `Sy
 
 ### Acceptance Criteria
 
-- [ ] AC1: A channel reorder from the server glides: every moved row slides from its old to its new position over `Motion.Slow`.
-- [ ] AC2: A user who switches channel (themselves, moved by someone, or by a link) flies as a ghost from the old row to the new one. The old slot collapses (Package 102) and the new slot opens (Package 101); at the end the real row flashes once.
-- [ ] AC3: My own switch also gives the current-channel highlight a sliding move to the new channel.
-- [ ] AC4: Group reorder in Administration glides the same way.
-- [ ] AC5: After a drag drop (Package 96) the confirming server order causes no second jump or glide.
-- [ ] AC6: If the old or new position is scrolled out of view, the item only appears or leaves (no ghost across the screen edge).
-- [ ] AC7: In simplified mode rows jump as today.
+- [x] AC1: A channel reorder from the server glides: every moved row slides from its old to its new position over `Motion.Slow`. (as built: Avalonia gives a moved entry a new row at once, so a `Flip` list notes every row's layout position after each layout pass and compares against that; users within a channel glide too)
+- [x] AC2: A user who switches channel (themselves, moved by someone, or by a link) flies as a ghost from the old row to the new one. The old slot collapses (Package 102) and the new slot opens (Package 101); at the end the real row flashes once.
+- [x] AC3: My own switch also gives the current-channel highlight a sliding move to the new channel.
+- [x] AC4: Group reorder in Administration glides the same way.
+- [x] AC5: After a drag drop (Package 96) the confirming server order causes no second jump or glide.
+- [x] AC6: If the old or new position is scrolled out of view, the item only appears or leaves (no ghost across the screen edge).
+- [x] AC7: In simplified mode rows jump as today.
 
 ### Tests (TDD)
 

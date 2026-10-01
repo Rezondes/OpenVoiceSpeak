@@ -56,7 +56,7 @@ public sealed class ItemMotionTests : IDisposable
         Dispatcher.UIThread.RunJobs();
     }
 
-    static (Window Window, ItemsControl List) Host(ObservableCollection<Row> rows, bool animated = true)
+    static (Window Window, ItemsControl List) Host(ObservableCollection<Row> rows, bool animated = true, bool flip = false)
     {
         var list = new ItemsControl
         {
@@ -64,6 +64,7 @@ public sealed class ItemMotionTests : IDisposable
             ItemTemplate = new FuncDataTemplate<Row>((row, _) => new Border { Height = 30, Child = new TextBlock { Text = row?.Key } }),
         };
         ItemMotion.SetEnter(list, true);
+        ItemMotion.SetFlip(list, flip);
         var window = new Window { Width = 400, Height = 800, Content = list };
         window.Show();
         Motion.Apply(window, animated ? DisplayMode.Animated : DisplayMode.Simplified);
@@ -343,4 +344,167 @@ public sealed class ItemMotionTests : IDisposable
     }
 
     static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
+
+    // ---- Package 103: moves ----
+
+    static Control ChannelContainer(MainWindow main, string name) =>
+        main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers().Single(c => c.DataContext is ChannelViewModel ch && ch.Name == name);
+
+    static IEnumerable<Border> Ghosts(Visual main, string kind) =>
+        Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!.Children.OfType<Border>().Where(b => b.Classes.Contains(kind));
+
+    static UserInfo Anna(Guid channel) => new(2, "fp2", "anna", channel, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
+
+    [AvaloniaFact]
+    public void ServerReorder_RowsGlideFromOldOffset()
+    {
+        var main = Connected(out var server);
+        var raid = ChannelContainer(main, "Raid");
+        double before = raid.TranslatePoint(default, main)!.Value.Y;
+        server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1))); // another admin puts Raid first
+        Frame();
+        raid = ChannelContainer(main, "Raid"); // a moved entry gets a new row
+        double now = raid.TranslatePoint(default, main)!.Value.Y - OffsetY(raid);
+        Assert.True(now < before, "Raid is first now");
+        Assert.True(OffsetY(raid) > 0.75 * (before - now), $"it starts where it was: {OffsetY(raid)} of {before - now}"); // a frame may have passed
+        Settle(500);
+        Assert.Equal(0, OffsetY(raid), 2);
+        main.Close();
+    }
+
+    /// <summary>The row of a user in the list they came into (not the one folding away in the old channel).</summary>
+    static Control Arrived(MainWindow main, string nickname) =>
+        main.GetVisualDescendants().OfType<ContentPresenter>().Single(c => c.DataContext is UserViewModel u && u.Nickname == nickname && !c.Classes.Contains("leaving"));
+
+    /// <summary>Follows a flying ghost until it lands; returns where it was last seen (overlay coordinates).</summary>
+    static double LastTop(Border ghost, out double first)
+    {
+        first = Canvas.GetTop(ghost);
+        double last = first;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (ghost.Parent is not null && watch.ElapsedMilliseconds < 2000)
+        {
+            last = Canvas.GetTop(ghost);
+            Frame();
+        }
+        return Canvas.GetTop(ghost);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("anna", true)] // anna moves up from Raid to the Lobby
+    [InlineData("ich", false)] // I move down from the Lobby to Raid, while my old row above still folds
+    public void UserSwitch_GhostFliesOldToNew_LandsOnTheRow(string nickname, bool up)
+    {
+        var main = Connected(out var server);
+        var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
+        double oldTop = UserContainer(main, nickname).TranslatePoint(default, overlay)!.Value.Y;
+        server.Apply(new UserUpdated(nickname == "anna" ? Anna(FakeServers.Lobby)
+            : new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
+        Frame();
+        Frame();
+        var ghost = Assert.Single(Ghosts(main, FlyGhost.GhostClass));
+        Assert.Equal(0, Arrived(main, nickname).Opacity); // the new row waits for its picture
+        double landed = LastTop(ghost, out double start);
+        Assert.True(Math.Abs(start - oldTop) < 10, $"starts on the old row: {start} vs {oldTop} (two frames have passed)");
+        Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
+        Settle(250);
+        var row = Arrived(main, nickname);
+        Assert.Equal(row.TranslatePoint(default, overlay)!.Value.Y, landed, 1); // landed exactly on the new row
+        Assert.Equal(up, landed < oldTop);
+        Assert.Equal(1, row.Opacity, 2); // shows once the picture has landed
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void OwnSwitch_CurrentHighlightSlides()
+    {
+        var main = Connected(out var server);
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
+        Settle(60);
+        Assert.Single(Ghosts(main, FlyGhost.HighlightClass));
+        Settle(140); // still flying; the row's own colour transition is over
+        var raidRow = ChannelContainer(main, "Raid").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
+        Assert.Contains(FlyGhost.ArrivingClass, raidRow.Classes);
+        Assert.Equal(Avalonia.Media.Colors.Transparent, (raidRow.Background as Avalonia.Media.ISolidColorBrush)?.Color); // waits for the highlight
+        double landed = LastTop(Ghosts(main, FlyGhost.HighlightClass).Single(), out _);
+        Assert.Empty(Ghosts(main, FlyGhost.HighlightClass));
+        Settle(250);
+        var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
+        Assert.Equal(raidRow.TranslatePoint(default, overlay)!.Value.Y, landed, 1); // lands on Raid although my old row above folded meanwhile
+        Assert.DoesNotContain(FlyGhost.ArrivingClass, raidRow.Classes);
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void GroupReorder_Glides()
+    {
+        var rows = new ObservableCollection<Row> { new("Gast"), new("Moderator"), new("Admin") };
+        var (window, list) = Host(rows, flip: true);
+        rows.Move(2, 0);
+        Frame();
+        var admin = Container(list, "Admin");
+        Assert.True(OffsetY(admin) > 45, $"{OffsetY(admin)}"); // from 60 px below, a frame may have passed
+        Assert.True(OffsetY(Container(list, "Gast")) < -22, "the others make room, gliding as well");
+        Settle(500);
+        Assert.Equal(0, OffsetY(admin), 2);
+    }
+
+    [AvaloniaFact]
+    public void OffscreenEnd_NoGhost()
+    {
+        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 400 };
+        main.Show();
+        var server = FakeServers.Crowded();
+        vm.Server = server;
+        Settle(400);
+        var lobby = server.Channels.First();
+        var far = server.Channels.Last().Users.First(); // in the last channel, scrolled out of view
+        server.Apply(new UserUpdated(server.Mirror.Users[far.SessionId] with { ChannelId = lobby.Id }));
+        Settle(60);
+        Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
+
+        // and the other way round: from the Lobby into a channel scrolled out of view
+        var mine = server.Channels.First().Users.First(u => !u.IsSelf);
+        server.Apply(new UserUpdated(server.Mirror.Users[mine.SessionId] with { ChannelId = server.Channels.Last().Id }));
+        Settle(60);
+        Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
+        main.Close();
+    }
+
+    /// <summary>The group list of the administration really glides (the attribute is there).</summary>
+    [AvaloniaFact]
+    public async Task AdminGroupList_Glides()
+    {
+        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.Show();
+        vm.Server = FakeServers.Admin();
+        await vm.OpenAdminAsync();
+        Settle(400);
+        var groups = main.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "GroupList");
+        Assert.True(ItemMotion.GetFlip(groups));
+        var admin = vm.AdminPage!;
+        admin.SelectedGroup = admin.Groups.Single(g => g.Name == "Admin");
+        await admin.MoveGroupUpCommand.ExecuteAsync(null);
+        Frame();
+        var row = (Control)groups.ContainerFromItem(admin.Groups.Live().First())!;
+        Assert.True(row.RenderTransform?.Value.M32 > 0, "Admin glides up from below");
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void Simplified_Jumps()
+    {
+        var main = Connected(out var server);
+        var vm = (MainViewModel)main.DataContext!;
+        vm.Appearance = vm.Appearance with { Display = DisplayMode.Simplified };
+        server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1)));
+        server.Apply(new UserUpdated(Anna(FakeServers.Lobby)));
+        Frame();
+        Assert.Equal(0, OffsetY(ChannelContainer(main, "Raid")));
+        Settle(60);
+        Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
+        main.Close();
+    }
 }

@@ -84,7 +84,7 @@
                     </StackPanel>
                   </Button>
                 </DockPanel>
-                <ListBox v:ItemMotion.Enter="True" x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
+                <ListBox v:ItemMotion.Enter="True" v:ItemMotion.Flip="True" x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:GroupEditViewModel">
                       <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">

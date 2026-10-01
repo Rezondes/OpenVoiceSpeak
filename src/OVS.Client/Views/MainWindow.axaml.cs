@@ -112,8 +112,19 @@ public partial class MainWindow : Window
 
     void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ServerViewModel.CurrentChannel)) SetDrawer(false);
+        if (e.PropertyName != nameof(ServerViewModel.CurrentChannel)) return;
+        SetDrawer(false);
+        // Package 103: the highlight slides from the channel I left to the one I am in now
+        var now = watchedServer?.CurrentChannel;
+        if (currentChannel is { } was && now is not null && was != now && ChannelRow(was) is { } from && ChannelRow(now) is { } to)
+            _ = FlyGhost.Highlight(from, to);
+        currentChannel = now;
     }
+
+    ChannelViewModel? currentChannel;
+
+    Border? ChannelRow(ChannelViewModel channel) =>
+        ChannelItems.ContainerFromItem(channel)?.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("row"));
 
     /// <summary>Every connect starts with the fitted width again.</summary>
     void OnServerChanged()
@@ -124,6 +135,7 @@ public partial class MainWindow : Window
             watchedServer.PropertyChanged -= OnServerPropertyChanged;
         }
         watchedServer = watchedVm?.Server;
+        currentChannel = watchedServer?.CurrentChannel; // a new connection starts where it is, nothing slides
         if (watchedServer is null) return;
         watchedServer.StateChanged += QueueFitSidebar;
         watchedServer.PropertyChanged += OnServerPropertyChanged;
