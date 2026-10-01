@@ -56,7 +56,7 @@ public sealed class OverlayMotionTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
         vm.Server = FakeServers.Admin();
-        Settle(300);
+        Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display);
         return main;
     }

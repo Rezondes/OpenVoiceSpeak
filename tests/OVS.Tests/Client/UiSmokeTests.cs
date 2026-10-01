@@ -70,7 +70,8 @@ public sealed class UiSmokeTests : IDisposable
 
     /// <summary>A server logo is shown; the app logo (LogoMark, a bitmap below 32 px) does not count.</summary>
     static bool ShowsImage(Visual root) => root.GetVisualDescendants().OfType<Image>()
-        .Any(i => i.Source is not null && i.IsEffectivelyVisible && !i.GetVisualAncestors().OfType<LogoMark>().Any());
+        .Any(i => i.Source is not null && i.IsEffectivelyVisible && !i.GetVisualAncestors().OfType<LogoMark>().Any()
+                  && !i.GetVisualAncestors().OfType<Border>().Any(b => b.Classes.Contains(PageMotion.PageGhostClass))); // not a passing picture (Package 104, 106)
 
     [AvaloniaTheory]
     [InlineData("Dark")]

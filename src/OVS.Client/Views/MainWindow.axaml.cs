@@ -113,15 +113,60 @@ public partial class MainWindow : Window
     /// </summary>
     void OnVmPropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs e)
     {
-        if (e.PropertyName is not (nameof(MainViewModel.Page) or nameof(MainViewModel.SettingsPage) or nameof(MainViewModel.AdminPage))
-            || watchedVm is not { } vm)
+        if (watchedVm is not { } vm) return;
+        if (e.PropertyName == nameof(MainViewModel.Server))
+        {
+            // Package 106: connecting, home fades away while the chat comes up from below; disconnecting, the server folds
+            // down and home comes back. The channel tree does the same in the sidebar.
+            bool was = vm.Server is not null;
+            (Vector In, Vector Away)? Way() => (vm.Server is not null) == was ? null
+                : vm.Server is not null ? (new Vector(0, PageMotion.Slide), default) : (default, new Vector(0, PageMotion.Slide));
+            if (vm.IsHomePage) PageMotion.Leave(PageHost, PageGhost, Way); // settings and administration stay what they are
+            PageMotion.Leave(TreeHost, TreeGhost, Way);
             return;
+        }
+        if (e.PropertyName is not (nameof(MainViewModel.Page) or nameof(MainViewModel.SettingsPage) or nameof(MainViewModel.AdminPage))) return;
         var before = vm.Page;
-        PageMotion.Leave(PageHost, PageGhost, () => vm.Page == before ? null : !vm.IsHomePage);
+        PageMotion.Leave(PageHost, PageGhost, () => vm.Page == before ? null : PageMotion.Sideways(!vm.IsHomePage));
+    }
+
+    bool wasConnecting;
+
+    /// <summary>
+    /// Package 106: connected, the server's name fades into the header; a connect that failed shakes the start card once
+    /// and lets the reason fade in.
+    /// </summary>
+    void OnConnectionChanged(MainViewModel vm, string property)
+    {
+        if (property == nameof(MainViewModel.Server) && vm.Server is not null) FadeIn(ServerHeader);
+        if (property != nameof(MainViewModel.IsConnecting)) return;
+        if (wasConnecting && !vm.IsConnecting && vm.Server is null)
+        {
+            Motion.Shake(StartCard);
+            FadeIn(StatusText);
+        }
+        wasConnecting = vm.IsConnecting;
+    }
+
+    static void FadeIn(Visual target)
+    {
+        if (!Motion.IsAnimated) return;
+        _ = new Avalonia.Animation.Animation
+        {
+            Duration = Motion.Normal,
+            Easing = Motion.Ease,
+            FillMode = Avalonia.Animation.FillMode.Backward,
+            Children =
+            {
+                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 0d) } },
+                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 1d) } },
+            },
+        }.RunAsync(target);
     }
 
     void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (watchedVm is { } changed && e.PropertyName is { } name) OnConnectionChanged(changed, name);
         if (e.PropertyName == nameof(MainViewModel.Server))
         {
             OnServerChanged();

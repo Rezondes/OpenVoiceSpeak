@@ -6443,16 +6443,16 @@ The home panel shows the `LogoMark` and an indeterminate `ProgressBar` while con
 
 ### Acceptance Criteria
 
-- [ ] AC1: While connecting, the logo's sound wave pulses and the progress bar is replaced by a slim animated bar; a failed connect shakes the home card once and shows the error with a fade.
-- [ ] AC2: On connect:
+- [x] AC1: While connecting, the logo's sound wave pulses and the progress bar is replaced by a slim animated bar; a failed connect shakes the home card once and shows the error with a fade. (the whole logo breathes; the bar is the Fluent indeterminate bar made 3 px high; a refused or cancelled connect counts as failed too, its reason is always shown)
+- [x] AC2: On connect: (as built: home and the bookmarks leave as pictures (the mechanism of Package 104, now in any direction) while the chat comes up from below; the tree builds up once it is laid out visible, only the top-level tree, not a moved channel's user list)
   - the home content fades out
   - the sidebar header and the server name fade in
   - the channel tree builds up channel by channel (the stagger from Package 101, capped)
   - the chat area slides up from below
   - the whole sequence takes at most 700 ms
-- [ ] AC3: On disconnect (by the user, kicked, or lost): the tree and chat fold away (fade plus collapse), the home page returns with the reason; with a lost connection the server name grey-pulses while reconnecting.
-- [ ] AC4: Switching directly between two servers (bookmark click while connected) plays disconnect then connect without a blank frame.
-- [ ] AC5: In simplified mode everything switches instantly, as today.
+- [x] AC3: On disconnect (by the user, kicked, or lost): the tree and chat fold away (fade plus collapse), the home page returns with the reason; with a lost connection the server name grey-pulses while reconnecting. (the client has no automatic reconnect, so there is no reconnecting state to pulse; the server folds away downwards as a picture and home shows the reason)
+- [x] AC4: Switching directly between two servers (bookmark click while connected) plays disconnect then connect without a blank frame.
+- [x] AC5: In simplified mode everything switches instantly, as today.
 
 ### Tests (TDD)
 

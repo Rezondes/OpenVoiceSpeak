@@ -52,6 +52,19 @@ public static class Motion
         }.RunAsync(child);
     });
 
+    public const double ShakeBy = 6;
+
+    /// <summary>Package 105, 106: a refused input or a failed connect shakes its card once (3 times 6 px).</summary>
+    public static void Shake(Animatable target)
+    {
+        if (!IsAnimated) return;
+        var shake = new Animation { Duration = TimeSpan.FromMilliseconds(360), Easing = Ease };
+        double[] steps = [0, -ShakeBy, ShakeBy, -ShakeBy, ShakeBy, -ShakeBy / 2, 0];
+        for (int i = 0; i < steps.Length; i++)
+            shake.Children.Add(new KeyFrame { Cue = new Cue((double)i / (steps.Length - 1)), Setters = { new Setter(TranslateTransform.XProperty, steps[i]) } });
+        _ = shake.RunAsync(target);
+    }
+
     /// <summary>The display the user chose; tests set it directly.</summary>
     public static bool IsAnimated { get; set; } = true;
 

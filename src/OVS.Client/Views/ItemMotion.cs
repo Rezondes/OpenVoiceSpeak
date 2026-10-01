@@ -46,6 +46,16 @@ public static class ItemMotion
     public static readonly AttachedProperty<bool> FlyProperty =
         AvaloniaProperty.RegisterAttached<ItemsControl, bool>("Fly", typeof(ItemMotion));
 
+    /// <summary>
+    /// Package 106: the first fill (connecting) builds up entry by entry, staggered, instead of fading in as a whole;
+    /// only the channel tree itself (a moved channel's new user list just shows).
+    /// </summary>
+    public static readonly AttachedProperty<bool> BuildUpProperty =
+        AvaloniaProperty.RegisterAttached<ItemsControl, bool>("BuildUp", typeof(ItemMotion));
+
+    public static bool GetBuildUp(ItemsControl list) => list.GetValue(BuildUpProperty);
+    public static void SetBuildUp(ItemsControl list, bool value) => list.SetValue(BuildUpProperty, value);
+
     public static bool GetEnter(ItemsControl list) => list.GetValue(EnterProperty);
     public static void SetEnter(ItemsControl list, bool value) => list.SetValue(EnterProperty, value);
     public static bool GetFlash(ItemsControl list) => list.GetValue(FlashProperty);
@@ -260,10 +270,39 @@ public static class ItemMotion
                 {
                     filled = false;
                     fading = false;
+                    // the window already shows (a hidden tree is not in the visual tree yet, so ask the logical one)
+                    if (GetBuildUp(list) && Motion.IsAnimated && Avalonia.LogicalTree.LogicalExtensions.FindLogicalAncestorOfType<Window>(list) is { IsVisible: true })
+                        BuildUpOnceShown();
                 }
                 QueueSettle();
             };
             QueueSettle();
+        }
+
+        /// <summary>
+        /// Package 106: the tree that appears while the window shows (connecting) builds up entry by entry. Its rows are
+        /// made while the tree is still hidden (its visibility follows a moment later), so it plays once it is laid out
+        /// visible.
+        /// </summary>
+        void BuildUpOnceShown()
+        {
+            var source = list.ItemsSource;
+            var since = System.Diagnostics.Stopwatch.StartNew();
+            void OnLayout(object? sender, EventArgs e)
+            {
+                // gone, switched to the simplified display, or not shown soon (the drawer is closed): it just shows later
+                if (list.ItemsSource != source || !Motion.IsAnimated || since.ElapsedMilliseconds > 500)
+                {
+                    list.LayoutUpdated -= OnLayout;
+                    return;
+                }
+                if (!list.IsEffectivelyVisible) return;
+                list.LayoutUpdated -= OnLayout;
+                int index = 0;
+                foreach (var container in list.GetRealizedContainers().OrderBy(list.IndexFromContainer).ToList())
+                    Enter(container, index++, flash: false, fly: false);
+            }
+            list.LayoutUpdated += OnLayout;
         }
 
         public void Hold()

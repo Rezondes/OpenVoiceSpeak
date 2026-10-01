@@ -202,7 +202,7 @@ public sealed class ItemMotionTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         vm.Server = server = FakeServers.Admin();
-        Settle(400);
+        Settle(700); // connecting builds the tree up (Package 106)
         return main;
     }
 

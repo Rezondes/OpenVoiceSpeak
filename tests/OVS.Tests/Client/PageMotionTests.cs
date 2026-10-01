@@ -65,7 +65,7 @@ public sealed class PageMotionTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = height };
         main.Show();
         vm.Server = FakeServers.Admin();
-        Settle(400);
+        Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display); // the display is one for the app: pin it against what other tests left queued
         return main;
     }

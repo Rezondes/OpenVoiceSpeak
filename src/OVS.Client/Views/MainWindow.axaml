@@ -39,7 +39,7 @@
     <Border x:Name="Sidebar" Grid.Column="0" IsEnabled="{Binding !IsUpdating}" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <!-- Server header -->
-        <Border DockPanel.Dock="Top" Padding="14,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
+        <Border x:Name="ServerHeader" DockPanel.Dock="Top" Padding="14,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
           <DockPanel>
             <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding Server.NewChannelCommand, FallbackValue={x:Null}}"
                     IsVisible="{Binding Server.CanCreateChannel, FallbackValue=False}"
@@ -119,8 +119,9 @@
           </DockPanel>
         </Border>
 
-        <!-- Channel tree -->
-        <Panel>
+        <!-- Channel tree; Package 106: its picture lies right above it while connecting or disconnecting -->
+        <Panel ClipToBounds="True">
+        <Panel x:Name="TreeHost">
           <!-- Not connected: the bookmarks (Package 40) -->
           <ScrollViewer Padding="8,10" IsVisible="{Binding !IsConnected}">
             <StackPanel Spacing="2">
@@ -171,7 +172,7 @@
             </StackPanel>
           </ScrollViewer>
           <ScrollViewer Padding="8,10" IsVisible="{Binding IsConnected}">
-            <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
+            <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" v:ItemMotion.BuildUp="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">
@@ -311,6 +312,8 @@
             </ItemsControl>
           </ScrollViewer>
         </Panel>
+        <Border x:Name="TreeGhost" IsHitTestVisible="False" IsVisible="False" />
+        </Panel>
       </DockPanel>
     </Border>
 
@@ -325,11 +328,11 @@
         <!-- Start screen while not connected -->
         <Panel IsVisible="{Binding !IsConnected}">
         <ScrollViewer>
-          <StackPanel Classes="startScreen" MaxWidth="460" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <v:LogoMark Width="80" Height="80" HorizontalAlignment="Center" />
+          <StackPanel x:Name="StartCard" Classes="startScreen" MaxWidth="460" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <v:LogoMark Width="80" Height="80" HorizontalAlignment="Center" Classes.connecting="{Binding IsConnecting}" />
             <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
-            <TextBlock Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
-            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsConnecting}" Width="220" />
+            <TextBlock x:Name="StatusText" Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+            <ProgressBar Classes="connect" IsIndeterminate="True" IsVisible="{Binding IsConnecting}" Width="220" />
             <Button Classes="accent" HorizontalAlignment="Center" Click="OnConnectClick" IsEnabled="{Binding !IsConnecting}"
                     Margin="0,4,0,0">
               <StackPanel Orientation="Horizontal" Spacing="8">

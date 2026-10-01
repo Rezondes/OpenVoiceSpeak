@@ -42,9 +42,9 @@ public static class PageMotion
     /// of the dispatcher, several changes in a row count as one) the picture slides away and the new page comes in.
     /// </summary>
     /// <param name="layer">An empty border right above <paramref name="host"/> that holds the picture.</param>
-    /// <param name="forward">Asked at the end: true opening a page (from the right), false going back (from the left),
-    /// null when the page did not change after all.</param>
-    public static void Leave(Control host, Border layer, Func<bool?> forward)
+    /// <param name="motion">Asked at the end: where the new content comes in from and where the picture goes, or null
+    /// when nothing changed after all.</param>
+    public static void Leave(Control host, Border layer, Func<(Vector In, Vector Away)?> motion)
     {
         if (!Motion.IsAnimated || host.Bounds.Width <= 0) return;
         var state = switching.GetValue(layer, _ => new Switching());
@@ -57,18 +57,21 @@ public static class PageMotion
         Dispatcher.UIThread.Post(() =>
         {
             state.Pending = false;
-            if (forward() is { } ahead) Play(host, layer, state, ahead);
+            if (motion() is { } way) Play(host, layer, state, way.In, way.Away);
             else Stop(host, layer);
         }, DispatcherPriority.Background);
     }
 
-    static async void Play(Control host, Border layer, Switching state, bool forward)
+    /// <summary>Opening a page comes in from the right, going back from the left.</summary>
+    public static (Vector In, Vector Away) Sideways(bool forward) =>
+        forward ? (new Vector(Slide, 0), new Vector(-Slide, 0)) : (new Vector(-Slide, 0), new Vector(Slide, 0));
+
+    static async void Play(Control host, Border layer, Switching state, Vector from, Vector away)
     {
         if (layer.Child is not Image image) return;
-        double away = forward ? -Slide : Slide;
         var token = state.Cancel.Token;
-        var outgoing = Run(image, token, (Visual.OpacityProperty, 1d, 0d), (TranslateTransform.XProperty, 0d, away));
-        var incoming = Run(host, token, (Visual.OpacityProperty, 0d, 1d), (TranslateTransform.XProperty, -away, 0d));
+        var outgoing = Run(image, token, (Visual.OpacityProperty, 1d, 0d), (TranslateTransform.XProperty, 0d, away.X), (TranslateTransform.YProperty, 0d, away.Y));
+        var incoming = Run(host, token, (Visual.OpacityProperty, 0d, 1d), (TranslateTransform.XProperty, from.X, 0d), (TranslateTransform.YProperty, from.Y, 0d));
         await Task.WhenAll(outgoing, incoming);
         if (layer.Child == image) Stop(host, layer);
     }

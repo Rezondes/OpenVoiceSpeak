@@ -19,7 +19,7 @@ namespace OVS.Client.Views;
 /// </summary>
 public sealed class OverlayHost : Panel
 {
-    public const double PopFrom = 0.94, ShakeBy = 6;
+    public const double PopFrom = 0.94;
 
     readonly SemaphoreSlim turn = new(1, 1);
     readonly Border card, scrim;
@@ -130,12 +130,7 @@ public sealed class OverlayHost : Panel
     /// <summary>Package 105: a refused input (a field missing, the server said no) shakes the card once.</summary>
     public void Shake()
     {
-        if (!Motion.IsAnimated || !IsOpen) return;
-        var shake = new Animation { Duration = TimeSpan.FromMilliseconds(360), Easing = Motion.Ease };
-        double[] steps = [0, -ShakeBy, ShakeBy, -ShakeBy, ShakeBy, -ShakeBy / 2, 0];
-        for (int i = 0; i < steps.Length; i++)
-            shake.Children.Add(new KeyFrame { Cue = new Cue((double)i / (steps.Length - 1)), Setters = { new Setter(TranslateTransform.XProperty, steps[i]) } });
-        _ = shake.RunAsync(card);
+        if (IsOpen) Motion.Shake(card);
     }
 
     public void Close() => current?.TrySetResult();
