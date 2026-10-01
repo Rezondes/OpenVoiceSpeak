@@ -40,7 +40,7 @@
       </DockPanel>
     </Border>
 
-    <ScrollViewer>
+    <ScrollViewer v:PageMotion.Reveal="True">
       <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Stretch">
 
         <!-- Devices -->

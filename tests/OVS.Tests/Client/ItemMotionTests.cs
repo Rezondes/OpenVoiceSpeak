@@ -47,6 +47,7 @@ public sealed class ItemMotionTests : IDisposable
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
         }
     }
 
@@ -386,6 +387,7 @@ public sealed class ItemMotionTests : IDisposable
         {
             last = Canvas.GetTop(ghost);
             Frame();
+            Thread.Sleep(1);
         }
         return Canvas.GetTop(ghost);
     }

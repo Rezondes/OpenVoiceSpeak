@@ -36,6 +36,7 @@ public sealed class MotionStyleTests : IDisposable
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
         }
     }
 

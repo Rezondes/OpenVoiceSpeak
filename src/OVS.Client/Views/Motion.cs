@@ -29,9 +29,14 @@ public static class Motion
     /// <summary>The length of an animation started from code: zero in the simplified display.</summary>
     public static TimeSpan Duration(TimeSpan animated) => IsAnimated ? animated : TimeSpan.Zero;
 
+    /// <summary>Package 104: the display changed (things waiting to be shown appear at once in the simplified one).</summary>
+    public static event Action? Changed;
+
     public static void Apply(Window window, DisplayMode mode)
     {
+        bool was = IsAnimated;
         IsAnimated = mode == DisplayMode.Animated;
         window.Classes.Set("animated", IsAnimated);
+        if (was != IsAnimated) Changed?.Invoke();
     }
 }

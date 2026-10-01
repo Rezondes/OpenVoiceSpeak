@@ -854,4 +854,22 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
         Assert.Equal((2, 1), (shownAfter, liveAfter));
     }
+
+    /// <summary>Package 99, 61: the saved look counts from the start (display, background opacity and blur).</summary>
+    [Fact]
+    public async Task SavedAppearance_AppliesAtStart()
+    {
+        var saved = Directory.CreateTempSubdirectory("ovs-look-").FullName;
+        try
+        {
+            new ClientSettings { Display = DisplayMode.Simplified, BackgroundOpacity = 0.5f, BlurBackground = true }.Save(saved);
+            var started = new MainViewModel(saved, a => a(), useAudioDevices: false);
+            Assert.Equal(new BackgroundAppearance(0.5f, true, DisplayMode.Simplified), started.Appearance);
+            await started.DisposeAsync();
+        }
+        finally
+        {
+            Directory.Delete(saved, true);
+        }
+    }
 }

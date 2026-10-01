@@ -44,11 +44,23 @@ public static class LayoutAssert
     static double Needed(TextBlock text) =>
         text.TextWrapping == TextWrapping.NoWrap ? text.TextLayout.WidthIncludingTrailingWhitespace : text.TextLayout.Width;
 
-    /// <summary>Left and right edge in window coordinates; a ScrollViewer counts with its viewport (without the scroll bar).</summary>
+    /// <summary>
+    /// Left and right edge in window coordinates; a ScrollViewer counts with its viewport (without the scroll bar).
+    /// Package 104: from the layout, not from where a running animation draws it (a page sliding in).
+    /// </summary>
     static (double Left, double Right)? Horizontal(Visual visual, Visual top)
     {
         var width = visual is ScrollViewer { Viewport.Width: > 0 } s ? s.Viewport.Width : visual.Bounds.Width;
-        return visual.TranslatePoint(default, top) is { } origin ? (origin.X, origin.X + width) : null;
+        return X(visual, top) is { } x ? (x, x + width) : null;
+    }
+
+    /// <summary>Package 104: the left edge from the layout, relative to an ancestor (null when it is none).</summary>
+    public static double? X(Visual visual, Visual ancestor)
+    {
+        double x = 0;
+        Visual? at = visual;
+        for (; at is not null && at != ancestor; at = at.GetVisualParent()) x += at.Bounds.X;
+        return at == ancestor ? x : null;
     }
 
     static string Describe(Control control)

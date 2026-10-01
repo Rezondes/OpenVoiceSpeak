@@ -10,7 +10,7 @@
     <!-- Package 79: the tabs stay in one line and scroll sideways when they do not fit -->
     <Border DockPanel.Dock="Top" Classes="chatTabs" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-      <TabStrip x:Name="Tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{x:Static l:Strings.Ui_ChatTabs}">
+      <TabStrip x:Name="Tabs" v:PageMotion.Tabs="True" v:PageMotion.Content="{Binding #Scroller}" ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{x:Static l:Strings.Ui_ChatTabs}">
         <TabStrip.ItemsPanel>
           <ItemsPanelTemplate>
             <StackPanel Orientation="Horizontal" />

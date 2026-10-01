@@ -57,7 +57,7 @@
     </Border>
 
     <DockPanel Classes="adminBody">
-      <TabControl x:Name="Tabs">
+      <TabControl x:Name="Tabs" v:PageMotion.Tabs="True">
         <!-- ===== Groups ===== -->
         <TabItem Header="{x:Static l:Strings.Ui_Groups}" IsVisible="{Binding ShowGroups}">
           <!-- Package 78: list beside the editor, under narrow above it (styles in Controls.axaml) -->

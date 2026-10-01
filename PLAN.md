@@ -6078,7 +6078,7 @@ There's no display mode today. `Theme`, opacity and blur already show how an app
 
 ### Acceptance Criteria
 
-- [x] AC1: `ClientSettings.Display` defaults to `Animated`. A settings file without the key loads as `Animated`. Saving and loading keeps `Simplified`.
+- [x] AC1: `ClientSettings.Display` defaults to `Animated`. A settings file without the key loads as `Animated`. Saving and loading keeps `Simplified`. (found in Package 104: the saved look only counted after the next save; the main view model now takes it from the loaded settings at start, which also fixes the background opacity and blur of Package 61)
 - [x] AC2: The settings section "DARSTELLUNG" has the choice "Darstellung" with "Animierte Darstellung" and "Vereinfachte Darstellung" (English: "Animated display" and "Simplified display"), with a one-line hint for each. Changing it applies at once (live preview); "Abbrechen" reverts it.
 - [x] AC3: In animated mode the main window has the class `animated` and `Motion.IsAnimated` is true. In simplified mode neither is set, and `Motion.Duration(x)` returns `TimeSpan.Zero`. (applied by `MainWindow` when `MainViewModel.Appearance` changes, not in `App.axaml.cs`, so headless tests see it too; leaving the settings any way without saving now also ends the preview)
 - [x] AC4: In simplified mode the client renders exactly as before this package. Headless frames of the home page, the connected server view, the settings and the admin page at 1100 px equal baselines captured before the change. (done as a comparison inside the test: each page in the simplified display against the same page rendered without `Motion.axaml`; checked-in PNGs would break on the new settings choice itself. The test also asserts that every selector in `Motion.axaml` starts with `Window.animated`.)
@@ -6343,12 +6343,12 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Opening Settings or Administration slides and fades the page in from the right while the previous page fades out; closing goes the reverse way. The duration is `Motion.Slow`.
-- [ ] AC2: Page state is kept across transitions (scroll position, inputs, the selected admin tab), exactly as today.
-- [ ] AC3: Switching admin tabs cross-fades the content and slides the selection indicator; switching chat tabs does the same.
-- [ ] AC4: Settings sections fade up once as they first scroll into view.
-- [ ] AC5: Fast double switches (Settings → Home → Admin within 100 ms) end on the right page with no leftover half-faded page.
-- [ ] AC6: In simplified mode everything switches instantly, as today; `ResponsiveTests` stay green in both modes.
+- [x] AC1: Opening Settings or Administration slides and fades the page in from the right while the previous page fades out; closing goes the reverse way. The duration is `Motion.Slow`. (as built: the pages stay the three panels they were; just before the switch a picture of the leaving page is taken (`PropertyChanging`) and slides away in the overlay layer while the new page comes in, so no page loses state and the simplified display is untouched; the tab mark flies like the highlight of Package 103; the picture is taken at the first change of the page or its model, so it shows the page as it was, and lies in its own layer right above the pages, clipped to the main area, below the drawer and the dialogs)
+- [x] AC2: Page state is kept across transitions (scroll position, inputs, the selected admin tab), exactly as today.
+- [x] AC3: Switching admin tabs cross-fades the content and slides the selection indicator; switching chat tabs does the same. (as built: the new content fades and slides in from the side of the new tab while the old one goes at once; the mark flies only when both tabs are in view of the scrolling chat tab strip and takes the new tab's width on the way)
+- [x] AC4: Settings sections fade up once as they first scroll into view.
+- [x] AC5: Fast double switches (Settings → Home → Admin within 100 ms) end on the right page with no leftover half-faded page.
+- [x] AC6: In simplified mode everything switches instantly, as today; `ResponsiveTests` stay green in both modes. (the layout checks measure layout positions, not where a running animation draws a control; the simplified display adds nothing to layout)
 
 ### Tests (TDD)
 

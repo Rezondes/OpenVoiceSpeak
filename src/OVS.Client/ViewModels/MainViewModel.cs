@@ -101,6 +101,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         icons = new ServerIconCache(storageDir);
         Settings = ClientSettings.Load(storageDir, out var warning);
         if (warning is not null) AddNotice(warning, NoticeKind.Warning);
+        Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
         Leave = new LeaveTimer(TimeProvider.System, () => this.post);
         SyncBookmarks();
 

@@ -75,6 +75,26 @@ public sealed class ResponsiveTests : IDisposable
         .Single(b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == Strings.Ui_ShowChannels);
 
     /// <summary>Bug from the screenshot: at 776 px a wide sidebar pushed Ping, Verwaltung and Trennen out of the window.</summary>
+    /// <summary>Package 104 (AC6): the settings and every administration tab fit in the simplified display as well.</summary>
+    [AvaloniaTheory]
+    [InlineData(360)]
+    [InlineData(1100)]
+    public void Simplified_SettingsAndAdminFit(double width)
+    {
+        display = DisplayMode.Simplified;
+        new ClientSettings { Display = display }.Save(dir);
+        try
+        {
+            Settings_FitAt360_480_600_1100(width, "de-DE");
+            Assert.False(Motion.IsAnimated); // the window took the simplified display from the settings
+            Admin_EveryTabFits(width, "de-DE");
+        }
+        finally
+        {
+            Motion.IsAnimated = true;
+        }
+    }
+
     [AvaloniaFact]
     public void SidebarDraggedWide_HeaderButtonsStayVisible()
     {
@@ -242,9 +262,11 @@ public sealed class ResponsiveTests : IDisposable
     // ---- Package 77: the settings page at every width ----
 
     /// <summary>Settings with the worst case: a key row next to the push-to-talk hint (a key, but none for push-to-talk).</summary>
+    DisplayMode display = DisplayMode.Animated; // Package 104: the layout checks run in both displays
+
     MainWindow OpenSettings(double width)
     {
-        var settings = new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.ToggleMute, new KeyChord(0x70))] };
+        var settings = new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.ToggleMute, new KeyChord(0x70))], Display = display };
         settings.Save(dir);
         var main = Open(width, null, out var vm);
         vm.OpenSettings();
@@ -764,7 +786,7 @@ public sealed class ResponsiveTests : IDisposable
         {
             var own = history.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("bubble") && b.Classes.Contains("own") && b.IsEffectivelyVisible);
             Assert.True(own.Bounds.Width > history.Bounds.Width * 0.8, $"eigene Blase nur {own.Bounds.Width} von {history.Bounds.Width}");
-            Assert.Equal(12, history.TranslatePoint(default, chat)!.Value.X, 1);
+            Assert.Equal(12, LayoutAssert.X(history, chat)!.Value, 1);
         }
         LayoutAssert.FitsHorizontally(chat, strip);
         main.Close();

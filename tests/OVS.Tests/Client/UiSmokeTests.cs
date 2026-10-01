@@ -109,6 +109,7 @@ public sealed class UiSmokeTests : IDisposable
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
         }
         using var frame = window.CaptureRenderedFrame()!;
         using var buffer = frame.Lock();

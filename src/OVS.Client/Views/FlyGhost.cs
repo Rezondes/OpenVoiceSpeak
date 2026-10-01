@@ -30,9 +30,9 @@ public static class FlyGhost
 
     /// <summary>
     /// Lets <paramref name="ghost"/> fly from <paramref name="from"/> to wherever <paramref name="to"/> says the target is
-    /// in each frame, then removes it.
+    /// in each frame (and take its size on the way), then removes it.
     /// </summary>
-    public static Task Fly(OverlayLayer overlay, Control ghost, Rect from, Func<Point?> to)
+    public static Task Fly(OverlayLayer overlay, Control ghost, Rect from, Func<Rect?> to)
     {
         ghost.IsHitTestVisible = false;
         ghost.Width = from.Width;
@@ -43,7 +43,7 @@ public static class FlyGhost
         var done = new TaskCompletionSource();
         var top = TopLevel.GetTopLevel(overlay);
         var clock = Stopwatch.StartNew();
-        var target = from.Position;
+        var target = from;
         void Frame(TimeSpan _)
         {
             target = to() ?? target;
@@ -51,6 +51,8 @@ public static class FlyGhost
             double eased = Motion.Ease.Ease(t);
             Canvas.SetLeft(ghost, from.X + (target.X - from.X) * eased);
             Canvas.SetTop(ghost, from.Y + (target.Y - from.Y) * eased);
+            ghost.Width = from.Width + (target.Width - from.Width) * eased;
+            ghost.Height = from.Height + (target.Height - from.Height) * eased;
             if (t < 1 && top is not null) top.RequestAnimationFrame(Frame);
             else
             {
@@ -65,7 +67,8 @@ public static class FlyGhost
     /// <summary>A picture of a row flying to its new place; the picture is let go once it has landed.</summary>
     public static async Task Row(OverlayLayer overlay, IImage picture, Rect from, Func<Point?> to)
     {
-        await Fly(overlay, new Border { Classes = { GhostClass }, Child = new Image { Source = picture } }, from, to);
+        Rect? Target() => to() is { } at ? new Rect(at, from.Size) : null;
+        await Fly(overlay, new Border { Classes = { GhostClass }, Child = new Image { Source = picture } }, from, Target);
         (picture as IDisposable)?.Dispose();
     }
 
@@ -82,7 +85,7 @@ public static class FlyGhost
         var ghost = new Border { Classes = { HighlightClass }, CornerRadius = toRow.CornerRadius, Opacity = 0.6 };
         ghost.Bind(Border.BackgroundProperty, ghost.GetResourceObservable("Ovs.SurfaceSelected"));
         toRow.Classes.Set(ArrivingClass, true);
-        await Fly(overlay, ghost, from, () => toRow.TranslatePoint(default, overlay));
+        await Fly(overlay, ghost, from, () => toRow.TranslatePoint(default, overlay) is { } at ? new Rect(at, toRow.Bounds.Size) : null);
         toRow.Classes.Set(ArrivingClass, false);
     }
 }

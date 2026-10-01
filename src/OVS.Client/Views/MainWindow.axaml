@@ -317,7 +317,10 @@
     <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="4" ResizeDirection="Columns" Background="Transparent" DragCompleted="OnSidebarDragCompleted" />
 
     <!-- ================= Main area: home, settings or administration, all inside this window (A20) ================= -->
-    <Panel Grid.Column="2" IsEnabled="{Binding !IsUpdating}">
+    <!-- Package 104: a page sliding in stays inside the main area; the leaving page's picture lies right above the pages,
+         below the drawer and the dialogs -->
+    <Panel Grid.Column="2" ClipToBounds="True">
+    <Panel x:Name="PageHost" IsEnabled="{Binding !IsUpdating}">
       <Panel IsVisible="{Binding IsHomePage}">
         <!-- Start screen while not connected -->
         <Panel IsVisible="{Binding !IsConnected}">
@@ -413,6 +416,8 @@
       <Panel IsVisible="{Binding IsAdminPage}">
         <v:AdminView DataContext="{Binding AdminPage}" />
       </Panel>
+    </Panel>
+    <Border x:Name="PageGhost" IsHitTestVisible="False" IsVisible="False" />
     </Panel>
 
     <!-- Package 68: dims the main area while the drawer is open; a click on it closes the drawer -->

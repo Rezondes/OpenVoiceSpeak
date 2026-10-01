@@ -82,9 +82,17 @@ public partial class MainWindow : Window
 
     void WatchServer()
     {
-        if (watchedVm is not null) watchedVm.PropertyChanged -= OnVmPropertyChanged;
+        if (watchedVm is not null)
+        {
+            watchedVm.PropertyChanged -= OnVmPropertyChanged;
+            watchedVm.PropertyChanging -= OnVmPropertyChanging;
+        }
         watchedVm = DataContext as MainViewModel;
-        if (watchedVm is not null) watchedVm.PropertyChanged += OnVmPropertyChanged;
+        if (watchedVm is not null)
+        {
+            watchedVm.PropertyChanged += OnVmPropertyChanged;
+            watchedVm.PropertyChanging += OnVmPropertyChanging;
+        }
         OnServerChanged();
         ApplyDisplay();
     }
@@ -97,6 +105,19 @@ public partial class MainWindow : Window
         // Package 102: what is gone stays a moment to fold away, only in the animated display
         watchedVm.Leave.Delay = Motion.Duration(Motion.Normal);
         if (watchedVm.Server is { } server) server.Leave.Delay = Motion.Duration(Motion.Normal);
+    }
+
+    /// <summary>
+    /// Package 104: before the page or its model changes (closing clears the model first), a picture of the page as it
+    /// is now covers the page area; the switch plays once the change is complete.
+    /// </summary>
+    void OnVmPropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(MainViewModel.Page) or nameof(MainViewModel.SettingsPage) or nameof(MainViewModel.AdminPage))
+            || watchedVm is not { } vm)
+            return;
+        var before = vm.Page;
+        PageMotion.Leave(PageHost, PageGhost, () => vm.Page == before ? null : !vm.IsHomePage);
     }
 
     void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
