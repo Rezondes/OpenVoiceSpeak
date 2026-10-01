@@ -56,17 +56,15 @@ public static class Motion
                 popupPlaces.AddOrUpdate(popup, parent.PointToScreen(child.Bounds.Position));
         }, DispatcherPriority.Background);
         double from = popup.Placement.ToString().StartsWith("Top", StringComparison.Ordinal) ? PopupSlide : -PopupSlide;
-        _ = new Animation
+        var start = new KeyFrame { Cue = new Cue(0), Setters = { new Setter(TranslateTransform.YProperty, from) } };
+        var end = new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.YProperty, 0d) } };
+        // Package 115: a tooltip fades in by its theme already; a second fade on top made it blink once more at the end
+        if (child is not ToolTip)
         {
-            Duration = Normal,
-            Easing = Ease,
-            FillMode = FillMode.Backward,
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d), new Setter(TranslateTransform.YProperty, from) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d), new Setter(TranslateTransform.YProperty, 0d) } },
-            },
-        }.Play(child);
+            start.Setters.Add(new Setter(Visual.OpacityProperty, 0d));
+            end.Setters.Add(new Setter(Visual.OpacityProperty, 1d));
+        }
+        _ = new Animation { Duration = Normal, Easing = Ease, FillMode = FillMode.Backward, Children = { start, end } }.Play(child);
     });
 
     static readonly ConditionalWeakTable<Popup, object> popupPlaces = [];

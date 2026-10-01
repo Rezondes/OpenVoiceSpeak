@@ -324,4 +324,78 @@ public sealed class OverlayMotionTests : IDisposable
         Assert.True(sidebar.IsEffectivelyVisible);
         main.Close();
     }
+
+    /// <summary>
+    /// Package 115: a tooltip fades in once and stays; it used to fade in, then blink a second time. Sampled every frame:
+    /// what shows of it (its own opacity times that of everything between it and its popup) only rises.
+    /// </summary>
+    [AvaloniaFact]
+    public void ToolTip_FadesInOnce_NoSecondBlink()
+    {
+        var tip = new ToolTip { Content = "Hallo" };
+        var button = new Button { Content = "Knopf", [ToolTip.TipProperty] = tip };
+        var window = new Window { Width = 400, Height = 300, Content = button };
+        window.Show();
+        Motion.Apply(window, DisplayMode.Animated);
+        Dispatcher.UIThread.RunJobs();
+        int opened = 0;
+        using var watchOpen = Popup.IsOpenProperty.Changed.AddClassHandler<Popup>((_, e) =>
+        {
+            if (e.GetNewValue<bool>()) opened++;
+        });
+        ToolTip.SetIsOpen(button, true);
+        var seen = Shown(tip, out double slid);
+        Assert.Equal(1, opened);
+        Assert.True(seen[0] < 1, "it fades in");
+        Assert.True(slid != 0, "and slides out of its anchor (Package 105)");
+        Rises(seen);
+        window.Close();
+    }
+
+    /// <summary>What shows of a popup content every frame for 700 ms, and the largest slide seen.</summary>
+    static List<double> Shown(Visual content, out double slid)
+    {
+        var seen = new List<double>();
+        slid = 0;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (watch.ElapsedMilliseconds < 700)
+        {
+            Frame();
+            double shown = 1;
+            for (Visual? v = content; v is not null; v = v.GetVisualParent())
+            {
+                shown *= v.Opacity;
+                if (Math.Abs(v.RenderTransform?.Value.M32 ?? 0) > Math.Abs(slid)) slid = v.RenderTransform!.Value.M32;
+            }
+            seen.Add(Math.Round(shown, 3));
+            Thread.Sleep(1);
+        }
+        return seen;
+    }
+
+    static void Rises(List<double> seen)
+    {
+        Assert.Equal(1, seen[^1], 2);
+        for (int i = 1; i < seen.Count; i++)
+            Assert.True(seen[i] >= seen[i - 1] - 0.001, $"dips at frame {i}: {string.Join(" ", seen)}");
+    }
+
+    /// <summary>Package 115: a context menu keeps its fade and slide (Package 105) and shows no blink either.</summary>
+    [AvaloniaFact]
+    public void ContextMenu_FadesInOnce()
+    {
+        var item = new MenuItem { Header = "Beitreten" };
+        var menu = new ContextMenu { Items = { item } };
+        var button = new Button { Content = "Knopf", ContextMenu = menu };
+        var window = new Window { Width = 400, Height = 300, Content = button };
+        window.Show();
+        Motion.Apply(window, DisplayMode.Animated);
+        Dispatcher.UIThread.RunJobs();
+        menu.Open(button);
+        var seen = Shown(item, out double slid);
+        Assert.True(seen[0] < 1, "it fades in");
+        Assert.True(slid != 0, "and slides");
+        Rises(seen);
+        window.Close();
+    }
 }

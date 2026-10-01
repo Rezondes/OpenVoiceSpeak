@@ -6961,16 +6961,18 @@ The likely cause of the second blink is that both run on the tooltip: when the c
 
 ### Acceptance Criteria
 
-- [ ] AC1: In the animated display a tooltip's opacity only rises from opening until it is fully shown, then stays at 1 until it closes (no dip, no second fade).
-- [ ] AC2: The slide from the anchor (Package 105) stays.
-- [ ] AC3: Context menus, flyouts and dropdowns keep their open animation, without a blink either.
-- [ ] AC4: The simplified display is unchanged (`Simplified_LooksLikeBefore` stays green).
+- [x] AC1: In the animated display a tooltip's opacity only rises from opening until it is fully shown, then stays at 1 until it closes (no dip, no second fade).
+- [x] AC2: The slide from the anchor (Package 105) stays.
+- [x] AC3: Context menus, flyouts and dropdowns keep their open animation, without a blink either.
+- [x] AC4: The simplified display is unchanged (`Simplified_LooksLikeBefore` stays green).
 
 ### Tests (TDD)
 
+(as built: the reproduction showed the tooltip fading to full, dropping to 0.02 at frame 15 and fading in again: the Fluent tooltip fades in by its own theme, and when the code fade of Package 105 ended the theme fade ran once more. For a tooltip the code animation now only slides; menus, flyouts and dropdowns keep both)
+
 1. `OverlayMotionTests > "ToolTip_FadesInOnce_NoSecondBlink"` (AC1): the reproduction, red first
    - Given: a tooltip opened headless in the animated display.
-   - Expected: sampled every frame for 600 ms, the effective opacity of the tooltip and its content never drops after rising.
+   - Expected: sampled every frame for 700 ms, the effective opacity of the tooltip and its content never drops after rising.
 2. `OverlayMotionTests > "Popups_FadeAndSlide"` stays green (AC2)
 3. `OverlayMotionTests > "ContextMenu_FadesInOnce"` (AC3)
 4. `UiSmokeTests.Simplified_LooksLikeBefore` (AC4)
