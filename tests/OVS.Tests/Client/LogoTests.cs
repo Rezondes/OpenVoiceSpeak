@@ -4,7 +4,7 @@ using SkiaSharp;
 
 namespace OVS.Tests.Client;
 
-/// <summary>Package 28: the app logo as exe, window and taskbar icon. Package 95: every size shows the sound wave.</summary>
+/// <summary>Package 28: the app logo as exe, window and taskbar icon. Package 95: every size shows the sound wave, the small ones pixel-hinted.</summary>
 public class LogoTests
 {
     static string RepoDir()
@@ -35,7 +35,7 @@ public class LogoTests
         Assert.Equal(1, BitConverter.ToUInt16(bytes, 2));
         int count = BitConverter.ToUInt16(bytes, 4);
         var sizes = Enumerable.Range(0, count).Select(i => bytes[6 + i * 16] is 0 ? 256 : bytes[6 + i * 16]).Order().ToList();
-        Assert.Equal([16, 24, 32, 48, 64, 256], sizes);
+        Assert.Equal([16, 20, 24, 32, 48, 64, 256], sizes);
     }
 
     [Fact]
@@ -46,17 +46,53 @@ public class LogoTests
         Assert.True(File.Exists(Path.Combine(ClientDir(), icon)), icon);
     }
 
-    /// <summary>Package 95: the middle wave bar (x 128, y 146 to 190 in the 256 grid) is white in every frame.</summary>
+    /// <summary>Package 95: the middle wave bar (x 128, y 146 to 190 in the 256 grid) is white in the frames rendered from the SVG.</summary>
     [Fact]
     public void IcoFrames_ShowWave()
     {
-        foreach (var (size, png) in IcoFrames())
+        foreach (var (size, png) in IcoFrames().Where(f => f.Key >= 48))
         {
             using var bitmap = SKBitmap.Decode(png);
             Assert.Equal(size, bitmap.Width);
             var pixel = bitmap.GetPixel((int)(128f * size / 256), (int)(168f * size / 256));
             Assert.True(pixel.Red > 200 && pixel.Green > 200 && pixel.Blue > 200, $"{size} px: {pixel}");
         }
+    }
+
+    /// <summary>
+    /// The small frames are pixel-hinted: the row through the wave crosses cup, three bars and cup as five runs of pure
+    /// white separated by pure blue (no anti-aliasing), the bars 1 px wide at 16 and 20 px and 2 px at 24 and 32 px.
+    /// </summary>
+    [Theory]
+    [InlineData(16, 1)]
+    [InlineData(20, 1)]
+    [InlineData(24, 2)]
+    [InlineData(32, 2)]
+    public void SmallFrames_ShowSeparateCrispBars(int size, int barWidth)
+    {
+        using var bitmap = SKBitmap.Decode(IcoFrames()[size]);
+        int y = (int)(168f * size / 256);
+        var row = Enumerable.Range(0, size).Select(x => bitmap.GetPixel(x, y)).ToList();
+        var runs = new List<(int Start, int Width)>();
+        for (int x = 0; x < size; x++)
+        {
+            if (row[x] != SKColors.White) continue;
+            if (runs.Count > 0 && runs[^1].Start + runs[^1].Width == x) runs[^1] = (runs[^1].Start, runs[^1].Width + 1);
+            else runs.Add((x, 1));
+        }
+        Assert.Equal(5, runs.Count);
+        Assert.All(runs.Skip(1).Take(3), r => Assert.Equal(barWidth, r.Width));
+        for (int x = runs[0].Start; x < runs[^1].Start + runs[^1].Width; x++)
+            Assert.True(row[x] == SKColors.White || row[x] == new SKColor(0x2F, 0x6F, 0xEB), $"{size} px, x {x}: {row[x]}");
+    }
+
+    /// <summary>The checked-in small frames are exactly what the tool draws from its small artwork.</summary>
+    [Fact]
+    public void SmallFrames_MatchTool()
+    {
+        var svg = File.ReadAllText(Path.Combine(ClientDir(), "Assets", "logo.svg"));
+        Assert.Equal([16, 20, 24, 32], LogoRenderer.Small.Keys.Order());
+        foreach (var size in LogoRenderer.Small.Keys) Assert.Equal(LogoRenderer.RenderPng(svg, size), IcoFrames()[size]);
     }
 
     /// <summary>Package 95: the checked-in icon is what the tool renders from logo.svg, and the tool is deterministic.</summary>

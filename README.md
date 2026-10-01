@@ -282,6 +282,6 @@ Nach einer Änderung an `src/OVS.Client/Assets/logo.svg` das Icon neu erzeugen u
 dotnet run --project tools/render-icon
 ```
 
-Das Tool schreibt `src/OVS.Client/Assets/ovs.ico` (16, 24, 32, 48, 64 und 256 px, unter 32 px mit dickeren Wellenstrichen) und `docs/logo.png` (256 px). Zwei Läufe ergeben identische Dateien; die Tests prüfen, dass das eingecheckte Icon zur SVG passt.
+Das Tool schreibt `src/OVS.Client/Assets/ovs.ico` (16, 20, 24, 32, 48, 64 und 256 px) und `docs/logo.png` (256 px). Ab 48 px wird die SVG gerendert. Für 16, 20, 24 und 32 px zeichnet das Tool eigene, aufs Pixelraster gesetzte Varianten (Tabelle `Small` in `tools/render-icon/LogoRenderer.cs`): Ohrmuscheln und drei Wellenbalken als ganze Pixel ohne Kantenglättung, 1 px breit bei 16 und 20 px, 2 px breit bei 24 und 32 px, mit mindestens 1 px Abstand, dazu ein etwas dünnerer Kopfbügel. Das Logo in der Titelleiste (24 px) zeigt genau diesen 24-px-Frame aus dem Icon. Zwei Läufe ergeben identische Dateien; die Tests prüfen, dass das eingecheckte Icon zur SVG passt.
 
 Der Umsetzungsplan steht in `PLAN.md`.

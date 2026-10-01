@@ -4,14 +4,18 @@
              AutomationProperties.Name="OpenVoiceSpeak">
   <!-- The app logo, same geometry as Assets/logo.svg. Brand colors are fixed on purpose: the logo looks the same
        in both themes (the blue square stays at least 4:1 against both backgrounds). -->
-  <Viewbox>
-    <Border Width="256" Height="256" CornerRadius="56" Background="#2F6FEB" ClipToBounds="True">
-      <Canvas Width="256" Height="256">
-        <Path Data="M 60 150 A 68 68 0 0 1 196 150" Stroke="#FFFFFF" StrokeThickness="18" StrokeLineCap="Round" />
-        <Path Data="M 60 140 H 72 A 14 14 0 0 1 86 154 V 182 A 14 14 0 0 1 72 196 H 60 A 14 14 0 0 1 46 182 V 154 A 14 14 0 0 1 60 140 Z" Fill="#FFFFFF" />
-        <Path Data="M 184 140 H 196 A 14 14 0 0 1 210 154 V 182 A 14 14 0 0 1 196 196 H 184 A 14 14 0 0 1 170 182 V 154 A 14 14 0 0 1 184 140 Z" Fill="#FFFFFF" />
-        <Path x:Name="Wave" Data="M 108 158 V 178 M 128 146 V 190 M 148 158 V 178" Stroke="#FFFFFF" StrokeThickness="10" StrokeLineCap="Round" />
-      </Canvas>
-    </Border>
-  </Viewbox>
+  <Panel>
+    <Viewbox x:Name="Large">
+      <Border Width="256" Height="256" CornerRadius="56" Background="#2F6FEB" ClipToBounds="True">
+        <Canvas Width="256" Height="256">
+          <Path Data="M 60 150 A 68 68 0 0 1 196 150" Stroke="#FFFFFF" StrokeThickness="18" StrokeLineCap="Round" />
+          <Path Data="M 60 140 H 72 A 14 14 0 0 1 86 154 V 182 A 14 14 0 0 1 72 196 H 60 A 14 14 0 0 1 46 182 V 154 A 14 14 0 0 1 60 140 Z" Fill="#FFFFFF" />
+          <Path Data="M 184 140 H 196 A 14 14 0 0 1 210 154 V 182 A 14 14 0 0 1 196 196 H 184 A 14 14 0 0 1 170 182 V 154 A 14 14 0 0 1 184 140 Z" Fill="#FFFFFF" />
+          <Path Data="M 108 158 V 178 M 128 146 V 190 M 148 158 V 178" Stroke="#FFFFFF" StrokeThickness="10" StrokeLineCap="Round" />
+        </Canvas>
+      </Border>
+    </Viewbox>
+    <!-- Below 32 px: the pixel-hinted ICO frame (tools/render-icon), drawn 1:1 without smoothing -->
+    <Image x:Name="Small" IsVisible="False" RenderOptions.BitmapInterpolationMode="None" />
+  </Panel>
 </UserControl>

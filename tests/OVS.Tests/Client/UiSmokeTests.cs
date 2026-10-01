@@ -68,7 +68,9 @@ public sealed class UiSmokeTests : IDisposable
 
     static IEnumerable<string?> Texts(Visual root) => root.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text);
 
-    static bool ShowsImage(Visual root) => root.GetVisualDescendants().OfType<Image>().Any(i => i.Source is not null && i.IsEffectivelyVisible);
+    /// <summary>A server logo is shown; the app logo (LogoMark, a bitmap below 32 px) does not count.</summary>
+    static bool ShowsImage(Visual root) => root.GetVisualDescendants().OfType<Image>()
+        .Any(i => i.Source is not null && i.IsEffectivelyVisible && !i.GetVisualAncestors().OfType<LogoMark>().Any());
 
     [AvaloniaTheory]
     [InlineData("Dark")]
@@ -340,9 +342,14 @@ public sealed class UiSmokeTests : IDisposable
         Assert.True(main.ExtendClientAreaToDecorationsHint);
         Assert.NotNull(main.Icon); // Package 28: window and taskbar show the logo
         var bar = main.GetVisualDescendants().OfType<TitleBar>().Single();
-        var wave = bar.GetVisualDescendants().OfType<LogoMark>().Single().GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().Single(p => p.Name == "Wave");
-        Assert.True(wave.IsEffectivelyVisible); // Package 95: the title bar logo shows the wave, with the thicker small-size strokes
-        Assert.Equal(20, wave.StrokeThickness);
+        // The title bar logo is 24 px and shows the pixel-hinted 24 px ICO frame, the same artwork as the taskbar
+        var logo = bar.GetVisualDescendants().OfType<LogoMark>().Single();
+        Assert.Equal(24, logo.Bounds.Width);
+        Assert.True(logo.Bounds.Bottom <= bar.Bounds.Height);
+        var small = logo.GetVisualDescendants().OfType<Image>().Single();
+        Assert.True(small.IsEffectivelyVisible);
+        Assert.Equal(24, ((Avalonia.Media.Imaging.Bitmap)small.Source!).PixelSize.Width);
+        Assert.False(logo.GetVisualDescendants().OfType<Viewbox>().Single().IsVisible);
         Assert.Single(main.GetVisualDescendants().OfType<LogoMark>(), l => l.Bounds.Width >= 64); // start screen
         Button ButtonNamed(string name) => bar.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == name);
         void Click(Button b)
