@@ -6543,13 +6543,13 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: A speaking user's ring glows and breathes softly (a scale of 1.0 to 1.06 with an outer glow, a 900 ms loop) while speaking, and fades out after the speaking stops. Speech heard through a link uses the link colour.
-- [ ] AC2: The mute, deafen and server-mute icons pop in or out (scale plus fade) instead of switching; my own mute button in the bottom bar flips its icon with a short rotation.
-- [ ] AC3: The slot counter (`3/10`) ticks to the new number; a full channel pulses its counter once.
-- [ ] AC4: The input level meter moves smoothly (fast attack, slower release, about 80 ms and 300 ms) instead of stepping; the push-to-talk indicator pulses while sending.
-- [ ] AC5: Busy spinners rotate smoothly, and busy buttons show a shimmer; when the busy state ends, they cross-fade back.
-- [ ] AC6: Idle CPU stays flat: when nobody speaks and nothing is busy, no looping animation runs (the loops start and stop with their states).
-- [ ] AC7: In simplified mode all of this looks as today.
+- [x] AC1: A speaking user's ring glows and breathes softly (a scale of 1.0 to 1.06 with an outer glow, a 900 ms loop) while speaking, and fades out after the speaking stops. Speech heard through a link uses the link colour. (as built: the glow is a box shadow in the speaking or link colour; glow and ring colour fade out in 220 ms, the breathing stops with the speaking)
+- [x] AC2: The mute, deafen and server-mute icons pop in or out (scale plus fade) instead of switching; my own mute button in the bottom bar flips its icon with a short rotation. (as built: `LiveMotion.Pop` on the state icons of a user row; a hidden icon is gone at once and a copy of it pops out in the overlay layer, only where the icon could be seen (not in a closed drawer, a row scrolled away or under an open dialog); the deafen button turns its icon in as well; no pop while a row is first built)
+- [x] AC3: The slot counter (`3/10`) ticks to the new number; a full channel pulses its counter once. (as built: `LiveMotion.Tick`, a higher number comes up from below, a lower one down from above; the pulse plays when the channel becomes full)
+- [x] AC4: The input level meter moves smoothly (fast attack, slower release, about 80 ms and 300 ms) instead of stepping; the push-to-talk indicator pulses while sending. (as built: `LiveMotion.Level` follows the level frame by frame and arrives within about 80 ms rising and 300 ms falling, the frames stop once it has arrived; a new model (the settings opened again) or a meter nobody sees shows the level at once; the indicator is the "Sendet ..." line in the bottom bar)
+- [x] AC5: Busy spinners rotate smoothly, and busy buttons show a shimmer; when the busy state ends, they cross-fade back. (as built: the arc keeps turning and grows and shrinks; a button holding a showing spinner gets the class `busy` and a light band passes over it (an opacity mask); the spinner fades in, and the button's content fades back when it goes)
+- [x] AC6: Idle CPU stays flat: when nobody speaks and nothing is busy, no looping animation runs (the loops start and stop with their states). (as built: every loop is a style that stops matching with its state; a busy spinner turns only while it and all its parents are visible, in both displays; animations started from code ask for their frames (`Motion.Play`), since without a loop running nothing else would draw them; the test watches every visual of an idle connected view, after the administration was opened and closed, for a second)
+- [x] AC7: In simplified mode all of this looks as today.
 
 ### Tests (TDD)
 

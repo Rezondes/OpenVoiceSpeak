@@ -1,12 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="using:OVS.Client.Localization"
+             xmlns:v="using:OVS.Client.Views"
              x:Class="OVS.Client.Views.BusySpinner"
              Width="14" Height="14" VerticalAlignment="Center" IsHitTestVisible="False"
              AutomationProperties.Name="{x:Static l:Strings.Ui_Busy}">
   <!-- Package 97 (A113): the small turning arc of every waiting state, in the accent color of both themes -->
   <UserControl.Styles>
-    <Style Selector="Arc.spin">
+    <!-- Package 108 (A117): turns only while it can be seen (BusySpinner.axaml.cs), a hidden spinner costs nothing -->
+    <Style Selector="v|BusySpinner.turning Arc.spin">
       <Style.Animations>
         <Animation Duration="0:0:0.9" IterationCount="Infinite">
           <KeyFrame Cue="0%">

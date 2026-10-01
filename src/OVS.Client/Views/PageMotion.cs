@@ -96,7 +96,7 @@ public static class PageMotion
             start.Setters.Add(new Setter(property, from));
             end.Setters.Add(new Setter(property, to));
         }
-        return new Animation { Duration = Motion.Slow, Easing = Motion.Ease, FillMode = FillMode.Backward, Children = { start, end } }.RunAsync(target, token);
+        return new Animation { Duration = Motion.Slow, Easing = Motion.Ease, FillMode = FillMode.Backward, Children = { start, end } }.Play(target, token);
     }
 
     // ---- tabs ----
@@ -167,7 +167,7 @@ public static class PageMotion
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d), new Setter(TranslateTransform.XProperty, side) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d), new Setter(TranslateTransform.XProperty, 0d) } },
             },
-        }.RunAsync(content, cancel.Token);
+        }.Play(content, cancel.Token);
     }
 
     /// <summary>The tab's rectangle in the overlay when it lies inside what the tab strip shows.</summary>
@@ -242,7 +242,7 @@ public static class PageMotion
                         new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d), new Setter(TranslateTransform.YProperty, RevealRise) } },
                         new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d), new Setter(TranslateTransform.YProperty, 0d) } },
                     },
-                }.RunAsync(section);
+                }.Play(section);
             }
         }
     }

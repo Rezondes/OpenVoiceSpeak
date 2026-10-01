@@ -112,7 +112,7 @@ public sealed class OverlayHost : Panel
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, from), new Setter(ScaleTransform.ScaleXProperty, scaleFrom), new Setter(ScaleTransform.ScaleYProperty, scaleFrom) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, to), new Setter(ScaleTransform.ScaleXProperty, scaleTo), new Setter(ScaleTransform.ScaleYProperty, scaleTo) } },
             },
-        }.RunAsync(card, cancel);
+        }.Play(card, cancel);
         var scrimShown = new Animation
         {
             Duration = Motion.Normal,
@@ -123,7 +123,7 @@ public sealed class OverlayHost : Panel
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, from) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, to) } },
             },
-        }.RunAsync(scrim, cancel);
+        }.Play(scrim, cancel);
         return Task.WhenAll(cardShown, scrimShown);
     }
 

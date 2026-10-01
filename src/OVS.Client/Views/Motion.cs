@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using OVS.Client.Settings;
 
 namespace OVS.Client.Views;
@@ -49,7 +50,7 @@ public static class Motion
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d), new Setter(TranslateTransform.YProperty, from) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d), new Setter(TranslateTransform.YProperty, 0d) } },
             },
-        }.RunAsync(child);
+        }.Play(child);
     });
 
     public const double ShakeBy = 6;
@@ -62,7 +63,22 @@ public static class Motion
         double[] steps = [0, -ShakeBy, ShakeBy, -ShakeBy, ShakeBy, -ShakeBy / 2, 0];
         for (int i = 0; i < steps.Length; i++)
             shake.Children.Add(new KeyFrame { Cue = new Cue((double)i / (steps.Length - 1)), Setters = { new Setter(TranslateTransform.XProperty, steps[i]) } });
-        _ = shake.RunAsync(target);
+        _ = shake.Play(target);
+    }
+
+    /// <summary>
+    /// Package 108: starts an animation from code and asks for one frame as a safety measure. In the headless tests,
+    /// which drive frames by hand, an animation that started while nothing else moved (no loop runs any more when idle,
+    /// A117) got no first frame, e.g. a dialog's card that plays back; in the app Avalonia already schedules a render
+    /// for a new animation. Once a frame came, the clock keeps them coming while the animation runs.
+    /// </summary>
+    public static Task Play(this Animation animation, Animatable target, CancellationToken cancel = default)
+    {
+        var run = animation.RunAsync(target, cancel);
+        // asked after the pending work: the animation joins the clock only then
+        if (target is Visual visual && TopLevel.GetTopLevel(visual) is { } top)
+            Dispatcher.UIThread.Post(() => top.RequestAnimationFrame(_ => { }), DispatcherPriority.Background);
+        return run;
     }
 
     /// <summary>The display the user chose; tests set it directly.</summary>

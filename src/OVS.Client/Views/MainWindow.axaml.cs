@@ -161,7 +161,7 @@ public partial class MainWindow : Window
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 0d) } },
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 1d) } },
             },
-        }.RunAsync(target);
+        }.Play(target);
     }
 
     void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -291,7 +291,7 @@ public partial class MainWindow : Window
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, from) } },
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, to) } },
             },
-        }.RunAsync(Sidebar, cancel.Token);
+        }.Play(Sidebar, cancel.Token);
         var dim = new Avalonia.Animation.Animation
         {
             Duration = Motion.Normal,
@@ -302,7 +302,7 @@ public partial class MainWindow : Window
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(OpacityProperty, open ? 0d : 1d) } },
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(OpacityProperty, open ? 1d : 0d) } },
             },
-        }.RunAsync(DrawerScrim, cancel.Token);
+        }.Play(DrawerScrim, cancel.Token);
         await Task.WhenAll(slide, dim);
         if (cancel.IsCancellationRequested) return;
         if (!open) Classes.Set("drawer", false);

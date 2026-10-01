@@ -76,16 +76,16 @@
                             Command="{Binding Server.ToggleMuteCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
                             ToolTip.Tip="{x:Static l:Strings.Ui_MuteMic}" AutomationProperties.Name="{x:Static l:Strings.Ui_MuteMic}">
                 <Panel>
-                  <PathIcon Data="{StaticResource Icon.Mic}" IsVisible="{Binding !Server.SelfMuted, FallbackValue=True}" />
-                  <PathIcon Data="{StaticResource Icon.MicOff}" IsVisible="{Binding Server.SelfMuted, FallbackValue=False}" />
+                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.Mic}" IsVisible="{Binding !Server.SelfMuted, FallbackValue=True}" />
+                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding Server.SelfMuted, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
               <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfDeafened, Mode=OneWay, FallbackValue=False}"
                             Command="{Binding Server.ToggleDeafenCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
                             ToolTip.Tip="{x:Static l:Strings.Ui_DeafenTip}" AutomationProperties.Name="{x:Static l:Strings.Ui_Deafen}">
                 <Panel>
-                  <PathIcon Data="{StaticResource Icon.Headphones}" IsVisible="{Binding !Server.SelfDeafened, FallbackValue=True}" />
-                  <PathIcon Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
+                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.Headphones}" IsVisible="{Binding !Server.SelfDeafened, FallbackValue=True}" />
+                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
               <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_Settings}" AutomationProperties.Name="{x:Static l:Strings.Ui_Settings}">
@@ -102,7 +102,7 @@
             </Border>
             <StackPanel Margin="8,0,4,0" VerticalAlignment="Center">
               <TextBlock Classes="h2" FontSize="14" Text="{Binding Server.Self.Nickname, FallbackValue={x:Static l:Strings.Status_NotConnected}}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Classes="caption speaking" Text="{Binding TransmitText}" TextTrimming="CharacterEllipsis"
+              <TextBlock Classes="caption speaking transmit" Text="{Binding TransmitText}" TextTrimming="CharacterEllipsis"
                          IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <Panel IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
                 <TextBlock Classes="caption" Text="{Binding TalkHint}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNoPttBinding}" />
@@ -209,7 +209,7 @@
                       </Border.ContextMenu>
                       <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Classes="caption channelCount" VerticalAlignment="Center" Margin="8,0,0,0"
-                                   Text="{Binding SlotText}" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
+                                   Text="{Binding SlotText}" v:LiveMotion.Tick="True" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
                         <!-- Package 98: joining, moving or deleting waits for the server -->
                         <v:BusySpinner DockPanel.Dock="Right" Margin="8,0,0,0" IsVisible="{Binding IsBusy}" />
                         <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->
@@ -278,17 +278,17 @@
                             <DockPanel>
                               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                 <v:BusySpinner IsVisible="{Binding IsBusy}" /> <!-- Package 98: the server mute waits for the server -->
-                                <PathIcon Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsSpeakingViaLink}"
+                                <PathIcon v:LiveMotion.Pop="True" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsSpeakingViaLink}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_TalkingViaLink}" />
-                                <PathIcon Classes="sm muted" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsVolumeChanged}"
+                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsVolumeChanged}"
                                           ToolTip.Tip="{Binding VolumeText}" />
-                                <PathIcon Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsLocallyMuted}"
+                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsLocallyMuted}"
                                           ToolTip.Tip="{Binding VolumeText}" />
-                                <PathIcon Classes="sm danger" Data="{StaticResource Icon.SpeakerMute}" IsVisible="{Binding ServerMuted}"
+                                <PathIcon v:LiveMotion.Pop="True" Classes="sm danger" Data="{StaticResource Icon.SpeakerMute}" IsVisible="{Binding ServerMuted}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_ServerMuted}" />
-                                <PathIcon Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsDeafened}"
+                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsDeafened}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Deafen}" />
-                                <PathIcon Classes="sm muted" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsSelfMutedOnly}"
+                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsSelfMutedOnly}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Muted}" />
                               </StackPanel>
                               <Border Classes="ring" Classes.speaking="{Binding IsSpeaking}" Classes.link="{Binding IsSpeakingViaLink}">

@@ -212,7 +212,7 @@ public static class ItemMotion
                     },
                 },
             },
-        }.RunAsync(container, cancel.Token);
+        }.Play(container, cancel.Token);
     }
 
     /// <summary>Came back while leaving, or handed to another entry: the row is whole again.</summary>
@@ -408,7 +408,7 @@ public static class ItemMotion
                     new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d) } },
                     new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d) } },
                 },
-            }.RunAsync(list).ContinueWith(_ => fading = false, TaskScheduler.FromCurrentSynchronizationContext());
+            }.Play(list).ContinueWith(_ => fading = false, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         /// <summary>Entries prepared in the same round of the dispatcher came together.</summary>
@@ -440,7 +440,7 @@ public static class ItemMotion
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(TranslateTransform.YProperty, from) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.YProperty, 0d) } },
             },
-        }.RunAsync(container, cancel.Token);
+        }.Play(container, cancel.Token);
     }
 
     /// <param name="fly">
@@ -492,7 +492,7 @@ public static class ItemMotion
                     },
                 },
             },
-        }.RunAsync(container);
+        }.Play(container);
         container.ClearValue(Visual.ClipToBoundsProperty);
         container.Classes.Set("entering", false);
         if (flying) return; // Land shows it and lets it flash
