@@ -51,6 +51,18 @@ public sealed class ResponsiveTests : IDisposable
 
     static Border Sidebar(MainWindow main) => main.FindControl<Border>("Sidebar")!;
 
+    /// <summary>Lets the clock run until the condition holds (at most <paramref name="ms"/>): animations run on real time.</summary>
+    static void WaitFor(Func<bool> done, int ms = 1000)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && watch.ElapsedMilliseconds < ms)
+        {
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1);
+        }
+    }
+
     /// <summary>Package 105: closing counts at once, the drawer only slides away for a moment (in the animated display).</summary>
     static void AssertDrawerClosed(MainWindow main)
     {
@@ -159,13 +171,8 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Equal(0, LayoutAssert.X(Sidebar(main), main)!.Value - LayoutAssert.X(main.GetVisualDescendants().OfType<Grid>().First(), main)!.Value, 1); // where it ends up, not mid-slide
 
         // double click on Raid joins it and closes the drawer (once it has slid in)
-        var slid = System.Diagnostics.Stopwatch.StartNew();
-        while (slid.ElapsedMilliseconds < 350)
-        {
-            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
+        WaitFor(() => Sidebar(main).RenderTransform is null || Sidebar(main).RenderTransform!.Value.M31 == 0);
+        WaitFor(() => false, 120); // and a moment more: under load the last frame may come late
         var raid = main.GetVisualDescendants().OfType<Border>()
             .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel { Name: "Raid" });
         var point = raid.TranslatePoint(new Point(raid.Bounds.Width / 2, raid.Bounds.Height / 2), main)!.Value;
@@ -845,6 +852,7 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) Click(main, MenuButton(main)); // the channel tree lives in the drawer
+        WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2); // the drawer slides in (Package 105)
         Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible));
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) Click(main, MenuButton(main));

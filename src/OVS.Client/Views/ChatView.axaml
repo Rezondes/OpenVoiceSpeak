@@ -64,8 +64,10 @@
                  HorizontalAlignment="Right" />
     </StackPanel>
 
+    <!-- Package 107: in the animated display a pill points to new messages below while one reads further up -->
+    <Panel>
     <ScrollViewer x:Name="Scroller">
-      <ItemsControl ItemsSource="{Binding Selected.Entries}" Classes="chatHistory" MaxWidth="900" HorizontalAlignment="Stretch">
+      <ItemsControl x:Name="History" ItemsSource="{Binding Selected.Entries}" Classes="chatHistory" MaxWidth="900" HorizontalAlignment="Stretch">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <StackPanel Spacing="10" />
@@ -139,5 +141,8 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </ScrollViewer>
+    <Button x:Name="NewMessagesPill" Classes="accent" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+            Margin="0,0,0,12" Click="OnNewMessagesPillClick" Content="{x:Static l:Strings.Chat_NewMessages}" />
+    </Panel>
   </DockPanel>
 </UserControl>

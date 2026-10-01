@@ -6493,13 +6493,13 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: A new message slides up and fades in. My own messages come from the composer side; other people's messages come from the left.
-- [ ] AC2: Scrolling to the newest message is smooth (`Motion.Normal`) instead of jumping; if the user has scrolled up, nothing scrolls and a "new messages" pill bounces in.
-- [ ] AC3: A pending message turns from grey to normal with a fade, and the clock morphs into a check that fades out; "nicht gesendet" shakes once.
-- [ ] AC4: Warning and error notices slide in with a short colour pulse on their left edge.
-- [ ] AC5: An unread badge on a chat tab pops in, and its count ticks.
-- [ ] AC6: Loading the history of a tab does not animate every entry (one fade for the whole history).
-- [ ] AC7: In simplified mode the chat behaves as today.
+- [x] AC1: A new message slides up and fades in. My own messages come from the composer side; other people's messages come from the left.
+- [x] AC2: Scrolling to the newest message is smooth (`Motion.Normal`) instead of jumping; if the user has scrolled up, nothing scrolls and a "new messages" pill bounces in. (the pill exists only in the animated display; scrolling during a glide stops the glide)
+- [x] AC3: A pending message turns from grey to normal with a fade, and the clock morphs into a check that fades out; "nicht gesendet" shakes once. (as built: the clock goes and a check appears in its place, then fades)
+- [x] AC4: Warning and error notices slide in with a short colour pulse on their left edge.
+- [x] AC5: An unread badge on a chat tab pops in, and its count ticks.
+- [x] AC6: Loading the history of a tab does not animate every entry (one fade for the whole history).
+- [x] AC7: In simplified mode the chat behaves as today.
 
 ### Tests (TDD)
 

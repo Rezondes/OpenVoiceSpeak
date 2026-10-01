@@ -262,6 +262,7 @@
   <data name="TalkHint_NoPttKey" xml:space="preserve"><value>Keine PTT-Taste belegt</value></data>
   <data name="TalkHint_VoiceActivation" xml:space="preserve"><value>Sprachaktivierung</value></data>
   <data name="Theme_Dark" xml:space="preserve"><value>Dunkel</value></data>
+  <data name="Chat_NewMessages" xml:space="preserve"><value>Neue Nachrichten</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Hell</value></data>
   <data name="Display_Label" xml:space="preserve"><value>Darstellung</value></data>
   <data name="Display_Animated" xml:space="preserve"><value>Animierte Darstellung</value></data>

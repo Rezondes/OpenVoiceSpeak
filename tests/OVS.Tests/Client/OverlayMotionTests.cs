@@ -140,10 +140,16 @@ public sealed class OverlayMotionTests : IDisposable
         _ = SimpleDialogs.Connect(overlay, vm.Settings, null); // nothing filled in
         Settle(350);
         main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-        Settle(60);
-        Assert.NotEqual(0, OffsetX(Card(overlay)), 1);
+        double swing = 0;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (watch.ElapsedMilliseconds < 450) // a shake swings through 0: the largest swing seen
+        {
+            swing = Math.Max(swing, Math.Abs(OffsetX(Card(overlay))));
+            Frame();
+            Thread.Sleep(1);
+        }
+        Assert.True(swing > 2, $"the card shakes ({swing})");
         Assert.True(overlay.IsOpen); // still asking
-        Settle(450);
         Assert.Equal(0, OffsetX(Card(overlay)), 2);
         overlay.Close();
         main.Close();

@@ -555,7 +555,8 @@ public sealed class UiSmokeTests : IDisposable
     static void AssertSides(MainWindow main, string other, string own)
     {
         var history = ChatHistory(main);
-        Rect InHistory(Visual v) => new(v.TranslatePoint(new Point(), history)!.Value, v.Bounds.Size);
+        // Package 107: from the layout, not where a message still sliding in is drawn
+        Rect InHistory(Visual v) => new(new Point(LayoutAssert.X(v, history)!.Value, LayoutAssert.Y(v, history)!.Value), v.Bounds.Size);
 
         var ownBubble = Bubble(main, own);
         Assert.Contains("own", ownBubble.Classes);

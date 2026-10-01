@@ -273,4 +273,13 @@
     <Setter Property="Height" Value="3" />
     <Setter Property="CornerRadius" Value="2" />
   </Style>
+
+  <!-- ===== Package 107: a sent message turns from grey to normal with a fade ===== -->
+  <Style Selector="Window.animated Border.bubble.own">
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.22" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
 </Styles>
