@@ -835,4 +835,23 @@ public sealed class MainViewModelTests : IAsyncLifetime
         // 0.3 amplitude sine: RMS 0.212 = -13.5 dBFS
         Assert.InRange(await level.Task.WaitAsync(TimeSpan.FromSeconds(3)), -15f, -12f);
     }
+
+    /// <summary>Package 102: a removed bookmark folds away in the sidebar; with no window it goes at once.</summary>
+    [Fact]
+    public async Task RemovedBookmark_FoldsAway()
+    {
+        var (shownAfter, liveAfter) = await OnUi(() =>
+        {
+            var settings = vm.Settings;
+            settings.Bookmarks.Add(new Bookmark("A", "a.example.org", 7000, "ich"));
+            settings.Bookmarks.Add(new Bookmark("B", "b.example.org", 7000, "ich"));
+            vm.ApplySettings(settings);
+            vm.Leave.Delay = TimeSpan.FromMinutes(1);
+            var less = vm.Settings;
+            less.Bookmarks.RemoveAll(b => b.Name == "B");
+            vm.ApplySettings(less);
+            return (vm.Bookmarks.Count, vm.Bookmarks.Live().Count());
+        });
+        Assert.Equal((2, 1), (shownAfter, liveAfter));
+    }
 }

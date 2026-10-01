@@ -71,7 +71,7 @@ public sealed partial class LogsViewModel : ObservableObject
     /// <summary>The files that pass the filters, newest first.</summary>
     public ObservableCollection<LogFileViewModel> Files { get; } = [];
     public bool HasNoFiles => allFiles.Count == 0;
-    public bool HasNoFileMatches => allFiles.Count > 0 && Files.Count == 0;
+    public bool HasNoFileMatches => allFiles.Count > 0 && !Files.Live().Any();
 
     public bool IsFileOpen => OpenFile is not null;
     public string OpenTitle => OpenFile is { } f ? $"{f.Title}, {f.StartText}" : "";
@@ -155,10 +155,10 @@ public sealed partial class LogsViewModel : ObservableObject
 
     void RebuildFiles()
     {
-        Files.Clear();
-        foreach (var file in allFiles.Where(Passes)) Files.Add(new LogFileViewModel(file, ShowDownload, selected.Contains(file.Id), OnSelectionChanged));
-        SelectedFile = Files.FirstOrDefault(f => f.Info.Id == OpenFile?.Info.Id);
-        FileCountText = string.Format(Strings.Ui_LogFileCount, Files.Count, allFiles.Count);
+        var shown = allFiles.Where(Passes).Select(file => new LogFileViewModel(file, ShowDownload, selected.Contains(file.Id), OnSelectionChanged)).ToList();
+        CollectionSync.Sync(Files, shown, server.Leave); // Package 102: a file filtered out folds away
+        SelectedFile = shown.FirstOrDefault(f => f.Info.Id == OpenFile?.Info.Id);
+        FileCountText = string.Format(Strings.Ui_LogFileCount, shown.Count, allFiles.Count);
         OnPropertyChanged(nameof(HasNoFiles));
         OnPropertyChanged(nameof(HasNoFileMatches));
     }
@@ -253,7 +253,7 @@ public sealed partial class LogsViewModel : ObservableObject
             Lines.Clear();
             Page = PageCount = 0;
         }
-        SelectedFile = Files.FirstOrDefault(f => f.Info.Id == file.Info.Id);
+        SelectedFile = Files.Live().FirstOrDefault(f => f.Info.Id == file.Info.Id);
         targetLine = line;
         return server.SendAsync(new ReadLog(file.Info.Id, page));
     }
@@ -335,7 +335,7 @@ public sealed partial class LogsViewModel : ObservableObject
     Task OpenHit(LogHitViewModel? hit)
     {
         if (hit is null) return Task.CompletedTask;
-        var file = Files.FirstOrDefault(f => f.Info.Id == hit.FileId)
+        var file = Files.Live().FirstOrDefault(f => f.Info.Id == hit.FileId)
                    ?? allFiles.Where(f => f.Id == hit.FileId).Select(f => new LogFileViewModel(f)).FirstOrDefault();
         if (file is null) return Task.CompletedTask;
         LineFilter = "";

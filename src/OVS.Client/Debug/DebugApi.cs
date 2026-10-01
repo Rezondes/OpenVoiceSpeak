@@ -257,7 +257,7 @@ public sealed class DebugApi : IDisposable
                 s.SelfPermissions,
                 s.IsAdmin,
                 s.Mirror.DefaultChannelId,
-                Channels = s.Channels.Select(c => new
+                Channels = s.Channels.Live().Select(c => new
                 {
                     c.Id,
                     c.Name,
@@ -265,7 +265,7 @@ public sealed class DebugApi : IDisposable
                     c.IsCurrent,
                     c.IsLinked,
                     c.LinkedNames,
-                    Users = c.Users.Select(u => new
+                    Users = c.Users.Live().Select(u => new
                     {
                         u.SessionId,
                         u.Nickname,
@@ -337,11 +337,11 @@ public sealed class DebugApi : IDisposable
             : throw new DebugApiException($"Feld '{name}' fehlt");
 
     static ChannelViewModel Channel(ServerViewModel server, string key) =>
-        server.Channels.FirstOrDefault(c => c.Id.ToString() == key || string.Equals(c.Name, key, StringComparison.OrdinalIgnoreCase))
+        server.Channels.Live().FirstOrDefault(c => c.Id.ToString() == key || string.Equals(c.Name, key, StringComparison.OrdinalIgnoreCase))
         ?? throw new DebugApiException($"Channel '{key}' nicht gefunden");
 
     static UserViewModel User(ServerViewModel server, string key) =>
-        server.Channels.SelectMany(c => c.Users)
+        server.Channels.Live().SelectMany(c => c.Users.Live())
             .FirstOrDefault(u => u.SessionId.ToString() == key || string.Equals(u.Nickname, key, StringComparison.OrdinalIgnoreCase))
         ?? throw new DebugApiException($"Nutzer '{key}' nicht gefunden");
 

@@ -92,12 +92,20 @@ public partial class MainWindow : Window
     /// <summary>Package 99: the chosen display, also while it is only previewed on the settings page.</summary>
     void ApplyDisplay()
     {
-        if (watchedVm is not null) Motion.Apply(this, watchedVm.Appearance.Display);
+        if (watchedVm is null) return;
+        Motion.Apply(this, watchedVm.Appearance.Display);
+        // Package 102: what is gone stays a moment to fold away, only in the animated display
+        watchedVm.Leave.Delay = Motion.Duration(Motion.Normal);
+        if (watchedVm.Server is { } server) server.Leave.Delay = Motion.Duration(Motion.Normal);
     }
 
     void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.Server)) OnServerChanged();
+        if (e.PropertyName == nameof(MainViewModel.Server))
+        {
+            OnServerChanged();
+            ApplyDisplay();
+        }
         else if (e.PropertyName == nameof(MainViewModel.Appearance)) ApplyDisplay();
         else if (e.PropertyName == nameof(MainViewModel.Page) && watchedVm?.IsHomePage == false) SetDrawer(false);
     }

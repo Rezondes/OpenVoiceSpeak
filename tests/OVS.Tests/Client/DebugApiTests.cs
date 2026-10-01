@@ -63,6 +63,12 @@ public sealed class DebugApiTests : IAsyncLifetime
             return JsonDocument.Parse(text).RootElement;
         }
 
+        public Task OnUi(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
+        {
+            work(vm);
+            return Task.FromResult<object?>(null);
+        });
+
         public async Task<JsonElement> State() =>
             JsonDocument.Parse(await Http.GetStringAsync("state")).RootElement;
 
@@ -291,5 +297,23 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.Post("chat", new { target = "private", to = "anna", text = "psst" });
         await anna.Until(s => Has(s, "bert", "psst"));
         await bert.Until(s => Has(s, "bert", "psst")); // the sender sees the own whisper
+    }
+
+    /// <summary>Package 102: someone folding away in the tree is gone for the debug API already.</summary>
+    [Fact]
+    public async Task LeavingUser_NotInState()
+    {
+        ServerViewModel fake = null!;
+        await anna.OnUi(vm =>
+        {
+            fake = FakeServers.Admin(time: new ManualTimeProvider());
+            fake.Post = a => a();
+            fake.Leave.Delay = TimeSpan.FromMinutes(1);
+            vm.Server = fake;
+            fake.Apply(new OVS.Shared.Protocol.UserLeft(2));
+        });
+        var state = await anna.State();
+        Assert.Null(User(state, 2));
+        Assert.Single(fake.Channels.Single(c => c.Name == "Raid").Users); // still shown while it folds
     }
 }

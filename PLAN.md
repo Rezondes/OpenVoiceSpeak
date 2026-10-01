@@ -6245,12 +6245,12 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: In animated mode, a user who leaves my view of a channel (disconnect, switch away, kick) collapses and fades out over `Motion.Normal` and is removed after that.
-- [ ] AC2: A deleted channel collapses with its users; the rows below move up smoothly.
-- [ ] AC3: Removed bookmarks and admin rows (unban, delete user, delete backup, remove group) leave the same way.
-- [ ] AC4: An item that comes back while leaving is the same instance again (no double row, no flicker).
-- [ ] AC5: Leaving items are excluded from commands, counts (`SlotText`), move targets, `DebugApi` output and selection; they cannot be clicked.
-- [ ] AC6: In simplified mode items are removed at once, as today; all existing `ServerViewModelTests` and `UiSmokeTests` stay green in both modes.
+- [x] AC1: In animated mode, a user who leaves my view of a channel (disconnect, switch away, kick) collapses and fades out over `Motion.Normal` and is removed after that. (as built: leaving is kept per list in `CollectionSync` (`IsLeaving(list, item)`, `Live()`, the event `LeavingChanged`) instead of an `ILeaving` flag on the item, because a user who switches channels is the same view model leaving one list and entering another; the fold is played from code by `ItemMotion`, like the appear animation, not by a `.leaving` style. The delay sits in a `LeaveTimer` per connection and one for the bookmarks; it is zero unless the window sets `Motion.Normal`, so view models without a view behave as before)
+- [x] AC2: A deleted channel collapses with its users; the rows below move up smoothly.
+- [x] AC3: Removed bookmarks and admin rows (unban, delete user, delete backup, remove group) leave the same way.
+- [x] AC4: An item that comes back while leaving is the same instance again (no double row, no flicker).
+- [x] AC5: Leaving items are excluded from commands, counts (`SlotText`), move targets, `DebugApi` output and selection; they cannot be clicked.
+- [x] AC6: In simplified mode items are removed at once, as today; all existing `ServerViewModelTests` and `UiSmokeTests` stay green in both modes.
 
 ### Tests (TDD)
 

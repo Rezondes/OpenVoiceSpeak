@@ -788,4 +788,65 @@ public class ServerViewModelTests
         f.Vm.Apply(new ChannelRemoved(created));
         Assert.False(channel.IsBusy);
     }
+
+    /// <summary>Package 102: a user or channel folding away is no target, no count and no neighbour any more.</summary>
+    [Fact]
+    public void LeavingUser_NotCountedNotTarget_LeavingChannelSkipped()
+    {
+        var clock = new ManualTimeProvider();
+        var sent = new List<Request>();
+        var server = FakeServers.Admin(sent, time: clock);
+        server.Post = a => a();
+        server.Leave.Delay = TimeSpan.FromMinutes(1);
+        var raid = server.Channels.Single(c => c.Name == "Raid");
+        server.Apply(new UserLeft(2));
+        Assert.Contains(raid.Users, u => u.SessionId == 2); // still shown, folding away
+        Assert.True(CollectionSync.IsLeaving(raid.Users, raid.Users.Single()));
+        Assert.Equal("0", raid.SlotText);
+
+        var archiv = Guid.NewGuid();
+        server.Apply(new ChannelAdded(new ChannelInfo(archiv, "Archiv", "", 5)));
+        server.Apply(new ChannelRemoved(FakeServers.Raid));
+        Assert.Contains(server.Channels, c => c.Name == "Raid");
+        Assert.Equal(["Lobby", "Archiv"], server.Channels.Live().Select(c => c.Name));
+        var lobby = server.Channels.Single(c => c.Name == "Lobby");
+        Assert.DoesNotContain(server.LinkCandidates(lobby), c => c.Name == "Raid");
+
+        // Lobby's neighbour below is Archiv, not the folding Raid
+        lobby.MoveDownCommand.Execute(null);
+        Assert.Equal([archiv, FakeServers.Lobby], sent.OfType<ReorderChannels>().Single().ChannelIds);
+    }
+
+    /// <summary>Package 102: someone who comes back while folding away is the same entry again.</summary>
+    [Fact]
+    public void UserBackWhileLeaving_SameEntry()
+    {
+        var clock = new ManualTimeProvider();
+        var server = FakeServers.Admin(time: clock);
+        server.Post = a => a();
+        server.Leave.Delay = TimeSpan.FromMinutes(1);
+        var raid = server.Channels.Single(c => c.Name == "Raid");
+        var anna = raid.Users.Single();
+        server.Apply(new UserLeft(2));
+        server.Apply(new UserJoined(new UserInfo(2, "fp2", "anna", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
+        Assert.Same(anna, raid.Users.Single());
+        Assert.False(CollectionSync.IsLeaving(raid.Users, anna));
+    }
+
+    /// <summary>Package 102: moving next to a channel that folds away does nothing.</summary>
+    [Fact]
+    public async Task MoveChannel_BesideFoldingChannel_DoesNothing()
+    {
+        var sent = new List<Request>();
+        var server = FakeServers.Admin(sent, time: new ManualTimeProvider());
+        server.Post = a => a();
+        server.Leave.Delay = TimeSpan.FromMinutes(1);
+        var lobby = server.Channels.Single(c => c.Name == "Lobby");
+        var raid = server.Channels.Single(c => c.Name == "Raid");
+        server.Apply(new ChannelRemoved(FakeServers.Raid));
+        await server.MoveChannelAsync(lobby, raid, after: false);
+        await server.MoveChannelAsync(lobby, raid, after: true);
+        await server.MoveChannelAsync(raid, lobby, after: true);
+        Assert.Empty(sent.OfType<ReorderChannels>());
+    }
 }

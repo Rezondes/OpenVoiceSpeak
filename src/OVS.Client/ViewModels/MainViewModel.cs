@@ -101,6 +101,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         icons = new ServerIconCache(storageDir);
         Settings = ClientSettings.Load(storageDir, out var warning);
         if (warning is not null) AddNotice(warning, NoticeKind.Warning);
+        Leave = new LeaveTimer(TimeProvider.System, () => this.post);
+        SyncBookmarks();
 
         DeviceSource = useAudioDevices ? AudioDevices.List : _ => [];
         if (useAudioDevices) RefreshDevices();
@@ -159,7 +161,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public bool IsHomePage => Page == Page.Home;
     public bool IsSettingsPage => Page == Page.Settings;
     public bool IsAdminPage => Page == Page.Admin;
-    public IReadOnlyList<BookmarkItem> Bookmarks => Settings.Bookmarks.Select(b => new BookmarkItem(b, icons.Load(b.Host, b.Port))).ToList();
+    /// <summary>Package 102: kept in step with the settings, so a removed bookmark can fold away.</summary>
+    public ObservableCollection<BookmarkItem> Bookmarks { get; } = [];
+
+    /// <summary>Package 102: how long a removed bookmark stays to fold away (the window sets it).</summary>
+    public LeaveTimer Leave { get; }
+
+    void SyncBookmarks() =>
+        CollectionSync.Sync(Bookmarks, Settings.Bookmarks.Select(b => new BookmarkItem(b, icons.Load(b.Host, b.Port))).ToList(), Leave);
     public bool HasBookmarks => Settings.Bookmarks.Count > 0;
 
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
@@ -216,6 +225,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     void OnSettingsListsChanged()
     {
+        SyncBookmarks();
         OnPropertyChanged(nameof(Bookmarks));
         OnPropertyChanged(nameof(HasBookmarks));
     }

@@ -57,8 +57,8 @@ public sealed partial class ReorderDrag
         list.AddHandler(InputElement.PointerCaptureLostEvent, (_, _) => End(), RoutingStrategies.Direct);
     }
 
-    /// <summary>Realized containers in item order.</summary>
-    List<Control> Containers() => list.GetRealizedContainers().OrderBy(list.IndexFromContainer).ToList();
+    /// <summary>Realized containers in item order; a row folding away (Package 102) is no place to drop at.</summary>
+    List<Control> Containers() => list.GetRealizedContainers().Where(c => !c.Classes.Contains("leaving")).OrderBy(list.IndexFromContainer).ToList();
 
     void OnPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -66,7 +66,7 @@ public sealed partial class ReorderDrag
         // Only the item's own content is a handle, not nested items such as the users inside a channel block.
         var container = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(c => list.IndexFromContainer(c) >= 0);
         var item = container is null ? null : list.ItemFromContainer(container);
-        if (item is null || (e.Source as StyledElement)?.DataContext != item || !canDrag(item)) return;
+        if (item is null || container!.Classes.Contains("leaving") || (e.Source as StyledElement)?.DataContext != item || !canDrag(item)) return;
         source = container;
         start = e.GetPosition(list);
         grab = e.GetPosition(container);

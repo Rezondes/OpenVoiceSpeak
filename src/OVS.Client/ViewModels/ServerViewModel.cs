@@ -91,6 +91,7 @@ public sealed partial class ServerViewModel : ObservableObject
         this.send = send;
         this.time = time;
         Dialogs = dialogs ?? new Dialogs();
+        Leave = new LeaveTimer(time, () => Post);
         Rebuild();
     }
 
@@ -98,6 +99,9 @@ public sealed partial class ServerViewModel : ObservableObject
     public TimeProvider Time => time;
     public Dialogs Dialogs { get; }
     public ObservableCollection<ChannelViewModel> Channels { get; } = [];
+
+    /// <summary>Package 102: how long a user or channel that is gone stays to fold away (the window sets it).</summary>
+    public LeaveTimer Leave { get; }
 
     public bool CanCreateChannel => SelfPermissions.Has(Permission.ChannelCreate);
     public bool HasSpeakLinked => SelfPermissions.Has(Permission.SpeakLinked);
@@ -267,8 +271,10 @@ public sealed partial class ServerViewModel : ObservableObject
         IsAdmin = self?.GroupIds.Contains(WellKnownGroups.Admin) ?? false;
         var groups = Mirror.Groups;
 
-        foreach (var id in channelVms.Keys.Except(Mirror.Channels.Keys).ToList()) channelVms.Remove(id);
-        foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).ToList()) userVms.Remove(id);
+        // Package 102: one that is still folding away stays known, so coming back meanwhile is the same entry again
+        var shownUsers = Channels.SelectMany(c => c.Users).ToHashSet();
+        foreach (var id in channelVms.Keys.Except(Mirror.Channels.Keys).Where(id => !Channels.Contains(channelVms[id])).ToList()) channelVms.Remove(id);
+        foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).Where(id => !shownUsers.Contains(userVms[id])).ToList()) userVms.Remove(id);
 
         var desired = new List<ChannelViewModel>();
         foreach (var c in ServerOrder().OrderBy(c => pendingOrder?.IndexOf(c.Id) is >= 0 and var i ? i : int.MaxValue)) // Package 98
@@ -287,11 +293,11 @@ public sealed partial class ServerViewModel : ObservableObject
                     return user;
                 })
                 .ToList();
-            Sync(channel.Users, users);
+            CollectionSync.Sync(channel.Users, users, Leave);
             channel.SlotText = c.MaxUsers > 0 ? $"{users.Count}/{c.MaxUsers}" : users.Count.ToString();
             desired.Add(channel);
         }
-        Sync(Channels, desired);
+        CollectionSync.Sync(Channels, desired, Leave);
         for (int i = 0; i < desired.Count; i++) desired[i].SetPosition(first: i == 0, last: i == desired.Count - 1);
         CurrentChannel = self is null ? null : channelVms.GetValueOrDefault(self.ChannelId);
         Self = userVms.GetValueOrDefault(Mirror.SelfId);
@@ -301,28 +307,16 @@ public sealed partial class ServerViewModel : ObservableObject
 
     IEnumerable<ChannelInfo> ServerOrder() => Mirror.Channels.Values.OrderBy(c => c.Order).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
 
-    /// <summary>Moves/inserts/removes so the collection equals desired, keeping existing instances (and selection).</summary>
-    static void Sync<T>(ObservableCollection<T> target, IReadOnlyList<T> desired) where T : class
-    {
-        for (int i = 0; i < desired.Count; i++)
-        {
-            int index = target.IndexOf(desired[i]);
-            if (index < 0) target.Insert(i, desired[i]);
-            else if (index != i) target.Move(index, i);
-        }
-        while (target.Count > desired.Count) target.RemoveAt(target.Count - 1);
-    }
-
     public IReadOnlyList<ChannelViewModel> LinkCandidates(ChannelViewModel channel)
     {
         var linked = Mirror.LinkedChannels(channel.Id).ToHashSet();
-        return Channels.Where(c => c != channel && !linked.Contains(c.Id)).ToList();
+        return Channels.Live().Where(c => c != channel && !linked.Contains(c.Id)).ToList();
     }
 
     public IReadOnlyList<ChannelViewModel> LinkedChannelVms(ChannelViewModel channel)
     {
         var linked = Mirror.LinkedChannels(channel.Id).ToHashSet();
-        return Channels.Where(c => linked.Contains(c.Id)).ToList();
+        return Channels.Live().Where(c => linked.Contains(c.Id)).ToList();
     }
 
     // ---- Speaking indicators ----
@@ -498,9 +492,11 @@ public sealed partial class ServerViewModel : ObservableObject
     public Task MoveChannelAsync(ChannelViewModel source, ChannelViewModel target, bool after)
     {
         if (source == target) return Task.CompletedTask;
-        var order = Channels.Where(c => c != source).ToList();
+        var live = Channels.Live().ToList();
+        if (!live.Contains(source) || !live.Contains(target)) return Task.CompletedTask; // Package 102: folding away
+        var order = live.Where(c => c != source).ToList();
         order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
-        if (order.SequenceEqual(Channels)) return Task.CompletedTask;
+        if (order.SequenceEqual(live)) return Task.CompletedTask;
         var ids = order.Select(c => c.Id).ToList();
         pendingOrder = ids;
         Rebuild();
@@ -673,10 +669,16 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     }
 
     [RelayCommand]
-    Task MoveUp() => first ? Task.CompletedTask : owner.MoveChannelAsync(this, owner.Channels[owner.Channels.IndexOf(this) - 1], after: false);
+    Task MoveUp() => first ? Task.CompletedTask : owner.MoveChannelAsync(this, Neighbour(-1), after: false);
 
     [RelayCommand]
-    Task MoveDown() => last ? Task.CompletedTask : owner.MoveChannelAsync(this, owner.Channels[owner.Channels.IndexOf(this) + 1], after: true);
+    Task MoveDown() => last ? Task.CompletedTask : owner.MoveChannelAsync(this, Neighbour(+1), after: true);
+
+    ChannelViewModel Neighbour(int step)
+    {
+        var live = owner.Channels.Live().ToList();
+        return live[live.IndexOf(this) + step];
+    }
 
     [RelayCommand]
     Task Join()
@@ -812,7 +814,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [RelayCommand]
     Task Move()
     {
-        var targets = owner.Channels.Where(c => c.Id != ChannelId).ToList();
+        var targets = owner.Channels.Live().Where(c => c.Id != ChannelId).ToList();
         return ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
             ? submit => pick(string.Format(Strings.Dialog_MoveTo, Nickname), targets, submit) : null, channel => owner.Move(SessionId, channel.Id));
     }

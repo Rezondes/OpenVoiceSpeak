@@ -252,4 +252,30 @@ public sealed class ReorderDragTests : IDisposable
         Assert.NotEmpty(tree.Container("Lobby").Transitions!);
         tree.Main.Close();
     }
+
+    /// <summary>Package 102: a channel folding away is no place to drop at (before, this could crash or send a wrong order).</summary>
+    [AvaloniaFact]
+    public void DropBesideFoldingChannel_IsIgnored()
+    {
+        ReorderDrag.ReducedMotion = () => true;
+        var tree = Open();
+        var server = tree.Vm.Server!;
+        server.Leave.Delay = TimeSpan.FromMinutes(1);
+        var raid = tree.Container("Raid");
+        var below = raid.TranslatePoint(new Point(raid.Bounds.Width / 2, raid.Bounds.Height - 2), tree.Main)!.Value;
+        server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Archiv", "", -1)));
+        server.Apply(new ChannelRemoved(FakeServers.Raid));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("leaving", raid.Classes);
+
+        var start = tree.Center("Lobby");
+        tree.Main.MouseDown(start, MouseButton.Left);
+        tree.Main.MouseMove(start + new Point(0, 10));
+        tree.Main.MouseMove(below);
+        Dispatcher.UIThread.RunJobs();
+        tree.Main.MouseUp(below, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.All(tree.Sent.OfType<ReorderChannels>(), r => Assert.DoesNotContain(FakeServers.Raid, r.ChannelIds));
+        tree.Main.Close();
+    }
 }

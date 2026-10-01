@@ -75,13 +75,16 @@ public sealed class UiSmokeTests : IDisposable
     [AvaloniaTheory]
     [InlineData("Dark")]
     [InlineData("Light")]
-    public void Windows_LoadAndShowTheirContent(string variant)
+    [InlineData("Dark", DisplayMode.Simplified)] // Package 102 (AC6): every page and dialog in both displays
+    [InlineData("Light", DisplayMode.Simplified)]
+    public void Windows_LoadAndShowTheirContent(string variant, DisplayMode display = DisplayMode.Animated)
     {
         var sink = new CollectingSink();
         Logger.Sink = sink;
         Application.Current!.RequestedThemeVariant = variant == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("voice.example.org:7000", "voice.example.org", 7000, "ich"));
+        settings.Display = display;
         settings.Save(dir);
         new ServerIconCache(dir).Save("voice.example.org", 7000, TestImages.Encode(64, 64)); // logo seen earlier
         var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);

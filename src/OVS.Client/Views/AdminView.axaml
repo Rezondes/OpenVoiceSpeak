@@ -179,7 +179,7 @@
                          HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock.IsVisible>
                   <MultiBinding Converter="{x:Static BoolConverters.And}">
-                    <Binding Path="Users.Count" Converter="{x:Static v:Ui.IsZero}" />
+                    <Binding Path="HasNoUsersShown" />
                     <Binding Path="UsersLoad.HasSucceeded" />
                   </MultiBinding>
                 </TextBlock.IsVisible>

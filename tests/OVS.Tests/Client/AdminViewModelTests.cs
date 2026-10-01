@@ -1418,4 +1418,21 @@ public class AdminViewModelTests
         Assert.Equal(before, Order());
         Assert.False(vm.GroupReorder.IsBusy);
     }
+
+    /// <summary>Package 102: a lifted ban folds away in the real list, the count is right at once.</summary>
+    [Fact]
+    public void LiftedBan_FoldsAway_CountAtOnce()
+    {
+        var (view, server, _) = Create(P.BansView | P.Speak);
+        server.Post = a => a();
+        server.Leave.Delay = TimeSpan.FromMinutes(1);
+        var keep = new BanInfo(Guid.NewGuid(), "fpA", "Anton", null, "", "mod", null);
+        var lifted = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null);
+        server.Apply(new BanList("b", [keep, lifted]));
+        server.Apply(new BanList("c", [keep]));
+        Assert.Equal(2, view.Bans.Count);
+        Assert.Equal("Anton", Assert.Single(view.Bans.Live()).Nickname);
+        Assert.True(CollectionSync.IsLeaving(view.Bans, view.Bans.Single(b => b.Nickname == "Xaver")));
+        Assert.False(view.HasNoBanMatches);
+    }
 }

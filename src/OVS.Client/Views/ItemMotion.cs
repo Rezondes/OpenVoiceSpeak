@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -25,6 +26,9 @@ public static class ItemMotion
     public const int FlashMs = 600;
     public const double Rise = 6;
 
+    /// <summary>Package 102: a leaving entry moves this far to the left while it folds away.</summary>
+    public const double Drift = 8;
+
     public static readonly AttachedProperty<bool> EnterProperty =
         AvaloniaProperty.RegisterAttached<ItemsControl, bool>("Enter", typeof(ItemMotion));
 
@@ -39,11 +43,91 @@ public static class ItemMotion
 
     static readonly ConditionalWeakTable<ItemsControl, Tracker> trackers = [];
 
-    static ItemMotion() =>
+    /// <summary>Package 102: the lists showing a collection, to find the row of an entry that starts leaving.</summary>
+    static readonly ConditionalWeakTable<object, List<WeakReference<ItemsControl>>> showing = [];
+    static readonly ConditionalWeakTable<Control, CancellationTokenSource> folding = [];
+
+    static ItemMotion()
+    {
         EnterProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
         {
             if (e.GetNewValue<bool>()) trackers.GetValue(list, l => new Tracker(l));
         });
+        CollectionSync.LeavingChanged += OnLeavingChanged;
+    }
+
+    static void Show(object? source, ItemsControl list, bool on)
+    {
+        if (source is null) return;
+        var lists = showing.GetValue(source, _ => []);
+        lists.RemoveAll(w => !w.TryGetTarget(out var l) || l == list);
+        if (on) lists.Add(new WeakReference<ItemsControl>(list));
+    }
+
+    static void OnLeavingChanged(object source, object item, bool leaving)
+    {
+        if (!showing.TryGetValue(source, out var lists)) return;
+        foreach (var weak in lists.ToList())
+        {
+            if (!weak.TryGetTarget(out var list) || list.ContainerFromItem(item) is not { } container) continue;
+            if (leaving) Leave(container);
+            else Stay(container);
+        }
+    }
+
+    /// <summary>Folds the row away: it fades, drifts to the left and closes its height; it cannot be clicked any more.</summary>
+    static void Leave(Control container)
+    {
+        Stay(container);
+        container.IsHitTestVisible = false;
+        container.Classes.Set("leaving", true);
+        if (!Motion.IsAnimated) return;
+        var cancel = new CancellationTokenSource();
+        folding.AddOrUpdate(container, cancel);
+        container.ClipToBounds = true;
+        _ = new Animation
+        {
+            Duration = Motion.Normal,
+            Easing = Motion.Ease,
+            FillMode = FillMode.Forward, // stays folded until the list lets it go
+            Children =
+            {
+                new KeyFrame
+                {
+                    Cue = new Cue(0),
+                    Setters =
+                    {
+                        new Setter(Visual.OpacityProperty, 1d),
+                        new Setter(TranslateTransform.XProperty, 0d),
+                        new Setter(Layoutable.MaxHeightProperty, container.Bounds.Height),
+                    },
+                },
+                new KeyFrame
+                {
+                    Cue = new Cue(1),
+                    Setters =
+                    {
+                        new Setter(Visual.OpacityProperty, 0d),
+                        new Setter(TranslateTransform.XProperty, -Drift),
+                        new Setter(Layoutable.MaxHeightProperty, 0d),
+                    },
+                },
+            },
+        }.RunAsync(container, cancel.Token);
+    }
+
+    /// <summary>Came back while leaving: the row is whole again.</summary>
+    static void Stay(Control container)
+    {
+        if (folding.TryGetValue(container, out var cancel))
+        {
+            cancel.Cancel();
+            folding.Remove(container);
+        }
+        container.ClearValue(InputElement.IsHitTestVisibleProperty);
+        container.ClearValue(Visual.ClipToBoundsProperty);
+        container.Classes.Set("leaving", false);
+    }
 
     public static object? KeyOf(object? item) => item is IMotionKey keyed ? keyed.MotionKey : item;
 
@@ -58,10 +142,14 @@ public static class ItemMotion
         {
             this.list = list;
             list.ContainerPrepared += OnPrepared;
+            list.ContainerClearing += (_, e) => Stay(e.Container); // a recycled row starts whole
+            Show(list.ItemsSource, list, true);
             list.Items.CollectionChanged += OnItemsChanged;
             list.PropertyChanged += (_, e) =>
             {
                 if (e.Property != ItemsControl.ItemsSourceProperty) return;
+                Show(e.OldValue, list, false);
+                Show(e.NewValue, list, true);
                 if (e.OldValue is null) // a list that appears (connecting) is a first fill again
                 {
                     filled = false;
@@ -93,7 +181,13 @@ public static class ItemMotion
 
         void OnPrepared(object? sender, ContainerPreparedEventArgs e)
         {
-            var key = KeyOf(list.ItemFromContainer(e.Container) ?? e.Container.DataContext);
+            var item = list.ItemFromContainer(e.Container) ?? e.Container.DataContext;
+            if (item is not null && list.ItemsSource is { } source && CollectionSync.IsLeaving(source, item))
+            {
+                Leave(e.Container); // shown in the middle of folding away (a scrolled list): folded at once
+                return;
+            }
+            var key = KeyOf(item);
             if (key is null || !Motion.IsAnimated) return;
             if (!list.IsEffectivelyVisible) // a hidden list makes its rows at once; nobody sees them arrive
             {

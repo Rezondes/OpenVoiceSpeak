@@ -155,10 +155,12 @@ public sealed partial class AdminViewModel : ObservableObject
     public IReadOnlyList<Choice<BanSortOrder>> BanSortOrders { get; }
     /// <summary>No ban stored at all (none ever, or all aged out); otherwise an empty list means nothing matches.</summary>
     public bool HasNoBans => allBans.Count == 0;
-    public bool HasNoBanMatches => allBans.Count > 0 && Bans.Count == 0;
+    public bool HasNoBanMatches => allBans.Count > 0 && !Bans.Live().Any();
     /// <summary>Package 74: the backups on the server, newest first.</summary>
     public ObservableCollection<BackupViewModel> Backups { get; } = [];
-    public bool HasNoBackups => Backups.Count == 0;
+    public bool HasNoBackups => !Backups.Live().Any();
+    /// <summary>Package 102: the filter leaves nobody (rows folding away do not count).</summary>
+    public bool HasNoUsersShown => !Users.Live().Any();
 
     /// <summary>The page asks to be closed (close button or Esc).</summary>
     public event Action? CloseRequested;
@@ -309,16 +311,15 @@ public sealed partial class AdminViewModel : ObservableObject
     void RebuildGroups()
     {
         var selected = SelectedGroup?.Id;
-        var unsaved = Groups.Where(g => g.Id is null).ToList();
-        Groups.Clear();
+        var unsaved = Groups.Live().Where(g => g.Id is null).ToList();
         // Package 98: a moved group stays in its new place until the server confirms or refuses it
-        foreach (var g in server.Mirror.Groups.OrderBy(g => pendingGroupOrder?.IndexOf(g.Id) is >= 0 and var i ? i : int.MaxValue))
-            Groups.Add(new GroupEditViewModel(g.Id, g.Name, g.Permissions, Actor));
-        foreach (var g in unsaved) Groups.Add(g);
-        SelectedGroup = Groups.FirstOrDefault(g => g.Id == selected && selected is not null) ?? SelectedGroup switch
+        var groups = server.Mirror.Groups.OrderBy(g => pendingGroupOrder?.IndexOf(g.Id) is >= 0 and var i ? i : int.MaxValue)
+            .Select(g => new GroupEditViewModel(g.Id, g.Name, g.Permissions, Actor)).Concat(unsaved).ToList();
+        CollectionSync.Sync(Groups, groups, server.Leave); // Package 102: a deleted group folds away
+        SelectedGroup = groups.FirstOrDefault(g => g.Id == selected && selected is not null) ?? SelectedGroup switch
         {
             { Id: null } s => s,
-            _ => Groups.FirstOrDefault(),
+            _ => groups.FirstOrDefault(),
         };
     }
 
@@ -387,9 +388,10 @@ public sealed partial class AdminViewModel : ObservableObject
             UserSortOrder.OnlineTime => visible.OrderByDescending(u => u.Info.OnlineTime).ThenBy(u => u.Nickname, byName),
             _ => visible.OrderBy(u => u.Nickname, byName),
         };
-        Users.Clear();
-        foreach (var user in visible) Users.Add(user);
-        UserCountText = string.Format(Strings.Ui_UserCount, Users.Count, all.Count);
+        var shown = visible.ToList();
+        CollectionSync.Sync(Users, shown, server.Leave);
+        UserCountText = string.Format(Strings.Ui_UserCount, shown.Count, all.Count);
+        OnPropertyChanged(nameof(HasNoUsersShown));
     }
 
     // ---- Package 80: ban overview ----
@@ -431,9 +433,9 @@ public sealed partial class AdminViewModel : ObservableObject
             BanSortOrder.Name => visible.OrderBy(b => b.Nickname, byName),
             _ => visible.OrderByDescending(b => b.Ban.CreatedAt ?? DateTimeOffset.MinValue).ThenBy(b => b.Nickname, byName),
         };
-        Bans.Clear();
-        foreach (var ban in visible) Bans.Add(ban);
-        BanCountText = string.Format(Strings.Ui_BanCount, Bans.Count, all.Count);
+        var shown = visible.ToList();
+        CollectionSync.Sync(Bans, shown, server.Leave);
+        BanCountText = string.Format(Strings.Ui_BanCount, shown.Count, all.Count);
         OnPropertyChanged(nameof(HasNoBans));
         OnPropertyChanged(nameof(HasNoBanMatches));
     }
@@ -522,8 +524,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         backupsForAdmin = CanUploadRestore;
         OnPropertyChanged(nameof(CanUploadRestore));
-        Backups.Clear();
-        foreach (var backup in backupInfos) Backups.Add(new BackupViewModel(backup, DeleteBackupAsync, RestoreBackupAsync, backupsForAdmin));
+        CollectionSync.Sync(Backups, backupInfos.Select(b => new BackupViewModel(b, DeleteBackupAsync, RestoreBackupAsync, backupsForAdmin)).ToList(), server.Leave);
         OnPropertyChanged(nameof(HasNoBackups));
     }
 
@@ -758,12 +759,12 @@ public sealed partial class AdminViewModel : ObservableObject
         if (await sent.Completion is not null) return;
         bool selected = SelectedGroup == draft;
         Groups.Remove(draft);
-        if (selected) SelectedGroup = Groups.LastOrDefault(g => g.Id is not null && g.Name == draft.Name) ?? Groups.FirstOrDefault();
+        if (selected) SelectedGroup = Groups.Live().LastOrDefault(g => g.Id is not null && g.Name == draft.Name) ?? Groups.Live().FirstOrDefault();
     }
 
     // ---- Package 37: order ----
 
-    List<GroupEditViewModel> SavedGroups => Groups.Where(g => g.Id is not null).ToList();
+    List<GroupEditViewModel> SavedGroups => Groups.Live().Where(g => g.Id is not null).ToList();
 
     bool CanMoveGroupUp => Actor.Has(Permission.GroupsManage) && SelectedGroup is { Id: not null } g && SavedGroups.IndexOf(g) > 0;
     bool CanMoveGroupDown => Actor.Has(Permission.GroupsManage) && SelectedGroup is { Id: not null } g &&
@@ -786,6 +787,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         var saved = SavedGroups;
         if (!Actor.Has(Permission.GroupsManage) || source == target || source.Id is null || target.Id is null) return Task.CompletedTask;
+        if (!saved.Contains(source) || !saved.Contains(target)) return Task.CompletedTask; // Package 102: folding away
         var order = saved.Where(g => g != source).ToList();
         order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
         if (order.SequenceEqual(saved)) return Task.CompletedTask;

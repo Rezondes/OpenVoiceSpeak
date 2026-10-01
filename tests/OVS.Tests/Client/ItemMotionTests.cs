@@ -284,4 +284,63 @@ public sealed class ItemMotionTests : IDisposable
         ];
         Assert.Equal(Keys(), Keys());
     }
+
+    // ---- Package 102: leaving ----
+
+    [AvaloniaFact]
+    public void DeletedChannel_CollapsesThenGone()
+    {
+        var main = Connected(out var server);
+        Assert.Equal(Motion.Normal, server.Leave.Delay); // the window set the animated display's length
+        var raid = server.Channels.Single(c => c.Name == "Raid");
+        var row = main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(raid)!;
+        double height = row.Bounds.Height;
+        server.Apply(new ChannelRemoved(FakeServers.Raid));
+        Settle(100);
+        Assert.Contains(raid, server.Channels); // still there, folding away
+        Assert.Contains("leaving", row.Classes);
+        Assert.False(row.IsHitTestVisible);
+        Assert.True(row.Bounds.Height < height && row.Opacity < 1, $"{row.Bounds.Height} of {height}, {row.Opacity}");
+        Settle(400);
+        Assert.DoesNotContain(raid, server.Channels);
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void AdminRowRemoved_Leaves_AndComesBackWhole()
+    {
+        var rows = new ObservableCollection<Row> { new("a"), new("b"), new("c") };
+        var (window, list) = Host(rows);
+        var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = Motion.Normal };
+        var below = Container(list, "c");
+        double before = below.TranslatePoint(default, window)!.Value.Y;
+        CollectionSync.Sync(rows, [new Row("a", 1), new Row("c", 1)], leave);
+        Settle(100);
+        var b = Container(list, "b");
+        Assert.True(b.Opacity < 1 && OffsetX(b) < 0, "fades and drifts to the left");
+        double during = Container(list, "c").TranslatePoint(default, window)!.Value.Y; // a rebuilt row: a new container
+        Assert.True(during < before, "the rows below move up while it folds");
+
+        CollectionSync.Sync(rows, [new Row("a", 2), new Row("b", 2), new Row("c", 2)], leave); // back meanwhile
+        Settle(400);
+        var back = Container(list, "b");
+        Assert.Equal(1, back.Opacity, 2);
+        Assert.Equal(30, back.Bounds.Height, 1);
+        Assert.True(back.IsHitTestVisible);
+        Assert.Equal(3, rows.Count);
+    }
+
+    [AvaloniaFact]
+    public void Simplified_RemovedAtOnce()
+    {
+        var main = Connected(out var server);
+        Motion.Apply(main, DisplayMode.Simplified);
+        ((MainViewModel)main.DataContext!).Appearance = ((MainViewModel)main.DataContext!).Appearance with { Display = DisplayMode.Simplified };
+        Assert.Equal(TimeSpan.Zero, server.Leave.Delay);
+        server.Apply(new ChannelRemoved(FakeServers.Raid));
+        Assert.DoesNotContain(server.Channels, c => c.Name == "Raid");
+        main.Close();
+    }
+
+    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
 }

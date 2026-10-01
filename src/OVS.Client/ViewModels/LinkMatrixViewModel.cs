@@ -59,19 +59,15 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     /// <summary>After any server change: new channels, names and links; own pending changes stay.</summary>
     internal void Rebuild()
     {
-        var channels = server.Channels.ToList();
+        var channels = server.Channels.Live().ToList();
         var ids = channels.Select(c => c.Id).ToHashSet();
         foreach (var (key, linked) in desired.ToList())
             if (!ids.Contains(key.Item1) || !ids.Contains(key.Item2) || linked == OnServer(key)) desired.Remove(key);
 
-        var selected = Rows.Where(r => r.IsSelected).Select(r => r.Id).ToHashSet();
-        Rows.Clear();
-        for (int i = 0; i < channels.Count; i++)
-        {
-            var row = channels[i];
-            Rows.Add(new LinkRowViewModel(i + 1, row.Id, row.Name, selected.Contains(row.Id),
-                channels.Select(col => new LinkCellViewModel(this, row.Id, col.Id, string.Format(Strings.Links_Pair, row.Name, col.Name))).ToList()));
-        }
+        var selected = Rows.Live().Where(r => r.IsSelected).Select(r => r.Id).ToHashSet();
+        var rows = channels.Select((row, i) => new LinkRowViewModel(i + 1, row.Id, row.Name, selected.Contains(row.Id),
+            channels.Select(col => new LinkCellViewModel(this, row.Id, col.Id, string.Format(Strings.Links_Pair, row.Name, col.Name))).ToList())).ToList();
+        CollectionSync.Sync(Rows, rows); // rows and columns go together: a folding row would leave its column standing
         PendingCount = desired.Count;
     }
 
@@ -83,7 +79,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
 
     IEnumerable<(Guid A, Guid B)> SelectedPairs()
     {
-        var selected = Rows.Where(r => r.IsSelected).Select(r => r.Id).ToList();
+        var selected = Rows.Live().Where(r => r.IsSelected).Select(r => r.Id).ToList();
         for (int i = 0; i < selected.Count; i++)
             for (int j = i + 1; j < selected.Count; j++)
                 yield return (selected[i], selected[j]);
