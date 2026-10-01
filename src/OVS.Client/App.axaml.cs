@@ -74,6 +74,7 @@ public partial class App : Application
                 });
             }
             window.Opened += async (_, _) => await vm.StartupUpdateCheckAsync();
+            window.Opened += (_, _) => window.RequestAnimationFrame(_ => Splash.Close()); // once the window has drawn itself
 
             desktop.MainWindow = window;
             desktop.Exit += (_, _) =>

@@ -56,6 +56,7 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        Splash.Show(); // first of all: the logo shows while everything below loads
         Options = ClientOptions.Parse(args);
         Log = new ClientLog(Options.ProfileDir, TimeProvider.System);
         // Package 63: a crash used to leave no trace at all; exceptions escaping the UI thread end up here too
