@@ -104,7 +104,7 @@ describe('App', () => {
     expect(document.querySelector('dialog img')?.getAttribute('src')).toBe(`${import.meta.env.BASE_URL}screenshots/admin-logs-en-light.webp`)
   })
 
-  it('clips play muted and looped, poster only with reduced motion', () => {
+  it('clips play muted and looped, with reduced motion only on request, and open large', () => {
     const media = (reduced: boolean) => vi.stubGlobal('matchMedia', (query: string) => ({
       matches: reduced && query.includes('reduced-motion'), addEventListener() {}, removeEventListener() {},
     }))
@@ -120,13 +120,20 @@ describe('App', () => {
       expect([...video.querySelectorAll('source')].map(s => s.getAttribute('type'))).toEqual(['video/webm', 'video/mp4'])
     }
     expect(videos[0].querySelector('source')?.getAttribute('src')).toBe(`${import.meta.env.BASE_URL}clips/clip-switch-en-light.webm`)
+    expect(document.querySelectorAll('#motion .play')).toHaveLength(0) // they move by themselves
     unmount()
 
     media(true)
     render(<App />)
-    expect(document.querySelectorAll('#motion video')).toHaveLength(0)
-    const posters = [...document.querySelectorAll('#motion img')]
-    expect(posters.map(img => img.getAttribute('src'))).toEqual(texts.en.motion.items.map(c => `${import.meta.env.BASE_URL}clips/${c.id}-en-light-poster.webp`))
+    const stills = [...document.querySelectorAll<HTMLVideoElement>('#motion video')]
+    expect(stills.map(v => v.getAttribute('poster'))).toEqual(texts.en.motion.items.map(c => `${import.meta.env.BASE_URL}clips/${c.id}-en-light-poster.webp`))
+    expect(stills.every(v => v.preload === 'none' && !v.autoplay)).toBe(true) // nothing moves or loads by itself
+    expect(document.querySelectorAll('#motion .play')).toHaveLength(3) // but each shows it can be played
+
+    fireEvent.click(screen.getByRole('button', { name: /Play video enlarged: Everything glides into place/ }))
+    const large = document.querySelector<HTMLVideoElement>('dialog video')!
+    expect(large.autoplay && large.controls && large.loop && large.muted).toBe(true) // asked for, so it plays
+    expect(large.querySelector('source')?.getAttribute('src')).toBe(`${import.meta.env.BASE_URL}clips/clip-switch-en-light.webm`)
     vi.unstubAllGlobals()
   })
 

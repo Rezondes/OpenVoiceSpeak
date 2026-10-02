@@ -69,6 +69,7 @@ const de = {
   },
   motion: {
     title: 'In Bewegung (Beta)',
+    play: 'Video groß abspielen',
     lead: 'In der animierten Darstellung (Beta, noch in Arbeit) gleitet alles an seinen Platz. Wer es ruhiger mag, stellt in den Einstellungen die vereinfachte Darstellung ein.',
     items: [
       { id: 'clip-switch', caption: 'Beim Channelwechsel gleitet alles an seinen Platz' },
@@ -164,6 +165,7 @@ const en: Texts = {
   },
   motion: {
     title: 'In motion (Beta)',
+    play: 'Play video enlarged',
     lead: 'In the animated display (beta, still in progress) everything glides into place. If you like it calmer, switch to the simplified display in the settings.',
     items: [
       { id: 'clip-switch', caption: 'Everything glides into place when you switch channels' },

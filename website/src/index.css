@@ -138,9 +138,20 @@ section h2 {
   font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em;
   color: var(--accent-text); background: var(--accent-soft);
 }
-.section-lead { max-width: 64ch; margin: -8px 0 32px; color: var(--muted); }
+.section-lead { max-width: 64ch; margin: -8px auto 32px; text-align: center; color: var(--muted); text-wrap: pretty; }
 .clips { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
-.clips video, .clips img { display: block; width: 100%; height: auto; }
+.clips video, .lightbox video { display: block; width: 100%; height: auto; }
+/* a clip that does not move by itself (reduced motion) shows it can be played */
+.clip { position: relative; }
+.play {
+  position: absolute; inset: 0; margin: auto; width: 56px; height: 56px; border-radius: 999px;
+  background: rgb(8 10 14 / 0.65); box-shadow: 0 4px 16px rgb(8 10 14 / 0.35);
+}
+.play::after {
+  content: ''; position: absolute; inset: 0; margin: auto; translate: 3px 0;
+  border-block: 10px solid transparent; border-left: 16px solid #fff; width: 0; height: 0;
+}
+.clip:hover .play { background: var(--accent); }
 .clips figcaption { margin-top: 12px; text-align: center; color: var(--muted); font-size: 0.9375rem; }
 
 .steps { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); counter-reset: step; }

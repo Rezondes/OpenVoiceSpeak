@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type Ref, type VideoHTMLAttributes } from 'react'
 import { icons, type IconName } from './icons'
 import { pickLanguage, storageKey, texts, type Lang } from './i18n'
 
@@ -62,18 +62,28 @@ function useMedia(query: string) {
   return on
 }
 
+/** A clip's video: muted and looped, in WebM or MP4. */
+function ClipVideo({ base, caption, ...rest }: { base: string; caption: string; ref?: Ref<HTMLVideoElement> } & VideoHTMLAttributes<HTMLVideoElement>) {
+  return (
+    <video key={base} muted loop playsInline poster={`${base}-poster.webp`} aria-label={caption} width="1100" height="700" {...rest}>
+      <source src={`${base}.webm`} type="video/webm" />
+      <source src={`${base}.mp4`} type="video/mp4" />
+    </video>
+  )
+}
+
 /**
- * Package 118 (A127): a short clip of the animated display, muted and looped, playing only while in view. With reduced
- * motion only its first frame shows.
+ * Package 118 (A127): a short clip of the animated display, playing only while in view; a click shows it large. With
+ * reduced motion nothing moves by itself: the poster shows with a play mark, and the click plays it large.
  */
-function Clip({ id, lang, caption }: { id: string; lang: Lang; caption: string }) {
+function Clip({ id, lang, caption, label, onOpen }: { id: string; lang: Lang; caption: string; label: string; onOpen: (z: Zoom) => void }) {
   const still = useMedia('(prefers-reduced-motion: reduce)')
   const dark = useMedia('(prefers-color-scheme: dark)')
   const base = `${import.meta.env.BASE_URL}clips/${id}-${lang}-${dark ? 'dark' : 'light'}`
   const video = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     const v = video.current
-    if (!v || typeof IntersectionObserver === 'undefined') return
+    if (!v || still || typeof IntersectionObserver === 'undefined') return
     const io = new IntersectionObserver(([entry]) => {
       if (entry?.isIntersecting) v.play?.()?.catch(() => { /* no autoplay allowed: the poster stays */ })
       else v.pause?.()
@@ -81,16 +91,16 @@ function Clip({ id, lang, caption }: { id: string; lang: Lang; caption: string }
     io.observe(v)
     return () => io.disconnect()
   }, [base, still])
-  if (still) return <img src={`${base}-poster.webp`} alt={caption} width="1100" height="700" loading="lazy" decoding="async" />
   return (
-    <video key={base} ref={video} muted loop playsInline preload="metadata" poster={`${base}-poster.webp`} aria-label={caption} width="1100" height="700">
-      <source src={`${base}.webm`} type="video/webm" />
-      <source src={`${base}.mp4`} type="video/mp4" />
-    </video>
+    <button type="button" className="zoom clip" aria-label={`${label}: ${caption}`} onClick={() => onOpen({ file: id, alt: caption, clip: base })}>
+      <ClipVideo ref={video} base={base} caption={caption} preload={still ? 'none' : 'metadata'} />
+      {still && <span className="play" aria-hidden="true" />}
+    </button>
   )
 }
 
-type Zoom = { file: string; alt: string }
+/** A screenshot, or with clip the base of a clip's files. */
+type Zoom = { file: string; alt: string; clip?: string }
 
 /** A screenshot that opens larger on click or Enter. */
 function ZoomShot({ file, alt, lang, label, onOpen, eager }: Zoom & { lang: Lang; label: string; onOpen: (z: Zoom) => void; eager?: boolean }) {
@@ -107,7 +117,9 @@ function Lightbox({ zoom, lang, close, onClose }: { zoom: Zoom; lang: Lang; clos
     <dialog className="lightbox" aria-label={zoom.alt} ref={el => { if (el && !el.open) el.showModal?.() }}
             onClose={onClose} onClick={e => { if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'IMG') onClose() }}>
       <button type="button" className="lightbox-close" aria-label={close} onClick={onClose}>&times;</button>
-      <Shot file={zoom.file} lang={lang} alt={zoom.alt} eager />
+      {zoom.clip
+        ? <ClipVideo base={zoom.clip} caption={zoom.alt} autoPlay controls preload="auto" /> // asked for: plays, also with reduced motion
+        : <Shot file={zoom.file} lang={lang} alt={zoom.alt} eager />}
     </dialog>
   )
 }
@@ -317,7 +329,7 @@ export default function App() {
             {t.motion.items.map(item => (
               <li key={item.id} {...reveal}>
                 <figure>
-                  <div className="frame"><Clip id={item.id} lang={lang} caption={item.caption} /></div>
+                  <div className="frame"><Clip id={item.id} lang={lang} caption={item.caption} label={t.motion.play} onOpen={setZoom} /></div>
                   <figcaption>{item.caption}</figcaption>
                 </figure>
               </li>
