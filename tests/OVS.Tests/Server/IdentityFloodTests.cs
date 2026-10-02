@@ -149,6 +149,8 @@ public sealed class IdentityFloodTests
         for (int i = 0; i < 2000; i++) File.WriteAllText(Path.Combine(logDir, $"{start.AddHours(i):yyyy-MM-dd_HH-mm-ss}.log"), "x\n");
 
         await using var client = await TestClient.ConnectAsync(server, "chef", admin);
+        // a save of this much data, or a scan of 2000 log files, can hold the server for seconds on a slow CI disk
+        const int slow = 30_000;
 
         async Task<List<T>> FetchAll<T, TList>(Func<int, Request> ask, Func<TList, (string? Id, int Offset, int Total, IReadOnlyList<T> Items)> read)
             where TList : Message
@@ -158,7 +160,7 @@ public sealed class IdentityFloodTests
             {
                 var id = Guid.NewGuid().ToString("N");
                 await client.SendAsync(ask(all.Count) with { RequestId = id });
-                var (_, offset, total, items) = read(await client.WaitForAsync<TList>(l => read(l).Id == id, 10_000));
+                var (_, offset, total, items) = read(await client.WaitForAsync<TList>(l => read(l).Id == id, slow));
                 Assert.Equal(all.Count, offset);
                 Assert.InRange(items.Count, 1, Limits.ListPageSize);
                 all.AddRange(items);
@@ -175,10 +177,12 @@ public sealed class IdentityFloodTests
         Assert.Equal(logs.Count, logs.Select(f => f.Id).Distinct().Count());
 
         await client.SendAsync(new ListBackups { RequestId = "b" });
-        var backups = await client.WaitForAsync<BackupList>(l => l.RequestId == "b");
+        // an error answer (rate limit, right) shows up as such instead of as a timeout
+        var answer = await client.WaitForAsync<Message>(m => m is BackupList { RequestId: "b" } or Error { RequestId: "b" }, slow);
+        var backups = Assert.IsType<BackupList>(answer);
         Assert.Equal((0, 0), (backups.Offset, backups.Total));
 
         await client.SendAsync(new Ping());
-        await client.WaitForAsync<Pong>(); // still connected
+        await client.WaitForAsync<Pong>(timeoutMs: slow); // still connected
     }
 }
