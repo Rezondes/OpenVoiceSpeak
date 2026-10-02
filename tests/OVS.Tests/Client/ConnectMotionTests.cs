@@ -103,14 +103,24 @@ public sealed class ConnectMotionTests : IDisposable
         Named<Border>(main, "TreeGhost").PropertyChanged += (_, e) => bookmarksLeft |= e.Property == Visual.IsVisibleProperty && e.NewValue is true;
         Named<Panel>(main, "PageHost").PropertyChanged += (_, e) => chatCameUp |= OffsetY(Named<Panel>(main, "PageHost")) > 0;
         Named<Border>(main, "ServerHeader").PropertyChanged += (_, e) => nameFaded |= e.Property == Visual.OpacityProperty && e.NewValue is double o && o < 1;
+        var entered = new HashSet<Control>(); // every row that came in entering
+        tree.ContainerPrepared += (_, e) =>
+        {
+            void Seen()
+            {
+                if (e.Container.Classes.Contains("entering")) entered.Add(e.Container);
+            }
+            Seen();
+            e.Container.Classes.CollectionChanged += (_, _) => Seen();
+        };
         vm.Server = FakeServers.Crowded();
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (watch.ElapsedMilliseconds < 700) // what showed while it connected (a frame may come late)
         {
-            builtUp |= tree.GetRealizedContainers().Count(c => c.Classes.Contains("entering")) > 1;
             Frame();
             Thread.Sleep(1);
         }
+        builtUp = entered.Count > 1;
         Assert.True(pageLeft, "the home page fades away as a picture");
         Assert.True(bookmarksLeft, "and so do the bookmarks");
         Assert.True(chatCameUp, "the chat comes up from below");

@@ -837,7 +837,9 @@ public sealed class ResponsiveTests : IDisposable
         ServerViewModel? server = null;
         server = FakeServers.Admin(time: time, dialogs: SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
         vm.Server = server;
-        Dispatcher.UIThread.RunJobs();
+        // the connect sequence (at most 700 ms) is over before anything is clicked; the server's clock is a manual one
+        WaitFor(() => false, 800);
+        WaitFor(() => main.Classes.Contains("compact") == width < 700, 5000);
 
         // a sent message still waiting and a refused one with its retry, both long
         foreach (var text in new[] { new string('w', 300), "Diese Nachricht kam nicht an, weil zu viele in kurzer Zeit geschickt wurden." })
@@ -854,6 +856,7 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) Click(main, MenuButton(main)); // the channel tree lives in the drawer
+        Assert.Equal(width < 700, main.Classes.Contains("drawer")); // the click opened it (a missed click fails here, not as "0 spinners")
         // the drawer slides in (Package 105); on a busy machine that can take longer than its 220 ms
         WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2, 5000);
         Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible));
