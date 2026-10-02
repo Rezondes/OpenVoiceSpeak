@@ -78,6 +78,43 @@ public sealed class ItemMotionTests : IDisposable
 
     static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
 
+    /// <summary>
+    /// Every vertical offset any row of the list takes from now on, with the item it showed: not only what a frame
+    /// happens to see, under load one frame can outlast the whole glide.
+    /// </summary>
+    static List<(object? Item, double Y)> WatchOffsets(ItemsControl items)
+    {
+        var seen = new List<(object? Item, double Y)>();
+        void Watch(Control row)
+        {
+            void Track(AvaloniaObject transform)
+            {
+                // the animator keeps the offset in a TranslateTransform, on its own or inside a TransformGroup
+                if (transform is Avalonia.Media.TransformGroup group)
+                    foreach (var child in group.Children) Track(child);
+                if (transform is Avalonia.Media.TranslateTransform translate) seen.Add((row.DataContext, translate.Y)); // set before it came
+                transform.PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == Avalonia.Media.TranslateTransform.YProperty && e.NewValue is double y) seen.Add((row.DataContext, y));
+                };
+            }
+            if (row.RenderTransform is AvaloniaObject now) Track(now);
+            row.PropertyChanged += (_, c) =>
+            {
+                if (c.Property == Visual.RenderTransformProperty && c.NewValue is AvaloniaObject transform) Track(transform);
+            };
+        }
+        foreach (var row in items.GetRealizedContainers()) Watch(row);
+        items.ContainerPrepared += (_, e) => Watch(e.Container);
+        return seen;
+    }
+
+    static double Most(List<(object? Item, double Y)> seen, Func<object?, bool> item) =>
+        seen.Where(s => item(s.Item)).Select(s => s.Y).DefaultIfEmpty(0).Max();
+
+    static double Least(List<(object? Item, double Y)> seen, Func<object?, bool> item) =>
+        seen.Where(s => item(s.Item)).Select(s => s.Y).DefaultIfEmpty(0).Min();
+
     [AvaloniaFact]
     public void AdminRowAdded_SlidesIn()
     {
@@ -362,42 +399,14 @@ public sealed class ItemMotionTests : IDisposable
         var main = Connected(out var server);
         var raid = ChannelContainer(main, "Raid");
         double before = raid.TranslatePoint(default, main)!.Value.Y;
-        // every offset Raid's row takes, not only what a frame happens to see: under load one frame can outlast the glide
-        double most = 0;
-        // every row, from before the change on: whichever row shows Raid, any offset its transform takes counts
-        void Watch(Control row)
-        {
-            void Track(AvaloniaObject transform)
-            {
-                // the animator keeps the offset in a TranslateTransform, on its own or inside a TransformGroup
-                if (transform is Avalonia.Media.TransformGroup group)
-                    foreach (var child in group.Children) Track(child);
-                transform.PropertyChanged += (_, e) =>
-                {
-                    if (e.Property == Avalonia.Media.TranslateTransform.YProperty && e.NewValue is double y && row.DataContext is ChannelViewModel { Name: "Raid" })
-                        most = Math.Max(most, y);
-                };
-            }
-            if (row.RenderTransform is AvaloniaObject now) Track(now);
-            row.PropertyChanged += (_, c) =>
-            {
-                if (c.Property == Visual.RenderTransformProperty && c.NewValue is AvaloniaObject transform) Track(transform);
-            };
-        }
-        var items = main.FindControl<ItemsControl>("ChannelItems")!;
-        foreach (var row in items.GetRealizedContainers()) Watch(row);
-        items.ContainerPrepared += (_, e) => Watch(e.Container);
+        var seen = WatchOffsets(main.FindControl<ItemsControl>("ChannelItems")!);
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1))); // another admin puts Raid first
         Frame();
         raid = ChannelContainer(main, "Raid"); // a moved entry gets a new row
-        most = Math.Max(most, OffsetY(raid));
         double now = raid.TranslatePoint(default, main)!.Value.Y - OffsetY(raid);
         Assert.True(now < before, "Raid is first now");
-        for (int i = 0; i < 5; i++)
-        {
-            Frame();
-            most = Math.Max(most, OffsetY(ChannelContainer(main, "Raid")));
-        }
+        for (int i = 0; i < 5; i++) Frame();
+        double most = Math.Max(OffsetY(raid), Most(seen, item => item is ChannelViewModel { Name: "Raid" }));
         Assert.True(most > 0.5 * (before - now), $"it starts where it was: {most} of {before - now}");
         Settle(500);
         Assert.Equal(0, OffsetY(raid), 2);
@@ -483,14 +492,11 @@ public sealed class ItemMotionTests : IDisposable
     {
         var rows = new ObservableCollection<Row> { new("Gast"), new("Moderator"), new("Admin") };
         var (window, list) = Host(rows, flip: true);
+        var seen = WatchOffsets(list);
         rows.Move(2, 0);
-        double admin = 0, gast = 0;
-        for (int i = 0; i < 5; i++) // the largest offsets of the first frames (under load the first one may come late)
-        {
-            Frame();
-            admin = Math.Max(admin, OffsetY(Container(list, "Admin")));
-            gast = Math.Min(gast, OffsetY(Container(list, "Gast")));
-        }
+        for (int i = 0; i < 5; i++) Frame();
+        double admin = Most(seen, item => item is Row { Key: "Admin" });
+        double gast = Least(seen, item => item is Row { Key: "Gast" });
         Assert.True(admin > 30, $"Admin glides up from 60 px below ({admin})");
         Assert.True(gast < -15, $"the others make room, gliding as well ({gast})");
         Settle(500);
@@ -534,10 +540,10 @@ public sealed class ItemMotionTests : IDisposable
         Assert.True(ItemMotion.GetFlip(groups));
         var admin = vm.AdminPage!;
         admin.SelectedGroup = admin.Groups.Single(g => g.Name == "Admin");
+        var seen = WatchOffsets(groups);
         await admin.MoveGroupUpCommand.ExecuteAsync(null);
-        Frame();
-        var row = (Control)groups.ContainerFromItem(admin.Groups.Live().First())!;
-        Assert.True(row.RenderTransform?.Value.M32 > 0, "Admin glides up from below");
+        for (int i = 0; i < 5; i++) Frame();
+        Assert.True(Most(seen, item => item is GroupEditViewModel { Name: "Admin" }) > 0, "Admin glides up from below");
         main.Close();
     }
 
