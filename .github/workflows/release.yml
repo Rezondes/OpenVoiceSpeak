@@ -47,7 +47,7 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: website/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts # ffmpeg-static (website/scripts/encode-clips.mjs) is only for renewing the clips locally
       - run: npm test
       - run: npm run build
 
@@ -177,7 +177,7 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: website/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts # ffmpeg-static (website/scripts/encode-clips.mjs) is only for renewing the clips locally
       - run: npm run build
         env:
           VITE_OVS_VERSION: ${{ needs.version.outputs.version }}

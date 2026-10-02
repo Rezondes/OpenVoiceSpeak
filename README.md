@@ -284,4 +284,11 @@ dotnet run --project tools/render-icon
 
 Das Tool schreibt `src/OVS.Client/Assets/ovs.ico` (16, 20, 24, 32, 48, 64 und 256 px) und `docs/logo.png` (256 px). Ab 48 px wird die SVG gerendert. Für 16, 20, 24 und 32 px zeichnet das Tool eigene, aufs Pixelraster gesetzte Varianten (Tabelle `Small` in `tools/render-icon/LogoRenderer.cs`): Ohrmuscheln und drei Wellenbalken als ganze Pixel ohne Kantenglättung, 1 px breit bei 16 und 20 px, 2 px breit bei 24 und 32 px, mit mindestens 1 px Abstand, dazu ein etwas dünnerer Kopfbügel. Das Logo in der Titelleiste (24 px) zeigt genau diesen 24-px-Frame aus dem Icon. Zwei Läufe ergeben identische Dateien; die Tests prüfen, dass das eingecheckte Icon zur SVG passt.
 
+Website-Bilder erneuern: die Bilder und Clips der Website kommen aus dem echten Client, headless gerendert mit einem erfundenen Server (`tests/OVS.Tests/Website`). Der erste Befehl schreibt die Bilder (WebP, Deutsch und Englisch, hell und dunkel) und die Einzelbilder der Clips in einen Ordner, der zweite macht daraus die Clips (WebM und MP4) in `website/public/clips/`. Die fertigen Bilder aus dem Ordner nach `website/public/screenshots/` kopieren:
+
+```bash
+OVS_SHOTS=/tmp/ovs-shots dotnet test tests/OVS.Tests --filter "FullyQualifiedName~WebsiteShots"
+cd website && npm run clips -- /tmp/ovs-shots
+```
+
 Der Umsetzungsplan steht in `PLAN.md`.
