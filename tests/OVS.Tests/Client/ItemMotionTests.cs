@@ -362,13 +362,24 @@ public sealed class ItemMotionTests : IDisposable
         var main = Connected(out var server);
         var raid = ChannelContainer(main, "Raid");
         double before = raid.TranslatePoint(default, main)!.Value.Y;
+        // every offset Raid's row takes, not only what a frame happens to see: under load one frame can outlast the glide
+        double most = 0;
+        void Track(AvaloniaObject transform) => transform.PropertyChanged += (_, e) =>
+        {
+            if (e.NewValue is double y && ((Control)ChannelContainer(main, "Raid")).RenderTransform == transform) most = Math.Max(most, y);
+        };
+        main.FindControl<ItemsControl>("ChannelItems")!.ContainerPrepared += (_, e) => e.Container.PropertyChanged += (_, c) =>
+        {
+            if (c.Property == Visual.RenderTransformProperty && c.NewValue is AvaloniaObject transform) Track(transform);
+        };
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1))); // another admin puts Raid first
         Frame();
         raid = ChannelContainer(main, "Raid"); // a moved entry gets a new row
+        if (raid.RenderTransform is AvaloniaObject first) Track(first);
+        most = Math.Max(most, OffsetY(raid));
         double now = raid.TranslatePoint(default, main)!.Value.Y - OffsetY(raid);
         Assert.True(now < before, "Raid is first now");
-        double most = OffsetY(raid);
-        for (int i = 0; i < 5; i++) // the largest offset of the first frames (under load the first one may come late)
+        for (int i = 0; i < 5; i++)
         {
             Frame();
             most = Math.Max(most, OffsetY(ChannelContainer(main, "Raid")));
@@ -406,14 +417,21 @@ public sealed class ItemMotionTests : IDisposable
         var main = Connected(out var server);
         var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
         double oldTop = UserContainer(main, nickname).TranslatePoint(default, overlay)!.Value.Y;
+        // where the picture starts, taken the moment it is put in the overlay: frames may come late under load
+        double? start = null;
+        overlay.Children.CollectionChanged += (_, e) =>
+        {
+            foreach (var added in e.NewItems?.OfType<Border>() ?? [])
+                if (added.Classes.Contains(FlyGhost.GhostClass)) start ??= Canvas.GetTop(added);
+        };
         server.Apply(new UserUpdated(nickname == "anna" ? Anna(FakeServers.Lobby)
             : new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
         Frame();
         Frame();
         var ghost = Assert.Single(Ghosts(main, FlyGhost.GhostClass));
         Assert.Equal(0, Arrived(main, nickname).Opacity); // the new row waits for its picture
-        double landed = LastTop(ghost, out double start);
-        Assert.True(Math.Abs(start - oldTop) < 10, $"starts on the old row: {start} vs {oldTop} (two frames have passed)");
+        double landed = LastTop(ghost, out _);
+        Assert.True(start is { } s && Math.Abs(s - oldTop) < 1, $"starts on the old row: {start} vs {oldTop}");
         Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
         Assert.Equal(1, Arrived(main, nickname).Opacity, 2); // shown in the frame the picture went: no gap
         Assert.DoesNotContain("fresh", Arrived(main, nickname).Classes); // and no flash, the flight showed where it went

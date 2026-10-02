@@ -95,16 +95,18 @@ public sealed class ConnectMotionTests : IDisposable
     public void Connect_SequenceWithin700ms()
     {
         var main = Open(out var vm);
-        vm.Server = FakeServers.Crowded();
         var tree = Named<ItemsControl>(main, "ChannelItems");
         bool pageLeft = false, bookmarksLeft = false, chatCameUp = false, nameFaded = false, builtUp = false;
+        // every value they take, not only the ones a frame happens to see: on a busy machine the first frame after the
+        // connect can take longer than a whole fade (the crowded tree builds up in it)
+        Named<Border>(main, "PageGhost").PropertyChanged += (_, e) => pageLeft |= e.Property == Visual.IsVisibleProperty && e.NewValue is true;
+        Named<Border>(main, "TreeGhost").PropertyChanged += (_, e) => bookmarksLeft |= e.Property == Visual.IsVisibleProperty && e.NewValue is true;
+        Named<Panel>(main, "PageHost").PropertyChanged += (_, e) => chatCameUp |= OffsetY(Named<Panel>(main, "PageHost")) > 0;
+        Named<Border>(main, "ServerHeader").PropertyChanged += (_, e) => nameFaded |= e.Property == Visual.OpacityProperty && e.NewValue is double o && o < 1;
+        vm.Server = FakeServers.Crowded();
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (watch.ElapsedMilliseconds < 700) // what showed while it connected (a frame may come late)
         {
-            pageLeft |= Named<Border>(main, "PageGhost").IsVisible;
-            bookmarksLeft |= Named<Border>(main, "TreeGhost").IsVisible;
-            chatCameUp |= OffsetY(Named<Panel>(main, "PageHost")) > 0;
-            nameFaded |= Named<Border>(main, "ServerHeader").Opacity < 1;
             builtUp |= tree.GetRealizedContainers().Count(c => c.Classes.Contains("entering")) > 1;
             Frame();
             Thread.Sleep(1);

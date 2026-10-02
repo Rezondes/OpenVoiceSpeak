@@ -279,6 +279,24 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(("127.0.0.1", server.Port, "anna"), (bookmark.Host, bookmark.Port, bookmark.Nickname));
     }
 
+    /// <summary>
+    /// Holds a key until the client has seen it, then lets go. A fixed short press could fall between two polls of the
+    /// key thread when the machine is busy (CI), and then nothing happened at all.
+    /// </summary>
+    async Task PressUntil(KeyAction action, Func<bool> done)
+    {
+        vm.Keys.Simulate(action, true);
+        try
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (!await OnUi(done) && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        }
+        finally
+        {
+            vm.Keys.Simulate(action, false);
+        }
+    }
+
     /// <summary>Package 29: toggle keys work like the buttons and reach the server.</summary>
     [Fact]
     public async Task ToggleActions_SyncWithServer()
@@ -287,16 +305,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await using var bert = await TestClient.ConnectAsync(server, "bert");
         var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
 
-        vm.Keys.Simulate(KeyAction.ToggleMute, true);
-        await Task.Delay(60);
-        vm.Keys.Simulate(KeyAction.ToggleMute, false);
+        await PressUntil(KeyAction.ToggleMute, () => vm.Server!.SelfMuted);
         var muted = await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfMuted);
         Assert.False(muted.User.SelfDeafened);
         Assert.True(await OnUi(() => vm.Server!.SelfMuted));
 
-        vm.Keys.Simulate(KeyAction.ToggleDeafen, true);
-        await Task.Delay(60);
-        vm.Keys.Simulate(KeyAction.ToggleDeafen, false);
+        await PressUntil(KeyAction.ToggleDeafen, () => vm.Server!.SelfDeafened);
         await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfDeafened);
     }
 

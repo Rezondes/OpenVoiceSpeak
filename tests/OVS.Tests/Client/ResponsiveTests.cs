@@ -854,7 +854,8 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) Click(main, MenuButton(main)); // the channel tree lives in the drawer
-        WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2); // the drawer slides in (Package 105)
+        // the drawer slides in (Package 105); on a busy machine that can take longer than its 220 ms
+        WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2, 5000);
         Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible));
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) Click(main, MenuButton(main));
