@@ -364,18 +364,32 @@ public sealed class ItemMotionTests : IDisposable
         double before = raid.TranslatePoint(default, main)!.Value.Y;
         // every offset Raid's row takes, not only what a frame happens to see: under load one frame can outlast the glide
         double most = 0;
-        void Track(AvaloniaObject transform) => transform.PropertyChanged += (_, e) =>
+        // every row, from before the change on: whichever row shows Raid, any offset its transform takes counts
+        void Watch(Control row)
         {
-            if (e.NewValue is double y && ((Control)ChannelContainer(main, "Raid")).RenderTransform == transform) most = Math.Max(most, y);
-        };
-        main.FindControl<ItemsControl>("ChannelItems")!.ContainerPrepared += (_, e) => e.Container.PropertyChanged += (_, c) =>
-        {
-            if (c.Property == Visual.RenderTransformProperty && c.NewValue is AvaloniaObject transform) Track(transform);
-        };
+            void Track(AvaloniaObject transform)
+            {
+                // the animator keeps the offset in a TranslateTransform, on its own or inside a TransformGroup
+                if (transform is Avalonia.Media.TransformGroup group)
+                    foreach (var child in group.Children) Track(child);
+                transform.PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == Avalonia.Media.TranslateTransform.YProperty && e.NewValue is double y && row.DataContext is ChannelViewModel { Name: "Raid" })
+                        most = Math.Max(most, y);
+                };
+            }
+            if (row.RenderTransform is AvaloniaObject now) Track(now);
+            row.PropertyChanged += (_, c) =>
+            {
+                if (c.Property == Visual.RenderTransformProperty && c.NewValue is AvaloniaObject transform) Track(transform);
+            };
+        }
+        var items = main.FindControl<ItemsControl>("ChannelItems")!;
+        foreach (var row in items.GetRealizedContainers()) Watch(row);
+        items.ContainerPrepared += (_, e) => Watch(e.Container);
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1))); // another admin puts Raid first
         Frame();
         raid = ChannelContainer(main, "Raid"); // a moved entry gets a new row
-        if (raid.RenderTransform is AvaloniaObject first) Track(first);
         most = Math.Max(most, OffsetY(raid));
         double now = raid.TranslatePoint(default, main)!.Value.Y - OffsetY(raid);
         Assert.True(now < before, "Raid is first now");

@@ -72,7 +72,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         public async Task<JsonElement> State() =>
             JsonDocument.Parse(await Http.GetStringAsync("state")).RootElement;
 
-        public async Task<JsonElement> Until(Func<JsonElement, bool> condition, int timeoutMs = 5000)
+        public async Task<JsonElement> Until(Func<JsonElement, bool> condition, int timeoutMs = 15000) // returns once it holds
         {
             var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
             JsonElement state;

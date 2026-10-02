@@ -212,7 +212,8 @@ public class AdminCommandTests
         var modGroup = a.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
 
         await a.SendAsync(new DeleteGroup(modGroup));
-        var update = await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == m.Id);
+        // the update that takes the group away (another one for the moderator may come first under load)
+        var update = await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == m.Id && !u.User.GroupIds.Contains(modGroup));
         Assert.DoesNotContain(modGroup, update.User.GroupIds);
         Assert.Equal(Permission.None, update.User.Permissions);
     }

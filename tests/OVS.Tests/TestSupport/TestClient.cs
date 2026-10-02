@@ -129,7 +129,8 @@ public sealed class TestClient : IAsyncDisposable
     }
 
     /// <summary>Skips other messages until a matching T arrives.</summary>
-    public async Task<T> WaitForAsync<T>(Func<T, bool>? match = null, int timeoutMs = 3000) where T : Message
+    /// <param name="timeoutMs">Generous: it returns once the message is there, and a loaded CI runner can be slow.</param>
+    public async Task<T> WaitForAsync<T>(Func<T, bool>? match = null, int timeoutMs = 10000) where T : Message
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (true)

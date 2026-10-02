@@ -45,7 +45,9 @@ public class SendPathTests
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f }); // test tone is -13.5 dBFS: below
         engine.SetTone(440);
         keys.Simulate(ptt: true);
-        await Task.Delay(400);
+        await Until(() => keys.IsDown(KeyAction.PushToTalk)); // the key thread saw it
+        if (expectFrames) await Until(() => engine.FramesSent > 0);
+        else await Task.Delay(400);
         keys.Simulate(ptt: false);
         Assert.Equal(expectFrames, engine.FramesSent > 0);
     }
@@ -61,13 +63,13 @@ public class SendPathTests
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -40f }); // tone at -13.5 dBFS: well above
         keys.Simulate(KeyAction.PushToMute, true);
         keys.Simulate(ptt: true);
-        await Task.Delay(50); // the key thread polls every 10 ms
+        await Until(() => keys.MuteHeld && keys.IsDown(KeyAction.PushToTalk)); // the key thread saw both (it polls every 10 ms, when it gets a turn)
         engine.SetTone(440);
         await Task.Delay(400);
         Assert.Equal(0, engine.FramesSent);
 
         keys.Simulate(KeyAction.PushToMute, false);
-        await Task.Delay(300);
+        await Until(() => engine.FramesSent > 0);
         Assert.True(engine.FramesSent > 0); // released: sending again
     }
 
@@ -83,11 +85,25 @@ public class SendPathTests
         Assert.Equal(0, engine.FramesSent);
 
         engine.ChannelMuted = false;
-        await Task.Delay(300);
+        await Until(() => engine.FramesSent > 0);
         Assert.True(engine.FramesSent > 0);
     }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
+
+    /// <summary>Waits until the condition holds (at most 5 s): the audio and key threads may get their turn late on a busy machine.</summary>
+    static async Task Until(Func<bool> done, int ms = 5000)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && watch.ElapsedMilliseconds < ms) await Task.Delay(10);
+    }
+
+    /// <summary>The output gets at least this loud within 5 s (positive checks wait, silence checks keep their fixed window).</summary>
+    static async Task<bool> GetsLouderThan(AudioEngine engine, float db)
+    {
+        await Until(() => engine.LastOutputLevelDb > db);
+        return engine.LastOutputLevelDb > db;
+    }
 
     [Fact]
     public void Vad_SilenceInactive_LoudActive_Hangover15Frames()
@@ -217,7 +233,7 @@ public class SendPathTests
 
         engine.SelfTest = true;
         engine.OnVoice(5, 0, VoiceHeader.TargetChannel, new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]));
-        Assert.True(await LoudestOutput(engine, 1000) > -20); // the tone, boosted: about -7.5 dBFS
+        Assert.True(await GetsLouderThan(engine, -20)); // the tone, boosted: about -7.5 dBFS
         Assert.Equal(0, sent);
         Assert.False(engine.FramesReceived.ContainsKey(5));
 
@@ -254,7 +270,10 @@ public class SendPathTests
         await Task.Delay(400);
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, OutputVolume = 0.3f, VadThresholdDb = -25, Mode = VoiceActivation });
         lock (levels) levels.Clear();
-        await Task.Delay(400);
+        await Until(() =>
+        {
+            lock (levels) return levels.Count > 0 && levels[^1] is >= -21f and <= -18f;
+        });
         lock (levels) Assert.InRange(levels.Last(), -21f, -18f); // -13.5 dBFS minus 6 dB
         Assert.Equal(0.3f, engine.Mixer.Volume);
         Assert.Equal(VoiceActivation, engine.Mode);

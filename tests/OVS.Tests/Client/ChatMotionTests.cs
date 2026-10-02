@@ -40,6 +40,13 @@ public sealed class ChatMotionTests : IDisposable
         }
     }
 
+    /// <summary>Lets the clock run until the condition holds (at most 3 s): on a busy machine frames come late.</summary>
+    static void SettleUntil(Func<bool> done)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && watch.ElapsedMilliseconds < 3000) Settle(10);
+    }
+
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -120,9 +127,18 @@ public sealed class ChatMotionTests : IDisposable
     {
         var (main, vm, server, chat) = Open(height: 420);
         for (int i = 0; i < 25; i++) server.Apply(From("anna", 2, $"Zeile {i}"));
-        Settle(500);
         var scroller = chat.FindControl<ScrollViewer>("Scroller")!;
         var pill = chat.FindControl<Button>("NewMessagesPill")!;
+        bool AtEnd() => scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 1;
+        // under load the 25 lines are laid out late: the reader can only go up once the list is long and has stopped growing
+        double extent = -1;
+        SettleUntil(() =>
+        {
+            bool settled = scroller.Extent.Height == extent && scroller.Extent.Height > scroller.Viewport.Height + 200 && AtEnd();
+            extent = scroller.Extent.Height;
+            Settle(30);
+            return settled;
+        });
         Assert.True(scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 1, "at the end it glided along");
         Assert.False(pill.IsVisible);
 
@@ -130,12 +146,13 @@ public sealed class ChatMotionTests : IDisposable
         Settle(50);
         Assert.Equal(0, scroller.Offset.Y);
         server.Apply(From("anna", 2, "Noch eine"));
-        Settle(350);
+        SettleUntil(() => pill.IsVisible);
+        Settle(100);
         Assert.Equal(0, scroller.Offset.Y); // nothing scrolls
         Assert.True(pill.IsVisible);
 
         pill.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        Settle(400);
+        SettleUntil(() => !pill.IsVisible && AtEnd());
         Assert.False(pill.IsVisible);
         Assert.True(scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 1, "the pill glides to the end");
         main.Close();
