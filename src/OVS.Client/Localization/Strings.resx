@@ -265,7 +265,7 @@
   <data name="Chat_NewMessages" xml:space="preserve"><value>Neue Nachrichten</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Hell</value></data>
   <data name="Display_Label" xml:space="preserve"><value>Darstellung</value></data>
-  <data name="Display_Animated" xml:space="preserve"><value>Animierte Darstellung</value></data>
+  <data name="Display_Animated" xml:space="preserve"><value>Animierte Darstellung (Beta)</value></data>
   <data name="Display_AnimatedHint" xml:space="preserve"><value>Weiche Übergänge, Hover-Effekte und Animationen bei jeder Aktion.</value></data>
   <data name="Display_Simplified" xml:space="preserve"><value>Vereinfachte Darstellung</value></data>
   <data name="Display_SimplifiedHint" xml:space="preserve"><value>Der schlichte Stil ohne zusätzliche Animationen.</value></data>

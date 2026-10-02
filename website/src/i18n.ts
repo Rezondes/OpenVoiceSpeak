@@ -8,7 +8,7 @@ type Card = { icon: IconName; title: string; text: string }
 const de = {
   htmlTitle: 'OpenVoiceSpeak: Voice-Chat für deine Leute',
   skip: 'Zum Inhalt springen',
-  nav: { features: 'Vorteile', audience: 'Für wen', screenshots: 'Screenshots', motion: 'In Bewegung', install: 'Installation', server: 'Eigener Server' },
+  nav: { features: 'Vorteile', audience: 'Für wen', screenshots: 'Screenshots', motion: 'In Bewegung (Beta)', install: 'Installation', server: 'Eigener Server' },
   langLabel: 'Sprache',
   zoom: 'Screenshot vergrößern',
   close: 'Schließen',
@@ -33,7 +33,7 @@ const de = {
       { icon: 'link', title: 'Channels verbinden', text: 'Verlinkte Channels hören sich per Link-Taste gegenseitig, ideal für Raids und große Events.' },
       { icon: 'speaker', title: 'Lautstärke je Person', text: 'Stell jede Stimme einzeln lauter oder leiser, bis 200 Prozent.' },
       { icon: 'plugConnected', title: 'Schnell verbunden', text: 'Lesezeichen in der Seitenleiste, gespeicherte Passwörter und Updates, die sich selbst melden.' },
-      { icon: 'eye', title: 'Sieht aus, wie du willst', text: 'Hell oder dunkel, durchscheinend, animiert oder schlicht, auf Deutsch oder Englisch.' },
+      { icon: 'eye', title: 'Sieht aus, wie du willst', text: 'Hell oder dunkel, durchscheinend, animiert (Beta) oder schlicht, auf Deutsch oder Englisch.' },
     ] as Card[],
     adminItems: [
       { icon: 'shieldPerson', title: 'Gruppen und Rechte', text: 'Gruppen wie Gast, Moderator und Admin mit fein einstellbaren Rechten für jede Aufgabe.' },
@@ -68,8 +68,8 @@ const de = {
     ],
   },
   motion: {
-    title: 'In Bewegung',
-    lead: 'In der animierten Darstellung gleitet alles an seinen Platz. Wer es ruhiger mag, stellt in den Einstellungen die vereinfachte Darstellung ein.',
+    title: 'In Bewegung (Beta)',
+    lead: 'In der animierten Darstellung (Beta, noch in Arbeit) gleitet alles an seinen Platz. Wer es ruhiger mag, stellt in den Einstellungen die vereinfachte Darstellung ein.',
     items: [
       { id: 'clip-switch', caption: 'Beim Channelwechsel gleitet alles an seinen Platz' },
       { id: 'clip-connect', caption: 'Beim Verbinden baut sich der Server Stück für Stück auf' },
@@ -103,7 +103,7 @@ export type Texts = typeof de
 const en: Texts = {
   htmlTitle: 'OpenVoiceSpeak: voice chat for your people',
   skip: 'Skip to content',
-  nav: { features: 'Features', audience: 'Who it is for', screenshots: 'Screenshots', motion: 'In motion', install: 'Install', server: 'Own server' },
+  nav: { features: 'Features', audience: 'Who it is for', screenshots: 'Screenshots', motion: 'In motion (Beta)', install: 'Install', server: 'Own server' },
   langLabel: 'Language',
   zoom: 'Enlarge screenshot',
   close: 'Close',
@@ -128,7 +128,7 @@ const en: Texts = {
       { icon: 'link', title: 'Link channels', text: 'Linked channels hear each other with the link key, made for raids and big events.' },
       { icon: 'speaker', title: 'Volume per person', text: 'Make every voice louder or quieter on its own, up to 200 percent.' },
       { icon: 'plugConnected', title: 'Connected in a click', text: 'Bookmarks in the sidebar, saved passwords and updates that announce themselves.' },
-      { icon: 'eye', title: 'Looks your way', text: 'Light or dark, see-through, animated or simple, in German or English.' },
+      { icon: 'eye', title: 'Looks your way', text: 'Light or dark, see-through, animated (beta) or simple, in German or English.' },
     ],
     adminItems: [
       { icon: 'shieldPerson', title: 'Groups and rights', text: 'Groups like guest, moderator and admin with fine-grained rights for every task.' },
@@ -163,8 +163,8 @@ const en: Texts = {
     ],
   },
   motion: {
-    title: 'In motion',
-    lead: 'In the animated display everything glides into place. If you like it calmer, switch to the simplified display in the settings.',
+    title: 'In motion (Beta)',
+    lead: 'In the animated display (beta, still in progress) everything glides into place. If you like it calmer, switch to the simplified display in the settings.',
     items: [
       { id: 'clip-switch', caption: 'Everything glides into place when you switch channels' },
       { id: 'clip-connect', caption: 'The server view builds up piece by piece as you connect' },
