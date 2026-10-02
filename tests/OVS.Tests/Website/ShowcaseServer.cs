@@ -24,7 +24,7 @@ public sealed class ShowcaseServer
     /// <summary>The evening all the chat lines and statistics are from, 20:15 on the clock of the machine that renders.</summary>
     public static readonly DateTimeOffset Evening = new(new DateTime(2026, 10, 1, 20, 15, 0, DateTimeKind.Local));
 
-    public const uint Self = 1, Mara = 2, Jonas = 3, Lea = 4, Tim = 5, Nora = 6, Ben = 7, Kai = 8, Finn = 9, Ole = 10;
+    public const uint Self = 1, Mara = 2, Jonas = 3, Lea = 4, Nora = 6, Kai = 8, Finn = 9, Ole = 10;
 
     public bool English { get; }
     public ServerViewModel Server { get; }
@@ -67,10 +67,8 @@ public sealed class ShowcaseServer
             User(Mara, "Mara", Raid, Moderator),
             User(Jonas, "Jonas", Raid, Member),
             User(Lea, "Lea", Raid, Member, muted: true),
-            User(Tim, "Tim", Training, WellKnownGroups.Guest),
             User(Nora, "Nora", Training, Member),
-            User(Ben, "Ben", Training, WellKnownGroups.Guest),
-            User(Kai, "Kai", Lobby, WellKnownGroups.Guest),
+            User(Kai, "Kai", Training, WellKnownGroups.Guest),
             User(Finn, "Finn", Strategy, Moderator),
             User(Ole, "Ole", Afk, Member, deafened: true),
         };
@@ -100,6 +98,90 @@ public sealed class ShowcaseServer
         Server.Apply(Say(Jonas, T("Bin bereit, Tränke sind dabei.", "Ready, potions packed."), 1, Raid));
         Server.Apply(Say(Self, T("Strategie hört über den Link mit.", "Strategy listens in through the link."), 2, Raid));
         Server.Apply(Say(Lea, T("Komme gleich, Mikro ist noch aus.", "Coming, my mic is still off."), 3, Raid));
+    }
+
+    // ---- Package 117: what the administration shows ----
+
+    /// <summary>Answers the administration's requests (users, bans, backups, logs) and joins, as the server would.</summary>
+    public void AnswerAdministration() => Reply = request => request switch
+    {
+        ListUsers r => new UserList(r.RequestId, KnownUsers(), 0, KnownUsers().Count),
+        ListBans r => new BanList(r.RequestId, Bans(), 0, Bans().Count),
+        ListBackups r => new BackupList(r.RequestId, Backups(), 0, Backups().Count),
+        ListLogs r => new LogList(r.RequestId, LogFiles(), 0, LogFiles().Count),
+        ReadLog r => new LogPage(r.RequestId, r.FileId, 1, 1, 1, LogLines(r.FileId)),
+        SearchLogs r => new LogSearchResult(r.RequestId, LogLines(RaidLog).Select((text, i) => new LogHit(RaidLog, i + 1, text))
+            .Where(h => h.Text.Contains(r.Query, StringComparison.OrdinalIgnoreCase)).ToList(), false, false),
+        JoinChannel r => new UserUpdated(Server.Mirror.Users[Self] with { ChannelId = r.ChannelId }),
+        _ => null,
+    };
+
+    DateTimeOffset Ago(int days, int hours = 0) => Evening.AddDays(-days).AddHours(-hours);
+
+    IReadOnlyList<KnownUserInfo> KnownUsers() =>
+    [
+        new("fp02", "Mara", [Moderator], Ago(210), Evening, 312, TimeSpan.FromHours(486), PreviousNicknames: ["Marabelle"], SpeechTime: TimeSpan.FromHours(61),
+            ChatMessages: 1840, IsOnline: true, SessionId: Mara),
+        new("fp03", "Jonas", [Member], Ago(120), Evening, 154, TimeSpan.FromHours(201), SpeechTime: TimeSpan.FromHours(23), ChatMessages: 512,
+            IsOnline: true, SessionId: Jonas),
+        new("fp08", "Kai", [WellKnownGroups.Guest], Ago(2), Evening, 3, TimeSpan.FromHours(4), ChatMessages: 12, IsOnline: true, SessionId: Kai),
+        new("fp11", "Sven", [Member], Ago(300), Ago(9), 98, TimeSpan.FromHours(140), SpeechTime: TimeSpan.FromHours(12), ChatMessages: 230),
+        new("fp12", "Rieke", [Member, Moderator], Ago(400), Ago(1, 3), 401, TimeSpan.FromHours(690), SpeechTime: TimeSpan.FromHours(88), ChatMessages: 2911),
+        new("fp13", "Paul", [WellKnownGroups.Guest], Ago(30), Ago(14), 4, TimeSpan.FromHours(3), Bans: [Bans()[0]]),
+    ];
+
+    IReadOnlyList<BanInfo> Bans() =>
+    [
+        new(new Guid("0d0d0d0d-0000-0000-0000-000000000001"), "fp13", "Paul", null, T("Spam im Chat", "Spamming the chat"), "Mara", Evening.AddDays(3),
+            Ago(4), "fp02", 7 * 24 * 60, BlockedAttempts: 2, LastAttempt: Ago(1)),
+        new(new Guid("0d0d0d0d-0000-0000-0000-000000000002"), "fp14", "Griefer42", "203.0.113.7", T("Beleidigungen", "Insults"), "Steffi", null,
+            Ago(40), "fp01", BlockedAttempts: 9, LastAttempt: Ago(6), LastAttemptIp: "203.0.113.7"),
+        new(new Guid("0d0d0d0d-0000-0000-0000-000000000003"), "fp15", "Lukas", null, T("Abgesprochen: Pause", "Agreed break"), "Mara", Ago(10),
+            Ago(17), "fp02", 7 * 24 * 60, LiftedAt: Ago(12), LiftedBy: "Steffi"),
+    ];
+
+    IReadOnlyList<BackupInfo> Backups() =>
+    [
+        new("2026-10-01_04-00.zip", Ago(0, 16), 48_212, "011026.0h4v"),
+        new("2026-09-30_04-00.zip", Ago(1, 16), 47_980, "300926.0f1a"),
+        new("2026-09-29_04-00.zip", Ago(2, 16), 47_655, "290926.0c7e"),
+    ];
+
+    public const string ServerLog = "server/2026-10-01.log", RaidLog = "channel/raid/2026-10-01.log";
+
+    IReadOnlyList<LogFileInfo> LogFiles() =>
+    [
+        new(ServerLog, LogKind.Server, null, null, Ago(0, 20), Evening, 18_430),
+        new(RaidLog, LogKind.Channel, Raid, Server.Mirror.Channels[Raid].Name, Ago(0, 2), Evening, 2_210),
+        new("channel/training/2026-10-01.log", LogKind.Channel, Training, Server.Mirror.Channels[Training].Name, Ago(0, 3), Evening.AddMinutes(-20), 1_120),
+        new("server/2026-09-30.log", LogKind.Server, null, null, Ago(1, 20), Ago(0, 20), 22_904),
+    ];
+
+    IReadOnlyList<string> LogLines(string file)
+    {
+        string At(int minute) => Evening.AddMinutes(minute - 30).ToString("yyyy-MM-dd HH:mm:ss");
+        return file == RaidLog
+            ?
+            [
+                $"{At(0)} Steffi {T("hat den Channel betreten (kommt aus Lobby)", "entered the channel (from Lobby)")}",
+                $"{At(4)} Mara {T("hat den Channel betreten (kommt aus Lobby)", "entered the channel (from Lobby)")}",
+                $"{At(9)} Jonas {T("hat den Channel betreten (kommt aus Strategie)", "entered the channel (from Strategy)")}",
+                $"{At(12)} {T("Link zu Strategie gesetzt von Mara", "Link to Strategy set by Mara")}",
+                $"{At(18)} Lea {T("hat den Channel betreten (kommt aus AFK)", "entered the channel (from AFK)")}",
+                $"{At(22)} {T("Channel geändert von Steffi: Beschreibung geändert", "Channel changed by Steffi: description changed")}",
+                $"{At(27)} Jonas {T("wurde von Mara stummgeschaltet", "was muted by Mara")}",
+                $"{At(28)} Jonas {T("Stummschaltung durch Mara aufgehoben", "unmuted by Mara")}",
+            ]
+            :
+            [
+                $"{At(-60)} OpenVoiceSpeak-Server {T("startet", "starting")}",
+                $"{At(-59)} {T("Lauscht auf 0.0.0.0:7000 (TCP und UDP)", "Listening on 0.0.0.0:7000 (TCP and UDP)")}",
+                $"{At(0)} Steffi {T("verbunden", "connected")}",
+                $"{At(4)} Mara {T("verbunden", "connected")}",
+                $"{At(9)} Jonas {T("verbunden", "connected")}",
+                $"{At(15)} {T("Backup erstellt", "Backup created")}",
+                $"{At(20)} Paul {T("abgewiesen: gebannt", "refused: banned")}",
+            ];
     }
 
     /// <summary>Mara speaks in the raid, Finn over the link from strategy.</summary>

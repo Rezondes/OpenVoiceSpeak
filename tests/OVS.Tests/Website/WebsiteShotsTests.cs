@@ -80,4 +80,19 @@ public sealed class WebsiteShotsTests : IDisposable
         Assert.True(left.Count == 0, "Noch deutsch: " + string.Join(" | ", left));
         Assert.DoesNotContain(seen, t => t.Contains("Strategie") || t.Contains("Donnerstag"));
     }
+
+    /// <summary>Package 117: the images show a made-up server only: no profile or debug title, example addresses, invented people.</summary>
+    [AvaloniaFact]
+    public void ShowcaseServer_NoRealData()
+    {
+        using var scene = new WebsiteShots.Scene("de", "light");
+        var showcase = scene.Connect();
+        Assert.DoesNotContain("[", scene.Window.Title);
+        Assert.DoesNotContain("Debug", scene.Window.Title);
+        Assert.All(showcase.Server.Mirror.Users.Values, u => Assert.Matches("^fp[0-9]{2}$", u.Fingerprint));
+        showcase.AnswerAdministration();
+        var bans = (OVS.Shared.Protocol.BanList)showcase.Reply!(new OVS.Shared.Protocol.ListBans { RequestId = "b" })!;
+        // documentation addresses only (RFC 5737)
+        Assert.All(bans.Bans.Select(b => b.Ip).Concat(bans.Bans.Select(b => b.LastAttemptIp)).OfType<string>(), ip => Assert.StartsWith("203.0.113.", ip));
+    }
 }

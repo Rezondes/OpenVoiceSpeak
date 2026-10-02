@@ -57,19 +57,20 @@ public static class ShotWriter
     }
 
     /// <summary>
-    /// Records <paramref name="milliseconds"/> of the window after <paramref name="start"/> into
-    /// <c>frame0000.png</c>... at a steady 30 fps, plus <c>poster.webp</c> (the first frame). Capturing takes its own time,
-    /// so each slot of 1/30 s gets the frame taken closest to it.
+    /// Records <paramref name="milliseconds"/> of the window into <c>frame0000.png</c>... at a steady 30 fps, plus
+    /// <c>poster.webp</c> (the first frame), doing each step at its time. Capturing takes its own time, so each slot of
+    /// 1/30 s gets the frame taken closest to it.
     /// </summary>
-    public static void Record(TopLevel window, string folder, int milliseconds, Action start)
+    public static void Record(TopLevel window, string folder, int milliseconds, params (int At, Action Do)[] steps)
     {
         Directory.CreateDirectory(folder);
         foreach (var old in Directory.GetFiles(folder)) File.Delete(old);
         var taken = new List<(long At, byte[] Png)>();
+        var due = new Queue<(int At, Action Do)>(steps.OrderBy(s => s.At));
         var watch = Stopwatch.StartNew();
-        start();
         while (watch.ElapsedMilliseconds <= milliseconds)
         {
+            while (due.Count > 0 && due.Peek().At <= watch.ElapsedMilliseconds) due.Dequeue().Do();
             using var bitmap = Capture(window);
             using var image = SKImage.FromBitmap(bitmap);
             using var data = image.Encode(SKEncodedImageFormat.Png, 100);
