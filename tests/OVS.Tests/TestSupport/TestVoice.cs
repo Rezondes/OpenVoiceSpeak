@@ -49,7 +49,8 @@ public sealed class TestVoice : IDisposable
         Assert.Equal(PacketType.Ping, reply.Value.Header.Type);
     }
 
-    public async Task<(VoiceHeader Header, byte[] Plain)?> ReceiveAsync(int timeoutMs = 2000)
+    /// <summary>The default wait is generous for a slow CI runner (it returns as soon as a packet arrives); silence checks pass a short one.</summary>
+    public async Task<(VoiceHeader Header, byte[] Plain)?> ReceiveAsync(int timeoutMs = 10000)
     {
         using var cts = new CancellationTokenSource(timeoutMs);
         while (true)
@@ -71,7 +72,7 @@ public sealed class TestVoice : IDisposable
         }
     }
 
-    public async Task<(VoiceHeader Header, byte[] Plain)?> ReceiveVoiceAsync(int timeoutMs = 2000)
+    public async Task<(VoiceHeader Header, byte[] Plain)?> ReceiveVoiceAsync(int timeoutMs = 10000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (true)

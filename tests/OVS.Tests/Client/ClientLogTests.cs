@@ -87,15 +87,17 @@ public sealed class ClientLogTests : IDisposable
         }));
     }
 
+    /// <summary>Looks again until every line is there, at most 15 s by the clock: the network and UI threads may come late on a busy runner.</summary>
     /// <param name="each">Runs before every look, e.g. the UI timer tick.</param>
     async Task<string> Eventually(Func<Task>? each, params string[] expected)
     {
         var text = "";
-        for (int i = 0; i < 60; i++)
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
         {
             if (each is not null) await each();
             text = LogText();
-            if (expected.All(text.Contains)) return text;
+            if (expected.All(text.Contains) || watch.ElapsedMilliseconds > 15_000) break;
             await Task.Delay(50);
         }
         foreach (var e in expected) Assert.Contains(e, text);
@@ -254,17 +256,23 @@ public sealed class ClientLogTests : IDisposable
         {
             engine.SetTone(440);
             keys.Simulate(ptt: true);
-            await Task.Delay(2300);
+            await Eventually(null, "Audio-Debug: PTT gedrückt");
+            // The rate comes from a real one-second timer: on a busy runner a single second may be stretched,
+            // so wait (at most 15 s) for a full second of PTT instead of sampling a fixed one.
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (!Rates(LogText()).Any(r => r is >= 45 and <= 55) && watch.ElapsedMilliseconds < 15_000) await Task.Delay(100);
             keys.Simulate(ptt: false);
-            await Task.Delay(100);
+            await Eventually(null, "Audio-Debug: PTT losgelassen");
         }
         var log = LogText();
         Assert.Contains("Audio-Debug: PTT gedrückt", log);
         Assert.Contains("Audio-Debug: PTT losgelassen", log);
         // one full second of PTT at 20 ms per frame
-        var rates = log.Split('\n').Where(l => l.Contains("Frames gesendet: "))
-            .Select(l => int.Parse(l.Split("Frames gesendet: ")[1].Split('/')[0])).ToList();
-        Assert.Contains(rates, r => r is >= 45 and <= 55);
+        Assert.Contains(Rates(log), r => r is >= 45 and <= 55);
         Assert.Empty(Directory.GetFiles(dir, "audio-debug.log", SearchOption.AllDirectories));
     }
+
+    /// <summary>Only complete numbers count: the log may be read while a line is being written.</summary>
+    static List<int> Rates(string log) =>
+        System.Text.RegularExpressions.Regex.Matches(log, @"Frames gesendet: (\d+)/s").Select(m => int.Parse(m.Groups[1].Value)).ToList();
 }

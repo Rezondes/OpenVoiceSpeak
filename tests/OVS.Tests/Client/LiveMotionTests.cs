@@ -75,9 +75,26 @@ public sealed class LiveMotionTests : IDisposable
         Settle(200);
         Motion.Apply(main, display);
         vm.Server = server = FakeServers.Admin();
-        Watch(700, buildUp ?? (() => { })); // the tree builds up
+        var look = buildUp ?? (() => { });
+        Watch(700, look); // the tree builds up
+        // under load that takes longer: watched on until it is over, no test acts while it still moves
+        MotionWait.Until(() =>
+        {
+            look();
+            return MotionWait.IsConnected(main);
+        });
         return main;
     }
+
+    /// <summary>
+    /// Renders frames and calls <paramref name="look"/> after each one until <paramref name="done"/> holds and at least
+    /// <paramref name="atLeast"/> ms have passed (at most 5 s): under load a frame may come late, a fixed time sees too few.
+    /// </summary>
+    static void WatchUntil(Func<bool> done, Action look, int atLeast = 0) => MotionWait.Until(() =>
+    {
+        look();
+        return done();
+    }, atLeast);
 
     static double Scale(Visual v) => v.RenderTransform?.Value.M11 ?? 1;
     static double Turned(Visual v) => v.RenderTransform?.Value.M12 ?? 0;
@@ -118,7 +135,8 @@ public sealed class LiveMotionTests : IDisposable
         window.Show();
         Motion.Apply(window, animated ? DisplayMode.Animated : DisplayMode.Simplified);
         LiveMotion.SetLevel(meter, -60);
-        Settle(600); // from where the meter starts down to the bottom
+        Settle(100);
+        MotionWait.Until(() => meter.Value == -60); // from where the meter starts down to the bottom
         return (window, meter);
     }
 
@@ -131,38 +149,43 @@ public sealed class LiveMotionTests : IDisposable
 
         server.SetSelfTransmitting(0); // own channel
         double low = 2, high = 0;
-        Watch(1100, () => // a whole 900 ms loop
+        // a whole 900 ms loop at least, and on until both ends were seen: under load a frame can land anywhere in it
+        WatchUntil(() => high > 1.03 && low < 1.02, () =>
         {
             low = Math.Min(low, Scale(ring));
             high = Math.Max(high, Scale(ring));
-        });
+        }, atLeast: 1100);
         Assert.Contains("speaking", ring.Classes);
         Assert.True(high > 1.03 && high <= 1.061, $"the ring breathes up to 1.06 ({high})");
         Assert.True(low < 1.02, $"and back ({low})");
-        Assert.True(GlowAlpha(ring) > 0x80, "and glows");
-        Assert.Equal(Color.Parse("#22C55E").ToUInt32() & 0xFFFFFF, ring.BoxShadow[0].Color.ToUInt32() & 0xFFFFFF);
+        MotionWait.Eventually(() =>
+        {
+            Assert.True(GlowAlpha(ring) > 0x80, "and glows");
+            Assert.Equal(Color.Parse("#22C55E").ToUInt32() & 0xFFFFFF, ring.BoxShadow[0].Color.ToUInt32() & 0xFFFFFF);
+        });
 
+        // every step of the fade as it happens: under load one frame can outlast it
+        var glows = MotionWait.Record(ring, v => GlowAlpha((Border)v));
         server.SetSelfTransmitting(null);
-        bool fading = false;
-        Watch(500, () => fading |= GlowAlpha(ring) is > 0 and < 0x99);
-        Assert.True(fading, "the glow fades out");
-        Assert.Equal((1d, (byte)0), (Scale(ring), GlowAlpha(ring))); // the loop stops with the speaking
+        MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (Scale(ring), GlowAlpha(ring)))); // the loop stops with the speaking
+        Assert.True(glows.Any(a => a is > 0 and < 0x99), "the glow fades out");
 
         server.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked);
-        Settle(400);
-        Assert.Contains("link", ring.Classes);
-        Assert.Equal(Color.Parse("#A78BFA").ToUInt32() & 0xFFFFFF, ring.BoxShadow[0].Color.ToUInt32() & 0xFFFFFF); // in the link colour
+        MotionWait.Eventually(() =>
+        {
+            Assert.Contains("link", ring.Classes);
+            Assert.Equal(Color.Parse("#A78BFA").ToUInt32() & 0xFFFFFF, ring.BoxShadow[0].Color.ToUInt32() & 0xFFFFFF); // in the link colour
+        });
         server.SetSelfTransmitting(null);
 
         // the push-to-talk indicator pulses while sending
         var transmit = main.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("transmit"));
         vm.TransmitText = "Sendet";
         double dim = 1;
-        Watch(1000, () => dim = Math.Min(dim, transmit.Opacity));
+        WatchUntil(() => dim < 0.8, () => dim = Math.Min(dim, transmit.Opacity));
         Assert.True(dim < 0.8, $"the indicator pulses ({dim})");
         vm.TransmitText = "";
-        Settle(100);
-        Assert.Equal(1, transmit.Opacity);
+        MotionWait.Eventually(() => Assert.Equal(1, transmit.Opacity));
         main.Close();
     }
 
@@ -176,40 +199,51 @@ public sealed class LiveMotionTests : IDisposable
         var serverMuted = StateIcon(main, 2, "danger");
         Assert.True(serverMuted.IsEffectivelyVisible);
 
+        // the copy taken the moment it is put in the overlay, and every value of it as it happens: under load one frame
+        // can outlast the whole pop
+        var overlay = OverlayLayer.GetOverlayLayer(main)!;
+        var copies = new List<(List<double> Opacity, List<double> Scale)>();
+        overlay.Children.CollectionChanged += (_, e) =>
+        {
+            foreach (var added in e.NewItems?.OfType<PathIcon>() ?? [])
+                if (added.Classes.Contains(LiveMotion.GhostClass)) copies.Add((MotionWait.Record(added, v => v.Opacity), MotionWait.Record(added, Scale)));
+        };
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
-        bool ghostFaded = false;
-        Watch(400, () => ghostFaded |= Ghosts(main).Any(g => g.Opacity < 0.9 && Scale(g) < 0.95));
+        MotionWait.Until(() => copies.Count > 0 && !Ghosts(main).Any());
         Assert.False(serverMuted.IsVisible);
-        Assert.True(ghostFaded, "a copy pops out where the icon was");
+        Assert.True(copies.Any(c => c.Opacity.Any(o => o < 0.9) && c.Scale.Any(s => s < 0.95)), "a copy pops out where the icon was");
         Assert.Empty(Ghosts(main));
 
+        var fades = MotionWait.Record(serverMuted, v => v.Opacity);
+        var scales = MotionWait.Record(serverMuted, Scale);
         server.Apply(new UserUpdated(Anna(serverMuted: true)));
-        double faint = 1, small = 1;
-        Watch(400, () =>
+        MotionWait.Eventually(() =>
         {
-            faint = Math.Min(faint, serverMuted.Opacity);
-            small = Math.Min(small, Scale(serverMuted));
+            Assert.True(fades.Any(o => o < 0.9) && scales.Any(s => s < 0.95), $"the icon pops in ({fades.DefaultIfEmpty(1).Min()}, {scales.DefaultIfEmpty(1).Min()})");
+            Assert.Equal((1d, 1d), (serverMuted.Opacity, Scale(serverMuted)));
         });
-        Assert.True(faint < 0.9 && small < 0.95, $"the icon pops in ({faint}, {small})");
-        Assert.Equal((1d, 1d), (serverMuted.Opacity, Scale(serverMuted)));
 
         // my own mute button flips its icon with a short rotation
         var micOff = main.GetVisualDescendants().OfType<PathIcon>().Where(LiveMotion.GetTurn).ElementAt(1);
         Assert.False(micOff.IsVisible);
+        var turns = MotionWait.Record(micOff, v => Math.Abs(Turned(v)));
         server.SelfMuted = true;
-        double turned = 0;
-        Watch(400, () => turned = Math.Max(turned, Math.Abs(Turned(micOff))));
-        Assert.True(micOff.IsVisible);
-        Assert.True(turned > 0.1, $"the icon turns in ({turned})");
-        Assert.Equal((0d, 1d), (Turned(micOff), micOff.Opacity), new ToleranceComparer());
+        MotionWait.Eventually(() =>
+        {
+            Assert.True(micOff.IsVisible);
+            Assert.True(turns.Any(t => t > 0.1), $"the icon turns in ({turns.DefaultIfEmpty(0).Max()})");
+            Assert.Equal((0d, 1d), (Turned(micOff), micOff.Opacity), new ToleranceComparer());
+        });
 
         var deafened = main.GetVisualDescendants().OfType<PathIcon>().Where(LiveMotion.GetTurn).ElementAt(3);
+        turns = MotionWait.Record(deafened, v => Math.Abs(Turned(v)));
         server.SelfDeafened = true;
-        turned = 0;
-        Watch(400, () => turned = Math.Max(turned, Math.Abs(Turned(deafened))));
-        Assert.True(deafened.IsVisible);
-        Assert.True(turned > 0.1, $"the deafen icon turns in too ({turned})");
-        Assert.Equal((0d, 1d), (Turned(deafened), deafened.Opacity), new ToleranceComparer());
+        MotionWait.Eventually(() =>
+        {
+            Assert.True(deafened.IsVisible);
+            Assert.True(turns.Any(t => t > 0.1), $"the deafen icon turns in too ({turns.DefaultIfEmpty(0).Max()})");
+            Assert.Equal((0d, 1d), (Turned(deafened), deafened.Opacity), new ToleranceComparer());
+        });
         main.Close();
     }
 
@@ -233,7 +267,7 @@ public sealed class LiveMotionTests : IDisposable
         // compact with the drawer closed: the tree cannot be seen, its icons keep their last place
         main.Width = 360;
         Settle(400);
-        Assert.False(main.FindControl<Border>("Sidebar")!.IsEffectivelyVisible);
+        MotionWait.Eventually(() => Assert.False(main.FindControl<Border>("Sidebar")!.IsEffectivelyVisible));
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
         Watch(300, () => ghost |= Ghosts(main).Any());
         Assert.False(ghost, "no copy pops over the chat");
@@ -251,27 +285,29 @@ public sealed class LiveMotionTests : IDisposable
         Settle(400);
         Assert.Equal("1/3", counter.Text);
 
+        MotionWait.Until(() => (OffsetY(counter), Scale(counter), counter.Opacity) == (0d, 1d, 1d)); // the tick to "1/3" is over
+        // every value as it happens: under load one frame can outlast the whole tick
+        var rises = MotionWait.Record(counter, OffsetY);
+        var pulses = MotionWait.Record(counter, Scale);
+        bool Still() => (OffsetY(counter), Scale(counter), counter.Opacity) == (0d, 1d, 1d);
         server.Apply(new UserJoined(new UserInfo(3, "fp3", "bob", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
-        double moved = 0, big = 1;
-        Watch(400, () =>
-        {
-            moved = Math.Max(moved, OffsetY(counter));
-            big = Math.Max(big, Scale(counter));
-        });
+        MotionWait.Until(() => rises.Any(y => y > 1) && Still(), atLeast: 400);
         Assert.Equal("2/3", counter.Text);
-        Assert.True(moved > 1, $"a higher number comes up from below ({moved})");
-        Assert.Equal(1, big, 3); // not full yet: no pulse
+        Assert.True(rises.Any(y => y > 1), $"a higher number comes up from below ({rises.DefaultIfEmpty(0).Max()})");
+        Assert.Equal(1, pulses.DefaultIfEmpty(1).Max(), 3); // not full yet: no pulse
 
+        pulses.Clear();
         server.Apply(new UserJoined(new UserInfo(4, "fp4", "cleo", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
-        big = 1;
-        Watch(500, () => big = Math.Max(big, Scale(counter)));
-        Assert.Equal("3/3", counter.Text);
-        Assert.True(big > 1.1, $"a full channel pulses its counter ({big})");
-        Assert.Equal((0d, 1d, 1d), (OffsetY(counter), Scale(counter), counter.Opacity));
+        MotionWait.Eventually(() =>
+        {
+            Assert.Equal("3/3", counter.Text);
+            Assert.True(pulses.Any(s => s > 1.1), $"a full channel pulses its counter ({pulses.DefaultIfEmpty(1).Max()})");
+            Assert.Equal((0d, 1d, 1d), (OffsetY(counter), Scale(counter), counter.Opacity));
+        });
 
         // once only: it stays full without pulsing again
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "Voll", 1, MaxUsers: 3)));
-        big = 1;
+        double big = 1;
         Watch(400, () => big = Math.Max(big, Scale(counter)));
         Assert.Equal(1, big, 3);
         main.Close();
@@ -287,8 +323,7 @@ public sealed class LiveMotionTests : IDisposable
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (meter.Value < -15 && watch.ElapsedMilliseconds < 2000) Settle(1); // 90 % of the way up
         long attack = watch.ElapsedMilliseconds;
-        Settle(200);
-        Assert.Equal(-10, meter.Value);
+        MotionWait.Eventually(() => Assert.Equal(-10, meter.Value));
 
         LiveMotion.SetLevel(meter, -60);
         bool between = false;
@@ -302,8 +337,7 @@ public sealed class LiveMotionTests : IDisposable
         Assert.True(between, "the meter moves smoothly instead of stepping");
         Assert.True(release > attack, $"it rises faster than it falls ({attack} ms, {release} ms)");
         Assert.InRange(release, 150, 1000); // about 300 ms
-        Settle(500);
-        Assert.Equal(-60, meter.Value);
+        MotionWait.Eventually(() => Assert.Equal(-60, meter.Value));
 
         LiveMotion.SetLevel(meter, -90); // below the scale: it rests at the bottom and stops
         Settle(200);
@@ -317,11 +351,13 @@ public sealed class LiveMotionTests : IDisposable
         var main = Open(out var vm, out _, mode: TransmitMode.VoiceActivation);
         vm.OpenSettings();
         Settle(500);
+        MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in
         var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(p => p.Minimum == -60 && p.Maximum == -10);
         Assert.True(meter.IsEffectivelyVisible);
         Assert.Equal(-60, meter.Value);
         vm.ClosePage();
         Settle(600); // the hidden meter loses its model
+        MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible);
 
         vm.OpenSettings(); // the new model's level is -60 as well
         double high = -60;
@@ -331,8 +367,7 @@ public sealed class LiveMotionTests : IDisposable
         vm.SettingsPage!.InputLevelDb = -30;
         Settle(300);
         LiveMotion.SetLevel(meter, double.NaN); // no level: it keeps what it shows
-        Settle(100);
-        Assert.Equal(-30, meter.Value, 1);
+        MotionWait.Eventually(() => Assert.Equal(-30, meter.Value, 1));
         main.Close();
     }
 
@@ -348,26 +383,29 @@ public sealed class LiveMotionTests : IDisposable
         var arc = spinner.GetVisualDescendants().OfType<Arc>().Single(); // a hidden spinner has no content yet
         var bands = new HashSet<double>();
         double faded = 1, sweepLow = 360, sweepHigh = 0;
-        Watch(1400, () =>
+        // a whole 1.4 s loop at least, and on until all of it was seen: under load a fixed time sees too few frames
+        WatchUntil(() => bands.Count > 3 && faded < 1 && sweepHigh - sweepLow > 60, () =>
         {
             if (presenter.OpacityMask is ILinearGradientBrush mask) bands.Add(Math.Round(mask.StartPoint.Point.X, 2));
             faded = Math.Min(faded, spinner.Opacity);
             sweepLow = Math.Min(sweepLow, arc.SweepAngle);
             sweepHigh = Math.Max(sweepHigh, arc.SweepAngle);
-        });
+        }, atLeast: 1400);
         Assert.Contains(BusySpinner.BusyClass, button.Classes);
         Assert.True(bands.Count > 3, $"a light band passes over the busy button ({bands.Count})");
         Assert.True(faded < 1, "the spinner fades in");
         Assert.True(sweepHigh - sweepLow > 60, "the arc grows and shrinks while it turns");
 
+        var backs = MotionWait.Record(presenter.Child!, v => v.Opacity); // as it happens: under load one frame can outlast the fade
         spinner.IsVisible = false;
         icon.IsVisible = true;
-        double back = 1;
-        Watch(400, () => back = Math.Min(back, presenter.Child!.Opacity));
-        Assert.DoesNotContain(BusySpinner.BusyClass, button.Classes);
-        Assert.True(back < 1, "the content fades back");
-        Assert.Null(presenter.OpacityMask); // the shimmer ends with the busy state
-        Assert.Equal(1, presenter.Child!.Opacity);
+        MotionWait.Eventually(() =>
+        {
+            Assert.DoesNotContain(BusySpinner.BusyClass, button.Classes);
+            Assert.True(backs.Any(o => o < 1), "the content fades back");
+            Assert.Null(presenter.OpacityMask); // the shimmer ends with the busy state
+            Assert.Equal(1, presenter.Child!.Opacity);
+        });
         window.Close();
     }
 
@@ -385,12 +423,22 @@ public sealed class LiveMotionTests : IDisposable
         vm.AdminPage!.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
         vm.AdminPage.GroupSave.Start();
         Settle(400);
-        Assert.Contains(main.GetVisualDescendants().OfType<BusySpinner>(), b => b.Classes.Contains(BusySpinner.TurningClass) && b.FindAncestorOfType<AdminView>() is not null);
+        MotionWait.Eventually(() => Assert.Contains(main.GetVisualDescendants().OfType<BusySpinner>(),
+            b => b.Classes.Contains(BusySpinner.TurningClass) && b.FindAncestorOfType<AdminView>() is not null));
         vm.ClosePage();
         Settle(800);
 
         // nobody speaks, nothing is busy: nothing on the screen changes from frame to frame
         static string State(Visual v) => $"{v.RenderTransform?.Value}|{v.Opacity}|{v.OpacityMask}|{(v as Arc)?.SweepAngle}|{(v as Border)?.BoxShadow}";
+        // under load the page change and the fades take longer: first until nothing has changed for 300 ms (a loop that
+        // never stops does not get there, and fails below)
+        string Screen() => string.Join("\n", main.GetVisualDescendants().Select(State));
+        MotionWait.Until(() =>
+        {
+            string was = Screen();
+            Settle(300);
+            return Screen() == was;
+        });
         var visuals = main.GetVisualDescendants().ToList();
         Assert.Contains(visuals, v => v is BusySpinner { IsVisible: false }); // hidden spinners do not turn
         Assert.Contains(visuals, v => v is BusySpinner { IsVisible: true, IsEffectivelyVisible: false }); // nor those in a hidden page

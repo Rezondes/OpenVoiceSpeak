@@ -41,6 +41,17 @@ public sealed class LinkCommandTests : IAsyncLifetime
 
     static (Guid, Guid) Norm(Guid p, Guid q) => p.CompareTo(q) < 0 ? (p, q) : (q, p);
 
+    /// <summary>
+    /// Sends a request that surely fails and checks nothing unexpected arrives before its answer. The server answers
+    /// in order, so the requests before it are done then, however slow the runner: the silence checks after it hold.
+    /// </summary>
+    static async Task ProbeAsync(TestClient c, Func<Message, bool> unexpected)
+    {
+        await c.SendAsync(new LinkChannels(Guid.Empty, Guid.Empty) { RequestId = "probe" });
+        while (await c.NextAsync() is { } message and not Error { RequestId: "probe" })
+            Assert.False(unexpected(message), $"unexpected {message}");
+    }
+
     [Fact]
     public async Task Link_AsModerator_BroadcastsAndPersists()
     {
@@ -82,9 +93,10 @@ public sealed class LinkCommandTests : IAsyncLifetime
     {
         await m.SendAsync(new LinkChannels(x, y));
         await g.WaitForAsync<ChannelsLinked>();
+        await m.WaitForAsync<ChannelsLinked>(); // m's own copy of the real link, so the probe only sees what the no-op sends
         await m.SendAsync(new LinkChannels(y, x) { RequestId = "l" });
+        await ProbeAsync(m, message => message is ChannelsLinked or Error);
         await g.AssertNoMessageAsync<ChannelsLinked>();
-        await m.AssertNoMessageAsync<Error>();
     }
 
     [Fact]
@@ -94,8 +106,10 @@ public sealed class LinkCommandTests : IAsyncLifetime
         await g.WaitForAsync<ChannelsLinked>();
         await m.SendAsync(new UnlinkChannels(y, x));
         Assert.Equal(Norm(x, y), await g.WaitForAsync<ChannelsUnlinked>() is var u ? (u.A, u.B) : default);
+        await m.WaitForAsync<ChannelsUnlinked>(); // m's own copy of the real unlink, so the probe only sees what the no-op sends
 
         await m.SendAsync(new UnlinkChannels(y, x));
+        await ProbeAsync(m, message => message is ChannelsUnlinked or Error);
         await g.AssertNoMessageAsync<ChannelsUnlinked>();
     }
 

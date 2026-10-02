@@ -40,18 +40,6 @@ public sealed class PageMotionTests : IDisposable
         }
     }
 
-    /// <summary>Lets the clock run until the condition holds (at most 2 s): under load a frame may take its time.</summary>
-    static void Until(Func<bool> done)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < 2000)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
-        }
-    }
-
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -67,8 +55,12 @@ public sealed class PageMotionTests : IDisposable
         vm.Server = FakeServers.Admin();
         Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display); // the display is one for the app: pin it against what other tests left queued
+        MotionWait.Connected(main); // under load that takes longer: no test acts while it still moves
         return main;
     }
+
+    /// <summary>The page change is over: the picture of the old page has gone.</summary>
+    static void Switched(MainWindow main) => MotionWait.Until(() => !PageGhostShown(main));
 
     static Panel Host(MainWindow main) => main.FindControl<Panel>("PageHost")!;
     static double OffsetX(Visual v) => v.RenderTransform?.Value.M31 ?? 0;
@@ -81,19 +73,27 @@ public sealed class PageMotionTests : IDisposable
     public void OpenSettings_SlidesInFromRight_CloseReverses()
     {
         var main = Open(out var vm);
+        // every value as it happens: under load one frame can outlast the whole change
+        var slides = MotionWait.Record(Host(main), OffsetX);
+        var fades = MotionWait.Record(Host(main), v => v.Opacity);
         vm.OpenSettings();
         Frame();
         Assert.True(PageGhostShown(main)); // the home page leaves as a picture
-        Assert.True(OffsetX(Host(main)) > 0 && Host(main).Opacity < 1, "the settings come in from the right");
-        Settle(450);
-        Assert.False(PageGhostShown(main));
-        Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
+        MotionWait.Eventually(() =>
+        {
+            Assert.False(PageGhostShown(main));
+            Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
+        });
+        Assert.True(slides.Any(x => x > 0) && fades.Any(o => o < 1), "the settings come in from the right");
 
+        slides.Clear();
         vm.ClosePage();
-        Frame();
-        Assert.True(OffsetX(Host(main)) < 0, "going back comes in from the left");
-        Settle(450);
-        Assert.Equal(0, OffsetX(Host(main)));
+        MotionWait.Eventually(() =>
+        {
+            Assert.True(slides.Any(x => x < 0), "going back comes in from the left");
+            Assert.False(PageGhostShown(main));
+            Assert.Equal(0, OffsetX(Host(main)));
+        });
         main.Close();
     }
 
@@ -106,10 +106,11 @@ public sealed class PageMotionTests : IDisposable
         vm.ClosePage();
         Frame();
         await vm.OpenAdminAsync();
-        Until(() => !PageGhostShown(main));
-        Settle(100);
-        Assert.False(PageGhostShown(main));
-        Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
+        MotionWait.Eventually(() =>
+        {
+            Assert.False(PageGhostShown(main));
+            Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
+        });
         Assert.True(vm.IsAdminPage);
         Assert.True(main.GetVisualDescendants().OfType<AdminView>().Single().IsEffectivelyVisible);
         main.Close();
@@ -143,28 +144,42 @@ public sealed class PageMotionTests : IDisposable
         var main = Open(out var vm);
         await vm.OpenAdminAsync();
         Settle(400);
+        Switched(main);
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
-        tabs.SelectedIndex = 1;
-        Frame();
+        // every mark put in the overlay and every value as it happens: under load one frame can outlast the whole change
+        int marks = 0;
+        OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
+            marks += e.NewItems?.OfType<Border>().Count(b => b.Classes.Contains(PageMotion.PipeGhostClass)) ?? 0;
         var content = tabs.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PART_SelectedContentHost");
-        Assert.True(content.Opacity < 1 && OffsetX(content) > 0, "the content comes in from the side of the new tab");
-        Assert.Single(Ghosts(main, PageMotion.PipeGhostClass));
+        var fades = MotionWait.Record(content, v => v.Opacity);
+        var slides = MotionWait.Record(content, OffsetX);
         var pipe = ((Control)tabs.ContainerFromIndex(1)!).GetVisualDescendants().OfType<Border>().First(b => b.Name == "PART_SelectedPipe");
+        tabs.SelectedIndex = 1;
         Assert.Equal(0, pipe.Opacity); // the mark is on its way
-        Settle(450);
-        Assert.Empty(Ghosts(main, PageMotion.PipeGhostClass));
-        Assert.Equal((1d, 1d), (content.Opacity, pipe.Opacity));
+        MotionWait.Until(() => marks > 0);
+        Assert.Equal(1, marks);
+        MotionWait.Eventually(() =>
+        {
+            Assert.True(fades.Any(o => o < 1) && slides.Any(x => x > 0), "the content comes in from the side of the new tab");
+            Assert.Empty(Ghosts(main, PageMotion.PipeGhostClass));
+            Assert.Equal((1d, 1d), (content.Opacity, pipe.Opacity));
+        });
 
         vm.ClosePage();
         Settle(450);
+        Switched(main);
         var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
         var history = chat.FindControl<ScrollViewer>("Scroller")!;
+        fades = MotionWait.Record(history, v => v.Opacity);
+        marks = 0;
         vm.Chat!.Selected = vm.Chat.Tabs[^1];
-        Frame();
-        Assert.True(history.Opacity < 1, "the chat history fades in");
-        Assert.Single(Ghosts(main, PageMotion.PipeGhostClass));
-        Settle(450);
-        Assert.Equal(1, history.Opacity);
+        MotionWait.Until(() => marks > 0);
+        Assert.Equal(1, marks);
+        MotionWait.Eventually(() =>
+        {
+            Assert.True(fades.Any(o => o < 1), "the chat history fades in");
+            Assert.Equal(1, history.Opacity);
+        });
         main.Close();
     }
 
@@ -196,7 +211,8 @@ public sealed class PageMotionTests : IDisposable
         var layer = main.FindControl<Border>("PageGhost")!;
         double last = 1;
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 1000)
+        // a while after it has gone, and as long as it is there (under load the change takes longer)
+        while (watch.ElapsedMilliseconds < 1000 || PageGhostShown(main) && watch.ElapsedMilliseconds < 5000)
         {
             Frame();
             if (layer.Child is Image picture)
@@ -216,17 +232,19 @@ public sealed class PageMotionTests : IDisposable
         var main = Open(out var vm);
         vm.OpenSettings();
         Settle(500);
+        Switched(main);
         var scroll = main.GetVisualDescendants().OfType<SettingsView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First(s => PageMotion.GetReveal(s));
         var sections = ((Panel)scroll.Content!).Children;
-        Assert.Equal(1, sections[0].Opacity);
-        Assert.Equal(0, sections[^1].Opacity); // below the fold, it waits
+        MotionWait.Eventually(() =>
+        {
+            Assert.Equal(1, sections[0].Opacity);
+            Assert.Equal(0, sections[^1].Opacity); // below the fold, it waits
+        });
 
+        var fades = MotionWait.Record(sections[^1], v => v.Opacity); // as it happens: under load one frame can outlast the fade
         scroll.Offset = new Vector(0, scroll.Extent.Height);
-        Frame();
-        Frame();
-        Assert.True(sections[^1].Opacity < 1, "it fades up as it comes into view");
-        Settle(400);
-        Assert.Equal(1, sections[^1].Opacity);
+        MotionWait.Eventually(() => Assert.Equal(1, sections[^1].Opacity));
+        Assert.True(fades.Any(o => o < 1), "it fades up as it comes into view");
 
         scroll.Offset = default;
         Settle(100);
@@ -263,9 +281,10 @@ public sealed class PageMotionTests : IDisposable
         var main = Open(out var vm);
         vm.OpenSettings();
         Settle(500);
+        Switched(main);
         var scroll = main.GetVisualDescendants().OfType<SettingsView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First(s => PageMotion.GetReveal(s));
         var last = ((Panel)scroll.Content!).Children[^1];
-        Assert.Equal(0, last.Opacity);
+        MotionWait.Eventually(() => Assert.Equal(0, last.Opacity));
         vm.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
         Frame();
         Assert.Equal(1, last.Opacity);
@@ -287,20 +306,20 @@ public sealed class PageMotionTests : IDisposable
             if (e.Property == Visual.IsVisibleProperty && layer.IsVisible) seen.Add((vm.Page, vm.SettingsPage is not null));
         };
         vm.OpenSettings();
-        Settle(450);
+        Switched(main);
         seen.Clear();
         vm.ClosePage();
         Assert.Equal([(Page.Settings, true)], seen);
-        Settle(450);
+        Switched(main);
 
         vm.OpenSettings();
-        Settle(450);
+        Switched(main);
         seen.Clear();
+        var slides = MotionWait.Record(Host(main), OffsetX); // as it happens: under load one frame can outlast the change
         await vm.OpenAdminAsync(); // closes the settings, then opens the administration: one switch
         Assert.Equal([(Page.Settings, true)], seen);
-        Frame();
-        Assert.True(OffsetX(Host(main)) > 0, "forward: the administration comes in from the right");
-        Settle(450);
+        Switched(main);
+        Assert.True(slides.Any(x => x > 0), "forward: the administration comes in from the right");
         Assert.False(PageGhostShown(main));
         main.Close();
     }

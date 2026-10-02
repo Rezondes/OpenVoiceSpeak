@@ -55,8 +55,10 @@ public sealed class TestServer : IAsyncDisposable
             var endpoint = new IPEndPoint(IPAddress.Loopback, Random.Shared.Next(20_000, 45_000));
             var control = new ControlServer(state, certificate, endpoint)
             {
-                IdleTimeout = idleTimeout ?? TimeSpan.FromSeconds(15),
-                HandshakeTimeout = handshakeTimeout ?? TimeSpan.FromSeconds(10),
+                // Far above the tests' longest waits: a client that waits 30 s for a stalled answer sends nothing
+                // meanwhile and must not be dropped as idle (the timeouts themselves have their own tests).
+                IdleTimeout = idleTimeout ?? TimeSpan.FromSeconds(60),
+                HandshakeTimeout = handshakeTimeout ?? TimeSpan.FromSeconds(30),
                 WriteTimeout = writeTimeout ?? Limits.WriteTimeout,
                 MaxPendingHandshakes = maxPendingHandshakes ?? Limits.MaxPendingHandshakes,
             };

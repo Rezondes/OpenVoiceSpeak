@@ -117,6 +117,7 @@ public sealed class WebsiteShots
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
         if (speaking) showcase.Speak();
         ShotWriter.Settle(700);
+        ShotWriter.SettleUntilQuiet(scene.Window); // on a busy machine 700 ms may not end the connect sequence and the chat's arrival
         return scene.Save(folder, "main-online");
     }
 

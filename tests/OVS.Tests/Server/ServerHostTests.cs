@@ -58,9 +58,20 @@ public sealed class ServerHostTests : IDisposable
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time);
         await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        var logs = new ServerLogs(server.DataDir, 0, time, _ => { });
+        var lines = new ConcurrentQueue<string>();
+        var logs = new ServerLogs(server.DataDir, 0, time, lines.Enqueue);
         using var stop = new CancellationTokenSource();
         var restart = ServerHost.WaitForRestartAsync(server.State, time, logs, stop.Token);
+
+        // The loop picks up a change on the thread pool: wait until it logged the new schedule, so the
+        // time.Advance after it hits the new timer instead of racing the loop on a slow runner.
+        async Task LoggedAsync(string text, int count)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (lines.Count(l => l.Contains(text)) < count && DateTime.UtcNow < deadline) await Task.Delay(20);
+            Assert.Equal(count, lines.Count(l => l.Contains(text)));
+        }
+        const string Scheduled = "Automatischer Neustart täglich um";
 
         async Task SetAsync(bool on, TimeSpan fromNow)
         {
@@ -70,17 +81,20 @@ public sealed class ServerHostTests : IDisposable
         }
 
         await SetAsync(true, TimeSpan.FromMinutes(10));
+        await LoggedAsync(Scheduled, 1);
         await SetAsync(false, TimeSpan.FromMinutes(10)); // switched off before the time
+        await LoggedAsync("Automatischer Neustart ausgeschaltet", 1);
         time.Advance(TimeSpan.FromMinutes(11));
         await Task.Delay(200);
         Assert.False(restart.IsCompleted);
 
         await SetAsync(true, TimeSpan.FromMinutes(10));
+        await LoggedAsync(Scheduled, 2);
         time.Advance(TimeSpan.FromMinutes(9));
         await Task.Delay(200);
         Assert.False(restart.IsCompleted);
         time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(2));
-        Assert.True(await restart.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.True(await restart.WaitAsync(TimeSpan.FromSeconds(30)));
     }
 
     [Fact]
@@ -91,7 +105,7 @@ public sealed class ServerHostTests : IDisposable
         using var stop = new CancellationTokenSource();
         var restart = ServerHost.WaitForRestartAsync(server.State, time, new ServerLogs(server.DataDir, 0, time, _ => { }), stop.Token);
         stop.Cancel();
-        Assert.False(await restart.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.False(await restart.WaitAsync(TimeSpan.FromSeconds(30)));
     }
 
     static async Task<TestClient?> TryConnectAsync(int port, string nickname)
@@ -110,7 +124,9 @@ public sealed class ServerHostTests : IDisposable
 
     static async Task<TestClient?> ConnectWhenUpAsync(int port, string nickname, Task host)
     {
-        for (int i = 0; i < 50 && !host.IsCompleted; i++)
+        // Generous: a loaded CI runner can take seconds to bring a run up; it returns as soon as one answers.
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (DateTime.UtcNow < deadline && !host.IsCompleted)
         {
             if (await TryConnectAsync(port, nickname) is { } client) return client;
             await Task.Delay(100);
@@ -135,7 +151,8 @@ public sealed class ServerHostTests : IDisposable
                 ["OVS_DATA_DIR"] = dir,
                 ["OVS_PORT"] = port.ToString(),
                 ["OVS_AUTO_RESTART"] = "an",
-                ["OVS_AUTO_RESTART_TIME"] = DateTime.Now.AddSeconds(5).ToString("HH:mm:ss"),
+                // Far enough ahead that anna is surely connected before it on a slow runner.
+                ["OVS_AUTO_RESTART_TIME"] = DateTime.Now.AddSeconds(10).ToString("HH:mm:ss"),
             };
             host = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop.Token);
             anna = await ConnectWhenUpAsync(port, "anna", host);
@@ -146,7 +163,7 @@ public sealed class ServerHostTests : IDisposable
 
         await using (anna)
         {
-            var bye = await anna.WaitForAsync<Disconnected>(timeoutMs: 10_000);
+            var bye = await anna.WaitForAsync<Disconnected>(timeoutMs: 30_000);
             Assert.Equal(Codes.ServerRestart, bye.Reason);
         }
 
@@ -155,7 +172,7 @@ public sealed class ServerHostTests : IDisposable
         await bert.DisposeAsync();
 
         stop.Cancel();
-        Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
 
         var files = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Order().Select(File.ReadAllText).ToList();
         Assert.Equal(2, files.Count);

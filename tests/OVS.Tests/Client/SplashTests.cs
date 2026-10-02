@@ -11,15 +11,16 @@ public sealed class SplashTests
     public void Shows_ThenCloseEndsIt()
     {
         var shown = Splash.Show(Exe);
+        // generous caps that end as soon as it happened: its thread and window take their time on a busy runner
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!Splash.IsShown && watch.ElapsedMilliseconds < 2000) Thread.Sleep(5);
+        while (!Splash.IsShown && watch.ElapsedMilliseconds < 10_000) Thread.Sleep(5);
         Assert.True(Splash.IsShown);
         Splash.Close();
-        Assert.True(shown.Join(TimeSpan.FromSeconds(2)), "it fades out and ends");
+        Assert.True(shown.Join(TimeSpan.FromSeconds(10)), "it fades out and ends");
         Assert.False(Splash.IsShown);
 
         var early = Splash.Show(Exe);
         Splash.Close();
-        Assert.True(early.Join(TimeSpan.FromSeconds(2)));
+        Assert.True(early.Join(TimeSpan.FromSeconds(10)));
     }
 }

@@ -37,6 +37,21 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     Task<T> OnUi<T>(Func<T> read) => ui.InvokeAsync(() => Task.FromResult(read()));
 
+    /// <summary>
+    /// Reads on the UI thread until the value fits, at most 10 s by the clock (not by a loop count: network, audio and
+    /// pool threads may come late on a busy runner). Returns the last value, so the caller's assert names it.
+    /// </summary>
+    async Task<T> OnUiUntil<T>(Func<T> read, Func<T, bool> done)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            var value = await OnUi(read);
+            if (done(value) || watch.ElapsedMilliseconds > 10_000) return value;
+            await Task.Delay(20);
+        }
+    }
+
     Task ConnectAsync(bool saveBookmark) =>
         ui.InvokeAsync<object?>(async () =>
         {
@@ -361,12 +376,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
 
         await Connect();
-        byte[]? shown = null;
-        for (int i = 0; i < 60 && shown is null; i++)
-        {
-            await Task.Delay(50);
-            shown = await OnUi(() => vm.Server?.IconPng);
-        }
+        var shown = await OnUiUntil(() => vm.Server?.IconPng, s => s is not null);
         Assert.Equal(png, shown);
 
         await Connect(); // second time straight from the cache
@@ -403,7 +413,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             lock (sent) return sent.Last(r => r is GetServerIcon).RequestId!;
         }
-        async Task<int> AfterRefusal()
+        // The retry comes from a delay on the manual clock (continued on the pool) and is posted to the UI thread:
+        // a retry is waited for up to 10 s, the "no second retry" check keeps a fixed one-second window.
+        async Task<int> AfterRefusal(bool expectRetry)
         {
             var id = LastId();
             await OnUi(() =>
@@ -413,7 +425,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
             });
             var before = Requests();
             time.Advance(TimeSpan.FromSeconds(11));
-            for (int i = 0; i < 20 && Requests() == before; i++)
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (Requests() == before && watch.ElapsedMilliseconds < (expectRetry ? 10_000 : 1000))
             {
                 await Task.Delay(50);
                 await OnUi(() => 0); // lets the posted retry run
@@ -429,8 +442,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return 0;
         });
         Assert.Equal(1, Requests());
-        Assert.Equal(2, await AfterRefusal());
-        Assert.Equal(2, await AfterRefusal()); // only once
+        Assert.Equal(2, await AfterRefusal(expectRetry: true));
+        Assert.Equal(2, await AfterRefusal(expectRetry: false)); // only once
     }
 
     [Fact]
@@ -439,16 +452,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await ConnectAsync(saveBookmark: false);
         Assert.Contains(await OnUi(() => vm.Notices.ToList()), n => n.Kind == NoticeKind.Welcome && n.Text == "Willkommen auf dem Testserver!");
 
-        string ping = "";
-        for (int i = 0; i < 40 && ping.Length == 0; i++)
+        var ping = await OnUiUntil(() =>
         {
-            await Task.Delay(50);
-            ping = await OnUi(() =>
-            {
-                vm.Tick();
-                return vm.PingText;
-            });
-        }
+            vm.Tick();
+            return vm.PingText;
+        }, p => p.Length > 0);
         Assert.StartsWith("Ping ", ping);
     }
 
@@ -462,12 +470,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Contains(await OnUi(() => vm.Chat!.General.Entries.ToList()), e => e.IsWelcome && e.Text == "Willkommen auf dem Testserver!");
 
         await bert.SendAsync(new SendChat(ChatTarget.Channel, null, "hallo anna"));
-        ChatEntry? received = null;
-        for (int i = 0; i < 60 && received is null; i++)
-        {
-            await Task.Delay(50);
-            received = await OnUi(() => vm.Chat!.ChannelTab.Entries.FirstOrDefault(e => e.IsMessage));
-        }
+        var received = await OnUiUntil(() => vm.Chat!.ChannelTab.Entries.FirstOrDefault(e => e.IsMessage), e => e is not null);
         Assert.Equal(("bert", "hallo anna", false), (received?.From, received?.Text, received?.IsOwn));
         Assert.Equal(1, await OnUi(() => vm.Chat!.ChannelTab.Unread));
 
@@ -492,12 +495,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
 
         await bert.SendAsync(new SendChat(ChatTarget.Private, annaId, "psst"));
-        ChatTab? tab = null;
-        for (int i = 0; i < 60 && tab is null; i++)
-        {
-            await Task.Delay(50);
-            tab = await OnUi(() => vm.Chat!.Tabs.FirstOrDefault(t => t.IsPrivate));
-        }
+        var tab = await OnUiUntil(() => vm.Chat!.Tabs.FirstOrDefault(t => t.IsPrivate), t => t is not null);
         Assert.Equal(("@bert", 1), (tab?.Title, tab?.Unread));
         Assert.True(await OnUi(() => vm.Chat!.Selected.IsGeneral)); // in the background
 
@@ -523,21 +521,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
             await vm.Server!.SendAsync(new CreateChannel("Raid", "")); // a guest may not
             return null;
         });
-        Notice? error = null;
-        for (int i = 0; i < 40 && error is null; i++)
-        {
-            await Task.Delay(50);
-            error = await OnUi(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Error));
-        }
+        var error = await OnUiUntil(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Error), n => n is not null);
         Assert.Equal("Dafür fehlt dir das Recht.", error?.Text);
 
         await server.Control.StopAsync();
-        Notice? bye = null;
-        for (int i = 0; i < 60 && bye is null; i++)
-        {
-            await Task.Delay(50);
-            bye = await OnUi(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Warning));
-        }
+        var bye = await OnUiUntil(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Warning), n => n is not null);
         Assert.StartsWith("Getrennt: ", bye?.Text);
         Assert.Matches(@"^\d{2}:\d{2}:\d{2}  Getrennt: ", bye!.ToString()); // the debug API keeps its "time  text" form
     }
@@ -591,12 +579,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             vm.Audio.SetTone(440);
             return 0;
         });
-        double level = -60;
-        for (int i = 0; i < 60 && level < -30; i++)
-        {
-            await Task.Delay(50);
-            level = await OnUi(() => vm.SettingsPage!.InputLevelDb);
-        }
+        var level = await OnUiUntil(() => vm.SettingsPage!.InputLevelDb, l => l >= -30);
         Assert.InRange(level, -15, -12); // 0.3 amplitude sine: -13.5 dBFS
 
         await OnUi(() =>
@@ -634,13 +617,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
             main.OpenSettings();
             return (main.Page, main.SettingsPage!.Inputs.Select(i => i.Name).ToList(), main.SettingsPage.DeviceHint);
         });
-        Assert.True(watch.ElapsedMilliseconds < 1000, $"{watch.ElapsedMilliseconds} ms"); // not blocked by the gate
+        // not blocked by the gate (which holds 10 s): the margin is for a slow runner, the UI round trip alone may take a while
+        Assert.True(watch.ElapsedMilliseconds < 5000, $"{watch.ElapsedMilliseconds} ms");
         Assert.Equal(Page.Settings, page);
         Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], inputs);
         Assert.Null(hint);
 
         gate.Set();
-        for (int i = 0; i < 100 && await OnUi(() => main.SettingsPage!.Inputs.Count) != 3; i++) await Task.Delay(20);
+        await OnUiUntil(() => main.SettingsPage!.Inputs.Count, n => n == 3);
         Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], await OnUi(() => main.SettingsPage!.Inputs.Select(i => i.Name).ToList()));
         Assert.Equal("mic-2", await OnUi(() => main.SettingsPage!.SelectedInput.Id));
         Assert.Null(await OnUi(() => main.SettingsPage!.DeviceHint));
@@ -741,7 +725,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await ConnectAsync(saveBookmark: false);
         async Task<(bool Muted, bool Deafened)> SeenByServer(bool deafened)
         {
-            for (int i = 0; i < 100 && await OnUi(() => vm.Server!.Self!.IsDeafened) != deafened; i++) await Task.Delay(20);
+            await OnUiUntil(() => vm.Server!.Self!.IsDeafened, d => d == deafened);
             return await OnUi(() => (vm.Server!.Self!.StatusText.Length > 0, vm.Server.Self.IsDeafened));
         }
         Assert.Equal((false, false), await SeenByServer(false));
@@ -847,7 +831,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         engine.InputLevel += db => level.TrySetResult(db);
         engine.SetTone(440);
         // 0.3 amplitude sine: RMS 0.212 = -13.5 dBFS
-        Assert.InRange(await level.Task.WaitAsync(TimeSpan.FromSeconds(3)), -15f, -12f);
+        Assert.InRange(await level.Task.WaitAsync(TimeSpan.FromSeconds(10)), -15f, -12f);
     }
 
     /// <summary>Package 102: a removed bookmark folds away in the sidebar; with no window it goes at once.</summary>

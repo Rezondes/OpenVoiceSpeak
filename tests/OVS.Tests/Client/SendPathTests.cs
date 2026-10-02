@@ -47,7 +47,11 @@ public class SendPathTests
         keys.Simulate(ptt: true);
         await Until(() => keys.IsDown(KeyAction.PushToTalk)); // the key thread saw it
         if (expectFrames) await Until(() => engine.FramesSent > 0);
-        else await Task.Delay(400);
+        else
+        {
+            await CaptureRunning(engine); // otherwise the silence below proves nothing
+            await Task.Delay(400);
+        }
         keys.Simulate(ptt: false);
         Assert.Equal(expectFrames, engine.FramesSent > 0);
     }
@@ -65,6 +69,7 @@ public class SendPathTests
         keys.Simulate(ptt: true);
         await Until(() => keys.MuteHeld && keys.IsDown(KeyAction.PushToTalk)); // the key thread saw both (it polls every 10 ms, when it gets a turn)
         engine.SetTone(440);
+        await CaptureRunning(engine);
         await Task.Delay(400);
         Assert.Equal(0, engine.FramesSent);
 
@@ -81,6 +86,7 @@ public class SendPathTests
         using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
         engine.SetTone(440);
+        await CaptureRunning(engine);
         await Task.Delay(400);
         Assert.Equal(0, engine.FramesSent);
 
@@ -96,6 +102,17 @@ public class SendPathTests
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (!done() && watch.ElapsedMilliseconds < ms) await Task.Delay(10);
+    }
+
+    /// <summary>Waits until the tone thread has fed frames through the gate, so a silence check that follows proves something.</summary>
+    static async Task CaptureRunning(AudioEngine engine)
+    {
+        int levels = 0;
+        void Count(float _) => Interlocked.Increment(ref levels);
+        engine.InputLevel += Count;
+        await Until(() => Volatile.Read(ref levels) > 0);
+        engine.InputLevel -= Count;
+        Assert.True(Volatile.Read(ref levels) > 0, "the capture thread never ran");
     }
 
     /// <summary>The output gets at least this loud within 5 s (positive checks wait, silence checks keep their fixed window).</summary>
@@ -238,7 +255,7 @@ public class SendPathTests
         Assert.False(engine.FramesReceived.ContainsKey(5));
 
         engine.SelfTest = false;
-        await Task.Delay(700); // the loopback speaker times out
+        await Until(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
         Assert.True(await LoudestOutput(engine, 300) < -100);
         Assert.Equal(0, sent);
     }
@@ -249,10 +266,12 @@ public class SendPathTests
         using var keys = new KeyPoller(); // no bindings: the PTT key is never down
         using var ptt = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
         ptt.SelfTest = true;
+        await CaptureRunning(ptt); // the tone is being gated, so the silence below proves something
         Assert.True(await LoudestOutput(ptt, 600) < -100);
 
         using var loudThreshold = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -10 });
         loudThreshold.SelfTest = true;
+        await CaptureRunning(loudThreshold);
         Assert.True(await LoudestOutput(loudThreshold, 600) < -100); // -13.5 dBFS stays below -10
     }
 
@@ -267,7 +286,10 @@ public class SendPathTests
         {
             lock (levels) levels.Add(db);
         };
-        await Task.Delay(400);
+        await Until(() =>
+        {
+            lock (levels) return levels.Count > 0;
+        }); // the capture runs before the change, so the change has to reach a running pipeline
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, OutputVolume = 0.3f, VadThresholdDb = -25, Mode = VoiceActivation });
         lock (levels) levels.Clear();
         await Until(() =>

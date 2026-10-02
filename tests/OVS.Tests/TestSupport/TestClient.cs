@@ -55,7 +55,8 @@ public sealed class TestClient : IAsyncDisposable
     public async Task<Message> HandshakeAsync(string nickname, string? password = null, int version = ProtocolInfo.Version,
         bool badSignature = false, byte[]? certHash = null, bool pump = true)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        // Generous: the server answers under its state lock, which a debounced save on a slow CI disk can hold for seconds.
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await writer.WriteAsync(new ClientHello(version, nickname, Convert.ToBase64String(Identity.PublicKey), password), cts.Token);
         var first = await reader.ReadAsync(cts.Token) ?? throw new EndOfStreamException();
         if (first is not Challenge challenge) return first;
@@ -74,7 +75,7 @@ public sealed class TestClient : IAsyncDisposable
     }
 
     /// <summary>Reads one frame without the pump (for pre-handshake tests). Null means closed.</summary>
-    public async Task<Message?> ReadRawAsync(int timeoutMs = 3000)
+    public async Task<Message?> ReadRawAsync(int timeoutMs = 10000)
     {
         using var cts = new CancellationTokenSource(timeoutMs);
         try
@@ -115,7 +116,8 @@ public sealed class TestClient : IAsyncDisposable
     }
 
     /// <summary>Next message, or null when the connection closed. Throws on timeout.</summary>
-    public async Task<Message?> NextAsync(int timeoutMs = 3000)
+    /// <param name="timeoutMs">Generous like WaitForAsync: callers use it to wait for the next message, not to time anything.</param>
+    public async Task<Message?> NextAsync(int timeoutMs = 10000)
     {
         using var cts = new CancellationTokenSource(timeoutMs);
         try
@@ -175,7 +177,7 @@ public sealed class TestClient : IAsyncDisposable
     }
 
     /// <summary>True once the server closed the connection.</summary>
-    public async Task<bool> WaitClosedAsync(int timeoutMs = 3000)
+    public async Task<bool> WaitClosedAsync(int timeoutMs = 10000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (DateTime.UtcNow < deadline)

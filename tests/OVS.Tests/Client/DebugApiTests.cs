@@ -191,8 +191,10 @@ public sealed class DebugApiTests : IAsyncLifetime
         // Link Lobby and Raid: normal PTT still stays in the lobby ...
         await anna.Post("link", new { a = "Lobby", b = "Raid" });
         await bert.Until(s => Channel(s, "Raid").GetProperty("isLinked").GetBoolean());
+        long sentUnlinked = (await anna.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
         await anna.Post("ptt", new { down = true });
-        await Task.Delay(500);
+        await anna.Until(s => s.GetProperty("audio").GetProperty("framesSent").GetInt64() > sentUnlinked + 10); // she really talks
+        await Task.Delay(300);
         Assert.Equal(0, FramesFrom(await bert.State(), annaId));
         await anna.Post("ptt", new { down = false });
 
@@ -201,9 +203,9 @@ public sealed class DebugApiTests : IAsyncLifetime
         var b = await bert.Until(s => FramesFrom(s, annaId) > 10 && User(s, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
         Assert.Contains("Links", (await anna.State()).GetProperty("transmitText").GetString());
         // The indicator must stay on while anna keeps talking (it used to go dark for good after 300 ms).
-        // Polled, because a starved test machine may drop it for a moment.
+        // Polled, because a starved test machine may drop it for a moment; gone for good still fails.
         await Task.Delay(700);
-        await bert.Until(s => User(s, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true, 1000);
+        await bert.Until(s => User(s, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
         await anna.Post("linkptt", new { down = false });
 
         // bert is a guest without SpeakLinked: his link PTT stays in Raid and he gets a hint
@@ -221,19 +223,17 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.Until(s => Channel(s, "Lobby").GetProperty("isCurrent").GetBoolean());
         await bert.Post("ptt", new { down = true });
         await anna.Until(s => FramesFrom(s, bertId) > 10 && User(s, bertId)?.GetProperty("isSpeaking").GetBoolean() == true);
+        await bert.Until(s => s.GetProperty("transmitText").GetString() != ""); // so the empty text below is the release, not the start
         await bert.Post("ptt", new { down = false });
 
         // muted clients send nothing
         await bert.Post("mute", new { value = true });
-        // The PTT release above may still let one 20 ms frame out: measure once the counter stands still.
-        long sentBefore = -1, now = (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
-        for (int i = 0; i < 20 && now != sentBefore; i++)
-        {
-            sentBefore = now;
-            await Task.Delay(60);
-            now = (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
-        }
+        // The PTT release may still let frames out. Once the transmit text is gone, the capture thread has decided
+        // "nothing" for a frame, and every frame before it is counted (one thread, in order): no wall-clock window.
+        var settled = await bert.Until(s => !s.GetProperty("audio").GetProperty("ptt").GetBoolean() && s.GetProperty("transmitText").GetString() == "");
+        long sentBefore = settled.GetProperty("audio").GetProperty("framesSent").GetInt64();
         await bert.Post("ptt", new { down = true });
+        await bert.Until(s => s.GetProperty("audio").GetProperty("ptt").GetBoolean()); // the key thread saw it, so the silence proves something
         await Task.Delay(300);
         Assert.Equal(sentBefore, (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64());
     }

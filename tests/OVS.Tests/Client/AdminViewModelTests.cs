@@ -30,8 +30,13 @@ public class AdminViewModelTests
         ServerViewModel? server = null;
         server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
         {
-            sent.Add(r);
-            if (reply?.Invoke(r) is { } answer) server!.Apply(answer);
+            // A coalesced list request comes from the pool (a delay on the manual clock): sending and its answer are one
+            // step under the lock, so a test that saw the request (Sent) also sees its answer applied.
+            lock (sent)
+            {
+                sent.Add(r);
+                if (reply?.Invoke(r) is { } answer) server!.Apply(answer);
+            }
             return Task.CompletedTask;
         }, new ManualTimeProvider(), dialogs);
         return (new AdminViewModel(server), server, sent);
@@ -41,6 +46,20 @@ public class AdminViewModelTests
     }
 
     static GroupEditViewModel Group(AdminViewModel vm, string name) => vm.Groups.Single(g => g.Name == name);
+
+    /// <summary>
+    /// Waits until that many user lists were asked for, at most 10 s by the clock: a request held back by the one-second
+    /// limit is sent from the pool once the manual clock passes it, which may come late on a busy runner.
+    /// </summary>
+    static async Task ListUsersSent(List<Request> sent, int count)
+    {
+        int Count()
+        {
+            lock (sent) return sent.OfType<ListUsers>().Count();
+        }
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (Count() < count && watch.ElapsedMilliseconds < 10_000) await Task.Delay(10);
+    }
 
     [Fact]
     public void GroupEditor_DisablesUnownedPermissions()
@@ -236,7 +255,7 @@ public class AdminViewModelTests
 
         time.Advance(TimeSpan.FromSeconds(1));
         server.Apply(new GroupsChanged([new GroupInfo(WellKnownGroups.Guest, "Gast", P.None, true)]));
-        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+        await ListUsersSent(sent, 2);
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
     }
 
@@ -871,7 +890,7 @@ public class AdminViewModelTests
         Assert.Empty(vm.Users);
         server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [Known("fpA", "Anton"), Known("fpB", "Berta")])); // and one at a time
         time.Advance(TimeSpan.FromSeconds(1));
-        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+        await ListUsersSent(sent, 2);
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
 
         server.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta"), Known("fpC", "Carla")]));
@@ -1181,7 +1200,7 @@ public class AdminViewModelTests
         }
         Assert.Equal((true, true), (Box("Gast").IsChecked, Box("Moderator").IsChecked));
         clock.Advance(TimeSpan.FromSeconds(1));
-        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+        await ListUsersSent(sent, 2);
 
         Assert.Empty(notices);
         Assert.InRange(sent.OfType<ListUsers>().Count(), 1, 2);
@@ -1206,7 +1225,7 @@ public class AdminViewModelTests
         Assert.True(Mod().IsChecked);
 
         time.Advance(TimeSpan.FromSeconds(1));
-        for (var i = 0; i < 100 && sent.OfType<ListUsers>().Count() < 2; i++) await Task.Delay(10);
+        await ListUsersSent(sent, 2);
         var newer = sent.OfType<ListUsers>().Last().RequestId;
         Assert.NotEqual(older, newer);
         server.Apply(new UserList(newer, [before])); // asked for after the tick: this one counts, even without the group

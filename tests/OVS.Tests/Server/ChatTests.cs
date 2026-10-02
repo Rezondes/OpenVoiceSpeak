@@ -142,7 +142,11 @@ public sealed class ChatTests
         await chef.SendAsync(new SendChat(ChatTarget.Server, null, "Ankündigung"));
         await weit.SendAsync(new SendChat(ChatTarget.Channel, null, "im Raid"));
         await gast.SendAsync(new SendChat(ChatTarget.Private, weit.Id, "geheimer Inhalt"));
-        await weit.WaitForAsync<ChatMessage>(m => m.Target == ChatTarget.Private);
+        // three senders, three read loops on the server, in any order: wait for all three messages, not only the
+        // last one sent (each is logged before it goes out)
+        var seen = new HashSet<string>();
+        while (seen.Count < 3)
+            seen.Add((await weit.WaitForAsync<ChatMessage>(m => m.Text is "Ankündigung" or "im Raid" or "geheimer Inhalt")).Text);
 
         Assert.Contains(server.Log, l => l.Contains("Chat von chef: Ankündigung"));
         Assert.Contains(server.Log, l => l.Contains("gast schreibt privat an weit"));

@@ -201,12 +201,12 @@ public class StateSyncTests
 
         // the target gets as strong: equal ranks cannot act on each other
         await admin.SendAsync(new AssignGroup(bert.Identity.Fingerprint, modGroup));
-        annaSeesBert = await anna.WaitForAsync<UserUpdated>(u => u.User.SessionId == bert.Id);
+        annaSeesBert = await anna.WaitForAsync<UserUpdated>(u => u.User.SessionId == bert.Id && u.User.GroupIds.Contains(modGroup));
         Assert.Equal((Permission.None, false), (annaSeesBert.User.Permissions, annaSeesBert.User.CanBeModeratedByMe));
 
         // the target gets weaker again
         await admin.SendAsync(new UnassignGroup(bert.Identity.Fingerprint, modGroup));
-        annaSeesBert = await anna.WaitForAsync<UserUpdated>(u => u.User.SessionId == bert.Id);
+        annaSeesBert = await anna.WaitForAsync<UserUpdated>(u => u.User.SessionId == bert.Id && !u.User.GroupIds.Contains(modGroup));
         Assert.True(annaSeesBert.User.CanBeModeratedByMe);
         await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == bert.Id && !u.User.GroupIds.Contains(modGroup)); // read up to here
 

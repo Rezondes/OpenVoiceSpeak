@@ -154,7 +154,7 @@ public class HandshakeTests
     {
         await using var server = await TestServer.StartAsync(handshakeTimeout: TimeSpan.FromMilliseconds(200));
         await using var client = await TestClient.OpenAsync(server.Port);
-        Assert.Null(await client.ReadRawAsync(3000));
+        Assert.Null(await client.ReadRawAsync());
     }
 
     [Fact]
@@ -162,20 +162,22 @@ public class HandshakeTests
     {
         await using var server = await TestServer.StartAsync(idleTimeout: TimeSpan.FromMilliseconds(300));
         await using var client = await TestClient.ConnectAsync(server);
-        Assert.True(await client.WaitClosedAsync(3000));
+        Assert.True(await client.WaitClosedAsync());
         Assert.Equal(0, server.State.SessionCount);
     }
 
     [Fact]
     public async Task Ping_KeepsSessionAliveAndIsAnswered()
     {
-        await using var server = await TestServer.StartAsync(idleTimeout: TimeSpan.FromMilliseconds(400));
+        // The idle timeout runs on real time: a wide margin between pings (a ping round trip can take
+        // hundreds of ms on a loaded CI runner), and enough rounds to outlast the timeout several times.
+        await using var server = await TestServer.StartAsync(idleTimeout: TimeSpan.FromMilliseconds(1500));
         await using var client = await TestClient.ConnectAsync(server);
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 8; i++)
         {
             await client.SendAsync(new Ping());
             await client.WaitForAsync<Pong>();
-            await Task.Delay(200);
+            await Task.Delay(500);
         }
         Assert.Equal(1, server.State.SessionCount);
     }

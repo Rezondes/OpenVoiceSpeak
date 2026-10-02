@@ -67,8 +67,9 @@ public sealed class ResponsiveTests : IDisposable
     /// <summary>Package 105: closing counts at once, the drawer only slides away for a moment (in the animated display).</summary>
     static void AssertDrawerClosed(MainWindow main)
     {
+        // generous: under load one frame can take longer than the whole slide, and the connect sequence runs beside it
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (Sidebar(main).IsEffectivelyVisible && watch.ElapsedMilliseconds < 1000)
+        while (Sidebar(main).IsEffectivelyVisible && watch.ElapsedMilliseconds < 5000)
         {
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
@@ -76,6 +77,16 @@ public sealed class ResponsiveTests : IDisposable
         }
         Assert.False(Sidebar(main).IsEffectivelyVisible);
     }
+
+    /// <summary>
+    /// The control is drawn where its layout puts it and no row of the root still enters: nothing moves it any more, so a
+    /// click by coordinate lands where the layout says.
+    /// </summary>
+    static bool AtRest(Control control, Control root) =>
+        control.TranslatePoint(default, root) is { } drawn && LayoutAssert.X(control, root) is { } x && LayoutAssert.Y(control, root) is { } y
+        && Math.Abs(drawn.X - x) < 0.5 && Math.Abs(drawn.Y - y) < 0.5
+        && !root.GetVisualDescendants().OfType<Control>().Any(c => c.Classes.Contains("entering"));
+
     static ColumnDefinition SidebarColumn(MainWindow main) => ((Grid)Sidebar(main).Parent!).ColumnDefinitions[0];
 
     /// <summary>The header button whose text (or automation name) is the given resource text.</summary>
@@ -171,11 +182,13 @@ public sealed class ResponsiveTests : IDisposable
         Assert.True(Sidebar(main).Bounds.Width <= 312, $"{Sidebar(main).Bounds.Width}");
         Assert.Equal(0, LayoutAssert.X(Sidebar(main), main)!.Value - LayoutAssert.X(main.GetVisualDescendants().OfType<Grid>().First(), main)!.Value, 1); // where it ends up, not mid-slide
 
-        // double click on Raid joins it and closes the drawer (once it has slid in)
-        WaitFor(() => Sidebar(main).RenderTransform is null || Sidebar(main).RenderTransform!.Value.M31 == 0);
-        WaitFor(() => false, 120); // and a moment more: under load the last frame may come late
-        var raid = main.GetVisualDescendants().OfType<Border>()
+        // double click on Raid joins it and closes the drawer, once the drawer has slid in and its rows have built up. Before
+        // the first frame nothing has moved yet, so at least two frames pass; under load each step can outlast a whole slide.
+        Border Raid() => main.GetVisualDescendants().OfType<Border>()
             .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel { Name: "Raid" });
+        int frames = 0;
+        WaitFor(() => frames++ >= 2 && AtRest(Sidebar(main), main) && AtRest(Raid(), Sidebar(main)), 5000);
+        var raid = Raid();
         var point = raid.TranslatePoint(new Point(raid.Bounds.Width / 2, raid.Bounds.Height / 2), main)!.Value;
         main.MouseDown(point, MouseButton.Left);
         main.MouseUp(point, MouseButton.Left);

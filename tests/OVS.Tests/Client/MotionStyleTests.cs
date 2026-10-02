@@ -51,6 +51,16 @@ public sealed class MotionStyleTests : IDisposable
         Math.Abs(a.M11 - b.M11) < 0.01 && Math.Abs(a.M12 - b.M12) < 0.01 && Math.Abs(a.M21 - b.M21) < 0.01
         && Math.Abs(a.M22 - b.M22) < 0.01 && Math.Abs(a.M31 - b.M31) < 0.05 && Math.Abs(a.M32 - b.M32) < 0.05;
 
+    /// <summary>
+    /// After the transition time, the checks once more until they pass (at most 5 s): under load a transition may take
+    /// several frames' time, a fixed wait can end before it does.
+    /// </summary>
+    static void Settled(Action check)
+    {
+        Settle();
+        MotionWait.Eventually(check);
+    }
+
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]
@@ -62,17 +72,17 @@ public sealed class MotionStyleTests : IDisposable
         Assert.Equal(animated, button.Transitions?.OfType<TransformOperationsTransition>().Any(t => t.Duration == Motion.Fast) == true);
 
         window.MouseMove(Center(button, window));
-        Settle();
-        Assert.True(Near(animated ? Expected("translateY(-1px)") : Matrix.Identity, Transform(button)), $"hover {Transform(button)}");
         var presenter = button.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
-        Assert.Equal(animated, presenter.BoxShadow.Count > 0 && presenter.BoxShadow[0].Blur > 0); // lifted with a soft shadow
+        Settled(() =>
+        {
+            Assert.True(Near(animated ? Expected("translateY(-1px)") : Matrix.Identity, Transform(button)), $"hover {Transform(button)}");
+            Assert.Equal(animated, presenter.BoxShadow.Count > 0 && presenter.BoxShadow[0].Blur > 0); // lifted with a soft shadow
+        });
 
         window.MouseDown(Center(button, window), MouseButton.Left);
-        Settle();
-        Assert.Equal(animated, Near(Expected("scale(0.96)"), Transform(button)));
+        Settled(() => Assert.Equal(animated, Near(Expected("scale(0.96)"), Transform(button))));
         window.MouseUp(Center(button, window), MouseButton.Left);
-        Settle();
-        Assert.True(Near(animated ? Expected("translateY(-1px)") : Matrix.Identity, Transform(button)), "springs back");
+        Settled(() => Assert.True(Near(animated ? Expected("translateY(-1px)") : Matrix.Identity, Transform(button)), "springs back"));
     }
 
     [AvaloniaFact]
@@ -82,19 +92,22 @@ public sealed class MotionStyleTests : IDisposable
         var current = new Border { Classes = { "row", "current" }, Height = 30, Width = 200 };
         var window = Host(row, animated: true);
         ((StackPanel)window.Content!).Children.Add(current);
-        Settle();
-        Assert.Equal(3, current.BoxShadow[0].OffsetX); // the current channel keeps its bar
-        Assert.True(current.BoxShadow[0].IsInset);
-        Assert.Equal(0, row.BoxShadow[0].OffsetX);
+        Settled(() =>
+        {
+            Assert.Equal(3, current.BoxShadow[0].OffsetX); // the current channel keeps its bar
+            Assert.True(current.BoxShadow[0].IsInset);
+            Assert.Equal(0, row.BoxShadow[0].OffsetX);
+        });
 
+        // every width the bar takes as it happens: under load one frame can outlast the whole transition
+        var bars = MotionWait.Record(row, v => ((Border)v).BoxShadow.Count > 0 ? ((Border)v).BoxShadow[0].OffsetX : 0);
         window.MouseMove(Center(row, window));
-        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-        Dispatcher.UIThread.RunJobs();
-        double early = row.BoxShadow[0].OffsetX;
-        Settle();
-        Assert.True(early > 0 && early < 3, $"the bar grows, it does not jump ({early})");
-        Assert.Equal(3, row.BoxShadow[0].OffsetX, 2);
-        Assert.Equal(Color.Parse("#2F6FEB"), row.BoxShadow[0].Color);
+        Settled(() =>
+        {
+            Assert.Equal(3, row.BoxShadow[0].OffsetX, 2);
+            Assert.Equal(Color.Parse("#2F6FEB"), row.BoxShadow[0].Color);
+        });
+        Assert.True(bars.Any(early => early > 0 && early < 3), $"the bar grows, it does not jump ({string.Join(" ", bars.Distinct())})");
     }
 
     [AvaloniaFact]
@@ -123,10 +136,12 @@ public sealed class MotionStyleTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         var ring = Assert.Single(FocusRings(window));
         double start = ring.Opacity;
-        Settle();
         Assert.True(start < 1, "the ring fades in");
-        Assert.Equal(1, ring.Opacity, 2);
-        Assert.Equal(new Thickness(-2), ring.Margin); // grown 2 px around the control
+        Settled(() =>
+        {
+            Assert.Equal(1, ring.Opacity, 2);
+            Assert.Equal(new Thickness(-2), ring.Margin); // grown 2 px around the control
+        });
 
         second.Focus(NavigationMethod.Pointer);
         Dispatcher.UIThread.RunJobs();
@@ -166,13 +181,11 @@ public sealed class MotionStyleTests : IDisposable
         var glyph = check.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().First(p => p.Name == "CheckGlyph");
         Assert.True(Near(Expected("scale(0.4)"), Transform(glyph)));
         check.IsChecked = true;
-        Settle();
-        Assert.True(Near(Matrix.Identity, Transform(glyph)), "the check mark pops to full size");
+        Settled(() => Assert.True(Near(Matrix.Identity, Transform(glyph)), "the check mark pops to full size"));
 
         var thumb = slider.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().First();
         window.MouseMove(Center(slider, window));
-        Settle();
-        Assert.True(Near(Expected("scale(1.2)"), Transform(thumb)), "the thumb grows on hover");
+        Settled(() => Assert.True(Near(Expected("scale(1.2)"), Transform(thumb)), "the thumb grows on hover"));
     }
 
     [AvaloniaTheory]
@@ -188,12 +201,10 @@ public sealed class MotionStyleTests : IDisposable
         var button = new Button { Classes = { "icon" }, Content = icon };
         var window = Host(button, animated: true);
         window.MouseMove(Center(button, window));
-        Settle();
-        Assert.True(Near(Expected(expected), Transform(icon)), $"{kind}: {Transform(icon)}");
+        Settled(() => Assert.True(Near(Expected(expected), Transform(icon)), $"{kind}: {Transform(icon)}"));
 
         Motion.Apply(window, DisplayMode.Simplified);
-        Settle();
-        Assert.True(Near(Matrix.Identity, Transform(icon)), "nothing turns in the simplified display");
+        Settled(() => Assert.True(Near(Matrix.Identity, Transform(icon)), "nothing turns in the simplified display"));
     }
 
     static ContentPresenter Presenter(Control control) =>
@@ -217,17 +228,17 @@ public sealed class MotionStyleTests : IDisposable
         var rest = sound.Background;
 
         window.MouseMove(Center(bookmark, window));
-        Settle();
-        Assert.Equal(3, Bar(Presenter(bookmark).BoxShadow), 2);
-        Assert.True(Near(Matrix.Identity, Transform(bookmark)), "a bookmark is a row, it does not lift");
+        Settled(() =>
+        {
+            Assert.Equal(3, Bar(Presenter(bookmark).BoxShadow), 2);
+            Assert.True(Near(Matrix.Identity, Transform(bookmark)), "a bookmark is a row, it does not lift");
+        });
 
         var gast = groups.ContainerFromIndex(0)!;
         window.MouseMove(Center(gast, window));
-        Settle();
-        Assert.Equal(3, Bar(Presenter(gast).BoxShadow), 2);
+        Settled(() => Assert.Equal(3, Bar(Presenter(gast).BoxShadow), 2));
         groups.SelectedIndex = 1;
-        Settle();
-        Assert.Equal(3, Bar(Presenter(groups.ContainerFromIndex(1)!).BoxShadow), 2); // the selected entry keeps it
+        Settled(() => Assert.Equal(3, Bar(Presenter(groups.ContainerFromIndex(1)!).BoxShadow), 2)); // the selected entry keeps it
 
         var line = lines.ContainerFromIndex(0)!;
         window.MouseMove(Center(line, window));
@@ -235,9 +246,11 @@ public sealed class MotionStyleTests : IDisposable
         Assert.Equal(0, Bar(Presenter(line).BoxShadow));
 
         window.MouseMove(Center(sound, window));
-        Settle();
-        Assert.Equal(3, Bar(sound.BoxShadow), 2);
-        Assert.NotEqual(rest, sound.Background); // it lights up, it does not only grow the bar
+        Settled(() =>
+        {
+            Assert.Equal(3, Bar(sound.BoxShadow), 2);
+            Assert.NotEqual(rest, sound.Background); // it lights up, it does not only grow the bar
+        });
     }
 
     [AvaloniaFact]
@@ -247,7 +260,6 @@ public sealed class MotionStyleTests : IDisposable
         var window = Host(tabs, animated: true);
         var second = (TabItem)tabs.ContainerFromIndex(1)!;
         window.MouseMove(Center(second, window));
-        Settle();
-        Assert.True(Near(Expected("translateY(-1px)"), Transform(second)));
+        Settled(() => Assert.True(Near(Expected("translateY(-1px)"), Transform(second))));
     }
 }

@@ -13,14 +13,17 @@ public class ShutdownTests
         await using var a = await TestClient.ConnectAsync(server);
         await using var b = await TestClient.ConnectAsync(server);
 
+        // Timed alone: StopAsync gives up waiting after 2 s, so finishing sooner proves the connections
+        // closed by themselves. The clients' own reading below is not part of it.
         var watch = Stopwatch.StartNew();
         await server.Control.StopAsync();
+        var stopped = watch.Elapsed;
 
         foreach (var client in new[] { a, b })
         {
             Assert.Equal(Codes.ServerShutdown, (await client.WaitForAsync<Disconnected>()).Reason);
             Assert.True(await client.WaitClosedAsync());
         }
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(2), $"took {watch.Elapsed}");
+        Assert.True(stopped < TimeSpan.FromSeconds(2), $"took {stopped}");
     }
 }

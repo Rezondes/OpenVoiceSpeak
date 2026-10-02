@@ -126,10 +126,12 @@ public sealed class ItemMotionTests : IDisposable
         Assert.True(row.Opacity < 1, $"fades in ({row.Opacity})");
         Assert.True(OffsetY(row) > 0, "rises from below");
         Assert.True(row.Bounds.Height < 30, $"opens its height ({row.Bounds.Height})");
-        Settle(400);
-        Assert.Equal(1, row.Opacity, 2);
-        Assert.Equal(0, OffsetY(row), 2);
-        Assert.Equal(30, row.Bounds.Height, 1);
+        MotionWait.Eventually(() =>
+        {
+            Assert.Equal(1, row.Opacity, 2);
+            Assert.Equal(0, OffsetY(row), 2);
+            Assert.Equal(30, row.Bounds.Height, 1);
+        });
     }
 
     [AvaloniaFact]
@@ -139,13 +141,13 @@ public sealed class ItemMotionTests : IDisposable
         var (window, list) = Host(rows);
         var below = Container(list, "b");
         double before = below.TranslatePoint(default, window)!.Value.Y;
+        // every place it takes on the way, not one frame's: under load one frame can outlast the whole slide
+        var tops = MotionWait.Record(below, v => v.TranslatePoint(default, window)!.Value.Y);
         rows.Insert(1, new Row("neu"));
-        Settle(80);
-        double during = below.TranslatePoint(default, window)!.Value.Y;
-        Settle(400);
+        MotionWait.Until(() => !Container(list, "neu").Classes.Contains("entering"));
+        MotionWait.Eventually(() => Assert.Equal(before + 30, below.TranslatePoint(default, window)!.Value.Y, 1));
         double after = below.TranslatePoint(default, window)!.Value.Y;
-        Assert.Equal(before + 30, after, 1);
-        Assert.True(during > before && during < after, $"{before} < {during} < {after}");
+        Assert.True(tops.Any(during => during > before && during < after), $"{before} < one of {string.Join(" ", tops.Distinct())} < {after}");
     }
 
     [AvaloniaFact]
@@ -164,8 +166,7 @@ public sealed class ItemMotionTests : IDisposable
         Frame();
         Assert.True(list.Opacity < 1, "the first fill fades in as a whole");
         Assert.All(list.GetRealizedContainers(), c => Assert.DoesNotContain("entering", c.Classes));
-        Settle(300);
-        Assert.Equal(1, list.Opacity, 2);
+        MotionWait.Eventually(() => Assert.Equal(1, list.Opacity, 2));
 
         // the administration rebuilds its lists with new objects
         rows.Clear();
@@ -210,11 +211,16 @@ public sealed class ItemMotionTests : IDisposable
         var rows = new ObservableCollection<Row> { new("start") };
         var (_, list) = Host(rows);
         for (int i = 0; i < 12; i++) rows.Add(new Row($"r{i}"));
-        Settle(110);
-        double first = Container(list, "r0").Opacity, eighth = Container(list, "r7").Opacity, last = Container(list, "r11").Opacity;
-        Assert.True(first > eighth, $"staggered: {first} > {eighth}");
-        Assert.Equal(eighth, last, 2); // everything after the 8th step comes with it
-        Settle(8 * ItemMotion.StaggerMs + 300); // never longer than 8 steps plus Motion.Normal
+        // looked at after every frame until all are in, not at one moment: under load one frame can outlast the stagger
+        bool staggered = false;
+        MotionWait.Until(() =>
+        {
+            double first = Container(list, "r0").Opacity, eighth = Container(list, "r7").Opacity, last = Container(list, "r11").Opacity;
+            staggered |= first > eighth;
+            Assert.Equal(eighth, last, 2); // everything after the 8th step comes with it: never longer than 8 steps plus Motion.Normal
+            return rows.All(r => !Container(list, r.Key).Classes.Contains("entering"));
+        });
+        Assert.True(staggered, "staggered: the first one fades in before the eighth");
         Assert.All(rows.Select(r => Container(list, r.Key)), c => Assert.Equal(1, c.Opacity, 2));
     }
 
@@ -240,6 +246,7 @@ public sealed class ItemMotionTests : IDisposable
         main.Show();
         vm.Server = server = FakeServers.Admin();
         Settle(700); // connecting builds the tree up (Package 106)
+        MotionWait.Connected(main); // under load that takes longer: no test acts while it still builds up
         return main;
     }
 
@@ -255,13 +262,17 @@ public sealed class ItemMotionTests : IDisposable
         var bert = UserContainer(main, "bert");
         Assert.Contains("entering", bert.Classes);
         Assert.True(bert.Opacity < 1);
-        Settle(400);
-        Assert.Equal(1, bert.Opacity, 2);
-        Assert.Contains("fresh", bert.Classes); // the accent flash after sliding in
+        // the accent flash after sliding in, recorded as it happens: under load one frame can outlast the whole flash
         var row = bert.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
-        Settle(100);
-        Assert.NotEqual(Avalonia.Media.Colors.Transparent, (row.Background as Avalonia.Media.ISolidColorBrush)?.Color);
-        Settle(ItemMotion.FlashMs);
+        bool flashedAfterSlide = false, lit = false;
+        bert.Classes.CollectionChanged += (_, _) =>
+            flashedAfterSlide |= bert.Classes.Contains("fresh") && !bert.Classes.Contains("entering") && bert.Opacity == 1;
+        row.PropertyChanged += (_, e) => lit |= e.Property == Border.BackgroundProperty && bert.Classes.Contains("fresh")
+            && (row.Background as Avalonia.Media.ISolidColorBrush)?.Color != Avalonia.Media.Colors.Transparent;
+        MotionWait.Eventually(() => Assert.Equal(1, bert.Opacity, 2));
+        MotionWait.Until(() => flashedAfterSlide && !bert.Classes.Contains("fresh"));
+        Assert.True(flashedAfterSlide, "the accent flash comes after sliding in");
+        Assert.True(lit, "the row lights up in the accent colour");
         Assert.DoesNotContain("fresh", bert.Classes);
         main.Close();
     }
@@ -272,13 +283,15 @@ public sealed class ItemMotionTests : IDisposable
         var main = Connected(out var server);
         var raid = main.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel { Name: "Raid" });
         double before = raid.TranslatePoint(default, main)!.Value.Y;
+        // every place Raid takes on the way (its entry in the list moves down), not one frame's
+        var tops = MotionWait.Record(ChannelContainer(main, "Raid"), _ => raid.TranslatePoint(default, main)!.Value.Y);
         server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Archiv", "", 0)));
-        Settle(80);
-        double during = raid.TranslatePoint(default, main)!.Value.Y;
-        Settle(500);
+        MotionWait.Until(() => main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers()
+            .Any(c => c.DataContext is ChannelViewModel { Name: "Archiv" } && !c.Classes.Contains("entering")));
+        Settle(50); // lays out its last height
         double after = raid.TranslatePoint(default, main)!.Value.Y;
         Assert.True(after > before, "the new channel sits above Raid");
-        Assert.True(during > before && during < after, $"{before} < {during} < {after}");
+        Assert.True(tops.Any(during => during > before && during < after), $"{before} < one of {string.Join(" ", tops.Distinct())} < {after}");
         main.Close();
     }
 
@@ -334,13 +347,22 @@ public sealed class ItemMotionTests : IDisposable
         var raid = server.Channels.Single(c => c.Name == "Raid");
         var row = main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(raid)!;
         double height = row.Bounds.Height;
+        // how far it folds while it is still in the list, recorded as it happens: the list lets it go after Motion.Normal
+        // of real time, and under load one frame can take as long
+        double least = height, faintest = 1;
+        row.PropertyChanged += (_, _) =>
+        {
+            if (!server.Channels.Contains(raid)) return;
+            least = Math.Min(least, row.Bounds.Height);
+            faintest = Math.Min(faintest, row.Opacity);
+        };
         server.Apply(new ChannelRemoved(FakeServers.Raid));
-        Settle(100);
+        Dispatcher.UIThread.RunJobs(); // the fold starts on the UI thread
         Assert.Contains(raid, server.Channels); // still there, folding away
         Assert.Contains("leaving", row.Classes);
         Assert.False(row.IsHitTestVisible);
-        Assert.True(row.Bounds.Height < height && row.Opacity < 1, $"{row.Bounds.Height} of {height}, {row.Opacity}");
-        Settle(400);
+        MotionWait.Until(() => !server.Channels.Contains(raid));
+        Assert.True(least < height && faintest < 1, $"{least} of {height}, {faintest}");
         Assert.DoesNotContain(raid, server.Channels);
         main.Close();
     }
@@ -353,20 +375,32 @@ public sealed class ItemMotionTests : IDisposable
         var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = Motion.Normal };
         var below = Container(list, "c");
         double before = below.TranslatePoint(default, window)!.Value.Y;
-        CollectionSync.Sync(rows, [new Row("a", 1), new Row("c", 1)], leave);
-        Settle(100);
+        // what the rows do while b folds, recorded as it happens: the list lets it go after Motion.Normal of real time,
+        // and under load one frame can take as long
         var b = Container(list, "b");
-        Assert.True(b.Opacity < 1 && OffsetX(b) < 0, "fades and drifts to the left");
-        double during = Container(list, "c").TranslatePoint(default, window)!.Value.Y; // a rebuilt row: a new container
-        Assert.True(during < before, "the rows below move up while it folds");
+        var faint = MotionWait.Record(b, v => v.Opacity);
+        var drift = MotionWait.Record(b, OffsetX);
+        var tops = new List<double>(); // c's place after every layout pass, whichever container shows it
+        list.LayoutUpdated += (_, _) =>
+        {
+            if (list.GetRealizedContainers().FirstOrDefault(r => list.ItemFromContainer(r) is Row { Key: "c" }) is { } c)
+                tops.Add(c.TranslatePoint(default, window)!.Value.Y);
+        };
+        bool Folds() => faint.Any(o => o < 1) && drift.Any(x => x < 0);
+        CollectionSync.Sync(rows, [new Row("a", 1), new Row("c", 1)], leave);
+        MotionWait.Until(() => (Folds() && tops.Any(top => top < before)) || !rows.Any(r => r.Key == "b"));
+        Assert.True(Folds(), "fades and drifts to the left");
+        Assert.True(tops.Any(during => during < before), "the rows below move up while it folds");
 
         CollectionSync.Sync(rows, [new Row("a", 2), new Row("b", 2), new Row("c", 2)], leave); // back meanwhile
-        Settle(400);
-        var back = Container(list, "b");
-        Assert.Equal(1, back.Opacity, 2);
-        Assert.Equal(30, back.Bounds.Height, 1);
-        Assert.True(back.IsHitTestVisible);
-        Assert.Equal(3, rows.Count);
+        MotionWait.Eventually(() =>
+        {
+            var back = Container(list, "b");
+            Assert.Equal(1, back.Opacity, 2);
+            Assert.Equal(30, back.Bounds.Height, 1);
+            Assert.True(back.IsHitTestVisible);
+            Assert.Equal(3, rows.Count);
+        });
     }
 
     [AvaloniaFact]
@@ -408,8 +442,7 @@ public sealed class ItemMotionTests : IDisposable
         for (int i = 0; i < 5; i++) Frame();
         double most = Math.Max(OffsetY(raid), Most(seen, item => item is ChannelViewModel { Name: "Raid" }));
         Assert.True(most > 0.5 * (before - now), $"it starts where it was: {most} of {before - now}");
-        Settle(500);
-        Assert.Equal(0, OffsetY(raid), 2);
+        MotionWait.Eventually(() => Assert.Equal(0, OffsetY(raid), 2));
         main.Close();
     }
 
@@ -440,29 +473,39 @@ public sealed class ItemMotionTests : IDisposable
         var main = Connected(out var server);
         var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
         double oldTop = UserContainer(main, nickname).TranslatePoint(default, overlay)!.Value.Y;
-        // where the picture starts, taken the moment it is put in the overlay: frames may come late under load
-        double? start = null;
+        // the picture taken the moment it is put in the overlay: where it starts, and how the new row waits for it then.
+        // Frames may come late under load, a later look could find the flight over
+        Border? ghost = null;
+        double? start = null, waiting = null;
+        int pictures = 0;
         overlay.Children.CollectionChanged += (_, e) =>
         {
             foreach (var added in e.NewItems?.OfType<Border>() ?? [])
-                if (added.Classes.Contains(FlyGhost.GhostClass)) start ??= Canvas.GetTop(added);
+                if (added.Classes.Contains(FlyGhost.GhostClass))
+                {
+                    pictures++;
+                    ghost ??= added;
+                    start ??= Canvas.GetTop(added);
+                    waiting ??= Arrived(main, nickname).Opacity;
+                }
         };
         server.Apply(new UserUpdated(nickname == "anna" ? Anna(FakeServers.Lobby)
             : new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
-        Frame();
-        Frame();
-        var ghost = Assert.Single(Ghosts(main, FlyGhost.GhostClass));
-        Assert.Equal(0, Arrived(main, nickname).Opacity); // the new row waits for its picture
-        double landed = LastTop(ghost, out _);
+        MotionWait.Until(() => ghost is not null);
+        Assert.Equal(1, pictures);
+        Assert.True(waiting == 0, $"the new row waits for its picture ({waiting})");
+        double landed = LastTop(ghost!, out _);
         Assert.True(start is { } s && Math.Abs(s - oldTop) < 1, $"starts on the old row: {start} vs {oldTop}");
         Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
         Assert.Equal(1, Arrived(main, nickname).Opacity, 2); // shown in the frame the picture went: no gap
         Assert.DoesNotContain("fresh", Arrived(main, nickname).Classes); // and no flash, the flight showed where it went
-        Settle(250);
-        var row = Arrived(main, nickname);
-        Assert.Equal(row.TranslatePoint(default, overlay)!.Value.Y, landed, 1); // landed exactly on the new row
+        MotionWait.Eventually(() =>
+        {
+            var row = Arrived(main, nickname);
+            Assert.Equal(row.TranslatePoint(default, overlay)!.Value.Y, landed, 1); // landed exactly on the new row
+            Assert.Equal(1, row.Opacity, 2); // shows once the picture has landed
+        });
         Assert.Equal(up, landed < oldTop);
-        Assert.Equal(1, row.Opacity, 2); // shows once the picture has landed
         main.Close();
     }
 
@@ -470,19 +513,44 @@ public sealed class ItemMotionTests : IDisposable
     public void OwnSwitch_CurrentHighlightSlides()
     {
         var main = Connected(out var server);
-        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
-        Settle(60);
-        Assert.Single(Ghosts(main, FlyGhost.HighlightClass));
-        Settle(70); // still flying, before the hand-over; the row's own colour transition is over
-        var raidRow = ChannelContainer(main, "Raid").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
-        Assert.Contains(FlyGhost.ArrivingClass, raidRow.Classes);
-        Assert.Equal(Avalonia.Media.Colors.Transparent, (raidRow.Background as Avalonia.Media.ISolidColorBrush)?.Color); // waits for the highlight
-        double landed = LastTop(Ghosts(main, FlyGhost.HighlightClass).Single(), out _);
-        Assert.Empty(Ghosts(main, FlyGhost.HighlightClass));
-        Assert.DoesNotContain(FlyGhost.ArrivingClass, raidRow.Classes); // handed over before the ghost went: no gap
-        Settle(250);
         var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
-        Assert.Equal(raidRow.TranslatePoint(default, overlay)!.Value.Y, landed, 1); // lands on Raid although my old row above folded meanwhile
+        var raidRow = ChannelContainer(main, "Raid").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
+        // the highlight as it is put in the overlay, and Raid's row while it waits for it, recorded as it happens: under
+        // load one frame can outlast the whole flight
+        Border? highlight = null;
+        int highlights = 0;
+        overlay.Children.CollectionChanged += (_, e) =>
+        {
+            foreach (var added in e.NewItems?.OfType<Border>() ?? [])
+                if (added.Classes.Contains(FlyGhost.HighlightClass))
+                {
+                    highlights++;
+                    highlight ??= added;
+                }
+        };
+        bool arriving = false;
+        Avalonia.Media.Color? waited = null; // the row's colour while it waits, as last seen before the hand-over
+        void Look()
+        {
+            if (!raidRow.Classes.Contains(FlyGhost.ArrivingClass)) return;
+            arriving = true;
+            waited = (raidRow.Background as Avalonia.Media.ISolidColorBrush)?.Color;
+        }
+        raidRow.Classes.CollectionChanged += (_, _) => Look();
+        raidRow.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == Border.BackgroundProperty) Look();
+        };
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
+        MotionWait.Until(() => highlight is not null);
+        Assert.Equal(1, highlights);
+        double landed = LastTop(highlight!, out _);
+        Assert.Empty(Ghosts(main, FlyGhost.HighlightClass));
+        Assert.True(arriving, "Raid's row waits for the highlight");
+        Assert.Equal(Avalonia.Media.Colors.Transparent, waited); // its own colour stays away until the hand-over
+        Assert.DoesNotContain(FlyGhost.ArrivingClass, raidRow.Classes); // handed over before the ghost went: no gap
+        // lands on Raid although my old row above folded meanwhile
+        MotionWait.Eventually(() => Assert.Equal(raidRow.TranslatePoint(default, overlay)!.Value.Y, landed, 1));
         Assert.DoesNotContain(FlyGhost.ArrivingClass, raidRow.Classes);
         main.Close();
     }
@@ -499,8 +567,7 @@ public sealed class ItemMotionTests : IDisposable
         double gast = Least(seen, item => item is Row { Key: "Gast" });
         Assert.True(admin > 30, $"Admin glides up from 60 px below ({admin})");
         Assert.True(gast < -15, $"the others make room, gliding as well ({gast})");
-        Settle(500);
-        Assert.Equal(0, OffsetY(Container(list, "Admin")), 2);
+        MotionWait.Eventually(() => Assert.Equal(0, OffsetY(Container(list, "Admin")), 2));
     }
 
     [AvaloniaFact]
@@ -512,17 +579,22 @@ public sealed class ItemMotionTests : IDisposable
         var server = FakeServers.Crowded();
         vm.Server = server;
         Settle(400);
+        MotionWait.Connected(main);
+        // every picture put in the overlay counts, not only one a frame finds there: under load a flight is over within a frame
+        int pictures = 0;
+        Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
+            pictures += e.NewItems?.OfType<Border>().Count(b => b.Classes.Contains(FlyGhost.GhostClass)) ?? 0;
         var lobby = server.Channels.First();
         var far = server.Channels.Last().Users.First(); // in the last channel, scrolled out of view
         server.Apply(new UserUpdated(server.Mirror.Users[far.SessionId] with { ChannelId = lobby.Id }));
         Settle(60);
-        Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
+        Assert.Equal(0, pictures);
 
         // and the other way round: from the Lobby into a channel scrolled out of view
         var mine = server.Channels.First().Users.First(u => !u.IsSelf);
         server.Apply(new UserUpdated(server.Mirror.Users[mine.SessionId] with { ChannelId = server.Channels.Last().Id }));
         Settle(60);
-        Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
+        Assert.Equal(0, pictures);
         main.Close();
     }
 
@@ -536,6 +608,7 @@ public sealed class ItemMotionTests : IDisposable
         vm.Server = FakeServers.Admin();
         await vm.OpenAdminAsync();
         Settle(400);
+        MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in: the list stands still
         var groups = main.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "GroupList");
         Assert.True(ItemMotion.GetFlip(groups));
         var admin = vm.AdminPage!;
@@ -570,13 +643,14 @@ public sealed class ItemMotionTests : IDisposable
         var (_, list) = Host(rows);
         var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = TimeSpan.FromSeconds(5) }; // stays long after its fold
         CollectionSync.Sync(rows, [new Row("a", 1)], leave);
-        Settle(400); // folded
-        Assert.Equal(0, Container(list, "b").Opacity, 2);
+        MotionWait.Eventually(() => Assert.Equal(0, Container(list, "b").Opacity, 2)); // folded
         CollectionSync.Sync(rows, [new Row("a", 2), new Row("b", 2)], leave);
-        Settle(100);
-        var b = Container(list, "b");
-        Assert.Equal(1, b.Opacity, 2);
-        Assert.Equal(30, b.Bounds.Height, 1);
-        Assert.Equal(0, OffsetX(b));
+        MotionWait.Eventually(() =>
+        {
+            var b = Container(list, "b");
+            Assert.Equal(1, b.Opacity, 2);
+            Assert.Equal(30, b.Bounds.Height, 1);
+            Assert.Equal(0, OffsetX(b));
+        });
     }
 }

@@ -36,7 +36,13 @@ public sealed class ServerLogsTests : IDisposable
         logs.Server("eins");
         var path = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Single();
         var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var release = Task.Delay(40).ContinueWith(_ => reader.Dispose());
+        // A dedicated thread, not a timer continuation: the writer retries for only about 100 ms, and on a busy
+        // CI runner the thread pool can be starved for longer than that.
+        var release = Task.Factory.StartNew(() =>
+        {
+            Thread.Sleep(40);
+            reader.Dispose();
+        }, TaskCreationOptions.LongRunning);
 
         logs.Server("zwei");
         await release;
@@ -50,12 +56,15 @@ public sealed class ServerLogsTests : IDisposable
     static async Task Eventually(Func<string> read, params string[] expected)
     {
         string text = "";
-        for (int i = 0; i < 60; i++)
+        // Generous: returns as soon as the lines are there, and a save on a slow CI disk can hold the lock for seconds.
+        for (var deadline = DateTime.UtcNow.AddSeconds(30); DateTime.UtcNow < deadline;)
         {
             text = read();
             if (expected.All(text.Contains)) return;
             await Task.Delay(50);
         }
+        text = read();
+        if (expected.All(text.Contains)) return;
         Assert.Fail($"Erwartet {string.Join(" | ", expected.Where(e => !text.Contains(e)))} in:\n{text}");
     }
 

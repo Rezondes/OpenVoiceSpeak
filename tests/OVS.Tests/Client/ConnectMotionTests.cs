@@ -67,27 +67,27 @@ public sealed class ConnectMotionTests : IDisposable
         var logo = main.GetVisualDescendants().OfType<LogoMark>().First(l => l.Bounds.Width >= 64);
         var bar = main.GetVisualDescendants().OfType<ProgressBar>().First(p => p.Classes.Contains("connect"));
         vm.IsConnecting = true;
-        Settle(200);
+        // looked at after every frame until it shows: under load a single look can land where the loop is at rest
+        bool breathes = false;
+        MotionWait.Until(() => breathes |= (logo.RenderTransform?.Value.M11 ?? 1) > 1.001 || logo.Opacity < 0.999);
         Assert.Contains("connecting", logo.Classes);
-        Assert.True((logo.RenderTransform?.Value.M11 ?? 1) > 1.001 || logo.Opacity < 0.999, "the logo breathes");
-        Assert.Equal(3, bar.Bounds.Height, 1); // a slim line
+        Assert.True(breathes, "the logo breathes");
+        MotionWait.Eventually(() => Assert.Equal(3, bar.Bounds.Height, 1)); // a slim line
 
+        // every swing and every step of the fade as they happen: under load one frame can outlast the shake
+        var card = Named<StackPanel>(main, "StartCard");
+        var status = Named<TextBlock>(main, "StatusText");
+        var swings = MotionWait.Record(card, OffsetX);
+        var fades = MotionWait.Record(status, v => v.Opacity);
         vm.Status = "Verbindung fehlgeschlagen";
         vm.IsConnecting = false; // failed: no server
-        double shook = 0, faded = 1;
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 450) // a shake swings through 0: the largest swing seen
-        {
-            shook = Math.Max(shook, Math.Abs(OffsetX(Named<StackPanel>(main, "StartCard"))));
-            faded = Math.Min(faded, Named<TextBlock>(main, "StatusText").Opacity);
-            Frame();
-            Thread.Sleep(1);
-        }
+        MotionWait.Until(() => swings.Any(x => Math.Abs(x) > 2) && (OffsetX(card), status.Opacity) == (0d, 1d), atLeast: 450);
+        double shook = swings.Select(x => Math.Abs(x)).DefaultIfEmpty(0).Max(), faded = fades.DefaultIfEmpty(1).Min();
         Assert.True(shook > 2, $"the start card shakes ({shook})");
         Assert.DoesNotContain("connecting", logo.Classes);
         Assert.Equal(1, logo.RenderTransform?.Value.M11 ?? 1, 3); // the breathing stops with the connecting
         Assert.True(faded < 1, "the reason fades in");
-        Assert.Equal((0d, 1d), (OffsetX(Named<StackPanel>(main, "StartCard")), Named<TextBlock>(main, "StatusText").Opacity));
+        Assert.Equal((0d, 1d), (OffsetX(card), status.Opacity));
         main.Close();
     }
 
@@ -113,20 +113,28 @@ public sealed class ConnectMotionTests : IDisposable
             Seen();
             e.Container.Classes.CollectionChanged += (_, _) => Seen();
         };
+        bool Done() => pageLeft && bookmarksLeft && chatCameUp && nameFaded && entered.Count > 1 && MotionWait.IsConnected(main);
         vm.Server = FakeServers.Crowded();
+        // all done within 700 ms. The bound is wall clock time, but an animation can only end on a frame, and its clock
+        // starts with the first frame after it began: on a loaded machine frames come late. So it runs until the sequence
+        // is over and allows four times the longest gap between two frames on top (on an idle machine a few ms)
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 700) // what showed while it connected (a frame may come late)
+        var gap = TimeSpan.Zero;
+        while (!Done() && watch.ElapsedMilliseconds < 5000)
         {
+            var frameStart = watch.Elapsed;
             Frame();
             Thread.Sleep(1);
+            if (watch.Elapsed - frameStart > gap) gap = watch.Elapsed - frameStart;
         }
+        var took = watch.Elapsed;
         builtUp = entered.Count > 1;
         Assert.True(pageLeft, "the home page fades away as a picture");
         Assert.True(bookmarksLeft, "and so do the bookmarks");
         Assert.True(chatCameUp, "the chat comes up from below");
         Assert.True(nameFaded, "the server's name fades in");
         Assert.True(builtUp, "the tree builds up channel by channel");
-        // all done within 700 ms
+        Assert.True(took <= TimeSpan.FromMilliseconds(700) + 4 * gap, $"over after {took.TotalMilliseconds:F0} ms (longest frame gap {gap.TotalMilliseconds:F0} ms)");
         Assert.False(Named<Border>(main, "PageGhost").IsVisible);
         Assert.False(Named<Border>(main, "TreeGhost").IsVisible);
         Assert.Equal((0d, 1d), (OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
@@ -141,16 +149,19 @@ public sealed class ConnectMotionTests : IDisposable
         var main = Open(out var vm);
         vm.Server = FakeServers.Admin();
         Settle(700);
+        MotionWait.Connected(main);
         vm.Status = "Verbindung verloren";
         vm.Server = null;
         Frame();
         Assert.True(Named<Border>(main, "PageGhost").IsVisible && Named<Border>(main, "TreeGhost").IsVisible, "the server folds away as a picture");
         var picture = (Image)Named<Border>(main, "PageGhost").Child!;
-        Settle(100);
-        Assert.True(OffsetY(picture) > 0, "it goes down");
-        Settle(600);
-        Assert.False(Named<Border>(main, "PageGhost").IsVisible);
-        Assert.True(Named<TextBlock>(main, "StatusText").IsEffectivelyVisible);
+        var drops = MotionWait.Record(picture, OffsetY); // as it happens: under load one frame can outlast the fold
+        MotionWait.Eventually(() =>
+        {
+            Assert.False(Named<Border>(main, "PageGhost").IsVisible);
+            Assert.True(Named<TextBlock>(main, "StatusText").IsEffectivelyVisible);
+        });
+        Assert.True(drops.Any(y => y > 0), "it goes down");
         Assert.Equal("Verbindung verloren", Named<TextBlock>(main, "StatusText").Text);
         main.Close();
     }
@@ -162,13 +173,16 @@ public sealed class ConnectMotionTests : IDisposable
         var main = Open(out var vm);
         vm.Server = FakeServers.Admin();
         Settle(700);
+        MotionWait.Connected(main);
         vm.Server = null;
         vm.Server = FakeServers.Crowded();
         Assert.True(Named<Border>(main, "PageGhost").IsVisible); // the old server's picture covers the change at once
         Frame();
-        Settle(700);
-        Assert.False(Named<Border>(main, "PageGhost").IsVisible);
-        Assert.True(Named<ItemsControl>(main, "ChannelItems").IsEffectivelyVisible);
+        MotionWait.Eventually(() =>
+        {
+            Assert.False(Named<Border>(main, "PageGhost").IsVisible);
+            Assert.True(Named<ItemsControl>(main, "ChannelItems").IsEffectivelyVisible);
+        });
         main.Close();
     }
 
@@ -196,7 +210,8 @@ public sealed class ConnectMotionTests : IDisposable
         main.Width = 360;
         Settle(100);
         vm.Server = FakeServers.Admin();
-        Settle(800);
+        Settle(800); // longer than the build-up waits for a tree to show (500 ms)
+        MotionWait.Connected(main);
         var menu = main.GetVisualDescendants().OfType<Button>().Single(b => b.IsEffectivelyVisible
             && Avalonia.Automation.AutomationProperties.GetName(b) == OVS.Client.Localization.Strings.Ui_ShowChannels);
         menu.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));

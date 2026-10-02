@@ -224,7 +224,8 @@ public sealed class UpdateTests : IDisposable
         var locked = new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None);
         _ = Task.Delay(700).ContinueWith(_ => locked.Dispose());
 
-        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, pause: TimeSpan.FromMilliseconds(500)));
+        // up to 10 s of retries: the release above may come late on a busy runner, it still has to wait for it
+        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, attempts: 100, pause: TimeSpan.FromMilliseconds(100)));
         Assert.False(File.Exists(exe + ".old"));
     }
 
@@ -238,7 +239,7 @@ public sealed class UpdateTests : IDisposable
 
         var result = await UpdateInstaller.CleanupOldAsync(exe, attempts: 3, pause: TimeSpan.FromMilliseconds(100));
         Assert.StartsWith("Alte Version konnte nicht entfernt werden", result);
-        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(2), clock.Elapsed.ToString());
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), clock.Elapsed.ToString()); // gives up instead of hanging (with room for a slow runner)
         Assert.True(File.Exists(exe + ".old"));
     }
 

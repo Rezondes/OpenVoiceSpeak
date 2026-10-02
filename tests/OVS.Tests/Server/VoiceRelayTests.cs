@@ -33,6 +33,20 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         vc = new TestVoice(c, server.VoiceEndPoint);
     }
 
+    /// <summary>
+    /// Sends voice until the receiver hears it: a busy runner can drop a datagram even on loopback. Only for
+    /// tests about where voice goes, not about how often (and not before a silence check on the same receiver).
+    /// </summary>
+    static async Task<(VoiceHeader Header, byte[] Plain)?> SendUntilHeardAsync(TestVoice from, TestVoice to, byte target = VoiceHeader.TargetChannel)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            await from.SendAsync(PacketType.Voice, Opus, target);
+            if (await to.ReceiveVoiceAsync(5000) is { } got) return got;
+        }
+        return null;
+    }
+
     public async Task DisposeAsync()
     {
         foreach (var v in new[] { va, vb, vc }) v.Dispose();
@@ -72,8 +86,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetChannel);
         Assert.Null(await vc.ReceiveVoiceAsync(400));
 
-        await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetLinked);
-        var got = await vc.ReceiveVoiceAsync();
+        var got = await SendUntilHeardAsync(va, vc, VoiceHeader.TargetLinked);
         Assert.NotNull(got);
         Assert.Equal(VoiceHeader.TargetLinked, got.Value.Header.Target);
     }
@@ -152,8 +165,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await a.SendAsync(new EditChannel(lobby, "Lobby", "", 0, IsMuted: false));
         await a.SendAsync(new EditChannel(other, "Other", "", 1, IsMuted: true));
         await c.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == other && u.Channel.IsMuted);
-        await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetLinked);
-        Assert.NotNull(await vc.ReceiveVoiceAsync());
+        Assert.NotNull(await SendUntilHeardAsync(va, vc, VoiceHeader.TargetLinked));
     }
 
     [Fact]
@@ -181,8 +193,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await spoofed.SendAsync(PacketType.Hello, []);
         Assert.Null(await spoofed.ReceiveAsync(300));
 
-        await va.SendAsync(PacketType.Voice, Opus);
-        Assert.NotNull(await vb.ReceiveVoiceAsync());
+        Assert.NotNull(await SendUntilHeardAsync(va, vb));
         Assert.Null(await spoofed.ReceiveVoiceAsync(300));
         Assert.Equal(before + 1, server.Voice.ForeignSourceDrops);
     }
@@ -196,7 +207,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
         using var flood = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
         var garbage = stranger.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Ping, c.Id, 0, 0), []);
-        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var deadline = DateTime.UtcNow.AddSeconds(30); // ends as soon as the filter kicks in
         while (server.Voice.PreFilterDrops == 0 && DateTime.UtcNow < deadline)
             for (int i = 0; i < 100; i++) await flood.SendAsync(garbage, server.VoiceEndPoint);
         Assert.True(server.Voice.PreFilterDrops > 0);

@@ -158,6 +158,8 @@ public sealed class MotionCoverageTests : IDisposable
     /// Frames until the action is over: no animation started from code runs any more, no list row enters or leaves, and
     /// the end state has held for a moment. The animated display watches an action at least 160 ms (a waiting state
     /// shows after 150 ms, a style transition takes 120 to 220 ms); the simplified one changes at once and gets a few frames.
+    /// It gives up after 5 s: under load an action's animations take many frames' time, and a step that never settles
+    /// shows as another end state.
     /// </summary>
     /// <param name="watchLeast">False for what only prepares or sets back: no waiting state or transition to see there.</param>
     static void Settle(Walk w, Action? look = null, bool watchLeast = true)
@@ -167,7 +169,7 @@ public sealed class MotionCoverageTests : IDisposable
         var watch = Stopwatch.StartNew();
         string? last = null;
         long since = 0;
-        while (watch.ElapsedMilliseconds < 2000)
+        while (watch.ElapsedMilliseconds < 5000)
         {
             Frame();
             look?.Invoke();
@@ -642,6 +644,7 @@ public sealed class MotionCoverageTests : IDisposable
         vm.Server = server;
         Watch(800);
         Motion.Apply(main, DisplayMode.Animated);
+        MotionWait.Connected(main); // under load connecting takes longer: the storm starts on a still tree
         var before = server.Channels.ToDictionary(c => c.Name, c => string.Join(",", c.Users.Select(u => u.Nickname)));
         var tree = main.FindControl<ItemsControl>("ChannelItems")!;
         int running = Motion.Running;

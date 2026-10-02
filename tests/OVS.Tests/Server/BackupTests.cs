@@ -112,7 +112,8 @@ public sealed class BackupTests : IDisposable
         await client.WaitForAsync<ChatMessage>(m => m.Text == "hallo");
 
         await admin.SendAsync(new RestoreBackup(backup));
-        Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>()).Reason);
+        // a restore writes a safety backup and the data file first, slow on a CI disk
+        Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
         // The disconnect arrives while the server still holds its lock and writes the data file on closing; reading the
         // pending restore takes that lock, so the file is complete once it returns.
         Assert.NotNull(server.State.PendingRestore);
@@ -391,7 +392,8 @@ public sealed class BackupTests : IDisposable
         await admin.WaitForAsync<UploadBackupAck>(r => r.RequestId == "halb");
         Assert.Single(UploadFiles(server.DataDir));
         await admin.DisposeAsync();
-        for (int i = 0; i < 50 && UploadFiles(server.DataDir).Length > 0; i++) await Task.Delay(50);
+        // the server notices the closed connection on its own time: poll with a generous cap
+        for (var deadline = DateTime.UtcNow.AddSeconds(30); UploadFiles(server.DataDir).Length > 0 && DateTime.UtcNow < deadline;) await Task.Delay(50);
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.Empty(Directory.GetFiles(backups, "*.ovsbackup"));
 
@@ -451,7 +453,8 @@ public sealed class BackupTests : IDisposable
 
     static async Task<TestClient> ConnectWhenUpAsync(int port, string nickname, ClientIdentity identity, Task host)
     {
-        for (int i = 0; i < 100 && !host.IsCompleted; i++)
+        // Generous: a run ending and the next one starting can take long on a loaded CI runner; it returns once up.
+        for (var deadline = DateTime.UtcNow.AddSeconds(30); DateTime.UtcNow < deadline && !host.IsCompleted;)
         {
             if (await TryConnectAsync(port, nickname, identity) is { } client) return client;
             await Task.Delay(100);
@@ -468,7 +471,7 @@ public sealed class BackupTests : IDisposable
         public async ValueTask DisposeAsync()
         {
             stop.Cancel();
-            Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(10)));
+            Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(30)));
             stop.Dispose();
         }
     }
@@ -532,8 +535,8 @@ public sealed class BackupTests : IDisposable
             await admin2.WaitForAsync<ChannelAdded>();
 
             await admin2.SendAsync(new RestoreBackup(backup));
-            Assert.Equal(Codes.Restoring, (await admin2.WaitForAsync<Disconnected>(timeoutMs: 10_000)).Reason);
-            Assert.Equal(Codes.Restoring, (await anna.WaitForAsync<Disconnected>(timeoutMs: 10_000)).Reason);
+            Assert.Equal(Codes.Restoring, (await admin2.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+            Assert.Equal(Codes.Restoring, (await anna.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
             await admin2.DisposeAsync();
 
             await using var again = await ConnectWhenUpAsync(host.Port, "chef", adminId, host.Run);
@@ -578,11 +581,11 @@ public sealed class BackupTests : IDisposable
             await admin.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Neu");
 
             host.Stop(); // a plain shutdown: the wait ends, the sessions are still open
-            await gap.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await gap.Task.WaitAsync(TimeSpan.FromSeconds(30));
             await admin.SendAsync(new RestoreBackup(backup));
-            Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 10_000)).Reason);
+            Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
             sent.SetResult();
-            Assert.Equal(0, await host.Run.WaitAsync(TimeSpan.FromSeconds(10)));
+            Assert.Equal(0, await host.Run.WaitAsync(TimeSpan.FromSeconds(30)));
         }
         var channels = new DataStore(Path.Combine(dir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Channels;
         Assert.Contains(channels, c => c.Name == "Alt");
@@ -615,7 +618,7 @@ public sealed class BackupTests : IDisposable
 
             File.WriteAllBytes(Path.Combine(dir, ServerIconStore.FileName), TestImages.Encode(64, 64)); // a logo the backup does not have
             await admin.SendAsync(new RestoreBackup("alt.ovsbackup"));
-            Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 10_000)).Reason);
+            Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
             await admin.DisposeAsync();
 
             await using var again = await ConnectWhenUpAsync(host.Port, "chef", adminId, host.Run);

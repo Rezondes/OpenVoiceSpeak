@@ -40,11 +40,11 @@ public sealed class ChatMotionTests : IDisposable
         }
     }
 
-    /// <summary>Lets the clock run until the condition holds (at most 3 s): on a busy machine frames come late.</summary>
+    /// <summary>Lets the clock run until the condition holds (at most 5 s): on a busy machine frames come late.</summary>
     static void SettleUntil(Func<bool> done)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < 3000) Settle(10);
+        while (!done() && watch.ElapsedMilliseconds < 5000) Settle(10);
     }
 
     static void Frame()
@@ -63,8 +63,30 @@ public sealed class ChatMotionTests : IDisposable
         vm.Server = server;
         Settle(700);
         Motion.Apply(main, display);
+        MotionWait.Connected(main); // under load connecting takes longer: no test acts while it still moves
         return (main, vm, server, main.GetVisualDescendants().OfType<ChatView>().Single());
     }
+
+    /// <summary>
+    /// Under load the lines are laid out late: waits until the list is long, has stopped growing and the glide along it
+    /// has reached the end, so the reader can go up and stay there.
+    /// </summary>
+    static void LaidOutAtTheEnd(ScrollViewer scroller)
+    {
+        double extent = -1;
+        SettleUntil(() =>
+        {
+            bool settled = scroller.Extent.Height == extent && scroller.Extent.Height > scroller.Viewport.Height + 200 && AtEnd(scroller);
+            extent = scroller.Extent.Height;
+            Settle(30);
+            return settled;
+        });
+    }
+
+    static bool AtEnd(ScrollViewer scroller) => scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 1;
+
+    /// <summary>The glow on a card's left edge (an inset shadow), 0 without one.</summary>
+    static double Glow(Border card) => card.BoxShadow.Count > 0 && card.BoxShadow[0].IsInset ? card.BoxShadow[0].OffsetX : 0;
 
     static ChatMessage From(string nick, uint id, string text) =>
         new(ChatTarget.Server, id, nick, null, null, text, DateTimeOffset.Now);
@@ -104,7 +126,7 @@ public sealed class ChatMotionTests : IDisposable
         Frame();
         (opacity, x) = Arrival(() => Row(chat, "Hallo anna"));
         Assert.True(opacity < 1 && x > 0, $"one's own comes from the composer side ({opacity}, {x})");
-        Assert.Equal(0, OffsetX(Row(chat, "Hallo anna")));
+        MotionWait.Eventually(() => Assert.Equal(0, OffsetX(Row(chat, "Hallo anna"))));
         main.Close();
     }
 
@@ -129,16 +151,8 @@ public sealed class ChatMotionTests : IDisposable
         for (int i = 0; i < 25; i++) server.Apply(From("anna", 2, $"Zeile {i}"));
         var scroller = chat.FindControl<ScrollViewer>("Scroller")!;
         var pill = chat.FindControl<Button>("NewMessagesPill")!;
-        bool AtEnd() => scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 1;
-        // under load the 25 lines are laid out late: the reader can only go up once the list is long and has stopped growing
-        double extent = -1;
-        SettleUntil(() =>
-        {
-            bool settled = scroller.Extent.Height == extent && scroller.Extent.Height > scroller.Viewport.Height + 200 && AtEnd();
-            extent = scroller.Extent.Height;
-            Settle(30);
-            return settled;
-        });
+        bool AtEnd() => ChatMotionTests.AtEnd(scroller);
+        LaidOutAtTheEnd(scroller); // the reader can only go up once the list is long and has stopped growing
         Assert.True(scroller.Offset.Y >= scroller.Extent.Height - scroller.Viewport.Height - 1, "at the end it glided along");
         Assert.False(pill.IsVisible);
 
@@ -172,9 +186,11 @@ public sealed class ChatMotionTests : IDisposable
         Assert.DoesNotContain("sending", bubble.Classes);
         Assert.True(bubble.Opacity < 1, "it turns normal with a fade");
         Assert.Contains(bubble.GetVisualDescendants().OfType<PathIcon>(), i => i.Classes.Contains("sentMark"));
-        Settle(900);
-        Assert.Equal(1, bubble.Opacity, 2);
-        Assert.DoesNotContain(bubble.GetVisualDescendants().OfType<PathIcon>(), i => i.Classes.Contains("sentMark"));
+        MotionWait.Eventually(() =>
+        {
+            Assert.Equal(1, bubble.Opacity, 2);
+            Assert.DoesNotContain(bubble.GetVisualDescendants().OfType<PathIcon>(), i => i.Classes.Contains("sentMark"));
+        });
         main.Close();
     }
 
@@ -184,11 +200,13 @@ public sealed class ChatMotionTests : IDisposable
         var (main, vm, _, chat) = Open();
         vm.Chat!.AddNotice(new Notice(DateTime.Now, "Etwas ging schief", NoticeKind.Error));
         Frame();
-        Settle(60);
+        // the glow as it happens (the pulse starts after the row is shown): under load one frame can outlast it
         var card = Row(chat, "Etwas ging schief").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("card"));
-        Assert.True(card.BoxShadow.Count > 0 && card.BoxShadow[0].IsInset && card.BoxShadow[0].OffsetX > 0, "its left edge glows");
-        Settle(700);
-        Assert.True(card.BoxShadow.Count == 0 || card.BoxShadow[0].OffsetX < 0.5);
+        var glow = MotionWait.Record(card, v => Glow((Border)v));
+        glow.Add(Glow(card));
+        MotionWait.Until(() => glow.Any(g => g > 0));
+        Assert.True(glow.Any(g => g > 0), "its left edge glows");
+        MotionWait.Eventually(() => Assert.True(card.BoxShadow.Count == 0 || card.BoxShadow[0].OffsetX < 0.5));
         main.Close();
     }
 
@@ -205,8 +223,7 @@ public sealed class ChatMotionTests : IDisposable
             .GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("count"));
         Assert.True(badge.IsVisible);
         Assert.True((badge.RenderTransform?.Value.M11 ?? 1) < 1 || badge.Opacity < 1, "the badge pops in");
-        Settle(400);
-        Assert.Equal(1, badge.RenderTransform?.Value.M11 ?? 1, 2);
+        MotionWait.Eventually(() => Assert.Equal(1, badge.RenderTransform?.Value.M11 ?? 1, 2));
         main.Close();
     }
 
@@ -232,9 +249,11 @@ public sealed class ChatMotionTests : IDisposable
         var (main, vm, server, chat) = Open();
         vm.Chat!.AddNotice(new Notice(DateTime.Now, "Achtung", NoticeKind.Warning));
         Frame();
-        Settle(60);
         var card = Row(chat, "Achtung").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("card"));
-        Assert.True(card.BoxShadow.Count > 0 && card.BoxShadow[0].OffsetX > 0, "a warning's edge glows as well");
+        var glow = MotionWait.Record(card, v => Glow((Border)v)); // as it happens: under load one frame can outlast it
+        glow.Add(Glow(card));
+        MotionWait.Until(() => glow.Any(g => g > 0));
+        Assert.True(glow.Any(g => g > 0), "a warning's edge glows as well");
 
         vm.Chat.Selected = vm.Chat.Tabs[1];
         Settle(400);
@@ -269,12 +288,12 @@ public sealed class ChatMotionTests : IDisposable
     {
         var (main, vm, server, chat) = Open(height: 420);
         for (int i = 0; i < 25; i++) server.Apply(From("anna", 2, $"Zeile {i}"));
-        Settle(500);
         var scroller = chat.FindControl<ScrollViewer>("Scroller")!;
+        LaidOutAtTheEnd(scroller); // the reader can only go up once the list is long and has stopped growing
         scroller.Offset = default;
         Settle(50);
         server.Apply(From("anna", 2, "Noch eine"));
-        Settle(100);
+        SettleUntil(() => chat.FindControl<Button>("NewMessagesPill")!.IsVisible);
         Assert.True(chat.FindControl<Button>("NewMessagesPill")!.IsVisible);
         vm.Appearance = vm.Appearance with { Display = DisplayMode.Simplified };
         Frame();
@@ -293,14 +312,9 @@ public sealed class ChatMotionTests : IDisposable
         entry.Sending!.Pending.Fail("abgelehnt"); // the server said no
         Frame();
         var notSent = Row(chat, "Geht nicht").GetVisualDescendants().OfType<WrapPanel>().First(w => w.Name == "NotSent");
-        double swing = 0;
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < 450) // a shake swings through 0: the largest swing seen
-        {
-            swing = Math.Max(swing, Math.Abs(OffsetX(notSent)));
-            Frame();
-            Thread.Sleep(1);
-        }
+        var swings = MotionWait.Record(notSent, OffsetX); // every swing as it happens: under load one frame can outlast the shake
+        MotionWait.Until(() => swings.Any(x => Math.Abs(x) > 2) && OffsetX(notSent) == 0); // a shake swings through 0, and ends there
+        double swing = swings.Select(x => Math.Abs(x)).DefaultIfEmpty(0).Max();
         Assert.True(notSent.IsVisible);
         Assert.True(swing > 2, $"\"nicht gesendet\" shakes ({swing})");
         main.Close();

@@ -70,7 +70,7 @@ public sealed class LimitsTests
         }
         Assert.True(closed || await client.WaitClosedAsync());
         // The goodbye can reach the client a moment before the server writes its log line.
-        for (int i = 0; i < 100 && !server.Log.Any(l => l.Contains("flut getrennt (zu viele Anfragen)")); i++) await Task.Delay(50);
+        for (int i = 0; i < 200 && !server.Log.Any(l => l.Contains("flut getrennt (zu viele Anfragen)")); i++) await Task.Delay(50);
         Assert.Contains(server.Log, l => l.Contains("flut getrennt (zu viele Anfragen)"));
     }
 
@@ -286,7 +286,7 @@ public sealed class LimitsTests
         {
         }
 
-        var deadline = DateTime.UtcNow.AddSeconds(8);
+        var deadline = DateTime.UtcNow.AddSeconds(30); // returns early; a loaded CI runner can take long to notice
         while ((server.State.SessionCount > 0 || server.State.ConnectionsFrom(IPAddress.Loopback) > 0) && DateTime.UtcNow < deadline)
             await Task.Delay(50);
         Assert.Equal(0, server.State.SessionCount);
@@ -312,13 +312,18 @@ public sealed class LimitsTests
         await using var server = await TestServer.StartAsync(maxPendingHandshakes: 1);
         using var stalled = new TcpClient();
         await stalled.ConnectAsync(IPAddress.Loopback, server.Port); // no TLS: holds the only handshake slot
-        await Task.Delay(200);
+        // Wait until the accept loop has taken it (it counts the connection right before the slot), not a fixed time.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (server.State.ConnectionsFrom(IPAddress.Loopback) == 0 && DateTime.UtcNow < deadline) await Task.Delay(20);
+        Assert.Equal(1, server.State.ConnectionsFrom(IPAddress.Loopback));
+        await Task.Delay(100);
 
         await Assert.ThrowsAnyAsync<Exception>(() => TestClient.OpenAsync(server.Port));
 
         stalled.Close();
         TestClient? late = null;
-        for (int i = 0; i < 40 && late is null; i++)
+        deadline = DateTime.UtcNow.AddSeconds(30);
+        while (late is null && DateTime.UtcNow < deadline)
         {
             try
             {

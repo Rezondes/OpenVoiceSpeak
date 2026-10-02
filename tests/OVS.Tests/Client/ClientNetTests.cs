@@ -105,7 +105,7 @@ public sealed class ClientNetTests : IDisposable
 
         Assert.Equal(mirror.DefaultChannelId, mirror.Self!.ChannelId);
         await using var second = await Connect(server, "bert");
-        await joined.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await joined.Task.WaitAsync(TimeSpan.FromSeconds(10));
         lock (mirror) Assert.Contains(mirror.Users.Values, u => u.Nickname == "bert");
     }
 
@@ -120,7 +120,7 @@ public sealed class ClientNetTests : IDisposable
         victim.Disconnected += (r, d) => reason.TrySetResult((r, d));
 
         await a.SendAsync(new Kick(victim.Welcome.SessionId, "tschüss"));
-        Assert.Equal((Codes.Kicked, "tschüss"), await reason.Task.WaitAsync(TimeSpan.FromSeconds(3)));
+        Assert.Equal((Codes.Kicked, "tschüss"), await reason.Task.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class ClientNetTests : IDisposable
 
         var opus = RandomNumberGenerator.GetBytes(70);
         va.SendVoice(opus, VoiceHeader.TargetChannel);
-        var got = await received.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var got = await received.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal(a.Welcome.SessionId, got.Speaker);
         Assert.Equal(VoiceHeader.TargetChannel, got.Target);
         Assert.Equal(opus, got.Opus);
@@ -172,14 +172,16 @@ public sealed class ClientNetTests : IDisposable
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
         va.SendPing();
         va.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
-        await two.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await two.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         lock (seqs) Assert.Equal(seqs[0] + 1, seqs[1]);
     }
 
+    /// <summary>Waits up to 10 s by the clock (not by a loop count: Task.Delay(20) may take far longer on a busy runner).</summary>
     static async Task WaitUntil(Func<bool> condition)
     {
-        for (int i = 0; i < 100 && !condition(); i++) await Task.Delay(20);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition() && watch.ElapsedMilliseconds < 10_000) await Task.Delay(20);
         Assert.True(condition());
     }
 }

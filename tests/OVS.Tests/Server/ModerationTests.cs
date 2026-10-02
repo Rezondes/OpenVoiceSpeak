@@ -225,8 +225,14 @@ public sealed class ModerationTests : IAsyncLifetime
 
         await m.SendAsync(new SetServerMute(g.Id, false));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && !u.User.ServerMuted);
-        await vg.SendAsync(OVS.Shared.Voice.PacketType.Voice, new byte[80], OVS.Shared.Voice.VoiceHeader.TargetChannel);
-        Assert.NotNull(await va.ReceiveVoiceAsync());
+        // resent until heard: a busy runner can drop a datagram even on loopback, and this part is about the mute being lifted
+        (OVS.Shared.Voice.VoiceHeader Header, byte[] Plain)? heard = null;
+        for (int i = 0; i < 5 && heard is null; i++)
+        {
+            await vg.SendAsync(OVS.Shared.Voice.PacketType.Voice, new byte[80], OVS.Shared.Voice.VoiceHeader.TargetChannel);
+            heard = await va.ReceiveVoiceAsync(5000);
+        }
+        Assert.NotNull(heard);
     }
 
     [Fact]
@@ -244,6 +250,9 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal(Codes.NotFound, (await m.ErrorAsync("unknown")).Code);
 
         await m.SendAsync(new SetStoredServerMute(guestId.Fingerprint, false));
+        // the list comes from another session: first make sure m's request is done (m's answers come in order)
+        await m.SendAsync(new SetStoredServerMute("unbekannt", false) { RequestId = "done" });
+        await m.ErrorAsync("done");
         Assert.False((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
         Assert.False(StoredUser(guestId.Fingerprint).ServerMuted);
         Assert.Contains(server.Log, l => l.Contains("gast serverseitig wieder freigegeben von mod (offline)"));
@@ -665,8 +674,10 @@ public sealed class ModerationTests : IAsyncLifetime
         var group = (await a.WaitForAsync<GroupsChanged>(c => c.Groups.Any(x => x.Name == "Entbanner"))).Groups.Single(x => x.Name == "Entbanner").Id;
         await using var u = await ConnectInGroupAsync("entbanner", group);
         await u.SendAsync(new Unban(ban.Id) { RequestId = "lift" });
-        await u.AssertNoMessageAsync<BanList>();
-        await u.AssertNoMessageAsync<Error>();
+        // a request that surely fails: its answer comes after anything the unban sent back, however slow the server
+        await u.SendAsync(new MoveUser(u.Id, Guid.NewGuid()) { RequestId = "probe" });
+        while (await u.NextAsync() is { } message and not Error { RequestId: "probe" })
+            Assert.False(message is BanList or Error, $"unexpected {message}");
         Assert.Equal("entbanner", Assert.Single(await BansAsync(m)).LiftedBy);
         Assert.IsType<Welcome>(await ReconnectGuestAsync());
     }

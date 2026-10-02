@@ -27,14 +27,15 @@ public sealed class LogCommandTests
         return (await client.WaitForAsync<LogList>(l => l.RequestId == id)).Files;
     }
 
+    // Generous waits in this file: reading and searching log files on a slow CI disk can take long; they return early.
     static async Task<LogPage> ReadAsync(TestClient client, string fileId, int? page = null)
     {
         var id = Guid.NewGuid().ToString("N");
         await client.SendAsync(new ReadLog(fileId, page) { RequestId = id });
-        return await client.WaitForAsync<LogPage>(p => p.RequestId == id, 10_000);
+        return await client.WaitForAsync<LogPage>(p => p.RequestId == id, 30_000);
     }
 
-    static async Task<LogSearchResult> SearchAsync(TestClient client, SearchLogs search, int timeoutMs = 10_000)
+    static async Task<LogSearchResult> SearchAsync(TestClient client, SearchLogs search, int timeoutMs = 30_000)
     {
         var id = Guid.NewGuid().ToString("N");
         await client.SendAsync(search with { RequestId = id });
@@ -229,16 +230,16 @@ public sealed class LogCommandTests
         server.State.LogReader.ReadHook = _ =>
         {
             entered.Release();
-            release.Wait(TimeSpan.FromSeconds(10));
+            release.Wait(TimeSpan.FromSeconds(30));
         };
 
         await admin.SendAsync(new SearchLogs("gesucht") { RequestId = "s" });
-        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(5)), "search did not start");
+        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30)), "search did not start");
         // the search is paused inside a file: chat still flows through the state
         await other.SendAsync(new SendChat(ChatTarget.Channel, null, "noch da?"));
         await admin.WaitForAsync<ChatMessage>(m => m.Text == "noch da?");
         release.Set();
-        var result = await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == "s", 10_000);
+        var result = await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == "s", 30_000);
         Assert.Equal(500, result.Hits.Count);
     }
 
@@ -254,17 +255,17 @@ public sealed class LogCommandTests
         server.State.LogReader.ReadHook = _ =>
         {
             entered.Release();
-            release.Wait(TimeSpan.FromSeconds(10));
+            release.Wait(TimeSpan.FromSeconds(30));
         };
 
         await admin.SendAsync(new SearchLogs("gesucht") { RequestId = "s0" });
-        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(5)), "search did not start");
+        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30)), "search did not start");
         for (int i = 1; i <= 5; i++) await admin.SendAsync(new SearchLogs("gesucht") { RequestId = $"s{i}" });
         // s0 runs, s1 to s3 wait in the session's queue of 4, s4 and s5 are refused
         Assert.Equal(Codes.RateLimited, (await admin.ErrorAsync("s4")).Code);
         Assert.Equal(Codes.RateLimited, (await admin.ErrorAsync("s5")).Code);
         release.Set();
-        for (int i = 0; i <= 3; i++) await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == $"s{i}", 10_000);
+        for (int i = 0; i <= 3; i++) await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == $"s{i}", 30_000);
 
         Assert.Equal(4, server.Log.Count(l => l.Contains("Logs durchsucht von chef")));
     }
@@ -277,7 +278,7 @@ public sealed class LogCommandTests
     {
         var id = Guid.NewGuid().ToString("N");
         await client.SendAsync(new PrepareLogDownload(ids) { RequestId = id });
-        return await client.WaitForAsync<LogDownloadReady>(r => r.RequestId == id, 10_000);
+        return await client.WaitForAsync<LogDownloadReady>(r => r.RequestId == id, 30_000);
     }
 
     /// <summary>Pulls every chunk, one request each.</summary>
@@ -288,7 +289,7 @@ public sealed class LogCommandTests
         {
             var id = Guid.NewGuid().ToString("N");
             await client.SendAsync(new DownloadLogChunk(ready.DownloadId, data.Length) { RequestId = id });
-            var chunk = await client.WaitForAsync<LogChunk>(c => c.RequestId == id, 10_000);
+            var chunk = await client.WaitForAsync<LogChunk>(c => c.RequestId == id, 30_000);
             Assert.Equal((data.Length, ready.Size), (chunk.Offset, chunk.TotalSize));
             data.Write(Convert.FromBase64String(chunk.DataBase64));
             if (chunk.IsLast) return data.ToArray();
@@ -370,7 +371,9 @@ public sealed class LogCommandTests
         await PrepareAsync(admin, [.. files.Keys]);
         Assert.Single(Directory.GetFiles(ExportDir(server)));
         await admin.DisposeAsync();
-        for (int i = 0; i < 50 && Directory.GetFiles(ExportDir(server)).Length > 0; i++) await Task.Delay(20);
+        // the server notices the closed connection on its own time: poll with a generous cap
+        for (var deadline = DateTime.UtcNow.AddSeconds(30); Directory.GetFiles(ExportDir(server)).Length > 0 && DateTime.UtcNow < deadline;)
+            await Task.Delay(20);
         Assert.Empty(Directory.GetFiles(ExportDir(server)));
 
         // what a crash left behind is removed at the next start
@@ -435,15 +438,15 @@ public sealed class LogCommandTests
         server.State.LogReader.ReadHook = _ =>
         {
             entered.Release();
-            release.Wait(TimeSpan.FromSeconds(10));
+            release.Wait(TimeSpan.FromSeconds(30));
         };
 
         await admin.SendAsync(new PrepareLogDownload(["server/2025-01-01_00-00-00.log"]) { RequestId = "p" });
-        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(5)), "copy did not start");
+        Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30)), "copy did not start");
         await other.SendAsync(new SendChat(ChatTarget.Channel, null, "noch da?")); // the copy is paused: chat still flows
         await admin.WaitForAsync<ChatMessage>(m => m.Text == "noch da?");
         release.Set();
-        var ready = await admin.WaitForAsync<LogDownloadReady>(r => r.RequestId == "p", 10_000);
+        var ready = await admin.WaitForAsync<LogDownloadReady>(r => r.RequestId == "p", 30_000);
         Assert.Equal(content.Length, ready.Size);
 
         // one chunk per request, nothing more without asking

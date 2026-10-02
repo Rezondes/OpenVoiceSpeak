@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using OVS.Client.Views;
 using SkiaSharp;
 
 namespace OVS.Tests.Website;
@@ -28,6 +31,34 @@ public static class ShotWriter
             Thread.Sleep(1);
         }
         while (watch.ElapsedMilliseconds < milliseconds);
+        // one frame after the time is up: under load the last one in the loop may have started long before
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>
+    /// Nothing in the window moves or waits to move: no animation started from code runs, no page switch is pending, no
+    /// row enters or flashes (the flash waits on real time).
+    /// </summary>
+    public static bool Quiet(Visual root) => Motion.Running == 0 && !root.GetVisualDescendants().OfType<StyledElement>()
+        .Any(e => e.Classes.Contains("entering") || e.Classes.Contains("fresh") || e.Classes.Contains(PageMotion.PageGhostClass));
+
+    /// <summary>
+    /// Lets the clock run until the window is <see cref="Quiet"/> (at most <paramref name="cap"/> ms), then a little more
+    /// for the style transitions the last change started. A fixed time is not enough under load: every step of a chain
+    /// (a row that enters, then flashes, then fades back) needs its own frames.
+    /// </summary>
+    public static void SettleUntilQuiet(Visual root, int cap = 10_000)
+    {
+        var watch = Stopwatch.StartNew();
+        do
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1);
+        }
+        while (!Quiet(root) && watch.ElapsedMilliseconds < cap);
+        Settle(300); // the transitions are at most 220 ms
     }
 
     /// <summary>The window as it is drawn now.</summary>

@@ -112,11 +112,27 @@ public sealed class UiSmokeTests : IDisposable
             Dispatcher.UIThread.RunJobs();
             Thread.Sleep(1); // leaves the CPU to the timing tests running beside
         }
+        // one frame after the 300 ms as well: under load a single frame can outlast the loop, and the fades it started
+        // would still show their first step
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
         using var frame = window.CaptureRenderedFrame()!;
         using var buffer = frame.Lock();
         var bytes = new byte[buffer.RowBytes * buffer.Size.Height];
         System.Runtime.InteropServices.Marshal.Copy(buffer.Address, bytes, 0, bytes.Length);
         return bytes;
+    }
+
+    /// <summary>Lets the clock run until the condition holds (at most <paramref name="ms"/>): animations and timers run on real time.</summary>
+    static void WaitFor(Func<bool> done, int ms)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && watch.ElapsedMilliseconds < ms)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1);
+        }
     }
 
     static IEnumerable<Style> AllStyles(IEnumerable<Avalonia.Styling.IStyle> styles) =>
@@ -167,7 +183,12 @@ public sealed class UiSmokeTests : IDisposable
         LooksLikeBefore("settings");
         vm.ClosePage();
         await vm.OpenAdminAsync();
-        await Task.Delay(400); // the waiting states show after 150 ms (Package 97); they must not appear between the frames
+        // the waiting states show 150 ms after their request (Package 97); they must not appear between the frames, so every
+        // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
+        var admin = vm.AdminPage!;
+        Pending[] loads = [admin.UsersLoad, admin.BansLoad, admin.BackupsLoad, admin.Logs.FilesLoad];
+        WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
+        Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
         LooksLikeBefore("admin");
         Assert.DoesNotContain("animated", main.Classes);
         Motion.IsAnimated = true;
@@ -1028,11 +1049,14 @@ public sealed class UiSmokeTests : IDisposable
         var id = Guid.NewGuid();
         vm.Server.Apply(new ChannelAdded(new ChannelInfo(id, "", "", 1, Kind: ChannelKind.Separator)));
         Dispatcher.UIThread.RunJobs();
-        Thread.Sleep(400); // the new row slides in (animated display)
-        Dispatcher.UIThread.RunJobs();
 
+        // the new row slides in (animated display): until it is in, not for a fixed time that a busy machine may not give it frames in
         var items = main.FindControl<ItemsControl>("ChannelItems")!;
-        var container = items.GetRealizedContainers().Single(c => c.DataContext is ChannelViewModel { Id: var cid } && cid == id);
+        Control? Container() => items.GetRealizedContainers().SingleOrDefault(c => c.DataContext is ChannelViewModel { Id: var cid } && cid == id);
+        WaitFor(() => Container() is { } entered && !entered.Classes.Contains("entering"), 5000);
+        var container = Container();
+        Assert.NotNull(container);
+        Assert.DoesNotContain("entering", container.Classes);
         var row = container.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
         var line = row.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("separatorLine"));
         Assert.True(line.IsEffectivelyVisible);
