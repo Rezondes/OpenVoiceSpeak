@@ -386,7 +386,7 @@ public sealed class WebsiteShots
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
         ShotWriter.Settle(800); // the poster is the first frame: nothing half faded in
         var s = showcase.Server;
-        ShotWriter.Record(scene.Window, Clip("clip-switch", scene), 5000,
+        ShotWriter.Record(scene.Window, Clip("clip-switch", scene), 5000, 0,
             (400, () => _ = s.JoinAsync(ShowcaseServer.Strategy)),
             (1900, () => s.Apply(new UserUpdated(s.Mirror.Users[ShowcaseServer.Jonas] with { ChannelId = ShowcaseServer.Training }))),
             (3200, () => showcase.Speak()),
@@ -399,7 +399,7 @@ public sealed class WebsiteShots
     {
         using var scene = new Scene(lang, theme, settings: s => s.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi")));
         var showcase = new ShowcaseServer(scene.English);
-        ShotWriter.Record(scene.Window, Clip("clip-connect", scene), 4500,
+        ShotWriter.Record(scene.Window, Clip("clip-connect", scene), 4500, 0,
             (600, () => scene.Vm.Server = showcase.Server),
             (2200, () => showcase.FillRaidChat()),
             (2300, () => scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab),
@@ -417,7 +417,7 @@ public sealed class WebsiteShots
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
         ShotWriter.Settle(800);
         AdminView Page() => scene.Window.GetVisualDescendants().OfType<AdminView>().Single();
-        ShotWriter.Record(scene.Window, Clip("clip-pages", scene), 5500,
+        ShotWriter.Record(scene.Window, Clip("clip-pages", scene), 5500, 2300, // the poster shows the administration, not the start the switch clip shares
             (400, () => _ = scene.Vm.OpenAdminAsync()),
             (1700, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 1),
             (2900, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 2),
