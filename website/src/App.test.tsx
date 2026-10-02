@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App, { downloadUrl } from './App'
-import { storageKey } from './i18n'
+import { storageKey, texts } from './i18n'
 
 beforeEach(() => {
   localStorage.clear()
@@ -61,7 +61,7 @@ describe('App', () => {
   it('every section has a heading, every image an alt text', () => {
     const { container } = render(<App />)
     const sections = [...container.querySelectorAll('section')]
-    expect(sections.map(s => s.id)).toEqual(['features', 'audience', 'screenshots', 'install', 'server'])
+    expect(sections.map(s => s.id)).toEqual(['features', 'audience', 'screenshots', 'motion', 'install', 'server'])
     for (const section of sections) {
       const heading = section.querySelector('h2')
       expect(heading?.textContent?.trim(), section.id).toBeTruthy()
@@ -74,7 +74,7 @@ describe('App', () => {
       expect(img.getAttribute('width')).toBeTruthy() // no layout jump while loading
     }
     const screenshots = [...container.querySelectorAll('picture img')]
-    expect(screenshots.length).toBe(4) // hero plus three in the gallery
+    expect(screenshots.length).toBe(13) // hero plus twelve in the gallery
     for (const img of screenshots) expect(img.getAttribute('alt')?.trim(), img.getAttribute('src')!).toBeTruthy()
     expect(container.querySelector('main')?.id).toBe('main')
     expect(screen.getByRole('link', { name: 'Skip to content' }).getAttribute('href')).toBe('#main')
@@ -86,6 +86,56 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: /Guide for server operators/ }).getAttribute('href'))
       .toBe('https://github.com/Rezondes/OpenVoiceSpeak#readme')
     expect(screen.getByText(/docker compose up -d/)).toBeTruthy()
+  })
+
+  it('admin features carry their tag', () => {
+    render(<App />)
+    const tagged = [...document.querySelectorAll('.card')].filter(card => card.querySelector('.tag')?.textContent === 'For server admins')
+    expect(tagged.map(card => card.querySelector('h3')?.textContent))
+      .toEqual(['Groups and rights', 'Channels your way', 'Moderation at hand', 'Logs and backups in the app'])
+    expect(document.querySelectorAll('.card .tag').length).toBe(4) // the player features have none
+  })
+
+  it('gallery lists every motif and opens the lightbox', () => {
+    render(<App />)
+    const gallery = [...document.querySelectorAll('#screenshots picture img')].map(img => img.getAttribute('src'))
+    expect(gallery).toEqual(texts.en.screenshots.items.map(item => `${import.meta.env.BASE_URL}screenshots/${item.file}-en-light.webp`))
+    fireEvent.click(screen.getByRole('button', { name: /Enlarge screenshot: Log viewer with search hits/ }))
+    expect(document.querySelector('dialog img')?.getAttribute('src')).toBe(`${import.meta.env.BASE_URL}screenshots/admin-logs-en-light.webp`)
+  })
+
+  it('clips play muted and looped, poster only with reduced motion', () => {
+    const media = (reduced: boolean) => vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: reduced && query.includes('reduced-motion'), addEventListener() {}, removeEventListener() {},
+    }))
+    media(false)
+    const { unmount } = render(<App />)
+    const videos = [...document.querySelectorAll<HTMLVideoElement>('#motion video')]
+    expect(videos).toHaveLength(3)
+    for (const video of videos) {
+      expect(video.muted).toBe(true)
+      expect(video.loop).toBe(true)
+      expect(video.autoplay).toBe(false) // it plays once in view
+      expect(video.getAttribute('aria-label')).toBeTruthy()
+      expect([...video.querySelectorAll('source')].map(s => s.getAttribute('type'))).toEqual(['video/webm', 'video/mp4'])
+    }
+    expect(videos[0].querySelector('source')?.getAttribute('src')).toBe(`${import.meta.env.BASE_URL}clips/clip-switch-en-light.webm`)
+    unmount()
+
+    media(true)
+    render(<App />)
+    expect(document.querySelectorAll('#motion video')).toHaveLength(0)
+    const posters = [...document.querySelectorAll('#motion img')]
+    expect(posters.map(img => img.getAttribute('src'))).toEqual(texts.en.motion.items.map(c => `${import.meta.env.BASE_URL}clips/${c.id}-en-light-poster.webp`))
+    vi.unstubAllGlobals()
+  })
+
+  it('language switch changes image and clip sources', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Deutsch' }))
+    expect(document.querySelector('#screenshots picture img')?.getAttribute('src')).toBe(`${import.meta.env.BASE_URL}screenshots/main-private-de-light.webp`)
+    expect(document.querySelector('#motion source')?.getAttribute('src')).toBe(`${import.meta.env.BASE_URL}clips/clip-switch-de-light.webm`)
+    expect(screen.getAllByText('Für Serverbetreiber')).toHaveLength(4)
   })
 
   it('screenshots open enlarged and close again', () => {

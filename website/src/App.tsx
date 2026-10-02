@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { icons, type IconName } from './icons'
 import { pickLanguage, storageKey, texts, type Lang } from './i18n'
 
@@ -33,15 +33,60 @@ function store(lang: Lang) {
   }
 }
 
+/** Pages (settings, administration, dialogs) are rendered taller than the main window (A125). */
+const tallShots = new Set(['settings-audio', 'settings-look', 'channel-dialog', 'admin-groups', 'admin-users', 'admin-bans', 'links', 'admin-logs', 'admin-server'])
+
 /** A real app screenshot in the reader's language, dark or light like their system. */
 function Shot({ file, lang, alt, eager = false }: { file: string; lang: Lang; alt: string; eager?: boolean }) {
   const path = `${import.meta.env.BASE_URL}screenshots/${file}-${lang}`
   return (
     <picture key={`${file}-${lang}`}>
       <source srcSet={`${path}-dark.webp`} media="(prefers-color-scheme: dark)" />
-      <img src={`${path}-light.webp`} alt={alt} width="1100" height={file.startsWith('main') ? 700 : 760}
+      <img src={`${path}-light.webp`} alt={alt} width="1100" height={tallShots.has(file) ? 760 : 700}
            loading={eager ? 'eager' : 'lazy'} decoding="async" />
     </picture>
+  )
+}
+
+/** Whether a media query holds, following changes (system theme, reduced motion). */
+function useMedia(query: string) {
+  const read = () => typeof matchMedia === 'function' && matchMedia(query).matches
+  const [on, setOn] = useState(read)
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return
+    const list = matchMedia(query)
+    const change = () => setOn(list.matches)
+    list.addEventListener?.('change', change)
+    return () => list.removeEventListener?.('change', change)
+  }, [query])
+  return on
+}
+
+/**
+ * Package 118 (A127): a short clip of the animated display, muted and looped, playing only while in view. With reduced
+ * motion only its first frame shows.
+ */
+function Clip({ id, lang, caption }: { id: string; lang: Lang; caption: string }) {
+  const still = useMedia('(prefers-reduced-motion: reduce)')
+  const dark = useMedia('(prefers-color-scheme: dark)')
+  const base = `${import.meta.env.BASE_URL}clips/${id}-${lang}-${dark ? 'dark' : 'light'}`
+  const video = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const v = video.current
+    if (!v || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) v.play?.()?.catch(() => { /* no autoplay allowed: the poster stays */ })
+      else v.pause?.()
+    }, { threshold: 0.25 })
+    io.observe(v)
+    return () => io.disconnect()
+  }, [base, still])
+  if (still) return <img src={`${base}-poster.webp`} alt={caption} width="1100" height="700" loading="lazy" decoding="async" />
+  return (
+    <video key={base} ref={video} muted loop playsInline preload="metadata" poster={`${base}-poster.webp`} aria-label={caption} width="1100" height="700">
+      <source src={`${base}.webm`} type="video/webm" />
+      <source src={`${base}.mp4`} type="video/mp4" />
+    </video>
   )
 }
 
@@ -156,7 +201,8 @@ function DownloadButton({ label, large = false }: { label: string; large?: boole
   )
 }
 
-const navIds = ['features', 'audience', 'screenshots', 'install', 'server'] as const
+// "Für wen" stays a section, the navigation leaves it out: five links fit beside name and buttons in German too
+const navIds = ['features', 'screenshots', 'motion', 'install', 'server'] as const
 
 export default function App() {
   const [zoom, setZoom] = useState<Zoom | null>(null)
@@ -229,6 +275,14 @@ export default function App() {
                 <p>{item.text}</p>
               </li>
             ))}
+            {t.features.adminItems.map(item => (
+              <li key={item.title} className="card card-admin" {...reveal}>
+                <span className="card-icon"><Icon name={item.icon} /></span>
+                <span className="tag">{t.features.adminTag}</span>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </li>
+            ))}
           </ul>
         </Section>
 
@@ -257,7 +311,21 @@ export default function App() {
           </ul>
         </Section>
 
-        <Section id="install" title={t.install.title} band>
+        <Section id="motion" title={t.motion.title} band>
+          <p className="section-lead" {...reveal}>{t.motion.lead}</p>
+          <ul className="clips">
+            {t.motion.items.map(item => (
+              <li key={item.id} {...reveal}>
+                <figure>
+                  <div className="frame"><Clip id={item.id} lang={lang} caption={item.caption} /></div>
+                  <figcaption>{item.caption}</figcaption>
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </Section>
+
+        <Section id="install" title={t.install.title}>
           <ol className="steps">
             {t.install.steps.map(step => (
               <li key={step.title} className="card" {...reveal}>
@@ -270,7 +338,7 @@ export default function App() {
           <div className="center"><DownloadButton label={t.hero.cta} large /></div>
         </Section>
 
-        <Section id="server" title={t.server.title}>
+        <Section id="server" title={t.server.title} band>
           <div className="server" {...reveal}>
             <div>
               <p>{t.server.text}</p>

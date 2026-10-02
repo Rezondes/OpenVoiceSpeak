@@ -9,6 +9,17 @@ type Asset = { name: string; size: number }
 const files = (name: string): Asset[] => readdirSync(dir(name)).map((f: string) => ({ name: f, size: statSync(join(dir(name), f)).size }))
 
 describe('website assets', () => {
+  // Package 117 test 2, moved here with the texts: the images on disk are exactly the ones the site shows
+  it('every motif the site shows exists in both languages and themes, and no other image is left', async () => {
+    const { texts } = await import('../src/i18n')
+    const motifs = ['main-online', ...texts.en.screenshots.items.map(i => i.file)]
+    const expected = motifs.flatMap(m => ['de', 'en'].flatMap(lang => ['light', 'dark'].map(theme => `${m}-${lang}-${theme}.webp`)))
+    expect(files('screenshots').map(f => f.name).sort()).toEqual(expected.sort())
+    const clips = texts.en.motion.items.flatMap(c => ['de', 'en'].flatMap(lang => ['light', 'dark']
+      .flatMap(theme => [`${c.id}-${lang}-${theme}.webm`, `${c.id}-${lang}-${theme}.mp4`, `${c.id}-${lang}-${theme}-poster.webp`])))
+    expect(files('clips').map(f => f.name).sort()).toEqual(clips.sort())
+  })
+
   it('every image is at most about 150 KB, together under 6 MB', () => {
     const images = files('screenshots')
     for (const image of images) expect(image.size, image.name).toBeLessThanOrEqual(150 * 1024)

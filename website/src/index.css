@@ -61,14 +61,16 @@ section, main { scroll-margin-top: var(--header); }
   border-bottom: 1px solid var(--border);
 }
 .header-row { display: flex; align-items: center; gap: 16px; min-height: var(--header); }
-.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 1.0625rem; }
+.brand { display: flex; flex-shrink: 0; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 1.0625rem; }
 .header nav { margin-inline: auto; }
 .header nav ul { display: flex; gap: 4px; }
 .header nav a { display: block; padding: 8px 12px; border-radius: 8px; color: var(--muted); text-decoration: none; font-weight: 500; }
 .header nav a:hover { color: var(--text); background: var(--accent-soft); }
 .header-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .header nav + .header-actions { margin-left: 0; }
-@media (max-width: 959px) { .header nav { display: none; } }
+/* Package 118: each link on one line; narrower windows scroll the page without them */
+.header nav a { white-space: nowrap; }
+@media (max-width: 1099px) { .header nav { display: none; } }
 @media (max-width: 479px) { .header-cta { display: none; } }
 
 .lang { display: flex; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
@@ -128,6 +130,18 @@ section h2 {
 
 .gallery { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .gallery figcaption { margin-top: 12px; text-align: center; color: var(--muted); font-size: 0.9375rem; }
+
+/* Package 118: admin cards carry a tag, the clips sit in a row like the gallery */
+.card-admin { position: relative; }
+.tag {
+  position: absolute; top: 24px; right: 24px; padding: 2px 10px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--accent-text); background: var(--accent-soft);
+}
+.section-lead { max-width: 64ch; margin: -8px 0 32px; color: var(--muted); }
+.clips { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.clips video, .clips img { display: block; width: 100%; height: auto; }
+.clips figcaption { margin-top: 12px; text-align: center; color: var(--muted); font-size: 0.9375rem; }
 
 .steps { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); counter-reset: step; }
 .steps li { counter-increment: step; }

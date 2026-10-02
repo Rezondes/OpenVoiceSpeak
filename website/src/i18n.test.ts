@@ -25,6 +25,29 @@ describe('i18n', () => {
     expect(texts.en.hero.title).not.toBe(texts.de.hero.title)
   })
 
+  it('both languages have the same cards, tags and gallery entries', () => {
+    const icons = (lang: 'de' | 'en') => [...texts[lang].features.items, ...texts[lang].features.adminItems].map(card => card.icon)
+    expect(icons('en')).toEqual(icons('de'))
+    expect(texts.en.screenshots.items.map(i => i.file)).toEqual(texts.de.screenshots.items.map(i => i.file))
+    expect(texts.en.motion.items.map(i => i.id)).toEqual(texts.de.motion.items.map(i => i.id))
+    expect(texts.de.features.adminItems).toHaveLength(4)
+  })
+
+  it('cards stay short: one sentence each, captions on one line', () => {
+    for (const lang of ['de', 'en'] as const) {
+      const t = texts[lang]
+      for (const card of [...t.features.items, ...t.features.adminItems, ...t.audience.items]) {
+        expect(card.text.length, card.title).toBeLessThanOrEqual(160)
+        expect(card.text.replace(/\.$/, ''), card.title).not.toMatch(/[.!?] /) // one sentence
+      }
+      for (const caption of [...t.screenshots.items, ...t.motion.items].map(i => i.caption)) {
+        expect(caption.length, caption).toBeLessThanOrEqual(80)
+        expect(caption, caption).not.toContain('\n')
+      }
+      expect(t.motion.lead.split(/[.!?] /).length, 'lead').toBeLessThanOrEqual(3)
+    }
+  })
+
   it('browser language picks German or English', () => {
     expect(pickLanguage(['de-DE', 'en'], null)).toBe('de')
     expect(pickLanguage(['de'], null)).toBe('de')
