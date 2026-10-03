@@ -138,7 +138,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     readonly ClientSettings basis;
 
-    /// <summary>Called with the page's values whenever a slider or the mode changes, so they are heard at once.</summary>
+    /// <summary>Called with the page's values whenever a slider, the mode or a key changes, so they act at once.</summary>
     public Action<ClientSettings>? LivePreview { get; set; }
 
     /// <summary>Starts (true) or ends (false) the self test; the main view model mutes, deafens and restores.</summary>
@@ -249,6 +249,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(HasKeyConflict));
         OnPropertyChanged(nameof(CanSave));
         OnPropertyChanged(nameof(Error));
+        Preview(); // Package 121: a key set here works at once, e.g. push-to-talk in the self test
     }
 
     Task<KeyChord?> CaptureAsync(KeyAction action) =>

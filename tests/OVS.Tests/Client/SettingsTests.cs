@@ -1,9 +1,17 @@
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using OVS.Client;
 using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
+using Key = Avalonia.Input.Key;
+using PhysicalKey = Avalonia.Input.PhysicalKey;
+using RawInputModifiers = Avalonia.Input.RawInputModifiers;
 
 namespace OVS.Tests.Client;
 
@@ -479,6 +487,47 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(0, shown.Chord.Key); // no key yet: the user presses one
         Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl))], vm.KeyBindings.Select(b => b.Binding));
         Assert.False(vm.ShowPttHint);
+    }
+
+    /// <summary>
+    /// Package 121: a push-to-talk key that is also a key of the focused self test button (Space, Enter) talks and
+    /// does not stop the test. Without such a binding the button still works with the keyboard.
+    /// </summary>
+    [AvaloniaFact]
+    public void SelfTest_SpaceAsPttKey_DoesNotToggleButton()
+    {
+        static (Window Window, SettingsViewModel Vm) Focused(ClientSettings s)
+        {
+            var vm = Vm(s);
+            var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var button = window.GetVisualDescendants().OfType<Button>().Single(b => b.Command == vm.ToggleSelfTestCommand);
+            vm.IsSelfTesting = true;
+            Assert.True(button.Focus());
+            return (window, vm);
+        }
+        static void Press(Window window, Key key, PhysicalKey physical)
+        {
+            window.KeyPress(key, RawInputModifiers.None, physical, null);
+            window.KeyRelease(key, RawInputModifiers.None, physical, null);
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        var (bound, vm) = Focused(new ClientSettings
+        {
+            KeyBindings = [Bind(KeyAction.PushToTalk, 0x20), Bind(KeyAction.LinkPushToTalk, 0x0D)],
+        });
+        Press(bound, Key.Space, PhysicalKey.Space);
+        Assert.True(vm.IsSelfTesting);
+        Press(bound, Key.Enter, PhysicalKey.Enter); // checked on its own: two toggles would cancel out
+        Assert.True(vm.IsSelfTesting);
+        bound.Close();
+
+        var (unbound, plain) = Focused(new ClientSettings());
+        Press(unbound, Key.Space, PhysicalKey.Space);
+        Assert.False(plain.IsSelfTesting);
+        unbound.Close();
     }
 
     [Fact]

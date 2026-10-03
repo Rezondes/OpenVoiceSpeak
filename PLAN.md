@@ -7143,12 +7143,14 @@ A second possible cause is unproven: with Space or Enter as the push-to-talk key
 
 ### Acceptance Criteria
 
-- [ ] AC1: A key binding added, changed or removed on the settings page is in `Keys.Bindings` at once, before Save.
-- [ ] AC2: Closing the settings without saving restores the saved bindings; saving keeps the new ones.
-- [ ] AC3: In push-to-talk mode, with the self test running and a key set on the page, holding the key plays the own voice back and releasing it stops it.
-- [ ] AC4: A push-to-talk key that is also a key of the focused self test button (Space, Enter) does not stop the self test.
+- [x] AC1: A key binding added, changed or removed on the settings page is in `Keys.Bindings` at once, before Save.
+- [x] AC2: Closing the settings without saving restores the saved bindings; saving keeps the new ones.
+- [x] AC3: In push-to-talk mode, with the self test running and a key set on the page, holding the key plays the own voice back and releasing it stops it.
+- [x] AC4: A push-to-talk key that is also a key of the focused self test button (Space, Enter) does not stop the self test.
 
 ### Tests (TDD)
+
+(as built: AC4 was real. A focused Button clicks on Space (on release) and Enter (on press), so a push-to-talk key on Space stopped the self test; the self test button now swallows Space and Enter while one of them is bound on the page, unbound they still click it. The seam for test 2 is an optional `KeyPoller(Func<int, bool>? keyState)`, the keyboard by default, given before the poll thread starts. The view test lives in `SettingsTests` as an `[AvaloniaFact]` and checks Space and Enter one at a time, since two clicks cancel out)
 
 1. `MainViewModelTests > "SettingsPage_KeyBindingLive_RevertedOnCancel"` (AC1, AC2): the reproduction, red first
    - Given: saved settings in voice activation without a push-to-talk key; the settings page open; push-to-talk chosen and a key added through a stubbed `EditKeyBinding`.

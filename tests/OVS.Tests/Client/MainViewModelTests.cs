@@ -702,6 +702,62 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
     }
 
+    /// <summary>
+    /// Package 121: a key set on the page works at once (so the self test hears push-to-talk), leaving without saving
+    /// brings the saved keys back, saving keeps the new ones.
+    /// </summary>
+    [Fact]
+    public async Task SettingsPage_KeyBindingLive_RevertedOnCancel()
+    {
+        var key = new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl));
+        async Task<IReadOnlyList<KeyBinding>> SetKeyOnPage()
+        {
+            await ui.InvokeAsync<object?>(async () =>
+            {
+                vm.OpenSettings();
+                vm.SettingsPage!.IsPushToTalk = true;
+                vm.SettingsPage.EditKeyBinding = (_, _) => Task.FromResult<KeyBinding?>(key);
+                await vm.SettingsPage.SetPttKeyCommand.ExecuteAsync(null);
+                return null;
+            });
+            return await OnUi(() => vm.Keys.Bindings);
+        }
+
+        await OnUi(() =>
+        {
+            vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
+            return 0;
+        });
+        Assert.Empty(await OnUi(() => vm.Keys.Bindings));
+
+        Assert.Equal([key], await SetKeyOnPage());
+        Assert.Empty(await OnUi(() =>
+        {
+            vm.SettingsPage!.CancelCommand.Execute(null);
+            return vm.Keys.Bindings;
+        }));
+
+        Assert.Equal([key], await SetKeyOnPage());
+        Assert.Empty(await OnUi(() =>
+        {
+            vm.SettingsPage!.KeyBindings[0].RemoveCommand.Execute(null);
+            return vm.Keys.Bindings;
+        }));
+        Assert.Empty(await OnUi(() =>
+        {
+            vm.ClosePage(); // what Esc does
+            return vm.Keys.Bindings;
+        }));
+
+        Assert.Equal([key], await SetKeyOnPage());
+        Assert.Equal([key], await OnUi(() =>
+        {
+            vm.SettingsPage!.SaveCommand.Execute(null);
+            return vm.Keys.Bindings;
+        }));
+        Assert.Equal([key], ClientSettings.Load(dir, out _).KeyBindings);
+    }
+
     /// <summary>Leaving the settings any other way (Esc, the administration) also drops the preview.</summary>
     [Fact]
     public async Task LeavingSettingsWithoutSaving_EndsThePreview()

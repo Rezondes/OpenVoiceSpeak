@@ -275,6 +275,29 @@ public class SendPathTests
         Assert.True(await LoudestOutput(loudThreshold, 600) < -100); // -13.5 dBFS stays below -10
     }
 
+    /// <summary>
+    /// Package 121: in push-to-talk the self test plays back while the bound key is held. The key goes through the
+    /// bindings like a real one (a fake key state, not <see cref="KeyPoller.Simulate(KeyAction, bool)"/>).
+    /// </summary>
+    [Fact]
+    public async Task SelfTest_PushToTalk_KeyHeld_PlaysBack()
+    {
+        bool held = false;
+        using var keys = new KeyPoller(vk => vk == KeyPoller.VkRControl && Volatile.Read(ref held));
+        keys.Bindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl))];
+        using var engine = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
+        engine.SelfTest = true;
+        await CaptureRunning(engine);
+        Assert.True(await LoudestOutput(engine, 300) < -100); // key up: silent
+
+        Volatile.Write(ref held, true);
+        Assert.True(await GetsLouderThan(engine, -20));
+
+        Volatile.Write(ref held, false);
+        await Until(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
+        Assert.True(await LoudestOutput(engine, 300) < -100);
+    }
+
     /// <summary>Package 53: sliders act at once, without restarting the devices.</summary>
     [Fact]
     public async Task ApplyLive_ChangesGainAndVolume_WithoutRestart()

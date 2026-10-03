@@ -28,12 +28,18 @@ public sealed partial class KeyPoller : IDisposable
     readonly Thread thread;
     readonly object gate = new();
     readonly HashSet<KeyAction> simulated = [];
+    readonly Func<int, bool> keyState;
     TaskCompletionSource<KeyChord>? capture;
     volatile IReadOnlyList<KeyBinding> bindings = [];
     volatile HashSet<KeyAction> down = [];
 
-    public KeyPoller()
+    /// <param name="keyState">
+    /// Package 121: the polled state of a virtual key, the keyboard by default. Tests pass a fake one, so a key goes
+    /// through the bindings like a real one (<see cref="Simulate(KeyAction, bool)"/> skips them).
+    /// </param>
+    public KeyPoller(Func<int, bool>? keyState = null)
     {
+        this.keyState = keyState ?? IsKeyDown;
         thread = new Thread(Loop) { IsBackground = true, Name = "KeyPoller" };
         thread.Start();
     }
@@ -77,10 +83,10 @@ public sealed partial class KeyPoller : IDisposable
 
     static bool IsModifier(int vk) => vk is VkShift or VkControl or VkMenu or (>= 0xA0 and <= 0xA5);
 
-    static ChordModifiers HeldModifiers() =>
-        (IsKeyDown(VkControl) ? ChordModifiers.Ctrl : 0) |
-        (IsKeyDown(VkShift) ? ChordModifiers.Shift : 0) |
-        (IsKeyDown(VkMenu) ? ChordModifiers.Alt : 0);
+    ChordModifiers HeldModifiers() =>
+        (keyState(VkControl) ? ChordModifiers.Ctrl : 0) |
+        (keyState(VkShift) ? ChordModifiers.Shift : 0) |
+        (keyState(VkMenu) ? ChordModifiers.Alt : 0);
 
     /// <summary>Resolves with the next pressed key plus the modifiers held with it (left and right mouse button excluded).</summary>
     public Task<KeyChord> CaptureNextChordAsync()
@@ -103,7 +109,7 @@ public sealed partial class KeyPoller : IDisposable
                 bool primed = primedFor == pending;
                 for (int vk = 3; vk < 255; vk++)
                 {
-                    bool isDown = IsKeyDown(vk);
+                    bool isDown = keyState(vk);
                     if (primed && isDown && !wasDown[vk] && !IsModifier(vk))
                     {
                         capture = null;
@@ -114,7 +120,7 @@ public sealed partial class KeyPoller : IDisposable
                 primedFor = pending;
             }
 
-            var active = KeyActions.Resolve(bindings, IsKeyDown, held);
+            var active = KeyActions.Resolve(bindings, keyState, held);
             lock (gate) active.UnionWith(simulated);
             var (pressed, holdChanged) = tracker.Update(active);
             down = active;

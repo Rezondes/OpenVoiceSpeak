@@ -626,9 +626,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             CheckNow = CheckForUpdatesAsync,
             ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
             PreviewSound = (sound, setting, overall) => Audio.Sounds.Play(sounds.Samples(sound, setting), overall * setting.Volume),
-            LivePreview = live => // Package 53, 61
+            LivePreview = live => // Package 53, 61, 121
             {
                 Audio.ApplyLive(live);
+                Keys.Bindings = live.KeyBindings;
                 Appearance = BackgroundAppearance.From(live);
             },
             SetSelfTest = SetSelfTestAsync,
@@ -679,6 +680,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     void CloseSettings()
     {
         Audio.ApplyLive(Settings);
+        Keys.Bindings = Settings.KeyBindings.ToList();
         Appearance = BackgroundAppearance.From(Settings);
         _ = SetSelfTestAsync(false);
         Audio.InputLevel -= OnInputLevel;

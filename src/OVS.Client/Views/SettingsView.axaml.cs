@@ -1,6 +1,8 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Client.ViewModels;
 
@@ -9,7 +11,28 @@ namespace OVS.Client.Views;
 /// <summary>Settings as a page inside the main window (A20: the client never opens a second window).</summary>
 public partial class SettingsView : UserControl
 {
-    public SettingsView() => InitializeComponent();
+    public SettingsView()
+    {
+        InitializeComponent();
+        SelfTestButton.AddHandler(KeyDownEvent, OnSelfTestKey, RoutingStrategies.Tunnel);
+        SelfTestButton.AddHandler(KeyUpEvent, OnSelfTestKey, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>
+    /// Package 121: Space and Enter click a focused button, but as a bound key (push-to-talk in the self test) they
+    /// must not stop the test. Unbound they keep working on the button. A binding with modifiers counts only while they
+    /// are held, like the poller resolves it.
+    /// </summary>
+    void OnSelfTestKey(object? sender, KeyEventArgs e)
+    {
+        int vk = e.Key switch { Key.Space => 0x20, Key.Enter => 0x0D, _ => 0 };
+        var held = (e.KeyModifiers.HasFlag(KeyModifiers.Control) ? ChordModifiers.Ctrl : 0)
+            | (e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? ChordModifiers.Shift : 0)
+            | (e.KeyModifiers.HasFlag(KeyModifiers.Alt) ? ChordModifiers.Alt : 0);
+        if (vk != 0 && DataContext is SettingsViewModel vm
+            && vm.KeyBindings.Any(b => b.Binding.Chord.Key == vk && (b.Binding.Chord.Modifiers & held) == b.Binding.Chord.Modifiers))
+            e.Handled = true;
+    }
 
     /// <summary>Package 48: the Windows file dialog is, like for the server logo, the agreed exception to A20.</summary>
     async void OnPickSound(object? sender, RoutedEventArgs e)
