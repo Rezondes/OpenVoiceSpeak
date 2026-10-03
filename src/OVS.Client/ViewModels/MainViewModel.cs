@@ -91,7 +91,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] string voiceHint = "";
 
     /// <param name="useAudioDevices">False runs without microphone and speaker (tests, debug API with test tone).</param>
-    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true, ClientLog? log = null)
+    /// <param name="keyState">Package 125: the state of a virtual key, the keyboard by default (tests pass a fake one).</param>
+    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true, ClientLog? log = null, Func<int, bool>? keyState = null)
     {
         this.storageDir = storageDir;
         this.post = post;
@@ -107,7 +108,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
         DeviceSource = useAudioDevices ? AudioDevices.List : _ => [];
         if (useAudioDevices) RefreshDevices();
-        Keys = new KeyPoller();
+        Keys = new KeyPoller(keyState);
         Audio = new AudioEngine(Keys, useAudioDevices);
         sounds = new SoundLibrary(storageDir, Log.Write);
         Audio.SoundSource = sound => sounds.Samples(sound, Settings.SoundFor(sound)); // Package 48
@@ -129,6 +130,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         });
         Audio.SpeakersChanged += active => post(() => Server?.OnSpeakers(active));
         Keys.Pressed += action => post(() => OnKeyAction(action));
+        // Package 125: push-to-mute shows and reports the mute like the button. Read on the key thread, so a quick
+        // press and release arrive in order; only its own edges count, as Changed also fires for the talk keys.
+        bool muteHeld = false;
+        Keys.Changed += () =>
+        {
+            bool held = Keys.MuteHeld;
+            if (held == muteHeld) return;
+            muteHeld = held;
+            post(() => Server?.HoldMute(held));
+        };
         ApplySettings(Settings);
     }
 
@@ -468,6 +479,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             newValue.StateChanged += SyncAudioFlags; // e.g. the own channel was muted (Package 34)
             newValue.VolumeOf = fingerprint => Settings.VolumeFor(fingerprint);
             newValue.VolumeChanged += OnUserVolumeChanged;
+            newValue.HoldMute(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
         }
         Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
         SyncAudioFlags();

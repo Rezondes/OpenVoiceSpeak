@@ -1,4 +1,5 @@
 using OVS.Client.Input;
+using OVS.Tests.TestSupport;
 using static OVS.Client.Input.ChordModifiers;
 
 namespace OVS.Tests.Client;
@@ -80,6 +81,49 @@ public class KeyBindingTests
         Assert.Equal((true, false), Poll(KeyPoller.VkXButton1, KeyPoller.VkXButton2));
         Assert.Equal((true, false), Poll(KeyPoller.VkXButton2)); // the first let go, the second still holds
         Assert.Equal((false, true), Poll());
+    }
+
+    /// <summary>
+    /// Package 125: Shift, Ctrl or Alt alone becomes the key when it is let go without another key meanwhile
+    /// (Windows reports the side and the plain modifier down together). With another key it stays a modifier.
+    /// </summary>
+    [Fact]
+    public async Task Capture_SingleModifier_OnRelease()
+    {
+        const int Shift_ = 0x10, LShift = 0xA0, Ctrl_ = 0x11, RCtrl = KeyPoller.VkRControl;
+        var fake = new FakeKeys();
+        using var keys = new KeyPoller(fake.IsDown);
+        async Task<KeyChord?> Capture(params (bool Down, int[] Keys)[] steps)
+        {
+            var chord = keys.CaptureNextChordAsync();
+            await fake.NextSweep(); // the first sweep only records what is already down
+            foreach (var (isDown, vks) in steps)
+            {
+                Assert.False(chord.IsCompleted); // not while a modifier is still down
+                fake.Set(isDown, vks);
+                await fake.NextSweep();
+            }
+            return chord.IsCompleted ? await chord : null;
+        }
+
+        Assert.Equal(new KeyChord(LShift), await Capture((true, [Shift_, LShift]), (false, [Shift_, LShift])));
+        Assert.Equal(new KeyChord(F1, Shift), await Capture((true, [Shift_, LShift]), (true, [F1])));
+        fake.Set(false, Shift_, LShift, F1);
+        // Shift and Ctrl together are no single key; once both are up, Ctrl alone counts again
+        Assert.Equal(new KeyChord(RCtrl), await Capture((true, [Shift_, LShift]), (true, [Ctrl_, RCtrl]), (false, [Ctrl_, RCtrl]),
+            (false, [Shift_, LShift]), (true, [Ctrl_, RCtrl]), (false, [Ctrl_, RCtrl])));
+    }
+
+    /// <summary>Package 125: a chord of a modifier alone resolves like any key, also with the plain modifier reported held.</summary>
+    [Fact]
+    public void Resolve_SingleModifierChord()
+    {
+        const int LShift = 0xA0, LAlt = 0xA4;
+        KeyBinding[] bindings = [Bind(KeyAction.PushToMute, LShift), Bind(KeyAction.ToggleMute, LAlt)];
+        Assert.Equal([KeyAction.PushToMute], Resolve(bindings, [LShift], Shift));
+        Assert.Equal([KeyAction.ToggleMute], Resolve(bindings, [LAlt], Alt));
+        Assert.Empty(Resolve(bindings, [0xA1], Shift)); // the right Shift is another key
+        Assert.Equal("Umschalt links", new KeyChord(LShift).Name);
     }
 
     [Fact]

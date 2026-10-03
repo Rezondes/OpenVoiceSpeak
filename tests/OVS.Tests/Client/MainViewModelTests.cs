@@ -13,13 +13,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
 {
     readonly TestDispatcher ui = new();
     readonly string dir = Directory.CreateTempSubdirectory("ovs-mvm-").FullName;
+    readonly FakeKeys keys = new(); // Package 125: a real key pressed while the tests run does not count
     TestServer server = null!;
     MainViewModel vm = null!;
 
     public async Task InitializeAsync()
     {
         server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!");
-        vm = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(dir, ui.Post, useAudioDevices: false)));
+        vm = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(dir, ui.Post, useAudioDevices: false, keyState: keys.IsDown)));
         vm.ConfirmTofu = _ => Task.FromResult(true);
     }
 
@@ -925,5 +926,183 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             Directory.Delete(saved, true);
         }
+    }
+
+    const int MuteKey = 0x78, DeafenKey = 0x79, TalkKey = 0x7A; // F9, F10, F11
+
+    /// <summary>Package 125: push-to-mute, a deafen and a talk key bound; the fake server collects the requests, the list the tones.</summary>
+    async Task<(List<Request> Sent, List<SoundEvent> Heard)> WithPushToMute()
+    {
+        var sent = new List<Request>();
+        var heard = new List<SoundEvent>();
+        await OnUi(() =>
+        {
+            vm.ApplySettings(new ClientSettings
+            {
+                KeyBindings =
+                [
+                    new(KeyAction.PushToMute, new KeyChord(MuteKey)), new(KeyAction.ToggleDeafen, new KeyChord(DeafenKey)),
+                    new(KeyAction.PushToTalk, new KeyChord(TalkKey)),
+                ],
+            });
+            vm.Server = FakeServers.Admin(sent);
+            vm.Server.SoundRequested += heard.Add;
+            return 0;
+        });
+        return (sent, heard);
+    }
+
+    /// <summary>The mute states sent, without the request ids.</summary>
+    static List<(bool Muted, bool Deafened)> States(List<Request> sent) => sent.OfType<SetSelfState>().Select(r => (r.Muted, r.Deafened)).ToList();
+
+    /// <summary>Holds or lets go the push-to-mute key (through the bindings) and waits until the key thread saw it.</summary>
+    async Task HoldMuteKey(bool down)
+    {
+        keys.Set(down, MuteKey);
+        Assert.Equal(down, await OnUiUntil(() => vm.Keys.MuteHeld, h => h == down));
+    }
+
+    /// <summary>
+    /// Presses the deafen key and waits for its effect. Key events reach the UI thread in order, so whatever the
+    /// push-to-mute key did before is handled by then, and a check that it did nothing proves something.
+    /// </summary>
+    async Task PressDeafenKey()
+    {
+        bool before = await OnUi(() => vm.Server!.SelfDeafened);
+        keys.Set(true, DeafenKey);
+        Assert.NotEqual(before, await OnUiUntil(() => vm.Server!.SelfDeafened, d => d != before));
+        keys.Set(false, DeafenKey);
+    }
+
+    /// <summary>
+    /// Package 125: holding push-to-mute mutes like the button (state, tone, server); letting go undoes it. That
+    /// nothing is sent meanwhile is the engine's part (SendPathTests.PushToMute_Held_SendsNothing).
+    /// </summary>
+    [Fact]
+    public async Task PushToMuteHeld_MutesLikeButton_ReleaseRestores()
+    {
+        var (sent, heard) = await WithPushToMute();
+
+        await HoldMuteKey(true);
+        Assert.True(await OnUiUntil(() => vm.Server!.SelfMuted, m => m));
+        Assert.Equal([(true, false)], await OnUi(() => States(sent)));
+        Assert.Equal([SoundEvent.MicOff], await OnUi(() => heard.ToList()));
+
+        await HoldMuteKey(false);
+        Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
+        Assert.Equal([(true, false), (false, false)], await OnUi(() => States(sent)));
+        Assert.Equal([SoundEvent.MicOff, SoundEvent.MicOn], await OnUi(() => heard.ToList()));
+    }
+
+    /// <summary>Package 125: already muted or deafened, holding and letting go changes nothing.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PushToMute_AlreadyMuted_NoChange(bool deafened)
+    {
+        var (sent, heard) = await WithPushToMute();
+        await OnUi(() =>
+        {
+            (deafened ? vm.Server!.ToggleDeafenCommand : vm.Server!.ToggleMuteCommand).Execute(null);
+            sent.Clear();
+            heard.Clear();
+            return 0;
+        });
+
+        await HoldMuteKey(true);
+        await HoldMuteKey(false);
+        await PressDeafenKey();
+
+        // only the deafen key: muted and deafened, or (from deafened) back to unmuted as before
+        Assert.Equal([deafened ? (false, false) : (true, true)], await OnUi(() => States(sent)));
+        Assert.Equal([deafened ? SoundEvent.SoundOn : SoundEvent.SoundOff], await OnUi(() => heard.ToList()));
+    }
+
+    /// <summary>Package 125: the mute button pressed while the key is held decides; letting go does not undo it.</summary>
+    [Fact]
+    public async Task MuteButtonWhileHeld_Sticks()
+    {
+        var (sent, _) = await WithPushToMute();
+        await HoldMuteKey(true);
+        await OnUiUntil(() => vm.Server!.SelfMuted, m => m);
+        Assert.False(await OnUi(() =>
+        {
+            vm.Server!.ToggleMuteCommand.Execute(null);
+            return vm.Server.SelfMuted;
+        }));
+
+        await HoldMuteKey(false);
+        await PressDeafenKey();
+        Assert.Equal([(true, false), (false, false), (true, true)], await OnUi(() => States(sent)));
+    }
+
+    /// <summary>Package 125: another hold key (push-to-talk) tapped meanwhile does not count as a new press of push-to-mute.</summary>
+    [Fact]
+    public async Task MuteButtonWhileHeld_TalkKeyTapped_Sticks()
+    {
+        var (sent, _) = await WithPushToMute();
+        await HoldMuteKey(true);
+        await OnUiUntil(() => vm.Server!.SelfMuted, m => m);
+        await OnUi(() =>
+        {
+            vm.Server!.ToggleMuteCommand.Execute(null);
+            return 0;
+        });
+
+        keys.Set(true, TalkKey);
+        await OnUiUntil(() => vm.Keys.PttDown, d => d);
+        keys.Set(false, TalkKey);
+        await OnUiUntil(() => vm.Keys.PttDown, d => !d);
+        await HoldMuteKey(false);
+        await PressDeafenKey();
+        Assert.Equal([(true, false), (false, false), (true, true)], await OnUi(() => States(sent)));
+    }
+
+    /// <summary>Package 125: connecting while the key is held mutes at once, and letting go unmutes.</summary>
+    [Fact]
+    public async Task PushToMute_HeldBeforeConnecting_MutesOnConnect()
+    {
+        await OnUi(() =>
+        {
+            vm.ApplySettings(new ClientSettings { KeyBindings = [new(KeyAction.PushToMute, new KeyChord(MuteKey))] });
+            return 0;
+        });
+        await HoldMuteKey(true);
+        var sent = new List<Request>();
+        Assert.True(await OnUi(() =>
+        {
+            vm.Server = FakeServers.Admin(sent);
+            return vm.Server.SelfMuted;
+        }));
+        await HoldMuteKey(false);
+        Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
+        Assert.Equal([(true, false), (false, false)], await OnUi(() => States(sent)));
+    }
+
+    /// <summary>Package 125: not connected, the key only stops sending, which the self test plays back.</summary>
+    [Fact]
+    public async Task PushToMute_NotConnected_OnlyStopsSending()
+    {
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.ApplySettings(new ClientSettings
+            {
+                Mode = TransmitMode.VoiceActivation,
+                VadThresholdDb = -50,
+                KeyBindings = [new(KeyAction.PushToMute, new KeyChord(MuteKey))],
+            });
+            vm.Audio.SetTone(440); // -13.5 dBFS: well above the threshold
+            await vm.SetSelfTestAsync(true);
+            return null;
+        });
+        Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l > -20) > -20);
+
+        await HoldMuteKey(true);
+        Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l < -100) < -100); // the loopback speaker times out
+
+        await HoldMuteKey(false);
+        Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l > -20) > -20);
+        Assert.Null(await OnUi(() => vm.Server));
+        Assert.Empty(await OnUi(() => vm.Notices.ToList()));
     }
 }

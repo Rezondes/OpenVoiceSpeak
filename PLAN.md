@@ -7396,11 +7396,11 @@ The mute button (`ToggleMute`, `ServerViewModel.cs:557-565`) sets `SelfMuted`, p
 
 ### Acceptance Criteria
 
-- [ ] AC1: Holding the push-to-mute key while unmuted: the own mute icon shows, the `MicOff` sound plays, the server gets `SetSelfState(Muted: true)` and nothing is sent. Releasing it: unmuted again, `MicOn`, `SetSelfState(Muted: false)`.
-- [ ] AC2: Holding it while already muted (or deafened) changes nothing, and releasing it does not unmute.
-- [ ] AC3: Pressing the mute button while holding the key makes that choice stick: releasing the key does not undo it.
-- [ ] AC4: Not connected, holding the key only stops sending (the self test included); nothing is sent to a server.
-- [ ] AC5: Shift, Ctrl or Alt alone can be bound to push-to-mute (and any other action) on the settings page and is resolved like any other key.
+- [x] AC1: Holding the push-to-mute key while unmuted: the own mute icon shows, the `MicOff` sound plays, the server gets `SetSelfState(Muted: true)` and nothing is sent. Releasing it: unmuted again, `MicOn`, `SetSelfState(Muted: false)`.
+- [x] AC2: Holding it while already muted (or deafened) changes nothing, and releasing it does not unmute.
+- [x] AC3: Pressing the mute button while holding the key makes that choice stick: releasing the key does not undo it.
+- [x] AC4: Not connected, holding the key only stops sending (the self test included); nothing is sent to a server.
+- [x] AC5: Shift, Ctrl or Alt alone can be bound to push-to-mute (and any other action) on the settings page and is resolved like any other key.
 
 ### Tests (TDD)
 
@@ -7411,6 +7411,8 @@ The mute button (`ToggleMute`, `ServerViewModel.cs:557-565`) sets `SelfMuted`, p
 5. `KeyBindingTests > "Capture_SingleModifier_OnRelease"` and `"Resolve_SingleModifierChord"` (AC5)
 
 Test command: `dotnet test tests/OVS.Tests`
+
+(as built: `MainViewModel` takes an optional `keyState` (passed to `KeyPoller`); the `MainViewModelTests` fixture uses a new `TestSupport/FakeKeys`, so a real key pressed during the run no longer counts. Test 2 is a theory (muted, deafened). The "nothing happened" checks of tests 2 and 3 wait for a later press of a bound deafen key: key events reach the UI thread in order. Test 1 checks the server state, tone and requests but not `Audio.SelfMuted`, which the fake server (not connected via `ConnectAsync`) does not sync; that nothing is sent is the engine's `MuteHeld` (`SendPathTests.PushToMute_Held_SendsNothing`). Test 4 and `Resolve_SingleModifierChord` passed at once: the engine already stopped on `MuteHeld` and `Resolve` already handles a chord whose key is a modifier; they stay as guards. Capture stores the side key (`0xA0`-`0xA5`, e.g. "Umschalt links") without modifiers; two modifiers pressed together count as neither until all are up. A single-modifier binding is also active while that modifier is part of another chord (Shift+F1 holds Left Shift). Deafening while the key holds the mute remembers "muted" for the undeafen, like any mute. AltGr cannot be bound alone: Windows reports it as Left Ctrl plus Right Alt, two modifiers together. Added after review: `MuteButtonWhileHeld_TalkKeyTapped_Sticks` (only the push-to-mute key's own edges count, as `Changed` also fires for the talk keys) and `PushToMute_HeldBeforeConnecting_MutesOnConnect` (a new server applies the held key at once).)
 
 ### Steps
 

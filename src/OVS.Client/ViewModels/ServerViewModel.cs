@@ -542,15 +542,33 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>Package 53: both at once and without tones, for the self test and to restore the state before it.</summary>
     public Task SetSelfStateAsync(bool muted, bool deafened)
     {
+        mutedByHold = false;
         if (deafened && !SelfDeafened) mutedBeforeDeafen = SelfMuted;
         SelfDeafened = deafened;
         SelfMuted = muted || deafened;
         return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
     }
 
+    /// <summary>Package 125: push-to-mute muted, so letting go unmutes. A choice made otherwise meanwhile clears it and sticks.</summary>
+    bool mutedByHold;
+
+    /// <summary>
+    /// Package 125: holding push-to-mute does what the mute button does (tone, server), letting go undoes exactly that.
+    /// Already muted or deafened, it changes nothing.
+    /// </summary>
+    public Task HoldMute(bool held)
+    {
+        if (held ? SelfMuted : !mutedByHold) return Task.CompletedTask;
+        mutedByHold = held;
+        SelfMuted = held;
+        SoundRequested?.Invoke(held ? SoundEvent.MicOff : SoundEvent.MicOn);
+        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
+    }
+
     [RelayCommand]
     Task ToggleMute()
     {
+        mutedByHold = false;
         if (SelfDeafened)
         {
             SelfDeafened = false;
@@ -568,6 +586,7 @@ public sealed partial class ServerViewModel : ObservableObject
     [RelayCommand]
     Task ToggleDeafen()
     {
+        mutedByHold = false;
         if (SelfDeafened)
         {
             SelfDeafened = false;

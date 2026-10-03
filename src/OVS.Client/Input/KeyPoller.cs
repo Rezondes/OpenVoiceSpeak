@@ -83,12 +83,18 @@ public sealed partial class KeyPoller : IDisposable
 
     static bool IsModifier(int vk) => vk is VkShift or VkControl or VkMenu or (>= 0xA0 and <= 0xA5);
 
+    /// <summary>Left or right Shift, Ctrl, Alt: Windows reports these along with the plain modifier.</summary>
+    static bool IsSidedModifier(int vk) => vk is >= 0xA0 and <= 0xA5;
+
     ChordModifiers HeldModifiers() =>
         (keyState(VkControl) ? ChordModifiers.Ctrl : 0) |
         (keyState(VkShift) ? ChordModifiers.Shift : 0) |
         (keyState(VkMenu) ? ChordModifiers.Alt : 0);
 
-    /// <summary>Resolves with the next pressed key plus the modifiers held with it (left and right mouse button excluded).</summary>
+    /// <summary>
+    /// Resolves with the next pressed key plus the modifiers held with it (left and right mouse button excluded).
+    /// Package 125: Shift, Ctrl or Alt alone counts as the key once let go, if no other key was pressed meanwhile.
+    /// </summary>
     public Task<KeyChord> CaptureNextChordAsync()
     {
         capture = new TaskCompletionSource<KeyChord>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -100,6 +106,7 @@ public sealed partial class KeyPoller : IDisposable
         var wasDown = new bool[256];
         var tracker = new KeyStateTracker();
         TaskCompletionSource<KeyChord>? primedFor = null;
+        int lone = 0; // the modifier pressed alone during a capture; -1 once a second one joined it, until all are up
         while (!cts.IsCancellationRequested)
         {
             var held = HeldModifiers();
@@ -107,13 +114,21 @@ public sealed partial class KeyPoller : IDisposable
             {
                 // The first poll of a capture only records what is already down (e.g. Enter that pressed "Belegen").
                 bool primed = primedFor == pending;
+                if (!primed || (lone < 0 && held == ChordModifiers.None)) lone = 0;
                 for (int vk = 3; vk < 255; vk++)
                 {
                     bool isDown = keyState(vk);
-                    if (primed && isDown && !wasDown[vk] && !IsModifier(vk))
+                    if (primed && isDown != wasDown[vk])
                     {
-                        capture = null;
-                        pending.TrySetResult(new KeyChord(vk, held));
+                        KeyChord? chord = null;
+                        if (!IsModifier(vk)) chord = isDown ? new KeyChord(vk, held) : null;
+                        else if (IsSidedModifier(vk) && isDown) lone = lone == 0 ? vk : -1;
+                        else if (IsSidedModifier(vk) && lone == vk) chord = new KeyChord(vk);
+                        if (chord is not null)
+                        {
+                            capture = null;
+                            pending.TrySetResult(chord);
+                        }
                     }
                     wasDown[vk] = isDown;
                 }
