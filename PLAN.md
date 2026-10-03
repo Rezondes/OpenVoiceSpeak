@@ -7029,11 +7029,11 @@ The user row's context menu (`MainWindow.axaml:245-281`) has volume, message, mo
 
 ### Acceptance Criteria
 
-- [ ] AC1: Right-clicking a user who is weaker than me, while I have `GroupsAssign`, shows a submenu "Gruppen" listing every group of the server with a check mark for the user's groups. On myself, on stronger or equal users, or without the right, the submenu is not there.
-- [ ] AC2: A group I may not assign (`AssignableByMe` false) is shown greyed out; the Admin group of the last admin cannot be unticked (same rule as the administration).
-- [ ] AC3: Clicking a group assigns or removes it at once; the check mark and the user's group tooltip follow the server's `UserUpdated`. While waiting, the row shows its busy state (A113); a refusal shows the server's error and the check mark goes back.
-- [ ] AC4: A change made elsewhere (the administration, another admin) shows in the submenu the next time it opens.
-- [ ] AC5: The texts exist in German and English, and the menu fits at 360 px.
+- [x] AC1: Right-clicking a user who is weaker than me, while I have `GroupsAssign`, shows a submenu "Gruppen" listing every group of the server with a check mark for the user's groups. On myself, on stronger or equal users, or without the right, the submenu is not there.
+- [x] AC2: A group I may not assign (`AssignableByMe` false) is shown greyed out; the Admin group of the last admin cannot be unticked (same rule as the administration).
+- [x] AC3: Clicking a group assigns or removes it at once; the check mark and the user's group tooltip follow the server's `UserUpdated`. While waiting, the row shows its busy state (A113); a refusal shows the server's error and the check mark goes back.
+- [x] AC4: A change made elsewhere (the administration, another admin) shows in the submenu the next time it opens.
+- [x] AC5: The texts exist in German and English, and the menu fits at 360 px.
 
 ### Tests (TDD)
 
@@ -7046,6 +7046,8 @@ The user row's context menu (`MainWindow.axaml:245-281`) has volume, message, mo
 3. `ServerViewModelTests > "LastAdmin_CannotBeUnticked"` (AC2)
 4. `UiSmokeTests > "UserContextMenu_GroupsSubmenu"` (AC1, AC4): a headless right click on a user row opens the menu with the submenu and its check marks.
 5. `LocalizationTests`, `ResponsiveTests > "UserContextMenu_Fits360"` (AC5)
+
+(as built: `GroupToggle` stays where it is, it is already public and both use it, so nothing moved; the method is `ServerViewModel.SetUserGroup` returning the `Pending` like `Move` / `ServerMute`. The administration has no extra last-admin guard on its toggles: an Admin-group member has every right, so the server never judges one weaker than me, and the rank rule alone keeps the last admin's Admin group; test 3 checks that row has no groups. The submenu reuses the existing text `Ui_Groups` ("Gruppen" / "Groups"), so no new strings. A plain `ClickEvent` does not tick a checkable `MenuItem` in Avalonia 11.3, only the pointer click does, before it runs the command; the smoke test therefore clicks with the mouse.)
 
 Test command: `dotnet test tests/OVS.Tests`
 

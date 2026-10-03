@@ -539,6 +539,14 @@ public sealed partial class ServerViewModel : ObservableObject
             busy: on => row?.IsBusy = on);
     }
 
+    /// <summary>Package 119: confirmed by the user's update showing the group; the server answers nothing else.</summary>
+    public Pending SetUserGroup(string fingerprint, uint sessionId, Guid groupId, bool assigned)
+    {
+        var row = userVms.GetValueOrDefault(sessionId);
+        return SendConfirmed(assigned ? new AssignGroup(fingerprint, groupId) : new UnassignGroup(fingerprint, groupId),
+            m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.GroupIds.Contains(groupId) == assigned, busy: on => row?.IsBusy = on);
+    }
+
     /// <summary>Package 53: both at once and without tones, for the self test and to restore the state before it.</summary>
     public Task SetSelfStateAsync(bool muted, bool deafened)
     {
@@ -795,8 +803,19 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [ObservableProperty] bool canKick;
     [ObservableProperty] bool canBan;
     [ObservableProperty] bool canMessage;
-    /// <summary>Package 98: a spinner on the row while the server mute waits for the server.</summary>
+    /// <summary>Package 98: a spinner on the row while the server mute (Package 119: or a group change) waits for the server.</summary>
     [ObservableProperty] bool isBusy;
+    /// <summary>Package 119 (A128): the context menu's groups with their ticks, empty when I may not change this user's groups.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasGroups))]
+    IReadOnlyList<GroupToggle> groups = [];
+    public bool HasGroups => Groups.Count > 0;
+
+    /// <summary>
+    /// Package 119: group changes sent from the menu, ticked as asked until the server shows or refuses them. Per group only
+    /// the last click counts, an earlier one's answer leaves it be. Touched on the UI thread only.
+    /// </summary>
+    readonly Dictionary<Guid, (bool On, Pending Sent)> pendingGroups = [];
 
     /// <summary>Package 51: this person's volume for me, 0 to 200 %.</summary>
     [ObservableProperty]
@@ -832,7 +851,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     public uint SessionId { get; } = sessionId;
     public Guid ChannelId { get; private set; }
 
-    internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> groups)
+    internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> serverGroups)
     {
         Nickname = info.Nickname;
         Fingerprint = info.Fingerprint;
@@ -843,7 +862,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         IsDeafened = info.SelfDeafened;
         // Deafened implies muted and a server mute has its own icon, so the plain mic-off icon only shows for a mute on its own.
         IsSelfMutedOnly = info.SelfMuted && !info.SelfDeafened && !info.ServerMuted;
-        GroupNames = string.Join(", ", groups.Where(g => info.GroupIds.Contains(g.Id)).Select(g => g.Name)); // in the server's group order (Package 37)
+        GroupNames = string.Join(", ", serverGroups.Where(g => info.GroupIds.Contains(g.Id)).Select(g => g.Name)); // in the server's group order (Package 37)
         StatusText = info switch
         {
             { ServerMuted: true } => Strings.UserStatus_ServerMuted,
@@ -859,6 +878,30 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         CanKick = actor.Has(Permission.UserKick) && rank;
         CanBan = actor.Has(Permission.UserBan) && rank;
         CanMessage = actor.Has(Permission.ChatPrivate) && !isSelf;
+        // Package 119 (A128): the administration's rule; the rank also keeps the last admin's Admin group, an admin is never weaker
+        var wanted = actor.Has(Permission.GroupsAssign) && rank
+            ? serverGroups.Select(g => (g.Id, g.Name, Checked: pendingGroups.TryGetValue(g.Id, out var p) ? p.On : info.GroupIds.Contains(g.Id), g.AssignableByMe)).ToList()
+            : [];
+        // compared with the live ticks: a refused click is put back, and an open menu is not rebuilt by unrelated updates
+        if (!wanted.SequenceEqual(Groups.Select(t => (t.GroupId, t.Name, t.IsChecked, t.IsEnabled))))
+            Groups = wanted.Select(w => new GroupToggle(w.Id, w.Name, w.Checked, w.AssignableByMe, ToggleGroup)).ToList();
+    }
+
+    /// <summary>Package 119: IsChecked already holds the new value; the row spins until the server shows it.</summary>
+    Task ToggleGroup(GroupToggle toggle)
+    {
+        var sent = owner.SetUserGroup(Fingerprint, SessionId, toggle.GroupId, toggle.IsChecked);
+        pendingGroups[toggle.GroupId] = (toggle.IsChecked, sent);
+        _ = EndGroupChangeAsync(toggle.GroupId, sent);
+        return Task.CompletedTask;
+    }
+
+    async Task EndGroupChangeAsync(Guid groupId, Pending sent)
+    {
+        await sent.Completion;
+        if (pendingGroups.GetValueOrDefault(groupId).Sent == sent) pendingGroups.Remove(groupId);
+        if (pendingGroups.Values.Any(p => p.Sent.IsBusy)) IsBusy = true; // this one ending cleared the spinner a later click still needs
+        owner.Rebuild(); // done: the server's state is shown already; refused or no answer: the tick goes back
     }
 
     internal void SetSpeaking(bool on, bool viaLink)

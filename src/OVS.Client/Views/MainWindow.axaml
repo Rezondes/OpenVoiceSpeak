@@ -271,6 +271,19 @@
                                 <MenuItem Header="{x:Static l:Strings.Ui_ServerMuteMenu}" Command="{Binding ToggleServerMuteCommand}" IsVisible="{Binding CanMute}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.SpeakerMute}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
+                                <!-- Package 119 (A128): each group ticks itself on a click and sends at once; the tick follows the server -->
+                                <MenuItem Classes="groups" Header="{x:Static l:Strings.Ui_Groups}" ItemsSource="{Binding Groups}" IsVisible="{Binding HasGroups}">
+                                  <MenuItem.Icon><PathIcon Data="{StaticResource Icon.People}" Classes="sm" /></MenuItem.Icon>
+                                  <MenuItem.Styles>
+                                    <Style Selector="MenuItem.groups > MenuItem" x:DataType="vm:GroupToggle">
+                                      <Setter Property="ToggleType" Value="CheckBox" />
+                                      <Setter Property="Header" Value="{Binding Name}" />
+                                      <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=TwoWay}" />
+                                      <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                      <Setter Property="Command" Value="{Binding ToggleCommand}" />
+                                    </Style>
+                                  </MenuItem.Styles>
+                                </MenuItem>
                                 <MenuItem Header="{x:Static l:Strings.Ui_KickMenu}" Command="{Binding KickCommand}" IsVisible="{Binding CanKick}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.PersonDelete}" Classes="sm danger" /></MenuItem.Icon>
                                 </MenuItem>

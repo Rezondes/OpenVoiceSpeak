@@ -6,6 +6,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Logging;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -891,6 +892,61 @@ public sealed class UiSmokeTests : IDisposable
         anna.VolumePercent = 0;
         Dispatcher.UIThread.RunJobs();
         Assert.True(IconShown("Für dich stumm"));
+        main.Close();
+    }
+
+    /// <summary>Package 119 (AC1, AC3, AC4): the user menu's "Gruppen" ticks the user's groups; a click sends at once.</summary>
+    [AvaloniaFact]
+    public void UserContextMenu_GroupsSubmenu()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        var sent = new List<Request>();
+        var server = FakeServers.Admin(sent);
+        vm.Server = server;
+        Dispatcher.UIThread.RunJobs();
+
+        Border Row(string nick) => main.GetVisualDescendants().OfType<Border>()
+            .Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel u && u.Nickname == nick);
+        MenuItem? Submenu(string nick, out ContextMenu menu)
+        {
+            menu = Row(nick).ContextMenu!;
+            menu.Open(Row(nick));
+            Dispatcher.UIThread.RunJobs();
+            var groups = menu.Items.OfType<MenuItem>().SingleOrDefault(m => m.IsVisible && m.Header as string == "Gruppen");
+            if (groups is not null) groups.IsSubMenuOpen = true;
+            Dispatcher.UIThread.RunJobs();
+            return groups;
+        }
+        List<(string?, bool, bool)> Ticks(MenuItem groups) => groups.GetLogicalChildren().OfType<MenuItem>()
+            .Select(m => (m.Header as string, m.IsChecked, m.IsEffectivelyEnabled)).ToList();
+
+        Assert.Null(Submenu("ich", out var own)); // never on myself
+        own.Close();
+        var groups = Submenu("anna", out var menu)!;
+        Assert.NotNull(groups);
+        Assert.Equal([("Gast", true, true), ("Admin", false, true)], Ticks(groups));
+        Assert.All(groups.GetLogicalChildren().OfType<MenuItem>(), m => Assert.Equal(MenuItemToggleType.CheckBox, m.ToggleType));
+
+        // a click ticks and sends at once (a real click: the menu item ticks itself before it runs the command)
+        var admin = groups.GetLogicalChildren().OfType<MenuItem>().Single(m => m.Header as string == "Admin");
+        var popup = TopLevel.GetTopLevel(admin)!;
+        var at = admin.TranslatePoint(new Point(admin.Bounds.Width / 2, admin.Bounds.Height / 2), popup)!.Value;
+        popup.MouseDown(at, MouseButton.Left);
+        popup.MouseUp(at, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(admin.IsChecked);
+        Assert.Equal(new AssignGroup("fp2", WellKnownGroups.Admin), sent[^1] with { RequestId = null });
+        menu.Close();
+        Dispatcher.UIThread.RunJobs();
+
+        // the server's update (or a change made elsewhere) shows the next time the menu opens
+        server.Apply(new UserUpdated(server.Mirror.Users[2] with { GroupIds = [WellKnownGroups.Admin] }));
+        Dispatcher.UIThread.RunJobs();
+        groups = Submenu("anna", out menu)!;
+        Assert.Equal([("Gast", false, true), ("Admin", true, true)], Ticks(groups));
+        menu.Close();
         main.Close();
     }
 

@@ -24,12 +24,13 @@ public class ServerViewModelTests
         public UserViewModel User(uint id) => Vm.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
     }
 
-    static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, Dialogs? dialogs = null, params UserInfo[] others)
+    static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, Dialogs? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
+        params UserInfo[] others)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", false), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Bravo, "Bravo", "", 1), new ChannelInfo(Alpha, "alpha", "", 1)],
             [],
-            [new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak), new GroupInfo(WellKnownGroups.Admin, "Admin", P.All)],
+            groups ?? [new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak), new GroupInfo(WellKnownGroups.Admin, "Admin", P.All)],
             [U(1, "ich", Lobby, selfPerms, selfGroups), .. others]);
         var sent = new List<Request>();
         var time = new ManualTimeProvider();
@@ -908,5 +909,107 @@ public class ServerViewModelTests
         Assert.Equal(string.Format(OVS.Client.Localization.Strings.Tooltip_LinkedWith, "Lobby"), f.Channel(Alpha).Tooltip);
         f.Vm.Apply(new ChannelsLinked(Bravo, Alpha));
         Assert.Equal("Nur Raid" + (char)10 + string.Format(OVS.Client.Localization.Strings.Tooltip_LinkedWith, "alpha"), f.Channel(Bravo).Tooltip);
+    }
+
+    // ---- Package 119 (A128): groups from the user's context menu ----
+
+    static readonly Guid Raid = Guid.NewGuid();
+
+    /// <summary>Guest and Raid assignable by me, Admin not (stronger than me).</summary>
+    static readonly GroupInfo[] AssignGroups =
+        [new(WellKnownGroups.Guest, "Gast", P.Speak, true), new(WellKnownGroups.Admin, "Admin", P.All), new(Raid, "Raid", P.Speak, true)];
+
+    static UserInfo Weaker(IReadOnlyList<Guid>? groups = null) => U(2, "anna", Lobby, groups: groups) with { CanBeModeratedByMe = true };
+
+    static List<(Guid, string, bool, bool)> Ticks(UserViewModel user) => user.Groups.Select(t => (t.GroupId, t.Name, t.IsChecked, t.IsEnabled)).ToList();
+
+    /// <summary>Package 119 (AC1, AC2): the submenu only for weaker users and only with GroupsAssign; a group I may not give is greyed out.</summary>
+    [Fact]
+    public void UserGroups_OnlyForWeakerUsersWithAssignRight()
+    {
+        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker(), U(3, "bert", Lobby)]);
+        Assert.Empty(f.User(1).Groups); // myself
+        Assert.Empty(f.User(3).Groups); // stronger or equal: the server does not let me act on him
+        Assert.Equal([(WellKnownGroups.Guest, "Gast", true, true), (WellKnownGroups.Admin, "Admin", false, false), (Raid, "Raid", false, true)],
+            Ticks(f.User(2)));
+
+        var without = Create(Moderator, groups: AssignGroups, others: [Weaker()]);
+        Assert.Empty(without.User(2).Groups); // no GroupsAssign
+    }
+
+    /// <summary>Package 119 (AC3, AC4): a click sends at once, the tick and tooltip follow the server; a refusal puts the tick back.</summary>
+    [Fact]
+    public async Task UserGroupToggle_SendsAssign_ConfirmedByUserUpdated()
+    {
+        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker()]);
+        var notices = new List<string>();
+        f.Vm.Notice += notices.Add;
+        var anna = f.User(2);
+
+        var raid = anna.Groups.Single(t => t.GroupId == Raid);
+        raid.IsChecked = true; // the menu item ticks itself on the click, then runs the command
+        await raid.ToggleCommand.ExecuteAsync(null);
+        Assert.Equal(new AssignGroup("fp2", Raid), f.Sent[^1] with { RequestId = null });
+        f.Time.Advance(ShowAfter);
+        Assert.True(anna.IsBusy);
+        f.Vm.Apply(new UserUpdated(Weaker([WellKnownGroups.Guest]) with { SelfMuted = true })); // another change meanwhile
+        Assert.True(anna.Groups.Single(t => t.GroupId == Raid).IsChecked); // the tick stays until the server shows the group
+        Assert.True(anna.IsBusy);
+        f.Vm.Apply(new UserUpdated(Weaker([WellKnownGroups.Guest, Raid])));
+        Assert.False(anna.IsBusy);
+        Assert.True(anna.Groups.Single(t => t.GroupId == Raid).IsChecked);
+        Assert.Equal("Gast, Raid", anna.GroupTip);
+
+        // taken away again, but refused: the error shows and the tick goes back
+        raid = anna.Groups.Single(t => t.GroupId == Raid);
+        raid.IsChecked = false;
+        await raid.ToggleCommand.ExecuteAsync(null);
+        Assert.Equal(new UnassignGroup("fp2", Raid), f.Sent[^1] with { RequestId = null });
+        f.Time.Advance(ShowAfter);
+        Assert.True(anna.IsBusy);
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied));
+        Assert.False(anna.IsBusy);
+        Assert.Equal(ErrorTexts.For(Codes.PermissionDenied), notices[^1]);
+        Assert.True(anna.Groups.Single(t => t.GroupId == Raid).IsChecked);
+
+        // a change made elsewhere shows the next time the menu opens
+        f.Vm.Apply(new UserUpdated(Weaker([Raid])));
+        Assert.Equal([false, false, true], anna.Groups.Select(t => t.IsChecked));
+    }
+
+    /// <summary>Package 119 (review): on, then off before any answer; the first answer neither shows the tick nor ends the spinner.</summary>
+    [Fact]
+    public async Task UserGroupToggle_OnThenOff_LastClickWins()
+    {
+        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker()]);
+        var anna = f.User(2);
+        GroupToggle Raid_() => anna.Groups.Single(t => t.GroupId == Raid);
+        var raid = Raid_();
+        raid.IsChecked = true;
+        await raid.ToggleCommand.ExecuteAsync(null);
+        raid = Raid_();
+        raid.IsChecked = false;
+        await raid.ToggleCommand.ExecuteAsync(null);
+        Assert.IsType<UnassignGroup>(f.Sent[^1]);
+        f.Time.Advance(ShowAfter);
+        Assert.True(anna.IsBusy);
+
+        f.Vm.Apply(new UserUpdated(Weaker([WellKnownGroups.Guest, Raid]))); // confirms the first click only
+        Assert.False(Raid_().IsChecked);
+        Assert.True(anna.IsBusy);
+        f.Vm.Apply(new UserUpdated(Weaker([WellKnownGroups.Guest])));
+        Assert.False(Raid_().IsChecked);
+        Assert.False(anna.IsBusy);
+    }
+
+    /// <summary>
+    /// Package 119 (AC2): the last admin keeps the Admin group. An Admin-group member has every right, so the server never
+    /// judges one weaker than me and the menu has no groups for him, the same rule that keeps the administration's toggles off.
+    /// </summary>
+    [Fact]
+    public void LastAdmin_CannotBeUnticked()
+    {
+        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [U(2, "chef", Lobby, P.All, [WellKnownGroups.Admin])]);
+        Assert.Empty(f.User(2).Groups);
     }
 }

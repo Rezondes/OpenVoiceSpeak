@@ -731,6 +731,36 @@ public sealed class ResponsiveTests : IDisposable
         return 0;
     });
 
+    /// <summary>Package 119 (AC5): the user menu and its "Gruppen" submenu stay inside the window, also at 360 px.</summary>
+    [AvaloniaTheory]
+    [InlineData(360, "de-DE")]
+    [InlineData(360, "en-US")]
+    [InlineData(1100, "de-DE")]
+    [InlineData(1100, "en-US")]
+    public void UserContextMenu_Fits360(double width, string culture) => TestCulture.With(culture, () =>
+    {
+        var main = Open(width, FakeServers.Admin(), out _);
+        if (width < 700)
+        {
+            Click(main, MenuButton(main)); // the channel tree lives in the drawer
+            WaitFor(() => Sidebar(main).IsEffectivelyVisible && AtRest(Sidebar(main), main), 5000);
+        }
+        var row = main.GetVisualDescendants().OfType<Border>().Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel { Nickname: "anna" });
+        var menu = row.ContextMenu!;
+        menu.Open(row);
+        Dispatcher.UIThread.RunJobs();
+        var groups = menu.Items.OfType<MenuItem>().Single(m => m.Header as string == Strings.Ui_Groups);
+        groups.IsSubMenuOpen = true;
+        Dispatcher.UIThread.RunJobs();
+        var items = menu.Items.OfType<MenuItem>().Where(m => m.IsVisible).Concat(Avalonia.LogicalTree.LogicalExtensions.GetLogicalChildren(groups).OfType<MenuItem>()).ToList();
+        Assert.Equal(2, items.Count(m => m.ToggleType == MenuItemToggleType.CheckBox));
+        Assert.All(items, item => Assert.True(item.Bounds.Width > 0, "laid out"));
+        foreach (var item in items) FullyInside(main, item);
+        menu.Close();
+        main.Close();
+        return 0;
+    });
+
     [AvaloniaTheory]
     [InlineData("Connect")]
     [InlineData("ChannelEdit")]
