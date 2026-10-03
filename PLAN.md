@@ -31,6 +31,8 @@
 > **Packages 99 to 109 (animated display):** the request "more animations, away from the plain style" was cut into one package per area. Rendering stays on Skia (Impeller was considered and declined). 99 adds the setting "Vereinfachte Darstellung" (today's look) / "Animierte Darstellung" and must come first; 100, 101, 102, 104, 105 and 108 can then run in parallel; 103 needs 101 and 102, 106 needs 101 and 104, 107 needs 101; 109 (every action animated) comes last.
 >
 > **Packages 110 to 115:** one package per point of the request, in its order (no reordering needed). 111 (separators) needs 110 (duplicate names), because every separator carries the same empty name; 113 (sidebar width) and 111 both touch `MainWindow.FitSidebar`, so 113 should come after 111 or be merged carefully. All others can run in parallel.
+>
+> **Packages 119 to 125:** one package per point of the request, in its order, except that the two key bugs share one cause: key bindings edited on the settings page only reach the key poller on Save. 121 (self test) fixes that, so 125 (push-to-mute) needs 121. 122 (many users) and 124 (idle CPU and RAM) are cut by cost: 122 is what every server message and every speaking user costs in the UI, 124 is what runs while nothing happens. 123 (voice filters) and 124 both change `CapturePipeline`, so 124 comes after 123. 119, 120, 121, 122 and 123 can run in parallel. (Packages 116 to 118, the website, were planned in a separate file; their assumptions are A124 to A127.)
 
 ## Überblick
 
@@ -151,6 +153,13 @@
 | 113 | Sidebar fits its footer | After connecting, the fitted sidebar is wide enough for the own nickname, the talk hint and the footer buttons. | - |
 | 114 | Ask before losing unsaved changes | Leaving a page or admin tab with unsaved changes asks whether to save and leave, leave without saving, or keep editing. | - |
 | 115 | Tooltips fade in once | In the animated display a tooltip fades in once and stays, without blinking a second time. | - |
+| 119 | Groups from the user's context menu | Moderators with the right to assign groups give and take a user's groups with a right click on the user. | - |
+| 120 | Move users by drag and drop and menu | Users with the move right drag a user onto a channel, or pick the channel straight from the user's context menu, to move them. | - |
+| 121 | Key bindings apply at once, self test with push-to-talk | Keys set on the settings page work at once, so the self test in push-to-talk mode plays back while the key is held. | - |
+| 122 | Fast with many users | A server with hundreds of users and many speakers stays smooth in both displays, because a server message only updates what it changes. | - |
+| 123 | Voice filters | Noise suppression and automatic gain clean the microphone signal before it is sent, each switchable in the settings. | - |
+| 124 | Low CPU and RAM while idle | While nothing happens the client uses almost no CPU, opens the audio devices only when needed and allocates nothing per audio frame. | 123 |
+| 125 | Push-to-mute works like mute | Holding the push-to-mute key mutes exactly like the mute button, with icon, sound and server state, and releasing it restores the previous state. | 121 |
 
 ## Annahmen
 
@@ -292,6 +301,12 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A121 Sidebar footer (Package 113).** The fitted width also covers the footer: avatar, nickname, the wider of the talk hint and the nickname (as built: the "Sendet" texts trim while talking, the width never jumps because sending does not refit) and the three buttons. The window's own upper bound (`Responsive.SidebarMax`) still wins; below it texts trim as today. The header (server name) keeps trimming.
 - **A122 Unsaved changes (Package 114).** Places with a manual save: the settings page, the group editor, the server settings tab and the link matrix. Leaving means: changing page (menu, settings cog, Esc, the X of the settings page), switching admin tab, selecting another group, disconnecting, connecting to another server, closing the window. The buttons "Abbrechen" (settings) and "Verwerfen" (links) discard without asking, because they say so. "Speichern und verlassen" that the server refuses stays on the page with its error.
 - **A123 Tooltip fade (Package 115).** Only the animated display changes; the simplified display keeps the Fluent tooltip as it is.
+- **A128 Groups in the context menu (Package 119).** A submenu "Gruppen" on a user row lists every group with a check mark, with the same rules as the administration's user list: shown when I have `GroupsAssign` and the user is weaker than me (`CanBeModeratedByMe`), never on myself; a group is enabled when `AssignableByMe`; the last admin cannot lose the Admin group. A click applies at once (no save button), like the toggles in the administration. No protocol change: `AssignGroup` / `UnassignGroup` by fingerprint.
+- **A129 Moving users (Package 120).** "Verschieben" in the context menu becomes a submenu listing the channels directly (the current channel and separators left out, locked or full channels shown but refused by the server as today) instead of the channel picker dialog. Dragging a user row onto a channel row moves that user; dragging my own row joins that channel. The drag follows A112 (lifted preview), the target channel row is highlighted instead of a gap, Esc cancels. No protocol change: `MoveUser` and `JoinChannel`.
+- **A130 Live key bindings (Package 121).** While the settings page is open, the key poller uses the bindings shown on the page; closing without saving restores the saved ones, like the audio live preview.
+- **A131 Voice filters (Package 123).** Noise suppression with RNNoise (BSD-3, native library shipped with the client) and an own automatic gain control (no dependency). Defaults: noise suppression on, automatic gain off, also for settings files without the keys. Both act on the sent signal, before voice activation and the level meter, and apply live. No echo cancellation (users with speakers instead of a headset keep using push-to-talk). Replaces A18 in part.
+- **A132 Audio only when needed (Package 124).** Microphone and output device open when connecting or starting the self test, and close on disconnect; the settings page opens the microphone only while it is shown (level meter). Windows then shows the microphone as in use only while connected.
+- **A133 Push-to-mute (Package 125).** Holding the push-to-mute key does the same as pressing the mute button, and releasing it undoes exactly that: if I was already muted, holding and releasing changes nothing. Single modifier keys (Shift, Ctrl, Alt alone) can be bound to any action.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -6988,3 +7003,418 @@ Test command: `dotnet test tests/OVS.Tests`
 ### Out of Scope
 
 - Tooltip timing (the delay before showing)
+
+---
+
+## Package 119: Groups from the user's context menu
+
+**Goal:** Moderators with the right to assign groups give and take a user's groups with a right click on the user.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change):
+  - `UserViewModel` keeps `GroupIds` and `CanBeModeratedByMe` from `Update` and offers `Groups`, a list of `GroupToggle` like the administration's
+  - `ServerViewModel.SetUserGroupAsync(fingerprint, sessionId, groupId, assigned)` sends `AssignGroup` / `UnassignGroup` with `SendConfirmed`, confirmed by the `UserUpdated` whose `GroupIds` match
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (change): `GroupToggle` and the last-admin guard move to a place both can use, without changing behaviour
+- `src/OVS.Client/Views/MainWindow.axaml` (change): the submenu "Gruppen" in the user row's `ContextMenu` (lines 245 to 281), items `ToggleType="CheckBox"`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/ServerViewModelTests.cs`, `UiSmokeTests.cs`, `LocalizationTests.cs` (change)
+
+### Context
+
+Groups are assigned today only in the administration's user list: `AdminViewModel.RebuildUsers` (lines 503 to 525) builds one `GroupToggle` per group, enabled when `g.AssignableByMe && user.CanBeModeratedByMe`, and `ToggleUserGroupAsync` (lines 852 to 862) sends `AssignGroup` / `UnassignGroup` (`Messages.cs:185-186`, by fingerprint). The server checks `GroupsAssign`, `CanAssign` (never a group stronger than me) and `CanModerate` (`AdminCommands.cs:134-160`), refuses removing the last admin (`Codes.LastAdmin`) and answers a change only with `UserUpdated` for online users.
+
+The user row's context menu (`MainWindow.axaml:245-281`) has volume, message, move, server mute, kick and ban, each enabled by a `Can*` flag from `UserViewModel.Update` (`ServerViewModel.cs:816`). `UserViewModel` keeps only `GroupNames` and `GroupTip`, not the ids. The client has no checkable menu item yet; Avalonia 11 supports `MenuItem ToggleType="CheckBox"`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Right-clicking a user who is weaker than me, while I have `GroupsAssign`, shows a submenu "Gruppen" listing every group of the server with a check mark for the user's groups. On myself, on stronger or equal users, or without the right, the submenu is not there.
+- [ ] AC2: A group I may not assign (`AssignableByMe` false) is shown greyed out; the Admin group of the last admin cannot be unticked (same rule as the administration).
+- [ ] AC3: Clicking a group assigns or removes it at once; the check mark and the user's group tooltip follow the server's `UserUpdated`. While waiting, the row shows its busy state (A113); a refusal shows the server's error and the check mark goes back.
+- [ ] AC4: A change made elsewhere (the administration, another admin) shows in the submenu the next time it opens.
+- [ ] AC5: The texts exist in German and English, and the menu fits at 360 px.
+
+### Tests (TDD)
+
+1. `ServerViewModelTests > "UserGroups_OnlyForWeakerUsersWithAssignRight"` (AC1, AC2)
+   - Given: a fake server where I have `GroupsAssign`, a weaker user, a stronger user and myself, with groups of which one is not assignable by me.
+   - Expected: `Groups` is empty for myself and the stronger user; for the weaker user it lists all groups, ticked by `GroupIds`, the not assignable one disabled.
+2. `ServerViewModelTests > "UserGroupToggle_SendsAssign_ConfirmedByUserUpdated"` (AC3)
+   - Given: the weaker user, toggling a group on and then off.
+   - Expected: `AssignGroup(fp, id)` then `UnassignGroup(fp, id)` are sent; the pending ends with the matching `UserUpdated`; an `Error` for the request reverts the tick and shows the error.
+3. `ServerViewModelTests > "LastAdmin_CannotBeUnticked"` (AC2)
+4. `UiSmokeTests > "UserContextMenu_GroupsSubmenu"` (AC1, AC4): a headless right click on a user row opens the menu with the submenu and its check marks.
+5. `LocalizationTests`, `ResponsiveTests > "UserContextMenu_Fits360"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 3 (red): `GroupIds`, `CanBeModeratedByMe` and `Groups` on `UserViewModel`, reusing `GroupToggle` and the last-admin guard from the administration.
+2. Test 2 (red): `SetUserGroupAsync` with `SendConfirmed`.
+3. Test 4 (red): the submenu in `MainWindow.axaml`.
+4. Test 5: the texts.
+
+### Out of Scope
+
+- Offline users (only the administration lists them)
+- Creating or editing groups
+
+---
+
+## Package 120: Move users by drag and drop and menu
+
+**Goal:** Users with the move right drag a user onto a channel, or pick the channel straight from the user's context menu, to move them.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Views/UserDrag.cs` (new): a small drag helper on the channel tree for user rows. It reuses from `ReorderDrag` the threshold, pointer capture, Esc, `Snapshot` and the preview styles (`dragPreview`), and highlights the channel row under the pointer instead of opening a gap.
+- `src/OVS.Client/Views/MainWindow.axaml.cs` (change): attach it to `ChannelItems` beside the channel `ReorderDrag` (lines 25 to 26)
+- `src/OVS.Client/Views/MainWindow.axaml` (change): "Verschieben" becomes a submenu with the channels (line 268); a style for the highlighted drop target
+- `src/OVS.Client/Styles/Controls.axaml`, `Styles/Motion.axaml` (change): the drop target highlight
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `UserViewModel.MoveTargets` (the channels for the submenu), `CanDrag` (my row, or `CanMove`), `ServerViewModel.DropUser(user, channel)` (move, or join for myself)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/UserDragTests.cs` (new), `ServerViewModelTests.cs`, `UiSmokeTests.cs` (change)
+
+### Context
+
+Moving exists today only as a dialog: `UserViewModel.Move` (`ServerViewModel.cs:851-857`) opens `Dialogs.PickChannel` with every other channel and calls `owner.Move(SessionId, channelId)`, which sends `MoveUser` and waits for the `UserUpdated` (`ServerViewModel.cs:530-531`). The server checks `UserMove`, rank (never myself, only weaker users), separators, locks and the limit (`ChannelCommands.cs:290-320`); moving into the same channel is a silent no-op, so the client must not offer it.
+
+Channel reordering uses `ReorderDrag` (Package 96), built for gaps inside one list; it deliberately ignores presses on nested user rows (`ReorderDrag.cs:66`), so a user drag can live beside it on the same tree. After a move, `ItemMotion` flies the row's picture from the old to the new place (`Fly="True"`); after a drop the row is already where the pointer is, so like the channel reorder the drop holds that flight (`ItemMotion.Hold`).
+
+### Acceptance Criteria
+
+- [ ] AC1: "Verschieben" in the user's context menu is a submenu listing the channels (current channel and separators left out); clicking one moves the user. The dialog is no longer used for this.
+- [ ] AC2: Dragging a user row I may move (`CanMove`) more than the threshold lifts a preview (A112) that follows the pointer; the channel row under the pointer is highlighted when it is a valid target (not the user's own channel, not a separator).
+- [ ] AC3: Dropping on a highlighted channel moves the user there (`MoveUser`); the row lands without flying a second time. Dropping elsewhere, or Esc, cancels and nothing is sent.
+- [ ] AC4: Dragging my own row and dropping it on a channel joins that channel (`JoinChannel`, with its password prompt for a password lock as today).
+- [ ] AC5: A refused move (full, locked, rank) shows the server's error as with the menu; the user stays where they were.
+- [ ] AC6: Rows of users I may not move do not start a drag; a channel drag (Package 96) still works and is not started by a press on a user row.
+- [ ] AC7: The texts exist in German and English; the submenu fits at 360 px.
+
+### Tests (TDD)
+
+1. `ServerViewModelTests > "MoveTargets_OtherChannelsWithoutSeparators"` (AC1)
+2. `UserDragTests > "DragUserOntoChannel_HighlightsAndMoves"` (AC2, AC3)
+   - Given: a headless main window with a fake server, a weaker user in the Lobby, me with `UserMove`.
+   - Expected: past the threshold a preview is in the overlay; over the Raid row it is highlighted; on release `MoveUser(user, Raid)` is sent and no flight ghost appears.
+3. `UserDragTests > "DropOutsideOrEsc_SendsNothing"` (AC3)
+4. `UserDragTests > "OwnRow_DropJoinsChannel"` (AC4)
+5. `UserDragTests > "NoMoveRight_NoDrag_ChannelDragUnchanged"` (AC6), with `ReorderDragTests` staying green
+6. `ServerViewModelTests > "RefusedMove_ShowsError"` (AC5)
+7. `LocalizationTests`, `ResponsiveTests` (AC7)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): `MoveTargets` and the submenu.
+2. Tests 2 to 5 (red): `UserDrag` with the shared pieces of `ReorderDrag` (threshold, capture, preview, `Snapshot`, `ReducedMotion`), the highlight style and `DropUser`.
+3. Test 6 and 7.
+
+### Out of Scope
+
+- Dragging several users at once
+- Dragging users into the administration or between servers
+
+---
+
+## Package 121: Key bindings apply at once, self test with push-to-talk
+
+**Goal:** Keys set on the settings page work at once, so the self test in push-to-talk mode plays back while the key is held.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): a change of the key bindings (add, edit, remove, the "Taste festlegen" banner) triggers `Preview()`, like the audio settings
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `LivePreview` also sets `Keys.Bindings`; `CloseSettings` without saving restores `Settings.KeyBindings`, as it restores the audio with `ApplyLive(Settings)`
+- `src/OVS.Client/Views/SettingsView.axaml` (change, only if test 3 shows it): the self test button must not toggle when the push-to-talk key is Space or Enter
+- `tests/OVS.Tests/Client/MainViewModelTests.cs`, `SendPathTests.cs`, `SettingsTests.cs` (change)
+
+### Context
+
+The self test itself is fine: with `Audio.SelfTest` set, `AudioEngine.Decide` (`AudioEngine.cs:267-280`) takes `keys.PttDown` and loops the frame back. The bug is in the keys: `Keys.Bindings` is written in exactly one place, `MainViewModel.Prepare` (`MainViewModel.cs:209`), which runs only on Save. The settings page edits its own list (`SettingsViewModel.cs:66, 241-268`), and `LivePreview` (`MainViewModel.cs:629-633`) pushes mode, gain, volume and threshold live, but not the keys.
+
+So switching to push-to-talk on the page works at once, but a key set on the page does nothing until Save, and Save closes the page, which ends the self test. A profile without a saved push-to-talk key, or one that was in voice activation before, is silent in the self test. The tests did not see it: `SelfTest_PlaysOwnVoice_SendsNothing_OthersSilent` runs in voice activation, `SelfTest_FollowsMode_PushToTalkWithoutKeySilent` only checks silence, and `keys.Simulate` bypasses the bindings (`KeyPoller.cs:118`).
+
+A second possible cause is unproven: with Space or Enter as the push-to-talk key, the focused self test button may be clicked by the key and stop the test. Test 3 checks it before anything is changed.
+
+### Acceptance Criteria
+
+- [ ] AC1: A key binding added, changed or removed on the settings page is in `Keys.Bindings` at once, before Save.
+- [ ] AC2: Closing the settings without saving restores the saved bindings; saving keeps the new ones.
+- [ ] AC3: In push-to-talk mode, with the self test running and a key set on the page, holding the key plays the own voice back and releasing it stops it.
+- [ ] AC4: A push-to-talk key that is also a key of the focused self test button (Space, Enter) does not stop the self test.
+
+### Tests (TDD)
+
+1. `MainViewModelTests > "SettingsPage_KeyBindingLive_RevertedOnCancel"` (AC1, AC2): the reproduction, red first
+   - Given: saved settings in voice activation without a push-to-talk key; the settings page open; push-to-talk chosen and a key added through a stubbed `EditKeyBinding`.
+   - Expected: `vm.Keys.Bindings` contains the new key at once; after leaving without saving it is gone again; after saving it stays.
+2. `SendPathTests > "SelfTest_PushToTalk_KeyHeld_PlaysBack"` (AC3): a tone engine in push-to-talk mode with `SelfTest = true`; the binding resolved from a simulated key state (not `Simulate(ptt:)`), so the bindings are part of the test.
+3. `SettingsTests > "SelfTest_SpaceAsPttKey_DoesNotToggleButton"` (AC4): headless, the self test button focused, Space pressed and released.
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): bindings in `LivePreview` and the revert in `CloseSettings`.
+2. Test 2: if `KeyPoller` cannot be fed a raw key state in tests, add a small seam for the polled state (not for the resolved actions).
+3. Test 3: only if it is red, keep the self test button from reacting to the push-to-talk key.
+
+### Out of Scope
+
+- Push-to-mute's behaviour (Package 125, which builds on the live bindings)
+
+---
+
+## Package 122: Fast with many users
+
+**Goal:** A server with hundreds of users and many speakers stays smooth in both displays, because a server message only updates what it changes.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `ApplyMessage` updates only the affected users and channels instead of `Rebuild` for every message; `RefreshSpeaking` touches only users whose state changed
+- `src/OVS.Client/ViewModels/CollectionSync.cs` (change): no `IndexOf` inside the loop (linear instead of quadratic)
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `SyncAudioFlags` and the server icon hash run only when their inputs change, not on every `StateChanged`
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `SpeakersChanged` at most every 100 ms, not up to 50 times per second
+- `src/OVS.Client/Views/MainWindow.axaml.cs` (change): `FitSidebar` only when a channel name, a count or the sidebar's content width can change, not after every message
+- `src/OVS.Client/Views/ItemMotion.cs` (change): the FLIP place tracking (`WatchPlaces`, `LayoutUpdated` per list) records places only around a change, not on every layout pass
+- `src/OVS.Client/Views/BusySpinner.axaml.cs` (change): no tree walk for every visibility change of every control
+- `src/OVS.Client/Styles/Motion.axaml` (change): the speaking ring breathes without animating a blurred shadow (the glow stays still, only a light layer pulses)
+- `tests/OVS.Tests/TestSupport/FakeServers.cs` (change): `FakeServers.Large` with 40 channels and 400 users
+- `tests/OVS.Tests/Client/PerformanceTests.cs` (new)
+
+### Context
+
+Every state message rebuilds the whole tree: `ServerViewModel.ApplyMessage` calls `Rebuild` (`ServerViewModel.cs:234, 271-312`), which filters all users per channel (channels × users), updates every `UserViewModel` (with `string.Join` for the group names), syncs every list with an `IndexOf` per item, and raises `StateChanged`. Each `StateChanged` then:
+- rebuilds the speaker gain table (`MainViewModel.SyncAudioFlags`)
+- re-hashes the server icon (`TrackServerIcon.Sync`)
+- refits the sidebar, which walks every channel container with all its user rows and measures every name (`MainWindow.FitSidebar`)
+
+Speaking adds load: `AudioEngine.Mix` raises `SpeakersChanged` whenever the set changes (up to 50 times per second) and every 100 ms while anyone talks, and each goes over all users. In the animated display, every speaking user's ring breathes forever with a blurred shadow (`Motion.axaml:291-323`), and every user list subscribes `LayoutUpdated` (`ItemMotion.cs:339-356`), so during joins and leaves every frame walks every list. The channel tree is not virtualized (`MainWindow.axaml:174-317`); with the fixes above it does not need to be for a few hundred users, and virtualizing would collide with the motion code.
+
+The tests only know `FakeServers.Crowded` (8 channels, 20 users). Wall-clock limits are fragile on CI (see the timing work after Package 118), so the tests count work instead of timing it.
+
+### Acceptance Criteria
+
+- [ ] AC1: A `UserUpdated` for one user (mute, deafen, rename) updates only that user's view model; a move updates only the two channels involved; no other `UserViewModel.Update` runs.
+- [ ] AC2: A message that changes no channel name or count does not refit the sidebar; one that does refits it once per frame at most.
+- [ ] AC3: The speaker gain table and the icon hash are rebuilt only when users join or leave, a user volume changes, or the icon changes.
+- [ ] AC4: With 400 users and 20 speakers, the UI gets at most 10 speaking updates per second, and each touches only users whose speaking state changed.
+- [ ] AC5: Without joins, leaves or moves, no list's place tracking runs on a layout pass.
+- [ ] AC6: In the animated display, a speaking ring animates no blurred shadow; the look stays close to Package 108 (manual check against its screenshots).
+- [ ] AC7: All existing motion tests stay green in both displays, including `JoinLeaveStorm_EndsBounded` on `FakeServers.Large`.
+- [ ] AC8: Manual check: a `FakeServers.Large`-sized server (debug tool or a local server with test clients) at 1100 px, 20 speakers, animated display. CPU of the client before and after is recorded in the package notes.
+
+### Tests (TDD)
+
+1. `PerformanceTests > "UserUpdated_UpdatesOnlyThatUser"` (AC1): count `UserViewModel.Update` calls through a test counter on `FakeServers.Large`.
+2. `PerformanceTests > "MuteChange_DoesNotRefitSidebar_RenameDoes"` (AC2)
+3. `PerformanceTests > "StateChanged_GainTableAndIconHashOnlyWhenNeeded"` (AC3)
+4. `PerformanceTests > "ManySpeakers_SpeakingUpdatesThrottledAndScoped"` (AC4): a mixer fed with 20 speakers on a manual clock.
+5. `PerformanceTests > "NoMove_NoPlaceTracking"` (AC5)
+6. `MotionStyleTests > "SpeakingRing_NoAnimatedShadow"` (AC6)
+7. `MotionCoverageTests.JoinLeaveStorm_EndsBounded` on `FakeServers.Large`, and the whole suite (AC7)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. `FakeServers.Large` and test 1 (red): incremental `ApplyMessage`; keep `Rebuild` for the first fill and for messages that change the channel list.
+2. Tests 2 and 3 (red): the `StateChanged` subscribers react to what changed (an argument on the event, or separate events).
+3. Test 4 (red): throttle `SpeakersChanged`; `RefreshSpeaking` by changed users.
+4. Tests 5 and 6 (red): place tracking around changes, the ring without an animated shadow, `BusySpinner` without the global walk.
+5. Test 7, then the manual check.
+
+### Out of Scope
+
+- Virtualizing the channel tree (not needed for a few hundred users; revisit only if the manual check still stutters)
+- The audio threads and idle cost (Package 124)
+
+---
+
+## Package 123: Voice filters
+
+**Goal:** Noise suppression and automatic gain clean the microphone signal before it is sent, each switchable in the settings.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Audio/NoiseSuppressor.cs` (new): RNNoise through P/Invoke (`rnnoise_create`, `rnnoise_process_frame`, `rnnoise_destroy`), two 480-sample halves per 960-sample frame, samples scaled to and from the 16-bit range RNNoise expects
+- `src/OVS.Client/Audio/AutoGain.cs` (new): a slow automatic gain toward a target level (about -20 dBFS), raising at most +18 dB, never above -3 dBFS peak, frozen while there is no voice so noise is not pumped up
+- `src/OVS.Client/Audio/CapturePipeline.cs` (change): in `Feed` after the input gain (line 87) and before `Vad.Process` (line 88): noise suppression, then automatic gain
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `ApplyLive` and `StartCapture` pass the two switches
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `NoiseSuppression` (default true), `AutoGain` (default false)
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (change): a "Sprachfilter" card after the volume card with two switches and a one-line hint each, with live preview
+- `src/OVS.Client/OVS.Client.csproj` (change): the native `rnnoise.dll` (win-x64) shipped with the client (from a maintained NuGet package or built from xiph/rnnoise and checked in)
+- `THIRD-PARTY-NOTICES.md` (change): RNNoise, BSD-3-Clause
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/VoiceFilterTests.cs` (new), `SettingsTests.cs`, `SendPathTests.cs`, `LocalizationTests.cs` (change)
+
+### Context
+
+The send path is: WASAPI capture → `CapturePipeline.ToMono` → resample to 48 kHz → 960-sample frames (20 ms) → input gain with a hard clip (`CapturePipeline.cs:87`) → `VoiceActivityDetector` (energy only, 300 ms hangover) → Opus (`OpusCodec.cs`, VOIP, 32 kbps, FEC on). There is no noise suppression, no automatic gain and no echo cancellation (A18), and no DSP package; only Concentus and NAudio.
+
+RNNoise works on 48 kHz mono 10 ms frames, so it fits the format exactly. Putting the filters before the voice activation means the activation, the level meter and the self test all see the cleaned signal, so keyboard and fan noise no longer open voice activation. `ApplyLive` already pushes gain and threshold into the pipeline under its lock without restarting the device; the switches use the same path.
+
+### Acceptance Criteria
+
+- [ ] AC1: With noise suppression on, steady noise (white noise at -35 dBFS) leaves the pipeline at least 10 dB quieter; with it off the signal is unchanged.
+- [ ] AC2: With noise suppression on, voice activation at its default threshold no longer opens on that noise alone.
+- [ ] AC3: With automatic gain on, a quiet voice-like signal (-40 dBFS) rises toward -20 dBFS within 3 s and never exceeds -3 dBFS; a loud signal is not raised; during silence the gain does not grow.
+- [ ] AC4: Both switches apply live on the settings page (and in the self test) without restarting the device; Cancel reverts them.
+- [ ] AC5: Defaults: noise suppression on, automatic gain off, also for settings files without the keys; saved and loaded values round-trip.
+- [ ] AC6: The filters cost less than 1 ms per 20 ms frame on the dev machine (measured once, recorded in the notes), and nothing is allocated per frame.
+- [ ] AC7: The published single-file client contains and loads the native library; a missing library turns noise suppression off with one log line instead of crashing.
+- [ ] AC8: The texts exist in German and English, the card fits at 360 px, and `THIRD-PARTY-NOTICES.md` lists RNNoise.
+- [ ] AC9: Manual check: in the self test with a fan or typing near the microphone, the noise is gone and the voice stays clear.
+
+### Tests (TDD)
+
+1. `VoiceFilterTests > "NoiseSuppression_LowersSteadyNoise_OffIsUnchanged"` (AC1)
+2. `VoiceFilterTests > "NoiseSuppression_VadStaysClosedOnNoise"` (AC2): `CapturePipeline.FromTone`-style synthetic noise through the whole pipeline.
+3. `VoiceFilterTests > "AutoGain_RaisesQuiet_CapsLoud_HoldsInSilence"` (AC3)
+4. `SendPathTests > "ApplyLive_SwitchesFilters_WithoutRestart"` (AC4)
+5. `SettingsTests > "VoiceFilters_DefaultsAndRoundTrip"` and `"VoiceFilters_LivePreviewAndCancel"` (AC4, AC5)
+6. `VoiceFilterTests > "Filters_AllocateNothingPerFrame"` (AC6): `GC.GetAllocatedBytesForCurrentThread` around 100 frames.
+7. `VoiceFilterTests > "MissingNativeLibrary_TurnsOffWithLog"` (AC7)
+8. `LocalizationTests`, `ResponsiveTests > "Settings_Fits360"` (AC8)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Choose the RNNoise binary: a maintained NuGet package with a win-x64 `rnnoise.dll`, or build xiph/rnnoise once and check the DLL in; check its license and that single-file publish carries it (`IncludeNativeLibrariesForSelfExtract` is already set).
+2. Tests 1, 2, 6 and 7 (red): `NoiseSuppressor` and its place in `Feed`.
+3. Test 3 (red): `AutoGain`.
+4. Tests 4 and 5 (red): settings, live preview, the card.
+5. Test 8, the notices, the timing measurement and the manual check.
+
+### Out of Scope
+
+- Echo cancellation (A131)
+- Voice effects (pitch, robot) and filters on what others send
+
+---
+
+## Package 124: Low CPU and RAM while idle
+
+**Goal:** While nothing happens the client uses almost no CPU, opens the audio devices only when needed and allocates nothing per audio frame.
+
+**Dependencies:** Package 123 (both change `CapturePipeline`)
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `Audio.Configure` no longer runs at start (`MainViewModel.cs:132, 215`); the devices open on connect, the self test and while the settings page shows the level meter, and close again (A132)
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): the playback loop waits on a signal while no speaker, no sound and no self test is active instead of mixing silence every 5 ms (`AudioEngine.cs:304-334`)
+- `src/OVS.Client/Audio/Mixer.cs`, `JitterBuffer.cs`, `OpusCodec.cs`, `SendPath.cs`, `CapturePipeline.cs` (change): reused buffers instead of new arrays per frame; a speaker's decoder and jitter buffer survive pauses between talk spurts (today they are dropped after 500 ms and recreated)
+- `src/OVS.Client/Audio/OpusCodec.cs` (change): encoder complexity set explicitly (measured choice, likely 5 to 8 instead of the default 10) and DTX on, so silence in push-to-talk and voice activation costs nothing
+- `src/OVS.Client/Input/KeyPoller.cs`, `Input/KeyBindings.cs` (change): one poll allocates nothing (no LINQ per poll)
+- `src/OVS.Client/Logging/ClientLog.cs` or the call site in `MainViewModel.cs:261-264` (change): the per-message log line is written off the UI thread through a queue, with one open file instead of open and close per line
+- `src/OVS.Client/OVS.Client.csproj`, `.github/workflows/release.yml` (change, only what the measurement keeps): `PublishReadyToRun` for faster start and less JIT; `ConcurrentGarbageCollection=false` and `TieredCompilation` settings only if they lower idle CPU or RAM measurably
+- `tests/OVS.Tests/Client/IdleCostTests.cs` (new), `SendPathTests.cs`, `ReceivePathTests.cs`, `MainViewModelTests.cs` (change)
+
+### Context
+
+Why the client can use more than Discord while idle, from the code:
+- **Audio devices are open from the start.** The constructor configures the audio (`MainViewModel.cs:132` → `Audio.Configure` at :215), so the microphone runs (about 50 callbacks per second) and the playback thread mixes silence about 50 times per second (`Mix` with `Mixer.Tick`), even when not connected. Discord opens its voice engine only in a voice channel.
+- **Allocations per audio frame:**
+  - capture allocates in `ToMono`, the resampler (even at equal rates) and the chunker
+  - the mixer allocates a buffer and two lists per tick
+  - the decoder allocates per frame and is recreated for every talk spurt
+  
+  That keeps the garbage collector busy.
+- **The key poller allocates on every 10 ms poll** (LINQ in `KeyActions.Resolve` and `KeyStateTracker.Update`).
+- **Every server message is logged on the UI thread**, opening and closing the log file per line.
+- **Opus runs as managed code** (Concentus) at the default complexity. Discord's voice engine is native (WebRTC).
+- **RAM:** a .NET single-file app carries the runtime, the JIT and Skia. Without ReadyToRun every method is compiled at start.
+
+  Discord spreads itself over several processes, so a fair comparison in the Task Manager adds up all of Discord's processes.
+
+The UI itself is already idle: no looping animation runs without its state (A117, `MotionCoverageTests` checks it).
+
+### Acceptance Criteria
+
+- [ ] AC1: After start and while not connected (settings closed), no capture or output device is open and no playback thread runs; connecting or starting the self test opens them, disconnecting closes them. The settings page's level meter opens the microphone while it is shown.
+- [ ] AC2: Connected with nobody speaking and no sound playing, the playback loop does not mix; it wakes within one frame when a voice packet or a sound arrives (no cut first syllable).
+- [ ] AC3: Capture per frame while not sending, a mixer tick with speakers, a decode and a key poll each allocate 0 bytes in steady state.
+- [ ] AC4: A speaker who pauses and talks again keeps the same decoder and jitter buffer (no new one per talk spurt).
+- [ ] AC5: Logging a server message does not touch the disk on the UI thread; log lines keep their order and none are lost on exit.
+- [ ] AC6: Opus encoder complexity and DTX are set explicitly; the sent quality stays at 32 kbps voice (the existing send and receive tests stay green).
+- [ ] AC7: Manual check, recorded in the package notes: idle connected CPU and working set of the client before and after (Task Manager, 2 minutes, nobody talking), and the same for Discord (all its processes added up) on the same machine; publish settings are kept only if they improve these numbers or start time.
+
+### Tests (TDD)
+
+1. `MainViewModelTests > "AudioDevices_OpenOnlyWhenNeeded"` (AC1): a fake device factory counts open and close through start, connect, self test, settings page and disconnect.
+2. `ReceivePathTests > "Playback_IdleDoesNotMix_WakesOnVoice"` (AC2): count `Mix` calls over 500 ms idle (0), then one voice packet is mixed within one frame.
+3. `IdleCostTests > "SteadyState_AllocatesNothing"` (AC3): `GC.GetAllocatedBytesForCurrentThread` around 100 capture frames, mixer ticks, decodes and key polls after warm-up.
+4. `ReceivePathTests > "SpeakerPause_KeepsDecoder"` (AC4)
+5. `MainViewModelTests > "MessageLog_OffUiThread_InOrder"` (AC5)
+6. `SendPathTests > "Encoder_ComplexityAndDtxSet"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Measure first (AC7 "before"), so every change can be judged.
+2. Tests 1 and 2 (red): devices on demand, the idle playback loop.
+3. Tests 3 and 4 (red): buffer reuse and decoders kept per speaker.
+4. Tests 5 and 6 (red): the log queue, the encoder settings.
+5. Publish settings one at a time with the measurement; keep only what helps.
+6. AC7 "after".
+
+### Out of Scope
+
+- The UI's cost per message and per speaker (Package 122)
+- Replacing Concentus with native libopus (only if the measurement shows Opus is the main cost; a separate package then)
+
+---
+
+## Package 125: Push-to-mute works like mute
+
+**Goal:** Holding the push-to-mute key mutes exactly like the mute button, with icon, sound and server state, and releasing it restores the previous state.
+
+**Dependencies:** Package 121 (bindings set on the settings page work at once)
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): subscribe `Keys.Changed` for `PushToMute`; on press, if not muted, mute like `ToggleMute` (`ServerViewModel.cs:557-565`: `SelfMuted`, the `MicOff` sound, `SetSelfState`); on release undo exactly that
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): a `HoldMute(bool held)` beside `ToggleMute` that remembers whether it muted
+- `src/OVS.Client/Input/KeyPoller.cs` (change): a single modifier key (Shift, Ctrl, Alt, left or right) can be captured as a binding (today `IsModifier` skips them, `KeyPoller.cs:78, 107`): captured on release when no other key was pressed meanwhile
+- `src/OVS.Client/Input/KeyBindings.cs` (change, if needed): a chord that is only a modifier
+- `tests/OVS.Tests/Client/MainViewModelTests.cs`, `KeyBindingTests.cs` (change)
+
+### Context
+
+Push-to-mute is registered with the poller like every other action (`KeyBindings.cs:7, 37, 54-64`) and is read only by the audio engine (`keys.MuteHeld` in `AudioEngine.cs:282`), which stops sending while it is held. Nothing else reacts: `Keys.Changed` has no subscriber outside the audio debug log, so the mute icon, the sounds and the server state stay as they are. In push-to-talk mode it only matters while push-to-talk is held too, so it looks dead. A key set for it on the settings page did nothing until Save (fixed by Package 121). Shift, Ctrl or Alt alone, common choices for such a key, cannot be bound at all.
+
+The mute button (`ToggleMute`, `ServerViewModel.cs:557-565`) sets `SelfMuted`, plays `MicOff` / `MicOn` and sends `SetSelfState`; the server broadcasts it, so others see the muted icon.
+
+### Acceptance Criteria
+
+- [ ] AC1: Holding the push-to-mute key while unmuted: the own mute icon shows, the `MicOff` sound plays, the server gets `SetSelfState(Muted: true)` and nothing is sent. Releasing it: unmuted again, `MicOn`, `SetSelfState(Muted: false)`.
+- [ ] AC2: Holding it while already muted (or deafened) changes nothing, and releasing it does not unmute.
+- [ ] AC3: Pressing the mute button while holding the key makes that choice stick: releasing the key does not undo it.
+- [ ] AC4: Not connected, holding the key only stops sending (the self test included); nothing is sent to a server.
+- [ ] AC5: Shift, Ctrl or Alt alone can be bound to push-to-mute (and any other action) on the settings page and is resolved like any other key.
+
+### Tests (TDD)
+
+1. `MainViewModelTests > "PushToMuteHeld_MutesLikeButton_ReleaseRestores"` (AC1): a fake server collects `SetSelfState`; the binding resolved from a simulated key state.
+2. `MainViewModelTests > "PushToMute_AlreadyMuted_NoChange"` (AC2)
+3. `MainViewModelTests > "MuteButtonWhileHeld_Sticks"` (AC3)
+4. `MainViewModelTests > "PushToMute_NotConnected_OnlyStopsSending"` (AC4)
+5. `KeyBindingTests > "Capture_SingleModifier_OnRelease"` and `"Resolve_SingleModifierChord"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 4 (red): `HoldMute` and the `Keys.Changed` subscription.
+2. Test 5 (red): modifier-only capture and resolve.
+
+### Out of Scope
+
+- A push-to-deafen action
