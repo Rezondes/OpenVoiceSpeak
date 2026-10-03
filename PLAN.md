@@ -7088,15 +7088,17 @@ Channel reordering uses `ReorderDrag` (Package 96), built for gaps inside one li
 
 ### Acceptance Criteria
 
-- [ ] AC1: "Verschieben" in the user's context menu is a submenu listing the channels (current channel and separators left out); clicking one moves the user. The dialog is no longer used for this.
-- [ ] AC2: Dragging a user row I may move (`CanMove`) more than the threshold lifts a preview (A112) that follows the pointer; the channel row under the pointer is highlighted when it is a valid target (not the user's own channel, not a separator).
-- [ ] AC3: Dropping on a highlighted channel moves the user there (`MoveUser`); the row lands without flying a second time. Dropping elsewhere, or Esc, cancels and nothing is sent.
-- [ ] AC4: Dragging my own row and dropping it on a channel joins that channel (`JoinChannel`, with its password prompt for a password lock as today).
-- [ ] AC5: A refused move (full, locked, rank) shows the server's error as with the menu; the user stays where they were.
-- [ ] AC6: Rows of users I may not move do not start a drag; a channel drag (Package 96) still works and is not started by a press on a user row.
-- [ ] AC7: The texts exist in German and English; the submenu fits at 360 px.
+- [x] AC1: "Verschieben" in the user's context menu is a submenu listing the channels (current channel and separators left out); clicking one moves the user. The dialog is no longer used for this.
+- [x] AC2: Dragging a user row I may move (`CanMove`) more than the threshold lifts a preview (A112) that follows the pointer; the channel row under the pointer is highlighted when it is a valid target (not the user's own channel, not a separator).
+- [x] AC3: Dropping on a highlighted channel moves the user there (`MoveUser`); the row lands without flying a second time. Dropping elsewhere, or Esc, cancels and nothing is sent.
+- [x] AC4: Dragging my own row and dropping it on a channel joins that channel (`JoinChannel`, with its password prompt for a password lock as today).
+- [x] AC5: A refused move (full, locked, rank) shows the server's error as with the menu; the user stays where they were.
+- [x] AC6: Rows of users I may not move do not start a drag; a channel drag (Package 96) still works and is not started by a press on a user row.
+- [x] AC7: The texts exist in German and English; the submenu fits at 360 px.
 
 ### Tests (TDD)
+
+(as built: `ItemMotion.Hold` only holds a change of order for one dispatcher round, but a moved user only flies once the server confirms, so the drop holds the flight with a new `ItemMotion.Ground(user, until)`: that entry does not fly while the drop waits for the server; refused or confirmed, the next move flies again. The whole channel block (its row and its users) is the drop target, the channel row lights up (`Border.row.dropTarget`). `ReorderDrag.Lift` and `Follow` are shared with `UserDrag`. Without the dialog the moved user's row spins until the server shows the move (Package 98), and `Dialog_MoveTo` is gone; "Verschieben" / "Move to" lost the dots of a dialog. `DropUser_OwnRowJoins_InvalidTargetsSendNothing` (ServerViewModelTests) covers the password prompt of AC4 and the invalid targets; `UiSmokeTests > "UserContextMenu_MoveSubmenu"` clicks the submenu for real. `UserDrag` needs no `ReducedMotion`: nothing makes room, so there is no gap to animate, and the tilt is a static pose. Review: a drag ends when the button is no longer held or the row has left the tree (the user left, a sync made a new row), and `DropUser` ignores a user no longer on the server; `Ground` counts per entry, so overlapping drops of the same user do not let each other fly)
 
 1. `ServerViewModelTests > "MoveTargets_OtherChannelsWithoutSeparators"` (AC1)
 2. `UserDragTests > "DragUserOntoChannel_HighlightsAndMoves"` (AC2, AC3)

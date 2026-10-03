@@ -265,8 +265,15 @@
                                 <MenuItem Header="{x:Static l:Strings.Ui_PrivateMessage}" Command="{Binding MessageCommand}" IsVisible="{Binding CanMessage}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Chat}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="{x:Static l:Strings.Ui_MoveMenu}" Command="{Binding MoveCommand}" IsVisible="{Binding CanMove}">
+                                <!-- Package 120 (A129): the channels straight in a submenu; dragging the row onto a channel does the same -->
+                                <MenuItem Classes="moveTargets" Header="{x:Static l:Strings.Ui_MoveMenu}" ItemsSource="{Binding MoveTargets}" IsVisible="{Binding HasMoveTargets}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowMove}" Classes="sm" /></MenuItem.Icon>
+                                  <MenuItem.Styles>
+                                    <Style Selector="MenuItem.moveTargets > MenuItem" x:DataType="vm:MoveTarget">
+                                      <Setter Property="Header" Value="{Binding Channel.Name}" />
+                                      <Setter Property="Command" Value="{Binding Command}" />
+                                    </Style>
+                                  </MenuItem.Styles>
                                 </MenuItem>
                                 <MenuItem Header="{x:Static l:Strings.Ui_ServerMuteMenu}" Command="{Binding ToggleServerMuteCommand}" IsVisible="{Binding CanMute}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.SpeakerMute}" Classes="sm" /></MenuItem.Icon>

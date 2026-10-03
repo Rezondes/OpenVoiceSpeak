@@ -46,7 +46,6 @@
   <data name="Dialog_Kick" xml:space="preserve"><value>{0} kicken</value></data>
   <data name="Dialog_KickReason" xml:space="preserve"><value>Grund:</value></data>
   <data name="Dialog_LinkWith" xml:space="preserve"><value>"{0}" verlinken mit</value></data>
-  <data name="Dialog_MoveTo" xml:space="preserve"><value>{0} verschieben nach</value></data>
   <data name="Dialog_RedeemToken" xml:space="preserve"><value>Admin-Token einlösen</value></data>
   <data name="Dialog_RedeemTokenPrompt" xml:space="preserve"><value>Token aus dem Serverlog:</value></data>
   <data name="Dialog_Unlink" xml:space="preserve"><value>Link von "{0}" entfernen</value></data>
@@ -408,7 +407,7 @@
   <data name="Ui_ModePtt" xml:space="preserve"><value>Push-to-Talk: senden, solange die Taste gedrückt ist</value></data>
   <data name="Ui_ModeVad" xml:space="preserve"><value>Sprachaktivierung: senden, sobald du sprichst</value></data>
   <data name="Ui_MoveDown" xml:space="preserve"><value>Nach unten</value></data>
-  <data name="Ui_MoveMenu" xml:space="preserve"><value>Verschieben ...</value></data>
+  <data name="Ui_MoveMenu" xml:space="preserve"><value>Verschieben</value></data>
   <data name="Ui_MoveUp" xml:space="preserve"><value>Nach oben</value></data>
   <data name="Ui_MuteMic" xml:space="preserve"><value>Mikrofon stummschalten</value></data>
   <data name="Ui_Muted" xml:space="preserve"><value>Stumm</value></data>

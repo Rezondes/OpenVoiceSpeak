@@ -756,6 +756,16 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Equal(2, items.Count(m => m.ToggleType == MenuItemToggleType.CheckBox));
         Assert.All(items, item => Assert.True(item.Bounds.Width > 0, "laid out"));
         foreach (var item in items) FullyInside(main, item);
+        groups.IsSubMenuOpen = false;
+
+        // Package 120 (AC7): the "Verschieben" submenu with the channels
+        var move = menu.Items.OfType<MenuItem>().Single(m => m.Header as string == Strings.Ui_MoveMenu);
+        move.IsSubMenuOpen = true;
+        Dispatcher.UIThread.RunJobs();
+        var channels = Avalonia.LogicalTree.LogicalExtensions.GetLogicalChildren(move).OfType<MenuItem>().ToList();
+        Assert.Equal(["Lobby"], channels.Select(m => m.Header as string));
+        Assert.All(channels, item => Assert.True(item.Bounds.Width > 0, "laid out"));
+        foreach (var item in channels) FullyInside(main, item);
         menu.Close();
         main.Close();
         return 0;

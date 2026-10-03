@@ -24,6 +24,8 @@ public partial class MainWindow : Window
         // Package 36, 96: drag a channel to a new position (needs "Channels bearbeiten")
         _ = new ReorderDrag(ChannelItems, item => item is ChannelViewModel { CanEdit: true },
             (source, target, after) => Vm.Server?.MoveChannelAsync((ChannelViewModel)source, (ChannelViewModel)target, after) ?? Task.CompletedTask);
+        // Package 120 (A129): drag a user onto a channel to move them there, my own row to join it
+        _ = new UserDrag(ChannelItems, (user, channel) => Vm.Server?.DropUser(user, channel) ?? Task.CompletedTask);
     }
 
     MainViewModel Vm => (MainViewModel)DataContext!;

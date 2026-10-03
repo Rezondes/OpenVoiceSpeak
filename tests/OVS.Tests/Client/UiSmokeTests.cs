@@ -950,6 +950,46 @@ public sealed class UiSmokeTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 120 (AC1): "Verschieben" lists the other channels; a click moves at once, no dialog opens.</summary>
+    [AvaloniaFact]
+    public void UserContextMenu_MoveSubmenu()
+    {
+        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
+        main.Show();
+        var sent = new List<Request>();
+        vm.Server = FakeServers.Admin(sent);
+        Dispatcher.UIThread.RunJobs();
+
+        Border Row(string nick) => main.GetVisualDescendants().OfType<Border>()
+            .Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel u && u.Nickname == nick);
+        MenuItem? Submenu(string nick, out ContextMenu menu)
+        {
+            menu = Row(nick).ContextMenu!;
+            menu.Open(Row(nick));
+            Dispatcher.UIThread.RunJobs();
+            var move = menu.Items.OfType<MenuItem>().SingleOrDefault(m => m.IsVisible && m.Header as string == "Verschieben");
+            if (move is not null) move.IsSubMenuOpen = true;
+            Dispatcher.UIThread.RunJobs();
+            return move;
+        }
+
+        Assert.Null(Submenu("ich", out var own)); // never on myself: dragging my row joins
+        own.Close();
+        var move = Submenu("anna", out var menu)!;
+        var lobby = Assert.Single(move.GetLogicalChildren().OfType<MenuItem>()); // anna sits in Raid
+        Assert.Equal("Lobby", lobby.Header);
+        var popup = TopLevel.GetTopLevel(lobby)!;
+        var at = lobby.TranslatePoint(new Point(lobby.Bounds.Width / 2, lobby.Bounds.Height / 2), popup)!.Value;
+        popup.MouseDown(at, MouseButton.Left);
+        popup.MouseUp(at, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new MoveUser(2, FakeServers.Lobby), sent.OfType<MoveUser>().Single() with { RequestId = null });
+        Assert.False(main.Overlay.IsOpen);
+        menu.Close();
+        main.Close();
+    }
+
     /// <summary>Everything a user can read or hear from a screen reader: texts, tooltips, names, headers, menus.</summary>
     static IEnumerable<string> AllUserTexts(Visual root) =>
         root.GetVisualDescendants().OfType<Control>().SelectMany(c => new[]
@@ -1382,11 +1422,7 @@ public sealed class UiSmokeTests : IDisposable
             _ = Channel("Lobby").LinkCommand.ExecuteAsync(null);
             Dialog("Auswählen");
         }, () => [new ChannelsLinked(FakeServers.Lobby, (Guid)((LinkChannels)Last<LinkChannels>()).B)]);
-        Waits("move user", () =>
-        {
-            _ = User("anna").MoveCommand.ExecuteAsync(null);
-            Dialog("Auswählen");
-        }, () => [new UserUpdated(Info("anna") with { ChannelId = ((MoveUser)Last<MoveUser>()).ChannelId })]);
+        Waits("move user", () => User("anna").MoveTargets[0].Command.Execute(null), () => [new UserUpdated(Info("anna") with { ChannelId = ((MoveUser)Last<MoveUser>()).ChannelId })]);
         Waits("redeem token", () =>
         {
             _ = server.RedeemTokenCommand.ExecuteAsync(null);

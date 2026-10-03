@@ -857,16 +857,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task Separator_NoJoinNoEditNoLink_NotAMoveTarget()
     {
-        IReadOnlyList<ChannelViewModel>? offered = null;
-        var dialogs = new Dialogs
-        {
-            PickChannel = (_, candidates, _) =>
-            {
-                offered = candidates;
-                return Task.FromResult<ChannelViewModel?>(null);
-            },
-        };
-        var f = Create(P.All, dialogs: dialogs, others: U(2, "anna", Lobby));
+        var f = Create(P.All, others: U(2, "anna", Lobby) with { CanBeModeratedByMe = true });
         var id = Guid.NewGuid();
         f.Vm.Apply(new ChannelAdded(new ChannelInfo(id, "", "", 5, Kind: ChannelKind.Separator)));
         var separator = f.Channel(id);
@@ -880,9 +871,8 @@ public class ServerViewModelTests
         await separator.JoinCommand.ExecuteAsync(null); // also the double click
         Assert.Empty(f.Sent.OfType<JoinChannel>());
         Assert.DoesNotContain(separator, f.Vm.LinkCandidates(f.Channel(Lobby)));
-        await f.User(2).MoveCommand.ExecuteAsync(null);
-        Assert.NotNull(offered);
-        Assert.DoesNotContain(separator, offered!);
+        Assert.NotEmpty(f.User(2).MoveTargets);
+        Assert.DoesNotContain(separator, f.User(2).MoveTargets.Select(t => t.Channel)); // Package 120: the submenu
     }
 
     /// <summary>Package 112: without description and links there is no tooltip at all (an empty text showed an empty box).</summary>
@@ -1011,5 +1001,99 @@ public class ServerViewModelTests
     {
         var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [U(2, "chef", Lobby, P.All, [WellKnownGroups.Admin])]);
         Assert.Empty(f.User(2).Groups);
+    }
+
+    // ---- Package 120 (A129): moving users from the menu and by drag and drop ----
+
+    /// <summary>Package 120 (AC1): the other channels in tree order, no separator; a click moves at once, without the dialog.</summary>
+    [Fact]
+    public void MoveTargets_OtherChannelsWithoutSeparators()
+    {
+        bool picked = false;
+        var dialogs = new Dialogs
+        {
+            PickChannel = (_, _, _) =>
+            {
+                picked = true;
+                return Task.FromResult<ChannelViewModel?>(null);
+            },
+        };
+        var f = Create(Moderator, dialogs: dialogs, others: [Weaker(), U(3, "bert", Lobby)]);
+        f.Vm.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "", "", 5, Kind: ChannelKind.Separator)));
+        var anna = f.User(2);
+        Assert.Equal(["alpha", "Bravo"], anna.MoveTargets.Select(t => t.Channel.Name));
+        Assert.True(anna.HasMoveTargets);
+        Assert.Empty(f.User(1).MoveTargets); // myself: that is joining
+        Assert.Empty(f.User(3).MoveTargets); // not weaker than me
+        Assert.Empty(Create(P.Speak, others: [Weaker()]).User(2).MoveTargets); // without UserMove
+
+        anna.MoveTargets.Single(t => t.Channel.Id == Bravo).Command.Execute(null);
+        Assert.Equal(new MoveUser(2, Bravo), f.Sent[^1] with { RequestId = null });
+        Assert.False(picked);
+        f.Time.Advance(ShowAfter);
+        Assert.True(anna.IsBusy); // Package 98: the row spins until the server shows the move
+        f.Vm.Apply(new UserUpdated(Weaker() with { ChannelId = Bravo }));
+        Assert.False(anna.IsBusy);
+        Assert.Equal(["Lobby", "alpha"], anna.MoveTargets.Select(t => t.Channel.Name)); // follows the user
+    }
+
+    /// <summary>Package 120 (AC5): a refused move shows the server's error; the user stays where they were.</summary>
+    [Fact]
+    public async Task RefusedMove_ShowsError()
+    {
+        var f = Create(Moderator, others: [Weaker()]);
+        var notices = new List<string>();
+        f.Vm.Notice += notices.Add;
+        var anna = f.User(2);
+        Assert.True(anna.CanDrag);
+        var done = f.Vm.DropUser(anna, f.Channel(Bravo));
+        Assert.Equal(new MoveUser(2, Bravo), f.Sent[^1] with { RequestId = null });
+        Assert.False(done.IsCompleted); // waits for the server
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.ChannelFull));
+        await done;
+        Assert.Equal(ErrorTexts.For(Codes.ChannelFull), notices[^1]);
+        Assert.Equal(Lobby, anna.ChannelId);
+        Assert.Contains(anna, f.Channel(Lobby).Users);
+        Assert.False(anna.IsBusy);
+    }
+
+    /// <summary>Package 120 (review): a user who left the server meanwhile is not moved by a drop of their row.</summary>
+    [Fact]
+    public void DropUser_LeftMeanwhile_SendsNothing()
+    {
+        var f = Create(Moderator, others: [Weaker()]);
+        var anna = f.User(2);
+        f.Vm.Apply(new UserLeft(2));
+        Assert.True(f.Vm.DropUser(anna, f.Channel(Bravo)).IsCompleted); // nothing to wait for
+        Assert.Empty(f.Sent);
+    }
+
+    /// <summary>Package 120 (AC3, AC4): the own row joins (with the password prompt); the own channel and a separator send nothing.</summary>
+    [Fact]
+    public async Task DropUser_OwnRowJoins_InvalidTargetsSendNothing()
+    {
+        var asked = new List<string>();
+        var f = Create(Moderator, dialogs: new Dialogs { AskChannelPassword = name => { asked.Add(name); return Task.FromResult<string?>("geheim"); } },
+            others: [Weaker(), U(3, "bert", Lobby)]);
+        var separator = Guid.NewGuid();
+        f.Vm.Apply(new ChannelAdded(new ChannelInfo(separator, "", "", 5, Kind: ChannelKind.Separator)));
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
+        var (me, anna, bert) = (f.User(1), f.User(2), f.User(3));
+        Assert.Equal((true, false), (me.CanDrag, bert.CanDrag));
+        Assert.False(ServerViewModel.IsDropTarget(anna, f.Channel(Lobby))); // her own channel: the server would do nothing
+        Assert.False(ServerViewModel.IsDropTarget(anna, f.Channel(separator)));
+        Assert.False(ServerViewModel.IsDropTarget(bert, f.Channel(Bravo)));
+        Assert.True(ServerViewModel.IsDropTarget(anna, f.Channel(Bravo)));
+        await f.Vm.DropUser(anna, f.Channel(Lobby));
+        await f.Vm.DropUser(bert, f.Channel(Bravo));
+        await f.Vm.DropUser(me, f.Channel(separator));
+        Assert.Empty(f.Sent);
+
+        var joined = f.Vm.DropUser(me, f.Channel(Bravo));
+        Assert.Equal(["Bravo"], asked);
+        Assert.Equal(new JoinChannel(Bravo, "geheim"), f.Sent[^1] with { RequestId = null });
+        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo, Moderator)));
+        await joined;
+        Assert.Equal(Bravo, f.Vm.CurrentChannel!.Id);
     }
 }

@@ -305,6 +305,7 @@ public sealed partial class ServerViewModel : ObservableObject
         }
         CollectionSync.Sync(Channels, desired, Leave);
         for (int i = 0; i < desired.Count; i++) desired[i].SetPosition(first: i == 0, last: i == desired.Count - 1);
+        foreach (var user in userVms.Values) user.UpdateMoveTargets(desired); // Package 120: in the new order of the tree
         CurrentChannel = self is null ? null : channelVms.GetValueOrDefault(self.ChannelId);
         Self = userVms.GetValueOrDefault(Mirror.SelfId);
         RefreshSpeaking();
@@ -527,8 +528,33 @@ public sealed partial class ServerViewModel : ObservableObject
         SendConfirmed(new LinkChannels(a, b), m => m is ChannelsLinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
     public Pending Unlink(Guid a, Guid b) =>
         SendConfirmed(new UnlinkChannels(a, b), m => m is ChannelsUnlinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
-    public Pending Move(uint sessionId, Guid channelId) =>
-        SendConfirmed(new MoveUser(sessionId, channelId), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ChannelId == channelId, notify: false);
+    /// <summary>Package 120: without the dialog that waited, the moved user's row spins until the server shows the move.</summary>
+    public Pending Move(uint sessionId, Guid channelId)
+    {
+        var row = userVms.GetValueOrDefault(sessionId);
+        return SendConfirmed(new MoveUser(sessionId, channelId), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ChannelId == channelId,
+            busy: on => row?.IsBusy = on, notify: false);
+    }
+
+    /// <summary>
+    /// Package 120 (A129): where a dragged user row may be dropped. Never the user's own channel (the server would silently
+    /// do nothing) and never a separator; locked or full channels count, the server refuses them as from the menu.
+    /// </summary>
+    public static bool IsDropTarget(UserViewModel user, ChannelViewModel channel) => user.CanDrag && channel.Id != user.ChannelId && !channel.IsSeparator;
+
+    /// <summary>Package 120 (A129): my own row joins the channel (with its password prompt), another user is moved there. Ends with the server's answer.</summary>
+    public async Task DropUser(UserViewModel user, ChannelViewModel channel)
+    {
+        // gone from the server while dragged (or the row stands for an earlier entry): nobody to move
+        if (!IsDropTarget(user, channel) || !Mirror.Users.ContainsKey(user.SessionId) || userVms.GetValueOrDefault(user.SessionId) != user) return;
+        if (!user.IsSelf)
+        {
+            await Move(user.SessionId, channel.Id).Completion;
+            return;
+        }
+        await channel.JoinCommand.ExecuteAsync(null);
+        if (joining is { } join) await join.Completion;
+    }
     public Pending Kick(uint sessionId, string reason) => SendConfirmed(new Kick(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
     public Pending Ban(uint sessionId, BanChoice choice) =>
         SendConfirmed(new Ban(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
@@ -910,12 +936,22 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         IsSpeakingViaLink = on && viaLink;
     }
 
-    [RelayCommand]
-    Task Move()
+    /// <summary>Package 120 (A129): the context menu's "Verschieben" submenu, empty when I may not move this user.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMoveTargets))]
+    IReadOnlyList<MoveTarget> moveTargets = [];
+    public bool HasMoveTargets => MoveTargets.Count > 0;
+
+    /// <summary>Package 120: my own row (joining) or one I may move can be dragged onto a channel.</summary>
+    public bool CanDrag => IsSelf || CanMove;
+
+    /// <summary>The channels in tree order, without the user's own (a silent no-op on the server) and separators (Package 111).</summary>
+    internal void UpdateMoveTargets(IReadOnlyList<ChannelViewModel> channels)
     {
-        var targets = owner.Channels.Live().Where(c => c.Id != ChannelId && !c.IsSeparator).ToList(); // Package 111
-        return ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
-            ? submit => pick(string.Format(Strings.Dialog_MoveTo, Nickname), targets, submit) : null, channel => owner.Move(SessionId, channel.Id));
+        var wanted = CanMove ? channels.Where(c => c.Id != ChannelId && !c.IsSeparator).ToList() : [];
+        // only on a change, so an open menu is not rebuilt by unrelated updates
+        if (!wanted.SequenceEqual(MoveTargets.Select(t => t.Channel)))
+            MoveTargets = wanted.Select(c => new MoveTarget(c, new RelayCommand(() => owner.Move(SessionId, c.Id)))).ToList();
     }
 
     [RelayCommand]
@@ -937,3 +973,6 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     Task Ban() =>
         ServerViewModel.Ask<BanChoice>(owner.Dialogs.Ban is { } ban ? submit => ban(Nickname, true, submit) : null, choice => owner.Ban(SessionId, choice));
 }
+
+/// <summary>Package 120 (A129): one channel in a user's "Verschieben" submenu; the command moves the user there.</summary>
+public sealed record MoveTarget(ChannelViewModel Channel, System.Windows.Input.ICommand Command);

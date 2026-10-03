@@ -81,24 +81,17 @@ public sealed partial class ReorderDrag
             if (Math.Abs(position.Y - start.Y) < Threshold && Math.Abs(position.X - start.X) < Threshold) return;
             if (!Begin(e)) return;
         }
-        if (preview is not null && preview.Parent is Visual overlay)
-        {
-            var at = e.GetPosition(overlay) - grab;
-            Canvas.SetLeft(preview, at.X);
-            Canvas.SetTop(preview, at.Y);
-        }
+        if (preview is not null) Follow(preview, e, grab);
         ShowGap(SlotAt(position.Y));
     }
 
-    bool Begin(PointerEventArgs e)
+    /// <summary>The lifted picture of <paramref name="source"/> (A112), not yet placed; also the user drag's (Package 120).</summary>
+    internal static Border Lift(Control source)
     {
-        if (source is null || OverlayLayer.GetOverlayLayer(list) is not { } overlay) return false;
-        dragging = true;
-        bool reduced = ReducedMotion();
         var transforms = new TransformGroup();
         transforms.Children.Add(new ScaleTransform(Scale, Scale));
         transforms.Children.Add(new RotateTransform(Tilt));
-        preview = new Border
+        return new Border
         {
             Classes = { "dragPreview" },
             Width = source.Bounds.Width,
@@ -107,6 +100,23 @@ public sealed partial class ReorderDrag
             RenderTransform = transforms,
             Child = new Image { Source = Snapshot(source) },
         };
+    }
+
+    /// <summary>Keeps the point where the item was grabbed under the pointer.</summary>
+    internal static void Follow(Border preview, PointerEventArgs e, Point grab)
+    {
+        if (preview.Parent is not Visual overlay) return;
+        var at = e.GetPosition(overlay) - grab;
+        Canvas.SetLeft(preview, at.X);
+        Canvas.SetTop(preview, at.Y);
+    }
+
+    bool Begin(PointerEventArgs e)
+    {
+        if (source is null || OverlayLayer.GetOverlayLayer(list) is not { } overlay) return false;
+        dragging = true;
+        bool reduced = ReducedMotion();
+        preview = Lift(source);
         // the drop target: a dashed frame of the item's size where it will land, below the lifted preview
         placeholder = new Rectangle
         {

@@ -108,7 +108,7 @@
       </Transitions>
     </Setter>
   </Style>
-  <Style Selector="Window.animated Border.row:pointerover, Window.animated Border.row.current, Window.animated Border.soundRow:pointerover">
+  <Style Selector="Window.animated Border.row:pointerover, Window.animated Border.row.current, Window.animated Border.row.dropTarget, Window.animated Border.soundRow:pointerover">
     <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.Bar}" />
   </Style>
   <!-- a sound row rests on the hover colour already, so it lights up a step further -->

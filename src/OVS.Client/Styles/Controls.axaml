@@ -191,6 +191,10 @@
   <Style Selector="Border.row.current">
     <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceSelected}" />
   </Style>
+  <!-- Package 120 (A129): the channel a dragged user would go to (Views/UserDrag.cs) -->
+  <Style Selector="Border.row.dropTarget">
+    <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
+  </Style>
   <Style Selector="Border.row.current TextBlock.channelName">
     <Setter Property="Foreground" Value="{DynamicResource Ovs.AccentText}" />
   </Style>

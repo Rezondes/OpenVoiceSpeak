@@ -444,7 +444,6 @@ public sealed class MotionCoverageTests : IDisposable
         // ---- connected: users ----
         yield return new("someone joins", x => x.Server.Apply(new UserJoined(Bert(FakeServers.Lobby))));
         foreach (var s in Menu("a user's menu", x => Row(x, d => d is UserViewModel { Nickname: "bert" }))) yield return s;
-        foreach (var s in Dialog("move user", x => _ = User(x, "bert").MoveCommand.ExecuteAsync(null))) yield return s;
         yield return new("move a user", x => x.Server.Apply(new UserUpdated(Bert(FakeServers.Raid))));
         yield return new("mute a user", x =>
         {

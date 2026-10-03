@@ -74,6 +74,23 @@ public static class ItemMotion
         if (trackers.TryGetValue(list, out var tracker)) tracker.Hold();
     }
 
+    /// <summary>
+    /// Package 120: an entry dropped by hand (a user dragged onto a channel) already sits where it was dropped, so it does
+    /// not fly when the change comes. The hold ends with <paramref name="until"/> (the server's answer), so a refused drop
+    /// leaves the next move flying.
+    /// </summary>
+    public static void Ground(object item, Task until)
+    {
+        grounded[item] = grounded.GetValueOrDefault(item) + 1;
+        until.ContinueWith(_ =>
+        {
+            // counted: of two drops of the same entry, the first answer does not let the second one fly
+            if (--grounded[item] == 0) grounded.Remove(item);
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    static readonly Dictionary<object, int> grounded = new(ReferenceEqualityComparer.Instance);
+
     static readonly ConditionalWeakTable<ItemsControl, Tracker> trackers = [];
 
     /// <summary>Package 102: the lists showing a collection, to find the row of an entry that starts leaving.</summary>
@@ -139,7 +156,7 @@ public static class ItemMotion
     /// <summary>The picture is taken now, before the row folds away; it flies only if the entry turns up elsewhere.</summary>
     static void Depart(object item, Control container)
     {
-        if (!Motion.IsAnimated || OverlayLayer.GetOverlayLayer(container) is not { } overlay || FlyGhost.VisibleRect(container, overlay) is not { } from) return;
+        if (!Motion.IsAnimated || grounded.ContainsKey(item) || OverlayLayer.GetOverlayLayer(container) is not { } overlay || FlyGhost.VisibleRect(container, overlay) is not { } from) return;
         if (departures.Remove(item, out var earlier)) earlier.Picture.Dispose();
         departures[item] = new Departure(overlay, ReorderDrag.Snapshot(container), from);
         QueuePairing();
