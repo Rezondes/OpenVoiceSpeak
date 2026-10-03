@@ -222,26 +222,48 @@ public partial class MainWindow : Window
     {
         if (watchedServer is not null)
         {
-            watchedServer.StateChanged -= QueueFitSidebar;
+            watchedServer.StateChanged -= OnServerStateChanged;
             watchedServer.PropertyChanged -= OnServerPropertyChanged;
         }
         watchedServer = watchedVm?.Server;
         currentChannel = watchedServer?.CurrentChannel; // a new connection starts where it is, nothing slides
         if (watchedServer is null) return;
-        watchedServer.StateChanged += QueueFitSidebar;
+        watchedServer.StateChanged += OnServerStateChanged;
         watchedServer.PropertyChanged += OnServerPropertyChanged;
         sidebarDragged = false;
         QueueFitSidebar();
     }
 
-    // After layout, so the rows of new or renamed channels exist and carry their styles.
-    void QueueFitSidebar() => Dispatcher.UIThread.Post(FitSidebar, DispatcherPriority.Background);
+    /// <summary>Package 122: only a change of what the sidebar measures (a channel's name, count or icons) refits it.</summary>
+    void OnServerStateChanged()
+    {
+        if (watchedServer?.LastChange.HasFlag(StateChange.Sidebar) == true) QueueFitSidebar();
+    }
+
+    bool fitQueued;
+
+    // After layout, so the rows of new or renamed channels exist and carry their styles. Package 122: changes that come
+    // together are measured once.
+    void QueueFitSidebar()
+    {
+        if (fitQueued) return;
+        fitQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            fitQueued = false;
+            FitSidebar();
+        }, DispatcherPriority.Background);
+    }
 
     void OnSidebarDragCompleted(object? sender, VectorEventArgs e) => sidebarDragged = true;
+
+    /// <summary>Package 122: how often the sidebar measured its rows (tests count it).</summary>
+    internal int SidebarFits { get; private set; }
 
     void FitSidebar()
     {
         if (sidebarDragged || watchedServer is null || !IsVisible) return;
+        SidebarFits++;
         var rows = ChannelItems.GetRealizedContainers().Where(c => c.DataContext is not ChannelViewModel { IsSeparator: true }).Select(c =>
         {
             var texts = c.GetVisualDescendants().OfType<TextBlock>().ToList();

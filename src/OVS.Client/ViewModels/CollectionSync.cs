@@ -56,37 +56,66 @@ public static class CollectionSync
     {
         var keys = desired.Select(KeyOf).ToHashSet();
         var final = desired.ToList();
-        bool fold = leave is { Delay.Ticks: > 0 };
-        if (fold)
+        if (leave is { Delay.Ticks: > 0 })
         {
-            int at = 0;
+            // each leaving entry stays behind the entry it followed (one that is still wanted, or the start)
+            var head = new List<T>();
+            var behind = new Dictionary<object, List<T>>();
+            object? after = null;
             foreach (var item in target)
             {
                 var key = KeyOf(item);
-                if (keys.Contains(key)) at = final.FindIndex(f => Equals(KeyOf(f), key)) + 1;
-                else final.Insert(at++, item);
+                if (keys.Contains(key)) after = key;
+                else if (after is null) head.Add(item);
+                else if (behind.TryGetValue(after, out var group)) group.Add(item);
+                else behind[after] = [item];
+            }
+            final = [.. head];
+            foreach (var want in desired)
+            {
+                final.Add(want);
+                if (KeyOf(want) is { } key && behind.TryGetValue(key, out var group)) final.AddRange(group);
             }
         }
+        else
+        {
+            // Package 122: gone at once, so they do not move down step by step to the end first
+            for (int i = target.Count - 1; i >= 0; i--)
+                if (!keys.Contains(KeyOf(target[i]))) target.RemoveAt(i);
+        }
 
+        // Package 122: what is shown, so no entry is searched for in the whole list (quadratic with long lists)
+        var present = new HashSet<T>(target);
+        var presentKeys = target.Select(KeyOf).ToHashSet();
         for (int i = 0; i < final.Count; i++)
         {
             var want = final[i];
-            int index = target.IndexOf(want);
-            if (index < 0)
+            if (i < target.Count && Equals(target[i], want)) continue;
+            var key = KeyOf(want);
+            if (!present.Contains(want) && !presentKeys.Contains(key))
             {
-                var key = KeyOf(want);
-                int same = -1;
-                for (int j = i; j < target.Count && same < 0; j++)
-                    if (Equals(KeyOf(target[j]), key)) same = j;
-                if (same < 0)
-                {
-                    target.Insert(i, want);
-                    continue;
-                }
-                if (same != i) target.Move(same, i);
-                target[i] = want; // a rebuilt row: the new object in the old one's place
+                target.Insert(i, want);
+                present.Add(want);
+                presentKeys.Add(key);
+                continue;
             }
-            else if (index != i) target.Move(index, i);
+            // shown further down, or a rebuilt row with the same key
+            int at = -1;
+            for (int j = i; j < target.Count && at < 0; j++)
+                if (Equals(target[j], want) || Equals(KeyOf(target[j]), key)) at = j;
+            if (at < 0)
+            {
+                target.Insert(i, want); // only a key equal to an entry placed already: as before, a new entry
+                present.Add(want);
+                continue;
+            }
+            if (at != i) target.Move(at, i);
+            if (!Equals(target[i], want))
+            {
+                present.Remove(target[i]);
+                target[i] = want; // a rebuilt row: the new object in the old one's place
+                present.Add(want);
+            }
         }
         while (target.Count > final.Count) target.RemoveAt(target.Count - 1);
 

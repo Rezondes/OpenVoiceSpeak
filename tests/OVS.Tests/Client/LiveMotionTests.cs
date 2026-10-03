@@ -152,11 +152,11 @@ public sealed class LiveMotionTests : IDisposable
         // a whole 900 ms loop at least, and on until both ends were seen: under load a frame can land anywhere in it
         WatchUntil(() => high > 1.03 && low < 1.02, () =>
         {
-            low = Math.Min(low, Scale(ring));
-            high = Math.Max(high, Scale(ring));
+            low = Math.Min(low, Scale(ring.Child!));
+            high = Math.Max(high, Scale(ring.Child!));
         }, atLeast: 1100);
         Assert.Contains("speaking", ring.Classes);
-        Assert.True(high > 1.03 && high <= 1.061, $"the ring breathes up to 1.06 ({high})");
+        Assert.True(high > 1.03 && high <= 1.061, $"the ring breathes up to 1.06 ({high})"); // Package 122: the avatar inside it, the glow stays still
         Assert.True(low < 1.02, $"and back ({low})");
         MotionWait.Eventually(() =>
         {
@@ -167,7 +167,7 @@ public sealed class LiveMotionTests : IDisposable
         // every step of the fade as it happens: under load one frame can outlast it
         var glows = MotionWait.Record(ring, v => GlowAlpha((Border)v));
         server.SetSelfTransmitting(null);
-        MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (Scale(ring), GlowAlpha(ring)))); // the loop stops with the speaking
+        MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (Scale(ring.Child!), GlowAlpha(ring)))); // the loop stops with the speaking
         Assert.True(glows.Any(a => a is > 0 and < 0x99), "the glow fades out");
 
         server.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked);
@@ -465,7 +465,7 @@ public sealed class LiveMotionTests : IDisposable
         double high = 1, dim = 1;
         Watch(600, () =>
         {
-            high = Math.Max(high, Scale(ring));
+            high = Math.Max(high, Scale(ring.Child!));
             dim = Math.Min(dim, transmit.Opacity);
         });
         Assert.Contains("speaking", ring.Classes);

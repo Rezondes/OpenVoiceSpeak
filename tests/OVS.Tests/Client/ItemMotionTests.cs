@@ -570,6 +570,29 @@ public sealed class ItemMotionTests : IDisposable
         MotionWait.Eventually(() => Assert.Equal(0, OffsetY(Container(list, "Admin")), 2));
     }
 
+    /// <summary>
+    /// Package 122: a list notes its places only around changes. A row that grew meanwhile (no change of the list) moved
+    /// the ones below; a later reorder must glide from where they are now, not from where they were noted.
+    /// </summary>
+    [AvaloniaFact]
+    public void ReflowWhileIdle_ThenReorder_OnlyMovedRowsGlide()
+    {
+        var rows = new ObservableCollection<Row> { new("a"), new("b"), new("c"), new("d") };
+        var (_, list) = Host(rows, flip: true);
+        MotionWait.Until(() => !ItemMotion.TracksPlaces(list));
+        Assert.False(ItemMotion.TracksPlaces(list));
+        Container(list, "a").GetVisualDescendants().OfType<Border>().First().Height = 60; // b, c and d move down by 30
+        MotionWait.Until(() => Container(list, "b").Bounds.Y == 60);
+        Assert.False(ItemMotion.TracksPlaces(list));
+
+        var seen = WatchOffsets(list);
+        rows.Move(3, 2); // c and d swap, b stays where it is
+        for (int i = 0; i < 5; i++) Frame();
+        Assert.True(Most(seen, item => item is Row { Key: "d" }) > 15, "d glides up from below");
+        Assert.Equal(0, seen.Where(s => s.Item is Row { Key: "b" }).Select(s => Math.Abs(s.Y)).DefaultIfEmpty(0).Max(), 1);
+        MotionWait.Eventually(() => Assert.Equal(0, OffsetY(Container(list, "d")), 2));
+    }
+
     [AvaloniaFact]
     public void OffscreenEnd_NoGhost()
     {

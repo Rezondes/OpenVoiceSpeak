@@ -63,6 +63,22 @@ public sealed class Dialogs
     public Func<UpdateOffer, Task<bool>>? OfferUpdate { get; init; }
 }
 
+/// <summary>Package 122: what a state message changed, so whoever listens only redoes what depends on it.</summary>
+[Flags]
+public enum StateChange
+{
+    None = 0,
+    /// <summary>Someone joined or left.</summary>
+    Members = 1,
+    /// <summary>Someone was renamed.</summary>
+    Names = 2,
+    /// <summary>A channel's name, count or icons, the channel list or my own name: what the sidebar measures.</summary>
+    Sidebar = 4,
+    /// <summary>Rebuilt as a whole: the own rights, channel or groups, links or the settings may have changed too.</summary>
+    Tree = 8,
+    All = Members | Names | Sidebar | Tree,
+}
+
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>
 public sealed partial class ServerViewModel : ObservableObject
 {
@@ -171,6 +187,13 @@ public sealed partial class ServerViewModel : ObservableObject
     public Task SendChatAsync(ChatTarget target, string text, uint? to = null) => SendAsync(new SendChat(target, to, text));
     public string? IconHash => Mirror.Settings.IconHash;
     public event Action? StateChanged;
+    /// <summary>Package 122: what the last <see cref="StateChanged"/> was about.</summary>
+    public StateChange LastChange { get; private set; } = StateChange.All;
+
+    /// <summary>Package 122: how often a user's view model was updated, so tests can count the work a message does.</summary>
+    internal int UserUpdates { get; set; }
+    /// <summary>Package 122: how often a user's speaking state was set (tests count it).</summary>
+    internal int SpeakingTouches { get; private set; }
 
     public void Apply(Message message)
     {
@@ -231,8 +254,77 @@ public sealed partial class ServerViewModel : ObservableObject
                 return;
         }
         var sound = SoundFor(message); // compared with the state before the change
-        if (Mirror.Apply(message)) Rebuild();
+        var before = message switch
+        {
+            UserUpdated u => Mirror.Users.GetValueOrDefault(u.User.SessionId),
+            UserJoined j => Mirror.Users.GetValueOrDefault(j.User.SessionId), // a session already there is moved, not shown twice
+            UserLeft l => Mirror.Users.GetValueOrDefault(l.SessionId),
+            _ => null,
+        };
+        if (Mirror.Apply(message)) Show(message, before);
         if (sound is { } s) SoundRequested?.Invoke(s);
+    }
+
+    /// <summary>
+    /// Package 122: a message about another user (or about me that leaves my channel, rights and groups as they were)
+    /// only updates that user and the lists they leave or come into; everything else rebuilds the tree.
+    /// </summary>
+    void Show(Message message, UserInfo? before)
+    {
+        switch (message)
+        {
+            case UserJoined j when j.User.SessionId != Mirror.SelfId:
+                ShowUser(j.User, before);
+                return;
+            case UserLeft when before is not null && before.SessionId != Mirror.SelfId:
+                ShowUser(null, before);
+                return;
+            case UserUpdated u when before is not null && (u.User.SessionId != Mirror.SelfId
+                || (u.User.ChannelId == before.ChannelId && u.User.Permissions == before.Permissions && u.User.GroupIds.SequenceEqual(before.GroupIds))):
+                ShowUser(u.User, before);
+                return;
+        }
+        Rebuild(message is UserJoined or UserLeft ? StateChange.All : StateChange.Names | StateChange.Sidebar | StateChange.Tree);
+    }
+
+    void ShowUser(UserInfo? now, UserInfo? before)
+    {
+        var change = StateChange.None;
+        if (now is not null)
+        {
+            if (!userVms.TryGetValue(now.SessionId, out var user)) userVms[now.SessionId] = user = new UserViewModel(this, now.SessionId);
+            user.Update(now, now.SessionId == Mirror.SelfId, SelfPermissions, Mirror.Groups);
+            user.UpdateMoveTargets(Channels.Live().ToList());
+        }
+        if (now is null || before is null) change |= StateChange.Members;
+        if (now?.Nickname != before?.Nickname) change |= StateChange.Names; // also its place in the list
+        if (now?.ChannelId != before?.ChannelId || (change.HasFlag(StateChange.Names) && now?.SessionId == Mirror.SelfId))
+            change |= StateChange.Sidebar; // the counts, or my name below the tree
+        if ((change & (StateChange.Names | StateChange.Sidebar)) != 0)
+            foreach (var id in new[] { before?.ChannelId, now?.ChannelId }.OfType<Guid>().Distinct()) ShowUsers(id);
+        if (now is null) ForgetGoneUsers();
+        RefreshSpeaking(); // a new row shows whether its user talks
+        LastChange = change;
+        StateChanged?.Invoke();
+    }
+
+    /// <summary>Package 122: one channel's list, from the users' view models as they are.</summary>
+    void ShowUsers(Guid channelId)
+    {
+        if (!channelVms.TryGetValue(channelId, out var channel) || Mirror.Channels.GetValueOrDefault(channelId) is not { } info) return;
+        var users = Mirror.Users.Values.Where(u => u.ChannelId == channelId).OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase)
+            .Select(u => userVms[u.SessionId]).ToList();
+        CollectionSync.Sync(channel.Users, users, Leave);
+        channel.SlotText = SlotText(info, users.Count);
+    }
+
+    static string SlotText(ChannelInfo channel, int count) => channel.MaxUsers > 0 ? $"{count}/{channel.MaxUsers}" : count.ToString();
+
+    /// <summary>Package 102: one that is still folding away stays known, so coming back meanwhile is the same entry again.</summary>
+    void ForgetGoneUsers()
+    {
+        var shownUsers = Channels.SelectMany(c => c.Users).ToHashSet();
+        foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).Where(id => !shownUsers.Contains(userVms[id])).ToList()) userVms.Remove(id);
     }
 
     SoundEvent? SoundFor(Message message)
@@ -268,7 +360,8 @@ public sealed partial class ServerViewModel : ObservableObject
 
     // ---- Tree ----
 
-    public void Rebuild()
+    /// <param name="change">Package 122: what the listeners are told changed.</param>
+    public void Rebuild(StateChange change = StateChange.Names | StateChange.Sidebar | StateChange.Tree)
     {
         var self = Mirror.Self;
         ServerName = Mirror.Settings.Name;
@@ -278,10 +371,10 @@ public sealed partial class ServerViewModel : ObservableObject
         var groups = Mirror.Groups;
 
         // Package 102: one that is still folding away stays known, so coming back meanwhile is the same entry again
-        var shownUsers = Channels.SelectMany(c => c.Users).ToHashSet();
         foreach (var id in channelVms.Keys.Except(Mirror.Channels.Keys).Where(id => !Channels.Contains(channelVms[id])).ToList()) channelVms.Remove(id);
-        foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).Where(id => !shownUsers.Contains(userVms[id])).ToList()) userVms.Remove(id);
+        ForgetGoneUsers();
 
+        var byChannel = Mirror.Users.Values.ToLookup(u => u.ChannelId); // Package 122: not every user per channel
         var desired = new List<ChannelViewModel>();
         foreach (var c in ServerOrder().OrderBy(c => pendingOrder?.IndexOf(c.Id) is >= 0 and var i ? i : int.MaxValue)) // Package 98
         {
@@ -290,7 +383,7 @@ public sealed partial class ServerViewModel : ObservableObject
             channel.Update(c, linked, c.Id == Mirror.DefaultChannelId, self?.ChannelId == c.Id, SelfPermissions);
             channel.UpdateLock(c, groups, self?.GroupIds ?? [], IsAdmin);
 
-            var users = Mirror.Users.Values.Where(u => u.ChannelId == c.Id)
+            var users = byChannel[c.Id]
                 .OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase)
                 .Select(u =>
                 {
@@ -300,7 +393,7 @@ public sealed partial class ServerViewModel : ObservableObject
                 })
                 .ToList();
             CollectionSync.Sync(channel.Users, users, Leave);
-            channel.SlotText = c.MaxUsers > 0 ? $"{users.Count}/{c.MaxUsers}" : users.Count.ToString();
+            channel.SlotText = SlotText(c, users.Count);
             desired.Add(channel);
         }
         CollectionSync.Sync(Channels, desired, Leave);
@@ -309,6 +402,7 @@ public sealed partial class ServerViewModel : ObservableObject
         CurrentChannel = self is null ? null : channelVms.GetValueOrDefault(self.ChannelId);
         Self = userVms.GetValueOrDefault(Mirror.SelfId);
         RefreshSpeaking();
+        LastChange = change;
         StateChanged?.Invoke();
     }
 
@@ -362,18 +456,22 @@ public sealed partial class ServerViewModel : ObservableObject
         RefreshSpeaking();
     }
 
+    /// <summary>Package 122: the users shown speaking; only they, myself and those reported since can change.</summary>
+    readonly HashSet<uint> shownSpeaking = [];
+
     public void RefreshSpeaking()
     {
         var now = time.GetUtcNow();
-        foreach (var (id, user) in userVms)
+        foreach (var gone in speaking.Where(s => now - s.Value.At >= SpeakingHold).Select(s => s.Key).ToList()) speaking.Remove(gone);
+        foreach (var id in shownSpeaking.Union(speaking.Keys).Append(Mirror.SelfId).ToList())
         {
-            if (id == Mirror.SelfId)
-            {
-                user.SetSpeaking(selfTarget is not null, selfTarget == Shared.Voice.VoiceHeader.TargetLinked);
-                continue;
-            }
-            bool on = speaking.TryGetValue(id, out var s) && now - s.At < SpeakingHold;
-            user.SetSpeaking(on, on && s.ViaLink);
+            var (on, viaLink) = id == Mirror.SelfId ? (selfTarget is not null, selfTarget == Shared.Voice.VoiceHeader.TargetLinked)
+                : speaking.TryGetValue(id, out var s) ? (true, s.ViaLink) : (false, false);
+            if (on) shownSpeaking.Add(id);
+            else shownSpeaking.Remove(id);
+            if (!userVms.TryGetValue(id, out var user) || (user.IsSpeaking, user.IsSpeakingViaLink) == (on && !viaLink, on && viaLink)) continue;
+            user.SetSpeaking(on, viaLink);
+            SpeakingTouches++;
         }
     }
 
@@ -879,6 +977,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
 
     internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> serverGroups)
     {
+        owner.UserUpdates++;
         Nickname = info.Nickname;
         Fingerprint = info.Fingerprint;
         ShowVolume(owner.VolumeOf(info.Fingerprint));

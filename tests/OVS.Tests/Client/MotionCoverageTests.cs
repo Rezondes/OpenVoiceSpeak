@@ -630,15 +630,18 @@ public sealed class MotionCoverageTests : IDisposable
     /// machine (the suite, or a game beside it) frames come late. So the margin is 300 ms plus four times the longest gap
     /// between two frames seen while it settles (on an idle machine about 350 ms in all).
     /// </para>
+    /// <para>Package 122: also on a server with 40 channels and 400 users.</para>
     /// </summary>
-    [AvaloniaFact]
-    public void JoinLeaveStorm_EndsBounded()
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void JoinLeaveStorm_EndsBounded(bool large)
     {
         string dir = Directory.CreateTempSubdirectory("ovs-storm-").FullName;
         var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        var server = FakeServers.Crowded();
+        var server = large ? FakeServers.Large() : FakeServers.Crowded();
         server.Post = a => Dispatcher.UIThread.Post(a); // as the main view model does: leaving rows go on the UI thread
         vm.Server = server;
         Watch(800);
@@ -652,9 +655,9 @@ public sealed class MotionCoverageTests : IDisposable
         // 100 changes spread over 800 ms, with frames in between (as many as the machine manages)
         var channels = server.Channels.Select(c => c.Id).ToList();
         Message Change(int i) => i < 50
-            ? new UserJoined(new UserInfo((uint)(100 + i), $"fp{100 + i}", $"Gast{i}", channels[i % channels.Count], false, false, false,
+            ? new UserJoined(new UserInfo((uint)(1000 + i), $"fp{1000 + i}", $"Gast{i}", channels[i % channels.Count], false, false, false,
                 Permission.None, [WellKnownGroups.Guest]))
-            : new UserLeft((uint)(100 + i - 50));
+            : new UserLeft((uint)(1000 + i - 50)); // above the users already there
         var storm = Stopwatch.StartNew();
         for (int i = 0; i < 100;)
         {

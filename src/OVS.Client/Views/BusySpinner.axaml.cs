@@ -13,19 +13,45 @@ public partial class BusySpinner : UserControl
     /// <summary>Package 108 (A117): the spinner's class while it can be seen; only then does it turn.</summary>
     public const string TurningClass = "turning";
 
+    /// <summary>
+    /// Package 122: the spinners in the window that are visible themselves; a hidden one does not turn whatever is around
+    /// it, so only these can be shown or hidden by an area around them. Usually none or a few, while every row has one.
+    /// </summary>
+    static readonly HashSet<BusySpinner> shown = [];
+
     /// <summary>Any visibility change may show or hide the spinners inside (a page, a card, a drawer).</summary>
     static BusySpinner() => IsVisibleProperty.Changed.AddClassHandler<Visual>((visual, _) =>
     {
         if (!visual.IsAttachedToVisualTree()) return;
-        foreach (var spinner in visual.GetSelfAndVisualDescendants().OfType<BusySpinner>().ToList()) spinner.Update(fade: true); // updating may change the tree
+        if (visual is BusySpinner self)
+        {
+            self.Track();
+            self.Update(fade: true);
+            return;
+        }
+        if (shown.Count == 0) return;
+        foreach (var spinner in shown.Where(visual.IsVisualAncestorOf).ToList()) spinner.Update(fade: true); // updating may change the tree
     });
 
     public BusySpinner() => InitializeComponent();
 
+    void Track()
+    {
+        if (IsVisible && this.IsAttachedToVisualTree()) shown.Add(this);
+        else shown.Remove(this);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        Track();
         Update(fade: false); // built or rebuilt (a row, a tab's content): it just shows (A117)
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        shown.Remove(this);
     }
 
     /// <param name="fade">

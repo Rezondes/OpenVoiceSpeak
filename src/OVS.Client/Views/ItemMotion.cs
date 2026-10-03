@@ -10,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;
@@ -122,6 +123,9 @@ public static class ItemMotion
         CollectionSync.LeavingChanged += OnLeavingChanged;
     }
 
+    /// <summary>Package 122: whether the list notes its entries' places on layout passes right now (tests ask).</summary>
+    internal static bool TracksPlaces(ItemsControl list) => trackers.TryGetValue(list, out var tracker) && tracker.Tracking;
+
     public static object? KeyOf(object? item) => item is IMotionKey keyed ? keyed.MotionKey : item;
 
     static void Show(object? source, ItemsControl list, bool on)
@@ -138,10 +142,18 @@ public static class ItemMotion
         foreach (var weak in lists.ToList())
         {
             if (!weak.TryGetTarget(out var list) || list.ContainerFromItem(item) is not { } container) continue;
+            TrackPlacesAround(list); // Package 122: the row folds away, the ones below move up
             if (leaving && GetFly(list)) Depart(item, container);
             if (leaving) Leave(container);
             else Stay(container);
         }
+    }
+
+    /// <summary>Package 122: a list changes; the lists around it grow, shrink or shift as well (the channel tree around a channel's users).</summary>
+    static void TrackPlacesAround(ItemsControl list)
+    {
+        foreach (var changed in list.GetSelfAndVisualAncestors().OfType<ItemsControl>())
+            if (trackers.TryGetValue(changed, out var tracker)) tracker.TrackPlaces();
     }
 
     // ---- Package 103: a user who switches channels flies from the old row to the new one ----
@@ -281,9 +293,13 @@ public static class ItemMotion
     {
         readonly ItemsControl list;
         HashSet<object> known = []; // the entries as of the last settled change
-        bool filled, fading, batchQueued, settleQueued, fillBatch, held, moved, watching;
+        bool filled, fading, batchQueued, settleQueued, fillBatch, held, moved, watching, tracking;
         int batch;
         Dictionary<object, double> places = []; // Package 103: where each entry sat after the last layout
+        long trackUntil;
+        int layoutPasses;
+
+        public bool Tracking => tracking;
 
         public Tracker(ItemsControl list)
         {
@@ -305,6 +321,7 @@ public static class ItemMotion
                     if (GetBuildUp(list) && Motion.IsAnimated && Avalonia.LogicalTree.LogicalExtensions.FindLogicalAncestorOfType<Window>(list) is { IsVisible: true })
                         BuildUpOnceShown();
                 }
+                TrackPlaces();
                 QueueSettle();
             };
             QueueSettle();
@@ -345,31 +362,79 @@ public static class ItemMotion
         void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.Action == NotifyCollectionChangedAction.Move && GetFlip(list) && Motion.IsAnimated && !held) moved = true;
+            TrackPlacesAround(list);
             QueueSettle();
         }
 
         /// <summary>
-        /// Package 103 (FLIP): after every layout the list notes where each entry sits (a moved entry gets a new row
-        /// at once, so its old place cannot be asked for when the move is announced). After a change of order each
-        /// entry that moved glides from its old place to the new one.
+        /// Package 103 (FLIP): after a layout the list notes where each entry sits (a moved entry gets a new row at once,
+        /// so its old place cannot be asked for when the move is announced). After a change of order each entry that
+        /// moved glides from its old place to the new one.
         /// </summary>
         public void WatchPlaces()
         {
             if (watching) return;
             watching = true;
-            list.LayoutUpdated += (_, _) =>
+            TrackPlaces();
+        }
+
+        /// <summary>
+        /// Package 122: the places only change around a change of the list (or of one inside it), so only then does the
+        /// list note them on its layout passes: until whatever the change started (entering, leaving, gliding) is over
+        /// and they stay the same. The places noted last stay for the next change.
+        /// </summary>
+        public void TrackPlaces()
+        {
+            if (!watching) return;
+            trackUntil = Environment.TickCount64 + (long)Motion.Slow.TotalMilliseconds + StaggerSteps * StaggerMs;
+            if (tracking) return;
+            // the places noted last may be stale (a row grew, the list was laid out anew): where the rows sit now is where
+            // they glide from. Asked by what each row still shows (the list's indexes may have moved on with the change);
+            // a row made for the change has no place yet and keeps the one noted
+            foreach (var container in list.GetRealizedContainers())
+                if (container.IsArrangeValid && KeyOf(container.DataContext) is { } key) places[key] = container.Bounds.Y;
+            tracking = true;
+            list.LayoutUpdated += OnLayoutUpdated;
+            _ = UntrackWhenStillAsync();
+        }
+
+        /// <summary>A list nothing lays out any more is still: the places noted on its last layout pass are where its entries sit.</summary>
+        async Task UntrackWhenStillAsync()
+        {
+            while (tracking)
             {
-                var now = new Dictionary<object, double>();
-                foreach (var container in list.GetRealizedContainers())
-                {
-                    if (KeyOf(list.ItemFromContainer(container)) is not { } key) continue;
-                    now.TryAdd(key, container.Bounds.Y);
-                    if (moved && !held && places.TryGetValue(key, out var was) && Math.Abs(was - container.Bounds.Y) >= 0.5)
-                        Glide(container, was - container.Bounds.Y);
-                }
-                moved = false;
-                places = now;
-            };
+                int passes = layoutPasses;
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(trackUntil - Environment.TickCount64, 100)));
+                // a move still waiting for its layout pass (the UI thread was busy) keeps it, unless the list is gone
+                if (tracking && passes == layoutPasses && Environment.TickCount64 >= trackUntil && (!moved || !list.IsAttachedToVisualTree())) Untrack();
+            }
+        }
+
+        void Untrack()
+        {
+            tracking = false;
+            moved = false; // a later pass must not glide from these places
+            list.LayoutUpdated -= OnLayoutUpdated;
+        }
+
+        void OnLayoutUpdated(object? sender, EventArgs e)
+        {
+            layoutPasses++;
+            var now = new Dictionary<object, double>();
+            bool same = true;
+            foreach (var container in list.GetRealizedContainers())
+            {
+                if (KeyOf(list.ItemFromContainer(container)) is not { } key) continue;
+                now.TryAdd(key, container.Bounds.Y);
+                bool known = places.TryGetValue(key, out var was);
+                same &= known && was == container.Bounds.Y;
+                if (moved && !held && known && Math.Abs(was - container.Bounds.Y) >= 0.5)
+                    Glide(container, was - container.Bounds.Y);
+            }
+            same &= now.Count == places.Count;
+            moved = false;
+            places = now;
+            if (same && Environment.TickCount64 >= trackUntil) Untrack();
         }
 
         /// <summary>

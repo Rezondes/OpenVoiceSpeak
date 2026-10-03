@@ -127,9 +127,9 @@ public sealed partial class ChatViewModel : ObservableObject
 
         server.ChatReceived += OnChat;
         server.ChatError += text => ComposerError = text;
-        server.StateChanged += OnStateChanged;
+        server.StateChanged += () => OnStateChanged(server.LastChange);
         server.PrivateChatRequested += user => OpenPrivate(user.Fingerprint);
-        OnStateChanged();
+        OnStateChanged(StateChange.All);
     }
 
     public ObservableCollection<ChatTab> Tabs { get; }
@@ -222,9 +222,15 @@ public sealed partial class ChatViewModel : ObservableObject
         tab.Add(new ChatEntry(DateTime.Now, online ? string.Format(Strings.Chat_BackOnline, tab.Title) : string.Format(Strings.Chat_Offline, tab.Title)), countUnread: false);
     }
 
-    /// <summary>A new channel starts an empty tab (A27). Also picks up renames and changed rights.</summary>
-    void OnStateChanged()
+    /// <summary>
+    /// A new channel starts an empty tab (A27). Also picks up renames and changed rights. Package 122: only what the change
+    /// can touch, another user's mute changes nothing here.
+    /// </summary>
+    void OnStateChanged(StateChange change)
     {
+        if (change.HasFlag(StateChange.Members) || change.HasFlag(StateChange.Names))
+            foreach (var tab in privateTabs.Values) SyncPartner(tab);
+        if (!change.HasFlag(StateChange.Tree)) return;
         var channel = server.CurrentChannel;
         if (channel?.Id != channelId)
         {
@@ -234,7 +240,6 @@ public sealed partial class ChatViewModel : ObservableObject
             if (channel is not null) Add(ChannelTab, new ChatEntry(DateTime.Now, string.Format(Strings.Chat_Entered, channel.Name)), countUnread: false);
         }
         ChannelTab.Title = channel?.Name ?? "";
-        foreach (var tab in privateTabs.Values) SyncPartner(tab);
         OnPropertyChanged(nameof(CanWrite));
         OnPropertyChanged(nameof(NoRightHint));
         OnPropertyChanged(nameof(Placeholder));

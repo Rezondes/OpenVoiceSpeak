@@ -22,6 +22,10 @@
     <AvaloniaResource Include="Assets\ovs.ico" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Package 122: the tests read counters of the work done -->
+    <InternalsVisibleTo Include="OVS.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.22" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />

@@ -58,4 +58,28 @@ public static class FakeServers
             channels[0].Id, channels, links, groups, users);
         return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);
     }
+
+    /// <summary>
+    /// Package 122: 40 channels (each linked with the next) and 400 users, ten per channel; own user "ich" is admin in the
+    /// first channel, which is the default.
+    /// </summary>
+    public static ServerViewModel Large(TimeProvider? time = null) =>
+        new(new StateMirror(LargeWelcome()), _ => Task.CompletedTask, time ?? TimeProvider.System);
+
+    /// <summary>The welcome of <see cref="Large"/>, for two servers with the same channels (the mirror copies it).</summary>
+    public static Welcome LargeWelcome()
+    {
+        var channels = Enumerable.Range(1, 40).Select(i => new ChannelInfo(Guid.NewGuid(), i == 1 ? "Lobby" : $"Raid {i}", "", i)).ToList();
+        var links = channels.Skip(1).Select((b, i) => new LinkInfo(channels[i].Id, b.Id)).ToList();
+        var groups = new List<GroupInfo>
+        {
+            new(WellKnownGroups.Guest, "Gast", Permission.Speak, true),
+            new(WellKnownGroups.Admin, "Admin", Permission.All, true),
+        };
+        var users = Enumerable.Range(1, 400).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Spieler{i:000}",
+            channels[(i - 1) % 40].Id, false, false, false, i == 1 ? Permission.All : Permission.None,
+            [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: i != 1)).ToList();
+        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "", false), channels[0].Id, channels, links, groups, users);
+        return new Welcome(1, "", snapshot);
+    }
 }

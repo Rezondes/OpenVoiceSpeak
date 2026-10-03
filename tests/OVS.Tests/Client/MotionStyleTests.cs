@@ -262,4 +262,34 @@ public sealed class MotionStyleTests : IDisposable
         window.MouseMove(Center(second, window));
         Settled(() => Assert.True(Near(Expected("translateY(-1px)"), Transform(second))));
     }
+
+    /// <summary>
+    /// Package 122 (AC6): a speaking ring breathes without animating its blurred glow: the glow and the ring stay still
+    /// (a scaled shadow is blurred anew every frame), the avatar inside breathes.
+    /// </summary>
+    [AvaloniaFact]
+    public void SpeakingRing_NoAnimatedShadow()
+    {
+        var avatar = new Border { Classes = { "avatar" }, Width = 30, Height = 30, Background = Brushes.SteelBlue };
+        var ring = new Border { Classes = { "ring" }, Child = avatar, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left };
+        var window = Host(ring, animated: true);
+        ring.Classes.Add("speaking");
+        Settled(() => Assert.Equal(0x99, ring.BoxShadow[0].Color.A)); // the glow has faded in
+
+        var rings = new HashSet<string>();
+        double high = 1;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        // a whole 900 ms loop at least, and on until the avatar was seen grown: under load a frame can land anywhere in it
+        while (watch.ElapsedMilliseconds < 1100 || (high < 1.03 && watch.ElapsedMilliseconds < 5000))
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            rings.Add($"{Transform(ring)} {ring.BoxShadow}");
+            high = Math.Max(high, Transform(avatar).M11);
+            Thread.Sleep(1);
+        }
+        Assert.True(high > 1.03, $"the avatar breathes ({high})");
+        Assert.Single(rings); // the ring with its glow never moved
+        window.Close();
+    }
 }

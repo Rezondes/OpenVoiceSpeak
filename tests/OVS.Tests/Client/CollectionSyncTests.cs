@@ -129,4 +129,51 @@ public class CollectionSyncTests
         Assert.True(CollectionSync.IsLeaving(from, "anna"));
         Assert.False(CollectionSync.IsLeaving(to, "anna"));
     }
+
+    /// <summary>Package 122: a new order alone only moves entries, whatever the order (fixed seed).</summary>
+    [Fact]
+    public void PureReorders_OnlyMove()
+    {
+        var random = new Random(122);
+        var list = new ObservableCollection<string>(Enumerable.Range(0, 30).Select(i => $"e{i}"));
+        var changes = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        list.CollectionChanged += (_, e) => changes.Add(e.Action);
+        for (int run = 0; run < 200; run++)
+        {
+            var order = list.OrderBy(_ => random.Next()).ToList();
+            CollectionSync.Sync(list, order, run % 2 == 0 ? null : new LeaveTimer(new ManualTimeProvider()) { Delay = TimeSpan.FromMilliseconds(220) });
+            Assert.Equal(order, list);
+        }
+        Assert.All(changes, c => Assert.Equal(System.Collections.Specialized.NotifyCollectionChangedAction.Move, c));
+    }
+
+    /// <summary>Package 122: leaving entries stay behind the entry they followed while the others move around them.</summary>
+    [Fact]
+    public void LeavingWithMoves_StayBehindTheirEntry()
+    {
+        var (list, leave, clock) = Setup("a", "b", "c", "d", "e");
+        CollectionSync.Sync(list, ["e", "c", "a"], leave);
+        Assert.Equal(["e", "c", "d", "a", "b"], list);
+        Assert.Equal(["e", "c", "a"], list.Live());
+        CollectionSync.Sync(list, ["a", "e", "c"], leave); // a reorder while they fold away
+        Assert.Equal(["a", "b", "e", "c", "d"], list);
+        Assert.True(CollectionSync.IsLeaving(list, "b") && CollectionSync.IsLeaving(list, "d"));
+        Pass(clock, TimeSpan.FromMilliseconds(300));
+        Eventually(() => list.Count == 3);
+        Assert.Equal(["a", "e", "c"], list);
+    }
+
+    /// <summary>Package 122: an entry that comes back while leaving takes its new place and stays, also when the order changed.</summary>
+    [Fact]
+    public void Revived_TakesItsNewPlace()
+    {
+        var (list, leave, clock) = Setup("a", "b", "c");
+        CollectionSync.Sync(list, ["a", "c"], leave);
+        Assert.True(CollectionSync.IsLeaving(list, "b"));
+        CollectionSync.Sync(list, ["c", "b", "a"], leave);
+        Assert.Equal(["c", "b", "a"], list);
+        Assert.False(CollectionSync.IsLeaving(list, "b"));
+        Pass(clock, TimeSpan.FromMilliseconds(300));
+        Assert.Equal(["c", "b", "a"], list); // the old removal does not take it away
+    }
 }

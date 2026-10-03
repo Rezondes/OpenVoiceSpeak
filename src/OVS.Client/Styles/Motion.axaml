@@ -287,7 +287,8 @@
   </Style>
 
   <!-- ===== Package 108: live states. Every loop runs only while its state lasts (the style stops matching with it) ===== -->
-  <!-- A speaking ring glows and breathes; the glow fades out after the speaking stops. Speech over a link in its colour. -->
+  <!-- A speaking ring glows and breathes; the glow fades out after the speaking stops. Speech over a link in its colour.
+       Package 122: the glow stays still and the avatar inside breathes, so no blurred shadow is drawn anew every frame. -->
   <Style Selector="Window.animated Border.ring">
     <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.NoGlow}" />
     <Setter Property="Transitions">
@@ -303,7 +304,7 @@
   <Style Selector="Window.animated Border.ring.link">
     <Setter Property="BoxShadow" Value="{StaticResource Ovs.Motion.LinkGlow}" />
   </Style>
-  <Style Selector="Window.animated Border.ring.speaking, Window.animated Border.ring.link">
+  <Style Selector="Window.animated Border.ring.speaking > Border.avatar, Window.animated Border.ring.link > Border.avatar">
     <Style.Animations>
       <Animation Duration="0:0:0.9" IterationCount="Infinite" Easing="SineEaseInOut">
         <KeyFrame Cue="0%">

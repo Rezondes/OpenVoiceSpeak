@@ -471,12 +471,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (oldValue is not null)
         {
-            oldValue.StateChanged -= SyncAudioFlags;
+            oldValue.StateChanged -= OnServerStateChanged;
             oldValue.VolumeChanged -= OnUserVolumeChanged;
         }
         if (newValue is not null)
         {
-            newValue.StateChanged += SyncAudioFlags; // e.g. the own channel was muted (Package 34)
+            newValue.StateChanged += OnServerStateChanged; // e.g. the own channel was muted (Package 34)
             newValue.VolumeOf = fingerprint => Settings.VolumeFor(fingerprint);
             newValue.VolumeChanged += OnUserVolumeChanged;
             newValue.HoldMute(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
@@ -487,6 +487,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs e) => SyncAudioFlags();
 
+    /// <summary>Package 122: the gain table only follows the users who come and go (volumes change in <see cref="OnUserVolumeChanged"/>).</summary>
+    void OnServerStateChanged()
+    {
+        SyncAudioFlags();
+        if (Server?.LastChange.HasFlag(StateChange.Members) == true) SyncGains();
+    }
+
     void SyncAudioFlags()
     {
         var s = Server;
@@ -495,7 +502,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.Deafened = s?.SelfDeafened ?? false;
         Audio.HasSpeakLinked = s?.HasSpeakLinked ?? false;
         Audio.ChannelMuted = s?.CurrentChannel?.IsMuted == true;
-        // Package 51: the volume per person, mapped to the session ids of this connection (they change on reconnect)
+        if (s != gainsFor) SyncGains();
+    }
+
+    ServerViewModel? gainsFor;
+
+    /// <summary>Package 51: the volume per person, mapped to the session ids of this connection (they change on reconnect).</summary>
+    void SyncGains()
+    {
+        var s = gainsFor = Server;
+        GainTableBuilds++;
         Audio.Mixer.SetSpeakerGains(s?.Mirror.Users.Values
             .Where(u => Settings.VolumeFor(u.Fingerprint) != 1f)
             .ToDictionary(u => u.SessionId, u => Settings.VolumeFor(u.Fingerprint)) ?? []);
@@ -509,8 +525,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Settings.SetVolume(fingerprint, volume);
         Settings.Save(storageDir);
-        SyncAudioFlags();
+        SyncGains();
     }
+
+    /// <summary>Package 122: how often the speaker gain table was built and the logo checked against its hash (tests count them).</summary>
+    internal int GainTableBuilds { get; private set; }
+    internal int IconHashes { get; private set; }
 
     /// <summary>UI timer, every 100 ms.</summary>
     public void Tick()
@@ -565,11 +585,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// </summary>
     public void TrackServerIcon(ServerViewModel vm, string host, int port)
     {
-        string? requested = null, retried = null;
+        string? requested = null, retried = null, seen = null;
+        bool synced = false;
         Task<string>? pending = null;
         void Sync()
         {
             var hash = vm.IconHash;
+            if (synced && hash == seen) return; // Package 122: nothing to do until the server's logo changes
+            (synced, seen) = (true, hash);
+            IconHashes++;
             if (hash is null)
             {
                 vm.IconPng = null;
@@ -603,6 +627,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             {
                 if (Server != vm || vm.IconHash != hash) return;
                 requested = null;
+                synced = false;
                 Sync();
             });
         }

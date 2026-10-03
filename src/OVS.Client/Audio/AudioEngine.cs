@@ -78,9 +78,9 @@ public sealed class AudioEngine : IDisposable
     CapturePipeline? capture;
     WasapiOut? output;
     volatile BufferedWaveProvider? playback;
-    List<ActiveSpeaker> lastActive = [];
+    readonly SpeakerReports speakerReports = new();
     byte? lastTarget;
-    int levelCounter, mixCount;
+    int levelCounter;
     long framesSent;
 
     public AudioEngine(KeyPoller keys, bool useDevices = true)
@@ -339,12 +339,7 @@ public sealed class AudioEngine : IDisposable
         if (deafened && !selfTest) Array.Clear(frame); // in the self test only the own voice is in the mixer
         LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame); // voice only, before the tones
         Sounds.MixInto(frame);
-        // On change, and every 100 ms while someone talks: the UI holds an indicator for 300 ms after the last report.
-        if (!active.SequenceEqual(lastActive) || (++mixCount % 5 == 0 && active.Count > 0))
-        {
-            lastActive = active;
-            SpeakersChanged?.Invoke(active);
-        }
+        if (speakerReports.Next(active) is { } report) SpeakersChanged?.Invoke(report);
         return frame;
     }
 
@@ -363,5 +358,29 @@ public sealed class AudioEngine : IDisposable
         running = false;
         playbackThread.Join(500);
         lock (gate) StopDevices();
+    }
+}
+
+/// <summary>
+/// Package 122: which mixer frames report the speakers to the UI, at most every 100 ms (5 frames): with many speakers the
+/// set changes nearly every frame, and each report goes over the users on the UI thread.
+/// </summary>
+internal sealed class SpeakerReports
+{
+    public const int Frames = 5;
+
+    List<ActiveSpeaker> last = [];
+    int sinceReport = Frames;
+
+    /// <returns>The speakers to report after this frame, or null.</returns>
+    public List<ActiveSpeaker>? Next(List<ActiveSpeaker> active)
+    {
+        // On change, and every 100 ms while someone talks: the UI holds an indicator for 300 ms after the last report. A
+        // change within the 100 ms waits for the next report (the set reported last stays the one compared with).
+        if (sinceReport < Frames) sinceReport++; // capped: it would overflow after months of silence
+        if (sinceReport < Frames || (active.Count == 0 && last.Count == 0)) return null;
+        sinceReport = 0;
+        last = active;
+        return active;
     }
 }
