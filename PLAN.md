@@ -33,6 +33,8 @@
 > **Packages 110 to 115:** one package per point of the request, in its order (no reordering needed). 111 (separators) needs 110 (duplicate names), because every separator carries the same empty name; 113 (sidebar width) and 111 both touch `MainWindow.FitSidebar`, so 113 should come after 111 or be merged carefully. All others can run in parallel.
 >
 > **Packages 119 to 125:** one package per point of the request, in its order, except that the two key bugs share one cause: key bindings edited on the settings page only reach the key poller on Save. 121 (self test) fixes that, so 125 (push-to-mute) needs 121. 122 (many users) and 124 (idle CPU and RAM) are cut by cost: 122 is what every server message and every speaking user costs in the UI, 124 is what runs while nothing happens. 123 (voice filters) and 124 both change `CapturePipeline`, so 124 comes after 123. 119, 120, 121, 122 and 123 can run in parallel. (Packages 116 to 118, the website, were planned in a separate file; their assumptions are A124 to A127.)
+>
+> **Packages 126 to 142 (voice like Fluxer):** the request "plan every difference between Fluxer and OVS so that OVS voice comes as close to Fluxer as possible" followed an analysis of Fluxer (the `fluxerapp/fluxer` web and desktop app with its LiveKit setup, and `fluxerapp/flutter_client`). Fluxer runs the LiveKit SFU over WebRTC; OVS keeps its own UDP stack (A134), so each package rebuilds one thing Fluxer gets from WebRTC, LiveKit or its own client code. The order follows the dependencies, not the order of the findings: 126 (a lost UDP Hello leaves a session without voice, a bug found on the way) comes first; 127 (louder senders) adds the settings migration that 128 and 129 use; 133 (real connection stats) provides the measurements 134, 135 and 136 need; 139 (auto-reconnect) and 141 (voice over TCP) build on 126; 142 (music mode) comes last. 126, 127, 130, 131, 132, 137 and 138 can start at once. Fluxer features outside voice transmission are not planned (A152).
 
 ## Überblick
 
@@ -160,6 +162,23 @@
 | 123 | Voice filters | Noise suppression and automatic gain clean the microphone signal before it is sent, each switchable in the settings. | - |
 | 124 | Low CPU and RAM while idle | While nothing happens the client uses almost no CPU, opens the audio devices only when needed and allocates nothing per audio frame. | 123 |
 | 125 | Push-to-mute works like mute | Holding the push-to-mute key mutes exactly like the mute button, with icon, sound and server state, and releasing it restores the previous state. | 121 |
+| 126 | UDP Hello is retried | A session whose first UDP Hello is lost still gets voice, and one whose UDP mapping breaks later gets it back. | - |
+| 127 | Louder senders | Every microphone arrives at a normal speech level, because automatic gain is on for everyone and also raises very quiet voices. | - |
+| 128 | Fluxer's volume curve | The volume sliders follow Fluxer's curve, so 200 % is four times as loud and the lower half of the slider is fine-grained. | 127 |
+| 129 | Automatic voice gate | Voice activation adapts its threshold to the room by itself and no longer flickers at the end of words. | 127 |
+| 130 | Push-to-talk release delay | Releasing the talk key a moment early no longer cuts off the last syllable. | - |
+| 131 | Talk feedback | Users are told when they talk while muted or deafened, and can hear their talk key act. | - |
+| 132 | Bitrate per channel | Each channel has its own voice quality (16 to 128 kbps, default 64), and senders encode with their channel's bitrate. | - |
+| 133 | Real connection stats | Users see their real voice round trip, packet loss and jitter in a signal icon and a details panel. | 126 |
+| 134 | Adaptive jitter buffer | The jitter buffer starts each talk spurt with a cushion that fits the measured jitter instead of a fixed 40 ms. | 133 |
+| 135 | Adaptive loss protection | The sender's FEC and bitrate follow the loss its packets actually suffer. | 132, 133 |
+| 136 | Redundant frames | Packets on a lossy path carry a copy of the previous frame, so a lost frame is played back in full quality. | 135 |
+| 137 | Audio device changes | Unplugging, plugging in or switching the Windows default device during a call keeps voice running without a trip to the settings. | - |
+| 138 | Clean resampling | Microphones that do not run at 48 kHz are converted without aliasing. | - |
+| 139 | Auto-reconnect | A lost connection is restored by itself, back into the same channel with the same mute state. | 126 |
+| 140 | Echo cancellation | Users on speakers can use voice activation without the others hearing themselves. | 127 |
+| 141 | Voice over TCP | Voice works on networks that block UDP, over the existing TLS connection. | 126 |
+| 142 | Music mode | A sender can switch to a music mode that sends stereo without voice filters. | 132, 140 |
 
 ## Annahmen
 
@@ -307,6 +326,25 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A131 Voice filters (Package 123).** Noise suppression with RNNoise (BSD-3, native library shipped with the client) and an own automatic gain control (no dependency). Defaults: noise suppression on, automatic gain off, also for settings files without the keys. Both act on the sent signal, before voice activation and the level meter, and apply live. No echo cancellation (users with speakers instead of a headset keep using push-to-talk). Replaces A18 in part.
 - **A132 Audio only when needed (Package 124).** Microphone and output device open when connecting or starting the self test, and close on disconnect; the settings page opens the microphone only while it is shown (level meter). Windows then shows the microphone as in use only while connected.
 - **A133 Push-to-mute (Package 125).** Holding the push-to-mute key does the same as pressing the mute button, and releasing it undoes exactly that: if I was already muted, holding and releasing changes nothing. Single modifier keys (Shift, Ctrl, Alt alone) can be bound to any action.
+- **A134 Own voice stack stays (Packages 126 to 142).** OVS does not switch to WebRTC or LiveKit; only ideas and values are taken from Fluxer. Where a package names a Fluxer value, it is the value found in Fluxer's code (October 2026).
+- **A135 Settings migration (Packages 127 to 129).** `ClientSettings` gets a `SettingsVersion` (a file without it counts as 0). `Load` runs every missing step once, in order, and the file is saved with the new version. Step 1 (127): `AutoGain` on. Step 2 (128): per-user volumes and the output volume above 100 % go back to 100 %. Step 3 (129): a `VadThresholdDb` still at the old default -40 turns the automatic threshold on, any other value stays as a manual threshold. A new file starts at the newest version with the new defaults.
+- **A136 Louder senders (Package 127).** Automatic gain is on by default, also for existing users once (A135 step 1). With noise suppression running, a frame counts as speech when RNNoise rates it at least 0.5 (the return value of `rnnoise_process_frame`, ignored today); the -45 dBFS floor stays only for noise suppression off or missing. The gain may reach +30 dB instead of +18 dB, target and peak limit stay (-20 dBFS, -3 dBFS). The input gain's hard clip at ±1 becomes a soft clip above -3 dBFS. The fixed voice boost ×2 (A51) stays for now; if the manual check of 127 and 128 finds the result too loud, a follow-up lowers it.
+- **A137 Volume curve (Package 128).** Fluxer's curve for the per-user volume and the output volume: up to 100 % the gain is `10^((v - 100) / 100 * 1.2)`, above it `4^((v - 100) / 100)`, so 200 % is ×4 and 50 % is about ×0.25. Per-user and output gain multiply and are capped at ×12 together (the voice boost and the limiter come after). The sliders still show 0 to 200 %. Stored values above 100 % go back to 100 % once (A135 step 2); values up to 100 % keep their number and follow the new curve, so they become somewhat quieter than before, like in Fluxer.
+- **A138 Voice gate (Package 129).** Fluxer's gate: noise floor = 10th percentile of the frame levels of the last 2 s times 1.5, automatic threshold = 3 × the floor, clamped to -110 to -28 dBFS; before 0.3 s of learning the manual threshold applies. Hysteresis: the hold only starts counting once the level is below 0.7 × the threshold (about -3 dB); the hold is 9 frames (180 ms) instead of today's 15 (300 ms). The 20 ms pre-roll stays and covers Fluxer's 10 ms lookahead. A switch "Automatisch" on the settings page; the manual slider stays in dBFS (-60 to -10); the level meter shows the threshold in use.
+- **A139 Release delay (Package 130).** A setting "Loslassverzögerung", 0 to 2000 ms, default 20 ms (Fluxer's default). It applies to push-to-talk and link push-to-talk, also in the self test, never to push-to-mute or mute. Pressing again within the delay just continues.
+- **A140 Talk feedback (Package 131).** The existing voice hint line shows "Du bist stummgeschaltet" (or "taub geschaltet", "vom Server stummgeschaltet") while a talk key is held, or voice activation hears voice, while I am self-muted, deafened or server-muted, and for 2 s after. Two new sounds "Sprechtaste gedrückt" and "Sprechtaste losgelassen" exist in the sound settings and are off by default, so nothing changes for anyone who does not turn them on. Fluxer only warns for a key pressed while deafened; the rest goes beyond it.
+- **A141 Bitrate per channel (Package 132).** `ChannelInfo.Bitrate` in kbps, default 64, allowed 16 to 128, set in the create and edit dialog by whoever may edit the channel today. A stored channel without a value loads as 64, so existing channels move from 32 to 64 kbps. Separators have none. A sender encodes with its own channel's bitrate, also for link push-to-talk. The protocol version goes up by one.
+- **A142 Connection stats (Package 133).** The UDP ping goes every 2 s instead of every 5 s (Fluxer refreshes its stats every 2 s) and carries the client's send time, which the server echoes. Both directions report loss inside the ping: the server tells the client how many of its frames it missed (uplink loss), the client tells the server the loss it sees from the server (downlink loss, used by 136). The client also measures jitter (RFC 3550 style, from arrival times against 20 ms steps), jitter buffer delay and concealed or FEC-rebuilt frames. A signal icon next to the ping text rates the voice round trip above the user's own baseline (median of the last 30 samples): below 70 ms green with 4 bars, below 160 yellow 3, below 300 orange 2, else red 1; UDP unreachable shows it crossed out. Clicking it opens "Verbindungsdetails" with round trip, uplink and downlink loss, jitter, buffer delay, concealed frames and the bitrate in use. The protocol version goes up by one.
+- **A143 Adaptive jitter buffer (Package 134).** The start cushion of each talk spurt is `clamp(ceil(2 × jitter / 20 ms) + 1, 2, 10)` frames from the speaker's measured jitter. The buffer only shrinks at a talk spurt boundary (today's rebuffer) and through the existing cap of 10 frames, never by dropping frames in the middle of speech, because OVS has no time stretching.
+- **A144 Adaptive loss protection (Package 135).** The encoder's `PacketLossPercent` follows the reported uplink loss (`clamp(round(1.5 × loss), 5, 30)`, updated every 2 s). Above 10 % loss for 5 s the bitrate halves, down to at most 16 kbps; after 10 s below 2 % it goes up one step, never above the channel's bitrate. This is the part of WebRTC's congestion control that matters for voice; nothing changes on the server.
+- **A145 Redundant frames (Package 136).** Like Fluxer's RED, but only where it helps, since Fluxer's "always on" would double every stream through a self-hosted server. The voice payload may carry the previous frame after the current one. The sender adds it while its uplink loss is at least 2 %. The server keeps each speaker's last frame and adds it for each recipient whose reported downlink loss is at least 2 %, so one listener on bad Wi-Fi does not cost everyone. The receiver uses the copy for a lost frame before falling back to FEC or concealment. The protocol version goes up by one.
+- **A146 Device changes (Package 137).** The engine listens to Windows device notifications (`MMDeviceEnumerator.RegisterEndpointNotificationCallback`) and to `RecordingStopped` / `PlaybackStopped` with an error. 800 ms after the last change (Fluxer's debounce) it reopens what is open: the chosen device if present, else the default with one notice; a chosen device that comes back is taken again. "Standard" follows a change of the Windows default device.
+- **A147 Resampling (Package 138).** NAudio's `WdlResampler` (already shipped in `NAudio.Core`) replaces the linear resampler for capture rates other than 48 kHz; equal rates pass through as today.
+- **A148 Auto-reconnect (Package 139).** It starts on `ConnectionLost` and `ServerShutdown`, never on `Kicked`, `Banned`, `ReplacedByNewConnection`, `VersionMismatch`, a wrong password or my own disconnect. Attempts after 1, 2, 4, 8 and 16 s (5 attempts, about 31 s, Fluxer's 1 s base and 30 s window), then today's disconnected notice. Meanwhile the status reads "Verbindung verloren, neuer Versuch in N s" with "Abbrechen", and no "Getrennt" sound plays. On success the client joins the last channel again (with the password it used for it, kept in memory only), restores self mute and deafen, and posts one notice; server mute comes from the server (Package 85). The server needs no change: a new connection replaces the half-open old session (`ServerState.cs:208-225`). Each attempt carries a generation number, and the result of an outdated one is discarded.
+- **A149 Echo cancellation (Package 140).** WebRTC's audio processing module (AEC3) from the freedesktop `webrtc-audio-processing` project (BSD-3), built once for win-x64 with a small C wrapper DLL (its API is C++) and checked in, loaded like RNNoise (missing means off with one log line). Order on the sent signal: echo cancellation, noise suppression, automatic gain, voice gate. The far-end reference is the mixed output frame after the limiter, as two 10 ms halves, with a delay hint from the capture and output buffer sizes. Only its echo canceller is used; RNNoise and the own automatic gain stay. A switch "Echounterdrückung", default on (Fluxer's voice mode), also for existing users. Replaces the echo part of A18 and A131. If the library cannot be built and loaded, the package stops after its first step and reports.
+- **A150 Voice over TCP (Package 141).** When UDP is still not reachable 5 s after connecting despite the Hello retries (126), or pings go unanswered for 15 s, voice goes over the TLS connection: new messages `VoiceUp(Seq, Target, Opus)` (client to server) and `VoiceDown(SessionId, Seq, Target, Opus)` (server to client), the Opus bytes as base64 in the JSON. The server relays to each recipient on that recipient's path (UDP or TCP), with the same routing and rights. The control channel limits (Package 86) get a separate voice budget (60 per second, burst 10, like UDP). UDP is tried again every 30 s and voice switches back when it answers. The ping text shows ", Sprache über TCP". The protocol version goes up by one.
+- **A151 Music mode (Package 142).** A setting "Übertragungsart": "Sprache" (today) or "Musik". Music turns echo cancellation, noise suppression and automatic gain off, captures in stereo without the downmix (a mono device stays mono), and encodes with Opus `AUDIO` and signal type music, in stereo when the channel's bitrate is at least 64 kbps (Fluxer's rule), FEC stays on. Push-to-talk and voice activation work as before. Receivers decode and mix in stereo and open the output in stereo; a mono speaker plays on both sides. No protocol change: an Opus packet carries its channel count.
+- **A152 Not planned (Packages 126 to 142).** Fluxer features outside voice transmission or without a use in a single self-hosted server: several voice servers and regions, join confirmation through LiveKit webhooks, end-to-end encryption (Fluxer's room key is known to its own gateway; the OVS server decrypts as well, so nothing would change for users), entrance sounds, soundboard, AFK channel, DM calls, video and screen share, further noise suppression models (DeepFilterNet, GTCRN), native libopus (see Package 124). Speaking indicators stay packet based: OVS only sends while someone speaks, so they already match Fluxer's level-based rings.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -7432,3 +7470,834 @@ Test command: `dotnet test tests/OVS.Tests`
 ### Out of Scope
 
 - A push-to-deafen action
+---
+
+## Package 126: UDP Hello is retried
+
+**Goal:** A session whose first UDP Hello is lost still gets voice, and one whose UDP mapping breaks later gets it back.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Net/VoiceClient.cs` (change): `Start` sends one `Hello` (line 40), afterwards only pings. The ping timer sends `Hello` instead of `Ping` while not `Reachable`, first every 500 ms for 5 s, then at the normal ping interval; after 15 s without any answer `Reachable` goes back to false and Hellos start again
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `LogUdpReachability` also logs "UDP wieder erreichbar" when UDP recovers after having been lost
+- `tests/OVS.Tests/Client/ClientNetTests.cs`, `MainViewModelTests.cs` (change), `tests/OVS.Tests/TestSupport/` (a lossy UDP relay, new)
+
+### Context
+
+`VoiceClient.Start` sends exactly one `Hello`. The server binds the session's UDP endpoint only on a `Hello`, or on any packet once an endpoint is bound (`UdpVoiceServer.cs:110`), and `SendAsync` returns early without an endpoint (line 146). If that one Hello is lost (a Wi-Fi hiccup, a NAT that drops the first packet of a new mapping), every later ping is accepted but binds nothing and gets no answer: the session has no voice at all, and the client only logs "UDP nicht erreichbar" after 5 s (`MainViewModel.cs:559-570`). A NAT mapping that changes later already recovers (a bound endpoint is updated by every authenticated packet); only the unbound case is stuck. The fix stays on the client: the server already binds on `Hello`.
+
+### Acceptance Criteria
+
+- [ ] AC1: With the first Hello dropped, the session is reachable and voice flows in both directions within 1 s.
+- [ ] AC2: With every packet dropped for 20 s and then delivered again, `Reachable` turns false after 15 s and true again within one ping interval of the network coming back.
+- [ ] AC3: Once reachable, the client sends only pings (no Hello flood), at the normal interval.
+- [ ] AC4: The client log shows "UDP nicht erreichbar" once and "UDP wieder erreichbar" once for such an outage.
+
+### Tests (TDD)
+
+Reproduction first: test 1 must be red before anything changes.
+
+1. `ClientNetTests > "FirstHelloLost_StillGetsVoice"` (AC1): a test server behind a lossy UDP relay that drops the first client packet; expected: `Reachable` within 1 s, and a voice frame from a second client arrives.
+2. `ClientNetTests > "UdpOutage_Recovers"` (AC2): the relay drops everything for 20 s, then passes; `VoiceClient` takes a `TimeProvider` (default `TimeProvider.System`), driven by `ManualTimeProvider`.
+3. `ClientNetTests > "Reachable_SendsOnlyPings"` (AC3): count Hello and Ping packets at the relay.
+4. `MainViewModelTests > "UdpOutage_LoggedOnceEachWay"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red), then the Hello retry in `VoiceClient`.
+2. Tests 2 and 3 (red): the "lost again" detection and the interval switch.
+3. Test 4 (red): the log line.
+
+### Out of Scope
+
+- Voice when UDP stays blocked (Package 141)
+- Measuring the round trip and loss (Package 133)
+
+---
+
+## Package 127: Louder senders
+
+**Goal:** Every microphone arrives at a normal speech level, because automatic gain is on for everyone and also raises very quiet voices.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `AutoGain` default true; `SettingsVersion` and migration step 1 in `Load` (A135)
+- `src/OVS.Client/Audio/NoiseSuppressor.cs` (change): `Process` returns the frame's voice probability (the lower of the two halves' `rnnoise_process_frame` results), or null when disposed
+- `src/OVS.Client/Audio/AutoGain.cs` (change): `Process(frame, voiceProbability)`: with a probability, speech means `>= 0.5`; without one the `VoiceFloorDb` (-45) rule stays; `MaxGainDb` 18 → 30
+- `src/OVS.Client/Audio/CapturePipeline.cs` (change): `Feed` passes the probability from the suppressor to the gain (lines 115-116); the hard clip of the input gain (line 113) becomes a soft clip above -3 dBFS
+- `src/OVS.Client/Views/SettingsView.axaml`, `Localization/Strings.resx`, `Strings.en.resx` (change): the automatic gain hint calls it recommended
+- `tests/OVS.Tests/Client/VoiceFilterTests.cs`, `SettingsTests.cs`, `SendPathTests.cs` (change)
+
+### Context
+
+Testers had to set others to 200 %, and one still found someone too quiet. Fluxer has no such complaint because its browser's WebRTC gain control is on by default (`fluxer_app/src/features/voice/state/VoiceSettings.ts:434`, `autoGainControl = true`) and decides what is speech with a voice detector, so a quiet microphone reaches a normal level before it is sent. In OVS automatic gain is off by default (A131, `ClientSettings.cs:88`). Even when on, it never raises speech below -45 dBFS (`AutoGain.cs:18`), exactly the quiet senders behind the complaint, and it stops at +18 dB. The -45 dBFS floor exists so room noise is not pulled up while noise suppression is off; with RNNoise running (default on), RNNoise's own voice probability is a better speech test. Settings files write every key, so existing users have `"AutoGain": false` stored and a new default alone would not reach them (A135).
+
+### Acceptance Criteria
+
+- [ ] AC1: A new settings file and a file without `SettingsVersion` (even with `"AutoGain": false`) load with automatic gain on and `SettingsVersion` set; a file already migrated keeps the user's choice.
+- [ ] AC2: With noise suppression on, a voice-like signal at -50 dBFS rises to -20 dBFS ±3 dB within 5 s; with it off, the same signal is not raised (floor rule), while -40 dBFS still rises as today.
+- [ ] AC3: With noise suppression on, pink noise at -50 dBFS (rated as no speech) is not raised.
+- [ ] AC4: The gain never exceeds +30 dB, and no sample exceeds -3 dBFS after it.
+- [ ] AC5: An input gain of 200 % on a signal peaking at 0.8 is soft-clipped: no sample above 1, samples below -3 dBFS unchanged.
+- [ ] AC6: Nothing is allocated per frame (`Filters_AllocateNothingPerFrame` stays green).
+- [ ] AC7: Manual check, recorded in the package notes: a tester who was too quiet before is understandable at 100 % on the other side, and their level meter shows the raised level.
+
+### Tests (TDD)
+
+1. `SettingsTests > "Migration_TurnsAutoGainOnOnce"` (AC1): three files (none, old with `false`, migrated with `false`).
+2. `VoiceFilterTests > "AutoGain_RaisesVeryQuietVoice_WithSuppression"` (AC2): a voice-like synthetic signal (harmonics with gliding pitch and syllable envelope, as in the Package 124 benchmark) at -50 dBFS through `NoiseSuppressor` and `AutoGain`, and the same without suppression.
+3. `VoiceFilterTests > "AutoGain_IgnoresNoiseRatedAsNoise"` (AC3)
+4. `VoiceFilterTests > "AutoGain_CapsAt30dB_AndPeak"` (AC4)
+5. `SendPathTests > "InputGain_SoftClips"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): `SettingsVersion`, the migration framework and step 1.
+2. Tests 2 and 3 (red): the probability from `NoiseSuppressor` into `AutoGain`. If RNNoise rates the synthetic voice below 0.5, use a short recorded speech sample with a free license in `tests/OVS.Tests/TestData` instead and note its source.
+3. Tests 4 and 5 (red): the new cap and the soft clip.
+4. Manual check AC7.
+
+### Out of Scope
+
+- The receiving side's volume curve (Package 128)
+- Changing the fixed voice boost ×2 (A136)
+
+---
+
+## Package 128: Fluxer's volume curve
+
+**Goal:** The volume sliders follow Fluxer's curve, so 200 % is four times as loud and the lower half of the slider is fine-grained.
+
+**Dependencies:** Package 127 (settings migration)
+
+**Affected files:**
+- `src/OVS.Client/Audio/VolumeCurve.cs` (new): `Gain(float sliderValue)` per A137 and `Combine(user, output)` with the ×12 cap
+- `src/OVS.Client/Audio/Mixer.cs` (change): `SetSpeakerGains` and `Volume` take slider values; `Tick` applies `Combine(speaker, output)` × `DefaultVoiceBoost` (lines 71-76)
+- `src/OVS.Client/Audio/AudioEngine.cs`, `ViewModels/MainViewModel.cs` (change, if needed): pass slider values unchanged
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): migration step 2 (A135)
+- `tests/OVS.Tests/Client/ReceivePathTests.cs`, `SettingsTests.cs` (change), `VolumeCurveTests.cs` (new)
+
+### Context
+
+The mixer multiplies linear values: per-user volume 0 to 2, output volume 0 to 2, voice boost 2 (`Mixer.cs:71-76`), so 200 % is only +6 dB per slider. Fluxer maps 100 to 200 % exponentially to ×1 to ×4 and 0 to 100 % logarithmically, multiplies user and output gain and caps the total at ×12 (`fluxer_app/src/features/voice/utils/VoiceVolumeUtils.ts`, `state/ParticipantVolume.ts:205-208`). The user chose to reset stored values above 100 % to 100 % once, as Fluxer did when it changed its curve (`recalibrateStoredVoiceVolumes`).
+
+### Acceptance Criteria
+
+- [ ] AC1: The curve gives ×1 at 100 %, ×4 at 200 %, ×2 at 150 %, about ×0.25 at 50 %, 0 at 0 %, and rises monotonically.
+- [ ] AC2: Per-user 200 % and output 200 % give ×12 (capped), not ×16.
+- [ ] AC3: A frame mixed with per-user 200 % has four times the amplitude of the same frame at 100 % (below the limiter's threshold).
+- [ ] AC4: Migration step 2 resets per-user volumes and the output volume above 100 % to 100 % once; values up to 100 % are kept; a migrated file is not touched again.
+- [ ] AC5: The sliders still show 0 to 200 %, and the stored values are the slider values.
+
+### Tests (TDD)
+
+1. `VolumeCurveTests > "Gain_KnownPoints_Monotonic"` (AC1)
+2. `VolumeCurveTests > "Combine_CapsAtTwelve"` (AC2)
+3. `ReceivePathTests > "Mixer_UserVolume200_FourTimes"` (AC3); existing mixer tests that assume a linear ×2 are adjusted.
+4. `SettingsTests > "Migration_ResetsVolumesAbove100Once"` (AC4)
+5. `SettingsTests > "Volume_SliderValueStored"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): `VolumeCurve`.
+2. Test 3 (red): the mixer uses it; adjust older mixer tests.
+3. Tests 4 and 5 (red): migration step 2.
+
+### Out of Scope
+
+- The input gain (stays linear 0 to 200 %, as in Fluxer)
+- Lowering the voice boost (A136)
+
+---
+
+## Package 129: Automatic voice gate
+
+**Goal:** Voice activation adapts its threshold to the room by itself and no longer flickers at the end of words.
+
+**Dependencies:** Package 127 (settings migration; the gate sees the signal after automatic gain)
+
+**Affected files:**
+- `src/OVS.Client/Audio/SendPath.cs` (change): `VoiceActivityDetector` (lines 27-60) gets a noise floor tracker (2 s of frame levels, 10th percentile), the automatic threshold, the 0.7 hysteresis and a hold of 9 frames (A138); properties `Automatic` and `ThresholdInUseDb`
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `VadAutomatic` (default true), migration step 3
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): passes the switch live like `VadThresholdDb`
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (change): a switch "Automatisch" above the threshold slider (slider disabled while on), the level meter marks the threshold in use
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/SendPathTests.cs`, `SettingsTests.cs` (change)
+
+### Context
+
+Voice activation is an energy gate with a fixed threshold (default -40 dBFS, range -60 to -10) and a 300 ms hangover (`SendPath.cs:29`), without hysteresis: speech hovering around the threshold at the end of a word opens and closes the gate repeatedly, and users must tune the threshold to their room. Fluxer's gate (`fluxer_app/src/features/voice/utils/voiceGateProcessor.worklet.js`) learns the noise floor continuously, sets the threshold at three times it, and only starts its 180 ms hold below 0.7 × the threshold. The pre-roll frame in `CapturePipeline.Feed` already does what Fluxer's 10 ms lookahead does.
+
+### Acceptance Criteria
+
+- [ ] AC1: In automatic mode with steady noise at -55 dBFS, the threshold settles within 2 s at 3 × (1.5 × the floor) of that noise (about -42 dBFS ±2 dB), and the noise alone does not open the gate.
+- [ ] AC2: When the noise rises to -45 dBFS, the threshold follows within 2 s; speech 15 dB above the noise opens the gate in both cases.
+- [ ] AC3: A level that drops below the threshold but stays above 0.7 × it does not start the hold; the gate closes 180 ms after the level fell below 0.7 × the threshold.
+- [ ] AC4: In the first 0.3 s the manual threshold applies.
+- [ ] AC5: Migration step 3: a stored -40 turns automatic on, any other stored value stays manual; new files are automatic.
+- [ ] AC6: The switch applies live, the slider is disabled while automatic, and the meter shows the threshold in use.
+
+### Tests (TDD)
+
+1. `SendPathTests > "Vad_Hysteresis_Hold180ms"` (AC3): frame sequences at chosen levels; the existing hangover tests change from 15 to 9 frames.
+2. `SendPathTests > "VadAuto_SettlesOnNoise_StaysClosed"` (AC1)
+3. `SendPathTests > "VadAuto_FollowsRisingNoise_OpensOnSpeech"` (AC2)
+4. `SendPathTests > "VadAuto_ManualDuringLearning"` (AC4)
+5. `SettingsTests > "Migration_VadAutoOnlyForDefault"` (AC5)
+6. `SettingsTests > "VadAuto_LiveAndSliderDisabled"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): hysteresis and the shorter hold, for the manual mode too.
+2. Tests 2 to 4 (red): the floor tracker (a ring of 100 frame levels and a partial sort, nothing allocated per frame).
+3. Tests 5 and 6 (red): setting, migration, settings page.
+
+### Out of Scope
+
+- Using RNNoise's voice probability for the gate (Fluxer's gate is energy only)
+- Push-to-talk behaviour (Package 130)
+
+---
+
+## Package 130: Push-to-talk release delay
+
+**Goal:** Releasing the talk key a moment early no longer cuts off the last syllable.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Input/KeyPoller.cs` or `src/OVS.Client/Audio/AudioEngine.cs` (change): the push-to-talk and link push-to-talk state the engine sees stays true for the delay after release, at one place, so the engine, the self test and the "Sendet" text agree
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `PttReleaseDelayMs` (default 20, clamped 0 to 2000)
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (change): a slider "Loslassverzögerung" under the key bindings, shown in push-to-talk mode, live
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/SendPathTests.cs`, `SettingsTests.cs` (change)
+
+### Context
+
+`TransmitController` (`SendPath.cs:14-24`) sends in push-to-talk mode exactly while the key is down, polled every 10 ms (`KeyPoller.cs:7`). People release the key as the last word ends, so its tail is cut. Fluxer has a release delay of 20 to 2000 ms, default 20 ms (`fluxer_app/src/features/input/state/InputKeybind.ts:265-267`). Voice activation has its own hold (Package 129) and is not affected.
+
+### Acceptance Criteria
+
+- [ ] AC1: With a delay of 300 ms, frames are still sent for 300 ms (15 frames) after the key is released, then sending stops.
+- [ ] AC2: Pressing the key again within the delay continues without a gap and without a second pre-roll frame.
+- [ ] AC3: Link push-to-talk has the same delay with its link target; push-to-mute and mute act at once.
+- [ ] AC4: The setting defaults to 20 ms, is clamped to 0 to 2000, saved, and applies live.
+
+### Tests (TDD)
+
+1. `SendPathTests > "PttRelease_KeepsSendingForDelay"` (AC1): `FakeKeys` and `ManualTimeProvider`.
+2. `SendPathTests > "PttRepressWithinDelay_NoGap"` (AC2)
+3. `SendPathTests > "LinkPttRelease_Delayed_MuteImmediate"` (AC3)
+4. `SettingsTests > "PttReleaseDelay_DefaultClampLive"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 3 (red): the delayed key state at one place.
+2. Test 4 (red): setting and slider.
+
+### Out of Scope
+
+- Sounds and hints around the talk key (Package 131)
+
+---
+
+## Package 131: Talk feedback
+
+**Goal:** Users are told when they talk while muted or deafened, and can hear their talk key act.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `Tick` sets `VoiceHint` (lines 551-556) to the muted texts when a talk key is held, or voice activation reports voice, while self-muted, deafened or server-muted, and keeps it 2 s (A140)
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): exposes "voice detected" while muted (the VAD runs anyway; the engine only does not send)
+- `src/OVS.Client/Audio/Sounds.cs` (change): `SoundEvent.TalkKeyDown`, `TalkKeyUp` with short soft tones
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): both sounds muted by default in `SoundFor`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/MainViewModelTests.cs`, `SoundTests.cs`, `LocalizationTests.cs` (change)
+
+### Context
+
+Neither OVS nor Fluxer tells users they are talking into a muted microphone, except Fluxer's modal for a talk key pressed while deafened. OVS already has a voice hint line for a muted channel and a missing link right (`MainViewModel.cs:551-556`), the natural place for it. Fluxer ships push-to-talk on and off sounds (`fluxer_app/src/media/sounds`); OVS's sound list (`Sounds.cs:4-14`) has none. They are off by default so that nobody's client suddenly beeps (A140).
+
+### Acceptance Criteria
+
+- [ ] AC1: Holding push-to-talk while self-muted shows "Du bist stummgeschaltet" in the hint line; it disappears 2 s after release.
+- [ ] AC2: The same for deafened ("taub geschaltet") and server-muted ("vom Server stummgeschaltet").
+- [ ] AC3: In voice activation mode, speaking above the threshold while self-muted shows the hint.
+- [ ] AC4: Not muted, no hint appears; the existing hints keep their priority.
+- [ ] AC5: The two talk key sounds exist in the sound settings, are off by default, and when turned on play on press and release of push-to-talk and link push-to-talk.
+- [ ] AC6: The texts exist in German and English.
+
+### Tests (TDD)
+
+1. `MainViewModelTests > "TalkWhileMuted_ShowsHint_2s"` (AC1)
+2. `MainViewModelTests > "TalkWhileDeafenedOrServerMuted_ShowsHint"` (AC2), a theory.
+3. `MainViewModelTests > "VoiceWhileMuted_ShowsHint"` (AC3)
+4. `MainViewModelTests > "NotMuted_NoHint"` (AC4)
+5. `SoundTests > "TalkKeySounds_OffByDefault_PlayWhenOn"` (AC5)
+6. `LocalizationTests` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 4 (red): the hint.
+2. Test 5 (red): the sounds.
+3. Test 6.
+
+### Out of Scope
+
+- A modal dialog (the hint line is enough and does not interrupt)
+
+---
+
+## Package 132: Bitrate per channel
+
+**Goal:** Each channel has its own voice quality (16 to 128 kbps, default 64), and senders encode with their channel's bitrate.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `ChannelInfo`, `CreateChannel`, `EditChannel` get `int Bitrate = 64` (lines 122, 149, 153)
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (change): version 12
+- `src/OVS.Server/Commands/ChannelCommands.cs`, `src/OVS.Server/Data/ServerData.cs` (change): validate 16 to 128 (refused like other invalid channel fields), store, load a missing value as 64; separators keep none
+- `src/OVS.Server/RequestShape.cs` (change, if it lists channel fields)
+- `src/OVS.Client/Audio/OpusCodec.cs` (change): `VoiceEncoder` bitrate settable (fixed 32 000 today)
+- `src/OVS.Client/Audio/AudioEngine.cs`, `ViewModels/MainViewModel.cs` (change): the encoder follows the current channel's bitrate (join, move, channel edited); the self test uses 64
+- `src/OVS.Client/ViewModels/ChannelDialogViewModel.cs`, `Views/ChannelDialog.axaml` (change): a "Qualität" field (kbps) in create and edit
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Server/ChannelCommandTests.cs`, `DataStoreTests.cs`, `tests/OVS.Tests/Client/ChannelDialogViewModelTests.cs`, `SendPathTests.cs` (change)
+
+### Context
+
+Every sender encodes at a fixed 32 kbps (`OpusCodec.cs`, `VoiceEncoder`). Fluxer sets the bitrate per channel: default 64 kbps, 8 to 96 kbps, more with paid guild features (`packages/constants/src/LimitConstants.ts`, `GuildConstants.ts`). The user chose a 64 kbps default and 16 to 128 kbps. 128 kbps is 320 bytes per 20 ms frame, well inside the 1400-byte packet limit (`VoicePacket.cs:19`).
+
+### Acceptance Criteria
+
+- [ ] AC1: A channel created without a bitrate has 64; one created or edited with 16 to 128 keeps it; 15 or 129 is refused with the usual error.
+- [ ] AC2: A data file from before (channels without the field) loads with 64 for every voice channel; the value survives a restart.
+- [ ] AC3: All clients receive the bitrate in `ChannelInfo`; the dialog shows and edits it for users who may edit the channel.
+- [ ] AC4: A sender in a 96 kbps channel produces frames whose average size matches about 96 kbps (±15 %) on a steady test signal; after moving to a 32 kbps channel, about 32 kbps.
+- [ ] AC5: Link push-to-talk uses the sender's own channel's bitrate.
+- [ ] AC6: The protocol version is 12.
+
+### Tests (TDD)
+
+1. `ChannelCommandTests > "Bitrate_DefaultRangeRefused"` (AC1)
+2. `DataStoreTests > "Channel_WithoutBitrate_Loads64"` (AC2)
+3. `ChannelDialogViewModelTests > "Bitrate_ShownAndEdited"` (AC3)
+4. `SendPathTests > "Encoder_FollowsChannelBitrate"` (AC4, AC5)
+5. `StateSyncTests > "ChannelInfo_CarriesBitrate"` (AC3, AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1, 2 and 5 (red): protocol and server.
+2. Test 4 (red): the encoder follows the channel.
+3. Test 3 (red): the dialog.
+
+### Out of Scope
+
+- Lowering the bitrate on loss (Package 135)
+- Stereo (Package 142)
+
+---
+
+## Package 133: Real connection stats
+
+**Goal:** Users see their real voice round trip, packet loss and jitter in a signal icon and a details panel.
+
+**Dependencies:** Package 126 (the ping timer it changes)
+
+**Affected files:**
+- `src/OVS.Shared/Voice/VoicePacket.cs` (change): a `PingPayload`: the sender's time in ms (8 bytes) and the loss figure for the other side (frames expected and missed in the last 5 s, 2 × 4 bytes)
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (change): version + 1
+- `src/OVS.Server/Voice/UdpVoiceServer.cs`, `src/OVS.Server/Session.cs` (change): per sender, count received and missed frame numbers (gaps in `frameSeq`) per 5 s window; echo the client's time and put that uplink loss into the ping answer; keep the client's reported downlink loss on the session (used by 136)
+- `src/OVS.Client/Net/VoiceClient.cs` (change): ping every 2 s with the time; `RoundTrip`, `UplinkLoss`; reports its own downlink loss
+- `src/OVS.Client/Audio/JitterBuffer.cs` (change): per speaker received, lost, FEC-rebuilt and concealed frames, an interarrival jitter estimate (RFC 3550: arrival time against 20 ms × frame number) and the buffer delay
+- `src/OVS.Client/Audio/Mixer.cs`, `AudioEngine.cs` (change): aggregate over speakers for the panel and for the reported downlink loss
+- `src/OVS.Client/ViewModels/ConnectionStats.cs` (new): baseline (median of the last 30 round trips) and rating per A142
+- `src/OVS.Client/ViewModels/MainViewModel.cs`, `Views/MainWindow.axaml` (change): the signal icon next to the ping text (`MainViewModel.cs:547-549`) and the "Verbindungsdetails" popup on click
+- `src/OVS.Client/Debug/DebugApi.cs` (change): the same figures
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Voice/VoicePacketTests.cs`, `Server/VoiceRelayTests.cs`, `Client/ReceivePathTests.cs`, `Client/ClientNetTests.cs`, `Client/MainViewModelTests.cs` (change), `Client/ConnectionStatsTests.cs` (new)
+
+### Context
+
+OVS shows only the control connection's TCP ping (`ClientConnection.cs:142`, `MainViewModel.cs:547-549`) and whether UDP answers at all (`VoiceClient.Reachable`). Loss and jitter are measured nowhere, so neither users nor Packages 134 to 136 know how the voice path is doing. Fluxer reads WebRTC stats every 2 s (loss, jitter, jitter buffer delay, concealed samples, round trip; `VoiceEngineV2AppStatsHostAdapter.ts`) and rates the round trip against the user's own baseline (`VoiceLatencySignal.ts`), so someone far away is not permanently red. The frame number in the voice payload (`RelayPayload`, `VoicePacket.cs:142-161`) is per sender and gapless while talking, so gaps are losses.
+
+### Acceptance Criteria
+
+- [ ] AC1: Through a relay that delays every packet by 50 ms each way, the measured voice round trip is 100 ms ±10 ms.
+- [ ] AC2: Through a relay that drops 10 % of client-to-server voice packets, the client's uplink loss reads 10 % ±3 % after 5 s; dropped server-to-client packets show as downlink loss on the client and on the server's session.
+- [ ] AC3: With arrival times jittered uniformly by ±15 ms, the jitter estimate is within 50 % of the expected value; without jitter it is below 2 ms.
+- [ ] AC4: The rating gives green / yellow / orange / red at 69 / 159 / 299 / 300 ms above the baseline, and a client with a steady 250 ms round trip is green.
+- [ ] AC5: The icon shows the rating, crossed out while UDP is unreachable; clicking it shows round trip, uplink and downlink loss, jitter, buffer delay, concealed frames and the bitrate, updated every 2 s.
+- [ ] AC6: Talk pauses do not count as loss.
+- [ ] AC7: The protocol version is raised.
+
+### Tests (TDD)
+
+1. `VoicePacketTests > "PingPayload_RoundTrip"` (AC7)
+2. `ClientNetTests > "VoiceRoundTrip_Measured"` (AC1): a delaying relay in `TestSupport` (from 126).
+3. `VoiceRelayTests > "UplinkLoss_ReportedInPing"` and `ClientNetTests > "DownlinkLoss_ReportedBothSides"` (AC2)
+4. `ReceivePathTests > "Jitter_Estimated"` (AC3) and `"TalkPause_NotLoss"` (AC6)
+5. `ConnectionStatsTests > "Rating_RelativeToBaseline"` (AC4)
+6. `MainViewModelTests > "SignalIcon_AndDetails"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): the ping payload and the version.
+2. Tests 2 and 3 (red): server counting and echo, client measuring.
+3. Test 4 (red): jitter and counters in the jitter buffer.
+4. Tests 5 and 6 (red): rating, icon and popup.
+
+### Out of Scope
+
+- Acting on the figures (Packages 134 to 136)
+- Server-side statistics pages
+
+---
+
+## Package 134: Adaptive jitter buffer
+
+**Goal:** The jitter buffer starts each talk spurt with a cushion that fits the measured jitter instead of a fixed 40 ms.
+
+**Dependencies:** Package 133 (jitter estimate per speaker)
+
+**Affected files:**
+- `src/OVS.Client/Audio/JitterBuffer.cs` (change): `StartDelay` (line 10) becomes the target from A143, computed when playback (re)starts in `Pull`
+- `tests/OVS.Tests/Client/ReceivePathTests.cs` (change)
+
+### Context
+
+The buffer waits for 2 frames (40 ms) before playing and caps at 10 (`JitterBuffer.cs:10-11`). On a calm network 40 ms is more than needed; on Wi-Fi with 30 ms jitter it underruns, and every underrun is a concealed frame. WebRTC (Fluxer) adapts its buffer to the measured jitter. OVS has no time stretching, so the cushion only changes where that is free: at the start of a talk spurt (A143).
+
+### Acceptance Criteria
+
+- [ ] AC1: Without jitter the cushion is 2 frames, as today.
+- [ ] AC2: With ±30 ms jitter the cushion grows to 4 frames at the next talk spurt, and the concealed frames over 10 s are fewer than with a fixed 2.
+- [ ] AC3: When the jitter calms down, the next talk spurt starts with a smaller cushion again; never above 10 frames.
+- [ ] AC4: Within a talk spurt no frame is dropped to shrink the buffer.
+
+### Tests (TDD)
+
+1. `ReceivePathTests > "Cushion_NoJitter_Two"` (AC1)
+2. `ReceivePathTests > "Cushion_GrowsWithJitter_FewerConcealed"` (AC2): a scripted arrival schedule against a fixed-2 run.
+3. `ReceivePathTests > "Cushion_ShrinksNextSpurt_Capped"` (AC3)
+4. `ReceivePathTests > "NoDropInsideSpurt"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 4 (red), then the target computation at the restart point in `Pull`.
+
+### Out of Scope
+
+- Time stretching (speeding up or slowing down playback)
+
+---
+
+## Package 135: Adaptive loss protection
+
+**Goal:** The sender's FEC and bitrate follow the loss its packets actually suffer.
+
+**Dependencies:** Package 132 (channel bitrate as the ceiling), Package 133 (uplink loss)
+
+**Affected files:**
+- `src/OVS.Client/Audio/LossAdapter.cs` (new): from the uplink loss every 2 s, the loss hint and the bitrate step per A144
+- `src/OVS.Client/Audio/OpusCodec.cs` (change): `PacketLossPercent` settable (fixed 10 today)
+- `src/OVS.Client/Audio/AudioEngine.cs`, `ViewModels/MainViewModel.cs` (change): feed the adapter from `VoiceClient.UplinkLoss`, apply to the encoder under the capture lock
+- `src/OVS.Client/ViewModels/ConnectionStats.cs` (change): the panel shows the bitrate in use
+- `tests/OVS.Tests/Client/LossAdapterTests.cs` (new), `SendPathTests.cs` (change)
+
+### Context
+
+Opus adds in-band FEC in proportion to the expected loss, and OVS tells it a fixed 10 % (`OpusCodec.cs`, `VoiceEncoder`). On a clean line that wastes bits, on a bad one it protects too little. WebRTC (Fluxer) feeds the measured loss into Opus and lowers the bitrate under congestion. With 133 the sender knows its uplink loss.
+
+### Acceptance Criteria
+
+- [ ] AC1: 0 % loss gives a loss hint of 5, 10 % gives 15, 40 % gives 30.
+- [ ] AC2: Loss above 10 % for 5 s halves the bitrate (64 → 32 → 16, never below 16); 10 s below 2 % doubles it again, never above the channel's bitrate.
+- [ ] AC3: Moving to another channel resets the bitrate to that channel's value.
+- [ ] AC4: The encoder actually uses the values (read back through `VoiceEncoder.Opus`).
+
+### Tests (TDD)
+
+1. `LossAdapterTests > "LossHint_FromLoss"` (AC1)
+2. `LossAdapterTests > "Bitrate_StepsDownAndUp_WithinBounds"` (AC2), with `ManualTimeProvider`.
+3. `SendPathTests > "ChannelChange_ResetsAdaptedBitrate"` (AC3)
+4. `SendPathTests > "Encoder_UsesAdaptedValues"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): `LossAdapter` as pure logic.
+2. Tests 3 and 4 (red): the wiring.
+
+### Out of Scope
+
+- Redundant frames (Package 136)
+- Downlink congestion (the server does not transcode)
+
+---
+
+## Package 136: Redundant frames
+
+**Goal:** Packets on a lossy path carry a copy of the previous frame, so a lost frame is played back in full quality.
+
+**Dependencies:** Package 135 (the sender's loss handling; the reported downlink loss on the server comes from 133)
+
+**Affected files:**
+- `src/OVS.Shared/Voice/VoicePacket.cs` (change): `RelayPayload` becomes `[frameSeq 4][length of current 2][current opus][previous opus, optional]`; `TryParse` returns the optional copy; the size limit covers both
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (change): version + 1
+- `src/OVS.Client/Net/VoiceClient.cs`, `src/OVS.Client/Audio/CapturePipeline.cs` (change): the sender keeps its last encoded frame and appends it while its uplink loss is ≥ 2 %
+- `src/OVS.Server/Voice/UdpVoiceServer.cs`, `src/OVS.Server/Session.cs` (change): keep each speaker's last frame; strip the sender's copy and build the payload per recipient, adding the copy for recipients reporting ≥ 2 % downlink loss (A145); `CountVoiceFrame` unchanged
+- `src/OVS.Client/Audio/JitterBuffer.cs` (change): a copy is stored under `frameSeq - 1` when that frame is missing; a lost frame uses the copy before FEC and concealment
+- `tests/OVS.Tests/Voice/VoicePacketTests.cs`, `Server/VoiceRelayTests.cs`, `Client/ReceivePathTests.cs`, `Client/SendPathTests.cs` (change)
+
+### Context
+
+Opus FEC rebuilds a lost frame only as a coarse copy, and only from the next packet. Fluxer turns RED on for every microphone (`fluxer_app/src/features/voice/utils/AudioPublishOptions.ts:23-38`): each packet repeats the previous frame in full. Always on would double every stream through a self-hosted server, so OVS adds the copy only on legs that lose packets (A145): the sender's uplink, and per recipient on the server. The server already relays the plaintext and re-encrypts per recipient (`UdpVoiceServer.cs:118-123`), so a payload per recipient costs no extra crypto.
+
+### Acceptance Criteria
+
+- [ ] AC1: A payload with and without a copy round-trips; an oversize payload is refused.
+- [ ] AC2: The sender adds the copy only while its uplink loss is ≥ 2 %.
+- [ ] AC3: The server adds a copy only for recipients reporting ≥ 2 % downlink loss; the others get single frames, even from a sender that sends copies.
+- [ ] AC4: With 10 % random loss on a recipient's leg and copies on, the recipient's concealed frames over 10 s drop by at least 80 % compared to copies off.
+- [ ] AC5: A copy never replaces a frame that arrived itself, and nothing plays twice.
+- [ ] AC6: The protocol version is raised.
+
+### Tests (TDD)
+
+1. `VoicePacketTests > "RelayPayload_WithCopy_RoundTrip_SizeLimit"` (AC1, AC6)
+2. `ReceivePathTests > "LostFrame_PlayedFromCopy_FewerConcealed"` (AC4)
+3. `ReceivePathTests > "Copy_NeverReplacesOrDuplicates"` (AC5)
+4. `SendPathTests > "Sender_AddsCopyOnlyOnLoss"` (AC2)
+5. `VoiceRelayTests > "Server_AddsCopyPerLossyRecipient"` (AC3)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): the payload format.
+2. Tests 2 and 3 (red): the receiver.
+3. Tests 4 and 5 (red): sender and server.
+
+### Out of Scope
+
+- More than one previous frame
+
+---
+
+## Package 137: Audio device changes
+
+**Goal:** Unplugging, plugging in or switching the Windows default device during a call keeps voice running without a trip to the settings.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Audio/DeviceWatcher.cs` (new): the `IMMNotificationClient` implementation (A146)
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `IAudioDeviceFactory` (lines 60-67) gets a change event so tests can raise changes; on a change or a device error, reopen what is open after 800 ms of quiet, through the existing reopen path of `Configure`
+- `src/OVS.Client/Audio/CapturePipeline.cs` (change): `RecordingStopped` with an exception reported to the engine (playback likewise in the engine)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): "Mikrofon getrennt, Standardgerät wird verwendet" and the output counterpart
+- `tests/OVS.Tests/Client/SendPathTests.cs`, `ReceivePathTests.cs` (change)
+
+### Context
+
+Devices are opened by saved id with a fallback to the default (`AudioEngine.cs:40-56`), and only when opening. Nothing listens for changes: unplugging a headset mid-call leaves silence until the user saves the settings, and "Standard" keeps the device that was the default at opening time. Fluxer reacts to device changes with an 800 ms debounce and restarts the track (`flutter_client/lib/features/voice/utils/voice_audio_route_recovery.dart`; the web app through the browser's `devicechange`).
+
+### Acceptance Criteria
+
+- [ ] AC1: When the chosen microphone disappears while connected, capture reopens on the default within 1 s with one notice; when it comes back, capture moves back to it.
+- [ ] AC2: The same for the output device.
+- [ ] AC3: With "Standard" chosen, a change of the Windows default device moves capture or output to the new default.
+- [ ] AC4: Several changes within 800 ms cause one reopen.
+- [ ] AC5: While no device is open (not connected, no self test, no level meter), a change opens nothing.
+- [ ] AC6: Manual check: unplug and replug a USB headset during a call; voice continues without touching the settings.
+
+### Tests (TDD)
+
+1. `SendPathTests > "ChosenMicRemoved_FallsBack_Returns"` (AC1): the fake factory raises changes and counts opens.
+2. `ReceivePathTests > "ChosenOutputRemoved_FallsBack_Returns"` (AC2)
+3. `SendPathTests > "DefaultChanged_Follows"` (AC3)
+4. `SendPathTests > "Changes_Debounced"` (AC4), with `ManualTimeProvider`.
+5. `SendPathTests > "Closed_ChangeOpensNothing"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 5 (red) against the fake factory, then the engine logic.
+2. `DeviceWatcher` with the real notifications, then AC6.
+
+### Out of Scope
+
+- Refreshing the device list on the settings page while it is open (the list loads when the page opens)
+
+---
+
+## Package 138: Clean resampling
+
+**Goal:** Microphones that do not run at 48 kHz are converted without aliasing.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Audio/SendPath.cs` (change): `LinearResampler` (lines 88-111) replaced by a wrapper around NAudio's `WdlResampler` with a reused output buffer; 48 kHz passes through
+- `src/OVS.Client/Audio/CapturePipeline.cs` (change, the type name only)
+- `tests/OVS.Tests/Client/SendPathTests.cs` (change)
+
+### Context
+
+Capture converts other rates to 48 kHz by linear interpolation without a low-pass filter, which folds high frequencies back into the voice band (a 44.1 kHz headset turns sibilants into audible artefacts). Fluxer gets the browser's resampler. NAudio, already a dependency, contains `WdlResampler`, a windowed-sinc resampler (A147).
+
+### Acceptance Criteria
+
+- [ ] AC1: A 1 kHz sine at 44.1 kHz comes out at 48 kHz as 1 kHz with the same level ±0.5 dB.
+- [ ] AC2: A 20 kHz sine at 44.1 kHz leaves at least 40 dB less energy below 4 kHz than the linear resampler does.
+- [ ] AC3: The number of output samples matches the rate ratio over 10 s (no drift), and 48 kHz input passes unchanged.
+- [ ] AC4: Nothing is allocated per frame.
+
+### Tests (TDD)
+
+1. `SendPathTests > "Resampler_KeepsTone"` (AC1)
+2. `SendPathTests > "Resampler_NoAliasing"` (AC2)
+3. `SendPathTests > "Resampler_LengthAndPassThrough"` (AC3)
+4. `SendPathTests > "Resampler_AllocatesNothing"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 to 4 (red), then the wrapper.
+
+### Out of Scope
+
+- The output side (the mixer produces 48 kHz and WASAPI's shared mode converts)
+
+---
+
+## Package 139: Auto-reconnect
+
+**Goal:** A lost connection is restored by itself, back into the same channel with the same mute state.
+
+**Dependencies:** Package 126 (UDP comes back reliably on the new session)
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/Reconnector.cs` (new): the attempt schedule and generation counter (A148), driven by a `TimeProvider`
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `OnDisconnected` (line 463) starts the reconnector for `ConnectionLost` and `ServerShutdown`; the last `ConnectChoice` (with its password, in memory), the last channel and its password, and self mute and deafen are kept; after success the channel is joined and the state restored; "Abbrechen" stops it; no `Disconnected` sound while retrying (`DisconnectAsync`, line 449)
+- `src/OVS.Client/Views/MainWindow.axaml` (change): the status with countdown and "Abbrechen"
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/MainViewModelTests.cs` (change), `ReconnectorTests.cs` (new)
+
+### Context
+
+A lost connection ends the session (`MainViewModel.cs:463-470`); auto-reconnect was out of scope until now and the user asked for it. Fluxer retries up to 5 times with exponential backoff within a 30 s window, never after a deliberate disconnect, and discards superseded attempts with a generation counter (`fluxer_app/.../VoiceEngineV2AppReconnectPolicy.ts`). The OVS server already replaces an old session of the same identity (`ServerState.cs:208-225`) and keeps server mute across reconnects (Package 85), so only the client changes.
+
+### Acceptance Criteria
+
+- [ ] AC1: After `ConnectionLost`, attempts run after 1, 2, 4, 8 and 16 s; the first success ends the series; after the fifth failure the usual disconnected notice shows.
+- [ ] AC2: After a successful reconnect the user is in the channel they were in (also a password channel), with the same self mute and deafen, and one notice "Verbindung wiederhergestellt" shows.
+- [ ] AC3: `Kicked`, `Banned`, `ReplacedByNewConnection`, `VersionMismatch`, a wrong password and the user's own disconnect never start reconnecting.
+- [ ] AC4: "Abbrechen" stops the series at once; connecting to another server meanwhile also stops it, and a late result of an old attempt is ignored.
+- [ ] AC5: While retrying the status shows the countdown, no `Disconnected` sound plays, and the administration page is closed as on a disconnect.
+- [ ] AC6: If the last channel no longer exists or can no longer be joined, the user stays in the default channel with one notice.
+
+### Tests (TDD)
+
+1. `ReconnectorTests > "Schedule_1_2_4_8_16_ThenGivesUp"` (AC1), `ManualTimeProvider`.
+2. `ReconnectorTests > "OutdatedAttempt_Ignored"` (AC4)
+3. `MainViewModelTests > "ConnectionLost_Reconnects_RestoresChannelAndMute"` (AC2): `TestServer` drops the connection.
+4. `MainViewModelTests > "NoReconnect_ForDeliberateReasons"` (AC3), a theory over the reasons.
+5. `MainViewModelTests > "Reconnect_Cancel_AndOtherServer"` (AC4)
+6. `MainViewModelTests > "Reconnecting_StatusNoSound"` (AC5)
+7. `MainViewModelTests > "Reconnect_ChannelGone_StaysInDefault"` (AC6)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): `Reconnector` as pure logic.
+2. Tests 3 and 4 (red): the wiring in `MainViewModel`.
+3. Tests 5 to 7 (red): cancel, status, edge cases.
+
+### Out of Scope
+
+- Restoring a session after an app restart (Fluxer keeps one for 5 minutes)
+- Server-side state caches (not needed, see Context)
+
+---
+
+## Package 140: Echo cancellation
+
+**Goal:** Users on speakers can use voice activation without the others hearing themselves.
+
+**Dependencies:** Package 127 (the same filter chain in `CapturePipeline.Feed`)
+
+**Affected files:**
+- `native/ovs_aec/` (new): the C wrapper around `webrtc::AudioProcessing` (create, set delay, process render 10 ms, process capture 10 ms, destroy) and its build script; the built `ovs_aec.dll` (win-x64) checked in, its sha256 in the notes
+- `src/OVS.Client/Audio/EchoCanceller.cs` (new): loader and calls like `NoiseSuppressor` (null when missing, one log line)
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): the mixed frame after the limiter goes to the canceller as the far-end reference; the delay hint from the capture and output buffer sizes
+- `src/OVS.Client/Audio/CapturePipeline.cs` (change): echo cancellation first in `Feed`, before noise suppression
+- `src/OVS.Client/Settings/ClientSettings.cs`, `ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (change): `EchoCancellation` (default on, also for existing files) in the "Sprachfilter" card, live
+- `src/OVS.Client/OVS.Client.csproj`, `THIRD-PARTY-NOTICES.md` (change)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/VoiceFilterTests.cs`, `SettingsTests.cs` (change)
+
+### Context
+
+OVS has no echo cancellation (A18, A131): someone on speakers with voice activation sends the others' voices back to them. Fluxer has it on by default through WebRTC in the browser (`VoiceProcessingProfile.ts`, voice mode), and its desktop app already wraps the same WebRTC audio processing library natively (`fluxer_desktop/native/audio-apm`, not active yet). The freedesktop project packages that library standalone under BSD-3; its API is C++, so a small C wrapper is needed for P/Invoke (A149). The far end is easy to tap: the mixer produces exactly what goes to the speaker (`Mixer.Tick`).
+
+### Acceptance Criteria
+
+- [ ] AC1 (spike): the wrapper DLL builds for win-x64, loads from the published single-file client and processes a frame; otherwise the package stops here and the findings go into the notes.
+- [ ] AC2: A speech-like far-end signal played back and fed into the capture with 60 ms delay at -6 dB is reduced by at least 25 dB in the sent signal after 2 s of adaptation, while a near-end voice at the same time stays within 3 dB.
+- [ ] AC3: Without a far-end signal the capture passes with less than 1 dB change.
+- [ ] AC4: The switch applies live and defaults on (a file without the key loads it on); a missing DLL turns it off with one log line.
+- [ ] AC5: All filters together stay below 2 ms per 20 ms frame on the dev machine (measured once, in the notes).
+- [ ] AC6: Manual check: two clients, one on laptop speakers with voice activation; the other side hears no echo of itself.
+
+### Tests (TDD)
+
+1. `VoiceFilterTests > "EchoCanceller_Loads"` (AC1)
+2. `VoiceFilterTests > "EchoCanceller_RemovesFarEnd_KeepsNearEnd"` (AC2)
+3. `VoiceFilterTests > "EchoCanceller_NoFarEnd_Unchanged"` (AC3)
+4. `SettingsTests > "EchoCancellation_DefaultLiveMissingLib"` (AC4)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Spike (AC1): build the library and the wrapper, load it from a test; stop and report if impossible.
+2. Tests 2 and 3 (red): `EchoCanceller` and the reference tap.
+3. Test 4 (red): setting and card.
+4. Timing (AC5) and the manual check (AC6).
+
+### Out of Scope
+
+- The library's own noise suppression and gain control (RNNoise and the own gain stay)
+- Other platforms (the client is Windows only, A3)
+
+---
+
+## Package 141: Voice over TCP
+
+**Goal:** Voice works on networks that block UDP, over the existing TLS connection.
+
+**Dependencies:** Package 126 (reliable "UDP unreachable" detection)
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages.cs` (change): `VoiceUp` and `VoiceDown` (A150)
+- `src/OVS.Shared/Protocol/ProtocolInfo.cs` (change): version + 1
+- `src/OVS.Server/ControlServer.cs`, `src/OVS.Server/Limits.cs`, `src/OVS.Server/Session.cs` (change): accept `VoiceUp` within its own budget (60 per second, burst 10), route it through `ServerState.VoiceRecipients`, mark the session as TCP voice
+- `src/OVS.Server/Voice/UdpVoiceServer.cs` (change): one relay method for UDP and TCP senders that sends to each recipient on its own path
+- `src/OVS.Client/Net/VoiceClient.cs`, `Net/ClientConnection.cs` (change): a voice transport that switches to TCP per A150 and back when UDP answers again; `VoiceDown` raises `VoiceReceived` like UDP
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): the ping text ", Sprache über TCP"
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Server/VoiceRelayTests.cs`, `VoiceRoutingTests.cs`, `LimitsTests.cs`, `Client/ClientNetTests.cs` (change)
+
+### Context
+
+Voice is UDP only; a TCP fallback was out of scope until now and the user asked for it. Fluxer gets one from LiveKit (ICE over TCP on port 7881, `deploy/self-hosting/docker-compose.yml`). OVS already holds a TLS connection to every client, so voice can travel there when UDP does not work, at the cost of head-of-line blocking on loss. Routing and rights must stay exactly those of UDP voice (`VoiceRouting.cs`, Package 12), including the per-sender rate limit.
+
+### Acceptance Criteria
+
+- [ ] AC1: With all UDP blocked, two clients hear each other within 6 s of connecting, over TCP.
+- [ ] AC2: A TCP client and a UDP client in the same channel hear each other.
+- [ ] AC3: Rights and routing are the same as for UDP: a muted sender, a deafened recipient, link targets and the `Speak` right behave identically (the routing tests run for both paths).
+- [ ] AC4: More voice than the budget over TCP is dropped without disconnecting; other control messages keep their own limits.
+- [ ] AC5: When UDP becomes reachable again, the client switches back within 30 s; the ping text shows the transport in use.
+- [ ] AC6: The protocol version is raised.
+
+### Tests (TDD)
+
+1. `VoiceRoutingTests` and `VoiceRelayTests` extended with a TCP variant (AC3)
+2. `VoiceRelayTests > "TcpAndUdp_Mixed"` (AC2)
+3. `LimitsTests > "VoiceUp_OwnBudget"` (AC4)
+4. `ClientNetTests > "UdpBlocked_VoiceOverTcp"` (AC1, AC6)
+5. `ClientNetTests > "UdpBack_SwitchesBack"` (AC5)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Tests 1 and 2 (red): the shared relay method with both paths on the server.
+2. Test 3 (red): the budget.
+3. Tests 4 and 5 (red): the client transport switch.
+
+### Out of Scope
+
+- Voice over WebSocket or HTTPS on port 443 (proxies that only allow web traffic)
+
+---
+
+## Package 142: Music mode
+
+**Goal:** A sender can switch to a music mode that sends stereo without voice filters.
+
+**Dependencies:** Package 132 (the channel bitrate decides stereo), Package 140 (echo cancellation is one of the filters turned off)
+
+**Affected files:**
+- `src/OVS.Client/Audio/OpusCodec.cs` (change): `VoiceEncoder` in music mode: `OPUS_APPLICATION_AUDIO`, `OPUS_SIGNAL_MUSIC`, 2 channels at ≥ 64 kbps; `VoiceDecoder` always decodes to 2 channels
+- `src/OVS.Client/Audio/CapturePipeline.cs` (change): `ToMono` (line 136) skipped in music mode (frames of 2 × 960 samples); filters off
+- `src/OVS.Client/Audio/SendPath.cs` (change): chunker and resampler handle 2 channels; the VAD measures the louder channel
+- `src/OVS.Client/Audio/Mixer.cs`, `JitterBuffer.cs`, `AudioEngine.cs`, `Sounds.cs` (change): mix and play in stereo (output opened as 48 kHz stereo float); sounds and mono speakers play on both sides
+- `src/OVS.Client/Settings/ClientSettings.cs`, `ViewModels/SettingsViewModel.cs`, `Views/SettingsView.axaml` (change): "Übertragungsart" Sprache / Musik, live; the filter switches disabled in music mode
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/SendPathTests.cs`, `ReceivePathTests.cs`, `SettingsTests.cs`, `IdleCostTests.cs` (change)
+
+### Context
+
+The whole client is mono (`AudioFormat` in `OpusCodec.cs`, `ToMono` downmixes every capture) and tuned for speech (VOIP application, voice signal type, filters). Fluxer's "studio" mode turns all processing off and allows stereo only from 64 kbps (`VoiceProcessingProfile.ts`, `NoiseSuppressionSelection.ts`, `AudioPublishOptions.ts`). Opus packets carry their channel count, so receivers need no protocol change: a stereo decoder plays mono packets on both sides (A151). This touches the whole audio path, which is why it comes last.
+
+### Acceptance Criteria
+
+- [ ] AC1: In music mode in a 64 kbps channel, a stereo test signal (different tones left and right) arrives at a receiver with each tone on its own side (crosstalk below -20 dB).
+- [ ] AC2: In music mode in a 32 kbps channel the signal is sent in mono.
+- [ ] AC3: In music mode noise suppression, automatic gain and echo cancellation are not applied, whatever their switches say; back in voice mode they apply again.
+- [ ] AC4: Mono speakers and the sounds play equally on both sides; the limiter still keeps every sample below its threshold.
+- [ ] AC5: Push-to-talk and voice activation work in music mode; the self test plays stereo.
+- [ ] AC6: The setting saves, applies live, and voice mode is the default.
+- [ ] AC7: Nothing is allocated per frame beyond what the Opus calls allocate (the `IdleCostTests` rule from Package 124).
+
+### Tests (TDD)
+
+1. `ReceivePathTests > "Stereo_MonoSpeakerBothSides_Limited"` (AC4)
+2. `SendPathTests > "MusicMode_StereoArrivesSeparated"` (AC1): sender pipeline to a receiver's mixer through the codec.
+3. `SendPathTests > "MusicMode_LowBitrate_Mono"` (AC2)
+4. `SendPathTests > "MusicMode_FiltersOff"` (AC3)
+5. `SendPathTests > "MusicMode_PttAndVad"` (AC5)
+6. `SettingsTests > "TransmissionMode_DefaultLive"` (AC6)
+7. `IdleCostTests` extended (AC7)
+
+Test command: `dotnet test tests/OVS.Tests`
+
+### Steps
+
+1. Test 1 (red): the receive side in stereo first (it works for everyone; mono senders are unchanged).
+2. Tests 2 to 4 (red): the send side in music mode.
+3. Tests 5 to 7 (red): modes, setting, allocations.
+
+### Out of Scope
+
+- Stereo for speech (voice mode stays mono, like Fluxer's default)
+- Sending system audio or a second input
