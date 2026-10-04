@@ -11,6 +11,7 @@ public enum SoundEvent
     LinkVoice, // Package 57
     OwnLinkVoice, // Package 60
     GroupChanged, GroupChangedByMe, // Package 73
+    TalkKeyDown, TalkKeyUp, // Package 131 (A140): off by default
 }
 
 /// <summary>
@@ -50,10 +51,13 @@ public static class SoundSynth
         [SoundEvent.OwnLinkVoice] = LinkTone, // Package 60: the same by default, each can get its own file
         [SoundEvent.GroupChanged] = GroupTone,
         [SoundEvent.GroupChangedByMe] = GroupTone, // Package 73: the same by default, each can get its own file
+        [SoundEvent.TalkKeyDown] = [(988, 25), (0, 15), (1319, 35)], // Package 131: a short soft click up and down
+        [SoundEvent.TalkKeyUp] = [(1319, 25), (0, 15), (988, 35)],
     };
 
     /// <summary>Tones that play over speech are softer.</summary>
-    static float Level(SoundEvent sound) => sound is SoundEvent.LinkVoice or SoundEvent.OwnLinkVoice ? 0.5f : 1f;
+    static float Level(SoundEvent sound) =>
+        sound is SoundEvent.LinkVoice or SoundEvent.OwnLinkVoice or SoundEvent.TalkKeyDown or SoundEvent.TalkKeyUp ? 0.5f : 1f;
 
     static readonly Dictionary<SoundEvent, float[]> Cache = [];
 

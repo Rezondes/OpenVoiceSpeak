@@ -249,6 +249,8 @@
   <data name="Sound_ServerMuted" xml:space="preserve"><value>Muted by the server</value></data>
   <data name="Sound_SoundOff" xml:space="preserve"><value>Sound off</value></data>
   <data name="Sound_SoundOn" xml:space="preserve"><value>Sound on</value></data>
+  <data name="Sound_TalkKeyDown" xml:space="preserve"><value>Talk key pressed</value></data>
+  <data name="Sound_TalkKeyUp" xml:space="preserve"><value>Talk key released</value></data>
   <data name="Sound_UserJoined" xml:space="preserve"><value>Someone joins your channel</value></data>
   <data name="Sound_UserLeft" xml:space="preserve"><value>Someone leaves your channel</value></data>
   <data name="Status_Connected" xml:space="preserve"><value>Connected to {0}</value></data>
@@ -527,8 +529,11 @@
   <data name="UserStatus_Deafened" xml:space="preserve"><value>(sound off)</value></data>
   <data name="UserStatus_Muted" xml:space="preserve"><value>(muted)</value></data>
   <data name="UserStatus_ServerMuted" xml:space="preserve"><value>(muted by server)</value></data>
+  <data name="VoiceHint_Deafened" xml:space="preserve"><value>You are deafened: nobody hears you.</value></data>
   <data name="VoiceHint_MutedChannel" xml:space="preserve"><value>Muted channel: nobody hears you.</value></data>
   <data name="VoiceHint_NoLinkRight" xml:space="preserve"><value>No right to talk through links: you only talk in your own channel.</value></data>
+  <data name="VoiceHint_SelfMuted" xml:space="preserve"><value>You are muted: nobody hears you.</value></data>
+  <data name="VoiceHint_ServerMuted" xml:space="preserve"><value>You are muted by the server: nobody hears you.</value></data>
   <data name="Window_Maximize" xml:space="preserve"><value>Maximize</value></data>
   <data name="Window_Restore" xml:space="preserve"><value>Restore</value></data>
   <data name="Perm_LogsView" xml:space="preserve"><value>View logs</value></data>

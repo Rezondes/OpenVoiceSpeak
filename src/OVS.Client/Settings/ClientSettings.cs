@@ -52,7 +52,7 @@ public enum DisplayMode { Animated, Simplified }
 /// <param name="File">Package 48: an own tone, a bare file name in the profile's "sounds" folder.</param>
 public sealed record SoundSetting(float Volume = 1f, bool Muted = false, string? File = null)
 {
-    public bool IsDefault => Volume >= 1f && !Muted && File is null;
+    public bool IsDefaultFor(SoundEvent sound) => Volume >= 1f && Muted == ClientSettings.DefaultSound(sound).Muted && File is null;
 }
 
 public sealed class ClientSettings : IJsonOnDeserializing
@@ -122,7 +122,10 @@ public sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 48: only sounds that differ from the default are stored.</summary>
     public Dictionary<SoundEvent, SoundSetting> Sounds { get; set; } = [];
 
-    public SoundSetting SoundFor(SoundEvent sound) => Sounds.GetValueOrDefault(sound) ?? new SoundSetting();
+    public SoundSetting SoundFor(SoundEvent sound) => Sounds.GetValueOrDefault(sound) ?? DefaultSound(sound);
+
+    /// <summary>Package 131 (A140): the talk key tones are off unless turned on, so nobody's client suddenly beeps.</summary>
+    public static SoundSetting DefaultSound(SoundEvent sound) => new(Muted: sound is SoundEvent.TalkKeyDown or SoundEvent.TalkKeyUp);
 
     /// <summary>Package 51: the volume per person by fingerprint (so on every server), only what differs from 100 %.</summary>
     public Dictionary<string, float> UserVolumes { get; set; } = [];

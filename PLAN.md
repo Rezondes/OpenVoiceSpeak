@@ -7743,12 +7743,12 @@ Neither OVS nor Fluxer tells users they are talking into a muted microphone, exc
 
 ### Acceptance Criteria
 
-- [ ] AC1: Holding push-to-talk while self-muted shows "Du bist stummgeschaltet" in the hint line; it disappears 2 s after release.
-- [ ] AC2: The same for deafened ("taub geschaltet") and server-muted ("vom Server stummgeschaltet").
-- [ ] AC3: In voice activation mode, speaking above the threshold while self-muted shows the hint.
-- [ ] AC4: Not muted, no hint appears; the existing hints keep their priority.
-- [ ] AC5: The two talk key sounds exist in the sound settings, are off by default, and when turned on play on press and release of push-to-talk and link push-to-talk.
-- [ ] AC6: The texts exist in German and English.
+- [x] AC1: Holding push-to-talk while self-muted shows "Du bist stummgeschaltet" in the hint line; it disappears 2 s after release.
+- [x] AC2: The same for deafened ("taub geschaltet") and server-muted ("vom Server stummgeschaltet").
+- [x] AC3: In voice activation mode, speaking above the threshold while self-muted shows the hint.
+- [x] AC4: Not muted, no hint appears; the existing hints keep their priority.
+- [x] AC5: The two talk key sounds exist in the sound settings, are off by default, and when turned on play on press and release of push-to-talk and link push-to-talk.
+- [x] AC6: The texts exist in German and English.
 
 ### Tests (TDD)
 
@@ -7758,6 +7758,8 @@ Neither OVS nor Fluxer tells users they are talking into a muted microphone, exc
 4. `MainViewModelTests > "NotMuted_NoHint"` (AC4)
 5. `SoundTests > "TalkKeySounds_OffByDefault_PlayWhenOn"` (AC5)
 6. `LocalizationTests` (AC6)
+
+(as built: the hint is one more arm at the end of the `VoiceHint` switch in `MainViewModel.Tick`, after the muted channel and the missing link right, so those keep their priority. `MutedTalkHint` picks the reason: server-muted (`Mirror.Self.ServerMuted`) first, since unmuting oneself would not help, then deafened, then self-muted; self-muted while push-to-mute is held shows nothing, as that is muting on purpose (Package 125 sets `SelfMuted` while it is held). An attempt to talk is `AudioEngine.TalkKeyHeld` (the bare keys through `KeyPoller.IsDown`, without the Package 130 release delay: link push-to-talk always, push-to-talk only in push-to-talk mode, as `TransmitController` counts them) or, in voice activation mode only, `AudioEngine.VoiceDetected` (the gate's result of the last frame, stored in `Decide`, which the capture calls for every frame also while muted). Each tick with an attempt while muted stores the time; the hint shows while less than 2 s have passed (`MutedHintHold`) and the reason still applies, so unmuting removes it at once. The time comes from `MainViewModel.Clock` (internal, the system clock by default). The tones `SoundEvent.TalkKeyDown` and `TalkKeyUp` ("Sprechtaste gedrückt" / "Talk key pressed", "Sprechtaste losgelassen" / "Talk key released") are short soft double blips (75 ms, half level like the link tone), rising for the press and falling for the release; they get rows on the sound page through the enum like every sound. Off by default is `ClientSettings.DefaultSound(sound)` (muted for these two), used by `SoundFor`, by `SoundSetting.IsDefaultFor(sound)` (replaces `IsDefault`, so the page stores a talk tone only when turned on and every other sound as before) and by the row's reset, which turns them off again. The engine plays them from its own `KeyPoller.Changed` handler on the edges of `TalkKeyHeld` (holding both talk keys is one press), while connected or in the self test; `PlaySound` applies the mute, the volume and the deafened rule (A46) as for any tone. The hint texts: "Du bist stummgeschaltet: niemand hört dich.", "Du bist taub geschaltet: ...", "Du bist vom Server stummgeschaltet: ..." and English. Tests: AC1 `TalkWhileMuted_ShowsHint_2s` (manual clock: nothing without a key, shown while held for 5 s, still at 1.9 s after the release, gone at 2.1 s), AC2 `TalkWhileDeafenedOrServerMuted_ShowsHint` (theory, with link push-to-talk), AC3 `VoiceWhileMuted_ShowsHint` (voice in push-to-talk mode shows nothing, in voice activation it does), AC4 `NotMuted_NoHint` (no hint unmuted, none while push-to-mute is held, the muted channel text wins over the muted hint), AC5 `SoundTests.TalkKeySounds_OffByDefault_PlayWhenOn` (rows and labels, off and not stored by default, stored when on, reset turns off, no tone by default, press and release of push-to-talk and link push-to-talk play down and up when on, nothing while not connected), AC6 `LocalizationTests.ErrorTexts_English` and `Resources_SameKeys_NoneEmpty_SamePlaceholders`. The new tests failed to build before the strings, the sound events and `Clock` existed.)
 
 Test command: `dotnet test tests/OVS.Tests`
 

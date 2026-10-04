@@ -557,8 +557,34 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         {
             { CurrentChannel.IsMuted: true } => Strings.VoiceHint_MutedChannel,
             { HasSpeakLinked: false } when Keys.LinkPttDown => Strings.VoiceHint_NoLinkRight,
+            { } s => MutedTalkHint(s),
             _ => "",
         };
+    }
+
+    /// <summary>Package 131: the clock of the muted hint (tests use a manual one).</summary>
+    internal TimeProvider Clock { get; set; } = TimeProvider.System;
+    static readonly TimeSpan MutedHintHold = TimeSpan.FromSeconds(2);
+    DateTimeOffset mutedTalkAt = DateTimeOffset.MinValue;
+
+    /// <summary>
+    /// Package 131 (A140): talking into a muted microphone (a talk key held, or voice activation hears voice) shows why
+    /// nobody hears it, until 2 s after. Push-to-mute held is muting on purpose and shows nothing.
+    /// </summary>
+    string MutedTalkHint(ServerViewModel s)
+    {
+        string why = s.Mirror.Self?.ServerMuted == true ? Strings.VoiceHint_ServerMuted
+            : s.SelfDeafened ? Strings.VoiceHint_Deafened
+            : s.SelfMuted && !Keys.MuteHeld ? Strings.VoiceHint_SelfMuted
+            : "";
+        if (why == "")
+        {
+            mutedTalkAt = DateTimeOffset.MinValue; // muting again later must not bring back an old attempt
+            return "";
+        }
+        var now = Clock.GetUtcNow();
+        if (Audio.TalkKeyHeld || (Audio.Mode == TransmitMode.VoiceActivation && Audio.VoiceDetected)) mutedTalkAt = now;
+        return now - mutedTalkAt < MutedHintHold ? why : "";
     }
 
     /// <summary>

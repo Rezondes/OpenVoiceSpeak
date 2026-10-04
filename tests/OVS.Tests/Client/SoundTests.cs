@@ -105,4 +105,55 @@ public class SoundTests
         engine.PlaySound(SoundEvent.Connected);
         Assert.Equal(2, engine.RecentSounds.Count);
     }
+
+    /// <summary>
+    /// Package 131 (A140): the talk key tones have rows on the settings page, are off by default and, once turned on (and
+    /// saved), play on press and release of push-to-talk and link push-to-talk while connected.
+    /// </summary>
+    [Fact]
+    public async Task TalkKeySounds_OffByDefault_PlayWhenOn()
+    {
+        SoundEvent[] talk = [SoundEvent.TalkKeyDown, SoundEvent.TalkKeyUp];
+        Assert.All(talk, e => Assert.Equal(0f, AudioEngine.GainFor(new ClientSettings(), e)));
+        var page = new OVS.Client.ViewModels.SettingsViewModel(new ClientSettings(), [], []);
+        var rows = page.SoundRows.Where(r => talk.Contains(r.Event)).ToList();
+        Assert.Equal(["Sprechtaste gedrückt", "Sprechtaste losgelassen"], rows.Select(r => r.Label));
+        Assert.All(rows, r => Assert.True(r.Muted));
+        Assert.Empty(page.ToSettings(new ClientSettings()).Sounds); // off is the default: nothing stored
+        rows.ForEach(r => r.Muted = false);
+        var on = page.ToSettings(new ClientSettings());
+        Assert.All(talk, e => Assert.False(on.SoundFor(e).Muted));
+        rows[0].ResetCommand.Execute(null); // back to the default: off again
+        Assert.True(rows[0].Muted);
+
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false);
+        engine.Configure(new ClientSettings());
+        engine.Connected = true;
+        async Task PressAndRelease(KeyAction action, int expected)
+        {
+            keys.Simulate(action, true);
+            await Until(() => keys.IsDown(action));
+            keys.Simulate(action, false);
+            await Until(() => engine.RecentSounds.Count >= expected && !keys.IsDown(action));
+            await Task.Delay(50); // a few more polls: nothing else plays
+        }
+        await PressAndRelease(KeyAction.PushToTalk, 0);
+        Assert.Empty(engine.RecentSounds); // off by default
+
+        engine.Configure(on);
+        await PressAndRelease(KeyAction.PushToTalk, 2);
+        await PressAndRelease(KeyAction.LinkPushToTalk, 4);
+        Assert.Equal([.. talk, .. talk], engine.RecentSounds);
+
+        engine.Connected = false; // not connected: the keys do nothing, so no tone
+        await PressAndRelease(KeyAction.PushToTalk, 4);
+        Assert.Equal(4, engine.RecentSounds.Count);
+    }
+
+    static async Task Until(Func<bool> done)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && watch.ElapsedMilliseconds < 5000) await Task.Delay(5);
+    }
 }

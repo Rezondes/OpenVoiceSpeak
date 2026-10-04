@@ -73,6 +73,10 @@ public class LocalizationTests
         // Package 98: a chat message that did not reach the server
         Assert.Equal("nicht gesendet", Strings.Chat_NotSent);
         Assert.Equal(("not sent", "Send again"), TestCulture.With("en-US", () => (Strings.Chat_NotSent, Strings.Chat_Retry)));
+        // Package 131: talking while muted, and the talk key tones
+        Assert.Equal(("You are muted: nobody hears you.", "You are deafened: nobody hears you.", "You are muted by the server: nobody hears you."),
+            TestCulture.With("en-US", () => (Strings.VoiceHint_SelfMuted, Strings.VoiceHint_Deafened, Strings.VoiceHint_ServerMuted)));
+        Assert.Equal(("Talk key pressed", "Talk key released"), TestCulture.With("en-US", () => (Strings.Sound_TalkKeyDown, Strings.Sound_TalkKeyUp)));
     }
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>

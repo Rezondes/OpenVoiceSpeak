@@ -83,6 +83,110 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUi(() => vm.Audio.ChannelMuted));
     }
 
+    // ---- Package 131 (A140): talking into a muted microphone ----
+
+    const string SelfMutedHint = "Du bist stummgeschaltet: niemand hört dich.";
+
+    /// <summary>Holds or lets go of an action's key and ticks until the client has seen it; returns the hint then.</summary>
+    async Task<string> HoldKey(KeyAction action, bool down)
+    {
+        vm.Keys.Simulate(action, down);
+        await OnUiUntil(() => vm.Keys.IsDown(action), d => d == down);
+        return await OnUi(() =>
+        {
+            vm.Tick();
+            return vm.VoiceHint;
+        });
+    }
+
+    Task<string> TickHint() => OnUi(() =>
+    {
+        vm.Tick();
+        return vm.VoiceHint;
+    });
+
+    [Fact]
+    public async Task TalkWhileMuted_ShowsHint_2s()
+    {
+        var time = new ManualTimeProvider();
+        await OnUi(() =>
+        {
+            vm.Clock = time;
+            vm.Server = FakeServers.Admin();
+            return vm.Server.SetSelfStateAsync(true, false);
+        });
+        Assert.Equal("", await TickHint()); // muted, but not talking
+        Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
+        time.Advance(TimeSpan.FromSeconds(5)); // held: stays
+        Assert.Equal(SelfMutedHint, await TickHint());
+        Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, false));
+        time.Advance(TimeSpan.FromMilliseconds(1900));
+        Assert.Equal(SelfMutedHint, await TickHint());
+        time.Advance(TimeSpan.FromMilliseconds(200));
+        Assert.Equal("", await TickHint()); // 2 s after the release
+    }
+
+    [Theory]
+    [InlineData("deafened", "Du bist taub geschaltet: niemand hört dich.")]
+    [InlineData("server", "Du bist vom Server stummgeschaltet: niemand hört dich.")]
+    public async Task TalkWhileDeafenedOrServerMuted_ShowsHint(string state, string hint)
+    {
+        await OnUi(() =>
+        {
+            vm.Server = FakeServers.Admin();
+            if (state == "deafened") return vm.Server.SetSelfStateAsync(true, true);
+            vm.Server.Apply(new UserUpdated(vm.Server.Mirror.Self! with { ServerMuted = true }));
+            return Task.CompletedTask;
+        });
+        Assert.Equal("", await TickHint());
+        Assert.Equal(hint, await HoldKey(KeyAction.LinkPushToTalk, true)); // link push-to-talk counts too
+        await HoldKey(KeyAction.LinkPushToTalk, false);
+    }
+
+    [Fact]
+    public async Task VoiceWhileMuted_ShowsHint()
+    {
+        await OnUi(() =>
+        {
+            vm.Server = FakeServers.Admin();
+            return vm.Server.SetSelfStateAsync(true, false);
+        });
+        vm.Audio.Decide(true); // the voice gate hears voice, the capture thread asks
+        Assert.Equal("", await TickHint()); // push-to-talk mode: voice alone is no attempt to talk
+        await OnUi(() =>
+        {
+            vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
+            return vm.Audio.Decide(false);
+        });
+        Assert.Equal("", await TickHint());
+        vm.Audio.Decide(true);
+        Assert.Equal(SelfMutedHint, await TickHint());
+    }
+
+    [Fact]
+    public async Task NotMuted_NoHint()
+    {
+        await OnUi(() => vm.Server = FakeServers.Admin());
+        Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
+        await HoldKey(KeyAction.PushToTalk, false);
+
+        // Package 125: push-to-mute is muting on purpose, so no hint
+        vm.Keys.Simulate(KeyAction.PushToMute, true);
+        Assert.True(await OnUiUntil(() => vm.Server!.SelfMuted, m => m));
+        Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
+        await HoldKey(KeyAction.PushToTalk, false);
+        await HoldKey(KeyAction.PushToMute, false);
+
+        // the existing hints come first
+        await OnUi(() =>
+        {
+            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
+            return vm.Server.SetSelfStateAsync(true, false);
+        });
+        Assert.Equal("Stummer Channel: niemand hört dich.", await HoldKey(KeyAction.PushToTalk, true));
+        await HoldKey(KeyAction.PushToTalk, false);
+    }
+
     string ClientLogText()
     {
         vm.Log.Flush(); // Package 124: written in the background

@@ -411,7 +411,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         BackgroundOpacity = (float)(BackgroundOpacityPercent / 100),
         BlurBackground = BlurBackground,
         Display = SelectedDisplay.Value,
-        Sounds = SoundRows.Select(r => (r.Event, Setting: r.ToSetting())).Where(r => !r.Setting.IsDefault).ToDictionary(r => r.Event, r => r.Setting),
+        Sounds = SoundRows.Select(r => (r.Event, Setting: r.ToSetting())).Where(r => !r.Setting.IsDefaultFor(r.Event)).ToDictionary(r => r.Event, r => r.Setting),
     }.Clamp();
 }
 
@@ -452,7 +452,7 @@ public sealed partial class SoundRow : ObservableObject
     void Reset()
     {
         VolumePercent = 100;
-        Muted = false;
+        Muted = ClientSettings.DefaultSound(Event).Muted; // Package 131: the talk key tones go back to off
         File = null; // the copy goes when the settings are saved
         Error = null;
     }

@@ -120,7 +120,8 @@ public sealed class AudioEngine : IDisposable
     readonly AutoResetEvent wake = new(false);
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
     volatile bool running = true;
-    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, channelMuted, selfTest, levelMeter, micWanted;
+    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, channelMuted, selfTest, levelMeter, micWanted, voiceDetected;
+    bool talkKeyHeld; // key thread only (Package 131)
     bool loopbackFrame; // capture thread only: the frame just decided goes to the own ears
     uint loopbackSeq;
     ClientSettings settings = new();
@@ -140,6 +141,25 @@ public sealed class AudioEngine : IDisposable
         this.keys = keys;
         this.devices = devices ?? (useDevices ? WasapiDevices.Instance : null);
         this.log = log;
+        keys.Changed += OnKeysChanged;
+    }
+
+    /// <summary>
+    /// Package 131 (A140): a talk key that acts in this mode is down, the bare key without the release delay: link
+    /// push-to-talk always, push-to-talk in its own mode.
+    /// </summary>
+    public bool TalkKeyHeld => keys.IsDown(KeyAction.LinkPushToTalk) || (Mode == TransmitMode.PushToTalk && keys.IsDown(KeyAction.PushToTalk));
+
+    /// <summary>Package 131: the voice gate heard voice in the last frame, also while muted (it runs anyway, nothing is sent).</summary>
+    public bool VoiceDetected => voiceDetected;
+
+    /// <summary>Package 131: the talk key tones on the key's own edges, while the keys can talk (connected or self test).</summary>
+    void OnKeysChanged()
+    {
+        bool held = TalkKeyHeld;
+        if (held == talkKeyHeld) return;
+        talkKeyHeld = held;
+        if (connected || selfTest) PlaySound(held ? SoundEvent.TalkKeyDown : SoundEvent.TalkKeyUp);
     }
 
     public Mixer Mixer { get; } = new();
@@ -439,6 +459,7 @@ public sealed class AudioEngine : IDisposable
     internal byte? Decide(bool voiceActive)
     {
         loopbackFrame = false;
+        voiceDetected = voiceActive;
         if (selfTest)
         {
             // as if unmuted, but only for the own ears; nothing counts as sending
@@ -588,11 +609,13 @@ public sealed class AudioEngine : IDisposable
     {
         capture?.Dispose();
         capture = null;
+        voiceDetected = false; // Package 131: no microphone, no voice
         CloseOutput();
     }
 
     public void Dispose()
     {
+        keys.Changed -= OnKeysChanged;
         lock (gate) running = false; // a microphone open still queued finds the engine gone (SyncCapture)
         wake.Set();
         Thread? thread;

@@ -249,6 +249,8 @@
   <data name="Sound_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>
   <data name="Sound_SoundOff" xml:space="preserve"><value>Ton aus</value></data>
   <data name="Sound_SoundOn" xml:space="preserve"><value>Ton an</value></data>
+  <data name="Sound_TalkKeyDown" xml:space="preserve"><value>Sprechtaste gedrückt</value></data>
+  <data name="Sound_TalkKeyUp" xml:space="preserve"><value>Sprechtaste losgelassen</value></data>
   <data name="Sound_UserJoined" xml:space="preserve"><value>Jemand betritt deinen Channel</value></data>
   <data name="Sound_UserLeft" xml:space="preserve"><value>Jemand verlässt deinen Channel</value></data>
   <data name="Status_Connected" xml:space="preserve"><value>Verbunden mit {0}</value></data>
@@ -527,8 +529,11 @@
   <data name="UserStatus_Deafened" xml:space="preserve"><value>(taub)</value></data>
   <data name="UserStatus_Muted" xml:space="preserve"><value>(stumm)</value></data>
   <data name="UserStatus_ServerMuted" xml:space="preserve"><value>(vom Server stumm)</value></data>
+  <data name="VoiceHint_Deafened" xml:space="preserve"><value>Du bist taub geschaltet: niemand hört dich.</value></data>
   <data name="VoiceHint_MutedChannel" xml:space="preserve"><value>Stummer Channel: niemand hört dich.</value></data>
   <data name="VoiceHint_NoLinkRight" xml:space="preserve"><value>Kein Recht für Link-Übertragungen: du sprichst nur im eigenen Channel.</value></data>
+  <data name="VoiceHint_SelfMuted" xml:space="preserve"><value>Du bist stummgeschaltet: niemand hört dich.</value></data>
+  <data name="VoiceHint_ServerMuted" xml:space="preserve"><value>Du bist vom Server stummgeschaltet: niemand hört dich.</value></data>
   <data name="Window_Maximize" xml:space="preserve"><value>Maximieren</value></data>
   <data name="Window_Restore" xml:space="preserve"><value>Wiederherstellen</value></data>
   <data name="Perm_LogsView" xml:space="preserve"><value>Logs ansehen</value></data>
