@@ -498,6 +498,8 @@
   <data name="Ui_UserVolumeReset" xml:space="preserve"><value>Reset to 100 %</value></data>
   <data name="Ui_Users" xml:space="preserve"><value>Users</value></data>
   <data name="Ui_UsersInChannel" xml:space="preserve"><value>Users in this channel</value></data>
+  <data name="Ui_VadAutomatic" xml:space="preserve"><value>Automatic</value></data>
+  <data name="Ui_VadAutomaticHint" xml:space="preserve"><value>Learns the room's background noise and sets the threshold itself.</value></data>
   <data name="Ui_VoiceFilterSection" xml:space="preserve"><value>VOICE FILTERS</value></data>
   <data name="Ui_Volume" xml:space="preserve"><value>Volume</value></data>
   <data name="Ui_VolumeSection" xml:space="preserve"><value>VOLUME</value></data>

@@ -498,6 +498,8 @@
   <data name="Ui_UserVolumeReset" xml:space="preserve"><value>Auf 100 % zurücksetzen</value></data>
   <data name="Ui_Users" xml:space="preserve"><value>Nutzer</value></data>
   <data name="Ui_UsersInChannel" xml:space="preserve"><value>Nutzer in diesem Channel</value></data>
+  <data name="Ui_VadAutomatic" xml:space="preserve"><value>Automatisch</value></data>
+  <data name="Ui_VadAutomaticHint" xml:space="preserve"><value>Lernt das Grundrauschen des Raums und setzt die Schwelle selbst.</value></data>
   <data name="Ui_VoiceFilterSection" xml:space="preserve"><value>SPRACHFILTER</value></data>
   <data name="Ui_Volume" xml:space="preserve"><value>Lautstärke</value></data>
   <data name="Ui_VolumeSection" xml:space="preserve"><value>LAUTSTÄRKE</value></data>

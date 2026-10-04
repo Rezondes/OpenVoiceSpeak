@@ -208,6 +208,7 @@ public sealed class AudioEngine : IDisposable
             if (capture is null) return;
             capture.Gain = live.InputGain;
             capture.Vad.ThresholdDb = live.VadThresholdDb;
+            capture.Vad.Automatic = live.VadAutomatic;
             capture.NoiseSuppression = live.NoiseSuppression;
             capture.AutoGain = live.AutoGain;
         }
@@ -288,6 +289,9 @@ public sealed class AudioEngine : IDisposable
     public event Action<List<ActiveSpeaker>>? SpeakersChanged;
     public event Action<byte?>? TransmitChanged;
     public event Action<float>? InputLevel;
+
+    /// <summary>Package 129 (A138): the voice gate's threshold in use, for the level meter; the manual one without a microphone.</summary>
+    public float InputThresholdDb => capture?.Vad.ThresholdInUseDb ?? (live ?? settings).VadThresholdDb;
 
     /// <summary>Takes the settings; the devices open now only if they are needed (Package 124), and then with these.</summary>
     /// <returns>A warning for the user, or null.</returns>
@@ -373,6 +377,7 @@ public sealed class AudioEngine : IDisposable
             capture.Gain = values.InputGain;
             capture.DecideTarget = Decide;
             capture.Vad.ThresholdDb = values.VadThresholdDb;
+            capture.Vad.Automatic = values.VadAutomatic;
             capture.Suppressor = CreateSuppressor();
             capture.NoiseSuppression = values.NoiseSuppression;
             capture.AutoGain = values.AutoGain;

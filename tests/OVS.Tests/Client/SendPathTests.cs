@@ -42,7 +42,7 @@ public class SendPathTests
     {
         using var keys = new KeyPoller(); // no bindings: a real key pressed while the tests run does not count
         using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
-        engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f }); // test tone is -13.5 dBFS: below
+        engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f, VadAutomatic = false }); // test tone is -13.5 dBFS: below
         engine.SetTone(440);
         keys.Simulate(ptt: true);
         await Until(() => keys.IsDown(KeyAction.PushToTalk)); // the key thread saw it
@@ -123,13 +123,119 @@ public class SendPathTests
     }
 
     [Fact]
-    public void Vad_SilenceInactive_LoudActive_Hangover15Frames()
+    public void Vad_SilenceInactive_LoudActive_Hangover9Frames()
     {
         var vad = new VoiceActivityDetector();
         Assert.False(vad.Process(Constant(0f)));
         Assert.True(vad.Process(Constant(0.1f))); // -20 dBFS
         for (int i = 0; i < VoiceActivityDetector.HangoverFrames; i++) Assert.True(vad.Process(Constant(0.001f)), $"frame {i}");
         Assert.False(vad.Process(Constant(0.001f)));
+    }
+
+    /// <summary>A frame at this level (dBFS).</summary>
+    static float[] AtDb(float db) => Constant(MathF.Pow(10, db / 20));
+
+    /// <summary>Package 129 (A138): the hold only counts below 0.7 × the threshold (about -3 dB), and it is 180 ms.</summary>
+    [Fact]
+    public void Vad_Hysteresis_Hold180ms()
+    {
+        Assert.Equal(9, VoiceActivityDetector.HangoverFrames); // 9 × 20 ms
+        var vad = new VoiceActivityDetector { ThresholdDb = -40 };
+        Assert.False(vad.Process(AtDb(-42))); // between 0.7 × and the threshold: does not open
+        Assert.True(vad.Process(AtDb(-30)));
+        for (int i = 0; i < 30; i++) Assert.True(vad.Process(AtDb(-42)), $"between, frame {i}"); // the end of a word: no hold counting
+        for (int i = 0; i < 9; i++) Assert.True(vad.Process(AtDb(-44)), $"hold, frame {i}"); // below 0.7 ×: 180 ms
+        Assert.False(vad.Process(AtDb(-44)));
+        Assert.False(vad.Process(AtDb(-42)));
+    }
+
+    /// <summary>Package 129 (A138): feeds steady white noise and returns whether any frame opened the gate.</summary>
+    static bool FeedNoise(VoiceActivityDetector vad, Random random, float db, int frames)
+    {
+        bool opened = false;
+        for (int i = 0; i < frames; i++) opened |= vad.Process(VoiceFilterTests.Noise(random, db));
+        return opened;
+    }
+
+    /// <summary>Package 129 (A138): 3 × (1.5 × the 10th percentile) = 13 dB above steady noise, within 2 s.</summary>
+    [Fact]
+    public void VadAuto_SettlesOnNoise_StaysClosed()
+    {
+        var vad = new VoiceActivityDetector { Automatic = true };
+        Assert.False(FeedNoise(vad, new Random(1), -55, 100)); // 2 s
+        Assert.InRange(vad.ThresholdInUseDb, -44f, -40f);
+    }
+
+    /// <summary>Package 129 (A138): the threshold follows louder noise within 2 s; speech 15 dB above the noise opens it.</summary>
+    [Fact]
+    public void VadAuto_FollowsRisingNoise_OpensOnSpeech()
+    {
+        var vad = new VoiceActivityDetector { Automatic = true };
+        var random = new Random(2);
+        FeedNoise(vad, random, -55, 100);
+        Assert.True(vad.Process(VoiceFilterTests.Noise(random, -40)));
+        FeedNoise(vad, random, -55, 20); // the hold runs out
+
+        FeedNoise(vad, random, -45, 100); // 2 s of the louder noise
+        Assert.InRange(vad.ThresholdInUseDb, -34f, -30f);
+        Assert.False(FeedNoise(vad, random, -45, 50)); // the noise alone stays closed
+        Assert.True(vad.Process(VoiceFilterTests.Noise(random, -30)));
+    }
+
+    /// <summary>
+    /// Package 129: noise suppression leaves near-silence between words; the automatic threshold stops at -60 dBFS
+    /// (not Fluxer's -110), so a breath or click at -70 dBFS does not open the gate.
+    /// </summary>
+    [Fact]
+    public void VadAuto_NearSilentFloor_IgnoresQuietClicks()
+    {
+        var vad = new VoiceActivityDetector { Automatic = true };
+        var random = new Random(4);
+        Assert.False(FeedNoise(vad, random, -115, 100));
+        Assert.Equal(-60f, vad.ThresholdInUseDb);
+        Assert.False(FeedNoise(vad, random, -70, 3)); // a 60 ms burst
+        Assert.True(vad.Process(VoiceFilterTests.Noise(random, -50)));
+    }
+
+    /// <summary>
+    /// Package 129: 3 s of speech (200 ms syllables near -20 dBFS with ramps, short gaps of room noise, noise
+    /// suppression off) keeps the gate open throughout, also when the gaps are too few to set the floor and the speech
+    /// itself pushes it up (the threshold then stops at -28 dBFS).
+    /// </summary>
+    [Theory]
+    [InlineData(2)] // 40 ms gaps: the floor is the room noise
+    [InlineData(1)] // 20 ms gaps, under 10 % of the frames: the floor is the syllables' ramps
+    public void VadAuto_ContinuousSpeech_StaysOpen(int gapFrames)
+    {
+        var vad = new VoiceActivityDetector { Automatic = true };
+        var random = new Random(5);
+        float[] syllable = [-30, -24, -20, -19, -21, -18, -20, -22, -24, -30];
+        for (int frame = 0; frame < 150;)
+        {
+            foreach (var db in syllable) Assert.True(vad.Process(VoiceFilterTests.Noise(random, db)), $"frame {frame++}, {vad.ThresholdInUseDb:0.0} dBFS");
+            for (int i = 0; i < gapFrames; i++) Assert.True(vad.Process(VoiceFilterTests.Noise(random, -55)), $"gap frame {frame++}");
+        }
+    }
+
+    /// <summary>Package 129 (A138): while the floor is unknown (0.3 s), the manual threshold applies.</summary>
+    [Fact]
+    public void VadAuto_ManualDuringLearning()
+    {
+        var vad = new VoiceActivityDetector { Automatic = true, ThresholdDb = -60 };
+        var random = new Random(3);
+        for (int i = 0; i < 15; i++)
+        {
+            Assert.True(vad.Process(VoiceFilterTests.Noise(random, -55)), $"frame {i}"); // -55 is above the manual -60
+            Assert.Equal(-60f, vad.ThresholdInUseDb);
+        }
+        vad.Process(VoiceFilterTests.Noise(random, -55));
+        Assert.InRange(vad.ThresholdInUseDb, -44f, -40f); // learned
+        FeedNoise(vad, random, -55, VoiceActivityDetector.HangoverFrames);
+        Assert.False(FeedNoise(vad, random, -55, 20));
+
+        vad.Automatic = false; // switched live: the manual threshold again
+        vad.Process(VoiceFilterTests.Noise(random, -55));
+        Assert.Equal(-60f, vad.ThresholdInUseDb);
     }
 
     [Fact]
@@ -271,7 +377,7 @@ public class SendPathTests
         await CaptureRunning(ptt); // the tone is being gated, so the silence below proves something
         Assert.True(await LoudestOutput(ptt, 600) < -100);
 
-        using var loudThreshold = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -10 });
+        using var loudThreshold = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -10, VadAutomatic = false });
         loudThreshold.SelfTest = true;
         await CaptureRunning(loudThreshold);
         Assert.True(await LoudestOutput(loudThreshold, 600) < -100); // -13.5 dBFS stays below -10

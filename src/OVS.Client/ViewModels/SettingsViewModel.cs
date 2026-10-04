@@ -29,8 +29,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] DisplayOption selectedDisplay;
     [ObservableProperty] LanguageOption selectedLanguage;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAboveThreshold))]
+    [NotifyPropertyChangedFor(nameof(IsAboveThreshold), nameof(MeterThresholdDb))]
     double vadThresholdDb;
+
+    /// <summary>Package 129 (A138): "Automatisch": the gate sets its threshold itself, the slider only shows it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAboveThreshold), nameof(MeterThresholdDb), nameof(IsManualThreshold))]
+    bool vadAutomatic;
+
+    /// <summary>Package 129: the threshold the gate uses right now, as the engine reports it with the level.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAboveThreshold), nameof(MeterThresholdDb))]
+    double thresholdInUseDb;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAboveThreshold))]
@@ -65,6 +75,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         outputVolumePercent = current.OutputVolume * 100f;
         voiceActivation = current.Mode == TransmitMode.VoiceActivation;
         vadThresholdDb = current.VadThresholdDb;
+        vadAutomatic = current.VadAutomatic;
+        thresholdInUseDb = current.VadThresholdDb; // the gate learns 0.3 s with the manual one
         noiseSuppression = current.NoiseSuppression;
         autoGain = current.AutoGain;
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
@@ -178,6 +190,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnAutoGainChanged(bool value) => Preview();
 
+    partial void OnVadAutomaticChanged(bool value) => Preview(); // Package 129
+
     partial void OnSelectedDisplayChanged(DisplayOption value) => Preview(); // Package 99: seen at once
 
     // ---- Devices (Package 52: the list loads in the background) ----
@@ -279,7 +293,22 @@ public sealed partial class SettingsViewModel : ObservableObject
     internal void Remove(KeyBindingItem item) => KeyBindings.Remove(item);
 
     /// <summary>Would voice activation send right now?</summary>
-    public bool IsAboveThreshold => InputLevelDb >= VadThresholdDb;
+    public bool IsAboveThreshold => InputLevelDb >= MeterThresholdDb;
+
+    public bool IsManualThreshold => !VadAutomatic;
+
+    /// <summary>
+    /// Package 129: what the slider (and so the mark on the meter) shows: the threshold in use while automatic,
+    /// otherwise the manual one, which only the slider changes.
+    /// </summary>
+    public double MeterThresholdDb
+    {
+        get => VadAutomatic ? ThresholdInUseDb : VadThresholdDb;
+        set
+        {
+            if (!VadAutomatic) VadThresholdDb = value;
+        }
+    }
     public bool CanSave => !HasKeyConflict;
     public string? Error => KeyConflict;
 
@@ -358,6 +387,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Mode = VoiceActivation ? TransmitMode.VoiceActivation : TransmitMode.PushToTalk,
         KeyBindings = KeyBindings.Select(b => b.Binding).ToList(),
         VadThresholdDb = (float)VadThresholdDb,
+        VadAutomatic = VadAutomatic,
         NoiseSuppression = NoiseSuppression,
         AutoGain = AutoGain,
         Theme = SelectedTheme.Value,

@@ -130,13 +130,17 @@
                 <TextBlock Text="{x:Static l:Strings.Ui_ModeVad}" TextWrapping="Wrap" />
               </RadioButton>
               <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
+                <!-- Package 129 (A138): the gate learns the room's noise; the slider then only shows the threshold in use -->
+                <CheckBox Content="{x:Static l:Strings.Ui_VadAutomatic}" IsChecked="{Binding VadAutomatic}" />
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_VadAutomaticHint}" />
                 <DockPanel>
-                  <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding VadThresholdDb, StringFormat='{}{0:0} dBFS'}" />
+                  <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding MeterThresholdDb, StringFormat='{}{0:0} dBFS'}" />
                   <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Threshold}" />
                 </DockPanel>
-                <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold on the meter. -->
+                <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold in use on the meter. -->
                 <ProgressBar Minimum="-60" Maximum="-10" v:LiveMotion.Level="{Binding InputLevelDb}" Height="8" Margin="10,0" CornerRadius="4" />
-                <Slider Minimum="-60" Maximum="-10" Value="{Binding VadThresholdDb}" Margin="0,-6,0,0" AutomationProperties.Name="{x:Static l:Strings.Ui_ThresholdName}" />
+                <Slider Minimum="-60" Maximum="-10" Value="{Binding MeterThresholdDb}" IsEnabled="{Binding IsManualThreshold}" Margin="0,-6,0,0"
+                        AutomationProperties.Name="{x:Static l:Strings.Ui_ThresholdName}" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <TextBlock Classes="caption" Text="{Binding InputLevelDb, StringFormat={x:Static l:Strings.Ui_LevelFmt}}" />
                   <TextBlock Classes="caption speaking" Text="{x:Static l:Strings.Ui_AboveThreshold}" IsVisible="{Binding IsAboveThreshold}" />

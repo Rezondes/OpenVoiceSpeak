@@ -908,6 +908,24 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(0, engine.Mixer.SpeakerCount);
     }
 
+    /// <summary>
+    /// Package 129: in automatic mode the settings page shows the threshold the gate learned, reported with the level:
+    /// the steady tone (-13.5 dBFS) sets it to its upper bound, -28 dBFS.
+    /// </summary>
+    [Fact]
+    public async Task SettingsPage_ShowsThresholdInUse()
+    {
+        await OnUi(() =>
+        {
+            vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
+            vm.OpenSettings();
+            vm.Audio.SetTone(440);
+            return 0;
+        });
+        Assert.Equal(-28, await OnUiUntil(() => vm.SettingsPage!.ThresholdInUseDb, t => t == -28));
+        Assert.Equal(-28, await OnUi(() => vm.SettingsPage!.MeterThresholdDb));
+    }
+
     [Fact]
     public async Task ToneInput_ReportsInputLevel()
     {

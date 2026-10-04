@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
@@ -6,6 +7,7 @@ using Avalonia.VisualTree;
 using OVS.Client;
 using OVS.Client.Audio;
 using OVS.Client.Input;
+using OVS.Client.Localization;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
@@ -492,6 +494,77 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal((1.8f, 2f), (migrated.OutputVolume, migrated.VolumeFor("fpA")));
     }
 
+    /// <summary>Package 129 (A135 step 3): only a threshold still at the old default -40 becomes automatic; new files are automatic.</summary>
+    [Fact]
+    public void Migration_VadAutoOnlyForDefault()
+    {
+        var path = Path.Combine(dir, ClientSettings.FileName);
+        Assert.True(ClientSettings.Load(dir, out _).VadAutomatic);
+        Assert.True(new ClientSettings().VadAutomatic);
+
+        File.WriteAllText(path, """{ "settingsVersion": 2, "vadThresholdDb": -40 }""");
+        var old = ClientSettings.Load(dir, out _);
+        Assert.Equal((true, ClientSettings.CurrentVersion), (old.VadAutomatic, old.SettingsVersion));
+
+        foreach (var file in new[] { """{ "settingsVersion": 2, "vadThresholdDb": -48 }""", """{ "vadThresholdDb": -30 }""" })
+        {
+            File.WriteAllText(path, file); // tuned by hand: stays manual, also from version 0
+            var tuned = ClientSettings.Load(dir, out _);
+            Assert.False(tuned.VadAutomatic);
+            Assert.Equal(ClientSettings.CurrentVersion, tuned.SettingsVersion);
+        }
+
+        old.VadAutomatic = false; // the user turns it off again
+        old.Save(dir);
+        Assert.False(ClientSettings.Load(dir, out _).VadAutomatic);
+    }
+
+    /// <summary>
+    /// Package 129 (A138): "Automatisch" is heard at once, the threshold slider is disabled while it is on, and the
+    /// meter marks the threshold the gate uses (reported by the engine) instead of the slider's value.
+    /// </summary>
+    [AvaloniaFact]
+    public void VadAuto_LiveAndSliderDisabled()
+    {
+        var vm = Vm(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40 });
+        var live = new List<ClientSettings>();
+        vm.LivePreview = live.Add;
+        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var slider = window.GetVisualDescendants().OfType<Slider>().Single(s => AutomationProperties.GetName(s) == Strings.Ui_ThresholdName);
+        Assert.True(vm.VadAutomatic);
+        Assert.False(slider.IsEnabled);
+
+        vm.ThresholdInUseDb = -47; // what the engine reports
+        vm.InputLevelDb = -45;
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(-47, slider.Value);
+        Assert.True(vm.IsAboveThreshold); // above the threshold in use, below the manual -40
+
+        vm.VadAutomatic = false;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(live[^1].VadAutomatic);
+        Assert.True(slider.IsEnabled);
+        Assert.Equal(-40, slider.Value);
+        Assert.False(vm.IsAboveThreshold);
+        slider.Value = -50; // dragged
+        Assert.Equal(-50, vm.VadThresholdDb);
+        Assert.False(vm.ToSettings(new ClientSettings()).VadAutomatic);
+        window.Close();
+
+        using var keys = new KeyPoller(); // the engine takes the switch without restarting the microphone
+        using var engine = new AudioEngine(keys, useDevices: false);
+        engine.Configure(new ClientSettings());
+        engine.SetTone(440);
+        var capture = engine.Capture!;
+        Assert.True(capture.Vad.Automatic);
+        engine.ApplyLive(new ClientSettings { VadAutomatic = false });
+        Assert.Same(capture, engine.Capture);
+        Assert.False(capture.Vad.Automatic);
+        Assert.Equal(capture.Vad.ThresholdInUseDb, engine.InputThresholdDb);
+    }
+
     /// <summary>Package 128 (A137): the sliders keep 0 to 200 % and the file stores the slider value, not the gain.</summary>
     [Fact]
     public void Volume_SliderValueStored()
@@ -642,7 +715,7 @@ public sealed class SettingsTests : IDisposable
     [Fact]
     public void LevelMeter_MarksThreshold()
     {
-        var vm = Vm(new ClientSettings { VadThresholdDb = -40 });
+        var vm = Vm(new ClientSettings { VadThresholdDb = -40, VadAutomatic = false }); // Package 129: the manual threshold
         vm.InputLevelDb = -30;
         Assert.True(vm.IsAboveThreshold);
         vm.VadThresholdDb = -20;

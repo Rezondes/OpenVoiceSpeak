@@ -698,10 +698,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         RefreshDevices(); // a device may have been plugged in since
     }
 
-    void OnInputLevel(float db) => post(() =>
+    void OnInputLevel(float db)
     {
-        if (SettingsPage is { } vm) vm.InputLevelDb = db;
-    });
+        float threshold = Audio.InputThresholdDb; // Package 129: read with the level, on the capture thread
+        post(() =>
+        {
+            if (SettingsPage is not { } vm) return;
+            vm.InputLevelDb = db;
+            vm.ThresholdInUseDb = threshold;
+        });
+    }
 
     (bool Muted, bool Deafened)? stateBeforeSelfTest;
 

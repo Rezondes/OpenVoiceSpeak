@@ -151,6 +151,8 @@ public sealed class DebugApi : IDisposable
                 var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
                 // Package 127: a body without a version keeps the current one (a missing key reads as 0)
                 if (Optional(body, "settingsVersion") is null) settings.SettingsVersion = vm.Settings.SettingsVersion;
+                // Package 129: a body without the switch is read like an old file (A135 step 3): a threshold given by hand stays manual
+                if (Optional(body, "vadAutomatic") is null) settings.VadAutomatic = settings.VadThresholdDb == ClientSettings.DefaultVadThresholdDb;
                 vm.ApplySettings(settings);
                 return vm.Settings;
         }

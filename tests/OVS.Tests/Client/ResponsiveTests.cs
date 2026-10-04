@@ -336,6 +336,14 @@ public sealed class ResponsiveTests : IDisposable
             Dispatcher.UIThread.RunJobs();
             LayoutAssert.FitsHorizontally(page);
         }
+        // Package 129: voice activation shows the "Automatisch" box, its hint, the meter and the slider
+        ((SettingsViewModel)page.DataContext!).VoiceActivation = true;
+        Dispatcher.UIThread.RunJobs();
+        var automatic = page.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Content as string == Strings.Ui_VadAutomatic);
+        automatic.BringIntoView();
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(automatic.IsEffectivelyVisible);
+        LayoutAssert.FitsHorizontally(page);
         scroller.Offset = new Vector(0, scroller.Extent.Height);
         Dispatcher.UIThread.RunJobs();
         LayoutAssert.FitsHorizontally(main);

@@ -123,6 +123,15 @@ public sealed class DebugApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    /// <summary>Package 129: a body without "vadAutomatic" is read like an old file: a threshold given by hand stays manual.</summary>
+    [Fact]
+    public async Task Settings_WithoutVadAutomatic_ManualUnlessDefault()
+    {
+        Assert.False((await anna.Post("settings", new { vadThresholdDb = -50 })).GetProperty("vadAutomatic").GetBoolean());
+        Assert.True((await anna.Post("settings", new { vadThresholdDb = -40 })).GetProperty("vadAutomatic").GetBoolean());
+        Assert.True((await anna.Post("settings", new { vadThresholdDb = -50, vadAutomatic = true })).GetProperty("vadAutomatic").GetBoolean());
+    }
+
     [Fact]
     public async Task Devices_AreListed()
     {

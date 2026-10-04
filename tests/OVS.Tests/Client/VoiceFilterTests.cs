@@ -10,7 +10,7 @@ public class VoiceFilterTests
     const int Frame = AudioFormat.FrameSamples;
 
     /// <summary>White noise with the given RMS level; a fixed seed keeps every run the same.</summary>
-    static float[] Noise(Random random, float rmsDb)
+    internal static float[] Noise(Random random, float rmsDb)
     {
         float peak = MathF.Pow(10, rmsDb / 20) * MathF.Sqrt(3); // uniform noise: RMS = peak / sqrt(3)
         var frame = new float[Frame];
@@ -319,17 +319,20 @@ public class VoiceFilterTests
         using var suppressor = NoiseSuppressor.Create(out var error);
         Assert.True(suppressor is not null, error);
         var gain = new AutoGain();
+        var vad = new VoiceActivityDetector { Automatic = true }; // Package 129: the noise floor tracker too
         var random = new Random(1);
         var frames = Enumerable.Range(0, 110).Select(_ => Noise(random, -30)).ToArray();
-        for (int i = 0; i < 10; i++) // warm-up: JIT and first calls
+        for (int i = 0; i < 20; i++) // warm-up: JIT and first calls (Package 129: past the learning 0.3 s)
         {
             gain.Process(frames[i], suppressor.Process(frames[i]));
+            vad.Process(frames[i]);
         }
         long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 10; i < 110; i++)
+        for (int i = 20; i < 110; i++)
         {
             CapturePipeline.ApplyGain(frames[i], 2f); // Package 127: the soft clip too
             gain.Process(frames[i], suppressor.Process(frames[i]));
+            vad.Process(frames[i]);
         }
         Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
     }
