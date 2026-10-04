@@ -230,6 +230,7 @@
   <data name="Perm_UserMute" xml:space="preserve"><value>Mute users</value></data>
   <data name="Perm_UsersView" xml:space="preserve"><value>View user overview</value></data>
   <data name="Ping_UdpUnreachable" xml:space="preserve"><value>, UDP not reachable</value></data>
+  <data name="Ping_VoiceOverTcp" xml:space="preserve"><value>, voice over TCP</value></data>
   <data name="Settings_Damaged" xml:space="preserve"><value>Settings were damaged and have been reset (backup: {0}.bak).</value></data>
   <data name="Settings_Language" xml:space="preserve"><value>Language</value></data>
   <data name="Settings_LanguageHint" xml:space="preserve"><value>Takes effect after restarting the client.</value></data>

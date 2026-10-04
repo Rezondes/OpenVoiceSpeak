@@ -650,6 +650,29 @@ public sealed class MainViewModelTests : IAsyncLifetime
             Assert.Single(log.Split(Environment.NewLine), l => l.Contains(line));
     }
 
+    /// <summary>Package 141 (AC5): the ping text names voice over TCP while it is in use, and drops it once UDP answers again.</summary>
+    [Fact]
+    public async Task VoiceOverTcp_ShownInPingText()
+    {
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
+        var time = new ManualTimeProvider();
+        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime) = (relay.EndPoint, time));
+        await ConnectAsync(saveBookmark: false);
+        string Ping()
+        {
+            vm.Tick();
+            return vm.PingText;
+        }
+        var overTcp = OVS.Client.Localization.Strings.Ping_VoiceOverTcp;
+
+        for (int i = 0; i < 10; i++) time.Advance(TimeSpan.FromMilliseconds(500)); // 5 s without an answer
+        Assert.EndsWith(overTcp, await OnUiUntil(Ping, p => p.Length > 0));
+        relay.DropAll = false;
+        for (int i = 0; i < 4; i++) time.Advance(TimeSpan.FromMilliseconds(500)); // the next Hello
+        var ping = await OnUiUntil(Ping, p => p.Length > 0 && !p.EndsWith(overTcp));
+        Assert.DoesNotContain(OVS.Client.Localization.Strings.Ping_UdpUnreachable, ping);
+    }
+
     /// <summary>
     /// Package 133 (AC5): the signal icon rates the voice round trip, crossed out while UDP is unreachable; a click shows
     /// the connection details, refreshed every 2 s.

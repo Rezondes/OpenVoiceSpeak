@@ -11,6 +11,7 @@ public static class VoiceRouting
             ? VoiceHeader.TargetLinked
             : VoiceHeader.TargetChannel;
 
+    /// <summary>Package 141: a listener on voice over TCP is reached like a bound UDP endpoint.</summary>
     /// <param name="isMuted">Package 34: nobody in a muted channel is heard, not even via link. Link speech into it is.</param>
     public static List<Session> Recipients(IEnumerable<Session> sessions, Session sender, byte target,
         Func<Guid, IReadOnlySet<Guid>> linkedChannels, Func<Guid, bool>? isMuted = null)
@@ -23,7 +24,7 @@ public static class VoiceRouting
             channels.UnionWith(linkedChannels(sender.ChannelId));
 
         return sessions
-            .Where(s => s != sender && !s.SelfDeafened && s.UdpEndpoint is not null && channels.Contains(s.ChannelId))
+            .Where(s => s != sender && !s.SelfDeafened && (s.UdpEndpoint is not null || s.TcpVoice) && channels.Contains(s.ChannelId))
             .ToList();
     }
 }

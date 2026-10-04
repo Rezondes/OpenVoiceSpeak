@@ -230,6 +230,7 @@
   <data name="Perm_UserMute" xml:space="preserve"><value>Nutzer stummschalten</value></data>
   <data name="Perm_UsersView" xml:space="preserve"><value>Nutzerübersicht sehen</value></data>
   <data name="Ping_UdpUnreachable" xml:space="preserve"><value>, UDP nicht erreichbar</value></data>
+  <data name="Ping_VoiceOverTcp" xml:space="preserve"><value>, Sprache über TCP</value></data>
   <data name="Settings_Damaged" xml:space="preserve"><value>Einstellungen waren beschädigt und wurden zurückgesetzt (Sicherung: {0}.bak).</value></data>
   <data name="Settings_Language" xml:space="preserve"><value>Sprache</value></data>
   <data name="Settings_LanguageHint" xml:space="preserve"><value>Wirkt nach einem Neustart des Clients.</value></data>

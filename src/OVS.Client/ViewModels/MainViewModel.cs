@@ -320,7 +320,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
 
         var udp = new VoiceClient(VoiceRelay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
-            Convert.FromBase64String(conn.Welcome.VoiceKey), VoiceTime);
+            Convert.FromBase64String(conn.Welcome.VoiceKey), VoiceTime, conn); // Package 141: falls back to the TLS connection
         // Package 139 (review): owned from here on, so a failure below is torn down with them (DisconnectAsync)
         connection = conn;
         voice = udp;
@@ -728,7 +728,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         UpdateStats();
         UpdateReconnectStatus(); // Package 139
         PingText = connection?.LastRoundTrip is { } rtt
-            ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.Reachable == false ? Strings.Ping_UdpUnreachable : "")
+            ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.OverTcp == true ? Strings.Ping_VoiceOverTcp // Package 141
+                : voice?.Reachable == false ? Strings.Ping_UdpUnreachable : "")
             : "";
         VoiceHint = Server switch
         {

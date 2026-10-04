@@ -432,6 +432,111 @@ public sealed class ClientNetTests : IDisposable
         Assert.True(va.DownlinkLoss.Expected >= 100);
     }
 
+    // ---- Package 141 (A150): voice over the TLS connection ----
+
+    static VoiceClient TcpCapable(ClientConnection c, IPEndPoint to, TimeProvider time) =>
+        new(to, c.Welcome.SessionId, Convert.FromBase64String(c.Welcome.VoiceKey), time, c);
+
+    /// <summary>Package 141 (AC1, AC6): with all UDP blocked, voice goes over the control connection 5 s after the start.</summary>
+    [Fact]
+    public async Task UdpBlocked_VoiceOverTcp()
+    {
+        Assert.Equal(15, ProtocolInfo.Version);
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        await using var b = await Connect(server, "b");
+        using var relayA = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
+        using var relayB = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
+        var time = new ManualTimeProvider();
+        using var va = TcpCapable(a, relayA.EndPoint, time);
+        using var vb = TcpCapable(b, relayB.EndPoint, time);
+        var atA = new TaskCompletionSource<(uint, uint, byte[])>();
+        var atB = new TaskCompletionSource<(uint, uint, byte[])>();
+        va.VoiceReceived += (speaker, seq, _, opus, _) => atA.TrySetResult((speaker, seq, opus));
+        vb.VoiceReceived += (speaker, seq, _, opus, _) => atB.TrySetResult((speaker, seq, opus));
+        va.Start();
+        vb.Start();
+
+        Advance(time, TimeSpan.FromSeconds(4.5));
+        Assert.False(va.OverTcp);
+        Advance(time, TimeSpan.FromSeconds(0.5));
+        Assert.True(va.OverTcp && vb.OverTcp);
+        Assert.False(va.Reachable);
+        await WaitUntil(() => server.State.FindSession(a.Welcome.SessionId)!.TcpVoice && server.State.FindSession(b.Welcome.SessionId)!.TcpVoice);
+
+        // Package 141 (review): a lost switch (dropped, or overtaken by an older UDP ping) is repeated with the next Hello
+        var sessionB = server.State.FindSession(b.Welcome.SessionId)!;
+        sessionB.TcpVoice = false;
+        Advance(time, TimeSpan.FromSeconds(2));
+        await WaitUntil(() => sessionB.TcpVoice);
+
+        va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
+        vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
+        var gotB = await atB.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var gotA = await atA.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(a.Welcome.SessionId, gotB.Item1);
+        Assert.Equal([1, 2, 3], gotB.Item3);
+        Assert.Equal(b.Welcome.SessionId, gotA.Item1);
+        Assert.Equal([4, 5, 6], gotA.Item3);
+        Assert.Equal(0, relayA.Count(PacketType.Voice)); // nothing went into the blocked UDP path
+        Assert.Equal(default, va.UplinkLoss); // a reliable path loses nothing
+    }
+
+    /// <summary>
+    /// Package 141 (AC5): pings unanswered for 15 s move voice to TCP at once; when UDP answers again (tried every 2 s, well
+    /// within 30 s) voice comes back to UDP, the next ping moves the server's side back, and no frame arrives twice.
+    /// </summary>
+    [Fact]
+    public async Task UdpBack_SwitchesBack()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        await using var b = await Connect(server, "b");
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint);
+        var time = new ManualTimeProvider();
+        using var va = TcpCapable(a, relay.EndPoint, time);
+        using var vb = Voice(b, server.VoiceEndPoint);
+        int atA = 0, atB = 0;
+        va.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atA);
+        vb.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atB);
+        va.Start();
+        vb.Start();
+        await WaitUntil(() => va.Reachable && vb.Reachable);
+        var session = server.State.FindSession(a.Welcome.SessionId)!;
+
+        relay.DropAll = true;
+        Advance(time, TimeSpan.FromSeconds(14.5));
+        Assert.False(va.OverTcp);
+        Advance(time, TimeSpan.FromSeconds(0.5));
+        Assert.True(va.OverTcp);
+        await WaitUntil(() => session.TcpVoice);
+        va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
+        await WaitUntil(() => Volatile.Read(ref atB) == 1);
+        vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
+        await WaitUntil(() => Volatile.Read(ref atA) == 1);
+
+        relay.DropAll = false;
+        var waited = TimeSpan.Zero;
+        while (!va.Reachable && waited < TimeSpan.FromSeconds(30))
+        {
+            Advance(time, TimeSpan.FromSeconds(0.5));
+            waited += TimeSpan.FromSeconds(0.5);
+            await Task.Delay(20);
+        }
+        Assert.True(va.Reachable);
+        Assert.False(va.OverTcp);
+        Advance(time, TimeSpan.FromSeconds(2)); // the next ping tells the server
+        await WaitUntil(() => !session.TcpVoice);
+
+        vb.SendVoice([7, 8, 9], VoiceHeader.TargetChannel);
+        await WaitUntil(() => relay.PassedDownVoice == 1);
+        await WaitUntil(() => Volatile.Read(ref atA) == 2);
+        va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
+        await WaitUntil(() => relay.Count(PacketType.Voice) == 1 && Volatile.Read(ref atB) == 2);
+        await Task.Delay(300);
+        Assert.Equal(2, Volatile.Read(ref atA)); // once, on UDP only
+    }
+
     /// <summary>Waits up to 10 s by the clock (not by a loop count: Task.Delay(20) may take far longer on a busy runner).</summary>
     static async Task WaitUntil(Func<bool> condition)
     {

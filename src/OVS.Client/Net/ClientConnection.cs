@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Threading.Channels;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
 
@@ -31,10 +32,10 @@ public sealed class ClientConnection : IAsyncDisposable
     readonly FrameReader reader;
     readonly FrameWriter writer;
     readonly CancellationTokenSource cts = new();
-    readonly CancellationTokenSource pingCts = new(); // stopped first on dispose, before the TLS shutdown
+    readonly CancellationTokenSource pingCts = new(); // stopped first on dispose, before the TLS shutdown (also voice, Package 141)
     long pingSentAt;
     int disconnectRaised;
-    Task? receiveLoop, pingLoop;
+    Task? receiveLoop, pingLoop, voiceLoop;
 
     ClientConnection(TcpClient tcp, SslStream ssl, Welcome welcome)
     {
@@ -59,6 +60,9 @@ public sealed class ClientConnection : IAsyncDisposable
 
     /// <summary>Raised on the receive thread for every message after Welcome.</summary>
     public event Action<Message>? MessageReceived;
+
+    /// <summary>Package 141: voice over TCP, raised on the receive thread and kept out of MessageReceived (the UI thread).</summary>
+    public event Action<VoiceDown>? VoiceDownReceived;
 
     /// <summary>Raised once: server Disconnected reason, or ConnectionLost.</summary>
     public event Action<string, string?>? Disconnected;
@@ -121,9 +125,37 @@ public sealed class ClientConnection : IAsyncDisposable
     {
         receiveLoop = Task.Run(ReceiveLoopAsync);
         pingLoop = Task.Run(PingLoopAsync);
+        voiceLoop = Task.Run(VoiceLoopAsync); // Package 141
     }
 
     public Task SendAsync(Message message) => writer.WriteAsync(message, cts.Token);
+
+    // Package 141: at most 10 frames (200 ms) wait for the TLS stream, in order; more is dropped
+    readonly Channel<VoiceUp> voiceOut = Channel.CreateBounded<VoiceUp>(
+        new BoundedChannelOptions(10) { FullMode = BoundedChannelFullMode.DropWrite }); // two readers: the loop and DropPendingVoice
+
+    /// <summary>Package 141 (A150): voice over the TLS connection from the audio thread; never waits, drops while the stream is behind.</summary>
+    public void SendVoice(VoiceUp up) => voiceOut.Writer.TryWrite(up);
+
+    /// <summary>Package 141: voice went back to UDP; what still waits for TCP is dropped, so it cannot arrive after the switch.</summary>
+    public void DropPendingVoice()
+    {
+        while (voiceOut.Reader.TryRead(out _))
+        {
+        }
+    }
+
+    async Task VoiceLoopAsync()
+    {
+        try
+        {
+            await foreach (var up in voiceOut.Reader.ReadAllAsync(pingCts.Token)) await writer.WriteAsync(up, pingCts.Token);
+        }
+        catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
+        {
+            // the connection is going; its end is reported by the receive loop
+        }
+    }
 
     async Task ReceiveLoopAsync()
     {
@@ -140,6 +172,9 @@ public sealed class ClientConnection : IAsyncDisposable
                         break;
                     case Pong:
                         LastRoundTrip = Stopwatch.GetElapsedTime(Interlocked.Read(ref pingSentAt));
+                        break;
+                    case VoiceDown voice:
+                        VoiceDownReceived?.Invoke(voice);
                         break;
                     default:
                         MessageReceived?.Invoke(message);
@@ -199,6 +234,7 @@ public sealed class ClientConnection : IAsyncDisposable
         // No more pings: writing after the TLS shutdown throws.
         pingCts.Cancel();
         if (pingLoop is not null) await pingLoop;
+        if (voiceLoop is not null) await voiceLoop; // Package 141: like the pings, nothing is written after the TLS shutdown
         await CloseGracefullyAsync(ssl);
         // Wait until the server has read the close_notify and closed its side. Closing the socket while its last
         // messages are still unread makes Windows send a reset, and the server logs "Verbindung abgebrochen".

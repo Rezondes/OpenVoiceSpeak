@@ -6,6 +6,7 @@ using OVS.Server.Data;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;
@@ -72,6 +73,105 @@ public sealed class LimitsTests
         // The goodbye can reach the client a moment before the server writes its log line.
         for (int i = 0; i < 200 && !server.Log.Any(l => l.Contains("flut getrennt (zu viele Anfragen)")); i++) await Task.Delay(50);
         Assert.Contains(server.Log, l => l.Contains("flut getrennt (zu viele Anfragen)"));
+    }
+
+    /// <summary>
+    /// Package 141 (AC4, A150): voice over TCP has its own budget (60 per second, burst 10, like UDP); more is dropped
+    /// without an error or a disconnect, and it takes nothing from the request budget.
+    /// </summary>
+    [Fact]
+    public async Task VoiceUp_OwnBudget()
+    {
+        var time = new ManualTimeProvider(); // nothing refills unless the test moves the clock
+        await using var server = await TestServer.StartAsync(time: time);
+        await using var talker = await TestClient.ConnectAsync(server, "viel");
+        await using var listener = await TestClient.ConnectAsync(server, "ohr");
+        await listener.SendAsync(new VoiceUp(0, 0, ""));
+        for (int i = 0; i < 500 && !server.State.FindSession(listener.Id)!.TcpVoice; i++) await Task.Delay(20);
+
+        for (uint n = 0; n < 30; n++) await talker.SendAsync(new VoiceUp(n, 0, Convert.ToBase64String([1, 2, 3])));
+        for (uint n = 0; n < Limits.VoiceBurst; n++) Assert.Equal(n, (await listener.WaitForAsync<VoiceDown>()).Seq);
+        await listener.AssertNoMessageAsync<VoiceDown>();
+
+        var here = talker.Welcome.Snapshot.DefaultChannelId;
+        for (int i = 0; i < Limits.RequestBurst; i++) await talker.SendAsync(new JoinChannel(here) { RequestId = $"j{i}" });
+        await talker.SendAsync(new JoinChannel(here) { RequestId = "over" });
+        var refused = await talker.WaitForAsync<Error>(); // the whole request burst passed: the voice took none of it
+        Assert.Equal(("over", Codes.RateLimited), (refused.RequestId, refused.Code));
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        await talker.SendAsync(new VoiceUp(99, 0, Convert.ToBase64String([4, 5, 6])));
+        Assert.Equal(99u, (await listener.WaitForAsync<VoiceDown>()).Seq);
+    }
+
+    /// <summary>
+    /// Package 141 (review): invalid VoiceUp count like refused requests (Package 86): invalid ones without a pause for
+    /// FloodDisconnectAfter end the session. Over-budget valid ones are only dropped: TCP delivers in bursts after a
+    /// retransmission stall, so an honest talker sending 20 frames at once every second for 12 s stays, as does one at 50
+    /// frames per second.
+    /// </summary>
+    [Fact]
+    public async Task VoiceUpFlood_Disconnected_TalkingIsNot()
+    {
+        var time = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(time: time);
+        await using var talker = await TestClient.ConnectAsync(server, "redner");
+        await using var flood = await TestClient.ConnectAsync(server, "flut");
+        async Task Sync(TestClient c) // everything sent before is handled at the current time
+        {
+            await c.SendAsync(new Ping());
+            await c.WaitForAsync<Pong>();
+        }
+
+        for (uint n = 0; n < 50 * 12; n++) // 12 s at 50 frames per second, below the budget of 60
+        {
+            await talker.SendAsync(new VoiceUp(n, 0, Convert.ToBase64String([1, 2, 3])));
+            time.Advance(TimeSpan.FromMilliseconds(20));
+            if (n % 25 == 0) await Sync(talker);
+        }
+        await Sync(talker);
+
+        for (uint second = 0; second < 12; second++) // the same second of speech arriving as one burst after each stall
+        {
+            for (uint i = 0; i < 20; i++) await talker.SendAsync(new VoiceUp(1000 + second * 50 + i, 0, Convert.ToBase64String([1, 2, 3])));
+            await Sync(talker);
+            time.Advance(TimeSpan.FromMilliseconds(500));
+            await Sync(talker);
+            time.Advance(TimeSpan.FromMilliseconds(500));
+        }
+        await Sync(talker);
+
+        var padded = Convert.ToBase64String(new byte[VoiceHeader.MaxOpusSize + 1]);
+        bool closed = false;
+        for (int step = 0; step < 30 && !closed; step++)
+        {
+            try
+            {
+                for (int i = 0; i < 5; i++) await flood.SendAsync(new VoiceUp((uint)i, 0, padded));
+                await Sync(flood);
+            }
+            catch (Exception e) when (e is EndOfStreamException or IOException)
+            {
+                closed = true;
+            }
+            if (step < 19) Assert.False(closed, $"disconnected too early, step {step}");
+            time.Advance(TimeSpan.FromMilliseconds(500));
+        }
+        Assert.True(closed || await flood.WaitClosedAsync());
+        await Sync(talker); // still connected
+    }
+
+    /// <summary>Package 141: a listener that does not read loses voice once a second of it waits, never its connection.</summary>
+    [Fact]
+    public void VoiceDown_SlowListener_DroppedNotAborted()
+    {
+        using var session = new Session(1, "fp", "n", IPAddress.Loopback, new byte[32], new ManualTimeProvider());
+        var frame = Session.Encode(new VoiceDown(2, 0, 0, Convert.ToBase64String(new byte[1275])));
+        for (int i = 0; i < 1000; i++) session.SendVoice(frame);
+        Assert.Null(session.AbortReason);
+        Assert.Equal(Limits.MaxQueuedVoice, session.Outgoing.Count);
+        session.Send(new Pong()); // other messages still fit
+        Assert.Equal(Limits.MaxQueuedVoice + 1, session.Outgoing.Count);
     }
 
     [Fact]

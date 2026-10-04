@@ -196,6 +196,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             }
             if (message is null) return;
             if (message is Ping) session.Send(new Pong());
+            else if (message is VoiceUp up) await (state.VoiceOverTcp?.Invoke(session, up) ?? Task.CompletedTask); // Package 141: no request
             else state.Handle(session, message);
         }
     }

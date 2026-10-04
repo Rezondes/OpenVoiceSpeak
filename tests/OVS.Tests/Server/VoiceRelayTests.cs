@@ -447,6 +447,147 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Null(await vz.ReceiveVoiceAsync(300)); // 33 to 39 over the budget
     }
 
+    // ---- Package 141 (A150): voice over the TLS connection ----
+
+    static Task SendTcpAsync(TestClient from, uint seq, byte[] opus, byte target = VoiceHeader.TargetChannel) =>
+        from.SendAsync(new VoiceUp(seq, target, Convert.ToBase64String(opus)));
+
+    /// <summary>An empty VoiceUp only switches the session to TCP voice (a listener that does not talk).</summary>
+    static async Task SwitchToTcpAsync(TestServer on, TestClient client)
+    {
+        await client.SendAsync(new VoiceUp(0, VoiceHeader.TargetChannel, ""));
+        await WaitUntil(() => on.State.FindSession(client.Id)!.TcpVoice);
+    }
+
+    static async Task HeardTcp(TestClient at, uint speaker, uint seq, byte[] opus, byte target = VoiceHeader.TargetChannel) =>
+        Assert.Equal(new VoiceDown(speaker, seq, target, Convert.ToBase64String(opus)), await at.WaitForAsync<VoiceDown>());
+
+    /// <summary>Package 141 (AC3): rights and routing over TCP are those of UDP (same channel, link, server mute, deafened).</summary>
+    [Fact]
+    public async Task Tcp_RoutingLikeUdp()
+    {
+        foreach (var t in new[] { a, b, c }) await SwitchToTcpAsync(server, t);
+
+        await SendTcpAsync(a, 0, Opus);
+        await HeardTcp(b, a.Id, 0, Opus);
+        await c.AssertNoMessageAsync<VoiceDown>();
+
+        await a.SendAsync(new LinkChannels(a.Welcome.Snapshot.DefaultChannelId, other));
+        await c.WaitForAsync<ChannelsLinked>();
+        await SendTcpAsync(a, 1, Opus, VoiceHeader.TargetLinked);
+        await HeardTcp(c, a.Id, 1, Opus, VoiceHeader.TargetLinked);
+        await HeardTcp(b, a.Id, 1, Opus, VoiceHeader.TargetLinked);
+
+        await b.SendAsync(new SetSelfState(false, true));
+        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == b.Id && u.User.SelfDeafened);
+        await SendTcpAsync(a, 2, Opus, VoiceHeader.TargetLinked);
+        await HeardTcp(c, a.Id, 2, Opus, VoiceHeader.TargetLinked);
+        await b.AssertNoMessageAsync<VoiceDown>(); // deafened
+
+        await a.SendAsync(new SetServerMute(c.Id, true));
+        await c.WaitForAsync<UserUpdated>(u => u.User.SessionId == c.Id && u.User.ServerMuted);
+        await SendTcpAsync(c, 0, Opus, VoiceHeader.TargetLinked);
+        await a.AssertNoMessageAsync<VoiceDown>(); // server muted
+        Assert.Equal(TimeSpan.FromMilliseconds(60), server.State.FindSession(a.Id)!.SpeechTime); // Package 70: relayed frames count
+    }
+
+    /// <summary>
+    /// Package 141 (AC2): a UDP and a TCP client hear each other, each on its own path. A reliable leg gets no copies: a
+    /// frame lost on the UDP way in reaches the TCP listener on its own from the sender's copy. A UDP Hello alone (the
+    /// client trying UDP again) changes nothing; its first ping or voice packet moves its voice back to UDP, so no frame
+    /// arrives twice. On a manual clock, 20 ms per frame.
+    /// </summary>
+    [Fact]
+    public async Task TcpAndUdp_Mixed()
+    {
+        var time = new ManualTimeProvider();
+        await using var own = await TestServer.StartAsync(time: time);
+        await using var x = await TestClient.ConnectAsync(own, "x");
+        await using var y = await TestClient.ConnectAsync(own, "y");
+        using var vx = new TestVoice(x, own.VoiceEndPoint);
+        await vx.HelloAsync();
+        await SwitchToTcpAsync(own, y);
+        var f = Enumerable.Range(0, 6).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
+        async Task Send(uint n, byte[]? copy = null)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(20));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, f[n], copy)));
+        }
+
+        await Send(0);
+        await HeardTcp(y, x.Id, 0, f[0]);
+        await Send(2, f[1]); // 1 lost on the way in
+        await HeardTcp(y, x.Id, 1, f[1]);
+        await HeardTcp(y, x.Id, 2, f[2]);
+
+        var back = RandomNumberGenerator.GetBytes(60);
+        await SendTcpAsync(y, 7, back);
+        var got = await vx.ReceiveVoiceAsync();
+        Assert.NotNull(got);
+        Assert.Equal(y.Id, got.Value.Header.SessionId);
+        Assert.True(RelayPayload.TryParse(got.Value.Plain, out var seq, out var opus, out var none));
+        Assert.Equal(7u, seq);
+        Assert.Equal(back, opus);
+        Assert.Null(none);
+
+        using var vy = new TestVoice(y, own.VoiceEndPoint);
+        await vy.HelloAsync(); // UDP answers again, voice stays on TCP until the client uses it
+        await Send(3);
+        await HeardTcp(y, x.Id, 3, f[3]);
+        await vy.SendAsync(PacketType.Ping, []);
+        Assert.NotNull(await vy.ReceiveAsync());
+        Assert.False(own.State.FindSession(y.Id)!.TcpVoice);
+        await Send(4);
+        Assert.True(RelayPayload.TryParse((await vy.ReceiveVoiceAsync())!.Value.Plain, out seq, out _, out _));
+        Assert.Equal(4u, seq);
+        await y.AssertNoMessageAsync<VoiceDown>();
+    }
+
+    /// <summary>Package 141: oversized, undecodable or wrongly addressed voice over TCP is dropped like a bad UDP payload, the connection stays.</summary>
+    [Fact]
+    public async Task Tcp_InvalidVoice_Dropped()
+    {
+        await SwitchToTcpAsync(server, b);
+        await a.SendAsync(new VoiceUp(0, VoiceHeader.TargetChannel, Convert.ToBase64String(new byte[VoiceHeader.MaxOpusSize + 1])));
+        await a.SendAsync(new VoiceUp(1, VoiceHeader.TargetChannel, "nicht base64!"));
+        await a.SendAsync(new VoiceUp(2, 7, Convert.ToBase64String(Opus)));
+        await b.AssertNoMessageAsync<VoiceDown>();
+        await SendTcpAsync(a, 3, Opus);
+        await HeardTcp(b, a.Id, 3, Opus);
+    }
+
+    /// <summary>
+    /// Package 141 (review): a VoiceUp not newer than the sender's last UDP frame was queued before it switched back; it is
+    /// neither relayed nor moves the session to TCP again. A newer one (also the empty switch with the next number) does.
+    /// </summary>
+    [Fact]
+    public async Task Tcp_StaleVoiceUp_AfterUdp_Ignored()
+    {
+        await va.HelloAsync();
+        await vb.HelloAsync();
+        await va.SendAsync(PacketType.Voice, Opus); // frame 0 over UDP
+        Assert.NotNull(await vb.ReceiveVoiceAsync());
+        var session = server.State.FindSession(a.Id)!;
+
+        await SendTcpAsync(a, 0, Opus);
+        await a.SendAsync(new VoiceUp(0, VoiceHeader.TargetChannel, ""));
+        await a.SendAsync(new Ping());
+        await a.WaitForAsync<Pong>(); // the VoiceUps before it are handled
+        Assert.False(session.TcpVoice);
+        Assert.Null(await vb.ReceiveVoiceAsync(300));
+
+        await SendTcpAsync(a, 1, Opus);
+        await WaitUntil(() => session.TcpVoice);
+        Assert.NotNull(await vb.ReceiveVoiceAsync());
+    }
+
+    static async Task WaitUntil(Func<bool> condition)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition() && watch.ElapsedMilliseconds < 10_000) await Task.Delay(20);
+        Assert.True(condition());
+    }
+
     /// <summary>Package 88: a Hello from another address cannot redirect the session's voice (no reflection).</summary>
     [Fact]
     public async Task Hello_FromOtherAddress_EndpointNotChanged()

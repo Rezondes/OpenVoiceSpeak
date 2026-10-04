@@ -34,12 +34,26 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     /// <summary>Package 75: the backup upload in progress (one per session), its hidden file and the bytes stored.</summary>
     public (string Id, string Path, long Received)? Upload { get; set; }
 
-    // Voice state, only touched by the UDP receive loop.
+    // Voice state, only touched under the voice gate of UdpVoiceServer (its UDP loop, and Package 141's VoiceUp).
     public VoiceCrypto Crypto { get; } = new(voiceKey);
     public IPEndPoint? UdpEndpoint { get; set; }
     public ReplayWindow Replay { get; } = new();
     public SeqCounter OutSeq { get; } = new();
-    public RateLimiter Limiter { get; } = new(time);
+    public RateLimiter Limiter { get; } = new(time, Limits.VoicePerSecond, Limits.VoiceBurst);
+    volatile bool tcpVoice;
+    /// <summary>Package 141: the newest frame number this sender sent over UDP, -1 before the first.</summary>
+    public long LastUdpFrame { get; set; } = -1;
+    DateTimeOffset voiceFloodSince, voiceLastRefused;
+
+    /// <summary>Package 141: an invalid VoiceUp; true once they went on without a FloodPause for FloodDisconnectAfter, like refused requests.</summary>
+    public bool RefuseVoice() => Flooding(ref voiceFloodSince, ref voiceLastRefused);
+
+    /// <summary>Package 141 (A150): this client's voice goes over its TLS connection; set by VoiceUp, cleared by a UDP ping or voice packet. Routing reads it under the ServerState lock.</summary>
+    public bool TcpVoice
+    {
+        get => tcpVoice;
+        set => tcpVoice = value;
+    }
     /// <summary>Package 133 (A142): the gaps in this sender's frame numbers, told to it in the ping answer.</summary>
     public LossWindow Uplink { get; } = new(time);
     long downlinkLoss; // packed, so another thread never reads half of it
@@ -209,10 +223,16 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public bool? TakeRequest()
     {
         if (requests.TryTake()) return null;
+        return Flooding(ref floodSince, ref lastRefused);
+    }
+
+    /// <summary>Notes a refusal; true when refusals went on without a pause longer than FloodPause for FloodDisconnectAfter.</summary>
+    bool Flooding(ref DateTimeOffset since, ref DateTimeOffset last)
+    {
         var now = time.GetUtcNow();
-        if (now - lastRefused > Limits.FloodPause) floodSince = now;
-        lastRefused = now;
-        return now - floodSince >= Limits.FloodDisconnectAfter;
+        if (now - last > Limits.FloodPause) since = now;
+        last = now;
+        return now - since >= Limits.FloodDisconnectAfter;
     }
 
     /// <summary>Per list kind: when its first page was answered and which later pages were sent since.</summary>
@@ -261,6 +281,18 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         if (Interlocked.Add(ref queuedBytes, frame.Length) <= Limits.MaxOutboxBytes && outbox.Writer.TryWrite(frame)) return;
         Interlocked.Add(ref queuedBytes, -frame.Length);
         if (!closing) Abort("Sendepuffer voll");
+    }
+
+    /// <summary>
+    /// Package 141: a VoiceDown frame for a listener on TCP. Never blocks and never aborts: dropped while the outbox already
+    /// holds <see cref="Limits.MaxQueuedVoice"/> messages or half its bytes, so a slow reader only loses voice and the
+    /// relay never waits for it.
+    /// </summary>
+    public void SendVoice(byte[]? frame)
+    {
+        if (closing || frame is null || outbox.Reader.Count >= Limits.MaxQueuedVoice || QueuedBytes + frame.Length > Limits.MaxOutboxBytes / 2) return;
+        Interlocked.Add(ref queuedBytes, frame.Length);
+        if (!outbox.Writer.TryWrite(frame)) Interlocked.Add(ref queuedBytes, -frame.Length);
     }
 
     /// <summary>The frame of a message, null when it exceeds the frame limit.</summary>

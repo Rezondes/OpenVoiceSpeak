@@ -14,6 +14,8 @@ namespace OVS.Shared.Protocol;
 [JsonDerivedType(typeof(Welcome), "welcome")]
 [JsonDerivedType(typeof(Rejected), "rejected")]
 [JsonDerivedType(typeof(Disconnected), "disconnected")]
+[JsonDerivedType(typeof(VoiceUp), "voiceUp")] // Package 141
+[JsonDerivedType(typeof(VoiceDown), "voiceDown")]
 // Channels and users
 [JsonDerivedType(typeof(JoinChannel), "joinChannel")]
 [JsonDerivedType(typeof(CreateChannel), "createChannel")]
@@ -103,6 +105,14 @@ public sealed record ClientProof(string Signature) : Message;
 public sealed record Welcome(uint SessionId, string VoiceKey, ServerSnapshot Snapshot) : Message;
 public sealed record Rejected(string Code, string? Detail = null) : Message;
 public sealed record Disconnected(string Reason, string? Detail = null) : Message;
+/// <summary>
+/// Package 141 (A150): voice over the TLS connection while UDP does not work; no request, it has its own budget. Seq is
+/// the frame number, Opus the frame as base64 (at most VoiceHeader.MaxOpusSize bytes). An empty Opus only moves the
+/// session's voice to TCP (a listener that does not talk); a UDP ping or voice packet moves it back.
+/// </summary>
+public sealed record VoiceUp(uint Seq, byte Target, string Opus) : Message;
+/// <summary>Package 141: a speaker's frame to a client on voice over TCP; never with a copy, the path loses nothing.</summary>
+public sealed record VoiceDown(uint SessionId, uint Seq, byte Target, string Opus) : Message;
 
 // ---- State ----
 /// <param name="IconHash">Hash of the server logo (ServerIconFormat.Hash), null when the server has none.</param>

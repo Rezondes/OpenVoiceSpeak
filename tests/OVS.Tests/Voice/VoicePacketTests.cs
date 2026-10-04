@@ -37,7 +37,7 @@ public class VoicePacketTests
     [Fact]
     public void RelayPayload_WithCopy_RoundTrip_SizeLimit()
     {
-        Assert.Equal(14, OVS.Shared.Protocol.ProtocolInfo.Version);
+        Assert.True(OVS.Shared.Protocol.ProtocolInfo.Version >= 14); // 14 brought the copy; SmokeTests pins the current one
         var previous = RandomNumberGenerator.GetBytes(50);
 
         var single = RelayPayload.Build(7, Opus);
