@@ -26,7 +26,8 @@ public sealed class CapturePipeline : IDisposable
 
     CapturePipeline() { }
 
-    public static CapturePipeline FromDevice(MMDevice? device)
+    /// <param name="failed">Package 137: the device stopped with an error (unplugged, invalidated); any thread, must not block.</param>
+    public static CapturePipeline FromDevice(MMDevice? device, Action<Exception>? failed = null)
     {
         var pipeline = new CapturePipeline();
         // Event driven with a 20 ms buffer: the default polls a 100 ms buffer and adds up to 50 ms latency.
@@ -34,6 +35,10 @@ public sealed class CapturePipeline : IDisposable
         float[] mono = []; // reused: only the capture thread touches it
         capture.DataAvailable += (_, e) =>
             pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, capture.WaveFormat, ref mono), capture.WaveFormat.SampleRate);
+        capture.RecordingStopped += (_, e) =>
+        {
+            if (e.Exception is { } error) failed?.Invoke(error); // a stop of our own (Dispose) carries none
+        };
         pipeline.capture = capture;
         return pipeline;
     }

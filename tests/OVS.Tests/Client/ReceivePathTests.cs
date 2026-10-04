@@ -1,5 +1,7 @@
 using OVS.Client.Audio;
 using OVS.Client.Input;
+using OVS.Client.Localization;
+using OVS.Client.Settings;
 using OVS.Shared.Voice;
 
 namespace OVS.Tests.Client;
@@ -732,5 +734,36 @@ public class ReceivePathTests
         Assert.Equal(start.Decode(Copy(15)), fresh.Pull());
         Assert.Equal(start.Decode(Frame(16)), fresh.Pull());
         Assert.Equal((2, 2), (fresh.Recovered, fresh.Lost));
+    }
+
+    /// <summary>
+    /// Package 137 (AC2): the chosen output unplugged while connected: within the 800 ms after the change the speaker
+    /// runs on the default, with one notice, also over further changes; plugged in again, the output is back on it.
+    /// </summary>
+    [Fact]
+    public async Task ChosenOutputRemoved_FallsBack_Returns()
+    {
+        using var rig = new SendPathTests.DeviceRig(new ClientSettings { OutputDeviceId = "headset" }, "headset");
+        await rig.ConnectAsync();
+        Assert.Equal("headset", rig.Devices.Open.Speaker);
+
+        rig.Devices.Present.Remove("headset");
+        rig.Devices.RaiseChanged();
+        rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
+        Assert.Equal(1, rig.Devices.Counts.Speakers);
+        rig.Time.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.Equal(("speaker-default", 1), (rig.Devices.Open.Speaker, rig.Devices.Counts.SpeakersOpen));
+        Assert.Equal([Strings.Audio_SpeakerLost], rig.Notices);
+
+        var before = rig.Devices.Counts;
+        rig.Change(); // something else changed: nothing reopens, no second notice
+        Assert.Equal(before, rig.Devices.Counts);
+        Assert.Equal("speaker-default", rig.Devices.Open.Speaker);
+        Assert.Single(rig.Notices);
+
+        rig.Devices.Present.Add("headset");
+        rig.Change();
+        Assert.Equal(("headset", 1), (rig.Devices.Open.Speaker, rig.Devices.Counts.SpeakersOpen));
+        Assert.Single(rig.Notices);
     }
 }

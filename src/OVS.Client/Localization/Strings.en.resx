@@ -8,7 +8,9 @@
   <data name="About_LocalBuild" xml:space="preserve"><value>Local build, not a published version</value></data>
   <data name="Audio_DeviceFallback" xml:space="preserve"><value>A saved audio device is missing, the default device is used.</value></data>
   <data name="Audio_MicFailed" xml:space="preserve"><value>Could not open the microphone: {0}</value></data>
+  <data name="Audio_MicLost" xml:space="preserve"><value>Microphone disconnected, using the default device.</value></data>
   <data name="Audio_SpeakerFailed" xml:space="preserve"><value>Could not open the speaker: {0}</value></data>
+  <data name="Audio_SpeakerLost" xml:space="preserve"><value>Speaker disconnected, using the default device.</value></data>
   <data name="Backup_ConfirmDelete" xml:space="preserve"><value>Delete the backup from {0}?</value></data>
   <data name="Backup_ConfirmRestore" xml:space="preserve"><value>Everyone is disconnected and the current state is replaced. The server takes a safety backup first.</value></data>
   <data name="Backup_Details" xml:space="preserve"><value>{0}, server version {1}</value></data>

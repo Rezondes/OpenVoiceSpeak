@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using OVS.Client.Audio;
 using OVS.Client.Input;
+using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Shared.Voice;
@@ -857,5 +859,227 @@ public class SendPathTests
         Assert.Null(await Send(8));
         await Report(new LossReport(100, 1));
         Assert.Null(await Send(9));
+    }
+
+    // ---- Package 137: audio device changes ----
+
+    /// <summary>
+    /// Package 137 (A146): an engine on a manual clock with fake devices; the device changes are raised by hand and the
+    /// reopen runs on the test thread when the clock passes the debounce.
+    /// </summary>
+    internal sealed class DeviceRig : IDisposable
+    {
+        public readonly FakeAudioDevices Devices = new();
+        public readonly ManualTimeProvider Time = new();
+        public readonly KeyPoller Keys = new();
+        public readonly AudioEngine Engine;
+        readonly List<string> notices = [];
+
+        public DeviceRig(ClientSettings settings, params string[] present)
+        {
+            Devices.Present.UnionWith(present);
+            Engine = new AudioEngine(Keys, useDevices: false, devices: Devices, time: Time);
+            Engine.Warning += text =>
+            {
+                lock (notices) notices.Add(text);
+            };
+            Engine.Configure(settings);
+        }
+
+        public List<string> Notices
+        {
+            get { lock (notices) return [.. notices]; }
+        }
+
+        /// <summary>Connects and waits until microphone and speaker are open (they open off the calling thread).</summary>
+        public async Task ConnectAsync()
+        {
+            Engine.Connected = true;
+            await Until(() => Devices.Counts is { MicsOpen: 1, SpeakersOpen: 1 });
+            Assert.Equal((1, 1, 1, 1), Devices.Counts);
+        }
+
+        /// <summary>A device change, and the quiet time after it runs out.</summary>
+        public void Change()
+        {
+            Devices.RaiseChanged();
+            Time.Advance(AudioEngine.DeviceSettle);
+        }
+
+        public void Dispose()
+        {
+            Engine.Dispose();
+            Keys.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Package 137 (AC1): the chosen microphone unplugged while connected: within the 800 ms after the change the capture
+    /// runs on the default, with one notice, also over further changes; plugged in again, the capture is back on it.
+    /// </summary>
+    [Fact]
+    public async Task ChosenMicRemoved_FallsBack_Returns()
+    {
+        using var rig = new DeviceRig(new ClientSettings { InputDeviceId = "headset" }, "headset");
+        await rig.ConnectAsync();
+        Assert.Equal("headset", rig.Devices.Open.Mic);
+
+        rig.Devices.Present.Remove("headset");
+        rig.Devices.RaiseChanged();
+        rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
+        Assert.Equal(1, rig.Devices.Counts.Mics); // still quiet: nothing yet
+        rig.Time.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.Equal(("mic-default", 1), (rig.Devices.Open.Mic, rig.Devices.Counts.MicsOpen));
+        Assert.Equal([Strings.Audio_MicLost], rig.Notices);
+        Assert.True(AudioEngine.DeviceSettle < TimeSpan.FromSeconds(1));
+
+        var before = rig.Devices.Counts;
+        rig.Change(); // something else changed: nothing reopens, no second notice
+        Assert.Equal(before, rig.Devices.Counts);
+        Assert.Equal("mic-default", rig.Devices.Open.Mic);
+        Assert.Single(rig.Notices);
+
+        rig.Devices.Present.Add("headset");
+        rig.Change();
+        Assert.Equal(("headset", 1), (rig.Devices.Open.Mic, rig.Devices.Counts.MicsOpen));
+        Assert.Single(rig.Notices);
+        Assert.NotNull(rig.Engine.Capture);
+
+        rig.Devices.Present.Remove("headset"); // gone again: a notice again
+        rig.Change();
+        Assert.Equal([Strings.Audio_MicLost, Strings.Audio_MicLost], rig.Notices);
+    }
+
+    /// <summary>
+    /// Package 137 (AC3): with "Standard" chosen, a new Windows default takes over capture or output, each on its own; a
+    /// change that would open the same devices (a monitor waking, a Bluetooth profile) reopens nothing.
+    /// </summary>
+    [Fact]
+    public async Task DefaultChanged_Follows()
+    {
+        using var rig = new DeviceRig(new ClientSettings());
+        await rig.ConnectAsync();
+        Assert.Equal(("mic-default", "speaker-default"), rig.Devices.Open);
+
+        rig.Change();
+        Assert.Equal((1, 1, 1, 1), rig.Devices.Counts);
+
+        rig.Devices.DefaultMic = "usb-mic";
+        rig.Change();
+        Assert.Equal(("usb-mic", "speaker-default"), rig.Devices.Open);
+        Assert.Equal((2, 1, 1, 1), rig.Devices.Counts); // only the microphone
+
+        rig.Devices.DefaultSpeaker = "usb-speaker";
+        rig.Change();
+        Assert.Equal(("usb-mic", "usb-speaker"), rig.Devices.Open);
+        Assert.Equal((2, 1, 2, 1), rig.Devices.Counts); // only the speaker
+        Assert.Empty(rig.Notices); // nothing chosen went missing
+    }
+
+    /// <summary>
+    /// Package 137: a stream that stops with an error reopens its own direction on the same device; when that fails again
+    /// and again right after opening, it is given up with one notice instead of a silent reopen every 800 ms. Another
+    /// device becoming the one to open tries again.
+    /// </summary>
+    [Fact]
+    public async Task StreamError_Reopens_BacksOff()
+    {
+        using var rig = new DeviceRig(new ClientSettings());
+        await rig.ConnectAsync();
+
+        rig.Devices.RaiseFailed(DataFlow.Render);
+        rig.Time.Advance(AudioEngine.DeviceSettle);
+        Assert.Equal((1, 1, 2, 1), rig.Devices.Counts); // only the speaker, on the same device
+        Assert.Equal("speaker-default", rig.Devices.Open.Speaker);
+
+        rig.Devices.RaiseFailed(DataFlow.Capture);
+        rig.Time.Advance(AudioEngine.DeviceSettle);
+        rig.Devices.RaiseFailed(DataFlow.Capture);
+        rig.Time.Advance(AudioEngine.DeviceSettle);
+        Assert.Equal((3, 1, 2, 1), rig.Devices.Counts);
+        Assert.Empty(rig.Notices);
+
+        rig.Devices.RaiseFailed(DataFlow.Capture); // the third failure in a row: given up
+        rig.Time.Advance(AudioEngine.DeviceSettle);
+        Assert.Equal((3, 1, 2, 1), rig.Devices.Counts);
+        Assert.Equal([string.Format(Strings.Audio_MicFailed, "device invalidated")], rig.Notices);
+        rig.Change();
+        rig.Time.Advance(TimeSpan.FromSeconds(30));
+        Assert.Equal((3, 1, 2, 1), rig.Devices.Counts);
+
+        rig.Devices.DefaultMic = "usb-mic";
+        rig.Change();
+        Assert.Equal(("usb-mic", 4), (rig.Devices.Open.Mic, rig.Devices.Counts.Mics));
+        Assert.Single(rig.Notices);
+    }
+
+    /// <summary>Package 137 (AC4): changes keep coming within 800 ms of each other: one reopen, 800 ms after the last.</summary>
+    [Fact]
+    public async Task Changes_Debounced()
+    {
+        using var rig = new DeviceRig(new ClientSettings());
+        await rig.ConnectAsync();
+
+        rig.Devices.DefaultMic = "usb-mic";
+        rig.Devices.DefaultSpeaker = "usb-speaker";
+        for (int i = 0; i < 5; i++)
+        {
+            rig.Devices.RaiseChanged();
+            rig.Time.Advance(TimeSpan.FromMilliseconds(500));
+        }
+        rig.Devices.RaiseChanged();
+        rig.Devices.RaiseChanged();
+        rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
+        Assert.Equal((1, 1, 1, 1), rig.Devices.Counts);
+
+        rig.Time.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.Equal((2, 1, 2, 1), rig.Devices.Counts);
+        rig.Time.Advance(TimeSpan.FromSeconds(5));
+        Assert.Equal((2, 1, 2, 1), rig.Devices.Counts);
+    }
+
+    /// <summary>
+    /// Package 137 (AC5): no device open (before connecting, after disconnecting): a change opens nothing. The engine
+    /// stops listening when it goes away.
+    /// </summary>
+    [Fact]
+    public async Task Closed_ChangeOpensNothing()
+    {
+        var rig = new DeviceRig(new ClientSettings());
+        try
+        {
+            Assert.Equal(1, rig.Devices.Subscribers);
+            rig.Change();
+            Assert.Equal((0, 0, 0, 0), rig.Devices.Counts);
+
+            await rig.ConnectAsync();
+            rig.Engine.Connected = false;
+            await Until(() => rig.Devices.Counts.MicsOpen == 0 && !rig.Engine.PlaybackRunning);
+            Assert.Equal((1, 0, 1, 0), rig.Devices.Counts);
+            rig.Change();
+            Assert.Equal((1, 0, 1, 0), rig.Devices.Counts);
+
+            rig.Devices.RaiseChanged(); // pending when the engine goes away
+        }
+        finally
+        {
+            rig.Dispose();
+        }
+        Assert.Equal(0, rig.Devices.Subscribers);
+        rig.Time.Advance(TimeSpan.FromSeconds(5));
+        Assert.Equal((1, 0, 1, 0), rig.Devices.Counts);
+    }
+
+    /// <summary>
+    /// Package 137: the real watcher registers with Windows and unregisters again, without a device being needed. Where
+    /// there is no audio service (a build machine) Start gives null; either way nothing throws.
+    /// </summary>
+    [Fact]
+    public void DeviceWatcher_RegistersAndUnregisters()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            using var watcher = DeviceWatcher.Start(() => { });
+        }
     }
 }

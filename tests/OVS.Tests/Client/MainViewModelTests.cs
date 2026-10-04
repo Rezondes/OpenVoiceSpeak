@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using NAudio.Wave;
 using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Net;
@@ -1436,60 +1435,6 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     // ---- Package 124: low CPU and RAM while idle ----
-
-    /// <summary>Counts the microphones and speakers the engine opens and closes, without hardware.</summary>
-    sealed class FakeAudioDevices : IAudioDeviceFactory
-    {
-        readonly List<CapturePipeline> captures = [];
-        readonly List<FakeOutput> outputs = [];
-        readonly List<string?> captureIds = [];
-
-        public CapturePipeline OpenCapture(string? deviceId, List<string> warnings)
-        {
-            var capture = CapturePipeline.Manual();
-            lock (captures)
-            {
-                captures.Add(capture);
-                captureIds.Add(deviceId);
-            }
-            return capture;
-        }
-
-        public (BufferedWaveProvider Buffer, IDisposable Device) OpenOutput(string? deviceId, List<string> warnings)
-        {
-            var output = new FakeOutput();
-            lock (outputs) outputs.Add(output);
-            // Nothing plays it: one frame long, so it never holds the engine's 40 ms and the tones run through at once.
-            var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
-            {
-                BufferDuration = AudioFormat.FrameDuration,
-                DiscardOnBufferOverflow = true,
-            };
-            return (buffer, output);
-        }
-
-        /// <summary>Opened so far and open now, for microphones and speakers.</summary>
-        public (int Mics, int MicsOpen, int Speakers, int SpeakersOpen) Counts
-        {
-            get
-            {
-                lock (captures)
-                lock (outputs)
-                    return (captures.Count, captures.Count(c => !c.IsDisposed), outputs.Count, outputs.Count(o => !o.Disposed));
-            }
-        }
-
-        public string? LastMicId
-        {
-            get { lock (captures) return captureIds[^1]; }
-        }
-
-        sealed class FakeOutput : IDisposable
-        {
-            public volatile bool Disposed;
-            public void Dispose() => Disposed = true;
-        }
-    }
 
     /// <summary>
     /// Package 124: the microphone opens on a pool thread; one still queued when the engine goes away (closing the

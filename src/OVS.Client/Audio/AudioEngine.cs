@@ -65,6 +65,21 @@ public interface IAudioDeviceFactory
 
     /// <returns>The buffer the playback loop fills, and the playing device, disposed when done.</returns>
     (BufferedWaveProvider Buffer, IDisposable Device) OpenOutput(string? deviceId, List<string> warnings);
+
+    /// <summary>
+    /// Package 137 (A146): the endpoint id that would open now for this choice: the chosen device if active, else the
+    /// console default; null when there is none.
+    /// </summary>
+    string? Resolve(string? deviceId, DataFlow flow);
+
+    /// <summary>
+    /// Package 137: a device was added, removed, enabled or disabled, or the default changed. Raised on any thread (COM
+    /// threads too); a handler must return at once.
+    /// </summary>
+    event Action? Changed;
+
+    /// <summary>Package 137: an open microphone or speaker stopped with an error (unplugged, invalidated); any thread.</summary>
+    event Action<DataFlow, Exception>? Failed;
 }
 
 /// <summary>The real microphone and speaker (WASAPI).</summary>
@@ -72,8 +87,66 @@ sealed class WasapiDevices : IAudioDeviceFactory
 {
     public static readonly WasapiDevices Instance = new();
 
+    readonly object watcherGate = new();
+    Action? changed;
+    DeviceWatcher? watcher;
+
+    /// <summary>Package 137: Windows is asked for notifications only while someone listens (the engine, for its lifetime).</summary>
+    public event Action? Changed
+    {
+        add
+        {
+            lock (watcherGate)
+            {
+                changed += value;
+                watcher ??= DeviceWatcher.Start(Raise);
+            }
+        }
+        remove
+        {
+            lock (watcherGate)
+            {
+                changed -= value;
+                if (changed is not null) return;
+                watcher?.Dispose();
+                watcher = null;
+            }
+        }
+    }
+
+    void Raise() => Volatile.Read(ref changed)?.Invoke();
+
+    public event Action<DataFlow, Exception>? Failed;
+
+    public string? Resolve(string? deviceId, DataFlow flow)
+    {
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            if (deviceId is not null)
+            {
+                try
+                {
+                    using var device = enumerator.GetDevice(deviceId);
+                    if (device.State == DeviceState.Active && device.DataFlow == flow) return deviceId;
+                }
+                catch (Exception e) when (e is COMException or ArgumentException)
+                {
+                    // unknown id: unplugged or removed
+                }
+            }
+            if (!enumerator.HasDefaultAudioEndpoint(flow, Role.Console)) return null;
+            using var fallback = enumerator.GetDefaultAudioEndpoint(flow, Role.Console);
+            return fallback.ID;
+        }
+        catch (COMException)
+        {
+            return null;
+        }
+    }
+
     public CapturePipeline OpenCapture(string? deviceId, List<string> warnings) =>
-        CapturePipeline.FromDevice(AudioDevices.Open(deviceId, DataFlow.Capture, warnings));
+        CapturePipeline.FromDevice(AudioDevices.Open(deviceId, DataFlow.Capture, warnings), e => Failed?.Invoke(DataFlow.Capture, e));
 
     public (BufferedWaveProvider Buffer, IDisposable Device) OpenOutput(string? deviceId, List<string> warnings)
     {
@@ -81,6 +154,10 @@ sealed class WasapiDevices : IAudioDeviceFactory
         var output = device is null
             ? new WasapiOut(AudioClientShareMode.Shared, 30)
             : new WasapiOut(device, AudioClientShareMode.Shared, true, 30);
+        output.PlaybackStopped += (_, e) =>
+        {
+            if (e.Exception is { } error) Failed?.Invoke(DataFlow.Render, error); // Package 137: a stop of our own carries none
+        };
         try
         {
             var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
@@ -115,6 +192,7 @@ public sealed class AudioEngine : IDisposable
     readonly object threadGate = new(); // the playback thread's start and end; never held while taking gate
     readonly KeyPoller keys;
     readonly IAudioDeviceFactory? devices;
+    readonly ITimer? settle; // Package 137: the reopen after device changes, once they have been quiet
     readonly Action<string>? log;
     bool noiseSuppressorMissing; // logged once, then no further tries
     Thread? playbackThread;
@@ -134,6 +212,9 @@ public sealed class AudioEngine : IDisposable
     byte? lastTarget;
     int levelCounter;
     long framesSent, mixes;
+    readonly TimeProvider time;
+    readonly Endpoint mic = new(), speaker = new(); // Package 137, under gate (but StreamError)
+    bool deviceReopen; // Package 137, under gate: the open running is the one after a device change
 
     /// <param name="log">A line for the client log (Package 123: when noise suppression cannot load).</param>
     /// <param name="devices">Package 124: where microphone and speaker come from; the real ones by default (tests pass fakes).</param>
@@ -141,10 +222,134 @@ public sealed class AudioEngine : IDisposable
     public AudioEngine(KeyPoller keys, bool useDevices = true, Action<string>? log = null, IAudioDeviceFactory? devices = null, TimeProvider? time = null)
     {
         this.keys = keys;
-        Loss = new LossAdapter(time ?? TimeProvider.System, ProtocolInfo.DefaultBitrate);
+        this.time = time ?? TimeProvider.System;
+        Loss = new LossAdapter(this.time, ProtocolInfo.DefaultBitrate);
         this.devices = devices ?? (useDevices ? WasapiDevices.Instance : null);
         this.log = log;
         keys.Changed += OnKeysChanged;
+        if (this.devices is null) return;
+        settle = this.time.CreateTimer(_ => ReopenAfterChange(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        this.devices.Changed += OnDeviceChanged;
+        this.devices.Failed += OnDeviceFailed;
+    }
+
+    /// <summary>
+    /// Package 137: what one direction opened last, so a device change reopens it only when another device would open
+    /// now or its stream broke. Under gate, except <see cref="StreamError"/>.
+    /// </summary>
+    sealed class Endpoint
+    {
+        public string? Id; // what the last open resolved to
+        public long OpenedAt;
+        public int Failures; // in a row on Id: opens that threw, stream errors soon after opening
+        public bool FellBack; // the user was told the chosen device is missing
+        public Exception? StreamError; // set on device threads, taken when the devices settled
+    }
+
+    /// <summary>Package 137: after this many failures in a row the same device is not tried again until another would open.</summary>
+    const int MaxFailures = 3;
+
+    /// <summary>Package 137: a stream error later than this after opening is a new trouble, not the open failing.</summary>
+    static readonly TimeSpan StableAfter = TimeSpan.FromSeconds(10);
+
+    /// <summary>Package 137 (A146): how long device changes must have been quiet before what is open reopens (Fluxer's 800 ms).</summary>
+    public static readonly TimeSpan DeviceSettle = TimeSpan.FromMilliseconds(800);
+
+    /// <summary>Package 137: on a COM or device thread, so it only (re)arms the timer: each change starts the quiet time anew.</summary>
+    void OnDeviceChanged()
+    {
+        try
+        {
+            settle?.Change(DeviceSettle, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException)
+        {
+            // a change arriving while the engine goes away
+        }
+    }
+
+    /// <summary>Package 137: an open device's stream broke; on its own thread, so it only marks it and arms the timer.</summary>
+    void OnDeviceFailed(DataFlow flow, Exception error)
+    {
+        Volatile.Write(ref (flow == DataFlow.Capture ? mic : speaker).StreamError, error);
+        OnDeviceChanged();
+    }
+
+    /// <summary>
+    /// Package 137 (A146): the devices settled. Each direction in use opens again only when another device would open
+    /// now (the chosen one went or came back, "Standard" got a new default) or its stream broke, so the many unrelated
+    /// notifications (sleeping monitors, Bluetooth profiles, docks) leave a running microphone and speaker alone.
+    /// Timer thread.
+    /// </summary>
+    void ReopenAfterChange()
+    {
+        var warnings = new List<string>();
+        lock (gate)
+        {
+            if (!running) return;
+            deviceReopen = true;
+            try
+            {
+                ReopenIfDue(mic, DataFlow.Capture, settings.InputDeviceId, ToneHz is null && micWanted, capture is not null, ReopenCapture, Strings.Audio_MicFailed, warnings);
+                ReopenIfDue(speaker, DataFlow.Render, settings.OutputDeviceId, output is not null || PlaybackRunning, output is not null, ReopenOutput, Strings.Audio_SpeakerFailed, warnings);
+            }
+            finally
+            {
+                deviceReopen = false;
+            }
+        }
+        if (Text(warnings) is { } text) Warning?.Invoke(text);
+    }
+
+    /// <summary>Package 137: one direction after a device change; a failure becomes a notice in its own words. Under gate.</summary>
+    void ReopenIfDue(Endpoint endpoint, DataFlow flow, string? chosen, bool needed, bool open, Action<List<string>> reopen, string failedText, List<string> warnings)
+    {
+        var error = Interlocked.Exchange(ref endpoint.StreamError, null);
+        if (!needed || devices is null) return;
+        try
+        {
+            if (devices.Resolve(chosen, flow) == endpoint.Id)
+            {
+                if (open && error is null) return; // an unrelated change: the device in use stays as it is
+                if (error is not null) endpoint.Failures = time.GetElapsedTime(endpoint.OpenedAt) < StableAfter ? endpoint.Failures + 1 : 1;
+                if (endpoint.Failures >= MaxFailures)
+                {
+                    // given up on this device until another one would open or the settings are saved; a failed open told the user already
+                    if (error is not null) warnings.Add(string.Format(failedText, error.Message));
+                    return;
+                }
+            }
+            reopen(warnings);
+        }
+        catch (Exception e) // a background thread must not take the client down: the user gets a notice instead
+        {
+            warnings.Add(string.Format(failedText, e.Message));
+        }
+    }
+
+    /// <summary>Package 137: under gate.</summary>
+    void ReopenCapture(List<string> warnings)
+    {
+        capture?.Dispose();
+        capture = null;
+        voiceDetected = false;
+        SyncCapture(warnings);
+    }
+
+    /// <summary>Package 137: under gate.</summary>
+    void ReopenOutput(List<string> warnings)
+    {
+        CloseOutput();
+        StartOutput(warnings);
+    }
+
+    /// <summary>Package 137: what a direction opens now; another device than last time starts its failure count anew. Under gate.</summary>
+    void Opening(Endpoint endpoint, string? chosen, DataFlow flow)
+    {
+        var id = devices!.Resolve(chosen, flow);
+        if (id != endpoint.Id) endpoint.Failures = 0;
+        endpoint.Id = id;
+        endpoint.OpenedAt = time.GetTimestamp();
     }
 
     /// <summary>
@@ -355,16 +560,29 @@ public sealed class AudioEngine : IDisposable
         {
             settings = newSettings;
             live = null;
-            bool speaker = output is not null || PlaybackRunning;
-            StopDevices();
             Mode = settings.Mode;
             Mixer.Volume = settings.OutputVolume;
             keys.ReleaseDelay = TimeSpan.FromMilliseconds(settings.PttReleaseDelayMs); // Package 130
+            mic.Failures = speaker.Failures = 0; // Package 137: saving tries a given-up device again
             var warnings = new List<string>();
+            bool speakerOpen = output is not null || PlaybackRunning;
+            StopDevices();
             SyncCapture(warnings);
-            if (speaker) StartOutput(warnings); // a device changed while connected takes effect at once
+            if (speakerOpen) StartOutput(warnings); // a device changed while connected takes effect at once
             return Text(warnings);
         }
+    }
+
+    /// <summary>
+    /// Package 137: the factory's fallback warning as it reaches the user. After a device change it names the device
+    /// that went missing, once until that device is back; any other open warns as before. Under gate.
+    /// </summary>
+    void Report(List<string> opened, Endpoint endpoint, string lost, List<string> warnings)
+    {
+        bool now = opened.Remove(Strings.Audio_DeviceFallback);
+        if (now && !(deviceReopen && endpoint.FellBack)) warnings.Add(deviceReopen ? lost : Strings.Audio_DeviceFallback);
+        endpoint.FellBack = now;
+        warnings.AddRange(opened);
     }
 
     static string? Text(List<string> warnings) => warnings.Count == 0 ? null : string.Join(" ", warnings.Distinct());
@@ -424,9 +642,12 @@ public sealed class AudioEngine : IDisposable
 
     void StartCapture(List<string> warnings)
     {
+        var opened = new List<string>();
+        bool device = ToneHz is null; // Package 137: the test tone leaves the microphone's state alone
         try
         {
-            capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : devices?.OpenCapture(settings.InputDeviceId, warnings);
+            if (device) Opening(mic, settings.InputDeviceId, DataFlow.Capture);
+            capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : devices?.OpenCapture(settings.InputDeviceId, opened);
             if (capture is null) return;
             var values = live ?? settings;
             capture.Gain = values.InputGain;
@@ -447,6 +668,11 @@ public sealed class AudioEngine : IDisposable
             capture?.Dispose();
             capture = null;
             warnings.Add(string.Format(Strings.Audio_MicFailed, e.Message));
+            if (device) mic.Failures++;
+        }
+        finally
+        {
+            if (device) Report(opened, mic, Strings.Audio_MicLost, warnings);
         }
     }
 
@@ -467,13 +693,20 @@ public sealed class AudioEngine : IDisposable
     void StartOutput(List<string> warnings)
     {
         if (devices is null || output is not null || !running) return;
+        var opened = new List<string>();
         try
         {
-            (playback, output) = devices.OpenOutput(settings.OutputDeviceId, warnings);
+            Opening(speaker, settings.OutputDeviceId, DataFlow.Render);
+            (playback, output) = devices.OpenOutput(settings.OutputDeviceId, opened);
         }
         catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException)
         {
             warnings.Add(string.Format(Strings.Audio_SpeakerFailed, e.Message));
+            speaker.Failures++;
+        }
+        finally
+        {
+            Report(opened, speaker, Strings.Audio_SpeakerLost, warnings);
         }
     }
 
@@ -651,6 +884,12 @@ public sealed class AudioEngine : IDisposable
     public void Dispose()
     {
         keys.Changed -= OnKeysChanged;
+        if (devices is not null)
+        {
+            devices.Changed -= OnDeviceChanged; // Package 137: Windows stops notifying
+            devices.Failed -= OnDeviceFailed;
+        }
+        settle?.Dispose();
         lock (gate) running = false; // a microphone open still queued finds the engine gone (SyncCapture)
         wake.Set();
         Thread? thread;
