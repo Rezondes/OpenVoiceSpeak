@@ -237,6 +237,141 @@ public class ReceivePathTests
         Assert.Equal(2, jb.Lost);
     }
 
+    /// <summary>
+    /// Package 134: one talk spurt of count frames from seq first, sent every 20 ms from start and arriving late(i) ms
+    /// after that; ticks every 20 ms (onTick gets the tick's number and what Pull gave) until 500 ms after the last was
+    /// sent, so the buffer rebuffers. Returns the time after it.
+    /// </summary>
+    static double Spurt(JitterBuffer jb, double start, uint first, int count, Func<int, double> late,
+        Action<int, float[]?>? onTick = null)
+    {
+        var arrivals = Enumerable.Range(0, count).Select(i => (Seq: first + (uint)i, At: start + 20.0 * i + late(i)))
+            .OrderBy(f => f.At).ToList();
+        int k = 0, tick = 0;
+        double now = start;
+        for (; now < start + 20.0 * count + 500; now += 20, tick++)
+        {
+            for (; k < arrivals.Count && arrivals[k].At <= now; k++)
+                jb.Push(arrivals[k].Seq, Frames[arrivals[k].Seq % 8], false, arrivals[k].At);
+            var pcm = jb.Pull();
+            onTick?.Invoke(tick, pcm);
+        }
+        return now;
+    }
+
+    // Package 134: arrivals spread over ±30 ms around 30 ms of latency
+    static double Jittery(int i) => 30 + (i % 4) switch { 0 => -30, 2 => 30, _ => 0 };
+
+    /// <summary>Package 134 (AC1): without jitter a spurt waits for 2 frames, as before.</summary>
+    [Fact]
+    public void Cushion_NoJitter_Two()
+    {
+        var jb = new JitterBuffer();
+        var now = Spurt(jb, 0, 0, 500, _ => 5);
+        Assert.Equal(2, jb.Cushion);
+        jb.Push(500, Frames[0], false, now);
+        Assert.Null(jb.Pull());
+        Assert.NotNull(jb.Pull()); // a lone frame plays after 40 ms
+    }
+
+    /// <summary>
+    /// Package 134 (AC2): with ±30 ms jitter the next spurt waits for 4 frames, and over 10 s it conceals less than the
+    /// first spurt did with the fixed 2 frames it started with.
+    /// </summary>
+    [Fact]
+    public void Cushion_GrowsWithJitter_FewerConcealed()
+    {
+        var jb = new JitterBuffer();
+        Assert.Equal(2, jb.Cushion);
+        var now = Spurt(jb, 0, 0, 500, Jittery);
+        var fixedTwo = jb.Concealed;
+        Assert.Equal(4, jb.Cushion);
+        Spurt(jb, now, 500, 500, Jittery);
+        var adaptive = jb.Concealed - fixedTwo;
+        Assert.True(adaptive < fixedTwo, $"adaptive {adaptive} vs fixed {fixedTwo}");
+        Assert.Equal(0, adaptive); // 80 ms covers the 60 ms spread
+    }
+
+    /// <summary>Package 134 (AC3): after a calm spurt the next one waits less again; however wild, never more than 10 frames.</summary>
+    [Fact]
+    public void Cushion_ShrinksNextSpurt_Capped()
+    {
+        var jb = new JitterBuffer();
+        var now = Spurt(jb, 0, 0, 500, Jittery);
+        Assert.Equal(4, jb.Cushion);
+        now = Spurt(jb, now, 500, 500, _ => 30);
+        Assert.Equal(2, jb.Cushion);
+
+        now = Spurt(jb, now, 1000, 500, i => i % 2 * 190.0); // every other frame 190 ms late
+        Assert.Equal(JitterBuffer.MaxFrames, jb.Cushion);
+        jb.Push(1500, Frames[0], false, now);
+        for (int i = 1; i < JitterBuffer.MaxFrames; i++) Assert.Null(jb.Pull());
+        Assert.NotNull(jb.Pull()); // a lone frame plays after 200 ms
+    }
+
+    /// <summary>Package 134 (AC4): when the jitter calms inside a spurt, the buffer keeps its frames; nothing is dropped.</summary>
+    [Fact]
+    public void NoDropInsideSpurt()
+    {
+        var jb = new JitterBuffer();
+        var now = Spurt(jb, 0, 0, 500, Jittery);
+        Assert.Equal(4, jb.Cushion);
+        var (lost, concealed) = (jb.Lost, jb.Concealed);
+        int heldLater = 0;
+        Spurt(jb, now, 500, 500, _ => 0, (tick, _) => { if (tick == 250) heldLater = jb.Buffered; });
+        Assert.Equal(2, jb.Cushion); // calm now, yet the 4 frames it started with stay
+        Assert.Equal(3, heldLater); // after the pull: 3 waiting, as at the start
+        Assert.Equal((lost, concealed), (jb.Lost, jb.Concealed));
+    }
+
+    /// <summary>
+    /// Package 134 (review): a network stall of 100 ms every second drains a 2 frame buffer, and its frames come in a burst
+    /// while it rebuffers, where the jitter takes no sample. The burst raises the cushion all the same, so the next
+    /// rebuffer waits long enough and the next spurt plays through the stalls without a gap.
+    /// </summary>
+    [Fact]
+    public void Cushion_GrowsWithStalls_NoGapsNextSpurt()
+    {
+        // what is sent from 500 to 600 ms into each second comes at 600 ms
+        static double Stalls(int i) => i % 50 is >= 25 and < 30 ? 100 - 20 * (i % 50 - 25) : 0;
+        (double End, int Gaps) Run(JitterBuffer jb, double start, uint first)
+        {
+            int gaps = 0;
+            bool begun = false;
+            var end = Spurt(jb, start, first, 500, Stalls, (tick, pcm) =>
+            {
+                begun |= pcm != null;
+                if (begun && pcm == null && tick < 500) gaps++; // silence before the spurt's end
+            });
+            return (end, gaps);
+        }
+        var jb = new JitterBuffer();
+        var (now, fixedTwo) = Run(jb, 0, 0);
+        Assert.True(fixedTwo > 0, "the first stall drains the buffer");
+        Assert.InRange(jb.JitterMs, 0, 5); // the jitter alone would leave the cushion at 2
+        Assert.Equal(6, jb.Cushion); // 100 ms late: 5 frames and one more
+        var (_, adaptive) = Run(jb, now, 500);
+        Assert.Equal(0, adaptive);
+    }
+
+    /// <summary>Package 134 (review): after a silence of more than a second the estimates are halved, so one noisy spurt
+    /// end does not hold back the next spurt fully.</summary>
+    [Fact]
+    public void Cushion_LongSilence_Halved()
+    {
+        var jb = new JitterBuffer();
+        var now = Spurt(jb, 0, 0, 500, Jittery);
+        Assert.Equal(4, jb.Cushion);
+        var (jitter, late) = (jb.JitterMs, jb.LateMs);
+        jb.Push(500, Frames[0], false, now + 1000); // 1.5 s after the last frame
+        Assert.Equal(jitter / 2, jb.JitterMs);
+        Assert.InRange(jb.LateMs, late / 2 * 0.99, late / 2); // and faded by one frame
+        Assert.Equal(3, jb.Cushion);
+        Assert.Null(jb.Pull());
+        Assert.Null(jb.Pull());
+        Assert.NotNull(jb.Pull());
+    }
+
     /// <summary>Package 133: the mixer sums the speakers for the connection details, also those already gone.</summary>
     [Fact]
     public void Mixer_Stats_SumOverSpeakers()

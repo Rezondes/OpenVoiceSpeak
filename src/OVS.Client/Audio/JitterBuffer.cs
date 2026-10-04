@@ -11,7 +11,7 @@ namespace OVS.Client.Audio;
 /// </summary>
 public sealed class JitterBuffer
 {
-    public const int StartDelay = 2;   // 40 ms cushion before playback starts
+    public const int StartDelay = 2;   // the least cushion before playback starts: 40 ms (Package 134: Cushion)
     public const int MaxFrames = 10;   // caps the latency at 200 ms
     const int MaxUnderruns = 2;        // then assume a talk pause and rebuffer
     public const int FrameMs = 20;
@@ -35,6 +35,19 @@ public sealed class JitterBuffer
     /// <summary>Package 133 (A142): the interarrival jitter of RFC 3550 in ms, from the arrival times against 20 ms per frame.</summary>
     public double JitterMs { get; private set; }
 
+    /// <summary>Package 134 (review): how late frames came lately in ms, as a burst after a stall shows it; fades with a
+    /// half-life of about 230 frames (4.6 s), so stalls every few seconds keep it up.</summary>
+    public double LateMs { get; private set; }
+    const double LateDecay = 0.997;
+    double maxTransit = double.NaN;
+
+    /// <summary>
+    /// Package 134 (A143): frames a talk spurt (or a rebuffer inside one) waits for, from the measured jitter or lateness.
+    /// It only sets where playback starts; frames already buffered are never dropped to follow it, as there is no time
+    /// stretching.
+    /// </summary>
+    public int Cushion => Math.Clamp((int)Math.Ceiling(Math.Max(2 * JitterMs, LateMs) / FrameMs) + 1, StartDelay, MaxFrames);
+
     /// <summary>Package 133: what the buffer holds back right now.</summary>
     public int DelayMs => frames.Count * FrameMs;
 
@@ -54,11 +67,31 @@ public sealed class JitterBuffer
         // a talk pause shifts the transit by its length (the frame number stood still), so there is a sample only while
         // playing: a frame that starts a spurt, also after a short pause, starts anew. A jump in the frame numbers while
         // playing (another route, a hostile sender) is no jitter either: more than the buffer holds is not a sample.
+        bool idle = !playing && frames.Count == 0;
+        bool close = arrival - lastArrival <= LossWindow.FreshAfter.TotalMilliseconds;
+        if (!close)
+        {
+            // Package 134 (review): after a long silence one noisy spurt end must not hold back the next spurt fully
+            JitterMs /= 2;
+            LateMs /= 2;
+        }
         double step = double.IsNaN(lastTransit) ? double.NaN : Math.Abs(transit - lastTransit);
         if (playing && step < MaxFrames * FrameMs) JitterMs += (step - JitterMs) / 16;
         lastTransit = transit;
+        // Package 134 (review): a stall drains the buffer and its frames then come in a burst while rebuffering, which the
+        // jitter above never sees. The burst shows it: the newest frames are early against the first, by as much as that
+        // was late. Measured against the highest transit since the buffer last ran empty, so a talk pause (the transit
+        // rises, the frame number stood still) is no lateness; a jump in the frame numbers starts anew, as above.
+        double late = maxTransit - transit;
+        LateMs *= LateDecay;
+        if (!started || idle || !(late >= 0 && late < MaxFrames * FrameMs)) maxTransit = transit;
+        else
+        {
+            LateMs = Math.Max(LateMs, late);
+            maxTransit -= 1; // ms per frame, so a lasting drop in the latency fades out
+        }
         // the same rule as LossWindow: after a silence of a second the frame numbers may have moved on through routing
-        if (!playing && frames.Count == 0) resumed = arrival - lastArrival <= LossWindow.FreshAfter.TotalMilliseconds;
+        if (idle) resumed = close;
         lastArrival = arrival;
         if (started && seq < next) return; // too late, already played or concealed
         frames[seq] = opus;
@@ -79,7 +112,8 @@ public sealed class JitterBuffer
         if (!playing)
         {
             if (frames.Count == 0) return null;
-            if (frames.Count < StartDelay && ++waited < StartDelay) return null;
+            int cushion = Cushion; // Package 134: fits the jitter; the jitter only moves while playing
+            if (frames.Count < cushion && ++waited < cushion) return null;
             var first = frames.Keys.First();
             // the end of the last spurt or the start of this one never came; a long silence or a big jump starts afresh
             if (started && resumed && first > next && first - next <= LossWindow.MaxGap) Lost += (int)(first - next);
