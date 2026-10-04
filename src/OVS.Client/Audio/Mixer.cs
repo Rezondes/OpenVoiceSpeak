@@ -2,8 +2,9 @@ namespace OVS.Client.Audio;
 
 public readonly record struct ActiveSpeaker(uint SessionId, bool ViaLink);
 
-/// <summary>Package 133 (A142): the jitter buffers' counts summed over the speakers, the worst jitter and delay of those present.</summary>
-public readonly record struct ReceiveStats(int Received, int Lost, int Rebuilt, int Concealed, double JitterMs, int DelayMs);
+/// <summary>Package 133 (A142): the jitter buffers' counts summed over the speakers, the worst jitter and delay of those present.
+/// Package 136: Recovered are the frames played in full from a copy in the next packet.</summary>
+public readonly record struct ReceiveStats(int Received, int Lost, int Rebuilt, int Concealed, double JitterMs, int DelayMs, int Recovered = 0);
 
 /// <summary>One jitter buffer per speaker, summed into one 20 ms frame per tick. Thread-safe.</summary>
 public sealed class Mixer
@@ -47,13 +48,14 @@ public sealed class Mixer
     public float Volume { get; set; } = 1f;
 
     /// <param name="arrivalMs">Package 133: when it arrived (tests); now by default, taken before waiting for the lock.</param>
-    public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink, double? arrivalMs = null)
+    /// <param name="copy">Package 136: the frame before it, if it came along.</param>
+    public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink, double? arrivalMs = null, byte[]? copy = null)
     {
         double at = arrivalMs ?? JitterBuffer.NowMs();
         lock (gate)
         {
             if (!speakers.TryGetValue(speakerId, out var speaker)) speakers[speakerId] = speaker = new Speaker();
-            speaker.Buffer.Push(seq, opus, viaLink, at);
+            speaker.Buffer.Push(seq, opus, viaLink, at, copy);
         }
     }
 
@@ -61,7 +63,7 @@ public sealed class Mixer
 
     /// <summary>Under gate.</summary>
     void Retire(JitterBuffer b) =>
-        retired = new ReceiveStats(retired.Received + b.Received, retired.Lost + b.Lost, retired.Rebuilt + b.Rebuilt, retired.Concealed + b.Concealed, 0, 0);
+        retired = new ReceiveStats(retired.Received + b.Received, retired.Lost + b.Lost, retired.Rebuilt + b.Rebuilt, retired.Concealed + b.Concealed, 0, 0, retired.Recovered + b.Recovered);
 
     /// <summary>
     /// Package 133 (A142): for the connection details, every 2 s on the UI thread. The jitter is the worst one of the speakers
@@ -76,7 +78,7 @@ public sealed class Mixer
             {
                 var b = speaker.Buffer;
                 sum = new ReceiveStats(sum.Received + b.Received, sum.Lost + b.Lost, sum.Rebuilt + b.Rebuilt, sum.Concealed + b.Concealed,
-                    Math.Max(sum.JitterMs, b.JitterMs), Math.Max(sum.DelayMs, b.DelayMs));
+                    Math.Max(sum.JitterMs, b.JitterMs), Math.Max(sum.DelayMs, b.DelayMs), sum.Recovered + b.Recovered);
             }
             return sum;
         }

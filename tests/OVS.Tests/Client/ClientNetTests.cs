@@ -132,7 +132,7 @@ public sealed class ClientNetTests : IDisposable
         using var va = new VoiceClient(server.VoiceEndPoint, a.Welcome.SessionId, Convert.FromBase64String(a.Welcome.VoiceKey));
         using var vb = new VoiceClient(server.VoiceEndPoint, b.Welcome.SessionId, Convert.FromBase64String(b.Welcome.VoiceKey));
         var received = new TaskCompletionSource<(uint Speaker, byte Target, byte[] Opus)>();
-        vb.VoiceReceived += (speaker, _, target, opus) => received.TrySetResult((speaker, target, opus));
+        vb.VoiceReceived += (speaker, _, target, opus, _) => received.TrySetResult((speaker, target, opus));
         va.Start();
         vb.Start();
         await WaitUntil(() => va.Reachable && vb.Reachable);
@@ -157,7 +157,7 @@ public sealed class ClientNetTests : IDisposable
         using var vb = new VoiceClient(server.VoiceEndPoint, b.Welcome.SessionId, Convert.FromBase64String(b.Welcome.VoiceKey));
         var seqs = new List<uint>();
         var two = new TaskCompletionSource();
-        vb.VoiceReceived += (_, speakerSeq, _, _) =>
+        vb.VoiceReceived += (_, speakerSeq, _, _, _) =>
         {
             lock (seqs)
             {
@@ -200,8 +200,8 @@ public sealed class ClientNetTests : IDisposable
         using var vb = Voice(b, server.VoiceEndPoint);
         var atA = new TaskCompletionSource<byte[]>();
         var atB = new TaskCompletionSource<byte[]>();
-        va.VoiceReceived += (_, _, _, opus) => atA.TrySetResult(opus);
-        vb.VoiceReceived += (_, _, _, opus) => atB.TrySetResult(opus);
+        va.VoiceReceived += (_, _, _, opus, _) => atA.TrySetResult(opus);
+        vb.VoiceReceived += (_, _, _, opus, _) => atB.TrySetResult(opus);
         va.Start();
         vb.Start();
         await WaitUntil(() => vb.Reachable && relay.Count(PacketType.Hello) == 1);
@@ -337,8 +337,8 @@ public sealed class ClientNetTests : IDisposable
         using var va = Voice(a, relay.EndPoint, time);
         using var vb = Voice(b, server.VoiceEndPoint, time);
         int atA = 0, atB = 0;
-        va.VoiceReceived += (_, _, _, _) => Interlocked.Increment(ref atA);
-        vb.VoiceReceived += (_, _, _, _) => Interlocked.Increment(ref atB);
+        va.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atA);
+        vb.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atB);
         va.Start();
         vb.Start();
         await WaitUntil(() => va.Reachable && vb.Reachable);
@@ -393,7 +393,7 @@ public sealed class ClientNetTests : IDisposable
         using var va = Voice(a, server.VoiceEndPoint, time);
         using var vb = Voice(b, server.VoiceEndPoint, time);
         int atA = 0, sent = 0;
-        va.VoiceReceived += (_, _, _, _) => Interlocked.Increment(ref atA);
+        va.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atA);
         va.Start();
         vb.Start();
         await WaitUntil(() => va.Reachable && vb.Reachable);

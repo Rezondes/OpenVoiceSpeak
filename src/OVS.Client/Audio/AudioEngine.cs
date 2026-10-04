@@ -521,12 +521,12 @@ public sealed class AudioEngine : IDisposable
         if (++levelCounter % 5 == 0) InputLevel?.Invoke(db);
     }
 
-    /// <summary>VoiceClient callback, network thread.</summary>
-    public void OnVoice(uint speaker, uint seq, byte target, byte[] opus)
+    /// <summary>VoiceClient callback, network thread; Package 136: with the copy of the frame before, if it came along.</summary>
+    public void OnVoice(uint speaker, uint seq, byte target, byte[] opus, byte[]? copy = null)
     {
         if (deafened) return;
         framesReceived.AddOrUpdate(speaker, 1, (_, n) => n + 1);
-        Mixer.Push(speaker, seq, opus, target == VoiceHeader.TargetLinked);
+        Mixer.Push(speaker, seq, opus, target == VoiceHeader.TargetLinked, copy: copy);
         Kick();
     }
 

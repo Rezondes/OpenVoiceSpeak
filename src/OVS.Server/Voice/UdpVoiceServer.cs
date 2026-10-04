@@ -121,14 +121,45 @@ public sealed class UdpVoiceServer : IDisposable
                 }
                 await SendAsync(sender, new VoiceHeader(PacketType.Ping, sender.Id, sender.OutSeq.Next(), 0), answer);
                 break;
-            // Voice plaintext is [frameSeq][opus] in both directions, so it is relayed as is.
-            case PacketType.Voice when RelayPayload.TryParse(plain, out var frame, out var opus) && opus.Length is > 0 and <= VoiceHeader.MaxOpusSize:
-                sender.Uplink.Count(0, frame); // Package 133: one stream per sender
-                var (recipients, target) = state.VoiceRecipients(sender, header.Target);
+            // Voice plaintext has the same format in both directions (RelayPayload), so it is relayed as is where it fits.
+            case PacketType.Voice when RelayPayload.TryRead(plain, out var frame, out var current, out var copy):
+                sender.Uplink.Count(0, frame); // Package 133: one stream per sender; a copy is no frame received
+                var (recipients, target, channel) = state.VoiceRecipients(sender, header.Target);
                 if (recipients.Count > 0) sender.CountVoiceFrame(); // Package 70: only relayed speech counts
-                foreach (var r in recipients)
-                    await SendAsync(r, new VoiceHeader(PacketType.Voice, sender.Id, r.OutSeq.Next(), target), plain);
+                await RelayAsync(sender, recipients, target, channel, plain, frame, current, copy);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Package 136 (A145): per recipient, the frame alone or with the one before it (the sender's copy, else the frame
+    /// kept from last time) for those reporting a lossy downlink. At most three payloads are built per packet and each is
+    /// sealed once per recipient as before, so a copy costs no extra crypto. A frame lost on the way in that arrives as the
+    /// sender's copy goes on its own to those without copies, before the frame; those with copies get it inside it. The
+    /// frame before only goes along when <see cref="Session.TrackFrame"/> allows it (same channel and target, right before, relayed or
+    /// never seen), and the extra packet costs the sender a token of its rate limit like any packet.
+    /// </summary>
+    async Task RelayAsync(Session sender, List<Session> recipients, byte target, Guid channel, byte[] plain, uint frame, Range current, Range copy)
+    {
+        if (sender.RecoveredFrame == frame) return; // Package 136 (review): sent already, from the copy in the packet after it
+        var (kept, unseen) = sender.TrackFrame(frame, channel, target, plain.AsMemory(current), recipients.Count > 0);
+        bool sentCopy = plain.Length > copy.Start.Value;
+        bool usable = !kept.IsEmpty || unseen; // otherwise the sender's copy is stripped
+        ReadOnlyMemory<byte> previous = !usable ? default : sentCopy ? plain.AsMemory(copy) : kept;
+        bool recovered = sentCopy && unseen && recipients.Count > 0 && sender.Limiter.TryTake();
+        if (recovered) sender.RecoveredFrame = frame - 1;
+        byte[]? single = sentCopy ? null : plain, withCopy = sentCopy && usable ? plain : null, alone = null;
+        foreach (var r in recipients)
+        {
+            byte[] payload;
+            if (r.WantsCopies && !previous.IsEmpty) payload = withCopy ??= RelayPayload.Build(frame, plain.AsSpan(current), previous.Span);
+            else
+            {
+                if (recovered)
+                    await SendAsync(r, new VoiceHeader(PacketType.Voice, sender.Id, r.OutSeq.Next(), target), alone ??= RelayPayload.Build(frame - 1, previous.Span));
+                payload = single ??= RelayPayload.Build(frame, plain.AsSpan(current));
+            }
+            await SendAsync(r, new VoiceHeader(PacketType.Voice, sender.Id, r.OutSeq.Next(), target), payload);
         }
     }
 

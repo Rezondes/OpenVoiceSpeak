@@ -1,6 +1,10 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Security.Cryptography;
 using NAudio.Wave;
 using OVS.Client.Audio;
 using OVS.Client.Input;
+using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
@@ -791,5 +795,67 @@ public class SendPathTests
         for (int i = 0; i < 50; i++) pipeline.Feed(Constant(0f), AudioFormat.SampleRate);
         Assert.Equal(51, sizes.Count); // the frame before the first one too
         Assert.All(sizes, size => Assert.True(size > 1, $"{size} byte packet"));
+    }
+
+    /// <summary>
+    /// Package 136 (A145): the sender appends its previous frame while the server reports at least 2 % of its frames
+    /// missing. Against a stand-in server on loopback that answers pings by hand; the client's own timer never fires.
+    /// </summary>
+    [Fact]
+    public async Task Sender_AddsCopyOnlyOnLoss()
+    {
+        var key = RandomNumberGenerator.GetBytes(32);
+        using var server = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        using var serverCrypto = new VoiceCrypto(key);
+        var serverSeq = new SeqCounter();
+        var clock = new ManualTimeProvider(); // moved by less than the first timer tick (500 ms) in total
+        using var client = new VoiceClient((IPEndPoint)server.Client.LocalEndPoint!, 5, key, clock);
+        client.Start();
+
+        async Task<(VoiceHeader Header, byte[] Plain, IPEndPoint From)> Receive()
+        {
+            using var cts = new CancellationTokenSource(10_000);
+            var got = await server.ReceiveAsync(cts.Token);
+            Assert.True(serverCrypto.TryOpen(Direction.ClientToServer, got.Buffer, out var header, out var plain));
+            return (header, plain, got.RemoteEndPoint);
+        }
+        var from = (await Receive()).From; // the Hello
+        async Task Report(LossReport uplink)
+        {
+            var answer = serverCrypto.Seal(Direction.ServerToClient, new VoiceHeader(PacketType.Ping, 5, serverSeq.Next(), 0), new PingPayload(0, uplink).Build());
+            await server.SendAsync(answer, from);
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (client.UplinkLoss != uplink && watch.ElapsedMilliseconds < 10_000) await Task.Delay(10);
+            Assert.Equal(uplink, client.UplinkLoss);
+        }
+        var frames = Enumerable.Range(0, 10).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
+        async Task<byte[]?> Send(int n, byte target = Ch)
+        {
+            client.SendVoice(frames[n], target);
+            var (header, plain, _) = await Receive();
+            Assert.Equal(PacketType.Voice, header.Type);
+            Assert.True(RelayPayload.TryParse(plain, out var seq, out var opus, out var copy));
+            Assert.Equal((uint)n, seq);
+            Assert.Equal(frames[n], opus);
+            return copy;
+        }
+
+        Assert.Null(await Send(0)); // nothing reported yet
+        await Report(new LossReport(100, 1));
+        Assert.Null(await Send(1)); // 1 %
+        await Report(new LossReport(100, 2));
+        Assert.Equal(frames[1], await Send(2)); // 2 %: the previous frame comes along
+        Assert.Equal(frames[2], await Send(3));
+        await Report(new LossReport(0, 0));
+        Assert.Equal(frames[3], await Send(4)); // nothing expected (a talk pause) is no news: copies stay on
+        // review: a copy travels under the frame's routing, so never across a change of target
+        Assert.Null(await Send(5, Link));
+        Assert.Equal(frames[5], await Send(6, Link));
+        Assert.Null(await Send(7)); // and back
+        // review: the end of the last talk spurt is no copy for the first frame of the next
+        clock.Advance(TimeSpan.FromMilliseconds(150));
+        Assert.Null(await Send(8));
+        await Report(new LossReport(100, 1));
+        Assert.Null(await Send(9));
     }
 }

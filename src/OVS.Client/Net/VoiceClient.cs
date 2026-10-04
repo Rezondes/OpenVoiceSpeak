@@ -28,6 +28,10 @@ public sealed class VoiceClient : IDisposable
     readonly ReplayWindow replay = new();
     readonly object sendGate = new();
     uint nextFrame;
+    byte[]? lastFrame; // Package 136: the copy for the next frame, with its target and send time; under sendGate
+    byte lastTarget;
+    long lastSentAt;
+    volatile bool sendCopies; // Package 136 (A145): the server reported at least 2 % of my frames missing
     readonly CancellationTokenSource cts = new();
     Task? receiveLoop;
     ITimer? pingTimer;
@@ -45,8 +49,8 @@ public sealed class VoiceClient : IDisposable
         receiveCrypto = new VoiceCrypto(key);
     }
 
-    /// <summary>speakerId, speakerSeq, target, opus. Raised on the receive thread.</summary>
-    public event Action<uint, uint, byte, byte[]>? VoiceReceived;
+    /// <summary>speakerId, speakerSeq, target, opus, the copy of the frame before it or null (Package 136). Raised on the receive thread.</summary>
+    public event Action<uint, uint, byte, byte[], byte[]?>? VoiceReceived;
 
     /// <summary>True while the server answers on UDP; false again after 15 s without any answer (Package 126).</summary>
     public bool Reachable
@@ -142,11 +146,20 @@ public sealed class VoiceClient : IDisposable
 
     /// <summary>
     /// The frame number travels inside the payload: the packet sequence is the GCM nonce and is also
-    /// used by pings, so it has gaps the receiver's jitter buffer must not see.
+    /// used by pings, so it has gaps the receiver's jitter buffer must not see. Package 136 (A145): while the uplink
+    /// loses frames, the previous frame rides along (the encoder's own array, kept, so nothing extra is allocated), but
+    /// only to the same target (it travels under this frame's routing) and only right after it (not the end of the last
+    /// talk spurt).
     /// </summary>
     public void SendVoice(byte[] opus, byte target)
     {
-        lock (sendGate) Send(PacketType.Voice, RelayPayload.Build(nextFrame++, opus), target);
+        lock (sendGate)
+        {
+            long now = time.GetTimestamp();
+            bool follows = sendCopies && target == lastTarget && time.GetElapsedTime(lastSentAt, now) <= RelayPayload.CopyMaxAge;
+            Send(PacketType.Voice, RelayPayload.Build(nextFrame++, opus, follows ? lastFrame : default), target);
+            (lastFrame, lastTarget, lastSentAt) = (opus, target, now);
+        }
     }
 
     public void SendPing()
@@ -193,7 +206,8 @@ public sealed class VoiceClient : IDisposable
             if (!replay.Accept(header.Seq)) continue;
             uint speakerSeq = 0;
             byte[] opus = [];
-            bool voice = header.Type == PacketType.Voice && RelayPayload.TryParse(plain, out speakerSeq, out opus);
+            byte[]? copy = null;
+            bool voice = header.Type == PacketType.Voice && RelayPayload.TryParse(plain, out speakerSeq, out opus, out copy);
             lock (stateGate)
             {
                 reachable = true;
@@ -204,10 +218,12 @@ public sealed class VoiceClient : IDisposable
                     roundTrip = TimeSpan.FromMilliseconds(NowMs() - ping.TimeMs);
                     roundTrips++;
                     uplink = ping.Loss;
+                    // Package 136: a figure with nothing expected (a talk pause) keeps the last decision
+                    if (ping.Loss.Expected > 0) sendCopies = ping.Loss.Percent >= RelayPayload.CopyFromLossPercent;
                 }
                 if (voice) downlink.Count(header.SessionId, speakerSeq);
             }
-            if (voice) VoiceReceived?.Invoke(header.SessionId, speakerSeq, header.Target, opus);
+            if (voice) VoiceReceived?.Invoke(header.SessionId, speakerSeq, header.Target, opus, copy);
         }
     }
 

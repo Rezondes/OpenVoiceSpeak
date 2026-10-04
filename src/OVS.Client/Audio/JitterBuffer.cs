@@ -17,6 +17,7 @@ public sealed class JitterBuffer
     public const int FrameMs = 20;
 
     readonly SortedDictionary<uint, byte[]> frames = [];
+    readonly Dictionary<uint, byte[]> copies = []; // Package 136: frames still missing, as copied into the packet after them
     readonly VoiceDecoder decoder = new();
     bool started, playing;
     uint next;
@@ -31,6 +32,9 @@ public sealed class JitterBuffer
     public int Lost { get; private set; }
     public int Rebuilt { get; private set; }
     public int Concealed { get; private set; }
+
+    /// <summary>Package 136 (A145): missing frames played in full from the copy in the next packet; neither Lost nor made up.</summary>
+    public int Recovered { get; private set; }
 
     /// <summary>Package 133 (A142): the interarrival jitter of RFC 3550 in ms, from the arrival times against 20 ms per frame.</summary>
     public double JitterMs { get; private set; }
@@ -58,9 +62,11 @@ public sealed class JitterBuffer
     public bool Busy => playing || frames.Count > 0;
 
     /// <param name="arrivalMs">Package 133: when the frame arrived in ms, on any clock; now by default.</param>
-    public void Push(uint seq, byte[] opus, bool viaLink, double? arrivalMs = null)
+    /// <param name="copy">Package 136 (A145): the frame before this one, kept only while that one is missing and still to play.</param>
+    public void Push(uint seq, byte[] opus, bool viaLink, double? arrivalMs = null, byte[]? copy = null)
     {
         ViaLink = viaLink;
+        if (frames.ContainsKey(seq)) return; // Package 136 (review): a duplicate is neither counted nor stored again
         Received++;
         double arrival = arrivalMs ?? NowMs();
         double transit = arrival - (double)FrameMs * seq;
@@ -95,13 +101,25 @@ public sealed class JitterBuffer
         lastArrival = arrival;
         if (started && seq < next) return; // too late, already played or concealed
         frames[seq] = opus;
+        copies.Remove(seq); // what arrived itself wins over its copy
+        if (copy is not null && seq > 0 && !(started && seq - 1 < next) && !frames.ContainsKey(seq - 1)) copies[seq - 1] = copy;
+        bool dropped = false;
         while (frames.Count > MaxFrames)
         {
             var oldest = frames.Keys.First();
             frames.Remove(oldest);
             Lost++; // never played
             if (started && oldest >= next) next = oldest + 1;
+            dropped = true;
         }
+        if (dropped) DropPlayedCopies();
+    }
+
+    /// <summary>Package 136: copies of frames playback has moved past; no allocation (removing while enumerating is allowed).</summary>
+    void DropPlayedCopies()
+    {
+        foreach (var key in copies.Keys)
+            if (key < next) copies.Remove(key);
     }
 
     public static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
@@ -115,15 +133,20 @@ public sealed class JitterBuffer
             int cushion = Cushion; // Package 134: fits the jitter; the jitter only moves while playing
             if (frames.Count < cushion && ++waited < cushion) return null;
             var first = frames.Keys.First();
+            // Package 136 (review): a lost onset plays from its copy; nothing older, and nothing played already
+            if (first > 0 && copies.ContainsKey(first - 1) && (!started || first - 1 >= next)) first--;
             // the end of the last spurt or the start of this one never came; a long silence or a big jump starts afresh
             if (started && resumed && first > next && first - next <= LossWindow.MaxGap) Lost += (int)(first - next);
             next = started ? Math.Max(next, first) : first;
             started = playing = true;
             waited = underruns = 0;
+            DropPlayedCopies();
         }
 
-        if (frames.Remove(next, out var opus))
+        bool fromCopy = false;
+        if (frames.Remove(next, out var opus) || (fromCopy = copies.Remove(next, out opus)))
         {
+            if (fromCopy) Recovered++; // Package 136: played in full, so not lost
             Concealed += underruns; // waited inside the spurt; at its end they do not count, as a talk pause is no loss
             underruns = 0;
             next++;
@@ -131,9 +154,9 @@ public sealed class JitterBuffer
         }
         if (frames.Count > 0)
         {
-            // lost packet, later ones already here: the very next one carries an FEC copy of it
+            // lost packet, later ones already here: the very next one carries an FEC copy of it (Package 136: also as a copy)
             Lost++;
-            if (frames.TryGetValue(++next, out var following))
+            if (frames.TryGetValue(++next, out var following) || copies.TryGetValue(next, out following))
             {
                 Rebuilt++;
                 return decoder.DecodeLost(following);

@@ -616,7 +616,7 @@
   <data name="ConnDetails_Jitter" xml:space="preserve"><value>Jitter</value></data>
   <data name="ConnDetails_Buffer" xml:space="preserve"><value>Puffer</value></data>
   <data name="ConnDetails_Concealed" xml:space="preserve"><value>Verdeckte Frames</value></data>
-  <data name="ConnDetails_ConcealedValue" xml:space="preserve"><value>{0} ({1} per FEC ersetzt)</value></data>
+  <data name="ConnDetails_ConcealedValue" xml:space="preserve"><value>{0} ({1} per FEC ersetzt, {2} aus Kopien gespielt)</value></data>
   <data name="ConnDetails_Bitrate" xml:space="preserve"><value>Bitrate</value></data>
   <data name="ConnDetails_Hint" xml:space="preserve"><value>Über UDP gemessen und alle 2 s neu. Verlust: fehlende Frames der letzten 5 s. Die Umlaufzeit wird mit der gewohnten verglichen.</value></data>
 </root>

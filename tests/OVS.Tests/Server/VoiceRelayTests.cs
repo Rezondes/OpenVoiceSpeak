@@ -67,7 +67,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.NotNull(got);
         Assert.Equal(a.Id, got.Value.Header.SessionId);
         Assert.Equal(VoiceHeader.TargetChannel, got.Value.Header.Target);
-        Assert.True(RelayPayload.TryParse(got.Value.Plain, out var speakerSeq, out var opus));
+        Assert.True(RelayPayload.TryParse(got.Value.Plain, out var speakerSeq, out var opus, out _));
         Assert.Equal(0u, speakerSeq);
         Assert.Equal(Opus, opus);
 
@@ -227,6 +227,224 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         // an empty ping (an older test client) is still answered, empty
         await vx.SendAsync(PacketType.Ping, []);
         Assert.Empty((await vx.ReceiveAsync())!.Value.Plain);
+    }
+
+    /// <summary>
+    /// Package 136 (A145): the server adds the speaker's previous frame only for listeners whose recent report shows at
+    /// least 2 % downlink loss; the others get single frames, also from a sender that sends copies, and a frame lost on
+    /// the way in reaches them from the sender's copy. On a manual clock, 20 ms per frame.
+    /// </summary>
+    [Fact]
+    public async Task Server_AddsCopyPerLossyRecipient()
+    {
+        var time = new ManualTimeProvider();
+        await using var own = await TestServer.StartAsync(time: time);
+        await using var x = await TestClient.ConnectAsync(own, "x");
+        await using var y = await TestClient.ConnectAsync(own, "y");
+        await using var z = await TestClient.ConnectAsync(own, "z");
+        await using var w = await TestClient.ConnectAsync(own, "w");
+        using var vx = new TestVoice(x, own.VoiceEndPoint);
+        using var vy = new TestVoice(y, own.VoiceEndPoint);
+        using var vz = new TestVoice(z, own.VoiceEndPoint);
+        using var vw = new TestVoice(w, own.VoiceEndPoint);
+        foreach (var v in new[] { vx, vy, vz, vw }) await v.HelloAsync();
+
+        async Task Report(TestVoice v, LossReport downlink)
+        {
+            await v.SendAsync(PacketType.Ping, new PingPayload(0, downlink).Build());
+            Assert.NotNull(await v.ReceiveAsync());
+        }
+        await Report(vy, new LossReport(100, 10)); // y on bad Wi-Fi
+        await Report(vz, new LossReport(100, 1));  // z almost clean; w never reported a figure
+
+        var f = Enumerable.Range(0, 6).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
+        async Task Send(uint n, byte[]? copy = null)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(20));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, f[n], copy)));
+        }
+        static async Task Heard(TestVoice v, uint seq, byte[] opus, byte[]? copy)
+        {
+            var got = await v.ReceiveVoiceAsync();
+            Assert.NotNull(got);
+            Assert.True(RelayPayload.TryParse(got.Value.Plain, out var s, out var o, out var c));
+            Assert.Equal(seq, s);
+            Assert.Equal(opus, o);
+            Assert.Equal(copy, c);
+        }
+        async Task HeardSingle(uint seq)
+        {
+            await Heard(vz, seq, f[seq], null);
+            await Heard(vw, seq, f[seq], null);
+        }
+
+        await Send(0); // nothing before it to add
+        await Heard(vy, 0, f[0], null);
+        await HeardSingle(0);
+        await Send(1); // the server adds the frame it kept
+        await Heard(vy, 1, f[1], f[0]);
+        await HeardSingle(1);
+        await Send(2, f[1]); // the sender's copy: passed on to y, stripped for the others
+        await Heard(vy, 2, f[2], f[1]);
+        await HeardSingle(2);
+        await Send(4, f[3]); // frame 3 lost on the way in: y gets it as the copy, the others on its own first
+        await Heard(vy, 4, f[4], f[3]);
+        await HeardSingle(3);
+        await HeardSingle(4);
+        Assert.Equal(new LossReport(5, 1), own.State.FindSession(x.Id)!.Uplink.Report()); // a copy is no frame received
+
+        await Report(vy, default); // a figure with nothing expected (a pause) changes nothing
+        await Send(5);
+        await Heard(vy, 5, f[5], f[4]);
+        await HeardSingle(5);
+
+        // y's figure goes stale: no report for 11 s (its pings stopped), so single frames
+        time.Advance(TimeSpan.FromSeconds(11));
+        f = [.. f, .. Enumerable.Range(0, 3).Select(_ => RandomNumberGenerator.GetBytes(40))];
+        await Send(6);
+        await Heard(vy, 6, f[6], null);
+        await HeardSingle(6);
+        await Send(7, f[6]);
+        await Heard(vy, 7, f[7], null);
+        await HeardSingle(7);
+        await Report(vy, new LossReport(100, 10)); // a fresh report: copies again
+        await Send(8);
+        await Heard(vy, 8, f[8], f[7]);
+        await HeardSingle(8);
+        Assert.Null(await vy.ReceiveVoiceAsync(300));
+        Assert.Null(await vz.ReceiveVoiceAsync(10));
+    }
+
+    /// <summary>
+    /// Package 136 (review): the frame before only goes along under the same routing, right after it and only if it was
+    /// relayed or never arrived; the extra packet of a recovered frame costs a token of the sender's rate limit, and a
+    /// recovered frame arriving late itself is not relayed again. x (admin) speaks in the lobby with y (lossy) and z;
+    /// the channel Other is linked, with c (lossy) and d.
+    /// </summary>
+    [Fact]
+    public async Task Server_Copies_SameRoute_RecentOnly_Charged()
+    {
+        var time = new ManualTimeProvider();
+        await using var own = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"), time: time);
+        await using var x = await TestClient.ConnectAsync(own, "x", adminId);
+        await using var y = await TestClient.ConnectAsync(own, "y");
+        await using var z = await TestClient.ConnectAsync(own, "z");
+        await using var cc = await TestClient.ConnectAsync(own, "c");
+        await using var d = await TestClient.ConnectAsync(own, "d");
+        await x.SendAsync(new CreateChannel("Other", ""));
+        var otherId = (await x.WaitForAsync<ChannelAdded>()).Channel.Id;
+        foreach (var t in new[] { cc, d })
+        {
+            await t.SendAsync(new JoinChannel(otherId));
+            await t.WaitForAsync<UserUpdated>(u => u.User.SessionId == t.Id);
+        }
+        await x.SendAsync(new LinkChannels(x.Welcome.Snapshot.DefaultChannelId, otherId));
+        await d.WaitForAsync<ChannelsLinked>();
+        using var vx = new TestVoice(x, own.VoiceEndPoint);
+        using var vy = new TestVoice(y, own.VoiceEndPoint);
+        using var vz = new TestVoice(z, own.VoiceEndPoint);
+        using var vcc = new TestVoice(cc, own.VoiceEndPoint);
+        using var vd = new TestVoice(d, own.VoiceEndPoint);
+        foreach (var v in new[] { vx, vy, vz, vcc, vd }) await v.HelloAsync();
+        foreach (var v in new[] { vy, vcc })
+        {
+            await v.SendAsync(PacketType.Ping, new PingPayload(0, new LossReport(100, 10)).Build());
+            Assert.NotNull(await v.ReceiveAsync());
+        }
+
+        var f = Enumerable.Range(0, 60).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
+        async Task Send(uint n, byte target, byte[]? copy = null, int advanceMs = 20)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(advanceMs));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, f[n], copy), target));
+        }
+        static async Task Heard(TestVoice v, uint seq, byte[] opus, byte[]? copy)
+        {
+            var got = await v.ReceiveVoiceAsync();
+            Assert.NotNull(got);
+            Assert.True(RelayPayload.TryParse(got.Value.Plain, out var s, out var o, out var c));
+            Assert.Equal(seq, s);
+            Assert.Equal(opus, o);
+            Assert.Equal(copy, c);
+        }
+        const byte Ch = VoiceHeader.TargetChannel, Linked = VoiceHeader.TargetLinked;
+
+        await Send(0, Ch);
+        await Send(1, Ch);
+        await Heard(vy, 0, f[0], null);
+        await Heard(vy, 1, f[1], f[0]);
+        foreach (uint n in new uint[] { 0, 1 }) await Heard(vz, n, f[n], null);
+        // frame 2 (for the lobby only) lost on the way in; frame 3 is linked and carries it: it reaches no one, alone or as copy
+        await Send(3, Linked, f[2], 40);
+        await Heard(vy, 3, f[3], null);
+        await Heard(vz, 3, f[3], null);
+        await Heard(vcc, 3, f[3], null);
+        await Heard(vd, 3, f[3], null);
+        await Send(4, Linked, f[3]); // the same routing again: the copy goes along
+        await Heard(vcc, 4, f[4], f[3]);
+        await Heard(vd, 4, f[4], null);
+        await Heard(vy, 4, f[4], f[3]);
+        await Heard(vz, 4, f[4], null);
+
+        // a frame sent while muted arrives but is relayed to no one, so it never travels later, alone or as copy
+        await x.SendAsync(new SetSelfState(true, false));
+        await x.WaitForAsync<UserUpdated>(u => u.User.SessionId == x.Id && u.User.SelfMuted);
+        await Send(5, Linked, f[4]);
+        await vx.SendAsync(PacketType.Ping, []); // handled while still muted
+        Assert.NotNull(await vx.ReceiveAsync());
+        await x.SendAsync(new SetSelfState(false, false));
+        await x.WaitForAsync<UserUpdated>(u => u.User.SessionId == x.Id && !u.User.SelfMuted);
+        await Send(6, Linked, f[5]);
+        foreach (var v in new[] { vy, vz, vcc, vd }) await Heard(v, 6, f[6], null);
+
+        // the end of the last talk spurt (7 sent, 8 lost) is no copy for the first frame 2 s later
+        await Send(7, Linked, f[6]);
+        foreach (var v in new[] { vy, vcc }) await Heard(v, 7, f[7], f[6]);
+        foreach (var v in new[] { vz, vd }) await Heard(v, 7, f[7], null);
+        await Send(9, Linked, f[8], 2000);
+        foreach (var v in new[] { vy, vz, vcc, vd }) await Heard(v, 9, f[9], null);
+
+        // a recovered frame arriving late itself is not relayed twice
+        await Send(10, Linked, f[9]);
+        await Send(12, Linked, f[11], 40);
+        await Send(11, Linked, null, 0);
+        await vx.SendAsync(PacketType.Ping, []); // the answer shows the late 11 was handled before the clock moves on
+        Assert.NotNull(await vx.ReceiveAsync());
+        foreach (uint n in new uint[] { 10, 11, 12 }) await Heard(vz, n, f[n], null);
+        await Heard(vy, 10, f[10], f[9]);
+        await Heard(vy, 12, f[12], f[11]);
+        await Heard(vcc, 10, f[10], f[9]);
+        await Heard(vcc, 12, f[12], f[11]);
+        foreach (uint n in new uint[] { 10, 11, 12 }) await Heard(vd, n, f[n], null);
+
+        // a copy never crosses a move while talking: the frame before went to other listeners
+        async Task Move(Guid to)
+        {
+            await x.SendAsync(new JoinChannel(to));
+            await x.WaitForAsync<UserUpdated>(u => u.User.SessionId == x.Id && u.User.ChannelId == to);
+        }
+        await Send(13, Ch);
+        await Heard(vy, 13, f[13], null); // the target changed from linked
+        await Heard(vz, 13, f[13], null);
+        await Move(otherId);
+        await Send(14, Ch, f[13]); // 13 went to the lobby: no copy in Other
+        await Heard(vcc, 14, f[14], null);
+        await Heard(vd, 14, f[14], null);
+        await Move(x.Welcome.Snapshot.DefaultChannelId);
+        await Send(16, Ch, f[15]); // 15 lost, the last frame relayed (14) went to Other: neither a copy nor a packet of its own here
+        await Heard(vy, 16, f[16], null);
+        await Heard(vz, 16, f[16], null);
+
+        // a hostile sender skipping every other number with copies of the skipped ones: the extra packets come out of its
+        // own budget (burst 10), so a listener without copies still gets 10 packets, not 19
+        time.Advance(TimeSpan.FromSeconds(1));
+        for (uint n = 21; n < 40; n += 2)
+        {
+            await Send(n, Linked, f[n - 1], 0); // no time passes: nothing refills the budget
+            if (n is > 21 and < 31) await Heard(vz, n - 1, f[n - 1], null); // recovered while tokens last
+            if (n <= 31) await Heard(vz, n, f[n], null); // 31 takes the last token, its extra packet finds none
+        }
+        Assert.Null(await vz.ReceiveVoiceAsync(300)); // 33 to 39 over the budget
     }
 
     /// <summary>Package 88: a Hello from another address cannot redirect the session's voice (no reflection).</summary>

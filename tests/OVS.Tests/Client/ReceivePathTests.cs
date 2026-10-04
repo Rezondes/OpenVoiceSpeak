@@ -646,4 +646,91 @@ public class ReceivePathTests
         jb.Push(2, Frame(2), false);
         for (int i = 0; i < 3; i++) Assert.Equal(AudioFormat.FrameSamples, jb.Pull()!.Length);
     }
+
+    /// <summary>
+    /// Package 136 (A145): 10 s of one continuous stream with 10 % of the packets lost at random. A frame the decoder had
+    /// to make up (concealed, or rebuilt as a coarse FEC copy) is one not played in full quality; with each packet carrying
+    /// the previous frame, only two losses in a row leave one.
+    /// </summary>
+    [Fact]
+    public void LostFrame_PlayedFromCopy_FewerConcealed()
+    {
+        var encoder = new VoiceEncoder();
+        var packets = Enumerable.Range(0, 500).Select(n => encoder.Encode(Sine(0.5f, n * AudioFormat.FrameSamples))).ToList();
+        var random = new Random(136);
+        var lost = packets.Select(_ => random.NextDouble() < 0.1).ToList();
+        lost[0] = lost[^1] = false; // a loss before the first or after the last frame is never noticed
+        JitterBuffer Run(bool copies)
+        {
+            var jb = new JitterBuffer();
+            for (int n = 0; n < packets.Count; n++)
+            {
+                if (!lost[n]) jb.Push((uint)n, packets[n], false, 20.0 * n, copies && n > 0 ? packets[n - 1] : null);
+                jb.Pull();
+            }
+            for (int i = 0; i < 5; i++) jb.Pull();
+            return jb;
+        }
+        var without = Run(false);
+        var with = Run(true);
+
+        int doubles = Enumerable.Range(1, packets.Count - 1).Count(n => lost[n - 1] && lost[n]);
+        int lostCount = lost.Count(l => l);
+        Assert.InRange(lostCount, 35, 65);
+        Assert.Equal(lostCount, without.Lost);
+        Assert.Equal(0, without.Recovered);
+        Assert.Equal(lostCount, with.Lost + with.Recovered); // played in full from a copy: recovered, not lost
+        Assert.True(with.Recovered >= lostCount - 2 * doubles, $"{with.Recovered} recovered of {lostCount}, {doubles} twice in a row");
+        int madeUpWithout = without.Concealed + without.Rebuilt, madeUpWith = with.Concealed + with.Rebuilt;
+        Assert.True(madeUpWith <= 0.2 * madeUpWithout, $"{madeUpWith} with copies vs {madeUpWithout} without");
+
+        var mixer = new Mixer();
+        mixer.Push(1, 0, packets[0], false, 0);
+        mixer.Push(1, 2, packets[2], false, 40, packets[1]);
+        for (int i = 0; i < 3; i++) mixer.Tick();
+        Assert.Equal((2, 0, 1), (mixer.Stats().Received, mixer.Stats().Lost, mixer.Stats().Recovered));
+    }
+
+    /// <summary>Package 136 (A145): a copy fills only a gap that is still to be played; whatever arrived itself wins, and nothing plays twice.</summary>
+    [Fact]
+    public void Copy_NeverReplacesOrDuplicates()
+    {
+        static byte[] Copy(uint n) => Frame(n + 3); // recognisably not the frame itself
+        var jb = new JitterBuffer();
+        jb.Push(0, Frame(0), false);
+        jb.Push(1, Frame(1), false, copy: Copy(0)); // 0 arrived: its copy is ignored
+        jb.Push(3, Frame(3), false, copy: Copy(2)); // 2 missing: kept
+        jb.Push(2, Frame(2), false);                // arrives after all: replaces the copy
+        jb.Push(5, Frame(5), false, copy: Copy(4)); // 4 never comes in time
+        var reference = new VoiceDecoder();
+        foreach (var packet in new[] { Frame(0), Frame(1), Frame(2), Frame(3), Copy(4), Frame(5) })
+            Assert.Equal(reference.Decode(packet), jb.Pull());
+
+        jb.Push(4, Frame(4), false);                // too late, 4 played from its copy
+        jb.Push(6, Frame(6), false, copy: Copy(5)); // 5 played already
+        jb.Push(6, Frame(6), false, copy: Copy(5)); // a duplicate
+        Assert.Equal(reference.Decode(Frame(6)), jb.Pull());
+        Assert.Equal(0, jb.Buffered);
+        Assert.Equal((0, 0, 0, 1), (jb.Lost, jb.Rebuilt, jb.Concealed, jb.Recovered));
+
+        Assert.Equal(7, jb.Received); // review: the duplicate is not counted (the late 4 is, as in Package 133)
+
+        // review: a lost onset plays from the copy in the frame after it, but no copy older than that starts a spurt
+        var fresh = new JitterBuffer();
+        fresh.Push(11, Frame(11), false, copy: Copy(10));
+        fresh.Push(12, Frame(12), false, copy: Copy(11));
+        var start = new VoiceDecoder();
+        Assert.Equal(start.Decode(Copy(10)), fresh.Pull());
+        Assert.Equal(start.Decode(Frame(11)), fresh.Pull());
+        Assert.Equal(start.Decode(Frame(12)), fresh.Pull());
+        Assert.Equal((1, 0), (fresh.Recovered, fresh.Lost));
+        for (int i = 0; i < 3; i++) fresh.Pull(); // the spurt ends (two frames concealed), next is 13
+        start.Decode([]);
+        start.Decode([]);
+        fresh.Push(16, Frame(16), false, copy: Copy(15)); // 13 and 14 never come, 15 from its copy
+        fresh.Push(17, Frame(17), false);
+        Assert.Equal(start.Decode(Copy(15)), fresh.Pull());
+        Assert.Equal(start.Decode(Frame(16)), fresh.Pull());
+        Assert.Equal((2, 2), (fresh.Recovered, fresh.Lost));
+    }
 }

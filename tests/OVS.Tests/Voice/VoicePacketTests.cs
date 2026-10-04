@@ -27,9 +27,66 @@ public class VoicePacketTests
         var packet = crypto.Seal(Direction.ServerToClient, new VoiceHeader(PacketType.Voice, 3, 1, 0), RelayPayload.Build(999, Opus));
 
         Assert.True(crypto.TryOpen(Direction.ServerToClient, packet, out _, out var plain));
-        Assert.True(RelayPayload.TryParse(plain, out var speakerSeq, out var opus));
+        Assert.True(RelayPayload.TryParse(plain, out var speakerSeq, out var opus, out var copy));
         Assert.Equal(999u, speakerSeq);
         Assert.Equal(Opus, opus);
+        Assert.Null(copy);
+    }
+
+    /// <summary>Package 136 (A145): [frameSeq 4][length of current 2][current][previous, optional], both within the limits.</summary>
+    [Fact]
+    public void RelayPayload_WithCopy_RoundTrip_SizeLimit()
+    {
+        Assert.Equal(14, OVS.Shared.Protocol.ProtocolInfo.Version);
+        var previous = RandomNumberGenerator.GetBytes(50);
+
+        var single = RelayPayload.Build(7, Opus);
+        Assert.Equal(6 + Opus.Length, single.Length);
+        Assert.True(RelayPayload.TryParse(single, out var seq, out var opus, out var copy));
+        Assert.Equal(7u, seq);
+        Assert.Equal(Opus, opus);
+        Assert.Null(copy);
+
+        var both = RelayPayload.Build(8, Opus, previous);
+        Assert.Equal(6 + Opus.Length + previous.Length, both.Length);
+        Assert.True(RelayPayload.TryParse(both, out seq, out opus, out copy));
+        Assert.Equal(8u, seq);
+        Assert.Equal(Opus, opus);
+        Assert.Equal(previous, copy);
+        // the server takes the parts without copying
+        Assert.True(RelayPayload.TryRead(both, out seq, out var current, out var rest));
+        Assert.Equal(Opus, both[current]);
+        Assert.Equal(previous, both[rest]);
+
+        // the largest frame fits, alone; a copy that would not fit the packet is left out by Build
+        var largest = RandomNumberGenerator.GetBytes(VoiceHeader.MaxOpusSize);
+        var big = RelayPayload.Build(9, largest, largest);
+        Assert.Equal(6 + VoiceHeader.MaxOpusSize, big.Length);
+        Assert.True(RelayPayload.TryParse(big, out _, out opus, out copy));
+        Assert.Equal(largest, opus);
+        Assert.Null(copy);
+        using (var crypto = new VoiceCrypto(Key))
+            crypto.Seal(Direction.ServerToClient, new VoiceHeader(PacketType.Voice, 1, 1, 0), RelayPayload.Build(9, Opus, RandomNumberGenerator.GetBytes(RelayPayload.MaxSize - 6 - Opus.Length)));
+        Assert.Throws<ArgumentException>(() => RelayPayload.Build(1, new byte[VoiceHeader.MaxOpusSize + 1]));
+        Assert.Throws<ArgumentException>(() => RelayPayload.Build(1, []));
+
+        // refused: too short, an empty or oversize current frame, a length beyond the payload, an oversize copy or payload
+        static byte[] Raw(int length, int current, int rest)
+        {
+            var raw = new byte[6 + current + rest];
+            raw[4] = (byte)(length >> 8);
+            raw[5] = (byte)length;
+            return raw;
+        }
+        Assert.False(RelayPayload.TryParse(new byte[5], out _, out _, out _));
+        Assert.False(RelayPayload.TryParse(Raw(0, 0, 10), out _, out _, out _));
+        Assert.False(RelayPayload.TryParse(Raw(VoiceHeader.MaxOpusSize + 1, VoiceHeader.MaxOpusSize + 1, 0), out _, out _, out _));
+        Assert.False(RelayPayload.TryParse(Raw(11, 10, 0), out _, out _, out _));
+        Assert.False(RelayPayload.TryParse(Raw(0xFFFF, 10, 0), out _, out _, out _));
+        Assert.False(RelayPayload.TryParse(Raw(10, 10, VoiceHeader.MaxOpusSize + 1), out _, out _, out _));
+        Assert.False(RelayPayload.TryParse(Raw(VoiceHeader.MaxOpusSize, VoiceHeader.MaxOpusSize, RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize + 1), out _, out _, out _));
+        Assert.True(RelayPayload.TryParse(Raw(VoiceHeader.MaxOpusSize, VoiceHeader.MaxOpusSize, RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize), out _, out _, out copy));
+        Assert.Equal(RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize, copy!.Length);
     }
 
     [Fact]

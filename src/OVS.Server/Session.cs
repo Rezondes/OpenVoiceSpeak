@@ -52,7 +52,50 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
             long packed = Interlocked.Read(ref downlinkLoss);
             return new LossReport((uint)(packed >> 32), (uint)packed);
         }
-        set => Interlocked.Exchange(ref downlinkLoss, (long)value.Expected << 32 | value.Missed);
+        set
+        {
+            Interlocked.Exchange(ref downlinkLoss, (long)value.Expected << 32 | value.Missed);
+            // Package 136 (A145): a figure with nothing expected (nobody talked) keeps the last decision
+            if (value.Expected > 0) lossyDownlink = value.Percent >= RelayPayload.CopyFromLossPercent;
+            downlinkAt = time.GetTimestamp();
+        }
+    }
+
+    /// <summary>Package 136 (A145): a report older than this (pings stopped) no longer earns copies.</summary>
+    public static readonly TimeSpan CopiesStaleAfter = TimeSpan.FromSeconds(10);
+    bool lossyDownlink;
+    long downlinkAt;
+
+    /// <summary>Package 136 (A145): this listener gets the speaker's previous frame with each one; only the UDP loop asks.</summary>
+    public bool WantsCopies => lossyDownlink && time.GetElapsedTime(downlinkAt) <= CopiesStaleAfter;
+
+    // Package 136: this sender's frames; only the UDP loop touches these
+    (uint Seq, Guid Channel, byte Target, ReadOnlyMemory<byte> Opus, long At)? lastRelayed;
+    long highestSeen = -1;
+
+    /// <summary>Package 136 (review): the frame last sent on its own from the sender's copy; arriving late itself, it is not relayed again.</summary>
+    public uint? RecoveredFrame { get; set; }
+
+    /// <summary>
+    /// Package 136 (A145): notes a frame of this sender (relayed: it had recipients) and tells what may go along with it
+    /// as the frame before. Only a frame relayed from the same channel (a move while talking changes the listeners) to
+    /// the same target within <see cref="RelayPayload.CopyMaxAge"/> counts as before it: <c>Kept</c> is that frame when it
+    /// is exactly the one before; <c>Unseen</c> means the one before never arrived (lost on the way in), so the sender's
+    /// copy of it may be used; a frame that arrived but was not relayed (muted, another target) must never travel as a
+    /// copy. A frame counter starting again within one session (not reachable today: a reconnect makes a new session)
+    /// would only turn the copies off, as no frame would be newer than those seen.
+    /// </summary>
+    public (ReadOnlyMemory<byte> Kept, bool Unseen) TrackFrame(uint frame, Guid channel, byte target, ReadOnlyMemory<byte> opus, bool relayed)
+    {
+        long now = time.GetTimestamp();
+        var last = lastRelayed;
+        bool close = frame > 0 && last is { } l && l.Channel == channel && l.Target == target
+            && time.GetElapsedTime(l.At, now) <= RelayPayload.CopyMaxAge;
+        var kept = close && last!.Value.Seq == frame - 1 ? last.Value.Opus : default;
+        bool unseen = close && highestSeen < frame - 1;
+        if (frame > highestSeen) highestSeen = frame;
+        if (relayed && (last is null || frame > last.Value.Seq)) lastRelayed = (frame, channel, target, opus, now);
+        return (kept, unseen);
     }
 
     readonly Queue<DateTimeOffset> chatTimes = new();

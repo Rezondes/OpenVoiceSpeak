@@ -85,7 +85,7 @@ public sealed partial class ConnectionStats : ObservableObject
         DownlinkText = Loss(downlink);
         JitterText = $"{receive.JitterMs:0.0} ms";
         DelayText = $"{receive.DelayMs} ms";
-        ConcealedText = string.Format(Strings.ConnDetails_ConcealedValue, receive.Concealed - atStart.Concealed, receive.Rebuilt - atStart.Rebuilt);
+        ConcealedText = string.Format(Strings.ConnDetails_ConcealedValue, receive.Concealed - atStart.Concealed, receive.Rebuilt - atStart.Rebuilt, receive.Recovered - atStart.Recovered);
         BitrateText = $"{bitrateKbps} kbps";
     }
 

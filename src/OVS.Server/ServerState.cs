@@ -496,13 +496,14 @@ public sealed partial class ServerState
     /// <summary>Package 88: lock-free, so a UDP flood never waits on or holds up the control channel.</summary>
     public Session? FindSession(uint id) => voiceSessions.GetValueOrDefault(id);
 
-    public (List<Session> Recipients, byte Target) VoiceRecipients(Session sender, byte requestedTarget)
+    /// <returns>Package 136: also the sender's channel, read under the lock, as a copy must not cross a move.</returns>
+    public (List<Session> Recipients, byte Target, Guid Channel) VoiceRecipients(Session sender, byte requestedTarget)
     {
         lock (gate)
         {
-            if (!sessions.TryGetValue(sender.Id, out var current) || current != sender) return ([], 0);
+            if (!sessions.TryGetValue(sender.Id, out var current) || current != sender) return ([], 0, Guid.Empty);
             return (VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels, id => FindChannel(id)?.IsMuted == true),
-                VoiceRouting.EffectiveTarget(sender, requestedTarget));
+                VoiceRouting.EffectiveTarget(sender, requestedTarget), sender.ChannelId);
         }
     }
 
