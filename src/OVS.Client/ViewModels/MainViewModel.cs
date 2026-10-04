@@ -109,7 +109,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         DeviceSource = useAudioDevices ? AudioDevices.List : _ => [];
         if (useAudioDevices) RefreshDevices();
         Keys = new KeyPoller(keyState);
-        Audio = new AudioEngine(Keys, useAudioDevices);
+        Audio = new AudioEngine(Keys, useAudioDevices, Log.Write);
         sounds = new SoundLibrary(storageDir, Log.Write);
         Audio.SoundSource = sound => sounds.Samples(sound, Settings.SoundFor(sound)); // Package 48
         Audio.TransmitChanged += target => post(() =>
@@ -221,7 +221,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         var keysText = Settings.KeyBindings.Count == 0 ? "keine" : string.Join(", ", Settings.KeyBindings.Select(b => $"{b.Action} {b.Chord.Name}"));
         Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
                   $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
-                  $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB");
+                  $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB, " +
+                  $"Rauschunterdrückung {(Settings.NoiseSuppression ? "an" : "aus")}, automatische Verstärkung {(Settings.AutoGain ? "an" : "aus")}");
         var applied = Settings;
         return () => Audio.Configure(applied);
     }

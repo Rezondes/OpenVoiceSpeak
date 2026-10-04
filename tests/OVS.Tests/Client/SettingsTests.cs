@@ -419,6 +419,44 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(DisplayMode.Simplified, Vm(ClientSettings.Load(dir, out _)).SelectedDisplay.Value);
     }
 
+    /// <summary>Package 123 (A131): noise suppression on, automatic gain off, also for a file from before; both survive a restart.</summary>
+    [Fact]
+    public void VoiceFilters_DefaultsAndRoundTrip()
+    {
+        Assert.Equal((true, false), (new ClientSettings().NoiseSuppression, new ClientSettings().AutoGain));
+        File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
+        var old = ClientSettings.Load(dir, out _);
+        Assert.Equal((true, false), (old.NoiseSuppression, old.AutoGain));
+        var vm = Vm(old);
+        Assert.Equal((true, false), (vm.NoiseSuppression, vm.AutoGain));
+        vm.NoiseSuppression = false;
+        vm.AutoGain = true;
+        vm.ToSettings(old).Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal((false, true), (loaded.NoiseSuppression, loaded.AutoGain));
+        Assert.Equal((false, true), (Vm(loaded).NoiseSuppression, Vm(loaded).AutoGain));
+    }
+
+    /// <summary>Package 123: the switches are heard at once and count as a change; switched back, nothing is left to save.</summary>
+    [Fact]
+    public void VoiceFilters_LivePreviewAndCancel()
+    {
+        var vm = Vm(new ClientSettings());
+        var live = new List<ClientSettings>();
+        vm.LivePreview = live.Add;
+        vm.NoiseSuppression = false;
+        Assert.False(live[^1].NoiseSuppression);
+        Assert.True(vm.HasChanges);
+        vm.AutoGain = true;
+        Assert.True(live[^1].AutoGain);
+        Assert.False(live[^1].NoiseSuppression); // every preview carries all values
+        vm.NoiseSuppression = true;
+        vm.AutoGain = false;
+        Assert.Equal((true, false), (live[^1].NoiseSuppression, live[^1].AutoGain));
+        Assert.False(vm.HasChanges);
+        // "Abbrechen" applies the saved settings to the engine again (MainViewModel.CloseSettings), see SendPathTests
+    }
+
     /// <summary>Package 99: both choices have a name and a hint.</summary>
     [Fact]
     public void Display_ChoicesHaveNamesAndHints()

@@ -282,6 +282,8 @@
   <data name="Ui_Admin" xml:space="preserve"><value>Verwaltung</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar.</value></data>
   <data name="Ui_AllGroups" xml:space="preserve"><value>Alle Gruppen</value></data>
+  <data name="Ui_AutoGain" xml:space="preserve"><value>Automatische Verstärkung</value></data>
+  <data name="Ui_AutoGainHint" xml:space="preserve"><value>Hebt ein leises Mikrofon langsam an, ohne zu übersteuern.</value></data>
   <data name="Ui_Backups" xml:space="preserve"><value>Backups</value></data>
   <data name="Ui_BackupsHint" xml:space="preserve"><value>Ein Backup enthält Channels, Gruppen, Nutzer, Bans, Einstellungen, Zertifikat und Logo, aber keine Logs. Es liegt auf dem Server unter backups/.</value></data>
   <data name="Ui_BanDetail" xml:space="preserve"><value>Gebannt ({0})</value></data>
@@ -320,6 +322,8 @@
   <data name="Ui_LockedAdmins" xml:space="preserve"><value>Nur für Admins</value></data>
   <data name="Ui_LockedGroupsFmt" xml:space="preserve"><value>Nur für Gruppen: {0}</value></data>
   <data name="Ui_LockedPassword" xml:space="preserve"><value>Passwort</value></data>
+  <data name="Ui_NoiseSuppression" xml:space="preserve"><value>Rauschunterdrückung</value></data>
+  <data name="Ui_NoiseSuppressionHint" xml:space="preserve"><value>Filtert Lüfter, Tippen und Rauschen aus deiner Stimme.</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Neueste zuerst</value></data>
   <data name="Ui_SortEndingSoonest" xml:space="preserve"><value>Endet am frühesten</value></data>
   <data name="Ui_SortMostAttempts" xml:space="preserve"><value>Meiste Versuche</value></data>
@@ -494,6 +498,7 @@
   <data name="Ui_UserVolumeReset" xml:space="preserve"><value>Auf 100 % zurücksetzen</value></data>
   <data name="Ui_Users" xml:space="preserve"><value>Nutzer</value></data>
   <data name="Ui_UsersInChannel" xml:space="preserve"><value>Nutzer in diesem Channel</value></data>
+  <data name="Ui_VoiceFilterSection" xml:space="preserve"><value>SPRACHFILTER</value></data>
   <data name="Ui_Volume" xml:space="preserve"><value>Lautstärke</value></data>
   <data name="Ui_VolumeSection" xml:space="preserve"><value>LAUTSTÄRKE</value></data>
   <data name="Ui_WelcomeHint" xml:space="preserve"><value>Erscheint bei jedem Verbinden im Chat-Tab Allgemein.</value></data>

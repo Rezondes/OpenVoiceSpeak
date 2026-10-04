@@ -68,6 +68,8 @@ public sealed class AudioEngine : IDisposable
     readonly object gate = new();
     readonly KeyPoller keys;
     readonly bool useDevices;
+    readonly Action<string>? log;
+    bool noiseSuppressorMissing; // logged once, then no further tries
     readonly Thread playbackThread;
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
     volatile bool running = true;
@@ -83,10 +85,12 @@ public sealed class AudioEngine : IDisposable
     int levelCounter;
     long framesSent;
 
-    public AudioEngine(KeyPoller keys, bool useDevices = true)
+    /// <param name="log">A line for the client log (Package 123: when noise suppression cannot load).</param>
+    public AudioEngine(KeyPoller keys, bool useDevices = true, Action<string>? log = null)
     {
         this.keys = keys;
         this.useDevices = useDevices;
+        this.log = log;
         playbackThread = new Thread(PlaybackLoop) { IsBackground = true, Name = "Playback" };
         playbackThread.Start();
     }
@@ -118,8 +122,15 @@ public sealed class AudioEngine : IDisposable
             if (capture is null) return;
             capture.Gain = live.InputGain;
             capture.Vad.ThresholdDb = live.VadThresholdDb;
+            capture.NoiseSuppression = live.NoiseSuppression;
+            capture.AutoGain = live.AutoGain;
         }
     }
+
+    /// <summary>Package 123: the native RNNoise library; tests name a missing one.</summary>
+    internal string NoiseLibrary { get; init; } = NoiseSuppressor.Library;
+
+    internal CapturePipeline? Capture => capture;
 
     // ---- Sounds (Package 47, 48) ----
 
@@ -215,6 +226,9 @@ public sealed class AudioEngine : IDisposable
             capture.Gain = settings.InputGain;
             capture.DecideTarget = Decide;
             capture.Vad.ThresholdDb = settings.VadThresholdDb;
+            capture.Suppressor = CreateSuppressor();
+            capture.NoiseSuppression = settings.NoiseSuppression;
+            capture.AutoGain = settings.AutoGain;
             capture.FrameEncoded += OnFrameEncoded;
             capture.Level += OnLevel;
             capture.Start();
@@ -225,6 +239,19 @@ public sealed class AudioEngine : IDisposable
             capture = null;
             warnings.Add(string.Format(Strings.Audio_MicFailed, e.Message));
         }
+    }
+
+    /// <summary>Created even while switched off, so the switch on the settings page acts at once.</summary>
+    NoiseSuppressor? CreateSuppressor()
+    {
+        if (noiseSuppressorMissing) return null;
+        var suppressor = NoiseSuppressor.Create(out var error, NoiseLibrary);
+        if (suppressor is null)
+        {
+            noiseSuppressorMissing = true; // AC7: the voice goes out unfiltered instead of not at all
+            log?.Invoke($"Rauschunterdrückung aus: {NoiseLibrary} nicht ladbar ({error})");
+        }
+        return suppressor;
     }
 
     void StartOutput(List<string> warnings)

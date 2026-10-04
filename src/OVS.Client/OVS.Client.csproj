@@ -33,6 +33,8 @@
     <PackageReference Include="Concentus" Version="2.2.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.10" />
+    <!-- Package 123: only the native RNNoise builds (BSD-3); NoiseSuppressor calls them itself, so the wrapper stays unused -->
+    <PackageReference Include="YellowDogMan.RRNoise.NET" Version="0.1.9" IncludeAssets="native" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />

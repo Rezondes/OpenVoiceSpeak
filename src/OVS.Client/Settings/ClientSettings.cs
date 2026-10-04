@@ -82,6 +82,10 @@ public sealed class ClientSettings
 
     public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(b => b.Action == action)?.Chord;
     public float VadThresholdDb { get; set; } = -40f; // -60..-10
+    /// <summary>Package 123 (A131): RNNoise on the sent signal; on also for a file from before without the key.</summary>
+    public bool NoiseSuppression { get; set; } = true;
+    /// <summary>Package 123 (A131): raises a quiet microphone toward -20 dBFS; off unless chosen.</summary>
+    public bool AutoGain { get; set; }
     public AppTheme Theme { get; set; } = AppTheme.System;
     /// <summary>Package 45: follows Windows unless set; takes effect at the next start.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.System;

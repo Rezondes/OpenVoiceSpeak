@@ -820,7 +820,7 @@ public sealed class UiSmokeTests : IDisposable
         var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
         var sections = page.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("section") && t.IsEffectivelyVisible)
             .OrderBy(t => t.TranslatePoint(default, main)!.Value.Y).Select(t => t.Text).ToList();
-        Assert.Equal(["GERÄTE", "LAUTSTÄRKE", "ÜBERTRAGUNG", "TASTEN", "SOUNDS", "DARSTELLUNG", "ÜBER"], sections.Select(s => s!.ToUpperInvariant()));
+        Assert.Equal(["GERÄTE", "LAUTSTÄRKE", "SPRACHFILTER", "ÜBERTRAGUNG", "TASTEN", "SOUNDS", "DARSTELLUNG", "ÜBER"], sections.Select(s => s!.ToUpperInvariant()));
         main.Close();
     }
 

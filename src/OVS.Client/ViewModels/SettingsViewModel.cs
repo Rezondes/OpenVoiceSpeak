@@ -43,6 +43,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] string? updateStatus;
     [ObservableProperty] double backgroundOpacityPercent;
     [ObservableProperty] bool blurBackground;
+    [ObservableProperty] bool noiseSuppression;
+    [ObservableProperty] bool autoGain;
 
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
     /// <param name="time">Package 98: the clock of the waiting states (tests use a manual one).</param>
@@ -63,6 +65,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         outputVolumePercent = current.OutputVolume * 100f;
         voiceActivation = current.Mode == TransmitMode.VoiceActivation;
         vadThresholdDb = current.VadThresholdDb;
+        noiseSuppression = current.NoiseSuppression;
+        autoGain = current.AutoGain;
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
@@ -169,6 +173,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     partial void OnBlurBackgroundChanged(bool value) => Preview();
+
+    partial void OnNoiseSuppressionChanged(bool value) => Preview(); // Package 123: heard at once, also in the self test
+
+    partial void OnAutoGainChanged(bool value) => Preview();
 
     partial void OnSelectedDisplayChanged(DisplayOption value) => Preview(); // Package 99: seen at once
 
@@ -349,6 +357,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Mode = VoiceActivation ? TransmitMode.VoiceActivation : TransmitMode.PushToTalk,
         KeyBindings = KeyBindings.Select(b => b.Binding).ToList(),
         VadThresholdDb = (float)VadThresholdDb,
+        NoiseSuppression = NoiseSuppression,
+        AutoGain = AutoGain,
         Theme = SelectedTheme.Value,
         Language = SelectedLanguage.Value,
         CheckForUpdates = CheckForUpdates,

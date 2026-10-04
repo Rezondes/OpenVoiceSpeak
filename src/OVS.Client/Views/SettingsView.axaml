@@ -97,6 +97,19 @@
           </Border>
         </StackPanel>
 
+        <!-- Voice filters (Package 123): act on what is sent, heard at once in the self test -->
+        <StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_VoiceFilterSection}" />
+          <Border Classes="card">
+            <StackPanel Spacing="4">
+              <CheckBox Content="{x:Static l:Strings.Ui_NoiseSuppression}" IsChecked="{Binding NoiseSuppression}" />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_NoiseSuppressionHint}" />
+              <CheckBox Content="{x:Static l:Strings.Ui_AutoGain}" IsChecked="{Binding AutoGain}" Margin="0,8,0,0" />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoGainHint}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
         <!-- Transmit mode -->
         <StackPanel Spacing="8">
           <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_TransmitSection}" />

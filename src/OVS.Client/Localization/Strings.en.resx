@@ -282,6 +282,8 @@
   <data name="Ui_Admin" xml:space="preserve"><value>Administration</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>The admin group always has all rights and cannot be changed.</value></data>
   <data name="Ui_AllGroups" xml:space="preserve"><value>All groups</value></data>
+  <data name="Ui_AutoGain" xml:space="preserve"><value>Automatic gain</value></data>
+  <data name="Ui_AutoGainHint" xml:space="preserve"><value>Slowly raises a quiet microphone without clipping.</value></data>
   <data name="Ui_Backups" xml:space="preserve"><value>Backups</value></data>
   <data name="Ui_BackupsHint" xml:space="preserve"><value>A backup holds channels, groups, users, bans, settings, certificate and logo, but no logs. It is kept on the server in backups/.</value></data>
   <data name="Ui_BanDetail" xml:space="preserve"><value>Banned ({0})</value></data>
@@ -320,6 +322,8 @@
   <data name="Ui_LockedAdmins" xml:space="preserve"><value>Only for admins</value></data>
   <data name="Ui_LockedGroupsFmt" xml:space="preserve"><value>Only for groups: {0}</value></data>
   <data name="Ui_LockedPassword" xml:space="preserve"><value>Password</value></data>
+  <data name="Ui_NoiseSuppression" xml:space="preserve"><value>Noise suppression</value></data>
+  <data name="Ui_NoiseSuppressionHint" xml:space="preserve"><value>Removes fans, typing and hiss from your voice.</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Newest first</value></data>
   <data name="Ui_SortEndingSoonest" xml:space="preserve"><value>Ending soonest</value></data>
   <data name="Ui_SortMostAttempts" xml:space="preserve"><value>Most attempts</value></data>
@@ -494,6 +498,7 @@
   <data name="Ui_UserVolumeReset" xml:space="preserve"><value>Reset to 100 %</value></data>
   <data name="Ui_Users" xml:space="preserve"><value>Users</value></data>
   <data name="Ui_UsersInChannel" xml:space="preserve"><value>Users in this channel</value></data>
+  <data name="Ui_VoiceFilterSection" xml:space="preserve"><value>VOICE FILTERS</value></data>
   <data name="Ui_Volume" xml:space="preserve"><value>Volume</value></data>
   <data name="Ui_VolumeSection" xml:space="preserve"><value>VOLUME</value></data>
   <data name="Ui_WelcomeHint" xml:space="preserve"><value>Shown on every connect in the chat tab General.</value></data>

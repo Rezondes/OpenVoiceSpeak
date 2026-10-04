@@ -324,6 +324,25 @@ public class SendPathTests
         Assert.Equal(VoiceActivation, engine.Mode);
     }
 
+    /// <summary>Package 123: the voice filters switch on the running capture; "Abbrechen" applies the saved ones again.</summary>
+    [Fact]
+    public void ApplyLive_SwitchesFilters_WithoutRestart()
+    {
+        using var keys = new KeyPoller();
+        using var engine = ToneEngine(keys, new ClientSettings());
+        var capture = engine.Capture!;
+        Assert.NotNull(capture.Suppressor);
+        Assert.Equal((true, false), (capture.NoiseSuppression, capture.AutoGain)); // the defaults
+
+        engine.ApplyLive(new ClientSettings { NoiseSuppression = false, AutoGain = true });
+        Assert.Same(capture, engine.Capture); // no restart
+        Assert.Equal((false, true), (capture.NoiseSuppression, capture.AutoGain));
+
+        engine.ApplyLive(new ClientSettings()); // what closing the settings page does
+        Assert.Same(capture, engine.Capture);
+        Assert.Equal((true, false), (capture.NoiseSuppression, capture.AutoGain));
+    }
+
     [Fact]
     public void ToMono_Pcm16Mono_Scales()
     {

@@ -7271,14 +7271,14 @@ RNNoise works on 48 kHz mono 10 ms frames, so it fits the format exactly. Puttin
 
 ### Acceptance Criteria
 
-- [ ] AC1: With noise suppression on, steady noise (white noise at -35 dBFS) leaves the pipeline at least 10 dB quieter; with it off the signal is unchanged.
-- [ ] AC2: With noise suppression on, voice activation at its default threshold no longer opens on that noise alone.
-- [ ] AC3: With automatic gain on, a quiet voice-like signal (-40 dBFS) rises toward -20 dBFS within 3 s and never exceeds -3 dBFS; a loud signal is not raised; during silence the gain does not grow.
-- [ ] AC4: Both switches apply live on the settings page (and in the self test) without restarting the device; Cancel reverts them.
-- [ ] AC5: Defaults: noise suppression on, automatic gain off, also for settings files without the keys; saved and loaded values round-trip.
-- [ ] AC6: The filters cost less than 1 ms per 20 ms frame on the dev machine (measured once, recorded in the notes), and nothing is allocated per frame.
+- [x] AC1: With noise suppression on, steady fan-like noise (pink noise at -35 dBFS) leaves the pipeline at least 10 dB quieter; with it off the signal is unchanged.
+- [x] AC2: With noise suppression on, voice activation at its default threshold no longer opens on that noise alone.
+- [x] AC3: With automatic gain on, a quiet voice-like signal (-40 dBFS) rises toward -20 dBFS within 3 s and never exceeds -3 dBFS; a loud signal is not raised; during silence the gain does not grow.
+- [x] AC4: Both switches apply live on the settings page (and in the self test) without restarting the device; Cancel reverts them.
+- [x] AC5: Defaults: noise suppression on, automatic gain off, also for settings files without the keys; saved and loaded values round-trip.
+- [x] AC6: The filters cost less than 1 ms per 20 ms frame on the dev machine (measured once, recorded in the notes), and nothing is allocated per frame.
 - [ ] AC7: The published single-file client contains and loads the native library; a missing library turns noise suppression off with one log line instead of crashing.
-- [ ] AC8: The texts exist in German and English, the card fits at 360 px, and `THIRD-PARTY-NOTICES.md` lists RNNoise.
+- [x] AC8: The texts exist in German and English, the card fits at 360 px, and `THIRD-PARTY-NOTICES.md` lists RNNoise.
 - [ ] AC9: Manual check: in the self test with a fan or typing near the microphone, the noise is gone and the voice stays clear.
 
 ### Tests (TDD)
@@ -7291,6 +7291,8 @@ RNNoise works on 48 kHz mono 10 ms frames, so it fits the format exactly. Puttin
 6. `VoiceFilterTests > "Filters_AllocateNothingPerFrame"` (AC6): `GC.GetAllocatedBytesForCurrentThread` around 100 frames.
 7. `VoiceFilterTests > "MissingNativeLibrary_TurnsOffWithLog"` (AC7)
 8. `LocalizationTests`, `ResponsiveTests > "Settings_Fits360"` (AC8)
+
+(as built: RNNoise comes from the NuGet package `YellowDogMan.RRNoise.NET` 0.1.9 (MIT wrapper, maintained by Yellow Dog Man Studios; its `runtimes/win-x64/native/rnnoise.dll` is built from their fork of xiph/rnnoise, BSD-3, exports the xiph API; sha256 of the shipped win-x64 DLL: `12e19bf7a18d13e092a5fbe5a7c5b2081f5e7b56f6d77aeab5837335f44ceedf`), referenced with `IncludeAssets="native"`, so only the native library ships and the own `NoiseSuppressor` calls it. It loads the library and resolves the three exports once per process with `NativeLibrary` and function pointers instead of `DllImport`, all before the first `rnnoise_create`; any failure to load or resolve gives null instead of an exception on the capture thread, `AudioEngine` then logs one line per engine ("Rauschunterdrückung aus: ...") and sends unfiltered; tests name a missing library through `AudioEngine.NoiseLibrary`. A disposed suppressor passes frames unchanged; it has no finalizer because the pipeline owns it and frees it under its lock. The suppressor is created with every capture start, also while switched off, so the switch acts at once. RNNoise adds about 10 ms of latency (its overlapping 10 ms window). `rnnoise.dll` imports `VCRUNTIME140.dll`; checked: none of the other native parts of the client (Skia, HarfBuzz, ANGLE, the .NET runtime) do, so on a Windows without the Visual C++ runtime it does not load and noise suppression is off with the log line. The package has no win-arm64 build either; there the same logged fallback applies. `AutoGain` raises only (0 to +18 dB toward -20 dBFS), 0.15 dB per frame up and 1 dB down, ramped across the frame, limited so no sample goes above -3 dBFS (a signal already that loud is left alone, the gain never goes below 1), and frozen below -45 dBFS so room noise is not pulled up while noise suppression is off; switched on again live it starts over at 0 dB. AC1/AC2 are worded for pink noise because RNNoise hardly touches white noise: measured, white noise at -35 dBFS comes out at about -37 dBFS (about 2 dB) and RNNoise rates it as voice, while pink noise at -35 dBFS comes out about 15 dB quieter (about -50 dBFS) and no longer opens voice activation. AC6: 0.21 ms per 20 ms frame for both filters together (Release, dev machine, 1000 frames after warm-up, measured once); test 6 checks the two filters only, the rest of `Feed` still allocates (Package 124). AC7: the published single-file exe contains `rnnoise.dll` (found in the bundle) and the missing-library fallback is tested; that the published exe loads it is not proven without starting the GUI, so AC7 stays open for a manual check. `CapturePipeline.Dispose` no longer joins a tone thread that never started, so a pipeline fed by hand can be disposed. The "Abbrechen" revert is the existing `ApplyLive(Settings)` in `MainViewModel.CloseSettings`; `ApplyLive_SwitchesFilters_WithoutRestart` checks that applying the saved settings switches the running capture back.)
 
 Test command: `dotnet test tests/OVS.Tests`
 

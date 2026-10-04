@@ -15,6 +15,7 @@ public sealed class CapturePipeline : IDisposable
     readonly VoiceEncoder encoder = new();
     readonly object gate = new();
     readonly float[] previous = new float[AudioFormat.FrameSamples]; // pre-roll, see Feed
+    readonly AutoGain autoGain = new();
     bool sending;
     LinearResampler? resampler;
     int resamplerRate;
@@ -45,6 +46,25 @@ public sealed class CapturePipeline : IDisposable
 
     public VoiceActivityDetector Vad { get; } = new();
     public float Gain { get; set; } = 1f;
+
+    /// <summary>Package 123: RNNoise, owned by the pipeline; null when the native library is missing.</summary>
+    public NoiseSuppressor? Suppressor { get; set; }
+    public bool NoiseSuppression { get; set; }
+
+    public bool AutoGain
+    {
+        get => autoGainOn;
+        set
+        {
+            lock (gate) // the capture thread may be inside Feed
+            {
+                if (value && !autoGainOn) autoGain.Reset();
+                autoGainOn = value;
+            }
+        }
+    }
+
+    bool autoGainOn;
 
     /// <summary>Called per frame with the VAD result; returns the target or null to stay silent.</summary>
     public Func<bool, byte?> DecideTarget { get; set; } = _ => null;
@@ -85,6 +105,9 @@ public sealed class CapturePipeline : IDisposable
             {
                 float gain = Gain;
                 for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i] * gain, -1f, 1f);
+                // Package 123: before the voice activation, so it, the level meter and the self test hear the cleaned signal
+                if (NoiseSuppression) Suppressor?.Process(frame);
+                if (autoGainOn) autoGain.Process(frame);
                 bool voice = Vad.Process(frame);
                 Level?.Invoke(Vad.LastLevelDb);
                 var target = DecideTarget(voice);
@@ -156,6 +179,11 @@ public sealed class CapturePipeline : IDisposable
             capture.StopRecording();
             capture.Dispose();
         }
-        toneThread?.Join(200);
+        if (toneThread is { IsAlive: true }) toneThread.Join(200); // one never started (fed by hand) cannot be joined
+        lock (gate) // a late frame on the capture thread must not reach the freed native state
+        {
+            Suppressor?.Dispose();
+            Suppressor = null;
+        }
     }
 }
