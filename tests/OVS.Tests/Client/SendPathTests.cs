@@ -111,7 +111,7 @@ public class SendPathTests
         public readonly List<int> Sizes = []; // Package 132: bytes per encoded frame
         /// <summary>Package 132: what each fed frame holds; a steady level by default.</summary>
         public Func<float[]> Signal = () => Constant(0.1f);
-        readonly CapturePipeline pipeline = CapturePipeline.FromTone(440); // never started: fed by hand
+        public readonly CapturePipeline Pipeline = CapturePipeline.FromTone(440); // never started: fed by hand
 
         public TalkRig(int releaseDelayMs)
         {
@@ -124,11 +124,12 @@ public class SendPathTests
                     new KeyBinding(KeyAction.PushToMute, new KeyChord(Mute)),
                 ],
             };
-            Engine = new AudioEngine(Keys, useDevices: false) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
+            Engine = new AudioEngine(Keys, useDevices: false, time: Time) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
             Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
-            pipeline.DecideTarget = Engine.Decide;
-            pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
-            pipeline.FrameEncoded += (opus, target) =>
+            Pipeline.DecideTarget = Engine.Decide;
+            Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
+            Pipeline.LossHint = () => Engine.EncoderLossHint; // Package 135
+            Pipeline.FrameEncoded += (opus, target) =>
             {
                 Sent.Add(target);
                 Sizes.Add(opus.Length);
@@ -149,7 +150,7 @@ public class SendPathTests
             int before = Sent.Count;
             for (int i = 0; i < count; i++)
             {
-                pipeline.Feed(Signal(), AudioFormat.SampleRate);
+                Pipeline.Feed(Signal(), AudioFormat.SampleRate);
                 Time.Advance(AudioFormat.FrameDuration);
             }
             return Sent.Count - before;
@@ -173,7 +174,7 @@ public class SendPathTests
 
         public void Dispose()
         {
-            pipeline.Dispose();
+            Pipeline.Dispose();
             Engine.Dispose();
             Keys.Dispose();
         }
@@ -298,6 +299,87 @@ public class SendPathTests
         using var engine = ToneEngine(keys, new ClientSettings());
         engine.ChannelBitrate = 48;
         Assert.Equal(48, engine.Capture!.Bitrate());
+    }
+
+    /// <summary>Package 135: the server's figure every 2 s on the rig's clock, as the main view model passes it on.</summary>
+    static void ReportLoss(TalkRig rig, double percent, int times)
+    {
+        for (int i = 0; i < times; i++)
+        {
+            rig.Engine.Loss.Report(new LossReport(100, (uint)percent));
+            rig.Time.Advance(TimeSpan.FromSeconds(2));
+        }
+    }
+
+    /// <summary>
+    /// Package 135 (AC3, A144): a lowered bitrate starts again at the channel's when moving into another channel (the main
+    /// view model resets on the channel's id); the same value set again (every state change sets it) keeps what was
+    /// adapted, and an edit of the channel keeps it lowered, at most the new value.
+    /// </summary>
+    [Fact]
+    public async Task ChannelChange_ResetsAdaptedBitrate()
+    {
+        using var rig = new TalkRig(0);
+        rig.Engine.ChannelBitrate = 96;
+        ReportLoss(rig, 20, 4); // 6 s above 10 %
+        Assert.Equal(48, rig.Engine.EncoderBitrate);
+        rig.Engine.ChannelBitrate = 96; // a state change that is no move
+        Assert.Equal(48, rig.Engine.EncoderBitrate);
+        rig.Engine.ChannelBitrate = 128; // the channel edited upward: still lowered
+        Assert.Equal(48, rig.Engine.EncoderBitrate);
+        rig.Engine.ChannelBitrate = 32; // edited below it
+        Assert.Equal(32, rig.Engine.EncoderBitrate);
+
+        rig.Engine.Loss.Reset(64); // moved into a 64 kbps channel
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        rig.Frames(1);
+        Assert.Equal(64_000, rig.Pipeline.Encoder.Opus.Bitrate);
+        ReportLoss(rig, 20, 4);
+        Assert.Equal(32, rig.Engine.EncoderBitrate);
+        rig.Engine.Loss.Reset(64); // moved into another channel at the same bitrate
+        rig.Frames(1);
+        Assert.Equal(64_000, rig.Pipeline.Encoder.Opus.Bitrate);
+    }
+
+    /// <summary>
+    /// Package 135 (AC4, A144): the encoder takes the adapted loss hint and bitrate before the next frame it encodes, on
+    /// the capture thread.
+    /// </summary>
+    [Fact]
+    public async Task Encoder_UsesAdaptedValues()
+    {
+        using var rig = new TalkRig(0);
+        var opus = rig.Pipeline.Encoder.Opus;
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        rig.Frames(1);
+        Assert.Equal(10, opus.PacketLossPercent);
+        Assert.Equal(64_000, opus.Bitrate);
+
+        ReportLoss(rig, 14, 4); // 6 s above 10 %
+        Assert.Equal(10, opus.PacketLossPercent); // nothing changes between frames
+        rig.Frames(1);
+        Assert.Equal(21, opus.PacketLossPercent);
+        Assert.Equal(32_000, opus.Bitrate);
+
+        ReportLoss(rig, 0, 6); // 10 s clean
+        rig.Frames(1);
+        Assert.Equal(5, opus.PacketLossPercent);
+        Assert.Equal(64_000, opus.Bitrate);
+
+        // the self test sends nothing: the initial hint, like its 64 kbps
+        ReportLoss(rig, 20, 1);
+        rig.Engine.SelfTest = true;
+        rig.Frames(1);
+        Assert.Equal(10, opus.PacketLossPercent);
+        rig.Engine.SelfTest = false;
+        rig.Frames(1);
+        Assert.Equal(30, opus.PacketLossPercent);
+
+        // a real capture asks the engine too
+        using var keys = new KeyPoller();
+        using var engine = ToneEngine(keys, new ClientSettings());
+        engine.Loss.Report(new LossReport(100, 20));
+        Assert.Equal(30, engine.Capture!.LossHint());
     }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();

@@ -137,9 +137,11 @@ public sealed class AudioEngine : IDisposable
 
     /// <param name="log">A line for the client log (Package 123: when noise suppression cannot load).</param>
     /// <param name="devices">Package 124: where microphone and speaker come from; the real ones by default (tests pass fakes).</param>
-    public AudioEngine(KeyPoller keys, bool useDevices = true, Action<string>? log = null, IAudioDeviceFactory? devices = null)
+    /// <param name="time">Package 135: the clock of the loss adapter (tests pass a manual one).</param>
+    public AudioEngine(KeyPoller keys, bool useDevices = true, Action<string>? log = null, IAudioDeviceFactory? devices = null, TimeProvider? time = null)
     {
         this.keys = keys;
+        Loss = new LossAdapter(time ?? TimeProvider.System, ProtocolInfo.DefaultBitrate);
         this.devices = devices ?? (useDevices ? WasapiDevices.Instance : null);
         this.log = log;
         keys.Changed += OnKeysChanged;
@@ -185,12 +187,31 @@ public sealed class AudioEngine : IDisposable
 
     /// <summary>
     /// Package 132 (A141): the own channel's kbps, set on join, move and when it is edited; also for link push-to-talk,
-    /// whose listeners sit in other channels. The default while in no channel.
+    /// whose listeners sit in other channels. The default while in no channel. Package 135: a new value is the loss
+    /// adapter's new ceiling (an edit keeps a lowered bitrate lowered); a move resets it (the main view model).
     /// </summary>
-    public int ChannelBitrate { get => channelBitrate; set => channelBitrate = value; }
+    public int ChannelBitrate
+    {
+        get => channelBitrate;
+        set
+        {
+            if (value == channelBitrate) return;
+            channelBitrate = value;
+            Loss.SetCeiling(value);
+        }
+    }
 
-    /// <summary>Package 132: what the capture encodes with; the self test as a channel at the default would send it.</summary>
-    internal int EncoderBitrate => selfTest ? ProtocolInfo.DefaultBitrate : channelBitrate;
+    /// <summary>Package 135 (A144): fed with the uplink loss every 2 s; the channel's bitrate is its ceiling. Tests swap in one on their own clock.</summary>
+    public LossAdapter Loss { get; internal set; }
+
+    /// <summary>
+    /// Package 132: what the capture encodes with; the self test as a channel at the default would send it. Package 135:
+    /// the adapted bitrate, at most the channel's.
+    /// </summary>
+    internal int EncoderBitrate => selfTest ? ProtocolInfo.DefaultBitrate : Loss.BitrateKbps;
+
+    /// <summary>Package 135: the loss Opus expects; the self test sends nothing, so it keeps the initial one like its 64 kbps.</summary>
+    internal int EncoderLossHint => selfTest ? LossAdapter.InitialHint : Loss.LossHint;
 
     /// <summary>The mixer id of the own voice during the self test; the server never hands out session id 0.</summary>
     public const uint SelfTestSpeaker = 0;
@@ -411,6 +432,7 @@ public sealed class AudioEngine : IDisposable
             capture.Gain = values.InputGain;
             capture.DecideTarget = Decide;
             capture.Bitrate = () => EncoderBitrate; // Package 132
+            capture.LossHint = () => EncoderLossHint; // Package 135
             capture.Vad.ThresholdDb = values.VadThresholdDb;
             capture.Vad.Automatic = values.VadAutomatic;
             capture.Suppressor = CreateSuppressor();

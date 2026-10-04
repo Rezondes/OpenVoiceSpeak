@@ -80,6 +80,12 @@ public sealed class CapturePipeline : IDisposable
     /// </summary>
     public Func<int> Bitrate { get; set; } = () => ProtocolInfo.DefaultBitrate;
 
+    /// <summary>Package 135 (A144): asked like <see cref="Bitrate"/>, the loss in percent Opus is told to expect.</summary>
+    public Func<int> LossHint { get; set; } = () => LossAdapter.InitialHint;
+
+    /// <summary>Package 135: tests read back what the encoder was set to.</summary>
+    internal VoiceEncoder Encoder => encoder;
+
     public event Action<byte[], byte>? FrameEncoded;
     public event Action<float>? Level;
 
@@ -126,6 +132,7 @@ public sealed class CapturePipeline : IDisposable
                 if (target is { } t)
                 {
                     if (Bitrate() is var kbps && kbps != encoder.BitrateKbps) encoder.BitrateKbps = kbps;
+                    if (LossHint() is var loss && loss != encoder.PacketLossPercent) encoder.PacketLossPercent = loss; // Package 135
                     // The level only crosses the threshold inside a word: send the 20 ms before it too, so the onset is not cut.
                     if (!sending) FrameEncoded?.Invoke(encoder.Encode(previous), t);
                     FrameEncoded?.Invoke(encoder.Encode(frame), t);

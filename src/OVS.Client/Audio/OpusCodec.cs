@@ -37,7 +37,7 @@ public sealed class VoiceEncoder
         // In-band FEC: each packet also carries a coarse copy of the previous frame, so the receiver can rebuild a
         // single lost packet instead of guessing it. Opus only adds it when told to expect some loss.
         encoder.UseInbandFEC = true;
-        encoder.PacketLossPercent = 10;
+        encoder.PacketLossPercent = LossAdapter.InitialHint;
     }
 
     internal IOpusEncoder Opus => encoder;
@@ -47,6 +47,13 @@ public sealed class VoiceEncoder
     {
         get => encoder.Bitrate / 1000;
         set => encoder.Bitrate = value * 1000;
+    }
+
+    /// <summary>Package 135 (A144): the loss Opus expects, and adds FEC for; set on the thread that encodes.</summary>
+    public int PacketLossPercent
+    {
+        get => encoder.PacketLossPercent;
+        set => encoder.PacketLossPercent = value;
     }
 
     /// <returns>A new array: it is sent or kept by the mixer (and only made while sending, never per idle frame).</returns>

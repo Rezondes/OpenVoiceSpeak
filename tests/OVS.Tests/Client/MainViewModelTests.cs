@@ -6,6 +6,7 @@ using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
+using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;
@@ -108,6 +109,35 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return null;
         });
         Assert.Equal(64, await OnUi(() => vm.Audio.ChannelBitrate));
+    }
+
+    /// <summary>
+    /// Package 135 (AC3, A144): a bitrate lowered by loss stays over state changes that are no move, and a move starts at
+    /// the new channel's bitrate, also when it is the same as the old one's.
+    /// </summary>
+    [Fact]
+    public async Task Bitrate_Adapted_ResetOnMove()
+    {
+        var steps = await OnUi(() =>
+        {
+            var seen = new List<int>();
+            var time = new ManualTimeProvider();
+            vm.Audio.Loss = new LossAdapter(time, 64);
+            vm.Server = FakeServers.Admin(); // in the Lobby at 64
+            for (int i = 0; i < 4; i++) // 6 s above 10 %
+            {
+                vm.Audio.Loss.Report(new LossReport(100, 20));
+                time.Advance(TimeSpan.FromSeconds(2));
+            }
+            seen.Add(vm.Audio.EncoderBitrate);
+            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1)));
+            seen.Add(vm.Audio.EncoderBitrate); // another channel edited: no move
+            vm.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
+                OVS.Shared.Permissions.Permission.All, [OVS.Shared.Permissions.WellKnownGroups.Admin])));
+            seen.Add(vm.Audio.EncoderBitrate); // moved into a channel at 64 too
+            return seen;
+        });
+        Assert.Equal([32, 32, 64], steps);
     }
 
     // ---- Package 131 (A140): talking into a muted microphone ----
@@ -628,6 +658,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task SignalIcon_AndDetails()
     {
+        // Package 135: the server on its own clock, moved only while sending, so its uplink window never rolls here and
+        // every answer carries the frames sent (a slow machine cannot turn them into an empty or partial window)
+        var serverTime = new ManualTimeProvider();
+        await server.DisposeAsync();
+        server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!", time: serverTime);
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider(); // the voice client's and the refresh's clock
         ConnectionStats? shown = null;
@@ -640,6 +675,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             },
         }));
         Assert.Equal((0, false), await OnUi(() => (vm.Stats.Bars, vm.Stats.Unreachable)));
+        await OnUi(() => vm.Audio.Loss = new LossAdapter(time, 64)); // Package 135: on the same clock
         await ConnectAsync(saveBookmark: false);
 
         // the answer to the Hello: 0 ms on the manual clock, as good as the baseline
@@ -673,6 +709,42 @@ public sealed class MainViewModelTests : IAsyncLifetime
             vm.Tick();
             return stats.BitrateText;
         }));
+
+        // Package 135 (A144): every fifth voice frame lost on the way up: the server's figure in the ping answers raises
+        // the loss hint and, after 5 s of them (on the client's clock), halves the bitrate, which the card shows
+        relay.DropUpVoicePercent = 20;
+        var frame = new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]);
+        for (int i = 0; i < 40; i++) // 0.8 s on the server's clock: within one window and its 1 s fresh start
+        {
+            serverTime.Advance(AudioFormat.FrameDuration); // its voice rate limit (60/s, burst 10) refills
+            await OnUi(() =>
+            {
+                vm.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
+                return 0;
+            });
+            await Task.Delay(5); // lets the server take each frame before the next advance, so they do not drain the bucket at once
+        }
+        for (int step = 0; step < 4; step++) // a figure every 2 s
+        {
+            serverTime.Advance(TimeSpan.FromMilliseconds(200)); // tokens for the ping; still far from the 5 s window
+            int answers = await OnUi(() =>
+            {
+                time.Advance(TimeSpan.FromSeconds(2)); // the ping goes out
+                return vm.Voice!.RoundTripSample.Count;
+            });
+            await OnUiUntil(() => vm.Voice!.RoundTripSample.Count, c => c > answers);
+            await OnUi(() =>
+            {
+                vm.Tick();
+                return 0;
+            });
+        }
+        var (hint, adapted, shownBitrate) = await OnUi(() => (vm.Audio.Loss.LossHint, vm.Audio.EncoderBitrate, stats.BitrateText));
+        Assert.True(hint > 10, $"loss hint {hint}");
+        Assert.Equal(48, adapted);
+        Assert.Equal(96, await OnUi(() => vm.Audio.ChannelBitrate));
+        Assert.Equal("48 kbps", shownBitrate);
+        relay.DropUpVoicePercent = 0;
 
         // 16 s without an answer: crossed out, and the last round trip does not enter the baseline again on every refresh
         relay.DropAll = true;

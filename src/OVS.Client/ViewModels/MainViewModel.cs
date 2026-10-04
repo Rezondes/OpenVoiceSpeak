@@ -515,8 +515,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.ChannelMuted = s?.CurrentChannel?.IsMuted == true;
         // Package 132: join, move, edit; clamped, so a hand-edited server file cannot hand Opus an invalid bitrate
         Audio.ChannelBitrate = Math.Clamp(s?.CurrentChannel?.Bitrate ?? ProtocolInfo.DefaultBitrate, ProtocolInfo.MinBitrate, ProtocolInfo.MaxBitrate);
+        if (s?.CurrentChannel?.Id != bitrateChannel)
+        {
+            bitrateChannel = s?.CurrentChannel?.Id;
+            Audio.Loss.Reset(Audio.ChannelBitrate); // Package 135: a move starts at the channel's bitrate, also at the same one
+        }
         if (s != gainsFor) SyncGains();
     }
+
+    Guid? bitrateChannel;
 
     ServerViewModel? gainsFor;
 
@@ -544,6 +551,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Package 126: tests send UDP through a lossy relay instead of to the server, on their own clock.</summary>
     internal IPEndPoint? VoiceRelay { get; set; }
     internal TimeProvider? VoiceTime { get; set; }
+
+    /// <summary>Package 135: tests wait for its ping answers.</summary>
+    internal VoiceClient? Voice => voice;
 
     /// <summary>Package 122: how often the speaker gain table was built and the logo checked against its hash (tests count them).</summary>
     internal int GainTableBuilds { get; private set; }
@@ -578,6 +588,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     void ResetStats()
     {
         Stats.Reset(Audio.Mixer.Stats());
+        Audio.Loss.EndStreaks(); // Package 135: a reconnect into the same channel keeps no streak from before
         statsAt = DateTimeOffset.MinValue; // the first tick shows what there is
         roundTripsSeen = 0;
     }
@@ -591,7 +602,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (now - statsAt < StatsInterval) return;
         statsAt = now;
         var (roundTrip, count) = v.RoundTripSample;
-        Stats.Update(count != roundTripsSeen ? roundTrip : null, v.UplinkLoss, v.DownlinkLoss, Audio.Mixer.Stats(), Audio.ChannelBitrate);
+        if (count != roundTripsSeen) Audio.Loss.Report(v.UplinkLoss); // Package 135: each answer's figure once, none while they stay away
+        Stats.Update(count != roundTripsSeen ? roundTrip : null, v.UplinkLoss, v.DownlinkLoss, Audio.Mixer.Stats(), Audio.EncoderBitrate);
         roundTripsSeen = count;
     }
 
