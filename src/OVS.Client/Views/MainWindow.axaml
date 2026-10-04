@@ -358,6 +358,9 @@
             <TextBlock x:Name="StatusText" Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
             <!-- Package 109 (A117): indeterminate only while connecting, so its loop stops with the connecting -->
             <ProgressBar Classes="connect" IsIndeterminate="{Binding IsConnecting}" IsVisible="{Binding IsConnecting}" Width="220" />
+            <!-- Package 139 (A148): the countdown is the status above; this ends the series -->
+            <Button x:Name="CancelReconnect" HorizontalAlignment="Center" Command="{Binding CancelReconnectCommand}" IsVisible="{Binding IsReconnecting}"
+                    Content="{x:Static l:Strings.Dlg_Cancel}" AutomationProperties.Name="{x:Static l:Strings.Dlg_Cancel}" />
             <Button Classes="accent" HorizontalAlignment="Center" Click="OnConnectClick" IsEnabled="{Binding !IsConnecting}"
                     Margin="0,4,0,0">
               <StackPanel Orientation="Horizontal" Spacing="8">

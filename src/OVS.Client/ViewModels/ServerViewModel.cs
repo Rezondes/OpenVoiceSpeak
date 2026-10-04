@@ -578,6 +578,17 @@ public sealed partial class ServerViewModel : ObservableObject
     Pending? joining;
     public bool IsJoining => joining?.IsRunning == true;
 
+    /// <summary>Package 139 (A148): the password that let me into a channel on this connection, kept in memory only.</summary>
+    internal string? PasswordFor(Guid channelId) => channelPasswords.GetValueOrDefault(channelId);
+
+    /// <summary>Package 139: back into the channel from before a reconnect, with its password from then and never a dialog.</summary>
+    internal Task RejoinAsync(Guid channelId, string? password)
+    {
+        pendingJoin = channelId;
+        pendingPassword = password is null ? null : (channelId, password);
+        return SendAsync(new JoinChannel(channelId, password));
+    }
+
     /// <summary>Package 110: names may repeat, so the own channel is the one the server answers this request with.</summary>
     public Pending CreateChannel(ChannelEdit e)
     {
@@ -686,6 +697,24 @@ public sealed partial class ServerViewModel : ObservableObject
 
     /// <summary>Package 125: push-to-mute muted, so letting go unmutes. A choice made otherwise meanwhile clears it and sticks.</summary>
     bool mutedByHold;
+
+    /// <summary>Package 139 (review): a reconnect brings back the own choice, not the mute of a key that may be let go meanwhile.</summary>
+    internal bool MutedByHold => mutedByHold;
+    /// <summary>Package 139 (review): undeafening after a reconnect must not turn on a microphone that was muted before.</summary>
+    internal bool MutedBeforeDeafen => mutedBeforeDeafen;
+
+    /// <summary>
+    /// Package 139 (review): the own state from the connection before, in one SetSelfState and without tones. A mute of the
+    /// key still held now (Package 125) stays, so letting go unmutes as usual.
+    /// </summary>
+    internal Task RestoreSelfStateAsync(bool muted, bool deafened, bool mutedBeforeDeafen)
+    {
+        if (muted || deafened) mutedByHold = false; // a chosen mute outlasts the key's release
+        this.mutedBeforeDeafen = mutedBeforeDeafen;
+        SelfDeafened = deafened;
+        SelfMuted = muted || deafened || mutedByHold;
+        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
+    }
 
     /// <summary>
     /// Package 125: holding push-to-mute does what the mute button does (tone, server), letting go undoes exactly that.

@@ -28,7 +28,7 @@ public sealed class TestServer : IAsyncDisposable
     public static Task<TestServer> StartAsync(
         Action<ServerData>? seed = null, string? dataDir = null, int maxUsers = 50, string password = "",
         TimeProvider? time = null, TimeSpan? idleTimeout = null, TimeSpan? handshakeTimeout = null,
-        TimeSpan? writeTimeout = null, int? maxPendingHandshakes = null)
+        TimeSpan? writeTimeout = null, int? maxPendingHandshakes = null, int? port = null)
     {
         dataDir ??= Path.Combine(Path.GetTempPath(), "ovs-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dataDir);
@@ -52,7 +52,8 @@ public sealed class TestServer : IAsyncDisposable
         {
             // A fresh state per attempt: stopping a failed attempt closes its state, which then rejects everyone.
             var state = new ServerState(config, time ?? TimeProvider.System, logs);
-            var endpoint = new IPEndPoint(IPAddress.Loopback, Random.Shared.Next(20_000, 45_000));
+            // Package 139: a fixed port stands for the same server coming back, so a client's reconnect finds it
+            var endpoint = new IPEndPoint(IPAddress.Loopback, port ?? Random.Shared.Next(20_000, 45_000));
             var control = new ControlServer(state, certificate, endpoint)
             {
                 // Far above the tests' longest waits: a client that waits 30 s for a stalled answer sends nothing
@@ -68,7 +69,7 @@ public sealed class TestServer : IAsyncDisposable
                 control.Start();
                 voice = new UdpVoiceServer(state, endpoint);
             }
-            catch (SocketException) when (attempt < 100)
+            catch (SocketException) when (attempt < 100 && port is null)
             {
                 control.DisposeAsync().AsTask().Wait();
                 continue;
@@ -82,11 +83,13 @@ public sealed class TestServer : IAsyncDisposable
     }
 
     /// <summary>Stops this instance and starts a new one on the same data dir.</summary>
-    public async Task<TestServer> RestartAsync(TimeProvider? time = null)
+    /// <param name="samePort">Package 139: where a client reconnects to.</param>
+    public async Task<TestServer> RestartAsync(TimeProvider? time = null, bool samePort = false)
     {
+        int port = Port;
         deleteOnDispose = false;
         await DisposeAsync();
-        return await StartAsync(dataDir: DataDir, time: time);
+        return await StartAsync(dataDir: DataDir, time: time, port: samePort ? port : null);
     }
 
     public async ValueTask DisposeAsync()

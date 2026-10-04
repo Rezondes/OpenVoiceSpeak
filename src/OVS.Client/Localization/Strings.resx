@@ -262,6 +262,9 @@
   <data name="Status_Disconnected" xml:space="preserve"><value>Getrennt: {0}</value></data>
   <data name="Status_Failed" xml:space="preserve"><value>Verbindung fehlgeschlagen: {0}</value></data>
   <data name="Status_NotConnected" xml:space="preserve"><value>Nicht verbunden</value></data>
+  <data name="Status_ReconnectChannelGone" xml:space="preserve"><value>Der Channel "{0}" ist nicht mehr da, du bist im Standard-Channel.</value></data>
+  <data name="Status_Reconnected" xml:space="preserve"><value>Verbindung wiederhergestellt</value></data>
+  <data name="Status_Reconnecting" xml:space="preserve"><value>Verbindung verloren, neuer Versuch in {0} s</value></data>
   <data name="Status_Refused" xml:space="preserve"><value>Abgelehnt: {0}</value></data>
   <data name="Status_TofuRejected" xml:space="preserve"><value>Verbindung abgebrochen: Serverzertifikat nicht akzeptiert.</value></data>
   <data name="TalkHint_NoPttKey" xml:space="preserve"><value>Keine PTT-Taste belegt</value></data>

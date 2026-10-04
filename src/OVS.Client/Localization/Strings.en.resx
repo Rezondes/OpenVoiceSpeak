@@ -262,6 +262,9 @@
   <data name="Status_Disconnected" xml:space="preserve"><value>Disconnected: {0}</value></data>
   <data name="Status_Failed" xml:space="preserve"><value>Connection failed: {0}</value></data>
   <data name="Status_NotConnected" xml:space="preserve"><value>Not connected</value></data>
+  <data name="Status_ReconnectChannelGone" xml:space="preserve"><value>The channel "{0}" is gone, you are in the default channel.</value></data>
+  <data name="Status_Reconnected" xml:space="preserve"><value>Connection restored</value></data>
+  <data name="Status_Reconnecting" xml:space="preserve"><value>Connection lost, retrying in {0} s</value></data>
   <data name="Status_Refused" xml:space="preserve"><value>Refused: {0}</value></data>
   <data name="Status_TofuRejected" xml:space="preserve"><value>Connection aborted: server certificate not accepted.</value></data>
   <data name="TalkHint_NoPttKey" xml:space="preserve"><value>No PTT key assigned</value></data>

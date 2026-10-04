@@ -149,6 +149,26 @@ public sealed class ResponsiveTests : IDisposable
         main.Close();
     }
 
+    /// <summary>Package 139 (AC5): the countdown and "Abbrechen" fit on the start screen at 360 px.</summary>
+    [AvaloniaTheory]
+    [InlineData("de-DE")]
+    [InlineData("en-US")]
+    public void Reconnecting_StatusAndCancelFit360(string culture) => TestCulture.With(culture, () =>
+    {
+        var main = Open(360, null, out var vm);
+        vm.Status = string.Format(Strings.Status_Reconnecting, 16);
+        vm.IsReconnecting = true;
+        Dispatcher.UIThread.RunJobs();
+        var status = main.FindControl<TextBlock>("StatusText")!;
+        var cancel = main.FindControl<Button>("CancelReconnect")!;
+        Assert.True(status.IsEffectivelyVisible && cancel.IsEffectivelyVisible);
+        FullyInside(main, status);
+        FullyInside(main, cancel);
+        Assert.Equal(vm.Status, status.Text);
+        main.Close();
+        return 0;
+    });
+
     [AvaloniaFact]
     public void Classes_FollowWidth()
     {

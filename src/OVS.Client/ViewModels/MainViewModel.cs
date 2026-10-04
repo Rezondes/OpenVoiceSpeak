@@ -253,64 +253,21 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         lastRejection = null;
         if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: false);
 
-        Status = string.Format(Strings.Status_Connecting, choice.Host, choice.Port);
         IsConnecting = true;
-        Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(string.IsNullOrEmpty(choice.Password) ? "" : " mit Passwort")}");
         try
         {
-            using var identity = ClientStorage.LoadOrCreateIdentity(storageDir);
-            var conn = await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
-                string.IsNullOrEmpty(choice.Password) ? null : choice.Password, known, ConfirmTofuLogged);
-
-            var mirror = new StateMirror(conn.Welcome);
-            var vm = new ServerViewModel(mirror, request =>
-            {
-                Log.Write(ClientLog.Describe(request, mirror));
-                return conn.SendAsync(request);
-            }, TimeProvider.System, Dialogs) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
-            vm.Notice += text => AddNotice(text, NoticeKind.Error);
-            TrackServerIcon(vm, choice.Host, choice.Port);
-            vm.PropertyChanged += OnServerPropertyChanged;
-            vm.SoundRequested += Audio.PlaySound; // Package 47
-            conn.MessageReceived += m => post(() =>
-            {
-                if (ClientLog.Describe(m, mirror) is { } line) Log.Write(line);
-                vm.Apply(m);
-            });
-            conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
-
-            var udp = new VoiceClient(VoiceRelay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
-                Convert.FromBase64String(conn.Welcome.VoiceKey), VoiceTime);
-            udp.VoiceReceived += Audio.OnVoice;
-            Audio.Send = udp.SendVoice;
-            udp.Start();
-
-            connection = conn;
-            voice = udp;
-            ResetStats();
-            connectedAt = DateTime.UtcNow;
-            udpLogged = null;
-            udpWasReachable = false;
-            Server = vm;
-            SyncAudioFlags();
-            Status = string.Format(Strings.Status_Connected, vm.ServerName);
-            Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
-                      $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
-            Audio.PlaySound(SoundEvent.Connected);
-            if (vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
+            Attach(await OpenAsync(choice), choice);
             if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: true);
         }
         catch (ConnectionRejectedException e)
         {
-            lastRejection = e.Code;
-            Status = string.Format(Strings.Status_Refused, ErrorTexts.For(e.Code, e.Detail));
-            Log.Write($"Abgelehnt vom Server: {e.Code}{(string.IsNullOrEmpty(e.Detail) ? "" : $" ({e.Detail})")}");
+            Refused(e);
         }
         catch (TofuRejectedException)
         {
             Status = Strings.Status_TofuRejected;
         }
-        catch (Exception e) when (e is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException)
+        catch (Exception e) when (IsNetworkFailure(e))
         {
             Status = string.Format(Strings.Status_Failed, e.Message);
         }
@@ -319,6 +276,69 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             IsConnecting = false;
         }
         if (connection is null) Log.Write(Status);
+    }
+
+    static bool IsNetworkFailure(Exception e) =>
+        e is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException;
+
+    void Refused(ConnectionRejectedException e)
+    {
+        lastRejection = e.Code;
+        Status = string.Format(Strings.Status_Refused, ErrorTexts.For(e.Code, e.Detail));
+        Log.Write($"Abgelehnt vom Server: {e.Code}{(string.IsNullOrEmpty(e.Detail) ? "" : $" ({e.Detail})")}");
+    }
+
+    async Task<ClientConnection> OpenAsync(ConnectChoice choice)
+    {
+        Status = string.Format(Strings.Status_Connecting, choice.Host, choice.Port);
+        Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(string.IsNullOrEmpty(choice.Password) ? "" : " mit Passwort")}");
+        using var identity = ClientStorage.LoadOrCreateIdentity(storageDir);
+        return await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
+            string.IsNullOrEmpty(choice.Password) ? null : choice.Password, known, ConfirmTofuLogged);
+    }
+
+    /// <summary>A connection the server welcomed becomes the current session.</summary>
+    /// <param name="restored">Package 139: a reconnect, which brings back no welcome text.</param>
+    void Attach(ClientConnection conn, ConnectChoice choice, bool restored = false)
+    {
+        var mirror = new StateMirror(conn.Welcome);
+        var vm = new ServerViewModel(mirror, request =>
+        {
+            Log.Write(ClientLog.Describe(request, mirror));
+            return conn.SendAsync(request);
+        }, TimeProvider.System, Dialogs) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
+        vm.Notice += text => AddNotice(text, NoticeKind.Error);
+        TrackServerIcon(vm, choice.Host, choice.Port);
+        vm.PropertyChanged += OnServerPropertyChanged;
+        vm.SoundRequested += Audio.PlaySound; // Package 47
+        conn.MessageReceived += m => post(() =>
+        {
+            if (ClientLog.Describe(m, mirror) is { } line) Log.Write(line);
+            vm.Apply(m);
+        });
+        conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
+
+        var udp = new VoiceClient(VoiceRelay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
+            Convert.FromBase64String(conn.Welcome.VoiceKey), VoiceTime);
+        // Package 139 (review): owned from here on, so a failure below is torn down with them (DisconnectAsync)
+        connection = conn;
+        voice = udp;
+        udp.VoiceReceived += Audio.OnVoice;
+        Audio.Send = udp.SendVoice;
+        udp.Start();
+
+        ResetStats();
+        connectedAt = DateTime.UtcNow;
+        udpLogged = null;
+        udpWasReachable = false;
+        Server = vm;
+        SyncAudioFlags();
+        Status = string.Format(Strings.Status_Connected, vm.ServerName);
+        Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
+                  $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
+        Audio.PlaySound(SoundEvent.Connected);
+        if (!restored && vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
+        lastChoice = choice with { SaveBookmark = false }; // Package 139: what a reconnect uses, the password in memory only
     }
 
     /// <summary>
@@ -440,16 +460,19 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public Task DisconnectAsync()
     {
         if (connection is not null) Log.Write("Verbindung getrennt (eigene Aktion)");
+        StopReconnect(); // Package 139: also connecting elsewhere and closing the app
+        lastChoice = null; // its password goes with the session
         return DisconnectAsync(Strings.Status_NotConnected);
     }
 
     /// <param name="status">Set before tearing down, so nobody ever sees "disconnected" with a stale status.</param>
-    async Task DisconnectAsync(string status)
+    /// <param name="sound">Package 139 (A148): no "Getrennt" tone while a reconnect may still bring the session back.</param>
+    async Task DisconnectAsync(string status, bool sound = true)
     {
         if (Page == Page.Admin) CloseAdmin(); // administration needs a server
         var conn = connection;
         connection = null;
-        if (conn is not null) Audio.PlaySound(SoundEvent.Disconnected);
+        if (conn is not null && sound) Audio.PlaySound(SoundEvent.Disconnected);
         if (conn is not null) Status = status;
         if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
         stateBeforeSelfTest = null; // nothing to restore at a server that is gone
@@ -469,8 +492,145 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (conn != connection) return;
         var text = string.Format(Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
         if (!string.IsNullOrEmpty(detail)) Log.Write($"Getrennt vom Server: {reason} ({detail})");
+        if (reason is Codes.ConnectionLost or Codes.ServerShutdown or Codes.ServerRestart && lastChoice is { } choice && Server is { } s)
+        {
+            StartReconnect(choice, text, s);
+            return;
+        }
+        lastChoice = null; // no reconnect: its password goes with the session
         AddNotice(text, NoticeKind.Warning);
         _ = DisconnectAsync(text);
+    }
+
+    // ---- Package 139 (A148): auto-reconnect ----
+
+    /// <summary>The last connection's choice, its password in memory only; a reconnect uses it.</summary>
+    ConnectChoice? lastChoice;
+    Reconnector? reconnector;
+    /// <summary>The disconnected text shown when the series ends without success.</summary>
+    string lostText = "";
+
+    /// <summary>A series of attempts runs; the start screen shows the countdown and "Abbrechen".</summary>
+    [ObservableProperty] bool isReconnecting;
+
+    /// <summary>
+    /// What comes back after a reconnect: the channel with the password that worked there, the own mute and deafen, and
+    /// whether undeafening unmutes (review: muted, then deafened, stays muted).
+    /// </summary>
+    sealed record Restore(Guid Channel, string ChannelName, string? Password, bool Muted, bool Deafened, bool MutedBeforeDeafen);
+
+    void StartReconnect(ConnectChoice choice, string text, ServerViewModel s)
+    {
+        var self = s.Mirror.Self;
+        // the self test mutes and deafens at the server; what counts is the state from before it. A mute that only holds
+        // while push-to-mute is held is no choice to keep: the key may be let go meanwhile (Package 125).
+        var (muted, deafened) = stateBeforeSelfTest ?? (s.SelfMuted && !s.MutedByHold, s.SelfDeafened);
+        var restore = new Restore(self?.ChannelId ?? Guid.Empty, s.CurrentChannel?.Name ?? "", self is null ? null : s.PasswordFor(self.ChannelId),
+            muted, deafened, s.MutedBeforeDeafen);
+        Log.Write($"Verbindung verloren, neue Versuche nach {string.Join(", ", Reconnector.Delays.Select(d => $"{d.TotalSeconds:0}"))} s");
+        lostText = text;
+        _ = DisconnectAsync(text, sound: false);
+        reconnector ??= new Reconnector(Clock, post);
+        IsReconnecting = true;
+        reconnector.Start(generation => ReconnectOnceAsync(generation, choice, restore), GiveUp);
+        UpdateReconnectStatus();
+    }
+
+    /// <summary>Review: refusals that say "not now" rather than "no": the next attempt may get in.</summary>
+    static bool IsPassing(string code) => code is Codes.ServerShutdown or Codes.ServerRestart or Codes.RateLimited;
+
+    async Task<bool> ReconnectOnceAsync(int generation, ConnectChoice choice, Restore restore)
+    {
+        ClientConnection? conn = null;
+        try
+        {
+            conn = await OpenAsync(choice);
+            if (reconnector?.IsCurrent(generation) != true)
+            {
+                Log.Write("Wiederverbinden: veralteter Versuch verworfen");
+                await conn.DisposeAsync();
+                return false;
+            }
+            Attach(conn, choice, restored: true);
+            var vm = Server!;
+            if (restore.Channel != Guid.Empty && vm.Mirror.Self?.ChannelId != restore.Channel)
+            {
+                if (vm.Mirror.Channels.ContainsKey(restore.Channel)) _ = vm.RejoinAsync(restore.Channel, restore.Password);
+                else AddNotice(string.Format(Strings.Status_ReconnectChannelGone, restore.ChannelName), NoticeKind.Warning);
+            }
+            // server mute comes from the server (Package 85)
+            if (restore.Muted || restore.Deafened) _ = vm.RestoreSelfStateAsync(restore.Muted, restore.Deafened, restore.MutedBeforeDeafen);
+            IsReconnecting = false;
+            AddNotice(Strings.Status_Reconnected);
+            return true;
+        }
+        catch (Exception e) when (reconnector?.IsCurrent(generation) != true)
+        {
+            Log.Write($"Wiederverbinden: veralteter Versuch verworfen ({e.Message})");
+            if (conn is not null) await conn.DisposeAsync();
+            return false;
+        }
+        catch (ConnectionRejectedException e) when (!IsPassing(e.Code))
+        {
+            // the server said no (e.g. a new password): asking again would not change that
+            EndSeries(null);
+            Refused(e);
+            return false;
+        }
+        catch (TofuRejectedException)
+        {
+            EndSeries(Strings.Status_TofuRejected);
+            return false;
+        }
+        catch (Exception e)
+        {
+            // review: also the unexpected, so the series goes on instead of hanging at "Verbinde mit ..."
+            Log.Write($"Wiederverbinden fehlgeschlagen: {e.GetType().Name}: {e.Message}");
+            if (conn is not null && conn == connection) await DisconnectAsync(lostText, sound: false); // Attach got that far
+            else if (conn is not null) await conn.DisposeAsync();
+            return false;
+        }
+    }
+
+    /// <summary>The fifth attempt failed too: the disconnect as it was before Package 139.</summary>
+    void GiveUp()
+    {
+        Log.Write("Wiederverbinden aufgegeben");
+        EndSeries(lostText);
+    }
+
+    /// <summary>"Abbrechen" on the start screen: the series ends at once, an attempt still running is ignored.</summary>
+    [RelayCommand]
+    void CancelReconnect()
+    {
+        if (!IsReconnecting) return;
+        Log.Write("Wiederverbinden abgebrochen");
+        EndSeries(lostText, sound: false);
+    }
+
+    /// <summary>The series ends without a session: the disconnected notice, the status, the tone unless the user chose it.</summary>
+    /// <param name="status">Null when the caller sets it.</param>
+    void EndSeries(string? status, bool sound = true)
+    {
+        StopReconnect();
+        lastChoice = null; // review: the server password stays no longer than needed
+        if (status is not null) Status = status;
+        AddNotice(lostText, NoticeKind.Warning);
+        if (sound) Audio.PlaySound(SoundEvent.Disconnected);
+    }
+
+    void StopReconnect()
+    {
+        reconnector?.Stop();
+        IsReconnecting = false;
+    }
+
+    /// <summary>The countdown to the next attempt; while one runs, its "Verbinde mit ..." stays.</summary>
+    void UpdateReconnectStatus()
+    {
+        if (!IsReconnecting || reconnector?.NextAttemptAt is not { } at) return;
+        var left = Math.Max(1, (int)Math.Ceiling((at - Clock.GetUtcNow()).TotalSeconds));
+        Status = string.Format(Strings.Status_Reconnecting, left);
     }
 
     /// <summary>Every connection starts a fresh chat (A27), with the earlier notices so none get lost.</summary>
@@ -565,6 +725,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Server?.RefreshSpeaking();
         LogUdpReachability();
         UpdateStats();
+        UpdateReconnectStatus(); // Package 139
         PingText = connection?.LastRoundTrip is { } rtt
             ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.Reachable == false ? Strings.Ping_UdpUnreachable : "")
             : "";
