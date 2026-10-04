@@ -23,7 +23,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] double inputGainPercent;
     [ObservableProperty] double outputVolumePercent;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPushToTalk), nameof(ShowPttHint))]
+    [NotifyPropertyChangedFor(nameof(IsPushToTalk), nameof(ShowPttHint), nameof(ShowReleaseDelay))]
     bool voiceActivation;
     [ObservableProperty] ThemeOption selectedTheme;
     [ObservableProperty] DisplayOption selectedDisplay;
@@ -55,6 +55,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] bool blurBackground;
     [ObservableProperty] bool noiseSuppression;
     [ObservableProperty] bool autoGain;
+    [ObservableProperty] double pttReleaseDelayMs; // Package 130 (A139)
 
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
     /// <param name="time">Package 98: the clock of the waiting states (tests use a manual one).</param>
@@ -79,6 +80,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         thresholdInUseDb = current.VadThresholdDb; // the gate learns 0.3 s with the manual one
         noiseSuppression = current.NoiseSuppression;
         autoGain = current.AutoGain;
+        pttReleaseDelayMs = current.PttReleaseDelayMs;
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
@@ -256,6 +258,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Package 59: push-to-talk without a push-to-talk key: nobody would hear you.</summary>
     public bool ShowPttHint => !VoiceActivation && KeyBindings.All(b => b.Binding.Action != KeyAction.PushToTalk);
 
+    /// <summary>Package 130 (A139): the release delay acts on push-to-talk and on link push-to-talk, also with voice activation.</summary>
+    public bool ShowReleaseDelay => !VoiceActivation || KeyBindings.Any(b => b.Binding.Action == KeyAction.LinkPushToTalk);
+
     /// <summary>"Taste festlegen": the key dialog with push-to-talk chosen, the user only presses the key.</summary>
     [RelayCommand]
     async Task SetPttKey()
@@ -267,6 +272,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     internal void OnKeysChanged()
     {
         OnPropertyChanged(nameof(ShowPttHint));
+        OnPropertyChanged(nameof(ShowReleaseDelay));
         OnPropertyChanged(nameof(HasKeyBindings));
         OnPropertyChanged(nameof(HasKeyConflict));
         OnPropertyChanged(nameof(CanSave));
@@ -321,6 +327,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnOutputVolumePercentChanged(double value)
     {
         OutputVolumePercent = Math.Clamp(value, 0, 200);
+        Preview();
+    }
+
+    partial void OnPttReleaseDelayMsChanged(double value)
+    {
+        PttReleaseDelayMs = Math.Clamp(value, 0, 2000);
         Preview();
     }
 
@@ -386,6 +398,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         OutputVolume = (float)(OutputVolumePercent / 100),
         Mode = VoiceActivation ? TransmitMode.VoiceActivation : TransmitMode.PushToTalk,
         KeyBindings = KeyBindings.Select(b => b.Binding).ToList(),
+        PttReleaseDelayMs = (int)Math.Round(PttReleaseDelayMs),
         VadThresholdDb = (float)VadThresholdDb,
         VadAutomatic = VadAutomatic,
         NoiseSuppression = NoiseSuppression,

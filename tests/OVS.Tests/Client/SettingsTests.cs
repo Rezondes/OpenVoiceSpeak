@@ -565,6 +565,54 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(capture.Vad.ThresholdInUseDb, engine.InputThresholdDb);
     }
 
+    /// <summary>
+    /// Package 130 (A139): the release delay defaults to 20 ms, is clamped to 0 to 2000 and saved; its slider shows in
+    /// push-to-talk mode or with a link push-to-talk key and acts at once, on the key poller the engine, the self test and the "Sendet" text read.
+    /// </summary>
+    [AvaloniaFact]
+    public void PttReleaseDelay_DefaultClampLive()
+    {
+        Assert.Equal(20, new ClientSettings().PttReleaseDelayMs);
+        Assert.Equal(20, ClientSettings.Load(dir, out _).PttReleaseDelayMs);
+        new ClientSettings { PttReleaseDelayMs = 5000 }.Save(dir);
+        Assert.Equal(2000, ClientSettings.Load(dir, out _).PttReleaseDelayMs);
+        new ClientSettings { PttReleaseDelayMs = -5 }.Save(dir);
+        Assert.Equal(0, ClientSettings.Load(dir, out _).PttReleaseDelayMs);
+        new ClientSettings { PttReleaseDelayMs = 300 }.Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal(300, loaded.PttReleaseDelayMs);
+
+        var vm = Vm(loaded);
+        var live = new List<ClientSettings>();
+        vm.LivePreview = live.Add;
+        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var slider = window.GetVisualDescendants().OfType<Slider>().Single(s => AutomationProperties.GetName(s) == Strings.Ui_PttReleaseDelay);
+        Assert.True(slider.IsEffectivelyVisible);
+        Assert.Equal(300, slider.Value);
+        slider.Value = 500; // dragged
+        Assert.Equal(500, live[^1].PttReleaseDelayMs);
+        Assert.Equal(500, vm.ToSettings(loaded).PttReleaseDelayMs);
+        Assert.Equal(loaded.SettingsVersion, vm.ToSettings(loaded).SettingsVersion);
+        vm.PttReleaseDelayMs = 2500;
+        Assert.Equal(2000, vm.PttReleaseDelayMs);
+        vm.VoiceActivation = true;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(slider.IsEffectivelyVisible); // nothing it would act on
+        vm.KeyBindings.Add(new KeyBindingItem(new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(0x71)), vm));
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(slider.IsEffectivelyVisible); // link push-to-talk works with voice activation too
+        window.Close();
+
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false);
+        engine.Configure(new ClientSettings());
+        Assert.Equal(TimeSpan.FromMilliseconds(20), keys.ReleaseDelay);
+        engine.ApplyLive(new ClientSettings { PttReleaseDelayMs = 700 });
+        Assert.Equal(TimeSpan.FromMilliseconds(700), keys.ReleaseDelay);
+    }
+
     /// <summary>Package 128 (A137): the sliders keep 0 to 200 % and the file stores the slider value, not the gain.</summary>
     [Fact]
     public void Volume_SliderValueStored()

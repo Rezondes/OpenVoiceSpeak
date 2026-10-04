@@ -32,14 +32,18 @@ public sealed partial class KeyPoller : IDisposable
     TaskCompletionSource<KeyChord>? capture;
     volatile IReadOnlyList<KeyBinding> bindings = [];
     volatile int down; // a KeyActionSet's bits: one write publishes a whole poll
+    readonly TimeProvider time;
+    long pttReleased, linkPttReleased, releaseDelay; // Package 130: time stamps of the last release (0: never), ticks
 
     /// <param name="keyState">
     /// Package 121: the polled state of a virtual key, the keyboard by default. Tests pass a fake one, so a key goes
     /// through the bindings like a real one (<see cref="Simulate(KeyAction, bool)"/> skips them).
     /// </param>
-    public KeyPoller(Func<int, bool>? keyState = null)
+    /// <param name="time">Package 130: the clock of the release delay (tests use a manual one).</param>
+    public KeyPoller(Func<int, bool>? keyState = null, TimeProvider? time = null)
     {
         this.keyState = keyState ?? IsKeyDown;
+        this.time = time ?? TimeProvider.System;
         thread = new Thread(Loop) { IsBackground = true, Name = "KeyPoller" };
         thread.Start();
     }
@@ -51,10 +55,29 @@ public sealed partial class KeyPoller : IDisposable
         set => bindings = value;
     }
 
+    /// <summary>
+    /// Package 130 (A139): how long push-to-talk and link push-to-talk still count as down after their key went up, so
+    /// the last syllable is not cut. Push-to-mute never waits. Set by the engine from the settings.
+    /// </summary>
+    public TimeSpan ReleaseDelay
+    {
+        get => TimeSpan.FromTicks(Interlocked.Read(ref releaseDelay));
+        set => Interlocked.Exchange(ref releaseDelay, value.Ticks);
+    }
+
+    /// <summary>Whether the action's key is down right now, without the release delay.</summary>
     public bool IsDown(KeyAction action) => new KeyActionSet(down).Contains(action);
-    public bool PttDown => IsDown(KeyAction.PushToTalk);
-    public bool LinkPttDown => IsDown(KeyAction.LinkPushToTalk);
+    /// <summary>The talk keys with the release delay: the engine, the self test and the "Sendet" text read these.</summary>
+    public bool PttDown => TalkDown(KeyAction.PushToTalk, ref pttReleased);
+    public bool LinkPttDown => TalkDown(KeyAction.LinkPushToTalk, ref linkPttReleased);
     public bool MuteHeld => IsDown(KeyAction.PushToMute);
+
+    bool TalkDown(KeyAction action, ref long releasedAt)
+    {
+        if (IsDown(action)) return true;
+        long at = Interlocked.Read(ref releasedAt);
+        return at != 0 && time.GetElapsedTime(at) < ReleaseDelay;
+    }
 
     /// <summary>A hold action (PTT, Link-PTT, Push-to-Mute) went down or up. Raised on the polling thread.</summary>
     public event Action? Changed;
@@ -137,6 +160,10 @@ public sealed partial class KeyPoller : IDisposable
             var active = KeyActions.Resolve(bindings, keyState, held);
             lock (gate) active = new KeyActionSet(active.Bits | simulated.Bits);
             var (pressed, holdChanged) = tracker.Update(active);
+            // Package 130: the release time goes first, so a reader never sees the key up without it
+            var released = new KeyActionSet(down & ~active.Bits);
+            if (released.Contains(KeyAction.PushToTalk)) Interlocked.Exchange(ref pttReleased, time.GetTimestamp());
+            if (released.Contains(KeyAction.LinkPushToTalk)) Interlocked.Exchange(ref linkPttReleased, time.GetTimestamp());
             down = active.Bits;
             if (holdChanged) Changed?.Invoke();
             for (int i = 0; i < KeyActions.All.Count; i++)

@@ -3,6 +3,7 @@ using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Settings;
 using OVS.Shared.Voice;
+using OVS.Tests.TestSupport;
 using static OVS.Client.Audio.TransmitMode;
 
 namespace OVS.Tests.Client;
@@ -93,6 +94,156 @@ public class SendPathTests
         engine.ChannelMuted = false;
         await Until(() => engine.FramesSent > 0);
         Assert.True(engine.FramesSent > 0);
+    }
+
+    /// <summary>
+    /// Package 130 (A139): talk keys through the real bindings on a manual clock, and an engine whose decision takes
+    /// frames fed by hand, one per 20 ms of that clock, so the frames sent can be counted exactly.
+    /// </summary>
+    sealed class TalkRig : IDisposable
+    {
+        public const int Ptt = KeyPoller.VkRControl, LinkPtt = KeyPoller.VkXButton1, Mute = KeyPoller.VkXButton2;
+        public readonly FakeKeys Fake = new();
+        public readonly ManualTimeProvider Time = new();
+        public readonly KeyPoller Keys;
+        public readonly AudioEngine Engine;
+        public readonly List<byte> Sent = [];
+        readonly CapturePipeline pipeline = CapturePipeline.FromTone(440); // never started: fed by hand
+
+        public TalkRig(int releaseDelayMs)
+        {
+            Keys = new KeyPoller(Fake.IsDown, Time)
+            {
+                Bindings =
+                [
+                    new KeyBinding(KeyAction.PushToTalk, new KeyChord(Ptt)),
+                    new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(LinkPtt)),
+                    new KeyBinding(KeyAction.PushToMute, new KeyChord(Mute)),
+                ],
+            };
+            Engine = new AudioEngine(Keys, useDevices: false) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
+            Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
+            pipeline.DecideTarget = Engine.Decide;
+            pipeline.FrameEncoded += (_, target) => Sent.Add(target);
+        }
+
+        /// <summary>Holds or lets go of a key and waits until the key thread saw it.</summary>
+        public async Task Key(int vk, bool isDown, KeyAction action)
+        {
+            Fake.Set(isDown, vk);
+            await Until(() => Keys.IsDown(action) == isDown);
+            Assert.Equal(isDown, Keys.IsDown(action));
+        }
+
+        /// <summary>Feeds frames, 20 ms apart on the manual clock; returns how many of them were sent (with the pre-roll).</summary>
+        public int Frames(int count)
+        {
+            int before = Sent.Count;
+            for (int i = 0; i < count; i++)
+            {
+                pipeline.Feed(Constant(0.1f), AudioFormat.SampleRate);
+                Time.Advance(AudioFormat.FrameDuration);
+            }
+            return Sent.Count - before;
+        }
+
+        /// <summary>Feeds one frame at a time and counts them until one is not sent.</summary>
+        public int FramesUntilSilent(int max = 200)
+        {
+            int sent = 0;
+            while (sent < max && Frames(1) == 1) sent++;
+            return sent;
+        }
+
+        public void Dispose()
+        {
+            pipeline.Dispose();
+            Engine.Dispose();
+            Keys.Dispose();
+        }
+    }
+
+    /// <summary>Package 130 (A139): after the talk key is let go, frames go out for the release delay, then stop.</summary>
+    [Fact]
+    public async Task PttRelease_KeepsSendingForDelay()
+    {
+        using var rig = new TalkRig(300);
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Assert.Equal(2, rig.Frames(1)); // the pre-roll frame and this one
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        Assert.True(rig.Keys.PttDown); // the engine, the self test and the "Sendet" text all read this
+        Assert.Equal(15, rig.FramesUntilSilent()); // 300 ms
+        Assert.False(rig.Keys.PttDown);
+        Assert.Equal(0, rig.Frames(20));
+        Assert.All(rig.Sent, t => Assert.Equal(Ch, t));
+
+        rig.Engine.ApplyLive(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0 }); // no delay: stops at once
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Assert.Equal(2, rig.Frames(1));
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        Assert.Equal(0, rig.Frames(1));
+    }
+
+    /// <summary>Package 130: pressed again within the delay, sending just goes on: no gap and no second pre-roll frame.</summary>
+    [Fact]
+    public async Task PttRepressWithinDelay_NoGap()
+    {
+        using var rig = new TalkRig(300);
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Assert.Equal(2, rig.Frames(1));
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        Assert.Equal(5, rig.Frames(5));
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Assert.Equal(10, rig.Frames(10)); // one frame each, no pre-roll
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        Assert.Equal(15, rig.FramesUntilSilent()); // the delay starts again at the second release
+    }
+
+    /// <summary>Package 130 (A139): link push-to-talk keeps its link target for the delay; mute and push-to-mute cut at once.</summary>
+    [Fact]
+    public async Task LinkPttRelease_Delayed_MuteImmediate()
+    {
+        using var rig = new TalkRig(300);
+        await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
+        Assert.Equal(2, rig.Frames(1));
+        await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
+        Assert.True(rig.Keys.LinkPttDown);
+        Assert.Equal(15, rig.FramesUntilSilent());
+        Assert.All(rig.Sent, t => Assert.Equal(Link, t));
+
+        await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
+        rig.Frames(1);
+        await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
+        Assert.Equal(3, rig.Frames(3));
+        rig.Engine.SelfMuted = true; // within the delay
+        Assert.Equal(0, rig.Frames(1));
+        rig.Engine.SelfMuted = false;
+
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        rig.Frames(1);
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        Assert.Equal(3, rig.Frames(3));
+        await rig.Key(TalkRig.Mute, true, KeyAction.PushToMute); // within the delay; the manual clock stood still meanwhile
+        Assert.True(rig.Keys.PttDown);
+        Assert.Equal(0, rig.Frames(1));
+        await rig.Key(TalkRig.Mute, false, KeyAction.PushToMute); // let go at once too, while the talk key is still delayed
+        Assert.Equal(2, rig.Frames(1)); // sending again: a new start with its pre-roll frame
+    }
+
+    /// <summary>Package 130 (A139): the self test plays the own voice back for the release delay too, and sends nothing.</summary>
+    [Fact]
+    public async Task SelfTest_PttRelease_PlaysBackForDelay()
+    {
+        using var rig = new TalkRig(300);
+        rig.Engine.SelfTest = true;
+        bool transmitted = false;
+        rig.Engine.TransmitChanged += t => transmitted |= t is not null;
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Assert.Equal(2, rig.Frames(1)); // the decision says "to the own ears"
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        Assert.Equal(15, rig.FramesUntilSilent());
+        Assert.False(transmitted); // nothing counts as sending
+        Assert.Equal(0, rig.Engine.FramesSent);
     }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();

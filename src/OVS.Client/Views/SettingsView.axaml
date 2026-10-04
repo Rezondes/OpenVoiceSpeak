@@ -208,6 +208,15 @@
                   <TextBlock Text="{x:Static l:Strings.Dlg_AddKeyAction}" />
                 </StackPanel>
               </Button>
+              <!-- Package 130 (A139): the talk keys keep sending a moment after they are let go -->
+              <StackPanel Spacing="4" IsVisible="{Binding ShowReleaseDelay}" Margin="0,4,0,0">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding PttReleaseDelayMs, StringFormat='{}{0:0} ms'}" />
+                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_PttReleaseDelay}" />
+                </DockPanel>
+                <Slider Minimum="0" Maximum="2000" Value="{Binding PttReleaseDelayMs}" AutomationProperties.Name="{x:Static l:Strings.Ui_PttReleaseDelay}" />
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_PttReleaseDelayHint}" />
+              </StackPanel>
             </StackPanel>
           </Border>
         </StackPanel>

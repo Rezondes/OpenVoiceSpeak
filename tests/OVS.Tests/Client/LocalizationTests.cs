@@ -79,7 +79,7 @@ public class LocalizationTests
     [Fact]
     public void Xaml_NoHardcodedText()
     {
-        string[] allowed = ["OpenVoiceSpeak", "O", "{}{0:0} %", "{}{0:0} dBFS", "· {0}"];
+        string[] allowed = ["OpenVoiceSpeak", "O", "{}{0:0} %", "{}{0:0} dBFS", "{}{0:0} ms", "· {0}"];
         var attribute = new Regex(@"\b(Text|Header|Content|ToolTip\.Tip|Watermark|AutomationProperties\.Name|PlaceholderText)=""([^""{][^""]*)""");
         var format = new Regex(@"(?:StringFormat|FallbackValue)='([^']*[A-Za-zÄÖÜäöü][^']*)'");
         var found = Directory.GetFiles(Path.Combine(SourceDir(), "Views"), "*.axaml")

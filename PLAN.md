@@ -7696,10 +7696,10 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: With a delay of 300 ms, frames are still sent for 300 ms (15 frames) after the key is released, then sending stops.
-- [ ] AC2: Pressing the key again within the delay continues without a gap and without a second pre-roll frame.
-- [ ] AC3: Link push-to-talk has the same delay with its link target; push-to-mute and mute act at once.
-- [ ] AC4: The setting defaults to 20 ms, is clamped to 0 to 2000, saved, and applies live.
+- [x] AC1: With a delay of 300 ms, frames are still sent for 300 ms (15 frames) after the key is released, then sending stops.
+- [x] AC2: Pressing the key again within the delay continues without a gap and without a second pre-roll frame.
+- [x] AC3: Link push-to-talk has the same delay with its link target; push-to-mute and mute act at once.
+- [x] AC4: The setting defaults to 20 ms, is clamped to 0 to 2000, saved, and applies live.
 
 ### Tests (TDD)
 
@@ -7707,6 +7707,8 @@ Test command: `dotnet test tests/OVS.Tests`
 2. `SendPathTests > "PttRepressWithinDelay_NoGap"` (AC2)
 3. `SendPathTests > "LinkPttRelease_Delayed_MuteImmediate"` (AC3)
 4. `SettingsTests > "PttReleaseDelay_DefaultClampLive"` (AC4)
+
+(as built: the one place is `KeyPoller`. Its loop stores the time stamp (from an injectable `TimeProvider`, the system clock by default) when push-to-talk or link push-to-talk goes up, before it publishes the key state, so a reader never sees the key up without it. `PttDown` and `LinkPttDown` are true while the key is down or less than `ReleaseDelay` has passed since that release; `IsDown(action)` stays the bare key, and `MuteHeld` (push-to-mute) has no delay. Everything that decides about sending already reads `PttDown` and `LinkPttDown`: the engine's `Decide` per frame (sending and the self test), so `TransmitChanged`, the "Sendet" text and the own speaking ring follow it, as do the "no link right" hint and the debug API's `/state`. Pressing again within the delay keeps `PttDown` true throughout, so the capture pipeline never stops sending and adds no second pre-roll frame. Self mute, server mute, a muted channel and push-to-mute go into `Decide` as before and cut at once. The engine sets `KeyPoller.ReleaseDelay` from `ClientSettings.PttReleaseDelayMs` in `Configure` and `ApplyLive`, so the settings page's live preview, saving and cancelling reach it without a new path; the poller's own default is 0. `Changed` still fires on the key's edges, not when the delay ends; `AudioDebugLog` now logs the bare keys through `IsDown`. `ClientSettings.PttReleaseDelayMs` is an int, default 20, clamped to 0 to 2000 in `Clamp`; no migration step is needed (a file without it loads 20, `SettingsVersion` is unchanged and `ToSettings` keeps carrying it). The settings page has the slider "Loslassverzögerung" / "Release delay" (0 to 2000, value shown as "N ms") with a one-line hint at the end of the keys card, visible in push-to-talk mode and also with voice activation while a link push-to-talk key is bound (`ShowReleaseDelay`, since the delay acts on link push-to-talk in both modes), live through `Preview` like the other sliders; `LocalizationTests.Xaml_NoHardcodedText` now allows the unit format "{}{0:0} ms" like "dBFS". The page is visible at 360 px in its default push-to-talk mode, so `ResponsiveTests.Settings_FitAt360_480_600_1100` covers it unchanged. `AudioEngine.Decide` became internal: the send path tests feed frames by hand into a never started `CapturePipeline` whose decision is the engine's, 20 ms apart on a `ManualTimeProvider`, with keys from `FakeKeys` through real bindings, so frames are counted exactly: AC1 `PttRelease_KeepsSendingForDelay` (300 ms: 15 frames after the release, then none; 0 ms set live stops at once), AC2 `PttRepressWithinDelay_NoGap` (one frame per frame after pressing again, and 15 more after the second release), AC3 `LinkPttRelease_Delayed_MuteImmediate` (link target for the 15 delayed frames; self mute and push-to-mute within the delay stop the next frame), `SelfTest_PttRelease_PlaysBackForDelay` (the self test plays back the 15 delayed frames and nothing counts as sending), AC4 `PttReleaseDelay_DefaultClampLive` (default, clamp on load, saved, rendered slider live and clamped, hidden with voice activation until a link push-to-talk key is bound, the engine passes it to the poller in `Configure` and `ApplyLive`). The new tests failed to build before the setting, `ReleaseDelay` and the internal `Decide` existed.)
 
 Test command: `dotnet test tests/OVS.Tests`
 

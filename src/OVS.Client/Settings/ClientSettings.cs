@@ -99,6 +99,9 @@ public sealed class ClientSettings : IJsonOnDeserializing
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? LinkPttKey { get; set; }
 
+    /// <summary>Package 130 (A139): push-to-talk and link push-to-talk keep sending this long after the key is let go (0..2000).</summary>
+    public int PttReleaseDelayMs { get; set; } = 20;
+
     public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(b => b.Action == action)?.Chord;
     public const float DefaultVadThresholdDb = -40f;
     public float VadThresholdDb { get; set; } = DefaultVadThresholdDb; // -60..-10
@@ -156,6 +159,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
         UserVolumes ??= [];
         foreach (var (fingerprint, volume) in UserVolumes.ToList()) SetVolume(fingerprint, volume);
         VadThresholdDb = Math.Clamp(VadThresholdDb, -60f, -10f);
+        PttReleaseDelayMs = Math.Clamp(PttReleaseDelayMs, 0, 2000);
         return this;
     }
 

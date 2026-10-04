@@ -28,7 +28,8 @@ public sealed class AudioDebugLog : IDisposable
         timer = new Timer(_ => OnSecond(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
-    void OnKeys() => Write($"PTT {(keys.PttDown ? "gedrückt" : "losgelassen")}, Link-PTT {(keys.LinkPttDown ? "gedrückt" : "losgelassen")}, " +
+    // Package 130: the keys themselves, without the release delay (Changed fires on the key's edges)
+    void OnKeys() => Write($"PTT {(keys.IsDown(KeyAction.PushToTalk) ? "gedrückt" : "losgelassen")}, Link-PTT {(keys.IsDown(KeyAction.LinkPushToTalk) ? "gedrückt" : "losgelassen")}, " +
                            $"Push-to-Mute {(keys.MuteHeld ? "gedrückt" : "losgelassen")}");
 
     void OnLevel(float db) => lastLevel = db;

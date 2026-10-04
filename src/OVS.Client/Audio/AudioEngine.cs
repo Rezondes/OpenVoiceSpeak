@@ -205,6 +205,7 @@ public sealed class AudioEngine : IDisposable
             this.live = live; // Package 124: a microphone still opening in the background takes these too
             Mode = live.Mode;
             Mixer.Volume = live.OutputVolume;
+            keys.ReleaseDelay = TimeSpan.FromMilliseconds(live.PttReleaseDelayMs); // Package 130
             if (capture is null) return;
             capture.Gain = live.InputGain;
             capture.Vad.ThresholdDb = live.VadThresholdDb;
@@ -305,6 +306,7 @@ public sealed class AudioEngine : IDisposable
             StopDevices();
             Mode = settings.Mode;
             Mixer.Volume = settings.OutputVolume;
+            keys.ReleaseDelay = TimeSpan.FromMilliseconds(settings.PttReleaseDelayMs); // Package 130
             var warnings = new List<string>();
             SyncCapture(warnings);
             if (speaker) StartOutput(warnings); // a device changed while connected takes effect at once
@@ -433,7 +435,8 @@ public sealed class AudioEngine : IDisposable
         Interlocked.Increment(ref framesSent);
     }
 
-    byte? Decide(bool voiceActive)
+    /// <summary>The capture's decision per frame; internal so tests feed frames by hand (Package 130).</summary>
+    internal byte? Decide(bool voiceActive)
     {
         loopbackFrame = false;
         if (selfTest)
