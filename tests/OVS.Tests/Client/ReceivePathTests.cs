@@ -200,20 +200,21 @@ public class ReceivePathTests
         for (int i = 0; i < mixed.Length; i++) Assert.Equal(2 * reference[i], mixed[i], 3);
     }
 
+    /// <summary>Package 128 (A137): 50 % on Fluxer's curve is about a quarter (-12 dB), so -6 dB after the boost.</summary>
     [Fact]
     public void Mixer_Volume_ScalesBoostedVoice()
     {
         var (mixed, reference) = MixedAndDirect(0.2f, 0.5f);
-        Assert.InRange(Db(mixed, reference), -0.5, 0.5); // 50 % is the level from before Package 50
+        Assert.InRange(Db(mixed, reference), -6.5, -5.5);
     }
 
-    /// <summary>Package 55: 200 % doubles the voices once more; loud parts still stay below the limiter's threshold.</summary>
+    /// <summary>Package 55: 200 % is louder still (Package 128: four times, +12 dB); loud parts stay below the limiter's threshold.</summary>
     [Fact]
-    public void Mixer_Volume200_DoublesVoice_Limited()
+    public void Mixer_Volume200_FourTimes_Limited()
     {
         var (loud, _) = MixedAndDirect(0.1f, 2f);
         var (normal, _) = MixedAndDirect(0.1f, 1f);
-        Assert.InRange(Db(loud, normal), 5.5, 6.5);
+        Assert.InRange(Db(loud, normal), 11.5, 12.5);
         var (limited, _) = MixedAndDirect(0.6f, 2f);
         Assert.All(limited, v => Assert.InRange(v, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
     }
@@ -245,11 +246,33 @@ public class ReceivePathTests
 
         Assert.Equal(1f, new Mixer().SpeakerGain(1)); // no entry: 100 %
 
-        var (doubled, plain) = Run(m => m.SetSpeakerGains(new Dictionary<uint, float> { [1] = 2f }), [1], [1]);
-        for (int i = 0; i < plain.Length; i++) Assert.Equal(2 * plain[i], doubled[i], 3);
+        var (louder, plain) = Run(m => m.SetSpeakerGains(new Dictionary<uint, float> { [1] = 1.5f }), [1], [1]);
+        for (int i = 0; i < plain.Length; i++) Assert.Equal(2 * plain[i], louder[i], 3); // Package 128: 150 % is twice
 
         var (withoutOne, onlyTwo) = Run(m => m.SetSpeakerGains(new Dictionary<uint, float> { [1] = 0f }), [1, 2], [2]);
         for (int i = 0; i < onlyTwo.Length; i++) Assert.Equal(onlyTwo[i], withoutOne[i], 4); // speaker 2 untouched, 1 silent
+    }
+
+    /// <summary>Package 128 (A137): per-user 200 % is four times the amplitude of 100 %, below the limiter's threshold.</summary>
+    [Fact]
+    public void Mixer_UserVolume200_FourTimes()
+    {
+        var encoder = new VoiceEncoder();
+        var packets = Enumerable.Range(0, 6).Select(n => encoder.Encode(Sine(0.1f, n * AudioFormat.FrameSamples))).ToList();
+        Mixer loud = new(), normal = new();
+        loud.SetSpeakerGains(new Dictionary<uint, float> { [1] = 2f });
+        for (int n = 0; n < packets.Count; n++)
+        {
+            loud.Push(1, (uint)n, packets[n], false);
+            normal.Push(1, (uint)n, packets[n], false);
+        }
+        for (int tick = 0; tick < 4; tick++)
+        {
+            var a = loud.Tick().Frame;
+            var b = normal.Tick().Frame;
+            Assert.True(a.Max(MathF.Abs) < SoftLimiter.Threshold);
+            for (int i = 0; i < a.Length; i++) Assert.Equal(4 * b[i], a[i], 3);
+        }
     }
 
     [Fact]

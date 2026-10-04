@@ -29,7 +29,7 @@ public sealed class Mixer
     readonly float[] mixed = new float[AudioFormat.FrameSamples];
     readonly List<ActiveSpeaker> active = [];
 
-    /// <summary>Package 51: the volume per speaker (session id), 1 for everyone not listed.</summary>
+    /// <summary>Package 51: the volume per speaker (session id), 1 for everyone not listed; Package 128: slider values (A137).</summary>
     public void SetSpeakerGains(IReadOnlyDictionary<uint, float> gains)
     {
         lock (gate) speakerGains = new Dictionary<uint, float>(gains);
@@ -40,6 +40,7 @@ public sealed class Mixer
         lock (gate) return speakerGains.GetValueOrDefault(speakerId, 1f);
     }
 
+    /// <summary>The output volume as the slider value; Package 128: through <see cref="VolumeCurve"/> like the per-speaker volume.</summary>
     public float Volume { get; set; } = 1f;
 
     public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink)
@@ -56,6 +57,7 @@ public sealed class Mixer
     {
         Array.Clear(mixed);
         active.Clear();
+        float output = Volume;
         lock (gate)
         {
             foreach (var (id, speaker) in speakers) // removing the current entry while enumerating is allowed
@@ -68,12 +70,10 @@ public sealed class Mixer
                 }
                 speaker.IdleTicks = 0;
                 active.Add(new ActiveSpeaker(id, speaker.Buffer.ViaLink));
-                float own = speakerGains.GetValueOrDefault(id, 1f);
+                float own = VolumeCurve.Combine(speakerGains.GetValueOrDefault(id, 1f), output) * DefaultVoiceBoost; // Package 128
                 for (int i = 0; i < mixed.Length; i++) mixed[i] += pcm[i] * own;
             }
         }
-        float gain = DefaultVoiceBoost * Volume;
-        for (int i = 0; i < mixed.Length; i++) mixed[i] *= gain;
         limiter.Process(mixed); // only Tick uses it, and Tick runs on the playback thread alone
         return (mixed, active);
     }

@@ -7593,11 +7593,11 @@ The mixer multiplies linear values: per-user volume 0 to 2, output volume 0 to 2
 
 ### Acceptance Criteria
 
-- [ ] AC1: The curve gives ×1 at 100 %, ×4 at 200 %, ×2 at 150 %, about ×0.25 at 50 %, 0 at 0 %, and rises monotonically.
-- [ ] AC2: Per-user 200 % and output 200 % give ×12 (capped), not ×16.
-- [ ] AC3: A frame mixed with per-user 200 % has four times the amplitude of the same frame at 100 % (below the limiter's threshold).
-- [ ] AC4: Migration step 2 resets per-user volumes and the output volume above 100 % to 100 % once; values up to 100 % are kept; a migrated file is not touched again.
-- [ ] AC5: The sliders still show 0 to 200 %, and the stored values are the slider values.
+- [x] AC1: The curve gives ×1 at 100 %, ×4 at 200 %, ×2 at 150 %, about ×0.25 at 50 %, 0 at 0 %, and rises monotonically.
+- [x] AC2: Per-user 200 % and output 200 % give ×12 (capped), not ×16.
+- [x] AC3: A frame mixed with per-user 200 % has four times the amplitude of the same frame at 100 % (below the limiter's threshold).
+- [x] AC4: Migration step 2 resets per-user volumes and the output volume above 100 % to 100 % once; values up to 100 % are kept; a migrated file is not touched again.
+- [x] AC5: The sliders still show 0 to 200 %, and the stored values are the slider values.
 
 ### Tests (TDD)
 
@@ -7606,6 +7606,8 @@ The mixer multiplies linear values: per-user volume 0 to 2, output volume 0 to 2
 3. `ReceivePathTests > "Mixer_UserVolume200_FourTimes"` (AC3); existing mixer tests that assume a linear ×2 are adjusted.
 4. `SettingsTests > "Migration_ResetsVolumesAbove100Once"` (AC4)
 5. `SettingsTests > "Volume_SliderValueStored"` (AC5)
+
+(as built: `VolumeCurve.Gain(volume)` takes the stored slider value (1 = 100 %, 0 to 2), the unit the settings, `SettingsViewModel` and the per-user slider already use, so nothing between the sliders and the mixer changed: `AudioEngine` still sets `Mixer.Volume` to `OutputVolume` and `MainViewModel.SyncGains` still passes `VolumeFor` per session. Up to 100 % it is `10^((v - 1) * 1.2)`, above it `4^(v - 1)`, and 0 gives exactly 0 (the formula alone would leave -24 dB at 0 %). `Combine(user, output)` multiplies both and caps at `MaxGain` = 12. `Mixer.Tick` now applies `Combine(speaker, Volume) * DefaultVoiceBoost` per speaker in the one loop it already had, instead of the speaker gain in the loop and boost times volume over the sum; the self test's own voice has no per-speaker entry and gets the output volume as before; sounds are mixed after `Tick` and stay outside the curve. Migration step 2 is `ClientSettings.ResetVolumesAbove100` (output volume and every per-user volume above 1 set to 1; a per-user entry at 1 is removed, as `SetVolume` does for 100 %). Older mixer tests on the linear meaning were adjusted: `Mixer_Volume_ScalesBoostedVoice` (50 % is now -6 dB against the decoded frame, not 0 dB), `Mixer_Volume200_DoublesVoice_Limited` renamed `Mixer_Volume200_FourTimes_Limited` (+12 dB), `Mixer_SpeakerGain_OnlyThatSpeaker` (150 % for twice). The new tests failed to build before `VolumeCurve` existed. The debug API and the sliders needed no change. AC5 is checked on the stored values and the settings page's 0 to 200 % clamp; the per-user slider already clamps to 0 to 200 % (`ServerViewModel`).)
 
 Test command: `dotnet test tests/OVS.Tests`
 

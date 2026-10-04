@@ -471,6 +471,43 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(ClientSettings.CurrentVersion + 5, Vm(newer).ToSettings(newer).SettingsVersion);
     }
 
+    /// <summary>Package 128 (A135 step 2): volumes above 100 % go back to 100 % once, since 200 % now means four times.</summary>
+    [Fact]
+    public void Migration_ResetsVolumesAbove100Once()
+    {
+        var path = Path.Combine(dir, ClientSettings.FileName);
+        File.WriteAllText(path, """{ "settingsVersion": 1, "outputVolume": 1.8, "userVolumes": { "fpA": 2, "fpB": 0.5, "fpC": 1.2 } }""");
+        var old = ClientSettings.Load(dir, out _);
+        Assert.Equal((1f, ClientSettings.CurrentVersion), (old.OutputVolume, old.SettingsVersion));
+        Assert.Equal((1f, 0.5f, 1f), (old.VolumeFor("fpA"), old.VolumeFor("fpB"), old.VolumeFor("fpC")));
+        Assert.Equal(["fpB"], old.UserVolumes.Keys); // entries back at 100 % are dropped, not stored
+
+        File.WriteAllText(path, """{ "outputVolume": 0.7 }"""); // up to 100 % is kept, also from version 0
+        Assert.Equal(0.7f, ClientSettings.Load(dir, out _).OutputVolume);
+
+        old.OutputVolume = 1.8f; // the user turns it up again
+        old.SetVolume("fpA", 2f);
+        old.Save(dir);
+        var migrated = ClientSettings.Load(dir, out _);
+        Assert.Equal((1.8f, 2f), (migrated.OutputVolume, migrated.VolumeFor("fpA")));
+    }
+
+    /// <summary>Package 128 (A137): the sliders keep 0 to 200 % and the file stores the slider value, not the gain.</summary>
+    [Fact]
+    public void Volume_SliderValueStored()
+    {
+        var vm = Vm(new ClientSettings());
+        vm.OutputVolumePercent = 150;
+        var s = vm.ToSettings(new ClientSettings());
+        s.SetVolume("fpA", 1.5f);
+        s.Save(dir);
+        var loaded = ClientSettings.Load(dir, out _);
+        Assert.Equal((1.5f, 1.5f), (loaded.OutputVolume, loaded.VolumeFor("fpA")));
+        Assert.Equal(150, Vm(loaded).OutputVolumePercent, 3);
+        vm.OutputVolumePercent = 250;
+        Assert.Equal(200, vm.OutputVolumePercent);
+    }
+
     /// <summary>Package 123: the switches are heard at once and count as a change; switched back, nothing is left to save.</summary>
     [Fact]
     public void VoiceFilters_LivePreviewAndCancel()

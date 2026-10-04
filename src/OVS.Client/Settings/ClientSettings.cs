@@ -66,6 +66,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
     static readonly Action<ClientSettings>[] Migrations =
     [
         s => s.AutoGain = true, // 1 (Package 127, A136): automatic gain on for everyone once
+        s => s.ResetVolumesAbove100(), // 2 (Package 128, A137): 200 % now means four times
     ];
 
     public static int CurrentVersion => Migrations.Length;
@@ -127,6 +128,12 @@ public sealed class ClientSettings : IJsonOnDeserializing
         volume = Math.Clamp(volume, 0f, MaxUserVolume);
         if (volume == 1f) UserVolumes.Remove(fingerprint);
         else UserVolumes[fingerprint] = volume;
+    }
+
+    void ResetVolumesAbove100()
+    {
+        OutputVolume = Math.Min(OutputVolume, 1f);
+        foreach (var (fingerprint, volume) in UserVolumes.ToList()) SetVolume(fingerprint, Math.Min(volume, 1f));
     }
 
     /// <summary>Package 61: opacity of the large backgrounds (0 to 1) and whether what shows through is blurred.</summary>
