@@ -570,20 +570,143 @@ public class SendPathTests
         Assert.Equal(Enumerable.Range(0, frames.Count * AudioFormat.FrameSamples).Select(i => (float)i), frames.SelectMany(f => f));
     }
 
-    [Fact]
-    public void Resampler_44100To48000_KeepsDuration()
+    static float[] Sine(double frequency, int rate, double seconds, double amplitude = 0.5) =>
+        Enumerable.Range(0, (int)(rate * seconds)).Select(i => (float)(amplitude * Math.Sin(2 * Math.PI * frequency * i / rate))).ToArray();
+
+    /// <summary>Package 138: through the capture resampler in 10 ms chunks, as WASAPI delivers them.</summary>
+    static float[] Resample(float[] input, int rate)
     {
-        var resampler = new LinearResampler(44_100, 48_000);
-        int total = 0;
-        for (int i = 0; i < 10; i++) total += resampler.Process(new float[4410]).Length;
-        Assert.InRange(total, 47_999, 48_001);
+        var resampler = new SincResampler(rate, AudioFormat.SampleRate);
+        var output = new List<float>();
+        for (int i = 0; i < input.Length; i += rate / 100)
+            output.AddRange(resampler.Process(input.AsSpan(i, Math.Min(rate / 100, input.Length - i))));
+        return [.. output];
     }
 
-    [Fact]
-    public void Resampler_SameRate_PassesThrough()
+    /// <summary>The linear interpolation the capture path used before Package 138, as the reference for AC2.</summary>
+    static float[] ResampleLinear(float[] input, int rate)
     {
-        var resampler = new LinearResampler(48_000, 48_000);
-        Assert.Equal([1f, 2f, 3f], resampler.Process([1f, 2f, 3f]).ToArray());
+        var output = new float[(int)((long)input.Length * AudioFormat.SampleRate / rate)];
+        for (int j = 0; j < output.Length; j++)
+        {
+            double position = (double)j * rate / AudioFormat.SampleRate;
+            int i = (int)position;
+            float a = input[i], b = input[Math.Min(i + 1, input.Length - 1)];
+            output[j] = a + (b - a) * (float)(position - i);
+        }
+        return output;
+    }
+
+    /// <summary>Package 138 (AC1): a 1 kHz tone from a 44.1 kHz microphone stays a 1 kHz tone at the same level.</summary>
+    [Fact]
+    public void Resampler_KeepsTone()
+    {
+        var output = Resample(Sine(1000, 44_100, 1), 44_100);
+        var steady = output.AsSpan(4800, 48 * 800); // past the start, a whole number of 1 kHz periods
+        // the 1 kHz part, fitted by correlation, and what is left besides it
+        double re = 0, im = 0;
+        for (int n = 0; n < steady.Length; n++)
+        {
+            double w = 2 * Math.PI * 1000 * n / AudioFormat.SampleRate;
+            re += steady[n] * Math.Cos(w);
+            im += steady[n] * Math.Sin(w);
+        }
+        double amplitude = 2 * Math.Sqrt(re * re + im * im) / steady.Length, phase = Math.Atan2(re, im);
+        Assert.InRange(20 * Math.Log10(amplitude / 0.5), -0.5, 0.5);
+        double rest = 0;
+        for (int n = 0; n < steady.Length; n++)
+        {
+            double fitted = amplitude * Math.Sin(2 * Math.PI * 1000 * n / AudioFormat.SampleRate + phase);
+            rest += (steady[n] - fitted) * (steady[n] - fitted);
+        }
+        Assert.True(Math.Sqrt(rest / steady.Length) < 0.001 * amplitude, $"left besides 1 kHz: {Math.Sqrt(rest / steady.Length)}");
+    }
+
+    /// <summary>Energy below <paramref name="below"/> Hz in a Blackman-Harris windowed stretch, in 5 Hz bins.</summary>
+    static double EnergyBelow(ReadOnlySpan<float> samples, double below)
+    {
+        int n = samples.Length;
+        var windowed = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            double x = 2 * Math.PI * i / (n - 1);
+            windowed[i] = samples[i] * (0.35875 - 0.48829 * Math.Cos(x) + 0.14128 * Math.Cos(2 * x) - 0.01168 * Math.Cos(3 * x));
+        }
+        double energy = 0;
+        for (double f = 0; f < below; f += (double)AudioFormat.SampleRate / n)
+        {
+            double re = 0, im = 0;
+            for (int i = 0; i < n; i++)
+            {
+                double w = 2 * Math.PI * f * i / AudioFormat.SampleRate;
+                re += windowed[i] * Math.Cos(w);
+                im += windowed[i] * Math.Sin(w);
+            }
+            energy += re * re + im * im;
+        }
+        return energy;
+    }
+
+    /// <summary>
+    /// Package 138 (AC2): a 20 kHz tone (sibilants) from 44.1 kHz must not fold back into the voice band; from 96 kHz a
+    /// tone above 24 kHz must not fold back at all. In dB less than the linear resampler leaves.
+    /// </summary>
+    [Theory]
+    [InlineData(44_100, 20_000, 4000, 40)]
+    // above 24 kHz all that comes out is folded back (to 18 kHz): linear keeps all of it, the sinc about -45 dB, the
+    // ceiling of 64 taps whose transition band reaches past 24 kHz
+    [InlineData(96_000, 30_000, 24_000, 40)]
+    public void Resampler_NoAliasing(int rate, double tone, double below, double betterDb)
+    {
+        var input = Sine(tone, rate, 0.5);
+        double linear = EnergyBelow(ResampleLinear(input, rate).AsSpan(4800, 9600), below);
+        double sinc = EnergyBelow(Resample(input, rate).AsSpan(4800, 9600), below);
+        double full = EnergyBelow(Resample(Sine(1000, rate, 0.5), rate).AsSpan(4800, 9600), below);
+        Assert.True(10 * Math.Log10(linear / sinc) >= betterDb,
+            $"linear {10 * Math.Log10(linear / full):F1} dB, sinc {10 * Math.Log10(sinc / full):F1} dB below a 1 kHz tone");
+    }
+
+    /// <summary>Package 138 (AC3): 10 s in uneven chunks give 10 s at 48 kHz (no drift); 48 kHz passes untouched.</summary>
+    [Fact]
+    public void Resampler_LengthAndPassThrough()
+    {
+        var resampler = new SincResampler(44_100, AudioFormat.SampleRate);
+        int[] sizes = [441, 440, 1000, 3, 448, 1];
+        long fed = 0, total = 0;
+        for (int i = 0; fed < 10 * 44_100; i++)
+        {
+            int size = (int)Math.Min(sizes[i % sizes.Length], 10 * 44_100 - fed);
+            total += resampler.Process(new float[size]).Length;
+            fed += size;
+        }
+        // held back: the filter's latency and the queue for the next block (under 2 ms); nothing grows with the length
+        Assert.InRange(total, 10 * AudioFormat.SampleRate - 96, 10 * AudioFormat.SampleRate);
+
+        var same = new SincResampler(AudioFormat.SampleRate, AudioFormat.SampleRate);
+        float[] samples = [1f, 2f, 3f];
+        var result = same.Process(samples);
+        Assert.Equal(samples, result.ToArray());
+        Assert.True(result.Overlaps(samples), "48 kHz is handed back as it came");
+    }
+
+    /// <summary>Package 138 (AC4): resampling a capture chunk allocates nothing once warmed up (Package 124).</summary>
+    [Fact]
+    public void Resampler_AllocatesNothing()
+    {
+        var resampler = new SincResampler(44_100, AudioFormat.SampleRate);
+        var input = Sine(1000, 44_100, 0.05);
+        int[] sizes = [441, 440, 448];
+        int next = 0;
+        void Chunk() => resampler.Process(input.AsSpan(0, sizes[next++ % sizes.Length]));
+        for (int i = 0; i < 200; i++) Chunk();
+        var windows = new long[3];
+        for (int w = 0; w < windows.Length; w++)
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < 100; i++) Chunk();
+            windows[w] = GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+        Assert.Equal(0, windows.Min()); // one clean window: the runtime may allocate now and then (IdleCostTests)
     }
 
     [Fact]

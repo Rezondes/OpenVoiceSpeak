@@ -8096,10 +8096,10 @@ Capture converts other rates to 48 kHz by linear interpolation without a low-pas
 
 ### Acceptance Criteria
 
-- [ ] AC1: A 1 kHz sine at 44.1 kHz comes out at 48 kHz as 1 kHz with the same level ±0.5 dB.
-- [ ] AC2: A 20 kHz sine at 44.1 kHz leaves at least 40 dB less energy below 4 kHz than the linear resampler does.
-- [ ] AC3: The number of output samples matches the rate ratio over 10 s (no drift), and 48 kHz input passes unchanged.
-- [ ] AC4: Nothing is allocated per frame.
+- [x] AC1: A 1 kHz sine at 44.1 kHz comes out at 48 kHz as 1 kHz with the same level ±0.5 dB.
+- [x] AC2: A 20 kHz sine at 44.1 kHz leaves at least 40 dB less energy below 4 kHz than the linear resampler does.
+- [x] AC3: The number of output samples matches the rate ratio over 10 s (no drift), and 48 kHz input passes unchanged.
+- [x] AC4: Nothing is allocated per frame.
 
 ### Tests (TDD)
 
@@ -8107,6 +8107,8 @@ Capture converts other rates to 48 kHz by linear interpolation without a low-pas
 2. `SendPathTests > "Resampler_NoAliasing"` (AC2)
 3. `SendPathTests > "Resampler_LengthAndPassThrough"` (AC3)
 4. `SendPathTests > "Resampler_AllocatesNothing"` (AC4)
+
+(as built: `LinearResampler` is gone; `SincResampler` in `SendPath.cs` wraps NAudio's `WdlResampler` in sinc mode (64 taps) and keeps the shape of the old type (constructor with the two rates, `Process` returning a span into a reused buffer, the input itself at equal rates), so `CapturePipeline` only changed the type name; it still makes a new one when the capture rate changes (a device reopened at another rate by Package 137), dropping under 1 ms of queued input. Two findings in WDL shaped it: `ResamplePrepare` sizes its input buffer with `Array.Resize` to what each call needs, so chunks of changing size allocated about 2 KB per call; asked for a fixed number of output samples (output driven, not WDL's input driven feed mode) the buffer always has the same size, so the wrapper queues the input and takes 48 output samples (1 ms) at a time while the queue holds enough. And WDL interpolates linearly in its coefficient table: at its default of 32 steps that error left the folded 20 kHz tone only 27 dB below the linear resampler's, at 256 steps (a 65 KB table built once) it is 71 dB below. Latency: about 36 input samples (half the sinc plus WDL's 4 of look-ahead, 0.8 ms at 44.1 kHz) plus up to 1 ms in the queue, so under 2 ms from 44.1 kHz up and about 3, 4 and 5 ms at 16, 11 and 8 kHz. `SoundImport` used the old resampler too and now uses this one; it appends 10 ms of silence, at least 128 samples, so the end of the sound comes out, and cuts the result to the exact converted length. Tests: AC1 `Resampler_KeepsTone` (1 kHz fitted by correlation over whole periods: level within ±0.5 dB, the rest under 0.1 % of it); AC2 `Resampler_NoAliasing` (energy below 4 kHz in a Blackman-Harris windowed DFT, against a plain linear interpolation kept in the test as the reference; a second case downsamples a 30 kHz tone from 96 kHz and counts everything below 24 kHz, all of it folded back: linear keeps it at the level of a 1 kHz tone, the sinc at about -45 dB, the ceiling of 64 taps whose transition band reaches past 24 kHz; the test asks for 40 dB in both cases); AC3 `Resampler_LengthAndPassThrough` (10 s fed in chunks of 441, 440, 1000, 3, 448 and 1 samples give 480000 samples less at most 2 ms held back; 48 kHz comes back as the same memory); AC4 `Resampler_AllocatesNothing` (chunks of 441, 440 and 448 samples, one clean window of 100 as in `IdleCostTests`, whose 44.1 kHz capture check now runs through it too). The old `Resampler_44100To48000_KeepsDuration` and `Resampler_SameRate_PassesThrough` are folded into AC3. With the linear resampler under the new name only AC2 failed (both 15.9 dB); the first WDL wrapper failed AC2 and AC4 and `SoundImportTests.Wav_UpToFiveSeconds_Accepted_CopiedAsMono48k` (the held back end).)
 
 Test command: `dotnet test tests/OVS.Tests`
 

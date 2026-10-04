@@ -18,7 +18,7 @@ public sealed class CapturePipeline : IDisposable
     readonly float[] previous = new float[AudioFormat.FrameSamples]; // pre-roll, see Feed
     readonly AutoGain autoGain = new();
     bool sending;
-    LinearResampler? resampler;
+    SincResampler? resampler;
     int resamplerRate;
     WasapiCapture? capture;
     Thread? toneThread;
@@ -120,7 +120,7 @@ public sealed class CapturePipeline : IDisposable
         {
             if (resampler is null || resamplerRate != sampleRate)
             {
-                resampler = new LinearResampler(sampleRate, AudioFormat.SampleRate);
+                resampler = new SincResampler(sampleRate, AudioFormat.SampleRate);
                 resamplerRate = sampleRate;
             }
             var samples = resampler.Process(mono);

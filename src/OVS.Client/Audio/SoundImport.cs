@@ -39,7 +39,11 @@ public static class SoundImport
                 for (int c = 0; c < channels; c++) sum += all[i * channels + c];
                 mono[i] = sum / channels;
             }
-            samples = new LinearResampler(reader.WaveFormat.SampleRate, AudioFormat.SampleRate).Process(mono).ToArray();
+            // Package 138: silence after the end pushes out what the resampler holds back (about 36 input samples plus
+            // up to 1 ms), so 10 ms but at least 128 samples for very low rates
+            int rate = reader.WaveFormat.SampleRate, length = (int)((long)mono.Length * AudioFormat.SampleRate / rate);
+            var resampled = new SincResampler(rate, AudioFormat.SampleRate).Process([.. mono, .. new float[Math.Max(rate / 100, 128)]]);
+            samples = resampled[..Math.Min(length, resampled.Length)].ToArray();
         }
         catch (Exception e) when (e is IOException or InvalidDataException or FormatException or COMException
                                    or ArgumentException or NotSupportedException or InvalidOperationException)

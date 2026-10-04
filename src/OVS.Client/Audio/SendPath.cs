@@ -1,3 +1,4 @@
+using NAudio.Dsp;
 using OVS.Shared.Voice;
 
 namespace OVS.Client.Audio;
@@ -109,32 +110,60 @@ public sealed class FrameChunker
     }
 }
 
-/// <summary>Linear interpolation resampler, good enough for speech. Keeps state across chunks.</summary>
-public sealed class LinearResampler(int fromRate, int toRate)
+/// <summary>
+/// Package 138 (A147): mono resampler around NAudio's windowed-sinc <see cref="WdlResampler"/>, which low-passes
+/// before converting, so tones above the voice band do not fold back into it as linear interpolation let them.
+/// Keeps state across chunks.
+/// </summary>
+/// <remarks>
+/// WDL resizes its input buffer to whatever a call needs (<see cref="Array.Resize{T}"/>), so chunks of changing size
+/// would allocate on every call. Asked for a fixed number of output samples it always needs the same buffer, so this
+/// keeps the input in a queue and takes <see cref="Block"/> output samples at a time. Latency: about 36 input samples
+/// (half the sinc plus WDL's 4 of look-ahead) plus up to 1 ms in the queue; under 2 ms from 44.1 kHz up, about 5 ms at 8 kHz.
+/// </remarks>
+public sealed class SincResampler
 {
-    readonly double step = (double)fromRate / toRate;
-    double position; // in the virtual stream [last, input...], index 0 = last sample of the previous chunk
-    float last;
-    float[] output = [];
+    // WDL interpolates linearly in its coefficient table; at its default of 32 steps that error alone left a folded
+    // 20 kHz tone 45 dB louder (SendPathTests.Resampler_NoAliasing). The table costs 65 KB once.
+    const int Taps = 64, Oversampling = 256;
+    const int Block = 48; // output samples per step, 1 ms at 48 kHz
+
+    readonly WdlResampler? wdl; // null at equal rates
+    readonly double ratio;      // output samples per input sample
+    float[] queue = [], output = [];
+    int queued;
+
+    public SincResampler(int fromRate, int toRate)
+    {
+        if (fromRate == toRate) return;
+        ratio = (double)toRate / fromRate;
+        wdl = new WdlResampler();
+        wdl.SetMode(true, 0, true, Taps, Oversampling); // windowed sinc; it low-passes at the lower of the two rates
+        wdl.SetRates(fromRate, toRate);
+    }
 
     /// <returns>The resampled chunk in a buffer reused by the next call (Package 124); the input itself at equal rates.</returns>
     public ReadOnlySpan<float> Process(ReadOnlySpan<float> input)
     {
-        if (fromRate == toRate || input.IsEmpty) return input;
-        int most = (int)((input.Length - position) / step) + 2;
+        if (wdl is null || input.IsEmpty) return input;
+        if (queue.Length < queued + input.Length) Array.Resize(ref queue, queued + input.Length);
+        input.CopyTo(queue.AsSpan(queued));
+        queued += input.Length;
+        int most = (int)(queued * ratio) + Block;
         if (output.Length < most) output = new float[most];
-        int count = 0;
-        while (position < input.Length)
+
+        int taken = 0, count = 0;
+        while (true)
         {
-            int i = (int)position;
-            float frac = (float)(position - i);
-            float a = i == 0 ? last : input[i - 1];
-            float b = input[i];
-            output[count++] = a + (b - a) * frac;
-            position += step;
+            // safe without a ResampleOut after it; the same block size keeps WDL's buffer the same size
+            int wanted = wdl.ResamplePrepare(Block, 1, out var buffer, out int offset);
+            if (queued - taken < wanted) break;
+            queue.AsSpan(taken, wanted).CopyTo(buffer.AsSpan(offset));
+            count += wdl.ResampleOut(output, count, wanted, Block, 1);
+            taken += wanted;
         }
-        position -= input.Length;
-        last = input[^1];
+        queue.AsSpan(taken, queued - taken).CopyTo(queue);
+        queued -= taken;
         return output.AsSpan(0, count);
     }
 }
