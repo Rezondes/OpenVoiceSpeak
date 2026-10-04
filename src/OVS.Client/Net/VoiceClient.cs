@@ -8,8 +8,15 @@ namespace OVS.Client.Net;
 public sealed class VoiceClient : IDisposable
 {
     static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
+    // Package 126: Hello is retried until the server answers, fast at first; silence this long counts as lost
+    static readonly TimeSpan HelloRetry = TimeSpan.FromMilliseconds(500);
+    static readonly TimeSpan FastHellos = TimeSpan.FromSeconds(5);
+    static readonly TimeSpan LostAfter = TimeSpan.FromSeconds(15);
 
     readonly UdpClient udp;
+    readonly TimeProvider time;
+    readonly object stateGate = new();
+    DateTimeOffset lastAnswer, lastSent, helloSince;
     readonly uint sessionId;
     readonly VoiceCrypto sendCrypto, receiveCrypto; // AesGcm per thread
     readonly SeqCounter seq = new();
@@ -18,10 +25,12 @@ public sealed class VoiceClient : IDisposable
     uint nextFrame;
     readonly CancellationTokenSource cts = new();
     Task? receiveLoop;
-    Timer? pingTimer;
+    ITimer? pingTimer;
 
-    public VoiceClient(IPEndPoint server, uint sessionId, byte[] key)
+    /// <param name="time">Package 126: drives the Hello retries and the loss detection (tests pass a manual clock).</param>
+    public VoiceClient(IPEndPoint server, uint sessionId, byte[] key, TimeProvider? time = null)
     {
+        this.time = time ?? TimeProvider.System;
         udp = new UdpClient(server.AddressFamily);
         udp.Connect(server);
         this.sessionId = sessionId;
@@ -32,14 +41,48 @@ public sealed class VoiceClient : IDisposable
     /// <summary>speakerId, speakerSeq, target, opus. Raised on the receive thread.</summary>
     public event Action<uint, uint, byte, byte[]>? VoiceReceived;
 
-    /// <summary>True once the server answered on UDP.</summary>
-    public bool Reachable { get; private set; }
+    /// <summary>True while the server answers on UDP; false again after 15 s without any answer (Package 126).</summary>
+    public bool Reachable
+    {
+        get
+        {
+            lock (stateGate) return reachable;
+        }
+    }
+
+    bool reachable;
 
     public void Start()
     {
+        lock (stateGate) helloSince = lastSent = time.GetUtcNow();
         Send(PacketType.Hello, [], 0);
         receiveLoop = Task.Run(ReceiveLoopAsync);
-        pingTimer = new Timer(_ => SendPing(), null, PingInterval, PingInterval);
+        pingTimer = time.CreateTimer(_ => Tick(), null, HelloRetry, HelloRetry);
+    }
+
+    /// <summary>
+    /// Package 126: while unreachable a Hello every 500 ms for 5 s, then one per ping interval, as the server binds our
+    /// endpoint only on a Hello; while reachable a ping per interval, and every 500 ms while an answer is overdue.
+    /// Ticks every 500 ms in both states.
+    /// </summary>
+    void Tick()
+    {
+        PacketType type;
+        lock (stateGate)
+        {
+            var now = time.GetUtcNow();
+            if (reachable && now - lastAnswer >= LostAfter)
+            {
+                reachable = false;
+                helloSince = now;
+            }
+            // an answer overdue by more than a ping interval is asked for every tick, so two lost pings are not a loss
+            bool fast = reachable ? now - lastAnswer > PingInterval : now - helloSince < FastHellos;
+            if (!fast && now - lastSent < PingInterval) return;
+            lastSent = now;
+            type = reachable ? PacketType.Ping : PacketType.Hello;
+        }
+        Send(type, [], 0);
     }
 
     /// <summary>
@@ -88,7 +131,11 @@ public sealed class VoiceClient : IDisposable
 
             if (!receiveCrypto.TryOpen(Direction.ServerToClient, result.Buffer, out var header, out var plain)) continue;
             if (!replay.Accept(header.Seq)) continue;
-            Reachable = true;
+            lock (stateGate)
+            {
+                reachable = true;
+                lastAnswer = time.GetUtcNow();
+            }
             if (header.Type == PacketType.Voice && RelayPayload.TryParse(plain, out var speakerSeq, out var opus))
                 VoiceReceived?.Invoke(header.SessionId, speakerSeq, header.Target, opus);
         }

@@ -7489,10 +7489,10 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Acceptance Criteria
 
-- [ ] AC1: With the first Hello dropped, the session is reachable and voice flows in both directions within 1 s.
-- [ ] AC2: With every packet dropped for 20 s and then delivered again, `Reachable` turns false after 15 s and true again within one ping interval of the network coming back.
-- [ ] AC3: Once reachable, the client sends only pings (no Hello flood), at the normal interval.
-- [ ] AC4: The client log shows "UDP nicht erreichbar" once and "UDP wieder erreichbar" once for such an outage.
+- [x] AC1: With the first Hello dropped, the session is reachable and voice flows in both directions within 1 s.
+- [x] AC2: With every packet dropped for 20 s and then delivered again, `Reachable` turns false after 15 s and true again within one ping interval of the network coming back.
+- [x] AC3: Once reachable, the client sends only pings (no Hello flood), at the normal interval.
+- [x] AC4: The client log shows "UDP nicht erreichbar" once and "UDP wieder erreichbar" once for such an outage.
 
 ### Tests (TDD)
 
@@ -7502,6 +7502,8 @@ Reproduction first: test 1 must be red before anything changes.
 2. `ClientNetTests > "UdpOutage_Recovers"` (AC2): the relay drops everything for 20 s, then passes; `VoiceClient` takes a `TimeProvider` (default `TimeProvider.System`), driven by `ManualTimeProvider`.
 3. `ClientNetTests > "Reachable_SendsOnlyPings"` (AC3): count Hello and Ping packets at the relay.
 4. `MainViewModelTests > "UdpOutage_LoggedOnceEachWay"` (AC4)
+
+(as built: `VoiceClient` takes an optional `TimeProvider` and runs one timer every 500 ms in both states instead of the 5 s ping timer; each tick decides: unreachable sends a Hello on every tick for 5 s after start or after a loss, then one per ping interval (5 s); reachable sends a ping once 5 s passed since the last packet, and on every tick while an answer is overdue by more than one ping interval, so two lost pings in a row (an idle listener on lossy Wi-Fi) are asked again instead of counting as a loss (`TwoLostPings_StayReachable`, added after review); 15 s after the last answer `Reachable` turns false and the fast Hellos start again. Any authenticated packet from the server (ping answer or voice) counts as an answer. The 500 ms tick costs two timer callbacks per second while idle, which does nothing measurable next to Package 124's numbers; switching the period with the state was not worth the extra code. `TestSupport/LossyUdpRelay` sits between one client and the server, drops the next N client packets or everything both ways, and counts the client's packets by type (also dropped ones) and the server packets passed back. All three `ClientNetTests` drive the client's clock with `ManualTimeProvider` and the network in real time, so "within 1 s" (AC1) is one 500 ms retry in client time, and AC2 is checked at 14.5 s (still reachable), 15 s (lost), 20 s (still lost, network back) and after one more ping interval (reachable). `Reachable_SendsOnlyPings` waits for each ping's answer before moving the clock on, as real time would; without that, the answers all arrived after the clock had passed 15 s and the client counted the line as lost; likewise the outage tests wait until the relay has seen (and dropped) the outage's packets before letting packets through again. All four were red before the change (test 1 timed out waiting for `Reachable`). `MainViewModel` gets two internal test hooks, `VoiceRelay` (UDP goes there instead of the server) and `VoiceTime`. The log: a loss after UDP worked logs the existing "UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)" at the next UI tick (no 5 s wait, `Reachable` already waited 15 s), and the recovery logs "UDP wieder erreichbar"; a connection that was unreachable from the start and then reaches the server still logs "UDP erreichbar", as before. The server is unchanged. In the first full run `ChannelLockTests.LockChange_NobodyMovedOut` and `BackupTests.UploadAndRestore_OnlyAdminGroup_CheckedPerChunk` failed once under load (server tests, untouched); both passed alone and in a second full run.)
 
 Test command: `dotnet test tests/OVS.Tests`
 

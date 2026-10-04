@@ -463,6 +463,33 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.StartsWith("Ping ", ping);
     }
 
+    /// <summary>Package 126: an outage after UDP worked is logged once when lost and once when back.</summary>
+    [Fact]
+    public async Task UdpOutage_LoggedOnceEachWay()
+    {
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint);
+        var time = new ManualTimeProvider();
+        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime) = (relay.EndPoint, time));
+        await ConnectAsync(saveBookmark: false);
+        string Logged()
+        {
+            vm.Tick();
+            return ClientLogText();
+        }
+        Assert.Contains("UDP erreichbar", await OnUiUntil(Logged, l => l.Contains("UDP erreichbar")));
+
+        relay.DropAll = true;
+        for (int i = 0; i < 40; i++) time.Advance(TimeSpan.FromMilliseconds(500)); // 20 s
+        Assert.Contains("UDP nicht erreichbar", await OnUi(Logged));
+        relay.DropAll = false;
+        for (int i = 0; i < 10; i++) time.Advance(TimeSpan.FromMilliseconds(500));
+        await OnUiUntil(Logged, l => l.Contains("UDP wieder erreichbar"));
+
+        var log = await OnUi(Logged); // one more tick adds nothing
+        foreach (var line in new[] { "UDP erreichbar", "UDP nicht erreichbar", "UDP wieder erreichbar" })
+            Assert.Single(log.Split(Environment.NewLine), l => l.Contains(line));
+    }
+
     /// <summary>Package 32: welcome in "Allgemein", the channel tab talks to the real server both ways.</summary>
     [Fact]
     public async Task Chat_EndToEnd()

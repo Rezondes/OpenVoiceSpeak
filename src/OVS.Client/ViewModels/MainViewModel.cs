@@ -64,6 +64,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     VoiceClient? voice;
     DateTime connectedAt;
     bool? udpLogged;
+    bool udpWasReachable; // Package 126
     /// <summary>Why the last connect attempt was refused, e.g. WrongPassword (Package 40).</summary>
     string? lastRejection;
 
@@ -278,8 +279,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             });
             conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
 
-            var udp = new VoiceClient(new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
-                Convert.FromBase64String(conn.Welcome.VoiceKey));
+            var udp = new VoiceClient(VoiceRelay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
+                Convert.FromBase64String(conn.Welcome.VoiceKey), VoiceTime);
             udp.VoiceReceived += Audio.OnVoice;
             Audio.Send = udp.SendVoice;
             udp.Start();
@@ -288,6 +289,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             voice = udp;
             connectedAt = DateTime.UtcNow;
             udpLogged = null;
+            udpWasReachable = false;
             Server = vm;
             SyncAudioFlags();
             Status = string.Format(Strings.Status_Connected, vm.ServerName);
@@ -535,6 +537,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         SyncGains();
     }
 
+    /// <summary>Package 126: tests send UDP through a lossy relay instead of to the server, on their own clock.</summary>
+    internal IPEndPoint? VoiceRelay { get; set; }
+    internal TimeProvider? VoiceTime { get; set; }
+
     /// <summary>Package 122: how often the speaker gain table was built and the logo checked against its hash (tests count them).</summary>
     internal int GainTableBuilds { get; private set; }
     internal int IconHashes { get; private set; }
@@ -555,16 +561,20 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         };
     }
 
-    /// <summary>Logs "reachable" once, or "not reachable" when nothing came back within 5 s (then "reachable" if it recovers).</summary>
+    /// <summary>
+    /// Logs "reachable" once, or "not reachable" when nothing came back within 5 s (then "reachable" if it recovers).
+    /// Package 126: UDP lost after it worked logs "not reachable" and, when it is back, "reachable again".
+    /// </summary>
     void LogUdpReachability()
     {
-        if (voice is not { } v || udpLogged == true) return;
+        if (voice is not { } v) return;
         if (v.Reachable)
         {
-            Log.Write("UDP erreichbar");
-            udpLogged = true;
+            if (udpLogged == true) return;
+            Log.Write(udpWasReachable ? "UDP wieder erreichbar" : "UDP erreichbar");
+            udpLogged = udpWasReachable = true;
         }
-        else if (udpLogged is null && DateTime.UtcNow - connectedAt > TimeSpan.FromSeconds(5))
+        else if (udpLogged == true || (udpLogged is null && DateTime.UtcNow - connectedAt > TimeSpan.FromSeconds(5)))
         {
             Log.Write("UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)");
             udpLogged = false;

@@ -177,6 +177,116 @@ public sealed class ClientNetTests : IDisposable
         lock (seqs) Assert.Equal(seqs[0] + 1, seqs[1]);
     }
 
+    static VoiceClient Voice(ClientConnection c, IPEndPoint to, TimeProvider? time = null) =>
+        new(to, c.Welcome.SessionId, Convert.FromBase64String(c.Welcome.VoiceKey), time);
+
+    /// <summary>Package 126: advances the voice clock in steps of the Hello retry, so every timer tick runs.</summary>
+    static void Advance(ManualTimeProvider time, TimeSpan by)
+    {
+        for (var done = TimeSpan.Zero; done < by; done += TimeSpan.FromMilliseconds(500))
+            time.Advance(TimeSpan.FromMilliseconds(500));
+    }
+
+    /// <summary>Package 126: a lost first Hello used to leave the session without voice for good.</summary>
+    [Fact]
+    public async Task FirstHelloLost_StillGetsVoice()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        await using var b = await Connect(server, "b");
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropNext = 1 };
+        var time = new ManualTimeProvider();
+        using var va = Voice(a, relay.EndPoint, time);
+        using var vb = Voice(b, server.VoiceEndPoint);
+        var atA = new TaskCompletionSource<byte[]>();
+        var atB = new TaskCompletionSource<byte[]>();
+        va.VoiceReceived += (_, _, _, opus) => atA.TrySetResult(opus);
+        vb.VoiceReceived += (_, _, _, opus) => atB.TrySetResult(opus);
+        va.Start();
+        vb.Start();
+        await WaitUntil(() => vb.Reachable && relay.Count(PacketType.Hello) == 1);
+        Assert.False(va.Reachable);
+
+        time.Advance(TimeSpan.FromMilliseconds(500)); // within 1 s: the retry
+        await WaitUntil(() => va.Reachable);
+        va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
+        vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
+        Assert.Equal([1, 2, 3], await atB.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal([4, 5, 6], await atA.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+    }
+
+    /// <summary>Package 126: 20 s without any packet, then the network is back.</summary>
+    [Fact]
+    public async Task UdpOutage_Recovers()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint);
+        var time = new ManualTimeProvider();
+        using var va = Voice(a, relay.EndPoint, time);
+        va.Start();
+        await WaitUntil(() => va.Reachable);
+
+        relay.DropAll = true;
+        Advance(time, TimeSpan.FromSeconds(14.5));
+        Assert.True(va.Reachable);
+        Advance(time, TimeSpan.FromSeconds(0.5));
+        Assert.False(va.Reachable);
+        Advance(time, TimeSpan.FromSeconds(5));
+        Assert.False(va.Reachable);
+        await WaitUntil(() => relay.Count(PacketType.Hello) == 11); // the first, then every 500 ms from 15 s; all dropped
+
+        relay.DropAll = false;
+        Advance(time, TimeSpan.FromSeconds(5)); // one ping interval
+        await WaitUntil(() => va.Reachable);
+    }
+
+    /// <summary>Package 126: two lost pings in a row (5 and 10 s) must not count as lost, an overdue answer is asked again.</summary>
+    [Fact]
+    public async Task TwoLostPings_StayReachable()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint);
+        var time = new ManualTimeProvider();
+        using var va = Voice(a, relay.EndPoint, time);
+        va.Start();
+        await WaitUntil(() => va.Reachable);
+
+        relay.DropAll = true;
+        Advance(time, TimeSpan.FromSeconds(10));
+        await WaitUntil(() => relay.Count(PacketType.Ping) == 11); // at 5 s, then overdue every 500 ms; all dropped
+        relay.DropAll = false;
+        Advance(time, TimeSpan.FromSeconds(0.5));
+        await WaitUntil(() => relay.PassedBack == 2); // the Hello's answer and now an overdue ping's
+        Advance(time, TimeSpan.FromSeconds(5.5)); // past the old 15 s mark
+        Assert.True(va.Reachable);
+    }
+
+    /// <summary>Package 126: once reachable, only pings every 5 s.</summary>
+    [Fact]
+    public async Task Reachable_SendsOnlyPings()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint);
+        var time = new ManualTimeProvider();
+        using var va = Voice(a, relay.EndPoint, time);
+        va.Start();
+        await WaitUntil(() => va.Reachable);
+
+        for (int i = 1; i <= 6; i++)
+        {
+            Advance(time, TimeSpan.FromSeconds(4.5));
+            Assert.Equal(i - 1, relay.Count(PacketType.Ping));
+            Advance(time, TimeSpan.FromSeconds(0.5));
+            await WaitUntil(() => relay.PassedBack == i + 1); // the answer arrives before the clock moves on, as in real time
+        }
+        Assert.Equal(6, relay.Count(PacketType.Ping));
+        Assert.Equal(1, relay.Count(PacketType.Hello));
+        Assert.True(va.Reachable);
+    }
+
     /// <summary>Waits up to 10 s by the clock (not by a loop count: Task.Delay(20) may take far longer on a busy runner).</summary>
     static async Task WaitUntil(Func<bool> condition)
     {
