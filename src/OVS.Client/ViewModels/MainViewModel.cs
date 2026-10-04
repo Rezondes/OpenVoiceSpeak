@@ -225,7 +225,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
                   $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
                   $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB, " +
-                  $"Rauschunterdrückung {(Settings.NoiseSuppression ? "an" : "aus")}, automatische Verstärkung {(Settings.AutoGain ? "an" : "aus")}");
+                  $"Rauschunterdrückung {(Settings.NoiseSuppression ? "an" : "aus")}, automatische Verstärkung {(Settings.AutoGain ? "an" : "aus")}, " +
+                  $"Echounterdrückung {(Settings.EchoCancellation ? "an" : "aus")}");
         var applied = Settings;
         return () => Audio.Configure(applied);
     }

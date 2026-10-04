@@ -629,6 +629,57 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(200, vm.OutputVolumePercent);
     }
 
+    /// <summary>
+    /// Package 140 (A149, AC4): echo cancellation is on by default, also for a file without the key; it round-trips, is
+    /// previewed live and reaches the running capture without a restart; a missing library turns it off with one log line.
+    /// </summary>
+    [Fact]
+    public async Task EchoCancellation_DefaultLiveMissingLib()
+    {
+        Assert.True(new ClientSettings().EchoCancellation);
+        File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
+        var old = ClientSettings.Load(dir, out _);
+        Assert.True(old.EchoCancellation);
+        var vm = Vm(old);
+        Assert.True(vm.EchoCancellation);
+        var live = new List<ClientSettings>();
+        vm.LivePreview = live.Add;
+        vm.EchoCancellation = false;
+        Assert.False(live[^1].EchoCancellation);
+        Assert.True(vm.HasChanges);
+        vm.ToSettings(old).Save(dir);
+        Assert.False(ClientSettings.Load(dir, out _).EchoCancellation);
+
+        using var keys = new KeyPoller();
+        using (var engine = new AudioEngine(keys, useDevices: false))
+        {
+            engine.Configure(new ClientSettings());
+            engine.SetTone(440);
+            var capture = engine.Capture!;
+            Assert.NotNull(capture.Canceller);
+            Assert.True(capture.EchoCancellation);
+            engine.ApplyLive(live[^1]); // switched off on the page: the same capture, the switch off
+            Assert.Same(capture, engine.Capture);
+            Assert.False(capture.EchoCancellation);
+        }
+
+        var log = new List<string>();
+        using var missing = new AudioEngine(keys, useDevices: false, log: line =>
+        {
+            lock (log) log.Add(line);
+        }) { EchoLibrary = "ovs-no-such-aec" };
+        missing.Configure(new ClientSettings());
+        missing.SetTone(440);
+        missing.SetTone(440); // a second capture start does not log again
+        int levels = 0;
+        missing.InputLevel += _ => Interlocked.Increment(ref levels);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (Volatile.Read(ref levels) == 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
+        Assert.Null(missing.Capture!.Canceller);
+        lock (log) Assert.Single(log, line => line.Contains("Echounterdrückung"));
+    }
+
     /// <summary>Package 123: the switches are heard at once and count as a change; switched back, nothing is left to save.</summary>
     [Fact]
     public void VoiceFilters_LivePreviewAndCancel()

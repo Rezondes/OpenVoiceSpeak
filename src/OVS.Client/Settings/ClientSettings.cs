@@ -111,6 +111,8 @@ public sealed class ClientSettings : IJsonOnDeserializing
     public bool NoiseSuppression { get; set; } = true;
     /// <summary>Package 123 (A131): raises a quiet microphone toward -20 dBFS; Package 127 (A136): on by default.</summary>
     public bool AutoGain { get; set; } = true;
+    /// <summary>Package 140 (A149): WebRTC's echo canceller on the sent signal; on also for a file from before without the key.</summary>
+    public bool EchoCancellation { get; set; } = true;
     public AppTheme Theme { get; set; } = AppTheme.System;
     /// <summary>Package 45: follows Windows unless set; takes effect at the next start.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.System;

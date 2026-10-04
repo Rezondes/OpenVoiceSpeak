@@ -188,6 +188,12 @@ public sealed class AudioEngine : IDisposable
     static readonly TimeSpan TargetBuffer = TimeSpan.FromMilliseconds(40);
     static readonly TimeSpan DeviceLatency = TimeSpan.FromMilliseconds(40);
 
+    /// <summary>
+    /// Package 140 (A149): the echo canceller's delay hint, from a mixed frame to its echo in the capture: the playback
+    /// buffer (<see cref="TargetBuffer"/>), the speaker's device buffer (30 ms) and the microphone's (20 ms).
+    /// </summary>
+    internal const int EchoDelayMs = 40 + 30 + 20;
+
     readonly object gate = new(); // the devices and settings
     readonly object threadGate = new(); // the playback thread's start and end; never held while taking gate
     readonly KeyPoller keys;
@@ -195,6 +201,7 @@ public sealed class AudioEngine : IDisposable
     readonly ITimer? settle; // Package 137: the reopen after device changes, once they have been quiet
     readonly Action<string>? log;
     bool noiseSuppressorMissing; // logged once, then no further tries
+    bool echoCancellerMissing; // Package 140: the same
     Thread? playbackThread;
     readonly AutoResetEvent wake = new(false);
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
@@ -470,11 +477,15 @@ public sealed class AudioEngine : IDisposable
             capture.Vad.Automatic = live.VadAutomatic;
             capture.NoiseSuppression = live.NoiseSuppression;
             capture.AutoGain = live.AutoGain;
+            capture.EchoCancellation = live.EchoCancellation; // Package 140
         }
     }
 
     /// <summary>Package 123: the native RNNoise library; tests name a missing one.</summary>
     internal string NoiseLibrary { get; init; } = NoiseSuppressor.Library;
+
+    /// <summary>Package 140: the native echo canceller; tests name a missing one.</summary>
+    internal string EchoLibrary { get; init; } = EchoCanceller.Library;
 
     internal CapturePipeline? Capture => capture;
 
@@ -659,6 +670,8 @@ public sealed class AudioEngine : IDisposable
             capture.Suppressor = CreateSuppressor();
             capture.NoiseSuppression = values.NoiseSuppression;
             capture.AutoGain = values.AutoGain;
+            capture.Canceller = CreateCanceller(); // Package 140: like the suppressor, also while switched off
+            capture.EchoCancellation = values.EchoCancellation;
             capture.FrameEncoded += OnFrameEncoded;
             capture.Level += OnLevel;
             capture.Start();
@@ -687,6 +700,21 @@ public sealed class AudioEngine : IDisposable
             log?.Invoke($"Rauschunterdrückung aus: {NoiseLibrary} nicht ladbar ({error})");
         }
         return suppressor;
+    }
+
+    /// <summary>Package 140 (A149): a missing library turns echo cancellation off with one log line.</summary>
+    EchoCanceller? CreateCanceller()
+    {
+        if (echoCancellerMissing) return null;
+        var canceller = EchoCanceller.Create(out var error, EchoLibrary);
+        if (canceller is null)
+        {
+            echoCancellerMissing = true;
+            log?.Invoke($"Echounterdrückung aus: {EchoLibrary} nicht ladbar ({error})");
+            return null;
+        }
+        canceller.DelayMs = EchoDelayMs;
+        return canceller;
     }
 
     /// <summary>Under gate.</summary>
@@ -832,7 +860,7 @@ public sealed class AudioEngine : IDisposable
                 Thread.Sleep(5);
                 continue;
             }
-            var frame = Mix();
+            var frame = MixForSpeaker();
             Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
             buffer.AddSamples(bytes, 0, bytes.Length);
             ticks = (long)(clock.Elapsed / AudioFormat.FrameDuration);
@@ -853,6 +881,18 @@ public sealed class AudioEngine : IDisposable
             playbackThread = null;
             return true;
         }
+    }
+
+    /// <summary>
+    /// Package 140: a frame for the speaker, which is also the echo canceller's far end: exactly what goes to the speaker
+    /// (voices after the limiter, and the tones), also in the self test, where it keeps the own voice from coming back
+    /// through the speakers. Playback thread; internal so tests mix by hand.
+    /// </summary>
+    internal float[] MixForSpeaker()
+    {
+        var frame = Mix();
+        if (capture is { EchoCancellation: true, Canceller: { } canceller }) canceller.Render(frame);
+        return frame;
     }
 
     float[] Mix()

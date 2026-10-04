@@ -164,19 +164,20 @@ public class VoiceFilterTests
     /// <summary>
     /// Package 127: a voice-like signal, frame by frame: eight harmonics of a pitch gliding between 100 and 180 Hz,
     /// syllables of 200 ms with 50 ms ramps and 50 ms gaps. Scaled so the frames inside a syllable average
-    /// <paramref name="rmsDb"/>.
+    /// <paramref name="rmsDb"/>. Package 140: another <paramref name="pitch"/> and syllable <paramref name="offset"/> (s)
+    /// give a second, unrelated voice.
     /// </summary>
-    static float[][] Voice(float rmsDb, int frames)
+    static float[][] Voice(float rmsDb, int frames, double pitch = 140, double offset = 0)
     {
         var samples = new float[frames * Frame];
         double phase = 0;
         for (int i = 0; i < samples.Length; i++)
         {
             double t = (double)i / AudioFormat.SampleRate;
-            phase += 2 * Math.PI * (140 + 40 * Math.Sin(2 * Math.PI * 0.7 * t)) / AudioFormat.SampleRate;
+            phase += 2 * Math.PI * (pitch + 40 * Math.Sin(2 * Math.PI * 0.7 * t)) / AudioFormat.SampleRate;
             double sum = 0;
             for (int k = 1; k <= 8; k++) sum += Math.Sin(k * phase) / k;
-            double inSyllable = t % 0.25; // 200 ms syllable, 50 ms gap
+            double inSyllable = (t + offset) % 0.25; // 200 ms syllable, 50 ms gap
             double envelope = inSyllable >= 0.2 ? 0 : Math.Min(1, Math.Min(inSyllable, 0.2 - inSyllable) / 0.05);
             samples[i] = (float)(sum * envelope);
         }
@@ -318,18 +319,24 @@ public class VoiceFilterTests
     {
         using var suppressor = NoiseSuppressor.Create(out var error);
         Assert.True(suppressor is not null, error);
+        using var canceller = EchoCanceller.Create(out error); // Package 140
+        Assert.True(canceller is not null, error);
         var gain = new AutoGain();
         var vad = new VoiceActivityDetector { Automatic = true }; // Package 129: the noise floor tracker too
         var random = new Random(1);
         var frames = Enumerable.Range(0, 110).Select(_ => Noise(random, -30)).ToArray();
         for (int i = 0; i < 20; i++) // warm-up: JIT and first calls (Package 129: past the learning 0.3 s)
         {
+            canceller.Render(frames[i]);
+            canceller.Process(frames[i]);
             gain.Process(frames[i], suppressor.Process(frames[i]));
             vad.Process(frames[i]);
         }
         long before = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 20; i < 110; i++)
         {
+            canceller.Render(frames[i]);
+            canceller.Process(frames[i]);
             CapturePipeline.ApplyGain(frames[i], 2f); // Package 127: the soft clip too
             gain.Process(frames[i], suppressor.Process(frames[i]));
             vad.Process(frames[i]);
@@ -360,5 +367,124 @@ public class VoiceFilterTests
         Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
         Assert.Null(engine.Capture!.Suppressor);
         lock (log) Assert.Single(log, line => line.Contains("Rauschunterdrückung"));
+    }
+
+    // ---- Package 140 (A149): echo cancellation ----
+
+    /// <summary>AC1: the wrapper DLL loads and processes a frame (far end, then near end) without changing its length.</summary>
+    [Fact]
+    public void EchoCanceller_Loads()
+    {
+        using var canceller = EchoCanceller.Create(out var error);
+        Assert.True(canceller is not null, error);
+        var far = Voice(-20, 1)[0];
+        var near = (float[])far.Clone();
+        canceller.Render(far);
+        canceller.Process(near);
+        Assert.All(near, s => Assert.True(float.IsFinite(s)));
+        canceller.Dispose();
+        canceller.Render(far); // after Dispose (a late playback frame): nothing happens
+        var late = (float[])far.Clone();
+        canceller.Process(late);
+        Assert.Equal(far, late);
+    }
+
+    /// <summary>A pipeline fed by hand with only echo cancellation, so the level the voice gate sees is what is sent.</summary>
+    static CapturePipeline EchoPipeline(List<float> sent)
+    {
+        var pipeline = CapturePipeline.Manual();
+        pipeline.Canceller = EchoCanceller.Create(out var error);
+        Assert.True(pipeline.Canceller is not null, error);
+        pipeline.Canceller.DelayMs = AudioEngine.EchoDelayMs; // the engine's hint, not the 60 ms of the test path
+        pipeline.EchoCancellation = true;
+        pipeline.DecideTarget = _ =>
+        {
+            sent.Add(pipeline.Vad.LastLevelDb);
+            return null;
+        };
+        return pipeline;
+    }
+
+    /// <summary>The level of frames together, from their levels (all frames are 20 ms).</summary>
+    static double EnergyDb(IEnumerable<float> levels) => 10 * Math.Log10(levels.Average(db => Math.Pow(10, db / 10)));
+
+    static double EnergyDb(IEnumerable<float[]> frames) => EnergyDb(frames.Select(f => VoiceActivityDetector.LevelDb(f)));
+
+    /// <summary>
+    /// AC2: the far end (a voice at -20 dBFS) played and coming back 60 ms later at -6 dB is at least 25 dB quieter in the
+    /// sent signal after 2 s, while a near-end voice talking at the same time stays within 3 dB.
+    /// </summary>
+    [Fact]
+    public void EchoCanceller_RemovesFarEnd_KeepsNearEnd()
+    {
+        const int delayFrames = 3, adapt = 100, echoOnly = 100, doubleTalk = 100; // 60 ms; 2 s each
+        int total = adapt + echoOnly + doubleTalk;
+        var far = Voice(-20, total);
+        var near = Voice(-26, total, pitch: 220, offset: 0.11);
+        var sent = new List<float>();
+        using (var pipeline = EchoPipeline(sent))
+        {
+            for (int i = 0; i < total; i++)
+            {
+                pipeline.Canceller!.Render(far[i]); // played now (the playback thread)
+                var mic = new float[Frame];
+                if (i >= delayFrames)
+                    for (int s = 0; s < Frame; s++) mic[s] = 0.5f * far[i - delayFrames][s]; // -6 dB, 60 ms later
+                if (i >= adapt + echoOnly)
+                    for (int s = 0; s < Frame; s++) mic[s] += near[i][s];
+                pipeline.Feed(mic, AudioFormat.SampleRate);
+            }
+        }
+        Assert.Equal(total, sent.Count);
+        var echoIn = Enumerable.Range(adapt, echoOnly).Select(i => far[i - delayFrames]).ToList();
+        double reduction = EnergyDb(echoIn) - 6 - EnergyDb(sent.Skip(adapt).Take(echoOnly));
+        Assert.True(reduction >= 25, $"echo reduced by {reduction:0.0} dB");
+
+        double nearIn = EnergyDb(near.Skip(adapt + echoOnly));
+        double nearOut = EnergyDb(sent.Skip(adapt + echoOnly));
+        Assert.True(Math.Abs(nearOut - nearIn) <= 3, $"near end {nearIn:0.0} dB in, {nearOut:0.0} dB out");
+    }
+
+    /// <summary>AC3: without anything played, a voice passes the canceller with less than 1 dB change.</summary>
+    [Fact]
+    public void EchoCanceller_NoFarEnd_Unchanged()
+    {
+        var voice = Voice(-26, 250);
+        var sent = new List<float>();
+        using (var pipeline = EchoPipeline(sent))
+            foreach (var frame in voice) pipeline.Feed(frame, AudioFormat.SampleRate);
+        double change = EnergyDb(sent.Skip(50)) - EnergyDb(voice.Skip(50));
+        Assert.True(Math.Abs(change) < 1, $"changed by {change:0.00} dB");
+    }
+
+    /// <summary>
+    /// Package 140: the frame mixed for the speaker feeds the far end while the switch is on and a canceller exists;
+    /// switched off, or without the library, it is skipped.
+    /// </summary>
+    [Fact]
+    public void EchoCanceller_FedFromSpeakerMix_OnlyWhenOn()
+    {
+        using var keys = new KeyPoller();
+        using (var engine = new AudioEngine(keys, useDevices: false))
+        {
+            engine.Configure(new ClientSettings());
+            engine.SetTone(440);
+            var canceller = engine.Capture!.Canceller!;
+            engine.MixForSpeaker();
+            engine.MixForSpeaker();
+            Assert.Equal(2, canceller.RenderedFrames);
+            engine.ApplyLive(new ClientSettings { EchoCancellation = false });
+            engine.MixForSpeaker();
+            Assert.Equal(2, canceller.RenderedFrames);
+            engine.ApplyLive(new ClientSettings());
+            engine.MixForSpeaker();
+            Assert.Equal(3, canceller.RenderedFrames);
+        }
+
+        using var missing = new AudioEngine(keys, useDevices: false) { EchoLibrary = "ovs-no-such-aec" };
+        missing.Configure(new ClientSettings());
+        missing.SetTone(440);
+        Assert.Null(missing.Capture!.Canceller);
+        Assert.Equal(AudioFormat.FrameSamples, missing.MixForSpeaker().Length); // no canceller: just the mix
     }
 }

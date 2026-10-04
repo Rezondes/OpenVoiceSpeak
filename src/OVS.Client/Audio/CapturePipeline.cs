@@ -61,6 +61,10 @@ public sealed class CapturePipeline : IDisposable
     public NoiseSuppressor? Suppressor { get; set; }
     public bool NoiseSuppression { get; set; }
 
+    /// <summary>Package 140 (A149): WebRTC's echo canceller, owned by the pipeline; null when the native library is missing.</summary>
+    public EchoCanceller? Canceller { get; set; }
+    public bool EchoCancellation { get; set; }
+
     public bool AutoGain
     {
         get => autoGainOn;
@@ -127,6 +131,8 @@ public sealed class CapturePipeline : IDisposable
             while (chunker.Take(ref samples))
             {
                 var frame = chunker.Frame;
+                // Package 140: first, on the raw microphone, before the gain's soft clip makes the echo path nonlinear
+                if (EchoCancellation) Canceller?.Process(frame);
                 ApplyGain(frame, Gain);
                 // Package 123: before the voice activation, so it, the level meter and the self test hear the cleaned signal
                 float? voiceProbability = NoiseSuppression ? Suppressor?.Process(frame) : null;
@@ -245,6 +251,8 @@ public sealed class CapturePipeline : IDisposable
         {
             Suppressor?.Dispose();
             Suppressor = null;
+            Canceller?.Dispose(); // Package 140: waits for a Render running on the playback thread
+            Canceller = null;
         }
     }
 }

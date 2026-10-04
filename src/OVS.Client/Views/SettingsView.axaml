@@ -106,6 +106,8 @@
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_NoiseSuppressionHint}" />
               <CheckBox Content="{x:Static l:Strings.Ui_AutoGain}" IsChecked="{Binding AutoGain}" Margin="0,8,0,0" />
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoGainHint}" />
+              <CheckBox Content="{x:Static l:Strings.Ui_EchoCancellation}" IsChecked="{Binding EchoCancellation}" Margin="0,8,0,0" />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_EchoCancellationHint}" />
             </StackPanel>
           </Border>
         </StackPanel>

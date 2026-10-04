@@ -37,6 +37,10 @@
     <PackageReference Include="YellowDogMan.RRNoise.NET" Version="0.1.9" IncludeAssets="native" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Package 140: WebRTC's echo canceller behind the own C wrapper (BSD-3), built by native/ovs_aec/build.ps1 -->
+    <None Include="runtimes\win-x64\native\ovs_aec.dll" Link="ovs_aec.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />
   </ItemGroup>
 </Project>

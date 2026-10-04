@@ -333,6 +333,8 @@
   <data name="Ui_LockedPassword" xml:space="preserve"><value>Passwort</value></data>
   <data name="Ui_NoiseSuppression" xml:space="preserve"><value>Rauschunterdrückung</value></data>
   <data name="Ui_NoiseSuppressionHint" xml:space="preserve"><value>Filtert Lüfter, Tippen und Rauschen aus deiner Stimme.</value></data>
+  <data name="Ui_EchoCancellation" xml:space="preserve"><value>Echounterdrückung</value></data>
+  <data name="Ui_EchoCancellationHint" xml:space="preserve"><value>Für Lautsprecher statt Headset: Die anderen hören sich nicht selbst durch dein Mikrofon.</value></data>
   <data name="Ui_PttReleaseDelay" xml:space="preserve"><value>Loslassverzögerung</value></data>
   <data name="Ui_PttReleaseDelayHint" xml:space="preserve"><value>Sendet nach dem Loslassen der Sprechtaste noch so lange weiter, damit das letzte Wort nicht abgeschnitten wird.</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Neueste zuerst</value></data>
