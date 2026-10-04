@@ -511,6 +511,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.Deafened = s?.SelfDeafened ?? false;
         Audio.HasSpeakLinked = s?.HasSpeakLinked ?? false;
         Audio.ChannelMuted = s?.CurrentChannel?.IsMuted == true;
+        // Package 132: join, move, edit; clamped, so a hand-edited server file cannot hand Opus an invalid bitrate
+        Audio.ChannelBitrate = Math.Clamp(s?.CurrentChannel?.Bitrate ?? ProtocolInfo.DefaultBitrate, ProtocolInfo.MinBitrate, ProtocolInfo.MaxBitrate);
         if (s != gainsFor) SyncGains();
     }
 

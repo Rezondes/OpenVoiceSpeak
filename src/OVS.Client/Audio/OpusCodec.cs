@@ -1,5 +1,6 @@
 using Concentus;
 using Concentus.Enums;
+using OVS.Shared.Protocol;
 using OVS.Shared.Voice;
 
 namespace OVS.Client.Audio;
@@ -26,7 +27,7 @@ public sealed class VoiceEncoder
 
     public VoiceEncoder()
     {
-        encoder.Bitrate = 32_000;
+        encoder.Bitrate = ProtocolInfo.DefaultBitrate * 1000;
         encoder.SignalType = OpusSignal.OPUS_SIGNAL_VOICE;
         encoder.Complexity = Complexity;
         // Package 124: DTX stays off. Push-to-talk and voice activation already stop sending in pauses; within one, DTX
@@ -40,6 +41,13 @@ public sealed class VoiceEncoder
     }
 
     internal IOpusEncoder Opus => encoder;
+
+    /// <summary>Package 132 (A141): the channel's bitrate in kbps; set on the thread that encodes.</summary>
+    public int BitrateKbps
+    {
+        get => encoder.Bitrate / 1000;
+        set => encoder.Bitrate = value * 1000;
+    }
 
     /// <returns>A new array: it is sent or kept by the mixer (and only made while sending, never per idle frame).</returns>
     public byte[] Encode(ReadOnlySpan<float> frame)

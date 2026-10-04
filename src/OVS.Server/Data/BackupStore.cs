@@ -261,10 +261,12 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         // Package 111: a separator has an empty name and description, is never the default channel and never linked
         Check(d.Channels.All(c => c.Kind switch
         {
-            ChannelKind.Voice => StoredName(c.Name, 64) && c.Description is { Length: <= 500 },
+            // Package 132: a separator's bitrate is never read (one stored before the package loads as 64)
+            ChannelKind.Voice => StoredName(c.Name, 64) && c.Description is { Length: <= 500 }
+                                 && c.Bitrate is >= ProtocolInfo.MinBitrate and <= ProtocolInfo.MaxBitrate,
             ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, PasswordHash: null },
             _ => false,
-        }), "Channel-Name ungültig");
+        }), "Channel-Name oder -Qualität ungültig");
         Unique(d.Channels.Select(c => c.Id), "Channel-Id doppelt");
         var channels = d.Channels.Select(c => c.Id).ToHashSet();
         Check(channels.Contains(d.DefaultChannelId), "Standard-Channel fehlt");

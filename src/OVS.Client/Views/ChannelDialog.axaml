@@ -38,6 +38,13 @@
                      AutomationProperties.Name="{x:Static l:Strings.Dlg_MaxUsers}" />
       <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding SlotsHint}" />
     </StackPanel>
+    <!-- Package 132: the bitrate everyone in the channel sends with -->
+    <StackPanel Spacing="4">
+      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_Bitrate}" />
+      <NumericUpDown Value="{Binding Bitrate}" Minimum="{Binding MinBitrate}" Maximum="{Binding MaxBitrate}" Increment="8" FormatString="0"
+                     Width="140" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Dlg_Bitrate}" />
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_BitrateHint}" />
+    </StackPanel>
     <!-- Package 93: only members of a ticked group (and admins) may join -->
     <StackPanel Spacing="4">
       <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_GroupLock}" />

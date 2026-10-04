@@ -2,8 +2,10 @@ namespace OVS.Shared.Protocol;
 
 public static class ProtocolInfo
 {
-    public const int Version = 11; // 2: server logo (30), 3: chat (31), 4: muted channels (34), 5: channel slots (35), 6: reorder channels (36), 7: reorder groups (37), 8: link matrix (38), 9: create with options (54), 10: server settings, user statistics, separate admin rights, user overview, offline ban and delete, backups with download and upload, ban details and history, log viewer and download, paged lists, backup right and quota, stored server mute, every request validated, rights data per recipient, channels locked to groups or with a password (69, 70, 76, 71, 72, 74, 75, 80, 81, 82, 87, 89, 85, 83, 92, 93, 94; one unreleased step), 11: separator channels (111)
+    public const int Version = 12; // 2: server logo (30), 3: chat (31), 4: muted channels (34), 5: channel slots (35), 6: reorder channels (36), 7: reorder groups (37), 8: link matrix (38), 9: create with options (54), 10: server settings, user statistics, separate admin rights, user overview, offline ban and delete, backups with download and upload, ban details and history, log viewer and download, paged lists, backup right and quota, stored server mute, every request validated, rights data per recipient, channels locked to groups or with a password (69, 70, 76, 71, 72, 74, 75, 80, 81, 82, 87, 89, 85, 83, 92, 93, 94; one unreleased step), 11: separator channels (111), 12: bitrate per channel (132)
     public const int MaxChannelUsers = 999;
+    // Package 132 (A141): a channel's voice bitrate in kbps; 128 kbps is 320 bytes per 20 ms frame, far below MaxOpusSize
+    public const int DefaultBitrate = 64, MinBitrate = 16, MaxBitrate = 128;
     public const int DefaultPort = 7000;
     public const int MaxChatLength = 2000;
     public const int MaxReasonLength = 200; // kick and ban reason

@@ -15,8 +15,9 @@ namespace OVS.Client.ViewModels;
 /// <param name="HasPassword">Package 94: into the dialog, whether the channel has a password.</param>
 /// <param name="Password">Package 94: out of the dialog, null = unchanged, empty = remove, else the new password.</param>
 /// <param name="Kind">Package 111: out of the create dialog, a voice channel or a separator.</param>
+/// <param name="Bitrate">Package 132: the channel's kbps, in and out of the dialog.</param>
 public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null,
-    bool HasPassword = false, string? Password = null, ChannelKind Kind = ChannelKind.Voice);
+    bool HasPassword = false, string? Password = null, ChannelKind Kind = ChannelKind.Voice, int Bitrate = ProtocolInfo.DefaultBitrate);
 
 /// <summary>The channel dialog only offers the channel options when editing (Package 34).</summary>
 public enum ChannelDialogMode { Create, Edit, EditDefault }
@@ -579,11 +580,11 @@ public sealed partial class ServerViewModel : ObservableObject
     public Pending CreateChannel(ChannelEdit e)
     {
         var pending = NewPending();
-        return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password, e.Kind),
+        return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password, e.Kind, e.Bitrate),
             m => m is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
     }
     public Pending EditChannel(Guid id, ChannelEdit edit, int order) =>
-        SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password),
+        SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password, edit.Bitrate),
             m => m is ChannelUpdated u && u.Channel.Id == id, notify: false);
     public Pending DeleteChannel(Guid id)
     {
@@ -758,6 +759,8 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [ObservableProperty] bool isMuted;
     /// <summary>Package 35: 0 = unlimited.</summary>
     [ObservableProperty] int maxUsers;
+    /// <summary>Package 132 (A141): kbps its senders encode with; 0 for a separator.</summary>
+    [ObservableProperty] int bitrate = ProtocolInfo.DefaultBitrate;
     /// <summary>"3/5" for a limited channel, otherwise just the count.</summary>
     [ObservableProperty] string slotText = "0";
     [ObservableProperty] bool canCreate;
@@ -815,6 +818,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         IsCurrent = isCurrent;
         IsMuted = info.IsMuted;
         MaxUsers = info.MaxUsers;
+        Bitrate = info.Bitrate;
         CanCreate = actor.Has(Permission.ChannelCreate);
         CanEdit = actor.Has(Permission.ChannelEdit);
         CanDelete = actor.Has(Permission.ChannelDelete) && !isDefault;
@@ -878,7 +882,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     Task Edit()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        var current = new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds, HasPassword);
+        var current = new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds, HasPassword, Bitrate: Bitrate);
         return ServerViewModel.Ask<ChannelEdit>(owner.Dialogs.EditChannel is { } edit ? submit => edit(current, mode, submit) : null,
             result => owner.EditChannel(Id, result, Order));
     }

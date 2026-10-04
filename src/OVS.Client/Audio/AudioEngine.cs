@@ -6,6 +6,7 @@ using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using OVS.Client.Input;
 using OVS.Client.Settings;
+using OVS.Shared.Protocol;
 using OVS.Shared.Voice;
 
 namespace OVS.Client.Audio;
@@ -179,6 +180,17 @@ public sealed class AudioEngine : IDisposable
 
     /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
     public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
+
+    volatile int channelBitrate = ProtocolInfo.DefaultBitrate;
+
+    /// <summary>
+    /// Package 132 (A141): the own channel's kbps, set on join, move and when it is edited; also for link push-to-talk,
+    /// whose listeners sit in other channels. The default while in no channel.
+    /// </summary>
+    public int ChannelBitrate { get => channelBitrate; set => channelBitrate = value; }
+
+    /// <summary>Package 132: what the capture encodes with; the self test as a channel at the default would send it.</summary>
+    internal int EncoderBitrate => selfTest ? ProtocolInfo.DefaultBitrate : channelBitrate;
 
     /// <summary>The mixer id of the own voice during the self test; the server never hands out session id 0.</summary>
     public const uint SelfTestSpeaker = 0;
@@ -398,6 +410,7 @@ public sealed class AudioEngine : IDisposable
             var values = live ?? settings;
             capture.Gain = values.InputGain;
             capture.DecideTarget = Decide;
+            capture.Bitrate = () => EncoderBitrate; // Package 132
             capture.Vad.ThresholdDb = values.VadThresholdDb;
             capture.Vad.Automatic = values.VadAutomatic;
             capture.Suppressor = CreateSuppressor();

@@ -108,6 +108,9 @@ public class SendPathTests
         public readonly KeyPoller Keys;
         public readonly AudioEngine Engine;
         public readonly List<byte> Sent = [];
+        public readonly List<int> Sizes = []; // Package 132: bytes per encoded frame
+        /// <summary>Package 132: what each fed frame holds; a steady level by default.</summary>
+        public Func<float[]> Signal = () => Constant(0.1f);
         readonly CapturePipeline pipeline = CapturePipeline.FromTone(440); // never started: fed by hand
 
         public TalkRig(int releaseDelayMs)
@@ -124,7 +127,12 @@ public class SendPathTests
             Engine = new AudioEngine(Keys, useDevices: false) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
             Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
             pipeline.DecideTarget = Engine.Decide;
-            pipeline.FrameEncoded += (_, target) => Sent.Add(target);
+            pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
+            pipeline.FrameEncoded += (opus, target) =>
+            {
+                Sent.Add(target);
+                Sizes.Add(opus.Length);
+            };
         }
 
         /// <summary>Holds or lets go of a key and waits until the key thread saw it.</summary>
@@ -141,10 +149,18 @@ public class SendPathTests
             int before = Sent.Count;
             for (int i = 0; i < count; i++)
             {
-                pipeline.Feed(Constant(0.1f), AudioFormat.SampleRate);
+                pipeline.Feed(Signal(), AudioFormat.SampleRate);
                 Time.Advance(AudioFormat.FrameDuration);
             }
             return Sent.Count - before;
+        }
+
+        /// <summary>Package 132: sends 100 frames and returns the kbps of the last 80 (the encoder settles on a new rate first).</summary>
+        public double Kbps()
+        {
+            int before = Sizes.Count;
+            Assert.InRange(Frames(100), 100, 101); // with the pre-roll frame when sending starts
+            return Sizes.Skip(before + 20).Average() * 8 / AudioFormat.FrameDuration.TotalMilliseconds;
         }
 
         /// <summary>Feeds one frame at a time and counts them until one is not sent.</summary>
@@ -244,6 +260,44 @@ public class SendPathTests
         Assert.Equal(15, rig.FramesUntilSilent());
         Assert.False(transmitted); // nothing counts as sending
         Assert.Equal(0, rig.Engine.FramesSent);
+    }
+
+    /// <summary>
+    /// Package 132 (A141): on a steady noise signal the frames match the own channel's bitrate within 15 %, also after a
+    /// move to another one and for link push-to-talk (the own channel, not the linked ones); the self test uses 64 kbps.
+    /// </summary>
+    [Fact]
+    public async Task Encoder_FollowsChannelBitrate()
+    {
+        using var rig = new TalkRig(0);
+        var random = new Random(132);
+        rig.Signal = () => VoiceFilterTests.Noise(random, -20);
+        Assert.Equal(64, rig.Engine.ChannelBitrate); // not in any channel yet
+        rig.Engine.ChannelBitrate = 96;
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Assert.InRange(rig.Kbps(), 96 * 0.85, 96 * 1.15);
+
+        rig.Engine.ChannelBitrate = 32; // moved, while still talking
+        Assert.InRange(rig.Kbps(), 32 * 0.85, 32 * 1.15);
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        rig.Frames(1);
+
+        int linkStart = rig.Sent.Count;
+        await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
+        Assert.InRange(rig.Kbps(), 32 * 0.85, 32 * 1.15);
+        Assert.All(rig.Sent.Skip(linkStart), t => Assert.Equal(Link, t));
+        await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
+
+        rig.Engine.SelfTest = true; // the own ears hear what a 64 kbps channel sends
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Assert.InRange(rig.Kbps(), 64 * 0.85, 64 * 1.15);
+        Assert.Equal(0, rig.Engine.FramesSent);
+
+        // a real capture asks the engine too
+        using var keys = new KeyPoller();
+        using var engine = ToneEngine(keys, new ClientSettings());
+        engine.ChannelBitrate = 48;
+        Assert.Equal(48, engine.Capture!.Bitrate());
     }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
@@ -646,7 +700,7 @@ public class SendPathTests
         Assert.Equal(5, VoiceEncoder.Complexity);
         Assert.Equal(VoiceEncoder.Complexity, opus.Complexity);
         Assert.False(opus.UseDTX);
-        Assert.Equal(32_000, opus.Bitrate);
+        Assert.Equal(64_000, opus.Bitrate); // Package 132: the default channel bitrate until the channel's is known
 
         var pipeline = CapturePipeline.Manual();
         pipeline.DecideTarget = _ => Ch; // as if the key is held through the pause

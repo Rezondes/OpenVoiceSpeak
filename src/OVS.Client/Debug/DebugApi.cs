@@ -267,6 +267,7 @@ public sealed class DebugApi : IDisposable
                     c.Id,
                     c.Name,
                     c.IsSeparator,
+                    c.Bitrate, // Package 132
                     c.Description,
                     c.IsCurrent,
                     c.IsLinked,

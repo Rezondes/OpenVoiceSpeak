@@ -82,6 +82,29 @@ public class StateSyncTests
         Assert.Contains(b.Welcome.Snapshot.Channels, c => c.Name == "Raid");
     }
 
+    /// <summary>Package 132 (A141): every client learns a channel's bitrate, it outlasts a restart; protocol version 12.</summary>
+    [Fact]
+    public async Task ChannelInfo_CarriesBitrate()
+    {
+        Assert.Equal(12, ProtocolInfo.Version);
+        var admin = OVS.Shared.Identity.ClientIdentity.Create();
+        var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using (var a = await TestClient.ConnectAsync(server, identity: admin))
+        await using (var b = await TestClient.ConnectAsync(server))
+        {
+            Assert.Equal(64, Assert.Single(b.Welcome.Snapshot.Channels).Bitrate); // the Lobby
+            await a.SendAsync(new CreateChannel("Raid", "", Bitrate: 96));
+            var mirror = new OVS.Client.Net.StateMirror(b.Welcome);
+            mirror.Apply(await b.WaitForAsync<ChannelAdded>());
+            Assert.Equal(96, mirror.Channels.Values.Single(c => c.Name == "Raid").Bitrate);
+        }
+        server = await server.RestartAsync();
+        await using var _ = server;
+
+        await using var c = await TestClient.ConnectAsync(server);
+        Assert.Equal(96, c.Welcome.Snapshot.Channels.Single(ch => ch.Name == "Raid").Bitrate);
+    }
+
     [Fact]
     public async Task UnknownRequest_IsAnsweredWithError()
     {

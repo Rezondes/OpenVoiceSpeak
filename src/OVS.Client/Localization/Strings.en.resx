@@ -95,6 +95,8 @@
   <data name="Dlg_MaxUsers" xml:space="preserve"><value>Maximum users (0 = unlimited)</value></data>
   <data name="Dlg_MaxUsersDefault" xml:space="preserve"><value>The default channel stays unlimited: everybody lands there when connecting.</value></data>
   <data name="Dlg_MaxUsersHint" xml:space="preserve"><value>Whoever is inside stays even with a lower limit. The right "Enter full channels" bypasses it.</value></data>
+  <data name="Dlg_Bitrate" xml:space="preserve"><value>Quality (kbps, 16 to 128)</value></data>
+  <data name="Dlg_BitrateHint" xml:space="preserve"><value>Everyone in the channel sends at this bitrate. More sounds better and needs more bandwidth; 64 is the default.</value></data>
   <data name="Dlg_MutedChannel" xml:space="preserve"><value>Muted channel: nobody is heard</value></data>
   <data name="Dlg_MutedHint" xml:space="preserve"><value>Link PTT from this channel is not transmitted either. Speech from linked channels can be heard.</value></data>
   <data name="Dlg_NameInvalid" xml:space="preserve"><value>The name is empty, too long or contains characters that are not allowed (control or invisible characters).</value></data>

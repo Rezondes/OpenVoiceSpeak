@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using OVS.Shared.Protocol;
 
 namespace OVS.Client.Audio;
 
@@ -73,6 +74,12 @@ public sealed class CapturePipeline : IDisposable
     /// <summary>Called per frame with the VAD result; returns the target or null to stay silent.</summary>
     public Func<bool, byte?> DecideTarget { get; set; } = _ => null;
 
+    /// <summary>
+    /// Package 132 (A141): asked for every frame sent, the kbps to encode it with. The encoder takes a change here, on the
+    /// capture thread under the pipeline's lock, so a join, move or channel edit never races an encode.
+    /// </summary>
+    public Func<int> Bitrate { get; set; } = () => ProtocolInfo.DefaultBitrate;
+
     public event Action<byte[], byte>? FrameEncoded;
     public event Action<float>? Level;
 
@@ -118,6 +125,7 @@ public sealed class CapturePipeline : IDisposable
                 var target = DecideTarget(voice);
                 if (target is { } t)
                 {
+                    if (Bitrate() is var kbps && kbps != encoder.BitrateKbps) encoder.BitrateKbps = kbps;
                     // The level only crosses the threshold inside a word: send the 20 ms before it too, so the onset is not cut.
                     if (!sending) FrameEncoded?.Invoke(encoder.Encode(previous), t);
                     FrameEncoded?.Invoke(encoder.Encode(frame), t);

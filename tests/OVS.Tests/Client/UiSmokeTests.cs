@@ -365,7 +365,10 @@ public sealed class UiSmokeTests : IDisposable
             var buttons = o.OfType<Button>().Select(b => b.Content as string).ToList();
             var name = o.OfType<TextBox>().First().Text;
             var muted = o.OfType<CheckBox>().Single(c => c.Content is "Stummer Channel: niemand wird gehört").IsChecked;
-            var slots = o.OfType<NumericUpDown>().Single();
+            var numbers = o.OfType<NumericUpDown>().ToList();
+            Assert.Equal(2, numbers.Count);
+            var slots = numbers[0];
+            Assert.Equal(current.Bitrate, numbers[1].Value); // Package 132: "Qualität" below the slots
             main.Overlay.Close();
             Dispatcher.UIThread.RunJobs();
             Assert.True(shown.IsCompleted);
@@ -374,7 +377,7 @@ public sealed class UiSmokeTests : IDisposable
         var create = ChannelDialogShows(new ChannelEdit("", ""), ChannelDialogMode.Create);
         Assert.Equal(("Channel anlegen", "", false, 0m, true), (create.Title, create.Name ?? "", create.Muted, create.Slots, create.SlotsEnabled));
         Assert.Contains("Anlegen", create.Buttons);
-        var edit = ChannelDialogShows(new ChannelEdit("Raid", "", IsMuted: true, MaxUsers: 8), ChannelDialogMode.Edit);
+        var edit = ChannelDialogShows(new ChannelEdit("Raid", "", IsMuted: true, MaxUsers: 8, Bitrate: 96), ChannelDialogMode.Edit);
         Assert.Equal(("Channel bearbeiten", "Raid", true, 8m, true), (edit.Title, edit.Name, edit.Muted, edit.Slots, edit.SlotsEnabled));
         Assert.Contains("Speichern", edit.Buttons);
         Assert.False(ChannelDialogShows(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault).SlotsEnabled);

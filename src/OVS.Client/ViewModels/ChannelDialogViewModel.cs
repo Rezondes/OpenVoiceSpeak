@@ -57,6 +57,16 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
         if (value is { } v && (v < 0 || v > MaxSlots)) MaxUsers = Math.Clamp(v, 0, MaxSlots);
     }
 
+    /// <summary>Package 132 (A141): "Qualität" in kbps, also for the default channel.</summary>
+    [ObservableProperty] decimal? bitrate = current.Bitrate;
+    public decimal MinBitrate => ProtocolInfo.MinBitrate;
+    public decimal MaxBitrate => ProtocolInfo.MaxBitrate;
+
+    partial void OnBitrateChanged(decimal? value)
+    {
+        if (value is { } v && (v < MinBitrate || v > MaxBitrate)) Bitrate = Math.Clamp(v, MinBitrate, MaxBitrate);
+    }
+
     /// <summary>
     /// The entered channel, or null while name or description break the server's rules (the dialog then stays open).
     /// AllowedGroupIds is null while the ticks are as before (the server keeps the lock, also an "admins only" one).
@@ -79,6 +89,6 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
         string? password = !CanLockGroups ? null : RemovePassword ? "" : Password is { Length: > 0 } entered ? entered : null;
         return string.IsNullOrWhiteSpace(Name) || Error is not null ? null
             : new ChannelEdit(Name.Trim(), Description ?? "", IsMuted, CanLimitUsers ? (int)(MaxUsers ?? 0) : 0, changed ? ticked : null,
-                Password: password);
+                Password: password, Bitrate: (int)(Bitrate ?? current.Bitrate)); // an emptied field keeps the channel's
     }
 }

@@ -136,6 +136,60 @@ public class ChannelDialogViewModelTests
         Assert.Null(vm.Result()!.AllowedGroupIds);
     }
 
+    /// <summary>Package 132 (A141): "Qualität" starts at 64 kbps for a new channel and at the channel's own when editing, bounded 16 to 128.</summary>
+    [Fact]
+    public void Bitrate_ShownAndEdited()
+    {
+        var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { Name = "Neu" };
+        Assert.Equal(64m, create.Bitrate);
+        Assert.Equal((16m, 128m), (create.MinBitrate, create.MaxBitrate));
+        Assert.Equal(64, create.Result()!.Bitrate);
+        create.Bitrate = 96;
+        Assert.Equal(new ChannelEdit("Neu", "", Bitrate: 96), create.Result());
+
+        var edit = new ChannelDialogViewModel(new ChannelEdit("Raid", "", Bitrate: 32), ChannelDialogMode.Edit);
+        Assert.Equal(32m, edit.Bitrate);
+        Assert.Equal(32, edit.Result()!.Bitrate);
+        edit.Bitrate = 500;
+        Assert.Equal(128m, edit.Bitrate);
+        edit.Bitrate = 3;
+        Assert.Equal(16m, edit.Bitrate);
+        edit.Bitrate = null; // an emptied number field keeps the channel's own
+        Assert.Equal(32, edit.Result()!.Bitrate);
+
+        // the default channel has its own quality too
+        var lobby = new ChannelDialogViewModel(new ChannelEdit("Lobby", "", Bitrate: 48), ChannelDialogMode.EditDefault) { Bitrate = 80 };
+        Assert.Equal(80, lobby.Result()!.Bitrate);
+        // a separator has none
+        Assert.Equal(64, new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { IsSeparator = true, Bitrate = 96 }.Result()!.Bitrate);
+    }
+
+    /// <summary>Package 132: the channel's bitrate goes into the dialog and the edited one to the server.</summary>
+    [Fact]
+    public async Task Bitrate_FromChannelIntoDialog_SentWithEdit()
+    {
+        ChannelEdit? shown = null;
+        var sent = new List<Request>();
+        var server = OVS.Tests.TestSupport.FakeServers.Admin(sent, dialogs: new Dialogs
+        {
+            EditChannel = (current, _, _) =>
+            {
+                shown = current;
+                return Task.FromResult<ChannelEdit?>(current with { Bitrate = 128 });
+            },
+        });
+        var raid = OVS.Tests.TestSupport.FakeServers.Raid;
+        server.Apply(new ChannelUpdated(new ChannelInfo(raid, "Raid", "", 1, Bitrate: 24)));
+        var channel = server.Channels.Single(c => c.Id == raid);
+        Assert.Equal(24, channel.Bitrate);
+        await channel.EditCommand.ExecuteAsync(null);
+        Assert.Equal(24, shown!.Bitrate);
+        Assert.Equal(128, Assert.IsType<EditChannel>(sent[^1]).Bitrate);
+
+        await channel.CreateCommand.ExecuteAsync(null); // the dialog answers with a 128 kbps channel
+        Assert.Equal((64, 128), (shown.Bitrate, Assert.IsType<CreateChannel>(sent[^1]).Bitrate));
+    }
+
     /// <summary>Package 111: creating, "Trenner" hides every field and gives a separator without name or options.</summary>
     [Fact]
     public void Create_Separator_HidesFieldsAndSendsKind()

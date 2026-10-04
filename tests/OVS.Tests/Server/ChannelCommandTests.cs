@@ -119,6 +119,38 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("p")).Code);
     }
 
+    /// <summary>Package 132 (A141): 64 kbps without a value, 16 to 128 kept on create and edit, anything else refused; separators have none.</summary>
+    [Fact]
+    public async Task Bitrate_DefaultRangeRefused()
+    {
+        Assert.Equal(64, (await CreateAsync("Standard")).Bitrate);
+        await a.SendAsync(new CreateChannel("Leise", "", Bitrate: 16));
+        Assert.Equal(16, (await g.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Leise")).Channel.Bitrate);
+        await a.SendAsync(new CreateChannel("Musik", "", Bitrate: 128));
+        var music = (await g.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Musik")).Channel;
+        Assert.Equal(128, music.Bitrate);
+
+        await a.SendAsync(new EditChannel(music.Id, "Musik", "", music.Order, Bitrate: 96));
+        Assert.Equal(96, (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == music.Id)).Channel.Bitrate);
+        await using (var late = await TestClient.ConnectAsync(server, "spät"))
+            Assert.Equal(96, late.Welcome.Snapshot.Channels.Single(c => c.Id == music.Id).Bitrate);
+        var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", music.Id.ToString())).Single();
+        using (var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            Assert.Contains("Qualität 96 kbps", new StreamReader(stream).ReadToEnd());
+
+        await a.SendAsync(new CreateChannel("Zu leise", "", Bitrate: 15) { RequestId = "c" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("c")).Code);
+        await a.SendAsync(new EditChannel(music.Id, "Musik", "", music.Order, Bitrate: 129) { RequestId = "e" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("e")).Code);
+        await a.SendAsync(new EditChannel(Lobby, "Lobby", "", 0, Bitrate: 0) { RequestId = "z" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("z")).Code);
+
+        await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
+        Assert.Equal(0, (await g.WaitForAsync<ChannelAdded>(c => c.Channel.Kind == ChannelKind.Separator)).Channel.Bitrate);
+        await a.SendAsync(new CreateChannel("", "", Bitrate: 96, Kind: ChannelKind.Separator) { RequestId = "s" });
+        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("s")).Code);
+    }
+
     [Fact]
     public async Task Separator_JoinMoveEdit_Refused()
     {

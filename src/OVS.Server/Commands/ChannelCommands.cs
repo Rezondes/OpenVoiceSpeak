@@ -53,6 +53,7 @@ public sealed partial class ServerState
         if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
         if (!ValidateGroupLock(s, r, null, r.AllowedGroupIds, out var allowed)) return;
         if (!ValidatePassword(s, r, null, r.Password)) return;
+        if (!ValidateBitrate(s, r, r.Bitrate)) return;
 
         var channel = new ChannelRecord
         {
@@ -65,11 +66,13 @@ public sealed partial class ServerState
             MaxUsers = r.MaxUsers,
             AllowedGroupIds = allowed,
             PasswordHash = ServerSettings.Hash(r.Password ?? ""),
+            Bitrate = r.Bitrate,
         };
         data.Channels.Add(channel);
         Persist();
         var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null,
-            allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.PasswordHash is null ? null : "mit Passwort" }.OfType<string>().ToList();
+            allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.PasswordHash is null ? null : "mit Passwort",
+            r.Bitrate != ProtocolInfo.DefaultBitrate ? $"Qualität {r.Bitrate} kbps" : null }.OfType<string>().ToList();
         ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
         logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
         var added = new ChannelAdded(Info(channel));
@@ -81,7 +84,7 @@ public sealed partial class ServerState
     void CreateSeparator(Session s, CreateChannel r)
     {
         if (!string.IsNullOrEmpty(r.Name) || !string.IsNullOrEmpty(r.Description) || r.IsMuted || r.MaxUsers != 0
-            || r.AllowedGroupIds is { Count: > 0 } || !string.IsNullOrEmpty(r.Password))
+            || r.AllowedGroupIds is { Count: > 0 } || !string.IsNullOrEmpty(r.Password) || r.Bitrate != ProtocolInfo.DefaultBitrate) // Package 132
         {
             Fail(s, r, Codes.InvalidValue, "Ein Trenner hat keinen Namen, keine Beschreibung und keine Optionen.");
             return;
@@ -91,6 +94,7 @@ public sealed partial class ServerState
             Id = Guid.NewGuid(),
             Order = (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1),
             Kind = ChannelKind.Separator,
+            Bitrate = 0, // Package 132: none
         };
         data.Channels.Add(separator);
         Persist();
@@ -119,6 +123,7 @@ public sealed partial class ServerState
         if (!ValidateGroupLock(s, r, channel.Id, r.AllowedGroupIds, out var allowed)) return;
         if (r.AllowedGroupIds is null) allowed = channel.AllowedGroupIds; // Package 93: null keeps the lock as it is
         if (!ValidatePassword(s, r, channel.Id, r.Password)) return;
+        if (!ValidateBitrate(s, r, r.Bitrate)) return;
 
         // Package 83: r.Order is ignored, the order only changes through ReorderChannels
         var changes = new List<string>();
@@ -129,6 +134,7 @@ public sealed partial class ServerState
         if (!SameGroups(channel.AllowedGroupIds, allowed)) changes.Add(allowed is null ? "Gruppen-Sperre aufgehoben" : $"nur für {GroupNames(allowed)}");
         if (r.Password is not null && (r.Password.Length > 0 || channel.PasswordHash is not null))
             changes.Add(r.Password.Length == 0 ? "Passwort entfernt" : "Passwort gesetzt"); // never the password itself
+        if (channel.Bitrate != r.Bitrate) changes.Add($"Qualität {r.Bitrate} kbps");
 
         channel.Name = name;
         channel.Description = description;
@@ -136,6 +142,7 @@ public sealed partial class ServerState
         channel.MaxUsers = r.MaxUsers; // lowering it below the current count sends nobody away
         channel.AllowedGroupIds = allowed; // Package 93 (A108): nor does a lock
         if (r.Password is not null) channel.PasswordHash = ServerSettings.Hash(r.Password); // Package 94: "" removes it
+        channel.Bitrate = r.Bitrate; // Package 132: the senders inside follow the ChannelUpdated
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
@@ -150,6 +157,14 @@ public sealed partial class ServerState
         Fail(s, r, Codes.InvalidValue, isDefault
             ? "Der Standard-Channel lässt sich nicht begrenzen."
             : $"Maximale Nutzer: 0 (unbegrenzt) bis {ProtocolInfo.MaxChannelUsers}.");
+        return false;
+    }
+
+    /// <summary>Package 132 (A141): MinBitrate to MaxBitrate kbps, for new and edited channels alike.</summary>
+    bool ValidateBitrate(Session s, Request r, int bitrate)
+    {
+        if (bitrate is >= ProtocolInfo.MinBitrate and <= ProtocolInfo.MaxBitrate) return true;
+        Fail(s, r, Codes.InvalidValue, $"Qualität: {ProtocolInfo.MinBitrate} bis {ProtocolInfo.MaxBitrate} kbps.");
         return false;
     }
 

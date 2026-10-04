@@ -115,6 +115,11 @@ public sealed class ChannelRecord
     public string? PasswordHash { get; set; }
     /// <summary>Package 111: older files load as voice channels, without a new data version.</summary>
     public ChannelKind Kind { get; set; }
+    /// <summary>
+    /// Package 132 (A141): kbps; older files load as 64 (the channels move from the old fixed 32 kbps), without a new
+    /// data version. A separator gets 0 and is never asked for it.
+    /// </summary>
+    public int Bitrate { get; set; } = ProtocolInfo.DefaultBitrate;
 }
 
 /// <summary>Undirected link, normalized so that A &lt; B.</summary>

@@ -83,6 +83,33 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUi(() => vm.Audio.ChannelMuted));
     }
 
+    /// <summary>Package 132 (A141): the encoder's bitrate is the own channel's: on join, move and when that channel is edited.</summary>
+    [Fact]
+    public async Task Bitrate_FollowsCurrentChannel()
+    {
+        var steps = await OnUi(() =>
+        {
+            var seen = new List<int>();
+            vm.Server = FakeServers.Admin();
+            seen.Add(vm.Audio.ChannelBitrate); // the Lobby at its default
+            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 96)));
+            seen.Add(vm.Audio.ChannelBitrate); // another channel: nothing changes
+            vm.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
+                OVS.Shared.Permissions.Permission.All, [OVS.Shared.Permissions.WellKnownGroups.Admin])));
+            seen.Add(vm.Audio.ChannelBitrate); // moved into it
+            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 24)));
+            seen.Add(vm.Audio.ChannelBitrate); // the own channel edited
+            return seen;
+        });
+        Assert.Equal([64, 64, 96, 24], steps);
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.DisconnectAsync();
+            return null;
+        });
+        Assert.Equal(64, await OnUi(() => vm.Audio.ChannelBitrate));
+    }
+
     // ---- Package 131 (A140): talking into a muted microphone ----
 
     const string SelfMutedHint = "Du bist stummgeschaltet: niemand hört dich.";

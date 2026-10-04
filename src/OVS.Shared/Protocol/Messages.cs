@@ -119,8 +119,10 @@ public sealed record ServerLimits(int MaxUsers, int LogDays, bool LogRotateDaily
 /// join, an empty list (all its groups deleted) means admins only.</param>
 /// <param name="HasPassword">Package 94: joining needs the password (the password itself never leaves the server).</param>
 /// <param name="Kind">Package 111: a separator is only a line in the channel list, nobody can join it.</param>
+/// <param name="Bitrate">Package 132 (A141): kbps its senders encode with, MinBitrate to MaxBitrate; 0 for a separator.</param>
 public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0,
-    IReadOnlyList<Guid>? AllowedGroupIds = null, bool HasPassword = false, ChannelKind Kind = ChannelKind.Voice);
+    IReadOnlyList<Guid>? AllowedGroupIds = null, bool HasPassword = false, ChannelKind Kind = ChannelKind.Voice,
+    int Bitrate = ProtocolInfo.DefaultBitrate);
 /// <summary>Package 111: a voice channel, or a separator (no name, no options, cannot be joined, linked or edited).</summary>
 public enum ChannelKind { Voice, Separator }
 public sealed record LinkInfo(Guid A, Guid B);
@@ -146,12 +148,15 @@ public sealed record JoinChannel(Guid ChannelId, string? Password = null) : Requ
 /// <param name="AllowedGroupIds">Package 93: the group lock, null or empty = none.</param>
 /// <param name="Password">Package 94: null or empty = none, else 1 to MaxPasswordLength characters.</param>
 /// <param name="Kind">Package 111: a separator comes with an empty name and no options.</param>
+/// <param name="Bitrate">Package 132: kbps, MinBitrate to MaxBitrate; a separator keeps the default (it gets none).</param>
 public sealed record CreateChannel(string Name, string Description, bool IsMuted = false, int MaxUsers = 0,
-    IReadOnlyList<Guid>? AllowedGroupIds = null, string? Password = null, ChannelKind Kind = ChannelKind.Voice) : Request;
+    IReadOnlyList<Guid>? AllowedGroupIds = null, string? Password = null, ChannelKind Kind = ChannelKind.Voice,
+    int Bitrate = ProtocolInfo.DefaultBitrate) : Request;
 /// <param name="AllowedGroupIds">Package 93: null = unchanged, empty = remove the group lock.</param>
 /// <param name="Password">Package 94: null = unchanged, empty = remove, else the new password.</param>
+/// <param name="Bitrate">Package 132: kbps, MinBitrate to MaxBitrate.</param>
 public sealed record EditChannel(Guid ChannelId, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0,
-    IReadOnlyList<Guid>? AllowedGroupIds = null, string? Password = null) : Request;
+    IReadOnlyList<Guid>? AllowedGroupIds = null, string? Password = null, int Bitrate = ProtocolInfo.DefaultBitrate) : Request;
 /// <summary>Package 36: the complete new order, every channel exactly once.</summary>
 public sealed record ReorderChannels(IReadOnlyList<Guid> ChannelIds) : Request;
 public sealed record DeleteChannel(Guid ChannelId) : Request;
