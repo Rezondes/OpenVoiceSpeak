@@ -86,7 +86,7 @@ public class StateSyncTests
     [Fact]
     public async Task ChannelInfo_CarriesBitrate()
     {
-        Assert.Equal(12, ProtocolInfo.Version);
+        Assert.True(ProtocolInfo.Version >= 12); // 12 brought the bitrate; Package 133 raised it to 13 (SmokeTests pins the current one)
         var admin = OVS.Shared.Identity.ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
         await using (var a = await TestClient.ConnectAsync(server, identity: admin))

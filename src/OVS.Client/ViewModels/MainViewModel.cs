@@ -287,6 +287,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
             connection = conn;
             voice = udp;
+            ResetStats();
             connectedAt = DateTime.UtcNow;
             udpLogged = null;
             udpWasReachable = false;
@@ -459,6 +460,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         voice = null;
         SyncAudioFlags();
         Audio.Mixer.Clear();
+        ResetStats();
         if (conn is not null) await conn.DisposeAsync();
     }
 
@@ -552,6 +554,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Server?.RefreshSpeaking();
         LogUdpReachability();
+        UpdateStats();
         PingText = connection?.LastRoundTrip is { } rtt
             ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.Reachable == false ? Strings.Ping_UdpUnreachable : "")
             : "";
@@ -563,6 +566,37 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             _ => "",
         };
     }
+
+    // ---- Package 133 (A142): the signal icon and the connection details ----
+
+    /// <summary>The voice connection's figures, behind the signal icon next to the ping.</summary>
+    public ConnectionStats Stats { get; } = new();
+    static readonly TimeSpan StatsInterval = TimeSpan.FromSeconds(2);
+    DateTimeOffset statsAt;
+    int roundTripsSeen; // a round trip enters the baseline once, not again on every refresh while no answer comes
+
+    void ResetStats()
+    {
+        Stats.Reset(Audio.Mixer.Stats());
+        statsAt = DateTimeOffset.MinValue; // the first tick shows what there is
+        roundTripsSeen = 0;
+    }
+
+    /// <summary>The crossing out on every tick, the figures every 2 s, like Fluxer's stats.</summary>
+    void UpdateStats()
+    {
+        if (voice is not { } v) return;
+        Stats.Unreachable = !v.Reachable;
+        var now = Clock.GetUtcNow();
+        if (now - statsAt < StatsInterval) return;
+        statsAt = now;
+        var (roundTrip, count) = v.RoundTripSample;
+        Stats.Update(count != roundTripsSeen ? roundTrip : null, v.UplinkLoss, v.DownlinkLoss, Audio.Mixer.Stats(), Audio.ChannelBitrate);
+        roundTripsSeen = count;
+    }
+
+    [RelayCommand]
+    Task ShowConnectionDetails() => Dialogs.ConnectionDetails?.Invoke(Stats) ?? Task.CompletedTask;
 
     /// <summary>Package 131: the clock of the muted hint (tests use a manual one).</summary>
     internal TimeProvider Clock { get; set; } = TimeProvider.System;

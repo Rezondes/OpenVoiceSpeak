@@ -1,21 +1,42 @@
+using System.Diagnostics;
+using OVS.Shared.Voice;
+
 namespace OVS.Client.Audio;
 
 /// <summary>
 /// Reorders one speaker's Opus frames and hides losses. Pull() is called once per 20 ms tick.
 /// The sender's sequence only advances while it transmits, so a talk pause shows up as an
 /// underrun, never as a gap: after a short concealment we rebuffer and continue at the same seq.
+/// Package 133 (A142): counts what happens to the frames and estimates the jitter; not thread-safe (the mixer locks).
 /// </summary>
 public sealed class JitterBuffer
 {
     public const int StartDelay = 2;   // 40 ms cushion before playback starts
     public const int MaxFrames = 10;   // caps the latency at 200 ms
     const int MaxUnderruns = 2;        // then assume a talk pause and rebuffer
+    public const int FrameMs = 20;
 
     readonly SortedDictionary<uint, byte[]> frames = [];
     readonly VoiceDecoder decoder = new();
     bool started, playing;
     uint next;
     int waited, underruns;
+    double lastTransit = double.NaN, lastArrival = double.NegativeInfinity;
+    bool resumed; // Package 133: this spurt follows the last one closely, so frames missing between them were lost
+
+    /// <summary>Package 133: frames that arrived, never came or were dropped as the buffer was full (Lost, some of them
+    /// Rebuilt from the next one's FEC), or were made up by the decoder while waiting inside a talk spurt or for a lost one
+    /// (Concealed).</summary>
+    public int Received { get; private set; }
+    public int Lost { get; private set; }
+    public int Rebuilt { get; private set; }
+    public int Concealed { get; private set; }
+
+    /// <summary>Package 133 (A142): the interarrival jitter of RFC 3550 in ms, from the arrival times against 20 ms per frame.</summary>
+    public double JitterMs { get; private set; }
+
+    /// <summary>Package 133: what the buffer holds back right now.</summary>
+    public int DelayMs => frames.Count * FrameMs;
 
     public bool ViaLink { get; private set; }
     public int Buffered => frames.Count;
@@ -23,18 +44,34 @@ public sealed class JitterBuffer
     /// <summary>Package 124: frames waiting, or playing (concealing a loss counts): the next Pull may return audio.</summary>
     public bool Busy => playing || frames.Count > 0;
 
-    public void Push(uint seq, byte[] opus, bool viaLink)
+    /// <param name="arrivalMs">Package 133: when the frame arrived in ms, on any clock; now by default.</param>
+    public void Push(uint seq, byte[] opus, bool viaLink, double? arrivalMs = null)
     {
         ViaLink = viaLink;
+        Received++;
+        double arrival = arrivalMs ?? NowMs();
+        double transit = arrival - (double)FrameMs * seq;
+        // a talk pause shifts the transit by its length (the frame number stood still), so there is a sample only while
+        // playing: a frame that starts a spurt, also after a short pause, starts anew. A jump in the frame numbers while
+        // playing (another route, a hostile sender) is no jitter either: more than the buffer holds is not a sample.
+        double step = double.IsNaN(lastTransit) ? double.NaN : Math.Abs(transit - lastTransit);
+        if (playing && step < MaxFrames * FrameMs) JitterMs += (step - JitterMs) / 16;
+        lastTransit = transit;
+        // the same rule as LossWindow: after a silence of a second the frame numbers may have moved on through routing
+        if (!playing && frames.Count == 0) resumed = arrival - lastArrival <= LossWindow.FreshAfter.TotalMilliseconds;
+        lastArrival = arrival;
         if (started && seq < next) return; // too late, already played or concealed
         frames[seq] = opus;
         while (frames.Count > MaxFrames)
         {
             var oldest = frames.Keys.First();
             frames.Remove(oldest);
+            Lost++; // never played
             if (started && oldest >= next) next = oldest + 1;
         }
     }
+
+    public static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
     /// <returns>20 ms of PCM, or null while buffering or idle.</returns>
     public float[]? Pull()
@@ -44,6 +81,8 @@ public sealed class JitterBuffer
             if (frames.Count == 0) return null;
             if (frames.Count < StartDelay && ++waited < StartDelay) return null;
             var first = frames.Keys.First();
+            // the end of the last spurt or the start of this one never came; a long silence or a big jump starts afresh
+            if (started && resumed && first > next && first - next <= LossWindow.MaxGap) Lost += (int)(first - next);
             next = started ? Math.Max(next, first) : first;
             started = playing = true;
             waited = underruns = 0;
@@ -51,6 +90,7 @@ public sealed class JitterBuffer
 
         if (frames.Remove(next, out var opus))
         {
+            Concealed += underruns; // waited inside the spurt; at its end they do not count, as a talk pause is no loss
             underruns = 0;
             next++;
             return decoder.Decode(opus);
@@ -58,7 +98,14 @@ public sealed class JitterBuffer
         if (frames.Count > 0)
         {
             // lost packet, later ones already here: the very next one carries an FEC copy of it
-            return frames.TryGetValue(++next, out var following) ? decoder.DecodeLost(following) : decoder.Decode([]);
+            Lost++;
+            if (frames.TryGetValue(++next, out var following))
+            {
+                Rebuilt++;
+                return decoder.DecodeLost(following);
+            }
+            Concealed++;
+            return decoder.Decode([]);
         }
         if (++underruns > MaxUnderruns)
         {

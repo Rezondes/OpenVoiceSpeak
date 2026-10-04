@@ -180,6 +180,55 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Null(await va.ReceiveVoiceAsync(400));
     }
 
+    /// <summary>
+    /// Package 133 (A142): the server counts the gaps in a sender's frame numbers per 5 s window and answers its ping with
+    /// the echoed time and that uplink loss; the downlink loss the client reports stays on its session.
+    /// </summary>
+    [Fact]
+    public async Task UplinkLoss_ReportedInPing()
+    {
+        var time = new ManualTimeProvider(); // 20 ms per frame, as the sender's clock would run
+        await using var own = await TestServer.StartAsync(time: time);
+        await using var x = await TestClient.ConnectAsync(own, "x");
+        await using var y = await TestClient.ConnectAsync(own, "y");
+        using var vx = new TestVoice(x, own.VoiceEndPoint);
+        using var vy = new TestVoice(y, own.VoiceEndPoint);
+        await vx.HelloAsync();
+        await vy.HelloAsync();
+
+        async Task Frame(uint n)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(20));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, Opus)));
+            Assert.NotNull(await vy.ReceiveVoiceAsync()); // relayed, so the server has counted it
+        }
+        async Task<PingPayload> Ping(PingPayload ping)
+        {
+            await vx.SendAsync(PacketType.Ping, ping.Build());
+            var answer = await vx.ReceiveAsync();
+            Assert.Equal(PacketType.Ping, answer!.Value.Header.Type);
+            Assert.True(PingPayload.TryParse(answer.Value.Plain, out var back));
+            return back;
+        }
+
+        for (uint n = 0; n < 100; n++)
+            if (n % 10 != 5) await Frame(n); // every tenth lost on the way
+        Assert.Equal(new PingPayload(42, new LossReport(100, 10)), await Ping(new PingPayload(42, new LossReport(50, 5))));
+        Assert.Equal(new LossReport(50, 5), own.State.FindSession(x.Id)!.DownlinkLoss);
+
+        // a talk pause of 4 s (into the next window): the frame number goes on where it stopped, so nothing is missed
+        time.Advance(TimeSpan.FromSeconds(4));
+        for (uint n = 100; n < 110; n++) await Frame(n);
+        Assert.Equal(new LossReport(100, 10), (await Ping(new PingPayload(7, default))).Loss); // the last full window
+        time.Advance(TimeSpan.FromSeconds(5));
+        Assert.Equal(new PingPayload(8, new LossReport(10, 0)), await Ping(new PingPayload(8, default)));
+        Assert.Equal(default, own.State.FindSession(x.Id)!.DownlinkLoss);
+
+        // an empty ping (an older test client) is still answered, empty
+        await vx.SendAsync(PacketType.Ping, []);
+        Assert.Empty((await vx.ReceiveAsync())!.Value.Plain);
+    }
+
     /// <summary>Package 88: a Hello from another address cannot redirect the session's voice (no reflection).</summary>
     [Fact]
     public async Task Hello_FromOtherAddress_EndpointNotChanged()

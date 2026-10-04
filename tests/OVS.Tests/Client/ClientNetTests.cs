@@ -237,11 +237,14 @@ public sealed class ClientNetTests : IDisposable
         await WaitUntil(() => relay.Count(PacketType.Hello) == 11); // the first, then every 500 ms from 15 s; all dropped
 
         relay.DropAll = false;
-        Advance(time, TimeSpan.FromSeconds(5)); // one ping interval
+        Advance(time, TimeSpan.FromSeconds(2)); // one ping interval (Package 133: 2 s)
         await WaitUntil(() => va.Reachable);
     }
 
-    /// <summary>Package 126: two lost pings in a row (5 and 10 s) must not count as lost, an overdue answer is asked again.</summary>
+    /// <summary>
+    /// Package 126: pings lost for 10 s must not count as lost, an overdue answer is asked again. Package 133: a ping every
+    /// 2 s instead of 5 s.
+    /// </summary>
     [Fact]
     public async Task TwoLostPings_StayReachable()
     {
@@ -255,7 +258,7 @@ public sealed class ClientNetTests : IDisposable
 
         relay.DropAll = true;
         Advance(time, TimeSpan.FromSeconds(10));
-        await WaitUntil(() => relay.Count(PacketType.Ping) == 11); // at 5 s, then overdue every 500 ms; all dropped
+        await WaitUntil(() => relay.Count(PacketType.Ping) == 17); // at 2 s, then overdue every 500 ms; all dropped
         relay.DropAll = false;
         Advance(time, TimeSpan.FromSeconds(0.5));
         await WaitUntil(() => relay.PassedBack == 2); // the Hello's answer and now an overdue ping's
@@ -263,7 +266,7 @@ public sealed class ClientNetTests : IDisposable
         Assert.True(va.Reachable);
     }
 
-    /// <summary>Package 126: once reachable, only pings every 5 s.</summary>
+    /// <summary>Package 126: once reachable, only pings, one per ping interval (Package 133: 2 s).</summary>
     [Fact]
     public async Task Reachable_SendsOnlyPings()
     {
@@ -277,7 +280,7 @@ public sealed class ClientNetTests : IDisposable
 
         for (int i = 1; i <= 6; i++)
         {
-            Advance(time, TimeSpan.FromSeconds(4.5));
+            Advance(time, TimeSpan.FromSeconds(1.5));
             Assert.Equal(i - 1, relay.Count(PacketType.Ping));
             Advance(time, TimeSpan.FromSeconds(0.5));
             await WaitUntil(() => relay.PassedBack == i + 1); // the answer arrives before the clock moves on, as in real time
@@ -285,6 +288,148 @@ public sealed class ClientNetTests : IDisposable
         Assert.Equal(6, relay.Count(PacketType.Ping));
         Assert.Equal(1, relay.Count(PacketType.Hello));
         Assert.True(va.Reachable);
+    }
+
+    /// <summary>Package 133 (AC1): the ping carries the client's time and the server echoes it; the relay waits 50 ms each way.</summary>
+    [Fact]
+    public async Task VoiceRoundTrip_Measured()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var a = await Connect(server, "a");
+        var time = new ManualTimeProvider();
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint, time) { Delay = TimeSpan.FromMilliseconds(50) };
+        using var va = Voice(a, relay.EndPoint, time);
+        Assert.Null(va.RoundTrip);
+        va.Start(); // the Hello carries the time as well
+
+        async Task OneWay(int held, int ms = 50)
+        {
+            await WaitUntil(() => relay.Held == held); // the relay holds the packet before the clock moves on
+            time.Advance(TimeSpan.FromMilliseconds(ms));
+        }
+        await OneWay(1);
+        await OneWay(2);
+        await WaitUntil(() => va.RoundTrip is not null);
+        Assert.InRange(va.RoundTrip!.Value.TotalMilliseconds, 90, 110);
+        Assert.Equal(1, va.RoundTripSample.Count);
+
+        time.Advance(TimeSpan.FromMilliseconds(1900)); // the next ping, 2 s after the Hello
+        await OneWay(3);
+        await OneWay(4, 80); // a slower answer this time
+        await WaitUntil(() => va.RoundTrip!.Value.TotalMilliseconds > 110);
+        Assert.InRange(va.RoundTrip!.Value.TotalMilliseconds, 120, 140);
+        Assert.Equal(2, va.RoundTripSample.Count); // one per answer, so the baseline takes each once
+    }
+
+    /// <summary>
+    /// Package 133 (AC2): 10 % of the voice is lost each way. The server counts the gaps in a's frame numbers and tells a in
+    /// the ping answer (uplink); a counts the gaps in b's and tells the server in its ping (downlink). AC6: a talk pause
+    /// is no loss.
+    /// </summary>
+    [Fact]
+    public async Task DownlinkLoss_ReportedBothSides()
+    {
+        var time = new ManualTimeProvider(); // server and clients on one clock: 20 ms per frame, 5 s windows
+        await using var server = await TestServer.StartAsync(time: time);
+        await using var a = await Connect(server, "a");
+        await using var b = await Connect(server, "b");
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropUpVoicePercent = 10, DropDownVoicePercent = 10 };
+        using var va = Voice(a, relay.EndPoint, time);
+        using var vb = Voice(b, server.VoiceEndPoint, time);
+        int atA = 0, atB = 0;
+        va.VoiceReceived += (_, _, _, _) => Interlocked.Increment(ref atA);
+        vb.VoiceReceived += (_, _, _, _) => Interlocked.Increment(ref atB);
+        va.Start();
+        vb.Start();
+        await WaitUntil(() => va.Reachable && vb.Reachable);
+
+        int sent = 0;
+        async Task Talk(int frames)
+        {
+            for (int i = 1; i <= frames; i++)
+            {
+                va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
+                vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
+                sent++;
+                time.Advance(TimeSpan.FromMilliseconds(20));
+                // every 5 frames everything sent has arrived, so the clock never runs ahead of the network (the server's rate
+                // limit would see a pile of frames at one instant)
+                if (i % 5 == 0)
+                    await WaitUntil(() => relay.Count(PacketType.Voice) == sent && relay.SeenDownVoice == sent
+                        && Volatile.Read(ref atB) == relay.PassedUpVoice && Volatile.Read(ref atA) == relay.PassedDownVoice);
+            }
+        }
+        await Talk(295); // about 6 s; the last frame lost is the 290th, so the end of this spurt hides no gap
+        // one timer tick each (one ping), as many ticks at one instant of the server's clock would hit its rate limit
+        time.Advance(TimeSpan.FromSeconds(2)); // a ping after the first full window
+        var session = server.State.FindSession(a.Welcome.SessionId)!;
+        await WaitUntil(() => va.UplinkLoss.Expected >= 200 && session.DownlinkLoss.Expected >= 200);
+        Assert.InRange(va.UplinkLoss.Percent, 7, 13);
+        Assert.InRange(va.DownlinkLoss.Percent, 7, 13);
+        Assert.InRange(session.DownlinkLoss.Percent, 7, 13);
+        Assert.Equal(0u, vb.UplinkLoss.Missed); // b talks straight to the server, but hears what a lost on the way up
+        Assert.InRange(vb.DownlinkLoss.Percent, 7, 13);
+
+        // AC6: 10 s of silence, then talking again without loss; the frame numbers go on, so nothing counts as missed
+        relay.DropUpVoicePercent = relay.DropDownVoicePercent = 0;
+        time.Advance(TimeSpan.FromSeconds(10));
+        await Talk(500); // 10 s, so one whole window lies inside
+        time.Advance(TimeSpan.FromSeconds(2));
+        await WaitUntil(() => va.UplinkLoss is { Expected: >= 200, Missed: 0 } && session.DownlinkLoss is { Expected: >= 200, Missed: 0 });
+        Assert.Equal(new LossReport(va.DownlinkLoss.Expected, 0), va.DownlinkLoss);
+    }
+
+    /// <summary>
+    /// Package 133 (review): while I am deafened the server relays nothing to me, but the speaker's frame numbers go on.
+    /// Those frames were never meant for me, so they are no downlink loss, at the client nor in its report to the server.
+    /// </summary>
+    [Fact]
+    public async Task Deafened_FramesKeptAway_NotDownlinkLoss()
+    {
+        var time = new ManualTimeProvider();
+        await using var server = await TestServer.StartAsync(time: time);
+        await using var a = await Connect(server, "a");
+        await using var b = await Connect(server, "b");
+        using var va = Voice(a, server.VoiceEndPoint, time);
+        using var vb = Voice(b, server.VoiceEndPoint, time);
+        int atA = 0, sent = 0;
+        va.VoiceReceived += (_, _, _, _) => Interlocked.Increment(ref atA);
+        va.Start();
+        vb.Start();
+        await WaitUntil(() => va.Reachable && vb.Reachable);
+        var session = server.State.FindSession(a.Welcome.SessionId)!;
+
+        async Task Talk(int frames, bool heard)
+        {
+            for (int i = 1; i <= frames; i++)
+            {
+                vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
+                sent++;
+                time.Advance(TimeSpan.FromMilliseconds(20));
+                if (i % 5 != 0) continue;
+                if (heard) await WaitUntil(() => Volatile.Read(ref atA) == sent);
+                else await Task.Delay(10); // nothing arrives to wait for; keeps the server's clock from running ahead
+            }
+        }
+        async Task Deafen(bool on)
+        {
+            await a.SendAsync(new SetSelfState(false, on));
+            await WaitUntil(() => session.SelfDeafened == on);
+        }
+
+        await Talk(50, heard: true); // 1 s
+        await Deafen(true);
+        int before = atA;
+        await Talk(100, heard: false); // 2 s that b's frames go to nobody
+        Assert.Equal(before, Volatile.Read(ref atA));
+        await Deafen(false);
+        sent = atA; // what a can hear from here on
+        await Talk(110, heard: true); // past 5 s: the window with the jump in the frame numbers is complete
+        time.Advance(TimeSpan.FromSeconds(2)); // a ping with that window
+        await WaitUntil(() => session.DownlinkLoss.Expected >= 100);
+        Assert.Equal(0u, session.DownlinkLoss.Missed);
+        Assert.Equal(0u, va.DownlinkLoss.Missed);
+        Assert.True(va.DownlinkLoss.Expected >= 100);
     }
 
     /// <summary>Waits up to 10 s by the clock (not by a loop count: Task.Delay(20) may take far longer on a busy runner).</summary>

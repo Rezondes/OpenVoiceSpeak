@@ -601,4 +601,22 @@
   <data name="Dlg_SaveAndLeave" xml:space="preserve"><value>Save and leave</value></data>
   <data name="Dlg_LeaveWithoutSaving" xml:space="preserve"><value>Leave without saving</value></data>
   <data name="Dlg_KeepEditing" xml:space="preserve"><value>Keep editing</value></data>
+  <data name="Signal_Tip" xml:space="preserve"><value>Voice connection: {0}. Click for details.</value></data>
+  <data name="Signal_Good" xml:space="preserve"><value>good</value></data>
+  <data name="Signal_Fair" xml:space="preserve"><value>fair</value></data>
+  <data name="Signal_Poor" xml:space="preserve"><value>poor</value></data>
+  <data name="Signal_Bad" xml:space="preserve"><value>bad</value></data>
+  <data name="Signal_Unknown" xml:space="preserve"><value>measuring</value></data>
+  <data name="Signal_Unreachable" xml:space="preserve"><value>UDP not reachable</value></data>
+  <data name="ConnDetails_Title" xml:space="preserve"><value>Connection details</value></data>
+  <data name="ConnDetails_RoundTrip" xml:space="preserve"><value>Round trip</value></data>
+  <data name="ConnDetails_RoundTripValue" xml:space="preserve"><value>{0} ms (usual {1} ms)</value></data>
+  <data name="ConnDetails_Uplink" xml:space="preserve"><value>Loss to the server</value></data>
+  <data name="ConnDetails_Downlink" xml:space="preserve"><value>Loss from the server</value></data>
+  <data name="ConnDetails_Jitter" xml:space="preserve"><value>Jitter</value></data>
+  <data name="ConnDetails_Buffer" xml:space="preserve"><value>Buffer</value></data>
+  <data name="ConnDetails_Concealed" xml:space="preserve"><value>Concealed frames</value></data>
+  <data name="ConnDetails_ConcealedValue" xml:space="preserve"><value>{0} ({1} rebuilt by FEC)</value></data>
+  <data name="ConnDetails_Bitrate" xml:space="preserve"><value>Bitrate</value></data>
+  <data name="ConnDetails_Hint" xml:space="preserve"><value>Measured over UDP, every 2 s. Loss: frames missing in the last 5 s. The round trip is compared with the usual one.</value></data>
 </root>

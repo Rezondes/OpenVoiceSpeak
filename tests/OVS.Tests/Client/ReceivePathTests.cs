@@ -130,6 +130,130 @@ public class ReceivePathTests
         var jb = new JitterBuffer();
         for (uint n = 0; n < 15; n++) jb.Push(n, Frame(n), false);
         Assert.Equal(JitterBuffer.MaxFrames, jb.Buffered);
+        Assert.Equal(5, jb.Lost); // Package 133: dropped, never played
+    }
+
+    static readonly byte[][] Frames = Enumerable.Range(0, 8).Select(n => Frame((uint)n)).ToArray();
+
+    /// <summary>Package 133 (AC3): the interarrival jitter of RFC 3550, from the arrival times against 20 ms per frame number.</summary>
+    [Fact]
+    public void Jitter_Estimated()
+    {
+        var random = new Random(133);
+        double Run(double spread)
+        {
+            var jb = new JitterBuffer();
+            for (uint n = 0; n < 500; n++)
+            {
+                jb.Push(n, Frames[n % 8], false, 20.0 * n + 1000 + (random.NextDouble() * 2 - 1) * spread);
+                jb.Pull();
+            }
+            return jb.JitterMs;
+        }
+        // |D| is the difference of two offsets uniform in ±15 ms; its mean is the width over 3: 10 ms
+        Assert.InRange(Run(15), 5, 15);
+        Assert.InRange(Run(0), 0, 2);
+    }
+
+    /// <summary>
+    /// Package 133 (AC6): the sender's frame number stands still while it is silent, so a talk pause is no loss, its end
+    /// conceals nothing that counts, and the jump in the arrival times is no jitter. A lost and a late frame do count.
+    /// </summary>
+    [Fact]
+    public void TalkPause_NotLoss()
+    {
+        var jb = new JitterBuffer();
+        double now = 0;
+        void Tick(params uint[] arrived)
+        {
+            foreach (var n in arrived) jb.Push(n, Frames[n % 8], false, now);
+            jb.Pull();
+            now += 20;
+        }
+        for (uint n = 0; n < 50; n++) Tick(n);
+        for (int i = 0; i < 100; i++) Tick(); // 2 s of silence
+        for (uint n = 50; n < 100; n++) Tick(n);
+        Assert.Equal((100, 0, 0, 0), (jb.Received, jb.Lost, jb.Rebuilt, jb.Concealed));
+        Assert.InRange(jb.JitterMs, 0, 2);
+
+        for (uint n = 100; n < 110; n++)
+            if (n == 105) Tick(); // lost on the way: rebuilt from the next frame's FEC
+            else Tick(n);
+        Assert.Equal((109, 1, 1, 0), (jb.Received, jb.Lost, jb.Rebuilt, jb.Concealed));
+        Tick(110);
+        Tick();
+        Tick(); // 111 and 112 are late: the buffer runs dry once and conceals
+        Tick(111, 112);
+        Tick(113);
+        Assert.Equal((113, 1, 1, 1), (jb.Received, jb.Lost, jb.Rebuilt, jb.Concealed));
+        Assert.Equal(JitterBuffer.FrameMs, jb.DelayMs); // one frame waits
+    }
+
+    /// <summary>
+    /// Package 133 (review): a short pause (voice activation starting again after its hold) rebuffers; the first frame after
+    /// it starts anew instead of being a jitter sample of the pause's length.
+    /// </summary>
+    [Fact]
+    public void ShortPause_NoJitterSample()
+    {
+        var jb = new JitterBuffer();
+        double now = 0;
+        void Tick(uint? n)
+        {
+            if (n is { } f) jb.Push(f, Frames[f % 8], false, now);
+            jb.Pull();
+            now += 20;
+        }
+        for (uint n = 0; n < 50; n++) Tick(n);
+        for (int i = 0; i < 8; i++) Tick(null); // 160 ms
+        for (uint n = 50; n < 100; n++) Tick(n);
+        Assert.InRange(jb.JitterMs, 0, 0.5);
+    }
+
+    /// <summary>
+    /// Package 133 (review): frames missing between two spurts close together were lost; after a silence of a second, or
+    /// a jump beyond the cap, the frame numbers moved on elsewhere (another channel, deafened) and nothing counts.
+    /// </summary>
+    [Fact]
+    public void SpurtGap_CountedOnlyWhenClose()
+    {
+        var jb = new JitterBuffer();
+        double now = 0;
+        void Tick(uint? n)
+        {
+            if (n is { } f) jb.Push(f, Frames[f % 8], false, now);
+            jb.Pull();
+            now += 20;
+        }
+        for (uint n = 0; n < 10; n++) Tick(n);
+        for (int i = 0; i < 10; i++) Tick(null); // 200 ms
+        for (uint n = 12; n < 20; n++) Tick(n); // 10 and 11 never came
+        Assert.Equal(2, jb.Lost);
+        for (int i = 0; i < 100; i++) Tick(null); // 2 s
+        for (uint n = 120; n < 130; n++) Tick(n); // sent while I did not get them
+        Assert.Equal(2, jb.Lost);
+        for (int i = 0; i < 10; i++) Tick(null);
+        for (uint n = 1000; n < 1010; n++) Tick(n); // a jump beyond the cap
+        Assert.Equal(2, jb.Lost);
+    }
+
+    /// <summary>Package 133: the mixer sums the speakers for the connection details, also those already gone.</summary>
+    [Fact]
+    public void Mixer_Stats_SumOverSpeakers()
+    {
+        var mixer = new Mixer();
+        for (uint n = 0; n < 6; n++)
+        {
+            if (n != 2) mixer.Push(1, n, Frames[n], false, 20.0 * n);
+            mixer.Push(2, n, Frames[n], false, 20.0 * n + (n == 3 ? 15 : 0));
+            mixer.Tick();
+        }
+        var stats = mixer.Stats();
+        Assert.Equal((11, 1, 1), (stats.Received, stats.Lost, stats.Rebuilt));
+        Assert.True(stats.JitterMs > 0); // the larger of the two
+        mixer.RemoveLeft(id => id == 2);
+        mixer.Clear();
+        Assert.Equal(stats with { JitterMs = 0, DelayMs = 0 }, mixer.Stats());
     }
 
     [Fact]

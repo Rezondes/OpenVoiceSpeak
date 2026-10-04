@@ -601,4 +601,22 @@
   <data name="Dlg_SaveAndLeave" xml:space="preserve"><value>Speichern und verlassen</value></data>
   <data name="Dlg_LeaveWithoutSaving" xml:space="preserve"><value>Verlassen ohne Speichern</value></data>
   <data name="Dlg_KeepEditing" xml:space="preserve"><value>Weiter bearbeiten</value></data>
+  <data name="Signal_Tip" xml:space="preserve"><value>Sprachverbindung: {0}. Klicken für Details.</value></data>
+  <data name="Signal_Good" xml:space="preserve"><value>gut</value></data>
+  <data name="Signal_Fair" xml:space="preserve"><value>mittel</value></data>
+  <data name="Signal_Poor" xml:space="preserve"><value>schwach</value></data>
+  <data name="Signal_Bad" xml:space="preserve"><value>schlecht</value></data>
+  <data name="Signal_Unknown" xml:space="preserve"><value>wird gemessen</value></data>
+  <data name="Signal_Unreachable" xml:space="preserve"><value>UDP nicht erreichbar</value></data>
+  <data name="ConnDetails_Title" xml:space="preserve"><value>Verbindungsdetails</value></data>
+  <data name="ConnDetails_RoundTrip" xml:space="preserve"><value>Umlaufzeit</value></data>
+  <data name="ConnDetails_RoundTripValue" xml:space="preserve"><value>{0} ms (gewohnt {1} ms)</value></data>
+  <data name="ConnDetails_Uplink" xml:space="preserve"><value>Verlust zum Server</value></data>
+  <data name="ConnDetails_Downlink" xml:space="preserve"><value>Verlust vom Server</value></data>
+  <data name="ConnDetails_Jitter" xml:space="preserve"><value>Jitter</value></data>
+  <data name="ConnDetails_Buffer" xml:space="preserve"><value>Puffer</value></data>
+  <data name="ConnDetails_Concealed" xml:space="preserve"><value>Verdeckte Frames</value></data>
+  <data name="ConnDetails_ConcealedValue" xml:space="preserve"><value>{0} ({1} per FEC ersetzt)</value></data>
+  <data name="ConnDetails_Bitrate" xml:space="preserve"><value>Bitrate</value></data>
+  <data name="ConnDetails_Hint" xml:space="preserve"><value>Über UDP gemessen und alle 2 s neu. Verlust: fehlende Frames der letzten 5 s. Die Umlaufzeit wird mit der gewohnten verglichen.</value></data>
 </root>

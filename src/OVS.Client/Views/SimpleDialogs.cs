@@ -30,7 +30,7 @@ public static class SimpleDialogs
     /// </param>
     internal static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
         string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null, Func<T, Pending>? submit = null,
-        (string Text, T Value)? other = null) where T : class
+        (string Text, T Value)? other = null, bool withCancel = true) where T : class
     {
         T? result = null;
         var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
@@ -105,7 +105,7 @@ public static class SimpleDialogs
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, ItemSpacing = 8, LineSpacing = 8 },
         };
-        if (third is null) ((WrapPanel)buttonBar.Child).Children.AddRange([cancel, ok]);
+        if (third is null) ((WrapPanel)buttonBar.Child).Children.AddRange(withCancel ? [cancel, ok] : [ok]); // Package 133: a card that only informs
         else
         {
             // three answers do not fit one row of the card: one below the other, the default one first
@@ -389,6 +389,38 @@ public static class SimpleDialogs
             mismatch ? Strings.Tofu_TrustAnyway : Strings.Tofu_Trust, prompt.AcceptIsDefault, mismatch ? Kind.Danger : Kind.Normal) is not null;
     }
 
+    /// <summary>
+    /// Package 133 (A142): "Verbindungsdetails", bound to the figures, so the open card follows their refresh every 2 s.
+    /// Only a close button: there is nothing to decide.
+    /// </summary>
+    public static async Task ConnectionDetails(OverlayHost overlay, ConnectionStats stats)
+    {
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 16, RowSpacing = 6, DataContext = stats };
+        (string Label, string Property)[] rows =
+        [
+            (Strings.ConnDetails_RoundTrip, nameof(ConnectionStats.RoundTripText)),
+            (Strings.ConnDetails_Uplink, nameof(ConnectionStats.UplinkText)),
+            (Strings.ConnDetails_Downlink, nameof(ConnectionStats.DownlinkText)),
+            (Strings.ConnDetails_Jitter, nameof(ConnectionStats.JitterText)),
+            (Strings.ConnDetails_Buffer, nameof(ConnectionStats.DelayText)),
+            (Strings.ConnDetails_Concealed, nameof(ConnectionStats.ConcealedText)),
+            (Strings.ConnDetails_Bitrate, nameof(ConnectionStats.BitrateText)),
+        ];
+        foreach (var (label, property) in rows)
+        {
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            var name = Text(label, "muted");
+            var value = Text("");
+            value.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding(property));
+            Grid.SetRow(name, grid.RowDefinitions.Count - 1);
+            Grid.SetRow(value, grid.RowDefinitions.Count - 1);
+            Grid.SetColumn(value, 1);
+            grid.Children.AddRange([name, value]);
+        }
+        await Show(overlay, Strings.ConnDetails_Title, "WifiSignal", Stack(grid, Text(Strings.ConnDetails_Hint, "caption")), () => "ok",
+            Strings.Ui_Close, withCancel: false);
+    }
+
     /// <summary>The dialogs of the main window's overlay, as the view models ask for them (App, and the UI tests).</summary>
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>
     public static Dialogs For(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
@@ -407,6 +439,7 @@ public static class SimpleDialogs
         EditKeyBinding = (binding, capture) => EditKeyBinding(overlay, binding, capture),
         OfferUpdate = offer => OfferUpdate(overlay, offer),
         AskLeave = () => AskLeave(overlay), // Package 114
+        ConnectionDetails = stats => ConnectionDetails(overlay, stats), // Package 133
     };
 
     public static Task<ConnectChoice?> Connect(OverlayHost overlay, ClientSettings settings, Bookmark? preselect = null)

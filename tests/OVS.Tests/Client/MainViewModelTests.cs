@@ -621,6 +621,85 @@ public sealed class MainViewModelTests : IAsyncLifetime
             Assert.Single(log.Split(Environment.NewLine), l => l.Contains(line));
     }
 
+    /// <summary>
+    /// Package 133 (AC5): the signal icon rates the voice round trip, crossed out while UDP is unreachable; a click shows
+    /// the connection details, refreshed every 2 s.
+    /// </summary>
+    [Fact]
+    public async Task SignalIcon_AndDetails()
+    {
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint);
+        var time = new ManualTimeProvider(); // the voice client's and the refresh's clock
+        ConnectionStats? shown = null;
+        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime, vm.Clock, vm.Dialogs) = (relay.EndPoint, time, time, new Dialogs
+        {
+            ConnectionDetails = s =>
+            {
+                shown = s;
+                return Task.CompletedTask;
+            },
+        }));
+        Assert.Equal((0, false), await OnUi(() => (vm.Stats.Bars, vm.Stats.Unreachable)));
+        await ConnectAsync(saveBookmark: false);
+
+        // the answer to the Hello: 0 ms on the manual clock, as good as the baseline
+        Assert.Equal(4, await OnUiUntil(() =>
+        {
+            time.Advance(TimeSpan.FromSeconds(2));
+            vm.Tick();
+            return vm.Stats.Bars;
+        }, b => b == 4));
+        var stats = await OnUi(() => vm.Stats);
+        Assert.Equal((SignalRating.Good, false), (stats.Rating, stats.Unreachable));
+        Assert.Contains("0 ms", stats.RoundTripText);
+        Assert.Equal("64 kbps", stats.BitrateText);
+        foreach (var text in new[] { stats.UplinkText, stats.DownlinkText, stats.JitterText, stats.DelayText, stats.ConcealedText })
+            Assert.False(string.IsNullOrEmpty(text));
+
+        await OnUi(() => vm.ShowConnectionDetailsCommand.ExecuteAsync(null));
+        Assert.Same(stats, shown);
+
+        // refreshed every 2 s, not on every UI tick
+        Assert.Equal("64 kbps", await OnUi(() =>
+        {
+            vm.Audio.ChannelBitrate = 96;
+            time.Advance(TimeSpan.FromSeconds(1.9));
+            vm.Tick();
+            return stats.BitrateText;
+        }));
+        Assert.Equal("96 kbps", await OnUi(() =>
+        {
+            time.Advance(TimeSpan.FromSeconds(0.1));
+            vm.Tick();
+            return stats.BitrateText;
+        }));
+
+        // 16 s without an answer: crossed out, and the last round trip does not enter the baseline again on every refresh
+        relay.DropAll = true;
+        int samples = await OnUi(() => stats.Samples);
+        var (unreachable, bars, after) = await OnUi(() =>
+        {
+            for (int i = 0; i < 32; i++)
+            {
+                time.Advance(TimeSpan.FromMilliseconds(500));
+                vm.Tick();
+            }
+            return (stats.Unreachable, stats.Bars, stats.Samples);
+        });
+        Assert.Equal((true, 0), (unreachable, bars));
+        Assert.InRange(after, samples, samples + 1); // an answer already on its way may still come in
+        relay.DropAll = false;
+        Assert.False(await OnUiUntil(() =>
+        {
+            time.Advance(TimeSpan.FromMilliseconds(500));
+            vm.Tick();
+            return stats.Unreachable;
+        }, u => !u));
+
+        await OnUi(() => vm.DisconnectAsync());
+        Assert.Equal((0, false, "-"), await OnUi(() => (stats.Bars, stats.Unreachable, stats.RoundTripText)));
+    }
+
     /// <summary>Package 32: welcome in "Allgemein", the channel tab talks to the real server both ways.</summary>
     [Fact]
     public async Task Chat_EndToEnd()

@@ -31,6 +31,9 @@
       <SolidColorBrush x:Key="Ovs.DangerText" Color="#F87171" />
       <SolidColorBrush x:Key="Ovs.DangerSurface" Color="#3A1A1D" />
       <SolidColorBrush x:Key="Ovs.WarningText" Color="#FBBF24" />
+      <!-- Package 133: the signal icon's yellow and orange (green is Ovs.Speaking, red Ovs.Danger) -->
+      <SolidColorBrush x:Key="Ovs.SignalFair" Color="#FACC15" />
+      <SolidColorBrush x:Key="Ovs.SignalPoor" Color="#F97316" />
       <SolidColorBrush x:Key="Ovs.WarningSurface" Color="#33290F" />
       <SolidColorBrush x:Key="Ovs.Scrim" Color="#B3000000" />
     </ResourceDictionary>
@@ -59,6 +62,8 @@
       <SolidColorBrush x:Key="Ovs.DangerText" Color="#B91C1C" />
       <SolidColorBrush x:Key="Ovs.DangerSurface" Color="#FDE8E8" />
       <SolidColorBrush x:Key="Ovs.WarningText" Color="#92400E" />
+      <SolidColorBrush x:Key="Ovs.SignalFair" Color="#CA8A04" />
+      <SolidColorBrush x:Key="Ovs.SignalPoor" Color="#EA580C" />
       <SolidColorBrush x:Key="Ovs.WarningSurface" Color="#FEF3C7" />
       <SolidColorBrush x:Key="Ovs.Scrim" Color="#80101418" />
     </ResourceDictionary>

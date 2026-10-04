@@ -387,7 +387,25 @@
                     </StackPanel>
                   </ToolTip.Tip>
                   <StackPanel Orientation="Horizontal" Spacing="4">
-                    <PathIcon Classes="sm muted" Data="{StaticResource Icon.WifiSignal}" />
+                    <!-- Package 133 (A142): the voice signal against the own baseline, crossed out while UDP is unreachable;
+                         a click shows the connection details -->
+                    <Button x:Name="SignalButton" Classes="hint" Command="{Binding ShowConnectionDetailsCommand}" VerticalAlignment="Center"
+                            ToolTip.Tip="{Binding Stats.Tip}" AutomationProperties.Name="{x:Static l:Strings.ConnDetails_Title}">
+                      <Panel Width="15" Height="12"
+                             Classes.bars1="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=1}"
+                             Classes.bars2="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=2}"
+                             Classes.bars3="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=3}"
+                             Classes.bars4="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=4}">
+                        <StackPanel Orientation="Horizontal" Spacing="1" VerticalAlignment="Bottom">
+                          <Border Classes="signalBar" Height="4" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=1}" />
+                          <Border Classes="signalBar" Height="6" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=2}" />
+                          <Border Classes="signalBar" Height="9" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=3}" />
+                          <Border Classes="signalBar" Height="12" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=4}" />
+                        </StackPanel>
+                        <Line x:Name="SignalCross" StartPoint="0,0" EndPoint="15,12" StrokeThickness="1.5" Stroke="{DynamicResource Ovs.Danger}"
+                              IsVisible="{Binding Stats.Unreachable}" />
+                      </Panel>
+                    </Button>
                     <TextBlock Classes="wideOnly" Text="{Binding PingText}" />
                   </StackPanel>
                 </Border>

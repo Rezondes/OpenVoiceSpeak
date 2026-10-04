@@ -83,6 +83,89 @@ public class VoicePacketTests
         Assert.False(crypto.TryOpen(Direction.ServerToClient, packet, out _, out _));
     }
 
+    /// <summary>Package 133 (A142): the ping carries the sender's time and the loss it sees from the other side.</summary>
+    [Fact]
+    public void PingPayload_RoundTrip()
+    {
+        var ping = new PingPayload(1_234_567_890_123, new LossReport(250, 25));
+        var bytes = ping.Build();
+        Assert.Equal(PingPayload.Size, bytes.Length);
+        Assert.True(PingPayload.TryParse(bytes, out var back));
+        Assert.Equal(ping, back);
+        Assert.Equal(10.0, back.Loss.Percent);
+        Assert.Equal(0.0, new LossReport(0, 0).Percent); // nothing expected (a talk pause) is no loss
+
+        using var crypto = new VoiceCrypto(Key);
+        var packet = crypto.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Ping, 1, 0, 0), bytes);
+        Assert.True(crypto.TryOpen(Direction.ClientToServer, packet, out _, out var plain));
+        Assert.True(PingPayload.TryParse(plain, out var opened));
+        Assert.Equal(ping, opened);
+
+        Assert.False(PingPayload.TryParse([], out _)); // an empty ping is still answered, but carries nothing
+        Assert.False(PingPayload.TryParse(new byte[PingPayload.Size - 1], out _));
+    }
+
+    /// <summary>Package 133: gaps in a stream's frame numbers are losses, per 5 s window; a talk pause has no gap.</summary>
+    [Fact]
+    public void LossWindow_CountsGapsPerStream()
+    {
+        var time = new OVS.Tests.TestSupport.ManualTimeProvider();
+        var window = new LossWindow(time);
+        foreach (uint n in new uint[] { 0, 1, 3, 4 }) window.Count(7, n); // 2 missing
+        foreach (uint n in new uint[] { 10, 11, 12 }) window.Count(8, n); // another speaker, starting anywhere
+        Assert.Equal(new LossReport(8, 1), window.Report()); // the window so far, until the first one is complete
+        window.Count(7, 2); // late after all
+        Assert.Equal(new LossReport(8, 0), window.Report());
+
+        time.Advance(TimeSpan.FromSeconds(5));
+        window.Count(7, 5); // after a pause: the frame number goes on, no gap (and a silence of 1 s starts afresh anyway)
+        Assert.Equal(new LossReport(8, 0), window.Report()); // the last complete window
+        window.Count(7, 9);
+        time.Advance(TimeSpan.FromSeconds(5));
+        Assert.Equal(new LossReport(5, 3), window.Report());
+    }
+
+    /// <summary>
+    /// Package 133 (review): frames that routing kept away (deafened, another channel) are no loss, a hostile jump never
+    /// reads above 100 %, and only a gap counted in this window is taken back by a late frame.
+    /// </summary>
+    [Fact]
+    public void LossWindow_FreshStarts_TakesBackOnlyCountedGaps()
+    {
+        var time = new OVS.Tests.TestSupport.ManualTimeProvider();
+        var window = new LossWindow(time);
+        window.Count(1, 0);
+        window.Count(1, 1);
+        time.Advance(TimeSpan.FromSeconds(2)); // deafened for 2 s: the speaker's frames went to others
+        window.Count(1, 101);
+        window.Count(1, 102);
+        Assert.Equal(new LossReport(4, 0), window.Report());
+        window.Count(1, 102 + LossWindow.MaxGap + 1); // a jump beyond the cap
+        window.Count(1, uint.MaxValue); // hostile
+        window.Count(1, 5); // far behind what it said before: nothing to place
+        Assert.Equal(new LossReport(6, 0), window.Report());
+
+        window.Count(2, 10);
+        window.Count(2, 12); // 11 missing
+        window.Count(2, 12); // a duplicate
+        window.Count(2, 9); // before the stream started
+        Assert.Equal(new LossReport(9, 1), window.Report());
+        window.Count(2, 11); // late after all
+        window.Count(2, 11);
+        Assert.Equal(new LossReport(9, 0), window.Report());
+        Assert.True(window.Report().Percent <= 100);
+
+        var rolled = new LossWindow(time);
+        time.Advance(TimeSpan.FromSeconds(4.9));
+        rolled.Count(3, 0);
+        rolled.Count(3, 2); // 1 missing
+        time.Advance(TimeSpan.FromSeconds(0.2));
+        rolled.Count(3, 1); // late, but its gap belongs to the last window
+        Assert.Equal(new LossReport(3, 1), rolled.Report());
+        time.Advance(TimeSpan.FromSeconds(5));
+        Assert.Equal(new LossReport(0, 0), rolled.Report());
+    }
+
     [Fact]
     public void SeqCounter_CountsFromZero_OverflowThrows()
     {

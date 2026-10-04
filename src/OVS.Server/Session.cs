@@ -40,6 +40,20 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public ReplayWindow Replay { get; } = new();
     public SeqCounter OutSeq { get; } = new();
     public RateLimiter Limiter { get; } = new(time);
+    /// <summary>Package 133 (A142): the gaps in this sender's frame numbers, told to it in the ping answer.</summary>
+    public LossWindow Uplink { get; } = new(time);
+    long downlinkLoss; // packed, so another thread never reads half of it
+
+    /// <summary>Package 133 (A142): the loss this client reported from the server (used by Package 136); written by the UDP loop.</summary>
+    public LossReport DownlinkLoss
+    {
+        get
+        {
+            long packed = Interlocked.Read(ref downlinkLoss);
+            return new LossReport((uint)(packed >> 32), (uint)packed);
+        }
+        set => Interlocked.Exchange(ref downlinkLoss, (long)value.Expected << 32 | value.Missed);
+    }
 
     readonly Queue<DateTimeOffset> chatTimes = new();
 

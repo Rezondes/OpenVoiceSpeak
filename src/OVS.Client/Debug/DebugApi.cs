@@ -247,6 +247,20 @@ public sealed class DebugApi : IDisposable
             vm.TransmitText,
             vm.VoiceHint,
             vm.PingText,
+            Connection = new // Package 133: the figures of the signal icon and the connection details
+            {
+                vm.Stats.Rating,
+                vm.Stats.Bars,
+                vm.Stats.Unreachable,
+                vm.Stats.BaselineMs,
+                RoundTrip = vm.Stats.RoundTripText,
+                Uplink = vm.Stats.UplinkText,
+                Downlink = vm.Stats.DownlinkText,
+                Jitter = vm.Stats.JitterText,
+                Buffer = vm.Stats.DelayText,
+                Concealed = vm.Stats.ConcealedText,
+                Bitrate = vm.Stats.BitrateText,
+            },
             Notices = vm.Notices.Take(50).Select(n => n.ToString()).ToList(),
             Sounds = vm.Audio.RecentSounds.Select(s => s.ToString()).ToList(), // Package 47
             Server = s is null ? null : new

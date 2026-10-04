@@ -247,6 +247,18 @@ public sealed class ResponsiveTests : IDisposable
         }
         var ping = main.FindControl<Border>("PingChip")!;
         Assert.DoesNotContain(ping.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == "23 ms");
+        // Package 133: the signal icon stays, crossed out while UDP is unreachable
+        vm.Stats.Unreachable = true;
+        Dispatcher.UIThread.RunJobs();
+        FullyInside(main, main.FindControl<Button>("SignalButton")!);
+        Assert.True(main.FindControl<Avalonia.Controls.Shapes.Line>("SignalCross")!.IsEffectivelyVisible);
+        vm.Stats.Unreachable = false;
+        vm.Stats.Update(TimeSpan.FromMilliseconds(20), default, default, default, 64); // the first sample is its own baseline: green
+        Dispatcher.UIThread.RunJobs();
+        var bars = main.FindControl<Button>("SignalButton")!.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("signalBar")).ToList();
+        Assert.Equal(4, bars.Count(b => b.Classes.Contains("on")));
+        Assert.Contains("bars4", bars[0].GetVisualAncestors().OfType<Panel>().First(p => p.Classes.Contains("bars4") || p.Classes.Contains("bars1")).Classes);
+        Assert.False(main.FindControl<Avalonia.Controls.Shapes.Line>("SignalCross")!.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
 
         Resize(main, 1100); // wide: the texts are back
@@ -685,8 +697,18 @@ public sealed class ResponsiveTests : IDisposable
         "Bookmark" => SimpleDialogs.EditBookmark(o, settings.Bookmarks[0]),
         "BackupDownload" => SimpleDialogs.ConfirmBackupDownload(o), // Package 89
         "Leave" => SimpleDialogs.AskLeave(o), // Package 114: three buttons
+        "ConnectionDetails" => SimpleDialogs.ConnectionDetails(o, Measured()), // Package 133
         _ => throw new ArgumentException(name),
     };
+
+    /// <summary>Package 133: connection details with long figures.</summary>
+    static ConnectionStats Measured()
+    {
+        var stats = new ConnectionStats();
+        stats.Update(TimeSpan.FromMilliseconds(1234), new OVS.Shared.Voice.LossReport(250, 25), new OVS.Shared.Voice.LossReport(4999, 1234),
+            new OVS.Client.Audio.ReceiveStats(100_000, 1000, 500, 12_345, 123.4, 200), 128);
+        return stats;
+    }
 
     /// <summary>Three bookmarks, so the start screen and the connect dialog show their lists.</summary>
     void SaveThreeBookmarks()
@@ -711,7 +733,7 @@ public sealed class ResponsiveTests : IDisposable
     public static TheoryData<string, string> Dialogs()
     {
         var data = new TheoryData<string, string>();
-        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "ChannelPassword", "Bookmark", "BackupDownload", "Leave" })
+        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "ChannelPassword", "Bookmark", "BackupDownload", "Leave", "ConnectionDetails" })
             foreach (var culture in new[] { "de-DE", "en-US" })
                 data.Add(dialog, culture);
         return data;

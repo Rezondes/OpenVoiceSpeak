@@ -2,6 +2,9 @@ namespace OVS.Client.Audio;
 
 public readonly record struct ActiveSpeaker(uint SessionId, bool ViaLink);
 
+/// <summary>Package 133 (A142): the jitter buffers' counts summed over the speakers, the worst jitter and delay of those present.</summary>
+public readonly record struct ReceiveStats(int Received, int Lost, int Rebuilt, int Concealed, double JitterMs, int DelayMs);
+
 /// <summary>One jitter buffer per speaker, summed into one 20 ms frame per tick. Thread-safe.</summary>
 public sealed class Mixer
 {
@@ -43,12 +46,39 @@ public sealed class Mixer
     /// <summary>The output volume as the slider value; Package 128: through <see cref="VolumeCurve"/> like the per-speaker volume.</summary>
     public float Volume { get; set; } = 1f;
 
-    public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink)
+    /// <param name="arrivalMs">Package 133: when it arrived (tests); now by default, taken before waiting for the lock.</param>
+    public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink, double? arrivalMs = null)
     {
+        double at = arrivalMs ?? JitterBuffer.NowMs();
         lock (gate)
         {
             if (!speakers.TryGetValue(speakerId, out var speaker)) speakers[speakerId] = speaker = new Speaker();
-            speaker.Buffer.Push(seq, opus, viaLink);
+            speaker.Buffer.Push(seq, opus, viaLink, at);
+        }
+    }
+
+    ReceiveStats retired; // Package 133: the counts of the speakers removed so far
+
+    /// <summary>Under gate.</summary>
+    void Retire(JitterBuffer b) =>
+        retired = new ReceiveStats(retired.Received + b.Received, retired.Lost + b.Lost, retired.Rebuilt + b.Rebuilt, retired.Concealed + b.Concealed, 0, 0);
+
+    /// <summary>
+    /// Package 133 (A142): for the connection details, every 2 s on the UI thread. The jitter is the worst one of the speakers
+    /// still kept (Package 124: up to a minute after their last word), so it shows the last one measured.
+    /// </summary>
+    public ReceiveStats Stats()
+    {
+        lock (gate)
+        {
+            var sum = retired;
+            foreach (var speaker in speakers.Values)
+            {
+                var b = speaker.Buffer;
+                sum = new ReceiveStats(sum.Received + b.Received, sum.Lost + b.Lost, sum.Rebuilt + b.Rebuilt, sum.Concealed + b.Concealed,
+                    Math.Max(sum.JitterMs, b.JitterMs), Math.Max(sum.DelayMs, b.DelayMs));
+            }
+            return sum;
         }
     }
 
@@ -65,7 +95,11 @@ public sealed class Mixer
                 var pcm = speaker.Buffer.Pull();
                 if (pcm is null)
                 {
-                    if (++speaker.IdleTicks >= IdleTicksUntilRemoved && speaker.Buffer.Buffered == 0) speakers.Remove(id);
+                    if (++speaker.IdleTicks >= IdleTicksUntilRemoved && speaker.Buffer.Buffered == 0)
+                    {
+                        Retire(speaker.Buffer);
+                        speakers.Remove(id);
+                    }
                     continue;
                 }
                 speaker.IdleTicks = 0;
@@ -101,8 +135,12 @@ public sealed class Mixer
     public void RemoveLeft(Func<uint, bool> isPresent)
     {
         lock (gate)
-            foreach (var id in speakers.Keys)
-                if (!isPresent(id)) speakers.Remove(id);
+            foreach (var (id, speaker) in speakers)
+                if (!isPresent(id))
+                {
+                    Retire(speaker.Buffer);
+                    speakers.Remove(id);
+                }
     }
 
     public int SpeakerCount
@@ -112,7 +150,11 @@ public sealed class Mixer
 
     public void Clear()
     {
-        lock (gate) speakers.Clear();
+        lock (gate)
+        {
+            foreach (var speaker in speakers.Values) Retire(speaker.Buffer);
+            speakers.Clear();
+        }
     }
 }
 

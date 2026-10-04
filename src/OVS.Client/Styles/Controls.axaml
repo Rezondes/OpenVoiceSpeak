@@ -325,6 +325,30 @@
     <Setter Property="TextDecorations" Value="Underline" />
   </Style>
 
+  <!-- Package 133 (A142): the signal icon in the ping chip; the lit bars take the rating's colour -->
+  <Style Selector="Border.signalBar">
+    <Setter Property="Width" Value="3" />
+    <Setter Property="CornerRadius" Value="1" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.TextMuted}" />
+    <Setter Property="Opacity" Value="0.35" />
+  </Style>
+  <Style Selector="Border.signalBar.on">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Panel.bars4 Border.signalBar.on">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Speaking}" />
+  </Style>
+  <Style Selector="Panel.bars3 Border.signalBar.on">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SignalFair}" />
+  </Style>
+  <Style Selector="Panel.bars2 Border.signalBar.on">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SignalPoor}" />
+  </Style>
+  <Style Selector="Panel.bars1 Border.signalBar.on">
+    <Setter Property="Background" Value="{DynamicResource Ovs.Danger}" />
+  </Style>
+
   <!-- Quiet text button with icon, for secondary header actions -->
   <Style Selector="Button.subtle">
     <Setter Property="Background" Value="Transparent" />

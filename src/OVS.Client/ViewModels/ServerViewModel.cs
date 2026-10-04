@@ -62,6 +62,8 @@ public sealed class Dialogs
     public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; init; }
     /// <summary>Package 43: "Version X ist verfügbar. Jetzt installieren?"</summary>
     public Func<UpdateOffer, Task<bool>>? OfferUpdate { get; init; }
+    /// <summary>Package 133: the "Verbindungsdetails" card; it shows the figures as they are refreshed until closed.</summary>
+    public Func<ConnectionStats, Task>? ConnectionDetails { get; init; }
 }
 
 /// <summary>Package 122: what a state message changed, so whoever listens only redoes what depends on it.</summary>
