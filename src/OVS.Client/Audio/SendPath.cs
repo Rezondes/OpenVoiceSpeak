@@ -62,25 +62,21 @@ public sealed class VoiceActivityDetector
 /// <summary>Turns arbitrary sized capture buffers into exact 960 sample frames.</summary>
 public sealed class FrameChunker
 {
-    readonly float[] buffer = new float[AudioFormat.FrameSamples];
     int filled;
 
-    public List<float[]> Add(ReadOnlySpan<float> samples)
+    /// <summary>Package 124: the one frame buffer, reused; valid until the next <see cref="Take"/>.</summary>
+    public float[] Frame { get; } = new float[AudioFormat.FrameSamples];
+
+    /// <summary>Takes samples until <see cref="Frame"/> is full; <paramref name="samples"/> keeps the rest.</summary>
+    /// <returns>True when a full frame is ready.</returns>
+    public bool Take(ref ReadOnlySpan<float> samples)
     {
-        var frames = new List<float[]>();
-        while (!samples.IsEmpty)
-        {
-            int take = Math.Min(samples.Length, buffer.Length - filled);
-            samples[..take].CopyTo(buffer.AsSpan(filled));
-            filled += take;
-            samples = samples[take..];
-            if (filled == buffer.Length)
-            {
-                frames.Add((float[])buffer.Clone());
-                filled = 0;
-            }
-        }
-        return frames;
+        if (filled == Frame.Length) filled = 0; // the last full frame has been used
+        int take = Math.Min(samples.Length, Frame.Length - filled);
+        samples[..take].CopyTo(Frame.AsSpan(filled));
+        filled += take;
+        samples = samples[take..];
+        return filled == Frame.Length;
     }
 }
 
@@ -90,22 +86,26 @@ public sealed class LinearResampler(int fromRate, int toRate)
     readonly double step = (double)fromRate / toRate;
     double position; // in the virtual stream [last, input...], index 0 = last sample of the previous chunk
     float last;
+    float[] output = [];
 
-    public float[] Process(ReadOnlySpan<float> input)
+    /// <returns>The resampled chunk in a buffer reused by the next call (Package 124); the input itself at equal rates.</returns>
+    public ReadOnlySpan<float> Process(ReadOnlySpan<float> input)
     {
-        if (fromRate == toRate || input.IsEmpty) return input.ToArray();
-        var output = new List<float>((int)(input.Length / step) + 2);
+        if (fromRate == toRate || input.IsEmpty) return input;
+        int most = (int)((input.Length - position) / step) + 2;
+        if (output.Length < most) output = new float[most];
+        int count = 0;
         while (position < input.Length)
         {
             int i = (int)position;
             float frac = (float)(position - i);
             float a = i == 0 ? last : input[i - 1];
             float b = input[i];
-            output.Add(a + (b - a) * frac);
+            output[count++] = a + (b - a) * frac;
             position += step;
         }
         position -= input.Length;
         last = input[^1];
-        return output.ToArray();
+        return output.AsSpan(0, count);
     }
 }

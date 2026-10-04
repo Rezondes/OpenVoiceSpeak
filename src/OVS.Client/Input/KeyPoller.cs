@@ -27,11 +27,11 @@ public sealed partial class KeyPoller : IDisposable
     readonly CancellationTokenSource cts = new();
     readonly Thread thread;
     readonly object gate = new();
-    readonly HashSet<KeyAction> simulated = [];
+    KeyActionSet simulated;
     readonly Func<int, bool> keyState;
     TaskCompletionSource<KeyChord>? capture;
     volatile IReadOnlyList<KeyBinding> bindings = [];
-    volatile HashSet<KeyAction> down = [];
+    volatile int down; // a KeyActionSet's bits: one write publishes a whole poll
 
     /// <param name="keyState">
     /// Package 121: the polled state of a virtual key, the keyboard by default. Tests pass a fake one, so a key goes
@@ -51,7 +51,7 @@ public sealed partial class KeyPoller : IDisposable
         set => bindings = value;
     }
 
-    public bool IsDown(KeyAction action) => down.Contains(action);
+    public bool IsDown(KeyAction action) => new KeyActionSet(down).Contains(action);
     public bool PttDown => IsDown(KeyAction.PushToTalk);
     public bool LinkPttDown => IsDown(KeyAction.LinkPushToTalk);
     public bool MuteHeld => IsDown(KeyAction.PushToMute);
@@ -67,8 +67,7 @@ public sealed partial class KeyPoller : IDisposable
     {
         lock (gate)
         {
-            if (isDown) simulated.Add(action);
-            else simulated.Remove(action);
+            simulated = isDown ? simulated.With(action) : simulated.Without(action);
         }
     }
 
@@ -136,11 +135,12 @@ public sealed partial class KeyPoller : IDisposable
             }
 
             var active = KeyActions.Resolve(bindings, keyState, held);
-            lock (gate) active.UnionWith(simulated);
+            lock (gate) active = new KeyActionSet(active.Bits | simulated.Bits);
             var (pressed, holdChanged) = tracker.Update(active);
-            down = active;
+            down = active.Bits;
             if (holdChanged) Changed?.Invoke();
-            foreach (var action in pressed) Pressed?.Invoke(action);
+            for (int i = 0; i < KeyActions.All.Count; i++)
+                if (pressed.Contains(KeyActions.All[i])) Pressed?.Invoke(KeyActions.All[i]);
             Thread.Sleep(10);
         }
     }

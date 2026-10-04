@@ -85,6 +85,7 @@ public partial class App : Application
                 // Off the UI thread: the disposal awaits background loops.
                 Task.Run(() => vm.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
                 log.Write("Client beendet");
+                log.Flush(); // Package 124: written in the background, so the last lines are written now
             };
         }
         base.OnFrameworkInitializationCompleted();

@@ -30,11 +30,15 @@ public sealed class CapturePipeline : IDisposable
         var pipeline = new CapturePipeline();
         // Event driven with a 20 ms buffer: the default polls a 100 ms buffer and adds up to 50 ms latency.
         var capture = new WasapiCapture(device ?? WasapiCapture.GetDefaultCaptureDevice(), useEventSync: true, audioBufferMillisecondsLength: 20);
+        float[] mono = []; // reused: only the capture thread touches it
         capture.DataAvailable += (_, e) =>
-            pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, capture.WaveFormat), capture.WaveFormat.SampleRate);
+            pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, capture.WaveFormat, ref mono), capture.WaveFormat.SampleRate);
         pipeline.capture = capture;
         return pipeline;
     }
+
+    /// <summary>Package 124: a pipeline fed by hand (tests), e.g. what a fake device factory hands out.</summary>
+    internal static CapturePipeline Manual() => new();
 
     /// <summary>Synthetic microphone for tests and the debug API: a steady sine, one frame every 20 ms.</summary>
     public static CapturePipeline FromTone(double frequency)
@@ -101,8 +105,10 @@ public sealed class CapturePipeline : IDisposable
                 resampler = new LinearResampler(sampleRate, AudioFormat.SampleRate);
                 resamplerRate = sampleRate;
             }
-            foreach (var frame in chunker.Add(resampler.Process(mono)))
+            var samples = resampler.Process(mono);
+            while (chunker.Take(ref samples))
             {
+                var frame = chunker.Frame;
                 float gain = Gain;
                 for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i] * gain, -1f, 1f);
                 // Package 123: before the voice activation, so it, the level meter and the self test hear the cleaned signal
@@ -123,56 +129,70 @@ public sealed class CapturePipeline : IDisposable
         }
     }
 
-    public static float[] ToMono(byte[] buffer, int bytes, WaveFormat format)
+    /// <summary>
+    /// The capture buffer as mono samples, written into <paramref name="mono"/>, which grows when needed and is kept by
+    /// the caller (Package 124: nothing allocated per callback). The result is valid until the next call with it.
+    /// </summary>
+    public static Span<float> ToMono(byte[] buffer, int bytes, WaveFormat format, ref float[] mono)
     {
         int channels = format.Channels;
-        float[] interleaved;
-        if (format.Encoding == WaveFormatEncoding.IeeeFloat || (format is WaveFormatExtensible ext && ext.SubFormat == NAudio.MediaFoundation.AudioSubtypes.MFAudioFormat_Float))
+        bool isFloat = format.Encoding == WaveFormatEncoding.IeeeFloat || (format is WaveFormatExtensible ext && ext.SubFormat == NAudio.MediaFoundation.AudioSubtypes.MFAudioFormat_Float);
+        if (!isFloat && format.BitsPerSample != 16) throw new NotSupportedException($"Aufnahmeformat {format} wird nicht unterstützt");
+        int count = bytes / (isFloat ? sizeof(float) : sizeof(short));
+        if (mono.Length < count) mono = new float[count];
+        var interleaved = mono.AsSpan(0, count);
+        if (isFloat)
         {
-            interleaved = MemoryMarshal.Cast<byte, float>(buffer.AsSpan(0, bytes)).ToArray();
-        }
-        else if (format.BitsPerSample == 16)
-        {
-            var shorts = MemoryMarshal.Cast<byte, short>(buffer.AsSpan(0, bytes));
-            interleaved = new float[shorts.Length];
-            for (int i = 0; i < shorts.Length; i++) interleaved[i] = shorts[i] / 32768f;
+            MemoryMarshal.Cast<byte, float>(buffer.AsSpan(0, bytes)).CopyTo(interleaved);
         }
         else
         {
-            throw new NotSupportedException($"Aufnahmeformat {format} wird nicht unterstützt");
+            var shorts = MemoryMarshal.Cast<byte, short>(buffer.AsSpan(0, bytes));
+            for (int i = 0; i < shorts.Length; i++) interleaved[i] = shorts[i] / 32768f;
         }
 
         if (channels == 1) return interleaved;
-        var mono = new float[interleaved.Length / channels];
+        // Mixed down in place: sample i is written only after everything before sample i * channels was read.
+        var result = interleaved[..(count / channels)];
         if (DominantChannel(interleaved, channels) is { } only)
         {
-            for (int i = 0; i < mono.Length; i++) mono[i] = interleaved[i * channels + only];
-            return mono;
+            for (int i = 0; i < result.Length; i++) result[i] = interleaved[i * channels + only];
+            return result;
         }
-        for (int i = 0; i < mono.Length; i++)
+        for (int i = 0; i < result.Length; i++)
         {
             float sum = 0;
             for (int c = 0; c < channels; c++) sum += interleaved[i * channels + c];
-            mono[i] = sum / channels;
+            result[i] = sum / channels;
         }
-        return mono;
+        return result;
     }
 
     /// <summary>
     /// Package 50 (A53): a channel at least 6 dB (four times the energy) above the average of the others carries the
     /// voice alone, e.g. an interface or headset that reports stereo but fills one side. Averaging would halve it.
     /// </summary>
-    static int? DominantChannel(float[] interleaved, int channels)
+    static int? DominantChannel(ReadOnlySpan<float> interleaved, int channels)
     {
-        var energy = new double[channels];
+        Span<double> energy = channels <= 32 ? stackalloc double[channels] : new double[channels];
         for (int i = 0; i < interleaved.Length; i++) energy[i % channels] += interleaved[i] * interleaved[i];
-        int loudest = Array.IndexOf(energy, energy.Max());
-        double others = (energy.Sum() - energy[loudest]) / (channels - 1);
+        int loudest = 0;
+        double total = 0;
+        for (int c = 0; c < channels; c++)
+        {
+            total += energy[c];
+            if (energy[c] > energy[loudest]) loudest = c;
+        }
+        double others = (total - energy[loudest]) / (channels - 1);
         return energy[loudest] > 0 && energy[loudest] >= 4 * others ? loudest : null;
     }
 
+    /// <summary>Package 124: tests count the devices still open.</summary>
+    internal bool IsDisposed { get; private set; }
+
     public void Dispose()
     {
+        IsDisposed = true;
         running = false;
         if (capture is not null)
         {

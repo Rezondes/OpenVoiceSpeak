@@ -12,7 +12,9 @@ public class KeyBindingTests
     static KeyBinding Bind(KeyAction action, int key, ChordModifiers modifiers = None) => new(action, new KeyChord(key, modifiers));
 
     static HashSet<KeyAction> Resolve(KeyBinding[] bindings, int[] down, ChordModifiers held) =>
-        KeyActions.Resolve(bindings, down.Contains, held);
+        KeyActions.All.Where(KeyActions.Resolve(bindings, down.Contains, held).Contains).ToHashSet();
+
+    static KeyActionSet Set(params KeyAction[] actions) => actions.Aggregate(new KeyActionSet(), (set, action) => set.With(action));
 
     /// <summary>Package 59: a new profile can talk right away; mouse 4 if the mouse has side buttons, else Right Ctrl.</summary>
     [Fact]
@@ -56,14 +58,14 @@ public class KeyBindingTests
     public void Toggle_FiresOncePerPress_HoldReportsChanges()
     {
         var tracker = new KeyStateTracker();
-        var held = new HashSet<KeyAction> { KeyAction.ToggleMute };
+        var held = Set(KeyAction.ToggleMute);
         var presses = Enumerable.Range(0, 10).Sum(_ => tracker.Update(held).Pressed.Count);
         Assert.Equal(1, presses); // a held toggle key fires once, not every 10 ms poll
-        Assert.Empty(tracker.Update(new HashSet<KeyAction>()).Pressed);
-        Assert.Single(tracker.Update(held).Pressed); // released and pressed again: fires again
+        Assert.Equal(0, tracker.Update(Set()).Pressed.Count);
+        Assert.Equal(Set(KeyAction.ToggleMute), tracker.Update(held).Pressed); // released and pressed again: fires again
 
-        Assert.True(tracker.Update(new HashSet<KeyAction> { KeyAction.ToggleMute, KeyAction.PushToTalk }).HoldChanged);
-        Assert.False(tracker.Update(new HashSet<KeyAction> { KeyAction.ToggleMute, KeyAction.PushToTalk }).HoldChanged);
+        Assert.True(tracker.Update(Set(KeyAction.ToggleMute, KeyAction.PushToTalk)).HoldChanged);
+        Assert.False(tracker.Update(Set(KeyAction.ToggleMute, KeyAction.PushToTalk)).HoldChanged);
     }
 
     /// <summary>Package 41: one action on two keys: either holds it, it ends when both are up.</summary>
@@ -74,7 +76,7 @@ public class KeyBindingTests
         var tracker = new KeyStateTracker();
         (bool Active, bool Changed) Poll(params int[] down)
         {
-            var active = Resolve(bindings, down, None);
+            var active = KeyActions.Resolve(bindings, down.Contains, None);
             return (active.Contains(KeyAction.PushToMute), tracker.Update(active).HoldChanged);
         }
         Assert.Equal((true, true), Poll(KeyPoller.VkXButton1));

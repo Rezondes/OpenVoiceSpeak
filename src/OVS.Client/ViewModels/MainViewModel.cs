@@ -92,7 +92,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <param name="useAudioDevices">False runs without microphone and speaker (tests, debug API with test tone).</param>
     /// <param name="keyState">Package 125: the state of a virtual key, the keyboard by default (tests pass a fake one).</param>
-    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true, ClientLog? log = null, Func<int, bool>? keyState = null)
+    /// <param name="audioDevices">Package 124: where microphone and speaker come from, when not the real ones (tests).</param>
+    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true, ClientLog? log = null, Func<int, bool>? keyState = null, IAudioDeviceFactory? audioDevices = null)
     {
         this.storageDir = storageDir;
         this.post = post;
@@ -109,7 +110,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         DeviceSource = useAudioDevices ? AudioDevices.List : _ => [];
         if (useAudioDevices) RefreshDevices();
         Keys = new KeyPoller(keyState);
-        Audio = new AudioEngine(Keys, useAudioDevices, Log.Write);
+        Audio = new AudioEngine(Keys, useAudioDevices, Log.Write, audioDevices);
+        Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
         sounds = new SoundLibrary(storageDir, Log.Write);
         Audio.SoundSource = sound => sounds.Samples(sound, Settings.SoundFor(sound)); // Package 48
         Audio.TransmitChanged += target => post(() =>
@@ -492,7 +494,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     void OnServerStateChanged()
     {
         SyncAudioFlags();
-        if (Server?.LastChange.HasFlag(StateChange.Members) == true) SyncGains();
+        if (Server?.LastChange.HasFlag(StateChange.Members) != true) return;
+        SyncGains();
+        // Package 124: a speaker's decoder stays over talk pauses, so it goes when they leave
+        var users = Server.Mirror.Users;
+        Audio.Mixer.RemoveLeft(id => id == AudioEngine.SelfTestSpeaker || users.ContainsKey(id));
     }
 
     void SyncAudioFlags()
@@ -663,7 +669,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             EditKeyBinding = Dialogs.EditKeyBinding,
             CheckNow = CheckForUpdatesAsync,
             ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
-            PreviewSound = (sound, setting, overall) => Audio.Sounds.Play(sounds.Samples(sound, setting), overall * setting.Volume),
+            PreviewSound = (sound, setting, overall) => Audio.PlaySamples(sounds.Samples(sound, setting), overall * setting.Volume),
             LivePreview = live => // Package 53, 61, 121
             {
                 Audio.ApplyLive(live);
@@ -676,6 +682,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         vm.CloseRequested += _ => CloseSettings();
         vm.LeaveRequested += () => _ = ClosePageAsync(); // Package 114: the X asks, "Abbrechen" does not
         Audio.InputLevel += OnInputLevel;
+        Audio.LevelMeter = true; // Package 124 (A132): the microphone opens for the level meter
         SettingsPage = vm;
         Page = Page.Settings;
         RefreshDevices(); // a device may have been plugged in since
@@ -722,6 +729,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Appearance = BackgroundAppearance.From(Settings);
         _ = SetSelfTestAsync(false);
         Audio.InputLevel -= OnInputLevel;
+        Audio.LevelMeter = false;
         SettingsPage = null;
         if (Page == Page.Settings) Page = Page.Home;
     }
@@ -796,5 +804,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         await DisconnectAsync();
         Audio.Dispose();
         Keys.Dispose();
+        Log.Flush(); // Package 124: the lines still queued
     }
 }

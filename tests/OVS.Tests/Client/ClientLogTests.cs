@@ -219,7 +219,9 @@ public sealed class ClientLogTests : IDisposable
         File.WriteAllText(recent, "neu");
 
         var first = Path.Combine(logs, Name());
-        new ClientLog(dir, time).Write("erster Start");
+        var start = new ClientLog(dir, time);
+        start.Write("erster Start");
+        start.Flush(); // Package 124: written in the background, with the time it is written at
         Assert.False(File.Exists(old));
         Assert.True(File.Exists(recent));
 
@@ -227,12 +229,14 @@ public sealed class ClientLogTests : IDisposable
         var second = Path.Combine(logs, Name());
         var log = new ClientLog(dir, time);
         log.Write("zweiter Start");
+        log.Flush();
         Assert.Contains("erster Start", File.ReadAllText(first));
         Assert.DoesNotContain("zweiter Start", File.ReadAllText(first));
         Assert.Contains("zweiter Start", File.ReadAllText(second));
 
         time.Advance(TimeSpan.FromDays(2)); // still running two days later: new file, and cleanup at the day change
         log.Write("übermorgen");
+        log.Flush();
         Assert.DoesNotContain("übermorgen", File.ReadAllText(second));
         Assert.Contains("übermorgen", File.ReadAllText(Path.Combine(logs, Name())));
         Assert.False(File.Exists(recent));

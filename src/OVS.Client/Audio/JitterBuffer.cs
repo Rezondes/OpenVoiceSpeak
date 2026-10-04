@@ -20,6 +20,9 @@ public sealed class JitterBuffer
     public bool ViaLink { get; private set; }
     public int Buffered => frames.Count;
 
+    /// <summary>Package 124: frames waiting, or playing (concealing a loss counts): the next Pull may return audio.</summary>
+    public bool Busy => playing || frames.Count > 0;
+
     public void Push(uint seq, byte[] opus, bool viaLink)
     {
         ViaLink = viaLink;

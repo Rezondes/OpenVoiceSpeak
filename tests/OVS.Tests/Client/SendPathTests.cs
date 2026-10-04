@@ -162,9 +162,9 @@ public class SendPathTests
         int counter = 0;
         foreach (var size in new[] { 441, 1000, 3, 1500, 16 })
         {
-            var chunk = Enumerable.Range(counter, size).Select(i => (float)i).ToArray();
+            ReadOnlySpan<float> chunk = Enumerable.Range(counter, size).Select(i => (float)i).ToArray();
             counter += size;
-            frames.AddRange(chunker.Add(chunk));
+            while (chunker.Take(ref chunk)) frames.Add(chunker.Frame.ToArray()); // the frame buffer is reused
         }
         Assert.Equal(counter / AudioFormat.FrameSamples, frames.Count);
         Assert.All(frames, f => Assert.Equal(AudioFormat.FrameSamples, f.Length));
@@ -184,7 +184,7 @@ public class SendPathTests
     public void Resampler_SameRate_PassesThrough()
     {
         var resampler = new LinearResampler(48_000, 48_000);
-        Assert.Equal([1f, 2f, 3f], resampler.Process([1f, 2f, 3f]));
+        Assert.Equal([1f, 2f, 3f], resampler.Process([1f, 2f, 3f]).ToArray());
     }
 
     [Fact]
@@ -193,7 +193,8 @@ public class SendPathTests
         float[] stereo = [0.2f, 0.4f, -1f, 1f];
         var bytes = new byte[stereo.Length * 4];
         Buffer.BlockCopy(stereo, 0, bytes, 0, bytes.Length);
-        var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2));
+        float[] buffer = [];
+        var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2), ref buffer);
         Assert.Equal(0.3f, mono[0], 5);
         Assert.Equal(0f, mono[1], 5);
     }
@@ -208,7 +209,8 @@ public class SendPathTests
             for (int i = 0; i < 480; i++) stereo[2 * i + voiced] = 0.5f * MathF.Sin(2 * MathF.PI * 440 * i / 48_000f);
             var bytes = new byte[stereo.Length * 4];
             Buffer.BlockCopy(stereo, 0, bytes, 0, bytes.Length);
-            var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2));
+            float[] buffer = [];
+            var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2), ref buffer).ToArray();
             Assert.Equal(480, mono.Length);
             Assert.InRange(mono.Max(), 0.49f, 0.5f);
             for (int i = 0; i < 480; i++) Assert.Equal(stereo[2 * i + voiced], mono[i]);
@@ -349,6 +351,30 @@ public class SendPathTests
         short[] pcm = [16384, -32768];
         var bytes = new byte[4];
         Buffer.BlockCopy(pcm, 0, bytes, 0, 4);
-        Assert.Equal([0.5f, -1f], CapturePipeline.ToMono(bytes, 4, new WaveFormat(48_000, 16, 1)));
+        float[] buffer = [];
+        Assert.Equal([0.5f, -1f], CapturePipeline.ToMono(bytes, 4, new WaveFormat(48_000, 16, 1), ref buffer).ToArray());
+    }
+
+    /// <summary>
+    /// Package 124: complexity 5 instead of the default 10 (measured: same spectral distance at about 40 % less encoding
+    /// time, see PLAN.md). DTX stays off: talk pauses already stop sending, and within one DTX would send a comfort-noise
+    /// frame every 400 ms that receivers play as a faint pulse. So a pause while the key is held is sent frame by frame.
+    /// </summary>
+    [Fact]
+    public void Encoder_ComplexitySet_DtxOff()
+    {
+        var opus = new VoiceEncoder().Opus;
+        Assert.Equal(5, VoiceEncoder.Complexity);
+        Assert.Equal(VoiceEncoder.Complexity, opus.Complexity);
+        Assert.False(opus.UseDTX);
+        Assert.Equal(32_000, opus.Bitrate);
+
+        var pipeline = CapturePipeline.Manual();
+        pipeline.DecideTarget = _ => Ch; // as if the key is held through the pause
+        var sizes = new List<int>();
+        pipeline.FrameEncoded += (packet, _) => sizes.Add(packet.Length);
+        for (int i = 0; i < 50; i++) pipeline.Feed(Constant(0f), AudioFormat.SampleRate);
+        Assert.Equal(51, sizes.Count); // the frame before the first one too
+        Assert.All(sizes, size => Assert.True(size > 1, $"{size} byte packet"));
     }
 }

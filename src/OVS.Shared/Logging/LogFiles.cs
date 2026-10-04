@@ -57,7 +57,10 @@ public sealed class LogFiles
     }
 
     /// <param name="folder">Relative to the root, "" for the root itself.</param>
-    public void Append(string folder, string prefix, string line)
+    public void Append(string folder, string prefix, string line) => Append(folder, prefix, [line]);
+
+    /// <summary>Package 124: several lines with one opening of the file.</summary>
+    public void Append(string folder, string prefix, IReadOnlyList<string> lines)
     {
         lock (gate)
         {
@@ -69,7 +72,9 @@ public sealed class LogFiles
                 else if (today != cleanedUpFor) CleanUp(today);
                 var dir = Path.Combine(root, folder);
                 Directory.CreateDirectory(dir);
-                AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), OneLine(line) + Environment.NewLine);
+                var text = new StringBuilder();
+                foreach (var line in lines) text.Append(OneLine(line)).Append(Environment.NewLine);
+                AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), text.ToString());
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {

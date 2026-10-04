@@ -49,32 +49,53 @@ public static class KeyActions
     /// <summary>
     /// The actions whose chord is fully pressed. Extra modifiers do not hurt (Shift held while running still lets
     /// a plain PTT key work), but for one key only the bindings with the most matching modifiers count,
-    /// so Ctrl+F1 does not also fire F1.
+    /// so Ctrl+F1 does not also fire F1. Package 124: runs every 10 ms, so plain loops instead of LINQ (nothing allocated).
     /// </summary>
-    public static HashSet<KeyAction> Resolve(IEnumerable<KeyBinding> bindings, Func<int, bool> isDown, ChordModifiers held) =>
-        bindings
-            .Where(b => b.Chord.Key != 0 && (b.Chord.Modifiers & held) == b.Chord.Modifiers && isDown(b.Chord.Key))
-            .GroupBy(b => b.Chord.Key)
-            .SelectMany(g =>
+    public static KeyActionSet Resolve(IReadOnlyList<KeyBinding> bindings, Func<int, bool> isDown, ChordModifiers held)
+    {
+        var active = new KeyActionSet();
+        for (int i = 0; i < bindings.Count; i++)
+        {
+            var binding = bindings[i];
+            if (!Matches(binding, isDown, held)) continue;
+            bool outranked = false;
+            for (int j = 0; j < bindings.Count && !outranked; j++)
             {
-                int most = g.Max(b => b.Chord.ModifierCount);
-                return g.Where(b => b.Chord.ModifierCount == most);
-            })
-            .Select(b => b.Action)
-            .ToHashSet();
+                var other = bindings[j];
+                outranked = other.Chord.Key == binding.Chord.Key && other.Chord.ModifierCount > binding.Chord.ModifierCount && Matches(other, isDown, held);
+            }
+            if (!outranked) active = active.With(binding.Action);
+        }
+        return active;
+    }
+
+    static bool Matches(KeyBinding binding, Func<int, bool> isDown, ChordModifiers held) =>
+        binding.Chord.Key != 0 && (binding.Chord.Modifiers & held) == binding.Chord.Modifiers && isDown(binding.Chord.Key);
+
+    /// <summary>The hold actions (<see cref="IsHold"/>) as one set.</summary>
+    public static readonly KeyActionSet Holds = new KeyActionSet().With(KeyAction.PushToTalk).With(KeyAction.LinkPushToTalk).With(KeyAction.PushToMute);
+}
+
+/// <summary>Package 124: actions as bits, so a key poll allocates nothing and its result is published in one write.</summary>
+public readonly record struct KeyActionSet(int Bits)
+{
+    public bool Contains(KeyAction action) => (Bits & Bit(action)) != 0;
+    public KeyActionSet With(KeyAction action) => new(Bits | Bit(action));
+    public KeyActionSet Without(KeyAction action) => new(Bits & ~Bit(action));
+    public int Count => BitOperations.PopCount((uint)Bits);
+    static int Bit(KeyAction action) => 1 << (int)action;
 }
 
 /// <summary>Turns the active actions of successive polls into "a hold action changed" and single presses.</summary>
 public sealed class KeyStateTracker
 {
-    HashSet<KeyAction> previous = [];
+    KeyActionSet previous;
 
     /// <returns>Toggle actions pressed since the last poll, and whether any hold action changed.</returns>
-    public (IReadOnlyList<KeyAction> Pressed, bool HoldChanged) Update(IReadOnlySet<KeyAction> active)
+    public (KeyActionSet Pressed, bool HoldChanged) Update(KeyActionSet active)
     {
-        var pressed = active.Where(a => !KeyActions.IsHold(a) && !previous.Contains(a)).ToList();
-        bool holdChanged = KeyActions.All.Where(KeyActions.IsHold).Any(a => active.Contains(a) != previous.Contains(a));
-        previous = active.ToHashSet();
-        return (pressed, holdChanged);
+        int changed = active.Bits ^ previous.Bits;
+        previous = active;
+        return (new KeyActionSet(changed & active.Bits & ~KeyActions.Holds.Bits), (changed & KeyActions.Holds.Bits) != 0);
     }
 }

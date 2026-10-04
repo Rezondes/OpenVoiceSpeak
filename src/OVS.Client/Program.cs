@@ -60,7 +60,11 @@ internal static class Program
         Options = ClientOptions.Parse(args);
         Log = new ClientLog(Options.ProfileDir, TimeProvider.System);
         // Package 63: a crash used to leave no trace at all; exceptions escaping the UI thread end up here too
-        AppDomain.CurrentDomain.UnhandledException += (_, e) => Log?.Write($"Absturz: {e.ExceptionObject}");
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            Log?.Write($"Absturz: {e.ExceptionObject}");
+            Log?.Flush(); // Package 124: the process ends right after
+        };
         TaskScheduler.UnobservedTaskException += (_, e) => Log?.Write($"Unbeobachteter Fehler: {e.Exception}");
         // Package 43/63: the exe replaced by the last update, in the background so the window does not wait for it
         _ = Task.Run(async () =>

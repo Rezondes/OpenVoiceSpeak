@@ -39,7 +39,7 @@ public static class SoundImport
                 for (int c = 0; c < channels; c++) sum += all[i * channels + c];
                 mono[i] = sum / channels;
             }
-            samples = new LinearResampler(reader.WaveFormat.SampleRate, AudioFormat.SampleRate).Process(mono);
+            samples = new LinearResampler(reader.WaveFormat.SampleRate, AudioFormat.SampleRate).Process(mono).ToArray();
         }
         catch (Exception e) when (e is IOException or InvalidDataException or FormatException or COMException
                                    or ArgumentException or NotSupportedException or InvalidOperationException)

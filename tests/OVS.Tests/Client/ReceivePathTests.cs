@@ -1,4 +1,6 @@
 using OVS.Client.Audio;
+using OVS.Client.Input;
+using OVS.Shared.Voice;
 
 namespace OVS.Tests.Client;
 
@@ -163,7 +165,8 @@ public class ReceivePathTests
         var mixer = new Mixer { Volume = 10f };
         for (uint n = 0; n < 3; n++) mixer.Push(1, n, Encoder.Encode(Sine(0.8f)), false);
         var (frame, _) = mixer.Tick();
-        Assert.All(frame, s => Assert.InRange(s, -SoftLimiter.Threshold, SoftLimiter.Threshold));
+        // the loudest sample lands on the threshold, give or take float rounding
+        Assert.All(frame, s => Assert.InRange(s, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
     }
 
     /// <summary>The first frames a mixer plays for one speaker, next to the same frames decoded directly.</summary>
@@ -299,14 +302,66 @@ public class ReceivePathTests
         Assert.Contains(new ActiveSpeaker(8, false), active);
     }
 
+    /// <summary>
+    /// Package 124: a speaker who pauses keeps the jitter buffer and its decoder (they were dropped after 500 ms and made
+    /// anew for every talk spurt). Memory stays bounded: dropped after a long silence or when the user left.
+    /// </summary>
     [Fact]
-    public void Mixer_Silence500ms_SpeakerRemoved()
+    public void SpeakerPause_KeepsDecoder()
     {
         var mixer = new Mixer();
         for (uint n = 0; n < 3; n++) mixer.Push(1, n, Frame(n), false);
         for (int i = 0; i < 3; i++) Assert.Single(mixer.Tick().Active);
-        for (int i = 0; i < 40; i++) mixer.Tick();
-        Assert.Equal(0, mixer.SpeakerCount);
+        var buffer = mixer.BufferOf(1);
+        Assert.NotNull(buffer);
+        for (int i = 0; i < 100; i++) mixer.Tick(); // two seconds without a word
         Assert.Empty(mixer.Tick().Active);
+        for (uint n = 3; n < 6; n++) mixer.Push(1, n, Frame(n), false);
+        Assert.Same(buffer, mixer.BufferOf(1));
+        Assert.Single(mixer.Tick().Active);
+
+        for (int i = 0; i < Mixer.IdleTicksUntilRemoved + 10; i++) mixer.Tick();
+        Assert.Null(mixer.BufferOf(1));
+
+        mixer.Push(2, 0, Frame(0), false);
+        mixer.Push(3, 0, Frame(0), false);
+        mixer.RemoveLeft(id => id == 3); // 2 left the server
+        Assert.Null(mixer.BufferOf(2));
+        Assert.NotNull(mixer.BufferOf(3));
+    }
+
+    /// <summary>Package 124: connected with nobody talking, the playback loop does not mix; a voice wakes it at once.</summary>
+    [Fact]
+    public async Task Playback_IdleDoesNotMix_WakesOnVoice()
+    {
+        using var keys = new KeyPoller(); // no bindings: nothing is sent
+        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true };
+        long heardAt = -1;
+        engine.SpeakersChanged += active =>
+        {
+            if (active.Count > 0) Interlocked.CompareExchange(ref heardAt, engine.MixCount, -1);
+        };
+        await Task.Delay(500);
+        Assert.Equal(0, engine.MixCount);
+
+        engine.OnVoice(5, 0, VoiceHeader.TargetChannel, Frame(0));
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (Interlocked.Read(ref heardAt) < 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        // the first mix right away; the lone frame plays once the jitter buffer's start delay (40 ms) has passed
+        Assert.InRange(Interlocked.Read(ref heardAt), 1, JitterBuffer.StartDelay);
+    }
+
+    /// <summary>
+    /// Package 124: other Opus senders mark the frames of a pause with 1 byte (DTX), which Concentus cannot decode. Such a
+    /// packet is concealed like a lost one instead of throwing on the playback thread.
+    /// </summary>
+    [Fact]
+    public void OneBytePacket_Concealed()
+    {
+        var jb = new JitterBuffer();
+        jb.Push(0, Frame(0), false);
+        jb.Push(1, [Frame(1)[0]], false); // the table of contents byte alone
+        jb.Push(2, Frame(2), false);
+        for (int i = 0; i < 3; i++) Assert.Equal(AudioFormat.FrameSamples, jb.Pull()!.Length);
     }
 }

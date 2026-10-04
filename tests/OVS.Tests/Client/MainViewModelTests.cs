@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using NAudio.Wave;
 using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Net;
@@ -81,11 +83,15 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUi(() => vm.Audio.ChannelMuted));
     }
 
-    string ClientLogText() => string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
+    string ClientLogText()
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        return new StreamReader(stream).ReadToEnd();
-    }));
+        vm.Log.Flush(); // Package 124: written in the background
+        return string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return new StreamReader(stream).ReadToEnd();
+        }));
+    }
 
     /// <summary>Package 39: a wrong password is never stored, the right one only when asked for, and never logged.</summary>
     [Fact]
@@ -384,11 +390,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(png, await OnUi(() => vm.Server!.IconPng));
         Assert.Equal(png, (await OnUi(() => vm.Bookmarks)).Single().Icon);
 
-        var log = string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
-        {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            return new StreamReader(stream).ReadToEnd();
-        }));
+        var log = ClientLogText();
         Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Server-Logo anfordern")));
     }
 
@@ -1104,5 +1106,218 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l > -20) > -20);
         Assert.Null(await OnUi(() => vm.Server));
         Assert.Empty(await OnUi(() => vm.Notices.ToList()));
+    }
+
+    // ---- Package 124: low CPU and RAM while idle ----
+
+    /// <summary>Counts the microphones and speakers the engine opens and closes, without hardware.</summary>
+    sealed class FakeAudioDevices : IAudioDeviceFactory
+    {
+        readonly List<CapturePipeline> captures = [];
+        readonly List<FakeOutput> outputs = [];
+        readonly List<string?> captureIds = [];
+
+        public CapturePipeline OpenCapture(string? deviceId, List<string> warnings)
+        {
+            var capture = CapturePipeline.Manual();
+            lock (captures)
+            {
+                captures.Add(capture);
+                captureIds.Add(deviceId);
+            }
+            return capture;
+        }
+
+        public (BufferedWaveProvider Buffer, IDisposable Device) OpenOutput(string? deviceId, List<string> warnings)
+        {
+            var output = new FakeOutput();
+            lock (outputs) outputs.Add(output);
+            // Nothing plays it: one frame long, so it never holds the engine's 40 ms and the tones run through at once.
+            var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
+            {
+                BufferDuration = AudioFormat.FrameDuration,
+                DiscardOnBufferOverflow = true,
+            };
+            return (buffer, output);
+        }
+
+        /// <summary>Opened so far and open now, for microphones and speakers.</summary>
+        public (int Mics, int MicsOpen, int Speakers, int SpeakersOpen) Counts
+        {
+            get
+            {
+                lock (captures)
+                lock (outputs)
+                    return (captures.Count, captures.Count(c => !c.IsDisposed), outputs.Count, outputs.Count(o => !o.Disposed));
+            }
+        }
+
+        public string? LastMicId
+        {
+            get { lock (captures) return captureIds[^1]; }
+        }
+
+        sealed class FakeOutput : IDisposable
+        {
+            public volatile bool Disposed;
+            public void Dispose() => Disposed = true;
+        }
+    }
+
+    /// <summary>
+    /// Package 124: the microphone opens on a pool thread; one still queued when the engine goes away (closing the
+    /// client with the settings page open) must not open it afterwards. Many engines, so the race shows.
+    /// </summary>
+    [Fact]
+    public async Task AudioEngine_DisposedWhileMicOpening_StaysClosed()
+    {
+        using var keys = new KeyPoller();
+        var devices = new FakeAudioDevices();
+        for (int i = 0; i < 50; i++)
+        {
+            var engine = new AudioEngine(keys, useDevices: false, devices: devices);
+            engine.LevelMeter = true;
+            engine.Dispose();
+        }
+        await Task.Delay(500); // the queued opens have run by now
+        Assert.Equal(0, devices.Counts.MicsOpen);
+    }
+
+    /// <summary>
+    /// Package 124: a slider moved on the settings page before the level meter's microphone is open (it opens in the
+    /// background) still counts once it is; new saved settings replace the live ones.
+    /// </summary>
+    [Fact]
+    public async Task AudioEngine_LiveSettingsBeforeMicOpen_Applied()
+    {
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false, devices: new FakeAudioDevices());
+        engine.ApplyLive(new ClientSettings { InputGain = 0.5f, VadThresholdDb = -25, NoiseSuppression = false, AutoGain = true });
+        engine.LevelMeter = true;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (engine.Capture is null && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        var capture = engine.Capture!;
+        Assert.Equal((0.5f, -25f, false, true), (capture.Gain, capture.Vad.ThresholdDb, capture.NoiseSuppression, capture.AutoGain));
+
+        engine.Configure(new ClientSettings { InputGain = 0.8f });
+        Assert.Equal(0.8f, engine.Capture!.Gain);
+    }
+
+    /// <summary>
+    /// Package 124 (A132): after the start nothing is open and no playback thread runs; the settings page opens the
+    /// microphone while it shows, the self test and a connection open both devices, and they close again. A device
+    /// changed in the settings while connected is switched at once.
+    /// </summary>
+    [Fact]
+    public async Task AudioDevices_OpenOnlyWhenNeeded()
+    {
+        var devices = new FakeAudioDevices();
+        var own = Directory.CreateTempSubdirectory("ovs-devices-").FullName;
+        var main = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(own, ui.Post, useAudioDevices: false, keyState: keys.IsDown, audioDevices: devices)));
+        main.ConfirmTofu = _ => Task.FromResult(true);
+        Task Do(Func<Task> work) => ui.InvokeAsync<object?>(async () =>
+        {
+            await work();
+            return null;
+        });
+        // The counts once they match (at most 10 s): the devices open and close off the UI thread.
+        async Task<(int, int, int, int, bool)> Settled((int, int, int, int, bool) expected)
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (true)
+            {
+                var (mics, micsOpen, speakers, speakersOpen) = devices.Counts;
+                var now = (mics, micsOpen, speakers, speakersOpen, main.Audio.PlaybackRunning);
+                if (now == expected || watch.ElapsedMilliseconds > 10_000) return now;
+                await Task.Delay(20);
+            }
+        }
+        try
+        {
+            Assert.Equal((0, 0, 0, 0, false), await Settled((0, 0, 0, 0, false)));
+
+            await Do(() =>
+            {
+                main.OpenSettings();
+                return Task.CompletedTask;
+            });
+            Assert.Equal((1, 1, 0, 0, false), await Settled((1, 1, 0, 0, false))); // the level meter
+            await Do(() =>
+            {
+                main.ClosePage();
+                return Task.CompletedTask;
+            });
+            Assert.Equal((1, 0, 0, 0, false), await Settled((1, 0, 0, 0, false)));
+
+            await Do(() => main.SetSelfTestAsync(true));
+            Assert.Equal((2, 1, 1, 1, true), await Settled((2, 1, 1, 1, true)));
+            await Do(() => main.SetSelfTestAsync(false));
+            Assert.Equal((2, 0, 1, 0, false), await Settled((2, 0, 1, 0, false)));
+
+            await Do(() => main.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
+            Assert.True(await OnUi(() => main.IsConnected));
+            Assert.Equal((3, 1, 2, 1, true), await Settled((3, 1, 2, 1, true)));
+            await Do(() => main.ApplySettingsAsync(new ClientSettings { InputDeviceId = "mic-2" }));
+            Assert.Equal((4, 1, 3, 1, true), await Settled((4, 1, 3, 1, true)));
+            Assert.Equal("mic-2", devices.LastMicId);
+
+            await Do(main.DisconnectAsync);
+            Assert.Equal((4, 0, 3, 0, false), await Settled((4, 0, 3, 0, false)));
+        }
+        finally
+        {
+            await Do(() => main.DisposeAsync().AsTask());
+            Directory.Delete(own, true);
+        }
+    }
+
+    /// <summary>
+    /// Package 124: every server message is logged off the UI thread (one queue, written in batches), in order, and
+    /// what is queued at the end is written before the client is gone.
+    /// </summary>
+    [Fact]
+    public async Task MessageLog_OffUiThread_InOrder()
+    {
+        var own = Directory.CreateTempSubdirectory("ovs-log-").FullName;
+        var main = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(own, ui.Post, useAudioDevices: false, keyState: keys.IsDown)));
+        main.ConfirmTofu = _ => Task.FromResult(true);
+        try
+        {
+            int uiThread = await OnUi(() => Environment.CurrentManagedThreadId);
+            var writers = new ConcurrentQueue<int>();
+            main.Log.Writing += () => writers.Enqueue(Environment.CurrentManagedThreadId);
+            await ui.InvokeAsync<object?>(async () =>
+            {
+                await main.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false));
+                return null;
+            });
+            for (int i = 0; i < 5; i++)
+            {
+                var guest = await TestClient.ConnectAsync(server, $"gast{i}");
+                await OnUiUntil(() => main.Server!.Mirror.Users.Count, n => n == 2);
+                await guest.DisposeAsync();
+                await OnUiUntil(() => main.Server!.Mirror.Users.Count, n => n == 1);
+            }
+            var whileRunning = writers.ToArray();
+            await ui.InvokeAsync<object?>(async () =>
+            {
+                await main.DisposeAsync();
+                return null;
+            });
+
+            Assert.NotEmpty(whileRunning);
+            Assert.DoesNotContain(uiThread, whileRunning);
+            var log = string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(own, "logs"), "client-*.log").Select(File.ReadAllText));
+            var order = new List<string>();
+            for (int i = 0; i < 5; i++) order.AddRange([$"gast{i} verbunden", $"gast{i} getrennt"]);
+            order.Add("Verbindung getrennt (eigene Aktion)"); // written while closing
+            var positions = order.Select(line => log.IndexOf(line, StringComparison.Ordinal)).ToList();
+            Assert.DoesNotContain(-1, positions);
+            Assert.Equal(positions.Order(), positions);
+        }
+        finally
+        {
+            Directory.Delete(own, true);
+        }
     }
 }
