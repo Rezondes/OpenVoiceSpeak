@@ -108,7 +108,7 @@ public class VoiceFilterTests
     [Fact]
     public void AutoGain_RaisesQuiet_CapsLoud_HoldsInSilence()
     {
-        // quiet: -40 dBFS rises by the full +18 dB within 3 s, never above -3 dBFS peak
+        // quiet: -40 dBFS rises to -20 dBFS within 3 s, never above -3 dBFS peak
         var gain = new AutoGain();
         int position = 0;
         float last = -120;
@@ -119,8 +119,8 @@ public class VoiceFilterTests
             Assert.True(Peak(frame) <= AutoGain.PeakLimit + 1e-4f, $"frame {i}: peak {Peak(frame)}");
             last = VoiceActivityDetector.LevelDb(frame);
         }
-        Assert.InRange(last, -22.5f, -21.5f); // toward -20 dBFS, capped at +18 dB
-        Assert.Equal(AutoGain.MaxGainDb, gain.GainDb, 2);
+        Assert.InRange(last, -20.5f, -19.5f); // to -20 dBFS (Package 127: +20 dB is below the +30 dB cap)
+        Assert.InRange(gain.GainDb, 19.5f, 20.5f);
 
         // a sudden loud word after that: the raised gain must not push it past -3 dBFS
         var loudWord = Sine(ref position, -12);
@@ -154,11 +154,150 @@ public class VoiceFilterTests
         pipeline.AutoGain = true;
         int position = 0;
         for (int i = 0; i < 150; i++) pipeline.Feed(Sine(ref position, -40), AudioFormat.SampleRate);
-        Assert.InRange(pipeline.Vad.LastLevelDb, -22.5f, -21.5f); // raised
+        Assert.InRange(pipeline.Vad.LastLevelDb, -20.5f, -19.5f); // raised
         pipeline.AutoGain = false;
         pipeline.AutoGain = true;
         pipeline.Feed(Sine(ref position, -40), AudioFormat.SampleRate);
-        Assert.InRange(pipeline.Vad.LastLevelDb, -40.5f, -39.5f); // one step from 0 dB, not +18 dB
+        Assert.InRange(pipeline.Vad.LastLevelDb, -40.5f, -39.5f); // one step from 0 dB, not +20 dB
+    }
+
+    /// <summary>
+    /// Package 127: a voice-like signal, frame by frame: eight harmonics of a pitch gliding between 100 and 180 Hz,
+    /// syllables of 200 ms with 50 ms ramps and 50 ms gaps. Scaled so the frames inside a syllable average
+    /// <paramref name="rmsDb"/>.
+    /// </summary>
+    static float[][] Voice(float rmsDb, int frames)
+    {
+        var samples = new float[frames * Frame];
+        double phase = 0;
+        for (int i = 0; i < samples.Length; i++)
+        {
+            double t = (double)i / AudioFormat.SampleRate;
+            phase += 2 * Math.PI * (140 + 40 * Math.Sin(2 * Math.PI * 0.7 * t)) / AudioFormat.SampleRate;
+            double sum = 0;
+            for (int k = 1; k <= 8; k++) sum += Math.Sin(k * phase) / k;
+            double inSyllable = t % 0.25; // 200 ms syllable, 50 ms gap
+            double envelope = inSyllable >= 0.2 ? 0 : Math.Min(1, Math.Min(inSyllable, 0.2 - inSyllable) / 0.05);
+            samples[i] = (float)(sum * envelope);
+        }
+        var result = samples.Chunk(Frame).ToArray();
+        var voiced = result.Where(f => VoiceActivityDetector.LevelDb(f) > -100).ToArray();
+        double rms = Math.Sqrt(voiced.Average(f => f.Average(s => (double)s * s)));
+        float scale = MathF.Pow(10, rmsDb / 20) / (float)rms;
+        foreach (var frame in result)
+            for (int i = 0; i < frame.Length; i++) frame[i] *= scale;
+        return result;
+    }
+
+    /// <summary>The level of each frame after the filters (automatic gain on), as the voice activation sees it.</summary>
+    static List<float> RunWithAutoGain(bool noiseSuppression, IEnumerable<float[]> frames)
+    {
+        using var pipeline = Pipeline(noiseSuppression);
+        pipeline.AutoGain = true;
+        var levels = new List<float>();
+        pipeline.DecideTarget = _ =>
+        {
+            levels.Add(pipeline.Vad.LastLevelDb);
+            return null;
+        };
+        foreach (var frame in frames) pipeline.Feed(frame, AudioFormat.SampleRate);
+        return levels;
+    }
+
+    /// <summary>The average level of the loud frames (syllables, not the gaps) of the last second.</summary>
+    static float SpeechLevel(List<float> levels)
+    {
+        var last = levels.TakeLast(50).ToList();
+        float loudest = last.Max();
+        return last.Where(l => l > loudest - 10).Average();
+    }
+
+    /// <summary>
+    /// Package 127 (A136): with RNNoise rating the frames, a voice at -50 dBFS (below the -45 dBFS floor) reaches
+    /// -20 dBFS within 5 s. Without noise suppression the floor rule stays: -50 dBFS is not raised, -40 dBFS is.
+    /// </summary>
+    [Fact]
+    public void AutoGain_RaisesVeryQuietVoice_WithSuppression()
+    {
+        var raised = SpeechLevel(RunWithAutoGain(noiseSuppression: true, Voice(-50, 250)));
+        Assert.InRange(raised, -23f, -17f);
+
+        var floor = SpeechLevel(RunWithAutoGain(noiseSuppression: false, Voice(-50, 250)));
+        var before = SpeechLevel(Voice(-50, 250).Select(f => VoiceActivityDetector.LevelDb(f)).ToList());
+        Assert.Equal(before, floor, 0.01f); // untouched
+
+        var louder = SpeechLevel(RunWithAutoGain(noiseSuppression: false, Voice(-40, 250)));
+        Assert.InRange(louder, -23f, -17f);
+    }
+
+    /// <summary>
+    /// Package 127 (A136): steady pink noise through RNNoise is not pulled up, quiet (-50 dBFS, rated as no speech) or
+    /// louder (-40 and -35 dBFS, which RNNoise partly rates as speech but cuts by more than 4 dB). And the rating
+    /// overrides the floor: noise at -40 dBFS (above the -45 dBFS floor, which alone would let it rise) rated as no
+    /// speech stays at 0 dB.
+    /// </summary>
+    [Fact]
+    public void AutoGain_IgnoresNoiseRatedAsNoise()
+    {
+        foreach (var (db, seed) in new[] { (-50f, 5), (-40f, 5), (-40f, 123), (-35f, 5), (-35f, 123) })
+        {
+            using var suppressor = NoiseSuppressor.Create(out var error);
+            Assert.True(suppressor is not null, error);
+            var gain = new AutoGain();
+            var pink = new PinkNoise(seed);
+            for (int i = 0; i < 250; i++)
+            {
+                var frame = pink.Next(db);
+                gain.Process(frame, suppressor.Process(frame));
+            }
+            Assert.True(gain.GainDb == 0f, $"{db} dBFS, seed {seed}: {gain.GainDb} dB");
+        }
+
+        var noise = new PinkNoise(5);
+
+        var rated = new AutoGain();
+        var floorOnly = new AutoGain();
+        for (int i = 0; i < 250; i++)
+        {
+            var frame = noise.Next(-40);
+            floorOnly.Process((float[])frame.Clone());
+            rated.Process(frame, 0.1f);
+        }
+        Assert.True(floorOnly.GainDb > 10, $"floor rule: {floorOnly.GainDb} dB"); // the floor alone would raise it
+        Assert.Equal(0f, rated.GainDb);
+    }
+
+    /// <summary>Package 127: a frame shorter than RNNoise's 10 ms is not rated (no probability of 1 by default).</summary>
+    [Fact]
+    public void NoiseSuppressor_ShortFrame_NoRating()
+    {
+        using var suppressor = NoiseSuppressor.Create(out var error);
+        Assert.True(suppressor is not null, error);
+        Assert.Null(suppressor.Process(new float[NoiseSuppressor.HalfFrame - 1]));
+        Assert.NotNull(suppressor.Process(new float[NoiseSuppressor.HalfFrame]));
+    }
+
+    /// <summary>Package 127 (A136): rated as speech however quiet, the gain stops at +30 dB, and the peak at -3 dBFS.</summary>
+    [Fact]
+    public void AutoGain_CapsAt30dB_AndPeak()
+    {
+        Assert.Equal(30f, AutoGain.MaxGainDb);
+        var gain = new AutoGain();
+        int position = 0;
+        for (int i = 0; i < 500; i++)
+        {
+            var frame = Sine(ref position, -70);
+            gain.Process(frame, 1f);
+            Assert.True(gain.GainDb <= AutoGain.MaxGainDb, $"frame {i}: {gain.GainDb} dB");
+        }
+        Assert.Equal(AutoGain.MaxGainDb, gain.GainDb, 2);
+
+        foreach (var db in new[] { -30f, -15f, -9f }) // sudden louder words at the full gain (peak below -3 dBFS before it)
+        {
+            var frame = Sine(ref position, db);
+            gain.Process(frame, 1f);
+            Assert.True(Peak(frame) <= AutoGain.PeakLimit + 1e-4f, $"{db} dBFS: peak {Peak(frame)}");
+        }
     }
 
     /// <summary>A frame after Dispose (a late capture callback) passes unchanged instead of reaching freed native state.</summary>
@@ -170,7 +309,7 @@ public class VoiceFilterTests
         suppressor.Dispose();
         var frame = Noise(new Random(3), -30);
         var before = (float[])frame.Clone();
-        suppressor.Process(frame);
+        Assert.Null(suppressor.Process(frame)); // Package 127: no voice probability either
         Assert.Equal(before, frame);
     }
 
@@ -184,14 +323,13 @@ public class VoiceFilterTests
         var frames = Enumerable.Range(0, 110).Select(_ => Noise(random, -30)).ToArray();
         for (int i = 0; i < 10; i++) // warm-up: JIT and first calls
         {
-            suppressor.Process(frames[i]);
-            gain.Process(frames[i]);
+            gain.Process(frames[i], suppressor.Process(frames[i]));
         }
         long before = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 10; i < 110; i++)
         {
-            suppressor.Process(frames[i]);
-            gain.Process(frames[i]);
+            CapturePipeline.ApplyGain(frames[i], 2f); // Package 127: the soft clip too
+            gain.Process(frames[i], suppressor.Process(frames[i]));
         }
         Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
     }

@@ -334,15 +334,37 @@ public class SendPathTests
         using var engine = ToneEngine(keys, new ClientSettings());
         var capture = engine.Capture!;
         Assert.NotNull(capture.Suppressor);
-        Assert.Equal((true, false), (capture.NoiseSuppression, capture.AutoGain)); // the defaults
+        Assert.Equal((true, true), (capture.NoiseSuppression, capture.AutoGain)); // the defaults (Package 127: automatic gain on)
 
-        engine.ApplyLive(new ClientSettings { NoiseSuppression = false, AutoGain = true });
+        engine.ApplyLive(new ClientSettings { NoiseSuppression = false, AutoGain = false });
         Assert.Same(capture, engine.Capture); // no restart
-        Assert.Equal((false, true), (capture.NoiseSuppression, capture.AutoGain));
+        Assert.Equal((false, false), (capture.NoiseSuppression, capture.AutoGain));
 
         engine.ApplyLive(new ClientSettings()); // what closing the settings page does
         Assert.Same(capture, engine.Capture);
-        Assert.Equal((true, false), (capture.NoiseSuppression, capture.AutoGain));
+        Assert.Equal((true, true), (capture.NoiseSuppression, capture.AutoGain));
+    }
+
+    /// <summary>Package 127 (A136): 200 % input gain on a signal peaking at 0.8 is rounded off above -3 dBFS instead of cut at 1.</summary>
+    [Fact]
+    public void InputGain_SoftClips()
+    {
+        var frame = new float[AudioFormat.FrameSamples];
+        for (int i = 0; i < frame.Length; i++) frame[i] = 0.8f * MathF.Sin(2 * MathF.PI * 220 * i / AudioFormat.SampleRate);
+        var raised = frame.Select(s => s * 2).ToArray();
+        CapturePipeline.ApplyGain(frame, 2f);
+        for (int i = 0; i < frame.Length; i++)
+        {
+            Assert.True(MathF.Abs(frame[i]) <= 1f, $"sample {i}: {frame[i]}");
+            Assert.Equal(MathF.Sign(raised[i]), MathF.Sign(frame[i]));
+            if (MathF.Abs(raised[i]) <= AutoGain.PeakLimit) Assert.Equal(raised[i], frame[i]); // below -3 dBFS: unchanged
+            else Assert.InRange(MathF.Abs(frame[i]), AutoGain.PeakLimit, MathF.Abs(raised[i])); // above: rounded off, never louder
+        }
+        Assert.True(frame.Max() > 0.95f, $"peak {frame.Max()}"); // still loud: a soft clip, not a limiter at -3 dBFS
+
+        float[] loud = [0.9f, -0.95f, 1.2f, 0.3f]; // at 100 % nothing changes but the clamp at ±1, as before
+        CapturePipeline.ApplyGain(loud, 1f);
+        Assert.Equal([0.9f, -0.95f, 1f, 0.3f], loud);
     }
 
     [Fact]

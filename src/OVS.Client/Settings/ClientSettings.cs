@@ -55,9 +55,26 @@ public sealed record SoundSetting(float Volume = 1f, bool Muted = false, string?
     public bool IsDefault => Volume >= 1f && !Muted && File is null;
 }
 
-public sealed class ClientSettings
+public sealed class ClientSettings : IJsonOnDeserializing
 {
     public const string FileName = "settings.json";
+
+    /// <summary>
+    /// Package 127 (A135): steps that change a stored choice once, because a new default alone does not reach a file
+    /// that stores every key. Step n takes a file from version n - 1 to n; a new step is one more entry.
+    /// </summary>
+    static readonly Action<ClientSettings>[] Migrations =
+    [
+        s => s.AutoGain = true, // 1 (Package 127, A136): automatic gain on for everyone once
+    ];
+
+    public static int CurrentVersion => Migrations.Length;
+
+    /// <summary>Package 127 (A135): the migration steps this file has had; a file without it counts as 0, a new one is current.</summary>
+    public int SettingsVersion { get; set; } = CurrentVersion;
+
+    void IJsonOnDeserializing.OnDeserializing() => SettingsVersion = 0;
+
     static readonly JsonSerializerOptions Options = new(ProtocolJson.Options) { WriteIndented = true };
 
     /// <summary>Package 114: the settings as they are saved, to tell whether two of them differ.</summary>
@@ -84,8 +101,8 @@ public sealed class ClientSettings
     public float VadThresholdDb { get; set; } = -40f; // -60..-10
     /// <summary>Package 123 (A131): RNNoise on the sent signal; on also for a file from before without the key.</summary>
     public bool NoiseSuppression { get; set; } = true;
-    /// <summary>Package 123 (A131): raises a quiet microphone toward -20 dBFS; off unless chosen.</summary>
-    public bool AutoGain { get; set; }
+    /// <summary>Package 123 (A131): raises a quiet microphone toward -20 dBFS; Package 127 (A136): on by default.</summary>
+    public bool AutoGain { get; set; } = true;
     public AppTheme Theme { get; set; } = AppTheme.System;
     /// <summary>Package 45: follows Windows unless set; takes effect at the next start.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.System;
@@ -140,7 +157,7 @@ public sealed class ClientSettings
             return new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()))] };
         try
         {
-            return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), Options) ?? new ClientSettings()).MigrateKeys().Clamp();
+            return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), Options) ?? new ClientSettings()).MigrateKeys().Clamp().Migrate(directory);
         }
         catch (JsonException)
         {
@@ -160,6 +177,22 @@ public sealed class ClientSettings
         }
         PttKey = null;
         LinkPttKey = null;
+        return this;
+    }
+
+    /// <summary>Package 127 (A135): runs every missing step once, in order, and saves the file with the new version.</summary>
+    ClientSettings Migrate(string directory)
+    {
+        if (SettingsVersion >= CurrentVersion) return this; // current, or written by a newer client: left as it is
+        for (SettingsVersion = Math.Max(SettingsVersion, 0); SettingsVersion < CurrentVersion; SettingsVersion++) Migrations[SettingsVersion](this);
+        try
+        {
+            Save(directory);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // not saved: the steps run again at the next start, with the same result
+        }
         return this;
     }
 

@@ -67,18 +67,45 @@ public sealed unsafe class NoiseSuppressor : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Package 127: a frame RNNoise turned down by more than this is mostly noise, whatever its rating. Measured on
+    /// synthetic signals: a voice's speech-rated frames lose a median of 0.1 dB (90 % at most 3.8 dB), while steady
+    /// pink noise at -40 and -35 dBFS that RNNoise rates as speech loses at least 4.1 dB (median 9 to 37 dB).
+    /// </summary>
+    public const float NoiseCutDb = 4f;
+
+    // energy ratio for NoiseCutDb
+    static readonly double NoiseCutRatio = Math.Pow(10, -NoiseCutDb / 10);
+
     /// <summary>Denoises a frame in place; its length is a multiple of <see cref="HalfFrame"/>.</summary>
-    public void Process(Span<float> frame)
+    /// <returns>
+    /// Package 127 (A136): how likely the frame is speech (0 to 1), the lower of its halves' ratings, so a frame counts
+    /// as speech only when all of it does; 0 when RNNoise cut the frame by more than <see cref="NoiseCutDb"/> (it
+    /// removed mostly noise: steady loud noise can be rated as speech). Null when disposed or shorter than
+    /// <see cref="HalfFrame"/> (nothing rated).
+    /// </returns>
+    public float? Process(Span<float> frame)
     {
-        if (state == 0) return; // disposed: passes unchanged
-        for (int i = 0; i < frame.Length; i++) frame[i] *= Scale;
+        if (state == 0 || frame.Length < HalfFrame) return null; // disposed or too short: passes unchanged
+        float probability = 1f;
+        double before = 0, after = 0;
+        for (int i = 0; i < frame.Length; i++)
+        {
+            before += frame[i] * frame[i];
+            frame[i] *= Scale;
+        }
         fixed (float* samples = frame)
         {
             // in place is fine: RNNoise filters the input into its own buffer before it writes the output
             for (int offset = 0; offset + HalfFrame <= frame.Length; offset += HalfFrame)
-                native.ProcessFrame(state, samples + offset, samples + offset);
+                probability = Math.Min(probability, native.ProcessFrame(state, samples + offset, samples + offset));
         }
-        for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i] / Scale, -1f, 1f);
+        for (int i = 0; i < frame.Length; i++)
+        {
+            frame[i] = Math.Clamp(frame[i] / Scale, -1f, 1f);
+            after += frame[i] * frame[i];
+        }
+        return after < before * NoiseCutRatio ? 0f : probability;
     }
 
     public void Dispose()

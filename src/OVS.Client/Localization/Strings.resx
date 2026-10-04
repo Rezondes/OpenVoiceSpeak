@@ -283,7 +283,7 @@
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar.</value></data>
   <data name="Ui_AllGroups" xml:space="preserve"><value>Alle Gruppen</value></data>
   <data name="Ui_AutoGain" xml:space="preserve"><value>Automatische Verstärkung</value></data>
-  <data name="Ui_AutoGainHint" xml:space="preserve"><value>Hebt ein leises Mikrofon langsam an, ohne zu übersteuern.</value></data>
+  <data name="Ui_AutoGainHint" xml:space="preserve"><value>Empfohlen. Hebt ein leises Mikrofon langsam auf normale Sprechlautstärke an, ohne zu übersteuern.</value></data>
   <data name="Ui_Backups" xml:space="preserve"><value>Backups</value></data>
   <data name="Ui_BackupsHint" xml:space="preserve"><value>Ein Backup enthält Channels, Gruppen, Nutzer, Bans, Einstellungen, Zertifikat und Logo, aber keine Logs. Es liegt auf dem Server unter backups/.</value></data>
   <data name="Ui_BanDetail" xml:space="preserve"><value>Gebannt ({0})</value></data>

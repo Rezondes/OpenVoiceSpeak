@@ -419,22 +419,56 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(DisplayMode.Simplified, Vm(ClientSettings.Load(dir, out _)).SelectedDisplay.Value);
     }
 
-    /// <summary>Package 123 (A131): noise suppression on, automatic gain off, also for a file from before; both survive a restart.</summary>
+    /// <summary>Package 123 (A131): noise suppression on, also for a file from before; Package 127 (A136): automatic gain on too. Both survive a restart.</summary>
     [Fact]
     public void VoiceFilters_DefaultsAndRoundTrip()
     {
-        Assert.Equal((true, false), (new ClientSettings().NoiseSuppression, new ClientSettings().AutoGain));
+        Assert.Equal((true, true), (new ClientSettings().NoiseSuppression, new ClientSettings().AutoGain));
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
         var old = ClientSettings.Load(dir, out _);
-        Assert.Equal((true, false), (old.NoiseSuppression, old.AutoGain));
+        Assert.Equal((true, true), (old.NoiseSuppression, old.AutoGain));
         var vm = Vm(old);
-        Assert.Equal((true, false), (vm.NoiseSuppression, vm.AutoGain));
+        Assert.Equal((true, true), (vm.NoiseSuppression, vm.AutoGain));
         vm.NoiseSuppression = false;
-        vm.AutoGain = true;
+        vm.AutoGain = false;
         vm.ToSettings(old).Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
-        Assert.Equal((false, true), (loaded.NoiseSuppression, loaded.AutoGain));
-        Assert.Equal((false, true), (Vm(loaded).NoiseSuppression, Vm(loaded).AutoGain));
+        Assert.Equal((false, false), (loaded.NoiseSuppression, loaded.AutoGain));
+        Assert.Equal((false, false), (Vm(loaded).NoiseSuppression, Vm(loaded).AutoGain));
+    }
+
+    /// <summary>
+    /// Package 127 (A135): a file without a version (from before) runs migration step 1 once and is saved with the
+    /// new version; a new file starts at the newest version; a migrated file keeps the user's choice.
+    /// </summary>
+    [Fact]
+    public void Migration_TurnsAutoGainOnOnce()
+    {
+        var path = Path.Combine(dir, ClientSettings.FileName);
+        var fresh = ClientSettings.Load(dir, out _);
+        Assert.Equal((true, ClientSettings.CurrentVersion), (fresh.AutoGain, fresh.SettingsVersion));
+        Assert.True(ClientSettings.CurrentVersion >= 1);
+
+        File.WriteAllText(path, """{ "theme": "dark", "autoGain": false }""");
+        var old = ClientSettings.Load(dir, out _);
+        Assert.Equal((true, ClientSettings.CurrentVersion), (old.AutoGain, old.SettingsVersion));
+        Assert.Contains("\"settingsVersion\"", File.ReadAllText(path)); // saved with the new version
+
+        old.AutoGain = false; // the user turns it off again
+        old.Save(dir);
+        var migrated = ClientSettings.Load(dir, out _);
+        Assert.Equal((false, ClientSettings.CurrentVersion), (migrated.AutoGain, migrated.SettingsVersion));
+
+        File.WriteAllText(path, """{ "settingsVersion": 1, "autoGain": false }""");
+        Assert.False(ClientSettings.Load(dir, out _).AutoGain);
+    }
+
+    /// <summary>Package 127 (A135): saving the settings page keeps the loaded version, so a newer client's file is not set back.</summary>
+    [Fact]
+    public void ToSettings_KeepsSettingsVersion()
+    {
+        var newer = new ClientSettings { SettingsVersion = ClientSettings.CurrentVersion + 5 };
+        Assert.Equal(ClientSettings.CurrentVersion + 5, Vm(newer).ToSettings(newer).SettingsVersion);
     }
 
     /// <summary>Package 123: the switches are heard at once and count as a change; switched back, nothing is left to save.</summary>
@@ -447,12 +481,12 @@ public sealed class SettingsTests : IDisposable
         vm.NoiseSuppression = false;
         Assert.False(live[^1].NoiseSuppression);
         Assert.True(vm.HasChanges);
-        vm.AutoGain = true;
-        Assert.True(live[^1].AutoGain);
+        vm.AutoGain = false;
+        Assert.False(live[^1].AutoGain);
         Assert.False(live[^1].NoiseSuppression); // every preview carries all values
         vm.NoiseSuppression = true;
-        vm.AutoGain = false;
-        Assert.Equal((true, false), (live[^1].NoiseSuppression, live[^1].AutoGain));
+        vm.AutoGain = true;
+        Assert.Equal((true, true), (live[^1].NoiseSuppression, live[^1].AutoGain));
         Assert.False(vm.HasChanges);
         // "Abbrechen" applies the saved settings to the engine again (MainViewModel.CloseSettings), see SendPathTests
     }

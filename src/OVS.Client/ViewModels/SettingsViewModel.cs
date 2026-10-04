@@ -348,6 +348,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>New settings based on the old ones (keeps bookmarks), clamped.</summary>
     public ClientSettings ToSettings(ClientSettings basis) => new ClientSettings
     {
+        SettingsVersion = basis.SettingsVersion, // Package 127: a newer client's higher version survives a save
         Bookmarks = basis.Bookmarks,
         UserVolumes = basis.UserVolumes,
         InputDeviceId = SelectedInput?.Id, // null for a moment while a new device list replaces the items

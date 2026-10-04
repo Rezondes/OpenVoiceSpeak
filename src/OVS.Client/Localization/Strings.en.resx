@@ -283,7 +283,7 @@
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>The admin group always has all rights and cannot be changed.</value></data>
   <data name="Ui_AllGroups" xml:space="preserve"><value>All groups</value></data>
   <data name="Ui_AutoGain" xml:space="preserve"><value>Automatic gain</value></data>
-  <data name="Ui_AutoGainHint" xml:space="preserve"><value>Slowly raises a quiet microphone without clipping.</value></data>
+  <data name="Ui_AutoGainHint" xml:space="preserve"><value>Recommended. Slowly raises a quiet microphone to a normal speaking level without clipping.</value></data>
   <data name="Ui_Backups" xml:space="preserve"><value>Backups</value></data>
   <data name="Ui_BackupsHint" xml:space="preserve"><value>A backup holds channels, groups, users, bans, settings, certificate and logo, but no logs. It is kept on the server in backups/.</value></data>
   <data name="Ui_BanDetail" xml:space="preserve"><value>Banned ({0})</value></data>

@@ -109,11 +109,10 @@ public sealed class CapturePipeline : IDisposable
             while (chunker.Take(ref samples))
             {
                 var frame = chunker.Frame;
-                float gain = Gain;
-                for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i] * gain, -1f, 1f);
+                ApplyGain(frame, Gain);
                 // Package 123: before the voice activation, so it, the level meter and the self test hear the cleaned signal
-                if (NoiseSuppression) Suppressor?.Process(frame);
-                if (autoGainOn) autoGain.Process(frame);
+                float? voiceProbability = NoiseSuppression ? Suppressor?.Process(frame) : null;
+                if (autoGainOn) autoGain.Process(frame, voiceProbability); // Package 127: RNNoise's rating decides what is speech
                 bool voice = Vad.Process(frame);
                 Level?.Invoke(Vad.LastLevelDb);
                 var target = DecideTarget(voice);
@@ -126,6 +125,28 @@ public sealed class CapturePipeline : IDisposable
                 sending = target is not null;
                 frame.CopyTo(previous, 0);
             }
+        }
+    }
+
+    /// <summary>
+    /// The input gain. Package 127 (A136): above 100 %, samples above -3 dBFS are rounded off toward 1 (tanh) instead of
+    /// cut at 1, so 200 % on a loud voice does not crackle; quieter samples are only multiplied. Up to 100 % it stays the
+    /// plain multiplication with the clamp at ±1, so the signal is untouched at 100 %.
+    /// </summary>
+    public static void ApplyGain(Span<float> frame, float gain)
+    {
+        if (gain <= 1f)
+        {
+            for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i] * gain, -1f, 1f);
+            return;
+        }
+        const float knee = Audio.AutoGain.PeakLimit, room = 1f - knee;
+        for (int i = 0; i < frame.Length; i++)
+        {
+            float s = frame[i] * gain;
+            float magnitude = Math.Abs(s);
+            // above the knee: the same slope at the knee, then flattening toward 1 (reached only by rounding)
+            frame[i] = magnitude <= knee ? s : MathF.CopySign(knee + room * MathF.Tanh((magnitude - knee) / room), s);
         }
     }
 
