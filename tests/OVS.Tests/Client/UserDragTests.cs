@@ -8,6 +8,8 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
+using OVS.Client.Behaviors;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
 using OVS.Shared.Permissions;

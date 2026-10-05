@@ -7,7 +7,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <!-- ===== Width steps (Package 68, A93): classes set on the window by Views/Responsive.cs ===== -->
+  <!-- ===== Width steps (Package 68, A93): classes set on the window by Responsive ===== -->
   <!-- Only below 700 px window width, e.g. the button that opens the sidebar drawer -->
   <Style Selector="Window:not(.compact) :is(Control).compactOnly">
     <Setter Property="IsVisible" Value="False" />
@@ -191,7 +191,7 @@
   <Style Selector="Border.row.current">
     <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceSelected}" />
   </Style>
-  <!-- Package 120 (A129): the channel a dragged user would go to (Views/UserDrag.cs) -->
+  <!-- Package 120 (A129): the channel a dragged user would go to (UserDrag) -->
   <Style Selector="Border.row.dropTarget">
     <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
   </Style>
@@ -444,7 +444,7 @@
   <Style Selector="Window.narrow TabItem">
     <Setter Property="Padding" Value="8,0" />
   </Style>
-  <!-- Package 96 (A112): the lifted item of a reorder drag (Views/ReorderDrag.cs). Rows rest without a shadow,
+  <!-- Package 96 (A112): the lifted item of a reorder drag (ReorderDrag). Rows rest without a shadow,
        the preview gets 8 px of offset and blur; scale and tilt come from the code (no tilt with reduced animations). -->
   <Style Selector="Border.dragPreview">
     <Setter Property="Background" Value="{DynamicResource Ovs.Surface}" />

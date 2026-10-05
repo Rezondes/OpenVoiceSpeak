@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OVS.Client.ViewModels"
              xmlns:l="using:OVS.Client.Localization"
-             x:Class="OVS.Client.Views.ChannelDialog"
+             x:Class="OVS.Client.Views.ChannelDialogView"
              x:DataType="vm:ChannelDialogViewModel">
   <StackPanel Spacing="12">
     <!-- Package 111: creating, a voice channel or a separator -->

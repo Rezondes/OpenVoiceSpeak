@@ -8,9 +8,10 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
 using OVS.Client.Interop;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Behaviors;
 
 /// <summary>
 /// Package 96 (A112): the one reorder drag for every list (channel tree, group list). After a 6 px move a lifted

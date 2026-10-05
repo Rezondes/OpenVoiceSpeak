@@ -8,9 +8,12 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Behaviors;
+using OVS.Client.Layout;
 using OVS.Client.Settings;
+using OVS.Client.Views;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Animations;
 
 /// <summary>
 /// Package 99 (A114 to A116): the animated display. Styles react to the class <c>animated</c> on the window

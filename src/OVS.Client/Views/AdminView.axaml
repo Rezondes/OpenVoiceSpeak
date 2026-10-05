@@ -2,7 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="using:OVS.Client.Localization"
              xmlns:vm="using:OVS.Client.ViewModels"
-             xmlns:v="using:OVS.Client.Views"
+             xmlns:ctl="using:OVS.Client.Controls"
+             xmlns:anim="using:OVS.Client.Animations"
+             xmlns:conv="using:OVS.Client.Converters"
              x:Class="OVS.Client.Views.AdminView"
              x:DataType="vm:AdminViewModel">
   <UserControl.Resources>
@@ -10,7 +12,7 @@
     <DataTemplate x:Key="ListLoad" x:DataType="vm:Pending">
       <Panel IsHitTestVisible="False" Margin="8">
         <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFirstLoad}">
-          <v:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+          <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
           <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_Loading}" TextWrapping="Wrap" TextAlignment="Center" />
         </StackPanel>
         <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap" TextAlignment="Center"
@@ -21,7 +23,7 @@
     <DataTemplate x:Key="ListRefresh" x:DataType="vm:Pending">
       <Panel>
         <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRefreshing}">
-          <v:BusySpinner />
+          <ctl:BusySpinner />
           <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Loading}" VerticalAlignment="Center" />
         </StackPanel>
         <TextBlock Classes="caption danger" Text="{Binding Error}" TextWrapping="Wrap" IsVisible="{Binding IsRefreshFailed}" />
@@ -57,7 +59,7 @@
     </Border>
 
     <DockPanel Classes="adminBody">
-      <TabControl x:Name="Tabs" v:PageMotion.Tabs="True">
+      <TabControl x:Name="Tabs" anim:PageMotion.Tabs="True">
         <!-- ===== Groups ===== -->
         <TabItem x:Name="GroupsTab" Header="{x:Static l:Strings.Ui_Groups}" IsVisible="{Binding ShowGroups}">
           <!-- Package 78: list beside the editor, under narrow above it (styles in Controls.axaml) -->
@@ -68,7 +70,7 @@
                 <TextBlock DockPanel.Dock="Bottom" Classes="caption danger" Text="{Binding GroupReorder.Error}" TextWrapping="Wrap" Margin="4,6,4,0"
                            IsVisible="{Binding GroupReorder.HasError}" />
                 <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
-                  <v:BusySpinner DockPanel.Dock="Right" Margin="6,0" IsVisible="{Binding GroupReorder.IsBusy}" />
+                  <ctl:BusySpinner DockPanel.Dock="Right" Margin="6,0" IsVisible="{Binding GroupReorder.IsBusy}" />
                   <Button DockPanel.Dock="Right" Classes="icon" Command="{Binding MoveGroupDownCommand}"
                           ToolTip.Tip="{x:Static l:Strings.Ui_MoveDown}" AutomationProperties.Name="{x:Static l:Strings.Ui_GroupDown}">
                     <PathIcon Classes="nudgeDown sm" Data="{StaticResource Icon.ArrowDown}" />
@@ -84,7 +86,7 @@
                     </StackPanel>
                   </Button>
                 </DockPanel>
-                <ListBox v:ItemMotion.Enter="True" v:ItemMotion.Flip="True" x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
+                <ListBox anim:ItemMotion.Enter="True" anim:ItemMotion.Flip="True" x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:GroupEditViewModel">
                       <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
@@ -107,7 +109,7 @@
                   <Button Name="SaveGroupButton" Classes="accent" Command="{Binding SaveGroupCommand}" IsEnabled="{Binding !GroupSave.IsBusy}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !GroupSave.IsBusy}" />
-                      <v:BusySpinner IsVisible="{Binding GroupSave.IsBusy}" />
+                      <ctl:BusySpinner IsVisible="{Binding GroupSave.IsBusy}" />
                       <TextBlock Text="{x:Static l:Strings.Ui_SaveGroup}" />
                     </StackPanel>
                   </Button>
@@ -186,7 +188,7 @@
               </TextBlock>
               <ContentControl Name="UsersLoadState" Content="{Binding UsersLoad}" ContentTemplate="{StaticResource ListLoad}" />
               <ScrollViewer>
-                <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Users}">
+                <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Users}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <StackPanel Spacing="8" />
@@ -198,8 +200,8 @@
                         <DockPanel>
                           <Panel DockPanel.Dock="Left" VerticalAlignment="Top" Width="32" Height="32">
                             <Border Classes="avatar" Width="32" Height="32"
-                                    Background="{Binding Nickname, Converter={x:Static v:Ui.AvatarBrush}}">
-                              <TextBlock Text="{Binding Nickname, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                                    Background="{Binding Nickname, Converter={x:Static conv:ValueConverters.AvatarBrush}}">
+                              <TextBlock Text="{Binding Nickname, Converter={x:Static conv:ValueConverters.Initials}}" FontSize="13" />
                             </Border>
                             <Ellipse Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-2"
                                      Fill="{DynamicResource Ovs.Speaking}" Stroke="{DynamicResource Ovs.Surface}" StrokeThickness="2"
@@ -280,7 +282,7 @@
                             </StackPanel>
                             <!-- Package 98: the card's action waits for a user list that shows it; refused, the reason -->
                             <StackPanel Name="CardBusy" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Busy.IsBusy}">
-                              <v:BusySpinner />
+                              <ctl:BusySpinner />
                               <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Busy}" VerticalAlignment="Center" />
                             </StackPanel>
                             <TextBlock Classes="caption danger" Text="{Binding Busy.Error}" TextWrapping="Wrap" IsVisible="{Binding Busy.HasError}" />
@@ -354,7 +356,7 @@
               <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBanMatches}" TextWrapping="Wrap" TextAlignment="Center"
                          HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding HasNoBanMatches}" />
               <ScrollViewer>
-                <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Bans}">
+                <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Bans}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <StackPanel Spacing="8" />
@@ -368,7 +370,7 @@
                           <Button Classes="cardAction" Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}" IsEnabled="{Binding !Busy.IsBusy}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                               <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" IsVisible="{Binding !Busy.IsBusy}" />
-                              <v:BusySpinner IsVisible="{Binding Busy.IsBusy}" /> <!-- Package 98: until the new ban list -->
+                              <ctl:BusySpinner IsVisible="{Binding Busy.IsBusy}" /> <!-- Package 98: until the new ban list -->
                               <TextBlock Text="{x:Static l:Strings.Ui_Unban}" />
                             </StackPanel>
                           </Button>
@@ -455,7 +457,7 @@
               <Button Name="ApplyLinksButton" Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding HasPending}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !Applying.IsBusy}" />
-                  <v:BusySpinner IsVisible="{Binding Applying.IsBusy}" />
+                  <ctl:BusySpinner IsVisible="{Binding Applying.IsBusy}" />
                   <TextBlock Text="{x:Static l:Strings.Ui_Apply}" />
                 </StackPanel>
               </Button>
@@ -470,7 +472,7 @@
                 <DockPanel>
                   <StackPanel DockPanel.Dock="Left">
                     <Border Classes="linkHeader" />
-                    <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
+                    <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:LinkRowViewModel">
                           <StackPanel Orientation="Horizontal" Height="32">
@@ -497,7 +499,7 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
-                      <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
+                      <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:LinkRowViewModel">
                             <ItemsControl ItemsSource="{Binding Cells}">
@@ -538,10 +540,10 @@
                               DragDrop.AllowDrop="True" ToolTip.Tip="{x:Static l:Strings.Ui_DropImage}">
                         <Panel>
                           <PathIcon Classes="muted" Data="{StaticResource Icon.Add}" IsVisible="{Binding IconPng, Converter={x:Static ObjectConverters.IsNull}}" />
-                          <Image Source="{Binding IconPng, Converter={x:Static v:Ui.PngToBitmap}}" Stretch="UniformToFill" />
+                          <Image Source="{Binding IconPng, Converter={x:Static conv:ValueConverters.PngToBitmap}}" Stretch="UniformToFill" />
                           <!-- Package 98: the new logo is on its way until the server's settings carry it -->
                           <Border Name="IconBusy" Background="{DynamicResource Ovs.Scrim}" IsVisible="{Binding IconUpload.IsBusy}">
-                            <v:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+                            <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
                           </Border>
                         </Panel>
                       </Border>
@@ -634,7 +636,7 @@
                 <Panel>
                   <!-- Package 97: the whole card waits for the disconnect that follows a restore -->
                   <StackPanel Name="RestoringState" Spacing="8" Margin="0,24" HorizontalAlignment="Center" IsVisible="{Binding Restoring.IsBusy}">
-                    <v:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+                    <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
                     <TextBlock Classes="body" Text="{x:Static l:Strings.Ui_Restoring}" TextAlignment="Center" />
                   </StackPanel>
                   <StackPanel Spacing="8" IsVisible="{Binding !Restoring.IsBusy}">
@@ -647,7 +649,7 @@
                       <Button Name="NewBackupButton" Command="{Binding NewBackupCommand}" IsEnabled="{Binding !BackupCreate.IsBusy}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                           <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" IsVisible="{Binding !BackupCreate.IsBusy}" />
-                          <v:BusySpinner IsVisible="{Binding BackupCreate.IsBusy}" />
+                          <ctl:BusySpinner IsVisible="{Binding BackupCreate.IsBusy}" />
                           <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
                         </StackPanel>
                       </Button>
@@ -680,7 +682,7 @@
                         </MultiBinding>
                       </TextBlock.IsVisible>
                     </TextBlock>
-                    <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Backups}">
+                    <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Backups}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                           <StackPanel Spacing="6" />
@@ -734,7 +736,7 @@
                 <Button Name="LogSearchButton" DockPanel.Dock="Right" Margin="8,0,0,0" Command="{Binding SearchCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Classes="sm" Data="{StaticResource Icon.Search}" IsVisible="{Binding !Searching.IsBusy}" />
-                    <v:BusySpinner IsVisible="{Binding Searching.IsBusy}" />
+                    <ctl:BusySpinner IsVisible="{Binding Searching.IsBusy}" />
                     <TextBlock Text="{x:Static l:Strings.Ui_Search}" />
                   </StackPanel>
                 </Button>
@@ -755,7 +757,7 @@
               </WrapPanel>
               <!-- Package 97: the running search, or why it failed -->
               <StackPanel Name="LogSearchBusy" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Searching.IsBusy}">
-                <v:BusySpinner />
+                <ctl:BusySpinner />
                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_LogSearching}" VerticalAlignment="Center" />
               </StackPanel>
               <TextBlock Classes="caption danger" Text="{Binding Searching.Error}" TextWrapping="Wrap" IsVisible="{Binding Searching.HasError}" />
@@ -799,7 +801,7 @@
                     </TextBlock>
                     <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoLogMatches}" TextWrapping="Wrap" TextAlignment="Center"
                                HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8" IsVisible="{Binding HasNoFileMatches}" />
-                    <ListBox v:ItemMotion.Enter="True" x:Name="LogFileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" Background="Transparent">
+                    <ListBox anim:ItemMotion.Enter="True" x:Name="LogFileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" Background="Transparent">
                       <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:LogFileViewModel">
                           <DockPanel>
@@ -828,7 +830,7 @@
                       </Button>
                       <TextBlock Name="LogHitsText" Classes="caption" Text="{Binding HitsText}" TextWrapping="Wrap" />
                     </StackPanel>
-                    <ListBox v:ItemMotion.Enter="True" x:Name="LogHitList" ItemsSource="{Binding Hits}" SelectedItem="{Binding SelectedHit}" Background="Transparent">
+                    <ListBox anim:ItemMotion.Enter="True" x:Name="LogHitList" ItemsSource="{Binding Hits}" SelectedItem="{Binding SelectedHit}" Background="Transparent">
                       <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:LogHitViewModel">
                           <StackPanel>
@@ -886,12 +888,12 @@
                                  TextWrapping="Wrap" IsVisible="{Binding !HasLines}" />
                       <!-- long lines wrap; the selected line is the one a search hit opened -->
                       <!-- Package 109: a page of lines that arrives fades in -->
-                      <ListBox v:ItemMotion.Enter="True" x:Name="LogLines" Classes="logLines" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" Background="Transparent">
+                      <ListBox anim:ItemMotion.Enter="True" x:Name="LogLines" Classes="logLines" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" Background="Transparent">
                         <ListBox.ItemTemplate>
                           <DataTemplate x:DataType="vm:LogLineViewModel">
                             <DockPanel>
                               <TextBlock DockPanel.Dock="Left" Classes="caption logText" Text="{Binding Number}" Width="52" Margin="0,0,8,0" TextAlignment="Right" />
-                              <TextBlock Classes="logText" Inlines="{Binding Segments, Converter={x:Static v:Ui.LogSegments}}" TextWrapping="Wrap" />
+                              <TextBlock Classes="logText" Inlines="{Binding Segments, Converter={x:Static conv:ValueConverters.LogSegments}}" TextWrapping="Wrap" />
                             </DockPanel>
                           </DataTemplate>
                         </ListBox.ItemTemplate>

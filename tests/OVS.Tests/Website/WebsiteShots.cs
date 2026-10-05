@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using PlacementMode = Avalonia.Controls.PlacementMode;
+using OVS.Client.Dialogs;
 using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Shared.Protocol.Messages.Users;
@@ -254,7 +255,7 @@ public sealed class WebsiteShots
         using var scene = new Scene(lang, theme, 760);
         var showcase = scene.Connect();
         var officers = showcase.Server.Mirror.Channels[ShowcaseServer.Officers];
-        _ = ChannelDialog.ShowAsync(scene.Window.Overlay, new ChannelEdit(officers.Name, showcase.T("Nur für die Planung", "Planning only"), false, 8,
+        _ = ChannelDialogView.ShowAsync(scene.Window.Overlay, new ChannelEdit(officers.Name, showcase.T("Nur für die Planung", "Planning only"), false, 8,
             [ShowcaseServer.Moderator], HasPassword: true), ChannelDialogMode.Edit, showcase.Server.Mirror.Groups);
         ShotWriter.Settle(400);
         var password = scene.Window.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == Strings.Dlg_ChannelPassword);

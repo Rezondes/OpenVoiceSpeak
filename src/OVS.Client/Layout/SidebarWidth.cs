@@ -1,7 +1,4 @@
-namespace OVS.Client.Views;
-
-/// <summary>Package 67: one channel row as measured: name text, visible small icons behind it (home, link, lock), user count text.</summary>
-public readonly record struct SidebarRow(double Name, int Icons, double Count);
+namespace OVS.Client.Layout;
 
 /// <summary>Package 67 (A81): the sidebar width at which every channel row fits without trimming.</summary>
 public static class SidebarWidth

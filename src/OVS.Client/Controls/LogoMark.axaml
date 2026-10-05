@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="OVS.Client.Views.LogoMark"
+             x:Class="OVS.Client.Controls.LogoMark"
              AutomationProperties.Name="OpenVoiceSpeak">
   <!-- The app logo, same geometry as Assets/logo.svg. Brand colors are fixed on purpose: the logo looks the same
        in both themes (the blue square stays at least 4:1 against both backgrounds). -->

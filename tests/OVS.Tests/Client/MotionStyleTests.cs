@@ -9,8 +9,8 @@ using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
 using OVS.Client.Settings;
-using OVS.Client.Views;
 
 namespace OVS.Tests.Client;
 

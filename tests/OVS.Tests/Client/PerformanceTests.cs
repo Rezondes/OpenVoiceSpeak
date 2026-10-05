@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Playback;
 using OVS.Client.ViewModels;

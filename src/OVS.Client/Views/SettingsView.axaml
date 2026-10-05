@@ -2,7 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OVS.Client.ViewModels"
              xmlns:l="using:OVS.Client.Localization"
-             xmlns:v="using:OVS.Client.Views"
+             xmlns:ctl="using:OVS.Client.Controls"
+             xmlns:anim="using:OVS.Client.Animations"
+             xmlns:lay="using:OVS.Client.Layout"
              x:Class="OVS.Client.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <DockPanel>
@@ -31,7 +33,7 @@
           <Button Name="SaveSettingsButton" Classes="accent" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
                   MinWidth="96" HorizontalContentAlignment="Center">
             <StackPanel Orientation="Horizontal" Spacing="6">
-              <v:BusySpinner IsVisible="{Binding Saving.IsBusy}" />
+              <ctl:BusySpinner IsVisible="{Binding Saving.IsBusy}" />
               <TextBlock Text="{x:Static l:Strings.Dlg_Save}" />
             </StackPanel>
           </Button>
@@ -40,7 +42,7 @@
       </DockPanel>
     </Border>
 
-    <ScrollViewer v:PageMotion.Reveal="True">
+    <ScrollViewer anim:PageMotion.Reveal="True">
       <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Stretch">
 
         <!-- Devices -->
@@ -147,7 +149,7 @@
                   <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Threshold}" />
                 </DockPanel>
                 <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold in use on the meter. -->
-                <ProgressBar Minimum="-60" Maximum="-10" v:LiveMotion.Level="{Binding InputLevelDb}" Height="8" Margin="10,0" CornerRadius="4" />
+                <ProgressBar Minimum="-60" Maximum="-10" anim:LiveMotion.Level="{Binding InputLevelDb}" Height="8" Margin="10,0" CornerRadius="4" />
                 <Slider Minimum="-60" Maximum="-10" Value="{Binding MeterThresholdDb}" IsEnabled="{Binding IsManualThreshold}" Margin="0,-6,0,0"
                         AutomationProperties.Name="{x:Static l:Strings.Ui_ThresholdName}" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -180,7 +182,7 @@
               <TextBlock Classes="caption" TextWrapping="Wrap"
                          Text="{x:Static l:Strings.Ui_KeysHelp}" />
               <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoKeyActions}" IsVisible="{Binding !HasKeyBindings}" />
-              <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding KeyBindings}">
+              <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding KeyBindings}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="10" />
@@ -246,7 +248,7 @@
               <!-- Package 48: every sound on its own -->
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsEachHint}" Margin="0,6,0,0" />
               <!-- Package 77: below 670 px name and controls no longer fit side by side (German texts), the controls go below -->
-              <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}" v:Responsive.StackBelow="670">
+              <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}" lay:Responsive.StackBelow="670">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="6" />
@@ -361,7 +363,7 @@
                   </StackPanel>
                 </Button>
                 <!-- Package 98: a spinner next to the text while the check runs -->
-                <v:BusySpinner Name="UpdateCheckBusy" DockPanel.Dock="Left" Margin="0,0,6,0" IsVisible="{Binding Checking.IsBusy}" />
+                <ctl:BusySpinner Name="UpdateCheckBusy" DockPanel.Dock="Left" Margin="0,0,6,0" IsVisible="{Binding Checking.IsBusy}" />
                 <TextBlock Classes="caption" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
               </DockPanel>
             </StackPanel>

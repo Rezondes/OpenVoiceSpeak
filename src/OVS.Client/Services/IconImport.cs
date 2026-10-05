@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using OVS.Shared.Protocol;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Services;
 
 /// <summary>
 /// Turns a chosen image file into the server logo (A21): at most 3 MB, PNG or JPG, exactly square,

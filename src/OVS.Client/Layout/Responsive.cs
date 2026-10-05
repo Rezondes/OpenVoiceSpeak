@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Layout;
 
 /// <summary>
 /// Package 68 (A93): the two width steps as classes on the window, so every page reacts by style
@@ -35,7 +35,7 @@ public static class Responsive
 
     /// <summary>
     /// Package 77: a control that needs more room than the narrow step promises sets its own break width in XAML
-    /// (<c>v:Responsive.StackBelow="660"</c>) and gets the class <c>stacked</c> while it is narrower.
+    /// (<c>lay:Responsive.StackBelow="660"</c>) and gets the class <c>stacked</c> while it is narrower.
     /// </summary>
     public static readonly AttachedProperty<double> StackBelowProperty =
         AvaloniaProperty.RegisterAttached<Control, double>("StackBelow", typeof(Responsive));

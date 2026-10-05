@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="using:OVS.Client.Localization"
              xmlns:vm="using:OVS.Client.ViewModels"
-             xmlns:v="using:OVS.Client.Views"
+             xmlns:anim="using:OVS.Client.Animations"
+             xmlns:conv="using:OVS.Client.Converters"
              x:Class="OVS.Client.Views.ChatView"
              x:DataType="vm:ChatViewModel">
   <DockPanel>
@@ -10,7 +11,7 @@
     <!-- Package 79: the tabs stay in one line and scroll sideways when they do not fit -->
     <Border DockPanel.Dock="Top" Classes="chatTabs" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-      <TabStrip x:Name="Tabs" v:PageMotion.Tabs="True" v:PageMotion.Content="{Binding #Scroller}" ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{x:Static l:Strings.Ui_ChatTabs}">
+      <TabStrip x:Name="Tabs" anim:PageMotion.Tabs="True" anim:PageMotion.Content="{Binding #Scroller}" ItemsSource="{Binding Tabs}" SelectedItem="{Binding Selected}" AutomationProperties.Name="{x:Static l:Strings.Ui_ChatTabs}">
         <TabStrip.ItemsPanel>
           <ItemsPanelTemplate>
             <StackPanel Orientation="Horizontal" />
@@ -81,8 +82,8 @@
               <Grid IsVisible="{Binding IsOtherMessage}" ColumnDefinitions="15*,2*,3*">
                 <DockPanel Classes="otherMessage" HorizontalAlignment="Left">
                   <Border DockPanel.Dock="Left" Classes="avatar" Width="32" Height="32" VerticalAlignment="Top"
-                          Background="{Binding From, Converter={x:Static v:Ui.AvatarBrush}}">
-                    <TextBlock Text="{Binding From, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                          Background="{Binding From, Converter={x:Static conv:ValueConverters.AvatarBrush}}">
+                    <TextBlock Text="{Binding From, Converter={x:Static conv:ValueConverters.Initials}}" FontSize="13" />
                   </Border>
                   <StackPanel Margin="12,0,0,0" Spacing="4">
                     <StackPanel Orientation="Horizontal" Spacing="8">

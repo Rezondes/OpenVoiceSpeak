@@ -1,8 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Controls;
 
 /// <summary>Package 97 (A113): the small spinner of every waiting state (buttons, rows, list areas).</summary>
 public partial class BusySpinner : UserControl

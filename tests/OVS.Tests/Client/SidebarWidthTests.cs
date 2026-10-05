@@ -1,4 +1,4 @@
-using OVS.Client.Views;
+using OVS.Client.Layout;
 
 namespace OVS.Tests.Client;
 

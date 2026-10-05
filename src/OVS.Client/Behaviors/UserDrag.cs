@@ -4,9 +4,10 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
 using OVS.Client.ViewModels;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Behaviors;
 
 /// <summary>
 /// Package 120 (A129): a user row dragged onto a channel of the tree. As in a reorder drag (A112) a lifted preview follows

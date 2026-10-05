@@ -7,8 +7,9 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using OVS.Client.Animations;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Controls;
 
 /// <summary>
 /// Modal layer inside the main window (A20: the client never opens a second window). A scrim covers everything

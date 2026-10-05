@@ -1,3 +1,4 @@
+using OVS.Client.Controls;
 using OVS.Client.Localization;
 using Avalonia;
 using Avalonia.Controls;
@@ -13,10 +14,11 @@ using OVS.Client.Net;
 using OVS.Client.Net.Updates;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
+using OVS.Client.Views;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Groups;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Dialogs;
 
 /// <summary>
 /// Small dialogs built in code, shown as a card on the main window's overlay, never as a window of their own (A20).
@@ -24,14 +26,12 @@ namespace OVS.Client.Views;
 /// </summary>
 public static class SimpleDialogs
 {
-    internal enum Kind { Normal, Danger }
-
     /// <param name="submit">
     /// Package 98: sends the answer and returns its waiting mark. The card stays open with a busy primary button until the
     /// mark ends: confirmed it closes, refused or unanswered it shows the error and can be sent again.
     /// </param>
     internal static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
-        string okText = "OK", bool okIsDefault = true, Kind kind = Kind.Normal, string? cancelText = null, Func<T, Pending>? submit = null,
+        string okText = "OK", bool okIsDefault = true, DialogKind kind = DialogKind.Normal, string? cancelText = null, Func<T, Pending>? submit = null,
         (string Text, T Value)? other = null, bool withCancel = true) where T : class
     {
         T? result = null;
@@ -82,7 +82,7 @@ public static class SimpleDialogs
             Avalonia.Threading.Dispatcher.UIThread.Post(() => failed.BringIntoView(), Avalonia.Threading.DispatcherPriority.Background); // below a long form
         }
 
-        ok.Classes.Add(kind == Kind.Danger ? "danger" : "accent");
+        ok.Classes.Add(kind == DialogKind.Danger ? "danger" : "accent");
         var cancel = new Button { Content = cancelText ?? Strings.Dlg_Cancel, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Click += (_, _) => Accept();
         cancel.Click += (_, _) => host.Close();
@@ -95,8 +95,8 @@ public static class SimpleDialogs
                 host.Close();
             };
 
-        var badge = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Margin = new Thickness(0, 0, 12, 0), Child = Icon(icon, kind == Kind.Danger ? "danger" : "accent") };
-        badge.Bind(Border.BackgroundProperty, badge.GetResourceObservable(kind == Kind.Danger ? "Ovs.DangerSurface" : "Ovs.AccentSurface"));
+        var badge = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(10), Margin = new Thickness(0, 0, 12, 0), Child = Icon(icon, kind == DialogKind.Danger ? "danger" : "accent") };
+        badge.Bind(Border.BackgroundProperty, badge.GetResourceObservable(kind == DialogKind.Danger ? "Ovs.DangerSurface" : "Ovs.AccentSurface"));
         var heading = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
         heading.Classes.Add("h2");
         heading.FontSize = 17;
@@ -210,7 +210,7 @@ public static class SimpleDialogs
         if (!ipKnown) body.Children.Add(Text(Strings.Dlg_BanIpUnknown, "caption"));
         return Show(overlay, string.Format(Strings.Dlg_BanTitle, nickname), "Prohibited", body,
             () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Minutes, includeIp.IsChecked == true),
-            Strings.Dlg_Ban, kind: Kind.Danger, submit: submit);
+            Strings.Dlg_Ban, kind: DialogKind.Danger, submit: submit);
     }
 
     /// <summary>Only used for destructive actions, hence the red button.</summary>
@@ -340,7 +340,7 @@ public static class SimpleDialogs
         };
 
     public static async Task<bool> Confirm(OverlayHost overlay, string text) =>
-        await Show(overlay, Strings.Dlg_Confirm, "Delete", Text(text), () => "ok", Strings.Dlg_YesDelete, kind: Kind.Danger) is not null;
+        await Show(overlay, Strings.Dlg_Confirm, "Delete", Text(text), () => "ok", Strings.Dlg_YesDelete, kind: DialogKind.Danger) is not null;
 
     /// <summary>Package 72: lists what goes, so nobody deletes a user by accident.</summary>
     public static async Task<bool> ConfirmDeleteUser(OverlayHost overlay, string nickname)
@@ -350,13 +350,13 @@ public static class SimpleDialogs
         list.Children.AddRange(items.Select(item => Text("\u2022 " + item)));
         var body = Stack(Text(Strings.Dlg_DeleteUserIntro), list, Text(Strings.Dlg_DeleteUserHint, "muted"));
         return await Show(overlay, string.Format(Strings.Dlg_DeleteUserTitle, nickname), "PersonDelete", body, () => "ok",
-            Strings.Dlg_DeleteForever, okIsDefault: false, kind: Kind.Danger) is not null;
+            Strings.Dlg_DeleteForever, okIsDefault: false, kind: DialogKind.Danger) is not null;
     }
 
     /// <summary>Package 74: red, because everyone is disconnected and the current state goes (a safety backup stays).</summary>
     public static async Task<bool> ConfirmRestore(OverlayHost overlay, string backupTitle) =>
         await Show(overlay, string.Format(Strings.Backup_RestoreTitle, backupTitle), "ArrowSync", Text(Strings.Backup_ConfirmRestore), () => "ok",
-            Strings.Ui_Restore, okIsDefault: false, kind: Kind.Danger) is not null;
+            Strings.Ui_Restore, okIsDefault: false, kind: DialogKind.Danger) is not null;
 
     /// <summary>Package 89 (A101): before every backup download, since the certificate stays in the archive for a server move.</summary>
     public static async Task<bool> ConfirmBackupDownload(OverlayHost overlay) =>
@@ -388,7 +388,7 @@ public static class SimpleDialogs
             message = banner;
         }
         return await Show(overlay, Strings.Tofu_Title, mismatch ? "Warning" : "LockClosed", Stack(message, Field("Fingerprint", code)), () => "ok",
-            mismatch ? Strings.Tofu_TrustAnyway : Strings.Tofu_Trust, prompt.AcceptIsDefault, mismatch ? Kind.Danger : Kind.Normal) is not null;
+            mismatch ? Strings.Tofu_TrustAnyway : Strings.Tofu_Trust, prompt.AcceptIsDefault, mismatch ? DialogKind.Danger : DialogKind.Normal) is not null;
     }
 
     /// <summary>
@@ -425,9 +425,9 @@ public static class SimpleDialogs
 
     /// <summary>The dialogs of the main window's overlay, as the view models ask for them (App, and the UI tests).</summary>
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>
-    public static Dialogs For(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
+    public static ViewModels.Dialogs For(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
     {
-        EditChannel = (current, mode, submit) => ChannelDialog.ShowAsync(overlay, current, mode, groups(), submit),
+        EditChannel = (current, mode, submit) => ChannelDialogView.ShowAsync(overlay, current, mode, groups(), submit),
         PickChannel = (title, channels, submit) => PickChannel(overlay, title, channels, submit),
         AskText = (title, prompt, submit) => AskText(overlay, title, prompt, submit),
         Ban = (nickname, ipKnown, submit) => Ban(overlay, nickname, ipKnown, submit),

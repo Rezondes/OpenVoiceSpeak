@@ -1,11 +1,11 @@
 <!--
   Package 99 (A115): every style of the animated display, and only here. Each selector starts with Window.animated,
-  so the simplified display (no class on the window) looks exactly as before. Lengths follow Views/Motion.cs:
+  so the simplified display (no class on the window) looks exactly as before. Lengths follow Motion:
   120 ms hover and press, 220 ms appear, leave, tabs and dialogs, 320 ms pages, connect and moves.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:v="using:OVS.Client.Views">
+        xmlns:ctl="using:OVS.Client.Controls">
   <Styles.Resources>
     <!-- Box shadows take fixed colours; the accent and the shadow are the same in both themes. Both ends of a
          transition have the same shape, so they blend instead of jumping. -->
@@ -229,7 +229,7 @@
     <Setter Property="RenderTransform" Value="scale(1.2)" />
   </Style>
 
-  <!-- ===== Package 101: someone who joins, a channel that is created, flashes once (Views/ItemMotion.cs) ===== -->
+  <!-- ===== Package 101: someone who joins, a channel that is created, flashes once (ItemMotion) ===== -->
   <!-- only the new entry's own row: a user, or the head of a new channel, not the user rows inside it -->
   <Style Selector="Window.animated ContentPresenter.fresh > Border.row, Window.animated ContentPresenter.fresh > StackPanel > Border.row">
     <Style.Animations>
@@ -244,13 +244,13 @@
     </Style.Animations>
   </Style>
 
-  <!-- ===== Package 103: the current-channel highlight slides over (Views/FlyGhost.cs); the new row waits for it ===== -->
+  <!-- ===== Package 103: the current-channel highlight slides over (FlyGhost); the new row waits for it ===== -->
   <Style Selector="Window.animated Border.row.current.arriving">
     <Setter Property="Background" Value="Transparent" />
   </Style>
 
   <!-- ===== Package 106: while connecting the logo breathes and the progress is a slim line ===== -->
-  <Style Selector="Window.animated v|LogoMark.connecting">
+  <Style Selector="Window.animated ctl|LogoMark.connecting">
     <Style.Animations>
       <Animation Duration="0:0:0.9" IterationCount="Infinite" Easing="SineEaseInOut">
         <KeyFrame Cue="0%">
@@ -341,7 +341,7 @@
   </Style>
 
   <!-- A busy spinner's arc grows and shrinks while it turns -->
-  <Style Selector="Window.animated v|BusySpinner.turning Arc.spin">
+  <Style Selector="Window.animated ctl|BusySpinner.turning Arc.spin">
     <Style.Animations>
       <Animation Duration="0:0:1.4" IterationCount="Infinite" Easing="SineEaseInOut">
         <KeyFrame Cue="0%">
@@ -357,7 +357,7 @@
     </Style.Animations>
   </Style>
 
-  <!-- A busy button (its spinner shows, Views/BusySpinner.axaml.cs) shimmers: a light band passes over it -->
+  <!-- A busy button (its spinner shows, BusySpinner) shimmers: a light band passes over it -->
   <Style Selector="Window.animated Button.busy /template/ ContentPresenter#PART_ContentPresenter">
     <Style.Animations>
       <Animation Duration="0:0:1.2" IterationCount="Infinite">

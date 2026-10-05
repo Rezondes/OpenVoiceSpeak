@@ -11,9 +11,10 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Behaviors;
 using OVS.Client.ViewModels;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Animations;
 
 /// <summary>
 /// Package 101: in the animated display new entries of a list slide in: they fade in, rise by 6 px and open their

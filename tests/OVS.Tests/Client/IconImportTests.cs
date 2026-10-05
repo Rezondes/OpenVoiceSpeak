@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 using Avalonia.Headless.XUnit;
-using OVS.Client.Views;
+using OVS.Client.Services;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
 using SkiaSharp;

@@ -4,6 +4,9 @@
         xmlns:vm="using:OVS.Client.ViewModels"
         xmlns:s="using:OVS.Client.Settings"
         xmlns:v="using:OVS.Client.Views"
+        xmlns:ctl="using:OVS.Client.Controls"
+        xmlns:anim="using:OVS.Client.Animations"
+        xmlns:conv="using:OVS.Client.Converters"
         x:Class="OVS.Client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="OpenVoiceSpeak" Width="1100" Height="700" MinWidth="360" MinHeight="480"
@@ -31,7 +34,7 @@
 
   <!-- Maximized, Windows hides a border off screen: OffScreenMargin keeps the content inside. -->
   <DockPanel Margin="{Binding $parent[Window].OffScreenMargin}">
-  <v:TitleBar DockPanel.Dock="Top" />
+  <v:TitleBarView DockPanel.Dock="Top" />
   <!-- Package 67: the sidebar width is fitted to the channel names on connect (MainWindow.axaml.cs);
        Package 68: bounded so the header always fits, below 700 px a drawer -->
   <Grid x:Name="Shell" ColumnDefinitions="300,Auto,*">
@@ -49,11 +52,11 @@
             <!-- Server logo (Package 30), otherwise the first letter of the server name -->
             <Panel DockPanel.Dock="Left">
               <Border Classes="badge" IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
-                <TextBlock Text="{Binding Server.ServerName, Converter={x:Static v:Ui.Initials}, FallbackValue='O'}" />
+                <TextBlock Text="{Binding Server.ServerName, Converter={x:Static conv:ValueConverters.Initials}, FallbackValue='O'}" />
               </Border>
               <Border Classes="badge" ClipToBounds="True" Background="Transparent"
                       IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
-                <Image Source="{Binding Server.IconPng, Converter={x:Static v:Ui.PngToBitmap}, FallbackValue={x:Null}}" Stretch="UniformToFill" />
+                <Image Source="{Binding Server.IconPng, Converter={x:Static conv:ValueConverters.PngToBitmap}, FallbackValue={x:Null}}" Stretch="UniformToFill" />
               </Border>
             </Panel>
             <StackPanel Margin="10,0,4,0" VerticalAlignment="Center" Spacing="2">
@@ -76,16 +79,16 @@
                             Command="{Binding Server.ToggleMuteCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
                             ToolTip.Tip="{x:Static l:Strings.Ui_MuteMic}" AutomationProperties.Name="{x:Static l:Strings.Ui_MuteMic}">
                 <Panel>
-                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.Mic}" IsVisible="{Binding !Server.SelfMuted, FallbackValue=True}" />
-                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding Server.SelfMuted, FallbackValue=False}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.Mic}" IsVisible="{Binding !Server.SelfMuted, FallbackValue=True}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding Server.SelfMuted, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
               <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfDeafened, Mode=OneWay, FallbackValue=False}"
                             Command="{Binding Server.ToggleDeafenCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
                             ToolTip.Tip="{x:Static l:Strings.Ui_DeafenTip}" AutomationProperties.Name="{x:Static l:Strings.Ui_Deafen}">
                 <Panel>
-                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.Headphones}" IsVisible="{Binding !Server.SelfDeafened, FallbackValue=True}" />
-                  <PathIcon v:LiveMotion.Turn="True" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.Headphones}" IsVisible="{Binding !Server.SelfDeafened, FallbackValue=True}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
               <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_Settings}" AutomationProperties.Name="{x:Static l:Strings.Ui_Settings}">
@@ -96,8 +99,8 @@
                     Classes.link="{Binding Server.Self.IsSpeakingViaLink, FallbackValue=False}" VerticalAlignment="Center"
                     IsVisible="{Binding IsConnected}">
               <Border Classes="avatar" Width="30" Height="30"
-                      Background="{Binding Server.Self.Nickname, Converter={x:Static v:Ui.AvatarBrush}, FallbackValue={x:Null}}">
-                <TextBlock Text="{Binding Server.Self.Nickname, Converter={x:Static v:Ui.Initials}, FallbackValue='?'}" FontSize="13" />
+                      Background="{Binding Server.Self.Nickname, Converter={x:Static conv:ValueConverters.AvatarBrush}, FallbackValue={x:Null}}">
+                <TextBlock Text="{Binding Server.Self.Nickname, Converter={x:Static conv:ValueConverters.Initials}, FallbackValue='?'}" FontSize="13" />
               </Border>
             </Border>
             <StackPanel x:Name="SelfTexts" Margin="8,0,4,0" VerticalAlignment="Center">
@@ -128,7 +131,7 @@
               <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_BookmarksSection}" Margin="10,4,0,6" />
               <TextBlock Classes="caption" Margin="10,0" TextWrapping="Wrap" IsVisible="{Binding !HasBookmarks}"
                          Text="{x:Static l:Strings.Ui_NoBookmarks}" />
-              <ItemsControl v:ItemMotion.Enter="True" ItemsSource="{Binding Bookmarks}">
+              <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Bookmarks}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:BookmarkItem">
                     <Button Classes="bookmark" Click="OnBookmarkClick" ToolTip.Tip="{Binding Address}"
@@ -153,11 +156,11 @@
                         <Panel DockPanel.Dock="Left">
                           <Border Classes="badge" Width="28" Height="28" CornerRadius="7"
                                   IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNull}}">
-                            <TextBlock Text="{Binding Name, Converter={x:Static v:Ui.Initials}}" FontSize="13" />
+                            <TextBlock Text="{Binding Name, Converter={x:Static conv:ValueConverters.Initials}}" FontSize="13" />
                           </Border>
                           <Border Classes="badge" Width="28" Height="28" CornerRadius="7" ClipToBounds="True" Background="Transparent"
                                   IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Image Source="{Binding Icon, Converter={x:Static v:Ui.PngToBitmap}}" Stretch="UniformToFill" />
+                            <Image Source="{Binding Icon, Converter={x:Static conv:ValueConverters.PngToBitmap}}" Stretch="UniformToFill" />
                           </Border>
                         </Panel>
                         <StackPanel Margin="10,0" VerticalAlignment="Center">
@@ -172,7 +175,7 @@
             </StackPanel>
           </ScrollViewer>
           <ScrollViewer Padding="8,10" IsVisible="{Binding IsConnected}">
-            <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" v:ItemMotion.BuildUp="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
+            <ItemsControl anim:ItemMotion.Enter="True" anim:ItemMotion.Flash="True" anim:ItemMotion.Flip="True" anim:ItemMotion.BuildUp="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">
@@ -212,33 +215,33 @@
                       <Border Classes="separatorLine" IsVisible="{Binding IsSeparator}" />
                       <DockPanel IsVisible="{Binding IsVoice}">
                         <TextBlock DockPanel.Dock="Right" Classes="caption channelCount" VerticalAlignment="Center" Margin="8,0,0,0"
-                                   Text="{Binding SlotText}" v:LiveMotion.Tick="True" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
+                                   Text="{Binding SlotText}" anim:LiveMotion.Tick="True" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
                         <!-- Package 98: joining, moving or deleting waits for the server -->
-                        <v:BusySpinner DockPanel.Dock="Right" Margin="8,0,0,0" IsVisible="{Binding IsBusy}" />
+                        <ctl:BusySpinner DockPanel.Dock="Right" Margin="8,0,0,0" IsVisible="{Binding IsBusy}" />
                         <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->
                         <Panel DockPanel.Dock="Left" Margin="0,0,8,0">
-                          <PathIcon v:LiveMotion.Pop="True" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
-                          <PathIcon v:LiveMotion.Pop="True" Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
+                          <PathIcon anim:LiveMotion.Pop="True" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
+                          <PathIcon anim:LiveMotion.Pop="True" Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
                                     ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" />
                         </Panel>
                         <!-- Package 67: left-aligned, so home and link icon follow the name and the name trims when space runs out -->
                         <DockPanel HorizontalAlignment="Left">
                           <!-- Package 93: the lock names who may join -->
-                          <PathIcon v:LiveMotion.Pop="True" DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.LockClosed}" IsVisible="{Binding IsLocked}"
+                          <PathIcon anim:LiveMotion.Pop="True" DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.LockClosed}" IsVisible="{Binding IsLocked}"
                                     ToolTip.Tip="{Binding LockText}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                          <PathIcon v:LiveMotion.Pop="True" DockPanel.Dock="Right" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsLinked}"
+                          <PathIcon anim:LiveMotion.Pop="True" DockPanel.Dock="Right" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsLinked}"
                                     ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}"
                                     Margin="6,0,0,0" VerticalAlignment="Center" />
                           <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
                                     ToolTip.Tip="{x:Static l:Strings.Ui_DefaultChannel}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                          <TextBlock Classes="channelName" Text="{Binding Name}" v:LiveMotion.Fade="True" FontWeight="SemiBold" VerticalAlignment="Center"
+                          <TextBlock Classes="channelName" Text="{Binding Name}" anim:LiveMotion.Fade="True" FontWeight="SemiBold" VerticalAlignment="Center"
                                      TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}" />
                         </DockPanel>
                       </DockPanel>
                       </Panel>
                     </Border>
 
-                    <ItemsControl v:ItemMotion.Enter="True" v:ItemMotion.Flash="True" v:ItemMotion.Flip="True" v:ItemMotion.Fly="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">
+                    <ItemsControl anim:ItemMotion.Enter="True" anim:ItemMotion.Flash="True" anim:ItemMotion.Flip="True" anim:ItemMotion.Fly="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:UserViewModel">
                           <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupTip}">
@@ -301,28 +304,28 @@
                             </Border.ContextMenu>
                             <DockPanel>
                               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                <v:BusySpinner IsVisible="{Binding IsBusy}" /> <!-- Package 98: the server mute waits for the server -->
-                                <PathIcon v:LiveMotion.Pop="True" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsSpeakingViaLink}"
+                                <ctl:BusySpinner IsVisible="{Binding IsBusy}" /> <!-- Package 98: the server mute waits for the server -->
+                                <PathIcon anim:LiveMotion.Pop="True" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsSpeakingViaLink}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_TalkingViaLink}" />
-                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsVolumeChanged}"
+                                <PathIcon anim:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsVolumeChanged}"
                                           ToolTip.Tip="{Binding VolumeText}" />
-                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsLocallyMuted}"
+                                <PathIcon anim:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsLocallyMuted}"
                                           ToolTip.Tip="{Binding VolumeText}" />
-                                <PathIcon v:LiveMotion.Pop="True" Classes="sm danger" Data="{StaticResource Icon.SpeakerMute}" IsVisible="{Binding ServerMuted}"
+                                <PathIcon anim:LiveMotion.Pop="True" Classes="sm danger" Data="{StaticResource Icon.SpeakerMute}" IsVisible="{Binding ServerMuted}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_ServerMuted}" />
-                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsDeafened}"
+                                <PathIcon anim:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsDeafened}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Deafen}" />
-                                <PathIcon v:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsSelfMutedOnly}"
+                                <PathIcon anim:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsSelfMutedOnly}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Muted}" />
                               </StackPanel>
                               <Border Classes="ring" Classes.speaking="{Binding IsSpeaking}" Classes.link="{Binding IsSpeakingViaLink}">
-                                <Border Classes="avatar" Width="24" Height="24" Background="{Binding Nickname, Converter={x:Static v:Ui.AvatarBrush}}">
-                                  <TextBlock Text="{Binding Nickname, Converter={x:Static v:Ui.Initials}}" FontSize="11" />
+                                <Border Classes="avatar" Width="24" Height="24" Background="{Binding Nickname, Converter={x:Static conv:ValueConverters.AvatarBrush}}">
+                                  <TextBlock Text="{Binding Nickname, Converter={x:Static conv:ValueConverters.Initials}}" FontSize="11" />
                                 </Border>
                               </Border>
                               <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Nickname}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}"
-                                           FontWeight="{Binding IsSelf, Converter={x:Static v:Ui.SelfWeight}}" />
+                                           FontWeight="{Binding IsSelf, Converter={x:Static conv:ValueConverters.SelfWeight}}" />
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsSelf}" VerticalAlignment="Center" />
                               </StackPanel>
                             </DockPanel>
@@ -353,7 +356,7 @@
         <Panel IsVisible="{Binding !IsConnected}">
         <ScrollViewer>
           <StackPanel x:Name="StartCard" Classes="startScreen" MaxWidth="460" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <v:LogoMark Width="80" Height="80" HorizontalAlignment="Center" Classes.connecting="{Binding IsConnecting}" />
+            <ctl:LogoMark Width="80" Height="80" HorizontalAlignment="Center" Classes.connecting="{Binding IsConnecting}" />
             <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
             <TextBlock x:Name="StatusText" Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
             <!-- Package 109 (A117): indeterminate only while connecting, so its loop stops with the connecting -->
@@ -395,15 +398,15 @@
                     <Button x:Name="SignalButton" Classes="hint" Command="{Binding ShowConnectionDetailsCommand}" VerticalAlignment="Center"
                             ToolTip.Tip="{Binding Stats.Tip}" AutomationProperties.Name="{x:Static l:Strings.ConnDetails_Title}">
                       <Panel Width="15" Height="12"
-                             Classes.bars1="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=1}"
-                             Classes.bars2="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=2}"
-                             Classes.bars3="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=3}"
-                             Classes.bars4="{Binding Stats.Bars, Converter={x:Static v:Ui.Is}, ConverterParameter=4}">
+                             Classes.bars1="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=1}"
+                             Classes.bars2="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=2}"
+                             Classes.bars3="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=3}"
+                             Classes.bars4="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=4}">
                         <StackPanel Orientation="Horizontal" Spacing="1" VerticalAlignment="Bottom">
-                          <Border Classes="signalBar" Height="4" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=1}" />
-                          <Border Classes="signalBar" Height="6" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=2}" />
-                          <Border Classes="signalBar" Height="9" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=3}" />
-                          <Border Classes="signalBar" Height="12" Classes.on="{Binding Stats.Bars, Converter={x:Static v:Ui.AtLeast}, ConverterParameter=4}" />
+                          <Border Classes="signalBar" Height="4" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=1}" />
+                          <Border Classes="signalBar" Height="6" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=2}" />
+                          <Border Classes="signalBar" Height="9" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=3}" />
+                          <Border Classes="signalBar" Height="12" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=4}" />
                         </StackPanel>
                         <Line x:Name="SignalCross" StartPoint="0,0" EndPoint="15,12" StrokeThickness="1.5" Stroke="{DynamicResource Ovs.Danger}"
                               IsVisible="{Binding Stats.Unreachable}" />
@@ -473,7 +476,7 @@
     <Border x:Name="DrawerScrim" Grid.ColumnSpan="3" Background="{DynamicResource Ovs.Scrim}" PointerPressed="OnDrawerScrimPressed" />
 
     <!-- Dialogs: a modal layer over the whole window (above the drawer) -->
-    <v:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" ZIndex="2" />
+    <ctl:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" ZIndex="2" />
 
     <!-- Package 62: update progress over everything below the title bar; the content under it is disabled meanwhile -->
     <Panel x:Name="UpdateLayer" Grid.ColumnSpan="3" ZIndex="2" IsVisible="{Binding IsUpdating}" Background="{DynamicResource Ovs.Scrim}">

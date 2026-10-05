@@ -7,6 +7,11 @@ using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
+using OVS.Client.Behaviors;
+using OVS.Client.Controls;
+using OVS.Client.Dialogs;
+using OVS.Client.Layout;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 

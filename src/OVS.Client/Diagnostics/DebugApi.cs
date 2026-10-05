@@ -333,7 +333,7 @@ public sealed class DebugApi : IDisposable
             await server.SendAsync(new SetServerIcon(null));
             return;
         }
-        var (png, error) = Views.IconImport.Prepare(path);
+        var (png, error) = Services.IconImport.Prepare(path);
         if (png is null) throw new DebugApiException(error ?? "Bild ungültig");
         await server.SendAsync(new SetServerIcon(Convert.ToBase64String(png)));
     }

@@ -10,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
 using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;

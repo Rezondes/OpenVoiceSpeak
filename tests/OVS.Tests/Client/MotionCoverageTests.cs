@@ -12,6 +12,8 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Animations;
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using OVS.Client.Net.Updates;
 using OVS.Client.Net;

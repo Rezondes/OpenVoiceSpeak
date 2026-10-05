@@ -1,3 +1,4 @@
+using OVS.Client.Behaviors;
 using OVS.Client.Localization;
 using Avalonia;
 using Avalonia.VisualTree;
@@ -6,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using OVS.Client.Services;
 using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;

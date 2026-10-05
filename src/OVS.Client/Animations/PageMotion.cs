@@ -7,8 +7,9 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Behaviors;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Animations;
 
 /// <summary>
 /// Package 104: in the animated display pages and tabs change with movement.

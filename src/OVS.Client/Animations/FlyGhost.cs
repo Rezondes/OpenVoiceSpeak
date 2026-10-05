@@ -5,7 +5,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Animations;
 
 /// <summary>
 /// Package 103: something that changes its place flies there in the overlay layer: a picture of a user's row from the

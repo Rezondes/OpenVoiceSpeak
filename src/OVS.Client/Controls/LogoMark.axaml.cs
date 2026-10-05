@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Controls;
 
 /// <summary>
 /// The OpenVoiceSpeak logo at any size, always with the sound wave. Below 32 px it shows the pixel-hinted frame of

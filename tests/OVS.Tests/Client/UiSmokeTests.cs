@@ -12,6 +12,11 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Xml.Linq;
+using OVS.Client.Animations;
+using OVS.Client.Appearance;
+using OVS.Client.Controls;
+using OVS.Client.Converters;
+using OVS.Client.Dialogs;
 using OVS.Client;
 using OVS.Client.Localization;
 using OVS.Client.Net;
@@ -403,7 +408,7 @@ public sealed class UiSmokeTests : IDisposable
         // Package 54: one dialog for creating and editing, with every option both times
         (string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled) ChannelDialogShows(ChannelEdit current, ChannelDialogMode mode)
         {
-            var shown = ChannelDialog.ShowAsync(main.Overlay, current, mode);
+            var shown = ChannelDialogView.ShowAsync(main.Overlay, current, mode);
             Dispatcher.UIThread.RunJobs();
             var o = main.Overlay.GetVisualDescendants().ToList();
             var title = o.OfType<TextBlock>().First(t => t.Classes.Contains("h2")).Text!;
@@ -487,7 +492,7 @@ public sealed class UiSmokeTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.True(main.ExtendClientAreaToDecorationsHint);
         Assert.NotNull(main.Icon); // Package 28: window and taskbar show the logo
-        var bar = main.GetVisualDescendants().OfType<TitleBar>().Single();
+        var bar = main.GetVisualDescendants().OfType<TitleBarView>().Single();
         // The title bar logo is 24 px and shows the pixel-hinted 24 px ICO frame, the same artwork as the taskbar
         var logo = bar.GetVisualDescendants().OfType<LogoMark>().Single();
         Assert.Equal(24, logo.Bounds.Width);
@@ -1281,8 +1286,8 @@ public sealed class UiSmokeTests : IDisposable
             foreach (var open in new Func<OverlayHost, Task>[]
             {
                 o => SimpleDialogs.Connect(o, vm.Settings), o => SimpleDialogs.Ban(o, "anna"), o => SimpleDialogs.Confirm(o, "?"),
-                o => ChannelDialog.ShowAsync(o, new ChannelEdit("Raid", ""), ChannelDialogMode.Edit),
-                o => ChannelDialog.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
+                o => ChannelDialogView.ShowAsync(o, new ChannelEdit("Raid", ""), ChannelDialogMode.Edit),
+                o => ChannelDialogView.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
                 o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
                 o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)),
             })
@@ -1576,10 +1581,10 @@ public sealed class UiSmokeTests : IDisposable
     [Fact]
     public void Avatar_SameNicknameSameColor_InitialUpperCase()
     {
-        var brush = (ISolidColorBrush)Ui.AvatarBrush.Convert("anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
-        var again = (ISolidColorBrush)Ui.AvatarBrush.Convert("Anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
+        var brush = (ISolidColorBrush)ValueConverters.AvatarBrush.Convert("anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
+        var again = (ISolidColorBrush)ValueConverters.AvatarBrush.Convert("Anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
         Assert.Equal(brush.Color, again.Color);
-        Assert.Equal("A", Ui.Initials.Convert(" anna", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
-        Assert.Equal("?", Ui.Initials.Convert("", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal("A", ValueConverters.Initials.Convert(" anna", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal("?", ValueConverters.Initials.Convert("", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
     }
 }

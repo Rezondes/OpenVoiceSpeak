@@ -3,10 +3,10 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Media.Imaging;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Converters;
 
 /// <summary>Small view helpers for avatars and badges.</summary>
-public static class Ui
+public static class ValueConverters
 {
     /// <summary>White initials stay at least 4.5:1 on every one of these.</summary>
     static readonly IBrush[] AvatarColors =

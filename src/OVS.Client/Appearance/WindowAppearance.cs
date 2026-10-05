@@ -4,7 +4,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using OVS.Client.Settings;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Appearance;
 
 /// <summary>
 /// Package 61: makes the large backgrounds see-through. Only these brushes change their opacity, in both themes, so

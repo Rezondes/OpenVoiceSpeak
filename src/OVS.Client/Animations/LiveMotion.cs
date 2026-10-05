@@ -8,8 +8,9 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using OVS.Client.Views;
 
-namespace OVS.Client.Views;
+namespace OVS.Client.Animations;
 
 /// <summary>
 /// Package 108: live states that animate from code in the animated display (the loops are styles in
