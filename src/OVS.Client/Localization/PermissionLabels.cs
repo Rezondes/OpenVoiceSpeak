@@ -1,28 +1,6 @@
-using OVS.Client.Localization;
 using OVS.Shared.Permissions;
-using OVS.Shared.Protocol;
 
-namespace OVS.Client;
-
-/// <summary>User texts for the protocol's error codes, in the chosen language (Package 45).</summary>
-public static class ErrorTexts
-{
-    /// <summary>
-    /// A45: the server's own detail texts are German and meant for operators, so they only go to the client log.
-    /// Kick and ban are different: their detail is the reason a person typed in.
-    /// </summary>
-    static readonly HashSet<string> DetailShown = [Codes.Kicked, Codes.Banned];
-
-    static string? Text(string code) => Strings.ResourceManager.GetString("Error_" + code, Strings.Culture);
-
-    public static bool Has(string code) => Text(code) is not null;
-
-    public static string For(string code, string? detail = null)
-    {
-        var text = Text(code) ?? string.Format(Strings.Error_Unknown, code);
-        return string.IsNullOrWhiteSpace(detail) || !DetailShown.Contains(code) ? text : $"{text} ({detail})";
-    }
-}
+namespace OVS.Client.Localization;
 
 public static class PermissionLabels
 {

@@ -390,8 +390,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
         await OnUi(() =>
         {
-            vm.Updates = new OVS.Client.Net.UpdateChecker(new HttpClient(http), running);
-            vm.Installer = new OVS.Client.Net.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "gibt-es-nicht.exe"), _ => offered.Add("neu gestartet"));
+            vm.Updates = new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running);
+            vm.Installer = new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "gibt-es-nicht.exe"), _ => offered.Add("neu gestartet"));
             vm.Dialogs = new Dialogs { OfferUpdate = offer => { offered.Add(offer.Version); return Task.FromResult(false); } };
             return 0;
         });
@@ -438,12 +438,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
             : r.RequestUri.AbsolutePath.EndsWith(".sha256") ? FakeHttp.Bytes(System.Text.Encoding.ASCII.GetBytes(new string('0', 64)))
             : FakeHttp.Bytes(new byte[200_000]));
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
-        var seen = new List<OVS.Client.Net.UpdateProgress?>();
+        var seen = new List<OVS.Client.Net.Updates.UpdateProgress?>();
         await OnUi(() =>
         {
             File.WriteAllText(Path.Combine(dir, "OVS.Client.exe"), "alt");
-            vm.Updates = new OVS.Client.Net.UpdateChecker(new HttpClient(http), running);
-            vm.Installer = new OVS.Client.Net.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "OVS.Client.exe"), _ => { });
+            vm.Updates = new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running);
+            vm.Installer = new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "OVS.Client.exe"), _ => { });
             vm.Dialogs = new Dialogs { OfferUpdate = _ => Task.FromResult(true) };
             vm.PropertyChanged += (_, e) =>
             {
@@ -454,8 +454,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var result = await ui.InvokeAsync(() => vm.CheckForUpdatesAsync());
 
         Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, result);
-        Assert.Contains(seen, p => p is { Phase: OVS.Client.Net.UpdatePhase.Downloading, Bytes: 200_000, Total: 200_000 });
-        Assert.All(seen.OfType<OVS.Client.Net.UpdateProgress>(), p => Assert.Equal("280926.0b2c", p.Version));
+        Assert.Contains(seen, p => p is { Phase: OVS.Client.Net.Updates.UpdatePhase.Downloading, Bytes: 200_000, Total: 200_000 });
+        Assert.All(seen.OfType<OVS.Client.Net.Updates.UpdateProgress>(), p => Assert.Equal("280926.0b2c", p.Version));
         Assert.Null(seen[^1]);
         Assert.False(await OnUi(() => vm.IsUpdating));
     }

@@ -10,6 +10,7 @@ using Avalonia.Automation;
 using OVS.Client.Input;
 using KeyBinding = OVS.Client.Input.KeyBinding;
 using OVS.Client.Net;
+using OVS.Client.Net.Updates;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;

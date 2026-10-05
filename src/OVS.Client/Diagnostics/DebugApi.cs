@@ -1,6 +1,7 @@
 using System.Net;
 using NAudio.CoreAudioApi;
 using OVS.Client.Audio.Devices;
+using OVS.Client.Exceptions;
 using OVS.Client.Input;
 using System.Text.Json;
 using OVS.Client.Settings;
@@ -16,9 +17,7 @@ using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 
-namespace OVS.Client.Debug;
-
-public sealed class DebugApiException(string message) : Exception(message);
+namespace OVS.Client.Diagnostics;
 
 /// <summary>
 /// Local HTTP API to drive the client without keyboard or mouse (enabled with --debug-api &lt;port&gt;).

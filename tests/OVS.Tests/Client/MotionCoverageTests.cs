@@ -13,6 +13,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Localization;
+using OVS.Client.Net.Updates;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;

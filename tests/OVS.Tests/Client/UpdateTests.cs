@@ -2,7 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using OVS.Client.Net;
+using OVS.Client.Net.Updates;
 using OVS.Shared;
 
 namespace OVS.Tests.Client;

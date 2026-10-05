@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
@@ -9,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
+using OVS.Client.Interop;
 
 namespace OVS.Client.Views;
 
@@ -18,7 +18,7 @@ namespace OVS.Client.Views;
 /// dimmed in its slot and a gap of its height opens where it will land. Releasing inside the list calls
 /// <c>move(source, target, after)</c>; Esc or releasing outside the list cancels.
 /// </summary>
-public sealed partial class ReorderDrag
+public sealed class ReorderDrag
 {
     public const double Threshold = 6, Scale = 1.03, Tilt = 3, DimmedOpacity = 0.4;
 
@@ -27,13 +27,9 @@ public sealed partial class ReorderDrag
     /// static pose and not an animation. Tests replace it.
     /// </summary>
     public static Func<bool> ReducedMotion { get; set; } = () =>
-        OperatingSystem.IsWindows() && SystemParametersInfo(SpiGetClientAreaAnimation, 0, out var on, 0) && on == 0;
+        OperatingSystem.IsWindows() && NativeMethods.SystemParametersInfo(SpiGetClientAreaAnimation, 0, out var on, 0) && on == 0;
 
     const uint SpiGetClientAreaAnimation = 0x1042;
-
-    [LibraryImport("user32.dll", EntryPoint = "SystemParametersInfoW")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool SystemParametersInfo(uint action, uint param, out int value, uint winIni);
 
     readonly ItemsControl list;
     readonly Func<object, bool> canDrag;

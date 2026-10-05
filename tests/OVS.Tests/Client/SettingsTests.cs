@@ -4,7 +4,6 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using OVS.Client;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Sounds;

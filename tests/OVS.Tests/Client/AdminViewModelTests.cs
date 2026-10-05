@@ -1370,7 +1370,7 @@ public class AdminViewModelTests
         Assert.True(vm.Restoring.IsBusy); // the safety backup appears, the disconnect is still to come
         server.Apply(new Error(restore.RequestId, Codes.NotFound)); // refused: the card comes back with the error
         Assert.False(vm.Restoring.IsBusy);
-        Assert.Equal(OVS.Client.ErrorTexts.For(Codes.NotFound), vm.Restoring.Error);
+        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(Codes.NotFound), vm.Restoring.Error);
     }
 
     /// <summary>Package 98 (AC4): the user card's actions spin until a user list asked for after them shows the change.</summary>
@@ -1405,7 +1405,7 @@ public class AdminViewModelTests
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new Error(assign.RequestId, Codes.PermissionDenied));
         Assert.False(Card().Busy.IsBusy);
-        Assert.Equal(OVS.Client.ErrorTexts.For(Codes.PermissionDenied), Card().Busy.Error);
+        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(Codes.PermissionDenied), Card().Busy.Error);
 
         // deleting: busy until the next list, where the card is gone
         time.Advance(TimeSpan.FromSeconds(1));

@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text.Json;
-using OVS.Client.Debug;
+using OVS.Client.Diagnostics;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Tests.TestSupport;

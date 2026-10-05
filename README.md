@@ -235,7 +235,7 @@ Mit der Debug-API lässt sich der Client ohne Maus und Tastatur steuern und prü
 
 - Sie lauscht nur auf `localhost`.
 - Jede Anfrage braucht den Header `X-OVS-Debug: 1`. Dadurch können Webseiten im Browser sie nicht nutzen.
-- Alle Endpunkte sind in `src/OVS.Client/Debug/DebugApi.cs` beschrieben.
+- Alle Endpunkte sind in `src/OVS.Client/Diagnostics/DebugApi.cs` beschrieben.
 
 ```bash
 OVS.Client.exe --profile ./anna --debug-api 7011 --no-audio

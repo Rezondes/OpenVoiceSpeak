@@ -93,6 +93,6 @@ public class PendingTests
         Assert.True(pending.IsRunning);
         server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(id, OVS.Shared.Protocol.Codes.PermissionDenied));
         Assert.False(pending.IsRunning);
-        Assert.Equal(OVS.Client.ErrorTexts.For(OVS.Shared.Protocol.Codes.PermissionDenied), pending.Error);
+        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(OVS.Shared.Protocol.Codes.PermissionDenied), pending.Error);
     }
 }

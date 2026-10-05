@@ -263,7 +263,7 @@ public sealed class ClientLogTests : IDisposable
     {
         using var keys = new KeyPoller(); // no bindings: only simulated keys count
         using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
-        using (new OVS.Client.Debug.AudioDebugLog(keys, engine, new ClientLog(dir, TimeProvider.System)))
+        using (new OVS.Client.Diagnostics.AudioDebugLog(keys, engine, new ClientLog(dir, TimeProvider.System)))
         {
             engine.SetTone(440);
             keys.Simulate(ptt: true);

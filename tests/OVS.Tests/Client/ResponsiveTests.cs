@@ -703,7 +703,7 @@ public sealed class ResponsiveTests : IDisposable
         "BanWithoutIp" => SimpleDialogs.Ban(o, "Mitspieler mit langem Namen", ipKnown: false),
         "DeleteUser" => SimpleDialogs.ConfirmDeleteUser(o, "Mitspieler mit langem Namen"),
         "Confirm" => SimpleDialogs.Confirm(o, "Channel \"Raidgruppe Nummer 2\" wirklich löschen? Alle darin landen in der Lobby."),
-        "Update" => SimpleDialogs.OfferUpdate(o, new OVS.Client.Net.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
+        "Update" => SimpleDialogs.OfferUpdate(o, new OVS.Client.Net.Updates.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
             string.Join("\n", Enumerable.Range(1, 30).Select(i => $"- Neuerung Nummer {i} mit etwas mehr Text")), DateTimeOffset.UtcNow,
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))),
         "KeyBinding" => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<KeyChord?>(null)),
@@ -862,7 +862,7 @@ public sealed class ResponsiveTests : IDisposable
     public void UpdateCard_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = Open(width, FakeServers.Admin(), out var vm);
-        vm.UpdateInProgress = new OVS.Client.Net.UpdateProgress("290926.0lh6", OVS.Client.Net.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
+        vm.UpdateInProgress = new OVS.Client.Net.Updates.UpdateProgress("290926.0lh6", OVS.Client.Net.Updates.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
         Dispatcher.UIThread.RunJobs();
         var layer = main.FindControl<Panel>("UpdateLayer")!;
         CardInside(main, layer.Children.OfType<Border>().Single(), 420);

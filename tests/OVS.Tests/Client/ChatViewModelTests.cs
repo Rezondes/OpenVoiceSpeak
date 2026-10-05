@@ -1,4 +1,4 @@
-using OVS.Client;
+using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;

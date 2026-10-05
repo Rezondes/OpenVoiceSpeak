@@ -1,4 +1,4 @@
-using OVS.Client;
+using OVS.Client.Localization;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Net;

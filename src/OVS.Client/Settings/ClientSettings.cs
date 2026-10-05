@@ -1,6 +1,4 @@
 using OVS.Client.Localization;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OVS.Client.Audio.Sounds;
@@ -10,51 +8,6 @@ using OVS.Client.Net;
 using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Settings;
-
-/// <param name="ProtectedPassword">Package 39: the server password, DPAPI-protected for the current Windows user.</param>
-public sealed record Bookmark(string Name, string Host, int Port, string Nickname, string? ProtectedPassword = null)
-{
-    public bool HasSavedPassword => SavedPassword() is not null;
-
-    /// <summary>Null when none is stored or it cannot be read here (another Windows user or PC, damaged value).</summary>
-    public string? SavedPassword() => PasswordProtector.Unprotect(ProtectedPassword);
-}
-
-/// <summary>Windows DPAPI for the current user (A35): readable only by this Windows account on this PC.</summary>
-public static class PasswordProtector
-{
-    static readonly byte[] Entropy = "OpenVoiceSpeak server password"u8.ToArray();
-
-    public static string Protect(string password)
-    {
-        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Passwörter lassen sich nur unter Windows speichern.");
-        return Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(password), Entropy, DataProtectionScope.CurrentUser));
-    }
-
-    public static string? Unprotect(string? protectedPassword)
-    {
-        if (string.IsNullOrEmpty(protectedPassword) || !OperatingSystem.IsWindows()) return null;
-        try
-        {
-            return Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(protectedPassword), Entropy, DataProtectionScope.CurrentUser));
-        }
-        catch (Exception e) when (e is CryptographicException or FormatException)
-        {
-            return null;
-        }
-    }
-}
-
-public enum AppTheme { System, Light, Dark }
-
-/// <summary>Package 99: "Animierte Darstellung" (default) or "Vereinfachte Darstellung" (the plain look from before).</summary>
-public enum DisplayMode { Animated, Simplified }
-
-/// <param name="File">Package 48: an own tone, a bare file name in the profile's "sounds" folder.</param>
-public sealed record SoundSetting(float Volume = 1f, bool Muted = false, string? File = null)
-{
-    public bool IsDefaultFor(SoundEvent sound) => Volume >= 1f && Muted == ClientSettings.DefaultSound(sound).Muted && File is null;
-}
 
 public sealed class ClientSettings : IJsonOnDeserializing
 {
@@ -224,10 +177,4 @@ public sealed class ClientSettings : IJsonOnDeserializing
         Directory.CreateDirectory(directory);
         ClientStorage.WriteAtomic(Path.Combine(directory, FileName), JsonSerializer.SerializeToUtf8Bytes(this, Options));
     }
-}
-
-/// <summary>Package 61: how see-through the window's backgrounds are; Package 99: and whether the display is animated.</summary>
-public sealed record BackgroundAppearance(float Opacity, bool Blur, DisplayMode Display = DisplayMode.Animated)
-{
-    public static BackgroundAppearance From(ClientSettings settings) => new(settings.BackgroundOpacity, settings.BlurBackground, settings.Display);
 }

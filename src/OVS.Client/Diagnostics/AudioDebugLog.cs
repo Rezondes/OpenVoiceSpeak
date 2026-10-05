@@ -2,7 +2,7 @@ using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Logging;
 
-namespace OVS.Client.Debug;
+namespace OVS.Client.Diagnostics;
 
 /// <summary>
 /// --audio-debug: logs global PTT key changes and the sent frame rate once per second to the client log,

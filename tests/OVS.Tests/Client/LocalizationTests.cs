@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
-using OVS.Client;
 using OVS.Client.Localization;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;

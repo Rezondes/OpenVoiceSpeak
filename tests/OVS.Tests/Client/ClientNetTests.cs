@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using OVS.Client.Exceptions;
 using OVS.Client.Net;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;

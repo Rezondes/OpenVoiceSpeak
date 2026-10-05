@@ -6,6 +6,7 @@ using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Input;
 using OVS.Client.Net;
+using OVS.Client.Net.Updates;
 using OVS.Client.Settings;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;

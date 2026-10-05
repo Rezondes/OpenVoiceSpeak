@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using OVS.Client.Interop;
+using static OVS.Client.Interop.NativeMethods;
 
 namespace OVS.Client;
 
@@ -9,7 +11,7 @@ namespace OVS.Client;
 /// busy cursor over it. The one OS window besides the main window (A20); it fades out once the
 /// main window has drawn its first frame.
 /// </summary>
-public static unsafe partial class Splash
+public static unsafe class Splash
 {
     const int Size = 160; // at 96 dpi
     const double FadeSeconds = 0.15;
@@ -140,57 +142,4 @@ public static unsafe partial class Splash
     const int SM_CXSCREEN = 0, SM_CYSCREEN = 1, SW_SHOWNA = 8, IDC_APPSTARTING = 32650;
     const uint DI_NORMAL = 3, ULW_ALPHA = 2;
     const byte AC_SRC_ALPHA = 1;
-
-    struct POINT { public int x, y; }
-    struct SIZE { public int cx, cy; }
-    struct BLENDFUNCTION { public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat; }
-    struct MSG { public nint hwnd; public uint message; public nint wParam, lParam; public uint time; public POINT pt; public uint lPrivate; }
-
-    struct BITMAPINFOHEADER
-    {
-        public uint biSize;
-        public int biWidth, biHeight;
-        public ushort biPlanes, biBitCount;
-        public uint biCompression, biSizeImage;
-        public int biXPelsPerMeter, biYPelsPerMeter;
-        public uint biClrUsed, biClrImportant;
-    }
-
-    struct WNDCLASSEXW
-    {
-        public uint cbSize, style;
-        public delegate* unmanaged<nint, uint, nint, nint, nint> lpfnWndProc;
-        public int cbClsExtra, cbWndExtra;
-        public nint hInstance, hIcon, hCursor, hbrBackground;
-        public char* lpszMenuName, lpszClassName;
-        public nint hIconSm;
-    }
-
-    [LibraryImport("shell32.dll")] private static partial int SHDefExtractIconW(char* file, int index, uint flags, nint* large, nint* small, uint size);
-    [LibraryImport("user32.dll")] private static partial nint SetThreadDpiAwarenessContext(nint context);
-    [LibraryImport("user32.dll")] private static partial uint GetDpiForSystem();
-    [LibraryImport("user32.dll")] private static partial int GetSystemMetrics(int index);
-    [LibraryImport("user32.dll")] private static partial nint GetDC(nint hwnd);
-    [LibraryImport("user32.dll")] private static partial int ReleaseDC(nint hwnd, nint dc);
-    [LibraryImport("gdi32.dll")] private static partial nint CreateCompatibleDC(nint dc);
-    [LibraryImport("gdi32.dll")] private static partial nint CreateDIBSection(nint dc, BITMAPINFOHEADER* info, uint usage, out nint bits, nint section, uint offset);
-    [LibraryImport("gdi32.dll")] private static partial nint SelectObject(nint dc, nint obj);
-    [LibraryImport("gdi32.dll")] private static partial int DeleteDC(nint dc);
-    [LibraryImport("gdi32.dll")] private static partial int DeleteObject(nint obj);
-    [LibraryImport("user32.dll")] private static partial int DrawIconEx(nint dc, int x, int y, nint icon, int w, int h, uint step, nint brush, uint flags);
-    [LibraryImport("user32.dll")] private static partial int DestroyIcon(nint icon);
-    [LibraryImport("kernel32.dll")] private static partial nint GetModuleHandleW(char* name);
-    [LibraryImport("user32.dll")] private static partial nint LoadCursorW(nint instance, nint name);
-    [LibraryImport("user32.dll")] private static partial ushort RegisterClassExW(WNDCLASSEXW* type);
-    [LibraryImport("user32.dll")] private static partial int UnregisterClassW(char* name, nint instance);
-    [LibraryImport("user32.dll")] private static partial nint CreateWindowExW(uint exStyle, char* type, char* title, uint style, int x, int y, int w, int h, nint parent, nint menu, nint instance, nint param);
-    [LibraryImport("user32.dll")] private static partial int UpdateLayeredWindow(nint hwnd, nint dst, POINT* at, SIZE* size, nint src, POINT* origin, uint key, BLENDFUNCTION* blend, uint flags);
-    [LibraryImport("user32.dll")] private static partial int ShowWindow(nint hwnd, int command);
-    [LibraryImport("user32.dll")] private static partial nuint SetTimer(nint hwnd, nuint id, uint ms, nint callback);
-    [LibraryImport("user32.dll")] private static partial int GetMessageW(MSG* message, nint hwnd, uint min, uint max);
-    [LibraryImport("user32.dll")] private static partial nint DispatchMessageW(MSG* message);
-    [LibraryImport("user32.dll")] private static partial int PostMessageW(nint hwnd, uint message, nint wParam, nint lParam);
-    [LibraryImport("user32.dll")] private static partial int DestroyWindow(nint hwnd);
-    [LibraryImport("user32.dll")] private static partial void PostQuitMessage(int code);
-    [LibraryImport("user32.dll")] private static partial nint DefWindowProcW(nint hwnd, uint message, nint wParam, nint lParam);
 }

@@ -1,5 +1,5 @@
+using OVS.Client.Interop;
 using OVS.Client.Localization;
-using System.Runtime.InteropServices;
 
 namespace OVS.Client.Input;
 
@@ -7,22 +7,16 @@ namespace OVS.Client.Input;
 /// Global key bindings via GetAsyncKeyState polling (10 ms). RegisterHotKey cannot report key release.
 /// Works while another program (a game) has the focus.
 /// </summary>
-public sealed partial class KeyPoller : IDisposable
+public sealed class KeyPoller : IDisposable
 {
     public const int VkXButton1 = 0x05;
     public const int VkXButton2 = 0x06;
     public const int VkRControl = 0xA3;
     const int SmCMouseButtons = 43;
 
-    [LibraryImport("user32.dll")]
-    private static partial int GetSystemMetrics(int index);
-
     /// <summary>Package 59: how many buttons Windows knows the mouse has (0 without a mouse).</summary>
-    public static int MouseButtonCount() => GetSystemMetrics(SmCMouseButtons);
+    public static int MouseButtonCount() => NativeMethods.GetSystemMetrics(SmCMouseButtons);
     const int VkShift = 0x10, VkControl = 0x11, VkMenu = 0x12;
-
-    [LibraryImport("user32.dll")]
-    private static partial short GetAsyncKeyState(int vKey);
 
     readonly CancellationTokenSource cts = new();
     readonly Thread thread;
@@ -101,7 +95,7 @@ public sealed partial class KeyPoller : IDisposable
         if (linkPtt is { } l) Simulate(KeyAction.LinkPushToTalk, l);
     }
 
-    static bool IsKeyDown(int vk) => vk != 0 && (GetAsyncKeyState(vk) & 0x8000) != 0;
+    static bool IsKeyDown(int vk) => vk != 0 && (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
 
     static bool IsModifier(int vk) => vk is VkShift or VkControl or VkMenu or (>= 0xA0 and <= 0xA5);
 

@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading.Channels;
+using OVS.Client.Exceptions;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
@@ -12,20 +13,6 @@ using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.VoiceRelay;
 
 namespace OVS.Client.Net;
-
-public sealed record TofuPrompt(string Host, int Port, string Fingerprint, TofuResult Result)
-{
-    /// <summary>A changed certificate is refused unless the user explicitly clicks accept.</summary>
-    public bool AcceptIsDefault => Result != TofuResult.Mismatch;
-}
-
-public sealed class ConnectionRejectedException(string code, string? detail) : Exception($"{code}: {detail}")
-{
-    public string Code { get; } = code;
-    public string? Detail { get; } = detail;
-}
-
-public sealed class TofuRejectedException() : Exception("Serverzertifikat nicht akzeptiert");
 
 /// <summary>TLS control connection with TOFU pinning and the challenge handshake.</summary>
 public sealed class ClientConnection : IAsyncDisposable
