@@ -187,6 +187,42 @@ The refactoring introduces `tests/OVS.Tests/SourceLayoutTests.cs` with its scann
 
 These rules have no exceptions beyond the ones listed. Files without a type (the top-level statements of `src/OVS.Server/Program.cs` and `tools/render-icon/Program.cs`) pass. The scanner strips comments, strings and preprocessor lines and counts braces; it is no C# parser, so its own tests pin the forms the code base uses (records with primary constructors, file-scoped namespaces, generic constraints, attributes before types).
 
+## Review checklist: design principles
+
+Every review of new or changed code answers each point below for that change, names the file and line for every "no", and either fixes it or records why not. The red flags come from the audit of 5 October 2026 (weakest points: single responsibility, domain rules inside view models and `ServerState`, behaviour specs not linked to tests).
+
+**DRY (don't repeat yourself)**
+- Does the change copy logic that exists elsewhere (a helper in §Shared helpers, a rule in `PermissionRules`, a settings mapping in `AudioEngine`)? Use or extend the one place.
+- Does a new setting, sound, key action or request need edits in several lists that must agree? Prefer one table or one mapping method over parallel switches.
+- Red flag: the same predicate in client and server (e.g. "is this ban active"); put it in `OVS.Shared`.
+
+**DDD (domain-driven design)**
+- Is a domain rule (who may do what, when a channel is full or locked, which sound fits which event, reconnect policy) placed in a pure rule class next to its siblings, not inside a view model, a view, `ServerState` or `Session`?
+- Does the code use the domain words of the protocol and PLAN.md (Channel, Link, Group, Lock, Separator, Ban, ServerMute, Deafen)?
+- Are invariants of persisted records kept by one method on the record or a rule class, not only by a handler?
+
+**TDD (test-driven development)**
+- Were the tests written first and seen red (state it in the review notes)?
+- Is every new rule tested where it lives, as a fast unit test, with end-to-end tests (TLS, headless UI) only for the acceptance path?
+- Does every test use `ManualTimeProvider` or frame counts instead of `Task.Delay`, `Thread.Sleep`, `DateTime.Now` or wall-clock bounds? Is no new static state shared between test classes?
+
+**BDD (behaviour-driven development)**
+- Does each acceptance criterion of the package have a test whose name states the behaviour (`Subject_Condition_Outcome`) and that references its criterion (`// Package N ACm` or a trait)?
+- Does each test check one behaviour, so its name says what broke when it fails?
+- Is each manual check listed as manual in PLAN.md?
+
+**KISS (keep it simple)**
+- Is this the simplest code that meets the criteria (no framework, interface or generic layer with one user)?
+- Are deliberate shortcuts marked with a `ponytail:` comment naming the limit and the upgrade path?
+- Red flags: closure state machines with several captured mutable variables, a new synchronisation scheme, mixed clock sources in one class.
+
+**SOLID**
+- **Single responsibility:** does a class gain a responsibility it did not have? Red flags: `ServerState`, `Session`, `MainViewModel`, `AdminViewModel`, `ServerViewModel`, `AudioEngine` growing further; a class over about 400 lines; a new section in a partial file. Extract a collaborator or a child view model instead (the admin page already composes `LogsViewModel` and `LinkMatrixViewModel`).
+- **Open/closed:** how many places change to add one more request, dialog, sound, setting or key action? A new `case` in a central switch needs a test that every member is handled (e.g. every `Request` subtype is dispatched).
+- **Liskov substitution:** does a subtype keep every promise of its base (no `NotSupportedException` overrides, no stricter preconditions)?
+- **Interface segregation:** does a consumer receive more than it uses (the whole `ServerState`, `Session`, `DialogCallbacks` or `AudioEngine`)? Pass the narrow piece (a delegate, a record, a small interface with a real second implementation).
+- **Dependency inversion:** are time (`TimeProvider`), the UI thread (`post`), the network (`send` or a connection factory), files and devices passed in rather than created inside the class or read from statics (`DateTime.Now`, `Environment.TickCount64`, singletons, static mutable state such as `Motion.IsAnimated`)?
+
 ## History
 
 - These rules supersede the earlier deliberate decision in PLAN.md for fewer small files ("weniger Kleinstdateien", in its table of deliberate deviations from the plan text), under which several types were merged into one file on purpose (A5). PLAN.md itself is not edited for this.
