@@ -1,3 +1,5 @@
+using OVS.Client.Collections;
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -13,8 +15,10 @@ using OVS.Client.Audio.Transmit;
 using OVS.Client.Exceptions;
 using OVS.Client.Input;
 using OVS.Client.Logging;
+using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.Net.Updates;
+using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
@@ -23,41 +27,6 @@ using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Client.ViewModels;
-
-/// <param name="Save">Package 39: store the password with the bookmark, after a successful connection only.</param>
-public sealed record PasswordAnswer(string Password, bool Save);
-
-/// <param name="Password">The password shown in the dialog; stored only with SavePassword.</param>
-public sealed record BookmarkEdit(string Name, string Host, int Port, string Nickname, string? Password, bool SavePassword);
-
-public sealed record ConnectChoice(string Host, int Port, string Nickname, string? Password, bool SaveBookmark, bool SavePassword = false);
-
-/// <summary>A bookmark tile: the bookmark and the logo last seen for that server.</summary>
-public sealed record BookmarkItem(Bookmark Bookmark, byte[]? Icon) : IMotionKey
-{
-    public object MotionKey => $"{Bookmark.Host}:{Bookmark.Port}";
-    public string Name => Bookmark.Name;
-    public string Host => Bookmark.Host;
-    public string Nickname => Bookmark.Nickname;
-    public string Address => $"{Bookmark.Host}:{Bookmark.Port}";
-    public bool HasSavedPassword => Bookmark.HasSavedPassword;
-}
-
-public enum NoticeKind { Info, Welcome, Warning, Error }
-
-/// <summary>What the main area shows. Everything stays inside the one main window (A20).</summary>
-public enum Page { Home, Settings, Admin }
-
-/// <summary>A system notice, shown in the chat tab "Allgemein". ToString keeps the "time  text" form for the debug API.</summary>
-public sealed record Notice(DateTime Time, string Text, NoticeKind Kind)
-{
-    public string TimeText => Time.ToString("HH:mm");
-    public bool IsInfo => Kind == NoticeKind.Info;
-    public bool IsWelcome => Kind == NoticeKind.Welcome;
-    public bool IsWarning => Kind == NoticeKind.Warning;
-    public bool IsError => Kind == NoticeKind.Error;
-    public override string ToString() => $"{Time:HH:mm:ss}  {Text}";
-}
 
 /// <summary>Application shell: settings, audio, and the current connection.</summary>
 public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
@@ -203,7 +172,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Push-to-talk without a key: nobody can talk. The hint then opens the settings.</summary>
     public bool HasNoPttBinding => Settings.Mode == TransmitMode.PushToTalk && Settings.ChordFor(KeyAction.PushToTalk) is null;
-    public Dialogs Dialogs { get; set; } = new();
+    public DialogCallbacks Dialogs { get; set; } = new();
     public Func<TofuPrompt, Task<bool>> ConfirmTofu { get; set; } = _ => Task.FromResult(false);
 
     /// <summary>Package 61: how see-through the backgrounds are right now (saved, or previewed on the settings page).</summary>
@@ -378,7 +347,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task<string> CheckForUpdatesAsync()
     {
         if (Updates is not { IsEnabled: true } updates) return Strings.Update_LocalBuild;
-        using var timeout = new CancellationTokenSource(Pending.Timeout); // Package 98 (A113): 10 s like every other wait
+        using var timeout = new CancellationTokenSource(PendingViewModel.Timeout); // Package 98 (A113): 10 s like every other wait
         var result = await updates.CheckAsync(timeout.Token);
         if (result.Error is { } error)
         {
@@ -751,7 +720,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     // ---- Package 133 (A142): the signal icon and the connection details ----
 
     /// <summary>The voice connection's figures, behind the signal icon next to the ping.</summary>
-    public ConnectionStats Stats { get; } = new();
+    public ConnectionStatsViewModel Stats { get; } = new();
     static readonly TimeSpan StatsInterval = TimeSpan.FromSeconds(2);
     DateTimeOffset statsAt;
     int roundTripsSeen; // a round trip enters the baseline once, not again on every refresh while no answer comes
@@ -1033,7 +1002,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (choice == LeaveChoice.Discard) return true;
         if (!adminOnly && SettingsPage is { HasChanges: true } settings && !await settings.SaveAsync()) return false;
         if (AdminPage is { } admin)
-            foreach (var place in Enum.GetValues<AdminViewModel.Place>().Where(admin.HasChanges))
+            foreach (var place in Enum.GetValues<AdminPlace>().Where(admin.HasChanges))
                 if (!await admin.SaveAsync(place)) return false; // its error shows on the page, which stays
         return true;
     }

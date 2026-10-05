@@ -1,4 +1,5 @@
 using OVS.Client.Audio.Playback;
+using OVS.Client.Models;
 using OVS.Client.ViewModels;
 using OVS.Shared.Voice;
 
@@ -6,7 +7,7 @@ namespace OVS.Tests.Client;
 
 public class ConnectionStatsTests
 {
-    static void Sample(ConnectionStats stats, double rttMs, LossReport uplink = default) =>
+    static void Sample(ConnectionStatsViewModel stats, double rttMs, LossReport uplink = default) =>
         stats.Update(TimeSpan.FromMilliseconds(rttMs), uplink, default, default, 64);
 
     /// <summary>
@@ -16,14 +17,14 @@ public class ConnectionStatsTests
     [Fact]
     public void Rating_RelativeToBaseline()
     {
-        Assert.Equal(SignalRating.Good, ConnectionStats.Rate(100 + 69, 100));
-        Assert.Equal(SignalRating.Fair, ConnectionStats.Rate(100 + 70, 100));
-        Assert.Equal(SignalRating.Fair, ConnectionStats.Rate(100 + 159, 100));
-        Assert.Equal(SignalRating.Poor, ConnectionStats.Rate(100 + 160, 100));
-        Assert.Equal(SignalRating.Poor, ConnectionStats.Rate(100 + 299, 100));
-        Assert.Equal(SignalRating.Bad, ConnectionStats.Rate(100 + 300, 100));
+        Assert.Equal(SignalRating.Good, ConnectionStatsViewModel.Rate(100 + 69, 100));
+        Assert.Equal(SignalRating.Fair, ConnectionStatsViewModel.Rate(100 + 70, 100));
+        Assert.Equal(SignalRating.Fair, ConnectionStatsViewModel.Rate(100 + 159, 100));
+        Assert.Equal(SignalRating.Poor, ConnectionStatsViewModel.Rate(100 + 160, 100));
+        Assert.Equal(SignalRating.Poor, ConnectionStatsViewModel.Rate(100 + 299, 100));
+        Assert.Equal(SignalRating.Bad, ConnectionStatsViewModel.Rate(100 + 300, 100));
 
-        var stats = new ConnectionStats();
+        var stats = new ConnectionStatsViewModel();
         Assert.Equal((SignalRating.Unknown, 0, "-"), (stats.Rating, stats.Bars, stats.RoundTripText));
         for (int i = 0; i < 40; i++) Sample(stats, 250); // far away, but steady
         Assert.Equal((SignalRating.Good, 4, 250.0), (stats.Rating, stats.Bars, stats.BaselineMs));
@@ -53,7 +54,7 @@ public class ConnectionStatsTests
     [Fact]
     public void Counts_SinceReset()
     {
-        var stats = new ConnectionStats();
+        var stats = new ConnectionStatsViewModel();
         stats.Reset(new ReceiveStats(100, 10, 4, 7, 0, 0));
         stats.Update(null, default, default, new ReceiveStats(150, 12, 5, 9, 3.25, 40), 32);
         Assert.Equal("-", stats.RoundTripText);

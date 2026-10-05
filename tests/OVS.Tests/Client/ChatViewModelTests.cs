@@ -1,4 +1,5 @@
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -31,7 +32,7 @@ public class ChatViewModelTests
             Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, to, text, DateTimeOffset.UtcNow));
 
         public UserViewModel User(uint id) => Server.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
-        public ChatTab? Private(string title) => Chat.Tabs.SingleOrDefault(t => t.IsPrivate && t.Title == title);
+        public ChatTabViewModel? Private(string title) => Chat.Tabs.SingleOrDefault(t => t.IsPrivate && t.Title == title);
     }
 
     static Fixture Create(P selfPerms = Guest, IEnumerable<Notice>? earlier = null)

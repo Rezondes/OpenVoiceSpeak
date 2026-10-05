@@ -11,6 +11,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Animations;
+using OVS.Client.Models;
 using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;
@@ -25,11 +26,11 @@ public partial class ChatView : UserControl
     /// <summary>True while the list shows its end: new lines then scroll along, otherwise the reader keeps the place.</summary>
     bool atEnd = true;
     ChatViewModel? watched;
-    ChatTab? shownTab;
+    ChatTabViewModel? shownTab;
     bool gliding;
     double glidSet; // where the glide put the list last: anything else is the reader's own scrolling
     readonly HashSet<ChatEntry> arriving = new(ReferenceEqualityComparer.Instance);
-    readonly Dictionary<ChatTab, System.ComponentModel.PropertyChangedEventHandler> tabsWatched = [];
+    readonly Dictionary<ChatTabViewModel, System.ComponentModel.PropertyChangedEventHandler> tabsWatched = [];
 
     public ChatView()
     {
@@ -142,7 +143,7 @@ public partial class ChatView : UserControl
         top.RequestAnimationFrame(Frame);
     }
 
-    void ShowTab(ChatTab? tab)
+    void ShowTab(ChatTabViewModel? tab)
     {
         if (shownTab is not null) shownTab.Entries.CollectionChanged -= OnEntriesChanged;
         shownTab = tab;
@@ -205,12 +206,12 @@ public partial class ChatView : UserControl
     /// An own message: sent, a check shows in place of the clock and fades; refused, "nicht gesendet" shakes. A waiting
     /// mark ends in two steps (no longer waiting, then maybe an error), so the outcome is read once both are in.
     /// </summary>
-    void WatchSending(ChatEntry entry, ChatSending sending)
+    void WatchSending(ChatEntry entry, ChatSendingViewModel sending)
     {
         bool wasWaiting = sending.IsWaiting, queued = false;
         sending.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName != nameof(ChatSending.IsWaiting) && e.PropertyName != nameof(ChatSending.IsFailed) || queued) return;
+            if (e.PropertyName != nameof(ChatSendingViewModel.IsWaiting) && e.PropertyName != nameof(ChatSendingViewModel.IsFailed) || queued) return;
             queued = true;
             Dispatcher.UIThread.Post(() =>
             {
@@ -275,18 +276,18 @@ public partial class ChatView : UserControl
 
     void OnTabsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        foreach (ChatTab tab in e.OldItems ?? Array.Empty<ChatTab>())
+        foreach (ChatTabViewModel tab in e.OldItems ?? Array.Empty<ChatTabViewModel>())
             if (tabsWatched.Remove(tab, out var handler)) tab.PropertyChanged -= handler; // a closed private tab
-        foreach (ChatTab tab in e.NewItems ?? Array.Empty<ChatTab>()) WatchTab(tab);
+        foreach (ChatTabViewModel tab in e.NewItems ?? Array.Empty<ChatTabViewModel>()) WatchTab(tab);
     }
 
-    void WatchTab(ChatTab tab)
+    void WatchTab(ChatTabViewModel tab)
     {
         if (tabsWatched.ContainsKey(tab)) return;
         int before = tab.Unread;
         System.ComponentModel.PropertyChangedEventHandler handler = (_, e) =>
         {
-            if (e.PropertyName != nameof(ChatTab.Unread)) return;
+            if (e.PropertyName != nameof(ChatTabViewModel.Unread)) return;
             int now = tab.Unread; // read here, shown on the UI thread
             bool popIn = before == 0;
             if (now > before && Motion.IsAnimated) Dispatcher.UIThread.Post(() => Badge(tab, popIn), DispatcherPriority.Background);
@@ -296,7 +297,7 @@ public partial class ChatView : UserControl
         tab.PropertyChanged += handler;
     }
 
-    void Badge(ChatTab tab, bool popIn)
+    void Badge(ChatTabViewModel tab, bool popIn)
     {
         if (Tabs.ContainerFromItem(tab)?.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("count")) is not { } badge) return;
         Animatable target = popIn ? badge : (Animatable?)badge.Child ?? badge;

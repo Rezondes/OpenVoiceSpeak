@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:m="using:OVS.Client.Models"
              xmlns:l="using:OVS.Client.Localization"
              xmlns:ctl="using:OVS.Client.Controls"
              xmlns:anim="using:OVS.Client.Animations"
@@ -54,7 +55,7 @@
                 <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Microphone}" />
                 <ComboBox ItemsSource="{Binding Inputs}" SelectedItem="{Binding SelectedInput}" HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:AudioDeviceOption">
+                    <DataTemplate x:DataType="m:AudioDeviceOption">
                       <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                     </DataTemplate>
                   </ComboBox.ItemTemplate>
@@ -64,7 +65,7 @@
                 <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Speaker}" />
                 <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
                   <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:AudioDeviceOption">
+                    <DataTemplate x:DataType="m:AudioDeviceOption">
                       <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                     </DataTemplate>
                   </ComboBox.ItemTemplate>
@@ -189,7 +190,7 @@
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:KeyBindingItem">
+                  <DataTemplate x:DataType="vm:KeyBindingViewModel">
                     <DockPanel>
                       <StackPanel Classes="keyActions" Orientation="Horizontal" Spacing="4">
                         <Button Command="{Binding EditCommand}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChangeFmt}}">
@@ -255,7 +256,7 @@
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:SoundRow">
+                  <DataTemplate x:DataType="vm:SoundRowViewModel">
                     <Border Classes="soundRow">
                       <StackPanel Spacing="4">
                         <!-- Package 77: one line when wide; when stacked the controls move below play and name (Controls.axaml) -->
@@ -308,7 +309,7 @@
               <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Theme}" />
               <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Themes}" SelectedItem="{Binding SelectedTheme}" Classes="settingsChoice">
                 <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ThemeOption">
+                  <DataTemplate x:DataType="m:ThemeOption">
                     <TextBlock Text="{Binding Name}" />
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
@@ -318,7 +319,7 @@
               <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Displays}" SelectedItem="{Binding SelectedDisplay}" Classes="settingsChoice"
                         AutomationProperties.Name="{x:Static l:Strings.Display_Label}">
                 <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:DisplayOption">
+                  <DataTemplate x:DataType="m:DisplayOption">
                     <TextBlock Text="{Binding Name}" />
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
@@ -329,7 +330,7 @@
               <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding SelectedLanguage}" Classes="settingsChoice"
                         AutomationProperties.Name="{x:Static l:Strings.Settings_Language}">
                 <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LanguageOption">
+                  <DataTemplate x:DataType="m:LanguageOption">
                     <TextBlock Text="{Binding Name}" />
                   </DataTemplate>
                 </ComboBox.ItemTemplate>

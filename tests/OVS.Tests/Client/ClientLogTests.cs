@@ -1,4 +1,5 @@
 using OVS.Client.Audio;
+using OVS.Client.Dialogs;
 using OVS.Client.Input;
 using OVS.Client.Logging;
 using OVS.Client.Net;

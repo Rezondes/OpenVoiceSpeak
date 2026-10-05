@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Dialogs;
+using OVS.Client.Models;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
@@ -35,7 +37,7 @@ public sealed class LeaveGuardTests : IDisposable
         }
     }
 
-    Dialogs Dialogs() => new()
+    DialogCallbacks Dialogs() => new()
     {
         AskLeave = () =>
         {
@@ -77,22 +79,22 @@ public sealed class LeaveGuardTests : IDisposable
         admin.SelectedGroup = admin.Groups.First(g => g.IsEditable);
         var name = admin.SelectedGroup.Name;
         Rename(admin, name + "2");
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Groups));
+        Assert.True(admin.HasChanges(AdminPlace.Groups));
         Rename(admin, name);
-        Assert.False(admin.HasChanges(AdminViewModel.Place.Groups));
+        Assert.False(admin.HasChanges(AdminPlace.Groups));
         await admin.NewGroupCommand.ExecuteAsync(null);
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Groups)); // a new group is unsaved by itself
-        admin.Discard(AdminViewModel.Place.Groups);
-        Assert.False(admin.HasChanges(AdminViewModel.Place.Groups));
+        Assert.True(admin.HasChanges(AdminPlace.Groups)); // a new group is unsaved by itself
+        admin.Discard(AdminPlace.Groups);
+        Assert.False(admin.HasChanges(AdminPlace.Groups));
 
         admin.ServerName = "Neu";
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Server));
-        admin.Discard(AdminViewModel.Place.Server);
-        Assert.False(admin.HasChanges(AdminViewModel.Place.Server));
+        Assert.True(admin.HasChanges(AdminPlace.Server));
+        admin.Discard(AdminPlace.Server);
+        Assert.False(admin.HasChanges(AdminPlace.Server));
 
         foreach (var row in admin.Links.Rows) row.IsSelected = true;
         admin.Links.UnlinkSelectedCommand.Execute(null);
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Links));
+        Assert.True(admin.HasChanges(AdminPlace.Links));
         Assert.Equal(0, asked);
     }
 
@@ -168,7 +170,7 @@ public sealed class LeaveGuardTests : IDisposable
         vm.Server!.Apply(new Error(update.RequestId, Codes.PermissionDenied));
         await leaving;
         Assert.True(vm.IsAdminPage);
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Groups));
+        Assert.True(admin.HasChanges(AdminPlace.Groups));
 
         // confirmed by the server's groups: the page goes
         answers.Enqueue(LeaveChoice.Save);
@@ -321,7 +323,7 @@ public sealed class LeaveGuardTests : IDisposable
         var self = vm.Server!.Mirror.Users[vm.Server.Mirror.SelfId];
         vm.Server.Apply(new UserUpdated(self with { SelfMuted = !self.SelfMuted })); // something else changes
         Assert.Equal("Umbenannt", admin.SelectedGroup!.Name);
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Groups));
+        Assert.True(admin.HasChanges(AdminPlace.Groups));
     }
 
     /// <summary>Found in review: the server keeps line breaks as LF and a trimmed name; a saved edit counts as saved, and untouched fields follow another admin.</summary>
@@ -338,9 +340,9 @@ public sealed class LeaveGuardTests : IDisposable
 
         admin.ServerName = "Neu ";
         admin.WelcomeText = "Zeile 1" + (char)13 + (char)10 + "Zeile 2";
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Server));
+        Assert.True(admin.HasChanges(AdminPlace.Server));
         vm.Server.Apply(new ServerSettingsChanged(vm.Server.Mirror.Settings with { Name = "Neu", WelcomeText = "Zeile 1" + (char)10 + "Zeile 2" }));
-        Assert.False(admin.HasChanges(AdminViewModel.Place.Server));
+        Assert.False(admin.HasChanges(AdminPlace.Server));
     }
 
     /// <summary>Found in review: sliders turn floats into percent and back, which is not exact; opening is no change.</summary>
@@ -387,7 +389,7 @@ public sealed class LeaveGuardTests : IDisposable
         Assert.Equal("geheim", admin.NewPassword);
         Assert.Equal("Mein Name", admin.ServerName); // the edit stays
         Assert.Equal("Neu von jemand anderem", admin.WelcomeText); // the untouched field follows
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Server));
+        Assert.True(admin.HasChanges(AdminPlace.Server));
     }
 
     /// <summary>Found in the second review: an edited row built for rights the user no longer has is rebuilt for the new ones.</summary>
@@ -404,7 +406,7 @@ public sealed class LeaveGuardTests : IDisposable
         vm.Server.Apply(new UserUpdated(self with { Permissions = Permission.All & ~Permission.GroupsManage }));
         var row = admin.Groups.Single(g => g.Id == id);
         Assert.True(row.IsReadOnly);
-        Assert.False(admin.HasChanges(AdminViewModel.Place.Groups)); // nothing that could still be saved
+        Assert.False(admin.HasChanges(AdminPlace.Groups)); // nothing that could still be saved
     }
 
     /// <summary>Found in the third review: an edited group follows another admin in what the user did not touch, so a save keeps both.</summary>
@@ -423,7 +425,7 @@ public sealed class LeaveGuardTests : IDisposable
         var shown = admin.Groups.Single(g => g.Id == WellKnownGroups.Guest);
         Assert.Equal("Besucher", shown.Name); // the edit stays
         Assert.True(shown.Permissions.Has(Permission.ChatServer)); // the other admin s change is shown too
-        Assert.True(admin.HasChanges(AdminViewModel.Place.Groups));
+        Assert.True(admin.HasChanges(AdminPlace.Groups));
         Assert.Equal(guest.Permissions | Permission.ChatServer, shown.Permissions);
     }
 }

@@ -1,3 +1,4 @@
+using OVS.Client.Dialogs;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -16,7 +17,7 @@ public static class FakeServers
 {
     public static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid();
 
-    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, Dialogs? dialogs = null)
+    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, DialogCallbacks? dialogs = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "Start", 0), new ChannelInfo(Raid, "Raid", "", 1)],

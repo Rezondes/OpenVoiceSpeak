@@ -13,7 +13,7 @@ public class PendingTests
     public void BusyVisibleWithin150ms_NotForFastActions()
     {
         var time = new ManualTimeProvider();
-        var pending = new Pending(time);
+        var pending = new PendingViewModel(time);
 
         // answered after 100 ms: running at once, but the busy UI never shows
         pending.Start("r1");
@@ -36,7 +36,7 @@ public class PendingTests
         Assert.False(pending.IsBusy);
         time.Advance(Ms(1));
         Assert.True(pending.IsBusy);
-        Assert.Contains(nameof(Pending.IsBusy), seen);
+        Assert.Contains(nameof(PendingViewModel.IsBusy), seen);
         time.Advance(Ms(850));
         Assert.True(pending.IsBusy);
         pending.Done();
@@ -48,7 +48,7 @@ public class PendingTests
     public void NoAnswer_TimesOutWithError_Retryable()
     {
         var time = new ManualTimeProvider();
-        var pending = new Pending(time);
+        var pending = new PendingViewModel(time);
         int timeouts = 0;
         pending.TimedOut += () => timeouts++;
 

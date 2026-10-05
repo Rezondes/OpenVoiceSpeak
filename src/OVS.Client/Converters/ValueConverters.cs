@@ -38,7 +38,7 @@ public static class ValueConverters
 
     /// <summary>Package 81: a log line as runs, the matches of the line filter highlighted.</summary>
     public static readonly IValueConverter LogSegments =
-        new FuncValueConverter<IReadOnlyList<OVS.Client.ViewModels.LogSegment>?, Avalonia.Controls.Documents.InlineCollection?>(segments =>
+        new FuncValueConverter<IReadOnlyList<OVS.Client.Models.LogSegment>?, Avalonia.Controls.Documents.InlineCollection?>(segments =>
         {
             if (segments is null) return null;
             var inlines = new Avalonia.Controls.Documents.InlineCollection();

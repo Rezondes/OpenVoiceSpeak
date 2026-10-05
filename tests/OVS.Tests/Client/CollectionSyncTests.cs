@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
-using OVS.Client.ViewModels;
+using OVS.Client.Collections;
+using OVS.Client.Services;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;

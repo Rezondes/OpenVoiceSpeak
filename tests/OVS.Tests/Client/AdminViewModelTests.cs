@@ -1,4 +1,7 @@
+using OVS.Client.Collections;
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -26,7 +29,7 @@ public class AdminViewModelTests
     /// <param name="reply">Package 75: the server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
     /// <param name="groupIds">Package 89: the own groups; upload and restore need the Admin group.</param>
     static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false, ServerLimits? limits = null,
-        Dialogs? dialogs = null, Func<Request, Message?>? reply = null, IReadOnlyList<Guid>? groupIds = null)
+        DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null, IReadOnlyList<Guid>? groupIds = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword, null, limits), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
@@ -302,7 +305,7 @@ public class AdminViewModelTests
     {
         var asked = new List<string>();
         bool answer = false;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             Confirm = text => { asked.Add("delete " + text); return Task.FromResult(answer); },
             ConfirmRestore = name => { asked.Add("restore " + name); return Task.FromResult(answer); },
@@ -352,7 +355,7 @@ public class AdminViewModelTests
     {
         int warned = 0;
         bool answer = false;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             ConfirmBackupDownload = () => { warned++; return Task.FromResult(answer); },
             ConfirmRestore = _ => Task.FromResult(true),
@@ -466,7 +469,7 @@ public class AdminViewModelTests
             var info = new BackupInfo("hochgeladen_2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 1, 5, 9, 0, 0, TimeSpan.Zero), archive.Length, "dev.0000");
             var asked = new List<string>();
             bool answer = false;
-            var dialogs = new Dialogs { ConfirmRestore = title => { asked.Add(title); return Task.FromResult(answer); } };
+            var dialogs = new DialogCallbacks { ConfirmRestore = title => { asked.Add(title); return Task.FromResult(answer); } };
             AdminViewModel? vm = null;
             var received = new MemoryStream();
             var busy = new List<bool>();
@@ -918,7 +921,7 @@ public class AdminViewModelTests
     {
         var answer = false;
         string? asked = null;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             ConfirmDeleteUser = name =>
             {
@@ -972,7 +975,7 @@ public class AdminViewModelTests
 
         BanChoice? choice = new("spam", 60, true);
         bool? ipOffered = null;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             Ban = (_, ipKnown, _) =>
             {
@@ -1200,7 +1203,7 @@ public class AdminViewModelTests
         var notices = new List<string>();
         server.Notice += notices.Add;
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
-        GroupToggle Box(string name) => Assert.Single(vm.Users).Toggles.Single(t => t.Name == name);
+        GroupToggleViewModel Box(string name) => Assert.Single(vm.Users).Toggles.Single(t => t.Name == name);
 
         foreach (var (name, on) in new[] { ("Moderator", true), ("Gast", false), ("Moderator", false), ("Gast", true), ("Moderator", true) })
         {
@@ -1227,7 +1230,7 @@ public class AdminViewModelTests
         server.Apply(new UserJoined(Online(2, "fpX", "Xaver"))); // a refresh is on its way when the box is ticked
         var older = sent.OfType<ListUsers>().Single().RequestId;
         server.Apply(new UserList("r", [before]));
-        GroupToggle Mod() => Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Moderator");
+        GroupToggleViewModel Mod() => Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Moderator");
 
         Mod().IsChecked = true;
         await Mod().ToggleCommand.ExecuteAsync(null);
@@ -1247,7 +1250,7 @@ public class AdminViewModelTests
     public async Task UnbanThenBan_BanListRefreshedOnce()
     {
         var ban = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
-        var dialogs = new Dialogs { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) };
+        var dialogs = new DialogCallbacks { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.Speak, dialogs: dialogs);
         server.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
             Known("fpB", "Bert", bans: [ban]) with { CanBeModeratedByMe = true }]));
@@ -1313,7 +1316,7 @@ public class AdminViewModelTests
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.BackupsManage | P.LogsView | P.Speak);
         var time = (ManualTimeProvider)server.Time;
         await vm.RequestListsAsync();
-        Pending[] loads = [vm.UsersLoad, vm.BansLoad, vm.BackupsLoad, vm.Logs.FilesLoad];
+        PendingViewModel[] loads = [vm.UsersLoad, vm.BansLoad, vm.BackupsLoad, vm.Logs.FilesLoad];
         Assert.All(loads, l => Assert.True(l.IsRunning && !l.IsBusy)); // nothing shows before 150 ms
         time.Advance(ShowAfter);
         Assert.All(loads, l => Assert.True(l.IsFirstLoad && !l.IsRefreshing));
@@ -1348,7 +1351,7 @@ public class AdminViewModelTests
     [Fact]
     public async Task BackupCreateAndRestore_ShowBusy()
     {
-        var dialogs = new Dialogs { ConfirmRestore = _ => Task.FromResult(true) };
+        var dialogs = new DialogCallbacks { ConfirmRestore = _ => Task.FromResult(true) };
         var (vm, server, sent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
         var time = (ManualTimeProvider)server.Time;
         BackupInfo older = new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 900, "dev");
@@ -1377,7 +1380,7 @@ public class AdminViewModelTests
     [Fact]
     public async Task CardActions_BusyUntilConfirmed()
     {
-        var dialogs = new Dialogs { Confirm = _ => Task.FromResult(true), ConfirmDeleteUser = _ => Task.FromResult(true) };
+        var dialogs = new DialogCallbacks { Confirm = _ => Task.FromResult(true), ConfirmDeleteUser = _ => Task.FromResult(true) };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.UserDelete | P.UserMute | P.GroupsAssign | P.Speak | P.UserKick,
             dialogs: dialogs);
         var time = (ManualTimeProvider)server.Time;

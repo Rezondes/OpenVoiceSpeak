@@ -19,6 +19,7 @@ using OVS.Client.Converters;
 using OVS.Client.Dialogs;
 using OVS.Client;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.Net.Updates;
 using OVS.Client.Settings;
@@ -237,7 +238,7 @@ public sealed class UiSmokeTests : IDisposable
         // the waiting states show 150 ms after their request (Package 97); they must not appear between the frames, so every
         // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
         var admin = vm.AdminPage!;
-        Pending[] loads = [admin.UsersLoad, admin.BansLoad, admin.BackupsLoad, admin.Logs.FilesLoad];
+        PendingViewModel[] loads = [admin.UsersLoad, admin.BansLoad, admin.BackupsLoad, admin.Logs.FilesLoad];
         WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
         Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
         LooksLikeBefore("admin");

@@ -4,7 +4,10 @@ using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
+using OVS.Client.Collections;
+using OVS.Client.Dialogs;
 using OVS.Client.Input;
+using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -307,7 +310,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await using var locked = await LockedServerAsync();
         int asked = 0;
-        vm.Dialogs = new Dialogs { AskPassword = _ => { asked++; return Task.FromResult<PasswordAnswer?>(null); } };
+        vm.Dialogs = new DialogCallbacks { AskPassword = _ => { asked++; return Task.FromResult<PasswordAnswer?>(null); } };
         await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna", PasswordProtector.Protect("richtig")));
         Assert.True(await OnUi(() => vm.IsConnected));
         Assert.Equal(0, asked);
@@ -318,7 +321,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await using var locked = await LockedServerAsync();
         var answers = new Queue<PasswordAnswer?>([new PasswordAnswer("auch falsch", true), new PasswordAnswer("richtig", true)]);
-        vm.Dialogs = new Dialogs { AskPassword = _ => Task.FromResult(answers.Dequeue()) };
+        vm.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult(answers.Dequeue()) };
         await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna", PasswordProtector.Protect("veraltet")));
 
         Assert.True(await OnUi(() => vm.IsConnected));
@@ -331,7 +334,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task Bookmark_AskPassword_Cancel_StaysDisconnected()
     {
         await using var locked = await LockedServerAsync();
-        vm.Dialogs = new Dialogs { AskPassword = _ => Task.FromResult<PasswordAnswer?>(null) };
+        vm.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult<PasswordAnswer?>(null) };
         await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna"));
         Assert.False(await OnUi(() => vm.IsConnected));
         Assert.StartsWith("Abgelehnt", await OnUi(() => vm.Status));
@@ -347,7 +350,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             vm.Settings.Save(dir);
             return 0;
         });
-        vm.Dialogs = new Dialogs
+        vm.Dialogs = new DialogCallbacks
         {
             EditBookmark = b => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", "pw", SavePassword: true)),
             Confirm = _ => Task.FromResult(true),
@@ -392,7 +395,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             vm.Updates = new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running);
             vm.Installer = new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "gibt-es-nicht.exe"), _ => offered.Add("neu gestartet"));
-            vm.Dialogs = new Dialogs { OfferUpdate = offer => { offered.Add(offer.Version); return Task.FromResult(false); } };
+            vm.Dialogs = new DialogCallbacks { OfferUpdate = offer => { offered.Add(offer.Version); return Task.FromResult(false); } };
             return 0;
         });
         await ui.InvokeAsync<object?>(async () =>
@@ -444,7 +447,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             File.WriteAllText(Path.Combine(dir, "OVS.Client.exe"), "alt");
             vm.Updates = new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running);
             vm.Installer = new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "OVS.Client.exe"), _ => { });
-            vm.Dialogs = new Dialogs { OfferUpdate = _ => Task.FromResult(true) };
+            vm.Dialogs = new DialogCallbacks { OfferUpdate = _ => Task.FromResult(true) };
             vm.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(MainViewModel.UpdateInProgress)) seen.Add(vm.UpdateInProgress);
@@ -697,8 +700,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!", time: serverTime);
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider(); // the voice client's and the refresh's clock
-        ConnectionStats? shown = null;
-        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime, vm.Clock, vm.Dialogs) = (relay.EndPoint, time, time, new Dialogs
+        ConnectionStatsViewModel? shown = null;
+        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime, vm.Clock, vm.Dialogs) = (relay.EndPoint, time, time, new DialogCallbacks
         {
             ConnectionDetails = s =>
             {
@@ -1680,7 +1683,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var secret = Guid.NewGuid();
         await using var own = await TestServer.StartAsync(SecretChannel(secret));
         int asked = 0;
-        vm.Dialogs = new Dialogs { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } };
+        vm.Dialogs = new DialogCallbacks { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } };
         await ConnectTo(own);
         await OnUi(() => vm.Server!.JoinAsync(secret));
         Assert.Equal(secret, await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret));
@@ -1978,7 +1981,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             TestServer.Grant(adminId, "Admin")(d);
         });
         await using var admin = await TestClient.ConnectAsync(own, "admin", adminId);
-        vm.Dialogs = new Dialogs { AskChannelPassword = _ => Task.FromResult<string?>("pw") };
+        vm.Dialogs = new DialogCallbacks { AskChannelPassword = _ => Task.FromResult<string?>("pw") };
         await ConnectTo(own);
         await OnUi(() => vm.Server!.JoinAsync(secret));
         await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret);

@@ -1,3 +1,4 @@
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OVS.Shared.Protocol;
@@ -5,14 +6,6 @@ using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Groups;
 
 namespace OVS.Client.ViewModels;
-
-/// <summary>Package 93: one group of the "Nur für Gruppen" list.</summary>
-public sealed partial class GroupChoice(Guid id, string name, bool isChecked) : ObservableObject
-{
-    public Guid Id { get; } = id;
-    public string Name { get; } = name;
-    [ObservableProperty] bool isChecked = isChecked;
-}
 
 /// <summary>
 /// Package 54: one dialog for a channel with every option. Creating opens it empty, editing with the channel's data;
@@ -40,8 +33,8 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     public decimal MaxSlots => ProtocolInfo.MaxChannelUsers;
 
     /// <summary>Package 93: every group of the server, in its order, ticked when in the channel's lock.</summary>
-    public IReadOnlyList<GroupChoice> Groups { get; } =
-        (groups ?? []).Select(g => new GroupChoice(g.Id, g.Name, current.AllowedGroupIds?.Contains(g.Id) == true)).ToList();
+    public IReadOnlyList<GroupChoiceViewModel> Groups { get; } =
+        (groups ?? []).Select(g => new GroupChoiceViewModel(g.Id, g.Name, current.AllowedGroupIds?.Contains(g.Id) == true)).ToList();
     public bool CanLockGroups => mode != ChannelDialogMode.EditDefault;
     public string GroupLockHint => CanLockGroups ? Strings.Dlg_GroupLockHint : Strings.Dlg_GroupLockDefault;
 

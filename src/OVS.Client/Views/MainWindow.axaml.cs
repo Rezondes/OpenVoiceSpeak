@@ -12,6 +12,7 @@ using OVS.Client.Behaviors;
 using OVS.Client.Controls;
 using OVS.Client.Dialogs;
 using OVS.Client.Layout;
+using OVS.Client.Models;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 

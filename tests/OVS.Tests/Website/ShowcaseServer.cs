@@ -1,4 +1,5 @@
 using OVS.Client.Audio.Playback;
+using OVS.Client.Dialogs;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -46,7 +47,7 @@ public sealed class ShowcaseServer
 
     public string T(string de, string en) => English ? en : de;
 
-    public ShowcaseServer(bool english, Dialogs? dialogs = null)
+    public ShowcaseServer(bool english, DialogCallbacks? dialogs = null)
     {
         English = english;
         var everyone = Permission.Speak | Permission.ChatServer | Permission.ChatChannel | Permission.ChatPrivate;

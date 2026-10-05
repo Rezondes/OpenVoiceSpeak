@@ -12,7 +12,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Behaviors;
-using OVS.Client.ViewModels;
+using OVS.Client.Collections;
 
 namespace OVS.Client.Animations;
 

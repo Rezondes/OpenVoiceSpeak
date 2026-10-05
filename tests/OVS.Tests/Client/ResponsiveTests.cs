@@ -13,6 +13,7 @@ using OVS.Client.Dialogs;
 using OVS.Client.Input;
 using OVS.Client.Layout;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
@@ -726,9 +727,9 @@ public sealed class ResponsiveTests : IDisposable
     };
 
     /// <summary>Package 133: connection details with long figures.</summary>
-    static ConnectionStats Measured()
+    static ConnectionStatsViewModel Measured()
     {
-        var stats = new ConnectionStats();
+        var stats = new ConnectionStatsViewModel();
         stats.Update(TimeSpan.FromMilliseconds(1234), new OVS.Shared.Voice.LossReport(250, 25), new OVS.Shared.Voice.LossReport(4999, 1234),
             new OVS.Client.Audio.Playback.ReceiveStats(100_000, 1000, 500, 12_345, 123.4, 200), 128);
         return stats;

@@ -602,7 +602,7 @@ public sealed class SettingsTests : IDisposable
         vm.VoiceActivation = true;
         Dispatcher.UIThread.RunJobs();
         Assert.False(slider.IsEffectivelyVisible); // nothing it would act on
-        vm.KeyBindings.Add(new KeyBindingItem(new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(0x71)), vm));
+        vm.KeyBindings.Add(new KeyBindingViewModel(new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(0x71)), vm));
         Dispatcher.UIThread.RunJobs();
         Assert.True(slider.IsEffectivelyVisible); // link push-to-talk works with voice activation too
         window.Close();
@@ -798,11 +798,11 @@ public sealed class SettingsTests : IDisposable
         Assert.False(vm.ShowPttHint);
         vm.VoiceActivation = false;
         Assert.True(vm.ShowPttHint);
-        var ptt = new KeyBindingItem(new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1)), vm);
+        var ptt = new KeyBindingViewModel(new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1)), vm);
         vm.KeyBindings.Add(ptt);
         Assert.False(vm.ShowPttHint);
         vm.KeyBindings.Remove(ptt);
-        vm.KeyBindings.Add(new KeyBindingItem(new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x4D)), vm));
+        vm.KeyBindings.Add(new KeyBindingViewModel(new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x4D)), vm));
         Assert.True(vm.ShowPttHint); // another key does not help
         Assert.True(changes.Count(c => c == nameof(SettingsViewModel.ShowPttHint)) >= 4);
     }

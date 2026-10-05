@@ -2,93 +2,11 @@ using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OVS.Client.Models;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Chat;
 
 namespace OVS.Client.ViewModels;
-
-public enum ChatTabKind { General, Channel, Private }
-
-/// <summary>
-/// One line in a chat tab: a message (From set), a system notice (Notice set) or a plain marker such as
-/// "you entered the channel" (neither).
-/// </summary>
-/// <param name="Sending">Package 98: an own message on its way to the server, shown before the server's echo.</param>
-public sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, ChatSending? Sending = null)
-{
-    public string TimeText => Time.ToString("HH:mm");
-    public bool IsMessage => From is not null;
-    public bool IsOwnMessage => IsMessage && IsOwn;     // Package 64: right, as a bubble without avatar
-    public bool IsOtherMessage => IsMessage && !IsOwn;  // left, with avatar and name
-    public bool IsNotice => Notice is not null;
-    public bool IsMarker => From is null && Notice is null;
-    public bool IsInfo => Notice is NoticeKind.Info;
-    public bool IsWelcome => Notice is NoticeKind.Welcome;
-    public bool IsWarning => Notice is NoticeKind.Warning;
-    public bool IsError => Notice is NoticeKind.Error;
-}
-
-/// <summary>
-/// Package 98 (A113): an own message shown at once, greyed with a clock until the server's echo; refused or without an
-/// echo within 10 s it is marked "nicht gesendet" and can be sent again.
-/// </summary>
-public sealed partial class ChatSending : ObservableObject
-{
-    readonly Func<Pending, Task> send;
-
-    public ChatSending(Pending pending, Func<Pending, Task> send)
-    {
-        Pending = pending;
-        this.send = send;
-        pending.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is not (nameof(Pending.IsRunning) or nameof(Pending.Error))) return;
-            OnPropertyChanged(nameof(IsWaiting));
-            OnPropertyChanged(nameof(IsFailed));
-        };
-    }
-
-    public Pending Pending { get; }
-    public bool IsWaiting => Pending.IsRunning;
-    public bool IsFailed => Pending.HasError;
-
-    [RelayCommand]
-    Task Retry() => IsWaiting ? Task.CompletedTask : send(Pending);
-}
-
-/// <param name="partner">Private tabs (Package 33): the partner's fingerprint, so the tab survives a reconnect.</param>
-public sealed partial class ChatTab(ChatTabKind kind, string title, string? partner = null) : ObservableObject
-{
-    const int MaxEntries = 500;
-
-    [ObservableProperty] string title = title;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasUnread))]
-    int unread;
-    /// <summary>Private tabs: whether the partner is online.</summary>
-    [ObservableProperty] bool isOnline = true;
-
-    public ChatTabKind Kind { get; } = kind;
-    public string? Partner { get; } = partner;
-    public uint? PartnerSession { get; internal set; }
-    public bool IsGeneral => Kind == ChatTabKind.General;
-    public bool IsChannel => Kind == ChatTabKind.Channel;
-    public bool IsPrivate => Kind == ChatTabKind.Private;
-    public bool HasUnread => Unread > 0;
-    public ObservableCollection<ChatEntry> Entries { get; } = [];
-
-    internal Action<ChatTab>? Closing { get; init; }
-
-    [RelayCommand]
-    void Close() => Closing?.Invoke(this);
-
-    internal void Add(ChatEntry entry, bool countUnread)
-    {
-        Entries.Add(entry);
-        while (Entries.Count > MaxEntries) Entries.RemoveAt(0);
-        if (countUnread) Unread++;
-    }
-}
 
 /// <summary>
 /// The chat in the main area (Package 32): "Allgemein" with server-wide messages and system notices, the
@@ -100,13 +18,13 @@ public sealed partial class ChatViewModel : ObservableObject
 
     readonly ServerViewModel server;
     /// <summary>Private tabs by partner fingerprint, closed ones included: reopening keeps the history (A27).</summary>
-    readonly Dictionary<string, ChatTab> privateTabs = [];
+    readonly Dictionary<string, ChatTabViewModel> privateTabs = [];
     Guid? channelId;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanWrite), nameof(NoRightHint), nameof(Placeholder))]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
-    ChatTab selected;
+    ChatTabViewModel selected;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCounter), nameof(CounterText), nameof(IsTooLong))]
@@ -120,8 +38,8 @@ public sealed partial class ChatViewModel : ObservableObject
     public ChatViewModel(ServerViewModel server, IEnumerable<Notice>? earlier = null)
     {
         this.server = server;
-        General = new ChatTab(ChatTabKind.General, Strings.Chat_General);
-        ChannelTab = new ChatTab(ChatTabKind.Channel, "");
+        General = new ChatTabViewModel(ChatTabKind.General, Strings.Chat_General);
+        ChannelTab = new ChatTabViewModel(ChatTabKind.Channel, "");
         Tabs = [General, ChannelTab];
         selected = General;
         foreach (var n in earlier ?? []) General.Add(new ChatEntry(n.Time, n.Text, Notice: n.Kind), countUnread: false);
@@ -133,9 +51,9 @@ public sealed partial class ChatViewModel : ObservableObject
         OnStateChanged(StateChange.All);
     }
 
-    public ObservableCollection<ChatTab> Tabs { get; }
-    public ChatTab General { get; }
-    public ChatTab ChannelTab { get; }
+    public ObservableCollection<ChatTabViewModel> Tabs { get; }
+    public ChatTabViewModel General { get; }
+    public ChatTabViewModel ChannelTab { get; }
 
     public bool CanWrite => Selected.Kind switch
     {
@@ -157,7 +75,7 @@ public sealed partial class ChatViewModel : ObservableObject
     public bool IsTooLong => Draft.Length > ProtocolInfo.MaxChatLength;
     public string CounterText => $"{Draft.Length} / {ProtocolInfo.MaxChatLength}";
 
-    partial void OnSelectedChanged(ChatTab value)
+    partial void OnSelectedChanged(ChatTabViewModel value)
     {
         value.Unread = 0;
         ComposerError = null;
@@ -166,7 +84,7 @@ public sealed partial class ChatViewModel : ObservableObject
     public void AddNotice(Notice notice) =>
         Add(General, new ChatEntry(notice.Time, notice.Text, Notice: notice.Kind));
 
-    void Add(ChatTab tab, ChatEntry entry, bool countUnread = true) => tab.Add(entry, countUnread && tab != Selected && !entry.IsOwn);
+    void Add(ChatTabViewModel tab, ChatEntry entry, bool countUnread = true) => tab.Add(entry, countUnread && tab != Selected && !entry.IsOwn);
 
     void OnChat(ChatMessage m)
     {
@@ -194,25 +112,25 @@ public sealed partial class ChatViewModel : ObservableObject
     /// <summary>"Privatnachricht" on a user: opens or brings back the tab and switches to it.</summary>
     public void OpenPrivate(string fingerprint) => Selected = PrivateTab(fingerprint);
 
-    ChatTab PrivateTab(string fingerprint)
+    ChatTabViewModel PrivateTab(string fingerprint)
     {
         if (!privateTabs.TryGetValue(fingerprint, out var tab))
         {
-            privateTabs[fingerprint] = tab = new ChatTab(ChatTabKind.Private, "", fingerprint) { Closing = CloseTab };
+            privateTabs[fingerprint] = tab = new ChatTabViewModel(ChatTabKind.Private, "", fingerprint) { Closing = CloseTab };
             SyncPartner(tab);
         }
         if (!Tabs.Contains(tab)) Tabs.Add(tab);
         return tab;
     }
 
-    void CloseTab(ChatTab tab)
+    void CloseTab(ChatTabViewModel tab)
     {
         if (Selected == tab) Selected = General;
         Tabs.Remove(tab);
     }
 
     /// <summary>The title follows the nickname, the input follows whether the partner is online.</summary>
-    void SyncPartner(ChatTab tab)
+    void SyncPartner(ChatTabViewModel tab)
     {
         var user = server.Mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == tab.Partner);
         if (user is not null) tab.Title = "@" + user.Nickname;
@@ -269,8 +187,8 @@ public sealed partial class ChatViewModel : ObservableObject
         Draft = "";
         ComposerError = null;
         // Package 98: shown at once, greyed until the server's echo
-        Task Send(Pending pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
-        var sending = new ChatSending(server.NewPending(), Send);
+        Task Send(PendingViewModel pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
+        var sending = new ChatSendingViewModel(server.NewPending(), Send);
         Add(tab, new ChatEntry(DateTime.Now, text, server.Mirror.Self?.Nickname ?? "", IsOwn: true, Sending: sending));
         await Send(sending.Pending);
     }

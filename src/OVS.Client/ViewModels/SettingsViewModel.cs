@@ -6,15 +6,11 @@ using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
+using OVS.Client.Models;
 using OVS.Client.Settings;
 using OVS.Shared;
 
 namespace OVS.Client.ViewModels;
-
-public sealed record AudioDeviceOption(string? Id, string Name);
-public sealed record ThemeOption(AppTheme Value, string Name);
-public sealed record DisplayOption(DisplayMode Value, string Name, string Hint);
-public sealed record LanguageOption(AppLanguage Value, string Name);
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
@@ -71,8 +67,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         TimeProvider? time = null)
     {
         this.keys = keys;
-        Saving = new Pending(time ?? TimeProvider.System, Pending.UiPost());
-        Checking = new Pending(time ?? TimeProvider.System, Pending.UiPost());
+        Saving = new PendingViewModel(time ?? TimeProvider.System, PendingViewModel.UiPost());
+        Checking = new PendingViewModel(time ?? TimeProvider.System, PendingViewModel.UiPost());
         basis = current;
         (savedInputId, savedOutputId) = (current.InputDeviceId, current.OutputDeviceId);
         (inputs, selectedInput, bool inputFellBack) = DeviceOptions(savedInputId, inputDevices);
@@ -91,7 +87,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         echoCancellation = current.EchoCancellation;
         isMusic = current.Transmission == Transmission.Music;
         pttReleaseDelayMs = current.PttReleaseDelayMs;
-        KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
+        KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingViewModel(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
         selectedTheme = Themes.First(t => t.Value == current.Theme);
         selectedDisplay = Displays.First(d => d.Value == current.Display);
@@ -100,20 +96,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         allSoundsOff = !current.SoundsEnabled;
         backgroundOpacityPercent = current.BackgroundOpacity * 100f;
         blurBackground = current.BlurBackground;
-        SoundRows = Enum.GetValues<SoundEvent>().Select(e => new SoundRow(e, current.SoundFor(e), this)).ToList();
+        SoundRows = Enum.GetValues<SoundEvent>().Select(e => new SoundRowViewModel(e, current.SoundFor(e), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
         untouched = ToSettings(basis).ToJson(); // Package 114: what the page shows before anyone touched it
     }
 
     // ---- Package 48: every sound on its own ----
 
-    public IReadOnlyList<SoundRow> SoundRows { get; }
+    public IReadOnlyList<SoundRowViewModel> SoundRows { get; }
     /// <summary>Copies the chosen file into the profile; returns its name there or why it was refused.</summary>
     public Func<string, SoundEvent, (string? File, string? Error)>? ImportSound { get; set; }
     /// <summary>Plays a tone the way the row is set up now, even if it is muted: the user asked for it.</summary>
     public Action<SoundEvent, SoundSetting, float>? PreviewSound { get; set; }
 
-    internal void Preview(SoundRow row) => PreviewSound?.Invoke(row.Event, row.ToSetting() with { Muted = false }, (float)(SoundVolumePercent / 100));
+    internal void Preview(SoundRowViewModel row) => PreviewSound?.Invoke(row.Event, row.ToSetting() with { Muted = false }, (float)(SoundVolumePercent / 100));
 
     internal (string? File, string? Error) Import(string path, SoundEvent sound) => ImportSound?.Invoke(path, sound) ?? (null, null);
 
@@ -121,8 +117,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     public Func<Task<string>>? CheckNow { get; set; }
 
     /// <summary>Package 98: "Speichern" while the audio devices restart, and the update check.</summary>
-    public Pending Saving { get; }
-    public Pending Checking { get; }
+    public PendingViewModel Saving { get; }
+    public PendingViewModel Checking { get; }
 
     [RelayCommand]
     async Task CheckUpdates()
@@ -261,7 +257,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// Package 41: a free list, empty for a new profile. One action may sit on several keys, but one key may not
     /// do two different things.
     /// </summary>
-    public ObservableCollection<KeyBindingItem> KeyBindings { get; }
+    public ObservableCollection<KeyBindingViewModel> KeyBindings { get; }
     public bool HasKeyBindings => KeyBindings.Count > 0;
 
     /// <summary>The overlay with action and key; the view sets it (A20: inside the main window).</summary>
@@ -287,7 +283,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     async Task SetPttKey()
     {
         if (EditKeyBinding is { } edit && await edit(new KeyBinding(KeyAction.PushToTalk, new KeyChord(0)), CaptureAsync) is { } binding)
-            KeyBindings.Add(new KeyBindingItem(binding, this));
+            KeyBindings.Add(new KeyBindingViewModel(binding, this));
     }
 
     internal void OnKeysChanged()
@@ -307,17 +303,17 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     async Task AddKeyBinding()
     {
-        if (EditKeyBinding is { } edit && await edit(null, CaptureAsync) is { } binding) KeyBindings.Add(new KeyBindingItem(binding, this));
+        if (EditKeyBinding is { } edit && await edit(null, CaptureAsync) is { } binding) KeyBindings.Add(new KeyBindingViewModel(binding, this));
     }
 
-    internal async Task EditAsync(KeyBindingItem item)
+    internal async Task EditAsync(KeyBindingViewModel item)
     {
         if (EditKeyBinding is not { } edit || await edit(item.Binding, CaptureAsync) is not { } binding) return;
         item.Binding = binding;
         OnKeysChanged();
     }
 
-    internal void Remove(KeyBindingItem item) => KeyBindings.Remove(item);
+    internal void Remove(KeyBindingViewModel item) => KeyBindings.Remove(item);
 
     /// <summary>Would voice activation send right now?</summary>
     public bool IsAboveThreshold => InputLevelDb >= MeterThresholdDb;
@@ -436,72 +432,4 @@ public sealed partial class SettingsViewModel : ObservableObject
         Display = SelectedDisplay.Value,
         Sounds = SoundRows.Select(r => (r.Event, Setting: r.ToSetting())).Where(r => !r.Setting.IsDefaultFor(r.Event)).ToDictionary(r => r.Event, r => r.Setting),
     }.Clamp();
-}
-
-/// <summary>Package 48: one sound in the settings: play, volume, mute, own file, reset.</summary>
-public sealed partial class SoundRow : ObservableObject
-{
-    readonly SettingsViewModel owner;
-
-    [ObservableProperty] double volumePercent;
-    [ObservableProperty] bool muted;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasOwnFile), nameof(SourceText))]
-    string? file;
-    [ObservableProperty] string? error;
-
-    public SoundRow(SoundEvent sound, SoundSetting setting, SettingsViewModel owner)
-    {
-        this.owner = owner;
-        Event = sound;
-        volumePercent = setting.Volume * 100;
-        muted = setting.Muted;
-        file = setting.File;
-    }
-
-    public SoundEvent Event { get; }
-    public string Label => Strings.ResourceManager.GetString("Sound_" + Event, Strings.Culture) ?? Event.ToString();
-    public bool HasOwnFile => File is not null;
-    public string SourceText => HasOwnFile ? Strings.Ui_CustomSound : Strings.Ui_DefaultSound;
-
-    partial void OnVolumePercentChanged(double value) => VolumePercent = Math.Clamp(value, 0, 100);
-
-    public SoundSetting ToSetting() => new((float)(VolumePercent / 100), Muted, File);
-
-    [RelayCommand]
-    void Play() => owner.Preview(this);
-
-    [RelayCommand]
-    void Reset()
-    {
-        VolumePercent = 100;
-        Muted = ClientSettings.DefaultSound(Event).Muted; // Package 131: the talk key tones go back to off
-        File = null; // the copy goes when the settings are saved
-        Error = null;
-    }
-
-    /// <summary>From the file dialog: a refused file keeps the previous tone.</summary>
-    public void Import(string path)
-    {
-        var (imported, problem) = owner.Import(path, Event);
-        Error = problem;
-        if (imported is not null) File = imported;
-    }
-}
-
-/// <summary>One line of the key list (Package 41): action, key, "Ändern" and "Löschen".</summary>
-public sealed partial class KeyBindingItem(KeyBinding binding, SettingsViewModel owner) : ObservableObject
-{
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Label), nameof(ChordName))]
-    KeyBinding binding = binding;
-
-    public string Label => KeyActions.Label(Binding.Action);
-    public string ChordName => Binding.Chord.Name;
-
-    [RelayCommand]
-    Task Edit() => owner.EditAsync(this);
-
-    [RelayCommand]
-    void Remove() => owner.Remove(this);
 }

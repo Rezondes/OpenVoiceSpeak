@@ -1,4 +1,4 @@
-using OVS.Client.ViewModels;
+using OVS.Client.Collections;
 
 namespace OVS.Tests.Client;
 

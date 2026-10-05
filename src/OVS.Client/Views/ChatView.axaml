@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="using:OVS.Client.Localization"
              xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:m="using:OVS.Client.Models"
              xmlns:anim="using:OVS.Client.Animations"
              xmlns:conv="using:OVS.Client.Converters"
              x:Class="OVS.Client.Views.ChatView"
@@ -18,7 +19,7 @@
           </ItemsPanelTemplate>
         </TabStrip.ItemsPanel>
         <TabStrip.ItemTemplate>
-          <DataTemplate x:DataType="vm:ChatTab">
+          <DataTemplate x:DataType="vm:ChatTabViewModel">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <PathIcon Classes="sm" Data="{StaticResource Icon.Chat}" IsVisible="{Binding IsGeneral}" />
               <PathIcon Classes="sm" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding IsChannel}" />
@@ -75,7 +76,7 @@
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:ChatEntry">
+          <DataTemplate x:DataType="m:ChatEntry">
             <Panel>
               <!-- Package 64: someone else's message on the left: avatar, name, time, text in a neutral bubble (at most 3/4 wide) -->
               <!-- Package 79: columns 75 %, 10 %, 15 %; under narrow the bubble may take 85 % (styles in Controls.axaml) -->

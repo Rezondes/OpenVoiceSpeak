@@ -1,13 +1,14 @@
+using OVS.Client.Collections;
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Sounds;
-using OVS.Client.Input;
+using OVS.Client.Models;
 using OVS.Client.Net;
-using OVS.Client.Net.Updates;
-using OVS.Client.Settings;
+using OVS.Client.Services;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -23,77 +24,6 @@ using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Client.ViewModels;
-
-/// <param name="AllowedGroupIds">Package 93: the channel's group lock; from the dialog null while unchanged, empty to remove it.</param>
-/// <param name="HasPassword">Package 94: into the dialog, whether the channel has a password.</param>
-/// <param name="Password">Package 94: out of the dialog, null = unchanged, empty = remove, else the new password.</param>
-/// <param name="Kind">Package 111: out of the create dialog, a voice channel or a separator.</param>
-/// <param name="Bitrate">Package 132: the channel's kbps, in and out of the dialog.</param>
-public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null,
-    bool HasPassword = false, string? Password = null, ChannelKind Kind = ChannelKind.Voice, int Bitrate = ProtocolInfo.DefaultBitrate);
-
-/// <summary>The channel dialog only offers the channel options when editing (Package 34).</summary>
-public enum ChannelDialogMode { Create, Edit, EditDefault }
-public sealed record BanChoice(string Reason, int? DurationMinutes, bool IncludeIp)
-{
-    public static IReadOnlyList<(string Label, int? Minutes)> Durations =>
-        [(Strings.Ban_Hour, 60), (Strings.Ban_Day, 1440), (Strings.Ban_Week, 10080), (Strings.Ban_Permanent, null)];
-}
-
-/// <summary>Package 114: the answer to "Ungespeicherte Änderungen": keep editing, save and leave, or leave without saving.</summary>
-public enum LeaveChoice { Stay, Save, Discard }
-
-/// <summary>Dialogs the view provides. Unset entries mean "cancelled" (used by tests).</summary>
-public sealed class Dialogs
-{
-    /// <summary>Package 114: unsaved changes would be lost; unset means leave without saving (as before).</summary>
-    public Func<Task<LeaveChoice>>? AskLeave { get; init; }
-    /// <summary>Package 54: one dialog for creating (empty) and editing (prefilled); the mode sets title and button.</summary>
-    /// <remarks>
-    /// Package 98: the dialogs that send get the send as their last argument. It returns the waiting mark; the dialog keeps
-    /// its card open with a busy button until the mark ends, closes when confirmed and shows the error otherwise. A dialog
-    /// that never calls it (a test fake) has the answer sent after it closed.
-    /// </remarks>
-    public Func<ChannelEdit, ChannelDialogMode, Func<ChannelEdit, Pending>?, Task<ChannelEdit?>>? EditChannel { get; init; }
-    public Func<string, IReadOnlyList<ChannelViewModel>, Func<ChannelViewModel, Pending>?, Task<ChannelViewModel?>>? PickChannel { get; init; }
-    public Func<string, string, Func<string, Pending>?, Task<string?>>? AskText { get; init; }
-    /// <summary>Nickname, and whether an IP is known to ban as well (Package 72: not for every offline user).</summary>
-    public Func<string, bool, Func<BanChoice, Pending>?, Task<BanChoice?>>? Ban { get; init; }
-    public Func<string, Task<bool>>? Confirm { get; init; }
-    /// <summary>Package 72: the red "Alle Daten von {0} löschen?" dialog.</summary>
-    public Func<string, Task<bool>>? ConfirmDeleteUser { get; init; }
-    /// <summary>Package 74: the red question before a backup replaces the server's state (argument: the backup's title).</summary>
-    public Func<string, Task<bool>>? ConfirmRestore { get; init; }
-    /// <summary>Package 89 (A101): the warning before a download, the file holds the server's private key and user data.</summary>
-    public Func<Task<bool>>? ConfirmBackupDownload { get; init; }
-    /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
-    public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }
-    /// <summary>Package 94: the password of a channel (argument: its name); null = cancelled.</summary>
-    public Func<string, Task<string?>>? AskChannelPassword { get; init; }
-    public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }
-    /// <summary>Package 41: action and key; null binding = add. The second argument captures the next key.</summary>
-    public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; init; }
-    /// <summary>Package 43: "Version X ist verfügbar. Jetzt installieren?"</summary>
-    public Func<UpdateOffer, Task<bool>>? OfferUpdate { get; init; }
-    /// <summary>Package 133: the "Verbindungsdetails" card; it shows the figures as they are refreshed until closed.</summary>
-    public Func<ConnectionStats, Task>? ConnectionDetails { get; init; }
-}
-
-/// <summary>Package 122: what a state message changed, so whoever listens only redoes what depends on it.</summary>
-[Flags]
-public enum StateChange
-{
-    None = 0,
-    /// <summary>Someone joined or left.</summary>
-    Members = 1,
-    /// <summary>Someone was renamed.</summary>
-    Names = 2,
-    /// <summary>A channel's name, count or icons, the channel list or my own name: what the sidebar measures.</summary>
-    Sidebar = 4,
-    /// <summary>Rebuilt as a whole: the own rights, channel or groups, links or the settings may have changed too.</summary>
-    Tree = 8,
-    All = Members | Names | Sidebar | Tree,
-}
 
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>
 public sealed partial class ServerViewModel : ObservableObject
@@ -123,19 +53,19 @@ public sealed partial class ServerViewModel : ObservableObject
         nameof(CanChatServer), nameof(CanChatChannel), nameof(CanChatPrivate))]
     Permission selfPermissions;
 
-    public ServerViewModel(StateMirror mirror, Func<Request, Task> send, TimeProvider time, Dialogs? dialogs = null)
+    public ServerViewModel(StateMirror mirror, Func<Request, Task> send, TimeProvider time, DialogCallbacks? dialogs = null)
     {
         Mirror = mirror;
         this.send = send;
         this.time = time;
-        Dialogs = dialogs ?? new Dialogs();
+        Dialogs = dialogs ?? new DialogCallbacks();
         Leave = new LeaveTimer(time, () => Post);
         Rebuild();
     }
 
     public StateMirror Mirror { get; }
     public TimeProvider Time => time;
-    public Dialogs Dialogs { get; }
+    public DialogCallbacks Dialogs { get; }
     public ObservableCollection<ChannelViewModel> Channels { get; } = [];
 
     /// <summary>Package 102: how long a user or channel that is gone stays to fold away (the window sets it).</summary>
@@ -496,7 +426,7 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>Sends a request and returns the id it got, so an answer or error can be matched (Package 73).</summary>
     /// <param name="id">A fixed id instead of a new one, e.g. the round a later list page belongs to.</param>
     /// <param name="pending">Package 97: marked running under the request's id before sending; the server's error for it ends it.</param>
-    public async Task<string> SendAsync(Request request, string? id = null, Pending? pending = null)
+    public async Task<string> SendAsync(Request request, string? id = null, PendingViewModel? pending = null)
     {
         id ??= $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}";
         if (pending is not null)
@@ -522,7 +452,7 @@ public sealed partial class ServerViewModel : ObservableObject
     // ---- Package 97 (A113): waiting states ----
 
     /// <summary>The running marks by request id; the server's error for one of them ends it.</summary>
-    readonly Dictionary<string, Pending> waiting = [];
+    readonly Dictionary<string, PendingViewModel> waiting = [];
 
     /// <summary>
     /// Runs work on the UI thread; the main view model sets its dispatcher. Made on Avalonia's UI thread (headless tests)
@@ -533,17 +463,17 @@ public sealed partial class ServerViewModel : ObservableObject
         : action => action();
 
     /// <summary>A waiting mark on this server's clock, its timers handed to the UI thread.</summary>
-    public Pending NewPending() => new(time, action => Post(action));
+    public PendingViewModel NewPending() => new(time, action => Post(action));
 
     /// <summary>Package 98: marks that end with a message showing the action done (most requests have no answer of their own).</summary>
-    readonly List<(Pending Pending, Func<Message, bool> Confirms)> confirming = [];
+    readonly List<(PendingViewModel Pending, Func<Message, bool> Confirms)> confirming = [];
 
     /// <summary>
     /// Package 98: sends under a waiting mark that ends once a message confirms it, or with the server's error for it or
     /// the timeout. Unless a dialog shows it (notify false), the timeout's error shows as a notice like the server's errors.
     /// </summary>
     /// <param name="busy">Gets IsBusy of the mark, e.g. for the spinner on a row.</param>
-    public Pending SendConfirmed(Request request, Func<Message, bool> confirms, Pending? pending = null, Action<bool>? busy = null, bool notify = true)
+    public PendingViewModel SendConfirmed(Request request, Func<Message, bool> confirms, PendingViewModel? pending = null, Action<bool>? busy = null, bool notify = true)
     {
         pending ??= NewPending();
         if (busy is not null) pending.Show(busy);
@@ -554,10 +484,10 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 98: asks with a dialog that sends itself (see <see cref="Dialogs"/>); a dialog that cannot wait has it sent afterwards.</summary>
-    internal static async Task Ask<T>(Func<Func<T, Pending>, Task<T?>>? ask, Func<T, Pending> send) where T : class
+    internal static async Task Ask<T>(Func<Func<T, PendingViewModel>, Task<T?>>? ask, Func<T, PendingViewModel> send) where T : class
     {
         if (ask is null) return;
-        Pending? sent = null;
+        PendingViewModel? sent = null;
         if (await ask(value => sent = send(value)) is { } result && sent is null) send(result);
     }
 
@@ -588,7 +518,7 @@ public sealed partial class ServerViewModel : ObservableObject
             busy: on => row?.IsBusy = on);
     }
 
-    Pending? joining;
+    PendingViewModel? joining;
     public bool IsJoining => joining?.IsRunning == true;
 
     /// <summary>Package 139 (A148): the password that let me into a channel on this connection, kept in memory only.</summary>
@@ -603,16 +533,16 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 110: names may repeat, so the own channel is the one the server answers this request with.</summary>
-    public Pending CreateChannel(ChannelEdit e)
+    public PendingViewModel CreateChannel(ChannelEdit e)
     {
         var pending = NewPending();
         return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password, e.Kind, e.Bitrate),
             m => m is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
     }
-    public Pending EditChannel(Guid id, ChannelEdit edit, int order) =>
+    public PendingViewModel EditChannel(Guid id, ChannelEdit edit, int order) =>
         SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password, edit.Bitrate),
             m => m is ChannelUpdated u && u.Channel.Id == id, notify: false);
-    public Pending DeleteChannel(Guid id)
+    public PendingViewModel DeleteChannel(Guid id)
     {
         var row = channelVms.GetValueOrDefault(id); // gone from the tree when confirmed
         return SendConfirmed(new DeleteChannel(id), m => m is ChannelRemoved r && r.ChannelId == id, busy: on => row?.IsBusy = on);
@@ -641,7 +571,7 @@ public sealed partial class ServerViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    async Task EndReorderAsync(Pending sent, List<Guid> ids)
+    async Task EndReorderAsync(PendingViewModel sent, List<Guid> ids)
     {
         await sent.Completion;
         if (pendingOrder != ids) return; // a newer order is on its way
@@ -649,12 +579,12 @@ public sealed partial class ServerViewModel : ObservableObject
         Rebuild(); // done: the server's order is the same; refused or no answer: back to it
     }
 
-    public Pending Link(Guid a, Guid b) =>
+    public PendingViewModel Link(Guid a, Guid b) =>
         SendConfirmed(new LinkChannels(a, b), m => m is ChannelsLinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
-    public Pending Unlink(Guid a, Guid b) =>
+    public PendingViewModel Unlink(Guid a, Guid b) =>
         SendConfirmed(new UnlinkChannels(a, b), m => m is ChannelsUnlinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
     /// <summary>Package 120: without the dialog that waited, the moved user's row spins until the server shows the move.</summary>
-    public Pending Move(uint sessionId, Guid channelId)
+    public PendingViewModel Move(uint sessionId, Guid channelId)
     {
         var row = userVms.GetValueOrDefault(sessionId);
         return SendConfirmed(new MoveUser(sessionId, channelId), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ChannelId == channelId,
@@ -680,10 +610,10 @@ public sealed partial class ServerViewModel : ObservableObject
         await channel.JoinCommand.ExecuteAsync(null);
         if (joining is { } join) await join.Completion;
     }
-    public Pending Kick(uint sessionId, string reason) => SendConfirmed(new Kick(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
-    public Pending Ban(uint sessionId, BanChoice choice) =>
+    public PendingViewModel Kick(uint sessionId, string reason) => SendConfirmed(new Kick(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+    public PendingViewModel Ban(uint sessionId, BanChoice choice) =>
         SendConfirmed(new Ban(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
-    public Pending ServerMute(uint sessionId, bool muted)
+    public PendingViewModel ServerMute(uint sessionId, bool muted)
     {
         var row = userVms.GetValueOrDefault(sessionId);
         return SendConfirmed(new SetServerMute(sessionId, muted), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ServerMuted == muted,
@@ -691,7 +621,7 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 119: confirmed by the user's update showing the group; the server answers nothing else.</summary>
-    public Pending SetUserGroup(string fingerprint, uint sessionId, Guid groupId, bool assigned)
+    public PendingViewModel SetUserGroup(string fingerprint, uint sessionId, Guid groupId, bool assigned)
     {
         var row = userVms.GetValueOrDefault(sessionId);
         return SendConfirmed(assigned ? new AssignGroup(fingerprint, groupId) : new UnassignGroup(fingerprint, groupId),
@@ -789,337 +719,3 @@ public sealed partial class ServerViewModel : ObservableObject
         Ask<string>(Dialogs.AskText is { } ask ? submit => ask(Strings.Dialog_RedeemToken, Strings.Dialog_RedeemTokenPrompt, submit) : null,
             token => SendConfirmed(new RedeemAdminToken(token.Trim()), m => m is UserUpdated u && IsSelf(u.User), notify: false));
 }
-
-public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : ObservableObject
-{
-    [ObservableProperty] string name = "";
-    [ObservableProperty] string description = "";
-    [ObservableProperty] int order;
-    [ObservableProperty] bool isLinked;
-    [ObservableProperty] string linkedNames = "";
-    [ObservableProperty] bool isCurrent;
-    [ObservableProperty] bool isDefault;
-    /// <summary>Package 34: nobody in this channel is heard.</summary>
-    [ObservableProperty] bool isMuted;
-    /// <summary>Package 35: 0 = unlimited.</summary>
-    [ObservableProperty] int maxUsers;
-    /// <summary>Package 132 (A141): kbps its senders encode with; 0 for a separator.</summary>
-    [ObservableProperty] int bitrate = ProtocolInfo.DefaultBitrate;
-    /// <summary>"3/5" for a limited channel, otherwise just the count.</summary>
-    [ObservableProperty] string slotText = "0";
-    [ObservableProperty] bool canCreate;
-    /// <summary>The right to edit channels; also moves them (up, down, drag), separators too.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanEditDetails))]
-    bool canEdit;
-    /// <summary>Package 111: a line in the list that nobody can join, link or edit.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanEditDetails))]
-    [NotifyPropertyChangedFor(nameof(IsVoice))]
-    bool isSeparator;
-    public bool IsVoice => !IsSeparator;
-    /// <summary>"Bearbeiten": name and options, which a separator does not have.</summary>
-    public bool CanEditDetails => CanEdit && !IsSeparator;
-    [ObservableProperty] bool canDelete;
-    [ObservableProperty] bool canLink;
-    [ObservableProperty] bool canUnlink;
-    [ObservableProperty] bool canMoveUp;
-    [ObservableProperty] bool canMoveDown;
-    /// <summary>Package 93: the lock icon behind the name and its tooltip.</summary>
-    [ObservableProperty] bool isLocked;
-    [ObservableProperty] string lockText = "";
-    /// <summary>Package 93: "Beitreten" and the double click, only with one of the lock's groups or as admin (a password is asked for).</summary>
-    [ObservableProperty] bool canJoin = true;
-    /// <summary>Package 98: a spinner on the row while joining it, moving it or deleting it waits for the server.</summary>
-    [ObservableProperty] bool isBusy;
-    /// <summary>Package 93: null = no group lock, empty = admins only.</summary>
-    public IReadOnlyList<Guid>? AllowedGroupIds { get; private set; }
-    /// <summary>Package 94: joining needs a password (without the bypass right).</summary>
-    public bool HasPassword { get; private set; }
-
-    public Guid Id { get; } = id;
-    public ObservableCollection<UserViewModel> Users { get; } = [];
-    /// <summary>Package 112: null without description and links, so no empty tooltip opens.</summary>
-    public string? Tooltip
-    {
-        get
-        {
-            if (IsSeparator) return null;
-            var text = IsLinked ? $"{Description}{(char)10}{string.Format(Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description.Trim();
-            return text.Length > 0 ? text : null;
-        }
-    }
-
-    internal void Update(ChannelInfo info, IReadOnlyList<string> linked, bool isDefault, bool isCurrent, Permission actor)
-    {
-        IsSeparator = info.Kind == ChannelKind.Separator;
-        Name = info.Name;
-        Description = info.Description;
-        Order = info.Order;
-        IsLinked = linked.Count > 0;
-        LinkedNames = string.Join(", ", linked);
-        IsDefault = isDefault;
-        IsCurrent = isCurrent;
-        IsMuted = info.IsMuted;
-        MaxUsers = info.MaxUsers;
-        Bitrate = info.Bitrate;
-        CanCreate = actor.Has(Permission.ChannelCreate);
-        CanEdit = actor.Has(Permission.ChannelEdit);
-        CanDelete = actor.Has(Permission.ChannelDelete) && !isDefault;
-        CanLink = actor.Has(Permission.ChannelLink) && !IsSeparator;
-        CanUnlink = CanLink && IsLinked;
-        OnPropertyChanged(nameof(Tooltip));
-    }
-
-    /// <summary>Package 93 (A108, A109): everyone sees the lock; the own groups decide whether joining is offered.</summary>
-    internal void UpdateLock(ChannelInfo info, IReadOnlyList<GroupInfo> groups, IReadOnlyList<Guid> ownGroups, bool isAdmin)
-    {
-        AllowedGroupIds = info.AllowedGroupIds;
-        HasPassword = info.HasPassword;
-        IsLocked = info.AllowedGroupIds is not null || info.HasPassword;
-        var groupText = info.AllowedGroupIds switch
-        {
-            null => null,
-            [] => Strings.Ui_LockedAdmins,
-            var ids => string.Format(Strings.Ui_LockedGroupsFmt,
-                string.Join(", ", groups.Where(g => ids.Contains(g.Id)).Select(g => g.Name))), // in the server's group order
-        };
-        LockText = string.Join("\n", new[] { groupText, info.HasPassword ? Strings.Ui_LockedPassword : null }.OfType<string>());
-        CanJoin = info.Kind == ChannelKind.Voice && (isAdmin || info.AllowedGroupIds is not { } allowed || ownGroups.Any(allowed.Contains));
-    }
-
-    bool first, last;
-
-    internal void SetPosition(bool first, bool last)
-    {
-        this.first = first;
-        this.last = last;
-        CanMoveUp = CanEdit && !first;
-        CanMoveDown = CanEdit && !last;
-    }
-
-    [RelayCommand]
-    Task MoveUp() => first ? Task.CompletedTask : owner.MoveChannelAsync(this, Neighbour(-1), after: false);
-
-    [RelayCommand]
-    Task MoveDown() => last ? Task.CompletedTask : owner.MoveChannelAsync(this, Neighbour(+1), after: true);
-
-    ChannelViewModel Neighbour(int step)
-    {
-        var live = owner.Channels.Live().ToList();
-        return live[live.IndexOf(this) + step];
-    }
-
-    [RelayCommand]
-    Task Join()
-    {
-        if (IsSeparator) return Task.CompletedTask; // Package 111: a double click on the line does nothing
-        if (CanJoin) return owner.JoinAsync(Id);
-        owner.ShowNotice(ErrorTexts.For(Codes.ChannelLocked)); // Package 93: the server would refuse it anyway
-        return Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    Task Create() => owner.NewChannelCommand.ExecuteAsync(null);
-
-    [RelayCommand]
-    Task Edit()
-    {
-        var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
-        var current = new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds, HasPassword, Bitrate: Bitrate);
-        return ServerViewModel.Ask<ChannelEdit>(owner.Dialogs.EditChannel is { } edit ? submit => edit(current, mode, submit) : null,
-            result => owner.EditChannel(Id, result, Order));
-    }
-
-    [RelayCommand]
-    async Task Delete()
-    {
-        var question = IsSeparator ? Strings.Confirm_DeleteSeparator : string.Format(Strings.Confirm_DeleteChannel, Name);
-        if (owner.Dialogs.Confirm is { } confirm && await confirm(question))
-            owner.DeleteChannel(Id);
-    }
-
-    [RelayCommand]
-    Task Link() =>
-        ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
-            ? submit => pick(string.Format(Strings.Dialog_LinkWith, Name), owner.LinkCandidates(this), submit) : null, other => owner.Link(Id, other.Id));
-
-    [RelayCommand]
-    Task Unlink() =>
-        ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
-            ? submit => pick(string.Format(Strings.Dialog_Unlink, Name), owner.LinkedChannelVms(this), submit) : null, other => owner.Unlink(Id, other.Id));
-}
-
-public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId) : ObservableObject
-{
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(VolumeLabel))]
-    string nickname = "";
-    [ObservableProperty] string fingerprint = "";
-    [ObservableProperty] string statusText = "";
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(GroupTip))]
-    string groupNames = "";
-    /// <summary>Package 112: the row tooltip, null in no known group (an empty text opened an empty box).</summary>
-    public string? GroupTip => GroupNames.Length > 0 ? GroupNames : null;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanAdjustVolume))]
-    bool isSelf;
-    [ObservableProperty] bool serverMuted;
-    [ObservableProperty] bool isDeafened;
-    [ObservableProperty] bool isSelfMutedOnly;
-    [ObservableProperty] bool isSpeaking;
-    [ObservableProperty] bool isSpeakingViaLink;
-    [ObservableProperty] bool canMove;
-    [ObservableProperty] bool canMute;
-    [ObservableProperty] bool canKick;
-    [ObservableProperty] bool canBan;
-    [ObservableProperty] bool canMessage;
-    /// <summary>Package 98: a spinner on the row while the server mute (Package 119: or a group change) waits for the server.</summary>
-    [ObservableProperty] bool isBusy;
-    /// <summary>Package 119 (A128): the context menu's groups with their ticks, empty when I may not change this user's groups.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasGroups))]
-    IReadOnlyList<GroupToggle> groups = [];
-    public bool HasGroups => Groups.Count > 0;
-
-    /// <summary>
-    /// Package 119: group changes sent from the menu, ticked as asked until the server shows or refuses them. Per group only
-    /// the last click counts, an earlier one's answer leaves it be. Touched on the UI thread only.
-    /// </summary>
-    readonly Dictionary<Guid, (bool On, Pending Sent)> pendingGroups = [];
-
-    /// <summary>Package 51: this person's volume for me, 0 to 200 %.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsVolumeChanged), nameof(IsLocallyMuted), nameof(VolumeText))]
-    double volumePercent = 100;
-
-    bool showingStored;
-
-    public bool CanAdjustVolume => !IsSelf;
-    public bool IsVolumeChanged => VolumePercent is > 0 and not 100;
-    public bool IsLocallyMuted => VolumePercent == 0;
-    public string VolumeText => IsLocallyMuted ? Strings.Ui_LocallyMuted : string.Format(Strings.Ui_UserVolumeFmt, VolumePercent);
-    public string VolumeLabel => string.Format(Strings.Ui_UserVolumeOfFmt, Nickname);
-
-    /// <summary>Shows the stored volume without reporting it as a change.</summary>
-    internal void ShowVolume(float volume)
-    {
-        showingStored = true;
-        VolumePercent = Math.Round(volume * 100);
-        showingStored = false;
-    }
-
-    partial void OnVolumePercentChanged(double value)
-    {
-        double bounded = Math.Clamp(value, 0, ClientSettings.MaxUserVolume * 100);
-        if (bounded != value) VolumePercent = bounded;
-        else if (!showingStored) owner.OnVolumeChanged(this);
-    }
-
-    [RelayCommand]
-    void ResetVolume() => VolumePercent = 100;
-
-    public uint SessionId { get; } = sessionId;
-    public Guid ChannelId { get; private set; }
-
-    internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> serverGroups)
-    {
-        owner.UserUpdates++;
-        Nickname = info.Nickname;
-        Fingerprint = info.Fingerprint;
-        ShowVolume(owner.VolumeOf(info.Fingerprint));
-        ChannelId = info.ChannelId;
-        IsSelf = isSelf;
-        ServerMuted = info.ServerMuted;
-        IsDeafened = info.SelfDeafened;
-        // Deafened implies muted and a server mute has its own icon, so the plain mic-off icon only shows for a mute on its own.
-        IsSelfMutedOnly = info.SelfMuted && !info.SelfDeafened && !info.ServerMuted;
-        GroupNames = string.Join(", ", serverGroups.Where(g => info.GroupIds.Contains(g.Id)).Select(g => g.Name)); // in the server's group order (Package 37)
-        StatusText = info switch
-        {
-            { ServerMuted: true } => Strings.UserStatus_ServerMuted,
-            { SelfDeafened: true } => Strings.UserStatus_Deafened,
-            { SelfMuted: true } => Strings.UserStatus_Muted,
-            _ => "",
-        };
-        // Package 84 (A102): never oneself (moving oneself is joining), only strictly weaker users.
-        // Package 92: the server judges the rank per recipient, the client never sees others' rights.
-        bool rank = !isSelf && info.CanBeModeratedByMe;
-        CanMove = actor.Has(Permission.UserMove) && rank;
-        CanMute = actor.Has(Permission.UserMute) && rank;
-        CanKick = actor.Has(Permission.UserKick) && rank;
-        CanBan = actor.Has(Permission.UserBan) && rank;
-        CanMessage = actor.Has(Permission.ChatPrivate) && !isSelf;
-        // Package 119 (A128): the administration's rule; the rank also keeps the last admin's Admin group, an admin is never weaker
-        var wanted = actor.Has(Permission.GroupsAssign) && rank
-            ? serverGroups.Select(g => (g.Id, g.Name, Checked: pendingGroups.TryGetValue(g.Id, out var p) ? p.On : info.GroupIds.Contains(g.Id), g.AssignableByMe)).ToList()
-            : [];
-        // compared with the live ticks: a refused click is put back, and an open menu is not rebuilt by unrelated updates
-        if (!wanted.SequenceEqual(Groups.Select(t => (t.GroupId, t.Name, t.IsChecked, t.IsEnabled))))
-            Groups = wanted.Select(w => new GroupToggle(w.Id, w.Name, w.Checked, w.AssignableByMe, ToggleGroup)).ToList();
-    }
-
-    /// <summary>Package 119: IsChecked already holds the new value; the row spins until the server shows it.</summary>
-    Task ToggleGroup(GroupToggle toggle)
-    {
-        var sent = owner.SetUserGroup(Fingerprint, SessionId, toggle.GroupId, toggle.IsChecked);
-        pendingGroups[toggle.GroupId] = (toggle.IsChecked, sent);
-        _ = EndGroupChangeAsync(toggle.GroupId, sent);
-        return Task.CompletedTask;
-    }
-
-    async Task EndGroupChangeAsync(Guid groupId, Pending sent)
-    {
-        await sent.Completion;
-        if (pendingGroups.GetValueOrDefault(groupId).Sent == sent) pendingGroups.Remove(groupId);
-        if (pendingGroups.Values.Any(p => p.Sent.IsBusy)) IsBusy = true; // this one ending cleared the spinner a later click still needs
-        owner.Rebuild(); // done: the server's state is shown already; refused or no answer: the tick goes back
-    }
-
-    internal void SetSpeaking(bool on, bool viaLink)
-    {
-        IsSpeaking = on && !viaLink;
-        IsSpeakingViaLink = on && viaLink;
-    }
-
-    /// <summary>Package 120 (A129): the context menu's "Verschieben" submenu, empty when I may not move this user.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasMoveTargets))]
-    IReadOnlyList<MoveTarget> moveTargets = [];
-    public bool HasMoveTargets => MoveTargets.Count > 0;
-
-    /// <summary>Package 120: my own row (joining) or one I may move can be dragged onto a channel.</summary>
-    public bool CanDrag => IsSelf || CanMove;
-
-    /// <summary>The channels in tree order, without the user's own (a silent no-op on the server) and separators (Package 111).</summary>
-    internal void UpdateMoveTargets(IReadOnlyList<ChannelViewModel> channels)
-    {
-        var wanted = CanMove ? channels.Where(c => c.Id != ChannelId && !c.IsSeparator).ToList() : [];
-        // only on a change, so an open menu is not rebuilt by unrelated updates
-        if (!wanted.SequenceEqual(MoveTargets.Select(t => t.Channel)))
-            MoveTargets = wanted.Select(c => new MoveTarget(c, new RelayCommand(() => owner.Move(SessionId, c.Id)))).ToList();
-    }
-
-    [RelayCommand]
-    void Message() => owner.RequestPrivateChat(this);
-
-    [RelayCommand]
-    Task ToggleServerMute()
-    {
-        owner.ServerMute(SessionId, !ServerMuted);
-        return Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    Task Kick() =>
-        ServerViewModel.Ask<string>(owner.Dialogs.AskText is { } ask
-            ? submit => ask(string.Format(Strings.Dialog_Kick, Nickname), Strings.Dialog_KickReason, submit) : null, reason => owner.Kick(SessionId, reason));
-
-    [RelayCommand]
-    Task Ban() =>
-        ServerViewModel.Ask<BanChoice>(owner.Dialogs.Ban is { } ban ? submit => ban(Nickname, true, submit) : null, choice => owner.Ban(SessionId, choice));
-}
-
-/// <summary>Package 120 (A129): one channel in a user's "Verschieben" submenu; the command moves the user there.</summary>
-public sealed record MoveTarget(ChannelViewModel Channel, System.Windows.Input.ICommand Command);

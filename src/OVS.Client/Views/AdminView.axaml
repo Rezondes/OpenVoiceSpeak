@@ -9,7 +9,7 @@
              x:DataType="vm:AdminViewModel">
   <UserControl.Resources>
     <!-- Package 97 (A113): a list's first load (spinner and "Wird geladen ..." in place of the list) or its error -->
-    <DataTemplate x:Key="ListLoad" x:DataType="vm:Pending">
+    <DataTemplate x:Key="ListLoad" x:DataType="vm:PendingViewModel">
       <Panel IsHitTestVisible="False" Margin="8">
         <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFirstLoad}">
           <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
@@ -20,7 +20,7 @@
       </Panel>
     </DataTemplate>
     <!-- Package 97: a refresh keeps the content, a small spinner (or the error) below the list's count -->
-    <DataTemplate x:Key="ListRefresh" x:DataType="vm:Pending">
+    <DataTemplate x:Key="ListRefresh" x:DataType="vm:PendingViewModel">
       <Panel>
         <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRefreshing}">
           <ctl:BusySpinner />
@@ -144,7 +144,7 @@
                               </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:PermissionToggle">
+                              <DataTemplate x:DataType="vm:PermissionToggleViewModel">
                                 <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" />
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -234,7 +234,7 @@
                                 </ItemsPanelTemplate>
                               </ItemsControl.ItemsPanel>
                               <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:GroupToggle">
+                                <DataTemplate x:DataType="vm:GroupToggleViewModel">
                                   <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}"
                                             Command="{Binding ToggleCommand}" Margin="0,0,16,0" />
                                 </DataTemplate>

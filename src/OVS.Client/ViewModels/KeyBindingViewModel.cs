@@ -1,0 +1,22 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using OVS.Client.Input;
+
+namespace OVS.Client.ViewModels;
+
+/// <summary>One line of the key list (Package 41): action, key, "Ändern" and "Löschen".</summary>
+public sealed partial class KeyBindingViewModel(KeyBinding binding, SettingsViewModel owner) : ObservableObject
+{
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Label), nameof(ChordName))]
+    KeyBinding binding = binding;
+
+    public string Label => KeyActions.Label(Binding.Action);
+    public string ChordName => Binding.Chord.Name;
+
+    [RelayCommand]
+    Task Edit() => owner.EditAsync(this);
+
+    [RelayCommand]
+    void Remove() => owner.Remove(this);
+}

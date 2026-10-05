@@ -492,7 +492,7 @@ public sealed class MotionCoverageTests : IDisposable
         yield return new("drop the new group", x => x.Admin.DeleteGroupCommand.Execute(null));
         yield return new("create a group", x => x.Server.Apply(new GroupsChanged([Guest, AdminGroup, Moderator])));
         yield return new("choose a group", x => x.Admin.SelectedGroup = x.Admin.Groups.Single(g => g.Name == "Moderator"), x => Named<ListBox>(x, "GroupList"));
-        yield return Toggle("toggle a group's right", x => Shown<CheckBox>(x, c => c.DataContext is PermissionToggle { Permission: Permission.UserMute }));
+        yield return Toggle("toggle a group's right", x => Shown<CheckBox>(x, c => c.DataContext is PermissionToggleViewModel { Permission: Permission.UserMute }));
         yield return Click("save a group", x => Named<Button>(x, "SaveGroupButton"), x =>
         {
             Watch(250); // busy until the server's groups come

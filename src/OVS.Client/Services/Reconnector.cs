@@ -1,4 +1,4 @@
-namespace OVS.Client.ViewModels;
+namespace OVS.Client.Services;
 
 /// <summary>
 /// Package 139 (A148): the attempts after a lost connection, 1, 2, 4, 8 and 16 s apart (Fluxer's 1 s base within its

@@ -1,4 +1,4 @@
-namespace OVS.Client.ViewModels;
+namespace OVS.Client.Collections;
 
 /// <summary>
 /// Package 101: lists that are rebuilt with new objects (the administration, the bookmarks) name what stays the same,

@@ -1,3 +1,4 @@
+using OVS.Client.Collections;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -28,7 +29,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     }
 
     /// <summary>Package 98: "Übernehmen" spins until the server's link changes match what was sent.</summary>
-    public Pending Applying { get; }
+    public PendingViewModel Applying { get; }
 
     public ObservableCollection<LinkRowViewModel> Rows { get; } = [];
     public bool HasPending => PendingCount > 0;
@@ -106,7 +107,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     }
 
     /// <summary>Package 114: the marked changes to the server; null when there is nothing to send.</summary>
-    internal Pending? SendPending()
+    internal PendingViewModel? SendPending()
     {
         var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
         var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
@@ -121,43 +122,5 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     {
         desired.Clear();
         Refresh();
-    }
-}
-
-public sealed partial class LinkRowViewModel(int number, Guid id, string name, bool isSelected, IReadOnlyList<LinkCellViewModel> cells) : ObservableObject, IMotionKey
-{
-    public object MotionKey => Id;
-    [ObservableProperty] bool isSelected = isSelected;
-
-    public int Number { get; } = number;
-    public Guid Id { get; } = id;
-    public string Name { get; } = name;
-    public string Title => $"{Number}  {Name}";
-    public IReadOnlyList<LinkCellViewModel> Cells { get; } = cells;
-}
-
-public sealed class LinkCellViewModel(LinkMatrixViewModel matrix, Guid row, Guid column, string tooltip) : ObservableObject
-{
-    public Guid Row { get; } = row;
-    public Guid Column { get; } = column;
-    public bool IsDiagonal => Row == Column;
-    public string Tooltip { get; } = tooltip;
-
-    /// <summary>Clicking changes the link, and with it the mirrored cell on the other side of the diagonal.</summary>
-    public bool IsLinked
-    {
-        get => matrix.IsLinked(Row, Column);
-        set
-        {
-            if (value != IsLinked) matrix.Set(Row, Column, value);
-        }
-    }
-
-    public bool IsPending => matrix.IsPending(Row, Column);
-
-    internal void Refresh()
-    {
-        OnPropertyChanged(nameof(IsLinked));
-        OnPropertyChanged(nameof(IsPending));
     }
 }

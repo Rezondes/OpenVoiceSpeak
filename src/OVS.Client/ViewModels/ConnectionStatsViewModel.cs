@@ -1,19 +1,17 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Shared.Voice;
 
 namespace OVS.Client.ViewModels;
-
-/// <summary>Package 133 (A142): the voice round trip against the user's own baseline, as 4 to 1 bars.</summary>
-public enum SignalRating { Unknown, Good, Fair, Poor, Bad }
 
 /// <summary>
 /// Package 133 (A142): the signal icon next to the ping and the "Verbindungsdetails" card. The main view model feeds it
 /// every 2 s on the UI thread; the rating compares the voice round trip with the median of the last 30, like Fluxer, so a
 /// far server is not red for good.
 /// </summary>
-public sealed partial class ConnectionStats : ObservableObject
+public sealed partial class ConnectionStatsViewModel : ObservableObject
 {
     public const int BaselineSamples = 30;
     const string None = "-";

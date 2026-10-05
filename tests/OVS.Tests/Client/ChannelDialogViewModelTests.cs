@@ -1,3 +1,4 @@
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -173,7 +174,7 @@ public class ChannelDialogViewModelTests
     {
         ChannelEdit? shown = null;
         var sent = new List<Request>();
-        var server = OVS.Tests.TestSupport.FakeServers.Admin(sent, dialogs: new Dialogs
+        var server = OVS.Tests.TestSupport.FakeServers.Admin(sent, dialogs: new DialogCallbacks
         {
             EditChannel = (current, _, _) =>
             {

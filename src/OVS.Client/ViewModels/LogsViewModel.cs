@@ -1,16 +1,15 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OVS.Client.Collections;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.LogAccess;
 
 namespace OVS.Client.ViewModels;
-
-/// <summary>A choice of the Logs tab's type filter: every file, the server logs, or one channel.</summary>
-public sealed record LogSource(LogKind? Kind, Guid? ChannelId);
 
 /// <summary>
 /// Package 81 (A98): the Logs tab. The server's file list with type and period filters, one opened file page by page
@@ -62,7 +61,7 @@ public sealed partial class LogsViewModel : ObservableObject
         Searching = server.NewPending();
         Searching.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(Pending.IsBusy)) SearchCommand.NotifyCanExecuteChanged();
+            if (e.PropertyName == nameof(PendingViewModel.IsBusy)) SearchCommand.NotifyCanExecuteChanged();
         };
         downloadRight = ShowDownload;
         RebuildSources();
@@ -85,8 +84,8 @@ public sealed partial class LogsViewModel : ObservableObject
 
     public AdminViewModel? Owner { get; }
     /// <summary>Package 97 (A113): the file list's loading state and the running search.</summary>
-    public Pending FilesLoad { get; }
-    public Pending Searching { get; }
+    public PendingViewModel FilesLoad { get; }
+    public PendingViewModel Searching { get; }
 
     public Task RequestAsync() => server.SendAsync(new ListLogs(), pending: FilesLoad);
 
@@ -343,70 +342,4 @@ public sealed partial class LogsViewModel : ObservableObject
         LineFilter = "";
         return OpenAt(file, (hit.Line - 1) / ProtocolInfo.LogPageLines + 1, hit.Line);
     }
-}
-
-/// <summary>One file of the list: server or channel name, start and size; Package 82: a checkbox with LogsDownload.</summary>
-public sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = false, bool isSelected = false, Action<LogFileViewModel>? selectionChanged = null)
-    : ObservableObject, IMotionKey
-{
-    public object MotionKey => Info.Id;
-    [ObservableProperty] bool isSelected = isSelected;
-
-    partial void OnIsSelectedChanged(bool value) => selectionChanged?.Invoke(this);
-
-    public bool CanSelect { get; } = canSelect;
-    public LogFileInfo Info { get; } = info;
-    public string Title => TitleOf(Info);
-    public bool IsServer => Info.Kind == LogKind.Server;
-    public string StartText => Info.Start.ToLocalTime().ToString("g");
-    public string Details => $"{StartText}, {BackupViewModel.Size(Info.Size)}";
-
-    public static string TitleOf(LogFileInfo f) => f.Kind == LogKind.Server ? Strings.Ui_LogSourceServer : f.ChannelName ?? Strings.Ui_LogDeletedChannel;
-}
-
-/// <summary>A piece of a log line; IsMatch marks the text the line filter found.</summary>
-public sealed record LogSegment(string Text, bool IsMatch);
-
-/// <summary>One line of the opened page; IsTarget for the line a search hit opened.</summary>
-public sealed class LogLineViewModel : IMotionKey
-{
-    /// <summary>Package 109: a line stays the same line while the filter changes; another page or file brings new ones.</summary>
-    public object MotionKey => (Number, Text);
-
-    public LogLineViewModel(int number, string text, string filter, bool isTarget)
-    {
-        Number = number;
-        Text = text;
-        IsTarget = isTarget;
-        Segments = Split(text, filter);
-    }
-
-    public int Number { get; }
-    public string Text { get; }
-    public bool IsTarget { get; }
-    public IReadOnlyList<LogSegment> Segments { get; }
-
-    static List<LogSegment> Split(string text, string filter)
-    {
-        var segments = new List<LogSegment>();
-        int at = 0;
-        while (filter.Length > 0 && text.IndexOf(filter, at, StringComparison.OrdinalIgnoreCase) is var found and >= 0)
-        {
-            if (found > at) segments.Add(new(text[at..found], false));
-            segments.Add(new(text.Substring(found, filter.Length), true));
-            at = found + filter.Length;
-        }
-        if (at < text.Length || segments.Count == 0) segments.Add(new(text[at..], false));
-        return segments;
-    }
-}
-
-/// <summary>One search hit: file title, line number and the line.</summary>
-public sealed class LogHitViewModel(LogHit hit, string title)
-{
-    public string FileId => hit.FileId;
-    public int Line => hit.Line;
-    public string Text => hit.Text;
-    public string Title { get; } = title;
-    public string LineText => string.Format(Strings.Ui_LogLine, Line);
 }

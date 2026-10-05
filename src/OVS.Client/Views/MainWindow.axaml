@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:l="using:OVS.Client.Localization"
         xmlns:vm="using:OVS.Client.ViewModels"
+        xmlns:m="using:OVS.Client.Models"
         xmlns:s="using:OVS.Client.Settings"
         xmlns:v="using:OVS.Client.Views"
         xmlns:ctl="using:OVS.Client.Controls"
@@ -133,7 +134,7 @@
                          Text="{x:Static l:Strings.Ui_NoBookmarks}" />
               <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Bookmarks}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:BookmarkItem">
+                  <DataTemplate x:DataType="m:BookmarkItem">
                     <Button Classes="bookmark" Click="OnBookmarkClick" ToolTip.Tip="{Binding Address}"
                             AutomationProperties.Name="{Binding Name, StringFormat={x:Static l:Strings.Ui_ConnectToFmt}}">
                       <Button.ContextMenu>
@@ -272,7 +273,7 @@
                                 <MenuItem Classes="moveTargets" Header="{x:Static l:Strings.Ui_MoveMenu}" ItemsSource="{Binding MoveTargets}" IsVisible="{Binding HasMoveTargets}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowMove}" Classes="sm" /></MenuItem.Icon>
                                   <MenuItem.Styles>
-                                    <Style Selector="MenuItem.moveTargets > MenuItem" x:DataType="vm:MoveTarget">
+                                    <Style Selector="MenuItem.moveTargets > MenuItem" x:DataType="m:MoveTarget">
                                       <Setter Property="Header" Value="{Binding Channel.Name}" />
                                       <Setter Property="Command" Value="{Binding Command}" />
                                     </Style>
@@ -285,7 +286,7 @@
                                 <MenuItem Classes="groups" Header="{x:Static l:Strings.Ui_Groups}" ItemsSource="{Binding Groups}" IsVisible="{Binding HasGroups}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.People}" Classes="sm" /></MenuItem.Icon>
                                   <MenuItem.Styles>
-                                    <Style Selector="MenuItem.groups > MenuItem" x:DataType="vm:GroupToggle">
+                                    <Style Selector="MenuItem.groups > MenuItem" x:DataType="vm:GroupToggleViewModel">
                                       <Setter Property="ToggleType" Value="CheckBox" />
                                       <Setter Property="Header" Value="{Binding Name}" />
                                       <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=TwoWay}" />

@@ -31,14 +31,14 @@ public static class SimpleDialogs
     /// mark ends: confirmed it closes, refused or unanswered it shows the error and can be sent again.
     /// </param>
     internal static async Task<T?> Show<T>(OverlayHost host, string title, string icon, Control body, Func<T?> accept,
-        string okText = "OK", bool okIsDefault = true, DialogKind kind = DialogKind.Normal, string? cancelText = null, Func<T, Pending>? submit = null,
+        string okText = "OK", bool okIsDefault = true, DialogKind kind = DialogKind.Normal, string? cancelText = null, Func<T, PendingViewModel>? submit = null,
         (string Text, T Value)? other = null, bool withCancel = true) where T : class
     {
         T? result = null;
         var ok = new Button { Content = okText, MinWidth = 96, HorizontalContentAlignment = HorizontalAlignment.Center };
         var failed = Text("", "danger");
         failed.IsVisible = false;
-        Pending? sending = null;
+        PendingViewModel? sending = null;
         var closed = new TaskCompletionSource(); // cancelled meanwhile: nobody waits for the answer any more
         async void Accept()
         {
@@ -58,7 +58,7 @@ public static class SimpleDialogs
             sending = submit(answer);
             void OnBusy(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
             {
-                if (e.PropertyName != nameof(Pending.IsBusy)) return;
+                if (e.PropertyName != nameof(PendingViewModel.IsBusy)) return;
                 ok.IsEnabled = !sending.IsBusy;
                 ok.Content = sending.IsBusy
                     ? new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new BusySpinner(), new TextBlock { Text = okText } } }
@@ -185,14 +185,14 @@ public static class SimpleDialogs
         return panel;
     }
 
-    public static Task<string?> AskText(OverlayHost overlay, string title, string prompt, Func<string, Pending>? submit = null)
+    public static Task<string?> AskText(OverlayHost overlay, string title, string prompt, Func<string, PendingViewModel>? submit = null)
     {
         var box = new TextBox();
         return Show(overlay, title, title == Strings.Dialog_RedeemToken ? "Key" : "Edit", Field(prompt, box), () => box.Text ?? "", submit: submit);
     }
 
     public static Task<ChannelViewModel?> PickChannel(OverlayHost overlay, string title, IReadOnlyList<ChannelViewModel> channels,
-        Func<ChannelViewModel, Pending>? submit = null)
+        Func<ChannelViewModel, PendingViewModel>? submit = null)
     {
         if (channels.Count == 0) return Show<ChannelViewModel>(overlay, title, "Speaker", Text(Strings.Dlg_NoChannel, "muted"), () => null);
         var list = new ListBox { ItemsSource = channels.Select(c => c.Name).ToList(), MaxHeight = 320, SelectedIndex = 0, CornerRadius = new CornerRadius(8) };
@@ -200,7 +200,7 @@ public static class SimpleDialogs
     }
 
     /// <param name="ipKnown">Package 72: an offline user without a stored IP cannot be banned by IP.</param>
-    public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname, bool ipKnown = true, Func<BanChoice, Pending>? submit = null)
+    public static Task<BanChoice?> Ban(OverlayHost overlay, string nickname, bool ipKnown = true, Func<BanChoice, PendingViewModel>? submit = null)
     {
         var durations = BanChoice.Durations;
         var reason = new TextBox();
@@ -395,18 +395,18 @@ public static class SimpleDialogs
     /// Package 133 (A142): "Verbindungsdetails", bound to the figures, so the open card follows their refresh every 2 s.
     /// Only a close button: there is nothing to decide.
     /// </summary>
-    public static async Task ConnectionDetails(OverlayHost overlay, ConnectionStats stats)
+    public static async Task ConnectionDetails(OverlayHost overlay, ConnectionStatsViewModel stats)
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 16, RowSpacing = 6, DataContext = stats };
         (string Label, string Property)[] rows =
         [
-            (Strings.ConnDetails_RoundTrip, nameof(ConnectionStats.RoundTripText)),
-            (Strings.ConnDetails_Uplink, nameof(ConnectionStats.UplinkText)),
-            (Strings.ConnDetails_Downlink, nameof(ConnectionStats.DownlinkText)),
-            (Strings.ConnDetails_Jitter, nameof(ConnectionStats.JitterText)),
-            (Strings.ConnDetails_Buffer, nameof(ConnectionStats.DelayText)),
-            (Strings.ConnDetails_Concealed, nameof(ConnectionStats.ConcealedText)),
-            (Strings.ConnDetails_Bitrate, nameof(ConnectionStats.BitrateText)),
+            (Strings.ConnDetails_RoundTrip, nameof(ConnectionStatsViewModel.RoundTripText)),
+            (Strings.ConnDetails_Uplink, nameof(ConnectionStatsViewModel.UplinkText)),
+            (Strings.ConnDetails_Downlink, nameof(ConnectionStatsViewModel.DownlinkText)),
+            (Strings.ConnDetails_Jitter, nameof(ConnectionStatsViewModel.JitterText)),
+            (Strings.ConnDetails_Buffer, nameof(ConnectionStatsViewModel.DelayText)),
+            (Strings.ConnDetails_Concealed, nameof(ConnectionStatsViewModel.ConcealedText)),
+            (Strings.ConnDetails_Bitrate, nameof(ConnectionStatsViewModel.BitrateText)),
         ];
         foreach (var (label, property) in rows)
         {
@@ -425,7 +425,7 @@ public static class SimpleDialogs
 
     /// <summary>The dialogs of the main window's overlay, as the view models ask for them (App, and the UI tests).</summary>
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>
-    public static ViewModels.Dialogs For(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
+    public static DialogCallbacks For(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
     {
         EditChannel = (current, mode, submit) => ChannelDialogView.ShowAsync(overlay, current, mode, groups(), submit),
         PickChannel = (title, channels, submit) => PickChannel(overlay, title, channels, submit),

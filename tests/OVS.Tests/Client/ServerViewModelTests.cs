@@ -1,3 +1,5 @@
+using OVS.Client.Collections;
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Sounds;
@@ -34,7 +36,7 @@ public class ServerViewModelTests
         public UserViewModel User(uint id) => Vm.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
     }
 
-    static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, Dialogs? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
+    static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, DialogCallbacks? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
         params UserInfo[] others)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", false), Lobby,
@@ -251,7 +253,7 @@ public class ServerViewModelTests
     {
         var asked = new List<string>();
         string? answer = null;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             AskChannelPassword = name =>
             {
@@ -382,7 +384,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task LinkCommand_UsesPickedChannel()
     {
-        var dialogs = new Dialogs { PickChannel = (_, candidates, _) => Task.FromResult<ChannelViewModel?>(candidates.Single(c => c.Name == "Bravo")) };
+        var dialogs = new DialogCallbacks { PickChannel = (_, candidates, _) => Task.FromResult<ChannelViewModel?>(candidates.Single(c => c.Name == "Bravo")) };
         var f = Create(P.All, dialogs: dialogs);
         await f.Channel(Lobby).LinkCommand.ExecuteAsync(null);
         Assert.Equal(new LinkChannels(Lobby, Bravo), f.Sent[^1] with { RequestId = null });
@@ -393,7 +395,7 @@ public class ServerViewModelTests
     public async Task NewChannel_SendsAllOptions()
     {
         (ChannelEdit Current, ChannelDialogMode Mode)? shown = null;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             EditChannel = (current, mode, _) =>
             {
@@ -412,7 +414,7 @@ public class ServerViewModelTests
     public async Task ChannelMuted_EditSendsFlag_ViewModelShowsIt()
     {
         ChannelDialogMode? shownMode = null;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             EditChannel = (current, mode, _) =>
             {
@@ -666,7 +668,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task Ban_SendsDurationAndIpFlag()
     {
-        var dialogs = new Dialogs { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
+        var dialogs = new DialogCallbacks { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
         var f = Create(Moderator, dialogs: dialogs, others: U(2, "gast", Lobby));
         await f.User(2).BanCommand.ExecuteAsync(null);
         Assert.Equal(new Ban(2, "spam", 60, true), f.Sent[^1] with { RequestId = null });
@@ -764,8 +766,8 @@ public class ServerViewModelTests
     [Fact]
     public async Task SendingDialogs_WaitForTheConfirmation_RowActionsSpin()
     {
-        Pending? waited = null;
-        var dialogs = new Dialogs
+        PendingViewModel? waited = null;
+        var dialogs = new DialogCallbacks
         {
             EditChannel = (current, _, submit) =>
             {
@@ -983,7 +985,7 @@ public class ServerViewModelTests
     {
         var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker()]);
         var anna = f.User(2);
-        GroupToggle Raid_() => anna.Groups.Single(t => t.GroupId == Raid);
+        GroupToggleViewModel Raid_() => anna.Groups.Single(t => t.GroupId == Raid);
         var raid = Raid_();
         raid.IsChecked = true;
         await raid.ToggleCommand.ExecuteAsync(null);
@@ -1020,7 +1022,7 @@ public class ServerViewModelTests
     public void MoveTargets_OtherChannelsWithoutSeparators()
     {
         bool picked = false;
-        var dialogs = new Dialogs
+        var dialogs = new DialogCallbacks
         {
             PickChannel = (_, _, _) =>
             {
@@ -1083,7 +1085,7 @@ public class ServerViewModelTests
     public async Task DropUser_OwnRowJoins_InvalidTargetsSendNothing()
     {
         var asked = new List<string>();
-        var f = Create(Moderator, dialogs: new Dialogs { AskChannelPassword = name => { asked.Add(name); return Task.FromResult<string?>("geheim"); } },
+        var f = Create(Moderator, dialogs: new DialogCallbacks { AskChannelPassword = name => { asked.Add(name); return Task.FromResult<string?>("geheim"); } },
             others: [Weaker(), U(3, "bert", Lobby)]);
         var separator = Guid.NewGuid();
         f.Vm.Apply(new ChannelAdded(new ChannelInfo(separator, "", "", 5, Kind: ChannelKind.Separator)));

@@ -1,7 +1,11 @@
+using OVS.Client.Collections;
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OVS.Client.Models;
+using OVS.Client.Services;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -141,15 +145,15 @@ public sealed partial class AdminViewModel : ObservableObject
     public LinkMatrixViewModel Links { get; }
     public LogsViewModel Logs { get; }
     /// <summary>Package 97 (A113): the lists' loading states, and the backup actions that wait for the server.</summary>
-    public Pending UsersLoad { get; }
-    public Pending BansLoad { get; }
-    public Pending BackupsLoad { get; }
-    public Pending BackupCreate { get; }
-    public Pending Restoring { get; }
+    public PendingViewModel UsersLoad { get; }
+    public PendingViewModel BansLoad { get; }
+    public PendingViewModel BackupsLoad { get; }
+    public PendingViewModel BackupCreate { get; }
+    public PendingViewModel Restoring { get; }
     /// <summary>Package 98: group save and order, and the server logo, until the server's update shows them.</summary>
-    public Pending GroupSave { get; }
-    public Pending GroupReorder { get; }
-    public Pending IconUpload { get; }
+    public PendingViewModel GroupSave { get; }
+    public PendingViewModel GroupReorder { get; }
+    public PendingViewModel IconUpload { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
     /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
@@ -355,9 +359,6 @@ public sealed partial class AdminViewModel : ObservableObject
         return old;
     }
 
-    /// <summary>The places of this page that need a manual save (A122).</summary>
-    public enum Place { Groups, Links, Server }
-
     /// <summary>True while the selection changes from code (a rebuild, a new group), not by the user.</summary>
     public bool IsSelectingInCode { get; private set; }
 
@@ -374,14 +375,14 @@ public sealed partial class AdminViewModel : ObservableObject
         }
     }
 
-    public bool HasChanges(Place place) => place switch
+    public bool HasChanges(AdminPlace place) => place switch
     {
-        Place.Groups => Groups.Live().Any(g => g.HasChanges),
-        Place.Links => Links.HasPending,
+        AdminPlace.Groups => Groups.Live().Any(g => g.HasChanges),
+        AdminPlace.Links => Links.HasPending,
         _ => ServerSettingsChanged,
     };
 
-    public bool HasAnyChanges => Enum.GetValues<Place>().Any(HasChanges);
+    public bool HasAnyChanges => Enum.GetValues<AdminPlace>().Any(HasChanges);
 
     /// <summary>What the server tab's fields were loaded with (the server's settings then).</summary>
     string loadedName = "", loadedWelcome = "";
@@ -428,26 +429,26 @@ public sealed partial class AdminViewModel : ObservableObject
     }
 
     /// <summary>Saves the place and waits for the server; false when it refused, did not answer or the input is invalid.</summary>
-    public async Task<bool> SaveAsync(Place place)
+    public async Task<bool> SaveAsync(AdminPlace place)
     {
         // a save already on its way is waited for first, it may be the one the user means
-        if (place == Place.Groups && GroupSave.IsRunning) await GroupSave.Completion;
-        if (place == Place.Links && Links.Applying.IsRunning) await Links.Applying.Completion;
+        if (place == AdminPlace.Groups && GroupSave.IsRunning) await GroupSave.Completion;
+        if (place == AdminPlace.Links && Links.Applying.IsRunning) await Links.Applying.Completion;
         if (!HasChanges(place)) return true;
-        Pending? sent = place switch
+        PendingViewModel? sent = place switch
         {
-            Place.Groups => SelectedGroup is { HasChanges: true } ? SendGroup() : null,
-            Place.Links => Links.SendPending(),
+            AdminPlace.Groups => SelectedGroup is { HasChanges: true } ? SendGroup() : null,
+            AdminPlace.Links => Links.SendPending(),
             _ => SendServerSettings(),
         };
         return sent is not null && await sent.Completion is null;
     }
 
-    public void Discard(Place place)
+    public void Discard(AdminPlace place)
     {
         switch (place)
         {
-            case Place.Groups:
+            case AdminPlace.Groups:
                 foreach (var g in Groups.Live().Where(g => g.Id is not null)) g.Revert();
                 var drafts = Groups.Live().Where(g => g.Id is null).ToList();
                 if (drafts.Count == 0) break;
@@ -455,7 +456,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 CollectionSync.Sync(Groups, Groups.Live().Except(drafts).ToList(), server.Leave);
                 if (SelectedGroup is null) SelectGroup(Groups.Live().FirstOrDefault());
                 break;
-            case Place.Links:
+            case AdminPlace.Links:
                 Links.DiscardCommand.Execute(null);
                 break;
             default:
@@ -465,7 +466,7 @@ public sealed partial class AdminViewModel : ObservableObject
     }
 
     /// <summary>Asks before leaving the place (another tab, another group); false = stay.</summary>
-    public async Task<bool> ConfirmLeaveAsync(Place place)
+    public async Task<bool> ConfirmLeaveAsync(AdminPlace place)
     {
         if (!HasChanges(place)) return true;
         switch (server.Dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard)
@@ -521,7 +522,7 @@ public sealed partial class AdminViewModel : ObservableObject
             // Package 92: the rank comes judged with the list, the client knows no rights of others.
             var weaker = user.CanBeModeratedByMe;
             var lastAdmin = admins == 1 && user.GroupIds.Contains(WellKnownGroups.Admin);
-            var toggles = server.Mirror.Groups.Select(g => new GroupToggle(g.Id, g.Name, IsInGroup(user, g.Id),
+            var toggles = server.Mirror.Groups.Select(g => new GroupToggleViewModel(g.Id, g.Name, IsInGroup(user, g.Id),
                 g.AssignableByMe && weaker, // Package 92: judged by the server, group rights only reach GroupsView holders
                 t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
             var bans = (user.Bans ?? []).Where(b => b.LiftedAt is null && (b.ExpiresAt is null || b.ExpiresAt > now)).ToList();
@@ -637,16 +638,16 @@ public sealed partial class AdminViewModel : ObservableObject
 
     // ---- Package 98 (A113): a card's actions spin until a user list asked for after them shows the result ----
 
-    readonly Dictionary<string, Pending> cardBusy = [];
+    readonly Dictionary<string, PendingViewModel> cardBusy = [];
     /// <summary>Per card: the user list requests sent before its last action; a list of a later request settles it.</summary>
     readonly Dictionary<string, int> cardAskedBefore = [];
-    readonly Dictionary<Guid, Pending> banBusy = [];
+    readonly Dictionary<Guid, PendingViewModel> banBusy = [];
 
-    Pending CardBusy(string fingerprint) => cardBusy.TryGetValue(fingerprint, out var busy) ? busy : cardBusy[fingerprint] = server.NewPending();
-    Pending BanBusy(Guid banId) => banBusy.TryGetValue(banId, out var busy) ? busy : banBusy[banId] = server.NewPending();
+    PendingViewModel CardBusy(string fingerprint) => cardBusy.TryGetValue(fingerprint, out var busy) ? busy : cardBusy[fingerprint] = server.NewPending();
+    PendingViewModel BanBusy(Guid banId) => banBusy.TryGetValue(banId, out var busy) ? busy : banBusy[banId] = server.NewPending();
 
     /// <summary>Sends under the card's mark, then asks for the list (and with bans the ban list) that shows the result.</summary>
-    Pending CardAction(string fingerprint, Request request, bool bans = false)
+    PendingViewModel CardAction(string fingerprint, Request request, bool bans = false)
     {
         var busy = CardBusy(fingerprint);
         cardAskedBefore[fingerprint] = userRefresh.Sent;
@@ -857,7 +858,7 @@ public sealed partial class AdminViewModel : ObservableObject
             ? pending.Assigned
             : user.GroupIds.Contains(groupId);
 
-    async Task ToggleUserGroupAsync(string fingerprint, GroupToggle toggle)
+    async Task ToggleUserGroupAsync(string fingerprint, GroupToggleViewModel toggle)
     {
         bool own = fingerprint == server.Mirror.Self?.Fingerprint;
         if (own) server.OwnGroupChangePending = true; // set before sending: the server's update can come at once
@@ -890,7 +891,7 @@ public sealed partial class AdminViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanNewGroup))]
     async Task NewGroup()
     {
-        if (!await ConfirmLeaveAsync(Place.Groups)) return; // Package 114: the edited group comes first
+        if (!await ConfirmLeaveAsync(AdminPlace.Groups)) return; // Package 114: the edited group comes first
         var group = new GroupEditViewModel(null, Strings.Group_New, Permission.Speak, Actor);
         Groups.Add(group);
         SelectGroup(group);
@@ -906,7 +907,7 @@ public sealed partial class AdminViewModel : ObservableObject
     }
 
     /// <summary>The selected group to the server; null when there is nothing to send or the name is invalid.</summary>
-    Pending? SendGroup()
+    PendingViewModel? SendGroup()
     {
         if (SelectedGroup is not { IsReadOnly: false } g) return null;
         GroupError = TextRules.Name(g.Name, ProtocolInfo.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
@@ -919,7 +920,7 @@ public sealed partial class AdminViewModel : ObservableObject
     }
 
     /// <summary>The draft stays until the server has the group, then gives way to it.</summary>
-    async Task ReplaceDraftAsync(GroupEditViewModel draft, Pending sent)
+    async Task ReplaceDraftAsync(GroupEditViewModel draft, PendingViewModel sent)
     {
         if (await sent.Completion is not null) return;
         bool selected = SelectedGroup == draft;
@@ -963,7 +964,7 @@ public sealed partial class AdminViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    async Task EndGroupReorderAsync(Pending sent, List<Guid> ids)
+    async Task EndGroupReorderAsync(PendingViewModel sent, List<Guid> ids)
     {
         await sent.Completion;
         if (pendingGroupOrder != ids) return; // a newer order is on its way
@@ -1008,7 +1009,7 @@ public sealed partial class AdminViewModel : ObservableObject
     }
 
     /// <summary>Package 114: waits for the server's new settings; null when the input breaks the server's rules.</summary>
-    Pending? SendServerSettings()
+    PendingViewModel? SendServerSettings()
     {
         // Package 83: the server's rules, checked before anything is sent or cleared
         SettingsError = TextRules.Name(ServerName, ProtocolInfo.MaxNameLength) is null ? Strings.Dlg_NameInvalid
@@ -1029,312 +1030,4 @@ public sealed partial class AdminViewModel : ObservableObject
 
     [RelayCommand]
     Task Refresh() => RequestListsAsync();
-}
-
-public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
-{
-    /// <summary>A new group not saved yet counts by itself.</summary>
-    public object MotionKey => Id ?? (object)this;
-    [ObservableProperty] string name;
-
-    public GroupEditViewModel(Guid? id, string name, Permission permissions, Permission actor)
-    {
-        Id = id;
-        this.name = name;
-        serverName = name;
-        serverPermissions = permissions;
-        BuiltFor = actor;
-        // Admin is fixed; a group stronger than the actor could only be edited by escalating.
-        // Package 76: saved groups need GroupsManage to edit and GroupsDelete to delete; an unsaved one is the actor's own draft.
-        ReadOnlyReason = id is null ? null
-            : id == WellKnownGroups.Admin ? Strings.Ui_AdminGroupFixed
-            : !permissions.IsSubsetOf(actor) ? Strings.Ui_GroupStronger
-            : !actor.Has(Permission.GroupsManage) ? Strings.Ui_GroupViewOnly
-            : null;
-        IsReadOnly = ReadOnlyReason is not null;
-        CanDelete = id is null || (id != WellKnownGroups.Admin && id != WellKnownGroups.Guest && permissions.IsSubsetOf(actor) && actor.Has(Permission.GroupsDelete));
-        Toggles = PermissionLabels.All
-            .Select(p => new PermissionToggle(p.Permission, p.Label, permissions.Has(p.Permission), !IsReadOnly && actor.Has(p.Permission)))
-            .ToList();
-    }
-
-    public Guid? Id { get; }
-    public bool IsReadOnly { get; }
-    public string? ReadOnlyReason { get; }
-    public bool IsEditable => !IsReadOnly;
-    public bool CanDelete { get; }
-    public IReadOnlyList<PermissionToggle> Toggles { get; }
-    public Permission Permissions => Toggles.Where(t => t.IsChecked).Aggregate(Permission.None, (acc, t) => acc | t.Permission);
-
-    // ---- Package 114: what the server has, to tell an edit ----
-    string serverName = "";
-    Permission serverPermissions;
-
-    /// <summary>A new group is unsaved by itself; a saved one when its name or rights differ from the server's.</summary>
-    public bool HasChanges => Id is null || (!IsReadOnly && (Name != serverName || Permissions != serverPermissions));
-
-    internal void SetServer(string name, Permission permissions) => (serverName, serverPermissions) = (name, permissions);
-
-    /// <summary>The own rights this row was built for (what may be edited and deleted).</summary>
-    public Permission BuiltFor { get; }
-
-    /// <summary>Only what the user changed on the old row (against its server state), as far as this row allows it.</summary>
-    internal GroupEditViewModel CarryEdits(GroupEditViewModel old)
-    {
-        if (IsReadOnly) return this;
-        if (old.Name != old.serverName) Name = old.Name;
-        foreach (var t in Toggles.Where(t => t.IsEnabled))
-            if (old.Toggles.FirstOrDefault(o => o.Permission == t.Permission) is { } edited && edited.IsChecked != old.serverPermissions.Has(t.Permission))
-                t.IsChecked = edited.IsChecked;
-        return this;
-    }
-
-    /// <summary>New server state for an edited row: what the user did not touch follows it, the edits stay.</summary>
-    internal void Follow(string name, Permission permissions)
-    {
-        if (Name == serverName) Name = name;
-        foreach (var t in Toggles)
-            if (t.IsChecked == serverPermissions.Has(t.Permission)) t.IsChecked = permissions.Has(t.Permission);
-        SetServer(name, permissions);
-    }
-
-    /// <summary>Back to the server's name and rights.</summary>
-    internal void Revert()
-    {
-        Name = serverName;
-        foreach (var t in Toggles) t.IsChecked = serverPermissions.Has(t.Permission);
-    }
-    public string DisplayName => Id is null ? string.Format(Strings.Group_Unsaved, Name) : Name;
-}
-
-public sealed partial class PermissionToggle(Permission permission, string label, bool isChecked, bool isEnabled) : ObservableObject
-{
-    [ObservableProperty] bool isChecked = isChecked;
-
-    public Permission Permission { get; } = permission;
-    public string Label { get; } = label;
-    public bool IsEnabled { get; } = isEnabled;
-}
-
-/// <summary>Packages 75 and 82: pulls a file chunk by chunk into target.part and moves it into place only after the last chunk,
-/// so a failed transfer leaves no half file and the file there before untouched.</summary>
-static class ChunkedDownload
-{
-    public sealed record Chunk(long Offset, long Total, string DataBase64, bool IsLast);
-
-    /// <param name="next">Asks for the chunk at an offset; null stops (error, timeout, page closed).</param>
-    /// <returns>True once the file is in place. IO and base64 errors throw, after removing the temporary file.</returns>
-    public static async Task<bool> RunAsync(string target, Func<long, Task<Chunk?>> next, Action<long, long> progress)
-    {
-        var temp = target + ".part";
-        bool done = false;
-        try
-        {
-            await using (var file = File.Create(temp))
-            {
-                while (true)
-                {
-                    if (await next(file.Length) is not { } chunk || chunk.Offset != file.Length) return false;
-                    var bytes = Convert.FromBase64String(chunk.DataBase64);
-                    await file.WriteAsync(bytes);
-                    progress(file.Length, chunk.Total);
-                    if (chunk.IsLast) break;
-                    if (bytes.Length == 0) return false;
-                }
-            }
-            File.Move(temp, target, overwrite: true);
-            done = true;
-            return true;
-        }
-        finally
-        {
-            if (!done) DeleteQuietly(temp);
-        }
-    }
-
-    static void DeleteQuietly(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-        }
-    }
-}
-
-public enum UserStatusFilter { All, Online, Offline, Banned }
-public enum UserSortOrder { Name, LastLogin, OnlineTime }
-public enum BanStatusFilter { Active, Expired, Lifted, All }
-public enum BanTypeFilter { All, Permanent, Temporary, WithIp }
-public enum BanSortOrder { Newest, EndingSoonest, MostAttempts, Name }
-public enum BanStatus { Active, Expired, Lifted }
-
-/// <summary>An entry of a combo box: the value and its text.</summary>
-public sealed record Choice<T>(T Value, string Label)
-{
-    public override string ToString() => Label;
-}
-
-/// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
-/// <param name="busy">Package 98: the card's actions, running until a user list shows their result.</param>
-public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggle> toggles, IReadOnlyList<BanInfo> bans,
-    AdminViewModel? owner = null, Pending? busy = null, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
-{
-    public KnownUserInfo Info { get; } = info;
-    public object MotionKey => Info.Fingerprint;
-    public Pending Busy { get; } = busy ?? new Pending(TimeProvider.System);
-    public string Fingerprint => Info.Fingerprint;
-    public string Nickname => Info.LastNickname;
-    public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;
-    public IReadOnlyList<GroupToggle> Toggles { get; } = toggles;
-    public bool IsOnline { get; } = isOnline;
-    public string StatusText => IsOnline ? Strings.Ui_StatusOnline : Strings.Ui_StatusOffline;
-    public IReadOnlyList<BanInfo> Bans { get; } = bans;
-    public bool IsBanned => Bans.Count > 0;
-
-    // Package 72: only the actions the viewer may take show on the card
-    public bool CanBan { get; } = canBan;
-    public bool CanUnban { get; } = canUnban;
-    public bool CanDelete { get; } = canDelete;
-    /// <summary>Package 85: the stored server mute, applied again on every login.</summary>
-    public bool IsServerMuted => Info.ServerMuted;
-    public bool CanLiftMute { get; } = canLiftMute;
-    public bool HasActions => CanBan || CanUnban || CanDelete || CanLiftMute;
-
-    [RelayCommand(CanExecute = nameof(CanLiftMute))]
-    Task LiftMute() => owner?.LiftMuteAsync(this) ?? Task.CompletedTask;
-
-    [RelayCommand(CanExecute = nameof(CanBan))]
-    Task Ban() => owner?.BanUserAsync(this) ?? Task.CompletedTask;
-
-    [RelayCommand(CanExecute = nameof(CanUnban))]
-    Task Unban() => owner?.UnbanUserAsync(this) ?? Task.CompletedTask;
-
-    [RelayCommand(CanExecute = nameof(CanDelete))]
-    Task Delete() => owner?.DeleteUserAsync(this) ?? Task.CompletedTask;
-
-    /// <summary>The longest running ban.</summary>
-    public string BanText => Bans.OrderBy(b => b.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""
-        : string.Format(Strings.Ui_BanDetail, ban.ExpiresAt is { } until ? string.Format(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever)
-          + (ban.Reason.Length > 0 ? ". " + string.Format(Strings.Ui_BanReason, ban.Reason) : "");
-
-    /// <summary>Users saved before Package 70 have no statistics yet (LoginCount 0): shown as unknown.</summary>
-    bool HasStats => Info.LoginCount > 0;
-    static string Unknown => Strings.Ui_Unknown;
-    public string FirstSeenText => Info.FirstSeen == default ? Unknown : Info.FirstSeen.ToLocalTime().ToString("g");
-    public string LastLoginText => Info.LastLogin is { } at ? at.ToLocalTime().ToString("g") : Unknown;
-    public string LoginCountText => HasStats ? Info.LoginCount.ToString() : Unknown;
-    public string OnlineTimeText => HasStats ? Duration(Info.OnlineTime) : Unknown;
-    public string SpeechTimeText => HasStats ? Duration(Info.SpeechTime) : Unknown;
-    public string ChatMessagesText => HasStats ? Info.ChatMessages.ToString() : Unknown;
-    public string LastIpText => Info.LastIp ?? Unknown;
-    public string PreviousNicknamesText => Info.PreviousNicknames is { Count: > 0 } names ? string.Join(", ", names) : HasStats ? Strings.Ui_None : Unknown;
-
-    /// <summary>Case-insensitive, in nickname, previous nicknames, fingerprint and IP.</summary>
-    public bool Matches(string search) =>
-        search.Length == 0
-        || new[] { Nickname, Fingerprint, Info.LastIp ?? "" }.Concat(Info.PreviousNicknames ?? []).Any(v => v.Contains(search, StringComparison.OrdinalIgnoreCase));
-
-    /// <summary>"45 s", "1 min 15 s", "1 h 30 min", "2 T 3 h".</summary>
-    public static string Duration(TimeSpan t) => t switch
-    {
-        { TotalMinutes: < 1 } => $"{t.Seconds} s",
-        { TotalHours: < 1 } => t.Seconds == 0 ? $"{t.Minutes} min" : $"{t.Minutes} min {t.Seconds} s",
-        { TotalDays: < 1 } => t.Minutes == 0 ? $"{t.Hours} h" : $"{t.Hours} h {t.Minutes} min",
-        _ => string.Format(Strings.Ui_DurationDays, (int)t.TotalDays, t.Hours),
-    };
-}
-
-public sealed partial class GroupToggle(Guid groupId, string name, bool isChecked, bool isEnabled, Func<GroupToggle, Task> onToggle)
-    : ObservableObject
-{
-    [ObservableProperty] bool isChecked = isChecked;
-
-    public Guid GroupId { get; } = groupId;
-    public string Name { get; } = name;
-    public bool IsEnabled { get; } = isEnabled;
-
-    /// <summary>Bound to the checkbox's Command: IsChecked already holds the new value.</summary>
-    [RelayCommand]
-    Task Toggle() => onToggle(this);
-}
-
-/// <summary>Package 74: one backup on the server: date as title, size and server version below.</summary>
-/// <param name="canRestore">Package 89: only members of the Admin group see the restore button.</param>
-public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewModel, Task> delete, Func<BackupViewModel, Task> restore, bool canRestore = false)
-    : ObservableObject, IMotionKey
-{
-    public object MotionKey => Info.FileName;
-    public BackupInfo Info { get; } = info;
-    public bool CanRestore { get; } = canRestore;
-    public string Title => TitleOf(Info);
-    public static string TitleOf(BackupInfo info) => info.CreatedAt.ToLocalTime().ToString("G") +
-                                                     (info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");
-    public string Details => string.Format(Strings.Backup_Details, Size(Info.Size), Info.ServerVersion);
-
-    /// <summary>The prefix the server gives the backup it takes before a restore.</summary>
-    const string SafetyPrefix = "vor-wiederherstellung_";
-
-    internal static string Size(long bytes) =>
-        bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.0} MB" : $"{Math.Max(1, (bytes + 1023) / 1024)} KB";
-
-    [RelayCommand]
-    Task Delete() => delete(this);
-
-    [RelayCommand]
-    Task Restore() => restore(this);
-}
-
-/// <summary>Package 80: one card of the ban overview with everything the server stores about the ban (A97).</summary>
-/// <param name="now">The client's time when the list was built: status and remaining time as of then.</param>
-/// <param name="busy">Package 98: the unban, running until the new ban list comes.</param>
-public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, Pending? busy = null) : ObservableObject, IMotionKey
-{
-    public object MotionKey => Ban.Id;
-    public BanInfo Ban { get; } = ban;
-    public Pending Busy { get; } = busy ?? new Pending(TimeProvider.System);
-    public string Nickname => Ban.Nickname;
-    public string Fingerprint => Ban.Fingerprint;
-    public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;
-    public bool HasIp => Ban.Ip is not null;
-    public string Ip => Ban.Ip ?? "";
-    public string ReasonText => Ban.Reason.Length > 0 ? Ban.Reason : Strings.Ui_BanNoReason;
-    public string CreatedBy => Ban.CreatedBy;
-
-    public BanStatus Status { get; } = StatusOf(ban, now);
-    static BanStatus StatusOf(BanInfo b, DateTimeOffset now) =>
-        b.LiftedAt is not null ? BanStatus.Lifted : b.ExpiresAt is { } end && end <= now ? BanStatus.Expired : BanStatus.Active;
-    public string StatusText => Status switch
-    {
-        BanStatus.Lifted => string.Format(Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),
-        BanStatus.Expired => Strings.Ui_BanExpired,
-        _ => Strings.Ui_BanActive,
-    };
-    public bool IsActive => Status == BanStatus.Active;
-
-    // Bans saved before Package 80 have no creation time, creator fingerprint or duration: shown as unknown
-    static string Unknown => Strings.Ui_Unknown;
-    static string Local(DateTimeOffset? at) => at?.ToLocalTime().ToString("g") ?? Unknown;
-    public string CreatedAtText => Local(Ban.CreatedAt);
-    public string CreatedByFingerprintText => Ban.CreatedByFingerprint ?? Unknown;
-    public string DurationText => Ban.ExpiresAt is null ? Strings.Ban_Forever
-        : Ban.DurationMinutes is { } minutes ? KnownUserViewModel.Duration(TimeSpan.FromMinutes(minutes)) : Unknown;
-    public string EndText => Ban.ExpiresAt is null ? Strings.Ban_Forever : Local(Ban.ExpiresAt);
-    public bool HasRemaining => IsActive && Ban.ExpiresAt is not null;
-    public string RemainingText => HasRemaining ? KnownUserViewModel.Duration(Ban.ExpiresAt!.Value - now) : "";
-    public string AttemptsText => Ban.BlockedAttempts == 0 ? Strings.Ui_None
-        : string.Format(Strings.Ui_BanAttemptsFmt, Ban.BlockedAttempts, Local(Ban.LastAttempt), Ban.LastAttemptIp ?? Unknown);
-
-    /// <summary>Case-insensitive, in nickname, fingerprint, IP, reason, creator and lifter.</summary>
-    public bool Matches(string search) =>
-        search.Length == 0
-        || new[] { Nickname, Fingerprint, Ban.Ip, Ban.Reason, Ban.CreatedBy, Ban.LiftedBy }.Any(v => v?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
-
-    /// <summary>Package 76: the list is readable with BansView, lifting a ban needs UserBan; Package 80: only active ones.</summary>
-    public bool CanUnban { get; } = canUnban && StatusOf(ban, now) == BanStatus.Active;
-
-    [RelayCommand(CanExecute = nameof(CanUnban))]
-    Task Unban() => unban();
 }
