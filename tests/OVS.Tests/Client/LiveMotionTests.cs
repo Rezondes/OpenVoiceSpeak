@@ -7,7 +7,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using OVS.Client.Audio;
+using OVS.Client.Audio.Transmit;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;

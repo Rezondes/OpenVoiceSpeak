@@ -1,5 +1,7 @@
 using NAudio.Wave;
-using OVS.Client.Audio;
+using OVS.Client.Audio.Capture;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Playback;
 using OVS.Client.Input;
 
 namespace OVS.Tests.Client;

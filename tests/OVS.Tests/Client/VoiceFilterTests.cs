@@ -1,4 +1,8 @@
 using OVS.Client.Audio;
+using OVS.Client.Audio.Capture;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Processing;
+using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
 using OVS.Client.Settings;
 

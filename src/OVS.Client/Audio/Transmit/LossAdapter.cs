@@ -1,7 +1,7 @@
 using OVS.Shared.Protocol;
 using OVS.Shared.Voice;
 
-namespace OVS.Client.Audio;
+namespace OVS.Client.Audio.Transmit;
 
 /// <summary>
 /// Package 135 (A144): the sender's loss protection follows the uplink loss the server reports (every 2 s with the ping

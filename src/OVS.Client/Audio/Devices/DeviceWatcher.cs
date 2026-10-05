@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
 
-namespace OVS.Client.Audio;
+namespace OVS.Client.Audio.Devices;
 
 /// <summary>
 /// Package 137 (A146): Windows' audio device notifications (added, removed, enabled or disabled, a new default). They

@@ -4,13 +4,19 @@ using System.Security.Cryptography;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using OVS.Client.Audio;
+using OVS.Client.Audio.Capture;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Devices;
+using OVS.Client.Audio.Playback;
+using OVS.Client.Audio.Processing;
+using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
-using static OVS.Client.Audio.TransmitMode;
+using static OVS.Client.Audio.Transmit.TransmitMode;
 
 namespace OVS.Tests.Client;
 

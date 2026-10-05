@@ -1,5 +1,6 @@
 using OVS.Client;
-using OVS.Client.Audio;
+using OVS.Client.Audio.Playback;
+using OVS.Client.Audio.Sounds;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -478,9 +479,9 @@ public class ServerViewModelTests
 
     // ---- Package 47: sounds ----
 
-    static List<OVS.Client.Audio.SoundEvent> Sounds(ServerViewModel vm)
+    static List<OVS.Client.Audio.Sounds.SoundEvent> Sounds(ServerViewModel vm)
     {
-        var heard = new List<OVS.Client.Audio.SoundEvent>();
+        var heard = new List<OVS.Client.Audio.Sounds.SoundEvent>();
         vm.SoundRequested += heard.Add;
         return heard;
     }
@@ -502,9 +503,9 @@ public class ServerViewModelTests
         f.Vm.Apply(new ChatMessage(ChatTarget.Private, 1, "ich", null, 3, "ja", DateTimeOffset.UtcNow)); // own echo: nothing
         Assert.Equal(
         [
-            OVS.Client.Audio.SoundEvent.UserJoined, OVS.Client.Audio.SoundEvent.UserJoined, OVS.Client.Audio.SoundEvent.UserLeft,
-            OVS.Client.Audio.SoundEvent.UserLeft, OVS.Client.Audio.SoundEvent.ServerMuted, OVS.Client.Audio.SoundEvent.Moved,
-            OVS.Client.Audio.SoundEvent.PrivateMessage,
+            OVS.Client.Audio.Sounds.SoundEvent.UserJoined, OVS.Client.Audio.Sounds.SoundEvent.UserJoined, OVS.Client.Audio.Sounds.SoundEvent.UserLeft,
+            OVS.Client.Audio.Sounds.SoundEvent.UserLeft, OVS.Client.Audio.Sounds.SoundEvent.ServerMuted, OVS.Client.Audio.Sounds.SoundEvent.Moved,
+            OVS.Client.Audio.Sounds.SoundEvent.PrivateMessage,
         ], heard);
     }
 
@@ -556,7 +557,7 @@ public class ServerViewModelTests
             }
         }
         Talk(1000);
-        Assert.Equal([OVS.Client.Audio.SoundEvent.LinkVoice], heard);
+        Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.LinkVoice], heard);
         f.Time.Advance(TimeSpan.FromMilliseconds(200)); // a short breath: still the same transmission
         Talk(300);
         Assert.Single(heard);
@@ -575,7 +576,7 @@ public class ServerViewModelTests
         const byte Linked = OVS.Shared.Voice.VoiceHeader.TargetLinked;
         f.Vm.SetSelfTransmitting(Linked);
         f.Vm.SetSelfTransmitting(Linked); // still the same transmission
-        Assert.Equal([OVS.Client.Audio.SoundEvent.OwnLinkVoice], heard);
+        Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.OwnLinkVoice], heard);
 
         f.Vm.SetSelfTransmitting(null);
         f.Time.Advance(TimeSpan.FromMilliseconds(100)); // let go and pressed again at once
@@ -623,7 +624,7 @@ public class ServerViewModelTests
         f.Vm.Apply(new ChatMessage(ChatTarget.Private, 2, "anna", null, 1, "psst", DateTimeOffset.UtcNow));
         f.Vm.Apply(new ChatMessage(ChatTarget.Server, 1, "ich", null, null, "selbst", DateTimeOffset.UtcNow));
         f.Vm.Apply(new ChatMessage(ChatTarget.Channel, 1, "ich", Lobby, null, "selbst", DateTimeOffset.UtcNow));
-        Assert.Equal([OVS.Client.Audio.SoundEvent.ServerMessage, OVS.Client.Audio.SoundEvent.ChannelMessage, OVS.Client.Audio.SoundEvent.PrivateMessage], heard);
+        Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.ServerMessage, OVS.Client.Audio.Sounds.SoundEvent.ChannelMessage, OVS.Client.Audio.Sounds.SoundEvent.PrivateMessage], heard);
     }
 
     [Fact]
@@ -640,8 +641,8 @@ public class ServerViewModelTests
         f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo) with { SelfMuted = true })); // the server's echo of the own mute: no second tone
         Assert.Equal(
         [
-            OVS.Client.Audio.SoundEvent.MicOff, OVS.Client.Audio.SoundEvent.MicOn, OVS.Client.Audio.SoundEvent.SoundOff,
-            OVS.Client.Audio.SoundEvent.SoundOn, OVS.Client.Audio.SoundEvent.ChannelEntered,
+            OVS.Client.Audio.Sounds.SoundEvent.MicOff, OVS.Client.Audio.Sounds.SoundEvent.MicOn, OVS.Client.Audio.Sounds.SoundEvent.SoundOff,
+            OVS.Client.Audio.Sounds.SoundEvent.SoundOn, OVS.Client.Audio.Sounds.SoundEvent.ChannelEntered,
         ], heard);
     }
 

@@ -726,7 +726,7 @@ public sealed class ResponsiveTests : IDisposable
     {
         var stats = new ConnectionStats();
         stats.Update(TimeSpan.FromMilliseconds(1234), new OVS.Shared.Voice.LossReport(250, 25), new OVS.Shared.Voice.LossReport(4999, 1234),
-            new OVS.Client.Audio.ReceiveStats(100_000, 1000, 500, 12_345, 123.4, 200), 128);
+            new OVS.Client.Audio.Playback.ReceiveStats(100_000, 1000, 500, 12_345, 123.4, 200), 128);
         return stats;
     }
 
@@ -1087,7 +1087,7 @@ public sealed class ResponsiveTests : IDisposable
     public void ModeChange_Refits()
     {
         var main = Open(1100, FakeServers.WithChannels("A", "B"), out var vm);
-        vm.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.TransmitMode.VoiceActivation });
+        vm.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation });
         WaitFor(() => false, 200);
         Assert.Equal("ich", Footer(main, "SelfName").Text);
         Assert.Equal(Strings.TalkHint_VoiceActivation, Footer(main, "TalkHintLine").Text);

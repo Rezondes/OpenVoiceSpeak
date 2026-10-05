@@ -1,6 +1,6 @@
 using System.Net;
 using NAudio.CoreAudioApi;
-using OVS.Client.Audio;
+using OVS.Client.Audio.Devices;
 using OVS.Client.Input;
 using System.Text.Json;
 using OVS.Client.Settings;

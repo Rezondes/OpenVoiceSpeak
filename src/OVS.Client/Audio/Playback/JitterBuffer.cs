@@ -1,7 +1,8 @@
 using System.Diagnostics;
+using OVS.Client.Audio.Codec;
 using OVS.Shared.Voice;
 
-namespace OVS.Client.Audio;
+namespace OVS.Client.Audio.Playback;
 
 /// <summary>
 /// Reorders one speaker's Opus frames and hides losses. Pull() is called once per 20 ms tick.

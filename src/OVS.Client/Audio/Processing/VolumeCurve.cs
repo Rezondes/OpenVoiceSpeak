@@ -1,4 +1,4 @@
-namespace OVS.Client.Audio;
+namespace OVS.Client.Audio.Processing;
 
 /// <summary>
 /// Package 128 (A137): Fluxer's volume curve. A volume is the slider value (1 = 100 %, 0 to 2); up to 100 % it falls

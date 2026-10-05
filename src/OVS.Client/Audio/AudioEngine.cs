@@ -4,178 +4,19 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using OVS.Client.Audio.Capture;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Devices;
+using OVS.Client.Audio.Playback;
+using OVS.Client.Audio.Processing;
+using OVS.Client.Audio.Sounds;
+using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
 using OVS.Client.Settings;
 using OVS.Shared.Protocol;
 using OVS.Shared.Voice;
 
 namespace OVS.Client.Audio;
-
-public sealed record AudioDevice(string Id, string Name);
-
-public static class AudioDevices
-{
-    public static List<AudioDevice> List(DataFlow flow)
-    {
-        try
-        {
-            using var enumerator = new MMDeviceEnumerator();
-            return enumerator.EnumerateAudioEndPoints(flow, DeviceState.Active).Select(d => new AudioDevice(d.ID, d.FriendlyName)).ToList();
-        }
-        catch (COMException)
-        {
-            return [];
-        }
-    }
-
-    /// <summary>Saved device id, or null (= default device) if it is gone. FellBack tells the UI to show a hint.</summary>
-    public static (string? Id, bool FellBack) Resolve(string? wanted, IReadOnlyList<AudioDevice> available) =>
-        wanted is null ? (null, false)
-        : available.Any(d => d.Id == wanted) ? (wanted, false)
-        : (null, true);
-
-    /// <summary>
-    /// The saved device by its id, or null (= default device, with a warning if it was set but is gone). Package 52:
-    /// straight by id instead of listing every device with its name, which took more than half a second.
-    /// </summary>
-    public static MMDevice? Open(string? id, DataFlow flow, List<string> warnings)
-    {
-        if (id is null) return null;
-        try
-        {
-            using var enumerator = new MMDeviceEnumerator();
-            var device = enumerator.GetDevice(id);
-            if (device.State == DeviceState.Active && device.DataFlow == flow) return device;
-            device.Dispose();
-        }
-        catch (Exception e) when (e is COMException or ArgumentException)
-        {
-            // unknown id: unplugged or removed
-        }
-        warnings.Add(Strings.Audio_DeviceFallback);
-        return null;
-    }
-}
-
-/// <summary>Package 124: where the engine gets its microphone and speaker; tests count the opens and closes without hardware.</summary>
-public interface IAudioDeviceFactory
-{
-    /// <returns>A capture, not started yet.</returns>
-    CapturePipeline OpenCapture(string? deviceId, List<string> warnings);
-
-    /// <returns>The buffer the playback loop fills, and the playing device, disposed when done.</returns>
-    (BufferedWaveProvider Buffer, IDisposable Device) OpenOutput(string? deviceId, List<string> warnings);
-
-    /// <summary>
-    /// Package 137 (A146): the endpoint id that would open now for this choice: the chosen device if active, else the
-    /// console default; null when there is none.
-    /// </summary>
-    string? Resolve(string? deviceId, DataFlow flow);
-
-    /// <summary>
-    /// Package 137: a device was added, removed, enabled or disabled, or the default changed. Raised on any thread (COM
-    /// threads too); a handler must return at once.
-    /// </summary>
-    event Action? Changed;
-
-    /// <summary>Package 137: an open microphone or speaker stopped with an error (unplugged, invalidated); any thread.</summary>
-    event Action<DataFlow, Exception>? Failed;
-}
-
-/// <summary>The real microphone and speaker (WASAPI).</summary>
-sealed class WasapiDevices : IAudioDeviceFactory
-{
-    public static readonly WasapiDevices Instance = new();
-
-    readonly object watcherGate = new();
-    Action? changed;
-    DeviceWatcher? watcher;
-
-    /// <summary>Package 137: Windows is asked for notifications only while someone listens (the engine, for its lifetime).</summary>
-    public event Action? Changed
-    {
-        add
-        {
-            lock (watcherGate)
-            {
-                changed += value;
-                watcher ??= DeviceWatcher.Start(Raise);
-            }
-        }
-        remove
-        {
-            lock (watcherGate)
-            {
-                changed -= value;
-                if (changed is not null) return;
-                watcher?.Dispose();
-                watcher = null;
-            }
-        }
-    }
-
-    void Raise() => Volatile.Read(ref changed)?.Invoke();
-
-    public event Action<DataFlow, Exception>? Failed;
-
-    public string? Resolve(string? deviceId, DataFlow flow)
-    {
-        try
-        {
-            using var enumerator = new MMDeviceEnumerator();
-            if (deviceId is not null)
-            {
-                try
-                {
-                    using var device = enumerator.GetDevice(deviceId);
-                    if (device.State == DeviceState.Active && device.DataFlow == flow) return deviceId;
-                }
-                catch (Exception e) when (e is COMException or ArgumentException)
-                {
-                    // unknown id: unplugged or removed
-                }
-            }
-            if (!enumerator.HasDefaultAudioEndpoint(flow, Role.Console)) return null;
-            using var fallback = enumerator.GetDefaultAudioEndpoint(flow, Role.Console);
-            return fallback.ID;
-        }
-        catch (COMException)
-        {
-            return null;
-        }
-    }
-
-    public CapturePipeline OpenCapture(string? deviceId, List<string> warnings) =>
-        CapturePipeline.FromDevice(AudioDevices.Open(deviceId, DataFlow.Capture, warnings), e => Failed?.Invoke(DataFlow.Capture, e));
-
-    public (BufferedWaveProvider Buffer, IDisposable Device) OpenOutput(string? deviceId, List<string> warnings)
-    {
-        var device = AudioDevices.Open(deviceId, DataFlow.Render, warnings);
-        var output = device is null
-            ? new WasapiOut(AudioClientShareMode.Shared, 30)
-            : new WasapiOut(device, AudioClientShareMode.Shared, true, 30);
-        output.PlaybackStopped += (_, e) =>
-        {
-            if (e.Exception is { } error) Failed?.Invoke(DataFlow.Render, error); // Package 137: a stop of our own carries none
-        };
-        try
-        {
-            var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2)) // Package 142: stereo
-            {
-                DiscardOnBufferOverflow = true,
-                BufferDuration = TimeSpan.FromSeconds(1),
-            };
-            output.Init(buffer);
-            output.Play();
-            return (buffer, output); // disposing stops it
-        }
-        catch
-        {
-            output.Dispose();
-            throw;
-        }
-    }
-}
 
 /// <summary>
 /// Owns microphone, speaker, mixer and the playback clock. Recreating devices on Configure keeps the connection.
@@ -945,33 +786,5 @@ public sealed class AudioEngine : IDisposable
         lock (threadGate) thread = playbackThread;
         thread?.Join(500);
         lock (gate) StopDevices();
-    }
-}
-
-/// <summary>
-/// Package 122: which mixer frames report the speakers to the UI, at most every 100 ms (5 frames): with many speakers the
-/// set changes nearly every frame, and each report goes over the users on the UI thread.
-/// </summary>
-internal sealed class SpeakerReports
-{
-    public const int Frames = 5;
-
-    List<ActiveSpeaker> last = [];
-    int sinceReport = Frames;
-
-    /// <summary>Package 124: someone was reported speaking, so a report of the silence is still due.</summary>
-    public bool Pending => last.Count > 0;
-
-    /// <param name="active">Reused by the mixer: a report is a copy (made at most every 100 ms).</param>
-    /// <returns>The speakers to report after this frame, or null.</returns>
-    public List<ActiveSpeaker>? Next(List<ActiveSpeaker> active)
-    {
-        // On change, and every 100 ms while someone talks: the UI holds an indicator for 300 ms after the last report. A
-        // change within the 100 ms waits for the next report (the set reported last stays the one compared with).
-        if (sinceReport < Frames) sinceReport++; // capped: it would overflow after months of silence
-        if (sinceReport < Frames || (active.Count == 0 && last.Count == 0)) return null;
-        sinceReport = 0;
-        last = [.. active];
-        return last;
     }
 }

@@ -1,6 +1,8 @@
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using OVS.Client.Audio;
+using OVS.Client.Audio.Capture;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Devices;
 using OVS.Client.Localization;
 using OVS.Shared.Voice;
 

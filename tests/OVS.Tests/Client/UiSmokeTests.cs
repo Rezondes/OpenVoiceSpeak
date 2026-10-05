@@ -13,7 +13,6 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Xml.Linq;
 using OVS.Client;
-using OVS.Client.Audio;
 using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;

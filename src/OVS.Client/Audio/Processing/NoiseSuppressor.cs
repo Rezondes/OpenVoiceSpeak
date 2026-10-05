@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 
-namespace OVS.Client.Audio;
+namespace OVS.Client.Audio.Processing;
 
 /// <summary>
 /// Package 123 (A131): RNNoise (xiph, BSD-3) on the sent signal. Own minimal binding instead of the package's wrapper,

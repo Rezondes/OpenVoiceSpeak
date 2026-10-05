@@ -1,4 +1,4 @@
-using OVS.Client.Audio;
+using OVS.Client.Audio.Playback;
 using OVS.Client.ViewModels;
 using OVS.Shared.Voice;
 

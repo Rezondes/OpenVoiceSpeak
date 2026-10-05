@@ -1,5 +1,9 @@
 using System.Collections.Concurrent;
 using OVS.Client.Audio;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Devices;
+using OVS.Client.Audio.Sounds;
+using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
 using OVS.Client.Net;
 using OVS.Client.Settings;

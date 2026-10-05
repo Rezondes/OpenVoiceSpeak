@@ -1,4 +1,6 @@
-namespace OVS.Client.Audio;
+using OVS.Client.Audio.Transmit;
+
+namespace OVS.Client.Audio.Processing;
 
 /// <summary>
 /// Package 123 (A131): a slow automatic gain for quiet microphones. It only raises (a loud voice stays as it is),

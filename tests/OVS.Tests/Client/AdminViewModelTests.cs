@@ -274,7 +274,7 @@ public class AdminViewModelTests
     public async Task AssignGroup_SoundWhenListConfirms_NotOnError()
     {
         var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
-        var heard = new List<OVS.Client.Audio.SoundEvent>();
+        var heard = new List<OVS.Client.Audio.Sounds.SoundEvent>();
         server.SoundRequested += heard.Add;
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
 
@@ -284,7 +284,7 @@ public class AdminViewModelTests
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])])); // an older answer: not yet
         Assert.Empty(heard);
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])]));
-        Assert.Equal([OVS.Client.Audio.SoundEvent.GroupChangedByMe], heard);
+        Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.GroupChangedByMe], heard);
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])])); // only once
         Assert.Single(heard);
 

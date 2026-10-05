@@ -210,7 +210,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void SettingsAudio(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme, 760, s => s.Mode = OVS.Client.Audio.TransmitMode.VoiceActivation);
+        using var scene = new Scene(lang, theme, 760, s => s.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
         scene.Connect();
         OpenSettings(scene, Strings.Ui_VolumeSection);
         Shows(scene.Window, Strings.Ui_TransmitSection);

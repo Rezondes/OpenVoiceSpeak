@@ -1,4 +1,4 @@
-using OVS.Client.Audio;
+using OVS.Client.Audio.Processing;
 
 namespace OVS.Tests.Client;
 

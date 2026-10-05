@@ -882,7 +882,7 @@ public sealed partial class AdminViewModel : ObservableObject
         int done = pendingGroupChanges.RemoveAll(p => users.Any(u => u.Fingerprint == p.Fingerprint && u.GroupIds.Contains(p.GroupId) == p.Assigned));
         pendingGroupChanges.RemoveAll(p => round > p.AskedBefore); // asked for after the change and still not showing it: the list wins
         UpdateOwnGroupChangePending();
-        if (done > 0) server.RequestSound(Audio.SoundEvent.GroupChangedByMe);
+        if (done > 0) server.RequestSound(Audio.Sounds.SoundEvent.GroupChangedByMe);
     }
 
     bool CanNewGroup => Actor.Has(Permission.GroupsCreate);

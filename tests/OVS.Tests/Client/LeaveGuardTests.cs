@@ -368,7 +368,7 @@ public sealed class LeaveGuardTests : IDisposable
         main.Show();
         vm.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        vm.SettingsPage!.ShowDevices([new OVS.Client.Audio.AudioDevice("a", "Mikrofon")], [new OVS.Client.Audio.AudioDevice("b", "Lautsprecher")]);
+        vm.SettingsPage!.ShowDevices([new OVS.Client.Audio.Devices.AudioDevice("a", "Mikrofon")], [new OVS.Client.Audio.Devices.AudioDevice("b", "Lautsprecher")]);
         Dispatcher.UIThread.RunJobs();
         Assert.False(vm.SettingsPage.HasChanges);
         main.Close();

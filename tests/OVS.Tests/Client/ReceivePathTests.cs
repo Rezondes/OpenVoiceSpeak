@@ -1,4 +1,7 @@
 using OVS.Client.Audio;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Playback;
+using OVS.Client.Audio.Sounds;
 using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Client.Settings;

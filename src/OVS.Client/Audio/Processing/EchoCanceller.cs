@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 
-namespace OVS.Client.Audio;
+namespace OVS.Client.Audio.Processing;
 
 /// <summary>
 /// Package 140 (A149): WebRTC's echo canceller (AEC3, from the freedesktop webrtc-audio-processing, BSD-3) behind the

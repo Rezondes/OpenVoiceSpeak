@@ -34,7 +34,7 @@ SOFTWARE.
 ## RNNoise
 
 Quelle: https://github.com/xiph/rnnoise (Windows-Build aus https://github.com/Yellow-Dog-Man/rnnoise, bezogen über das NuGet-Paket `YellowDogMan.RRNoise.NET`, nur die native Bibliothek)
-Verwendet in: `rnnoise.dll`, aufgerufen von `src/OVS.Client/Audio/NoiseSuppressor.cs` (Rauschunterdrückung); außerdem in `ovs_aec.dll` (WebRTCs Kopie unter `third_party/rnnoise`, siehe WebRTC Audio Processing)
+Verwendet in: `rnnoise.dll`, aufgerufen von `src/OVS.Client/Audio/Processing/NoiseSuppressor.cs` (Rauschunterdrückung); außerdem in `ovs_aec.dll` (WebRTCs Kopie unter `third_party/rnnoise`, siehe WebRTC Audio Processing)
 
 ```
 Copyright (c) 2017, Mozilla
@@ -73,7 +73,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## WebRTC Audio Processing
 
 Quelle: https://gitlab.freedesktop.org/pulseaudio/webrtc-audio-processing (Tag `v2.1`, aus https://webrtc.googlesource.com/src)
-Verwendet in: `ovs_aec.dll` (gebaut mit `native/ovs_aec/build.ps1`), aufgerufen von `src/OVS.Client/Audio/EchoCanceller.cs` (Echounterdrückung)
+Verwendet in: `ovs_aec.dll` (gebaut mit `native/ovs_aec/build.ps1`), aufgerufen von `src/OVS.Client/Audio/Processing/EchoCanceller.cs` (Echounterdrückung)
 
 ```
 Copyright (c) 2011, The WebRTC project authors. All rights reserved.

@@ -1,5 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using OVS.Client.Audio;
+using OVS.Client.Audio.Playback;
 using OVS.Client.Localization;
 using OVS.Shared.Voice;
 

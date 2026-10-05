@@ -1,4 +1,4 @@
-using OVS.Client.Audio;
+using OVS.Client.Audio.Transmit;
 using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
 
