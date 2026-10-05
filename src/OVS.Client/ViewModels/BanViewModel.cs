@@ -40,10 +40,10 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
     public string CreatedAtText => Local(Ban.CreatedAt);
     public string CreatedByFingerprintText => Ban.CreatedByFingerprint ?? Unknown;
     public string DurationText => Ban.ExpiresAt is null ? Strings.Ban_Forever
-        : Ban.DurationMinutes is { } minutes ? KnownUserViewModel.Duration(TimeSpan.FromMinutes(minutes)) : Unknown;
+        : Ban.DurationMinutes is { } minutes ? Formats.Duration(TimeSpan.FromMinutes(minutes)) : Unknown;
     public string EndText => Ban.ExpiresAt is null ? Strings.Ban_Forever : Local(Ban.ExpiresAt);
     public bool HasRemaining => IsActive && Ban.ExpiresAt is not null;
-    public string RemainingText => HasRemaining ? KnownUserViewModel.Duration(Ban.ExpiresAt!.Value - now) : "";
+    public string RemainingText => HasRemaining ? Formats.Duration(Ban.ExpiresAt!.Value - now) : "";
     public string AttemptsText => Ban.BlockedAttempts == 0 ? Strings.Ui_None
         : string.Format(Strings.Ui_BanAttemptsFmt, Ban.BlockedAttempts, Local(Ban.LastAttempt), Ban.LastAttemptIp ?? Unknown);
 

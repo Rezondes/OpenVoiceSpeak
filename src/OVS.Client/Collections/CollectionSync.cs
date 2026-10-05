@@ -18,8 +18,6 @@ public static class CollectionSync
     /// <summary>An entry of a list starts (true) or stops (false, it came back) leaving: (list, entry, leaving).</summary>
     public static event Action<object, object, bool>? LeavingChanged;
 
-    static object? KeyOf(object? item) => item is IMotionKey keyed ? keyed.MotionKey : item;
-
     static Dictionary<object, int> Leaving(object list) => leavingSets.GetValue(list, _ => new Dictionary<object, int>(ReferenceEqualityComparer.Instance));
 
     public static bool IsLeaving(object list, object item) => leavingSets.TryGetValue(list, out var set) && set.ContainsKey(item);
@@ -39,7 +37,7 @@ public static class CollectionSync
     /// </summary>
     public static void Sync<T>(ObservableCollection<T> target, IReadOnlyList<T> desired, LeaveTimer? leave = null) where T : class
     {
-        var keys = desired.Select(KeyOf).ToHashSet();
+        var keys = desired.Select(IMotionKey.KeyOf).ToHashSet();
         var final = desired.ToList();
         if (leave is { Delay.Ticks: > 0 })
         {
@@ -49,7 +47,7 @@ public static class CollectionSync
             object? after = null;
             foreach (var item in target)
             {
-                var key = KeyOf(item);
+                var key = IMotionKey.KeyOf(item);
                 if (keys.Contains(key)) after = key;
                 else if (after is null) head.Add(item);
                 else if (behind.TryGetValue(after, out var group)) group.Add(item);
@@ -59,24 +57,24 @@ public static class CollectionSync
             foreach (var want in desired)
             {
                 final.Add(want);
-                if (KeyOf(want) is { } key && behind.TryGetValue(key, out var group)) final.AddRange(group);
+                if (IMotionKey.KeyOf(want) is { } key && behind.TryGetValue(key, out var group)) final.AddRange(group);
             }
         }
         else
         {
             // Package 122: gone at once, so they do not move down step by step to the end first
             for (int i = target.Count - 1; i >= 0; i--)
-                if (!keys.Contains(KeyOf(target[i]))) target.RemoveAt(i);
+                if (!keys.Contains(IMotionKey.KeyOf(target[i]))) target.RemoveAt(i);
         }
 
         // Package 122: what is shown, so no entry is searched for in the whole list (quadratic with long lists)
         var present = new HashSet<T>(target);
-        var presentKeys = target.Select(KeyOf).ToHashSet();
+        var presentKeys = target.Select(IMotionKey.KeyOf).ToHashSet();
         for (int i = 0; i < final.Count; i++)
         {
             var want = final[i];
             if (i < target.Count && Equals(target[i], want)) continue;
-            var key = KeyOf(want);
+            var key = IMotionKey.KeyOf(want);
             if (!present.Contains(want) && !presentKeys.Contains(key))
             {
                 target.Insert(i, want);
@@ -87,7 +85,7 @@ public static class CollectionSync
             // shown further down, or a rebuilt row with the same key
             int at = -1;
             for (int j = i; j < target.Count && at < 0; j++)
-                if (Equals(target[j], want) || Equals(KeyOf(target[j]), key)) at = j;
+                if (Equals(target[j], want) || Equals(IMotionKey.KeyOf(target[j]), key)) at = j;
             if (at < 0)
             {
                 target.Insert(i, want); // only a key equal to an entry placed already: as before, a new entry
@@ -109,7 +107,7 @@ public static class CollectionSync
         foreach (var gone in leaving.Keys.Where(item => !shown.Contains(item)).ToList()) leaving.Remove(gone); // replaced by a rebuilt row
         foreach (var item in target.ToList()) // the instances really shown (a record may equal a new one)
         {
-            if (keys.Contains(KeyOf(item)))
+            if (keys.Contains(IMotionKey.KeyOf(item)))
             {
                 if (leaving.Remove(item)) LeavingChanged?.Invoke(target, item, false); // back while leaving
                 continue;

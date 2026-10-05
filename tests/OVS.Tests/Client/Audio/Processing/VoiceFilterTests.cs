@@ -278,8 +278,8 @@ public class VoiceFilterTests
     {
         using var suppressor = NoiseSuppressor.Create(out var error);
         Assert.True(suppressor is not null, error);
-        Assert.Null(suppressor.Process(new float[NoiseSuppressor.HalfFrame - 1]));
-        Assert.NotNull(suppressor.Process(new float[NoiseSuppressor.HalfFrame]));
+        Assert.Null(suppressor.Process(new float[AudioFormat.HalfFrameSamples - 1]));
+        Assert.NotNull(suppressor.Process(new float[AudioFormat.HalfFrameSamples]));
     }
 
     /// <summary>Package 127 (A136): rated as speech however quiet, the gain stops at +30 dB, and the peak at -3 dBFS.</summary>

@@ -127,8 +127,6 @@ public static class ItemMotion
     /// <summary>Package 122: whether the list notes its entries' places on layout passes right now (tests ask).</summary>
     internal static bool TracksPlaces(ItemsControl list) => trackers.TryGetValue(list, out var tracker) && tracker.Tracking;
 
-    public static object? KeyOf(object? item) => item is IMotionKey keyed ? keyed.MotionKey : item;
-
     static void Show(object? source, ItemsControl list, bool on)
     {
         if (source is null) return;
@@ -171,7 +169,7 @@ public static class ItemMotion
     {
         if (!Motion.IsAnimated || grounded.ContainsKey(item) || OverlayLayer.GetOverlayLayer(container) is not { } overlay || FlyGhost.VisibleRect(container, overlay) is not { } from) return;
         if (departures.Remove(item, out var earlier)) earlier.Picture.Dispose();
-        departures[item] = new Departure(overlay, ReorderDrag.Snapshot(container), from);
+        departures[item] = new Departure(overlay, DragVisuals.Snapshot(container), from);
         QueuePairing();
     }
 
@@ -393,7 +391,7 @@ public static class ItemMotion
             // they glide from. Asked by what each row still shows (the list's indexes may have moved on with the change);
             // a row made for the change has no place yet and keeps the one noted
             foreach (var container in list.GetRealizedContainers())
-                if (container.IsArrangeValid && KeyOf(container.DataContext) is { } key) places[key] = container.Bounds.Y;
+                if (container.IsArrangeValid && IMotionKey.KeyOf(container.DataContext) is { } key) places[key] = container.Bounds.Y;
             tracking = true;
             list.LayoutUpdated += OnLayoutUpdated;
             _ = UntrackWhenStillAsync();
@@ -425,7 +423,7 @@ public static class ItemMotion
             bool same = true;
             foreach (var container in list.GetRealizedContainers())
             {
-                if (KeyOf(list.ItemFromContainer(container)) is not { } key) continue;
+                if (IMotionKey.KeyOf(list.ItemFromContainer(container)) is not { } key) continue;
                 now.TryAdd(key, container.Bounds.Y);
                 bool known = places.TryGetValue(key, out var was);
                 same &= known && was == container.Bounds.Y;
@@ -450,7 +448,7 @@ public static class ItemMotion
             Dispatcher.UIThread.Post(() =>
             {
                 settleQueued = false;
-                known = list.Items.Select(KeyOf).OfType<object>().ToHashSet();
+                known = list.Items.Select(IMotionKey.KeyOf).OfType<object>().ToHashSet();
                 filled = true;
             }, DispatcherPriority.Background);
         }
@@ -463,7 +461,7 @@ public static class ItemMotion
                 Leave(e.Container); // shown in the middle of folding away (a scrolled list): folded at once
                 return;
             }
-            var key = KeyOf(item);
+            var key = IMotionKey.KeyOf(item);
             if (key is null || !Motion.IsAnimated) return;
             if (!list.IsEffectivelyVisible) // a hidden list makes its rows at once; nobody sees them arrive
             {

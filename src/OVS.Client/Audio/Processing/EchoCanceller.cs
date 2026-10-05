@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using OVS.Client.Audio.Codec;
 
 namespace OVS.Client.Audio.Processing;
 
@@ -13,9 +14,6 @@ namespace OVS.Client.Audio.Processing;
 public sealed unsafe class EchoCanceller : IDisposable
 {
     public const string Library = "ovs_aec";
-
-    /// <summary>The library works on 10 ms at 48 kHz, so one 20 ms frame is two halves.</summary>
-    public const int HalfFrame = 480;
 
     sealed class Native
     {
@@ -78,7 +76,7 @@ public sealed unsafe class EchoCanceller : IDisposable
     /// </summary>
     public int DelayMs { get; set; }
 
-    /// <summary>The far end: a frame as it goes to the speaker (playback thread); its length is a multiple of <see cref="HalfFrame"/>.</summary>
+    /// <summary>The far end: a frame as it goes to the speaker (playback thread); its length is a multiple of <see cref="AudioFormat.HalfFrameSamples"/>.</summary>
     public void Render(ReadOnlySpan<float> frame)
     {
         lock (renderGate)
@@ -86,7 +84,7 @@ public sealed unsafe class EchoCanceller : IDisposable
             if (state == 0) return;
             fixed (float* samples = frame)
             {
-                for (int offset = 0; offset + HalfFrame <= frame.Length; offset += HalfFrame)
+                for (int offset = 0; offset + AudioFormat.HalfFrameSamples <= frame.Length; offset += AudioFormat.HalfFrameSamples)
                     native.Render(state, samples + offset); // read only, despite the pointer
             }
             rendered++;
@@ -99,7 +97,7 @@ public sealed unsafe class EchoCanceller : IDisposable
         if (state == 0) return;
         fixed (float* samples = frame)
         {
-            for (int offset = 0; offset + HalfFrame <= frame.Length; offset += HalfFrame)
+            for (int offset = 0; offset + AudioFormat.HalfFrameSamples <= frame.Length; offset += AudioFormat.HalfFrameSamples)
             {
                 native.SetDelay(state, DelayMs); // a stream setter: before each capture call, on its thread
                 native.Capture(state, samples + offset);

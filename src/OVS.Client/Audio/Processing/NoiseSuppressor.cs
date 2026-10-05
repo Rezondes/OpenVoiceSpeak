@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using OVS.Client.Audio.Codec;
 
 namespace OVS.Client.Audio.Processing;
 
@@ -12,9 +13,6 @@ namespace OVS.Client.Audio.Processing;
 public sealed unsafe class NoiseSuppressor : IDisposable
 {
     public const string Library = "rnnoise";
-
-    /// <summary>RNNoise works on 10 ms at 48 kHz, so one 20 ms frame is two halves.</summary>
-    public const int HalfFrame = 480;
 
     // RNNoise expects samples in the 16-bit range, not -1..1
     const float Scale = 32768f;
@@ -77,16 +75,16 @@ public sealed unsafe class NoiseSuppressor : IDisposable
     // energy ratio for NoiseCutDb
     static readonly double NoiseCutRatio = Math.Pow(10, -NoiseCutDb / 10);
 
-    /// <summary>Denoises a frame in place; its length is a multiple of <see cref="HalfFrame"/>.</summary>
+    /// <summary>Denoises a frame in place; its length is a multiple of <see cref="AudioFormat.HalfFrameSamples"/>.</summary>
     /// <returns>
     /// Package 127 (A136): how likely the frame is speech (0 to 1), the lower of its halves' ratings, so a frame counts
     /// as speech only when all of it does; 0 when RNNoise cut the frame by more than <see cref="NoiseCutDb"/> (it
     /// removed mostly noise: steady loud noise can be rated as speech). Null when disposed or shorter than
-    /// <see cref="HalfFrame"/> (nothing rated).
+    /// <see cref="AudioFormat.HalfFrameSamples"/> (nothing rated).
     /// </returns>
     public float? Process(Span<float> frame)
     {
-        if (state == 0 || frame.Length < HalfFrame) return null; // disposed or too short: passes unchanged
+        if (state == 0 || frame.Length < AudioFormat.HalfFrameSamples) return null; // disposed or too short: passes unchanged
         float probability = 1f;
         double before = 0, after = 0;
         for (int i = 0; i < frame.Length; i++)
@@ -97,7 +95,7 @@ public sealed unsafe class NoiseSuppressor : IDisposable
         fixed (float* samples = frame)
         {
             // in place is fine: RNNoise filters the input into its own buffer before it writes the output
-            for (int offset = 0; offset + HalfFrame <= frame.Length; offset += HalfFrame)
+            for (int offset = 0; offset + AudioFormat.HalfFrameSamples <= frame.Length; offset += AudioFormat.HalfFrameSamples)
                 probability = Math.Min(probability, native.ProcessFrame(state, samples + offset, samples + offset));
         }
         for (int i = 0; i < frame.Length; i++)

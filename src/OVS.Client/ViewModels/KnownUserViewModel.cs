@@ -55,8 +55,8 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     public string FirstSeenText => Info.FirstSeen == default ? Unknown : Info.FirstSeen.ToLocalTime().ToString("g");
     public string LastLoginText => Info.LastLogin is { } at ? at.ToLocalTime().ToString("g") : Unknown;
     public string LoginCountText => HasStats ? Info.LoginCount.ToString() : Unknown;
-    public string OnlineTimeText => HasStats ? Duration(Info.OnlineTime) : Unknown;
-    public string SpeechTimeText => HasStats ? Duration(Info.SpeechTime) : Unknown;
+    public string OnlineTimeText => HasStats ? Formats.Duration(Info.OnlineTime) : Unknown;
+    public string SpeechTimeText => HasStats ? Formats.Duration(Info.SpeechTime) : Unknown;
     public string ChatMessagesText => HasStats ? Info.ChatMessages.ToString() : Unknown;
     public string LastIpText => Info.LastIp ?? Unknown;
     public string PreviousNicknamesText => Info.PreviousNicknames is { Count: > 0 } names ? string.Join(", ", names) : HasStats ? Strings.Ui_None : Unknown;
@@ -65,13 +65,4 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     public bool Matches(string search) =>
         search.Length == 0
         || new[] { Nickname, Fingerprint, Info.LastIp ?? "" }.Concat(Info.PreviousNicknames ?? []).Any(v => v.Contains(search, StringComparison.OrdinalIgnoreCase));
-
-    /// <summary>"45 s", "1 min 15 s", "1 h 30 min", "2 T 3 h".</summary>
-    public static string Duration(TimeSpan t) => t switch
-    {
-        { TotalMinutes: < 1 } => $"{t.Seconds} s",
-        { TotalHours: < 1 } => t.Seconds == 0 ? $"{t.Minutes} min" : $"{t.Minutes} min {t.Seconds} s",
-        { TotalDays: < 1 } => t.Minutes == 0 ? $"{t.Hours} h" : $"{t.Hours} h {t.Minutes} min",
-        _ => string.Format(Strings.Ui_DurationDays, (int)t.TotalDays, t.Hours),
-    };
 }

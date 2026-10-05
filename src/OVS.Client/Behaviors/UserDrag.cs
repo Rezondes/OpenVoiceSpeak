@@ -64,7 +64,7 @@ public sealed class UserDrag
             if (Math.Abs(position.Y - start.Y) < ReorderDrag.Threshold && Math.Abs(position.X - start.X) < ReorderDrag.Threshold) return;
             if (!Begin(e)) return;
         }
-        ReorderDrag.Follow(preview!, e, grab);
+        DragVisuals.Follow(preview!, e, grab);
         Light(TargetAt(e));
     }
 
@@ -72,7 +72,7 @@ public sealed class UserDrag
     {
         if (source is null || OverlayLayer.GetOverlayLayer(tree) is not { } overlay) return false;
         dragging = true;
-        preview = ReorderDrag.Lift(source);
+        preview = DragVisuals.Lift(source);
         overlay.Children.Add(preview);
         source.Opacity = ReorderDrag.DimmedOpacity;
         e.Pointer.Capture(tree);

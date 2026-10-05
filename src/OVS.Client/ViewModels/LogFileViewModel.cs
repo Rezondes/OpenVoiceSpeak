@@ -19,7 +19,7 @@ public sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = 
     public string Title => TitleOf(Info);
     public bool IsServer => Info.Kind == LogKind.Server;
     public string StartText => Info.Start.ToLocalTime().ToString("g");
-    public string Details => $"{StartText}, {BackupViewModel.Size(Info.Size)}";
+    public string Details => $"{StartText}, {Formats.Size(Info.Size)}";
 
     public static string TitleOf(LogFileInfo f) => f.Kind == LogKind.Server ? Strings.Ui_LogSourceServer : f.ChannelName ?? Strings.Ui_LogDeletedChannel;
 }

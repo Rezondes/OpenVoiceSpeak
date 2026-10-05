@@ -87,7 +87,7 @@ public static class Motion
         IDisposable? picture = null;
         try
         {
-            var bitmap = ReorderDrag.Snapshot(child, top.RenderScaling); // now, while it is still laid out
+            var bitmap = DragVisuals.Snapshot(child, top.RenderScaling); // now, while it is still laid out
             picture = bitmap;
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); // after what the close started
             if (top is MainWindow { Overlay.IsOpen: true } || !IsAnimated) return;

@@ -25,11 +25,16 @@ public static class FlyGhost
     {
         if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.TranslatePoint(default, overlay) is not { } topLeft) return null;
         var rect = new Rect(topLeft, control.Bounds.Size);
-        if (control.FindAncestorOfType<ScrollViewer>() is { } scroll && scroll.TranslatePoint(default, overlay) is { } at
-            && !new Rect(at, scroll.Bounds.Size).Contains(rect.Center))
+        if (ScrollViewport(control, overlay) is { } shown && !shown.Contains(rect.Center))
             return null;
         return rect;
     }
+
+    /// <summary>The rectangle the nearest <see cref="ScrollViewer"/> around the control shows, in the overlay, or null without one.</summary>
+    internal static Rect? ScrollViewport(Control control, Visual overlay) =>
+        control.FindAncestorOfType<ScrollViewer>() is { } scroll && scroll.TranslatePoint(default, overlay) is { } at
+            ? new Rect(at, scroll.Bounds.Size)
+            : null;
 
     /// <summary>
     /// Lets <paramref name="ghost"/> fly from <paramref name="from"/> to wherever <paramref name="to"/> says the target is

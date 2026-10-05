@@ -17,13 +17,10 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
     public string Title => TitleOf(Info);
     public static string TitleOf(BackupInfo info) => info.CreatedAt.ToLocalTime().ToString("G") +
                                                      (info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");
-    public string Details => string.Format(Strings.Backup_Details, Size(Info.Size), Info.ServerVersion);
+    public string Details => string.Format(Strings.Backup_Details, Formats.Size(Info.Size), Info.ServerVersion);
 
     /// <summary>The prefix the server gives the backup it takes before a restore.</summary>
     const string SafetyPrefix = "vor-wiederherstellung_";
-
-    internal static string Size(long bytes) =>
-        bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.0} MB" : $"{Math.Max(1, (bytes + 1023) / 1024)} KB";
 
     [RelayCommand]
     Task Delete() => delete(this);

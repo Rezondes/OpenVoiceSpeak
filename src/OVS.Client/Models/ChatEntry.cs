@@ -1,3 +1,4 @@
+using OVS.Client.Localization;
 using OVS.Client.ViewModels;
 
 namespace OVS.Client.Models;
@@ -9,7 +10,7 @@ namespace OVS.Client.Models;
 /// <param name="Sending">Package 98: an own message on its way to the server, shown before the server's echo.</param>
 public sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, ChatSendingViewModel? Sending = null)
 {
-    public string TimeText => Time.ToString("HH:mm");
+    public string TimeText => Formats.ClockTime(Time);
     public bool IsMessage => From is not null;
     public bool IsOwnMessage => IsMessage && IsOwn;     // Package 64: right, as a bubble without avatar
     public bool IsOtherMessage => IsMessage && !IsOwn;  // left, with avatar and name

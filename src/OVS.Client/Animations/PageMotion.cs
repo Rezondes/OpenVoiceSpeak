@@ -51,7 +51,7 @@ public static class PageMotion
         var state = switching.GetValue(layer, _ => new Switching());
         if (state.Pending) return; // the picture of the page that was there at the start of the change already lies on top
         Stop(host, layer); // a switch in the middle of a switch: the old one ends at once
-        layer.Child = new Image { Source = ReorderDrag.Snapshot(host), Width = host.Bounds.Width, Height = host.Bounds.Height };
+        layer.Child = new Image { Source = DragVisuals.Snapshot(host), Width = host.Bounds.Width, Height = host.Bounds.Height };
         layer.Classes.Set(PageGhostClass, true);
         layer.IsVisible = true;
         state.Pending = true;
@@ -179,9 +179,8 @@ public static class PageMotion
     {
         if (tab is null || tab.TranslatePoint(default, overlay) is not { } at || tab.Bounds.Width <= 0) return null;
         var rect = new Rect(at, tab.Bounds.Size);
-        var shown = tabs.FindAncestorOfType<ScrollViewer>() is { } scroll && scroll.TranslatePoint(default, overlay) is { } corner
-            ? new Rect(corner, scroll.Bounds.Size)
-            : tabs.TranslatePoint(default, overlay) is { } origin ? new Rect(origin, tabs.Bounds.Size) : rect;
+        var shown = FlyGhost.ScrollViewport(tabs, overlay)
+            ?? (tabs.TranslatePoint(default, overlay) is { } origin ? new Rect(origin, tabs.Bounds.Size) : rect);
         return shown.Contains(rect.Center) ? rect : null;
     }
 

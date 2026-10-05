@@ -7,4 +7,7 @@ namespace OVS.Client.Collections;
 public interface IMotionKey
 {
     object MotionKey { get; }
+
+    /// <summary>The key an item counts by: its <see cref="MotionKey"/>, or the item itself.</summary>
+    static object? KeyOf(object? item) => item is IMotionKey keyed ? keyed.MotionKey : item;
 }

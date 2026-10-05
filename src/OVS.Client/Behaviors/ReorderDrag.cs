@@ -5,8 +5,6 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using OVS.Client.Animations;
 using OVS.Client.Interop;
@@ -78,34 +76,8 @@ public sealed class ReorderDrag
             if (Math.Abs(position.Y - start.Y) < Threshold && Math.Abs(position.X - start.X) < Threshold) return;
             if (!Begin(e)) return;
         }
-        if (preview is not null) Follow(preview, e, grab);
+        if (preview is not null) DragVisuals.Follow(preview, e, grab);
         ShowGap(SlotAt(position.Y));
-    }
-
-    /// <summary>The lifted picture of <paramref name="source"/> (A112), not yet placed; also the user drag's (Package 120).</summary>
-    internal static Border Lift(Control source)
-    {
-        var transforms = new TransformGroup();
-        transforms.Children.Add(new ScaleTransform(Scale, Scale));
-        transforms.Children.Add(new RotateTransform(Tilt));
-        return new Border
-        {
-            Classes = { "dragPreview" },
-            Width = source.Bounds.Width,
-            Height = source.Bounds.Height,
-            IsHitTestVisible = false,
-            RenderTransform = transforms,
-            Child = new Image { Source = Snapshot(source) },
-        };
-    }
-
-    /// <summary>Keeps the point where the item was grabbed under the pointer.</summary>
-    internal static void Follow(Border preview, PointerEventArgs e, Point grab)
-    {
-        if (preview.Parent is not Visual overlay) return;
-        var at = e.GetPosition(overlay) - grab;
-        Canvas.SetLeft(preview, at.X);
-        Canvas.SetTop(preview, at.Y);
     }
 
     bool Begin(PointerEventArgs e)
@@ -113,7 +85,7 @@ public sealed class ReorderDrag
         if (source is null || OverlayLayer.GetOverlayLayer(list) is not { } overlay) return false;
         dragging = true;
         bool reduced = ReducedMotion();
-        preview = Lift(source);
+        preview = DragVisuals.Lift(source);
         // the drop target: a dashed frame of the item's size where it will land, below the lifted preview
         placeholder = new Rectangle
         {
@@ -132,21 +104,6 @@ public sealed class ReorderDrag
         top = TopLevel.GetTopLevel(list);
         top?.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         return true;
-    }
-
-    /// <summary>A picture of the control as it looks now (also the flying row of Package 103).</summary>
-    /// <param name="scale">For a control no longer shown (a closed popup): the scaling of the window it is drawn in.</param>
-    internal static RenderTargetBitmap Snapshot(Control control, double? scale = null)
-    {
-        double scaling = scale ?? TopLevel.GetTopLevel(control)?.RenderScaling ?? 1;
-        var size = new PixelSize(Math.Max(1, (int)Math.Ceiling(control.Bounds.Width * scaling)), Math.Max(1, (int)Math.Ceiling(control.Bounds.Height * scaling)));
-        var bitmap = new RenderTargetBitmap(size, new Vector(96 * scaling, 96 * scaling));
-        // Subpixel text on a transparent bitmap gets dark fringes; grayscale antialiasing stays clean on any background.
-        var mode = RenderOptions.GetTextRenderingMode(control);
-        RenderOptions.SetTextRenderingMode(control, TextRenderingMode.Antialias);
-        bitmap.Render(control);
-        RenderOptions.SetTextRenderingMode(control, mode);
-        return bitmap;
     }
 
     /// <summary>
