@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using OVS.Server.State;
 using OVS.Shared.Protocol.Messages.VoiceRelay;
 using OVS.Shared.Voice;
 

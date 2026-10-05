@@ -2,7 +2,7 @@ using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Chat;
 
-namespace OVS.Server;
+namespace OVS.Server.State;
 
 /// <summary>
 /// Text chat (Package 31): server-wide, in the own channel, or private between two online users.

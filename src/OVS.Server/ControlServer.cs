@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using OVS.Server.State;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
@@ -197,7 +198,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             }
             catch (InvalidRequestException e) // Package 83: a bad request is answered, only a broken frame ends the connection
             {
-                message = new ServerState.MalformedRequest(e.Message) { RequestId = e.RequestId };
+                message = new MalformedRequest(e.Message) { RequestId = e.RequestId };
             }
             if (message is null) return;
             if (message is Ping) session.Send(new Pong());

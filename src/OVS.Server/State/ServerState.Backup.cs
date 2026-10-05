@@ -6,7 +6,7 @@ using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 
-namespace OVS.Server;
+namespace OVS.Server.State;
 
 /// <summary>
 /// Package 74: backups from the administration. Package 89 (A101): list, create, download and delete with BackupsManage;

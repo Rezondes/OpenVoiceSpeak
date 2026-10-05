@@ -6,7 +6,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Links;
 using OVS.Shared.Protocol.Messages.Users;
 
-namespace OVS.Server;
+namespace OVS.Server.State;
 
 public sealed partial class ServerState
 {

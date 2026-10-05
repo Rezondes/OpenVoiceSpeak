@@ -6,7 +6,7 @@ using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Moderation;
 
-namespace OVS.Server;
+namespace OVS.Server.State;
 
 public sealed partial class ServerState
 {

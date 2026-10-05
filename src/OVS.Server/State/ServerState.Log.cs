@@ -6,7 +6,7 @@ using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.LogAccess;
 
-namespace OVS.Server;
+namespace OVS.Server.State;
 
 /// <summary>
 /// Package 81 (A98): the log viewer, all with the right LogsView. The lock only covers the check and the channel names;

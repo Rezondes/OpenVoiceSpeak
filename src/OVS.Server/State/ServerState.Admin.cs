@@ -9,7 +9,7 @@ using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 using static OVS.Server.Permissions.PermissionRules;
 
-namespace OVS.Server;
+namespace OVS.Server.State;
 
 public sealed partial class ServerState
 {
