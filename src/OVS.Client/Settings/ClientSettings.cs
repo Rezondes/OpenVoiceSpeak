@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
-using OVS.Client.Net;
+using OVS.Shared.IO;
 using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Settings;
@@ -31,10 +31,8 @@ public sealed class ClientSettings : IJsonOnDeserializing
 
     void IJsonOnDeserializing.OnDeserializing() => SettingsVersion = 0;
 
-    static readonly JsonSerializerOptions Options = new(ProtocolJson.Options) { WriteIndented = true };
-
     /// <summary>Package 114: the settings as they are saved, to tell whether two of them differ.</summary>
-    public string ToJson() => JsonSerializer.Serialize(this, Options);
+    public string ToJson() => JsonSerializer.Serialize(this, ProtocolJson.Indented);
 
     public List<Bookmark> Bookmarks { get; set; } = [];
     public string? InputDeviceId { get; set; }
@@ -133,7 +131,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
             return new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()))] };
         try
         {
-            return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), Options) ?? new ClientSettings()).MigrateKeys().Clamp().Migrate(directory);
+            return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), ProtocolJson.Indented) ?? new ClientSettings()).MigrateKeys().Clamp().Migrate(directory);
         }
         catch (JsonException)
         {
@@ -175,6 +173,6 @@ public sealed class ClientSettings : IJsonOnDeserializing
     public void Save(string directory)
     {
         Directory.CreateDirectory(directory);
-        ClientStorage.WriteAtomic(Path.Combine(directory, FileName), JsonSerializer.SerializeToUtf8Bytes(this, Options));
+        SafeFile.WriteAtomic(Path.Combine(directory, FileName), JsonSerializer.SerializeToUtf8Bytes(this, ProtocolJson.Indented), flushToDisk: false);
     }
 }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Threading.Channels;
 using OVS.Server.Throttling;
 using OVS.Shared.Exceptions;
+using OVS.Shared.IO;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
@@ -183,7 +184,7 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         lock (logJobGate)
         {
             if (logDownloadsEnded) return false;
-            if (logDownload is { } old) DeleteQuietly(old.Path);
+            if (logDownload is { } old) SafeFile.DeleteQuietly(old.Path);
             logDownload = (id, path);
             return true;
         }
@@ -200,19 +201,8 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
         lock (logJobGate)
         {
             logDownloadsEnded |= ended;
-            if (logDownload is { } d) DeleteQuietly(d.Path);
+            if (logDownload is { } d) SafeFile.DeleteQuietly(d.Path);
             logDownload = null;
-        }
-    }
-
-    static void DeleteQuietly(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
         }
     }
 

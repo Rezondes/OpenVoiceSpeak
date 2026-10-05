@@ -1,3 +1,5 @@
+using OVS.Shared.IO;
+
 namespace OVS.Client.Net;
 
 /// <summary>
@@ -27,7 +29,7 @@ public sealed class ServerIconCache(string profileDir)
     public void Save(string host, int port, byte[] png) => Try(() =>
     {
         Directory.CreateDirectory(dir);
-        ClientStorage.WriteAtomic(PathFor(host, port), png);
+        SafeFile.WriteAtomic(PathFor(host, port), png, flushToDisk: false);
     });
 
     public void Remove(string host, int port) => Try(() =>

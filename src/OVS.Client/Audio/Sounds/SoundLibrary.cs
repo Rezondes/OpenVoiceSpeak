@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using NAudio.Wave;
 using OVS.Client.Settings;
+using OVS.Shared.IO;
 
 namespace OVS.Client.Audio.Sounds;
 
@@ -48,13 +49,7 @@ public sealed class SoundLibrary(string profileDir, Action<string> log)
         foreach (var path in Directory.GetFiles(Dir))
         {
             if (keep.Contains(Path.GetFileName(path))) continue;
-            try
-            {
-                File.Delete(path);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-            }
+            SafeFile.DeleteQuietly(path);
         }
     }
 }

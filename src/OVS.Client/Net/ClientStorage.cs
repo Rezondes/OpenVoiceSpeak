@@ -1,3 +1,4 @@
+using OVS.Shared.IO;
 using OVS.Shared.Identity;
 
 namespace OVS.Client.Net;
@@ -15,14 +16,7 @@ public static class ClientStorage
 
         Directory.CreateDirectory(directory);
         var identity = ClientIdentity.Create();
-        WriteAtomic(path, identity.ExportPkcs8());
+        SafeFile.WriteAtomic(path, identity.ExportPkcs8(), flushToDisk: false);
         return identity;
-    }
-
-    public static void WriteAtomic(string path, byte[] content)
-    {
-        var tmp = path + ".tmp";
-        File.WriteAllBytes(tmp, content);
-        File.Move(tmp, path, overwrite: true);
     }
 }

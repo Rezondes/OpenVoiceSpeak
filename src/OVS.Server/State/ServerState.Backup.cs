@@ -1,5 +1,6 @@
 using OVS.Server.Data;
 using OVS.Server.Exceptions;
+using OVS.Shared.IO;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -95,7 +96,7 @@ public sealed partial class ServerState
             return;
         }
         // ponytail: file reads of up to 512 KB under the state lock; fine for the few MB a backup has
-        if (BackupStore.ReadChunk(path, r.Offset) is not var (bytes, total))
+        if (SafeFile.ReadChunk(path, r.Offset) is not var (bytes, total))
         {
             Fail(s, r, Codes.InvalidValue, $"Offset {r.Offset}");
             return;
@@ -115,7 +116,7 @@ public sealed partial class ServerState
             DropUpload(s);
             return;
         }
-        if (!BackupStore.IsUploadId(r.UploadId) || r.DataBase64.Length > (ProtocolInfo.BackupChunkBytes + 2) / 3 * 4)
+        if (!BackupStore.IsUploadId(r.UploadId) || r.DataBase64.Length > Base64Size.Encoded(ProtocolInfo.BackupChunkBytes))
         {
             Fail(s, r, Codes.InvalidValue);
             return;
@@ -131,17 +132,14 @@ public sealed partial class ServerState
             s.Upload = (r.UploadId, backups.UploadPath(r.UploadId), 0);
         }
         var (id, path, received) = s.Upload!.Value;
-        byte[] bytes;
-        try
-        {
-            bytes = Convert.FromBase64String(r.DataBase64);
-        }
-        catch (FormatException)
+        var buffer = new byte[Base64Size.Decoded(r.DataBase64.Length)];
+        if (!Convert.TryFromBase64String(r.DataBase64, buffer, out int written))
         {
             DropUpload(s);
             Fail(s, r, Codes.InvalidValue, "kein Base64");
             return;
         }
+        var bytes = buffer[..written];
         if (r.Offset != received || bytes.Length > ProtocolInfo.BackupChunkBytes)
         {
             DropUpload(s);
@@ -189,14 +187,14 @@ public sealed partial class ServerState
         }
         catch (BackupQuotaException e)
         {
-            BackupStore.DeleteQuietly(path);
+            SafeFile.DeleteQuietly(path);
             logs.Server($"Backup-Upload von {s.Nickname} abgelehnt, Backup-Limit erreicht: {e.Message}");
             Fail(s, r, Codes.BackupQuotaExceeded, e.Message);
             return;
         }
         catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            BackupStore.DeleteQuietly(path);
+            SafeFile.DeleteQuietly(path);
             logs.Server($"Hochgeladenes Backup ist ungültig ({s.Nickname}): {e.Message}");
             Fail(s, r, e is InvalidDataException ? Codes.InvalidBackup : Codes.InvalidValue, e.Message);
             return;
@@ -211,7 +209,7 @@ public sealed partial class ServerState
     {
         if (s.Upload is not { } upload) return;
         s.Upload = null;
-        BackupStore.DeleteQuietly(upload.Path);
+        SafeFile.DeleteQuietly(upload.Path);
     }
 
     /// <summary>Checks the archive first; only a valid one leads to the safety backup, the disconnect and the restart.</summary>

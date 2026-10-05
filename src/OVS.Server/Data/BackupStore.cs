@@ -6,6 +6,8 @@ using OVS.Server.Data.Records;
 using OVS.Server.Exceptions;
 using OVS.Server.Tls;
 using OVS.Shared;
+using OVS.Shared.IO;
+using OVS.Shared.Logging;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
@@ -57,7 +59,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         }
         catch
         {
-            DeleteQuietly(tmp); // a full disk or an unreadable file leaves no half archive
+            SafeFile.DeleteQuietly(tmp); // a full disk or an unreadable file leaves no half archive
             throw;
         }
         cache = null;
@@ -76,7 +78,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     (string Name, string Path) NewName(string prefix, DateTimeOffset now)
     {
         Directory.CreateDirectory(Folder);
-        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString("yyyy-MM-dd_HH-mm-ss");
+        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString(LogFiles.NameFormat);
         var name = stamp + Extension;
         for (int i = 2; File.Exists(Path.Combine(Folder, name)); i++) name = $"{stamp}_{i}{Extension}";
         return (name, Path.Combine(Folder, name));
@@ -112,30 +114,8 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     public void RemoveUploads()
     {
         if (!Directory.Exists(Folder)) return;
-        foreach (var file in Directory.GetFiles(Folder, UploadPrefix + "*")) DeleteQuietly(file);
-        foreach (var file in Directory.GetFiles(Folder, "*" + Extension + TmpSuffix)) DeleteQuietly(file);
-    }
-
-    public static void DeleteQuietly(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-        }
-    }
-
-    /// <summary>At most BackupChunkBytes from offset; null when offset is outside the file.</summary>
-    public static (byte[] Bytes, long Total)? ReadChunk(string path, long offset)
-    {
-        using var file = File.OpenRead(path);
-        if (offset < 0 || offset > file.Length) return null;
-        file.Position = offset;
-        var bytes = new byte[Math.Min(ProtocolInfo.BackupChunkBytes, file.Length - offset)];
-        file.ReadExactly(bytes);
-        return (bytes, file.Length);
+        foreach (var file in Directory.GetFiles(Folder, UploadPrefix + "*")) SafeFile.DeleteQuietly(file);
+        foreach (var file in Directory.GetFiles(Folder, "*" + Extension + TmpSuffix)) SafeFile.DeleteQuietly(file);
     }
 
     static void Add(ZipArchive zip, string name, byte[] bytes)
@@ -311,21 +291,10 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     /// <summary>Replaces the live files with the checked contents, each written to a .tmp and then moved.</summary>
     public static void Apply(string dataDir, BackupContent content)
     {
-        Write(Path.Combine(dataDir, ServerCertificate.FileName), content.Certificate);
+        SafeFile.WriteAtomic(Path.Combine(dataDir, ServerCertificate.FileName), content.Certificate, flushToDisk: true);
         var icon = Path.Combine(dataDir, ServerIconStore.FileName);
         if (content.Icon is null) File.Delete(icon);
-        else Write(icon, content.Icon);
-        Write(Path.Combine(dataDir, DataStore.FileName), content.Data); // last: the data is what counts
-
-        static void Write(string path, byte[] bytes)
-        {
-            var tmp = path + ".tmp";
-            using (var stream = File.Create(tmp))
-            {
-                stream.Write(bytes);
-                stream.Flush(flushToDisk: true);
-            }
-            File.Move(tmp, path, overwrite: true);
-        }
+        else SafeFile.WriteAtomic(icon, content.Icon, flushToDisk: true);
+        SafeFile.WriteAtomic(Path.Combine(dataDir, DataStore.FileName), content.Data, flushToDisk: true); // last: the data is what counts
     }
 }

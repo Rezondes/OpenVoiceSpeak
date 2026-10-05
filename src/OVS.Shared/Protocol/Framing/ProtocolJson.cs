@@ -14,4 +14,7 @@ public static class ProtocolJson
     {
         Converters = { new JsonStringEnumConverter() },
     };
+
+    /// <summary>The same options, indented, for the files people may read (the server data, the client settings).</summary>
+    public static readonly JsonSerializerOptions Indented = new(Options) { WriteIndented = true };
 }

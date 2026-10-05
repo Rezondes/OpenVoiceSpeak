@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using OVS.Server.Data.Records;
+using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
@@ -51,7 +52,7 @@ public sealed partial class ServerState
     /// </summary>
     internal static IPAddress AddressGroup(IPAddress ip)
     {
-        if (ip.IsIPv4MappedToIPv6) return ip.MapToIPv4();
+        ip = IpAddresses.Unmap(ip);
         if (ip.AddressFamily != AddressFamily.InterNetworkV6) return ip;
         var bytes = ip.GetAddressBytes();
         Array.Clear(bytes, 8, 8);

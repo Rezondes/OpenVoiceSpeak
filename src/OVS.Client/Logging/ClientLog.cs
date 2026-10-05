@@ -1,5 +1,6 @@
 using OVS.Client.Net;
 using OVS.Shared.Logging;
+using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Chat;
@@ -140,7 +141,7 @@ public sealed class ClientLog
                     _ => $"Privat {m.FromNickname} an {Nick(m.ToSessionId ?? 0)}: {m.Text}",
                 };
             case ServerIcon m:
-                return m.PngBase64 is null ? "Server hat kein Logo" : $"Server-Logo erhalten ({m.PngBase64.Length * 3 / 4 / 1024} KB)";
+                return m.PngBase64 is null ? "Server hat kein Logo" : $"Server-Logo erhalten ({Base64Size.Decoded(m.PngBase64.Length) / 1024} KB)";
             case Error { Detail: { Length: > 0 } detail } e:
                 return $"Fehler {e.Code} ({e.RequestId}): {detail}"; // A45: the UI shows its own text, the detail only lands here
             case Error:

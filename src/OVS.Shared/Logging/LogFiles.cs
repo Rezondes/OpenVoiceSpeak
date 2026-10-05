@@ -12,7 +12,8 @@ namespace OVS.Shared.Logging;
 /// </summary>
 public sealed class LogFiles
 {
-    const string NameFormat = "yyyy-MM-dd_HH-mm-ss";
+    /// <summary>The start of a log file in its name, in local time; LogReader on the server reads it back.</summary>
+    public const string NameFormat = "yyyy-MM-dd_HH-mm-ss";
 
     readonly string root;
     int keepDays;

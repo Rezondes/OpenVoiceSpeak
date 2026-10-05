@@ -1,3 +1,5 @@
+using OVS.Shared.IO;
+
 namespace OVS.Client.Services;
 
 /// <summary>Packages 75 and 82: pulls a file chunk by chunk into target.part and moves it into place only after the last chunk,
@@ -30,18 +32,7 @@ static class ChunkedDownload
         }
         finally
         {
-            if (!done) DeleteQuietly(temp);
-        }
-    }
-
-    static void DeleteQuietly(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
+            if (!done) SafeFile.DeleteQuietly(temp);
         }
     }
 }

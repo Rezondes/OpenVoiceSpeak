@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OVS.Shared.IO;
 using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Net;
@@ -20,7 +21,7 @@ public sealed class KnownServers(string path)
         var map = Load();
         map[Key(host, port)] = fingerprint;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        ClientStorage.WriteAtomic(path, JsonSerializer.SerializeToUtf8Bytes(map, ProtocolJson.Options));
+        SafeFile.WriteAtomic(path, JsonSerializer.SerializeToUtf8Bytes(map, ProtocolJson.Options), flushToDisk: false);
     }
 
     Dictionary<string, string> Load()

@@ -1,5 +1,5 @@
-using OVS.Server.Data;
 using OVS.Server.Logging;
+using OVS.Shared.IO;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -74,7 +74,7 @@ public sealed partial class ServerState
             if (export is null) return new Error(r.RequestId, code);
             if (!s.SetLogDownload(downloadId, export.Path))
             {
-                BackupStore.DeleteQuietly(export.Path); // the session ended meanwhile
+                SafeFile.DeleteQuietly(export.Path); // the session ended meanwhile
                 return new Error(r.RequestId, Codes.NotFound);
             }
             logs.Server($"Logs heruntergeladen von {s.Nickname}: {export.FileName} ({ids.Count} Dateien, {export.Size} Bytes)");
@@ -89,7 +89,7 @@ public sealed partial class ServerState
         QueueLogJob(s, r, () =>
         {
             if (s.LogDownloadPath(r.DownloadId) is not { } path) return new Error(r.RequestId, Codes.NotFound);
-            if (BackupStore.ReadChunk(path, r.Offset) is not var (bytes, total)) return new Error(r.RequestId, Codes.InvalidValue, $"Offset {r.Offset}");
+            if (SafeFile.ReadChunk(path, r.Offset) is not var (bytes, total)) return new Error(r.RequestId, Codes.InvalidValue, $"Offset {r.Offset}");
             bool last = r.Offset + bytes.Length >= total;
             if (last) s.DropLogDownload();
             return new LogChunk(r.RequestId, r.DownloadId, r.Offset, total, Convert.ToBase64String(bytes), last);

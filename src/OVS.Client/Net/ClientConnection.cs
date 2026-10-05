@@ -6,6 +6,7 @@ using System.Threading.Channels;
 using OVS.Client.Exceptions;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
+using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
 using OVS.Shared.Protocol.Messages;
@@ -45,7 +46,7 @@ public sealed class ClientConnection : IAsyncDisposable
         get
         {
             var address = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
-            return address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
+            return IpAddresses.Unmap(address);
         }
     }
     public TimeSpan? LastRoundTrip { get; private set; }

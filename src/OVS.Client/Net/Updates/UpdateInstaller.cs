@@ -1,5 +1,6 @@
 using OVS.Client.Localization;
 using System.Security.Cryptography;
+using OVS.Shared.IO;
 
 namespace OVS.Client.Net.Updates;
 
@@ -37,7 +38,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         }
         catch (Exception e) when (e is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException)
         {
-            TryDelete(NewPath);
+            if (File.Exists(NewPath)) SafeFile.DeleteQuietly(NewPath);
             if (!File.Exists(exePath) && File.Exists(OldPath)) File.Move(OldPath, exePath); // swap half done: undo it
             return string.Format(Strings.Update_InstallFailed, e.Message);
         }
@@ -128,17 +129,6 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
                 if (i >= attempts) return $"Alte Version konnte nicht entfernt werden: {e.Message}";
                 await Task.Delay(pause ?? TimeSpan.FromMilliseconds(500));
             }
-        }
-    }
-
-    static void TryDelete(string path)
-    {
-        try
-        {
-            if (File.Exists(path)) File.Delete(path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using OVS.Server.State;
+using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.VoiceRelay;
 using OVS.Shared.Voice;
 
@@ -160,7 +161,7 @@ public sealed class UdpVoiceServer : IDisposable
     {
         var opus = new byte[VoiceHeader.MaxOpusSize];
         int length = 0;
-        bool valid = up.Target <= VoiceHeader.TargetLinked && up.Opus is { Length: <= MaxOpusBase64 } text
+        bool valid = up.Target <= VoiceHeader.TargetLinked && up.Opus is { } text && text.Length <= MaxOpusBase64
             && Convert.TryFromBase64String(text, opus, out length);
         if (cts.IsCancellationRequested) return;
         if (valid && length == 0 && sender.TcpVoice) return; // a repeated switch changes nothing and need not wait for the gate
@@ -190,7 +191,7 @@ public sealed class UdpVoiceServer : IDisposable
         }
     }
 
-    const int MaxOpusBase64 = (VoiceHeader.MaxOpusSize + 2) / 3 * 4;
+    static readonly int MaxOpusBase64 = Base64Size.Encoded(VoiceHeader.MaxOpusSize);
 
     /// <summary>Package 141: one voice frame of a UDP or a TCP sender, under the gate; everything after the way in is shared.</summary>
     async Task VoiceAsync(Session sender, byte requestedTarget, byte[] plain, uint frame, Range current, Range copy)

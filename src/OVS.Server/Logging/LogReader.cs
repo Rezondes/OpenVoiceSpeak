@@ -3,7 +3,8 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
-using OVS.Server.Data;
+using OVS.Shared.IO;
+using OVS.Shared.Logging;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
 using OVS.Shared.Protocol.Messages.LogAccess;
@@ -17,7 +18,6 @@ namespace OVS.Server.Logging;
 /// </summary>
 public sealed class LogReader(string dataDir, TimeProvider time)
 {
-    const string NameFormat = "yyyy-MM-dd_HH-mm-ss";
     const string ServerFolder = "server";
     const string ChannelFolder = "channels";
     public const string CutMarker = " [...]";
@@ -73,8 +73,8 @@ public sealed class LogReader(string dataDir, TimeProvider time)
     DateTimeOffset StartOf(FileInfo file)
     {
         var name = Path.GetFileNameWithoutExtension(file.Name);
-        if (name.Length >= NameFormat.Length
-            && DateTime.TryParseExact(name[^NameFormat.Length..], NameFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var local))
+        if (name.Length >= LogFiles.NameFormat.Length
+            && DateTime.TryParseExact(name[^LogFiles.NameFormat.Length..], LogFiles.NameFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var local))
             return new DateTimeOffset(local, time.LocalTimeZone.GetUtcOffset(local));
         return new DateTimeOffset(file.CreationTimeUtc, TimeSpan.Zero);
     }
@@ -166,7 +166,7 @@ public sealed class LogReader(string dataDir, TimeProvider time)
     public void RemoveExports()
     {
         if (!Directory.Exists(ExportDir)) return;
-        foreach (var file in Directory.GetFiles(ExportDir)) BackupStore.DeleteQuietly(file);
+        foreach (var file in Directory.GetFiles(ExportDir)) SafeFile.DeleteQuietly(file);
     }
 
     /// <summary>
@@ -209,13 +209,13 @@ public sealed class LogReader(string dataDir, TimeProvider time)
         }
         catch
         {
-            BackupStore.DeleteQuietly(path);
+            SafeFile.DeleteQuietly(path);
             throw;
         }
         var size = new FileInfo(path).Length;
         if (size > ProtocolInfo.MaxLogDownloadBytes)
         {
-            BackupStore.DeleteQuietly(path);
+            SafeFile.DeleteQuietly(path);
             return (null, Codes.LogsTooLarge);
         }
         var name = single ? Path.GetFileName(chosen[0].Path)

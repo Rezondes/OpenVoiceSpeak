@@ -8,6 +8,7 @@ using System.Security.Cryptography.X509Certificates;
 using OVS.Server.State;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
+using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
 using OVS.Shared.Protocol.Messages;
@@ -82,7 +83,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
                 tcp.Dispose();
                 continue;
             }
-            if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+            ip = IpAddresses.Unmap(ip);
             if (!state.TryAddConnection(ip))
             {
                 state.ReleaseConnection(ip);
@@ -240,14 +241,9 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
     {
         bytes = [];
         if (text is null) return false;
-        try
-        {
-            bytes = Convert.FromBase64String(text);
-            return true;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
+        var buffer = new byte[Base64Size.Decoded(text.Length)];
+        if (!Convert.TryFromBase64String(text, buffer, out int written)) return false;
+        bytes = buffer[..written];
+        return true;
     }
 }

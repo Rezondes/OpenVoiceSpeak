@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Server.Data.Records;
@@ -80,15 +81,12 @@ public sealed class ServerSettings
             || !int.TryParse(count, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out iterations)
             || iterations is < HashIterations or > MaxHashIterations)
             return false;
-        try
-        {
-            salt = Convert.FromBase64String(saltText);
-            key = Convert.FromBase64String(keyText);
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
+        var saltBuffer = new byte[Base64Size.Decoded(saltText.Length)];
+        if (!Convert.TryFromBase64String(saltText, saltBuffer, out int saltWritten)) return false;
+        salt = saltBuffer[..saltWritten];
+        var keyBuffer = new byte[Base64Size.Decoded(keyText.Length)];
+        if (!Convert.TryFromBase64String(keyText, keyBuffer, out int keyWritten)) return false;
+        key = keyBuffer[..keyWritten];
         return salt.Length == SaltBytes && key.Length == KeyBytes;
     }
 }

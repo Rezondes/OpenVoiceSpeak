@@ -1,3 +1,4 @@
+using OVS.Shared.IO;
 using OVS.Shared.Protocol;
 
 namespace OVS.Server.Data;
@@ -34,9 +35,7 @@ public sealed class ServerIconStore
         }
         else
         {
-            var tmp = path + ".tmp";
-            File.WriteAllBytes(tmp, value);
-            File.Move(tmp, path, overwrite: true);
+            SafeFile.WriteAtomic(path, value, flushToDisk: false);
         }
         png = value;
         Hash = value is null ? null : ServerIconFormat.Hash(value);
