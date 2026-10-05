@@ -3,6 +3,11 @@ using OVS.Server.Data;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Chat;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Groups;
+using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;

@@ -5,6 +5,7 @@ using OVS.Shared.Exceptions;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
+using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Voice;
 
 namespace OVS.Server;

@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
 
 namespace OVS.Server;
 

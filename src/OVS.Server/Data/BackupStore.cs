@@ -7,6 +7,8 @@ using OVS.Shared;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.ServerBackups;
 
 namespace OVS.Server.Data;
 

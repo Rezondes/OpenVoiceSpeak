@@ -3,6 +3,8 @@ using System.Text;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Protocol;

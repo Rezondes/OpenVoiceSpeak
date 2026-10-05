@@ -6,6 +6,7 @@ using System.Text.Json;
 using OVS.Server.Data;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
+using OVS.Shared.Protocol.Messages.LogAccess;
 
 namespace OVS.Server.Logging;
 

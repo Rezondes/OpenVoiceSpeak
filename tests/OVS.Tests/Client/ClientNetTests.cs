@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using OVS.Client.Net;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
 

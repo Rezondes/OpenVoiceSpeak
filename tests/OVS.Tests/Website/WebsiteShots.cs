@@ -8,7 +8,7 @@ using Avalonia.VisualTree;
 using PlacementMode = Avalonia.Controls.PlacementMode;
 using OVS.Client.Input;
 using OVS.Client.Localization;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;

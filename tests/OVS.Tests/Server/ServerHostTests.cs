@@ -5,6 +5,8 @@ using OVS.Server;
 using OVS.Server.Logging;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;

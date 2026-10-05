@@ -1,6 +1,8 @@
 using OVS.Client.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Groups;
 
 namespace OVS.Client.ViewModels;
 

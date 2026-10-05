@@ -6,6 +6,8 @@ using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
 
 namespace OVS.Tests.TestSupport;
 

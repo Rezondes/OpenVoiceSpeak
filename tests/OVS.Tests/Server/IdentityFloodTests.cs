@@ -4,6 +4,12 @@ using OVS.Server.Data;
 using OVS.Server.Permissions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.LogAccess;
+using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.ServerBackups;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;

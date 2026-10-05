@@ -9,7 +9,8 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;

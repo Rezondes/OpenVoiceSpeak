@@ -2,6 +2,9 @@ using OVS.Server.Data;
 using OVS.Server.Logging;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.LogAccess;
 
 namespace OVS.Server;
 

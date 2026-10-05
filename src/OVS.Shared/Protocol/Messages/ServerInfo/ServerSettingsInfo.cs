@@ -1,0 +1,5 @@
+namespace OVS.Shared.Protocol.Messages.ServerInfo;
+
+/// <param name="IconHash">Hash of the server logo (ServerIconFormat.Hash), null when the server has none.</param>
+/// <param name="Limits">Package 69: only sent to clients with the ServerConfig right, null for everyone else.</param>
+public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword, string? IconHash = null, ServerLimits? Limits = null);

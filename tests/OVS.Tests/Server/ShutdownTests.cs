@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;

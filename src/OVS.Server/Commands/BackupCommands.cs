@@ -1,6 +1,9 @@
 using OVS.Server.Data;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.ServerBackups;
 
 namespace OVS.Server;
 

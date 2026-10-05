@@ -91,7 +91,7 @@ public sealed class WebsiteShotsTests : IDisposable
         Assert.DoesNotContain("Debug", scene.Window.Title);
         Assert.All(showcase.Server.Mirror.Users.Values, u => Assert.Matches("^fp[0-9]{2}$", u.Fingerprint));
         showcase.AnswerAdministration();
-        var bans = (OVS.Shared.Protocol.BanList)showcase.Reply!(new OVS.Shared.Protocol.ListBans { RequestId = "b" })!;
+        var bans = (OVS.Shared.Protocol.Messages.Moderation.BanList)showcase.Reply!(new OVS.Shared.Protocol.Messages.Moderation.ListBans { RequestId = "b" })!;
         // documentation addresses only (RFC 5737)
         Assert.All(bans.Bans.Select(b => b.Ip).Concat(bans.Bans.Select(b => b.LastAttemptIp)).OfType<string>(), ip => Assert.StartsWith("203.0.113.", ip));
     }

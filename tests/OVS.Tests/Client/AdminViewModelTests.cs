@@ -3,6 +3,16 @@ using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Groups;
+using OVS.Shared.Protocol.Messages.Links;
+using OVS.Shared.Protocol.Messages.LogAccess;
+using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.ServerBackups;
+using OVS.Shared.Protocol.Messages.ServerInfo;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 using P = OVS.Shared.Permissions.Permission;
 

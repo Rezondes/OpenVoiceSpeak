@@ -54,9 +54,9 @@ public sealed class DataStoreTests : IDisposable
     {
         var store = new DataStore(FilePath);
         var data = store.LoadOrCreate(() => ServerData.CreateDefault(Config));
-        data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Order = 1, Kind = OVS.Shared.Protocol.ChannelKind.Separator });
+        data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Order = 1, Kind = OVS.Shared.Protocol.Messages.Channels.ChannelKind.Separator });
         store.Save(data);
-        Assert.Equal([OVS.Shared.Protocol.ChannelKind.Voice, OVS.Shared.Protocol.ChannelKind.Separator],
+        Assert.Equal([OVS.Shared.Protocol.Messages.Channels.ChannelKind.Voice, OVS.Shared.Protocol.Messages.Channels.ChannelKind.Separator],
             new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(c => c.Kind));
 
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
@@ -64,7 +64,7 @@ public sealed class DataStoreTests : IDisposable
         channels.RemoveAt(1);
         foreach (var channel in channels) channel!.AsObject().Remove(channel.AsObject().First(p => p.Key.Equals("kind", StringComparison.OrdinalIgnoreCase)).Key);
         File.WriteAllText(FilePath, json.ToJsonString());
-        Assert.Equal(OVS.Shared.Protocol.ChannelKind.Voice, Assert.Single(new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels).Kind);
+        Assert.Equal(OVS.Shared.Protocol.Messages.Channels.ChannelKind.Voice, Assert.Single(new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels).Kind);
     }
 
     /// <summary>Package 132 (A141): a file from before loads every voice channel at 64 kbps; a stored value round-trips.</summary>

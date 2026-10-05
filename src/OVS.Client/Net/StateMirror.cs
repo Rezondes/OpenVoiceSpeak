@@ -1,4 +1,10 @@
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Groups;
+using OVS.Shared.Protocol.Messages.Links;
+using OVS.Shared.Protocol.Messages.ServerInfo;
+using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Client.Net;
 

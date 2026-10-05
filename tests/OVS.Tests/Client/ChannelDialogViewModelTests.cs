@@ -2,6 +2,9 @@ using OVS.Client.Localization;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Groups;
 
 namespace OVS.Tests.Client;
 

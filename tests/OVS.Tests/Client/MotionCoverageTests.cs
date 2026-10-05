@@ -18,7 +18,15 @@ using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
 using OVS.Shared.Permissions;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Groups;
+using OVS.Shared.Protocol.Messages.Links;
+using OVS.Shared.Protocol.Messages.LogAccess;
+using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.ServerBackups;
+using OVS.Shared.Protocol.Messages.ServerInfo;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;

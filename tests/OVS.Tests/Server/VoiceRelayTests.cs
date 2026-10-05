@@ -1,7 +1,12 @@
 using System.Net;
 using System.Security.Cryptography;
 using OVS.Shared.Identity;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Links;
+using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.Users;
+using OVS.Shared.Protocol.Messages.VoiceRelay;
 using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
 

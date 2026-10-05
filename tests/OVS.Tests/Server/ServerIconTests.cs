@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using OVS.Server.Data;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;

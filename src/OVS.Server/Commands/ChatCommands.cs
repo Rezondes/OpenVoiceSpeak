@@ -1,5 +1,6 @@
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Chat;
 
 namespace OVS.Server;
 

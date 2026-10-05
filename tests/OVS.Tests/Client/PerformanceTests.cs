@@ -7,7 +7,10 @@ using OVS.Client.ViewModels;
 using OVS.Client.Views;
 using OVS.Client.Net;
 using OVS.Shared.Permissions;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.ServerInfo;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;

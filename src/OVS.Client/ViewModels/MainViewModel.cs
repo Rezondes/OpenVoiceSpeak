@@ -14,6 +14,8 @@ using OVS.Client.Settings;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Client.ViewModels;
 

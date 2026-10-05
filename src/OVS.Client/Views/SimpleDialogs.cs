@@ -13,6 +13,7 @@ using OVS.Client.Net;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Groups;
 
 namespace OVS.Client.Views;
 

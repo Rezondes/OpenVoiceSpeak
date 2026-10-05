@@ -2,7 +2,7 @@ using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Links;
 
 namespace OVS.Client.ViewModels;
 

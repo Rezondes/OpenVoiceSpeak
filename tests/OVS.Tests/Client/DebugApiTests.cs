@@ -344,7 +344,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             fake.Post = a => a();
             fake.Leave.Delay = TimeSpan.FromMinutes(1);
             vm.Server = fake;
-            fake.Apply(new OVS.Shared.Protocol.UserLeft(2));
+            fake.Apply(new OVS.Shared.Protocol.Messages.Users.UserLeft(2));
         });
         var state = await anna.State();
         Assert.Null(User(state, 2));

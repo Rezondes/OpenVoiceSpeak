@@ -7,7 +7,7 @@ using Avalonia.VisualTree;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Chat;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;

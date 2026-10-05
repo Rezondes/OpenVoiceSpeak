@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Text.Json;
 using OVS.Shared.Exceptions;
+using OVS.Shared.Protocol.Messages;
 
 namespace OVS.Shared.Protocol.Framing;
 

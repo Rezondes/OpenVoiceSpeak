@@ -12,7 +12,7 @@ using OVS.Client.Localization;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;
@@ -450,17 +450,17 @@ public sealed class ResponsiveTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         var groups = server.Mirror.Groups.Select(g => g.Id).ToList();
         // Package 71: cards with every detail, long previous nicknames and an active ban
-        server.Apply(new OVS.Shared.Protocol.UserList("r", Enumerable.Range(1, 20)
-            .Select(i => new OVS.Shared.Protocol.KnownUserInfo(new string((char)('a' + i % 6), 64), $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]],
+        server.Apply(new OVS.Shared.Protocol.Messages.Users.UserList("r", Enumerable.Range(1, 20)
+            .Select(i => new OVS.Shared.Protocol.Messages.Users.KnownUserInfo(new string((char)('a' + i % 6), 64), $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]],
                 DateTimeOffset.Now.AddDays(-40), DateTimeOffset.Now.AddHours(-i), i, TimeSpan.FromHours(30 + i), "2001:db8:85a3::8a2e:370:7334",
                 ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, i % 2 == 0, null,
-                i % 4 == 0 ? [new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null,
+                i % 4 == 0 ? [new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null,
                 i % 5 == 0, // Package 85: stored server mute with its banner and lift button
                 CanBeModeratedByMe: i % 3 != 0)) // Package 92: as the server judges it, members of the Admin group are not weaker
             .ToList()));
         // Package 80: 12 bans of every status (active, expired, lifted, old without details), all shown
         var now = DateTimeOffset.Now;
-        server.Apply(new OVS.Shared.Protocol.BanList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.BanInfo(Guid.NewGuid(),
+        server.Apply(new OVS.Shared.Protocol.Messages.Moderation.BanList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(),
             new string((char)('a' + i % 6), 64), $"Störenfried mit langem Namen {i}", i % 2 == 0 ? "2001:db8:85a3::8a2e:370:7334" : null,
             i % 3 == 0 ? "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert" : "", "Moderator mit langem Namen",
             (i % 4) switch { 0 => null, 1 => now.AddDays(3), 2 => now.AddDays(-1), _ => now.AddHours(5) },
@@ -470,7 +470,7 @@ public sealed class ResponsiveTests : IDisposable
         var admin = (AdminViewModel)main.GetVisualDescendants().OfType<AdminView>().Single().DataContext!;
         admin.SelectedBanStatusFilter = admin.BanStatusFilters.Single(f => f.Value == BanStatusFilter.All);
         // Package 74: backups in the server tab, one of them the safety backup with the longer title
-        server.Apply(new OVS.Shared.Protocol.BackupList("r",
+        server.Apply(new OVS.Shared.Protocol.Messages.ServerBackups.BackupList("r",
         [
             new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 12_345_678, "300926.1a2b"),
             new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 800_000, "dev.0000"),
@@ -478,15 +478,15 @@ public sealed class ResponsiveTests : IDisposable
         ]));
         // Package 81: log files of the server and of channels with long names, one opened on a page with long lines
         var channel = server.Mirror.Channels.Values.First(c => c.Name.StartsWith("Raid")).Id;
-        server.Apply(new OVS.Shared.Protocol.LogList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.LogFileInfo(
+        server.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.LogAccess.LogFileInfo(
             i % 3 == 0 ? $"server/2026-09-{30 - i:00}_12-00-00.log" : $"channels/{channel}/2026-09-{30 - i:00}_12-00-00.log",
-            i % 3 == 0 ? OVS.Shared.Protocol.LogKind.Server : OVS.Shared.Protocol.LogKind.Channel, i % 3 == 0 ? null : channel,
+            i % 3 == 0 ? OVS.Shared.Protocol.Messages.LogAccess.LogKind.Server : OVS.Shared.Protocol.Messages.LogAccess.LogKind.Channel, i % 3 == 0 ? null : channel,
             i % 3 == 0 ? null : i == 11 ? "Ein gelöschter Channel mit einem sehr langen Namen" : "Raidgruppe Nummer 2",
             now.AddDays(-i), now.AddDays(-i).AddHours(5), 1_234_567L * (i + 1))).ToList()));
         // Package 82: some files checked (the Server tab's transfer above shows here too)
         foreach (var file in admin.Logs.Files.Where((_, i) => i % 2 == 0)) file.IsSelected = true;
         admin.Logs.OpenCommand.Execute(admin.Logs.Files[0]);
-        server.Apply(new OVS.Shared.Protocol.LogPage(null, admin.Logs.Files[0].Info.Id, 3, 3, 2001, Enumerable.Range(2001, 40)
+        server.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogPage(null, admin.Logs.Files[0].Info.Id, 3, 3, 2001, Enumerable.Range(2001, 40)
             .Select(n => n % 5 == 0 ? $"2026-09-30 12:00:{n % 60:00}.000 Mitspieler{n} verbunden (" + new string('a', 64) + ", 2001:db8:85a3::8a2e:370:7334) " + new string('x', 300)
                 : $"2026-09-30 12:00:{n % 60:00}.000 Zeile {n}").ToList()));
         admin.Logs.LineFilter = "0";
@@ -592,8 +592,8 @@ public sealed class ResponsiveTests : IDisposable
         Assert.Contains(page.FindControl<ListBox>("LogFileList")!.GetVisualDescendants().OfType<CheckBox>(), c => c.IsEffectivelyVisible && c.IsChecked == true);
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Pending_NoAnswer && t.IsEffectivelyVisible); // Package 97
         LayoutAssert.FitsHorizontally(main);
-        admin.Logs.Apply(new OVS.Shared.Protocol.LogSearchResult(null, admin.Logs.Files.Take(8).Select((f, i) =>
-            new OVS.Shared.Protocol.LogHit(f.Info.Id, 1000 + i, "2026-09-30 12:00:00.000 [Raidgruppe Nummer 2] Mitspieler3: " + new string('y', 400))).ToList(), true, false));
+        admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogSearchResult(null, admin.Logs.Files.Take(8).Select((f, i) =>
+            new OVS.Shared.Protocol.Messages.LogAccess.LogHit(f.Info.Id, 1000 + i, "2026-09-30 12:00:00.000 [Raidgruppe Nummer 2] Mitspieler3: " + new string('y', 400))).ToList(), true, false));
         Dispatcher.UIThread.RunJobs();
         Assert.True(page.FindControl<Control>("LogHitsText")?.IsEffectivelyVisible);
         Assert.NotEmpty(page.FindControl<ListBox>("LogHitList")!.GetRealizedContainers());
@@ -883,9 +883,9 @@ public sealed class ResponsiveTests : IDisposable
         var server = FakeServers.Crowded();
         var main = Open(width, server, out var vm);
         var text = string.Join(" ", Enumerable.Repeat("Eine recht lange Nachricht, die umbrechen muss.", 12));
-        server.Apply(new OVS.Shared.Protocol.ChatMessage(OVS.Shared.Protocol.ChatTarget.Server, 3, "Mitspieler3", null, null, text, DateTimeOffset.Now));
-        server.Apply(new OVS.Shared.Protocol.ChatMessage(OVS.Shared.Protocol.ChatTarget.Server, 1, "ich", null, null, new string('y', 400), DateTimeOffset.Now));
-        server.Apply(new OVS.Shared.Protocol.ChatMessage(OVS.Shared.Protocol.ChatTarget.Server, 4, "Mitspieler4", null, null, new string('x', 400), DateTimeOffset.Now));
+        server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 3, "Mitspieler3", null, null, text, DateTimeOffset.Now));
+        server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 1, "ich", null, null, new string('y', 400), DateTimeOffset.Now));
+        server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 4, "Mitspieler4", null, null, new string('x', 400), DateTimeOffset.Now));
         for (var i = 5; i <= 10; i++) vm.Chat!.OpenPrivate($"fp{i}");
         vm.Chat!.Selected = vm.Chat.Tabs[0];
         Dispatcher.UIThread.RunJobs();
@@ -950,7 +950,7 @@ public sealed class ResponsiveTests : IDisposable
             vm.Chat!.Draft = text;
             _ = vm.Chat.SendCommand.ExecuteAsync(null);
         }
-        server.Apply(new OVS.Shared.Protocol.Error(vm.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.Codes.RateLimited));
+        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(vm.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.Codes.RateLimited));
         // rows that spin: joining a channel, a server mute
         _ = server.Channels.Single(c => c.Name == "Raid").JoinCommand.ExecuteAsync(null);
         _ = server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);

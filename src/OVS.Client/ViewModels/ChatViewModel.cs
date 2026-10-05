@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Chat;
 
 namespace OVS.Client.ViewModels;
 

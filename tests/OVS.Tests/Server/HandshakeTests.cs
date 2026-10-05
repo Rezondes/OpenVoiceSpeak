@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using OVS.Server.Data;
 using OVS.Server.Tls;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;

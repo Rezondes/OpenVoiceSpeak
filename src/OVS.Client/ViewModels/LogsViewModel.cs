@@ -4,6 +4,8 @@ using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Localization;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.LogAccess;
 
 namespace OVS.Client.ViewModels;
 
