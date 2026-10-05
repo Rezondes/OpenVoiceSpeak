@@ -79,8 +79,8 @@ All parts of `ServerState` live in `src/OVS.Server/State/` with namespace `OVS.S
 
 | File | Holds |
 |---|---|
-| `ServerState.cs` | fields, constructor, settings, `Handle` and `Dispatch`, the helpers without broadcast and persistence |
-| `ServerState.Connections.cs` | connections and password guessing: `Admit`, `Remove`, `CloseAll`, `LogRejected`, `RemoveLocked`, the statistics, `ChannelLog` |
+| `ServerState.cs` | fields, constructor, settings, `Handle` and `Dispatch`, the helpers without broadcast and persistence; `BroadcastUser`, `BroadcastSettings` and `BroadcastGroups` stay here next to the per-recipient helpers they use (`Info`, `Moderates`, `SettingsInfo`, `GroupInfos`) |
+| `ServerState.Connections.cs` | connections and password guessing: `Admit`, `Remove`, `CloseAll`, `LogRejected`, `RemoveLocked`, the statistics, `ChannelLog`, `ChannelName` |
 | `ServerState.Throttling.cs` | the request limits: `Admissible`, `Throttle`, `ThrottleList`, `ThrottleHeavy`, `OnGetServerIcon`, `CountNewIdentity` |
 | `ServerState.Persistence.cs` | `Persist`, `PersistSoon`, `FlushPendingSave`, `BeforeSave`, `PruneGuests`, `RecordBlockedAttempt` |
 | `ServerState.Broadcast.cs` | `Broadcast`, `BroadcastExcept` |

@@ -268,6 +268,8 @@ Server ohne Docker starten, z. B. zum Testen unter Windows (Daten landen in `./d
 dotnet run --project src/OVS.Server
 ```
 
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` lässt ein lokales `git blame` die reinen Verschiebe-Commits der Umstellung auf einen Typ pro Datei überspringen (GitHub liest die Datei von selbst).
+
 Projektaufbau:
 
 - `src/OVS.Shared`: Protokoll, Identität, Voice-Paketformat

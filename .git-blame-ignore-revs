@@ -1,0 +1,21 @@
+# Pure move commits of the one-type-per-file refactoring: files split and moved, types renamed,
+# no behaviour change. `git blame` skips them with `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+# refactor(shared): give each Shared type outside the messages its own file
+07e438a2aa98cc89a41389308055fc4e3c029c42
+# refactor(shared): move the protocol messages into one file each in area folders
+73270a105926eadabb16c4979dae0f325e12bdf1
+# refactor(server): give each Server type outside ServerState its own file
+f48e8652377e0666dc285281b17c3d61aace45c4
+# refactor(server): put ServerState and all its parts into State/
+a31d1d3a6b14c044f5c42db8d18ad6af617e7222
+# refactor(client): give each audio type its own file in audio subfolders
+d47661dbd75f9bb6b93b87dbdcf15b8b48ce3525
+# refactor(client): give each client type outside the UI its own file
+bc71d1e7f4e59501771b33e3a1946f8273ebb22e
+# refactor(client): sort the UI helpers into their own folders and suffix the views
+b2f2c701b7c577e5536f38374e3974e9ba0ef976
+# refactor(client): keep only view models in ViewModels and suffix them
+47dd4628ef7acd41b75d1dbc8893e2c7dd559011
+# refactor(tests): mirror the source layout in the tests, one type per file
+086fe715cc5b1b7fe55291dfb487edfa09bb2295
