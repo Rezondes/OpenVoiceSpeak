@@ -359,7 +359,8 @@ public sealed class MotionCoverageTests : IDisposable
                 case RadioButton radio when radio.IsChecked == true:
                     continue; // chosen back by the other one's undo
                 case RadioButton radio:
-                    var before = view.GetVisualDescendants().OfType<RadioButton>().Single(r => r.IsChecked == true);
+                    // its own group (Package 142: the transmission type is a second one)
+                    var before = radio.GetVisualParent()!.GetVisualChildren().OfType<RadioButton>().Single(r => r.IsChecked == true);
                     yield return new(name, _ => radio.IsChecked = true, _ => radio, show, _ => before.IsChecked = true);
                     break;
                 case CheckBox check:

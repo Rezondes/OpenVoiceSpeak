@@ -336,6 +336,10 @@
   <data name="Ui_NoiseSuppressionHint" xml:space="preserve"><value>Filtert Lüfter, Tippen und Rauschen aus deiner Stimme.</value></data>
   <data name="Ui_EchoCancellation" xml:space="preserve"><value>Echounterdrückung</value></data>
   <data name="Ui_EchoCancellationHint" xml:space="preserve"><value>Für Lautsprecher statt Headset: Die anderen hören sich nicht selbst durch dein Mikrofon.</value></data>
+  <data name="Ui_Transmission" xml:space="preserve"><value>Übertragungsart</value></data>
+  <data name="Ui_TransmissionVoice" xml:space="preserve"><value>Sprache</value></data>
+  <data name="Ui_TransmissionMusic" xml:space="preserve"><value>Musik</value></data>
+  <data name="Ui_TransmissionHint" xml:space="preserve"><value>Musik sendet in Stereo (ab 64 kbit/s im Channel) und ohne die Sprachfilter, z. B. für ein Instrument. Kopfhörer empfohlen, da es ohne Echounterdrückung sendet.</value></data>
   <data name="Ui_PttReleaseDelay" xml:space="preserve"><value>Loslassverzögerung</value></data>
   <data name="Ui_PttReleaseDelayHint" xml:space="preserve"><value>Sendet nach dem Loslassen der Sprechtaste noch so lange weiter, damit das letzte Wort nicht abgeschnitten wird.</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Neueste zuerst</value></data>

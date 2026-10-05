@@ -42,9 +42,9 @@ public class SoundTests
         var queue = new SoundQueue();
         queue.Play([0.5f, 0.5f, 0.5f], gain: 0.5f);
         queue.Play([0.9f, 0.9f], gain: 1f);
-        var frame = new float[] { 0.1f, 0.1f, 0.1f, 0.1f };
+        var frame = new float[] { 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f }; // Package 142: interleaved stereo
         queue.MixInto(frame);
-        Assert.Equal([1f, 1f, 0.35f, 0.1f], frame.Select(v => MathF.Round(v, 3))); // voice kept, sum clamped to 1
+        Assert.Equal([1f, 1f, 1f, 1f, 0.35f, 0.35f, 0.1f, 0.1f], frame.Select(v => MathF.Round(v, 3))); // voice kept, sum clamped to 1
         Assert.Equal(0, queue.Count); // both finished
 
         queue.Play(new float[1000], gain: 0f); // silent: not even queued

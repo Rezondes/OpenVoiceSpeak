@@ -56,6 +56,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] bool noiseSuppression;
     [ObservableProperty] bool autoGain;
     [ObservableProperty] bool echoCancellation; // Package 140
+
+    /// <summary>Package 142 (A151): "Übertragungsart" Musik; the filter switches are disabled meanwhile.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsVoice))]
+    bool isMusic;
     [ObservableProperty] double pttReleaseDelayMs; // Package 130 (A139)
 
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
@@ -82,6 +87,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         noiseSuppression = current.NoiseSuppression;
         autoGain = current.AutoGain;
         echoCancellation = current.EchoCancellation;
+        isMusic = current.Transmission == Transmission.Music;
         pttReleaseDelayMs = current.PttReleaseDelayMs;
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingItem(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
@@ -195,6 +201,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnAutoGainChanged(bool value) => Preview();
 
     partial void OnEchoCancellationChanged(bool value) => Preview(); // Package 140
+
+    partial void OnIsMusicChanged(bool value) => Preview(); // Package 142: heard at once, also in the self test
+
+    /// <summary>Package 142: the other radio button of the transmission type.</summary>
+    public bool IsVoice
+    {
+        get => !IsMusic;
+        set => IsMusic = !value;
+    }
 
     partial void OnVadAutomaticChanged(bool value) => Preview(); // Package 129
 
@@ -408,6 +423,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         NoiseSuppression = NoiseSuppression,
         AutoGain = AutoGain,
         EchoCancellation = EchoCancellation,
+        Transmission = IsMusic ? Transmission.Music : Transmission.Voice,
         Theme = SelectedTheme.Value,
         Language = SelectedLanguage.Value,
         CheckForUpdates = CheckForUpdates,

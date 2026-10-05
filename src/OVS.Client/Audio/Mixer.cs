@@ -29,8 +29,8 @@ public sealed class Mixer
     readonly Dictionary<uint, Speaker> speakers = [];
     readonly object gate = new();
     Dictionary<uint, float> speakerGains = [];
-    // Package 124: reused by every tick; only the playback thread ticks
-    readonly float[] mixed = new float[AudioFormat.FrameSamples];
+    // Package 124: reused by every tick; only the playback thread ticks. Package 142: interleaved stereo.
+    readonly float[] mixed = new float[AudioFormat.StereoFrameSamples];
     readonly List<ActiveSpeaker> active = [];
 
     /// <summary>Package 51: the volume per speaker (session id), 1 for everyone not listed; Package 128: slider values (A137).</summary>
@@ -84,7 +84,8 @@ public sealed class Mixer
         }
     }
 
-    /// <returns>The frame and who is in it, both reused by the next tick (Package 124: nothing allocated per frame).</returns>
+    /// <returns>The frame (Package 142: interleaved stereo) and who is in it, both reused by the next tick (Package 124:
+    /// nothing allocated per frame).</returns>
     public (float[] Frame, List<ActiveSpeaker> Active) Tick()
     {
         Array.Clear(mixed);

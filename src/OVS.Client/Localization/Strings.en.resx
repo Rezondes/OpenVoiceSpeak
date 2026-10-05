@@ -336,6 +336,10 @@
   <data name="Ui_NoiseSuppressionHint" xml:space="preserve"><value>Removes fans, typing and hiss from your voice.</value></data>
   <data name="Ui_EchoCancellation" xml:space="preserve"><value>Echo cancellation</value></data>
   <data name="Ui_EchoCancellationHint" xml:space="preserve"><value>For speakers instead of a headset: the others do not hear themselves through your microphone.</value></data>
+  <data name="Ui_Transmission" xml:space="preserve"><value>Transmission type</value></data>
+  <data name="Ui_TransmissionVoice" xml:space="preserve"><value>Speech</value></data>
+  <data name="Ui_TransmissionMusic" xml:space="preserve"><value>Music</value></data>
+  <data name="Ui_TransmissionHint" xml:space="preserve"><value>Music is sent in stereo (from 64 kbps in the channel) and without the voice filters, e.g. for an instrument. Headphones recommended, as it sends without echo cancellation.</value></data>
   <data name="Ui_PttReleaseDelay" xml:space="preserve"><value>Release delay</value></data>
   <data name="Ui_PttReleaseDelayHint" xml:space="preserve"><value>Keeps sending this long after the talk key is let go, so the last word is not cut off.</value></data>
   <data name="Ui_SortNewest" xml:space="preserve"><value>Newest first</value></data>

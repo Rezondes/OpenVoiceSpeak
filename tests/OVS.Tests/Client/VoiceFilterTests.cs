@@ -485,6 +485,6 @@ public class VoiceFilterTests
         missing.Configure(new ClientSettings());
         missing.SetTone(440);
         Assert.Null(missing.Capture!.Canceller);
-        Assert.Equal(AudioFormat.FrameSamples, missing.MixForSpeaker().Length); // no canceller: just the mix
+        Assert.Equal(AudioFormat.StereoFrameSamples, missing.MixForSpeaker().Length); // no canceller: just the mix (Package 142: stereo)
     }
 }

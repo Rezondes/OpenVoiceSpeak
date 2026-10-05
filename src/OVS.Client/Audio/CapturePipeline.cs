@@ -9,17 +9,21 @@ namespace OVS.Client.Audio;
 /// <summary>
 /// Microphone (or a synthetic test tone) -> mono 48 kHz -> 20 ms frames -> VAD -> Opus.
 /// The device source is Windows only (WASAPI); the tone source works anywhere.
+/// Package 142 (A151): in music mode a stereo device stays stereo (interleaved frames of 2 x 960 samples).
 /// </summary>
 public sealed class CapturePipeline : IDisposable
 {
-    readonly FrameChunker chunker = new();
+    readonly FrameChunker chunker = new(), stereoChunker = new(2);
     readonly VoiceEncoder encoder = new();
+    VoiceEncoder? musicEncoder, lastEncoder; // Package 142: the music one made on first use
     readonly object gate = new();
-    readonly float[] previous = new float[AudioFormat.FrameSamples]; // pre-roll, see Feed
+    readonly float[] previous = new float[AudioFormat.StereoFrameSamples]; // pre-roll, see Feed
+    readonly float[] doubled = new float[AudioFormat.StereoFrameSamples]; // Package 142: a mono microphone's music frame
+    float[] downmixed = []; // Package 142: a stereo chunk arriving in voice mode
     readonly AutoGain autoGain = new();
     bool sending;
     SincResampler? resampler;
-    int resamplerRate;
+    int resamplerRate, channels = 1;
     WasapiCapture? capture;
     Thread? toneThread;
     volatile bool running = true;
@@ -32,9 +36,15 @@ public sealed class CapturePipeline : IDisposable
         var pipeline = new CapturePipeline();
         // Event driven with a 20 ms buffer: the default polls a 100 ms buffer and adds up to 50 ms latency.
         var capture = new WasapiCapture(device ?? WasapiCapture.GetDefaultCaptureDevice(), useEventSync: true, audioBufferMillisecondsLength: 20);
-        float[] mono = []; // reused: only the capture thread touches it
+        float[] samples = []; // reused: only the capture thread touches it
+        var sides = new StereoInput(); // Package 142: one per opened device
         capture.DataAvailable += (_, e) =>
-            pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, capture.WaveFormat, ref mono), capture.WaveFormat.SampleRate);
+        {
+            var format = capture.WaveFormat;
+            if (pipeline.Music && format.Channels >= 2) // Package 142: without the downmix; a mono device stays mono
+                pipeline.Feed(ToStereo(e.Buffer, e.BytesRecorded, format, ref samples, sides), format.SampleRate, 2);
+            else pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, format, ref samples), format.SampleRate);
+        };
         capture.RecordingStopped += (_, e) =>
         {
             if (e.Exception is { } error) failed?.Invoke(error); // a stop of our own (Dispose) carries none
@@ -42,6 +52,9 @@ public sealed class CapturePipeline : IDisposable
         pipeline.capture = capture;
         return pipeline;
     }
+
+    /// <summary>Package 142: the music encoder once music was sent (tests see it is one and the same).</summary>
+    internal VoiceEncoder? MusicEncoder => musicEncoder;
 
     /// <summary>Package 124: a pipeline fed by hand (tests), e.g. what a fake device factory hands out.</summary>
     internal static CapturePipeline Manual() => new();
@@ -64,6 +77,18 @@ public sealed class CapturePipeline : IDisposable
     /// <summary>Package 140 (A149): WebRTC's echo canceller, owned by the pipeline; null when the native library is missing.</summary>
     public EchoCanceller? Canceller { get; set; }
     public bool EchoCancellation { get; set; }
+
+    /// <summary>
+    /// Package 142 (A151): music mode: stereo from a stereo device (without the downmix), no echo cancellation, noise
+    /// suppression or automatic gain whatever their switches say, Opus' music mode. Set on the UI thread, read per callback.
+    /// </summary>
+    public bool Music
+    {
+        get => music;
+        set => music = value;
+    }
+
+    volatile bool music;
 
     public bool AutoGain
     {
@@ -118,40 +143,80 @@ public sealed class CapturePipeline : IDisposable
         }
     }
 
-    public void Feed(ReadOnlySpan<float> mono, int sampleRate)
+    /// <param name="samples">Mono, or with <paramref name="channels"/> 2 interleaved stereo (Package 142: music mode).</param>
+    public void Feed(ReadOnlySpan<float> samples, int sampleRate, int channels = 1)
     {
         lock (gate)
         {
+            bool music = Music; // Package 142: once per chunk, so a switch never splits a frame
+            if (channels == 2 && !music)
+            {
+                // switched to voice mode while the device thread converted a chunk: averaged like ToMono does
+                int count = samples.Length / 2;
+                if (downmixed.Length < count) downmixed = new float[count];
+                for (int i = 0; i < count; i++) downmixed[i] = 0.5f * (samples[2 * i] + samples[2 * i + 1]);
+                samples = downmixed.AsSpan(0, count);
+                channels = 1;
+            }
+            if (channels != this.channels)
+            {
+                // Package 142: another format starts afresh, with a silent pre-roll in it
+                this.channels = channels;
+                resampler = null;
+                Array.Clear(previous);
+                chunker.Reset();
+                stereoChunker.Reset();
+            }
             if (resampler is null || resamplerRate != sampleRate)
             {
-                resampler = new SincResampler(sampleRate, AudioFormat.SampleRate);
+                resampler = new SincResampler(sampleRate, AudioFormat.SampleRate, channels);
                 resamplerRate = sampleRate;
             }
-            var samples = resampler.Process(mono);
-            while (chunker.Take(ref samples))
+            var input = resampler.Process(samples);
+            var frames = channels == 2 ? stereoChunker : chunker;
+            while (frames.Take(ref input))
             {
-                var frame = chunker.Frame;
+                var frame = frames.Frame;
+                // Package 142 (A151): music mode applies none of the voice filters, whatever their switches say.
                 // Package 140: first, on the raw microphone, before the gain's soft clip makes the echo path nonlinear
-                if (EchoCancellation) Canceller?.Process(frame);
+                if (EchoCancellation && !music) Canceller?.Process(frame);
                 ApplyGain(frame, Gain);
                 // Package 123: before the voice activation, so it, the level meter and the self test hear the cleaned signal
-                float? voiceProbability = NoiseSuppression ? Suppressor?.Process(frame) : null;
-                if (autoGainOn) autoGain.Process(frame, voiceProbability); // Package 127: RNNoise's rating decides what is speech
-                bool voice = Vad.Process(frame);
+                float? voiceProbability = NoiseSuppression && !music ? Suppressor?.Process(frame) : null;
+                if (autoGainOn && !music) autoGain.Process(frame, voiceProbability); // Package 127: RNNoise's rating decides what is speech
+                bool voice = Vad.Process(frame, channels); // Package 142: the louder side
                 Level?.Invoke(Vad.LastLevelDb);
                 var target = DecideTarget(voice);
                 if (target is { } t)
                 {
-                    if (Bitrate() is var kbps && kbps != encoder.BitrateKbps) encoder.BitrateKbps = kbps;
-                    if (LossHint() is var loss && loss != encoder.PacketLossPercent) encoder.PacketLossPercent = loss; // Package 135
+                    int kbps = Bitrate();
+                    var opus = music ? musicEncoder ??= new VoiceEncoder(music: true) : encoder;
+                    if (opus != lastEncoder)
+                    {
+                        // Package 142: switched between speech and music; what it encoded last may be minutes old
+                        if (lastEncoder is not null) opus.Opus.ResetState();
+                        lastEncoder = opus;
+                    }
+                    // Package 142 (A151): stereo from 64 kbps, so back to mono too when the loss adapter halves it
+                    if (music) opus.Mono = channels == 1 || kbps < VoiceEncoder.StereoFromKbps;
+                    if (kbps != opus.BitrateKbps) opus.BitrateKbps = kbps;
+                    if (LossHint() is var loss && loss != opus.PacketLossPercent) opus.PacketLossPercent = loss; // Package 135
                     // The level only crosses the threshold inside a word: send the 20 ms before it too, so the onset is not cut.
-                    if (!sending) FrameEncoded?.Invoke(encoder.Encode(previous), t);
-                    FrameEncoded?.Invoke(encoder.Encode(frame), t);
+                    if (!sending) FrameEncoded?.Invoke(Encode(opus, previous, channels), t);
+                    FrameEncoded?.Invoke(Encode(opus, frame, channels), t);
                 }
                 sending = target is not null;
                 frame.CopyTo(previous, 0);
             }
         }
+    }
+
+    /// <summary>Package 142: a frame of <paramref name="channels"/>; a mono one doubled for the stereo music encoder. Under gate.</summary>
+    byte[] Encode(VoiceEncoder opus, float[] frame, int channels)
+    {
+        if (channels == opus.Channels) return opus.Encode(frame.AsSpan(0, AudioFormat.FrameSamples * channels));
+        for (int i = 0; i < AudioFormat.FrameSamples; i++) doubled[2 * i] = doubled[2 * i + 1] = frame[i];
+        return opus.Encode(doubled);
     }
 
     /// <summary>
@@ -183,24 +248,10 @@ public sealed class CapturePipeline : IDisposable
     public static Span<float> ToMono(byte[] buffer, int bytes, WaveFormat format, ref float[] mono)
     {
         int channels = format.Channels;
-        bool isFloat = format.Encoding == WaveFormatEncoding.IeeeFloat || (format is WaveFormatExtensible ext && ext.SubFormat == NAudio.MediaFoundation.AudioSubtypes.MFAudioFormat_Float);
-        if (!isFloat && format.BitsPerSample != 16) throw new NotSupportedException($"Aufnahmeformat {format} wird nicht unterstützt");
-        int count = bytes / (isFloat ? sizeof(float) : sizeof(short));
-        if (mono.Length < count) mono = new float[count];
-        var interleaved = mono.AsSpan(0, count);
-        if (isFloat)
-        {
-            MemoryMarshal.Cast<byte, float>(buffer.AsSpan(0, bytes)).CopyTo(interleaved);
-        }
-        else
-        {
-            var shorts = MemoryMarshal.Cast<byte, short>(buffer.AsSpan(0, bytes));
-            for (int i = 0; i < shorts.Length; i++) interleaved[i] = shorts[i] / 32768f;
-        }
-
+        var interleaved = ToFloat(buffer, bytes, format, ref mono);
         if (channels == 1) return interleaved;
         // Mixed down in place: sample i is written only after everything before sample i * channels was read.
-        var result = interleaved[..(count / channels)];
+        var result = interleaved[..(interleaved.Length / channels)];
         if (DominantChannel(interleaved, channels) is { } only)
         {
             for (int i = 0; i < result.Length; i++) result[i] = interleaved[i * channels + only];
@@ -213,6 +264,52 @@ public sealed class CapturePipeline : IDisposable
             result[i] = sum / channels;
         }
         return result;
+    }
+
+    /// <summary>
+    /// Package 142 (A151): the capture buffer as interleaved stereo from its first two channels, without the downmix of
+    /// <see cref="ToMono"/>, written into <paramref name="stereo"/> like there. The format has at least 2 channels.
+    /// Package 142 (review): with <paramref name="sides"/> an instrument on one input of a two-input interface plays on
+    /// both sides at full level (Package 50's one-sided rule, with hysteresis, see StereoInput).
+    /// </summary>
+    public static Span<float> ToStereo(byte[] buffer, int bytes, WaveFormat format, ref float[] stereo, StereoInput? sides = null)
+    {
+        int channels = format.Channels;
+        var interleaved = ToFloat(buffer, bytes, format, ref stereo);
+        var result = interleaved[..(interleaved.Length / channels * 2)];
+        if (channels > 2)
+        {
+            // in place like ToMono: frame i is written only after everything before sample i * channels was read
+            for (int i = 0; i < result.Length / 2; i++)
+            {
+                float left = interleaved[i * channels], right = interleaved[i * channels + 1];
+                result[2 * i] = left;
+                result[2 * i + 1] = right;
+            }
+        }
+        if (sides?.OnlySide(result, format.SampleRate) is { } only)
+            for (int i = 0; i < result.Length / 2; i++) result[2 * i + 1 - only] = result[2 * i + only];
+        return result;
+    }
+
+    /// <summary>The capture buffer's samples as floats, still interleaved, in <paramref name="samples"/> (grown when needed).</summary>
+    static Span<float> ToFloat(byte[] buffer, int bytes, WaveFormat format, ref float[] samples)
+    {
+        bool isFloat = format.Encoding == WaveFormatEncoding.IeeeFloat || (format is WaveFormatExtensible ext && ext.SubFormat == NAudio.MediaFoundation.AudioSubtypes.MFAudioFormat_Float);
+        if (!isFloat && format.BitsPerSample != 16) throw new NotSupportedException($"Aufnahmeformat {format} wird nicht unterstützt");
+        int count = bytes / (isFloat ? sizeof(float) : sizeof(short));
+        if (samples.Length < count) samples = new float[count];
+        var interleaved = samples.AsSpan(0, count);
+        if (isFloat)
+        {
+            MemoryMarshal.Cast<byte, float>(buffer.AsSpan(0, bytes)).CopyTo(interleaved);
+        }
+        else
+        {
+            var shorts = MemoryMarshal.Cast<byte, short>(buffer.AsSpan(0, bytes));
+            for (int i = 0; i < shorts.Length; i++) interleaved[i] = shorts[i] / 32768f;
+        }
+        return interleaved;
     }
 
     /// <summary>
@@ -254,5 +351,57 @@ public sealed class CapturePipeline : IDisposable
             Canceller?.Dispose(); // Package 140: waits for a Render running on the playback thread
             Canceller = null;
         }
+    }
+}
+
+/// <summary>
+/// Package 142 (review): whether a stereo device in music mode carries its signal on one side only, e.g. an instrument
+/// on one input of a two-input interface. With hysteresis, as the two mistakes cost differently: a wrong stereo
+/// decision only leaves the instrument 6 dB quieter on one side, a wrong one-sided one discards the other input. So it
+/// goes one-sided only after one side has been at least 6 dB above the other (Package 50's rule) in every chunk with
+/// signal for <see cref="OneSidedAfter"/>, and back to stereo as soon as the weak side, averaged over about 100 ms,
+/// rises to within 10 dB of the strong one (a second input joining, e.g. a voice microphone next to a guitar). Silence
+/// changes nothing. Capture thread; nothing allocated per chunk.
+/// </summary>
+public sealed class StereoInput
+{
+    public static readonly TimeSpan OneSidedAfter = TimeSpan.FromSeconds(2.5);
+    const double SilentBelow = 1e-7; // mean square of the louder side: -70 dBFS, so a quiet instrument is still judged
+    const double FastSeconds = 0.1; // the averages that bring stereo back
+    double fastLeft, fastRight;
+    long run; // sample frames with signal in a row on which the same side was the only one
+    int runSide = -1;
+    int? only;
+
+    /// <returns>The side (0 left, 1 right) that alone carries the signal, or null for stereo.</returns>
+    public int? OnlySide(ReadOnlySpan<float> stereo, int sampleRate)
+    {
+        double l = 0, r = 0;
+        for (int i = 0; i + 1 < stereo.Length; i += 2)
+        {
+            l += stereo[i] * stereo[i];
+            r += stereo[i + 1] * stereo[i + 1];
+        }
+        int frames = stereo.Length / 2;
+        if (frames == 0 || Math.Max(l, r) / frames < SilentBelow) return only; // silence says nothing
+        l /= frames;
+        r /= frames;
+        double step = Math.Min(1, frames / (FastSeconds * sampleRate));
+        fastLeft += step * (l - fastLeft);
+        fastRight += step * (r - fastRight);
+
+        int side = l >= 4 * r ? 0 : r >= 4 * l ? 1 : -1;
+        run = side >= 0 && side == runSide ? run + frames : side >= 0 ? frames : 0;
+        runSide = side;
+        if (only is { } one)
+        {
+            double strong = one == 0 ? fastLeft : fastRight, weak = one == 0 ? fastRight : fastLeft;
+            if (weak >= strong / 10) only = null; // within 10 dB: the other input carries something
+        }
+        else if (side >= 0 && run >= OneSidedAfter.TotalSeconds * sampleRate)
+        {
+            only = side;
+        }
+        return only;
     }
 }

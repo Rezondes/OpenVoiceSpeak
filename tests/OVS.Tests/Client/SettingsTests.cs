@@ -680,6 +680,58 @@ public sealed class SettingsTests : IDisposable
         lock (log) Assert.Single(log, line => line.Contains("Echounterdrückung"));
     }
 
+    /// <summary>
+    /// Package 142 (A151, AC6): "Übertragungsart" is speech by default, also for a file without the key; music is saved,
+    /// previewed live and reaches the running capture without a restart; while it is chosen the filter switches are
+    /// disabled (they keep their values for speech).
+    /// </summary>
+    [AvaloniaFact]
+    public void TransmissionMode_DefaultLive()
+    {
+        Assert.Equal(Transmission.Voice, new ClientSettings().Transmission);
+        File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
+        var old = ClientSettings.Load(dir, out _);
+        Assert.Equal(Transmission.Voice, old.Transmission);
+
+        var vm = Vm(old);
+        var live = new List<ClientSettings>();
+        vm.LivePreview = live.Add;
+        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        var radios = window.GetVisualDescendants().OfType<RadioButton>().ToList();
+        var voice = radios.Single(r => r.Content as string == Strings.Ui_TransmissionVoice);
+        var music = radios.Single(r => r.Content as string == Strings.Ui_TransmissionMusic);
+        var filters = window.GetVisualDescendants().OfType<CheckBox>()
+            .Where(c => c.Content as string is { } text && (text == Strings.Ui_NoiseSuppression || text == Strings.Ui_AutoGain || text == Strings.Ui_EchoCancellation)).ToList();
+        Assert.Equal(3, filters.Count);
+        Assert.True(voice.IsChecked);
+        Assert.All(filters, f => Assert.True(f.IsEffectivelyEnabled));
+
+        music.IsChecked = true; // clicked
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(vm.IsMusic);
+        Assert.Equal(Transmission.Music, live[^1].Transmission);
+        Assert.True(vm.HasChanges);
+        Assert.All(filters, f => Assert.False(f.IsEffectivelyEnabled));
+        Assert.All(filters, f => Assert.True(f.IsChecked)); // still on for speech
+        window.Close();
+        vm.ToSettings(old).Save(dir);
+        Assert.Equal(Transmission.Music, ClientSettings.Load(dir, out _).Transmission);
+
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false);
+        engine.Configure(new ClientSettings());
+        engine.SetTone(440);
+        var capture = engine.Capture!;
+        Assert.False(capture.Music);
+        engine.ApplyLive(live[^1]);
+        Assert.Same(capture, engine.Capture); // no restart
+        Assert.True(capture.Music);
+        engine.ApplyLive(new ClientSettings()); // "Abbrechen"
+        Assert.False(capture.Music);
+    }
+
     /// <summary>Package 123: the switches are heard at once and count as a change; switched back, nothing is left to save.</summary>
     [Fact]
     public void VoiceFilters_LivePreviewAndCancel()

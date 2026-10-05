@@ -1205,4 +1205,353 @@ public class SendPathTests
             using var watcher = DeviceWatcher.Start(() => { });
         }
     }
+
+    // ---- Package 142 (A151): music mode ----
+
+    /// <summary>Package 142: 20 ms of interleaved stereo, a tone per side, continuing its phase from frame <paramref name="n"/>.</summary>
+    static float[] StereoTones(int n, double left = 440, double right = 1000, float amplitude = 0.3f)
+    {
+        var frame = new float[AudioFormat.StereoFrameSamples];
+        for (int i = 0; i < AudioFormat.FrameSamples; i++)
+        {
+            double t = (double)(n * AudioFormat.FrameSamples + i) / AudioFormat.SampleRate;
+            frame[2 * i] = left > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * left * t) : 0;
+            frame[2 * i + 1] = right > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * right * t) : 0;
+        }
+        return frame;
+    }
+
+    /// <summary>Package 142: the amplitude of one tone in one side of interleaved stereo, fitted by correlation.</summary>
+    static double ToneIn(IReadOnlyList<float> stereo, int side, double hz)
+    {
+        double re = 0, im = 0;
+        int count = stereo.Count / 2;
+        for (int n = 0; n < count; n++)
+        {
+            double w = 2 * Math.PI * hz * n / AudioFormat.SampleRate;
+            re += stereo[2 * n + side] * Math.Cos(w);
+            im += stereo[2 * n + side] * Math.Sin(w);
+        }
+        return 2 * Math.Sqrt(re * re + im * im) / count;
+    }
+
+    /// <summary>Package 142: an Opus packet's table of contents says whether it is stereo (RFC 6716, 3.1).</summary>
+    static bool IsStereo(byte[] packet) => (packet[0] & 0x4) != 0;
+
+    /// <summary>A music mode pipeline fed by hand, always sending, its packets played by a receiver's mixer one per tick.</summary>
+    sealed class MusicRig
+    {
+        public readonly CapturePipeline Pipeline = CapturePipeline.Manual();
+        public readonly Mixer Receiver = new();
+        public readonly List<byte[]> Packets = [];
+        public readonly List<float> Heard = []; // interleaved stereo
+        public int Kbps = 64;
+        uint seq;
+
+        public MusicRig()
+        {
+            Pipeline.Music = true;
+            Pipeline.Bitrate = () => Kbps;
+            Pipeline.DecideTarget = _ => Ch;
+            Pipeline.FrameEncoded += (opus, _) =>
+            {
+                Packets.Add(opus);
+                Receiver.Push(1, seq, opus, false, 20.0 * seq);
+                seq++;
+            };
+        }
+
+        public void Feed(float[] samples, int channels)
+        {
+            Pipeline.Feed(samples, AudioFormat.SampleRate, channels);
+            var (frame, active) = Receiver.Tick();
+            if (active.Count > 0) Heard.AddRange(frame);
+        }
+    }
+
+    /// <summary>
+    /// Package 142 (AC1): in a 64 kbps channel a different tone on each side reaches a receiver's mixer with each tone on
+    /// its own side, the other tone at least 20 dB below it. At 128 kbps a stereo frame and the copy of the one before it
+    /// (Package 136) still fit one voice packet.
+    /// </summary>
+    [Fact]
+    public void MusicMode_StereoArrivesSeparated()
+    {
+        var rig = new MusicRig();
+        for (int n = 0; n < 60; n++) rig.Feed(StereoTones(n), 2);
+        Assert.All(rig.Packets, p => Assert.True(IsStereo(p)));
+        var steady = rig.Heard.Skip(20 * AudioFormat.StereoFrameSamples).Take(30 * AudioFormat.StereoFrameSamples).ToList();
+        Assert.Equal(30 * AudioFormat.StereoFrameSamples, steady.Count);
+        double leftOwn = ToneIn(steady, 0, 440), leftOther = ToneIn(steady, 0, 1000);
+        double rightOwn = ToneIn(steady, 1, 1000), rightOther = ToneIn(steady, 1, 440);
+        Assert.InRange(leftOwn, 0.4, 0.8); // 0.3 with the voice boost
+        Assert.InRange(rightOwn, 0.4, 0.8);
+        Assert.True(20 * Math.Log10(leftOther / leftOwn) < -20, $"left: 1 kHz at {20 * Math.Log10(leftOther / leftOwn):0.0} dB");
+        Assert.True(20 * Math.Log10(rightOther / rightOwn) < -20, $"right: 440 Hz at {20 * Math.Log10(rightOther / rightOwn):0.0} dB");
+
+        // a lost stereo frame plays from the copy in the next packet (Package 136), or is made up; both in stereo
+        var jb = new JitterBuffer();
+        var reference = new VoiceDecoder();
+        for (int n = 0; n < 12; n++)
+            if (n is not 5 and not 9) jb.Push((uint)n, rig.Packets[n], false, 20.0 * n, n == 6 ? rig.Packets[5] : null);
+        for (int n = 0; n < 12; n++)
+        {
+            var played = jb.Pull()!;
+            Assert.Equal(AudioFormat.StereoFrameSamples, played.Length);
+            if (n < 9) Assert.Equal(reference.Decode(rig.Packets[n]), played); // 5 from its copy, in full
+            else reference.Decode([]);
+        }
+        // review: music packets carry no FEC, so the frame lost without a copy counts as concealed, not rebuilt
+        Assert.Equal((1, 1, 0, 1), (jb.Recovered, jb.Lost, jb.Rebuilt, jb.Concealed));
+        Assert.All(rig.Packets.Skip(1), p => Assert.False(VoiceDecoder.MayCarryFec(p)));
+
+        // a 44.1 kHz stereo microphone: the resampler keeps the sides apart too
+        var resampler = new SincResampler(44_100, AudioFormat.SampleRate, 2);
+        var resampled = new List<float>();
+        for (int chunk = 0; chunk < 50; chunk++)
+        {
+            var input = new float[2 * 441];
+            for (int i = 0; i < 441; i++)
+            {
+                double t = (chunk * 441 + i) / 44_100.0;
+                (input[2 * i], input[2 * i + 1]) = ((float)(0.3 * Math.Sin(2 * Math.PI * 440 * t)), (float)(0.3 * Math.Sin(2 * Math.PI * 1000 * t)));
+            }
+            resampled.AddRange(resampler.Process(input).ToArray());
+        }
+        Assert.InRange(resampled.Count, 2 * (24_000 - 96), 2 * 24_000); // 0.5 s
+        var settled = resampled.Skip(2 * 4800).Take(2 * 9600).ToList();
+        Assert.InRange(ToneIn(settled, 0, 440), 0.29, 0.31);
+        Assert.InRange(ToneIn(settled, 1, 1000), 0.29, 0.31);
+        Assert.True(ToneIn(settled, 0, 1000) < 0.003 && ToneIn(settled, 1, 440) < 0.003, "the sides stay apart");
+
+        var loud = new MusicRig { Kbps = OVS.Shared.Protocol.ProtocolInfo.MaxBitrate };
+        var random = new Random(142);
+        for (int n = 0; n < 50; n++)
+            loud.Feed(Enumerable.Range(0, AudioFormat.StereoFrameSamples).Select(_ => 0.5f * (2 * random.NextSingle() - 1)).ToArray(), 2);
+        for (int n = 1; n < loud.Packets.Count; n++)
+        {
+            var payload = RelayPayload.Build((uint)n, loud.Packets[n], loud.Packets[n - 1]);
+            Assert.Equal(RelayPayload.HeaderSize + loud.Packets[n].Length + loud.Packets[n - 1].Length, payload.Length); // the copy rode along
+        }
+    }
+
+    /// <summary>
+    /// Package 142 (review): an instrument on one input of a two-input interface plays on both sides at full level once
+    /// it has been alone for the window (also a quiet one); a second input joining brings stereo back within a few hundred
+    /// ms, both inputs heard on their own sides; a stereo source panned hard for a short while stays stereo.
+    /// </summary>
+    [Fact]
+    public void MusicMode_OneInputInstrument_BothSides()
+    {
+        var format = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2);
+        float[] buffer = [];
+        float[] Chunk(StereoInput sides, int n, double left, double right, float amplitude = 0.3f)
+        {
+            var frame = StereoTones(n, left, right, amplitude); // 20 ms, as WASAPI hands it over
+            var bytes = new byte[frame.Length * sizeof(float)];
+            Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
+            return CapturePipeline.ToStereo(bytes, bytes.Length, format, ref buffer, sides).ToArray();
+        }
+        int window = (int)(StereoInput.OneSidedAfter / AudioFormat.FrameDuration);
+
+        foreach (var (side, amplitude) in new[] { (0, 0.3f), (1, 0.3f), (0, 0.0008f) }) // the last at about -65 dBFS
+        {
+            var guitar = new StereoInput();
+            for (int n = 0; n < window + 50; n++) // the window, then 1 s
+            {
+                var stereo = Chunk(guitar, n, side == 0 ? 440 : 0, side == 1 ? 440 : 0, amplitude);
+                if (n < window - 1) continue; // stereo meanwhile: 6 dB quieter on one side only
+                for (int i = 0; i < AudioFormat.FrameSamples; i++) Assert.Equal(stereo[2 * i + side], stereo[2 * i + 1 - side]);
+                Assert.Equal(VoiceActivityDetector.LevelDb(StereoTones(n, 440, 0, amplitude), 2), VoiceActivityDetector.LevelDb(stereo), 0.01f);
+            }
+        }
+
+        // guitar on input 1 for 4 s, then a voice microphone (here a 1 kHz tone) joins on input 2 for 0.5 s
+        var interface2i2 = new StereoInput();
+        for (int n = 0; n < 200; n++) Chunk(interface2i2, n, 440, 0);
+        var joined = new List<float[]>();
+        for (int n = 200; n < 225; n++) joined.Add(Chunk(interface2i2, n, 440, 1000));
+        Assert.Null(interface2i2.OnlySide(StereoTones(225), AudioFormat.SampleRate));
+        foreach (var frame in joined.Skip(10)) // from 200 ms on
+        {
+            Assert.True(ToneIn(frame, 1, 1000) > 0.25, $"the voice on its side: {ToneIn(frame, 1, 1000):0.000}");
+            Assert.True(ToneIn(frame, 1, 440) < 0.01 && ToneIn(frame, 0, 1000) < 0.01, "separated");
+        }
+
+        // the same after only 2 s alone (no one-sided decision yet): heard separately at once
+        var early = new StereoInput();
+        for (int n = 0; n < 100; n++) Chunk(early, n, 440, 0);
+        var stereoAgain = Chunk(early, 100, 440, 1000);
+        Assert.True(ToneIn(stereoAgain, 1, 1000) > 0.25 && ToneIn(stereoAgain, 1, 440) < 0.01, "separated");
+
+        var song = new StereoInput();
+        for (int n = 0; n < 60; n++) Chunk(song, n, 440, 1000); // over a second of real stereo
+        for (int n = 60; n < 60 + window / 2; n++) // then hard left for a while
+        {
+            var panned = Chunk(song, n, 440, 0);
+            Assert.All(Enumerable.Range(0, AudioFormat.FrameSamples), i => Assert.Equal(0f, panned[2 * i + 1]));
+        }
+        var both = Chunk(song, 60 + window / 2, 440, 1000);
+        Assert.True(ToneIn(both, 0, 1000) < 0.01 && ToneIn(both, 1, 440) < 0.01, "still separated");
+    }
+
+    /// <summary>
+    /// Package 142 (AC2, A151): below 64 kbps music goes out in mono (also when the loss adapter lowers the bitrate), the
+    /// same on both sides at the receiver; a mono microphone stays mono; voice mode is mono at any bitrate.
+    /// </summary>
+    [Fact]
+    public void MusicMode_LowBitrate_Mono()
+    {
+        var rig = new MusicRig { Kbps = 32 };
+        for (int n = 0; n < 30; n++) rig.Feed(StereoTones(n), 2);
+        Assert.All(rig.Packets, p => Assert.False(IsStereo(p)));
+        var steady = rig.Heard.Skip(10 * AudioFormat.StereoFrameSamples).ToList();
+        for (int i = 0; i < steady.Count; i += 2) Assert.Equal(steady[i], steady[i + 1], 1e-3f);
+        Assert.True(ToneIn(steady, 0, 440) > 0.1 && ToneIn(steady, 1, 1000) > 0.1, "both tones, downmixed");
+
+        // the adapter raises it again and halves it: the same encoder goes stereo and back without a reset, and the
+        // receiver hears no gap or dip across the switches (review)
+        var encoder = rig.Pipeline.MusicEncoder;
+        Assert.NotNull(encoder);
+        int before = rig.Heard.Count;
+        rig.Kbps = 64;
+        for (int n = 30; n < 50; n++) rig.Feed(StereoTones(n), 2);
+        Assert.True(IsStereo(rig.Packets[^1]));
+        rig.Kbps = 32;
+        for (int n = 50; n < 70; n++) rig.Feed(StereoTones(n), 2);
+        Assert.False(IsStereo(rig.Packets[^1]));
+        Assert.Same(encoder, rig.Pipeline.MusicEncoder);
+        var across = rig.Heard.Skip(before).ToList();
+        Assert.Equal(40 * AudioFormat.StereoFrameSamples, across.Count);
+        for (int f = 0; f < 40; f++)
+        {
+            var frame = across.Skip(f * AudioFormat.StereoFrameSamples).Take(AudioFormat.StereoFrameSamples).ToArray();
+            float db = VoiceActivityDetector.LevelDb(frame, 2);
+            Assert.True(db is > -14 and < -5, $"frame {f} after the first switch: {db:0.0} dBFS");
+        }
+
+        var mono = new MusicRig { Kbps = 128 };
+        mono.Feed(Constant(0.1f), 1); // a mono microphone
+        Assert.All(mono.Packets, p => Assert.False(IsStereo(p)));
+
+        var voice = new MusicRig { Kbps = 128 };
+        voice.Pipeline.Music = false;
+        voice.Feed(StereoTones(0), 2); // a stereo buffer while switching back: downmixed
+        voice.Feed(Constant(0.1f), 1);
+        Assert.Equal(3, voice.Packets.Count); // with the pre-roll frame
+        Assert.All(voice.Packets, p => Assert.False(IsStereo(p)));
+    }
+
+    /// <summary>
+    /// Package 142 (AC3, A151): in music mode echo cancellation, noise suppression and automatic gain leave the signal
+    /// alone although switched on; back in voice mode they act again. The speaker mix feeds the canceller only in voice mode.
+    /// </summary>
+    [Fact]
+    public void MusicMode_FiltersOff()
+    {
+        const int delay = 3; // the echo comes back 60 ms later, at -6 dB
+        var random = new Random(142);
+        var far = Enumerable.Range(0, 300).Select(_ => VoiceFilterTests.Noise(random, -20)).ToArray();
+        using var pipeline = CapturePipeline.Manual();
+        pipeline.Canceller = EchoCanceller.Create(out var error);
+        Assert.True(pipeline.Canceller is not null, error);
+        pipeline.Canceller.DelayMs = AudioEngine.EchoDelayMs;
+        pipeline.Suppressor = NoiseSuppressor.Create(out error);
+        Assert.True(pipeline.Suppressor is not null, error);
+        (pipeline.EchoCancellation, pipeline.NoiseSuppression, pipeline.AutoGain, pipeline.Music) = (true, true, true, true);
+        var levels = new List<float>();
+        pipeline.DecideTarget = _ =>
+        {
+            levels.Add(pipeline.Vad.LastLevelDb);
+            return null;
+        };
+        var heard = new List<float>();
+        for (int i = 0; i < far.Length; i++)
+        {
+            if (i == 150) pipeline.Music = false; // back in voice mode
+            pipeline.Canceller.Render(far[i]);
+            var mic = new float[AudioFormat.FrameSamples];
+            if (i >= delay)
+                for (int s = 0; s < mic.Length; s++) mic[s] = 0.5f * far[i - delay][s];
+            heard.Add(VoiceActivityDetector.LevelDb(mic));
+            pipeline.Feed(mic, AudioFormat.SampleRate);
+        }
+        for (int i = 0; i < 150; i++) Assert.Equal(heard[i], levels[i], 0.01f); // untouched in music mode
+        double voiceIn = heard.Skip(250).Average(), voiceOut = levels.Skip(250).Average();
+        Assert.True(voiceIn - voiceOut > 10, $"voice mode: {voiceIn:0.0} dBFS in, {voiceOut:0.0} dBFS out");
+
+        // the automatic gain alone, on a quiet tone it would raise toward -20 dBFS
+        using var gain = CapturePipeline.Manual();
+        (gain.AutoGain, gain.Music) = (true, true);
+        gain.DecideTarget = _ => null;
+        for (int n = 0; n < 150; n++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate); // -40 dBFS
+        Assert.Equal(-40f, gain.Vad.LastLevelDb, 0.01f);
+        gain.Music = false;
+        for (int n = 0; n < 150; n++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate);
+        Assert.True(gain.Vad.LastLevelDb > -30, $"{gain.Vad.LastLevelDb} dBFS");
+
+        using var keys = new KeyPoller();
+        using var engine = new AudioEngine(keys, useDevices: false);
+        engine.Configure(new ClientSettings { Transmission = Transmission.Music });
+        engine.SetTone(440);
+        var canceller = engine.Capture!.Canceller!;
+        Assert.True(engine.Capture.Music);
+        engine.MixForSpeaker();
+        Assert.Equal(0, canceller.RenderedFrames);
+        engine.ApplyLive(new ClientSettings());
+        Assert.False(engine.Capture.Music);
+        engine.MixForSpeaker();
+        Assert.Equal(1, canceller.RenderedFrames);
+    }
+
+    /// <summary>
+    /// Package 142 (AC5): push-to-talk works in music mode as in voice mode, and the self test hears stereo; voice
+    /// activation measures the louder side, so music on one side alone opens it.
+    /// </summary>
+    [Fact]
+    public async Task MusicMode_PttAndVad()
+    {
+        using var rig = new TalkRig(0);
+        rig.Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0, Transmission = Transmission.Music });
+        rig.Pipeline.Music = true; // as ApplyLive and StartCapture set it on the engine's capture
+        var packets = new List<byte[]>();
+        rig.Pipeline.FrameEncoded += (opus, _) => packets.Add(opus);
+        int n = 0;
+        rig.Signal = () => StereoTones(n++);
+        void Feed(int count)
+        {
+            for (int i = 0; i < count; i++) rig.Pipeline.Feed(rig.Signal(), AudioFormat.SampleRate, 2);
+        }
+
+        Feed(5);
+        Assert.Empty(packets); // key up
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Feed(5);
+        Assert.Equal(6, packets.Count); // with the pre-roll frame
+        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        Feed(5);
+        Assert.Equal(6, packets.Count);
+        Assert.All(packets, p => Assert.True(IsStereo(p)));
+
+        rig.Engine.SelfTest = true; // the own ears hear what a 64 kbps channel would send: stereo
+        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        Feed(3);
+        Assert.Equal(10, packets.Count);
+        Assert.All(packets.Skip(6), p => Assert.True(IsStereo(p)));
+
+        var vad = CapturePipeline.Manual();
+        vad.Music = true;
+        vad.Vad.ThresholdDb = -32;
+        int sent = 0;
+        vad.DecideTarget = voice => voice ? Ch : null;
+        vad.FrameEncoded += (_, _) => sent++;
+        float amplitude = MathF.Pow(10, -27 / 20f); // -30 dBFS RMS on the left, silence on the right: -33 dB over both
+        for (int i = 0; i < 3; i++) vad.Feed(StereoTones(i, right: 0, amplitude: amplitude), AudioFormat.SampleRate, 2);
+        Assert.True(vad.Vad.LastLevelDb > -31, $"{vad.Vad.LastLevelDb} dBFS");
+        Assert.Equal(4, sent);
+        for (int i = 0; i < 20; i++) vad.Feed(new float[AudioFormat.StereoFrameSamples], AudioFormat.SampleRate, 2);
+        int closed = sent;
+        vad.Feed(new float[AudioFormat.StereoFrameSamples], AudioFormat.SampleRate, 2);
+        Assert.Equal(closed, sent); // silence closes it after the hold
+    }
 }

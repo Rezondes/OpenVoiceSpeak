@@ -160,7 +160,7 @@ sealed class WasapiDevices : IAudioDeviceFactory
         };
         try
         {
-            var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
+            var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2)) // Package 142: stereo
             {
                 DiscardOnBufferOverflow = true,
                 BufferDuration = TimeSpan.FromSeconds(1),
@@ -478,6 +478,7 @@ public sealed class AudioEngine : IDisposable
             capture.NoiseSuppression = live.NoiseSuppression;
             capture.AutoGain = live.AutoGain;
             capture.EchoCancellation = live.EchoCancellation; // Package 140
+            capture.Music = live.Transmission == Transmission.Music; // Package 142
         }
     }
 
@@ -672,6 +673,7 @@ public sealed class AudioEngine : IDisposable
             capture.AutoGain = values.AutoGain;
             capture.Canceller = CreateCanceller(); // Package 140: like the suppressor, also while switched off
             capture.EchoCancellation = values.EchoCancellation;
+            capture.Music = values.Transmission == Transmission.Music; // Package 142
             capture.FrameEncoded += OnFrameEncoded;
             capture.Level += OnLevel;
             capture.Start();
@@ -825,7 +827,7 @@ public sealed class AudioEngine : IDisposable
             warnings.Add(string.Format(Strings.Audio_SpeakerFailed, e.Message));
         }
         if (Text(warnings) is { } text) Warning?.Invoke(text);
-        var bytes = new byte[AudioFormat.FrameSamples * sizeof(float)];
+        var bytes = new byte[AudioFormat.StereoFrameSamples * sizeof(float)];
         var clock = Stopwatch.StartNew();
         long ticks = 0;
         while (running)
@@ -886,21 +888,28 @@ public sealed class AudioEngine : IDisposable
     /// <summary>
     /// Package 140: a frame for the speaker, which is also the echo canceller's far end: exactly what goes to the speaker
     /// (voices after the limiter, and the tones), also in the self test, where it keeps the own voice from coming back
-    /// through the speakers. Playback thread; internal so tests mix by hand.
+    /// through the speakers. Playback thread; internal so tests mix by hand. Package 142: the frame is stereo, the
+    /// canceller hears it downmixed (a mono voice exactly as before); in music mode the capture does not use it.
     /// </summary>
     internal float[] MixForSpeaker()
     {
         var frame = Mix();
-        if (capture is { EchoCancellation: true, Canceller: { } canceller }) canceller.Render(frame);
+        if (capture is { EchoCancellation: true, Music: false, Canceller: { } canceller })
+        {
+            for (int i = 0; i < farEnd.Length; i++) farEnd[i] = 0.5f * (frame[2 * i] + frame[2 * i + 1]);
+            canceller.Render(farEnd);
+        }
         return frame;
     }
+
+    readonly float[] farEnd = new float[AudioFormat.FrameSamples]; // Package 142: playback thread only
 
     float[] Mix()
     {
         Interlocked.Increment(ref mixes);
         var (frame, active) = Mixer.Tick();
         if (deafened && !selfTest) Array.Clear(frame); // in the self test only the own voice is in the mixer
-        LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame); // voice only, before the tones
+        LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame, 2); // voice only, before the tones; Package 142: the louder side
         Sounds.MixInto(frame);
         if (speakerReports.Next(active) is { } report) SpeakersChanged?.Invoke(report);
         return frame;

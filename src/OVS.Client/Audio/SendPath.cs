@@ -5,6 +5,9 @@ namespace OVS.Client.Audio;
 
 public enum TransmitMode { PushToTalk, VoiceActivation }
 
+/// <summary>Package 142 (A151): "Übertragungsart": speech (mono, voice filters, Opus VOIP) or music (stereo, no filters).</summary>
+public enum Transmission { Voice, Music }
+
 public static class TransmitController
 {
     /// <returns>Voice target to send with, or null to stay silent. Voice activation never uses links.</returns>
@@ -49,9 +52,10 @@ public sealed class VoiceActivityDetector
     public float ThresholdInUseDb { get; private set; } = -40f;
     public float LastLevelDb { get; private set; } = -120f;
 
-    public bool Process(ReadOnlySpan<float> frame)
+    /// <param name="channels">Package 142: 2 for an interleaved stereo frame, whose louder side counts.</param>
+    public bool Process(ReadOnlySpan<float> frame, int channels = 1)
     {
-        LastLevelDb = LevelDb(frame);
+        LastLevelDb = LevelDb(frame, channels);
         ThresholdInUseDb = Automatic && count >= LearningFrames ? AutoThresholdDb() : ThresholdDb;
         levels[next] = LastLevelDb;
         next = (next + 1) % FloorFrames;
@@ -79,23 +83,32 @@ public sealed class VoiceActivityDetector
         return Math.Clamp(window[count / 10] + FloorAboveP10Db, MinAutoDb, MaxAutoDb);
     }
 
-    public static float LevelDb(ReadOnlySpan<float> frame)
+    /// <param name="channels">Package 142 (A151): 2 for interleaved stereo: the level of the louder side.</param>
+    public static float LevelDb(ReadOnlySpan<float> frame, int channels = 1)
     {
         if (frame.IsEmpty) return -120f;
-        double sum = 0;
-        foreach (var s in frame) sum += s * s;
-        double rms = Math.Sqrt(sum / frame.Length);
+        double loudest = 0;
+        for (int c = 0; c < channels; c++)
+        {
+            double sum = 0;
+            for (int i = c; i < frame.Length; i += channels) sum += frame[i] * frame[i];
+            loudest = Math.Max(loudest, sum);
+        }
+        double rms = Math.Sqrt(loudest / (frame.Length / channels));
         return rms <= 1e-6 ? -120f : (float)(20 * Math.Log10(rms));
     }
 }
 
-/// <summary>Turns arbitrary sized capture buffers into exact 960 sample frames.</summary>
-public sealed class FrameChunker
+/// <summary>Turns arbitrary sized capture buffers into exact 960 sample frames (Package 142: 2 x 960 interleaved for stereo).</summary>
+public sealed class FrameChunker(int channels = 1)
 {
     int filled;
 
     /// <summary>Package 124: the one frame buffer, reused; valid until the next <see cref="Take"/>.</summary>
-    public float[] Frame { get; } = new float[AudioFormat.FrameSamples];
+    public float[] Frame { get; } = new float[AudioFormat.FrameSamples * channels];
+
+    /// <summary>Package 142: drops a part frame, when the capture switches between mono and stereo.</summary>
+    public void Reset() => filled = 0;
 
     /// <summary>Takes samples until <see cref="Frame"/> is full; <paramref name="samples"/> keeps the rest.</summary>
     /// <returns>True when a full frame is ready.</returns>
@@ -113,7 +126,7 @@ public sealed class FrameChunker
 /// <summary>
 /// Package 138 (A147): mono resampler around NAudio's windowed-sinc <see cref="WdlResampler"/>, which low-passes
 /// before converting, so tones above the voice band do not fold back into it as linear interpolation let them.
-/// Keeps state across chunks.
+/// Keeps state across chunks. Package 142: interleaved stereo too, which WDL resamples per channel.
 /// </summary>
 /// <remarks>
 /// WDL resizes its input buffer to whatever a call needs (<see cref="Array.Resize{T}"/>), so chunks of changing size
@@ -130,11 +143,13 @@ public sealed class SincResampler
 
     readonly WdlResampler? wdl; // null at equal rates
     readonly double ratio;      // output samples per input sample
+    readonly int channels;
     float[] queue = [], output = [];
-    int queued;
+    int queued; // floats, so channels per sample frame
 
-    public SincResampler(int fromRate, int toRate)
+    public SincResampler(int fromRate, int toRate, int channels = 1)
     {
+        this.channels = channels;
         if (fromRate == toRate) return;
         ratio = (double)toRate / fromRate;
         wdl = new WdlResampler();
@@ -149,17 +164,17 @@ public sealed class SincResampler
         if (queue.Length < queued + input.Length) Array.Resize(ref queue, queued + input.Length);
         input.CopyTo(queue.AsSpan(queued));
         queued += input.Length;
-        int most = (int)(queued * ratio) + Block;
+        int most = ((int)(queued / channels * ratio) + Block) * channels;
         if (output.Length < most) output = new float[most];
 
         int taken = 0, count = 0;
         while (true)
         {
             // safe without a ResampleOut after it; the same block size keeps WDL's buffer the same size
-            int wanted = wdl.ResamplePrepare(Block, 1, out var buffer, out int offset);
+            int wanted = wdl.ResamplePrepare(Block, channels, out var buffer, out int offset) * channels; // WDL counts sample frames
             if (queued - taken < wanted) break;
             queue.AsSpan(taken, wanted).CopyTo(buffer.AsSpan(offset));
-            count += wdl.ResampleOut(output, count, wanted, Block, 1);
+            count += wdl.ResampleOut(output, count, wanted / channels, Block, channels) * channels;
             taken += wanted;
         }
         queue.AsSpan(taken, queued - taken).CopyTo(queue);

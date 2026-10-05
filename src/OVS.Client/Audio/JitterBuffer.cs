@@ -156,7 +156,8 @@ public sealed class JitterBuffer
         {
             // lost packet, later ones already here: the very next one carries an FEC copy of it (Package 136: also as a copy)
             Lost++;
-            if (frames.TryGetValue(++next, out var following) || copies.TryGetValue(next, out following))
+            // Package 142: a music coder packet carries no FEC, so the frame is concealed (and counted so)
+            if ((frames.TryGetValue(++next, out var following) || copies.TryGetValue(next, out following)) && VoiceDecoder.MayCarryFec(following))
             {
                 Rebuilt++;
                 return decoder.DecodeLost(following);

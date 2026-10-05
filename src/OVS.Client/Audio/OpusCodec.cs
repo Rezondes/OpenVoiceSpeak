@@ -9,6 +9,8 @@ public static class AudioFormat
 {
     public const int SampleRate = 48_000;
     public const int FrameSamples = 960; // 20 ms mono
+    /// <summary>Package 142 (A151): 20 ms of interleaved stereo, as the decoders, the mixer and the speaker work.</summary>
+    public const int StereoFrameSamples = 2 * FrameSamples;
     public static readonly TimeSpan FrameDuration = TimeSpan.FromMilliseconds(20);
 }
 
@@ -22,13 +24,23 @@ public sealed class VoiceEncoder
     /// </summary>
     public const int Complexity = 5;
 
-    readonly IOpusEncoder encoder = OpusCodecFactory.CreateEncoder(AudioFormat.SampleRate, 1, OpusApplication.OPUS_APPLICATION_VOIP);
+    /// <summary>Package 142 (A151): music goes out in stereo from this bitrate on (Fluxer's rule), below it in mono.</summary>
+    public const int StereoFromKbps = 64;
+
+    readonly IOpusEncoder encoder;
     readonly byte[] buffer = new byte[VoiceHeader.MaxOpusSize];
 
-    public VoiceEncoder()
+    /// <param name="music">
+    /// Package 142 (A151): a stereo encoder (interleaved frames) in Opus' general audio mode with the music signal type,
+    /// instead of mono with VOIP and voice. It sends mono while <see cref="Mono"/> is set.
+    /// </param>
+    public VoiceEncoder(bool music = false)
     {
+        Channels = music ? 2 : 1;
+        encoder = OpusCodecFactory.CreateEncoder(AudioFormat.SampleRate, Channels,
+            music ? OpusApplication.OPUS_APPLICATION_AUDIO : OpusApplication.OPUS_APPLICATION_VOIP);
         encoder.Bitrate = ProtocolInfo.DefaultBitrate * 1000;
-        encoder.SignalType = OpusSignal.OPUS_SIGNAL_VOICE;
+        encoder.SignalType = music ? OpusSignal.OPUS_SIGNAL_MUSIC : OpusSignal.OPUS_SIGNAL_VOICE;
         encoder.Complexity = Complexity;
         // Package 124: DTX stays off. Push-to-talk and voice activation already stop sending in pauses; within one, DTX
         // would send a comfort-noise frame about every 400 ms, which a receiver plays as a lone frame plus concealment,
@@ -36,11 +48,32 @@ public sealed class VoiceEncoder
         encoder.UseDTX = false;
         // In-band FEC: each packet also carries a coarse copy of the previous frame, so the receiver can rebuild a
         // single lost packet instead of guessing it. Opus only adds it when told to expect some loss.
-        encoder.UseInbandFEC = true;
+        // Package 142: not for music. Opus carries FEC only in its speech coder (SILK), so with a loss hint (10 % from the
+        // start) it leaves the music coder for it, and SILK's stereo blurs the sides: at 64 kbps a tone on one side came
+        // out 2.6 dB below it on the other (measured with Concentus, see PLAN.md). Without FEC the music coder keeps them
+        // more than 70 dB apart; a lost music frame comes from the copy (Package 136) or the decoder's concealment.
+        encoder.UseInbandFEC = !music;
         encoder.PacketLossPercent = LossAdapter.InitialHint;
     }
 
     internal IOpusEncoder Opus => encoder;
+
+    /// <summary>1 for voice, 2 for music (whose frames are then interleaved stereo, also when sent in mono).</summary>
+    public int Channels { get; }
+
+    /// <summary>
+    /// Package 142 (A151): music below 64 kbps or from a mono device goes out in mono. The same encoder downmixes
+    /// (Opus' forced channel count), so a switch across 64 kbps keeps its state and passes smoothly. Set before an encode.
+    /// </summary>
+    public bool Mono
+    {
+        get => encoder.ForceChannels == 1;
+        set
+        {
+            int channels = value ? 1 : 2; // 2, not Opus' own choice: stereo is decided by the rule above alone
+            if (encoder.ForceChannels != channels) encoder.ForceChannels = channels;
+        }
+    }
 
     /// <summary>Package 132 (A141): the channel's bitrate in kbps; set on the thread that encodes.</summary>
     public int BitrateKbps
@@ -56,6 +89,7 @@ public sealed class VoiceEncoder
         set => encoder.PacketLossPercent = value;
     }
 
+    /// <param name="frame">20 ms, interleaved when stereo.</param>
     /// <returns>A new array: it is sent or kept by the mixer (and only made while sending, never per idle frame).</returns>
     public byte[] Encode(ReadOnlySpan<float> frame)
     {
@@ -64,14 +98,25 @@ public sealed class VoiceEncoder
     }
 }
 
+/// <summary>
+/// Package 142 (A151): always decodes to stereo. An Opus packet carries its channel count, so a mono packet (every voice
+/// mode sender) comes out the same on both sides, and music in stereo needs no change in the protocol.
+/// </summary>
 public sealed class VoiceDecoder
 {
-    readonly IOpusDecoder decoder = OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 1);
-    readonly float[] pcm = new float[AudioFormat.FrameSamples];
+    readonly IOpusDecoder decoder = OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
+    readonly float[] pcm = new float[AudioFormat.StereoFrameSamples];
 
     /// <summary>An empty packet asks Opus to conceal a lost frame (PLC).</summary>
-    /// <returns>20 ms of PCM in a buffer reused by the next call (Package 124: nothing allocated per frame).</returns>
+    /// <returns>20 ms of interleaved stereo PCM in a buffer reused by the next call (Package 124: nothing allocated per frame).</returns>
     public float[] Decode(ReadOnlySpan<byte> packet) => Decode(packet, false);
+
+    /// <summary>
+    /// Package 142: only the speech coder's packets (SILK or hybrid, configurations 0 to 15 in the table of contents, RFC
+    /// 6716 3.1) can carry FEC; a music coder packet (CELT only, as music in stereo) never does, so a frame lost before
+    /// it is concealed. Whether a SILK packet actually carries it would need its range coder, so those count as rebuilt.
+    /// </summary>
+    public static bool MayCarryFec(ReadOnlySpan<byte> packet) => packet.Length > 1 && packet[0] >> 3 < 16;
 
     /// <summary>Rebuilds the lost frame before <paramref name="nextPacket"/> from the FEC copy it carries.</summary>
     public float[] DecodeLost(ReadOnlySpan<byte> nextPacket) => Decode(nextPacket, true);

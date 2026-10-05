@@ -105,7 +105,10 @@ public sealed class SoundQueue
         lock (playing) playing.Add(new Playing(samples, gain));
     }
 
-    /// <summary>Adds the next piece of every tone to the frame and keeps the sum within -1..1.</summary>
+    /// <summary>
+    /// Adds the next piece of every tone to the frame and keeps the sum within -1..1. Package 142: the frame is interleaved
+    /// stereo, the tones (mono) play on both sides.
+    /// </summary>
     public void MixInto(Span<float> frame)
     {
         lock (playing)
@@ -113,8 +116,13 @@ public sealed class SoundQueue
             if (playing.Count == 0) return;
             foreach (var tone in playing)
             {
-                int n = Math.Min(frame.Length, tone.Samples.Length - tone.Position);
-                for (int i = 0; i < n; i++) frame[i] += tone.Samples[tone.Position + i] * tone.Gain;
+                int n = Math.Min(frame.Length / 2, tone.Samples.Length - tone.Position);
+                for (int i = 0; i < n; i++)
+                {
+                    float s = tone.Samples[tone.Position + i] * tone.Gain;
+                    frame[2 * i] += s;
+                    frame[2 * i + 1] += s;
+                }
                 tone.Position += n;
             }
             playing.RemoveAll(t => t.Position >= t.Samples.Length);

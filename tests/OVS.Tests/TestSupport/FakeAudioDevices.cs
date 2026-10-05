@@ -77,7 +77,7 @@ public sealed class FakeAudioDevices : IAudioDeviceFactory
         var output = new FakeOutput();
         lock (outputs) outputs.Add((device, output));
         // Nothing plays it: one frame long, so it never holds the engine's 40 ms and the tones run through at once.
-        var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1))
+        var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2)) // Package 142: stereo, as the real one
         {
             BufferDuration = AudioFormat.FrameDuration,
             DiscardOnBufferOverflow = true,

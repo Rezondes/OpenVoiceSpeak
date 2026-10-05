@@ -27,7 +27,7 @@ public class ReceivePathTests
         float[] output = [];
         // Opus has a short startup; judge the steady state.
         for (int i = 0; i < 5; i++) output = decoder.Decode(Encoder.Encode(Sine(0.5f, i * AudioFormat.FrameSamples)));
-        Assert.Equal(AudioFormat.FrameSamples, output.Length);
+        Assert.Equal(AudioFormat.StereoFrameSamples, output.Length); // Package 142: stereo, the mono packet on both sides
         Assert.True(Rms(output) >= 0.5f * Rms(input), $"rms {Rms(output)} vs {Rms(input)}");
     }
 
@@ -68,7 +68,7 @@ public class ReceivePathTests
         var jb = new JitterBuffer();
         foreach (uint n in new uint[] { 1, 2, 4 }) jb.Push(n, Frame(n), false);
         var played = Enumerable.Range(0, 3).Select(_ => jb.Pull()).ToList();
-        Assert.All(played, p => Assert.Equal(AudioFormat.FrameSamples, Assert.IsType<float[]>(p).Length));
+        Assert.All(played, p => Assert.Equal(AudioFormat.StereoFrameSamples, Assert.IsType<float[]>(p).Length));
         Assert.Equal(1, jb.Buffered); // 3 was concealed, 4 is next
         Assert.NotNull(jb.Pull());
         Assert.Equal(0, jb.Buffered);
@@ -438,7 +438,7 @@ public class ReceivePathTests
         var mixer = new Mixer { Volume = volume };
         for (int n = 0; n < packets.Count; n++) mixer.Push(1, (uint)n, packets[n], false);
         var mixed = new List<float>();
-        for (int tick = 0; tick < 20 && mixed.Count < frames * AudioFormat.FrameSamples; tick++)
+        for (int tick = 0; tick < 20 && mixed.Count < frames * AudioFormat.StereoFrameSamples; tick++)
         {
             var (frame, active) = mixer.Tick();
             if (active.Count > 0) mixed.AddRange(frame);
@@ -646,7 +646,7 @@ public class ReceivePathTests
         jb.Push(0, Frame(0), false);
         jb.Push(1, [Frame(1)[0]], false); // the table of contents byte alone
         jb.Push(2, Frame(2), false);
-        for (int i = 0; i < 3; i++) Assert.Equal(AudioFormat.FrameSamples, jb.Pull()!.Length);
+        for (int i = 0; i < 3; i++) Assert.Equal(AudioFormat.StereoFrameSamples, jb.Pull()!.Length);
     }
 
     /// <summary>
@@ -765,5 +765,48 @@ public class ReceivePathTests
         rig.Change();
         Assert.Equal(("headset", 1), (rig.Devices.Open.Speaker, rig.Devices.Counts.SpeakersOpen));
         Assert.Single(rig.Notices);
+    }
+
+    /// <summary>
+    /// Package 142 (A151, AC4): the mix is stereo; a mono speaker (every voice-mode sender) plays the same on both sides,
+    /// also when concealed or rebuilt, the limiter keeps both below its threshold, and the tones play on both sides too.
+    /// </summary>
+    [Fact]
+    public void Stereo_MonoSpeakerBothSides_Limited()
+    {
+        Assert.Equal(2 * AudioFormat.FrameSamples, AudioFormat.StereoFrameSamples);
+        var encoder = new VoiceEncoder();
+        var packets = Enumerable.Range(0, 10).Select(n => encoder.Encode(Sine(0.6f, n * AudioFormat.FrameSamples))).ToList();
+        var mixer = new Mixer { Volume = 2f }; // 0.6 × 4 × 2: far above the threshold
+        for (int n = 0; n < packets.Count; n++)
+            if (n != 4) mixer.Push(1, (uint)n, packets[n], false); // 4 lost: rebuilt from 5, then the end is concealed
+        int played = 0;
+        for (int tick = 0; tick < 14; tick++)
+        {
+            var (frame, active) = mixer.Tick();
+            Assert.Equal(AudioFormat.StereoFrameSamples, frame.Length);
+            if (active.Count > 0) played++;
+            for (int i = 0; i < AudioFormat.FrameSamples; i++)
+            {
+                Assert.Equal(frame[2 * i], frame[2 * i + 1], 1e-3f); // Opus' stereo decoder rounds each side on its own
+                Assert.InRange(frame[2 * i], -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f);
+            }
+        }
+        Assert.True(played >= 10, $"{played} frames played");
+        Assert.Equal((1, 1), (mixer.Stats().Lost, mixer.Stats().Rebuilt));
+
+        var sounds = new SoundQueue();
+        var tone = SoundSynth.Render(SoundEvent.Connected);
+        sounds.Play(tone, 1f);
+        var mixed = new float[AudioFormat.StereoFrameSamples];
+        sounds.MixInto(mixed);
+        for (int i = 0; i < AudioFormat.FrameSamples; i++)
+        {
+            Assert.Equal(tone[i], mixed[2 * i]);
+            Assert.Equal(tone[i], mixed[2 * i + 1]);
+        }
+        var next = new float[AudioFormat.StereoFrameSamples];
+        sounds.MixInto(next); // 20 ms of the tone per frame, not 40
+        Assert.Equal(tone[AudioFormat.FrameSamples + 5], next[10]);
     }
 }

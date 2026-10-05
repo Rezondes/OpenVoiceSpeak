@@ -102,11 +102,18 @@
           <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_VoiceFilterSection}" />
           <Border Classes="card">
             <StackPanel Spacing="4">
-              <CheckBox Content="{x:Static l:Strings.Ui_NoiseSuppression}" IsChecked="{Binding NoiseSuppression}" />
+              <!-- Package 142 (A151): music turns the filters below off, they keep their values for speech -->
+              <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Transmission}" />
+              <WrapPanel>
+                <RadioButton Content="{x:Static l:Strings.Ui_TransmissionVoice}" IsChecked="{Binding IsVoice}" Margin="0,0,16,0" />
+                <RadioButton Content="{x:Static l:Strings.Ui_TransmissionMusic}" IsChecked="{Binding IsMusic}" />
+              </WrapPanel>
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_TransmissionHint}" />
+              <CheckBox Content="{x:Static l:Strings.Ui_NoiseSuppression}" IsChecked="{Binding NoiseSuppression}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_NoiseSuppressionHint}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_AutoGain}" IsChecked="{Binding AutoGain}" Margin="0,8,0,0" />
+              <CheckBox Content="{x:Static l:Strings.Ui_AutoGain}" IsChecked="{Binding AutoGain}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoGainHint}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_EchoCancellation}" IsChecked="{Binding EchoCancellation}" Margin="0,8,0,0" />
+              <CheckBox Content="{x:Static l:Strings.Ui_EchoCancellation}" IsChecked="{Binding EchoCancellation}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
               <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_EchoCancellationHint}" />
             </StackPanel>
           </Border>
