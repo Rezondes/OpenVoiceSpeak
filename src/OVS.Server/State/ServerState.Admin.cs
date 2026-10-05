@@ -1,5 +1,6 @@
 using OVS.Server.Data.Records;
 using OVS.Server.Permissions;
+using OVS.Server.Security;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -152,7 +153,7 @@ public sealed partial class ServerState
     {
         if (!Require(s, r, Permission.GroupsAssign)) return;
         if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out var group)) return;
-        if (WouldRemoveLastAdmin(data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds)), user.Fingerprint, r.GroupId))
+        if (WouldRemoveLastAdmin(UsersAsAdminTuples(), user.Fingerprint, r.GroupId))
         {
             Fail(s, r, Codes.LastAdmin);
             return;
@@ -198,14 +199,12 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, "Willkommenstext zu lang oder mit unerlaubten Zeichen");
             return;
         }
-        if (r.Password is { Length: > ProtocolInfo.MaxPasswordLength }) // Package 83: "" still removes it
+        if (PasswordTooLong(s, r, r.Password)) return; // Package 83: "" still removes it
+        if (r.Limits is { } l && (l.MaxUsers is < ProtocolInfo.MaxUsersMin or > ProtocolInfo.MaxUsersMax || l.LogDays is < 0 or > ProtocolInfo.LogDaysMax))
         {
-            Fail(s, r, Codes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolInfo.MaxPasswordLength} Zeichen.");
-            return;
-        }
-        if (r.Limits is { } l && (l.MaxUsers is < 1 or > 100_000 || l.LogDays is < 0 or > 3650))
-        {
-            Fail(s, r, Codes.InvalidValue, l.MaxUsers is < 1 or > 100_000 ? "Maximale Nutzer: 1 bis 100000" : "Logs aufbewahren: 0 bis 3650 Tage");
+            Fail(s, r, Codes.InvalidValue, l.MaxUsers is < ProtocolInfo.MaxUsersMin or > ProtocolInfo.MaxUsersMax
+                ? $"Maximale Nutzer: {ProtocolInfo.MaxUsersMin} bis {ProtocolInfo.MaxUsersMax}"
+                : $"Logs aufbewahren: 0 bis {ProtocolInfo.LogDaysMax} Tage");
             return;
         }
         var changes = new List<string>();
@@ -215,7 +214,7 @@ public sealed partial class ServerState
 
         data.Settings.Name = name;
         data.Settings.WelcomeText = welcome;
-        if (r.Password is not null) data.Settings.PasswordHash = ServerSettings.Hash(r.Password);
+        if (r.Password is not null) data.Settings.PasswordHash = PasswordHash.Hash(r.Password);
         if (r.Limits is { } limits && limits != data.Settings.Limits)
         {
             var old = data.Settings.Limits;

@@ -15,6 +15,9 @@ public static class ProtocolInfo
     public const int MaxGroupNameLength = 32;
     public const int MaxTextLength = 500; // welcome text and channel description
     public const int MaxPasswordLength = 128; // server and channel password
+    // Package 69: the ranges of the server limits (ServerLimits), checked in server-config.json, the environment and the administration
+    public const int MaxUsersMin = 1, MaxUsersMax = 100_000, MaxUsersDefault = 50;
+    public const int LogDaysMax = 3650, LogDaysDefault = 30; // 0 keeps every log file
     public const int ChatBurst = 5; // messages per ChatWindow
     public static readonly TimeSpan ChatWindow = TimeSpan.FromSeconds(5);
     public const int BackupChunkBytes = 512 * 1024; // Package 75 (A91): raw bytes per chunk, base64 fits the 1 MiB frame

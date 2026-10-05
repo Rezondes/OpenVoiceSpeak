@@ -1,4 +1,5 @@
 using OVS.Server.Data.Records;
+using OVS.Server.Security;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -64,12 +65,11 @@ public sealed partial class ServerState
             Id = Guid.NewGuid(),
             Name = name,
             Description = description,
-            // Package 83: a stored order at int.MaxValue must not wrap around to the top of the list
-            Order = (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1),
+            Order = NextChannelOrder(),
             IsMuted = r.IsMuted,
             MaxUsers = r.MaxUsers,
             AllowedGroupIds = allowed,
-            PasswordHash = ServerSettings.Hash(r.Password ?? ""),
+            PasswordHash = PasswordHash.Hash(r.Password ?? ""),
             Bitrate = r.Bitrate,
         };
         data.Channels.Add(channel);
@@ -96,7 +96,7 @@ public sealed partial class ServerState
         var separator = new ChannelRecord
         {
             Id = Guid.NewGuid(),
-            Order = (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1),
+            Order = NextChannelOrder(),
             Kind = ChannelKind.Separator,
             Bitrate = 0, // Package 132: none
         };
@@ -145,12 +145,15 @@ public sealed partial class ServerState
         channel.IsMuted = r.IsMuted;
         channel.MaxUsers = r.MaxUsers; // lowering it below the current count sends nobody away
         channel.AllowedGroupIds = allowed; // Package 93 (A108): nor does a lock
-        if (r.Password is not null) channel.PasswordHash = ServerSettings.Hash(r.Password); // Package 94: "" removes it
+        if (r.Password is not null) channel.PasswordHash = PasswordHash.Hash(r.Password); // Package 94: "" removes it
         channel.Bitrate = r.Bitrate; // Package 132: the senders inside follow the ChannelUpdated
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
     }
+
+    /// <summary>Package 83: below the last channel; a stored order at int.MaxValue must not wrap around to the top of the list.</summary>
+    int NextChannelOrder() => (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1);
 
     /// <summary>Package 35 and 54: 0 (unlimited) to the maximum, for new and edited channels alike.</summary>
     bool ValidateLimit(Session s, Request r, Guid? channelId, int maxUsers)
@@ -196,9 +199,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, "Der Standard-Channel lässt sich nicht mit einem Passwort sperren.");
             return false;
         }
-        if (password.Length <= ProtocolInfo.MaxPasswordLength) return true;
-        Fail(s, r, Codes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolInfo.MaxPasswordLength} Zeichen.");
-        return false;
+        return !PasswordTooLong(s, r, password);
     }
 
     static bool SameGroups(List<Guid>? a, List<Guid>? b) => a is null || b is null ? a == b : a.ToHashSet().SetEquals(b);
@@ -231,7 +232,7 @@ public sealed partial class ServerState
         var now = time.GetUtcNow();
         var failures = actor.ChannelPasswordFailures;
         if (failures.TryGetValue(channel.Id, out var f) && now < f.BlockedUntil) return Codes.RateLimited;
-        if (ServerSettings.Verify(channel.PasswordHash, password))
+        if (PasswordHash.Verify(channel.PasswordHash, password))
         {
             failures.Remove(channel.Id);
             return null;

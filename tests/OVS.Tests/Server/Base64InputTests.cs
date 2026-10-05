@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using OVS.Server.Data.Records;
+using OVS.Server.Security;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.ServerBackups;
@@ -67,26 +68,26 @@ public class Base64InputTests
     {
         // a PBKDF2 hash as the server stores it: a 16-byte salt (two '=') and a 32-byte key (one '=')
         var salt = Enumerable.Range(1, 16).Select(i => (byte)i).ToArray();
-        var key = Rfc2898DeriveBytes.Pbkdf2("geheim"u8, salt, ServerSettings.HashIterations, HashAlgorithmName.SHA256, 32);
+        var key = Rfc2898DeriveBytes.Pbkdf2("geheim"u8, salt, PasswordHash.HashIterations, HashAlgorithmName.SHA256, 32);
         var (saltText, keyText) = (Convert.ToBase64String(salt), Convert.ToBase64String(key));
         Assert.Equal((2, 1), (Padding(saltText), Padding(keyText)));
-        var stored = $"pbkdf2${ServerSettings.HashIterations}${saltText}${keyText}";
+        var stored = $"pbkdf2${PasswordHash.HashIterations}${saltText}${keyText}";
 
-        Assert.True(ServerSettings.IsValidHash(stored));
+        Assert.True(PasswordHash.IsValidHash(stored));
         Assert.True(new ServerSettings { PasswordHash = stored }.CheckPassword("geheim"));
         Assert.False(new ServerSettings { PasswordHash = stored }.CheckPassword("Geheim"));
-        Assert.True(ServerSettings.IsValidHash(ServerSettings.Hash("geheim")));
+        Assert.True(PasswordHash.IsValidHash(PasswordHash.Hash("geheim")));
 
         // the unsalted SHA-256 hex from before Package 91
         var legacy = Convert.ToHexStringLower(SHA256.HashData("geheim"u8));
-        Assert.True(ServerSettings.IsValidHash(legacy));
+        Assert.True(PasswordHash.IsValidHash(legacy));
         Assert.True(new ServerSettings { PasswordHash = legacy }.CheckPassword("geheim"));
 
         // a salt or key one byte short is still refused
         var shortSalt = Convert.ToBase64String(salt[..15]);
         var shortKey = Convert.ToBase64String(key[..31]);
-        Assert.False(ServerSettings.IsValidHash($"pbkdf2${ServerSettings.HashIterations}${shortSalt}${keyText}"));
-        Assert.False(ServerSettings.IsValidHash($"pbkdf2${ServerSettings.HashIterations}${saltText}${shortKey}"));
+        Assert.False(PasswordHash.IsValidHash($"pbkdf2${PasswordHash.HashIterations}${shortSalt}${keyText}"));
+        Assert.False(PasswordHash.IsValidHash($"pbkdf2${PasswordHash.HashIterations}${saltText}${shortKey}"));
     }
 
     [Fact]

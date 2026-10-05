@@ -1,4 +1,5 @@
 using OVS.Server.Permissions;
+using OVS.Server.Security;
 using OVS.Shared.Permissions;
 
 namespace OVS.Server.Data.Records;
@@ -36,7 +37,7 @@ public sealed class ServerData
     public static ServerData CreateDefault(ServerConfig config)
     {
         var lobby = new ChannelRecord { Id = Guid.NewGuid(), Name = "Lobby" };
-        var settings = new ServerSettings { Name = config.ServerName, PasswordHash = ServerSettings.Hash(config.Password) };
+        var settings = new ServerSettings { Name = config.ServerName, PasswordHash = PasswordHash.Hash(config.Password) };
         settings.TakeStartValues(config);
         return new ServerData
         {

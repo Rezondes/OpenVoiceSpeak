@@ -4,6 +4,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using OVS.Server.Data.Records;
 using OVS.Server.Exceptions;
+using OVS.Server.Security;
 using OVS.Server.Tls;
 using OVS.Shared;
 using OVS.Shared.IO;
@@ -231,14 +232,14 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         Check(!d.Channels.Contains(null!) && !d.Links.Contains(null!) && !d.Groups.Contains(null!) && !d.Users.Contains(null!) && !d.Bans.Contains(null!),
             "leerer Eintrag in einer Liste");
         var s = d.Settings;
-        Check(StoredName(s.Name, 64) && s.WelcomeText is { Length: <= 500 }, "Servername oder Willkommenstext ungültig");
-        Check(s.PasswordHash is null || ServerSettings.IsValidHash(s.PasswordHash), "Passwort-Hash ungültig"); // Package 91: both formats
+        Check(StoredName(s.Name, ProtocolInfo.MaxNameLength) && s.WelcomeText is { Length: <= ProtocolInfo.MaxTextLength }, "Servername oder Willkommenstext ungültig");
+        Check(s.PasswordHash is null || PasswordHash.IsValidHash(s.PasswordHash), "Passwort-Hash ungültig"); // Package 91: both formats
 
         // Package 111: a separator has an empty name and description, is never the default channel and never linked
         Check(d.Channels.All(c => c.Kind switch
         {
             // Package 132: a separator's bitrate is never read (one stored before the package loads as 64)
-            ChannelKind.Voice => StoredName(c.Name, 64) && c.Description is { Length: <= 500 }
+            ChannelKind.Voice => StoredName(c.Name, ProtocolInfo.MaxNameLength) && c.Description is { Length: <= ProtocolInfo.MaxTextLength }
                                  && c.Bitrate is >= ProtocolInfo.MinBitrate and <= ProtocolInfo.MaxBitrate,
             ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, PasswordHash: null },
             _ => false,
@@ -251,14 +252,14 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         Check(!separators.Contains(d.DefaultChannelId), "Trenner als Standard-Channel");
         Check(!d.Links.Any(l => separators.Contains(l.A) || separators.Contains(l.B)), "Link auf einen Trenner");
 
-        Check(d.Groups.All(g => StoredName(g.Name, 32) && g.Permissions.IsSubsetOf(Permission.All)), "Gruppe ungültig");
+        Check(d.Groups.All(g => StoredName(g.Name, ProtocolInfo.MaxGroupNameLength) && g.Permissions.IsSubsetOf(Permission.All)), "Gruppe ungültig");
         Unique(d.Groups.Select(g => g.Id), "Gruppen-Id doppelt");
         var groups = d.Groups.Select(g => g.Id).ToHashSet();
         Check(groups.Contains(WellKnownGroups.Guest) && groups.Contains(WellKnownGroups.Admin), "Gast- oder Admin-Gruppe fehlt");
 
         Check(d.Users.All(u => u.Fingerprint is { Length: > 0 } && u.GroupIds is not null && u.PreviousNicknames is not null
                                && !u.PreviousNicknames.Contains(null!)), "Nutzer unvollständig");
-        Check(d.Users.All(u => u.LastNickname is "" || StoredName(u.LastNickname, 32)), "Nickname ungültig");
+        Check(d.Users.All(u => u.LastNickname is "" || StoredName(u.LastNickname, ProtocolInfo.MaxNicknameLength)), "Nickname ungültig");
         Unique(d.Users.Select(u => u.Fingerprint), "Nutzer doppelt");
         Check(d.Users.All(u => u.GroupIds.All(groups.Contains)), "Nutzer in einer unbekannten Gruppe");
         Check(d.Users.Any(u => u.GroupIds.Contains(WellKnownGroups.Admin)), "kein Mitglied der Admin-Gruppe");

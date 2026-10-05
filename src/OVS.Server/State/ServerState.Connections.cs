@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using OVS.Server.Data.Records;
+using OVS.Server.Security;
 using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -109,7 +110,7 @@ public sealed partial class ServerState
             }
             if (data.Settings.HasLegacyHash) // Package 91: the right password turns the old unsalted hash into the new format
             {
-                data.Settings.PasswordHash = ServerSettings.Hash(password ?? "");
+                data.Settings.PasswordHash = PasswordHash.Hash(password ?? "");
                 Persist();
                 logs.Server("Serverpasswort-Hash auf PBKDF2 umgestellt");
             }

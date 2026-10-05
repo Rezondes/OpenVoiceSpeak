@@ -214,6 +214,18 @@ public sealed partial class ServerState
 
     ChannelRecord? FindChannel(Guid id) => data.Channels.FirstOrDefault(c => c.Id == id);
 
+    /// <summary>Packages 83 and 94: a server or channel password longer than MaxPasswordLength is refused; true when it was.</summary>
+    static bool PasswordTooLong(Session session, Request request, string? password)
+    {
+        if (password is not { Length: > ProtocolInfo.MaxPasswordLength }) return false;
+        Fail(session, request, Codes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolInfo.MaxPasswordLength} Zeichen.");
+        return true;
+    }
+
+    /// <summary>Every stored user with its groups, as WouldRemoveLastAdmin takes them.</summary>
+    IEnumerable<(string Fingerprint, IReadOnlyCollection<Guid> GroupIds)> UsersAsAdminTuples() =>
+        data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds));
+
     /// <summary>Trimmed name of 1..max chars without control, format or separator characters (Package 83: TextRules), else null.</summary>
     public static string? ValidName(string? name, int max) => TextRules.Name(name, max);
 

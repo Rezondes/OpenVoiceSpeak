@@ -3,6 +3,7 @@ using OVS.Server.Data;
 using OVS.Server.Data.Records;
 using OVS.Server.Logging;
 using OVS.Server.Permissions;
+using OVS.Server.Security;
 using OVS.Server.State;
 using OVS.Shared.Permissions;
 using OVS.Tests.TestSupport;
@@ -313,8 +314,8 @@ public sealed class DataStoreTests : IDisposable
     [Fact]
     public void PasswordHash_Pbkdf2_SaltedUnique()
     {
-        var first = ServerSettings.Hash("geheim");
-        var second = ServerSettings.Hash("geheim");
+        var first = PasswordHash.Hash("geheim");
+        var second = PasswordHash.Hash("geheim");
         Assert.NotNull(first);
         Assert.NotEqual(first, second);
         foreach (var hash in new[] { first!, second! })
@@ -329,18 +330,18 @@ public sealed class DataStoreTests : IDisposable
             Assert.True(settings.CheckPassword("geheim"));
             Assert.False(settings.CheckPassword("Geheim"));
             Assert.False(settings.CheckPassword(null));
-            Assert.True(ServerSettings.IsValidHash(hash)); // a backup holding it passes the restore check
+            Assert.True(PasswordHash.IsValidHash(hash)); // a backup holding it passes the restore check
         }
-        Assert.Null(ServerSettings.Hash(""));
+        Assert.Null(PasswordHash.Hash(""));
 
         // the old unsalted SHA-256 hex still verifies and is still valid in a backup, garbage is neither
         var legacy = new ServerSettings { PasswordHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("alt"u8)) };
         Assert.True(legacy.CheckPassword("alt"));
         Assert.False(legacy.CheckPassword("neu"));
-        Assert.True(ServerSettings.IsValidHash(legacy.PasswordHash));
+        Assert.True(PasswordHash.IsValidHash(legacy.PasswordHash));
         foreach (var bad in new[] { "pbkdf2$1$AAAA$AAAA", "pbkdf2$100000$x$y", "md5$1$2$3", "abc", "" })
         {
-            Assert.False(ServerSettings.IsValidHash(bad));
+            Assert.False(PasswordHash.IsValidHash(bad));
             Assert.False(new ServerSettings { PasswordHash = bad }.CheckPassword("alt"));
         }
     }

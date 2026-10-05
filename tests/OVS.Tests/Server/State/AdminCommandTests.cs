@@ -352,9 +352,14 @@ public class AdminCommandTests
         Assert.Null(g.Welcome.Snapshot.Settings.Limits); // only for those with the right
 
         await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { MaxUsers = 0 }) { RequestId = "1" });
-        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("1")).Code);
+        var error = await a.ErrorAsync("1");
+        Assert.Equal((Codes.InvalidValue, "Maximale Nutzer: 1 bis 100000"), (error.Code, error.Detail));
         await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { LogDays = 5000 }) { RequestId = "2" });
-        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("2")).Code);
+        error = await a.ErrorAsync("2");
+        Assert.Equal((Codes.InvalidValue, "Logs aufbewahren: 0 bis 3650 Tage"), (error.Code, error.Detail));
+        await a.SendAsync(new UpdateServerSettings("Neu", "", new string('p', 129), NewLimits) { RequestId = "3" });
+        error = await a.ErrorAsync("3");
+        Assert.Equal((Codes.InvalidValue, "Ein Passwort hat höchstens 128 Zeichen."), (error.Code, error.Detail));
         var store = new DataStore(Path.Combine(server.DataDir, DataStore.FileName));
         var unchanged = store.LoadOrCreate(() => throw new InvalidOperationException()).Settings;
         Assert.Equal(("Testserver", 50, 30), (unchanged.Name, unchanged.MaxUsers, unchanged.LogDays)); // nothing half applied

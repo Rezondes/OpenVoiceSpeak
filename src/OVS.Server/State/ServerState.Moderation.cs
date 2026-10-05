@@ -197,5 +197,5 @@ public sealed partial class ServerState
         ?? (FindUser(fingerprint) is { } user ? PermissionRules.Effective(user.GroupIds, data.Groups) : Permission.None);
 
     bool IsLastAdmin(string fingerprint) =>
-        PermissionRules.WouldRemoveLastAdmin(data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds)), fingerprint, PermissionRules.AdminGroupId);
+        PermissionRules.WouldRemoveLastAdmin(UsersAsAdminTuples(), fingerprint, PermissionRules.AdminGroupId);
 }

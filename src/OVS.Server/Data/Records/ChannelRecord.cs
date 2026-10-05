@@ -18,7 +18,7 @@ public sealed class ChannelRecord
     /// empty once its groups were deleted, which means admins only. Older files load as null, without a new data version.
     /// </summary>
     public List<Guid>? AllowedGroupIds { get; set; }
-    /// <summary>Package 94 (A109): salted PBKDF2 like the server password (ServerSettings.Hash); null = no password lock.</summary>
+    /// <summary>Package 94 (A109): salted PBKDF2 like the server password (PasswordHash.Hash); null = no password lock.</summary>
     public string? PasswordHash { get; set; }
     /// <summary>Package 111: older files load as voice channels, without a new data version.</summary>
     public ChannelKind Kind { get; set; }
