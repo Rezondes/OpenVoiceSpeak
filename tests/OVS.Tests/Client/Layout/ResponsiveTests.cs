@@ -23,21 +23,8 @@ namespace OVS.Tests.Client.Layout;
 
 /// <summary>Package 68 (A93 to A95): the main window adapts to every width from 360 px.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class ResponsiveTests : IDisposable
+public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-resp-").FullName;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
     MainWindow Open(double width, ServerViewModel? server, out MainViewModel vm)
     {
         // the device list loads in the background (Package 52): its result comes back through the dispatcher, not on a pool thread
@@ -56,18 +43,6 @@ public sealed class ResponsiveTests : IDisposable
     }
 
     static Border Sidebar(MainWindow main) => main.FindControl<Border>("Sidebar")!;
-
-    /// <summary>Lets the clock run until the condition holds (at most <paramref name="ms"/>): animations run on real time.</summary>
-    static void WaitFor(Func<bool> done, int ms = 1000)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < ms)
-        {
-            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
-    }
 
     /// <summary>Package 105: closing counts at once, the drawer only slides away for a moment (in the animated display).</summary>
     static void AssertDrawerClosed(MainWindow main)
@@ -107,7 +82,7 @@ public sealed class ResponsiveTests : IDisposable
 
     static void Click(Window main, Control control)
     {
-        var center = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), main)!.Value;
+        var center = Rows.Center(control, main);
         main.MouseDown(center, MouseButton.Left);
         main.MouseUp(center, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
@@ -209,12 +184,11 @@ public sealed class ResponsiveTests : IDisposable
 
         // double click on Raid joins it and closes the drawer, once the drawer has slid in and its rows have built up. Before
         // the first frame nothing has moved yet, so at least two frames pass; under load each step can outlast a whole slide.
-        Border Raid() => main.GetVisualDescendants().OfType<Border>()
-            .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel { Name: "Raid" });
+        Border Raid() => Rows.ChannelRow(main, "Raid");
         int frames = 0;
-        WaitFor(() => frames++ >= 2 && AtRest(Sidebar(main), main) && AtRest(Raid(), Sidebar(main)), 5000);
+        MotionWait.WaitFor(() => frames++ >= 2 && AtRest(Sidebar(main), main) && AtRest(Raid(), Sidebar(main)), 5000);
         var raid = Raid();
-        var point = raid.TranslatePoint(new Point(raid.Bounds.Width / 2, raid.Bounds.Height / 2), main)!.Value;
+        var point = Rows.Center(raid, main);
         main.MouseDown(point, MouseButton.Left);
         main.MouseUp(point, MouseButton.Left);
         main.MouseDown(point, MouseButton.Left);
@@ -798,7 +772,7 @@ public sealed class ResponsiveTests : IDisposable
         if (width < 700)
         {
             Click(main, MenuButton(main)); // the channel tree lives in the drawer
-            WaitFor(() => Sidebar(main).IsEffectivelyVisible && AtRest(Sidebar(main), main), 5000);
+            MotionWait.WaitFor(() => Sidebar(main).IsEffectivelyVisible && AtRest(Sidebar(main), main), 5000);
         }
         var row = main.GetVisualDescendants().OfType<Border>().Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel { Nickname: "anna" });
         var menu = row.ContextMenu!;
@@ -946,8 +920,8 @@ public sealed class ResponsiveTests : IDisposable
         server = FakeServers.Admin(time: time, dialogs: SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
         vm.Server = server;
         // the connect sequence (at most 700 ms) is over before anything is clicked; the server's clock is a manual one
-        WaitFor(() => false, 800);
-        WaitFor(() => main.Classes.Contains("compact") == width < 700, 5000);
+        MotionWait.WaitFor(() => false, 800);
+        MotionWait.WaitFor(() => main.Classes.Contains("compact") == width < 700, 5000);
 
         // a sent message still waiting and a refused one with its retry, both long
         foreach (var text in new[] { new string('w', 300), "Diese Nachricht kam nicht an, weil zu viele in kurzer Zeit geschickt wurden." })
@@ -966,7 +940,7 @@ public sealed class ResponsiveTests : IDisposable
         if (width < 700) Click(main, MenuButton(main)); // the channel tree lives in the drawer
         Assert.Equal(width < 700, main.Classes.Contains("drawer")); // the click opened it (a missed click fails here, not as "0 spinners")
         // the drawer slides in (Package 105); on a busy machine that can take longer than its 220 ms
-        WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2, 5000);
+        MotionWait.WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2, 5000);
         Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible));
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) Click(main, MenuButton(main));
@@ -1064,7 +1038,7 @@ public sealed class ResponsiveTests : IDisposable
     public void Connected_LongNickname_FooterNotTrimmed()
     {
         var main = Open(1100, ShortChannelsLongNick(), out _);
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         Assert.Equal(LongNick, Footer(main, "SelfName").Text);
         Untrimmed(Footer(main, "SelfName"));
         Untrimmed(Footer(main, "TalkHintLine"));
@@ -1076,10 +1050,10 @@ public sealed class ResponsiveTests : IDisposable
     public void Sending_WidthStays()
     {
         var main = Open(1100, FakeServers.WithChannels("A", "B"), out var vm);
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         var before = Sidebar(main).Bounds.Width;
         vm.TransmitText = Strings.Transmit_Linked;
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         Assert.Equal(before, Sidebar(main).Bounds.Width, 1);
         main.Close();
     }
@@ -1093,21 +1067,21 @@ public sealed class ResponsiveTests : IDisposable
     {
         var main = Open(1100, FakeServers.WithChannels("A", "B"), out var vm);
         vm.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation });
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         Assert.Equal("ich", Footer(main, "SelfName").Text);
         Assert.Equal(Strings.TalkHint_VoiceActivation, Footer(main, "TalkHintLine").Text);
         Untrimmed(Footer(main, "TalkHintLine"));
         Assert.True(Sidebar(main).Bounds.Width > SidebarWidth.Minimum, $"{Sidebar(main).Bounds.Width}: the footer, not the rows, sets the width");
 
         vm.ApplySettings(new ClientSettings { KeyBindings = [] }); // push-to-talk without a key: the hint button
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         var hint = main.FindControl<Button>("PttHint")!;
         Assert.True(hint.IsEffectivelyVisible);
         Untrimmed(hint.GetVisualDescendants().OfType<TextBlock>().Single());
         Assert.True(hint.Bounds.Width >= hint.DesiredSize.Width - 0.5, "the whole button shows");
 
         vm.ApplySettings(new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.PushToTalk, new KeyChord(0x05))] });
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         Untrimmed(Footer(main, "TalkHintLine"));
         main.Close();
     }
@@ -1116,7 +1090,7 @@ public sealed class ResponsiveTests : IDisposable
     public void NarrowWindow_MaxStillWins()
     {
         var main = Open(760, ShortChannelsLongNick(), out _);
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         var max = Responsive.SidebarMax(main.FindControl<Grid>("Shell")!.Bounds.Width, main.GetVisualDescendants().OfType<GridSplitter>().Single().Width,
             0);
         Assert.True(Sidebar(main).Bounds.Width <= max + 1);
@@ -1128,7 +1102,7 @@ public sealed class ResponsiveTests : IDisposable
     public void Drag_NotBelowFooter()
     {
         var main = Open(1100, ShortChannelsLongNick(), out _);
-        WaitFor(() => false, 200);
+        MotionWait.WaitFor(() => false, 200);
         var fitted = Sidebar(main).Bounds.Width;
         var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();
         SidebarColumn(main).Width = new GridLength(150);

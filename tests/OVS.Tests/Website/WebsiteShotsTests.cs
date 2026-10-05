@@ -2,27 +2,15 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
 using OVS.Tests.Client.Localization;
+using OVS.Tests.TestSupport;
 using SkiaSharp;
 
 namespace OVS.Tests.Website;
 
 /// <summary>Package 116: the website's image generator itself, in the normal test run.</summary>
 [Collection(WebsiteShots.Collection)]
-public sealed class WebsiteShotsTests : IDisposable
+public sealed class WebsiteShotsTests() : TempDirectoryTest("ovs-shots-test-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-shots-test-").FullName;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
     [AvaloniaFact]
     public void Writer_EncodesWebP_RightSizeAndDecodable()
     {

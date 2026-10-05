@@ -576,7 +576,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "", false, IconHash: "abc"), FakeServers.Lobby,
             [new ChannelInfo(FakeServers.Lobby, "Lobby", "", 0)], [], [],
             [new UserInfo(1, "fp1", "ich", FakeServers.Lobby, false, false, false, OVS.Shared.Permissions.Permission.None, [])]);
-        var server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        var server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
         {
             lock (sent) sent.Add(r);
             return Task.CompletedTask;

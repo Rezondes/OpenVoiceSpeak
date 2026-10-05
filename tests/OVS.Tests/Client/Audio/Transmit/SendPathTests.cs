@@ -734,15 +734,15 @@ public class SendPathTests
     {
         foreach (int voiced in new[] { 0, 1 })
         {
-            var stereo = new float[2 * 480];
-            for (int i = 0; i < 480; i++) stereo[2 * i + voiced] = 0.5f * MathF.Sin(2 * MathF.PI * 440 * i / 48_000f);
+            var stereo = new float[2 * AudioFormat.HalfFrameSamples];
+            for (int i = 0; i < AudioFormat.HalfFrameSamples; i++) stereo[2 * i + voiced] = 0.5f * MathF.Sin(2 * MathF.PI * 440 * i / 48_000f);
             var bytes = new byte[stereo.Length * 4];
             Buffer.BlockCopy(stereo, 0, bytes, 0, bytes.Length);
             float[] buffer = [];
             var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2), ref buffer).ToArray();
-            Assert.Equal(480, mono.Length);
+            Assert.Equal(AudioFormat.HalfFrameSamples, mono.Length);
             Assert.InRange(mono.Max(), 0.49f, 0.5f);
-            for (int i = 0; i < 480; i++) Assert.Equal(stereo[2 * i + voiced], mono[i]);
+            for (int i = 0; i < AudioFormat.HalfFrameSamples; i++) Assert.Equal(stereo[2 * i + voiced], mono[i]);
         }
     }
 

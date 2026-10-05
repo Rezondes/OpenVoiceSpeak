@@ -322,7 +322,7 @@ public sealed class MotionCoverageTests : IDisposable
     static Step Click(string name, Func<Walk, Button> button, Action<Walk>? then = null, Action<Walk>? prepare = null) =>
         new(name, x =>
         {
-            var at = Center(button(x), x.Main);
+            var at = TestSupport.Rows.Center(button(x), x.Main);
             x.Main.MouseMove(at);
             x.Main.MouseDown(at, MouseButton.Left);
             x.Main.MouseUp(at, MouseButton.Left);
@@ -332,9 +332,6 @@ public sealed class MotionCoverageTests : IDisposable
             prepare?.Invoke(x);
             Show(button)(x);
         }, Away);
-
-    static Point Center(Control control, Visual root) =>
-        control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), root)!.Value;
 
     static IEnumerable<Step> Menu(string name, Func<Walk, Control> owner)
     {
@@ -382,12 +379,12 @@ public sealed class MotionCoverageTests : IDisposable
                     yield return new(name, _ => combo.IsDropDownOpen = true, null, show, _ => combo.IsDropDownOpen = false);
                     break;
                 default: // a slider: its thumb grows under the mouse
-                    yield return new(name, x => x.Main.MouseMove(Center(control, x.Main)), _ => control, show, Away);
+                    yield return new(name, x => x.Main.MouseMove(TestSupport.Rows.Center(control, x.Main)), _ => control, show, Away);
                     break;
             }
         }
         var cancel = view.GetVisualDescendants().OfType<Button>().First(b => b.Content is string text && text == Strings.Dlg_Cancel);
-        yield return new("settings: hover a button", x => x.Main.MouseMove(Center(cancel, x.Main)), _ => cancel, Show(_ => cancel), Away);
+        yield return new("settings: hover a button", x => x.Main.MouseMove(TestSupport.Rows.Center(cancel, x.Main)), _ => cancel, Show(_ => cancel), Away);
     }
 
     /// <summary>AC1: every user action, in the order a user could do them.</summary>

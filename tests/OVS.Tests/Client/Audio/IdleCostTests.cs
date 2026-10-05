@@ -61,7 +61,7 @@ public class IdleCostTests
 
         // ... and float mono at 48 kHz, where the resampler passes the samples through
         var float48 = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1);
-        var floats = new byte[480 * float48.BlockAlign];
+        var floats = new byte[AudioFormat.HalfFrameSamples * float48.BlockAlign];
         var direct = CapturePipeline.Manual();
         Assert.Equal(0, Allocated(() => direct.Feed(CapturePipeline.ToMono(floats, floats.Length, float48, ref mono), float48.SampleRate)).Min());
 
@@ -129,7 +129,7 @@ public class IdleCostTests
         float[] samples = [];
         var sides = new StereoInput(); // judging the sides (review) allocates nothing either
         Assert.Equal(0, Allocated(() => music.Feed(CapturePipeline.ToStereo(stereo, stereo.Length, pcm16, ref samples, sides), pcm16.SampleRate, 2)).Min());
-        var stereoFloats = new byte[480 * 2 * sizeof(float)];
+        var stereoFloats = new byte[AudioFormat.HalfFrameSamples * 2 * sizeof(float)];
         var direct48 = CapturePipeline.Manual();
         direct48.Music = true;
         var float48Stereo = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2);

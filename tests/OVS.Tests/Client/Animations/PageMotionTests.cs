@@ -16,31 +16,12 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 104: pages and tabs change with movement in the animated display.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class PageMotionTests : IDisposable
+public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-pages-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
-    static void Settle(int milliseconds)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < milliseconds)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
-        }
+        base.Dispose();
     }
 
     static void Frame()
@@ -56,7 +37,7 @@ public sealed class PageMotionTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = height };
         main.Show();
         vm.Server = FakeServers.Admin();
-        Settle(700); // connecting builds the tree up (Package 106)
+        MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display); // the display is one for the app: pin it against what other tests left queued
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still moves
         return main;
@@ -130,13 +111,13 @@ public sealed class PageMotionTests : IDisposable
     {
         var main = Open(out var vm, display);
         await vm.OpenAdminAsync();
-        Settle(400);
+        MotionWait.Settle(400);
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
         tabs.SelectedIndex = 1;
         vm.ClosePage();
-        Settle(400);
+        MotionWait.Settle(400);
         await vm.OpenAdminAsync();
-        Settle(400);
+        MotionWait.Settle(400);
         Assert.Equal(0, tabs.SelectedIndex);
         main.Close();
     }
@@ -146,7 +127,7 @@ public sealed class PageMotionTests : IDisposable
     {
         var main = Open(out var vm);
         await vm.OpenAdminAsync();
-        Settle(400);
+        MotionWait.Settle(400);
         Switched(main);
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
         // every mark put in the overlay and every value as it happens: under load one frame can outlast the whole change
@@ -169,7 +150,7 @@ public sealed class PageMotionTests : IDisposable
         });
 
         vm.ClosePage();
-        Settle(450);
+        MotionWait.Settle(450);
         Switched(main);
         var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
         var history = chat.FindControl<ScrollViewer>("Scroller")!;
@@ -191,13 +172,13 @@ public sealed class PageMotionTests : IDisposable
     {
         var main = Open(out var vm);
         await vm.OpenAdminAsync();
-        Settle(400);
+        MotionWait.Settle(400);
         var admin = main.GetVisualDescendants().OfType<AdminView>().Single();
         var tabs = admin.FindControl<TabControl>("Tabs")!;
         var groups = admin.FindControl<ListBox>("GroupList")!;
         Assert.True(groups.ItemCount >= 2);
         groups.SelectedIndex = 0;
-        Settle(400);
+        MotionWait.Settle(400);
         groups.SelectedIndex = 1; // its SelectionChanged bubbles up to the tabs
         Frame();
         var content = tabs.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PART_SelectedContentHost");
@@ -234,7 +215,7 @@ public sealed class PageMotionTests : IDisposable
     {
         var main = Open(out var vm);
         vm.OpenSettings();
-        Settle(500);
+        MotionWait.Settle(500);
         Switched(main);
         var scroll = main.GetVisualDescendants().OfType<SettingsView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First(s => PageMotion.GetReveal(s));
         var sections = ((Panel)scroll.Content!).Children;
@@ -250,7 +231,7 @@ public sealed class PageMotionTests : IDisposable
         Assert.True(fades.Any(o => o < 1), "it fades up as it comes into view");
 
         scroll.Offset = default;
-        Settle(100);
+        MotionWait.Settle(100);
         scroll.Offset = new Vector(0, scroll.Extent.Height);
         Frame();
         Assert.Equal(1, sections[^1].Opacity); // only once
@@ -283,7 +264,7 @@ public sealed class PageMotionTests : IDisposable
     {
         var main = Open(out var vm);
         vm.OpenSettings();
-        Settle(500);
+        MotionWait.Settle(500);
         Switched(main);
         var scroll = main.GetVisualDescendants().OfType<SettingsView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First(s => PageMotion.GetReveal(s));
         var last = ((Panel)scroll.Content!).Children[^1];

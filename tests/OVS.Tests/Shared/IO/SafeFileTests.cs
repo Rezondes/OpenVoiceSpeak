@@ -1,16 +1,15 @@
 using OVS.Shared.IO;
 using OVS.Shared.Protocol;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Shared.IO;
 
-public sealed class SafeFileTests : IDisposable
+public sealed class SafeFileTests() : TempDirectoryTest("ovs-safefile-", quiet: false)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-safefile-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         foreach (var file in Directory.GetFiles(dir)) File.SetAttributes(file, FileAttributes.Normal);
-        Directory.Delete(dir, true);
+        base.Dispose();
     }
 
     [Fact]

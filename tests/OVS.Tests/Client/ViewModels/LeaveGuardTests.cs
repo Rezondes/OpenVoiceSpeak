@@ -20,23 +20,11 @@ namespace OVS.Tests.Client.ViewModels;
 
 /// <summary>Package 114: leaving a page or admin tab with unsaved changes asks first.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class LeaveGuardTests : IDisposable
+public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-leave-").FullName;
     readonly List<Request> sent = [];
     readonly Queue<LeaveChoice> answers = new();
     int asked;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
 
     DialogCallbacks Dialogs() => new()
     {

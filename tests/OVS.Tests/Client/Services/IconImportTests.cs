@@ -8,12 +8,8 @@ using SkiaSharp;
 namespace OVS.Tests.Client.Services;
 
 /// <summary>Package 30: the client checks and scales a logo file before anything is sent.</summary>
-public sealed class IconImportTests : IDisposable
+public sealed class IconImportTests() : TempDirectoryTest("ovs-icon-", quiet: false)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-icon-").FullName;
-
-    public void Dispose() => Directory.Delete(dir, true);
-
     static int PngWidth(byte[] png) => BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16));
 
     [AvaloniaFact]

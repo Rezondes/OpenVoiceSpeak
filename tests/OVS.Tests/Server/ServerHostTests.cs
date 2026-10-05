@@ -11,21 +11,9 @@ using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;
 
-public sealed class ServerHostTests : IDisposable
+public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: true)
 {
     static readonly TimeZoneInfo Plus2 = TimeZoneInfo.CreateCustomTimeZone("Test+2", TimeSpan.FromHours(2), "Test+2", "Test+2");
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-host-").FullName;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
 
     static DateTimeOffset Local(int hour, int minute, int second = 0, int day = 27) =>
         new(2026, 9, day, hour, minute, second, TimeSpan.FromHours(2));

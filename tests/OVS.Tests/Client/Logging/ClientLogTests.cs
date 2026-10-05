@@ -8,7 +8,6 @@ using OVS.Shared.Permissions;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Chat;
-using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.Links;
 using OVS.Shared.Protocol.Messages.ServerInfo;
@@ -17,30 +16,18 @@ using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Logging;
 
-public sealed class ClientLogTests : IDisposable
+public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet: true)
 {
     static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid(), Mods = Guid.NewGuid();
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-clientlog-").FullName;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
 
     static UserInfo User(uint id, Guid channel, string nick, bool muted = false) =>
         new(id, "fp" + id, nick, channel, muted, false, false, Permission.Speak, []);
 
-    static StateMirror Mirror() => new(new Welcome(1, "", new ServerSnapshot(
-        new ServerSettingsInfo("S", "", false), Lobby,
-        [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Raid, "Raid", "", 1)], [],
+    static StateMirror Mirror() => Snapshots.Mirror(Snapshots.Snapshot(
+        "S", "", Lobby,
+        [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Raid, "Raid", "", 1)],
         [new GroupInfo(Mods, "Moderator", Permission.Speak)],
-        [User(1, Lobby, "ich"), User(2, Lobby, "bert")])));
+        [User(1, Lobby, "ich"), User(2, Lobby, "bert")]));
 
     public static TheoryData<Message, string> Deltas => new()
     {

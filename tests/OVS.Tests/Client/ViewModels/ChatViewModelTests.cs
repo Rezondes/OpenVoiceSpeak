@@ -1,6 +1,5 @@
 using OVS.Client.Localization;
 using OVS.Client.Models;
-using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -9,9 +8,9 @@ using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Chat;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
-using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
+using static OVS.Tests.TestSupport.Snapshots;
 using P = OVS.Shared.Permissions.Permission;
 
 namespace OVS.Tests.Client.ViewModels;
@@ -21,9 +20,6 @@ public class ChatViewModelTests
 {
     static readonly Guid Lobby = Guid.NewGuid(), Bravo = Guid.NewGuid();
     const P Guest = P.Speak | P.ChatChannel | P.ChatPrivate;
-
-    static UserInfo U(uint id, string nick, Guid channel, P perms = Guest) =>
-        new(id, "fp" + id, nick, channel, false, false, false, perms, [WellKnownGroups.Guest]);
 
     sealed record Fixture(ChatViewModel Chat, ServerViewModel Server, List<Request> Sent)
     {
@@ -37,12 +33,12 @@ public class ChatViewModelTests
 
     static Fixture Create(P selfPerms = Guest, IEnumerable<Notice>? earlier = null)
     {
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "", false), Lobby,
-            [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Bravo, "Bravo", "", 1)], [],
+        var snapshot = Snapshot("Server", "", Lobby,
+            [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Bravo, "Bravo", "", 1)],
             [new GroupInfo(WellKnownGroups.Guest, "Gast", Guest)],
-            [U(1, "ich", Lobby, selfPerms), U(2, "bert", Lobby)]);
+            [User(1, "ich", Lobby, selfPerms), User(2, "bert", Lobby, Guest)]);
         var sent = new List<Request>();
-        var server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        var server = new ServerViewModel(Mirror(snapshot), r =>
         {
             sent.Add(r);
             return Task.CompletedTask;
@@ -59,7 +55,7 @@ public class ChatViewModelTests
 
         f.Server.Apply(new ChannelUpdated(new ChannelInfo(Lobby, "Halle", "", 0)));
         Assert.Equal("Halle", f.Chat.ChannelTab.Title);
-        f.Server.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        f.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest)));
         Assert.Equal("Bravo", f.Chat.ChannelTab.Title);
     }
 
@@ -154,7 +150,7 @@ public class ChatViewModelTests
         Assert.Null(f.Chat.NoRightHint);
         Assert.Equal("Nachricht an Lobby", f.Chat.Placeholder);
 
-        f.Server.Apply(new UserUpdated(U(1, "ich", Lobby, P.Speak))); // right taken away while the tab is open
+        f.Server.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak))); // right taken away while the tab is open
         Assert.False(f.Chat.CanWrite);
         Assert.Contains("im Channel", f.Chat.NoRightHint);
         Assert.False(f.Chat.SendCommand.CanExecute(null));
@@ -171,7 +167,7 @@ public class ChatViewModelTests
         f.Receive(ChatTarget.Channel, 2, "hallo Lobby", Lobby);
         Assert.Equal(2, f.Chat.ChannelTab.Entries.Count);
 
-        f.Server.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        f.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest)));
         Assert.Contains("\"Bravo\" betreten", Assert.Single(f.Chat.ChannelTab.Entries).Text);
         Assert.Equal(0, f.Chat.ChannelTab.Unread);
         f.Receive(ChatTarget.Channel, 2, "zu spät", Lobby); // still on the way from the old channel

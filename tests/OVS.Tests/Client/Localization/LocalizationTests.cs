@@ -10,15 +10,8 @@ namespace OVS.Tests.Client.Localization;
 /// <summary>Package 45: German and English, chosen by setting or by Windows.</summary>
 public class LocalizationTests
 {
-    static string SourceDir()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "src", "OVS.Client"))) dir = dir.Parent;
-        return Path.Combine(dir!.FullName, "src", "OVS.Client");
-    }
-
     static Dictionary<string, string> Read(string file) =>
-        XDocument.Load(Path.Combine(SourceDir(), "Localization", file)).Root!.Elements("data")
+        XDocument.Load(Path.Combine(RepoPaths.ClientSource, "Localization", file)).Root!.Elements("data")
             .ToDictionary(d => (string)d.Attribute("name")!, d => (string?)d.Element("value") ?? "");
 
     static string Placeholders(string text) => string.Join(",", Regex.Matches(text, @"\{\d+(:[^}]*)?\}").Select(m => m.Value.Split(':')[0]).Order());
@@ -80,8 +73,8 @@ public class LocalizationTests
 
     /// <summary>The XAML files the text check reads, relative to the client folder with '/'.</summary>
     static List<string> XamlFiles() =>
-        Directory.GetFiles(SourceDir(), "*.axaml", SearchOption.AllDirectories)
-            .Select(file => Path.GetRelativePath(SourceDir(), file).Replace('\\', '/'))
+        Directory.GetFiles(RepoPaths.ClientSource, "*.axaml", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(RepoPaths.ClientSource, file).Replace('\\', '/'))
             .Where(file => !file.StartsWith("bin/") && !file.StartsWith("obj/"))
             .ToList();
 
@@ -93,8 +86,8 @@ public class LocalizationTests
         var attribute = new Regex(@"\b(Text|Header|Content|ToolTip\.Tip|Watermark|AutomationProperties\.Name|PlaceholderText)=""([^""{][^""]*)""");
         var format = new Regex(@"(?:StringFormat|FallbackValue)='([^']*[A-Za-zÄÖÜäöü][^']*)'");
         var found = XamlFiles()
-            .SelectMany(file => attribute.Matches(File.ReadAllText(Path.Combine(SourceDir(), file))).Select(m => m.Groups[2].Value)
-                .Concat(format.Matches(File.ReadAllText(Path.Combine(SourceDir(), file))).Select(m => m.Groups[1].Value))
+            .SelectMany(file => attribute.Matches(File.ReadAllText(Path.Combine(RepoPaths.ClientSource, file))).Select(m => m.Groups[2].Value)
+                .Concat(format.Matches(File.ReadAllText(Path.Combine(RepoPaths.ClientSource, file))).Select(m => m.Groups[1].Value))
                 .Where(text => !allowed.Contains(text))
                 .Select(text => $"{file}: {text}"))
             .ToList();
@@ -108,10 +101,10 @@ public class LocalizationTests
         var expected = new List<string>();
         void Walk(string dir)
         {
-            expected.AddRange(Directory.GetFiles(dir, "*.axaml").Select(file => Path.GetRelativePath(SourceDir(), file).Replace('\\', '/')));
+            expected.AddRange(Directory.GetFiles(dir, "*.axaml").Select(file => Path.GetRelativePath(RepoPaths.ClientSource, file).Replace('\\', '/')));
             foreach (var sub in Directory.GetDirectories(dir).Where(d => Path.GetFileName(d) is not ("bin" or "obj"))) Walk(sub);
         }
-        Walk(SourceDir());
+        Walk(RepoPaths.ClientSource);
         var scanned = XamlFiles();
         Assert.Equal(expected.Order(StringComparer.Ordinal), scanned.Order(StringComparer.Ordinal));
         Assert.Contains("App.axaml", scanned);

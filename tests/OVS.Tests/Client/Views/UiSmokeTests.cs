@@ -47,21 +47,8 @@ namespace OVS.Tests.Client.Views;
 /// so this is the test that catches them.
 /// </summary>
 [Collection(MotionCollection.Name)]
-public sealed class UiSmokeTests : IDisposable
+public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-ui-").FullName;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
     static IEnumerable<string?> Texts(Visual root) => root.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text);
 
     /// <summary>A server logo is shown; the app logo (LogoMark, a bitmap below 32 px) does not count.</summary>
@@ -119,18 +106,6 @@ public sealed class UiSmokeTests : IDisposable
         return bytes;
     }
 
-    /// <summary>Lets the clock run until the condition holds (at most <paramref name="ms"/>): animations and timers run on real time.</summary>
-    static void WaitFor(Func<bool> done, int ms)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < ms)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
-    }
-
     static IEnumerable<Style> AllStyles(IEnumerable<Avalonia.Styling.IStyle> styles) =>
         styles.SelectMany(s => s switch
         {
@@ -141,9 +116,7 @@ public sealed class UiSmokeTests : IDisposable
 
     static string AppXamlPath()
     {
-        var src = new DirectoryInfo(AppContext.BaseDirectory);
-        while (src is not null && !Directory.Exists(Path.Combine(src.FullName, "src", "OVS.Client"))) src = src.Parent;
-        return Path.Combine(src!.FullName, "src", "OVS.Client", "App.axaml");
+        return Path.Combine(RepoPaths.ClientSource, "App.axaml");
     }
 
     /// <summary>
@@ -215,7 +188,7 @@ public sealed class UiSmokeTests : IDisposable
         // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
         var admin = vm.AdminPage!;
         PendingViewModel[] loads = [admin.UsersLoad, admin.BansLoad, admin.BackupsLoad, admin.Logs.FilesLoad];
-        WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
+        MotionWait.WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
         Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
         LooksLikeBefore("admin");
         Assert.DoesNotContain("animated", main.Classes);
@@ -227,10 +200,7 @@ public sealed class UiSmokeTests : IDisposable
     [AvaloniaFact]
     public void EveryIconInXaml_Exists()
     {
-        var src = new DirectoryInfo(AppContext.BaseDirectory);
-        while (src is not null && !Directory.Exists(Path.Combine(src.FullName, "src", "OVS.Client"))) src = src.Parent;
-        Assert.NotNull(src);
-        var keys = Directory.GetFiles(Path.Combine(src.FullName, "src", "OVS.Client"), "*.axaml", SearchOption.AllDirectories)
+        var keys = Directory.GetFiles(RepoPaths.ClientSource, "*.axaml", SearchOption.AllDirectories)
             .SelectMany(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"StaticResource (Icon\.\w+)").Select(m => m.Groups[1].Value))
             .Distinct().ToList();
         Assert.NotEmpty(keys);
@@ -666,12 +636,7 @@ public sealed class UiSmokeTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = 900, Height = 600 };
         main.Show();
         Dispatcher.UIThread.RunJobs();
-        Point Center(string name)
-        {
-            var row = main.GetVisualDescendants().OfType<Border>()
-                .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel c && c.Name == name);
-            return row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), main)!.Value;
-        }
+        Point Center(string name) => Rows.Center(Rows.ChannelRow(main, name), main);
         var raid = Center("Raid");
         var lobby = Center("Lobby");
 
@@ -706,7 +671,7 @@ public sealed class UiSmokeTests : IDisposable
         Point Center(string name)
         {
             var item = main.GetVisualDescendants().OfType<ListBoxItem>().Single(i => i.DataContext is GroupEditViewModel g && g.Name == name);
-            return item.TranslatePoint(new Point(item.Bounds.Width / 2, item.Bounds.Height / 2), main)!.Value;
+            return Rows.Center(item, main);
         }
         var admin = Center("Admin");
         var guest = Center("Gast");
@@ -962,7 +927,7 @@ public sealed class UiSmokeTests : IDisposable
         // a click ticks and sends at once (a real click: the menu item ticks itself before it runs the command)
         var admin = groups.GetLogicalChildren().OfType<MenuItem>().Single(m => m.Header as string == "Admin");
         var popup = TopLevel.GetTopLevel(admin)!;
-        var at = admin.TranslatePoint(new Point(admin.Bounds.Width / 2, admin.Bounds.Height / 2), popup)!.Value;
+        var at = Rows.Center(admin, popup);
         popup.MouseDown(at, MouseButton.Left);
         popup.MouseUp(at, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
@@ -1010,7 +975,7 @@ public sealed class UiSmokeTests : IDisposable
         var lobby = Assert.Single(move.GetLogicalChildren().OfType<MenuItem>()); // anna sits in Raid
         Assert.Equal("Lobby", lobby.Header);
         var popup = TopLevel.GetTopLevel(lobby)!;
-        var at = lobby.TranslatePoint(new Point(lobby.Bounds.Width / 2, lobby.Bounds.Height / 2), popup)!.Value;
+        var at = Rows.Center(lobby, popup);
         popup.MouseDown(at, MouseButton.Left);
         popup.MouseUp(at, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
@@ -1056,10 +1021,6 @@ public sealed class UiSmokeTests : IDisposable
         }
     }
 
-    /// <summary>The channel's own row (not its users), found by name.</summary>
-    static Border ChannelRow(Visual root, string name) => root.GetVisualDescendants().OfType<Border>()
-        .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel c && c.Name == name);
-
     static List<PathIcon> VisibleIcons(Visual row) => row.GetVisualDescendants().OfType<PathIcon>().Where(i => i.IsEffectivelyVisible).ToList();
 
     /// <summary>Package 66: a muted channel shows the mute icon in front instead of the speaker, and none behind its name.</summary>
@@ -1074,17 +1035,17 @@ public sealed class UiSmokeTests : IDisposable
         var micOff = main.FindResource("Icon.MicOff");
         var speaker = main.FindResource("Icon.Speaker");
 
-        var lobby = VisibleIcons(ChannelRow(main, "Lobby"));
+        var lobby = VisibleIcons(Rows.ChannelRow(main, "Lobby"));
         Assert.Same(micOff, lobby[0].Data);
         Assert.Contains("warning", lobby[0].Classes);
         Assert.Equal(OVS.Client.Localization.Strings.Dlg_MutedChannel, ToolTip.GetTip(lobby[0]));
         Assert.DoesNotContain(lobby, i => i.Data == speaker);
         Assert.Single(lobby, i => i.Data == micOff); // nothing behind the name
-        Assert.Same(speaker, VisibleIcons(ChannelRow(main, "Raid"))[0].Data);
+        Assert.Same(speaker, VisibleIcons(Rows.ChannelRow(main, "Raid"))[0].Data);
 
         vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0)));
         Dispatcher.UIThread.RunJobs();
-        lobby = VisibleIcons(ChannelRow(main, "Lobby"));
+        lobby = VisibleIcons(Rows.ChannelRow(main, "Lobby"));
         Assert.Same(speaker, lobby[0].Data);
         Assert.DoesNotContain(lobby, i => i.Data == micOff);
         main.Close();
@@ -1098,7 +1059,7 @@ public sealed class UiSmokeTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         Dispatcher.UIThread.RunJobs();
-        var row = ChannelRow(main, "Lobby");
+        var row = Rows.ChannelRow(main, "Lobby");
         Assert.DoesNotContain(row.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("chip"));
         var link = Assert.Single(VisibleIcons(row), i => i.Data == main.FindResource("Icon.Link"));
         Assert.Contains("link", link.Classes);
@@ -1129,7 +1090,7 @@ public sealed class UiSmokeTests : IDisposable
         var slack = new List<double>();
         foreach (var name in SquadChannels)
         {
-            var row = ChannelRow(main, name);
+            var row = Rows.ChannelRow(main, name);
             var text = row.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Classes.Contains("channelName"));
             Assert.False(text.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{name} ist abgeschnitten");
             var group = (Control)text.Parent!; // name, home and link icon
@@ -1179,7 +1140,7 @@ public sealed class UiSmokeTests : IDisposable
         // the new row slides in (animated display): until it is in, not for a fixed time that a busy machine may not give it frames in
         var items = main.FindControl<ItemsControl>("ChannelItems")!;
         Control? Container() => items.GetRealizedContainers().SingleOrDefault(c => c.DataContext is ChannelViewModel { Id: var cid } && cid == id);
-        WaitFor(() => Container() is { } entered && !entered.Classes.Contains("entering"), 5000);
+        MotionWait.WaitFor(() => Container() is { } entered && !entered.Classes.Contains("entering"), 5000);
         var container = Container();
         Assert.NotNull(container);
         Assert.DoesNotContain("entering", container.Classes);

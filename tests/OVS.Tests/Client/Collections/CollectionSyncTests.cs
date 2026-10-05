@@ -8,11 +8,6 @@ namespace OVS.Tests.Client.Collections;
 /// <summary>Package 102: a removed entry may stay a moment as leaving; leaving belongs to the entry in one list.</summary>
 public class CollectionSyncTests
 {
-    sealed record Row(string Key, int Version = 0) : IMotionKey
-    {
-        public object MotionKey => Key;
-    }
-
     static (ObservableCollection<string> List, LeaveTimer Leave, ManualTimeProvider Clock) Setup(params string[] items)
     {
         var clock = new ManualTimeProvider();
@@ -105,16 +100,16 @@ public class CollectionSyncTests
     {
         var clock = new ManualTimeProvider();
         var leave = new LeaveTimer(clock) { Delay = TimeSpan.FromMilliseconds(220) };
-        var list = new ObservableCollection<Row> { new("a"), new("b") };
+        var list = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var changes = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
         list.CollectionChanged += (_, e) => changes.Add(e.Action);
-        CollectionSync.Sync(list, [new Row("a", 1), new Row("b", 1)], leave);
+        CollectionSync.Sync(list, [new KeyedRow("a", 1), new KeyedRow("b", 1)], leave);
         Assert.Equal([1, 1], list.Select(r => r.Version));
         Assert.All(changes, c => Assert.Equal(System.Collections.Specialized.NotifyCollectionChangedAction.Replace, c));
 
-        CollectionSync.Sync(list, [new Row("b", 2)], leave); // a is gone: it folds away
+        CollectionSync.Sync(list, [new KeyedRow("b", 2)], leave); // a is gone: it folds away
         Assert.True(CollectionSync.IsLeaving(list, list[0]));
-        CollectionSync.Sync(list, [new Row("a", 3), new Row("b", 3)], leave); // and comes back as a new object
+        CollectionSync.Sync(list, [new KeyedRow("a", 3), new KeyedRow("b", 3)], leave); // and comes back as a new object
         Assert.Equal([3, 3], list.Select(r => r.Version));
         Assert.DoesNotContain(list, r => CollectionSync.IsLeaving(list, r));
     }

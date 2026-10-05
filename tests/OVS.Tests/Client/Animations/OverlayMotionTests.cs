@@ -20,31 +20,12 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 105: dialogs, popups and the drawer open and close with movement in the animated display.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class OverlayMotionTests : IDisposable
+public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-overlay-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
-    static void Settle(int milliseconds)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < milliseconds)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
+        base.Dispose();
     }
 
     static void Frame()
@@ -60,7 +41,7 @@ public sealed class OverlayMotionTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
         vm.Server = FakeServers.Admin();
-        Settle(700); // connecting builds the tree up (Package 106)
+        MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display);
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still moves
         return main;
@@ -111,7 +92,7 @@ public sealed class OverlayMotionTests : IDisposable
         var overlay = main.Overlay;
         var first = SimpleDialogs.Confirm(overlay, "Erste Frage?");
         var second = SimpleDialogs.Confirm(overlay, "Zweite Frage?"); // waits its turn
-        Settle(350);
+        MotionWait.Settle(350);
         Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Erste Frage?");
         // what the card holds from now on, in order: under load one frame can outlast the whole fold
         var held = new List<object?>();
@@ -154,7 +135,7 @@ public sealed class OverlayMotionTests : IDisposable
         var main = Open(out var vm);
         var overlay = main.Overlay;
         _ = SimpleDialogs.Connect(overlay, vm.Settings, null); // nothing filled in
-        Settle(350);
+        MotionWait.Settle(350);
         MotionWait.Eventually(() => Assert.Equal(1, Card(overlay).Opacity, 2)); // it has popped up: the shake is the only movement
         var swings = MotionWait.Record(Card(overlay), OffsetX); // every swing as it happens: under load one frame can outlast the shake
         main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
@@ -223,7 +204,7 @@ public sealed class OverlayMotionTests : IDisposable
 
         Motion.Apply(window, DisplayMode.Simplified);
         combo.IsDropDownOpen = true;
-        Settle(100);
+        MotionWait.Settle(100);
         combo.IsDropDownOpen = false;
         Frame();
         Assert.Empty(overlay.Children.OfType<Image>()); // the simplified display takes it away at once
@@ -238,14 +219,14 @@ public sealed class OverlayMotionTests : IDisposable
         var main = Open(out _);
         var row = main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row") && b.ContextMenu is not null);
         row.ContextMenu!.Open(row);
-        Settle(300);
+        MotionWait.Settle(300);
         // every picture put in the overlay counts, not only one a frame finds there: under load its fade is over within a frame
         int pictures = 0;
         OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
             pictures += e.NewItems?.OfType<Image>().Count(i => i.Classes.Contains(Motion.PopupGhostClass)) ?? 0;
         row.ContextMenu.Close();
         _ = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
-        Settle(200);
+        MotionWait.Settle(200);
         Assert.True(main.Overlay.IsOpen);
         Assert.Equal(0, pictures);
         main.Overlay.Close();
@@ -310,12 +291,12 @@ public sealed class OverlayMotionTests : IDisposable
         var main = Open(out _);
         var overlay = main.Overlay;
         var first = SimpleDialogs.Confirm(overlay, "Erste Frage?");
-        Settle(350);
+        MotionWait.Settle(350);
         overlay.Close();
         await first;
         MotionWait.Eventually(() => Assert.False(overlay.IsVisible)); // fully gone
         var second = SimpleDialogs.Confirm(overlay, "Zweite Frage?");
-        Settle(350);
+        MotionWait.Settle(350);
         MotionWait.Eventually(() =>
         {
             Assert.Equal((1d, 1d), (Card(overlay).Opacity, Scrim(overlay).Opacity));
@@ -337,14 +318,14 @@ public sealed class OverlayMotionTests : IDisposable
         for (int round = 0; round < 2; round++)
         {
             ClickMenu(main);
-            Settle(350);
+            MotionWait.Settle(350);
             MotionWait.Eventually(() => Assert.Equal((0d, 1d), (OffsetX(sidebar), scrim.Opacity)));
             main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
-            Settle(350);
+            MotionWait.Settle(350);
             MotionWait.Eventually(() => Assert.False(sidebar.IsEffectivelyVisible));
         }
         main.Width = 1100;
-        Settle(100);
+        MotionWait.Settle(100);
         MotionWait.Eventually(() =>
         {
             Assert.True(sidebar.IsEffectivelyVisible);
@@ -354,15 +335,15 @@ public sealed class OverlayMotionTests : IDisposable
 
         // going wide while it still slides away stops the slide
         main.Width = 360;
-        Settle(100);
+        MotionWait.Settle(100);
         MotionWait.Until(() => !sidebar.IsEffectivelyVisible); // narrow again: the drawer is closed
         ClickMenu(main);
-        Settle(350);
+        MotionWait.Settle(350);
         MotionWait.Eventually(() => Assert.Equal((0d, 1d), (OffsetX(sidebar), scrim.Opacity))); // fully in
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Frame();
         main.Width = 1100;
-        Settle(350);
+        MotionWait.Settle(350);
         MotionWait.Eventually(() =>
         {
             Assert.Equal(0, OffsetX(sidebar));

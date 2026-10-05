@@ -10,13 +10,10 @@ using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server.Data;
 
-public sealed class DataStoreTests : IDisposable
+public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: false)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-data-").FullName;
     string FilePath => Path.Combine(dir, DataStore.FileName);
     ServerConfig Config => new(7000, dir, 50, "Mein Server", "pw");
-
-    public void Dispose() => Directory.Delete(dir, true);
 
     [Fact]
     public void Load_MissingFile_CreatesDefaults()

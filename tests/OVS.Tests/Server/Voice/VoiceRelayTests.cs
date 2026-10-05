@@ -461,7 +461,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     static async Task SwitchToTcpAsync(TestServer on, TestClient client)
     {
         await client.SendAsync(new VoiceUp(0, VoiceHeader.TargetChannel, ""));
-        await WaitUntil(() => on.State.FindSession(client.Id)!.TcpVoice);
+        await AsyncWait.Until(() => on.State.FindSession(client.Id)!.TcpVoice);
     }
 
     static async Task HeardTcp(TestClient at, uint speaker, uint seq, byte[] opus, byte target = VoiceHeader.TargetChannel) =>
@@ -582,15 +582,8 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Null(await vb.ReceiveVoiceAsync(300));
 
         await SendTcpAsync(a, 1, Opus);
-        await WaitUntil(() => session.TcpVoice);
+        await AsyncWait.Until(() => session.TcpVoice);
         Assert.NotNull(await vb.ReceiveVoiceAsync());
-    }
-
-    static async Task WaitUntil(Func<bool> condition)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!condition() && watch.ElapsedMilliseconds < 10_000) await Task.Delay(20);
-        Assert.True(condition());
     }
 
     /// <summary>Package 88: a Hello from another address cannot redirect the session's voice (no reflection).</summary>

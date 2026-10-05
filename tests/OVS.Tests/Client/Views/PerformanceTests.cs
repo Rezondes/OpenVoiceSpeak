@@ -22,20 +22,12 @@ namespace OVS.Tests.Client.Views;
 /// count the work done, never the time it takes (timing limits failed on slow CI machines).
 /// </summary>
 [Collection(MotionCollection.Name)]
-public sealed class PerformanceTests : IDisposable
+public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-perf-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
+        base.Dispose();
     }
 
     /// <summary>

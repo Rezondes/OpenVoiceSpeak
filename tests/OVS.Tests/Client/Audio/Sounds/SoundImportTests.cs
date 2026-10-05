@@ -2,16 +2,14 @@ using NAudio.Wave;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Settings;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Audio.Sounds;
 
 /// <summary>Package 48: own sound files are checked, converted and kept in the profile.</summary>
-public sealed class SoundImportTests : IDisposable
+public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet: false)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-sounds-").FullName;
     string Profile => Path.Combine(dir, "profil");
-
-    public void Dispose() => Directory.Delete(dir, true);
 
     /// <summary>A 16 bit stereo sine at 44.1 kHz: a different format than the client's, on purpose.</summary>
     string Wav(string name, double seconds)

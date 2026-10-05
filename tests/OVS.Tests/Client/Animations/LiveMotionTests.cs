@@ -23,38 +23,20 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 108: speaking, mute, slots, busy and level states animate while they last, and only then.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class LiveMotionTests : IDisposable
+public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-live-").FullName;
     MainWindow? opening; // the window being opened, for a look during its build-up
 
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
+        base.Dispose();
     }
 
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Dispatcher.UIThread.RunJobs();
-    }
-
-    /// <summary>The animation clock runs on real time: renders frames for that long.</summary>
-    static void Settle(int milliseconds)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < milliseconds)
-        {
-            Frame();
-            Thread.Sleep(1);
-        }
     }
 
     /// <summary>Renders frames for that long and calls <paramref name="look"/> after each one (a frame may come late).</summary>
@@ -77,7 +59,7 @@ public sealed class LiveMotionTests : IDisposable
         vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
         var main = opening = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        Settle(200);
+        MotionWait.Settle(200);
         Motion.Apply(main, display);
         vm.Server = server = FakeServers.Admin();
         var look = buildUp ?? (() => { });
@@ -129,7 +111,7 @@ public sealed class LiveMotionTests : IDisposable
         var window = new Window { Width = 400, Height = 200, Content = new StackPanel { Margin = new Thickness(20), Children = { button } } };
         window.Show();
         Motion.Apply(window, animated ? DisplayMode.Animated : DisplayMode.Simplified);
-        Settle(100);
+        MotionWait.Settle(100);
         return (window, button, spinner, icon);
     }
 
@@ -140,7 +122,7 @@ public sealed class LiveMotionTests : IDisposable
         window.Show();
         Motion.Apply(window, animated ? DisplayMode.Animated : DisplayMode.Simplified);
         LiveMotion.SetLevel(meter, -60);
-        Settle(100);
+        MotionWait.Settle(100);
         MotionWait.Until(() => meter.Value == -60); // from where the meter starts down to the bottom
         return (window, meter);
     }
@@ -260,18 +242,18 @@ public sealed class LiveMotionTests : IDisposable
 
         // a dialog is open: no copy over it
         _ = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
-        Settle(300);
+        MotionWait.Settle(300);
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
         bool ghost = false;
         Watch(300, () => ghost |= Ghosts(main).Any());
         Assert.False(ghost, "no copy pops over the dialog");
         main.Overlay.Close();
         server.Apply(new UserUpdated(Anna(serverMuted: true)));
-        Settle(400);
+        MotionWait.Settle(400);
 
         // compact with the drawer closed: the tree cannot be seen, its icons keep their last place
         main.Width = 360;
-        Settle(400);
+        MotionWait.Settle(400);
         MotionWait.Eventually(() => Assert.False(main.FindControl<Border>("Sidebar")!.IsEffectivelyVisible));
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
         Watch(300, () => ghost |= Ghosts(main).Any());
@@ -287,7 +269,7 @@ public sealed class LiveMotionTests : IDisposable
         Assert.Equal("1", counter.Text);
 
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, MaxUsers: 3)));
-        Settle(400);
+        MotionWait.Settle(400);
         Assert.Equal("1/3", counter.Text);
 
         MotionWait.Until(() => (OffsetY(counter), Scale(counter), counter.Opacity) == (0d, 1d, 1d)); // the tick to "1/3" is over
@@ -326,7 +308,7 @@ public sealed class LiveMotionTests : IDisposable
 
         LiveMotion.SetLevel(meter, -10);
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (meter.Value < -15 && watch.ElapsedMilliseconds < 2000) Settle(1); // 90 % of the way up
+        while (meter.Value < -15 && watch.ElapsedMilliseconds < 2000) MotionWait.Settle(1); // 90 % of the way up
         long attack = watch.ElapsedMilliseconds;
         MotionWait.Eventually(() => Assert.Equal(-10, meter.Value));
 
@@ -336,7 +318,7 @@ public sealed class LiveMotionTests : IDisposable
         while (meter.Value > -55 && watch.ElapsedMilliseconds < 2000) // 90 % of the way down
         {
             between |= meter.Value is < -10.5 and > -59.5;
-            Settle(1);
+            MotionWait.Settle(1);
         }
         long release = watch.ElapsedMilliseconds;
         Assert.True(between, "the meter moves smoothly instead of stepping");
@@ -345,7 +327,7 @@ public sealed class LiveMotionTests : IDisposable
         MotionWait.Eventually(() => Assert.Equal(-60, meter.Value));
 
         LiveMotion.SetLevel(meter, -90); // below the scale: it rests at the bottom and stops
-        Settle(200);
+        MotionWait.Settle(200);
         Assert.Equal(-60, meter.Value);
         window.Close();
     }
@@ -355,13 +337,13 @@ public sealed class LiveMotionTests : IDisposable
     {
         var main = Open(out var vm, out _, mode: TransmitMode.VoiceActivation);
         vm.OpenSettings();
-        Settle(500);
+        MotionWait.Settle(500);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in
         var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(p => p.Minimum == -60 && p.Maximum == -10);
         Assert.True(meter.IsEffectivelyVisible);
         Assert.Equal(-60, meter.Value);
         vm.ClosePage();
-        Settle(600); // the hidden meter loses its model
+        MotionWait.Settle(600); // the hidden meter loses its model
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible);
 
         vm.OpenSettings(); // the new model's level is -60 as well
@@ -370,7 +352,7 @@ public sealed class LiveMotionTests : IDisposable
         Assert.True(high <= -59.9, $"the meter starts at the level, no sweep from full ({high})");
 
         vm.SettingsPage!.InputLevelDb = -30;
-        Settle(300);
+        MotionWait.Settle(300);
         LiveMotion.SetLevel(meter, double.NaN); // no level: it keeps what it shows
         MotionWait.Eventually(() => Assert.Equal(-30, meter.Value, 1));
         main.Close();
@@ -420,18 +402,18 @@ public sealed class LiveMotionTests : IDisposable
         var main = Open(out var vm, out var server);
         server.SetSelfTransmitting(0); // a loop that ran ends with its state
         vm.TransmitText = "Sendet";
-        Settle(300);
+        MotionWait.Settle(300);
         server.SetSelfTransmitting(null);
         vm.TransmitText = "";
         _ = vm.OpenAdminAsync();
-        Settle(300);
+        MotionWait.Settle(300);
         vm.AdminPage!.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
         vm.AdminPage.GroupSave.Start();
-        Settle(400);
+        MotionWait.Settle(400);
         MotionWait.Eventually(() => Assert.Contains(main.GetVisualDescendants().OfType<BusySpinner>(),
             b => b.Classes.Contains(BusySpinner.TurningClass) && b.FindAncestorOfType<AdminView>() is not null));
         vm.ClosePage();
-        Settle(800);
+        MotionWait.Settle(800);
 
         // nobody speaks, nothing is busy: nothing on the screen changes from frame to frame
         static string State(Visual v) => $"{v.RenderTransform?.Value}|{v.Opacity}|{v.OpacityMask}|{(v as Arc)?.SweepAngle}|{(v as Border)?.BoxShadow}";
@@ -441,7 +423,7 @@ public sealed class LiveMotionTests : IDisposable
         MotionWait.Until(() =>
         {
             string was = Screen();
-            Settle(300);
+            MotionWait.Settle(300);
             return Screen() == was;
         });
         var visuals = main.GetVisualDescendants().ToList();

@@ -26,38 +26,12 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 101: new entries slide in, first fills and rebuilds do not replay it.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class ItemMotionTests : IDisposable
+public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-items-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
-    /// <summary>An entry of a rebuilt list: new objects, the same key.</summary>
-    sealed record Row(string Key, int Version = 0) : IMotionKey
-    {
-        public object MotionKey => Key;
-    }
-
-    /// <summary>The animation clock runs on real time.</summary>
-    static void Settle(int milliseconds)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < milliseconds)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
-        }
+        base.Dispose();
     }
 
     static void Frame()
@@ -66,24 +40,24 @@ public sealed class ItemMotionTests : IDisposable
         Dispatcher.UIThread.RunJobs();
     }
 
-    static (Window Window, ItemsControl List) Host(ObservableCollection<Row> rows, bool animated = true, bool flip = false)
+    static (Window Window, ItemsControl List) Host(ObservableCollection<KeyedRow> rows, bool animated = true, bool flip = false)
     {
         var list = new ItemsControl
         {
             ItemsSource = rows,
-            ItemTemplate = new FuncDataTemplate<Row>((row, _) => new Border { Height = 30, Child = new TextBlock { Text = row?.Key } }),
+            ItemTemplate = new FuncDataTemplate<KeyedRow>((row, _) => new Border { Height = 30, Child = new TextBlock { Text = row?.Key } }),
         };
         ItemMotion.SetEnter(list, true);
         ItemMotion.SetFlip(list, flip);
         var window = new Window { Width = 400, Height = 800, Content = list };
         window.Show();
         Motion.Apply(window, animated ? DisplayMode.Animated : DisplayMode.Simplified);
-        Settle(300); // the first fill is over
+        MotionWait.Settle(300); // the first fill is over
         return (window, list);
     }
 
     static Control Container(ItemsControl list, string key) =>
-        list.GetRealizedContainers().Single(c => c.DataContext is Row row && row.Key == key);
+        list.GetRealizedContainers().Single(c => c.DataContext is KeyedRow row && row.Key == key);
 
     static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
 
@@ -127,9 +101,9 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void AdminRowAdded_SlidesIn()
     {
-        var rows = new ObservableCollection<Row> { new("a"), new("b") };
+        var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (_, list) = Host(rows);
-        rows.Insert(1, new Row("neu"));
+        rows.Insert(1, new KeyedRow("neu"));
         Frame();
         var row = Container(list, "neu");
         Assert.True(row.Opacity < 1, $"fades in ({row.Opacity})");
@@ -146,13 +120,13 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void EntriesBelow_MoveSmoothly()
     {
-        var rows = new ObservableCollection<Row> { new("a"), new("b") };
+        var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (window, list) = Host(rows);
         var below = Container(list, "b");
         double before = below.TranslatePoint(default, window)!.Value.Y;
         // every place it takes on the way, not one frame's: under load one frame can outlast the whole slide
         var tops = MotionWait.Record(below, v => v.TranslatePoint(default, window)!.Value.Y);
-        rows.Insert(1, new Row("neu"));
+        rows.Insert(1, new KeyedRow("neu"));
         MotionWait.Until(() => !Container(list, "neu").Classes.Contains("entering"));
         MotionWait.Eventually(() => Assert.Equal(before + 30, below.TranslatePoint(default, window)!.Value.Y, 1));
         double after = below.TranslatePoint(default, window)!.Value.Y;
@@ -162,11 +136,11 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void FirstFillAndRebuild_NoReplay()
     {
-        var rows = new ObservableCollection<Row> { new("a"), new("b") };
+        var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var list = new ItemsControl
         {
             ItemsSource = rows,
-            ItemTemplate = new FuncDataTemplate<Row>((row, _) => new Border { Height = 30 }),
+            ItemTemplate = new FuncDataTemplate<KeyedRow>((row, _) => new Border { Height = 30 }),
         };
         ItemMotion.SetEnter(list, true);
         var window = new Window { Width = 400, Height = 600, Content = list };
@@ -179,13 +153,13 @@ public sealed class ItemMotionTests : IDisposable
 
         // the administration rebuilds its lists with new objects
         rows.Clear();
-        rows.Add(new Row("a", 1));
-        rows.Add(new Row("b", 1));
+        rows.Add(new KeyedRow("a", 1));
+        rows.Add(new KeyedRow("b", 1));
         Frame();
         Assert.All(list.GetRealizedContainers(), c => Assert.DoesNotContain("entering", c.Classes));
         Assert.Equal(1, list.Opacity, 2);
 
-        rows.Add(new Row("c"));
+        rows.Add(new KeyedRow("c"));
         Frame();
         Assert.Contains("entering", Container(list, "c").Classes);
     }
@@ -193,9 +167,9 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void EmptyListGetsABatch_FadesAsAWhole()
     {
-        var rows = new ObservableCollection<Row>();
+        var rows = new ObservableCollection<KeyedRow>();
         var (_, list) = Host(rows);
-        foreach (var key in new[] { "a", "b", "c" }) rows.Add(new Row(key));
+        foreach (var key in new[] { "a", "b", "c" }) rows.Add(new KeyedRow(key));
         Frame();
         Assert.True(list.Opacity < 1);
         Assert.All(list.GetRealizedContainers(), c => Assert.DoesNotContain("entering", c.Classes));
@@ -204,11 +178,11 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void HiddenList_EntriesDoNotSlideInWhenShown()
     {
-        var rows = new ObservableCollection<Row> { new("a") };
+        var rows = new ObservableCollection<KeyedRow> { new("a") };
         var (_, list) = Host(rows);
         list.IsVisible = false;
-        rows.Add(new Row("b"));
-        Settle(50);
+        rows.Add(new KeyedRow("b"));
+        MotionWait.Settle(50);
         list.IsVisible = true;
         Frame();
         Assert.DoesNotContain("entering", Container(list, "b").Classes);
@@ -217,9 +191,9 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void ManyItems_StaggerCapped()
     {
-        var rows = new ObservableCollection<Row> { new("start") };
+        var rows = new ObservableCollection<KeyedRow> { new("start") };
         var (_, list) = Host(rows);
-        for (int i = 0; i < 12; i++) rows.Add(new Row($"r{i}"));
+        for (int i = 0; i < 12; i++) rows.Add(new KeyedRow($"r{i}"));
         // looked at after every frame until all are in, not at one moment: under load one frame can outlast the stagger
         bool staggered = false;
         MotionWait.Until(() =>
@@ -236,9 +210,9 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void Simplified_AppearsAtOnce()
     {
-        var rows = new ObservableCollection<Row> { new("a") };
+        var rows = new ObservableCollection<KeyedRow> { new("a") };
         var (_, list) = Host(rows, animated: false);
-        rows.Add(new Row("b"));
+        rows.Add(new KeyedRow("b"));
         Frame();
         var row = Container(list, "b");
         Assert.DoesNotContain("entering", row.Classes);
@@ -254,7 +228,7 @@ public sealed class ItemMotionTests : IDisposable
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         vm.Server = server = FakeServers.Admin();
-        Settle(700); // connecting builds the tree up (Package 106)
+        MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still builds up
         return main;
     }
@@ -290,14 +264,14 @@ public sealed class ItemMotionTests : IDisposable
     public void NewChannel_SlidesIn_RowsBelowMoveSmoothly()
     {
         var main = Connected(out var server);
-        var raid = main.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel { Name: "Raid" });
+        var raid = Rows.ChannelRow(main, "Raid");
         double before = raid.TranslatePoint(default, main)!.Value.Y;
         // every place Raid takes on the way (its entry in the list moves down), not one frame's
         var tops = MotionWait.Record(ChannelContainer(main, "Raid"), _ => raid.TranslatePoint(default, main)!.Value.Y);
         server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Archiv", "", 0)));
         MotionWait.Until(() => main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers()
             .Any(c => c.DataContext is ChannelViewModel { Name: "Archiv" } && !c.Classes.Contains("entering")));
-        Settle(50); // lays out its last height
+        MotionWait.Settle(50); // lays out its last height
         double after = raid.TranslatePoint(default, main)!.Value.Y;
         Assert.True(after > before, "the new channel sits above Raid");
         Assert.True(tops.Any(during => during > before && during < after), $"{before} < one of {string.Join(" ", tops.Distinct())} < {after}");
@@ -314,7 +288,7 @@ public sealed class ItemMotionTests : IDisposable
         var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        Settle(400);
+        MotionWait.Settle(400);
 
         var changed = vm.Settings;
         changed.Bookmarks.Add(new Bookmark("Neu", "neu.example.org", 7000, "ich"));
@@ -379,7 +353,7 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void AdminRowRemoved_Leaves_AndComesBackWhole()
     {
-        var rows = new ObservableCollection<Row> { new("a"), new("b"), new("c") };
+        var rows = new ObservableCollection<KeyedRow> { new("a"), new("b"), new("c") };
         var (window, list) = Host(rows);
         var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = Motion.Normal };
         var below = Container(list, "c");
@@ -392,16 +366,16 @@ public sealed class ItemMotionTests : IDisposable
         var tops = new List<double>(); // c's place after every layout pass, whichever container shows it
         list.LayoutUpdated += (_, _) =>
         {
-            if (list.GetRealizedContainers().FirstOrDefault(r => list.ItemFromContainer(r) is Row { Key: "c" }) is { } c)
+            if (list.GetRealizedContainers().FirstOrDefault(r => list.ItemFromContainer(r) is KeyedRow { Key: "c" }) is { } c)
                 tops.Add(c.TranslatePoint(default, window)!.Value.Y);
         };
         bool Folds() => faint.Any(o => o < 1) && drift.Any(x => x < 0);
-        CollectionSync.Sync(rows, [new Row("a", 1), new Row("c", 1)], leave);
+        CollectionSync.Sync(rows, [new KeyedRow("a", 1), new KeyedRow("c", 1)], leave);
         MotionWait.Until(() => (Folds() && tops.Any(top => top < before)) || !rows.Any(r => r.Key == "b"));
         Assert.True(Folds(), "fades and drifts to the left");
         Assert.True(tops.Any(during => during < before), "the rows below move up while it folds");
 
-        CollectionSync.Sync(rows, [new Row("a", 2), new Row("b", 2), new Row("c", 2)], leave); // back meanwhile
+        CollectionSync.Sync(rows, [new KeyedRow("a", 2), new KeyedRow("b", 2), new KeyedRow("c", 2)], leave); // back meanwhile
         MotionWait.Eventually(() =>
         {
             var back = Container(list, "b");
@@ -567,13 +541,13 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void GroupReorder_Glides()
     {
-        var rows = new ObservableCollection<Row> { new("Gast"), new("Moderator"), new("Admin") };
+        var rows = new ObservableCollection<KeyedRow> { new("Gast"), new("Moderator"), new("Admin") };
         var (window, list) = Host(rows, flip: true);
         var seen = WatchOffsets(list);
         rows.Move(2, 0);
         for (int i = 0; i < 5; i++) Frame();
-        double admin = Most(seen, item => item is Row { Key: "Admin" });
-        double gast = Least(seen, item => item is Row { Key: "Gast" });
+        double admin = Most(seen, item => item is KeyedRow { Key: "Admin" });
+        double gast = Least(seen, item => item is KeyedRow { Key: "Gast" });
         Assert.True(admin > 30, $"Admin glides up from 60 px below ({admin})");
         Assert.True(gast < -15, $"the others make room, gliding as well ({gast})");
         MotionWait.Eventually(() => Assert.Equal(0, OffsetY(Container(list, "Admin")), 2));
@@ -586,7 +560,7 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void ReflowWhileIdle_ThenReorder_OnlyMovedRowsGlide()
     {
-        var rows = new ObservableCollection<Row> { new("a"), new("b"), new("c"), new("d") };
+        var rows = new ObservableCollection<KeyedRow> { new("a"), new("b"), new("c"), new("d") };
         var (_, list) = Host(rows, flip: true);
         MotionWait.Until(() => !ItemMotion.TracksPlaces(list));
         Assert.False(ItemMotion.TracksPlaces(list));
@@ -597,8 +571,8 @@ public sealed class ItemMotionTests : IDisposable
         var seen = WatchOffsets(list);
         rows.Move(3, 2); // c and d swap, b stays where it is
         for (int i = 0; i < 5; i++) Frame();
-        Assert.True(Most(seen, item => item is Row { Key: "d" }) > 15, "d glides up from below");
-        Assert.Equal(0, seen.Where(s => s.Item is Row { Key: "b" }).Select(s => Math.Abs(s.Y)).DefaultIfEmpty(0).Max(), 1);
+        Assert.True(Most(seen, item => item is KeyedRow { Key: "d" }) > 15, "d glides up from below");
+        Assert.Equal(0, seen.Where(s => s.Item is KeyedRow { Key: "b" }).Select(s => Math.Abs(s.Y)).DefaultIfEmpty(0).Max(), 1);
         MotionWait.Eventually(() => Assert.Equal(0, OffsetY(Container(list, "d")), 2));
     }
 
@@ -610,7 +584,7 @@ public sealed class ItemMotionTests : IDisposable
         main.Show();
         var server = FakeServers.Crowded();
         vm.Server = server;
-        Settle(400);
+        MotionWait.Settle(400);
         MotionWait.Connected(main);
         // every picture put in the overlay counts, not only one a frame finds there: under load a flight is over within a frame
         int pictures = 0;
@@ -619,13 +593,13 @@ public sealed class ItemMotionTests : IDisposable
         var lobby = server.Channels.First();
         var far = server.Channels.Last().Users.First(); // in the last channel, scrolled out of view
         server.Apply(new UserUpdated(server.Mirror.Users[far.SessionId] with { ChannelId = lobby.Id }));
-        Settle(60);
+        MotionWait.Settle(60);
         Assert.Equal(0, pictures);
 
         // and the other way round: from the Lobby into a channel scrolled out of view
         var mine = server.Channels.First().Users.First(u => !u.IsSelf);
         server.Apply(new UserUpdated(server.Mirror.Users[mine.SessionId] with { ChannelId = server.Channels.Last().Id }));
-        Settle(60);
+        MotionWait.Settle(60);
         Assert.Equal(0, pictures);
         main.Close();
     }
@@ -639,7 +613,7 @@ public sealed class ItemMotionTests : IDisposable
         main.Show();
         vm.Server = FakeServers.Admin();
         await vm.OpenAdminAsync();
-        Settle(400);
+        MotionWait.Settle(400);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in: the list stands still
         var groups = main.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "GroupList");
         Assert.True(ItemMotion.GetFlip(groups));
@@ -662,7 +636,7 @@ public sealed class ItemMotionTests : IDisposable
         server.Apply(new UserUpdated(Anna(FakeServers.Lobby)));
         Frame();
         Assert.Equal(0, OffsetY(ChannelContainer(main, "Raid")));
-        Settle(60);
+        MotionWait.Settle(60);
         Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
         main.Close();
     }
@@ -671,12 +645,12 @@ public sealed class ItemMotionTests : IDisposable
     [AvaloniaFact]
     public void BackAfterTheFoldFinished_IsWhole()
     {
-        var rows = new ObservableCollection<Row> { new("a"), new("b") };
+        var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (_, list) = Host(rows);
         var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = TimeSpan.FromSeconds(5) }; // stays long after its fold
-        CollectionSync.Sync(rows, [new Row("a", 1)], leave);
+        CollectionSync.Sync(rows, [new KeyedRow("a", 1)], leave);
         MotionWait.Eventually(() => Assert.Equal(0, Container(list, "b").Opacity, 2)); // folded
-        CollectionSync.Sync(rows, [new Row("a", 2), new Row("b", 2)], leave);
+        CollectionSync.Sync(rows, [new KeyedRow("a", 2), new KeyedRow("b", 2)], leave);
         MotionWait.Eventually(() =>
         {
             var b = Container(list, "b");

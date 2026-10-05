@@ -25,6 +25,33 @@ static class MotionWait
         Dispatcher.UIThread.RunJobs();
     }
 
+    /// <summary>Lets the clock run for <paramref name="milliseconds"/>: the animation clock runs on real time.</summary>
+    public static void Settle(int milliseconds)
+    {
+        var watch = Stopwatch.StartNew();
+        while (watch.ElapsedMilliseconds < milliseconds)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
+        }
+    }
+
+    /// <summary>
+    /// Lets the clock run until <paramref name="done"/> holds, at most <paramref name="ms"/>; then goes on either way (a
+    /// caller that needs it checks it, a caller with a condition that never holds just waits).
+    /// </summary>
+    public static void WaitFor(Func<bool> done, int ms)
+    {
+        var watch = Stopwatch.StartNew();
+        while (!done() && watch.ElapsedMilliseconds < ms)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1);
+        }
+    }
+
     /// <summary>
     /// Frames until <paramref name="done"/> holds and at least <paramref name="atLeast"/> ms have passed (at most 5 s).
     /// <paramref name="done"/> is asked after every frame, so it may also note what the frame showed.

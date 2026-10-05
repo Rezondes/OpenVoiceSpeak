@@ -30,21 +30,6 @@ public sealed class MotionStyleTests : IDisposable
         return window;
     }
 
-    /// <summary>The animation clock runs on real time: waits until a transition of this length is over.</summary>
-    static void Settle(int milliseconds = 350)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < milliseconds)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
-        }
-    }
-
-    static Point Center(Control control, Visual root) =>
-        control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), root)!.Value;
-
     static Matrix Transform(Visual visual) => visual.RenderTransform?.Value ?? Matrix.Identity;
 
     static Matrix Expected(string operations) => TransformOperations.Parse(operations).Value;
@@ -59,7 +44,7 @@ public sealed class MotionStyleTests : IDisposable
     /// </summary>
     static void Settled(Action check)
     {
-        Settle();
+        MotionWait.Settle(350);
         MotionWait.Eventually(check);
     }
 
@@ -73,7 +58,7 @@ public sealed class MotionStyleTests : IDisposable
         // Fluent's own short press transition is part of the simplified look; the animated one is Motion.Fast long
         Assert.Equal(animated, button.Transitions?.OfType<TransformOperationsTransition>().Any(t => t.Duration == Motion.Fast) == true);
 
-        window.MouseMove(Center(button, window));
+        window.MouseMove(Rows.Center(button, window));
         var presenter = button.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
         Settled(() =>
         {
@@ -81,9 +66,9 @@ public sealed class MotionStyleTests : IDisposable
             Assert.Equal(animated, presenter.BoxShadow.Count > 0 && presenter.BoxShadow[0].Blur > 0); // lifted with a soft shadow
         });
 
-        window.MouseDown(Center(button, window), MouseButton.Left);
+        window.MouseDown(Rows.Center(button, window), MouseButton.Left);
         Settled(() => Assert.Equal(animated, Near(Expected("scale(0.96)"), Transform(button))));
-        window.MouseUp(Center(button, window), MouseButton.Left);
+        window.MouseUp(Rows.Center(button, window), MouseButton.Left);
         Settled(() => Assert.True(Near(animated ? Expected("translateY(-1px)") : Matrix.Identity, Transform(button)), "springs back"));
     }
 
@@ -103,7 +88,7 @@ public sealed class MotionStyleTests : IDisposable
 
         // every width the bar takes as it happens: under load one frame can outlast the whole transition
         var bars = MotionWait.Record(row, v => ((Border)v).BoxShadow.Count > 0 ? ((Border)v).BoxShadow[0].OffsetX : 0);
-        window.MouseMove(Center(row, window));
+        window.MouseMove(Rows.Center(row, window));
         Settled(() =>
         {
             Assert.Equal(3, row.BoxShadow[0].OffsetX, 2);
@@ -117,8 +102,8 @@ public sealed class MotionStyleTests : IDisposable
     {
         var row = new Border { Classes = { "row" }, Height = 30, Width = 200 };
         var window = Host(row, animated: false);
-        window.MouseMove(Center(row, window));
-        Settle();
+        window.MouseMove(Rows.Center(row, window));
+        MotionWait.Settle(350);
         Assert.Equal(0, row.BoxShadow.Count);
     }
 
@@ -186,7 +171,7 @@ public sealed class MotionStyleTests : IDisposable
         Settled(() => Assert.True(Near(Matrix.Identity, Transform(glyph)), "the check mark pops to full size"));
 
         var thumb = slider.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().First();
-        window.MouseMove(Center(slider, window));
+        window.MouseMove(Rows.Center(slider, window));
         Settled(() => Assert.True(Near(Expected("scale(1.2)"), Transform(thumb)), "the thumb grows on hover"));
     }
 
@@ -202,7 +187,7 @@ public sealed class MotionStyleTests : IDisposable
         var icon = new PathIcon { Classes = { kind }, Data = Geometry.Parse("M0,0 L10,10") };
         var button = new Button { Classes = { "icon" }, Content = icon };
         var window = Host(button, animated: true);
-        window.MouseMove(Center(button, window));
+        window.MouseMove(Rows.Center(button, window));
         Settled(() => Assert.True(Near(Expected(expected), Transform(icon)), $"{kind}: {Transform(icon)}"));
 
         Motion.Apply(window, DisplayMode.Simplified);
@@ -229,7 +214,7 @@ public sealed class MotionStyleTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         var rest = sound.Background;
 
-        window.MouseMove(Center(bookmark, window));
+        window.MouseMove(Rows.Center(bookmark, window));
         Settled(() =>
         {
             Assert.Equal(3, Bar(Presenter(bookmark).BoxShadow), 2);
@@ -237,17 +222,17 @@ public sealed class MotionStyleTests : IDisposable
         });
 
         var gast = groups.ContainerFromIndex(0)!;
-        window.MouseMove(Center(gast, window));
+        window.MouseMove(Rows.Center(gast, window));
         Settled(() => Assert.Equal(3, Bar(Presenter(gast).BoxShadow), 2));
         groups.SelectedIndex = 1;
         Settled(() => Assert.Equal(3, Bar(Presenter(groups.ContainerFromIndex(1)!).BoxShadow), 2)); // the selected entry keeps it
 
         var line = lines.ContainerFromIndex(0)!;
-        window.MouseMove(Center(line, window));
-        Settle();
+        window.MouseMove(Rows.Center(line, window));
+        MotionWait.Settle(350);
         Assert.Equal(0, Bar(Presenter(line).BoxShadow));
 
-        window.MouseMove(Center(sound, window));
+        window.MouseMove(Rows.Center(sound, window));
         Settled(() =>
         {
             Assert.Equal(3, Bar(sound.BoxShadow), 2);
@@ -261,7 +246,7 @@ public sealed class MotionStyleTests : IDisposable
         var tabs = new TabControl { ItemsSource = new[] { new TabItem { Header = "Gruppen" }, new TabItem { Header = "Nutzer" } } };
         var window = Host(tabs, animated: true);
         var second = (TabItem)tabs.ContainerFromIndex(1)!;
-        window.MouseMove(Center(second, window));
+        window.MouseMove(Rows.Center(second, window));
         Settled(() => Assert.True(Near(Expected("translateY(-1px)"), Transform(second))));
     }
 

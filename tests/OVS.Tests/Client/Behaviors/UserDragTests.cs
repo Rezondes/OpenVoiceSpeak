@@ -22,31 +22,15 @@ namespace OVS.Tests.Client.Behaviors;
 
 /// <summary>Package 120 (A129): a user row dragged onto a channel moves that user there, my own row joins it.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class UserDragTests : IDisposable
+public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-userdrag-").FullName;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
     sealed record Tree(MainWindow Main, ServerViewModel Server, List<Request> Sent)
     {
-        public Border UserRow(string nickname) => Main.GetVisualDescendants().OfType<Border>()
-            .Single(b => b.Classes.Contains("row") && b.DataContext is UserViewModel u && u.Nickname == nickname
-                         && b.FindAncestorOfType<ContentPresenter>() is { } c && !c.Classes.Contains("leaving"));
+        public Border UserRow(string nickname) => Rows.UserRow(Main, nickname);
 
-        public Border ChannelRow(string name) => Main.GetVisualDescendants().OfType<Border>()
-            .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel c && c.Name == name);
+        public Border ChannelRow(string name) => Rows.ChannelRow(Main, name);
 
-        public Point Center(Control row) => row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), Main)!.Value;
+        public Point Center(Control row) => Rows.Center(row, Main);
 
         /// <summary>A move with the left button still down, as during a real drag.</summary>
         public const RawInputModifiers Held = RawInputModifiers.LeftMouseButton;

@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using OVS.Tests.TestSupport;
 using OVS.Tools;
 using SkiaSharp;
 
@@ -7,20 +8,10 @@ namespace OVS.Tests.Client.Controls;
 /// <summary>Package 28: the app logo as exe, window and taskbar icon. Package 95: every size shows the sound wave, the small ones pixel-hinted.</summary>
 public class LogoTests
 {
-    static string RepoDir()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "src", "OVS.Client"))) dir = dir.Parent;
-        Assert.NotNull(dir);
-        return dir.FullName;
-    }
-
-    static string ClientDir() => Path.Combine(RepoDir(), "src", "OVS.Client");
-
     /// <summary>The PNG bytes of every ICO frame by size (all frames are PNG compressed).</summary>
     static Dictionary<int, byte[]> IcoFrames()
     {
-        var bytes = File.ReadAllBytes(Path.Combine(ClientDir(), "Assets", "ovs.ico"));
+        var bytes = File.ReadAllBytes(Path.Combine(RepoPaths.ClientSource, "Assets", "ovs.ico"));
         int count = BitConverter.ToUInt16(bytes, 4);
         return Enumerable.Range(0, count).ToDictionary(
             i => bytes[6 + i * 16] is 0 ? 256 : bytes[6 + i * 16],
@@ -31,7 +22,7 @@ public class LogoTests
     public void Ico_ContainsAllSizes()
     {
         // ICONDIR: reserved, type 1, count; then 16-byte entries whose first byte is the width (0 means 256).
-        var bytes = File.ReadAllBytes(Path.Combine(ClientDir(), "Assets", "ovs.ico"));
+        var bytes = File.ReadAllBytes(Path.Combine(RepoPaths.ClientSource, "Assets", "ovs.ico"));
         Assert.Equal(1, BitConverter.ToUInt16(bytes, 2));
         int count = BitConverter.ToUInt16(bytes, 4);
         var sizes = Enumerable.Range(0, count).Select(i => bytes[6 + i * 16] is 0 ? 256 : bytes[6 + i * 16]).Order().ToList();
@@ -41,9 +32,9 @@ public class LogoTests
     [Fact]
     public void Csproj_UsesTheIcon()
     {
-        var project = XDocument.Load(Path.Combine(ClientDir(), "OVS.Client.csproj"));
+        var project = XDocument.Load(Path.Combine(RepoPaths.ClientSource, "OVS.Client.csproj"));
         var icon = project.Descendants("ApplicationIcon").Single().Value;
-        Assert.True(File.Exists(Path.Combine(ClientDir(), icon)), icon);
+        Assert.True(File.Exists(Path.Combine(RepoPaths.ClientSource, icon)), icon);
     }
 
     /// <summary>Package 95: the middle wave bar (x 128, y 146 to 190 in the 256 grid) is white in the frames rendered from the SVG.</summary>
@@ -90,7 +81,7 @@ public class LogoTests
     [Fact]
     public void SmallFrames_MatchTool()
     {
-        var svg = File.ReadAllText(Path.Combine(ClientDir(), "Assets", "logo.svg"));
+        var svg = File.ReadAllText(Path.Combine(RepoPaths.ClientSource, "Assets", "logo.svg"));
         Assert.Equal([16, 20, 24, 32], LogoRenderer.Small.Keys.Order());
         foreach (var size in LogoRenderer.Small.Keys) Assert.Equal(LogoRenderer.RenderPng(svg, size), IcoFrames()[size]);
     }
@@ -99,7 +90,7 @@ public class LogoTests
     [Fact]
     public void IcoMatchesSvgRender()
     {
-        var svg = File.ReadAllText(Path.Combine(ClientDir(), "Assets", "logo.svg"));
+        var svg = File.ReadAllText(Path.Combine(RepoPaths.ClientSource, "Assets", "logo.svg"));
         var rendered = LogoRenderer.RenderPng(svg, 64);
         Assert.Equal(rendered, LogoRenderer.RenderPng(svg, 64));
         Assert.Equal(LogoRenderer.RenderIco(svg), LogoRenderer.RenderIco(svg));
@@ -117,5 +108,5 @@ public class LogoTests
 
     [Fact]
     public void DocsLogo_Equals256Frame() =>
-        Assert.Equal(IcoFrames()[256], File.ReadAllBytes(Path.Combine(RepoDir(), "docs", "logo.png")));
+        Assert.Equal(IcoFrames()[256], File.ReadAllBytes(Path.Combine(RepoPaths.Root, "docs", "logo.png")));
 }

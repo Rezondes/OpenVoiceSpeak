@@ -11,12 +11,9 @@ using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Net;
 
-public sealed class ClientNetTests : IDisposable
+public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: false)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-client-").FullName;
     KnownServers Known() => new(Path.Combine(dir, "known_servers.json"));
-
-    public void Dispose() => Directory.Delete(dir, true);
 
     Task<ClientConnection> Connect(TestServer server, string nick, ClientIdentity? id = null, Func<TofuPrompt, Task<bool>>? confirm = null,
         KnownServers? known = null, string? password = null) =>
@@ -138,7 +135,7 @@ public sealed class ClientNetTests : IDisposable
         vb.VoiceReceived += (speaker, _, target, opus, _) => received.TrySetResult((speaker, target, opus));
         va.Start();
         vb.Start();
-        await WaitUntil(() => va.Reachable && vb.Reachable);
+        await AsyncWait.Until(() => va.Reachable && vb.Reachable);
 
         var opus = RandomNumberGenerator.GetBytes(70);
         va.SendVoice(opus, VoiceHeader.TargetChannel);
@@ -170,7 +167,7 @@ public sealed class ClientNetTests : IDisposable
         };
         va.Start();
         vb.Start();
-        await WaitUntil(() => va.Reachable && vb.Reachable);
+        await AsyncWait.Until(() => va.Reachable && vb.Reachable);
 
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
         va.SendPing();
@@ -207,11 +204,11 @@ public sealed class ClientNetTests : IDisposable
         vb.VoiceReceived += (_, _, _, opus, _) => atB.TrySetResult(opus);
         va.Start();
         vb.Start();
-        await WaitUntil(() => vb.Reachable && relay.Count(PacketType.Hello) == 1);
+        await AsyncWait.Until(() => vb.Reachable && relay.Count(PacketType.Hello) == 1);
         Assert.False(va.Reachable);
 
         time.Advance(TimeSpan.FromMilliseconds(500)); // within 1 s: the retry
-        await WaitUntil(() => va.Reachable);
+        await AsyncWait.Until(() => va.Reachable);
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
         vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
         Assert.Equal([1, 2, 3], await atB.Task.WaitAsync(TimeSpan.FromSeconds(10)));
@@ -228,7 +225,7 @@ public sealed class ClientNetTests : IDisposable
         var time = new ManualTimeProvider();
         using var va = Voice(a, relay.EndPoint, time);
         va.Start();
-        await WaitUntil(() => va.Reachable);
+        await AsyncWait.Until(() => va.Reachable);
 
         relay.DropAll = true;
         Advance(time, TimeSpan.FromSeconds(14.5));
@@ -237,11 +234,11 @@ public sealed class ClientNetTests : IDisposable
         Assert.False(va.Reachable);
         Advance(time, TimeSpan.FromSeconds(5));
         Assert.False(va.Reachable);
-        await WaitUntil(() => relay.Count(PacketType.Hello) == 11); // the first, then every 500 ms from 15 s; all dropped
+        await AsyncWait.Until(() => relay.Count(PacketType.Hello) == 11); // the first, then every 500 ms from 15 s; all dropped
 
         relay.DropAll = false;
         Advance(time, TimeSpan.FromSeconds(2)); // one ping interval (Package 133: 2 s)
-        await WaitUntil(() => va.Reachable);
+        await AsyncWait.Until(() => va.Reachable);
     }
 
     /// <summary>
@@ -257,14 +254,14 @@ public sealed class ClientNetTests : IDisposable
         var time = new ManualTimeProvider();
         using var va = Voice(a, relay.EndPoint, time);
         va.Start();
-        await WaitUntil(() => va.Reachable);
+        await AsyncWait.Until(() => va.Reachable);
 
         relay.DropAll = true;
         Advance(time, TimeSpan.FromSeconds(10));
-        await WaitUntil(() => relay.Count(PacketType.Ping) == 17); // at 2 s, then overdue every 500 ms; all dropped
+        await AsyncWait.Until(() => relay.Count(PacketType.Ping) == 17); // at 2 s, then overdue every 500 ms; all dropped
         relay.DropAll = false;
         Advance(time, TimeSpan.FromSeconds(0.5));
-        await WaitUntil(() => relay.PassedBack == 2); // the Hello's answer and now an overdue ping's
+        await AsyncWait.Until(() => relay.PassedBack == 2); // the Hello's answer and now an overdue ping's
         Advance(time, TimeSpan.FromSeconds(5.5)); // past the old 15 s mark
         Assert.True(va.Reachable);
     }
@@ -279,14 +276,14 @@ public sealed class ClientNetTests : IDisposable
         var time = new ManualTimeProvider();
         using var va = Voice(a, relay.EndPoint, time);
         va.Start();
-        await WaitUntil(() => va.Reachable);
+        await AsyncWait.Until(() => va.Reachable);
 
         for (int i = 1; i <= 6; i++)
         {
             Advance(time, TimeSpan.FromSeconds(1.5));
             Assert.Equal(i - 1, relay.Count(PacketType.Ping));
             Advance(time, TimeSpan.FromSeconds(0.5));
-            await WaitUntil(() => relay.PassedBack == i + 1); // the answer arrives before the clock moves on, as in real time
+            await AsyncWait.Until(() => relay.PassedBack == i + 1); // the answer arrives before the clock moves on, as in real time
         }
         Assert.Equal(6, relay.Count(PacketType.Ping));
         Assert.Equal(1, relay.Count(PacketType.Hello));
@@ -307,19 +304,19 @@ public sealed class ClientNetTests : IDisposable
 
         async Task OneWay(int held, int ms = 50)
         {
-            await WaitUntil(() => relay.Held == held); // the relay holds the packet before the clock moves on
+            await AsyncWait.Until(() => relay.Held == held); // the relay holds the packet before the clock moves on
             time.Advance(TimeSpan.FromMilliseconds(ms));
         }
         await OneWay(1);
         await OneWay(2);
-        await WaitUntil(() => va.RoundTrip is not null);
+        await AsyncWait.Until(() => va.RoundTrip is not null);
         Assert.InRange(va.RoundTrip!.Value.TotalMilliseconds, 90, 110);
         Assert.Equal(1, va.RoundTripSample.Count);
 
         time.Advance(TimeSpan.FromMilliseconds(1900)); // the next ping, 2 s after the Hello
         await OneWay(3);
         await OneWay(4, 80); // a slower answer this time
-        await WaitUntil(() => va.RoundTrip!.Value.TotalMilliseconds > 110);
+        await AsyncWait.Until(() => va.RoundTrip!.Value.TotalMilliseconds > 110);
         Assert.InRange(va.RoundTrip!.Value.TotalMilliseconds, 120, 140);
         Assert.Equal(2, va.RoundTripSample.Count); // one per answer, so the baseline takes each once
     }
@@ -344,7 +341,7 @@ public sealed class ClientNetTests : IDisposable
         vb.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atB);
         va.Start();
         vb.Start();
-        await WaitUntil(() => va.Reachable && vb.Reachable);
+        await AsyncWait.Until(() => va.Reachable && vb.Reachable);
 
         int sent = 0;
         async Task Talk(int frames)
@@ -358,7 +355,7 @@ public sealed class ClientNetTests : IDisposable
                 // every 5 frames everything sent has arrived, so the clock never runs ahead of the network (the server's rate
                 // limit would see a pile of frames at one instant)
                 if (i % 5 == 0)
-                    await WaitUntil(() => relay.Count(PacketType.Voice) == sent && relay.SeenDownVoice == sent
+                    await AsyncWait.Until(() => relay.Count(PacketType.Voice) == sent && relay.SeenDownVoice == sent
                         && Volatile.Read(ref atB) == relay.PassedUpVoice && Volatile.Read(ref atA) == relay.PassedDownVoice);
             }
         }
@@ -366,7 +363,7 @@ public sealed class ClientNetTests : IDisposable
         // one timer tick each (one ping), as many ticks at one instant of the server's clock would hit its rate limit
         time.Advance(TimeSpan.FromSeconds(2)); // a ping after the first full window
         var session = server.State.FindSession(a.Welcome.SessionId)!;
-        await WaitUntil(() => va.UplinkLoss.Expected >= 200 && session.DownlinkLoss.Expected >= 200);
+        await AsyncWait.Until(() => va.UplinkLoss.Expected >= 200 && session.DownlinkLoss.Expected >= 200);
         Assert.InRange(va.UplinkLoss.Percent, 7, 13);
         Assert.InRange(va.DownlinkLoss.Percent, 7, 13);
         Assert.InRange(session.DownlinkLoss.Percent, 7, 13);
@@ -378,7 +375,7 @@ public sealed class ClientNetTests : IDisposable
         time.Advance(TimeSpan.FromSeconds(10));
         await Talk(500); // 10 s, so one whole window lies inside
         time.Advance(TimeSpan.FromSeconds(2));
-        await WaitUntil(() => va.UplinkLoss is { Expected: >= 200, Missed: 0 } && session.DownlinkLoss is { Expected: >= 200, Missed: 0 });
+        await AsyncWait.Until(() => va.UplinkLoss is { Expected: >= 200, Missed: 0 } && session.DownlinkLoss is { Expected: >= 200, Missed: 0 });
         Assert.Equal(new LossReport(va.DownlinkLoss.Expected, 0), va.DownlinkLoss);
     }
 
@@ -399,7 +396,7 @@ public sealed class ClientNetTests : IDisposable
         va.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atA);
         va.Start();
         vb.Start();
-        await WaitUntil(() => va.Reachable && vb.Reachable);
+        await AsyncWait.Until(() => va.Reachable && vb.Reachable);
         var session = server.State.FindSession(a.Welcome.SessionId)!;
 
         async Task Talk(int frames, bool heard)
@@ -410,14 +407,14 @@ public sealed class ClientNetTests : IDisposable
                 sent++;
                 time.Advance(TimeSpan.FromMilliseconds(20));
                 if (i % 5 != 0) continue;
-                if (heard) await WaitUntil(() => Volatile.Read(ref atA) == sent);
+                if (heard) await AsyncWait.Until(() => Volatile.Read(ref atA) == sent);
                 else await Task.Delay(10); // nothing arrives to wait for; keeps the server's clock from running ahead
             }
         }
         async Task Deafen(bool on)
         {
             await a.SendAsync(new SetSelfState(false, on));
-            await WaitUntil(() => session.SelfDeafened == on);
+            await AsyncWait.Until(() => session.SelfDeafened == on);
         }
 
         await Talk(50, heard: true); // 1 s
@@ -429,7 +426,7 @@ public sealed class ClientNetTests : IDisposable
         sent = atA; // what a can hear from here on
         await Talk(110, heard: true); // past 5 s: the window with the jump in the frame numbers is complete
         time.Advance(TimeSpan.FromSeconds(2)); // a ping with that window
-        await WaitUntil(() => session.DownlinkLoss.Expected >= 100);
+        await AsyncWait.Until(() => session.DownlinkLoss.Expected >= 100);
         Assert.Equal(0u, session.DownlinkLoss.Missed);
         Assert.Equal(0u, va.DownlinkLoss.Missed);
         Assert.True(va.DownlinkLoss.Expected >= 100);
@@ -465,13 +462,13 @@ public sealed class ClientNetTests : IDisposable
         Advance(time, TimeSpan.FromSeconds(0.5));
         Assert.True(va.OverTcp && vb.OverTcp);
         Assert.False(va.Reachable);
-        await WaitUntil(() => server.State.FindSession(a.Welcome.SessionId)!.TcpVoice && server.State.FindSession(b.Welcome.SessionId)!.TcpVoice);
+        await AsyncWait.Until(() => server.State.FindSession(a.Welcome.SessionId)!.TcpVoice && server.State.FindSession(b.Welcome.SessionId)!.TcpVoice);
 
         // Package 141 (review): a lost switch (dropped, or overtaken by an older UDP ping) is repeated with the next Hello
         var sessionB = server.State.FindSession(b.Welcome.SessionId)!;
         sessionB.TcpVoice = false;
         Advance(time, TimeSpan.FromSeconds(2));
-        await WaitUntil(() => sessionB.TcpVoice);
+        await AsyncWait.Until(() => sessionB.TcpVoice);
 
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
         vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
@@ -504,7 +501,7 @@ public sealed class ClientNetTests : IDisposable
         vb.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atB);
         va.Start();
         vb.Start();
-        await WaitUntil(() => va.Reachable && vb.Reachable);
+        await AsyncWait.Until(() => va.Reachable && vb.Reachable);
         var session = server.State.FindSession(a.Welcome.SessionId)!;
 
         relay.DropAll = true;
@@ -512,11 +509,11 @@ public sealed class ClientNetTests : IDisposable
         Assert.False(va.OverTcp);
         Advance(time, TimeSpan.FromSeconds(0.5));
         Assert.True(va.OverTcp);
-        await WaitUntil(() => session.TcpVoice);
+        await AsyncWait.Until(() => session.TcpVoice);
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
-        await WaitUntil(() => Volatile.Read(ref atB) == 1);
+        await AsyncWait.Until(() => Volatile.Read(ref atB) == 1);
         vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
-        await WaitUntil(() => Volatile.Read(ref atA) == 1);
+        await AsyncWait.Until(() => Volatile.Read(ref atA) == 1);
 
         relay.DropAll = false;
         var waited = TimeSpan.Zero;
@@ -529,22 +526,14 @@ public sealed class ClientNetTests : IDisposable
         Assert.True(va.Reachable);
         Assert.False(va.OverTcp);
         Advance(time, TimeSpan.FromSeconds(2)); // the next ping tells the server
-        await WaitUntil(() => !session.TcpVoice);
+        await AsyncWait.Until(() => !session.TcpVoice);
 
         vb.SendVoice([7, 8, 9], VoiceHeader.TargetChannel);
-        await WaitUntil(() => relay.PassedDownVoice == 1);
-        await WaitUntil(() => Volatile.Read(ref atA) == 2);
+        await AsyncWait.Until(() => relay.PassedDownVoice == 1);
+        await AsyncWait.Until(() => Volatile.Read(ref atA) == 2);
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
-        await WaitUntil(() => relay.Count(PacketType.Voice) == 1 && Volatile.Read(ref atB) == 2);
+        await AsyncWait.Until(() => relay.Count(PacketType.Voice) == 1 && Volatile.Read(ref atB) == 2);
         await Task.Delay(300);
         Assert.Equal(2, Volatile.Read(ref atA)); // once, on UDP only
-    }
-
-    /// <summary>Waits up to 10 s by the clock (not by a loop count: Task.Delay(20) may take far longer on a busy runner).</summary>
-    static async Task WaitUntil(Func<bool> condition)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!condition() && watch.ElapsedMilliseconds < 10_000) await Task.Delay(20);
-        Assert.True(condition());
     }
 }

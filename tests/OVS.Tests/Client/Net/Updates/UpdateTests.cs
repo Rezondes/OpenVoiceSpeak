@@ -8,13 +8,10 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Client.Net.Updates;
 
 /// <summary>Package 43: which release counts as an update, and how the exe is swapped.</summary>
-public sealed class UpdateTests : IDisposable
+public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: false)
 {
     static readonly DateTimeOffset Built = new(2026, 9, 28, 8, 0, 0, TimeSpan.Zero);
     static readonly BuildInfo Running = new(Built, "aaaaaaa1111111", IsCi: true);
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-update-").FullName;
-
-    public void Dispose() => Directory.Delete(dir, true);
 
     static object Release(string tag, DateTimeOffset published, bool withHash = true) => new
     {

@@ -15,31 +15,12 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 106: connecting builds the server view up, disconnecting folds it away.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class ConnectMotionTests : IDisposable
+public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-connect-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
-    static void Settle(int milliseconds)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < milliseconds)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
+        base.Dispose();
     }
 
     static void Frame()
@@ -54,7 +35,7 @@ public sealed class ConnectMotionTests : IDisposable
         vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        Settle(200);
+        MotionWait.Settle(200);
         Motion.Apply(main, display);
         return main;
     }
@@ -151,7 +132,7 @@ public sealed class ConnectMotionTests : IDisposable
     {
         var main = Open(out var vm);
         vm.Server = FakeServers.Admin();
-        Settle(700);
+        MotionWait.Settle(700);
         MotionWait.Connected(main);
         vm.Status = "Verbindung verloren";
         vm.Server = null;
@@ -175,7 +156,7 @@ public sealed class ConnectMotionTests : IDisposable
     {
         var main = Open(out var vm);
         vm.Server = FakeServers.Admin();
-        Settle(700);
+        MotionWait.Settle(700);
         MotionWait.Connected(main);
         vm.Server = null;
         vm.Server = FakeServers.Crowded();
@@ -211,9 +192,9 @@ public sealed class ConnectMotionTests : IDisposable
     {
         var main = Open(out var vm);
         main.Width = 360;
-        Settle(100);
+        MotionWait.Settle(100);
         vm.Server = FakeServers.Admin();
-        Settle(800); // longer than the build-up waits for a tree to show (500 ms)
+        MotionWait.Settle(800); // longer than the build-up waits for a tree to show (500 ms)
         MotionWait.Connected(main);
         var menu = main.GetVisualDescendants().OfType<Button>().Single(b => b.IsEffectivelyVisible
             && Avalonia.Automation.AutomationProperties.GetName(b) == OVS.Client.Localization.Strings.Ui_ShowChannels);

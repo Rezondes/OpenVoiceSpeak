@@ -6,7 +6,6 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using OVS.Client.Behaviors;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
@@ -18,21 +17,14 @@ namespace OVS.Tests.Client.Behaviors;
 
 /// <summary>Package 96 (A112): one drag and drop behaviour for every reorder list, shown on the channel tree.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class ReorderDragTests : IDisposable
+public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-drag-").FullName;
     readonly Func<bool> reducedMotion = ReorderDrag.ReducedMotion;
 
-    public void Dispose()
+    public override void Dispose()
     {
         ReorderDrag.ReducedMotion = reducedMotion;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
+        base.Dispose();
     }
 
     sealed record Tree(MainWindow Main, MainViewModel Vm, ItemsControl List, List<Request> Sent)
@@ -41,12 +33,7 @@ public sealed class ReorderDragTests : IDisposable
 
         public double Top(string name) => Container(name).TranslatePoint(default, List)!.Value.Y;
 
-        public Point Center(string name)
-        {
-            var row = Main.GetVisualDescendants().OfType<Border>()
-                .Single(b => b.Classes.Contains("row") && b.DataContext is ChannelViewModel c && c.Name == name);
-            return row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), Main)!.Value;
-        }
+        public Point Center(string name) => Rows.Center(Rows.ChannelRow(Main, name), Main);
 
         public Border? Preview => OverlayLayer.GetOverlayLayer(List)?.Children.OfType<Border>().SingleOrDefault(b => b.Classes.Contains("dragPreview"));
 

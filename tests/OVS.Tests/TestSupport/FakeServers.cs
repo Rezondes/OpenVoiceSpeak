@@ -28,7 +28,7 @@ public static class FakeServers
                 // Package 92: others come without rights, with the server's judgement instead
                 new UserInfo(2, "fp2", "anna", Raid, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true),
             ]);
-        return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        return new ServerViewModel(Snapshots.Mirror(snapshot), r =>
         {
             sent?.Add(r);
             return Task.CompletedTask;
@@ -40,10 +40,10 @@ public static class FakeServers
     {
         var channels = names.Select((n, i) => new ChannelInfo(Guid.NewGuid(), n, "", i)).ToList();
         var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "", false), channels[0].Id, channels, links,
+        var snapshot = Snapshots.Snapshot("Gilde", "", channels[0].Id, channels,
             [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All, true)],
-            [new UserInfo(1, "fp1", "ich", channels[0].Id, false, false, false, Permission.All, [WellKnownGroups.Admin])]);
-        return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);
+            [new UserInfo(1, "fp1", "ich", channels[0].Id, false, false, false, Permission.All, [WellKnownGroups.Admin])], links: links);
+        return new ServerViewModel(Snapshots.Mirror(snapshot), _ => Task.CompletedTask, TimeProvider.System);
     }
 
     /// <summary>Package 78: 8 channels (all linked), four groups and 20 users; own user "ich" is admin.</summary>
@@ -63,7 +63,7 @@ public static class FakeServers
             [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: i != 1)).ToList();
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true, null, new ServerLimits(50, 30, true, true, new TimeOnly(4, 0))),
             channels[0].Id, channels, links, groups, users);
-        return new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), _ => Task.CompletedTask, TimeProvider.System);
+        return new ServerViewModel(Snapshots.Mirror(snapshot), _ => Task.CompletedTask, TimeProvider.System);
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ public static class FakeServers
         var users = Enumerable.Range(1, 400).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Spieler{i:000}",
             channels[(i - 1) % 40].Id, false, false, false, i == 1 ? Permission.All : Permission.None,
             [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: i != 1)).ToList();
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "", false), channels[0].Id, channels, links, groups, users);
-        return new Welcome(1, "", snapshot);
+        var snapshot = Snapshots.Snapshot("Gilde", "", channels[0].Id, channels, groups, users, links: links);
+        return Snapshots.Welcome(snapshot);
     }
 }

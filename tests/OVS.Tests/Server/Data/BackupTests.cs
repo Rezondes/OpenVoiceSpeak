@@ -24,21 +24,8 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Server.Data;
 
 /// <summary>Package 74: backups on the server, created, listed, deleted and restored from the administration.</summary>
-public sealed class BackupTests : IDisposable
+public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-backup-").FullName;
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
     static Dictionary<string, byte[]> Entries(string path)
     {
         using var zip = ZipFile.OpenRead(path);

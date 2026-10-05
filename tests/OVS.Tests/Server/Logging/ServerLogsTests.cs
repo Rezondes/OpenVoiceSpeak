@@ -13,12 +13,8 @@ using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server.Logging;
 
-public sealed class ServerLogsTests : IDisposable
+public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: false)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-logs-").FullName;
-
-    public void Dispose() => Directory.Delete(dir, true);
-
     /// <summary>File name of a run started at the provider's current time (plus an offset).</summary>
     static string Start(TimeProvider time, int offsetDays = 0) =>
         time.GetLocalNow().AddDays(offsetDays).ToString("yyyy-MM-dd_HH-mm-ss");

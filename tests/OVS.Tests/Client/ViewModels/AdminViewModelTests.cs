@@ -2,7 +2,6 @@ using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using OVS.Client.Models;
-using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -41,7 +40,7 @@ public class AdminViewModelTests
             [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, selfPerms, groupIds ?? [])]);
         var sent = new List<Request>();
         ServerViewModel? server = null;
-        server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
         {
             // A coalesced list request comes from the pool (a delay on the manual clock): sending and its answer are one
             // step under the lock, so a test that saw the request (Sent) also sees its answer applied.
@@ -1077,12 +1076,12 @@ public class AdminViewModelTests
     static (LinkMatrixViewModel Matrix, ServerViewModel Server, List<Request> Sent, Guid[] Channels) Matrix(int channelCount, P perms = P.All)
     {
         var ids = Enumerable.Range(0, channelCount).Select(_ => Guid.NewGuid()).ToArray();
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "", false), ids[0],
-            ids.Select((id, i) => new ChannelInfo(id, $"K{i + 1}", "", i)).ToList(), [],
+        var snapshot = Snapshots.Snapshot("Server", "", ids[0],
+            ids.Select((id, i) => new ChannelInfo(id, $"K{i + 1}", "", i)).ToList(),
             [new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak)],
             [new UserInfo(1, "fp1", "ich", ids[0], false, false, false, perms, [])]);
         var sent = new List<Request>();
-        var server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        var server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
         {
             sent.Add(r);
             return Task.CompletedTask;

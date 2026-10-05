@@ -3,7 +3,6 @@ using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Sounds;
-using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -14,10 +13,10 @@ using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.Links;
 using OVS.Shared.Protocol.Messages.Moderation;
-using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
+using static OVS.Tests.TestSupport.Snapshots;
 using P = OVS.Shared.Permissions.Permission;
 
 namespace OVS.Tests.Client.ViewModels;
@@ -26,9 +25,6 @@ public class ServerViewModelTests
 {
     static readonly Guid Lobby = Guid.NewGuid(), Alpha = Guid.NewGuid(), Bravo = Guid.NewGuid();
     const P Moderator = P.Speak | P.SpeakLinked | P.ChannelLink | P.UserMove | P.UserMute | P.UserKick | P.UserBan;
-
-    static UserInfo U(uint id, string nick, Guid channel, P perms = P.Speak, IReadOnlyList<Guid>? groups = null) =>
-        new(id, "fp" + id, nick, channel, false, false, false, perms, groups ?? [WellKnownGroups.Guest]);
 
     sealed record Fixture(ServerViewModel Vm, List<Request> Sent, ManualTimeProvider Time)
     {
@@ -39,14 +35,13 @@ public class ServerViewModelTests
     static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, DialogCallbacks? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
         params UserInfo[] others)
     {
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", false), Lobby,
+        var snapshot = Snapshot("Server", "Hallo", Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Bravo, "Bravo", "", 1), new ChannelInfo(Alpha, "alpha", "", 1)],
-            [],
             groups ?? [new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak), new GroupInfo(WellKnownGroups.Admin, "Admin", P.All)],
-            [U(1, "ich", Lobby, selfPerms, selfGroups), .. others]);
+            [User(1, "ich", Lobby, selfPerms, selfGroups), .. others]);
         var sent = new List<Request>();
         var time = new ManualTimeProvider();
-        var vm = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        var vm = new ServerViewModel(Mirror(snapshot), r =>
         {
             sent.Add(r);
             return Task.CompletedTask;
@@ -57,7 +52,7 @@ public class ServerViewModelTests
     [Fact]
     public void Build_SortsChannelsAndGroupsUsers()
     {
-        var f = Create(others: [U(2, "zora", Lobby), U(3, "Anna", Lobby), U(4, "bob", Bravo)]);
+        var f = Create(others: [User(2, "zora", Lobby, P.Speak), User(3, "Anna", Lobby, P.Speak), User(4, "bob", Bravo, P.Speak)]);
         Assert.Equal(["Lobby", "alpha", "Bravo"], f.Vm.Channels.Select(c => c.Name));
         Assert.Equal(["Anna", "ich", "zora"], f.Channel(Lobby).Users.Select(u => u.Nickname));
         Assert.Equal(["bob"], f.Channel(Bravo).Users.Select(u => u.Nickname));
@@ -70,12 +65,12 @@ public class ServerViewModelTests
     [Fact]
     public void UserVolume_ShownPerUser_NotForSelf()
     {
-        var f = Create(others: [U(2, "anna", Lobby), U(3, "bert", Lobby), U(4, "carla", Lobby)]);
+        var f = Create(others: [User(2, "anna", Lobby, P.Speak), User(3, "bert", Lobby, P.Speak), User(4, "carla", Lobby, P.Speak)]);
         var volumes = new Dictionary<string, float> { ["fp2"] = 1.5f, ["fp3"] = 0f };
         var changed = new List<(string, float)>();
         f.Vm.VolumeOf = fp => volumes.GetValueOrDefault(fp, 1f);
         f.Vm.VolumeChanged += (fp, v) => changed.Add((fp, v));
-        f.Vm.Apply(new UserUpdated(U(4, "carla", Lobby))); // rebuild with the volumes known
+        f.Vm.Apply(new UserUpdated(User(4, "carla", Lobby, P.Speak))); // rebuild with the volumes known
 
         var (anna, bert, carla, me) = (f.User(2), f.User(3), f.User(4), f.User(1));
         Assert.Equal((150d, true, false, "Lautstärke 150 %"), (anna.VolumePercent, anna.IsVolumeChanged, anna.IsLocallyMuted, anna.VolumeText));
@@ -102,7 +97,7 @@ public class ServerViewModelTests
         Assert.Equal(Lobby, f.Vm.CurrentChannel!.Id);
         Assert.Equal("ich", f.Vm.Self!.Nickname);
 
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak)));
         Assert.Equal(Bravo, f.Vm.CurrentChannel!.Id);
         Assert.Same(f.User(1), f.Vm.Self);
     }
@@ -127,9 +122,9 @@ public class ServerViewModelTests
     [Fact]
     public void UserUpdated_MovesUser_KeepsInstance()
     {
-        var f = Create(others: U(2, "anna", Lobby));
+        var f = Create(others: User(2, "anna", Lobby, P.Speak));
         var anna = f.User(2);
-        f.Vm.Apply(new UserUpdated(U(2, "anna", Alpha)));
+        f.Vm.Apply(new UserUpdated(User(2, "anna", Alpha, P.Speak)));
         Assert.DoesNotContain(anna, f.Channel(Lobby).Users);
         Assert.Same(anna, Assert.Single(f.Channel(Alpha).Users));
     }
@@ -138,7 +133,7 @@ public class ServerViewModelTests
     public void UserJoinedAndLeft_UpdateTree()
     {
         var f = Create();
-        f.Vm.Apply(new UserJoined(U(5, "neu", Bravo)));
+        f.Vm.Apply(new UserJoined(User(5, "neu", Bravo, P.Speak)));
         Assert.Single(f.Channel(Bravo).Users);
         f.Vm.Apply(new UserLeft(5));
         Assert.Empty(f.Channel(Bravo).Users);
@@ -147,7 +142,7 @@ public class ServerViewModelTests
     [Fact]
     public void Speaking_ClearsAfter300ms()
     {
-        var f = Create(others: U(2, "anna", Lobby));
+        var f = Create(others: User(2, "anna", Lobby, P.Speak));
         f.Vm.OnSpeakers([new ActiveSpeaker(2, false)]);
         Assert.True(f.User(2).IsSpeaking);
 
@@ -163,7 +158,7 @@ public class ServerViewModelTests
     [Fact]
     public void SpeakingViaLink_Flagged()
     {
-        var f = Create(others: U(2, "anna", Alpha));
+        var f = Create(others: User(2, "anna", Alpha, P.Speak));
         f.Vm.OnSpeakers([new ActiveSpeaker(2, true)]);
         Assert.True(f.User(2).IsSpeakingViaLink);
         Assert.False(f.User(2).IsSpeaking);
@@ -235,7 +230,7 @@ public class ServerViewModelTests
         Assert.Empty(f.Sent);
         Assert.Equal(ErrorTexts.For(Codes.ChannelLocked), notice);
 
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest, raid])));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest, raid])));
         Assert.True(bravo.CanJoin);
         await bravo.JoinCommand.ExecuteAsync(null);
         Assert.Equal(new JoinChannel(Bravo), f.Sent[^1] with { RequestId = null });
@@ -275,12 +270,12 @@ public class ServerViewModelTests
         answer = "geheim";
         await bravo.JoinCommand.ExecuteAsync(null); // asked again
         Assert.Equal(new JoinChannel(Bravo, "geheim"), f.Sent[^1] with { RequestId = null });
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak)));
         Assert.Equal(["Bravo", "Bravo", "Bravo"], asked);
 
         await f.Channel(Lobby).JoinCommand.ExecuteAsync(null);
         Assert.Equal(new JoinChannel(Lobby), f.Sent[^1] with { RequestId = null });
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby)));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak)));
         await bravo.JoinCommand.ExecuteAsync(null); // remembered
         Assert.Equal(new JoinChannel(Bravo, "geheim"), f.Sent[^1] with { RequestId = null });
         Assert.Equal(3, asked.Count);
@@ -329,7 +324,7 @@ public class ServerViewModelTests
     public void UserMenu_VisibilityByPermissionAndRank()
     {
         // Package 92: the rank comes from the server as a flag, others' rights are never sent
-        var f = Create(Moderator, others: [U(2, "gast", Lobby, P.None) with { CanBeModeratedByMe = true }, U(3, "admin", Lobby, P.None)]);
+        var f = Create(Moderator, others: [User(2, "gast", Lobby, P.None) with { CanBeModeratedByMe = true }, User(3, "admin", Lobby, P.None)]);
         var guest = f.User(2);
         Assert.True(guest.CanKick && guest.CanBan && guest.CanMute && guest.CanMove);
 
@@ -339,7 +334,7 @@ public class ServerViewModelTests
         var self = f.User(1);
         Assert.False(self.CanKick || self.CanBan || self.CanMute || self.CanMove); // Package 84: moving oneself is joining
 
-        var plain = Create(others: U(2, "gast", Lobby, P.None) with { CanBeModeratedByMe = true }); // weaker, but no right to act
+        var plain = Create(others: User(2, "gast", Lobby, P.None) with { CanBeModeratedByMe = true }); // weaker, but no right to act
         Assert.False(plain.User(2).CanKick || plain.User(2).CanMove);
     }
 
@@ -352,9 +347,9 @@ public class ServerViewModelTests
     {
         var others = new[]
         {
-            U(2, "gast", Lobby), U(3, "mod2", Lobby, Moderator), U(4, "admin", Lobby, P.All),
-            U(5, "zweit", Lobby) with { Fingerprint = "fp1" }, // another session of the same identity
-            U(6, "anders", Lobby, P.Speak | P.ChatServer), // neither contains the other
+            User(2, "gast", Lobby, P.Speak), User(3, "mod2", Lobby, Moderator), User(4, "admin", Lobby, P.All),
+            User(5, "zweit", Lobby, P.Speak) with { Fingerprint = "fp1" }, // another session of the same identity
+            User(6, "anders", Lobby, P.Speak | P.ChatServer), // neither contains the other
         };
         var f = Create(Moderator, others: others.Select(u => u with
         {
@@ -473,7 +468,7 @@ public class ServerViewModelTests
     [Fact]
     public void GroupNames_FollowGroupOrder()
     {
-        var f = Create(others: [U(2, "anna", Lobby, groups: [WellKnownGroups.Admin, WellKnownGroups.Guest])]);
+        var f = Create(others: [User(2, "anna", Lobby, P.Speak, groups: [WellKnownGroups.Admin, WellKnownGroups.Guest])]);
         Assert.Equal("Gast, Admin", f.User(2).GroupNames);
         f.Vm.Apply(new GroupsChanged([new GroupInfo(WellKnownGroups.Admin, "Admin", P.All), new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak)]));
         Assert.Equal("Admin, Gast", f.User(2).GroupNames);
@@ -491,16 +486,16 @@ public class ServerViewModelTests
     [Fact]
     public void SoundEvents_FromMessages()
     {
-        var f = Create(others: [U(2, "anna", Lobby), U(3, "bob", Bravo)]);
+        var f = Create(others: [User(2, "anna", Lobby, P.Speak), User(3, "bob", Bravo, P.Speak)]);
         var heard = Sounds(f.Vm);
-        f.Vm.Apply(new UserJoined(U(4, "carla", Lobby)));              // into my channel
-        f.Vm.Apply(new UserJoined(U(5, "dora", Bravo)));               // elsewhere: nothing
-        f.Vm.Apply(new UserUpdated(U(3, "bob", Lobby)));               // comes over to me
-        f.Vm.Apply(new UserUpdated(U(2, "anna", Alpha)));              // leaves my channel
+        f.Vm.Apply(new UserJoined(User(4, "carla", Lobby, P.Speak)));              // into my channel
+        f.Vm.Apply(new UserJoined(User(5, "dora", Bravo, P.Speak)));               // elsewhere: nothing
+        f.Vm.Apply(new UserUpdated(User(3, "bob", Lobby, P.Speak)));               // comes over to me
+        f.Vm.Apply(new UserUpdated(User(2, "anna", Alpha, P.Speak)));              // leaves my channel
         f.Vm.Apply(new UserLeft(4));                                   // gone from my channel
         f.Vm.Apply(new UserLeft(5));                                   // gone elsewhere: nothing
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby) with { ServerMuted = true }));
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));               // moved by someone else
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak) with { ServerMuted = true }));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak)));               // moved by someone else
         f.Vm.Apply(new ChatMessage(ChatTarget.Private, 3, "bob", null, 1, "psst", DateTimeOffset.UtcNow));
         f.Vm.Apply(new ChatMessage(ChatTarget.Private, 1, "ich", null, 3, "ja", DateTimeOffset.UtcNow)); // own echo: nothing
         Assert.Equal(
@@ -515,13 +510,13 @@ public class ServerViewModelTests
     [Fact]
     public void OwnGroupsChanged_SoundOnce_NotOnConnect()
     {
-        var f = Create(others: [U(2, "anna", Lobby)]);
+        var f = Create(others: [User(2, "anna", Lobby, P.Speak)]);
         var heard = Sounds(f.Vm);
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, groups: [WellKnownGroups.Guest]) with { SelfMuted = true })); // no group change
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // given
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // repeated: no change
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest]))); // taken away
-        f.Vm.Apply(new UserUpdated(U(2, "anna", Lobby, P.None, [WellKnownGroups.Admin]))); // somebody else (Package 92: without rights)
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak, groups: [WellKnownGroups.Guest]) with { SelfMuted = true })); // no group change
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // given
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // repeated: no change
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest]))); // taken away
+        f.Vm.Apply(new UserUpdated(User(2, "anna", Lobby, P.None, [WellKnownGroups.Admin]))); // somebody else (Package 92: without rights)
         Assert.Equal([SoundEvent.GroupChanged, SoundEvent.GroupChanged], heard);
     }
 
@@ -536,11 +531,11 @@ public class ServerViewModelTests
         var guest = Assert.Single(admin.Users).Toggles.Single(t => t.GroupId == WellKnownGroups.Guest);
         guest.IsChecked = false;
         await guest.ToggleCommand.ExecuteAsync(null);
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Admin]))); // the server tells me first
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.All, [WellKnownGroups.Admin]))); // the server tells me first
         f.Vm.Apply(new UserList("r", [new KnownUserInfo("fp1", "ich", [WellKnownGroups.Admin])]));
         Assert.Equal([SoundEvent.GroupChangedByMe], heard);
 
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // someone else gives it back
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // someone else gives it back
         Assert.Equal([SoundEvent.GroupChangedByMe, SoundEvent.GroupChanged], heard);
     }
 
@@ -548,7 +543,7 @@ public class ServerViewModelTests
     [Fact]
     public void LinkVoice_SoundOncePerTransmission()
     {
-        var f = Create(others: [U(2, "anna", Bravo)]);
+        var f = Create(others: [User(2, "anna", Bravo, P.Speak)]);
         var heard = Sounds(f.Vm);
         void Talk(int ms)
         {
@@ -607,7 +602,7 @@ public class ServerViewModelTests
     [Fact]
     public void LinkVoice_NotForOwnChannelOrSelf()
     {
-        var f = Create(others: [U(2, "anna", Lobby)]);
+        var f = Create(others: [User(2, "anna", Lobby, P.Speak)]);
         var heard = Sounds(f.Vm);
         f.Vm.OnSpeakers([new ActiveSpeaker(2, ViaLink: false)]); // in my channel
         f.Vm.OnSpeakers([new ActiveSpeaker(1, ViaLink: true)]); // myself
@@ -619,7 +614,7 @@ public class ServerViewModelTests
     [Fact]
     public void ChatMessages_SoundPerTarget_NotForOwn()
     {
-        var f = Create(others: [U(2, "anna", Lobby)]);
+        var f = Create(others: [User(2, "anna", Lobby, P.Speak)]);
         var heard = Sounds(f.Vm);
         f.Vm.Apply(new ChatMessage(ChatTarget.Server, 2, "anna", null, null, "Hallo alle", DateTimeOffset.UtcNow));
         f.Vm.Apply(new ChatMessage(ChatTarget.Channel, 2, "anna", Lobby, null, "Hallo Lobby", DateTimeOffset.UtcNow));
@@ -639,8 +634,8 @@ public class ServerViewModelTests
         await f.Vm.ToggleDeafenCommand.ExecuteAsync(null);
         await f.Vm.ToggleMuteCommand.ExecuteAsync(null); // unmuting while deafened turns the sound back on
         await f.Vm.JoinAsync(Bravo);
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo) with { SelfMuted = false }));
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo) with { SelfMuted = true })); // the server's echo of the own mute: no second tone
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak) with { SelfMuted = false }));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak) with { SelfMuted = true })); // the server's echo of the own mute: no second tone
         Assert.Equal(
         [
             OVS.Client.Audio.Sounds.SoundEvent.MicOff, OVS.Client.Audio.Sounds.SoundEvent.MicOn, OVS.Client.Audio.Sounds.SoundEvent.SoundOff,
@@ -651,7 +646,7 @@ public class ServerViewModelTests
     [Fact]
     public void SlotText_LimitedAndUnlimited()
     {
-        var f = Create(others: [U(2, "anna", Bravo)]);
+        var f = Create(others: [User(2, "anna", Bravo, P.Speak)]);
         Assert.Equal("1", f.Channel(Bravo).SlotText);
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, MaxUsers: 5)));
         Assert.Equal("1/5", f.Channel(Bravo).SlotText);
@@ -669,7 +664,7 @@ public class ServerViewModelTests
     public async Task Ban_SendsDurationAndIpFlag()
     {
         var dialogs = new DialogCallbacks { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
-        var f = Create(Moderator, dialogs: dialogs, others: U(2, "gast", Lobby));
+        var f = Create(Moderator, dialogs: dialogs, others: User(2, "gast", Lobby, P.Speak));
         await f.User(2).BanCommand.ExecuteAsync(null);
         Assert.Equal(new Ban(2, "spam", 60, true), f.Sent[^1] with { RequestId = null });
     }
@@ -677,7 +672,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task CancelledDialog_SendsNothing()
     {
-        var f = Create(P.All, others: U(2, "gast", Lobby));
+        var f = Create(P.All, others: User(2, "gast", Lobby, P.Speak));
         await f.User(2).KickCommand.ExecuteAsync(null);
         await f.Channel(Alpha).DeleteCommand.ExecuteAsync(null);
         await f.Vm.NewChannelCommand.ExecuteAsync(null);
@@ -703,7 +698,7 @@ public class ServerViewModelTests
         Assert.True(bravo.IsBusy);
         await f.Channel(Alpha).JoinCommand.ExecuteAsync(null);
         Assert.Single(f.Sent.OfType<JoinChannel>());
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo)));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak)));
         Assert.False(bravo.IsBusy);
         Assert.True(bravo.IsCurrent);
 
@@ -736,7 +731,7 @@ public class ServerViewModelTests
         await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
         var refused = Assert.IsType<ReorderChannels>(f.Sent[^1]);
         Assert.Equal([Bravo, Lobby, Alpha], Order()); // at once, no jump back
-        f.Vm.Apply(new UserJoined(U(2, "anna", Lobby))); // something else changes meanwhile: the new order stays
+        f.Vm.Apply(new UserJoined(User(2, "anna", Lobby, P.Speak))); // something else changes meanwhile: the new order stays
         Assert.Equal([Bravo, Lobby, Alpha], Order());
         f.Time.Advance(ShowAfter);
         Assert.True(f.Channel(Bravo).IsBusy);
@@ -776,7 +771,7 @@ public class ServerViewModelTests
             },
             Confirm = _ => Task.FromResult(true),
         };
-        var f = Create(Moderator | P.ChannelCreate | P.ChannelDelete, dialogs: dialogs, others: U(2, "gast", Lobby));
+        var f = Create(Moderator | P.ChannelCreate | P.ChannelDelete, dialogs: dialogs, others: User(2, "gast", Lobby, P.Speak));
         await f.Vm.NewChannelCommand.ExecuteAsync(null);
         Assert.Single(f.Sent.OfType<CreateChannel>()); // sent once, by the dialog's submit
         Assert.True(waited!.IsRunning);
@@ -792,7 +787,7 @@ public class ServerViewModelTests
         await gast.ToggleServerMuteCommand.ExecuteAsync(null);
         f.Time.Advance(ShowAfter);
         Assert.True(gast.IsBusy);
-        f.Vm.Apply(new UserUpdated(U(2, "gast", Lobby) with { ServerMuted = true }));
+        f.Vm.Apply(new UserUpdated(User(2, "gast", Lobby, P.Speak) with { ServerMuted = true }));
         Assert.False(gast.IsBusy);
 
         // deleting a channel spins on its row until it is gone
@@ -869,7 +864,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task Separator_NoJoinNoEditNoLink_NotAMoveTarget()
     {
-        var f = Create(P.All, others: U(2, "anna", Lobby) with { CanBeModeratedByMe = true });
+        var f = Create(P.All, others: User(2, "anna", Lobby, P.Speak) with { CanBeModeratedByMe = true });
         var id = Guid.NewGuid();
         f.Vm.Apply(new ChannelAdded(new ChannelInfo(id, "", "", 5, Kind: ChannelKind.Separator)));
         var separator = f.Channel(id);
@@ -896,7 +891,7 @@ public class ServerViewModelTests
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "   ", 1)));
         Assert.Null(f.Channel(Bravo).Tooltip); // only spaces count as none
         // the same for a user row: in no known group, no tooltip
-        var g = Create(others: [U(2, "anna", Lobby, groups: [])]);
+        var g = Create(others: [User(2, "anna", Lobby, P.Speak, groups: [])]);
         Assert.Null(g.User(2).GroupTip);
         Assert.Equal("Gast", g.User(1).GroupTip);
     }
@@ -921,7 +916,7 @@ public class ServerViewModelTests
     static readonly GroupInfo[] AssignGroups =
         [new(WellKnownGroups.Guest, "Gast", P.Speak, true), new(WellKnownGroups.Admin, "Admin", P.All), new(Raid, "Raid", P.Speak, true)];
 
-    static UserInfo Weaker(IReadOnlyList<Guid>? groups = null) => U(2, "anna", Lobby, groups: groups) with { CanBeModeratedByMe = true };
+    static UserInfo Weaker(IReadOnlyList<Guid>? groups = null) => User(2, "anna", Lobby, P.Speak, groups: groups) with { CanBeModeratedByMe = true };
 
     static List<(Guid, string, bool, bool)> Ticks(UserViewModel user) => user.Groups.Select(t => (t.GroupId, t.Name, t.IsChecked, t.IsEnabled)).ToList();
 
@@ -929,7 +924,7 @@ public class ServerViewModelTests
     [Fact]
     public void UserGroups_OnlyForWeakerUsersWithAssignRight()
     {
-        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker(), U(3, "bert", Lobby)]);
+        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker(), User(3, "bert", Lobby, P.Speak)]);
         Assert.Empty(f.User(1).Groups); // myself
         Assert.Empty(f.User(3).Groups); // stronger or equal: the server does not let me act on him
         Assert.Equal([(WellKnownGroups.Guest, "Gast", true, true), (WellKnownGroups.Admin, "Admin", false, false), (Raid, "Raid", false, true)],
@@ -1011,7 +1006,7 @@ public class ServerViewModelTests
     [Fact]
     public void LastAdmin_CannotBeUnticked()
     {
-        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [U(2, "chef", Lobby, P.All, [WellKnownGroups.Admin])]);
+        var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [User(2, "chef", Lobby, P.All, [WellKnownGroups.Admin])]);
         Assert.Empty(f.User(2).Groups);
     }
 
@@ -1030,7 +1025,7 @@ public class ServerViewModelTests
                 return Task.FromResult<ChannelViewModel?>(null);
             },
         };
-        var f = Create(Moderator, dialogs: dialogs, others: [Weaker(), U(3, "bert", Lobby)]);
+        var f = Create(Moderator, dialogs: dialogs, others: [Weaker(), User(3, "bert", Lobby, P.Speak)]);
         f.Vm.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "", "", 5, Kind: ChannelKind.Separator)));
         var anna = f.User(2);
         Assert.Equal(["alpha", "Bravo"], anna.MoveTargets.Select(t => t.Channel.Name));
@@ -1086,7 +1081,7 @@ public class ServerViewModelTests
     {
         var asked = new List<string>();
         var f = Create(Moderator, dialogs: new DialogCallbacks { AskChannelPassword = name => { asked.Add(name); return Task.FromResult<string?>("geheim"); } },
-            others: [Weaker(), U(3, "bert", Lobby)]);
+            others: [Weaker(), User(3, "bert", Lobby, P.Speak)]);
         var separator = Guid.NewGuid();
         f.Vm.Apply(new ChannelAdded(new ChannelInfo(separator, "", "", 5, Kind: ChannelKind.Separator)));
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
@@ -1104,7 +1099,7 @@ public class ServerViewModelTests
         var joined = f.Vm.DropUser(me, f.Channel(Bravo));
         Assert.Equal(["Bravo"], asked);
         Assert.Equal(new JoinChannel(Bravo, "geheim"), f.Sent[^1] with { RequestId = null });
-        f.Vm.Apply(new UserUpdated(U(1, "ich", Bravo, Moderator)));
+        f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, Moderator)));
         await joined;
         Assert.Equal(Bravo, f.Vm.CurrentChannel!.Id);
     }

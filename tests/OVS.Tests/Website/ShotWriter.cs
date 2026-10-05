@@ -5,6 +5,7 @@ using Avalonia.Headless;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Animations;
+using OVS.Tests.TestSupport;
 using SkiaSharp;
 
 namespace OVS.Tests.Website;
@@ -23,17 +24,9 @@ public static class ShotWriter
     /// <summary>Lets the clock run: animations run on real time in the headless tests.</summary>
     public static void Settle(int milliseconds)
     {
-        var watch = Stopwatch.StartNew();
-        do
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
-        while (watch.ElapsedMilliseconds < milliseconds);
+        MotionWait.Settle(milliseconds); // every caller passes a positive time, so the loop runs at least once
         // one frame after the time is up: under load the last one in the loop may have started long before
-        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-        Dispatcher.UIThread.RunJobs();
+        MotionWait.Frame();
     }
 
     /// <summary>

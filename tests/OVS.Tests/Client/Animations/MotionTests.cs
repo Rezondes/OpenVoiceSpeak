@@ -11,20 +11,12 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 99 (A114, A115): the switch between the animated and the simplified display.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class MotionTests : IDisposable
+public sealed class MotionTests() : TempDirectoryTest("ovs-motion-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-motion-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
+        base.Dispose();
     }
 
     [AvaloniaFact]

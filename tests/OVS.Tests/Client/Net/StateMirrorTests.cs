@@ -6,6 +6,7 @@ using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.Links;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Net;
 
@@ -16,11 +17,11 @@ public class StateMirrorTests
     static UserInfo User(uint id, Guid channel, string nick = "u") =>
         new(id, "fp" + id, nick, channel, false, false, false, Permission.Speak, []);
 
-    static StateMirror Mirror() => new(new Welcome(1, "", new ServerSnapshot(
-        new ServerSettingsInfo("S", "", false), Lobby,
-        [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
+    static StateMirror Mirror() => Snapshots.Mirror(Snapshots.Snapshot(
+        "S", "", Lobby,
+        [new ChannelInfo(Lobby, "Lobby", "", 0)],
         [new GroupInfo(Guid.NewGuid(), "Gast", Permission.Speak)],
-        [User(1, Lobby, "ich")])));
+        [User(1, Lobby, "ich")]));
 
     [Fact]
     public void Snapshot_IsMirrored()

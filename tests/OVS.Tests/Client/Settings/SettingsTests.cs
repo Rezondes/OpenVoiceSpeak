@@ -13,18 +13,15 @@ using OVS.Client.Localization;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
+using OVS.Tests.TestSupport;
 using Key = Avalonia.Input.Key;
 using PhysicalKey = Avalonia.Input.PhysicalKey;
 using RawInputModifiers = Avalonia.Input.RawInputModifiers;
 
 namespace OVS.Tests.Client.Settings;
 
-public sealed class SettingsTests : IDisposable
+public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: false)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-settings-").FullName;
-
-    public void Dispose() => Directory.Delete(dir, true);
-
     [Fact]
     public void Missing_GivesDefaults()
     {

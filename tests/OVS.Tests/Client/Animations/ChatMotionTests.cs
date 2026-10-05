@@ -16,38 +16,19 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 107: messages, notices, the send state and the unread badge move in the animated display.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class ChatMotionTests : IDisposable
+public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: true)
 {
-    readonly string dir = Directory.CreateTempSubdirectory("ovs-chat-").FullName;
-
-    public void Dispose()
+    public override void Dispose()
     {
         Motion.IsAnimated = true;
-        try
-        {
-            Directory.Delete(dir, true);
-        }
-        catch (IOException)
-        {
-        }
-    }
-
-    static void Settle(int milliseconds)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (watch.ElapsedMilliseconds < milliseconds)
-        {
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
+        base.Dispose();
     }
 
     /// <summary>Lets the clock run until the condition holds (at most 5 s): on a busy machine frames come late.</summary>
     static void SettleUntil(Func<bool> done)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < 5000) Settle(10);
+        while (!done() && watch.ElapsedMilliseconds < 5000) MotionWait.Settle(10);
     }
 
     static void Frame()
@@ -64,7 +45,7 @@ public sealed class ChatMotionTests : IDisposable
         main.Show();
         var server = FakeServers.Admin();
         vm.Server = server;
-        Settle(700);
+        MotionWait.Settle(700);
         Motion.Apply(main, display);
         MotionWait.Connected(main); // under load connecting takes longer: no test acts while it still moves
         return (main, vm, server, main.GetVisualDescendants().OfType<ChatView>().Single());
@@ -81,7 +62,7 @@ public sealed class ChatMotionTests : IDisposable
         {
             bool settled = scroller.Extent.Height == extent && scroller.Extent.Height > scroller.Viewport.Height + 200 && AtEnd(scroller);
             extent = scroller.Extent.Height;
-            Settle(30);
+            MotionWait.Settle(30);
             return settled;
         });
     }
@@ -138,9 +119,9 @@ public sealed class ChatMotionTests : IDisposable
     {
         var (main, vm, server, chat) = Open();
         vm.Chat!.Selected = vm.Chat.Tabs[1];
-        Settle(100);
+        MotionWait.Settle(100);
         for (int i = 0; i < 5; i++) server.Apply(From("anna", 2, $"Nachricht {i}")); // into "Allgemein", not shown
-        Settle(100);
+        MotionWait.Settle(100);
         vm.Chat.Selected = vm.Chat.Tabs[0];
         Frame();
         Assert.All(chat.FindControl<ItemsControl>("History")!.GetRealizedContainers(), c => Assert.Equal(0, OffsetX(c)));
@@ -160,11 +141,11 @@ public sealed class ChatMotionTests : IDisposable
         Assert.False(pill.IsVisible);
 
         scroller.Offset = new Vector(0, 0); // the reader goes up (it also stops a glide still on its way)
-        Settle(50);
+        MotionWait.Settle(50);
         Assert.Equal(0, scroller.Offset.Y);
         server.Apply(From("anna", 2, "Noch eine"));
         SettleUntil(() => pill.IsVisible);
-        Settle(100);
+        MotionWait.Settle(100);
         Assert.Equal(0, scroller.Offset.Y); // nothing scrolls
         Assert.True(pill.IsVisible);
 
@@ -181,7 +162,7 @@ public sealed class ChatMotionTests : IDisposable
         var (main, vm, server, chat) = Open();
         vm.Chat!.Draft = "Bin gleich da";
         vm.Chat.SendCommand.Execute(null);
-        Settle(350);
+        MotionWait.Settle(350);
         var bubble = Row(chat, "Bin gleich da").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("own"));
         Assert.Contains("sending", bubble.Classes);
         server.Apply(new ChatMessage(ChatTarget.Server, 1, "ich", null, null, "Bin gleich da", DateTimeOffset.Now)); // the echo
@@ -218,7 +199,7 @@ public sealed class ChatMotionTests : IDisposable
     {
         var (main, vm, server, chat) = Open();
         vm.Chat!.Selected = vm.Chat.Tabs[1];
-        Settle(400);
+        MotionWait.Settle(400);
         server.Apply(From("anna", 2, "Hallo"));
         Frame();
         Frame();
@@ -235,10 +216,10 @@ public sealed class ChatMotionTests : IDisposable
     {
         var (main, vm, server, chat) = Open(DisplayMode.Simplified, height: 420);
         for (int i = 0; i < 25; i++) server.Apply(From("anna", 2, $"Zeile {i}"));
-        Settle(200);
+        MotionWait.Settle(200);
         var scroller = chat.FindControl<ScrollViewer>("Scroller")!;
         scroller.Offset = new Vector(0, 0);
-        Settle(50);
+        MotionWait.Settle(50);
         server.Apply(From("anna", 2, "Noch eine"));
         Frame();
         Assert.Equal((1d, 0d), (Row(chat, "Noch eine").Opacity, OffsetX(Row(chat, "Noch eine"))));
@@ -259,9 +240,9 @@ public sealed class ChatMotionTests : IDisposable
         Assert.True(glow.Any(g => g > 0), "a warning's edge glows as well");
 
         vm.Chat.Selected = vm.Chat.Tabs[1];
-        Settle(400);
+        MotionWait.Settle(400);
         server.Apply(From("anna", 2, "Eins"));
-        Settle(400);
+        MotionWait.Settle(400);
         server.Apply(From("anna", 2, "Zwei")); // the count goes up: its number ticks
         Frame();
         Frame();
@@ -276,9 +257,9 @@ public sealed class ChatMotionTests : IDisposable
     {
         var (main, vm, server, chat) = Open();
         vm.Chat!.Selected = vm.Chat.Tabs[1];
-        Settle(400);
+        MotionWait.Settle(400);
         vm.Chat.Selected = vm.Chat.Tabs[0];
-        Settle(400);
+        MotionWait.Settle(400);
         server.Apply(From("anna", 2, "Wieder da"));
         Frame();
         var (opacity, x) = Arrival(() => Row(chat, "Wieder da"));
@@ -294,7 +275,7 @@ public sealed class ChatMotionTests : IDisposable
         var scroller = chat.FindControl<ScrollViewer>("Scroller")!;
         LaidOutAtTheEnd(scroller); // the reader can only go up once the list is long and has stopped growing
         scroller.Offset = default;
-        Settle(50);
+        MotionWait.Settle(50);
         server.Apply(From("anna", 2, "Noch eine"));
         SettleUntil(() => chat.FindControl<Button>("NewMessagesPill")!.IsVisible);
         Assert.True(chat.FindControl<Button>("NewMessagesPill")!.IsVisible);
@@ -310,7 +291,7 @@ public sealed class ChatMotionTests : IDisposable
         var (main, vm, _, chat) = Open();
         vm.Chat!.Draft = "Geht nicht";
         vm.Chat.SendCommand.Execute(null);
-        Settle(350);
+        MotionWait.Settle(350);
         var entry = vm.Chat.Selected.Entries.Last(e => e.Text == "Geht nicht");
         entry.Sending!.Pending.Fail("abgelehnt"); // the server said no
         Frame();

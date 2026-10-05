@@ -1,4 +1,3 @@
-using OVS.Client.Net;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -7,7 +6,6 @@ using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.LogAccess;
-using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 
@@ -31,12 +29,12 @@ public class LogsViewModelTests
     static (LogsViewModel Logs, List<Request> Sent) Create(LogSearchResult? searchResult = null, Permission perms = Permission.LogsView,
         Func<Request, Message?>? reply = null, ManualTimeProvider? time = null)
     {
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "", false), Lobby,
-            [new ChannelInfo(Lobby, "Lobby", "", 0)], [], [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
+        var snapshot = Snapshots.Snapshot("Server", "", Lobby,
+            [new ChannelInfo(Lobby, "Lobby", "", 0)], [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All)],
             [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, perms, [])]);
         var sent = new List<Request>();
         ServerViewModel? server = null;
-        server = new ServerViewModel(new StateMirror(new Welcome(1, "", snapshot)), r =>
+        server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
         {
             sent.Add(r);
             Message? answer = reply?.Invoke(r) ?? r switch
