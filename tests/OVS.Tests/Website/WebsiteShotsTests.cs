@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.VisualTree;
-using OVS.Tests.Client;
+using OVS.Tests.Client.Localization;
 using SkiaSharp;
 
 namespace OVS.Tests.Website;
@@ -68,7 +68,7 @@ public sealed class WebsiteShotsTests : IDisposable
     [AvaloniaFact]
     public void ShowcaseServer_EnglishHasNoGermanText()
     {
-        using var scene = new WebsiteShots.Scene("en", "light");
+        using var scene = new WebsiteScene("en", "light");
         var showcase = scene.Connect();
         showcase.FillRaidChat();
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
@@ -85,7 +85,7 @@ public sealed class WebsiteShotsTests : IDisposable
     [AvaloniaFact]
     public void ShowcaseServer_NoRealData()
     {
-        using var scene = new WebsiteShots.Scene("de", "light");
+        using var scene = new WebsiteScene("de", "light");
         var showcase = scene.Connect();
         Assert.DoesNotContain("[", scene.Window.Title);
         Assert.DoesNotContain("Debug", scene.Window.Title);

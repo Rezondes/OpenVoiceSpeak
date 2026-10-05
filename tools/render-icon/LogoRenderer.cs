@@ -13,16 +13,6 @@ public static class LogoRenderer
 {
     public static readonly int[] IcoSizes = [16, 20, 24, 32, 48, 64, 256];
 
-    /// <summary>
-    /// Pixel-hinted artwork for the small sizes, where the scaled-down SVG blurs the wave into a blob. Cups and wave bars
-    /// are whole-pixel rectangles drawn without anti-aliasing, the headset arc is a thinner anti-aliased stroke whose
-    /// centre line ends in the middle of the cups. All values in pixels of that size.
-    /// Bar: wave bar width; Gap: space between bars and between the outer bars and the cups; Cup: cup width;
-    /// Top/Bottom: rows of the cups and the middle bar; Inset: how much shorter the outer bars are at each end;
-    /// Arc: arc stroke width.
-    /// </summary>
-    public sealed record SmallArt(int Bar, int Gap, int Cup, int Top, int Bottom, int Inset, float Arc);
-
     public static readonly Dictionary<int, SmallArt> Small = new()
     {
         [16] = new(Bar: 1, Gap: 1, Cup: 2, Top: 8, Bottom: 13, Inset: 1, Arc: 1f),

@@ -1,39 +1,17 @@
-using System.Globalization;
 using Avalonia;
 using Avalonia.Headless.XUnit;
 using Avalonia.Styling;
-using Avalonia.Threading;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using PlacementMode = Avalonia.Controls.PlacementMode;
 using OVS.Client.Dialogs;
-using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Client.Settings;
-using OVS.Client.ViewModels;
 using OVS.Client.Views;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Website;
-
-/// <summary>
-/// Package 116 (A124): the four looks (de/en, light/dark); skipped without OVS_SHOTS, so the normal test run and CI never
-/// render the website's images.
-/// </summary>
-public sealed class ShotVariantsAttribute : Xunit.Sdk.DataAttribute
-{
-    public ShotVariantsAttribute()
-    {
-        if (ShotWriter.Folder is null) Skip = "Website-Bilder nur mit OVS_SHOTS=<Ordner>";
-    }
-
-    public override IEnumerable<object[]> GetData(System.Reflection.MethodInfo testMethod)
-    {
-        foreach (var lang in new[] { "de", "en" })
-            foreach (var theme in new[] { "light", "dark" })
-                yield return [lang, theme];
-    }
-}
 
 /// <summary>
 /// Package 116: the website's images, rendered from the real client headless. One collection with the generator's own
@@ -44,75 +22,12 @@ public sealed class ShotVariantsAttribute : Xunit.Sdk.DataAttribute
 [Collection(Collection)]
 public sealed class WebsiteShots
 {
-    public const string Collection = "WebsiteShots";
-
-    /// <summary>One look of the client: its language, theme, an empty profile and the main window at the website's size.</summary>
-    public sealed class Scene : IDisposable
-    {
-        readonly CultureInfo before = CultureInfo.CurrentUICulture, formatsBefore = CultureInfo.CurrentCulture;
-        readonly ThemeVariant? themeBefore = Application.Current!.RequestedThemeVariant;
-        readonly string profile = Directory.CreateTempSubdirectory("ovs-shots-").FullName;
-
-        public Scene(string lang, string theme, int height = 700, Action<ClientSettings>? settings = null)
-        {
-            Lang = lang;
-            Theme = theme;
-            // texts and formats (dates in the administration) in the image's language
-            CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(lang == "en" ? "en-US" : "de-DE");
-            Application.Current!.RequestedThemeVariant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
-            // push-to-talk on mouse button 4, so the footer shows the key instead of the "no key" hint
-            var saved = new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x05))] };
-            settings?.Invoke(saved);
-            saved.Save(profile);
-            Vm = new MainViewModel(profile, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
-            Window = new MainWindow { DataContext = Vm, Width = 1100, Height = height };
-            Window.Show();
-            ShotWriter.Settle(100);
-        }
-
-        public string Lang { get; }
-        public string Theme { get; }
-        public bool English => Lang == "en";
-        public MainViewModel Vm { get; }
-        public MainWindow Window { get; }
-
-        /// <summary>Connects to a fresh showcase server and lets the server view build up.</summary>
-        public ShowcaseServer Connect()
-        {
-            var showcase = new ShowcaseServer(English);
-            Vm.Server = showcase.Server;
-            ShotWriter.Settle(900);
-            return showcase;
-        }
-
-        public string Save(string folder, string motif)
-        {
-            var path = Path.Combine(folder, $"{motif}-{Lang}-{Theme}.webp");
-            ShotWriter.SaveWebP(Window, path);
-            return path;
-        }
-
-        public void Dispose()
-        {
-            Window.Close();
-            Dispatcher.UIThread.RunJobs();
-            CultureInfo.CurrentUICulture = before;
-            CultureInfo.CurrentCulture = formatsBefore;
-            Application.Current!.RequestedThemeVariant = themeBefore; // other tests expect the theme they found
-            try
-            {
-                Directory.Delete(profile, true);
-            }
-            catch (IOException)
-            {
-            }
-        }
-    }
+    public const string Collection = MotionCollection.Name;
 
     /// <summary>The hero image: connected to the guild, in the raid, its chat open, someone speaking (unless still).</summary>
     public static string Hero(string folder, string lang, string theme, bool speaking = true)
     {
-        using var scene = new Scene(lang, theme);
+        using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
         showcase.FillRaidChat();
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
@@ -158,7 +73,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void MainPrivate(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme);
+        using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
         showcase.FillRaidChat();
         var s = showcase.Server;
@@ -176,7 +91,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void Start(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme, settings: s =>
+        using var scene = new WebsiteScene(lang, theme, settings: s =>
         {
             s.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi"));
             s.Bookmarks.Add(new Bookmark(lang == "en" ? "Friday crew" : "Freitagsrunde", "friends.example.org", 7000, "Steffi"));
@@ -188,7 +103,7 @@ public sealed class WebsiteShots
         scene.Save(Folder, "start");
     }
 
-    static void OpenSettings(Scene scene, string section, bool toBottom = false)
+    static void OpenSettings(WebsiteScene scene, string section, bool toBottom = false)
     {
         scene.Vm.OpenSettings();
         ShotWriter.Settle(700);
@@ -211,7 +126,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void SettingsAudio(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme, 760, s => s.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
+        using var scene = new WebsiteScene(lang, theme, 760, s => s.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
         scene.Connect();
         OpenSettings(scene, Strings.Ui_VolumeSection);
         Shows(scene.Window, Strings.Ui_TransmitSection);
@@ -222,7 +137,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void SettingsLook(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme, 760);
+        using var scene = new WebsiteScene(lang, theme, 760);
         scene.Connect();
         OpenSettings(scene, Strings.Ui_AppearanceSection, toBottom: true);
         Shows(scene.Window, Strings.Ui_AppearanceSection);
@@ -234,7 +149,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void UserVolume(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme);
+        using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
         showcase.FillRaidChat();
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
@@ -252,7 +167,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void ChannelDialogLocks(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme, 760);
+        using var scene = new WebsiteScene(lang, theme, 760);
         var showcase = scene.Connect();
         var officers = showcase.Server.Mirror.Channels[ShowcaseServer.Officers];
         _ = ChannelDialogView.ShowAsync(scene.Window.Overlay, new ChannelEdit(officers.Name, showcase.T("Nur für die Planung", "Planning only"), false, 8,
@@ -267,9 +182,9 @@ public sealed class WebsiteShots
     }
 
     /// <summary>The administration on one of its tabs (0 groups, 1 users, 2 bans, 3 links, 4 server, 5 logs).</summary>
-    static (Scene Scene, ShowcaseServer Showcase) Admin(string lang, string theme, int tab)
+    static (WebsiteScene Scene, ShowcaseServer Showcase) Admin(string lang, string theme, int tab)
     {
-        var scene = new Scene(lang, theme, 760);
+        var scene = new WebsiteScene(lang, theme, 760);
         var showcase = scene.Connect();
         showcase.AnswerAdministration();
         _ = scene.Vm.OpenAdminAsync();
@@ -374,13 +289,13 @@ public sealed class WebsiteShots
 
     // ---- the clips: what the animated display does, as short loops ----
 
-    static string Clip(string clip, Scene scene) => Path.Combine(Folder, "clips", $"{clip}-{scene.Lang}-{scene.Theme}");
+    static string Clip(string clip, WebsiteScene scene) => Path.Combine(Folder, "clips", $"{clip}-{scene.Lang}-{scene.Theme}");
 
     [AvaloniaTheory]
     [ShotVariants]
     public void ClipSwitch(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme);
+        using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
         showcase.AnswerAdministration();
         showcase.FillRaidChat();
@@ -398,7 +313,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void ClipConnect(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme, settings: s => s.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi")));
+        using var scene = new WebsiteScene(lang, theme, settings: s => s.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi")));
         var showcase = new ShowcaseServer(scene.English);
         ShotWriter.Record(scene.Window, Clip("clip-connect", scene), 4500, 0,
             (600, () => scene.Vm.Server = showcase.Server),
@@ -411,7 +326,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void ClipPages(string lang, string theme)
     {
-        using var scene = new Scene(lang, theme);
+        using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
         showcase.AnswerAdministration();
         showcase.FillRaidChat();
