@@ -8,6 +8,17 @@
   </PropertyGroup>
 
   <!--
+    Outside Release the documentation file is built, so a broken <see cref> (CS1574) or a <param> naming no parameter
+    (CS1572) fails the build. CS1591 (member without a comment) and CS1573 (a <param> missing beside documented ones)
+    say nothing about broken references and stay quiet. The condition is on Release, not Debug: this file is read
+    before the SDK gives Configuration its default. Release output (publish, server image) stays without the file.
+  -->
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+  </PropertyGroup>
+
+  <!--
     Package 42: raw build data, formatted by src/OVS.Shared/BuildInfo.cs. The release workflow sets OVS_BUILD_TIME
     once per run, so exe and server image carry the same version. Local Debug builds leave the time out and stay
     incremental; GitHub Actions sets GITHUB_SHA and GITHUB_ACTIONS by itself.

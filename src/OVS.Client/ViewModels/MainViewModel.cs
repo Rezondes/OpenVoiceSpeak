@@ -16,7 +16,7 @@ using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
 
-/// <param name="SavePassword">Package 39: store the password with the bookmark, after a successful connection only.</param>
+/// <param name="Save">Package 39: store the password with the bookmark, after a successful connection only.</param>
 public sealed record PasswordAnswer(string Password, bool Save);
 
 /// <param name="Password">The password shown in the dialog; stored only with SavePassword.</param>

@@ -79,6 +79,13 @@ public class LocalizationTests
         Assert.Equal(("Talk key pressed", "Talk key released"), TestCulture.With("en-US", () => (Strings.Sound_TalkKeyDown, Strings.Sound_TalkKeyUp)));
     }
 
+    /// <summary>The XAML files the text check reads, relative to the client folder with '/'.</summary>
+    static List<string> XamlFiles() =>
+        Directory.GetFiles(SourceDir(), "*.axaml", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(SourceDir(), file).Replace('\\', '/'))
+            .Where(file => !file.StartsWith("bin/") && !file.StartsWith("obj/"))
+            .ToList();
+
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>
     [Fact]
     public void Xaml_NoHardcodedText()
@@ -86,13 +93,31 @@ public class LocalizationTests
         string[] allowed = ["OpenVoiceSpeak", "O", "{}{0:0} %", "{}{0:0} dBFS", "{}{0:0} ms", "· {0}"];
         var attribute = new Regex(@"\b(Text|Header|Content|ToolTip\.Tip|Watermark|AutomationProperties\.Name|PlaceholderText)=""([^""{][^""]*)""");
         var format = new Regex(@"(?:StringFormat|FallbackValue)='([^']*[A-Za-zÄÖÜäöü][^']*)'");
-        var found = Directory.GetFiles(Path.Combine(SourceDir(), "Views"), "*.axaml")
-            .SelectMany(file => attribute.Matches(File.ReadAllText(file)).Select(m => m.Groups[2].Value)
-                .Concat(format.Matches(File.ReadAllText(file)).Select(m => m.Groups[1].Value))
+        var found = XamlFiles()
+            .SelectMany(file => attribute.Matches(File.ReadAllText(Path.Combine(SourceDir(), file))).Select(m => m.Groups[2].Value)
+                .Concat(format.Matches(File.ReadAllText(Path.Combine(SourceDir(), file))).Select(m => m.Groups[1].Value))
                 .Where(text => !allowed.Contains(text))
-                .Select(text => $"{Path.GetFileName(file)}: {text}"))
+                .Select(text => $"{file}: {text}"))
             .ToList();
         Assert.True(found.Count == 0, string.Join(Environment.NewLine, found));
+    }
+
+    /// <summary>A moved .axaml must not drop out of the text check: it reads every one, App.axaml and Styles/ too.</summary>
+    [Fact]
+    public void Xaml_ScanCoversEveryAxaml()
+    {
+        var expected = new List<string>();
+        void Walk(string dir)
+        {
+            expected.AddRange(Directory.GetFiles(dir, "*.axaml").Select(file => Path.GetRelativePath(SourceDir(), file).Replace('\\', '/')));
+            foreach (var sub in Directory.GetDirectories(dir).Where(d => Path.GetFileName(d) is not ("bin" or "obj"))) Walk(sub);
+        }
+        Walk(SourceDir());
+        var scanned = XamlFiles();
+        Assert.Equal(expected.Order(StringComparer.Ordinal), scanned.Order(StringComparer.Ordinal));
+        Assert.Contains("App.axaml", scanned);
+        Assert.Contains("Styles/Motion.axaml", scanned);
+        Assert.Contains("Views/MainWindow.axaml", scanned);
     }
 
     /// <summary>The German resource texts that differ from their English version: none of them may show in English.</summary>

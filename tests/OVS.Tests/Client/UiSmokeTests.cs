@@ -11,6 +11,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using System.Xml.Linq;
 using OVS.Client;
 using OVS.Client.Audio;
 using OVS.Client.Net;
@@ -144,6 +145,38 @@ public sealed class UiSmokeTests : IDisposable
             _ => [],
         });
 
+    static string AppXamlPath()
+    {
+        var src = new DirectoryInfo(AppContext.BaseDirectory);
+        while (src is not null && !Directory.Exists(Path.Combine(src.FullName, "src", "OVS.Client"))) src = src.Parent;
+        return Path.Combine(src!.FullName, "src", "OVS.Client", "App.axaml");
+    }
+
+    /// <summary>
+    /// The position of the Motion styles in <c>Application.Styles</c>: the compiled XAML keeps no source name on the
+    /// included styles, so it is the position of the <c>StyleInclude</c> of <c>/Styles/Motion.axaml</c> in <c>App.axaml</c>.
+    /// </summary>
+    static int MotionStylesIndex(string appXaml)
+    {
+        XNamespace avalonia = "https://github.com/avaloniaui";
+        var children = XDocument.Parse(appXaml).Root!.Element(avalonia + "Application.Styles")!.Elements().ToList();
+        return children.FindIndex(e => e.Name == avalonia + "StyleInclude" && (string?)e.Attribute("Source") == "/Styles/Motion.axaml");
+    }
+
+    /// <summary>The Motion styles are found by the include's source, wherever App.axaml puts them.</summary>
+    [Fact]
+    public void MotionStyles_FoundByName()
+    {
+        var app = File.ReadAllText(AppXamlPath());
+        Assert.Equal(2, MotionStylesIndex(app)); // FluentTheme, Controls, Motion
+        const string controls = "<StyleInclude Source=\"/Styles/Controls.axaml\" />";
+        const string motion = "<StyleInclude Source=\"/Styles/Motion.axaml\" />";
+        Assert.Contains(controls, app);
+        Assert.Contains(motion, app);
+        var reordered = app.Replace(controls, "@").Replace(motion, controls).Replace("@", motion);
+        Assert.Equal(1, MotionStylesIndex(reordered));
+    }
+
     /// <summary>
     /// Package 99 (A114): the simplified display is today's look, pixel for pixel. Every page renders exactly as it
     /// does without the animated display's styles (<c>Styles/Motion.axaml</c>).
@@ -159,7 +192,7 @@ public sealed class UiSmokeTests : IDisposable
         vm.ApplySettings(settings);
         Assert.DoesNotContain("animated", main.Classes);
         var styles = Application.Current!.Styles;
-        var motion = (Avalonia.Styling.Styles)styles[^1]; // App.axaml includes Motion.axaml last
+        var motion = (Avalonia.Styling.Styles)styles[MotionStylesIndex(File.ReadAllText(AppXamlPath()))];
         // A115: every part of every selector list starts with the class on the window
         Assert.All(AllStyles(motion).SelectMany(style => style.Selector!.ToString()!.Split(',')), part => Assert.StartsWith("Window.animated", part.Trim()));
 
