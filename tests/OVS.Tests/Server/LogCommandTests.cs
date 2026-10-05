@@ -6,6 +6,7 @@ using OVS.Server.Permissions;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server;

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Server;
 

@@ -4,6 +4,7 @@ using System.Text.Json;
 using OVS.Server.Permissions;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Server.Data;
 

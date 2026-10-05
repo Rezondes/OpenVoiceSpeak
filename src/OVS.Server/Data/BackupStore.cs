@@ -6,6 +6,7 @@ using OVS.Server.Tls;
 using OVS.Shared;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Server.Data;
 

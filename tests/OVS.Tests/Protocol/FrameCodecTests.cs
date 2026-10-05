@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Text;
+using OVS.Shared.Exceptions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Protocol;

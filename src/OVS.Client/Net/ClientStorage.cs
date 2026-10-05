@@ -1,6 +1,6 @@
 using System.Text.Json;
 using OVS.Shared.Identity;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Net;
 

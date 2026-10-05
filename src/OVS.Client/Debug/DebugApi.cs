@@ -6,6 +6,7 @@ using System.Text.Json;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Debug;
 

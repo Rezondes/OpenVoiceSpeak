@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using OVS.Client.Audio;
 using OVS.Client.Input;
 using OVS.Client.Net;
-using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Settings;
 

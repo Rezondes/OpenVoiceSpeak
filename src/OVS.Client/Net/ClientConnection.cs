@@ -3,8 +3,10 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading.Channels;
+using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Net;
 

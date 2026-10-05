@@ -11,6 +11,7 @@ using OVS.Client.Input;
 using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Client.Settings;
+using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
 
