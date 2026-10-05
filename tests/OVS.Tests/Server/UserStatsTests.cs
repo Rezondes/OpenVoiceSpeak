@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using OVS.Server.Data;
+using OVS.Server.Data.Records;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Chat;

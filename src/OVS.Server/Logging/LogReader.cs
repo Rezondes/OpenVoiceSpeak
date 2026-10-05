@@ -162,9 +162,6 @@ public sealed class LogReader(string dataDir, TimeProvider time)
     public const string ExportFolder = "logs-export";
     string ExportDir => Path.Combine(dataDir, ExportFolder);
 
-    /// <param name="FileName">The name the client saves it under.</param>
-    public sealed record LogExport(string FileName, string Path, long Size);
-
     /// <summary>Every export there is; called at start, when no session can own one yet.</summary>
     public void RemoveExports()
     {

@@ -122,7 +122,7 @@ public class StateSyncTests
 
     // ---- Package 92: clients get only the rights data they need ----
 
-    static Action<OVS.Server.Data.ServerData> AddGroup(string name, Permission perms) =>
+    static Action<OVS.Server.Data.Records.ServerData> AddGroup(string name, Permission perms) =>
         d => d.Groups.Add(new OVS.Server.Permissions.Group(Guid.NewGuid(), name, perms));
 
     /// <summary>Package 92 (AC1, AC2, A104): without GroupsView no group bits, others' bits never; the own entry stays full.</summary>

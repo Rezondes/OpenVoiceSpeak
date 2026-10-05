@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using OVS.Server.Data;
+using OVS.Server.Data.Records;
 using OVS.Server.Logging;
 using OVS.Server.Voice;
 using OVS.Shared.Permissions;

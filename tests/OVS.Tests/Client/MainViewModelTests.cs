@@ -1664,9 +1664,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// <summary>The notices added since <paramref name="before"/> of them were there, oldest first.</summary>
     Task<List<string>> NoticesSince(int before) => OnUi(() => vm.Notices.Take(vm.Notices.Count - before).Reverse().Select(n => n.Text).ToList());
 
-    static Action<OVS.Server.Data.ServerData> SecretChannel(Guid id) => d => d.Channels.Add(new OVS.Server.Data.ChannelRecord
+    static Action<OVS.Server.Data.Records.ServerData> SecretChannel(Guid id) => d => d.Channels.Add(new OVS.Server.Data.Records.ChannelRecord
     {
-        Id = id, Name = "Geheim", Order = 1, PasswordHash = OVS.Server.Data.ServerSettings.Hash("pw"),
+        Id = id, Name = "Geheim", Order = 1, PasswordHash = OVS.Server.Data.Records.ServerSettings.Hash("pw"),
     });
 
     /// <summary>AC2: back into the password channel, deafened as before, with one notice; the server sees the state too.</summary>

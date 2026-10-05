@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using OVS.Server;
 using OVS.Server.Data;
+using OVS.Server.Data.Records;
 using OVS.Server.Logging;
 using OVS.Server.Tls;
 using OVS.Server.Voice;

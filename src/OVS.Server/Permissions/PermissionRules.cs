@@ -2,8 +2,6 @@ using OVS.Shared.Permissions;
 
 namespace OVS.Server.Permissions;
 
-public sealed record Group(Guid Id, string Name, Permission Permissions);
-
 /// <summary>All server-wide permission rules. Pure functions, no I/O.</summary>
 public static class PermissionRules
 {

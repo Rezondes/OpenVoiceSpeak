@@ -1,4 +1,5 @@
 using OVS.Server;
+using OVS.Server.Exceptions;
 using OVS.Server.Logging;
 
 namespace OVS.Tests.Server;

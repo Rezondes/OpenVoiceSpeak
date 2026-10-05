@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using OVS.Server.Data;
+using OVS.Server.Data.Records;
 using OVS.Server.Tls;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;

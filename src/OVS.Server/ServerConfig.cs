@@ -1,11 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
+using OVS.Server.Exceptions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Server;
-
-public sealed class ConfigException(string message) : Exception(message);
 
 /// <summary>Startup settings. Precedence: environment variable, then server-config.json, then default.</summary>
 /// <remarks>

@@ -2,6 +2,8 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
+using OVS.Server.Data.Records;
+using OVS.Server.Exceptions;
 using OVS.Server.Tls;
 using OVS.Shared;
 using OVS.Shared.Permissions;
@@ -11,15 +13,6 @@ using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 
 namespace OVS.Server.Data;
-
-/// <summary>Package 74: what an archive says about itself (manifest.json).</summary>
-public sealed record BackupManifest(int FormatVersion, int DataVersion, string ServerVersion, DateTimeOffset CreatedAt);
-
-/// <summary>Package 89: creating or uploading would pass the count or size limit of the backups folder.</summary>
-public sealed class BackupQuotaException(string message) : Exception(message);
-
-/// <summary>Package 74: the checked contents of an archive, ready to replace the live files.</summary>
-public sealed record BackupContent(BackupManifest Manifest, byte[] Data, byte[] Certificate, byte[]? Icon);
 
 /// <summary>
 /// Package 74 (A90): backups as zip archives in &lt;DataDir&gt;/backups: manifest, server data, certificate (so the

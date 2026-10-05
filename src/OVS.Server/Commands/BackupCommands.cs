@@ -1,4 +1,5 @@
 using OVS.Server.Data;
+using OVS.Server.Exceptions;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;

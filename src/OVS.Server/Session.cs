@@ -1,6 +1,6 @@
 using System.Net;
 using System.Threading.Channels;
-using OVS.Server.Voice;
+using OVS.Server.Throttling;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
