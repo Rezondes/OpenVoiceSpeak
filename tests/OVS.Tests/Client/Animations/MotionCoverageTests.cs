@@ -608,8 +608,11 @@ public sealed class MotionCoverageTests : IDisposable
 
     // ---- the tests ----
 
-    /// <summary>AC1, AC2: every action animates in the animated display and ends as in the simplified one.</summary>
-    [AvaloniaFact]
+    /// <summary>
+    /// AC1, AC2: every action animates in the animated display and ends as in the simplified one. About a minute, so it
+    /// runs only with OVS_SLOW_TESTS (<see cref="SlowAvaloniaFactAttribute"/>).
+    /// </summary>
+    [SlowAvaloniaFact]
     public void EveryAction_AnimatesInAnimatedMode()
     {
         var animated = WalkThrough(DisplayMode.Animated);
