@@ -73,7 +73,7 @@ That is 2 + 90 = 92 types. Data records and enums go to the area they belong to 
 
 ### OVS.Server
 
-- The root keeps `Program`, `ServerConfig` (E4), `ControlServer`, `Session` and its `SessionOutbox` (the frames for the write loop; no folder named `Session/`), `ServerHost`, `AdminToken`, `Limits` (it holds all limits, not only throttling, E5), `RequestShape` and `MalformedRequest` (a top-level `internal sealed record`, E6; its name in the server log stays "MalformedRequest").
+- The root keeps `Program`, `ServerConfig` (E4), `ControlServer`, `Session` and its `SessionOutbox` (the frames for the write loop; no folder named `Session/`), `ServerHost`, `AdminToken`, `Limits` (it holds all limits, not only throttling, E5) and `RequestShape`. A frame that is a JSON object but no valid request gets no stand-in type: `ControlServer` passes its request id and problem to `ServerState.HandleMalformed` (overrides E6).
 - `Data/`: `DataStore` and the backup types `BackupStore` (create, list, find, delete, the quota, adopting a finished upload, removing its own half written archives at start), `BackupArchive` (one archive: write, read and check, manifest, entries), `BackupManifest`, `BackupContent` (the checked contents; applies itself to the data folder), `ServerIconStore` (E2), `UploadFolder` (upload ids, their hidden files, removing unfinished uploads at start), `BackupUpload` (one session's upload in progress, N8) and `SaveScheduler` (when the data file is written: at once, debounced, retried, at most once a minute per key, and on close; N8). `Data/Records/`: the persisted types `ServerSettings`, `ChannelRecord`, `ChannelLink`, `UserRecord`, `BanRecord`, `ServerData` (E1).
 - `State/`: `ServerState` and its parts (§ServerState).
 - `Permissions/`: `PermissionRules`, `Group` (E3). `Rules/`: the pure request rules of the server, one class per concept (`ChannelSettingsRule`, `ChannelCapacity`, `ChannelLinkRule`, `ModerationRule`, `ServerLimitsRule`) and the `Refusal` they return (N7). `Throttling/`: `RateLimiter` (it limits requests too, so it is not in `Voice/`, E5), `SessionThrottle` (one session's request, list, costly and chat budgets and the flood rule, N8), the guessing limits `PasswordGuessLimit` (wrong server passwords per address group), `AdminTokenGuessLimit` (wrong admin tokens per address group) and `ChannelPasswordGuessLimit` (wrong channel passwords per session and channel), and `NewIdentityLimit` (new identities per address group), N8. `Logging/`: `LogReader` (lists, pages and searches the log files), `LogExporter` (writes a download snapshot from the reader's listing and removes what a crash left behind, N8) with its result record `LogExport`, `ServerLogs`, and one session's `LogJobQueue` and `LogDownload` (N8). `Security/`: `StoredPassword` (E7, introduced by the refactoring as `PasswordHash`; a value object since N10). `Tls/`, `Voice/` (`UdpVoiceServer`, `VoiceRouting` and one session's `SessionVoice`, N8), `Exceptions/`.
@@ -86,7 +86,7 @@ What `ServerState` holds (N7): the request handlers of every area, also of backu
 
 | File | Holds |
 |---|---|
-| `ServerState.cs` | fields, constructor, settings, `Handle` and `Dispatch`, the helpers without broadcast and persistence; `BroadcastUser`, `BroadcastSettings` and `BroadcastGroups` stay here next to the per-recipient helpers they use (`Info`, `Moderates`, `SettingsInfo`, `GroupInfos`) |
+| `ServerState.cs` | fields, constructor, settings, `Handle` with the table `Routes` (one line per request type: its handler and whether it is a transfer, which the request budget exempts; `DispatchTests` fails for a request type without a line or without a test factory), `HandleMalformed`, the helpers without broadcast and persistence; `BroadcastUser`, `BroadcastSettings` and `BroadcastGroups` stay here next to the per-recipient helpers they use (`Info`, `Moderates`, `SettingsInfo`, `GroupInfos`) |
 | `ServerState.Connections.cs` | connections: `Admit`, `Remove`, `CloseAll`, `LogRejected`, `RemoveLocked`, the statistics, `ChannelLog`, `ChannelName` |
 | `ServerState.Throttling.cs` | the request limits: `Admissible`, `Throttle`, `ThrottleList`, `ThrottleHeavy`, `OnGetServerIcon` |
 | `ServerState.Persistence.cs` | `WriteData` (the save action of `SaveScheduler`: the pruning, `BeforeSave`, the write), `FlushPendingSave`, `BeforeSave`, `PruneGuests` (the daily gate `nextPrune` and its log line) |
@@ -151,7 +151,7 @@ Nested types that stay nested (private and used only by their container, B9, B14
 - Client: `MainViewModel.Restore`, `AudioEngine.Endpoint`, `Mixer.Speaker`, `SoundQueue.Playing`, `ItemMotion.Departure` and `Tracker`, `LiveMotion.Follower`, `PageMotion.Switching` and `Revealer`, `EchoCanceller.Native`, `NoiseSuppressor.Native`
 - Tests: `ManualTimeProvider.Timer`, `ChatViewModelTests.Fixture`, `ServerViewModelTests.Fixture`, `DebugApiTests.Instance`, `LiveMotionTests.ToleranceComparer`, `MotionCoverageTests.Walk`, `Step` and `Result`, `ReorderDragTests.Tree`, `UserDragTests.Tree`, `SendPathTests.TalkRig` and `MusicRig`, `VoiceFilterTests.PinkNoise`, `BackupTests.Host`, `FakeAudioDevices.FakeOutput`, `TestDispatcher.Context`
 
-Hoisted, because they are not private or are used outside their container: `AdminPlace` (was `AdminViewModel.Place`), `MalformedRequest` (was `ServerState.MalformedRequest`), `WebsiteScene` (was `WebsiteShots.Scene`), `DeviceRig` (was `SendPathTests.DeviceRig`), `LogExport` (was `LogReader.LogExport`), `DownloadChunk` (was `ChunkedDownload.Chunk`), the Win32 structs of `Splash`, `DialogKind` (was `SimpleDialogs.Kind`) and `SmallArt` (was `LogoRenderer.SmallArt`) (B10, B11).
+Hoisted, because they are not private or are used outside their container: `AdminPlace` (was `AdminViewModel.Place`), `WebsiteScene` (was `WebsiteShots.Scene`), `DeviceRig` (was `SendPathTests.DeviceRig`), `LogExport` (was `LogReader.LogExport`), `DownloadChunk` (was `ChunkedDownload.Chunk`), the Win32 structs of `Splash`, `DialogKind` (was `SimpleDialogs.Kind`) and `SmallArt` (was `LogoRenderer.SmallArt`) (B10, B11).
 
 ## Shared helpers
 
@@ -330,7 +330,7 @@ Decided from those answers:
 |---|---|---|
 | B3 | All `ServerState` parts move into a folder `State/` (namespace `OVS.Server.State`) as `ServerState.cs`, `ServerState.Admin.cs`, `ServerState.Backup.cs`, ... | The parts must share one namespace. A folder named after the type would clash (C3), and the root would get 9+ files. `State/` keeps namespace = folder |
 | B9 | Only `private` nested types used by their container alone may stay nested | The strictest reading consistent with B1/B8 |
-| B10 | Hoist all four: `AdminPlace` (was `AdminViewModel.Place`), `MalformedRequest`, `WebsiteScene` (was `WebsiteShots.Scene`), `DeviceRig` (to `TestSupport/`) | They are used outside their container, so B9 does not cover them |
+| B10 | Hoist all four: `AdminPlace` (was `AdminViewModel.Place`), `MalformedRequest` (removed later, see E6), `WebsiteScene` (was `WebsiteShots.Scene`), `DeviceRig` (to `TestSupport/`) | They are used outside their container, so B9 does not cover them |
 | B11 | Hoist both: `LogExport`, `DownloadChunk` (was `ChunkedDownload.Chunk`) | They are not private, so B9 does not cover them |
 | B14 | `EchoCanceller.Native` and `NoiseSuppressor.Native` stay nested | Private and single use (B9) |
 | B15 | `LossWindow.Stream` and `ManualTimeProvider.Timer` stay nested and unchanged | Private and single use; the clash would only matter if they were hoisted |
@@ -349,7 +349,7 @@ Decided from those answers:
 | E3 | Confirmed | |
 | E4 | `ServerConfig` stays in the root; `ConfigException` goes to `Exceptions/` | |
 | E5 | `RateLimiter` goes to `Throttling/`; `Limits.cs` stays in the root | `Limits.cs` holds all limits, not only throttling |
-| E6 | `MalformedRequest` becomes a top-level internal type in the server root | B10 |
+| E6 | `MalformedRequest` becomes a top-level internal type in the server root. Overridden by N1: the stand-in request is gone; `ControlServer` passes a malformed frame to `ServerState.HandleMalformed`, which keeps the session check and the request limits | B10; KISS: no request type that never reaches a handler |
 | E7 | PBKDF2 hashing moves to `Security/StoredPassword.cs` (server; introduced as `PasswordHash`, a value object since N10); the stored hash format stays byte-identical | DRY (A3), neutral |
 | E8 | `DeleteQuietly`, the atomic write (with a flush parameter) and `ReadChunk` move to Shared `IO/SafeFile.cs` (namespace `OVS.Shared.IO`) | DRY across Client and Server |
 | F1 | Yes, everywhere (A1 c) | |

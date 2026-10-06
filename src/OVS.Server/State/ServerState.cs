@@ -20,6 +20,7 @@ using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 using static OVS.Server.Permissions.PermissionRules;
+using RouteEntry = (System.Action<OVS.Server.State.ServerState, OVS.Server.Session, OVS.Shared.Protocol.Messages.Request> Handler, bool IsTransfer);
 
 namespace OVS.Server.State;
 
@@ -121,15 +122,72 @@ public sealed partial class ServerState
     /// <summary>Package 83: a test hook, runs under the lock right before a request's handler.</summary>
     public Action<Request>? BeforeRequest { get; set; }
 
+    /// <summary>
+    /// Every request type with its handler, built once. A transfer (one chunk per answer, pull-based) is exempt from the
+    /// request budget. Internal so a test can compare it with the request types of the protocol.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<Type, RouteEntry> Routes = new[]
+    {
+        Route<JoinChannel>(static (state, s, r) => state.OnJoinChannel(s, r)),
+        Route<CreateChannel>(static (state, s, r) => state.OnCreateChannel(s, r)),
+        Route<EditChannel>(static (state, s, r) => state.OnEditChannel(s, r)),
+        Route<ReorderChannels>(static (state, s, r) => state.OnReorderChannels(s, r)),
+        Route<DeleteChannel>(static (state, s, r) => state.OnDeleteChannel(s, r)),
+        Route<MoveUser>(static (state, s, r) => state.OnMoveUser(s, r)),
+        Route<SetSelfState>(static (state, s, r) => state.OnSetSelfState(s, r)),
+        Route<CreateGroup>(static (state, s, r) => state.OnCreateGroup(s, r)),
+        Route<ReorderGroups>(static (state, s, r) => state.OnReorderGroups(s, r)),
+        Route<UpdateGroup>(static (state, s, r) => state.OnUpdateGroup(s, r)),
+        Route<DeleteGroup>(static (state, s, r) => state.OnDeleteGroup(s, r)),
+        Route<AssignGroup>(static (state, s, r) => state.OnAssignGroup(s, r)),
+        Route<UnassignGroup>(static (state, s, r) => state.OnUnassignGroup(s, r)),
+        Route<ListUsers>(static (state, s, r) => state.OnListUsers(s, r)),
+        Route<RedeemAdminToken>(static (state, s, r) => state.OnRedeemAdminToken(s, r)),
+        Route<UpdateServerSettings>(static (state, s, r) => state.OnUpdateServerSettings(s, r)),
+        Route<SetServerIcon>(static (state, s, r) => state.OnSetServerIcon(s, r)),
+        Route<GetServerIcon>(static (state, s, r) => state.OnGetServerIcon(s, r)),
+        Route<Kick>(static (state, s, r) => state.OnKick(s, r)),
+        Route<Ban>(static (state, s, r) => state.OnBan(s, r)),
+        Route<Unban>(static (state, s, r) => state.OnUnban(s, r)),
+        Route<BanUser>(static (state, s, r) => state.OnBanUser(s, r)),
+        Route<DeleteUser>(static (state, s, r) => state.OnDeleteUser(s, r)),
+        Route<ListBans>(static (state, s, r) => state.OnListBans(s, r)),
+        Route<SetServerMute>(static (state, s, r) => state.OnSetServerMute(s, r)),
+        Route<SetStoredServerMute>(static (state, s, r) => state.OnSetStoredServerMute(s, r)),
+        Route<LinkChannels>(static (state, s, r) => state.OnLinkChannels(s, r)),
+        Route<SetChannelLinks>(static (state, s, r) => state.OnSetChannelLinks(s, r)),
+        Route<UnlinkChannels>(static (state, s, r) => state.OnUnlinkChannels(s, r)),
+        Route<SendChat>(static (state, s, r) => state.OnSendChat(s, r)),
+        Route<ListBackups>(static (state, s, r) => state.OnListBackups(s, r)),
+        Route<CreateBackup>(static (state, s, r) => state.OnCreateBackup(s, r)),
+        Route<DeleteBackup>(static (state, s, r) => state.OnDeleteBackup(s, r)),
+        Route<RestoreBackup>(static (state, s, r) => state.OnRestoreBackup(s, r)),
+        Route<DownloadBackup>(static (state, s, r) => state.OnDownloadBackup(s, r), isTransfer: true),
+        Route<UploadBackupChunk>(static (state, s, r) => state.OnUploadBackupChunk(s, r), isTransfer: true),
+        Route<ListLogs>(static (state, s, r) => state.OnListLogs(s, r)),
+        Route<ReadLog>(static (state, s, r) => state.OnReadLog(s, r)),
+        Route<SearchLogs>(static (state, s, r) => state.OnSearchLogs(s, r)),
+        Route<PrepareLogDownload>(static (state, s, r) => state.OnPrepareLogDownload(s, r)),
+        Route<DownloadLogChunk>(static (state, s, r) => state.OnDownloadLogChunk(s, r), isTransfer: true),
+    }.ToDictionary();
+
+    /// <summary>
+    /// One entry of <see cref="Routes"/>; the handler gets the request as its own type. A chunked, pull-based request
+    /// (the client asks for the next chunk after each answer) sets <paramref name="isTransfer"/>.
+    /// </summary>
+    static KeyValuePair<Type, RouteEntry> Route<T>(Action<ServerState, Session, T> handler, bool isTransfer = false) where T : Request =>
+        new(typeof(T), ((state, s, r) => handler(state, s, (T)r), isTransfer));
+
     public void Handle(Session session, Message message)
     {
         lock (gate)
         {
-            if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
+            if (!IsCurrent(session)) return;
             if (message is not Request request) return;
-            if (!Admissible(session, request)) return;
+            var route = Routes.GetValueOrDefault(request.GetType());
+            if (!Admissible(session, request.RequestId, route.IsTransfer)) return;
             // Package 83: a malformed request is answered before any handler or limit of its own sees it
-            if (((request as MalformedRequest)?.Problem ?? RequestShape.Problem(request)) is { } problem)
+            if (RequestShape.Problem(request) is { } problem)
             {
                 Fail(session, request, Codes.InvalidValue, problem);
                 return;
@@ -137,7 +195,8 @@ public sealed partial class ServerState
             try
             {
                 BeforeRequest?.Invoke(request);
-                Dispatch(session, request);
+                if (route.Handler is null) Fail(session, request, Codes.UnknownRequest);
+                else route.Handler(this, session, request);
             }
             catch (Exception e)
             {
@@ -148,54 +207,21 @@ public sealed partial class ServerState
         }
     }
 
-    void Dispatch(Session session, Request message)
+    /// <summary>
+    /// Package 83: a frame that was a JSON object but no valid request. It counts against the request budget like a
+    /// request and is answered InvalidValue with the problem; no handler, no hook, no log line.
+    /// </summary>
+    public void HandleMalformed(Session session, string? requestId, string problem)
     {
-        switch (message)
+        lock (gate)
         {
-            case JoinChannel r: OnJoinChannel(session, r); break;
-            case CreateChannel r: OnCreateChannel(session, r); break;
-            case EditChannel r: OnEditChannel(session, r); break;
-            case ReorderChannels r: OnReorderChannels(session, r); break;
-            case DeleteChannel r: OnDeleteChannel(session, r); break;
-            case MoveUser r: OnMoveUser(session, r); break;
-            case SetSelfState r: OnSetSelfState(session, r); break;
-            case CreateGroup r: OnCreateGroup(session, r); break;
-            case ReorderGroups r: OnReorderGroups(session, r); break;
-            case UpdateGroup r: OnUpdateGroup(session, r); break;
-            case DeleteGroup r: OnDeleteGroup(session, r); break;
-            case AssignGroup r: OnAssignGroup(session, r); break;
-            case UnassignGroup r: OnUnassignGroup(session, r); break;
-            case ListUsers r: OnListUsers(session, r); break;
-            case RedeemAdminToken r: OnRedeemAdminToken(session, r); break;
-            case UpdateServerSettings r: OnUpdateServerSettings(session, r); break;
-            case SetServerIcon r: OnSetServerIcon(session, r); break;
-            case GetServerIcon r: OnGetServerIcon(session, r); break;
-            case Kick r: OnKick(session, r); break;
-            case Ban r: OnBan(session, r); break;
-            case Unban r: OnUnban(session, r); break;
-            case BanUser r: OnBanUser(session, r); break;
-            case DeleteUser r: OnDeleteUser(session, r); break;
-            case ListBans r: OnListBans(session, r); break;
-            case SetServerMute r: OnSetServerMute(session, r); break;
-            case SetStoredServerMute r: OnSetStoredServerMute(session, r); break;
-            case LinkChannels r: OnLinkChannels(session, r); break;
-            case SetChannelLinks r: OnSetChannelLinks(session, r); break;
-            case UnlinkChannels r: OnUnlinkChannels(session, r); break;
-            case SendChat r: OnSendChat(session, r); break;
-            case ListBackups r: OnListBackups(session, r); break;
-            case CreateBackup r: OnCreateBackup(session, r); break;
-            case DeleteBackup r: OnDeleteBackup(session, r); break;
-            case RestoreBackup r: OnRestoreBackup(session, r); break;
-            case DownloadBackup r: OnDownloadBackup(session, r); break;
-            case UploadBackupChunk r: OnUploadBackupChunk(session, r); break;
-            case ListLogs r: OnListLogs(session, r); break;
-            case ReadLog r: OnReadLog(session, r); break;
-            case SearchLogs r: OnSearchLogs(session, r); break;
-            case PrepareLogDownload r: OnPrepareLogDownload(session, r); break;
-            case DownloadLogChunk r: OnDownloadLogChunk(session, r); break;
-            case Request r: Fail(session, r, Codes.UnknownRequest); break;
+            if (!IsCurrent(session) || !Admissible(session, requestId, isTransfer: false)) return;
+            session.Outbox.Send(new Error(requestId, Codes.InvalidValue, problem));
         }
     }
+
+    /// <summary>False once the session was removed or replaced by a newer connection (call under gate).</summary>
+    bool IsCurrent(Session session) => sessions.TryGetValue(session.Id, out var current) && current == session;
 
     // ---- Helpers ----
 

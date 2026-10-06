@@ -26,7 +26,7 @@ public sealed partial class ServerState
     {
         lock (gate)
         {
-            if (!sessions.TryGetValue(sender.Id, out var current) || current != sender) return ([], 0, Guid.Empty);
+            if (!IsCurrent(sender)) return ([], 0, Guid.Empty);
             return (VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels, id => FindChannel(id)?.IsMuted == true),
                 VoiceRouting.EffectiveTarget(sender, requestedTarget), sender.ChannelId);
         }

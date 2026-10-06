@@ -179,7 +179,7 @@ public sealed partial class ServerState
         DropUpload(session); // Package 75: an abandoned upload leaves no file
         session.LogDownload.End(); // Package 82: nor a prepared log download
         channelPasswordGuesses.ForgetSession(session.Id); // nor its wrong channel passwords
-        if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
+        if (!IsCurrent(session)) return;
         sessions.Remove(session.Id);
         voiceSessions.TryRemove(session.Id, out _);
         AddSessionStats(session, time.GetUtcNow());

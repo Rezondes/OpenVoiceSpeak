@@ -76,6 +76,88 @@ public sealed class RequestValidationTests
         await admin.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Raid");
     }
 
+    // A frame that is a JSON object but no valid request reaches the state without a request of its own.
+
+    [Theory]
+    [InlineData("r")]
+    [InlineData(null)]
+    public void HandleMalformed_CurrentSession_AnsweredInvalidValueWithTheProblem(string? requestId)
+    {
+        using var harness = new StateHarness();
+        var anna = harness.Admit("anna");
+        StateHarness.Drain(anna);
+
+        harness.State.HandleMalformed(anna, requestId, "Unbekannter Typ");
+
+        Assert.Equal(new Error(requestId, Codes.InvalidValue, "Unbekannter Typ"), Assert.Single(StateHarness.Drain(anna)));
+    }
+
+    [Fact]
+    public void HandleMalformed_HookSet_HookNotCalled()
+    {
+        using var harness = new StateHarness();
+        var anna = harness.Admit("anna");
+        var hooked = new List<string?>();
+        harness.State.BeforeRequest = r => hooked.Add(r.RequestId);
+
+        harness.State.HandleMalformed(anna, "kaputt", "Unbekannter Typ");
+        harness.Handle(anna, new JoinChannel(Guid.NewGuid()) { RequestId = "echt" });
+
+        Assert.Equal(["echt"], hooked); // the hook runs for the request, not for the malformed frame
+    }
+
+    [Fact]
+    public void HandleMalformed_Called_NothingLogged()
+    {
+        using var harness = new StateHarness();
+        var anna = harness.Admit("anna");
+        int logged = harness.Log.Count;
+
+        harness.State.HandleMalformed(anna, "r", "Unbekannter Typ");
+
+        Assert.Equal(logged, harness.Log.Count);
+    }
+
+    [Fact]
+    public void HandleMalformed_LongRequestId_AnsweredWithTheCutId()
+    {
+        using var harness = new StateHarness();
+        var anna = harness.Admit("anna");
+        StateHarness.Drain(anna);
+        var id = new string('x', Limits.MaxRequestIdLength + 1);
+
+        harness.State.HandleMalformed(anna, id, "Unbekannter Typ");
+
+        var error = Assert.IsType<Error>(Assert.Single(StateHarness.Drain(anna)));
+        Assert.Equal((id[..Limits.MaxRequestIdLength], Codes.InvalidValue), (error.RequestId, error.Code));
+    }
+
+    [Fact]
+    public void HandleMalformed_PastTheRequestBudget_RateLimited()
+    {
+        using var harness = new StateHarness();
+        var anna = harness.Admit("anna");
+        for (int i = 0; i < Limits.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
+        StateHarness.Drain(anna);
+
+        harness.State.HandleMalformed(anna, "r", "Unbekannter Typ");
+
+        Assert.Equal(new Error("r", Codes.RateLimited), Assert.Single(StateHarness.Drain(anna)));
+    }
+
+    [Fact]
+    public void Handle_BadShapePastTheRequestBudget_RateLimitedBeforeTheShapeCheck()
+    {
+        using var harness = new StateHarness();
+        var anna = harness.Admit("anna");
+        for (int i = 0; i < Limits.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
+        StateHarness.Drain(anna);
+
+        harness.Handle(anna, new CreateChannel("Raid", null!) { RequestId = "r" });
+
+        Assert.Equal(new Error("r", Codes.RateLimited), Assert.Single(StateHarness.Drain(anna)));
+    }
+
     [Theory]
     [InlineData("Admin\u200B")] // zero-width space
     [InlineData("\u202Eevil")] // right-to-left override

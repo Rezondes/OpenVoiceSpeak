@@ -1,8 +1,6 @@
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
-using OVS.Shared.Protocol.Messages.LogAccess;
-using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Server.State;
@@ -12,12 +10,11 @@ public sealed partial class ServerState
     // ---- Package 86: request limits (call under gate) ----
 
     /// <summary>The per-session budget and the RequestId length; false when the request was answered or the session dropped.</summary>
-    bool Admissible(Session s, Request r)
+    bool Admissible(Session s, string? requestId, bool isTransfer)
     {
-        var id = r.RequestId is { Length: > Limits.MaxRequestIdLength } tooLong ? tooLong[..Limits.MaxRequestIdLength] : r.RequestId;
+        var id = requestId is { Length: > Limits.MaxRequestIdLength } tooLong ? tooLong[..Limits.MaxRequestIdLength] : requestId;
         // Transfers are pull-based (one chunk per answer) and need the budget less than their speed does.
-        bool transfer = r is DownloadBackup or UploadBackupChunk or DownloadLogChunk;
-        switch (transfer ? null : s.Throttle.TakeRequest())
+        switch (isTransfer ? null : s.Throttle.TakeRequest())
         {
             case true:
                 RemoveLocked(s, new Disconnected(Codes.RateLimited));
@@ -26,7 +23,7 @@ public sealed partial class ServerState
                 s.Outbox.Send(new Error(id, Codes.RateLimited));
                 return false;
         }
-        if (id == r.RequestId) return true;
+        if (id == requestId) return true;
         s.Outbox.Send(new Error(id, Codes.InvalidValue, $"RequestId länger als {Limits.MaxRequestIdLength} Zeichen"));
         return false;
     }

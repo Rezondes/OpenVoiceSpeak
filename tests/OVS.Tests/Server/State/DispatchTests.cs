@@ -1,4 +1,5 @@
 using OVS.Server;
+using OVS.Server.State;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -76,8 +77,9 @@ public sealed class DispatchTests
     public static TheoryData<string> RequestTypeNames => new(RequestTypes().Select(t => t.Name));
 
     [Fact]
-    public void Factories_EveryRequestType_HasExactlyOneEntry()
+    public void RoutesAndFactories_EveryRequestType_ExactlyOneEntryEach()
     {
+        Assert.Equal(RequestTypes().Select(t => t.Name), ServerState.Routes.Keys.Select(t => t.Name).Order(StringComparer.Ordinal));
         Assert.Equal(RequestTypes().Select(t => t.Name), Factories.Keys.Select(t => t.Name).Order(StringComparer.Ordinal));
     }
 
@@ -96,6 +98,29 @@ public sealed class DispatchTests
 
         harness.Handle(session, request);
 
-        Assert.DoesNotContain(StateHarness.Drain(session), m => m is Error { Code: Codes.UnknownRequest });
+        var answers = StateHarness.Drain(session);
+        Assert.DoesNotContain(answers, m => m is Error { Code: Codes.UnknownRequest });
+        Assert.DoesNotContain(answers, m => m is Error { Code: Codes.RateLimited }); // not stopped by the request budget before its handler
+    }
+
+    /// <summary>Transfers (one chunk per answer) are exempt from the request budget; every other request counts.</summary>
+    [Fact]
+    public void Handle_PastTheRequestBudget_OnlyTransfersPass()
+    {
+        using var harness = new StateHarness();
+        var anna = ClientIdentity.Create().Fingerprint; // one identity, so the nickname stays hers
+        var passed = new List<string>();
+        foreach (var type in RequestTypes())
+        {
+            var session = harness.Admit("anna", anna);
+            for (int i = 0; i < Limits.RequestBurst; i++) harness.Handle(session, new JoinChannel(Unknown));
+            StateHarness.Drain(session);
+
+            harness.Handle(session, Factories[type]() with { RequestId = "r" });
+
+            if (!StateHarness.Drain(session).Any(m => m is Error { RequestId: "r", Code: Codes.RateLimited })) passed.Add(type.Name);
+            harness.State.Remove(session);
+        }
+        Assert.Equal(["DownloadBackup", "DownloadLogChunk", "UploadBackupChunk"], passed);
     }
 }

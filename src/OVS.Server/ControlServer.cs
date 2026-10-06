@@ -199,7 +199,8 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             }
             catch (InvalidRequestException e) // Package 83: a bad request is answered, only a broken frame ends the connection
             {
-                message = new MalformedRequest(e.Message) { RequestId = e.RequestId };
+                state.HandleMalformed(session, e.RequestId, e.Message);
+                continue;
             }
             if (message is null) return;
             if (message is Ping) session.Outbox.Send(new Pong());
