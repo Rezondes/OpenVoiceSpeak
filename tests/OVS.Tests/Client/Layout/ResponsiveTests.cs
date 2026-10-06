@@ -91,6 +91,19 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     static Button MenuButton(MainWindow main) => main.GetVisualDescendants().OfType<Button>()
         .Single(b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == Strings.Ui_ShowChannels);
 
+    /// <summary>
+    /// Clicks the menu button once it is at rest and checks that the click opened the drawer. After connecting, the header
+    /// slides in: a click at the centre computed mid-slide finds no button there, so on a busy machine it would miss.
+    /// </summary>
+    static void OpenDrawer(MainWindow main)
+    {
+        var button = MenuButton(main);
+        int frames = 0; // at least one frame, so the input sees the button where it is drawn
+        MotionWait.WaitFor(() => frames++ >= 1 && AtRest(button, main), 5000);
+        Click(main, button);
+        Assert.True(main.Classes.Contains("drawer"), $"the menu click at {Rows.Center(button, main)} did not open the drawer");
+    }
+
     /// <summary>Bug from the screenshot: at 776 px a wide sidebar pushed Ping, Verwaltung and Trennen out of the window.</summary>
     /// <summary>Package 104 (AC6): the settings and every administration tab fit in the simplified display as well.</summary>
     [AvaloniaTheory]
@@ -176,7 +189,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Assert.False(Sidebar(main).IsEffectivelyVisible);
         var scrim = main.FindControl<Border>("DrawerScrim")!;
 
-        Click(main, MenuButton(main));
+        OpenDrawer(main);
         Assert.True(Sidebar(main).IsEffectivelyVisible);
         Assert.True(scrim.IsEffectivelyVisible);
         Assert.True(Sidebar(main).Bounds.Width <= 312, $"{Sidebar(main).Bounds.Width}");
@@ -196,27 +209,27 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
 
-        Click(main, MenuButton(main));
+        OpenDrawer(main);
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
         Assert.True(vm.IsHomePage);
 
-        Click(main, MenuButton(main));
+        OpenDrawer(main);
         var outside = new Point(main.Bounds.Width - 10, main.Bounds.Height / 2);
         main.MouseDown(outside, MouseButton.Left);
         main.MouseUp(outside, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
 
-        Click(main, MenuButton(main));
+        OpenDrawer(main);
         vm.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
         vm.ClosePage();
 
         // wide again: the sidebar is back in its column
-        Click(main, MenuButton(main));
+        OpenDrawer(main);
         Resize(main, 1100);
         Assert.True(Sidebar(main).IsEffectivelyVisible);
         Assert.False(scrim.IsEffectivelyVisible);
@@ -771,7 +784,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = Open(width, FakeServers.Admin(), out _);
         if (width < 700)
         {
-            Click(main, MenuButton(main)); // the channel tree lives in the drawer
+            OpenDrawer(main); // the channel tree lives in the drawer
             MotionWait.WaitFor(() => Sidebar(main).IsEffectivelyVisible && AtRest(Sidebar(main), main), 5000);
         }
         var row = main.GetVisualDescendants().OfType<Border>().Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel { Nickname: "anna" });
@@ -937,8 +950,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Dispatcher.UIThread.RunJobs();
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
-        if (width < 700) Click(main, MenuButton(main)); // the channel tree lives in the drawer
-        Assert.Equal(width < 700, main.Classes.Contains("drawer")); // the click opened it (a missed click fails here, not as "0 spinners")
+        if (width < 700) OpenDrawer(main); // the channel tree lives in the drawer (a missed click fails there, not as "0 spinners")
+        else Assert.DoesNotContain("drawer", main.Classes);
         // the drawer slides in (Package 105); on a busy machine that can take longer than its 220 ms
         MotionWait.WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2, 5000);
         Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible));
@@ -1004,7 +1017,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         LayoutAssert.FitsHorizontally(main);
         if (width < 700)
         {
-            Click(main, MenuButton(main)); // the bookmarks live in the drawer
+            OpenDrawer(main); // the bookmarks live in the drawer
             LayoutAssert.FitsHorizontally(main);
             Assert.Contains(Sidebar(main).GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == "Freunde");
         }
