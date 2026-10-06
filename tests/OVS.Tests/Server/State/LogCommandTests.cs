@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using OVS.Server;
 using OVS.Server.Data.Records;
+using OVS.Server.Logging;
 using OVS.Server.Permissions;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
@@ -278,7 +279,7 @@ public sealed class LogCommandTests
 
     // ---- Package 82: download ----
 
-    static string ExportDir(TestServer server) => Path.Combine(server.DataDir, "logs-export");
+    static string ExportDir(TestServer server) => Path.Combine(server.DataDir, LogExporter.ExportFolder);
 
     static async Task<LogDownloadReady> PrepareAsync(TestClient client, params string[] ids)
     {

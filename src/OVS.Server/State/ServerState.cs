@@ -65,7 +65,8 @@ public sealed partial class ServerState
         uploads.RemoveLeftovers(); // Package 75: what a crash left behind
         backups.RemoveUnfinished();
         LogReader = new LogReader(config.DataDir, time); // Package 81
-        LogReader.RemoveExports(); // Package 82: what a crash left behind
+        logExporter = new LogExporter(config.DataDir, LogReader, time);
+        logExporter.RemoveExports(); // Package 82: what a crash left behind
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         saves = new SaveScheduler(gate, WriteData, time, line => logs.Server(line));
         bool pruned = PruneGuests(time.GetUtcNow());

@@ -15,6 +15,7 @@ namespace OVS.Server.State;
 public sealed partial class ServerState
 {
     public LogReader LogReader { get; }
+    readonly LogExporter logExporter;
 
     void OnListLogs(Session s, ListLogs r)
     {
@@ -70,7 +71,7 @@ public sealed partial class ServerState
         QueueLogJob(s, r, () =>
         {
             var downloadId = Guid.NewGuid().ToString("N");
-            var (export, code) = LogReader.Export(downloadId, ids, names);
+            var (export, code) = logExporter.Export(downloadId, ids, names);
             if (export is null) return new Error(r.RequestId, code);
             if (!s.LogDownload.TrySet(downloadId, export.Path))
             {
