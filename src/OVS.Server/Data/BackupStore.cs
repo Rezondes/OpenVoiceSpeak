@@ -1,35 +1,23 @@
-using System.IO.Compression;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 using OVS.Server.Data.Records;
 using OVS.Server.Exceptions;
-using OVS.Server.Tls;
 using OVS.Shared;
 using OVS.Shared.IO;
 using OVS.Shared.Logging;
-using OVS.Shared.Protocol;
-using OVS.Shared.Protocol.Framing;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 
 namespace OVS.Server.Data;
 
 /// <summary>
-/// Package 74 (A90): backups as zip archives in &lt;DataDir&gt;/backups: manifest, server data, certificate (so the
-/// fingerprint stays the same) and logo, never the logs. Requests only ever name a file from List(); archive entries
-/// are only read by their known names, never extracted by their path.
+/// Package 74 (A90): the backup archives (<see cref="BackupArchive"/>) in &lt;DataDir&gt;/backups: create, list, find,
+/// delete, the quota, and adopting a finished upload. Requests only ever name a file from List().
 /// </summary>
 public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount = Limits.MaxBackups, long maxBytes = Limits.MaxBackupBytes)
 {
     public const string FolderName = "backups";
     public const string Extension = ".ovsbackup";
     public const string SafetyPrefix = "vor-wiederherstellung_";
-    public const int FormatVersion = 1;
-    const string ManifestEntry = "manifest.json";
+    public const string UploadedPrefix = "hochgeladen_"; // Package 75: an adopted upload
     const string TmpSuffix = ".tmp";
-    // ponytail: every entry is read into memory; the real files are a few MB, the cap stops a zip bomb
-    const long MaxEntryBytes = 64L * 1024 * 1024;
-    const long MaxManifestBytes = 16 * 1024; // Package 89: the listing reads every manifest
     /// <summary>Package 89: the last listing and the folder's write time it belongs to; any added, removed or renamed file changes that time.</summary>
     Dictionary<string, (long Length, DateTime Written, BackupInfo Info)>? cache;
 
@@ -39,19 +27,12 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     public BackupInfo Create(string prefix = "")
     {
         var now = time.GetUtcNow();
-        var manifest = new BackupManifest(FormatVersion, ServerData.CurrentVersion, BuildInfo.Current.Version, now);
+        var manifest = new BackupManifest(BackupArchive.FormatVersion, ServerData.CurrentVersion, BuildInfo.Current.Version, now);
         var (name, path) = NewName(prefix, now);
         var tmp = path + TmpSuffix;
         try
         {
-            using (var zip = ZipFile.Open(tmp, ZipArchiveMode.Create))
-            {
-                Add(zip, ManifestEntry, JsonSerializer.SerializeToUtf8Bytes(manifest, ProtocolJson.Options));
-                Add(zip, DataStore.FileName, File.ReadAllBytes(Path.Combine(dataDir, DataStore.FileName)));
-                Add(zip, ServerCertificate.FileName, File.ReadAllBytes(Path.Combine(dataDir, ServerCertificate.FileName)));
-                var icon = Path.Combine(dataDir, ServerIconStore.FileName);
-                if (File.Exists(icon)) Add(zip, ServerIconStore.FileName, File.ReadAllBytes(icon));
-            }
+            BackupArchive.Write(tmp, manifest, dataDir);
             if (QuotaProblem(new FileInfo(tmp).Length) is { } problem) throw new BackupQuotaException(problem);
             File.Move(tmp, path);
         }
@@ -82,44 +63,15 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         return (name, Path.Combine(Folder, name));
     }
 
-    // ---- Package 75: uploads land in a hidden file until the whole archive is checked ----
-
-    public const string UploadPrefix = ".upload-";
-    public const string UploadedPrefix = "hochgeladen_";
-
-    /// <summary>32 lowercase hex digits (Guid "N"), so an id can never name a path.</summary>
-    public static bool IsUploadId(string? id) => id is { Length: 32 } && id.All(char.IsAsciiHexDigitLower);
-
-    /// <summary>Only call with an id that passed IsUploadId.</summary>
-    public string UploadPath(string id)
+    /// <summary>Package 75: checks a finished upload (<see cref="UploadFolder"/>) like a restore would, then gives it a normal backup name. Throws InvalidDataException or BackupQuotaException.</summary>
+    public BackupInfo AdoptUpload(string uploadPath)
     {
-        Directory.CreateDirectory(Folder);
-        return Path.Combine(Folder, UploadPrefix + id);
-    }
-
-    /// <summary>Checks a finished upload like a restore would, then gives it a normal backup name. Throws InvalidDataException or BackupQuotaException.</summary>
-    public BackupInfo AcceptUpload(string uploadPath)
-    {
-        var manifest = Read(uploadPath).Manifest;
+        var manifest = BackupArchive.Read(uploadPath).Manifest;
         if (QuotaProblem(new FileInfo(uploadPath).Length) is { } problem) throw new BackupQuotaException(problem);
         var (name, path) = NewName(UploadedPrefix, time.GetUtcNow());
         File.Move(uploadPath, path);
         cache = null;
         return new BackupInfo(name, manifest.CreatedAt, new FileInfo(path).Length, manifest.ServerVersion);
-    }
-
-    /// <summary>Unfinished uploads a crash or a lost connection left behind, and half written archives.</summary>
-    public void RemoveUploads()
-    {
-        if (!Directory.Exists(Folder)) return;
-        foreach (var file in Directory.GetFiles(Folder, UploadPrefix + "*")) SafeFile.DeleteQuietly(file);
-        foreach (var file in Directory.GetFiles(Folder, "*" + Extension + TmpSuffix)) SafeFile.DeleteQuietly(file);
-    }
-
-    static void Add(ZipArchive zip, string name, byte[] bytes)
-    {
-        using var stream = zip.CreateEntry(name, CompressionLevel.Optimal).Open();
-        stream.Write(bytes);
     }
 
     /// <summary>
@@ -142,7 +94,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
                 seen[file.Name] = entry;
                 continue;
             }
-            var manifest = TryReadManifest(f);
+            var manifest = BackupArchive.TryReadManifest(f);
             var info = new BackupInfo(file.Name, manifest?.CreatedAt ?? file.LastWriteTimeUtc, file.Length, manifest?.ServerVersion ?? "?");
             seen[file.Name] = (file.Length, file.LastWriteTimeUtc, info);
         }
@@ -156,87 +108,16 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     public string? Find(string? fileName) =>
         List().Any(b => b.FileName == fileName) ? Path.Combine(Folder, fileName!) : null;
 
-    static BackupManifest? TryReadManifest(string path)
+    /// <summary>Half written archives a crash left behind.</summary>
+    public void RemoveUnfinished()
     {
-        try
-        {
-            using var zip = ZipFile.OpenRead(path);
-            return ParseManifest(ReadEntry(zip, ManifestEntry, MaxManifestBytes));
-        }
-        catch (Exception) // Package 89: whatever is wrong with it, the archive is listed without a version
-        {
-            return null;
-        }
-    }
-
-    static BackupManifest? ParseManifest(byte[]? bytes) =>
-        bytes is null ? null : JsonSerializer.Deserialize<BackupManifest>(bytes, ProtocolJson.Options);
-
-    /// <summary>An entry by its exact name, at most max bytes; null when missing.</summary>
-    static byte[]? ReadEntry(ZipArchive zip, string name, long max = MaxEntryBytes)
-    {
-        var entry = zip.GetEntry(name);
-        if (entry is null) return null;
-        if (entry.Length > max) throw new InvalidDataException($"{name} ist zu gross");
-        using var stream = entry.Open();
-        using var copy = new MemoryStream();
-        var buffer = new byte[81920];
-        int read;
-        while ((read = stream.Read(buffer)) > 0)
-        {
-            if (copy.Length + read > max) throw new InvalidDataException($"{name} ist zu gross"); // Length can lie
-            copy.Write(buffer, 0, read);
-        }
-        return copy.ToArray();
-    }
-
-    /// <summary>Reads and checks an archive completely without touching the live files.</summary>
-    /// <exception cref="InvalidDataException">With a reason for the log; Package 89: for every failure, expected or not.</exception>
-    public static BackupContent Read(string path)
-    {
-        try
-        {
-            using var zip = ZipFile.OpenRead(path);
-            var manifest = ParseManifest(ReadEntry(zip, ManifestEntry, MaxManifestBytes)) ?? throw new InvalidDataException("manifest.json fehlt");
-            if (manifest.ServerVersion is null) throw new InvalidDataException("manifest.json ohne Serverversion");
-            if (manifest.FormatVersion != FormatVersion) throw new InvalidDataException($"unbekanntes Format {manifest.FormatVersion}");
-            if (manifest.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"Datenversion {manifest.DataVersion} ist neuer als {ServerData.CurrentVersion}");
-            var dataBytes = ReadEntry(zip, DataStore.FileName) ?? throw new InvalidDataException($"{DataStore.FileName} fehlt");
-            var data = JsonSerializer.Deserialize<ServerData>(dataBytes, ProtocolJson.Options) ?? throw new InvalidDataException($"{DataStore.FileName} ist leer");
-            if (data.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"Datenversion {data.DataVersion} ist neuer als {ServerData.CurrentVersion}");
-            Validate(data);
-            var cert = ReadEntry(zip, ServerCertificate.FileName) ?? throw new InvalidDataException($"{ServerCertificate.FileName} fehlt");
-            using (X509CertificateLoader.LoadPkcs12(cert, null)) { } // readable, or CryptographicException
-            var icon = ReadEntry(zip, ServerIconStore.FileName);
-            if (icon is not null && ServerIconFormat.Validate(icon) is { } why) throw new InvalidDataException($"Logo ungültig: {why}");
-            return new BackupContent(manifest, dataBytes, cert, icon);
-        }
-        catch (Exception e) when (e is not InvalidDataException) // Package 89: nothing unexpected gets past the check
-        {
-            throw new InvalidDataException(e.Message, e);
-        }
-    }
-
-    /// <summary>Package 89 (A101): everything a start of the server relies on (<see cref="ServerData.FindProblem"/>), so a restored archive can never keep it from starting.</summary>
-    /// <exception cref="InvalidDataException">With the reason for the log.</exception>
-    public static void Validate(ServerData d)
-    {
-        if (d.FindProblem() is { } problem) throw new InvalidDataException(problem);
+        if (!Directory.Exists(Folder)) return;
+        foreach (var file in Directory.GetFiles(Folder, "*" + Extension + TmpSuffix)) SafeFile.DeleteQuietly(file);
     }
 
     public void Delete(string path)
     {
         File.Delete(path);
         cache = null;
-    }
-
-    /// <summary>Replaces the live files with the checked contents, each written to a .tmp and then moved.</summary>
-    public static void Apply(string dataDir, BackupContent content)
-    {
-        SafeFile.WriteAtomic(Path.Combine(dataDir, ServerCertificate.FileName), content.Certificate, flushToDisk: true);
-        var icon = Path.Combine(dataDir, ServerIconStore.FileName);
-        if (content.Icon is null) File.Delete(icon);
-        else SafeFile.WriteAtomic(icon, content.Icon, flushToDisk: true);
-        SafeFile.WriteAtomic(Path.Combine(dataDir, DataStore.FileName), content.Data, flushToDisk: true); // last: the data is what counts
     }
 }

@@ -34,6 +34,7 @@ public sealed partial class ServerState
     readonly DataStore store;
     readonly ServerIconStore icon;
     readonly BackupStore backups; // Package 74
+    readonly UploadFolder uploads; // Package 75
     readonly ServerData data;
     readonly TimeProvider time;
     readonly ServerLogs logs;
@@ -60,7 +61,9 @@ public sealed partial class ServerState
         store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
         icon = new ServerIconStore(config.DataDir);
         backups = new BackupStore(config.DataDir, time);
-        backups.RemoveUploads(); // Package 75: what a crash left behind
+        uploads = new UploadFolder(backups.Folder);
+        uploads.RemoveLeftovers(); // Package 75: what a crash left behind
+        backups.RemoveUnfinished();
         LogReader = new LogReader(config.DataDir, time); // Package 81
         LogReader.RemoveExports(); // Package 82: what a crash left behind
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));

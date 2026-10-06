@@ -86,9 +86,9 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
 
         // a backup is checked the same way: a voice channel outside 16 to 128 kbps is refused
         old.Users.Add(new UserRecord { Fingerprint = "ab", GroupIds = [PermissionRules.AdminGroupId] });
-        BackupStore.Validate(old);
+        BackupArchive.Validate(old);
         old.Channels[1].Bitrate = 200;
-        Assert.Throws<InvalidDataException>(() => BackupStore.Validate(old));
+        Assert.Throws<InvalidDataException>(() => BackupArchive.Validate(old));
     }
 
     [Fact]

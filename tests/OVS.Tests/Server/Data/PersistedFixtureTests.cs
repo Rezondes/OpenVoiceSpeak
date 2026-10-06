@@ -43,10 +43,10 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
         var store = new BackupStore(dir, new ManualTimeProvider(Date));
 
         var info = Assert.Single(store.List());
-        var content = BackupStore.Read(store.Find(info.FileName)!);
+        var content = BackupArchive.Read(store.Find(info.FileName)!);
 
         Assert.Equal((BackupName, Date, BuildVersion), (info.FileName, info.CreatedAt, info.ServerVersion));
-        Assert.Equal(new BackupManifest(BackupStore.FormatVersion, 6, BuildVersion, Date), content.Manifest);
+        Assert.Equal(new BackupManifest(BackupArchive.FormatVersion, 6, BuildVersion, Date), content.Manifest);
         Assert.Equivalent(Expected(version), JsonSerializer.Deserialize<ServerData>(content.Data, ProtocolJson.Options), strict: true);
         using var certificate = X509CertificateLoader.LoadPkcs12(content.Certificate, null);
         Assert.Equal("CN=OpenVoiceSpeak", certificate.Subject);

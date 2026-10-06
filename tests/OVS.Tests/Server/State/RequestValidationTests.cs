@@ -264,9 +264,9 @@ public sealed class RequestValidationTests
         var data = ServerData.CreateDefault(new ServerConfig(0, "unused", 10, "Testserver", ""));
         data.Users.Add(new UserRecord { Fingerprint = "f", LastNickname = "Alt\u200B", GroupIds = [WellKnownGroups.Admin] });
         data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Raid\u202E", Order = 1 });
-        BackupStore.Validate(data);
+        BackupArchive.Validate(data);
 
         data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Kaputt\u0001", Order = 2 });
-        Assert.Throws<InvalidDataException>(() => BackupStore.Validate(data));
+        Assert.Throws<InvalidDataException>(() => BackupArchive.Validate(data));
     }
 }

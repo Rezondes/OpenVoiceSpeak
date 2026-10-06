@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using OVS.Server.Data;
 using OVS.Server.Logging;
 using OVS.Server.Tls;
 using OVS.Server.Voice;
@@ -109,7 +108,7 @@ public static class ServerHost
         {
             try
             {
-                BackupStore.Apply(config.DataDir, restore);
+                restore.ApplyTo(config.DataDir);
                 logs.Server($"Backup eingespielt (Datenversion {restore.Manifest.DataVersion}, Serverversion {restore.Manifest.ServerVersion})");
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)

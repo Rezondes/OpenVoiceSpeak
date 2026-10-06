@@ -859,7 +859,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         // what a crash or an older version left behind goes at the next start
         File.Delete(Path.Combine(dir, DataStore.FileName));
         File.WriteAllText(Path.Combine(store.Folder, "2026-01-01_12-00-00.ovsbackup.tmp"), "x");
-        File.WriteAllText(Path.Combine(store.Folder, BackupStore.UploadPrefix + new string('a', 32)), "x");
+        File.WriteAllText(Path.Combine(store.Folder, UploadFolder.Prefix + new string('a', 32)), "x");
         File.WriteAllText(Path.Combine(store.Folder, "behalten.ovsbackup"), "x");
         await using var server = await TestServer.StartAsync(dataDir: dir);
         Assert.Equal(["behalten.ovsbackup"], Directory.GetFiles(store.Folder).Select(Path.GetFileName));

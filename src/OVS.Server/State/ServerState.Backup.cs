@@ -116,7 +116,7 @@ public sealed partial class ServerState
             DropUpload(s);
             return;
         }
-        if (!BackupStore.IsUploadId(r.UploadId) || r.DataBase64.Length > Base64Size.Encoded(ProtocolInfo.BackupChunkBytes))
+        if (!UploadFolder.IsValidId(r.UploadId) || r.DataBase64.Length > Base64Size.Encoded(ProtocolInfo.BackupChunkBytes))
         {
             Fail(s, r, Codes.InvalidValue);
             return;
@@ -129,7 +129,7 @@ public sealed partial class ServerState
                 Fail(s, r, Codes.InvalidValue, "unbekannter Upload");
                 return;
             }
-            s.Upload = new BackupUpload(r.UploadId, backups.UploadPath(r.UploadId));
+            s.Upload = new BackupUpload(r.UploadId, uploads.PreparePath(r.UploadId));
         }
         var upload = s.Upload!;
         var buffer = new byte[Base64Size.Decoded(r.DataBase64.Length)];
@@ -181,7 +181,7 @@ public sealed partial class ServerState
         BackupInfo info;
         try
         {
-            info = backups.AcceptUpload(path);
+            info = backups.AdoptUpload(path);
         }
         catch (BackupQuotaException e)
         {
@@ -222,7 +222,7 @@ public sealed partial class ServerState
         BackupContent content;
         try
         {
-            content = BackupStore.Read(path);
+            content = BackupArchive.Read(path);
         }
         catch (InvalidDataException e)
         {
