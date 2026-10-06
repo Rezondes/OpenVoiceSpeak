@@ -1,4 +1,3 @@
-using System.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
@@ -68,26 +67,5 @@ public sealed partial class ServerState
         }
         s.ServedIconHash = icon.Hash;
         s.Outbox.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64));
-    }
-
-    /// <summary>Package 87: counts an unknown fingerprint of this source; false (and one log line per window) above the limit.</summary>
-    bool CountNewIdentity(IPAddress source, IPAddress ip, DateTimeOffset now)
-    {
-        if (now >= nextIdentitySweep)
-        {
-            foreach (var (key, e) in newIdentities)
-                if (now - e.First >= Limits.NewIdentityWindow) newIdentities.Remove(key);
-            nextIdentitySweep = now + Limits.NewIdentityWindow;
-        }
-        (int Count, DateTimeOffset First, bool Logged) entry = newIdentities.TryGetValue(source, out var old) && now - old.First < Limits.NewIdentityWindow ? old : (0, now, false);
-        if (entry.Count >= Limits.NewIdentitiesPerHour)
-        {
-            if (!entry.Logged)
-                logs.Server($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({Limits.NewIdentitiesPerHour} pro Stunde)");
-            newIdentities[source] = entry with { Logged = true };
-            return false;
-        }
-        newIdentities[source] = entry with { Count = entry.Count + 1 };
-        return true;
     }
 }

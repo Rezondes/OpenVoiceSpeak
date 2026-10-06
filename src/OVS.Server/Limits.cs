@@ -25,6 +25,10 @@ public static class Limits
     /// <summary>Wrong admin tokens per IP (IPv6: per /64) within AdminTokenWindow; later attempts get RateLimited.</summary>
     public const int AdminTokenFailures = 5;
     public static readonly TimeSpan AdminTokenWindow = TimeSpan.FromMinutes(10);
+    /// <summary>Wrong server passwords per IP (IPv6: per /64): this many block for a minute, each further one doubles it up to an hour (PasswordGuessLimit.BlockFor).</summary>
+    public const int FreePasswordFailures = 5;
+    /// <summary>A source's wrong server passwords are forgotten this long after its last one.</summary>
+    public static readonly TimeSpan PasswordFailureMemory = TimeSpan.FromDays(1);
 
     // ---- Outbox and connections ----
     public const int MaxOutboxMessages = 1024;

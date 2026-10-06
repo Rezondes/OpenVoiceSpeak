@@ -21,17 +21,14 @@ public sealed partial class ServerState
         // Package 86: at most AdminTokenFailures wrong tokens per source and window, even across sessions
         var source = IpAddresses.ToAddressGroup(s.Ip);
         var now = time.GetUtcNow();
-        if (adminTokenFailures.TryGetValue(source, out var f) && now - f.First >= Limits.AdminTokenWindow)
-            adminTokenFailures.Remove(source);
-        if (adminTokenFailures.GetValueOrDefault(source).Count >= Limits.AdminTokenFailures)
+        if (adminTokenGuesses.IsBlocked(source, now))
         {
             Fail(s, r, Codes.RateLimited);
             return;
         }
         if (!adminToken.TryRedeem(r.Token))
         {
-            var (count, first) = adminTokenFailures.GetValueOrDefault(source, (0, now));
-            adminTokenFailures[source] = (count + 1, first);
+            adminTokenGuesses.RecordFailure(source, now);
             logs.Server($"Admin-Token falsch von {s.Nickname} ({s.Ip})");
             Fail(s, r, Codes.InvalidToken);
             return;

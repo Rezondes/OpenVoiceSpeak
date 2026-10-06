@@ -5,6 +5,7 @@ using OVS.Server.Data;
 using OVS.Server.Data.Records;
 using OVS.Server.Logging;
 using OVS.Server.Rules;
+using OVS.Server.Throttling;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -26,8 +27,6 @@ namespace OVS.Server.State;
 public sealed partial class ServerState
 {
     const int MaxConnectionsPerIp = 5;
-    const int FreePasswordFailures = 5;
-    static readonly TimeSpan ForgetPasswordFailures = TimeSpan.FromDays(1);
 
     // ponytail: one global lock for all state; fine for a few hundred users, shard per channel if it ever contends
     readonly object gate = new();
@@ -42,13 +41,13 @@ public sealed partial class ServerState
     /// <summary>Package 88: the same sessions for the UDP path, read without the lock; changed together with sessions.</summary>
     readonly ConcurrentDictionary<uint, Session> voiceSessions = new();
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
-    readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> passwordFailures = [];
-    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per address group (IpAddresses.ToAddressGroup)
-    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool Logged)> newIdentities = []; // Package 87, per address group
-    DateTimeOffset nextIdentitySweep;
+    readonly PasswordGuessLimit passwordGuesses = new(); // Package 91
+    readonly AdminTokenGuessLimit adminTokenGuesses = new(); // Package 86
+    /// <summary>Package 94; internal so a test can see that ended sessions leave nothing behind.</summary>
+    internal readonly ChannelPasswordGuessLimit channelPasswordGuesses = new();
+    readonly NewIdentityLimit newIdentities = new(); // Package 87
     readonly SaveScheduler saves;
     DateTimeOffset nextPrune; // the next daily prune of unused guests, checked on each save
-    DateTimeOffset nextPasswordSweep;
     readonly AdminToken adminToken = new();
     uint lastSessionId;
     string? closedWith; // set by CloseAll: the reason every later handshake is rejected with

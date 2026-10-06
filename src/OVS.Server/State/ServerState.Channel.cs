@@ -176,19 +176,15 @@ public sealed partial class ServerState
     string? CheckChannelPassword(Session actor, ChannelRecord channel, string password)
     {
         var now = time.GetUtcNow();
-        var failures = actor.ChannelPasswordFailures;
-        if (failures.TryGetValue(channel.Id, out var f) && now < f.BlockedUntil) return Codes.RateLimited;
+        if (channelPasswordGuesses.IsBlocked(actor.Id, channel.Id, now)) return Codes.RateLimited;
         if (channel.CheckPassword(password))
         {
-            failures.Remove(channel.Id);
+            channelPasswordGuesses.Forget(actor.Id, channel.Id);
             return null;
         }
-        if (now - f.First > Limits.ChannelPasswordWindow || f.Count >= Limits.ChannelPasswordFailures) f = (0, now, default);
-        f.Count++;
-        if (f.Count >= Limits.ChannelPasswordFailures) f.BlockedUntil = now + Limits.ChannelPasswordBlock;
-        failures[channel.Id] = f;
-        logs.Server($"Falsches Channel-Passwort von {actor.Nickname} für '{channel.Name}' ({f.Count}. Versuch)" +
-                    (f.Count >= Limits.ChannelPasswordFailures ? $", gesperrt für {Limits.ChannelPasswordBlock.TotalMinutes:0} Minuten" : ""));
+        int count = channelPasswordGuesses.RecordFailure(actor.Id, channel.Id, now);
+        logs.Server($"Falsches Channel-Passwort von {actor.Nickname} für '{channel.Name}' ({count}. Versuch)" +
+                    (count >= Limits.ChannelPasswordFailures ? $", gesperrt für {Limits.ChannelPasswordBlock.TotalMinutes:0} Minuten" : ""));
         return Codes.WrongChannelPassword;
     }
 

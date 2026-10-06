@@ -44,28 +44,6 @@ public sealed partial class ServerState
         }
     }
 
-    // ---- Password guessing (call under gate) ----
-
-    /// <summary>From the 5th wrong password on: blocked 1, 2, 4, ... minutes (at most 60) after the last wrong one.</summary>
-    static TimeSpan PasswordBlock(int failures) =>
-        failures < FreePasswordFailures ? TimeSpan.Zero
-            : TimeSpan.FromMinutes(Math.Min(60, 1 << Math.Min(failures - FreePasswordFailures, 6)));
-
-    bool PasswordBlocked(IPAddress source, DateTimeOffset now) =>
-        passwordFailures.TryGetValue(source, out var f) && now < f.Last + PasswordBlock(f.Count);
-
-    void RecordPasswordFailure(IPAddress source, DateTimeOffset now)
-    {
-        if (now >= nextPasswordSweep)
-        {
-            foreach (var (key, f) in passwordFailures)
-                if (now - f.Last >= ForgetPasswordFailures) passwordFailures.Remove(key);
-            nextPasswordSweep = now + ForgetPasswordFailures;
-        }
-        int count = passwordFailures.TryGetValue(source, out var old) && now - old.Last < ForgetPasswordFailures ? old.Count : 0;
-        passwordFailures[source] = (count + 1, now);
-    }
-
     public (Session? Session, Rejected? Rejection) Admit(string fingerprint, string nickname, IPAddress ip, string? password)
     {
         lock (gate)
@@ -86,13 +64,13 @@ public sealed partial class ServerState
             }
 
             // A source that guessed wrong too often is turned away before its password is even looked at.
-            if (data.Settings.StoredPassword is not null && PasswordBlocked(source, now))
+            if (data.Settings.StoredPassword is not null && passwordGuesses.IsBlocked(source, now))
                 return (null, new Rejected(Codes.TooManyPasswordAttempts));
             // Package 91: PBKDF2 with 100,000 iterations, about 10 ms on a desktop CPU, under the lock
             // ponytail: verified under the global lock; move it before the lock if slow hosts make logins stall the server
             if (!data.Settings.CheckPassword(password))
             {
-                RecordPasswordFailure(source, now);
+                passwordGuesses.RecordFailure(source, now);
                 return (null, new Rejected(Codes.WrongPassword));
             }
             if (data.Settings.HasLegacyHash()) // Package 91: the right password turns the old unsalted hash into the new format
@@ -117,7 +95,12 @@ public sealed partial class ServerState
                 return (null, new Rejected(Codes.NicknameTaken));
 
             var user = FindUser(fingerprint);
-            if (user is null && !CountNewIdentity(source, ip, now)) return (null, new Rejected(Codes.RateLimited));
+            if (user is null && !newIdentities.TryCount(source, now, out bool firstRefusal))
+            {
+                if (firstRefusal)
+                    logs.Server($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({Limits.NewIdentitiesPerHour} pro Stunde)");
+                return (null, new Rejected(Codes.RateLimited));
+            }
 
             if (replaced is not null) RemoveLocked(replaced, new Disconnected(Codes.ReplacedByNewConnection));
 
@@ -173,6 +156,7 @@ public sealed partial class ServerState
                 s.Outbox.Close(final);
                 DropUpload(s);
                 s.LogDownload.End(); // Package 82
+                channelPasswordGuesses.ForgetSession(s.Id);
                 if (!statsCounted) AddSessionStats(s, now);
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
@@ -194,6 +178,7 @@ public sealed partial class ServerState
         session.Outbox.Close(final);
         DropUpload(session); // Package 75: an abandoned upload leaves no file
         session.LogDownload.End(); // Package 82: nor a prepared log download
+        channelPasswordGuesses.ForgetSession(session.Id); // nor its wrong channel passwords
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
         voiceSessions.TryRemove(session.Id, out _);
