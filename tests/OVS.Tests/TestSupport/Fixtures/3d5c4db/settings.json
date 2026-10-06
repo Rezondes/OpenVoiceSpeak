@@ -1,0 +1,76 @@
+{
+  "settingsVersion": 3,
+  "bookmarks": [
+    {
+      "name": "Zuhause",
+      "host": "voice.example.org",
+      "port": 9987,
+      "nickname": "Anna",
+      "protectedPassword": null,
+      "hasSavedPassword": false
+    },
+    {
+      "name": "Mit Passwort",
+      "host": "192.0.2.20",
+      "port": 9000,
+      "nickname": "Anna",
+      "protectedPassword": "bm90LWEtZHBhcGktYmxvYg==",
+      "hasSavedPassword": false
+    }
+  ],
+  "inputDeviceId": "{0.0.1.00000000}.{mic}",
+  "outputDeviceId": "{0.0.0.00000000}.{speaker}",
+  "inputGain": 1.5,
+  "outputVolume": 0.9,
+  "mode": "VoiceActivation",
+  "keyBindings": [
+    {
+      "action": "PushToTalk",
+      "chord": {
+        "key": 86,
+        "modifiers": "Ctrl, Shift",
+        "modifierCount": 2,
+        "name": "Strg\u002BUmschalt\u002BV"
+      }
+    },
+    {
+      "action": "ToggleMute",
+      "chord": {
+        "key": 5,
+        "modifiers": "None",
+        "modifierCount": 0,
+        "name": "Maustaste 4"
+      }
+    }
+  ],
+  "pttReleaseDelayMs": 150,
+  "vadThresholdDb": -35,
+  "vadAutomatic": false,
+  "noiseSuppression": false,
+  "autoGain": false,
+  "echoCancellation": false,
+  "transmission": "Music",
+  "theme": "Dark",
+  "language": "English",
+  "checkForUpdates": false,
+  "soundsEnabled": true,
+  "soundVolume": 0.5,
+  "sounds": {
+    "UserJoined": {
+      "volume": 0.5,
+      "muted": false,
+      "file": null
+    },
+    "PrivateMessage": {
+      "volume": 1,
+      "muted": true,
+      "file": "ping.wav"
+    }
+  },
+  "userVolumes": {
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 0.7
+  },
+  "backgroundOpacity": 0.6,
+  "blurBackground": true,
+  "display": "Simplified"
+}

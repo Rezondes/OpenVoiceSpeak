@@ -722,16 +722,8 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     /// Package 84 (A102): nobody outranks a member of the Admin group, so no request can take it away from another admin.
     /// The test changes the stored groups itself, under the server's lock, and lets the server apply them as after a group change.
     /// </summary>
-    static void LeaveAdminGroup(ServerState state, string fingerprint)
-    {
-        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-        lock (typeof(ServerState).GetField("gate", flags)!.GetValue(state)!)
-        {
-            var data = (ServerData)typeof(ServerState).GetField("data", flags)!.GetValue(state)!;
-            data.Users.Single(u => u.Fingerprint == fingerprint).GroupIds.Remove(WellKnownGroups.Admin);
-            typeof(ServerState).GetMethod("RecomputePermissions", flags)!.Invoke(state, [false]);
-        }
-    }
+    static void LeaveAdminGroup(ServerState state, string fingerprint) =>
+        StateHarness.ChangeStoredData(state, d => d.Users.Single(u => u.Fingerprint == fingerprint).GroupIds.Remove(WellKnownGroups.Admin));
 
     /// <summary>Content that passed the old checks but broke every later start, or references that do not fit together.</summary>
     static void Break(ServerData d, string variant)

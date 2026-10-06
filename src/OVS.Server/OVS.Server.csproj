@@ -8,4 +8,9 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- the tests drive ServerState without sockets and check the request shape directly -->
+    <InternalsVisibleTo Include="OVS.Tests" />
+  </ItemGroup>
+
 </Project>

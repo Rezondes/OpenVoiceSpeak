@@ -280,6 +280,16 @@ public sealed partial class ServerState
         }
     }
 
+    /// <summary>Test hook: changes the stored data under the lock and applies the rights to the online sessions, as after a group change.</summary>
+    internal void ChangeStoredData(Action<ServerData> change)
+    {
+        lock (gate)
+        {
+            change(data);
+            RecomputePermissions();
+        }
+    }
+
     /// <summary>Package 92: a user's state sent to everyone, each with its own view (at most three encodings).</summary>
     void BroadcastUser(Session user)
     {

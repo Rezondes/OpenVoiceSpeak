@@ -68,7 +68,7 @@ One type per file under `src/OVS.Shared/Protocol/Messages/` (D1). `Message.cs` (
 | `Links` | LinkInfo, LinkChannels, SetChannelLinks, UnlinkChannels, ChannelsLinked, ChannelsUnlinked |
 | `Chat` | ChatTarget, SendChat, ChatMessage |
 
-That is 2 + 90 = 92 types. Data records and enums go to the area they belong to (`LinkInfo` to `Links`, `UserInfo` to `Users`, `ServerSnapshot` to `Connection`). A comment that describes a group of records goes into the summary of each record it describes (D6), since one type per file leaves no shared place for it. The area names avoid every clash (C2, C3): `ServerBackups` instead of `Backups` or `BackupFiles` (both ignored by `Backup*/`), `LogAccess` instead of `LogFiles` (the class `OVS.Shared.Logging.LogFiles`), `ServerInfo` instead of `ServerSettings` (the server class `ServerSettings`), `VoiceRelay` instead of `Voice` (the namespace `OVS.Shared.Voice`). New messages go into the area they belong to and get their `[JsonDerivedType]` line on `Message`. Renaming a record never changes its discriminator, the `Codes` values or the JSON property names, and needs no protocol version bump (N9); a wire freeze test pins them (not yet introduced).
+That is 2 + 90 = 92 types. Data records and enums go to the area they belong to (`LinkInfo` to `Links`, `UserInfo` to `Users`, `ServerSnapshot` to `Connection`). A comment that describes a group of records goes into the summary of each record it describes (D6), since one type per file leaves no shared place for it. The area names avoid every clash (C2, C3): `ServerBackups` instead of `Backups` or `BackupFiles` (both ignored by `Backup*/`), `LogAccess` instead of `LogFiles` (the class `OVS.Shared.Logging.LogFiles`), `ServerInfo` instead of `ServerSettings` (the server class `ServerSettings`), `VoiceRelay` instead of `Voice` (the namespace `OVS.Shared.Voice`). New messages go into the area they belong to and get their `[JsonDerivedType]` line on `Message`. Renaming a record never changes its discriminator, the `Codes` values or the JSON property names, and needs no protocol version bump (N9); `WireFreezeTests` pins them with literal lists.
 
 ### OVS.Server
 
@@ -176,6 +176,8 @@ Where code that several places need lives. All of these are introduced by the re
 | `TestSupport/MotionWait` | `Settle(int)` and `WaitFor(Func<bool>, int)` | J5 |
 | `TestSupport/AsyncWait` | `Until(Func<bool>)` | J5 |
 | `TestSupport/RepoPaths` | the repository root and `src/OVS.Client` | J5 |
+| `TestSupport/StateHarness` | a `ServerState` without sockets: temporary data folder, `ManualTimeProvider`, seeded data, `Admit`, `Handle`, the decoded outbox (`Drain`, `WaitForAsync`) and `ChangeStoredData` under the lock | N7 |
+| `TestSupport/PersistedFixtures` | the persisted files of 3d5c4db and the release deploy-4053cfa in `TestSupport/Fixtures`, and their date | N11 |
 | `TestSupport/TempDirectoryTest` | base class for tests whose `Dispose` only deletes their temporary folder | J5 |
 | `TestSupport/Rows` | row lookups and the row center of the UI tests | J5 |
 

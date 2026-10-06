@@ -1,0 +1,186 @@
+{
+  "dataVersion": 6,
+  "settings": {
+    "name": "Fixture-Server",
+    "welcomeText": "Willkommen",
+    "passwordHash": "ADDB0F5E7826C857D7376D1BD9BC33C0C544790A2EAC96144A8AF22B1298C940",
+    "maxUsers": 42,
+    "logDays": 14,
+    "logRotateDaily": false,
+    "autoRestart": true,
+    "autoRestartTime": "04:30:00",
+    "limits": {
+      "maxUsers": 42,
+      "logDays": 14,
+      "logRotateDaily": false,
+      "autoRestart": true,
+      "autoRestartTime": "04:30:00"
+    },
+    "hasLegacyHash": true
+  },
+  "defaultChannelId": "10000000-0000-0000-0000-000000000001",
+  "channels": [
+    {
+      "id": "10000000-0000-0000-0000-000000000001",
+      "name": "Lobby",
+      "description": "",
+      "order": 0,
+      "isMuted": false,
+      "maxUsers": 0,
+      "allowedGroupIds": null,
+      "passwordHash": null,
+      "kind": "Voice"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000002",
+      "name": "Raid",
+      "description": "Mit Passwort",
+      "order": 1,
+      "isMuted": true,
+      "maxUsers": 5,
+      "allowedGroupIds": null,
+      "passwordHash": "pbkdf2$100000$/hf\u002BSY0bsSEoY\u002BPwayi35g==$RiowhwpqRi2niCqqwfd950YHK57\u002BKo/doXpSRnRAz8k=",
+      "kind": "Voice"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000003",
+      "name": "",
+      "description": "",
+      "order": 2,
+      "isMuted": false,
+      "maxUsers": 0,
+      "allowedGroupIds": null,
+      "passwordHash": null,
+      "kind": "Separator"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000004",
+      "name": "Gesperrt",
+      "description": "",
+      "order": 3,
+      "isMuted": false,
+      "maxUsers": 0,
+      "allowedGroupIds": [],
+      "passwordHash": null,
+      "kind": "Voice"
+    }
+  ],
+  "links": [
+    {
+      "a": "10000000-0000-0000-0000-000000000001",
+      "b": "10000000-0000-0000-0000-000000000002"
+    }
+  ],
+  "groups": [
+    {
+      "id": "00000000-0000-0000-0000-00000000000a",
+      "name": "Gast",
+      "permissions": "Speak, ChatChannel, ChatPrivate"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "name": "Moderator",
+      "permissions": "Speak, SpeakLinked, ChannelLink, UserMove, UserMute, UserKick, UserBan, ChatServer, ChatChannel, ChatPrivate, BansView"
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000000b",
+      "name": "Admin",
+      "permissions": "All"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000002",
+      "name": "Team",
+      "permissions": "Speak, ChannelCreate, ChatChannel"
+    }
+  ],
+  "users": [
+    {
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lastNickname": "Chefin",
+      "groupIds": [
+        "00000000-0000-0000-0000-00000000000b"
+      ],
+      "firstSeen": "2026-09-06T12:00:00+00:00",
+      "lastLogin": "2026-10-06T10:00:00+00:00",
+      "loginCount": 12,
+      "lastIp": "192.0.2.10",
+      "previousNicknames": [
+        "Anna",
+        "Anni"
+      ],
+      "onlineTime": "05:30:00",
+      "speechTime": "00:42:00",
+      "chatMessages": 17,
+      "serverMuted": false
+    },
+    {
+      "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "lastNickname": "Bert",
+      "groupIds": [
+        "20000000-0000-0000-0000-000000000002",
+        "20000000-0000-0000-0000-000000000001"
+      ],
+      "firstSeen": "2026-09-26T12:00:00+00:00",
+      "lastLogin": "2026-10-05T12:00:00+00:00",
+      "loginCount": 3,
+      "lastIp": "2001:db8::5",
+      "previousNicknames": [],
+      "onlineTime": "00:00:00",
+      "speechTime": "00:00:00",
+      "chatMessages": 0,
+      "serverMuted": true
+    },
+    {
+      "fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "lastNickname": "Stoerer",
+      "groupIds": [
+        "00000000-0000-0000-0000-00000000000a"
+      ],
+      "firstSeen": "2026-10-01T12:00:00+00:00",
+      "lastLogin": null,
+      "loginCount": 0,
+      "lastIp": null,
+      "previousNicknames": [],
+      "onlineTime": "00:00:00",
+      "speechTime": "00:00:00",
+      "chatMessages": 0,
+      "serverMuted": false
+    }
+  ],
+  "bans": [
+    {
+      "id": "30000000-0000-0000-0000-000000000001",
+      "fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "nickname": "Stoerer",
+      "ip": "198.51.100.7",
+      "reason": "Spam",
+      "createdBy": "Chefin",
+      "expiresAt": "2026-10-02T13:00:00+00:00",
+      "createdAt": "2026-10-02T12:00:00+00:00",
+      "createdByFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "durationMinutes": 60,
+      "liftedAt": null,
+      "liftedBy": null,
+      "blockedAttempts": 2,
+      "lastAttempt": "2026-10-02T12:10:00+00:00",
+      "lastAttemptIp": "198.51.100.7"
+    },
+    {
+      "id": "30000000-0000-0000-0000-000000000002",
+      "fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "nickname": "Stoerer",
+      "ip": null,
+      "reason": "Beleidigung",
+      "createdBy": "Chefin",
+      "expiresAt": null,
+      "createdAt": "2026-10-03T12:00:00+00:00",
+      "createdByFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "durationMinutes": null,
+      "liftedAt": "2026-10-04T12:00:00+00:00",
+      "liftedBy": "Chefin",
+      "blockedAttempts": 0,
+      "lastAttempt": null,
+      "lastAttemptIp": null
+    }
+  ]
+}
