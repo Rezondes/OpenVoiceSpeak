@@ -96,7 +96,7 @@ public sealed class LimitsTests
         await using var talker = await TestClient.ConnectAsync(server, "viel");
         await using var listener = await TestClient.ConnectAsync(server, "ohr");
         await listener.SendAsync(new VoiceUp(0, 0, ""));
-        for (int i = 0; i < 500 && !server.State.FindSession(listener.Id)!.TcpVoice; i++) await Task.Delay(20);
+        for (int i = 0; i < 500 && !server.State.FindSession(listener.Id)!.Voice.TcpVoice; i++) await Task.Delay(20);
 
         for (uint n = 0; n < 30; n++) await talker.SendAsync(new VoiceUp(n, 0, Convert.ToBase64String([1, 2, 3])));
         for (uint n = 0; n < Limits.VoiceBurst; n++) Assert.Equal(n, (await listener.WaitForAsync<VoiceDown>()).Seq);

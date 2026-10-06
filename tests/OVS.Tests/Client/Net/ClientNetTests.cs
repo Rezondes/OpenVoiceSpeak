@@ -363,10 +363,10 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         // one timer tick each (one ping), as many ticks at one instant of the server's clock would hit its rate limit
         time.Advance(TimeSpan.FromSeconds(2)); // a ping after the first full window
         var session = server.State.FindSession(a.Welcome.SessionId)!;
-        await AsyncWait.Until(() => va.UplinkLoss.Expected >= 200 && session.DownlinkLoss.Expected >= 200);
+        await AsyncWait.Until(() => va.UplinkLoss.Expected >= 200 && session.Voice.DownlinkLoss.Expected >= 200);
         Assert.InRange(va.UplinkLoss.Percent, 7, 13);
         Assert.InRange(va.DownlinkLoss.Percent, 7, 13);
-        Assert.InRange(session.DownlinkLoss.Percent, 7, 13);
+        Assert.InRange(session.Voice.DownlinkLoss.Percent, 7, 13);
         Assert.Equal(0u, vb.UplinkLoss.Missed); // b talks straight to the server, but hears what a lost on the way up
         Assert.InRange(vb.DownlinkLoss.Percent, 7, 13);
 
@@ -375,7 +375,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         time.Advance(TimeSpan.FromSeconds(10));
         await Talk(500); // 10 s, so one whole window lies inside
         time.Advance(TimeSpan.FromSeconds(2));
-        await AsyncWait.Until(() => va.UplinkLoss is { Expected: >= 200, Missed: 0 } && session.DownlinkLoss is { Expected: >= 200, Missed: 0 });
+        await AsyncWait.Until(() => va.UplinkLoss is { Expected: >= 200, Missed: 0 } && session.Voice.DownlinkLoss is { Expected: >= 200, Missed: 0 });
         Assert.Equal(new LossReport(va.DownlinkLoss.Expected, 0), va.DownlinkLoss);
     }
 
@@ -426,8 +426,8 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         sent = atA; // what a can hear from here on
         await Talk(110, heard: true); // past 5 s: the window with the jump in the frame numbers is complete
         time.Advance(TimeSpan.FromSeconds(2)); // a ping with that window
-        await AsyncWait.Until(() => session.DownlinkLoss.Expected >= 100);
-        Assert.Equal(0u, session.DownlinkLoss.Missed);
+        await AsyncWait.Until(() => session.Voice.DownlinkLoss.Expected >= 100);
+        Assert.Equal(0u, session.Voice.DownlinkLoss.Missed);
         Assert.Equal(0u, va.DownlinkLoss.Missed);
         Assert.True(va.DownlinkLoss.Expected >= 100);
     }
@@ -462,13 +462,13 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         Advance(time, TimeSpan.FromSeconds(0.5));
         Assert.True(va.OverTcp && vb.OverTcp);
         Assert.False(va.Reachable);
-        await AsyncWait.Until(() => server.State.FindSession(a.Welcome.SessionId)!.TcpVoice && server.State.FindSession(b.Welcome.SessionId)!.TcpVoice);
+        await AsyncWait.Until(() => server.State.FindSession(a.Welcome.SessionId)!.Voice.TcpVoice && server.State.FindSession(b.Welcome.SessionId)!.Voice.TcpVoice);
 
         // Package 141 (review): a lost switch (dropped, or overtaken by an older UDP ping) is repeated with the next Hello
         var sessionB = server.State.FindSession(b.Welcome.SessionId)!;
-        sessionB.TcpVoice = false;
+        sessionB.Voice.TcpVoice = false;
         Advance(time, TimeSpan.FromSeconds(2));
-        await AsyncWait.Until(() => sessionB.TcpVoice);
+        await AsyncWait.Until(() => sessionB.Voice.TcpVoice);
 
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
         vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
@@ -509,7 +509,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         Assert.False(va.OverTcp);
         Advance(time, TimeSpan.FromSeconds(0.5));
         Assert.True(va.OverTcp);
-        await AsyncWait.Until(() => session.TcpVoice);
+        await AsyncWait.Until(() => session.Voice.TcpVoice);
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
         await AsyncWait.Until(() => Volatile.Read(ref atB) == 1);
         vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
@@ -526,7 +526,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         Assert.True(va.Reachable);
         Assert.False(va.OverTcp);
         Advance(time, TimeSpan.FromSeconds(2)); // the next ping tells the server
-        await AsyncWait.Until(() => !session.TcpVoice);
+        await AsyncWait.Until(() => !session.Voice.TcpVoice);
 
         vb.SendVoice([7, 8, 9], VoiceHeader.TargetChannel);
         await AsyncWait.Until(() => relay.PassedDownVoice == 1);

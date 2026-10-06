@@ -72,7 +72,7 @@ public sealed partial class ServerState
             var downloadId = Guid.NewGuid().ToString("N");
             var (export, code) = LogReader.Export(downloadId, ids, names);
             if (export is null) return new Error(r.RequestId, code);
-            if (!s.SetLogDownload(downloadId, export.Path))
+            if (!s.LogDownload.TrySet(downloadId, export.Path))
             {
                 SafeFile.DeleteQuietly(export.Path); // the session ended meanwhile
                 return new Error(r.RequestId, Codes.NotFound);
@@ -88,10 +88,10 @@ public sealed partial class ServerState
         if (!Require(s, r, DownloadRights)) return;
         QueueLogJob(s, r, () =>
         {
-            if (s.LogDownloadPath(r.DownloadId) is not { } path) return new Error(r.RequestId, Codes.NotFound);
+            if (s.LogDownload.FindPath(r.DownloadId) is not { } path) return new Error(r.RequestId, Codes.NotFound);
             if (SafeFile.ReadChunk(path, r.Offset) is not var (bytes, total)) return new Error(r.RequestId, Codes.InvalidValue, $"Offset {r.Offset}");
             bool last = r.Offset + bytes.Length >= total;
-            if (last) s.DropLogDownload();
+            if (last) s.LogDownload.Drop();
             return new LogChunk(r.RequestId, r.DownloadId, r.Offset, total, Convert.ToBase64String(bytes), last);
         });
     }
@@ -100,7 +100,7 @@ public sealed partial class ServerState
     /// <returns>False when the session's queue was full and the request was answered with RateLimited.</returns>
     bool QueueLogJob(Session s, Request r, Func<Message> work)
     {
-        var queued = s.TryQueueLogJob(() =>
+        var queued = s.LogJobs.TryQueue(() =>
         {
             try
             {

@@ -171,7 +171,7 @@ public sealed partial class ServerState
             {
                 s.Outbox.Close(final);
                 DropUpload(s);
-                s.DropLogDownload(ended: true); // Package 82
+                s.LogDownload.End(); // Package 82
                 if (!statsCounted) AddSessionStats(s, now);
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
@@ -203,7 +203,7 @@ public sealed partial class ServerState
     {
         session.Outbox.Close(final);
         DropUpload(session); // Package 75: an abandoned upload leaves no file
-        session.DropLogDownload(ended: true); // Package 82: nor a prepared log download
+        session.LogDownload.End(); // Package 82: nor a prepared log download
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;
         sessions.Remove(session.Id);
         voiceSessions.TryRemove(session.Id, out _);

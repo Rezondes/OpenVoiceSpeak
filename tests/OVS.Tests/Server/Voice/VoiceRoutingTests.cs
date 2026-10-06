@@ -24,8 +24,11 @@ public class VoiceRoutingTests
         {
             ChannelId = channel,
             Permissions = perms,
-            UdpEndpoint = bound && !tcp ? new IPEndPoint(IPAddress.Loopback, 1000 + (int)id) : null,
-            TcpVoice = bound && tcp,
+            Voice =
+            {
+                UdpEndpoint = bound && !tcp ? new IPEndPoint(IPAddress.Loopback, 1000 + (int)id) : null,
+                TcpVoice = bound && tcp,
+            },
         };
 
     static uint[] Route(Session sender, byte target, params Session[] others) =>

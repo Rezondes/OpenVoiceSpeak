@@ -219,7 +219,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         for (uint n = 0; n < 100; n++)
             if (n % 10 != 5) await Frame(n); // every tenth lost on the way
         Assert.Equal(new PingPayload(42, new LossReport(100, 10)), await Ping(new PingPayload(42, new LossReport(50, 5))));
-        Assert.Equal(new LossReport(50, 5), own.State.FindSession(x.Id)!.DownlinkLoss);
+        Assert.Equal(new LossReport(50, 5), own.State.FindSession(x.Id)!.Voice.DownlinkLoss);
 
         // a talk pause of 4 s (into the next window): the frame number goes on where it stopped, so nothing is missed
         time.Advance(TimeSpan.FromSeconds(4));
@@ -227,7 +227,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Equal(new LossReport(100, 10), (await Ping(new PingPayload(7, default))).Loss); // the last full window
         time.Advance(TimeSpan.FromSeconds(5));
         Assert.Equal(new PingPayload(8, new LossReport(10, 0)), await Ping(new PingPayload(8, default)));
-        Assert.Equal(default, own.State.FindSession(x.Id)!.DownlinkLoss);
+        Assert.Equal(default, own.State.FindSession(x.Id)!.Voice.DownlinkLoss);
 
         // an empty ping (an older test client) is still answered, empty
         await vx.SendAsync(PacketType.Ping, []);
@@ -296,7 +296,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await Heard(vy, 4, f[4], f[3]);
         await HeardSingle(3);
         await HeardSingle(4);
-        Assert.Equal(new LossReport(5, 1), own.State.FindSession(x.Id)!.Uplink.Report()); // a copy is no frame received
+        Assert.Equal(new LossReport(5, 1), own.State.FindSession(x.Id)!.Voice.Uplink.Report()); // a copy is no frame received
 
         await Report(vy, default); // a figure with nothing expected (a pause) changes nothing
         await Send(5);
@@ -461,7 +461,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     static async Task SwitchToTcpAsync(TestServer on, TestClient client)
     {
         await client.SendAsync(new VoiceUp(0, VoiceHeader.TargetChannel, ""));
-        await AsyncWait.Until(() => on.State.FindSession(client.Id)!.TcpVoice);
+        await AsyncWait.Until(() => on.State.FindSession(client.Id)!.Voice.TcpVoice);
     }
 
     static async Task HeardTcp(TestClient at, uint speaker, uint seq, byte[] opus, byte target = VoiceHeader.TargetChannel) =>
@@ -541,7 +541,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await HeardTcp(y, x.Id, 3, f[3]);
         await vy.SendAsync(PacketType.Ping, []);
         Assert.NotNull(await vy.ReceiveAsync());
-        Assert.False(own.State.FindSession(y.Id)!.TcpVoice);
+        Assert.False(own.State.FindSession(y.Id)!.Voice.TcpVoice);
         await Send(4);
         Assert.True(RelayPayload.TryParse((await vy.ReceiveVoiceAsync())!.Value.Plain, out seq, out _, out _));
         Assert.Equal(4u, seq);
@@ -578,11 +578,11 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await a.SendAsync(new VoiceUp(0, VoiceHeader.TargetChannel, ""));
         await a.SendAsync(new Ping());
         await a.WaitForAsync<Pong>(); // the VoiceUps before it are handled
-        Assert.False(session.TcpVoice);
+        Assert.False(session.Voice.TcpVoice);
         Assert.Null(await vb.ReceiveVoiceAsync(300));
 
         await SendTcpAsync(a, 1, Opus);
-        await AsyncWait.Until(() => session.TcpVoice);
+        await AsyncWait.Until(() => session.Voice.TcpVoice);
         Assert.NotNull(await vb.ReceiveVoiceAsync());
     }
 

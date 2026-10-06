@@ -50,12 +50,16 @@ public static class Limits
     // ---- Package 88: UDP ----
     /// <summary>Undecodable, foreign or undecryptable UDP packets per source (IPv6: per /64) and second before the rest is dropped undecrypted.</summary>
     public const int BadVoicePacketsPerSecond = 200;
-    /// <summary>Voice packets per sender (Session.Limiter), UDP and Package 141's VoiceUp alike: no request, its own budget (A150).</summary>
+    /// <summary>Voice packets per sender (SessionVoice.Limiter), UDP and Package 141's VoiceUp alike: no request, its own budget (A150).</summary>
     public const double VoicePerSecond = 60, VoiceBurst = 10;
 
     // ---- Package 141: voice over TCP ----
     /// <summary>VoiceDown is dropped while a listener's outbox holds this many messages (300 ms of voice): a slow reader loses voice, not its connection, and its delay stays bounded.</summary>
     public const int MaxQueuedVoice = 15;
+
+    // ---- Package 81: log pages and searches ----
+    /// <summary>Log jobs one session may have waiting or running; one more is answered with RateLimited.</summary>
+    public const int MaxQueuedLogJobs = 4;
 
     // ---- Package 94: channel passwords ----
     /// <summary>Wrong channel passwords per session and channel within ChannelPasswordWindow; then RateLimited for ChannelPasswordBlock.</summary>

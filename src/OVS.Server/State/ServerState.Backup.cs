@@ -129,9 +129,9 @@ public sealed partial class ServerState
                 Fail(s, r, Codes.InvalidValue, "unbekannter Upload");
                 return;
             }
-            s.Upload = (r.UploadId, backups.UploadPath(r.UploadId), 0);
+            s.Upload = new BackupUpload(r.UploadId, backups.UploadPath(r.UploadId));
         }
-        var (id, path, received) = s.Upload!.Value;
+        var upload = s.Upload!;
         var buffer = new byte[Base64Size.Decoded(r.DataBase64.Length)];
         if (!Convert.TryFromBase64String(r.DataBase64, buffer, out int written))
         {
@@ -140,20 +140,20 @@ public sealed partial class ServerState
             return;
         }
         var bytes = buffer[..written];
-        if (r.Offset != received || bytes.Length > ProtocolInfo.BackupChunkBytes)
+        if (!upload.Continues(r.Offset) || bytes.Length > ProtocolInfo.BackupChunkBytes)
         {
             DropUpload(s);
-            Fail(s, r, Codes.InvalidValue, $"Offset {r.Offset}, erwartet {received}");
+            Fail(s, r, Codes.InvalidValue, $"Offset {r.Offset}, erwartet {upload.Received}");
             return;
         }
-        if (received + bytes.Length > ProtocolInfo.MaxBackupUploadBytes)
+        if (upload.Overflows(bytes.Length))
         {
             DropUpload(s);
             logs.Server($"Backup-Upload von {s.Nickname} abgelehnt: grösser als {ProtocolInfo.MaxBackupUploadBytes / (1024 * 1024)} MB");
             Fail(s, r, Codes.BackupTooLarge);
             return;
         }
-        if (backups.QuotaProblem(received + bytes.Length) is { } quota) // Package 89: before the bytes are written
+        if (backups.QuotaProblem(upload.Received + bytes.Length) is { } quota) // Package 89: before the bytes are written
         {
             DropUpload(s);
             logs.Server($"Backup-Upload von {s.Nickname} abgelehnt, Backup-Limit erreicht: {quota}");
@@ -162,8 +162,7 @@ public sealed partial class ServerState
         }
         try
         {
-            using (var file = new FileStream(path, received == 0 ? FileMode.Create : FileMode.Append, FileAccess.Write))
-                file.Write(bytes);
+            upload.Append(bytes);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -172,14 +171,13 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, e.Message);
             return;
         }
-        received += bytes.Length;
         if (!r.IsLast)
         {
-            s.Upload = (id, path, received);
-            s.Outbox.Send(new UploadBackupAck(r.RequestId, id, received));
+            s.Outbox.Send(new UploadBackupAck(r.RequestId, upload.Id, upload.Received));
             return;
         }
         s.Upload = null;
+        var path = upload.Path;
         BackupInfo info;
         try
         {
