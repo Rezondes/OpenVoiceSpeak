@@ -1,0 +1,109 @@
+using System.Text.RegularExpressions;
+
+namespace OVS.Tests;
+
+/// <summary>
+/// One test reference in a Tests section of a PLAN.md package (CODING-RULES.md §Tests): a test method with or without
+/// its class, a test class alone, or a website file and a text it contains; with the acceptance criteria named after it
+/// on its line. <see cref="Parse"/> reads them; <see cref="PlanReferenceTests"/> resolves them against the test assembly.
+/// </summary>
+sealed record PlanReference(int Package, int Line, string? Class, string? Method, string? File, string? Text, IReadOnlyList<int> AcceptanceCriteria)
+{
+    const string CriteriaConnector = @"\s*(,|bis|to|und|and)\s*";
+
+    static readonly Regex PackageHeading = new(@"^## Package (\d+):");
+    static readonly Regex Span = new("`([^`]+)`");
+    static readonly Regex Website = new(@"^(?<file>[\w.\-]+(?:/[\w.\-]+)+) > ""(?<text>[^""]+)""$");
+    static readonly Regex ClassAndQuotedMethod = new(@"^(?<class>\w+?)(?:\.cs)? > (?:\[Theory\] )?""(?<method>\w+)""$");
+    static readonly Regex ClassAlone = new(@"^(?<class>\w+Tests)(?:\.cs)?$");
+    static readonly Regex Dotted = new(@"^(?<class>\w+Tests)\.(?<method>\w+)$");
+    static readonly Regex QuotedMethodAlone = new(@"^(?:\[Theory\] )?""(?<method>\w*_\w*)""$");
+    static readonly Regex LooksLikeTest = new(@"\w_\w|Tests\b");
+    static readonly Regex CriteriaList = new($@"AC\d+(?:{CriteriaConnector}AC\d+)*");
+    static readonly Regex CriteriaPart = new($@"(?:^|{CriteriaConnector})AC(\d+)");
+
+    /// <summary>
+    /// Every reference in the <c>### Tests</c> sections of the <c>## Package N</c> chapters of <paramref name="plan"/>,
+    /// and the spans there that look like a reference (a name with an underscore or ending in Tests) but are no form the
+    /// parser knows, with their line (test commands, <c>dotnet ...</c>, are not counted). Lines starting with "(" (after
+    /// indentation) are notes, such as "(as built: ...)", and not read. A method without a class takes the class named
+    /// before it on its line, else the class last named on a top-level line of its section (a header or a numbered item;
+    /// a bullet below a header does not change it), if any. A test named right after "ersetzt" or "replaces" is the
+    /// history of a replaced test and no reference.
+    /// </summary>
+    public static (List<PlanReference> References, List<(int Line, string Span)> Ignored) Parse(string plan)
+    {
+        var references = new List<PlanReference>();
+        var ignored = new List<(int, string)>();
+        int? package = null;
+        var inTests = false;
+        string? context = null;
+        var lines = plan.Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].TrimEnd('\r');
+            if (line.StartsWith("## "))
+            {
+                var heading = PackageHeading.Match(line);
+                package = heading.Success ? int.Parse(heading.Groups[1].Value) : null;
+                inTests = false;
+                continue;
+            }
+            if (line.StartsWith("### "))
+            {
+                inTests = package is not null && line.StartsWith("### Tests");
+                context = null;
+                continue;
+            }
+            if (!inTests || line.TrimStart().StartsWith('(')) continue;
+            var lineContext = context;
+            foreach (Match span in Span.Matches(line))
+            {
+                var text = span.Groups[1].Value;
+                if (line[..span.Index].EndsWith("ersetzt ") || line[..span.Index].EndsWith("replaces ")) continue;
+                if (Read(text, ref lineContext) is not { } target)
+                {
+                    if (LooksLikeTest.IsMatch(text) && !text.StartsWith("dotnet ")) ignored.Add((i + 1, text));
+                    continue;
+                }
+                references.Add(new(package!.Value, i + 1, target.Class, target.Method, target.File, target.Text,
+                    ReadCriteria(line[(span.Index + span.Length)..])));
+            }
+            if (line.Length > 0 && !char.IsWhiteSpace(line[0])) context = lineContext;
+        }
+        return (references, ignored);
+    }
+
+    /// <summary>What one backtick span references, or null when it is no reference.</summary>
+    static (string? Class, string? Method, string? File, string? Text)? Read(string span, ref string? context)
+    {
+        if (Website.Match(span) is { Success: true } web) return (null, null, web.Groups["file"].Value, web.Groups["text"].Value);
+        if (ClassAndQuotedMethod.Match(span) is { Success: true } flat) return (context = flat.Groups["class"].Value, flat.Groups["method"].Value, null, null);
+        if (ClassAlone.Match(span) is { Success: true } alone) return (context = alone.Groups["class"].Value, null, null, null);
+        if (Dotted.Match(span) is { Success: true } dotted) return (context = dotted.Groups["class"].Value, dotted.Groups["method"].Value, null, null);
+        if (QuotedMethodAlone.Match(span) is { Success: true } bare) return (context, bare.Groups["method"].Value, null, null);
+        return null;
+    }
+
+    /// <summary>The criteria of the first list in <paramref name="rest"/>: "AC6, AC7", "AC2 bis AC4" (2, 3, 4), "AC2 und AC5".</summary>
+    static int[] ReadCriteria(string rest)
+    {
+        var list = CriteriaList.Match(rest);
+        if (!list.Success) return [];
+        var result = new List<int>();
+        foreach (Match part in CriteriaPart.Matches(list.Value))
+        {
+            var number = int.Parse(part.Groups[2].Value);
+            if (part.Groups[1].Value is "bis" or "to" && result.Count > 0)
+                for (var n = result[^1] + 1; n < number; n++) result.Add(n);
+            result.Add(number);
+        }
+        return [.. result];
+    }
+
+    /// <summary>What is referenced, in the PLAN.md form: <c>Class > "Method"</c>, <c>"Method"</c>, <c>Class</c> or <c>file > "text"</c>.</summary>
+    public string Target =>
+        File is not null ? $"{File} > \"{Text}\"" : Method is null ? Class! : Class is null ? $"\"{Method}\"" : $"{Class} > \"{Method}\"";
+
+    public override string ToString() => $"PLAN.md:{Line} (Package {Package}): {Target}";
+}
