@@ -58,12 +58,12 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
     Tree Open(ServerViewModel? server = null, List<Request>? sent = null)
     {
         sent ??= [];
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Server = server ?? FakeServers.Admin(sent);
+        MainViewModelSetup.ShowServer(vm, server ?? FakeServers.Admin(sent));
         MotionWait.Until(() => MotionWait.IsConnected(main), atLeast: 100);
-        return new Tree(main, vm.Server, sent);
+        return new Tree(main, vm.Server!, sent);
     }
 
     static void Release(Tree tree, Point at)

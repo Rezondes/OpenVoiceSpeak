@@ -28,10 +28,10 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     MainWindow Open(double width, ServerViewModel? server, out MainViewModel vm)
     {
         // the device list loads in the background (Package 52): its result comes back through the dispatcher, not on a pool thread
-        vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         Dispatcher.UIThread.RunJobs();
         return main;
     }
@@ -913,12 +913,12 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void WaitingStates_Fit(double width, string culture) => TestCulture.With(culture, () =>
     {
         var time = new ManualTimeProvider();
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
         ServerViewModel? server = null;
         server = FakeServers.Admin(time: time, dialogs: SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         // the connect sequence (at most 700 ms) is over before anything is clicked; the server's clock is a manual one
         MotionWait.WaitFor(() => false, 800);
         MotionWait.WaitFor(() => main.Classes.Contains("compact") == width < 700, 5000);

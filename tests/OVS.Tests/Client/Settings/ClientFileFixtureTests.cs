@@ -28,6 +28,29 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
         Assert.Equal(Order(Expected(version)), Order(settings)); // Equivalent ignores the order of list entries
     }
 
+    /// <summary>
+    /// Saving the current version's file again writes it byte for byte: no key added, dropped, renamed or moved. Line
+    /// breaks are compared normalized: the writer uses the platform's line break, and a Windows checkout turns the
+    /// stored LF into CRLF. The generator wrote the key names with the invariant UI culture, so the save does too.
+    /// </summary>
+    [Fact]
+    public void Settings_CurrentFixtureSavedAgain_IsByteIdentical()
+    {
+        var original = File.ReadAllBytes(PersistedFixtures.CopyTo(PersistedFixtures.Current, ClientSettings.FileName, dir));
+        var settings = ClientSettings.Load(dir, out var warning);
+        Assert.Null(warning);
+
+        TestCulture.With("", () =>
+        {
+            settings.Save(dir);
+            return 0;
+        });
+
+        Assert.Equal(WithLf(original), WithLf(File.ReadAllBytes(Path.Combine(dir, ClientSettings.FileName))));
+    }
+
+    static byte[] WithLf(byte[] text) => [.. text.Where((b, i) => !(b == '\r' && i + 1 < text.Length && text[i + 1] == '\n'))];
+
     [Theory]
     [MemberData(nameof(PersistedFixtures.Versions), MemberType = typeof(PersistedFixtures))]
     public void KnownServers_FixtureOfVersion_KeepsEveryPin(string version)

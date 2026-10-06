@@ -316,7 +316,7 @@ public sealed class WebsiteShots
         using var scene = new WebsiteScene(lang, theme, settings: s => s.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi")));
         var showcase = new ShowcaseServer(scene.English);
         ShotWriter.Record(scene.Window, Clip("clip-connect", scene), 4500, 0,
-            (600, () => scene.Vm.Server = showcase.Server),
+            (600, () => MainViewModelSetup.ShowServer(scene.Vm, showcase.Server)),
             (2200, () => showcase.FillRaidChat()),
             (2300, () => scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab),
             (3200, () => showcase.Speak()));

@@ -40,11 +40,11 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     (MainWindow Main, MainViewModel Vm, ServerViewModel Server, ChatView Chat) Open(DisplayMode display = DisplayMode.Animated, double height = 700)
     {
         new ClientSettings { Display = display }.Save(dir);
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = height };
         main.Show();
         var server = FakeServers.Admin();
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         MotionWait.Settle(700);
         Motion.Apply(main, display);
         MotionWait.Connected(main); // under load connecting takes longer: no test acts while it still moves

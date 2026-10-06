@@ -110,7 +110,7 @@ public sealed class MotionCoverageTests : IDisposable
         if (walks.TryGetValue(display, out var done)) return done;
         string dir = Directory.CreateTempSubdirectory("ovs-coverage-").FullName;
         new ClientSettings { Display = display }.Save(dir);
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         vm.Dialogs = SimpleDialogs.For(main.Overlay, () => vm.Server?.Mirror.Groups);
         main.Show();
@@ -432,7 +432,7 @@ public sealed class MotionCoverageTests : IDisposable
         {
             x.Server = FakeServers.Admin(x.Sent, dialogs: x.Vm.Dialogs);
             x.Server.Post = a => Dispatcher.UIThread.Post(a); // as the main view model does: leaving rows go on the UI thread
-            x.Vm.Server = x.Server;
+            MainViewModelSetup.ShowServer(x.Vm, x.Server);
         });
         foreach (var s in Menu("a channel's menu", x => Row(x, d => d is ChannelViewModel { Name: "Lobby" }))) yield return s;
         yield return new("join a channel", x => x.Server.Apply(new UserUpdated(Me(FakeServers.Raid))));
@@ -600,7 +600,7 @@ public sealed class MotionCoverageTests : IDisposable
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent)), Prepare: x => x.Main.Width = 360);
         yield return new("close the drawer", x => x.Main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null));
 
-        yield return new("disconnect", x => x.Vm.Server = null, Prepare: x => x.Main.Width = 1100);
+        yield return new("disconnect", x => MainViewModelSetup.ShowServer(x.Vm, null), Prepare: x => x.Main.Width = 1100);
     }
 
     // ---- the tests ----
@@ -651,12 +651,12 @@ public sealed class MotionCoverageTests : IDisposable
     public void JoinLeaveStorm_EndsBounded(bool large)
     {
         string dir = Directory.CreateTempSubdirectory("ovs-storm-").FullName;
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         var server = large ? FakeServers.Large() : FakeServers.Crowded();
         server.Post = a => Dispatcher.UIThread.Post(a); // as the main view model does: leaving rows go on the UI thread
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         Watch(800);
         Motion.Apply(main, DisplayMode.Animated);
         MotionWait.Connected(main); // under load connecting takes longer: the storm starts on a still tree

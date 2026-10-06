@@ -187,9 +187,9 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     [Fact]
     public async Task StateChanged_GainTableAndIconHashOnlyWhenNeeded()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var server = FakeServers.Large();
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         vm.TrackServerIcon(server, "127.0.0.1", 1);
         int gains = vm.GainTableBuilds, hashes = vm.IconHashes;
 
@@ -269,12 +269,12 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
 
     (MainWindow Main, ServerViewModel Server) OpenLarge()
     {
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         var server = FakeServers.Large();
         server.Post = a => Dispatcher.UIThread.Post(a); // as the main view model does
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         MotionWait.Until(() => true, atLeast: 800);
         MotionWait.Connected(main);
         return (main, server);

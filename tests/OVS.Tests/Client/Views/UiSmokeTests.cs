@@ -71,7 +71,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         settings.Display = display;
         settings.Save(dir);
         new ServerIconCache(dir).Save("voice.example.org", 7000, TestImages.Encode(64, 64)); // logo seen earlier
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
 
         var main = new MainWindow { DataContext = vm };
         main.Show();
@@ -151,7 +151,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public async Task Simplified_LooksLikeBefore()
     {
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         var settings = vm.Settings;
@@ -178,7 +178,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         }
 
         LooksLikeBefore("home");
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         LooksLikeBefore("server");
         vm.OpenSettings();
         LooksLikeBefore("settings");
@@ -211,11 +211,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     /// <summary>Every page and every dialog, shown inside the main window.</summary>
     static void ExercisePagesAndDialogs(MainWindow main, MainViewModel vm)
     {
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         foreach (var kind in Enum.GetValues<NoticeKind>()) vm.AddNotice($"Meldung {kind}", kind);
         Dispatcher.UIThread.RunJobs();
         Assert.False(ShowsImage(main)); // no logo yet: the letter badge
-        vm.Server.IconPng = TestImages.Encode(64, 64);
+        vm.Server!.IconPng = TestImages.Encode(64, 64);
         Dispatcher.UIThread.RunJobs();
         Assert.True(ShowsImage(main)); // sidebar shows the server logo
         var texts = Texts(main).ToList();
@@ -388,7 +388,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     {
         int opened = 0;
         using var counting = Window.WindowOpenedEvent.AddClassHandler(typeof(Window), (_, _) => opened++);
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm };
         main.Show();
         Dispatcher.UIThread.RunJobs();
@@ -402,7 +402,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Overlay_EscCancels_EnterConfirms_EscClosesPage()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm };
         main.Show();
         Dispatcher.UIThread.RunJobs();
@@ -433,7 +433,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void TitleBar_ButtonsChangeWindowState_ShowsTitleAndServer()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Title = "OpenVoiceSpeak [zweit]" };
         main.Show();
         Dispatcher.UIThread.RunJobs();
@@ -457,7 +457,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         }
 
         Assert.Contains("OpenVoiceSpeak [zweit]", Texts(bar));
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("· Gilde", Texts(bar));
 
@@ -479,7 +479,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void UpdateProgress_CoversWholeWindow_BlocksInput()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
         Dispatcher.UIThread.RunJobs();
@@ -515,7 +515,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Chat_OwnRight_OthersLeft_NoticesFullWidth()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
         vm.Chat!.AddNotice(new Notice(DateTime.Now, "Willkommen hier", NoticeKind.Welcome));
@@ -535,7 +535,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Chat_LongMessage_BubbleCappedAndWraps()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
         var text = new string('x', 600);
@@ -554,7 +554,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Chat_PrivateTab_OwnRight()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
         vm.Server!.Apply(new ChatMessage(ChatTarget.Private, 2, "anna", null, 1, "psst", DateTimeOffset.Now));
@@ -600,7 +600,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Chat_FollowsNewLines_UnlessScrolledUp()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 900, Height = 500 };
         main.Show();
         var scroller = main.GetVisualDescendants().OfType<ChatView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First();
@@ -632,7 +632,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     public void ChannelTree_DragRaidAboveLobby_SendsOrder()
     {
         var sent = new List<Request>();
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin(sent) };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin(sent));
         var main = new MainWindow { DataContext = vm, Width = 900, Height = 600 };
         main.Show();
         Dispatcher.UIThread.RunJobs();
@@ -649,7 +649,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.MouseMove(raid + new Point(0, -10));
         main.MouseMove(lobby + new Point(0, -8)); // upper half of the lobby row
         Dispatcher.UIThread.RunJobs();
-        Thickness LobbyMargin() => main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(vm.Server.Channels.Single(c => c.Name == "Lobby"))!.Margin;
+        Thickness LobbyMargin() => main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(vm.Server!.Channels.Single(c => c.Name == "Lobby"))!.Margin;
         Assert.True(LobbyMargin().Top > 0); // Package 96: the gap opens above the lobby
         main.MouseUp(lobby + new Point(0, -8), MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
@@ -663,7 +663,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     public void GroupList_DragAdminAboveGuest_SendsOrder()
     {
         var sent = new List<Request>();
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin(sent) };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin(sent));
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 700 };
         main.Show();
         _ = vm.OpenAdminAsync();
@@ -689,7 +689,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void LogoDropZone_HighlightsOnDragOver()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         _ = vm.OpenAdminAsync();
@@ -724,7 +724,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("Gilde", "gilde.example.org", 7000, "ich"));
         settings.Save(dir);
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
         Dispatcher.UIThread.RunJobs();
@@ -736,7 +736,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal(["Verbinden", "Bearbeiten ...", "Löschen ..."], button.ContextMenu.Items.OfType<MenuItem>().Select(m => m.Header as string));
         button.ContextMenu.Close();
 
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         Dispatcher.UIThread.RunJobs();
         Assert.False(button.IsEffectivelyVisible); // connected: the channels take the sidebar
         Assert.Contains("Raid", Texts(main));
@@ -748,7 +748,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     public void Settings_PttHint_WithSetKeyButton()
     {
         new ClientSettings().Save(dir); // an existing profile without keys
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 2400 };
         main.Show();
         vm.OpenSettings();
@@ -767,7 +767,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void BackgroundOpacity_OnlyBackgroundsSeeThrough()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm };
         main.Show();
         var app = Application.Current!;
@@ -807,7 +807,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Settings_SectionOrder()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 3200 };
         main.Show();
         vm.OpenSettings();
@@ -823,7 +823,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 2400 };
         main.Show();
         vm.OpenSettings();
@@ -846,10 +846,10 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void UserContextMenu_VolumeSlider_OnlyForOthers()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         Dispatcher.UIThread.RunJobs();
 
         Border Row(string nick) => main.GetVisualDescendants().OfType<Border>()
@@ -894,12 +894,12 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void UserContextMenu_GroupsSubmenu()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
         var sent = new List<Request>();
         var server = FakeServers.Admin(sent);
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         Dispatcher.UIThread.RunJobs();
 
         Border Row(string nick) => main.GetVisualDescendants().OfType<Border>()
@@ -949,11 +949,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void UserContextMenu_MoveSubmenu()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 650 };
         main.Show();
         var sent = new List<Request>();
-        vm.Server = FakeServers.Admin(sent);
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent));
         Dispatcher.UIThread.RunJobs();
 
         Border Row(string nick) => main.GetVisualDescendants().OfType<Border>()
@@ -1005,7 +1005,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(culture);
         try
         {
-            var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+            var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
             var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
             main.Show();
             Dispatcher.UIThread.RunJobs();
@@ -1027,7 +1027,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void MutedChannel_IconReplacesSpeaker()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
@@ -1055,7 +1055,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void LinkedChannel_IconWithTooltip_NoChip()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = FakeServers.Admin() };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         Dispatcher.UIThread.RunJobs();
@@ -1076,14 +1076,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Connect_SidebarFitsLongestChannel()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         var server = FakeServers.WithChannels(SquadChannels);
         // Package 93: the lock icon behind the longest name counts as well
         var longest = server.Mirror.Channels.Values.Single(c => c.Name == "Logistics and Support Squad");
         server.Apply(new ChannelUpdated(longest with { AllowedGroupIds = [WellKnownGroups.Admin] }));
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         Dispatcher.UIThread.RunJobs();
 
         Assert.True(Sidebar(main).Bounds.Width >= 240);
@@ -1108,11 +1108,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void ChannelRow_NoDescription_NoTooltipOpens()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Server = FakeServers.WithChannels("Lobby", "Raid");
-        vm.Server.Apply(new ChannelsUnlinked(vm.Server.Channels[0].Id, vm.Server.Channels[1].Id));
+        MainViewModelSetup.ShowServer(vm, FakeServers.WithChannels("Lobby", "Raid"));
+        vm.Server!.Apply(new ChannelsUnlinked(vm.Server.Channels[0].Id, vm.Server.Channels[1].Id));
         Dispatcher.UIThread.RunJobs();
         var row = main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromIndex(1)!
             .GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
@@ -1127,14 +1127,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void Separator_IsALine_NoIconNoCount()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Server = FakeServers.WithChannels(SquadChannels);
+        MainViewModelSetup.ShowServer(vm, FakeServers.WithChannels(SquadChannels));
         Dispatcher.UIThread.RunJobs();
         var fitted = Sidebar(main).Bounds.Width;
         var id = Guid.NewGuid();
-        vm.Server.Apply(new ChannelAdded(new ChannelInfo(id, "", "", 1, Kind: ChannelKind.Separator)));
+        vm.Server!.Apply(new ChannelAdded(new ChannelInfo(id, "", "", 1, Kind: ChannelKind.Separator)));
         Dispatcher.UIThread.RunJobs();
 
         // the new row slides in (animated display): until it is in, not for a fixed time that a busy machine may not give it frames in
@@ -1160,15 +1160,15 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [AvaloniaFact]
     public void UserDraggedWidth_KeptUntilReconnect()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Server = FakeServers.WithChannels(SquadChannels);
+        MainViewModelSetup.ShowServer(vm, FakeServers.WithChannels(SquadChannels));
         Dispatcher.UIThread.RunJobs();
         var fitted = Sidebar(main).Bounds.Width;
 
         // a new, longer channel widens the sidebar while the user has not dragged
-        vm.Server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Logistics and Support Squad Number Two", "", 9)));
+        vm.Server!.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Logistics and Support Squad Number Two", "", 9)));
         Dispatcher.UIThread.RunJobs();
         var wider = Sidebar(main).Bounds.Width;
         Assert.True(wider > fitted, $"{wider} <= {fitted}");
@@ -1181,7 +1181,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(wider + 80, Sidebar(main).Bounds.Width, 1);
 
-        vm.Server = FakeServers.WithChannels(SquadChannels);
+        MainViewModelSetup.ShowServer(vm, FakeServers.WithChannels(SquadChannels));
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(fitted, Sidebar(main).Bounds.Width, 1);
         main.Close();
@@ -1198,14 +1198,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             var settings = new ClientSettings();
             settings.Bookmarks.Add(new Bookmark("Gilde", "gilde.example.org", 7000, "ich"));
             settings.Save(dir);
-            var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+            var vm = MainViewModelSetup.Create(dir, a => a());
             var main = new MainWindow { DataContext = vm, Width = 1100, Height = 750 };
             main.Show();
             Dispatcher.UIThread.RunJobs();
             var seen = AllUserTexts(main).ToList();
             Assert.Contains("Connect ...", seen);
 
-            vm.Server = FakeServers.Admin();
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             Dispatcher.UIThread.RunJobs();
             seen.AddRange(AllUserTexts(main));
             vm.OpenSettings();
@@ -1258,14 +1258,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     /// </summary>
     (MainWindow Main, MainViewModel Vm, ServerViewModel Server, List<Request> Sent, ManualTimeProvider Time) OpenWaiting(double width = 1000)
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
         var sent = new List<Request>();
         var time = new ManualTimeProvider();
         ServerViewModel? server = null;
         server = FakeServers.Admin(sent, time, SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         Dispatcher.UIThread.RunJobs();
         return (main, vm, server, sent, time);
     }

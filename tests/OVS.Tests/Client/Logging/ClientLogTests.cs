@@ -105,8 +105,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         using var identity = ClientStorage.LoadOrCreateIdentity(dir);
         var server = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"), password: password);
         var ui = new TestDispatcher();
-        var vm = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(dir, ui.Post, useAudioDevices: false)));
-        vm.ConfirmTofu = _ => Task.FromResult(true);
+        var vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, trustServers: true)));
         return (server, ui, vm);
     }
 

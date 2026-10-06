@@ -37,10 +37,10 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     MainWindow Open(out MainViewModel vm, DisplayMode display = DisplayMode.Animated, double width = 1100)
     {
         new ClientSettings { Display = display }.Save(dir);
-        vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display);
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still moves

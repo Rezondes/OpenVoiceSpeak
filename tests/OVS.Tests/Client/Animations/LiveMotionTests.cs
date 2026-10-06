@@ -56,12 +56,12 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         TransmitMode mode = TransmitMode.PushToTalk)
     {
         new ClientSettings { Display = display, Mode = mode }.Save(dir);
-        vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = opening = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         MotionWait.Settle(200);
         Motion.Apply(main, display);
-        vm.Server = server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, server = FakeServers.Admin());
         var look = buildUp ?? (() => { });
         Watch(700, look); // the tree builds up
         // under load that takes longer: watched on until it is over, no test acts while it still moves

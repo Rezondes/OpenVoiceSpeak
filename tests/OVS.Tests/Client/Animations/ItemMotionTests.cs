@@ -224,10 +224,10 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
     MainWindow Connected(out ServerViewModel server)
     {
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Server = server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, server = FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still builds up
         return main;
@@ -285,7 +285,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("Alt", "alt.example.org", 7000, "ich"));
         settings.Save(dir);
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         MotionWait.Settle(400);
@@ -579,11 +579,11 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     [AvaloniaFact]
     public void OffscreenEnd_NoGhost()
     {
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 400 };
         main.Show();
         var server = FakeServers.Crowded();
-        vm.Server = server;
+        MainViewModelSetup.ShowServer(vm, server);
         MotionWait.Settle(400);
         MotionWait.Connected(main);
         // every picture put in the overlay counts, not only one a frame finds there: under load a flight is over within a frame
@@ -608,10 +608,10 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     [AvaloniaFact]
     public async Task AdminGroupList_Glides()
     {
-        var vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         await vm.OpenAdminAsync();
         MotionWait.Settle(400);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in: the list stands still

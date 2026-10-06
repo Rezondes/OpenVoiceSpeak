@@ -6,6 +6,7 @@ using OVS.Client.Input;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Website;
 
@@ -27,7 +28,7 @@ public sealed class WebsiteScene : IDisposable
         var saved = new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x05))] };
         settings?.Invoke(saved);
         saved.Save(profile);
-        Vm = new MainViewModel(profile, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        Vm = MainViewModelSetup.Create(profile, a => Dispatcher.UIThread.Post(a));
         Window = new MainWindow { DataContext = Vm, Width = 1100, Height = height };
         Window.Show();
         ShotWriter.Settle(100);
@@ -43,7 +44,7 @@ public sealed class WebsiteScene : IDisposable
     public ShowcaseServer Connect()
     {
         var showcase = new ShowcaseServer(English);
-        Vm.Server = showcase.Server;
+        MainViewModelSetup.ShowServer(Vm, showcase.Server);
         ShotWriter.Settle(900);
         return showcase;
     }

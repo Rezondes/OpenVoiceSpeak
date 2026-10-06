@@ -53,7 +53,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     Tree Open(ServerViewModel? server = null)
     {
         var sent = new List<Request>();
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Server = server ?? FakeServers.Admin(sent) };
+        var vm = MainViewModelSetup.Create(dir, a => a(), server: server ?? FakeServers.Admin(sent));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         Dispatcher.UIThread.RunJobs();

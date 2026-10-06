@@ -32,7 +32,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     MainWindow Open(out MainViewModel vm, DisplayMode display = DisplayMode.Animated)
     {
         new ClientSettings { Display = display }.Save(dir);
-        vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         MotionWait.Settle(200);
@@ -98,7 +98,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
             e.Container.Classes.CollectionChanged += (_, _) => Seen();
         };
         bool Done() => pageLeft && bookmarksLeft && chatCameUp && nameFaded && entered.Count > 1 && MotionWait.IsConnected(main);
-        vm.Server = FakeServers.Crowded();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Crowded());
         // all done within 700 ms. The bound is wall clock time, but an animation can only end on a frame, and its clock
         // starts with the first frame after it began: on a loaded machine frames come late. So it runs until the sequence
         // is over and allows four times the longest gap between two frames on top (on an idle machine a few ms)
@@ -131,11 +131,11 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     public void Disconnect_FoldsAwayHomeWithReason()
     {
         var main = Open(out var vm);
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         MotionWait.Settle(700);
         MotionWait.Connected(main);
         vm.Status = "Verbindung verloren";
-        vm.Server = null;
+        MainViewModelSetup.ShowServer(vm, null);
         Frame();
         Assert.True(Named<Border>(main, "PageGhost").IsVisible && Named<Border>(main, "TreeGhost").IsVisible, "the server folds away as a picture");
         var picture = (Image)Named<Border>(main, "PageGhost").Child!;
@@ -155,11 +155,11 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     public void ServerSwitch_NoBlankFrame()
     {
         var main = Open(out var vm);
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         MotionWait.Settle(700);
         MotionWait.Connected(main);
-        vm.Server = null;
-        vm.Server = FakeServers.Crowded();
+        MainViewModelSetup.ShowServer(vm, null);
+        MainViewModelSetup.ShowServer(vm, FakeServers.Crowded());
         Assert.True(Named<Border>(main, "PageGhost").IsVisible); // the old server's picture covers the change at once
         Frame();
         MotionWait.Eventually(() =>
@@ -178,7 +178,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         Frame();
         Assert.Equal(1, main.GetVisualDescendants().OfType<LogoMark>().First(l => l.Bounds.Width >= 64).RenderTransform?.Value.M11 ?? 1);
         vm.IsConnecting = false;
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         Frame();
         Assert.False(Named<Border>(main, "PageGhost").IsVisible);
         Assert.Equal((0d, 1d), (OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
@@ -193,7 +193,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         var main = Open(out var vm);
         main.Width = 360;
         MotionWait.Settle(100);
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         MotionWait.Settle(800); // longer than the build-up waits for a tree to show (500 ms)
         MotionWait.Connected(main);
         var menu = main.GetVisualDescendants().OfType<Button>().Single(b => b.IsEffectivelyVisible

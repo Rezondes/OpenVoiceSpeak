@@ -44,7 +44,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         public static async Task<Instance> StartAsync()
         {
             var i = new Instance();
-            i.vm = await i.ui.InvokeAsync(() => Task.FromResult(new MainViewModel(i.dir, i.ui.Post, useAudioDevices: false)));
+            i.vm = await i.ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(i.dir, i.ui.Post)));
             var probe = new TcpListener(IPAddress.Loopback, 0);
             probe.Start();
             i.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
@@ -343,11 +343,115 @@ public sealed class DebugApiTests : IAsyncLifetime
             fake = FakeServers.Admin(time: new ManualTimeProvider());
             fake.Post = a => a();
             fake.Leave.Delay = TimeSpan.FromMinutes(1);
-            vm.Server = fake;
+            MainViewModelSetup.ShowServer(vm, fake);
             fake.Apply(new OVS.Shared.Protocol.Messages.Users.UserLeft(2));
         });
         var state = await anna.State();
         Assert.Null(User(state, 2));
         Assert.Single(fake.Channels.Single(c => c.Name == "Raid").Users); // still shown while it folds
+    }
+
+    /// <summary>
+    /// Scripts and the tooling read /state by its field names: every name stays as it is when the view models behind it
+    /// move. Arrays show as "[]"; the received frames are keyed by session id, so only the key itself is pinned.
+    /// </summary>
+    [Fact]
+    public async Task State_Connected_KeepsEveryFieldName()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+        await anna.Post("chat", new { target = "channel", text = "hallo" });
+        var state = await anna.Until(s => s.GetProperty("server").GetProperty("chat").GetArrayLength() == 1);
+
+        var names = new SortedSet<string>(StringComparer.Ordinal);
+        FieldNames(state, "", names);
+
+        string[] expected =
+        [
+            "audio",
+            "audio.framesReceived",
+            "audio.framesSent",
+            "audio.lastOutputLevelDb",
+            "audio.linkPtt",
+            "audio.ptt",
+            "audio.pushToMute",
+            "audio.toneHz",
+            "connected",
+            "connection",
+            "connection.bars",
+            "connection.baselineMs",
+            "connection.bitrate",
+            "connection.buffer",
+            "connection.concealed",
+            "connection.downlink",
+            "connection.jitter",
+            "connection.rating",
+            "connection.roundTrip",
+            "connection.unreachable",
+            "connection.uplink",
+            "keyBindings",
+            "keyBindings[].action",
+            "keyBindings[].chord",
+            "notices",
+            "pingText",
+            "server",
+            "server.channels",
+            "server.channels[].bitrate",
+            "server.channels[].description",
+            "server.channels[].id",
+            "server.channels[].isCurrent",
+            "server.channels[].isLinked",
+            "server.channels[].isSeparator",
+            "server.channels[].linkedNames",
+            "server.channels[].name",
+            "server.channels[].users",
+            "server.channels[].users[].groupNames",
+            "server.channels[].users[].isSelf",
+            "server.channels[].users[].isSpeaking",
+            "server.channels[].users[].isSpeakingViaLink",
+            "server.channels[].users[].nickname",
+            "server.channels[].users[].serverMuted",
+            "server.channels[].users[].sessionId",
+            "server.channels[].users[].statusText",
+            "server.chat",
+            "server.chat[].fromNickname",
+            "server.chat[].target",
+            "server.chat[].text",
+            "server.chat[].toSessionId",
+            "server.defaultChannelId",
+            "server.groups",
+            "server.groups[].assignableByMe",
+            "server.groups[].id",
+            "server.groups[].name",
+            "server.groups[].permissions",
+            "server.iconBytes",
+            "server.iconHash",
+            "server.isAdmin",
+            "server.lastBanList",
+            "server.lastUserList",
+            "server.selfDeafened",
+            "server.selfId",
+            "server.selfMuted",
+            "server.selfPermissions",
+            "server.serverName",
+            "server.welcomeText",
+            "sounds",
+            "status",
+            "transmitText",
+            "voiceHint",
+        ];
+        Assert.True(expected.SequenceEqual(names), "actual:" + Environment.NewLine + string.Join(Environment.NewLine, names.Select(n => $"            \"{n}\",")));
+    }
+
+    static void FieldNames(JsonElement element, string path, SortedSet<string> names)
+    {
+        if (element.ValueKind == JsonValueKind.Array)
+            foreach (var item in element.EnumerateArray()) FieldNames(item, path + "[]", names);
+        if (element.ValueKind != JsonValueKind.Object || path == "audio.framesReceived") return;
+        foreach (var property in element.EnumerateObject())
+        {
+            var name = path.Length == 0 ? property.Name : $"{path}.{property.Name}";
+            names.Add(name);
+            FieldNames(property.Value, name, names);
+        }
     }
 }

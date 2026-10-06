@@ -38,8 +38,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     MainViewModel Main(bool connected = true)
     {
         var dialogs = Dialogs();
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false) { Dialogs = dialogs };
-        if (connected) vm.Server = FakeServers.Admin(sent, dialogs: dialogs);
+        var vm = MainViewModelSetup.Create(dir, a => a(), dialogs: dialogs);
+        if (connected) MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent, dialogs: dialogs));
         return vm;
     }
 

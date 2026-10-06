@@ -38,7 +38,7 @@ public sealed class MotionTests() : TempDirectoryTest("ovs-motion-", quiet: true
     [AvaloniaFact]
     public void MainWindow_FollowsTheChosenDisplay()
     {
-        var vm = new MainViewModel(dir, a => a(), useAudioDevices: false);
+        var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm };
         main.Show();
         Dispatcher.UIThread.RunJobs();

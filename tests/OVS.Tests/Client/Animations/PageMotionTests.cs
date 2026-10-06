@@ -33,10 +33,10 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     MainWindow Open(out MainViewModel vm, DisplayMode display = DisplayMode.Animated, double height = 700)
     {
         new ClientSettings { Display = display }.Save(dir);
-        vm = new MainViewModel(dir, a => Dispatcher.UIThread.Post(a), useAudioDevices: false);
+        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = height };
         main.Show();
-        vm.Server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display); // the display is one for the app: pin it against what other tests left queued
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still moves

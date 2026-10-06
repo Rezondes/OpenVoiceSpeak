@@ -35,8 +35,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!");
-        vm = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(dir, ui.Post, useAudioDevices: false, keyState: keys.IsDown)));
-        vm.ConfirmTofu = _ => Task.FromResult(true);
+        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true)));
     }
 
     public async Task DisposeAsync()
@@ -75,14 +74,25 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return null;
         });
 
+    /// <summary>The profile's file names never change: the first connection writes the key pair and the trusted fingerprint.</summary>
+    [Fact]
+    public async Task Connect_NewProfile_WritesIdentityKeyAndKnownServersFile()
+    {
+        await ConnectAsync(saveBookmark: false);
+
+        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.True(File.Exists(Path.Combine(dir, "identity.key")));
+        Assert.True(File.Exists(Path.Combine(dir, "known_servers.json")));
+    }
+
     /// <summary>Package 34: in a muted channel the client warns and does not send.</summary>
     [Fact]
     public async Task ChannelMuted_HintAndNoSending()
     {
         var (hint, muted) = await OnUi(() =>
         {
-            vm.Server = FakeServers.Admin();
-            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
             vm.Tick();
             return (vm.VoiceHint, vm.Audio.ChannelMuted);
         });
@@ -103,9 +113,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var steps = await OnUi(() =>
         {
             var seen = new List<int>();
-            vm.Server = FakeServers.Admin();
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             seen.Add(vm.Audio.ChannelBitrate); // the Lobby at its default
-            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 96)));
+            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 96)));
             seen.Add(vm.Audio.ChannelBitrate); // another channel: nothing changes
             vm.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
                 OVS.Shared.Permissions.Permission.All, [OVS.Shared.Permissions.WellKnownGroups.Admin])));
@@ -135,14 +145,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
             var seen = new List<int>();
             var time = new ManualTimeProvider();
             vm.Audio.Loss = new LossAdapter(time, 64);
-            vm.Server = FakeServers.Admin(); // in the Lobby at 64
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin()); // in the Lobby at 64
             for (int i = 0; i < 4; i++) // 6 s above 10 %
             {
                 vm.Audio.Loss.Report(new LossReport(100, 20));
                 time.Advance(TimeSpan.FromSeconds(2));
             }
             seen.Add(vm.Audio.EncoderBitrate);
-            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1)));
+            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1)));
             seen.Add(vm.Audio.EncoderBitrate); // another channel edited: no move
             vm.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
                 OVS.Shared.Permissions.Permission.All, [OVS.Shared.Permissions.WellKnownGroups.Admin])));
@@ -181,8 +191,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             vm.Clock = time;
-            vm.Server = FakeServers.Admin();
-            return vm.Server.SetSelfStateAsync(true, false);
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+            return vm.Server!.SetSelfStateAsync(true, false);
         });
         Assert.Equal("", await TickHint()); // muted, but not talking
         Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
@@ -202,9 +212,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            vm.Server = FakeServers.Admin();
-            if (state == "deafened") return vm.Server.SetSelfStateAsync(true, true);
-            vm.Server.Apply(new UserUpdated(vm.Server.Mirror.Self! with { ServerMuted = true }));
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+            if (state == "deafened") return vm.Server!.SetSelfStateAsync(true, true);
+            vm.Server!.Apply(new UserUpdated(vm.Server.Mirror.Self! with { ServerMuted = true }));
             return Task.CompletedTask;
         });
         Assert.Equal("", await TickHint());
@@ -217,8 +227,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            vm.Server = FakeServers.Admin();
-            return vm.Server.SetSelfStateAsync(true, false);
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+            return vm.Server!.SetSelfStateAsync(true, false);
         });
         vm.Audio.Decide(true); // the voice gate hears voice, the capture thread asks
         Assert.Equal("", await TickHint()); // push-to-talk mode: voice alone is no attempt to talk
@@ -235,7 +245,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task NotMuted_NoHint()
     {
-        await OnUi(() => vm.Server = FakeServers.Admin());
+        await OnUi(() => MainViewModelSetup.ShowServer(vm, FakeServers.Admin()));
         Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
 
@@ -612,8 +622,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await OnUi(() =>
         {
-            vm.Server = server;
-            vm.Server = server;
+            MainViewModelSetup.ShowServer(vm, server);
+            MainViewModelSetup.ShowServer(vm, server);
             vm.TrackServerIcon(server, "127.0.0.1", 1);
             return 0;
         });
@@ -918,7 +928,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
             await vm.OpenAdminAsync(); // not connected: nothing to administer
             Assert.Equal(Page.Home, vm.Page);
-            vm.Server = FakeServers.Admin();
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             await vm.OpenAdminAsync();
             Assert.Equal(Page.Admin, vm.Page);
             await vm.DisconnectAsync(); // the administration needs a server
@@ -956,7 +966,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var gate = new ManualResetEventSlim();
         var settings = new ClientSettings { InputDeviceId = "mic-2" };
         settings.Save(dir);
-        var main = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(dir, ui.Post, useAudioDevices: false)));
+        var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post)));
         main.DeviceSource = flow =>
         {
             gate.Wait(TimeSpan.FromSeconds(10));
@@ -1193,8 +1203,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var settingsBefore = await OnUi(() =>
         {
             var before = vm.Settings;
-            vm.Server = FakeServers.Admin();
-            vm.Server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").VolumePercent = 200;
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+            vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").VolumePercent = 200;
             return before;
         });
         Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
@@ -1289,7 +1299,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         try
         {
             new ClientSettings { Display = DisplayMode.Simplified, BackgroundOpacity = 0.5f, BlurBackground = true }.Save(saved);
-            var started = new MainViewModel(saved, a => a(), useAudioDevices: false);
+            var started = MainViewModelSetup.Create(saved, a => a());
             Assert.Equal(new BackgroundAppearance(0.5f, true, DisplayMode.Simplified), started.Appearance);
             await started.DisposeAsync();
         }
@@ -1316,8 +1326,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
                     new(KeyAction.PushToTalk, new KeyChord(TalkKey)),
                 ],
             });
-            vm.Server = FakeServers.Admin(sent);
-            vm.Server.SoundRequested += heard.Add;
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent));
+            vm.Server!.SoundRequested += heard.Add;
             return 0;
         });
         return (sent, heard);
@@ -1442,8 +1452,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var sent = new List<Request>();
         Assert.True(await OnUi(() =>
         {
-            vm.Server = FakeServers.Admin(sent);
-            return vm.Server.SelfMuted;
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent));
+            return vm.Server!.SelfMuted;
         }));
         await HoldMuteKey(false);
         Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
@@ -1528,8 +1538,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var devices = new FakeAudioDevices();
         var own = Directory.CreateTempSubdirectory("ovs-devices-").FullName;
-        var main = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(own, ui.Post, useAudioDevices: false, keyState: keys.IsDown, audioDevices: devices)));
-        main.ConfirmTofu = _ => Task.FromResult(true);
+        var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(own, ui.Post, keyState: keys.IsDown, audioDevices: devices, trustServers: true)));
         Task Do(Func<Task> work) => ui.InvokeAsync<object?>(async () =>
         {
             await work();
@@ -1594,8 +1603,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task MessageLog_OffUiThread_InOrder()
     {
         var own = Directory.CreateTempSubdirectory("ovs-log-").FullName;
-        var main = await ui.InvokeAsync(() => Task.FromResult(new MainViewModel(own, ui.Post, useAudioDevices: false, keyState: keys.IsDown)));
-        main.ConfirmTofu = _ => Task.FromResult(true);
+        var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(own, ui.Post, keyState: keys.IsDown, trustServers: true)));
         try
         {
             int uiThread = await OnUi(() => Environment.CurrentManagedThreadId);
