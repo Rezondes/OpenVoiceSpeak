@@ -45,7 +45,7 @@ public sealed partial class ServerState
         if (!Require(s, r, Permission.UserDelete) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online, lastAdminFirst: true)) return;
         data.Users.Remove(user);
         int bans = data.Bans.RemoveAll(b => b.Fingerprint == user.Fingerprint); // Package 80: the history as well
-        Persist();
+        saves.Persist();
         logs.Server($"Nutzerdaten von {user.LastNickname} gelöscht von {s.Nickname} ({user.Fingerprint[..Math.Min(12, user.Fingerprint.Length)]}, {bans} Bans)");
         if (online is not null) RemoveLocked(online, new Disconnected(Codes.UserDeleted));
     }
@@ -66,7 +66,7 @@ public sealed partial class ServerState
             CreatedByFingerprint = s.Fingerprint,
             DurationMinutes = durationMinutes,
         });
-        Persist();
+        saves.Persist();
         var duration = durationMinutes is { } m ? $"für {m} Minuten" : "dauerhaft";
         logs.Server($"{nickname} wurde von {s.Nickname} gebannt {duration}{(ip is not null ? " mit IP" : "")}{(online is null ? " (offline)" : "")}: {reason}");
         if (online is not null) RemoveLocked(online, new Disconnected(Codes.Banned, reason));
@@ -89,7 +89,7 @@ public sealed partial class ServerState
         if (!CanModerate(s, r, RightsOf(ban.Fingerprint), ban.Fingerprint)) return;
         ban.LiftedAt = now; // Package 80 (A97): kept as history
         ban.LiftedBy = s.Nickname;
-        Persist();
+        saves.Persist();
         logs.Server($"Bann von {ban.Nickname} aufgehoben von {s.Nickname}");
         if (s.Permissions.Has(Permission.BansView)) SendBanList(s, r.RequestId); // Package 84: the list only for who may see it
     }
@@ -119,7 +119,7 @@ public sealed partial class ServerState
         if (user is not null && user.ServerMuted != muted)
         {
             user.ServerMuted = muted;
-            Persist();
+            saves.Persist();
         }
         logs.Server($"{nickname} serverseitig {(muted ? "stummgeschaltet" : "wieder freigegeben")} von {s.Nickname}{(online is null ? " (offline)" : "")}");
         if (online is null) return;

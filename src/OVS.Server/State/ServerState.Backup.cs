@@ -52,7 +52,7 @@ public sealed partial class ServerState
         if (!Require(s, r, Permission.BackupsManage) || !ThrottleHeavy(s, r)) return;
         try
         {
-            if (savePending) Persist(); // the archive is made from the file, so it gets what the debounced save still holds
+            saves.FlushPending(); // the archive is made from the file, so it gets what the debounced save still holds
             var created = backups.Create();
             logs.Server($"Backup {created.FileName} angelegt von {s.Nickname}");
         }
@@ -237,12 +237,12 @@ public sealed partial class ServerState
         void Uncount()
         {
             foreach (var x in running) AddStats(x.Fingerprint, -x.Online, -x.SpeechTime, -x.ChatMessages);
-            PersistSoon(); // the file may hold the counted statistics now
+            saves.PersistSoon(); // the file may hold the counted statistics now
         }
         BackupInfo safety;
         try
         {
-            Persist();
+            saves.Persist();
             safety = backups.Create(BackupStore.SafetyPrefix);
         }
         catch (BackupQuotaException e) // Package 89: no restore without the safety backup

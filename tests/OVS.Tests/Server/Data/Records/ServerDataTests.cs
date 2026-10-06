@@ -139,4 +139,41 @@ public class ServerDataTests
         BrokenServerData.Break(data, variant);
         Assert.Equal(problem, data.FindProblem());
     }
+
+    static readonly DateTimeOffset Now = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
+
+    static ServerData WithEndedBans(int logDays)
+    {
+        var data = Valid();
+        data.Settings.LogDays = logDays;
+        data.Bans =
+        [
+            new BanRecord { Nickname = "aktiv" },
+            new BanRecord { Nickname = "aufgehoben-alt", LiftedAt = Now.AddDays(-15) },
+            new BanRecord { Nickname = "abgelaufen-alt", ExpiresAt = Now.AddDays(-14).AddTicks(-1) },
+            new BanRecord { Nickname = "abgelaufen-genau", ExpiresAt = Now.AddDays(-14) },
+            new BanRecord { Nickname = "aufgehoben-neu", LiftedAt = Now.AddDays(-13), ExpiresAt = Now.AddDays(-20) },
+        ];
+        return data;
+    }
+
+    [Fact]
+    public void PruneEndedBans_EndedLongerAgoThanLogDays_Removed()
+    {
+        var data = WithEndedBans(logDays: 14);
+
+        data.PruneEndedBans(Now);
+
+        Assert.Equal(["aktiv", "abgelaufen-genau", "aufgehoben-neu"], data.Bans.Select(b => b.Nickname));
+    }
+
+    [Fact]
+    public void PruneEndedBans_LogDaysZero_KeepsEveryBan()
+    {
+        var data = WithEndedBans(logDays: 0);
+
+        data.PruneEndedBans(Now);
+
+        Assert.Equal(5, data.Bans.Count);
+    }
 }

@@ -37,6 +37,17 @@ public sealed class ServerData
                                     && (u.LastLogin ?? u.FirstSeen) is var seen && seen != default && seen < cutoff);
     }
 
+    /// <summary>
+    /// Package 80 (A97): lifted and expired bans stay as history and are dropped once they ended longer ago than the log
+    /// retention (LogDays, 0 = forever).
+    /// </summary>
+    public void PruneEndedBans(DateTimeOffset now)
+    {
+        if (Settings.LogDays <= 0) return;
+        var cutoff = now.AddDays(-Settings.LogDays);
+        Bans.RemoveAll(b => b.EndedAt(now) < cutoff);
+    }
+
     public static ServerData CreateDefault(ServerConfig config)
     {
         var lobby = new ChannelRecord { Id = Guid.NewGuid(), Name = "Lobby" };

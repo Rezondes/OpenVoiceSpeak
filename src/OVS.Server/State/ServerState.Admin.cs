@@ -38,7 +38,7 @@ public sealed partial class ServerState
         }
         var user = FindUser(s.Fingerprint)!;
         if (!user.GroupIds.Contains(AdminGroupId)) user.GroupIds.Add(AdminGroupId);
-        Persist();
+        saves.Persist();
         RecomputePermissions();
         logs.Server($"{s.Nickname} hat das Admin-Token eingelöst");
     }
@@ -54,7 +54,7 @@ public sealed partial class ServerState
         }
         var permissions = r.Permissions & Permission.All;
         data.Groups.Add(new Group(Guid.NewGuid(), name, permissions));
-        Persist();
+        saves.Persist();
         logs.Server($"Gruppe '{name}' angelegt von {s.Nickname} ({permissions})");
         BroadcastGroups(); // Package 92: per recipient
     }
@@ -73,7 +73,7 @@ public sealed partial class ServerState
         if (reordered.SequenceEqual(data.Groups)) return;
         data.Groups.Clear();
         data.Groups.AddRange(reordered);
-        Persist();
+        saves.Persist();
         logs.Server($"Gruppen umsortiert von {s.Nickname}: {string.Join(", ", reordered.Select(g => g.Name))}");
         BroadcastGroups(); // Package 92: per recipient
     }
@@ -103,7 +103,7 @@ public sealed partial class ServerState
         if (group.Name != name) changes.Add($"Name '{group.Name}' -> '{name}'");
         if (group.Permissions != permissions) changes.Add($"Rechte {group.Permissions} -> {permissions}");
         data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = permissions };
-        Persist();
+        saves.Persist();
         if (changes.Count > 0) logs.Server($"Gruppe '{group.Name}' geändert von {s.Nickname}: {string.Join(", ", changes)}");
         RecomputePermissions(groupsChanged: true); // Package 92: the groups per recipient, judged by the new rights
     }
@@ -131,7 +131,7 @@ public sealed partial class ServerState
         foreach (var user in data.Users) user.GroupIds.Remove(group.Id);
         // Package 93 (A109): gone from every group lock; a lock left empty means admins only, until someone edits it
         var unlocked = data.Channels.Where(c => c.AllowedGroupIds?.Remove(group.Id) == true).ToList();
-        Persist();
+        saves.Persist();
         logs.Server($"Gruppe '{group.Name}' gelöscht von {s.Nickname}");
         foreach (var channel in unlocked)
             ChannelLog(channel.Id, $"Gruppe '{group.Name}' aus der Gruppen-Sperre entfernt (Gruppe gelöscht)");
@@ -146,7 +146,7 @@ public sealed partial class ServerState
         if (!CanModerate(s, r, RightsOf(user.Fingerprint), user.Fingerprint)) return; // Package 84: only on weaker users
         if (user.GroupIds.Contains(r.GroupId)) return;
         user.GroupIds.Add(r.GroupId);
-        Persist();
+        saves.Persist();
         logs.Server($"Gruppe '{group.Name}' an {user.LastNickname} vergeben von {s.Nickname}");
         RecomputePermissions();
     }
@@ -162,7 +162,7 @@ public sealed partial class ServerState
         }
         if (!CanModerate(s, r, RightsOf(user.Fingerprint), user.Fingerprint)) return; // Package 84: only on weaker users
         if (!user.GroupIds.Remove(r.GroupId)) return;
-        Persist();
+        saves.Persist();
         logs.Server($"Gruppe '{group.Name}' von {user.LastNickname} entfernt von {s.Nickname}");
         RecomputePermissions();
     }
@@ -226,7 +226,7 @@ public sealed partial class ServerState
             data.Settings.AutoRestartTime = limits.AutoRestartTime;
             logs.Update(limits.LogDays, limits.LogRotateDaily);
         }
-        Persist();
+        saves.Persist();
         logs.Server($"Servereinstellungen geändert von {s.Nickname}: {(changes.Count > 0 ? string.Join(", ", changes) : "keine Änderung")}");
         BroadcastSettings();
         SettingsChanged?.Invoke();

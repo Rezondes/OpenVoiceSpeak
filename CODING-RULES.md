@@ -74,7 +74,7 @@ That is 2 + 90 = 92 types. Data records and enums go to the area they belong to 
 ### OVS.Server
 
 - The root keeps `Program`, `ServerConfig` (E4), `ControlServer`, `Session` and its `SessionOutbox` (the frames for the write loop; no folder named `Session/`), `ServerHost`, `AdminToken`, `Limits` (it holds all limits, not only throttling, E5), `RequestShape` and `MalformedRequest` (a top-level `internal sealed record`, E6; its name in the server log stays "MalformedRequest").
-- `Data/`: `DataStore` and the backup types `BackupStore`, `BackupManifest`, `BackupContent`, `ServerIconStore` (E2) and `BackupUpload` (one session's upload in progress, N8). `Data/Records/`: the persisted types `ServerSettings`, `ChannelRecord`, `ChannelLink`, `UserRecord`, `BanRecord`, `ServerData` (E1).
+- `Data/`: `DataStore` and the backup types `BackupStore`, `BackupManifest`, `BackupContent`, `ServerIconStore` (E2), `BackupUpload` (one session's upload in progress, N8) and `SaveScheduler` (when the data file is written: at once, debounced, retried, at most once a minute per key, and on close; N8). `Data/Records/`: the persisted types `ServerSettings`, `ChannelRecord`, `ChannelLink`, `UserRecord`, `BanRecord`, `ServerData` (E1).
 - `State/`: `ServerState` and its parts (§ServerState).
 - `Permissions/`: `PermissionRules`, `Group` (E3). `Rules/`: the pure request rules of the server, one class per concept (`ChannelSettingsRule`, `ChannelCapacity`, `ChannelLinkRule`, `ModerationRule`, `ServerLimitsRule`) and the `Refusal` they return (N7). `Throttling/`: `RateLimiter` (it limits requests too, so it is not in `Voice/`, E5) and `SessionThrottle` (one session's request, list, costly and chat budgets and the flood rule, N8). `Logging/`: `LogReader`, `LogExport`, `ServerLogs`, and one session's `LogJobQueue` and `LogDownload` (N8). `Security/`: `StoredPassword` (E7, introduced by the refactoring as `PasswordHash`; a value object since N10). `Tls/`, `Voice/` (`UdpVoiceServer`, `VoiceRouting` and one session's `SessionVoice`, N8), `Exceptions/`.
 
@@ -89,12 +89,12 @@ What `ServerState` holds (N7): the request handlers of every area, also of backu
 | `ServerState.cs` | fields, constructor, settings, `Handle` and `Dispatch`, the helpers without broadcast and persistence; `BroadcastUser`, `BroadcastSettings` and `BroadcastGroups` stay here next to the per-recipient helpers they use (`Info`, `Moderates`, `SettingsInfo`, `GroupInfos`) |
 | `ServerState.Connections.cs` | connections and password guessing: `Admit`, `Remove`, `CloseAll`, `LogRejected`, `RemoveLocked`, the statistics, `ChannelLog`, `ChannelName` |
 | `ServerState.Throttling.cs` | the request limits: `Admissible`, `Throttle`, `ThrottleList`, `ThrottleHeavy`, `OnGetServerIcon`, `CountNewIdentity` |
-| `ServerState.Persistence.cs` | `Persist`, `PersistSoon`, `FlushPendingSave`, `BeforeSave`, `PruneGuests`, `RecordBlockedAttempt` |
+| `ServerState.Persistence.cs` | `WriteData` (the save action of `SaveScheduler`: the pruning, `BeforeSave`, the write), `FlushPendingSave`, `BeforeSave`, `PruneGuests` (the daily gate `nextPrune` and its log line) |
 | `ServerState.Broadcast.cs` | `Broadcast`, `BroadcastExcept` |
 | `ServerState.Voice.cs` | voice |
 | `ServerState.Admin.cs`, `.Backup.cs`, `.Channel.cs`, `.Chat.cs`, `.Link.cs`, `.Log.cs`, `.Moderation.cs` | the command handlers of each area (formerly `Commands/*Commands.cs`) |
 
-The saving (`Persist`, `PersistSoon` with the save timer and retry), the password guessing count and `CountNewIdentity` are such pieces with their own state; they leave as `SaveScheduler`, `GuessingThrottle` and `NewIdentityLimit` (N8), and this table follows in the same commit. A new request area gets a part `ServerState.<Area>.cs` in `State/` for its handlers only; its state and its pure rules go into classes of their own (N7).
+The saving (`Persist`, `PersistSoon` with the save timer and retry, close) is such a piece and is `SaveScheduler` (N8): `ServerState` holds it as `saves`, gives it the one lock and `WriteData`, and its timer takes the same lock; the pruning before a save is `ServerData.PruneEndedBans` and `ServerData.PruneGuests`, the count of a blocked join `BanRecord.CountBlockedAttempt`. The password guessing count and `CountNewIdentity` are such pieces too; they leave as `GuessingThrottle` and `NewIdentityLimit` (N8), and this table follows in the same commit. A new request area gets a part `ServerState.<Area>.cs` in `State/` for its handlers only; its state and its pure rules go into classes of their own (N7).
 
 ### Client
 

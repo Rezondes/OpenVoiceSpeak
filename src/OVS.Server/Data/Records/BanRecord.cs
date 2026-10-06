@@ -24,6 +24,14 @@ public sealed class BanRecord
     public DateTimeOffset? LastAttempt { get; set; }
     public string? LastAttemptIp { get; set; }
 
+    /// <summary>Package 80 (A97): counts a join the ban turned away.</summary>
+    public void CountBlockedAttempt(string ip, DateTimeOffset now)
+    {
+        BlockedAttempts++;
+        LastAttempt = now;
+        LastAttemptIp = ip;
+    }
+
     public bool IsActive(DateTimeOffset now) => BanStatusRule.Evaluate(LiftedAt, ExpiresAt, now) == BanStatus.Active;
 
     /// <summary>When a lifted or expired ban ended; null while active.</summary>

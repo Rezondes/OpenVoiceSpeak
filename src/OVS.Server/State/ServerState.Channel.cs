@@ -67,7 +67,7 @@ public sealed partial class ServerState
             Bitrate = r.Bitrate,
         };
         data.Channels.Add(channel);
-        Persist();
+        saves.Persist();
         var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null,
             allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.StoredPassword is null ? null : "mit Passwort",
             r.Bitrate != ProtocolInfo.DefaultBitrate ? $"Qualität {r.Bitrate} kbps" : null }.OfType<string>().ToList();
@@ -90,7 +90,7 @@ public sealed partial class ServerState
             Bitrate = 0, // Package 132: none
         };
         data.Channels.Add(separator);
-        Persist();
+        saves.Persist();
         logs.Server($"Trenner angelegt von {s.Nickname}");
         var added = new ChannelAdded(Info(separator));
         BroadcastExcept(s, added);
@@ -129,7 +129,7 @@ public sealed partial class ServerState
         channel.AllowedGroupIds = allowed; // Package 93 (A108): nor does a lock
         if (r.Password is not null) channel.StoredPassword = StoredPassword.Create(r.Password); // Package 94: "" removes it
         channel.Bitrate = r.Bitrate; // Package 132: the senders inside follow the ChannelUpdated
-        Persist();
+        saves.Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
         Broadcast(new ChannelUpdated(Info(channel)));
     }
@@ -211,7 +211,7 @@ public sealed partial class ServerState
             changed.Add(channel);
         }
         if (changed.Count == 0) return;
-        Persist();
+        saves.Persist();
         logs.Server($"Channels umsortiert von {s.Nickname}: {string.Join(", ", ids.Select(ChannelName))}");
         foreach (var channel in changed) Broadcast(new ChannelUpdated(Info(channel)));
     }
@@ -249,7 +249,7 @@ public sealed partial class ServerState
         ChannelLog(channel.Id, $"Channel gelöscht von {s.Nickname}");
         logs.Server(channel.Kind == ChannelKind.Separator ? $"Trenner gelöscht von {s.Nickname}" : $"Channel '{channel.Name}' gelöscht von {s.Nickname}");
         data.Channels.Remove(channel);
-        Persist();
+        saves.Persist();
         Broadcast(new ChannelRemoved(channel.Id));
     }
 

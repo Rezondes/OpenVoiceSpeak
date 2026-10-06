@@ -46,11 +46,8 @@ public sealed partial class ServerState
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per address group (IpAddresses.ToAddressGroup)
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool Logged)> newIdentities = []; // Package 87, per address group
     DateTimeOffset nextIdentitySweep;
-    ITimer? saveTimer; // Package 87: the debounced save of logins and logouts
-    bool savePending;
-    bool saveFailed; // the last write of the data file failed; logged once, and once more when a save succeeds again
-    DateTimeOffset nextPrune;
-    readonly Dictionary<Guid, DateTimeOffset> attemptSaved = []; // Package 80: last save of a ban's blocked attempts
+    readonly SaveScheduler saves;
+    DateTimeOffset nextPrune; // the next daily prune of unused guests, checked on each save
     DateTimeOffset nextPasswordSweep;
     readonly AdminToken adminToken = new();
     uint lastSessionId;
@@ -68,6 +65,7 @@ public sealed partial class ServerState
         LogReader = new LogReader(config.DataDir, time); // Package 81
         LogReader.RemoveExports(); // Package 82: what a crash left behind
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
+        saves = new SaveScheduler(gate, WriteData, time, line => logs.Server(line));
         bool pruned = PruneGuests(time.GetUtcNow());
         if (data.Migrate(config) || pruned) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);

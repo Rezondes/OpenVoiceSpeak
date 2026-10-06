@@ -80,7 +80,8 @@ public sealed partial class ServerState
                 || b.Ip is not null && IPAddress.TryParse(b.Ip, out var banned) && IpAddresses.ToAddressGroup(banned).Equals(source)));
             if (ban is not null)
             {
-                RecordBlockedAttempt(ban, ipText, now);
+                ban.CountBlockedAttempt(ipText, now); // Package 80 (A97)
+                saves.PersistAtMostOncePerMinute(ban.Id);
                 return (null, new Rejected(Codes.Banned, BanText(ban)));
             }
 
@@ -97,7 +98,7 @@ public sealed partial class ServerState
             if (data.Settings.HasLegacyHash()) // Package 91: the right password turns the old unsalted hash into the new format
             {
                 data.Settings.StoredPassword = StoredPassword.Create(password ?? "");
-                Persist();
+                saves.Persist();
                 logs.Server("Serverpasswort-Hash auf PBKDF2 umgestellt");
             }
 
@@ -126,7 +127,7 @@ public sealed partial class ServerState
                 data.Users.Add(user);
             }
             user.Login(nickname, ipText, now);
-            PersistSoon(); // Package 87: a connect loop no longer costs an fsync per connection
+            saves.PersistSoon(); // Package 87: a connect loop no longer costs an fsync per connection
 
             var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32), time)
             {
@@ -176,18 +177,7 @@ public sealed partial class ServerState
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
             logs.Server($"{why}, {sessions.Count} Nutzer getrennt");
-            saveTimer?.Dispose(); // Package 87: nothing is written after this save (a restore replaces the file next)
-            if (sessions.Count > 0 || savePending)
-            {
-                try
-                {
-                    Persist();
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
-                    logs.Server($"Serverdaten beim Beenden nicht gespeichert: {e.Message}");
-                }
-            }
+            saves.Close(force: sessions.Count > 0); // the running sessions' statistics, or what is still pending
             sessions.Clear();
             voiceSessions.Clear();
         }
@@ -208,7 +198,7 @@ public sealed partial class ServerState
         sessions.Remove(session.Id);
         voiceSessions.TryRemove(session.Id, out _);
         AddSessionStats(session, time.GetUtcNow());
-        PersistSoon();
+        saves.PersistSoon();
         Broadcast(new UserLeft(session.Id));
         if (final is Disconnected d) reason = d.Reason switch
         {

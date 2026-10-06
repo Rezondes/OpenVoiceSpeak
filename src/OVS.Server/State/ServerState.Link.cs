@@ -14,7 +14,7 @@ public sealed partial class ServerState
         var link = ChannelLink.Of(r.A, r.B);
         if (data.Links.Contains(link)) return;
         data.Links.Add(link);
-        Persist();
+        saves.Persist();
         LogLink(link, $"gesetzt von {s.Nickname}");
         Broadcast(new ChannelsLinked(link.A, link.B));
     }
@@ -24,7 +24,7 @@ public sealed partial class ServerState
         if (!Require(s, r, Permission.ChannelLink)) return;
         var link = ChannelLink.Of(r.A, r.B);
         if (!data.Links.Remove(link)) return;
-        Persist();
+        saves.Persist();
         LogLink(link, $"entfernt von {s.Nickname}");
         Broadcast(new ChannelsUnlinked(link.A, link.B));
     }
@@ -49,7 +49,7 @@ public sealed partial class ServerState
 
         data.Links.AddRange(toAdd);
         data.Links.RemoveAll(toRemove.Contains);
-        Persist();
+        saves.Persist();
         logs.Server($"Links geändert von {s.Nickname}: {toAdd.Count} gesetzt, {toRemove.Count} entfernt");
         foreach (var link in toAdd)
         {
