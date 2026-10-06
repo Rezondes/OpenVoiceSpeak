@@ -20,13 +20,13 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
         BuiltFor = actor;
         // Admin is fixed; a group stronger than the actor could only be edited by escalating.
         // Package 76: saved groups need GroupsManage to edit and GroupsDelete to delete; an unsaved one is the actor's own draft.
-        ReadOnlyReason = id is null ? null
+        // The reason names the first failing part of GroupRules.CanSave.
+        ReadOnlyReason = id is null || GroupRules.CanSave(actor, id, permissions, permissions) ? null
             : id == WellKnownGroups.Admin ? Strings.Ui_AdminGroupFixed
             : !permissions.IsSubsetOf(actor) ? Strings.Ui_GroupStronger
-            : !actor.Has(Permission.GroupsManage) ? Strings.Ui_GroupViewOnly
-            : null;
+            : Strings.Ui_GroupViewOnly;
         IsReadOnly = ReadOnlyReason is not null;
-        CanDelete = id is null || (id != WellKnownGroups.Admin && id != WellKnownGroups.Guest && permissions.IsSubsetOf(actor) && actor.Has(Permission.GroupsDelete));
+        CanDelete = id is null || GroupRules.CanDelete(actor, id.Value, permissions);
         Toggles = PermissionLabels.All
             .Select(p => new PermissionToggleViewModel(p.Permission, p.Label, permissions.Has(p.Permission), !IsReadOnly && actor.Has(p.Permission)))
             .ToList();

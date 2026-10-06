@@ -18,7 +18,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
-        if (channel.Kind == ChannelKind.Separator)
+        if (!ChannelAccess.IsJoinable(channel.Kind))
         {
             Fail(s, r, Codes.NotJoinable); // Package 111: also for admins
             return;
@@ -208,18 +208,14 @@ public sealed partial class ServerState
         ids.Count == 0 ? "nur Admins" : string.Join(", ", ids.Select(id => data.Groups.FirstOrDefault(g => g.Id == id)?.Name ?? "?"));
 
     /// <summary>
-    /// Packages 93 and 94 (A106, A107, A110): the lock rule for entering a channel, shared by joining (actor = the one joining)
-    /// and moving (actor = the mover; the moved user is not checked). Admin-group members pass every lock. The group lock
-    /// has no bypass; the password lock is skipped with ChannelPasswordBypass and refuses every move. Null when allowed.
+    /// Packages 93 and 94 (A106, A107, A110): the lock rule for entering a channel (ChannelAccess), shared by joining
+    /// (actor = the one joining) and moving (actor = the mover; the moved user is not checked). Null when allowed.
     /// </summary>
     string? LockRefusal(Session actor, ChannelRecord channel, string? password, bool moving)
     {
-        if (actor.GroupIds.Contains(WellKnownGroups.Admin)) return null;
-        if (channel.AllowedGroupIds is { } allowed && !actor.GroupIds.Any(allowed.Contains)) return Codes.ChannelLocked;
-        if (channel.PasswordHash is null) return null;
-        if (moving) return Codes.ChannelPasswordRequired;
-        if (actor.Permissions.Has(Permission.ChannelPasswordBypass)) return null;
-        if (string.IsNullOrEmpty(password)) return Codes.ChannelPasswordRequired;
+        if (!ChannelAccess.GroupsAllow(channel.AllowedGroupIds, actor.GroupIds)) return Codes.ChannelLocked;
+        if (!ChannelAccess.NeedsPassword(channel.PasswordHash is not null, actor.GroupIds, actor.Permissions, moving)) return null;
+        if (moving || string.IsNullOrEmpty(password)) return Codes.ChannelPasswordRequired;
         return CheckChannelPassword(actor, channel, password);
     }
 
@@ -316,7 +312,7 @@ public sealed partial class ServerState
             return;
         }
         if (!CanModerate(s, r, target.Permissions, target.Fingerprint)) return; // Package 84: never oneself, that is JoinChannel
-        if (FindChannel(r.ChannelId)!.Kind == ChannelKind.Separator)
+        if (!ChannelAccess.IsJoinable(FindChannel(r.ChannelId)!.Kind))
         {
             Fail(s, r, Codes.NotJoinable); // Package 111
             return;
@@ -354,7 +350,7 @@ public sealed partial class ServerState
 
     bool ValidateChannel(Session s, Request r, string? rawName, string? rawDescription, out string name, out string description)
     {
-        name = ValidName(rawName, ProtocolInfo.MaxNameLength) ?? "";
+        name = TextRules.Name(rawName, ProtocolInfo.MaxNameLength) ?? "";
         description = "";
         if (name.Length == 0)
         {

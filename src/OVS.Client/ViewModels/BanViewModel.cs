@@ -2,7 +2,7 @@ using OVS.Client.Collections;
 using OVS.Client.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using OVS.Client.Models;
+using OVS.Shared.Moderation;
 using OVS.Shared.Protocol.Messages.Moderation;
 
 namespace OVS.Client.ViewModels;
@@ -24,8 +24,7 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
     public string CreatedBy => Ban.CreatedBy;
 
     public BanStatus Status { get; } = StatusOf(ban, now);
-    static BanStatus StatusOf(BanInfo b, DateTimeOffset now) =>
-        b.LiftedAt is not null ? BanStatus.Lifted : b.ExpiresAt is { } end && end <= now ? BanStatus.Expired : BanStatus.Active;
+    static BanStatus StatusOf(BanInfo b, DateTimeOffset now) => BanStatusRule.Evaluate(b.LiftedAt, b.ExpiresAt, now);
     public string StatusText => Status switch
     {
         BanStatus.Lifted => string.Format(Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),

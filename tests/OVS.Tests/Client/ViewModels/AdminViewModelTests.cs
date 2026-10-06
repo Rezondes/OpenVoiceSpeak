@@ -3,6 +3,7 @@ using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using OVS.Client.Models;
 using OVS.Client.ViewModels;
+using OVS.Shared.Moderation;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;

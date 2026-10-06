@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Security.Cryptography;
 using OVS.Server.Data.Records;
 using OVS.Server.Security;
@@ -20,7 +19,7 @@ public sealed partial class ServerState
     /// <summary>Counts the connection. Always pair with ReleaseConnection.</summary>
     public bool TryAddConnection(IPAddress ip)
     {
-        ip = AddressGroup(ip); // Package 88: IPv6 per /64
+        ip = IpAddresses.ToAddressGroup(ip); // Package 88: IPv6 per /64
         lock (gate)
         {
             int count = connectionsPerIp.GetValueOrDefault(ip) + 1;
@@ -31,12 +30,12 @@ public sealed partial class ServerState
 
     public int ConnectionsFrom(IPAddress ip)
     {
-        lock (gate) return connectionsPerIp.GetValueOrDefault(AddressGroup(ip));
+        lock (gate) return connectionsPerIp.GetValueOrDefault(IpAddresses.ToAddressGroup(ip));
     }
 
     public void ReleaseConnection(IPAddress ip)
     {
-        ip = AddressGroup(ip);
+        ip = IpAddresses.ToAddressGroup(ip);
         lock (gate)
         {
             int count = connectionsPerIp.GetValueOrDefault(ip) - 1;
@@ -46,19 +45,6 @@ public sealed partial class ServerState
     }
 
     // ---- Password guessing (call under gate) ----
-
-    /// <summary>
-    /// IPv4 address, or the /64 of an IPv6 address (one IPv6 host usually owns a whole /64). Package 88: the one grouping
-    /// for password and token throttling, new identities, the connection limit, IP bans and the UDP source check.
-    /// </summary>
-    internal static IPAddress AddressGroup(IPAddress ip)
-    {
-        ip = IpAddresses.Unmap(ip);
-        if (ip.AddressFamily != AddressFamily.InterNetworkV6) return ip;
-        var bytes = ip.GetAddressBytes();
-        Array.Clear(bytes, 8, 8);
-        return new IPAddress(bytes);
-    }
 
     /// <summary>From the 5th wrong password on: blocked 1, 2, 4, ... minutes (at most 60) after the last wrong one.</summary>
     static TimeSpan PasswordBlock(int failures) =>
@@ -88,10 +74,10 @@ public sealed partial class ServerState
             if (closedWith is not null) return (null, new Rejected(closedWith));
             var now = time.GetUtcNow();
             var ipText = ip.ToString();
-            var source = AddressGroup(ip);
+            var source = IpAddresses.ToAddressGroup(ip);
             // Package 88: an IP ban keeps the address it was given and matches everything in its group (IPv6: the /64)
             var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint
-                || b.Ip is not null && IPAddress.TryParse(b.Ip, out var banned) && AddressGroup(banned).Equals(source)));
+                || b.Ip is not null && IPAddress.TryParse(b.Ip, out var banned) && IpAddresses.ToAddressGroup(banned).Equals(source)));
             if (ban is not null)
             {
                 RecordBlockedAttempt(ban, ipText, now);

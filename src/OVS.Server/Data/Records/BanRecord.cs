@@ -1,3 +1,5 @@
+using OVS.Shared.Moderation;
+
 namespace OVS.Server.Data.Records;
 
 public sealed class BanRecord
@@ -22,7 +24,7 @@ public sealed class BanRecord
     public DateTimeOffset? LastAttempt { get; set; }
     public string? LastAttemptIp { get; set; }
 
-    public bool IsActive(DateTimeOffset now) => LiftedAt is null && (ExpiresAt is null || ExpiresAt > now);
+    public bool IsActive(DateTimeOffset now) => BanStatusRule.Evaluate(LiftedAt, ExpiresAt, now) == BanStatus.Active;
 
     /// <summary>When a lifted or expired ban ended; null while active.</summary>
     public DateTimeOffset? EndedAt(DateTimeOffset now) => IsActive(now) ? null : LiftedAt ?? ExpiresAt;

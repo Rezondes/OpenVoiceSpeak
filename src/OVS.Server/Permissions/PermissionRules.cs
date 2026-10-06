@@ -23,8 +23,6 @@ public static class PermissionRules
         new(AdminGroupId, "Admin", Permission.All),
     ];
 
-    public static bool IsProtected(Guid groupId) => groupId == GuestGroupId || groupId == AdminGroupId;
-
     public static Permission Effective(IEnumerable<Guid> groupIds, IEnumerable<Group> groups)
     {
         var ids = groupIds.ToHashSet();
@@ -32,26 +30,16 @@ public static class PermissionRules
         return groups.Where(g => ids.Contains(g.Id)).Aggregate(Permission.None, (acc, g) => acc | g.Permissions);
     }
 
-    /// <param name="existing">Current permissions when editing, null when creating.</param>
-    public static bool CanSaveGroup(Permission actor, Guid? groupId, Permission? existing, Permission newPerms) =>
-        actor.Has(existing is null ? Permission.GroupsCreate : Permission.GroupsManage) // Package 76
-        && groupId != AdminGroupId
-        && newPerms.IsSubsetOf(actor)
-        && (existing is null || existing.Value.IsSubsetOf(actor));
+    public static bool CanDeleteGroup(Permission actor, Group group) => GroupRules.CanDelete(actor, group.Id, group.Permissions);
 
-    public static bool CanDeleteGroup(Permission actor, Group group) =>
-        actor.Has(Permission.GroupsDelete) && !IsProtected(group.Id) && group.Permissions.IsSubsetOf(actor);
-
-    public static bool CanAssign(Permission actor, Group group) =>
-        actor.Has(Permission.GroupsAssign) && EffectiveOf(group).IsSubsetOf(actor);
+    public static bool CanAssign(Permission actor, Group group) => GroupRules.CanAssign(actor, group.Id, group.Permissions);
 
     public static bool WouldRemoveLastAdmin(IEnumerable<(string Fingerprint, IReadOnlyCollection<Guid> GroupIds)> users,
         string fingerprint, Guid groupId)
     {
         if (groupId != AdminGroupId) return false;
-        var admins = users.Where(u => u.GroupIds.Contains(AdminGroupId)).Select(u => u.Fingerprint).ToList();
-        return admins.Count == 1 && admins[0] == fingerprint;
+        var all = users.ToList();
+        var admins = all.Count(u => u.GroupIds.Contains(AdminGroupId));
+        return all.Any(u => u.Fingerprint == fingerprint && GroupRules.IsLastAdmin(u.GroupIds, admins));
     }
-
-    static Permission EffectiveOf(Group g) => g.Id == AdminGroupId ? Permission.All : g.Permissions;
 }

@@ -93,7 +93,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     }
 
     /// <summary>Package 93 (A108, A109): everyone sees the lock; the own groups decide whether joining is offered.</summary>
-    internal void UpdateLock(ChannelInfo info, IReadOnlyList<GroupInfo> groups, IReadOnlyList<Guid> ownGroups, bool isAdmin)
+    internal void UpdateLock(ChannelInfo info, IReadOnlyList<GroupInfo> groups, IReadOnlyList<Guid> ownGroups)
     {
         AllowedGroupIds = info.AllowedGroupIds;
         HasPassword = info.HasPassword;
@@ -106,7 +106,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
                 string.Join(", ", groups.Where(g => ids.Contains(g.Id)).Select(g => g.Name))), // in the server's group order
         };
         LockText = string.Join("\n", new[] { groupText, info.HasPassword ? Strings.Ui_LockedPassword : null }.OfType<string>());
-        CanJoin = info.Kind == ChannelKind.Voice && (isAdmin || info.AllowedGroupIds is not { } allowed || ownGroups.Any(allowed.Contains));
+        CanJoin = ChannelAccess.IsJoinable(info.Kind) && ChannelAccess.GroupsAllow(info.AllowedGroupIds, ownGroups);
     }
 
     bool first, last;

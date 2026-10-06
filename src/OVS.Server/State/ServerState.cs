@@ -42,8 +42,8 @@ public sealed partial class ServerState
     readonly ConcurrentDictionary<uint, Session> voiceSessions = new();
     readonly Dictionary<IPAddress, int> connectionsPerIp = [];
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> passwordFailures = [];
-    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per AddressGroup
-    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool Logged)> newIdentities = []; // Package 87, per AddressGroup
+    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> adminTokenFailures = []; // Package 86, per address group (IpAddresses.ToAddressGroup)
+    readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool Logged)> newIdentities = []; // Package 87, per address group
     DateTimeOffset nextIdentitySweep;
     ITimer? saveTimer; // Package 87: the debounced save of logins and logouts
     bool savePending;
@@ -225,9 +225,6 @@ public sealed partial class ServerState
     /// <summary>Every stored user with its groups, as WouldRemoveLastAdmin takes them.</summary>
     IEnumerable<(string Fingerprint, IReadOnlyCollection<Guid> GroupIds)> UsersAsAdminTuples() =>
         data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds));
-
-    /// <summary>Trimmed name of 1..max chars without control, format or separator characters (Package 83: TextRules), else null.</summary>
-    public static string? ValidName(string? name, int max) => TextRules.Name(name, max);
 
     /// <summary>Package 83: the compare form of a nickname, compatibility-normalized (NFKC) and case-folded.</summary>
     static string NicknameKey(string nickname)

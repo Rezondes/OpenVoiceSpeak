@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Models;
 using OVS.Client.Services;
+using OVS.Shared.Moderation;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -521,11 +522,11 @@ public sealed partial class AdminViewModel : ObservableObject
             // Package 72, 84 (A102): the server checks the same; never oneself, only strictly weaker users, never the last admin.
             // Package 92: the rank comes judged with the list, the client knows no rights of others.
             var weaker = user.CanBeModeratedByMe;
-            var lastAdmin = admins == 1 && user.GroupIds.Contains(WellKnownGroups.Admin);
+            var lastAdmin = GroupRules.IsLastAdmin(user.GroupIds, admins);
             var toggles = server.Mirror.Groups.Select(g => new GroupToggleViewModel(g.Id, g.Name, IsInGroup(user, g.Id),
                 g.AssignableByMe && weaker, // Package 92: judged by the server, group rights only reach GroupsView holders
                 t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
-            var bans = (user.Bans ?? []).Where(b => b.LiftedAt is null && (b.ExpiresAt is null || b.ExpiresAt > now)).ToList();
+            var bans = (user.Bans ?? []).Where(b => BanStatusRule.Evaluate(b.LiftedAt, b.ExpiresAt, now) == BanStatus.Active).ToList();
             return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this, CardBusy(user.Fingerprint),
                 canBan: Actor.Has(Permission.UserBan) && weaker && !lastAdmin && bans.Count == 0,
                 canUnban: Actor.Has(Permission.UserBan) && weaker && bans.Count > 0,

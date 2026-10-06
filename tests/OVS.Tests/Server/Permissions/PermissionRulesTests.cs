@@ -53,12 +53,12 @@ public class PermissionRulesTests
     [Theory]
     [MemberData(nameof(SaveCases))]
     public void CanSaveGroup_Cases(P actor, P? existing, P newPerms, bool expected) =>
-        Assert.Equal(expected, CanSaveGroup(actor, existing is null ? null : Guid.NewGuid(), existing, newPerms));
+        Assert.Equal(expected, GroupRules.CanSave(actor, existing is null ? null : Guid.NewGuid(), existing, newPerms));
 
     [Fact]
     public void AdminGroup_NotEditableNotDeletable()
     {
-        Assert.False(CanSaveGroup(P.All, AdminGroupId, P.All, P.All));
+        Assert.False(GroupRules.CanSave(P.All, AdminGroupId, P.All, P.All));
         Assert.False(CanDeleteGroup(P.All, Admin));
     }
 

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using OVS.Server.State;
+using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.VoiceRelay;
 using OVS.Shared.Voice;
@@ -91,7 +92,7 @@ public sealed class UdpVoiceServer : IDisposable
 
     async Task HandleAsync(ReadOnlyMemory<byte> packet, IPEndPoint from)
     {
-        var source = ServerState.AddressGroup(from.Address);
+        var source = IpAddresses.ToAddressGroup(from.Address);
         if (!VoiceHeader.TryRead(packet.Span, out var header))
         {
             CountBad(source);
@@ -111,7 +112,7 @@ public sealed class UdpVoiceServer : IDisposable
             return;
         }
         // Package 88: voice goes only to the address of the own control connection (no reflection to a spoofed victim)
-        if (!source.Equals(ServerState.AddressGroup(sender.Ip)))
+        if (!source.Equals(IpAddresses.ToAddressGroup(sender.Ip)))
         {
             Interlocked.Increment(ref foreignSourceDrops);
             CountBad(source);

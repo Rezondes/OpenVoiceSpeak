@@ -327,7 +327,7 @@ public sealed partial class ServerViewModel : ObservableObject
             if (!channelVms.TryGetValue(c.Id, out var channel)) channelVms[c.Id] = channel = new ChannelViewModel(this, c.Id);
             var linked = Mirror.LinkedChannels(c.Id).Select(id => Mirror.Channels.GetValueOrDefault(id)?.Name).OfType<string>().Order().ToList();
             channel.Update(c, linked, c.Id == Mirror.DefaultChannelId, self?.ChannelId == c.Id, SelfPermissions);
-            channel.UpdateLock(c, groups, self?.GroupIds ?? [], IsAdmin);
+            channel.UpdateLock(c, groups, self?.GroupIds ?? []);
 
             var users = byChannel[c.Id]
                 .OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase)
@@ -498,8 +498,9 @@ public sealed partial class ServerViewModel : ObservableObject
     {
         if (IsJoining) return; // Package 98
         string? password = null;
-        if (Mirror.Channels.GetValueOrDefault(channelId) is { HasPassword: true } channel && !IsAdmin
-            && !SelfPermissions.Has(Permission.ChannelPasswordBypass) && Mirror.Self?.ChannelId != channelId
+        if (Mirror.Channels.GetValueOrDefault(channelId) is { } channel
+            && ChannelAccess.NeedsPassword(channel.HasPassword, Mirror.Self?.GroupIds ?? [], SelfPermissions, moving: false)
+            && Mirror.Self?.ChannelId != channelId
             && !channelPasswords.TryGetValue(channelId, out password))
         {
             if (Dialogs.AskChannelPassword is not { } ask || await ask(channel.Name) is not { Length: > 0 } entered) return;

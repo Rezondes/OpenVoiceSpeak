@@ -1,6 +1,7 @@
 using OVS.Server.Data.Records;
 using OVS.Server.Permissions;
 using OVS.Server.Security;
+using OVS.Shared.Net;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -17,7 +18,7 @@ public sealed partial class ServerState
     void OnRedeemAdminToken(Session s, RedeemAdminToken r)
     {
         // Package 86: at most AdminTokenFailures wrong tokens per source and window, even across sessions
-        var source = AddressGroup(s.Ip);
+        var source = IpAddresses.ToAddressGroup(s.Ip);
         var now = time.GetUtcNow();
         if (adminTokenFailures.TryGetValue(source, out var f) && now - f.First >= Limits.AdminTokenWindow)
             adminTokenFailures.Remove(source);
@@ -45,7 +46,7 @@ public sealed partial class ServerState
     {
         if (!Require(s, r, Permission.GroupsCreate)) return;
         if (!ValidateGroupName(s, r, null, r.Name, out var name)) return;
-        if (!CanSaveGroup(s.Permissions, null, null, r.Permissions))
+        if (!GroupRules.CanSave(s.Permissions, null, null, r.Permissions))
         {
             Fail(s, r, Codes.PermissionDenied);
             return;
@@ -91,7 +92,7 @@ public sealed partial class ServerState
             return;
         }
         if (!ValidateGroupName(s, r, group.Id, r.Name, out var name)) return;
-        if (!CanSaveGroup(s.Permissions, group.Id, group.Permissions, r.Permissions))
+        if (!GroupRules.CanSave(s.Permissions, group.Id, group.Permissions, r.Permissions))
         {
             Fail(s, r, Codes.PermissionDenied);
             return;
@@ -115,7 +116,7 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
-        if (IsProtected(group.Id))
+        if (GroupRules.IsProtected(group.Id))
         {
             Fail(s, r, Codes.ProtectedGroup);
             return;
@@ -188,7 +189,7 @@ public sealed partial class ServerState
     void OnUpdateServerSettings(Session s, UpdateServerSettings r)
     {
         if (!Require(s, r, Permission.ServerConfig)) return;
-        var name = ValidName(r.Name, ProtocolInfo.MaxNameLength);
+        var name = TextRules.Name(r.Name, ProtocolInfo.MaxNameLength);
         if (name is null)
         {
             Fail(s, r, Codes.InvalidName);
@@ -263,7 +264,7 @@ public sealed partial class ServerState
 
     bool ValidateGroupName(Session s, Request r, Guid? self, string? rawName, out string name)
     {
-        name = ValidName(rawName, ProtocolInfo.MaxGroupNameLength) ?? "";
+        name = TextRules.Name(rawName, ProtocolInfo.MaxGroupNameLength) ?? "";
         if (name.Length == 0)
         {
             Fail(s, r, Codes.InvalidName);

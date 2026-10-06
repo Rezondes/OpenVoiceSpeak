@@ -168,7 +168,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         if (await reader.ReadAsync(ct) is not ClientHello hello) return await Reject(Codes.ProtocolError);
         if (hello.ProtocolVersion != ProtocolInfo.Version)
             return await Reject(Codes.VersionMismatch, $"Server spricht Protokollversion {ProtocolInfo.Version}");
-        var nickname = ServerState.ValidName(hello.Nickname, ProtocolInfo.MaxNicknameLength);
+        var nickname = TextRules.Name(hello.Nickname, ProtocolInfo.MaxNicknameLength);
         if (nickname is null) return await Reject(Codes.NicknameInvalid);
         logName = nickname;
         if (!TryBase64(hello.PublicKey, out var publicKey)) return await Reject(Codes.ProtocolError);

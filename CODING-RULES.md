@@ -47,7 +47,8 @@ Each project has an `Exceptions/` folder (B7 b). A base exception and its subcla
 - `Protocol/Framing/`: `ProtocolJson`, `FrameReader`, `FrameWriter` (D7).
 - `Protocol/Messages/`: see §Protocol messages.
 - `Voice/` stays flat, one type per file (D8): `PacketType`, `Direction`, `VoiceHeader`, `VoiceCrypto`, `SeqCounter`, `ReplayWindow`, `LossReport`, `PingPayload`, `LossWindow`, `RelayPayload`.
-- `Permissions/`: `Permission`, `WellKnownGroups`, `PermissionExtensions`. `Identity/`: `ClientIdentity`, `CertFingerprint` (D9).
+- `Permissions/`: `Permission`, `WellKnownGroups`, `PermissionExtensions`, and the rules server and client share, `GroupRules` and `ChannelAccess` (N1). `Identity/`: `ClientIdentity`, `CertFingerprint` (D9).
+- `Moderation/`: `BanStatus` (moved from the client, N18) and its rule `BanStatusRule`.
 - `Logging/`, `Exceptions/`, and later `IO/` and `Net/` (§Shared helpers).
 
 ### Protocol messages
@@ -121,7 +122,7 @@ The saving (`Persist`, `PersistSoon` with the save timer and retry), the passwor
 - **`Appearance/`:** `WindowAppearance` (G11).
 - **`Services/`:** `IconImport`, `LeaveTimer`, `Reconnector`, `ListRefresh`, `ChunkedDownload`, `DownloadChunk` (G10, H5).
 - **`Collections/`:** `CollectionSync`, `ListPages`, `IMotionKey` (the key `CollectionSync` syncs by) (H5, H9).
-- **`Models/`:** the immutable records bound as items, `ChatEntry`, `BookmarkItem`, `MoveTarget`, `Notice`, `LogSegment`, `LogSource`, `AudioDeviceOption`, `ThemeOption`, `DisplayOption`, `LanguageOption`, `Choice` (H3), and all enums of the UI, flat: `ChatTabKind`, `NoticeKind`, `Page`, `StateChange`, `SignalRating`, `UserStatusFilter`, `UserSortOrder`, `BanStatusFilter`, `BanTypeFilter`, `BanSortOrder`, `BanStatus`, `AdminPlace` (H8).
+- **`Models/`:** the immutable records bound as items, `ChatEntry`, `BookmarkItem`, `MoveTarget`, `Notice`, `LogSegment`, `LogSource`, `AudioDeviceOption`, `ThemeOption`, `DisplayOption`, `LanguageOption`, `Choice` (H3), and all enums of the UI, flat: `ChatTabKind`, `NoticeKind`, `Page`, `StateChange`, `SignalRating`, `UserStatusFilter`, `UserSortOrder`, `BanStatusFilter`, `BanTypeFilter`, `BanSortOrder`, `AdminPlace` (H8); `BanStatus` moved to Shared `Moderation/` (N18).
 - **`ViewModels/`:** only view models, 28 of them, among them the renamed `PermissionToggleViewModel`, `GroupToggleViewModel`, `GroupChoiceViewModel`, `ChatTabViewModel`, `ChatSendingViewModel`, `SoundRowViewModel`, `KeyBindingViewModel`, `ConnectionStatsViewModel`, `PendingViewModel` (H2). `Page`, `Notice`, `Choice`, `ListRefresh` and `KeyBinding` keep their names (H11).
 - **Unchanged places:** `Assets/`, `Localization/*.resx`, `Styles/`, `runtimes/` (F6).
 
@@ -162,7 +163,10 @@ Where code that several places need lives. All of these are introduced by the re
 | `OVS.Shared.Logging.LogFiles.NameFormat` | the log name format `yyyy-MM-dd_HH-mm-ss` | I4 |
 | `OVS.Shared.Protocol.Framing.ProtocolJson.Indented` | indented JSON options | I5 |
 | `OVS.Shared.Protocol.Base64Size` | `Encoded(bytes)` and `Decoded(chars)`; base64 input is decoded with `Convert.TryFromBase64String` into a buffer of `Decoded` bytes, then sliced to the bytes written | I6, I7 |
-| `OVS.Shared.Net.IpAddresses.Unmap` | IPv4-mapped IPv6 addresses to IPv4 | I13 |
+| `OVS.Shared.Net.IpAddresses` | `Unmap` (IPv4-mapped IPv6 addresses to IPv4); `ToAddressGroup` (the IPv4 address or the IPv6 /64, was `ServerState.AddressGroup`) | I13, N8 |
+| `OVS.Shared.Permissions.GroupRules` | `IsProtected`, `CanSave`, `CanDelete`, `CanAssign` (on ids and permissions), `IsLastAdmin`; the server's `PermissionRules` passes its `Group` to them, the client's group editor and user list call them | N1 |
+| `OVS.Shared.Permissions.ChannelAccess` | `IsJoinable` (no separator), `GroupsAllow` (the group lock, admins pass), `NeedsPassword` (bypass only when joining); "full" stays a server rule | N1 |
+| `OVS.Shared.Moderation.BanStatusRule` | `Evaluate(liftedAt, expiresAt, now)`: `BanRecord.IsActive` and the client's ban list and user cards | N1, N18 |
 | `ProtocolInfo` constants | the name and text lengths (`MaxNameLength`, `MaxTextLength`, `MaxGroupNameLength`, `MaxNicknameLength`), `MaxUsersMin`, `MaxUsersMax`, `MaxUsersDefault`, `LogDaysMax`, `LogDaysDefault` | I8, I9 |
 | `OVS.Server.Security.PasswordHash` | PBKDF2 hashing, verifying and `IsValidHash`, with a byte-identical stored format | E7 |
 | `ServerState` private helpers | `PasswordTooLong`, `NextChannelOrder`, `UsersAsAdminTuples` | I10, I11, I12 |
@@ -212,7 +216,7 @@ Every review of new or changed code answers each point below for that change, na
 - Red flag: a German log line or exception message in new or moved code, e.g. `"Channel angelegt von ..."` in a moved handler.
 
 **DRY (don't repeat yourself)**
-- Does the change copy logic that exists elsewhere (a helper in §Shared helpers, a rule in `PermissionRules`, a settings mapping in `AudioEngine`)? Use or extend the one place.
+- Does the change copy logic that exists elsewhere (a helper in §Shared helpers, a rule in `PermissionRules` or the shared `GroupRules`, `ChannelAccess`, `BanStatusRule`, a settings mapping in `AudioEngine`)? Use or extend the one place.
 - Does a new setting, sound, key action or request need edits in several lists that must agree? Prefer one table or one mapping method over parallel switches.
 - Red flag: the same predicate in client and server (e.g. "is this ban active"); put it in `OVS.Shared`.
 
