@@ -8,13 +8,16 @@ namespace OVS.Server.Logging;
 
 /// <summary>
 /// Package 82 (A99): download snapshots in &lt;DataDir&gt;/logs-export, named only by the server's own ids. The files come
-/// from the reader's own listing, so no path from a client is ever opened; the reader's ReadHook runs before each copy.
+/// from the reader's own listing, so no path from a client is ever opened; the exporter's own ReadHook runs before each copy.
 /// Thread-safe, meant to run off the state lock.
 /// </summary>
 public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider time)
 {
     public const string ExportFolder = "logs-export";
     string ExportDir => Path.Combine(dataDir, ExportFolder);
+
+    /// <summary>For tests: runs on the worker with the file id before a file is copied.</summary>
+    public Action<string>? ReadHook { get; set; }
 
     /// <summary>Every export there is; called at start, when no session can own one yet.</summary>
     public void RemoveExports()
@@ -46,7 +49,7 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
         {
             if (single)
             {
-                reader.ReadHook?.Invoke(chosen[0].Info.Id);
+                ReadHook?.Invoke(chosen[0].Info.Id);
                 using var target = File.Create(path);
                 CopySnapshot(chosen[0].Path, target);
             }
@@ -55,7 +58,7 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
                 using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
                 foreach (var (info, source) in chosen)
                 {
-                    reader.ReadHook?.Invoke(info.Id);
+                    ReadHook?.Invoke(info.Id);
                     using var entry = zip.CreateEntry(EntryName(info, source), CompressionLevel.Optimal).Open();
                     CopySnapshot(source, entry);
                 }

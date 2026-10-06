@@ -234,7 +234,7 @@ public sealed class LogCommandTests
         WriteLines(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), Enumerable.Range(1, 200_000).Select(i => $"Zeile {i} gesucht"));
         using var entered = new SemaphoreSlim(0);
         using var release = new ManualResetEventSlim();
-        server.State.LogReader.ReadHook = _ =>
+        server.Stores.LogReader.ReadHook = _ =>
         {
             entered.Release();
             release.Wait(TimeSpan.FromSeconds(30));
@@ -259,7 +259,7 @@ public sealed class LogCommandTests
         await using var a = admin;
         using var entered = new SemaphoreSlim(0);
         using var release = new ManualResetEventSlim();
-        server.State.LogReader.ReadHook = _ =>
+        server.Stores.LogReader.ReadHook = _ =>
         {
             entered.Release();
             release.Wait(TimeSpan.FromSeconds(30));
@@ -442,7 +442,7 @@ public sealed class LogCommandTests
         File.WriteAllBytes(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), content);
         using var entered = new SemaphoreSlim(0);
         using var release = new ManualResetEventSlim();
-        server.State.LogReader.ReadHook = _ =>
+        server.Stores.LogExporter.ReadHook = _ =>
         {
             entered.Release();
             release.Wait(TimeSpan.FromSeconds(30));

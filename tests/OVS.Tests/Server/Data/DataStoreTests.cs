@@ -136,7 +136,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
 
         var config = Config with { MaxUsers = 20, LogDays = 7, AutoRestartAt = new TimeOnly(3, 30), LogRotateDaily = false };
         var logs = new ServerLogs(dir, 0, TimeProvider.System, _ => { });
-        _ = new ServerState(config, TimeProvider.System, logs);
+        _ = new ServerState(config, TimeProvider.System, logs, ServerStores.Open(config, TimeProvider.System));
 
         var migrated = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.Equal(ServerData.CurrentVersion, migrated.DataVersion);
@@ -147,7 +147,8 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         Assert.True(migrated.Settings.AutoRestart);
         Assert.Equal(new TimeOnly(3, 30), migrated.Settings.AutoRestartTime);
 
-        _ = new ServerState(config with { MaxUsers = 99, AutoRestartAt = null }, TimeProvider.System, logs);
+        var changed = config with { MaxUsers = 99, AutoRestartAt = null };
+        _ = new ServerState(changed, TimeProvider.System, logs, ServerStores.Open(changed, TimeProvider.System));
         var second = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.Equal(20, second.Settings.MaxUsers);
         Assert.True(second.Settings.AutoRestart);

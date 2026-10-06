@@ -18,6 +18,7 @@ public sealed class TestServer : IAsyncDisposable
 {
     public required string DataDir { get; init; }
     public required ServerState State { get; init; }
+    public required ServerStores Stores { get; init; }
     public required ControlServer Control { get; init; }
     public required UdpVoiceServer Voice { get; init; }
     public required X509Certificate2 Certificate { get; init; }
@@ -44,8 +45,9 @@ public sealed class TestServer : IAsyncDisposable
             store.Save(data);
         }
 
+        time ??= TimeProvider.System;
         var log = new ConcurrentQueue<string>();
-        var logs = new ServerLogs(dataDir, config.LogDays, time ?? TimeProvider.System, log.Enqueue);
+        var logs = new ServerLogs(dataDir, config.LogDays, time, log.Enqueue);
         var certificate = ServerCertificate.LoadOrCreate(dataDir);
         // Same port number for TCP and UDP, like in production, so real clients find the voice socket.
         // Windows (Hyper-V, Docker) reserves chunks of the dynamic port range per protocol, so an ephemeral
@@ -53,7 +55,8 @@ public sealed class TestServer : IAsyncDisposable
         for (int attempt = 0; ; attempt++)
         {
             // A fresh state per attempt: stopping a failed attempt closes its state, which then rejects everyone.
-            var state = new ServerState(config, time ?? TimeProvider.System, logs);
+            var stores = ServerStores.Open(config, time);
+            var state = new ServerState(config, time, logs, stores);
             // Package 139: a fixed port stands for the same server coming back, so a client's reconnect finds it
             var endpoint = new IPEndPoint(IPAddress.Loopback, port ?? Random.Shared.Next(20_000, 45_000));
             var control = new ControlServer(state, certificate, endpoint)
@@ -79,7 +82,7 @@ public sealed class TestServer : IAsyncDisposable
             voice.Start();
             return Task.FromResult(new TestServer
             {
-                DataDir = dataDir, State = state, Control = control, Voice = voice, Certificate = certificate, Log = log,
+                DataDir = dataDir, State = state, Stores = stores, Control = control, Voice = voice, Certificate = certificate, Log = log,
             });
         }
     }

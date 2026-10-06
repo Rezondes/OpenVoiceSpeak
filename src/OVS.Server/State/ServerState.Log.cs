@@ -14,7 +14,7 @@ namespace OVS.Server.State;
 /// </summary>
 public sealed partial class ServerState
 {
-    public LogReader LogReader { get; }
+    readonly LogReader logReader;
     readonly LogExporter logExporter;
 
     void OnListLogs(Session s, ListLogs r)
@@ -24,7 +24,7 @@ public sealed partial class ServerState
         int offset = Math.Max(0, r.Offset);
         QueueLogJob(s, r, () =>
         {
-            var all = LogReader.List(names);
+            var all = logReader.List(names);
             return new LogList(r.RequestId, Page(all, offset), offset, all.Count); // Package 87
         });
     }
@@ -37,8 +37,8 @@ public sealed partial class ServerState
             Fail(s, r, Codes.InvalidValue, $"Seite {r.Page}");
             return;
         }
-        QueueLogJob(s, r, () => LogReader.Resolve(r.FileId) is { } path
-            ? LogReader.ReadPage(r.RequestId, r.FileId, path, r.Page)
+        QueueLogJob(s, r, () => logReader.Resolve(r.FileId) is { } path
+            ? logReader.ReadPage(r.RequestId, r.FileId, path, r.Page)
             : new Error(r.RequestId, Codes.NotFound));
     }
 
@@ -51,7 +51,7 @@ public sealed partial class ServerState
             return;
         }
         // Package 90: only a search that was queued (and so runs) is logged; without the query, so a search never finds itself
-        if (QueueLogJob(s, r, () => LogReader.Search(r.RequestId, r))) logs.Server($"Logs durchsucht von {s.Nickname}");
+        if (QueueLogJob(s, r, () => logReader.Search(r.RequestId, r))) logs.Server($"Logs durchsucht von {s.Nickname}");
     }
 
     // ---- Package 82 (A99): download, a snapshot in logs-export pulled chunk by chunk like a backup ----

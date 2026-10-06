@@ -35,7 +35,7 @@ public sealed class StateHarness : IDisposable
             seed(data);
             store.Save(data);
         }
-        State = new ServerState(config, Time, new ServerLogs(DataDir, config.LogDays, Time, Log.Enqueue));
+        State = new ServerState(config, Time, new ServerLogs(DataDir, config.LogDays, Time, Log.Enqueue), ServerStores.Open(config, Time));
     }
 
     public string DataDir { get; }

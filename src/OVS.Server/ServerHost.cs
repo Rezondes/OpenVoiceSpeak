@@ -52,7 +52,7 @@ public static class ServerHost
             logs = new ServerLogs(config.DataDir, 0, time, console);
             logs.Server(restarted ? "OpenVoiceSpeak-Server startet (automatischer Neustart)" : "OpenVoiceSpeak-Server startet");
             logs.Server($"Version {BuildInfo.Current.Version}"); // Package 42
-            state = new ServerState(config, time, logs);
+            state = new ServerState(config, time, logs, ServerStores.Open(config, time));
         }
         catch (Exception e) when (e is ConfigException or InvalidDataException)
         {

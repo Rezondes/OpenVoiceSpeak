@@ -54,20 +54,21 @@ public sealed partial class ServerState
     uint lastSessionId;
     string? closedWith; // set by CloseAll: the reason every later handshake is rejected with
 
-    public ServerState(ServerConfig config, TimeProvider time, ServerLogs logs)
+    /// <param name="stores">From <see cref="ServerStores.Open"/>, so the crash cleanups have run.</param>
+    /// <exception cref="ArgumentException">The stores belong to another data folder than <paramref name="config"/>.</exception>
+    public ServerState(ServerConfig config, TimeProvider time, ServerLogs logs, ServerStores stores)
     {
+        if (stores.DataDir != config.DataDir)
+            throw new ArgumentException($"The stores are in {stores.DataDir}, the config names {config.DataDir}", nameof(stores));
         this.config = config;
         this.time = time;
         this.logs = logs;
-        store = new DataStore(Path.Combine(config.DataDir, DataStore.FileName));
-        icon = new ServerIconStore(config.DataDir);
-        backups = new BackupStore(config.DataDir, time);
-        uploads = new UploadFolder(backups.Folder);
-        uploads.RemoveLeftovers(); // Package 75: what a crash left behind
-        backups.RemoveUnfinished();
-        LogReader = new LogReader(config.DataDir, time); // Package 81
-        logExporter = new LogExporter(config.DataDir, LogReader, time);
-        logExporter.RemoveExports(); // Package 82: what a crash left behind
+        store = stores.DataStore;
+        icon = stores.IconStore;
+        backups = stores.BackupStore;
+        uploads = stores.UploadFolder;
+        logReader = stores.LogReader; // Package 81
+        logExporter = stores.LogExporter;
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         saves = new SaveScheduler(gate, WriteData, time, line => logs.Server(line));
         bool pruned = PruneGuests(time.GetUtcNow());

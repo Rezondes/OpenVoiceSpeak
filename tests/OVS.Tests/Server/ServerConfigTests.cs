@@ -171,12 +171,13 @@ public sealed class ServerConfigTests : IDisposable
     {
         var lines = new List<string>();
         var logs = new ServerLogs(dir, 0, TimeProvider.System, lines.Add);
-        _ = new ServerState(ServerConfig.Load(Env(("OVS_MAX_USERS", "20"), ("OVS_LOG_DAYS", "7"))), TimeProvider.System, logs);
+        var first = ServerConfig.Load(Env(("OVS_MAX_USERS", "20"), ("OVS_LOG_DAYS", "7")));
+        _ = new ServerState(first, TimeProvider.System, logs, ServerStores.Open(first, TimeProvider.System));
         Assert.DoesNotContain(lines, l => l.Contains("OVS_"));
 
         WriteFile("""{"autoRestart":true}""");
         var config = ServerConfig.Load(Env(("OVS_MAX_USERS", "99"), ("OVS_LOG_DAYS", "7")));
-        _ = new ServerState(config, TimeProvider.System, logs);
+        _ = new ServerState(config, TimeProvider.System, logs, ServerStores.Open(config, TimeProvider.System));
         Assert.Contains(lines, l => l.Contains("OVS_MAX_USERS") && l.Contains("99") && l.Contains("20"));
         Assert.Contains(lines, l => l.Contains("OVS_AUTO_RESTART"));
         Assert.DoesNotContain(lines, l => l.Contains("OVS_LOG_DAYS")); // same as stored

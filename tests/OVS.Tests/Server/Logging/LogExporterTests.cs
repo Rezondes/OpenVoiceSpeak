@@ -186,7 +186,7 @@ public sealed class LogExporterTests : TempDirectoryTest
     {
         WriteThreeLogs();
         var hooked = new List<string>();
-        reader.ReadHook = id =>
+        exporter.ReadHook = id =>
         {
             hooked.Add(id);
             File.AppendAllText(Path.Combine(dir, "logs", id), "added by the hook\n"); // in the copy only if the source opens after the hook
@@ -198,6 +198,19 @@ public sealed class LogExporterTests : TempDirectoryTest
         Assert.All(Entries(export!.Path), e => Assert.EndsWith("added by the hook\n", e.Text));
     }
 
+    [Fact]
+    public void Export_ReaderHookSet_ReaderHookNotCalled()
+    {
+        WriteThreeLogs();
+        var hooked = new List<string>();
+        reader.ReadHook = hooked.Add;
+
+        var (export, _) = exporter.Export(DownloadId, [GoneLog, ServerLog], new Dictionary<Guid, string>());
+
+        Assert.NotNull(export);
+        Assert.Empty(hooked);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -205,7 +218,7 @@ public sealed class LogExporterTests : TempDirectoryTest
     {
         WriteThreeLogs();
         string[] ids = files == 1 ? [ServerLog] : [ServerLog, RaidLog];
-        reader.ReadHook = id =>
+        exporter.ReadHook = id =>
         {
             if (id == ids[^1]) throw new IOException("locked");
         };
