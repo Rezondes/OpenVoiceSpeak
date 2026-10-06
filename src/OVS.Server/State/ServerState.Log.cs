@@ -96,7 +96,7 @@ public sealed partial class ServerState
         });
     }
 
-    /// <summary>Runs the file work after the session's earlier log jobs, off the lock; Session.Send is safe from any thread.</summary>
+    /// <summary>Runs the file work after the session's earlier log jobs, off the lock; SessionOutbox.Send is safe from any thread.</summary>
     /// <returns>False when the session's queue was full and the request was answered with RateLimited.</returns>
     bool QueueLogJob(Session s, Request r, Func<Message> work)
     {
@@ -104,11 +104,11 @@ public sealed partial class ServerState
         {
             try
             {
-                s.Send(work());
+                s.Outbox.Send(work());
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                s.Send(new Error(r.RequestId, Codes.InvalidValue, e.Message));
+                s.Outbox.Send(new Error(r.RequestId, Codes.InvalidValue, e.Message));
             }
         });
         if (!queued) Fail(s, r, Codes.RateLimited);

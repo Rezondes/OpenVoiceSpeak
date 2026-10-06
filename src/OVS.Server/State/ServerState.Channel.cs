@@ -75,7 +75,7 @@ public sealed partial class ServerState
         logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
         var added = new ChannelAdded(Info(channel));
         BroadcastExcept(s, added);
-        s.Send(added with { RequestId = r.RequestId }); // Package 110: the creator recognises its own channel by the request
+        s.Outbox.Send(added with { RequestId = r.RequestId }); // Package 110: the creator recognises its own channel by the request
     }
 
     /// <summary>Package 111 (A120): a separator has no name, description or options.</summary>
@@ -94,7 +94,7 @@ public sealed partial class ServerState
         logs.Server($"Trenner angelegt von {s.Nickname}");
         var added = new ChannelAdded(Info(separator));
         BroadcastExcept(s, added);
-        s.Send(added with { RequestId = r.RequestId });
+        s.Outbox.Send(added with { RequestId = r.RequestId });
     }
 
     void OnEditChannel(Session s, EditChannel r)

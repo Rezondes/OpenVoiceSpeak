@@ -137,9 +137,9 @@ public sealed partial class ServerState
             };
             sessions.Add(session.Id, session);
             voiceSessions[session.Id] = session;
-            session.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
+            session.Outbox.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
-                if (other != session) other.Send(new UserJoined(Info(session, other))); // Package 92: per recipient
+                if (other != session) other.Outbox.Send(new UserJoined(Info(session, other))); // Package 92: per recipient
             logs.Server($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
             ChannelLog(session.ChannelId, $"{nickname} hat den Channel betreten (verbunden)");
             return (session, null);
@@ -169,7 +169,7 @@ public sealed partial class ServerState
             var now = time.GetUtcNow();
             foreach (var s in sessions.Values)
             {
-                s.Close(final);
+                s.Outbox.Close(final);
                 DropUpload(s);
                 s.DropLogDownload(ended: true); // Package 82
                 if (!statsCounted) AddSessionStats(s, now);
@@ -201,7 +201,7 @@ public sealed partial class ServerState
 
     void RemoveLocked(Session session, Message? final, string reason = "getrennt")
     {
-        session.Close(final);
+        session.Outbox.Close(final);
         DropUpload(session); // Package 75: an abandoned upload leaves no file
         session.DropLogDownload(ended: true); // Package 82: nor a prepared log download
         if (!sessions.TryGetValue(session.Id, out var current) || current != session) return;

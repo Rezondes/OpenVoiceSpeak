@@ -68,7 +68,7 @@ public sealed class StateHarness : IDisposable
     public static List<Message> Drain(Session session)
     {
         var messages = new List<Message>();
-        while (session.Outgoing.TryRead(out var frame)) messages.Add(Decode(session, frame));
+        while (session.Outbox.Outgoing.TryRead(out var frame)) messages.Add(Decode(session, frame));
         return messages;
     }
 
@@ -81,13 +81,13 @@ public sealed class StateHarness : IDisposable
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         while (true)
         {
-            if (Decode(session, await session.Outgoing.ReadAsync(timeout.Token)) is T message && (match is null || match(message))) return message;
+            if (Decode(session, await session.Outbox.Outgoing.ReadAsync(timeout.Token)) is T message && (match is null || match(message))) return message;
         }
     }
 
     static Message Decode(Session session, byte[] frame)
     {
-        session.Written(frame);
+        session.Outbox.Written(frame);
         return JsonSerializer.Deserialize<Message>(frame.AsSpan(4), ProtocolJson.Options)!;
     }
 

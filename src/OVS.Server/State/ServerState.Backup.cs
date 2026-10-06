@@ -31,7 +31,7 @@ public sealed partial class ServerState
     {
         int offset = r is ListBackups l ? Math.Max(0, l.Offset) : 0;
         var all = backups.List();
-        s.Send(new BackupList(r.RequestId, Page(all, offset), offset, all.Count));
+        s.Outbox.Send(new BackupList(r.RequestId, Page(all, offset), offset, all.Count));
     }
 
     /// <summary>Package 89: checked on every request, so leaving the group stops an upload at its next chunk.</summary>
@@ -102,7 +102,7 @@ public sealed partial class ServerState
             return;
         }
         if (r.Offset == 0) logs.Server($"Backup {r.FileName} wird heruntergeladen von {s.Nickname}");
-        s.Send(new BackupChunk(r.RequestId, r.FileName, r.Offset, total, Convert.ToBase64String(bytes), r.Offset + bytes.Length >= total));
+        s.Outbox.Send(new BackupChunk(r.RequestId, r.FileName, r.Offset, total, Convert.ToBase64String(bytes), r.Offset + bytes.Length >= total));
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public sealed partial class ServerState
         if (!r.IsLast)
         {
             s.Upload = (id, path, received);
-            s.Send(new UploadBackupAck(r.RequestId, id, received));
+            s.Outbox.Send(new UploadBackupAck(r.RequestId, id, received));
             return;
         }
         s.Upload = null;
@@ -200,7 +200,7 @@ public sealed partial class ServerState
             return;
         }
         logs.Server($"Backup {info.FileName} hochgeladen von {s.Nickname}");
-        s.Send(new BackupUploaded(r.RequestId, info));
+        s.Outbox.Send(new BackupUploaded(r.RequestId, info));
         SendBackups(s, r);
     }
 

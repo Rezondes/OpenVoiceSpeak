@@ -18,24 +18,24 @@ public sealed partial class ServerState
         var id = r.RequestId is { Length: > Limits.MaxRequestIdLength } tooLong ? tooLong[..Limits.MaxRequestIdLength] : r.RequestId;
         // Transfers are pull-based (one chunk per answer) and need the budget less than their speed does.
         bool transfer = r is DownloadBackup or UploadBackupChunk or DownloadLogChunk;
-        switch (transfer ? null : s.TakeRequest())
+        switch (transfer ? null : s.Throttle.TakeRequest())
         {
             case true:
                 RemoveLocked(s, new Disconnected(Codes.RateLimited));
                 return false;
             case false:
-                s.Send(new Error(id, Codes.RateLimited));
+                s.Outbox.Send(new Error(id, Codes.RateLimited));
                 return false;
         }
         if (id == r.RequestId) return true;
-        s.Send(new Error(id, Codes.InvalidValue, $"RequestId länger als {Limits.MaxRequestIdLength} Zeichen"));
+        s.Outbox.Send(new Error(id, Codes.InvalidValue, $"RequestId länger als {Limits.MaxRequestIdLength} Zeichen"));
         return false;
     }
 
     /// <summary>The own limit of a costly request kind, per session; answers RateLimited when it is used up.</summary>
     static bool Throttle(Session s, Request r, double perSecond, double burst = 1)
     {
-        if (s.TryTakeCostly(r.GetType(), perSecond, burst)) return true;
+        if (s.Throttle.TryTakeCostly(r.GetType(), perSecond, burst)) return true;
         Fail(s, r, Codes.RateLimited);
         return false;
     }
@@ -46,9 +46,9 @@ public sealed partial class ServerState
     /// </summary>
     static bool ThrottleList(Session s, Request r, int offset)
     {
-        if (offset > 0 && s.TakeFollowPage(r.GetType(), offset)) return true;
+        if (offset > 0 && s.Throttle.TakeFollowPage(r.GetType(), offset)) return true;
         if (!Throttle(s, r, Limits.ListsPerSecond, Limits.ListBurst)) return false;
-        if (offset <= 0) s.StartListRound(r.GetType());
+        if (offset <= 0) s.Throttle.StartListRound(r.GetType());
         return true;
     }
 
@@ -60,14 +60,14 @@ public sealed partial class ServerState
     /// </summary>
     void OnGetServerIcon(Session s, GetServerIcon r)
     {
-        bool allowed = s.TryTakeCostly(r.GetType(), 1 / Limits.IconInterval.TotalSeconds, 1);
+        bool allowed = s.Throttle.TryTakeCostly(r.GetType(), 1 / Limits.IconInterval.TotalSeconds, 1);
         if (!allowed && icon.Hash == s.ServedIconHash)
         {
             Fail(s, r, Codes.RateLimited);
             return;
         }
         s.ServedIconHash = icon.Hash;
-        s.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64));
+        s.Outbox.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64));
     }
 
     /// <summary>Package 87: counts an unknown fingerprint of this source; false (and one log line per window) above the limit.</summary>

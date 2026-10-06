@@ -1666,7 +1666,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     async Task DropAsync(TestServer on)
     {
         var id = await OnUi(() => vm.Server!.Mirror.SelfId);
-        on.State.FindSession(id)!.Abort("Test");
+        on.State.FindSession(id)!.Outbox.Abort("Test");
         Assert.True(await OnUiUntil(() => vm.IsReconnecting, r => r));
     }
 
@@ -1870,7 +1870,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 else
                 {
                     var id = await OnUi(() => vm.Server!.Mirror.SelfId);
-                    server.State.FindSession(id)!.Close(new Disconnected(reason));
+                    server.State.FindSession(id)!.Outbox.Close(new Disconnected(reason));
                 }
                 Assert.False(await OnUiUntil(() => vm.IsConnected, c => !c));
             }

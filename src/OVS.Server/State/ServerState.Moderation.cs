@@ -129,7 +129,7 @@ public sealed partial class ServerState
 
     /// <summary>Package 80: active bans and the history; the client filters. Package 87: one page, the client asks for the rest.</summary>
     void SendBanList(Session s, string? requestId, int offset = 0) =>
-        s.Send(new BanList(requestId, Page(data.Bans, offset).Select(ToInfo).ToList(), offset, data.Bans.Count));
+        s.Outbox.Send(new BanList(requestId, Page(data.Bans, offset).Select(ToInfo).ToList(), offset, data.Bans.Count));
 
     static BanInfo ToInfo(BanRecord b) => new(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt,
         b.CreatedAt, b.CreatedByFingerprint, b.DurationMinutes, b.LiftedAt, b.LiftedBy, b.BlockedAttempts, b.LastAttempt, b.LastAttemptIp);

@@ -175,12 +175,12 @@ public sealed class LimitsTests
     public void VoiceDown_SlowListener_DroppedNotAborted()
     {
         using var session = new Session(1, "fp", "n", IPAddress.Loopback, new byte[32], new ManualTimeProvider());
-        var frame = Session.Encode(new VoiceDown(2, 0, 0, Convert.ToBase64String(new byte[1275])));
-        for (int i = 0; i < 1000; i++) session.SendVoice(frame);
-        Assert.Null(session.AbortReason);
-        Assert.Equal(Limits.MaxQueuedVoice, session.Outgoing.Count);
-        session.Send(new Pong()); // other messages still fit
-        Assert.Equal(Limits.MaxQueuedVoice + 1, session.Outgoing.Count);
+        var frame = SessionOutbox.Encode(new VoiceDown(2, 0, 0, Convert.ToBase64String(new byte[1275])));
+        for (int i = 0; i < 1000; i++) session.Outbox.SendVoice(frame);
+        Assert.Null(session.Outbox.AbortReason);
+        Assert.Equal(Limits.MaxQueuedVoice, session.Outbox.Outgoing.Count);
+        session.Outbox.Send(new Pong()); // other messages still fit
+        Assert.Equal(Limits.MaxQueuedVoice + 1, session.Outbox.Outgoing.Count);
     }
 
     [Fact]
@@ -367,10 +367,10 @@ public sealed class LimitsTests
     {
         var session = new Session(1, "fp", "gast", IPAddress.Loopback, new byte[32], TimeProvider.System);
         var big = new ServerIcon(null, null, new string('A', 700_000));
-        for (int i = 0; i < 20; i++) session.Send(big);
+        for (int i = 0; i < 20; i++) session.Outbox.Send(big);
 
-        Assert.True(session.Aborted.IsCancellationRequested);
-        Assert.True(session.QueuedBytes <= Limits.MaxOutboxBytes, $"{session.QueuedBytes} bytes queued");
+        Assert.True(session.Outbox.Aborted.IsCancellationRequested);
+        Assert.True(session.Outbox.QueuedBytes <= Limits.MaxOutboxBytes, $"{session.Outbox.QueuedBytes} bytes queued");
     }
 
     [Fact]

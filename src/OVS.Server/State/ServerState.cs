@@ -206,7 +206,7 @@ public sealed partial class ServerState
     }
 
     static void Fail(Session session, Request request, string code, string? detail = null) =>
-        session.Send(new Error(request.RequestId, code, detail));
+        session.Outbox.Send(new Error(request.RequestId, code, detail));
 
     /// <summary>Fails the request with a rule's refusal; false when the rule allows it.</summary>
     static bool Refuse(Session session, Request request, Refusal? refusal)
@@ -267,10 +267,10 @@ public sealed partial class ServerState
             s.Permissions = perms;
             s.GroupIds = groups.ToList();
             changed.Add(s);
-            if (limitsChanged) s.Send(new ServerSettingsChanged(SettingsInfo(s))); // Package 69: the limits come and go with the right
+            if (limitsChanged) s.Outbox.Send(new ServerSettingsChanged(SettingsInfo(s))); // Package 69: the limits come and go with the right
         }
         foreach (var to in sessions.Values)
-            if (groupsChanged || (changed.Contains(to) && before[to].Permissions != to.Permissions)) to.Send(new GroupsChanged(GroupInfos(to)));
+            if (groupsChanged || (changed.Contains(to) && before[to].Permissions != to.Permissions)) to.Outbox.Send(new GroupsChanged(GroupInfos(to)));
         if (changed.Count == 0) return;
         // ponytail: O(online^2) checks when every rights change touches everyone (e.g. the guest group edited); a rare admin action
         foreach (var to in sessions.Values)
@@ -281,7 +281,7 @@ public sealed partial class ServerState
                 bool send = s == to ? changed.Contains(s)
                     : !before[s].GroupIds.SequenceEqual(s.GroupIds)
                       || toBefore.CanModerate(to.Fingerprint, before[s].Permissions, s.Fingerprint) != Moderates(to, s);
-                if (send) to.Send(new UserUpdated(Info(s, to)));
+                if (send) to.Outbox.Send(new UserUpdated(Info(s, to)));
             }
         }
     }
@@ -302,9 +302,9 @@ public sealed partial class ServerState
         byte[]? moderator = null, other = null;
         foreach (var to in sessions.Values)
         {
-            if (to == user) to.Send(new UserUpdated(Info(user, to)));
-            else if (Moderates(to, user)) to.SendFrame(moderator ??= Session.Encode(new UserUpdated(Info(user, to))));
-            else to.SendFrame(other ??= Session.Encode(new UserUpdated(Info(user, to))));
+            if (to == user) to.Outbox.Send(new UserUpdated(Info(user, to)));
+            else if (Moderates(to, user)) to.Outbox.SendFrame(moderator ??= SessionOutbox.Encode(new UserUpdated(Info(user, to))));
+            else to.Outbox.SendFrame(other ??= SessionOutbox.Encode(new UserUpdated(Info(user, to))));
         }
     }
 
@@ -327,7 +327,7 @@ public sealed partial class ServerState
 
     void BroadcastSettings()
     {
-        foreach (var s in sessions.Values) s.Send(new ServerSettingsChanged(SettingsInfo(s)));
+        foreach (var s in sessions.Values) s.Outbox.Send(new ServerSettingsChanged(SettingsInfo(s)));
     }
 
     /// <summary>Package 92 (A104): the rights of the groups only with GroupsView; everyone learns which groups it may assign.</summary>
@@ -339,7 +339,7 @@ public sealed partial class ServerState
 
     void BroadcastGroups()
     {
-        foreach (var s in sessions.Values) s.Send(new GroupsChanged(GroupInfos(s)));
+        foreach (var s in sessions.Values) s.Outbox.Send(new GroupsChanged(GroupInfos(s)));
     }
 
     ServerSnapshot Snapshot(Session to) => new(

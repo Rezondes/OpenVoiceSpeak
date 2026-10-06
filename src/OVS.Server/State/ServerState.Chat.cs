@@ -44,7 +44,7 @@ public sealed partial class ServerState
             }
         }
 
-        if (!s.TryChat())
+        if (!s.Throttle.TryChat())
         {
             Fail(s, r, Codes.RateLimited);
             return;
@@ -61,12 +61,12 @@ public sealed partial class ServerState
                 break;
             case ChatTarget.Channel:
                 ChannelLog(s.ChannelId, $"{s.Nickname}: {text}");
-                foreach (var member in sessions.Values.Where(x => x.ChannelId == s.ChannelId)) member.Send(message);
+                foreach (var member in sessions.Values.Where(x => x.ChannelId == s.ChannelId)) member.Outbox.Send(message);
                 break;
             case ChatTarget.Private:
                 logs.Server($"{s.Nickname} schreibt privat an {to!.Nickname}"); // never the content (A29)
-                to.Send(message);
-                s.Send(message);
+                to.Outbox.Send(message);
+                s.Outbox.Send(message);
                 break;
         }
     }

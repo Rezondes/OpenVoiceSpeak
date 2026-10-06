@@ -174,7 +174,7 @@ public sealed partial class ServerState
         var online = sessions.Values.ToDictionary(x => x.Fingerprint);
         var bans = data.Bans.Where(b => b.IsActive(now)).ToLookup(b => b.Fingerprint);
         int offset = Math.Max(0, r.Offset);
-        s.Send(new UserList(r.RequestId, Page(data.Users, offset).Select(u =>
+        s.Outbox.Send(new UserList(r.RequestId, Page(data.Users, offset).Select(u =>
         {
             // Package 70: for online users the running session counts already
             var live = online.GetValueOrDefault(u.Fingerprint);

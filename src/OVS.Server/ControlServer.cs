@@ -126,7 +126,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             if (session is null) return;
 
             // Package 86: an overflowing outbox or a stuck write closes the socket at once, which ends both loops
-            using var abort = session.Aborted.Register(tcp.Close);
+            using var abort = session.Outbox.Aborted.Register(tcp.Close);
             writeLoop = WriteLoopAsync(session, writer, tcp);
             try
             {
@@ -145,7 +145,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         finally
         {
             if (handshaking) handshakes!.Release();
-            if (session is not null) state.Remove(session, session.AbortReason ?? reason);
+            if (session is not null) state.Remove(session, session.Outbox.AbortReason ?? reason);
             state.ReleaseConnection(ip); // Package 86: before the write loop, which may still wait for its timeout
             if (writeLoop is not null) await writeLoop;
             session?.Dispose();
@@ -202,7 +202,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
                 message = new MalformedRequest(e.Message) { RequestId = e.RequestId };
             }
             if (message is null) return;
-            if (message is Ping) session.Send(new Pong());
+            if (message is Ping) session.Outbox.Send(new Pong());
             else if (message is VoiceUp up) await (state.VoiceOverTcp?.Invoke(session, up) ?? Task.CompletedTask); // Package 141: no request
             else state.Handle(session, message);
         }
@@ -212,7 +212,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
     {
         try
         {
-            await foreach (var frame in session.Outgoing.ReadAllAsync())
+            await foreach (var frame in session.Outbox.Outgoing.ReadAllAsync())
             {
                 var write = writer.WriteFrameAsync(frame);
                 try
@@ -222,10 +222,10 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
                 catch (TimeoutException)
                 {
                     _ = write.ContinueWith(t => t.Exception, TaskContinuationOptions.OnlyOnFaulted); // fails once the socket is closed
-                    session.Abort("Schreiben zu langsam");
+                    session.Outbox.Abort("Schreiben zu langsam");
                     return;
                 }
-                session.Written(frame);
+                session.Outbox.Written(frame);
             }
         }
         catch (Exception e) when (e is IOException or ObjectDisposedException or ProtocolException or SocketException)

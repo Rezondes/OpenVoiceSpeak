@@ -171,7 +171,7 @@ public sealed class UdpVoiceServer : IDisposable
         {
             if (!valid)
             {
-                if (sender.RefuseVoice()) state.DisconnectFlood(sender);
+                if (sender.Throttle.RefuseVoice()) state.DisconnectFlood(sender);
                 return;
             }
             // the empty switch relays nothing and costs no more than a Ping, so it takes no token: repeated with every
@@ -227,8 +227,8 @@ public sealed class UdpVoiceServer : IDisposable
         {
             if (r.TcpVoice)
             {
-                if (recovered) r.SendVoice(tcpAlone ??= Session.Encode(new VoiceDown(sender.Id, frame - 1, target, Convert.ToBase64String(previous.Span))));
-                r.SendVoice(tcpSingle ??= Session.Encode(new VoiceDown(sender.Id, frame, target, Convert.ToBase64String(plain.AsSpan(current)))));
+                if (recovered) r.Outbox.SendVoice(tcpAlone ??= SessionOutbox.Encode(new VoiceDown(sender.Id, frame - 1, target, Convert.ToBase64String(previous.Span))));
+                r.Outbox.SendVoice(tcpSingle ??= SessionOutbox.Encode(new VoiceDown(sender.Id, frame, target, Convert.ToBase64String(plain.AsSpan(current)))));
                 continue;
             }
             byte[] payload;
