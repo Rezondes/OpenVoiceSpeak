@@ -353,10 +353,10 @@ public class AdminCommandTests
 
         await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { MaxUsers = 0 }) { RequestId = "1" });
         var error = await a.ErrorAsync("1");
-        Assert.Equal((Codes.InvalidValue, "Maximale Nutzer: 1 bis 100000"), (error.Code, error.Detail));
+        Assert.Equal((Codes.InvalidValue, "Max users: 1 to 100000."), (error.Code, error.Detail));
         await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { LogDays = 5000 }) { RequestId = "2" });
         error = await a.ErrorAsync("2");
-        Assert.Equal((Codes.InvalidValue, "Logs aufbewahren: 0 bis 3650 Tage"), (error.Code, error.Detail));
+        Assert.Equal((Codes.InvalidValue, "Keep logs: 0 to 3650 days."), (error.Code, error.Detail));
         await a.SendAsync(new UpdateServerSettings("Neu", "", new string('p', 129), NewLimits) { RequestId = "3" });
         error = await a.ErrorAsync("3");
         Assert.Equal((Codes.InvalidValue, "Ein Passwort hat höchstens 128 Zeichen."), (error.Code, error.Detail));

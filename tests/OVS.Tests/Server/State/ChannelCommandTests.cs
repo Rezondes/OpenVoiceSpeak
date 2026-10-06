@@ -259,7 +259,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     public async Task Edit_DefaultChannelLimit_Invalid()
     {
         await a.SendAsync(new EditChannel(Lobby, "Lobby", "", 0, MaxUsers: 5) { RequestId = "e" });
-        Assert.Contains("Standard-Channel", (await a.ErrorAsync("e")).Detail);
+        Assert.Contains("default channel", (await a.ErrorAsync("e")).Detail);
     }
 
     [Fact]

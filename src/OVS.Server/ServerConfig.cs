@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using OVS.Server.Exceptions;
+using OVS.Server.Rules;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
 
@@ -48,9 +49,9 @@ public sealed record ServerConfig(
 
         var file = ReadFile(Path.Combine(dataDir, FileName));
 
-        int port = Int("OVS_PORT", getEnv("OVS_PORT"), file.Port, ProtocolInfo.DefaultPort, 1, 65535);
-        int maxUsers = Int("OVS_MAX_USERS", getEnv("OVS_MAX_USERS"), file.MaxUsers, ProtocolInfo.MaxUsersDefault, ProtocolInfo.MaxUsersMin, ProtocolInfo.MaxUsersMax);
-        int logDays = Int("OVS_LOG_DAYS", getEnv("OVS_LOG_DAYS"), file.LogDays, ProtocolInfo.LogDaysDefault, 0, ProtocolInfo.LogDaysMax); // 0 = keep forever
+        int port = Int("OVS_PORT", getEnv("OVS_PORT"), file.Port, ProtocolInfo.DefaultPort, (1, 65535));
+        int maxUsers = Int("OVS_MAX_USERS", getEnv("OVS_MAX_USERS"), file.MaxUsers, ProtocolInfo.MaxUsersDefault, ServerLimitsRule.MaxUsers);
+        int logDays = Int("OVS_LOG_DAYS", getEnv("OVS_LOG_DAYS"), file.LogDays, ProtocolInfo.LogDaysDefault, ServerLimitsRule.LogDays); // 0 = keep forever
         bool autoRestart = Bool("OVS_AUTO_RESTART", getEnv("OVS_AUTO_RESTART"), file.AutoRestart, false);
         var restartTime = Time("OVS_AUTO_RESTART_TIME", getEnv("OVS_AUTO_RESTART_TIME") ?? file.AutoRestartTime, DefaultRestartTime);
         bool logRotateDaily = Bool("OVS_LOG_ROTATE_DAILY", getEnv("OVS_LOG_ROTATE_DAILY"), file.LogRotateDaily, true);
@@ -112,7 +113,7 @@ public sealed record ServerConfig(
         return time;
     }
 
-    static int Int(string name, string? env, int? fileValue, int fallback, int min, int max)
+    static int Int(string name, string? env, int? fileValue, int fallback, (int Min, int Max) range)
     {
         int value;
         if (env is not null)
@@ -125,8 +126,8 @@ public sealed record ServerConfig(
             value = fileValue ?? fallback;
         }
 
-        if (value < min || value > max)
-            throw new ConfigException($"{name} muss zwischen {min} und {max} liegen, ist aber {value}.");
+        if (value < range.Min || value > range.Max)
+            throw new ConfigException($"{name} muss zwischen {range.Min} und {range.Max} liegen, ist aber {value}.");
         return value;
     }
 }

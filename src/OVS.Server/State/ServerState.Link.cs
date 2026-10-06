@@ -1,8 +1,7 @@
 using OVS.Server.Data.Records;
+using OVS.Server.Rules;
 using OVS.Shared.Permissions;
-using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
-using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Links;
 
 namespace OVS.Server.State;
@@ -11,7 +10,7 @@ public sealed partial class ServerState
 {
     void OnLinkChannels(Session s, LinkChannels r)
     {
-        if (!Require(s, r, Permission.ChannelLink) || !ValidLink(s, r, r.A, r.B)) return;
+        if (!Require(s, r, Permission.ChannelLink) || !CheckLink(s, r, r.A, r.B)) return;
         var link = ChannelLink.Of(r.A, r.B);
         if (data.Links.Contains(link)) return;
         data.Links.Add(link);
@@ -40,14 +39,10 @@ public sealed partial class ServerState
         var add = (r.Add ?? []).ToList();
         var remove = (r.Remove ?? []).ToList();
         foreach (var l in add.Concat(remove))
-            if (!ValidLink(s, r, l.A, l.B)) return;
+            if (!CheckLink(s, r, l.A, l.B)) return;
         var toAdd = add.Select(l => ChannelLink.Of(l.A, l.B)).Distinct().ToList();
         var toRemove = remove.Select(l => ChannelLink.Of(l.A, l.B)).Distinct().ToList();
-        if (toAdd.Intersect(toRemove).Any())
-        {
-            Fail(s, r, Codes.InvalidValue, "Ein Link kann nicht zugleich gesetzt und entfernt werden.");
-            return;
-        }
+        if (Refuse(s, r, ChannelLinkRule.CheckChanges(toAdd, toRemove))) return;
         toAdd.RemoveAll(data.Links.Contains);
         toRemove.RemoveAll(l => !data.Links.Contains(l));
         if (toAdd.Count + toRemove.Count == 0) return;
@@ -75,23 +70,7 @@ public sealed partial class ServerState
         ChannelLog(link.B, $"Link zu {ChannelName(link.A)} {what}");
     }
 
-    bool ValidLink(Session s, Request r, Guid a, Guid b)
-    {
-        if (a == b)
-        {
-            Fail(s, r, Codes.InvalidLink);
-            return false;
-        }
-        if (FindChannel(a) is not { } first || FindChannel(b) is not { } second)
-        {
-            Fail(s, r, Codes.NotFound);
-            return false;
-        }
-        if (first.Kind == ChannelKind.Separator || second.Kind == ChannelKind.Separator)
-        {
-            Fail(s, r, Codes.InvalidLink); // Package 111: nothing is spoken in a separator
-            return false;
-        }
-        return true;
-    }
+    /// <summary>ChannelLinkRule for two channels looked up by id; false when the request was refused.</summary>
+    bool CheckLink(Session s, Request r, Guid a, Guid b) =>
+        !Refuse(s, r, ChannelLinkRule.Check(a, b, FindChannel(a)?.Kind, FindChannel(b)?.Kind));
 }

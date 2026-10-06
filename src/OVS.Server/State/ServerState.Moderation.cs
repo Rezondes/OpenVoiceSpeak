@@ -1,5 +1,6 @@
 using OVS.Server.Data.Records;
 using OVS.Server.Permissions;
+using OVS.Server.Rules;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -71,12 +72,8 @@ public sealed partial class ServerState
         if (online is not null) RemoveLocked(online, new Disconnected(Codes.Banned, reason));
     }
 
-    static bool ValidateDuration(Session s, Request r, int? minutes)
-    {
-        if (minutes is not <= 0) return true;
-        Fail(s, r, Codes.InvalidValue, "Dauer muss positiv sein");
-        return false;
-    }
+    /// <summary>ModerationRule.CheckDuration; false when the request was refused.</summary>
+    static bool ValidateDuration(Session s, Request r, int? minutes) => !Refuse(s, r, ModerationRule.CheckDuration(minutes));
 
     void OnUnban(Session s, Unban r)
     {
@@ -137,14 +134,8 @@ public sealed partial class ServerState
     static BanInfo ToInfo(BanRecord b) => new(b.Id, b.Fingerprint, b.Nickname, b.Ip, b.Reason, b.CreatedBy, b.ExpiresAt,
         b.CreatedAt, b.CreatedByFingerprint, b.DurationMinutes, b.LiftedAt, b.LiftedBy, b.BlockedAttempts, b.LastAttempt, b.LastAttemptIp);
 
-    /// <summary>The reason goes into the server log and the ban list: bounded, one line, no control or bidi characters. Empty is fine.</summary>
-    static bool ValidateReason(Session s, Request r, string? reason)
-    {
-        // Package 83: the text rules (also no bidi controls), and one line only
-        if (reason is null || TextRules.Text(reason, ProtocolInfo.MaxReasonLength) is { } text && !text.Contains('\n')) return true;
-        Fail(s, r, Codes.InvalidValue, $"Ein Grund hat höchstens {ProtocolInfo.MaxReasonLength} Zeichen und keine Zeilenumbrüche oder Steuerzeichen.");
-        return false;
-    }
+    /// <summary>ModerationRule.CheckReason; false when the request was refused.</summary>
+    static bool ValidateReason(Session s, Request r, string? reason) => !Refuse(s, r, ModerationRule.CheckReason(reason));
 
     /// <summary>
     /// Package 72: a stored user, never the actor, and only one whose rights are a strict subset of the actor's (Package 84).

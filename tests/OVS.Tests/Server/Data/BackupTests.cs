@@ -725,46 +725,6 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     static void LeaveAdminGroup(ServerState state, string fingerprint) =>
         StateHarness.ChangeStoredData(state, d => d.Users.Single(u => u.Fingerprint == fingerprint).GroupIds.Remove(WellKnownGroups.Admin));
 
-    /// <summary>Content that passed the old checks but broke every later start, or references that do not fit together.</summary>
-    static void Break(ServerData d, string variant)
-    {
-        switch (variant)
-        {
-            case "users-null": d.Users = null!; break;
-            case "settings-null": d.Settings = null!; break;
-            case "channels-null": d.Channels = null!; break;
-            case "links-null": d.Links = null!; break;
-            case "groups-null": d.Groups = null!; break;
-            case "bans-null": d.Bans = null!; break;
-            case "user-entry-null": d.Users.Add(null!); break;
-            case "user-groups-null": d.Users[0].GroupIds = null!; break;
-            case "channel-name-empty": d.Channels[0].Name = " "; break;
-            case "channel-name-control": d.Channels[0].Name = "a\u0007b"; break;
-            case "group-name-too-long": d.Groups[1] = d.Groups[1] with { Name = new string('g', 33) }; break;
-            case "server-name-null": d.Settings.Name = null!; break;
-            case "channel-id-twice": d.Channels.Add(new ChannelRecord { Id = d.Channels[0].Id, Name = "Zweite" }); break;
-            case "group-id-twice": d.Groups.Add(d.Groups[1] with { Name = "Kopie" }); break;
-            case "user-twice": d.Users.Add(new UserRecord { Fingerprint = d.Users[0].Fingerprint, LastNickname = "doppelt" }); break;
-            case "dangling-group": d.Users[0].GroupIds.Add(Guid.NewGuid()); break;
-            case "dangling-link": d.Links.Add(ChannelLink.Of(d.Channels[0].Id, Guid.NewGuid())); break;
-            case "no-default-channel": d.DefaultChannelId = Guid.NewGuid(); break;
-            case "no-admin": d.Users.ForEach(u => u.GroupIds.Remove(WellKnownGroups.Admin)); break;
-            case "bad-password-hash": d.Settings.PasswordHash = "kein-hash"; break;
-            case "separator-default": // Package 111
-                d.Channels.Single(c => c.Id == d.DefaultChannelId).Name = "";
-                d.Channels.Single(c => c.Id == d.DefaultChannelId).Kind = ChannelKind.Separator;
-                break;
-            case "separator-linked":
-                var separator = new ChannelRecord { Id = Guid.NewGuid(), Order = 9, Kind = ChannelKind.Separator };
-                d.Channels.Add(separator);
-                d.Links.Add(ChannelLink.Of(d.DefaultChannelId, separator.Id));
-                break;
-            case "separator-named": d.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Name", Kind = ChannelKind.Separator }); break;
-            case "separator-with-options": d.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), MaxUsers = 5, Kind = ChannelKind.Separator }); break;
-            default: throw new ArgumentException(variant);
-        }
-    }
-
     [Theory]
     [InlineData("users-null")]
     [InlineData("settings-null")]
@@ -797,7 +757,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         var backups = Path.Combine(server.DataDir, "backups");
         var good = Entries(Path.Combine(backups, Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName));
         var data = DataOf(good["server-data.json"]);
-        Break(data, variant);
+        BrokenServerData.Break(data, variant); // content that passed the old checks but broke every later start
         var archive = Path.Combine(dir, variant + ".ovsbackup");
         WriteArchive(archive, new(good) { ["server-data.json"] = JsonSerializer.SerializeToUtf8Bytes(data, ProtocolJson.Options) });
 

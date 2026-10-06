@@ -1,5 +1,6 @@
 using OVS.Server.Data.Records;
 using OVS.Server.Permissions;
+using OVS.Server.Rules;
 using OVS.Server.Security;
 using OVS.Shared.Net;
 using OVS.Shared.Permissions;
@@ -201,13 +202,7 @@ public sealed partial class ServerState
             return;
         }
         if (PasswordTooLong(s, r, r.Password)) return; // Package 83: "" still removes it
-        if (r.Limits is { } l && (l.MaxUsers is < ProtocolInfo.MaxUsersMin or > ProtocolInfo.MaxUsersMax || l.LogDays is < 0 or > ProtocolInfo.LogDaysMax))
-        {
-            Fail(s, r, Codes.InvalidValue, l.MaxUsers is < ProtocolInfo.MaxUsersMin or > ProtocolInfo.MaxUsersMax
-                ? $"Maximale Nutzer: {ProtocolInfo.MaxUsersMin} bis {ProtocolInfo.MaxUsersMax}"
-                : $"Logs aufbewahren: 0 bis {ProtocolInfo.LogDaysMax} Tage");
-            return;
-        }
+        if (r.Limits is { } l && Refuse(s, r, ServerLimitsRule.Check(l))) return;
         var changes = new List<string>();
         if (data.Settings.Name != name) changes.Add($"Name '{data.Settings.Name}' -> '{name}'");
         if (data.Settings.WelcomeText != welcome) changes.Add("Willkommenstext geändert");

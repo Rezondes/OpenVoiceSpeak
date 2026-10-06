@@ -76,13 +76,13 @@ That is 2 + 90 = 92 types. Data records and enums go to the area they belong to 
 - The root keeps `Program`, `ServerConfig` (E4), `ControlServer`, `Session`, `ServerHost`, `AdminToken`, `Limits` (it holds all limits, not only throttling, E5), `RequestShape` and `MalformedRequest` (a top-level `internal sealed record`, E6; its name in the server log stays "MalformedRequest").
 - `Data/`: `DataStore` and the backup types `BackupStore`, `BackupManifest`, `BackupContent`, `ServerIconStore` (E2). `Data/Records/`: the persisted types `ServerSettings`, `ChannelRecord`, `ChannelLink`, `UserRecord`, `BanRecord`, `ServerData` (E1).
 - `State/`: `ServerState` and its parts (§ServerState).
-- `Permissions/`: `PermissionRules`, `Group` (E3). `Throttling/`: `RateLimiter` (it limits requests too, so it is not in `Voice/`, E5). `Logging/`: `LogReader`, `LogExport`, `ServerLogs`. `Security/`: `PasswordHash` (E7, introduced by the refactoring). `Tls/`, `Voice/`, `Exceptions/`.
+- `Permissions/`: `PermissionRules`, `Group` (E3). `Rules/`: the pure request rules of the server, one class per concept (`ChannelSettingsRule`, `ChannelCapacity`, `ChannelLinkRule`, `ModerationRule`, `ServerLimitsRule`) and the `Refusal` they return (N7). `Throttling/`: `RateLimiter` (it limits requests too, so it is not in `Voice/`, E5). `Logging/`: `LogReader`, `LogExport`, `ServerLogs`. `Security/`: `PasswordHash` (E7, introduced by the refactoring). `Tls/`, `Voice/`, `Exceptions/`.
 
 ### ServerState
 
 All parts of `ServerState` live in `src/OVS.Server/State/` with namespace `OVS.Server.State` (B2 a, B3, B4 a). A folder named `ServerState` would clash with the class (C3), and the parts must share one namespace.
 
-What `ServerState` holds (N7): the request handlers of every area, also of backups and logs, because they need the sessions, persistence, the one lock and the shared `Require`, `Fail`, `Throttle*` and `Page`. What has its own state or is pure leaves `ServerState`: a pure rule goes into a rule class next to `PermissionRules`, a piece with its own state (saving, guessing limits, upload folders, log export) becomes a class of its own that `ServerState` holds. There are no `*Service` classes and no role interfaces for `ServerState` (nothing fakes them, N3). The global lock stays one lock.
+What `ServerState` holds (N7): the request handlers of every area, also of backups and logs, because they need the sessions, persistence, the one lock and the shared `Require`, `Fail`, `Throttle*` and `Page`. What has its own state or is pure leaves `ServerState`: a pure rule goes into a rule class in `Rules/` (or `PermissionRules` for rights), which the handler calls before it changes anything; the invariants of the persisted data are methods of `ServerData` (`FindProblem`), a piece with its own state (saving, guessing limits, upload folders, log export) becomes a class of its own that `ServerState` holds. There are no `*Service` classes and no role interfaces for `ServerState` (nothing fakes them, N3). The global lock stays one lock.
 
 | File | Holds |
 |---|---|
@@ -169,7 +169,9 @@ Where code that several places need lives. All of these are introduced by the re
 | `OVS.Shared.Moderation.BanStatusRule` | `Evaluate(liftedAt, expiresAt, now)`: `BanRecord.IsActive` and the client's ban list and user cards | N1, N18 |
 | `ProtocolInfo` constants | the name and text lengths (`MaxNameLength`, `MaxTextLength`, `MaxGroupNameLength`, `MaxNicknameLength`), `MaxUsersMin`, `MaxUsersMax`, `MaxUsersDefault`, `LogDaysMax`, `LogDaysDefault` | I8, I9 |
 | `OVS.Server.Security.PasswordHash` | PBKDF2 hashing, verifying and `IsValidHash`, with a byte-identical stored format | E7 |
-| `ServerState` private helpers | `PasswordTooLong`, `NextChannelOrder`, `UsersAsAdminTuples` | I10, I11, I12 |
+| `OVS.Server.Rules` | `ChannelSettingsRule` (kind, separator, name and description, limit, group lock, password on the default channel, bitrate), `ChannelCapacity.IsFull`, `ChannelLinkRule`, `ModerationRule` (reason, duration), `ServerLimitsRule` (the ranges of `MaxUsers` and `LogDays` for the administration and `ServerConfig`); each returns a `Refusal` (code and English detail) or null | N7 |
+| `ServerData.FindProblem` | the invariants a start relies on (lists, names, ids, references, an Admin member); `BackupStore.Validate` throws its reason. Stored names use a deliberately looser rule than `TextRules` (Package 83) | N7, N11 |
+| `ServerState` private helpers | `PasswordTooLong`, `NextChannelOrder`, `UsersAsAdminTuples`, `Refuse` (fails a request with a rule's `Refusal`) | I10, I11, I12 |
 | `OVS.Client.Localization.Formats` | `Duration`, `Size`, `ClockTime` (`"HH:mm"`) | H10, I18 |
 | `AudioFormat.HalfFrameSamples` | the half frame of 480 samples | I16 |
 | `IMotionKey.KeyOf` | the motion key of an item (static interface method) | I17 |
@@ -182,6 +184,7 @@ Where code that several places need lives. All of these are introduced by the re
 | `TestSupport/RepoPaths` | the repository root and `src/OVS.Client` | J5 |
 | `TestSupport/StateHarness` | a `ServerState` without sockets: temporary data folder, `ManualTimeProvider`, seeded data, `Admit`, `Handle`, the decoded outbox (`Drain`, `WaitForAsync`) and `ChangeStoredData` under the lock | N7 |
 | `TestSupport/MainViewModelSetup` | `Create` (the only place the tests construct a `MainViewModel`, without audio devices; optional key state, audio device factory, dialogs, server and trusting every certificate) and `ShowServer(vm, server)` (the only place the tests set the shown server) | N13 |
+| `TestSupport/BrokenServerData` | `Break(data, variant)`: valid server data broken in one named way, shared by the `ServerData.FindProblem` tests and the backup restore tests | N7 |
 | `TestSupport/PersistedFixtures` | the persisted files of 3d5c4db and the release deploy-4053cfa in `TestSupport/Fixtures`, and their date | N11 |
 | `TestSupport/TempDirectoryTest` | base class for tests whose `Dispose` only deletes their temporary folder | J5 |
 | `TestSupport/Rows` | row lookups and the row center of the UI tests | J5 |
@@ -216,7 +219,7 @@ Every review of new or changed code answers each point below for that change, na
 - Red flag: a German log line or exception message in new or moved code, e.g. `"Channel angelegt von ..."` in a moved handler.
 
 **DRY (don't repeat yourself)**
-- Does the change copy logic that exists elsewhere (a helper in §Shared helpers, a rule in `PermissionRules` or the shared `GroupRules`, `ChannelAccess`, `BanStatusRule`, a settings mapping in `AudioEngine`)? Use or extend the one place.
+- Does the change copy logic that exists elsewhere (a helper in §Shared helpers, a rule in `PermissionRules`, the server's `Rules/` or the shared `GroupRules`, `ChannelAccess`, `BanStatusRule`, a settings mapping in `AudioEngine`)? Use or extend the one place.
 - Does a new setting, sound, key action or request need edits in several lists that must agree? Prefer one table or one mapping method over parallel switches.
 - Red flag: the same predicate in client and server (e.g. "is this ban active"); put it in `OVS.Shared`.
 

@@ -1,4 +1,5 @@
 using OVS.Server.Data.Records;
+using OVS.Server.Rules;
 using OVS.Server.Security;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -49,16 +50,9 @@ public sealed partial class ServerState
             CreateSeparator(s, r);
             return;
         }
-        if (r.Kind != ChannelKind.Voice)
-        {
-            Fail(s, r, Codes.InvalidValue, "Unbekannte Channel-Art.");
-            return;
-        }
-        if (!ValidateChannel(s, r, r.Name, r.Description, out var name, out var description)) return;
-        if (!ValidateLimit(s, r, null, r.MaxUsers)) return;
-        if (!ValidateGroupLock(s, r, null, r.AllowedGroupIds, out var allowed)) return;
-        if (!ValidatePassword(s, r, null, r.Password)) return;
-        if (!ValidateBitrate(s, r, r.Bitrate)) return;
+        if (Refuse(s, r, ChannelSettingsRule.CheckKind(r.Kind))
+            || !CheckChannelSettings(s, r, isDefault: false, r.Name, r.Description, r.MaxUsers, r.AllowedGroupIds, r.Password, r.Bitrate,
+                out var name, out var description, out var allowed)) return;
 
         var channel = new ChannelRecord
         {
@@ -84,15 +78,10 @@ public sealed partial class ServerState
         s.Send(added with { RequestId = r.RequestId }); // Package 110: the creator recognises its own channel by the request
     }
 
-    /// <summary>Package 111 (A120): a separator has no name, description or options; a request with any of them is refused.</summary>
+    /// <summary>Package 111 (A120): a separator has no name, description or options.</summary>
     void CreateSeparator(Session s, CreateChannel r)
     {
-        if (!string.IsNullOrEmpty(r.Name) || !string.IsNullOrEmpty(r.Description) || r.IsMuted || r.MaxUsers != 0
-            || r.AllowedGroupIds is { Count: > 0 } || !string.IsNullOrEmpty(r.Password) || r.Bitrate != ProtocolInfo.DefaultBitrate) // Package 132
-        {
-            Fail(s, r, Codes.InvalidValue, "Ein Trenner hat keinen Namen, keine Beschreibung und keine Optionen.");
-            return;
-        }
+        if (Refuse(s, r, ChannelSettingsRule.CheckSeparator(r))) return;
         var separator = new ChannelRecord
         {
             Id = Guid.NewGuid(),
@@ -117,17 +106,10 @@ public sealed partial class ServerState
             Fail(s, r, Codes.NotFound);
             return;
         }
-        if (channel.Kind == ChannelKind.Separator)
-        {
-            Fail(s, r, Codes.InvalidValue, "Ein Trenner lässt sich nicht bearbeiten."); // Package 111
-            return;
-        }
-        if (!ValidateChannel(s, r, r.Name, r.Description, out var name, out var description)) return;
-        if (!ValidateLimit(s, r, channel.Id, r.MaxUsers)) return;
-        if (!ValidateGroupLock(s, r, channel.Id, r.AllowedGroupIds, out var allowed)) return;
+        if (Refuse(s, r, ChannelSettingsRule.CheckEditable(channel.Kind))
+            || !CheckChannelSettings(s, r, channel.Id == data.DefaultChannelId, r.Name, r.Description, r.MaxUsers, r.AllowedGroupIds, r.Password, r.Bitrate,
+                out var name, out var description, out var allowed)) return;
         if (r.AllowedGroupIds is null) allowed = channel.AllowedGroupIds; // Package 93: null keeps the lock as it is
-        if (!ValidatePassword(s, r, channel.Id, r.Password)) return;
-        if (!ValidateBitrate(s, r, r.Bitrate)) return;
 
         // Package 83: r.Order is ignored, the order only changes through ReorderChannels
         var changes = new List<string>();
@@ -155,51 +137,19 @@ public sealed partial class ServerState
     /// <summary>Package 83: below the last channel; a stored order at int.MaxValue must not wrap around to the top of the list.</summary>
     int NextChannelOrder() => (int)Math.Min(int.MaxValue, data.Channels.Max(c => (long)c.Order) + 1);
 
-    /// <summary>Package 35 and 54: 0 (unlimited) to the maximum, for new and edited channels alike.</summary>
-    bool ValidateLimit(Session s, Request r, Guid? channelId, int maxUsers)
+    /// <summary>
+    /// The settings of a new or edited channel (ChannelSettingsRule, then the password length), in this order; false when
+    /// one of them refused the request.
+    /// </summary>
+    bool CheckChannelSettings(Session s, Request r, bool isDefault, string? rawName, string? rawDescription, int maxUsers,
+        IReadOnlyList<Guid>? groupIds, string? password, int bitrate, out string name, out string description, out List<Guid>? allowed)
     {
-        bool isDefault = channelId == data.DefaultChannelId;
-        if (maxUsers is >= 0 and <= ProtocolInfo.MaxChannelUsers && !(maxUsers > 0 && isDefault)) return true;
-        // Everybody lands in the default channel on connect and when a channel is deleted, so it stays unlimited.
-        Fail(s, r, Codes.InvalidValue, isDefault
-            ? "Der Standard-Channel lässt sich nicht begrenzen."
-            : $"Maximale Nutzer: 0 (unbegrenzt) bis {ProtocolInfo.MaxChannelUsers}.");
-        return false;
-    }
-
-    /// <summary>Package 132 (A141): MinBitrate to MaxBitrate kbps, for new and edited channels alike.</summary>
-    bool ValidateBitrate(Session s, Request r, int bitrate)
-    {
-        if (bitrate is >= ProtocolInfo.MinBitrate and <= ProtocolInfo.MaxBitrate) return true;
-        Fail(s, r, Codes.InvalidValue, $"Qualität: {ProtocolInfo.MinBitrate} bis {ProtocolInfo.MaxBitrate} kbps.");
-        return false;
-    }
-
-    /// <summary>Package 93 (A109): existing groups only, none on the default channel. Null or empty asks for no lock.</summary>
-    bool ValidateGroupLock(Session s, Request r, Guid? channelId, IReadOnlyList<Guid>? ids, out List<Guid>? allowed)
-    {
-        allowed = ids is { Count: > 0 } ? ids.Distinct().ToList() : null;
-        if (allowed is null) return true;
-        if (channelId == data.DefaultChannelId)
-        {
-            Fail(s, r, Codes.InvalidValue, "Der Standard-Channel lässt sich nicht auf Gruppen beschränken.");
-            return false;
-        }
-        if (allowed.All(id => data.Groups.Any(g => g.Id == id))) return true;
-        Fail(s, r, Codes.InvalidValue, "Unbekannte Gruppe in der Gruppen-Sperre.");
-        return false;
-    }
-
-    /// <summary>Package 94 (A109): at most MaxPasswordLength characters, none on the default channel ("" is fine: no password).</summary>
-    bool ValidatePassword(Session s, Request r, Guid? channelId, string? password)
-    {
-        if (password is not { Length: > 0 }) return true;
-        if (channelId == data.DefaultChannelId)
-        {
-            Fail(s, r, Codes.InvalidValue, "Der Standard-Channel lässt sich nicht mit einem Passwort sperren.");
-            return false;
-        }
-        return !PasswordTooLong(s, r, password);
+        allowed = null;
+        return !(Refuse(s, r, ChannelSettingsRule.CheckNameAndDescription(rawName, rawDescription, out name, out description))
+                 || Refuse(s, r, ChannelSettingsRule.CheckLimit(maxUsers, isDefault))
+                 || Refuse(s, r, ChannelSettingsRule.CheckGroupLock(groupIds, isDefault, data.Groups.Select(g => g.Id), out allowed))
+                 || Refuse(s, r, ChannelSettingsRule.CheckPasswordAllowed(password, isDefault)) || PasswordTooLong(s, r, password)
+                 || Refuse(s, r, ChannelSettingsRule.CheckBitrate(bitrate)));
     }
 
     static bool SameGroups(List<Guid>? a, List<Guid>? b) => a is null || b is null ? a == b : a.ToHashSet().SetEquals(b);
@@ -335,9 +285,9 @@ public sealed partial class ServerState
         BroadcastUser(target);
     }
 
-    /// <summary>Full for this user: limited and no free slot, not counting the user if already inside.</summary>
+    /// <summary>Full for this user (ChannelCapacity), not counting the user if already inside.</summary>
     bool IsFull(ChannelRecord channel, Session user) =>
-        channel.MaxUsers > 0 && sessions.Values.Count(x => x != user && x.ChannelId == channel.Id) >= channel.MaxUsers;
+        ChannelCapacity.IsFull(channel.MaxUsers, sessions.Values.Count(x => x != user && x.ChannelId == channel.Id));
 
     void OnSetSelfState(Session s, SetSelfState r)
     {
@@ -346,23 +296,5 @@ public sealed partial class ServerState
         s.SelfDeafened = r.Deafened;
         s.SelfMuted = muted;
         BroadcastUser(s);
-    }
-
-    bool ValidateChannel(Session s, Request r, string? rawName, string? rawDescription, out string name, out string description)
-    {
-        name = TextRules.Name(rawName, ProtocolInfo.MaxNameLength) ?? "";
-        description = "";
-        if (name.Length == 0)
-        {
-            Fail(s, r, Codes.InvalidName);
-            return false;
-        }
-        if (TextRules.Text(rawDescription ?? "", ProtocolInfo.MaxTextLength) is not { } text) // Package 83: multi-line, no control or bidi characters
-        {
-            Fail(s, r, Codes.InvalidValue, "Beschreibung zu lang oder mit unerlaubten Zeichen");
-            return false;
-        }
-        description = text.Trim();
-        return true; // Package 110 (A119): channel names may repeat, every channel is known by its id
     }
 }

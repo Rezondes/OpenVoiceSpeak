@@ -4,15 +4,12 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using OVS.Server.Data.Records;
 using OVS.Server.Exceptions;
-using OVS.Server.Security;
 using OVS.Server.Tls;
 using OVS.Shared;
 using OVS.Shared.IO;
 using OVS.Shared.Logging;
-using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Framing;
-using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 
 namespace OVS.Server.Data;
@@ -194,7 +191,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     }
 
     /// <summary>Reads and checks an archive completely without touching the live files.</summary>
-    /// <exception cref="InvalidDataException">With a German reason for the log; Package 89: for every failure, expected or not.</exception>
+    /// <exception cref="InvalidDataException">With a reason for the log; Package 89: for every failure, expected or not.</exception>
     public static BackupContent Read(string path)
     {
         try
@@ -220,67 +217,11 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         }
     }
 
-    /// <summary>
-    /// Package 89 (A101): everything a start of the server relies on, so a restored archive can never keep it from starting:
-    /// every list present without empty entries, names under the server's own rules, unique ids, references that exist and
-    /// at least one member of the Admin group.
-    /// </summary>
-    /// <exception cref="InvalidDataException">With a German reason for the log.</exception>
+    /// <summary>Package 89 (A101): everything a start of the server relies on (<see cref="ServerData.FindProblem"/>), so a restored archive can never keep it from starting.</summary>
+    /// <exception cref="InvalidDataException">With the reason for the log.</exception>
     public static void Validate(ServerData d)
     {
-        Check(new object?[] { d.Settings, d.Channels, d.Links, d.Groups, d.Users, d.Bans }.All(o => o is not null), "Einstellungen oder eine Liste fehlen");
-        Check(!d.Channels.Contains(null!) && !d.Links.Contains(null!) && !d.Groups.Contains(null!) && !d.Users.Contains(null!) && !d.Bans.Contains(null!),
-            "leerer Eintrag in einer Liste");
-        var s = d.Settings;
-        Check(StoredName(s.Name, ProtocolInfo.MaxNameLength) && s.WelcomeText is { Length: <= ProtocolInfo.MaxTextLength }, "Servername oder Willkommenstext ungültig");
-        Check(s.PasswordHash is null || PasswordHash.IsValidHash(s.PasswordHash), "Passwort-Hash ungültig"); // Package 91: both formats
-
-        // Package 111: a separator has an empty name and description, is never the default channel and never linked
-        Check(d.Channels.All(c => c.Kind switch
-        {
-            // Package 132: a separator's bitrate is never read (one stored before the package loads as 64)
-            ChannelKind.Voice => StoredName(c.Name, ProtocolInfo.MaxNameLength) && c.Description is { Length: <= ProtocolInfo.MaxTextLength }
-                                 && c.Bitrate is >= ProtocolInfo.MinBitrate and <= ProtocolInfo.MaxBitrate,
-            ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, PasswordHash: null },
-            _ => false,
-        }), "Channel-Name oder -Qualität ungültig");
-        Unique(d.Channels.Select(c => c.Id), "Channel-Id doppelt");
-        var channels = d.Channels.Select(c => c.Id).ToHashSet();
-        Check(channels.Contains(d.DefaultChannelId), "Standard-Channel fehlt");
-        Check(d.Links.All(l => channels.Contains(l.A) && channels.Contains(l.B)), "Link auf einen unbekannten Channel");
-        var separators = d.Channels.Where(c => c.Kind == ChannelKind.Separator).Select(c => c.Id).ToHashSet();
-        Check(!separators.Contains(d.DefaultChannelId), "Trenner als Standard-Channel");
-        Check(!d.Links.Any(l => separators.Contains(l.A) || separators.Contains(l.B)), "Link auf einen Trenner");
-
-        Check(d.Groups.All(g => StoredName(g.Name, ProtocolInfo.MaxGroupNameLength) && g.Permissions.IsSubsetOf(Permission.All)), "Gruppe ungültig");
-        Unique(d.Groups.Select(g => g.Id), "Gruppen-Id doppelt");
-        var groups = d.Groups.Select(g => g.Id).ToHashSet();
-        Check(groups.Contains(WellKnownGroups.Guest) && groups.Contains(WellKnownGroups.Admin), "Gast- oder Admin-Gruppe fehlt");
-
-        Check(d.Users.All(u => u.Fingerprint is { Length: > 0 } && u.GroupIds is not null && u.PreviousNicknames is not null
-                               && !u.PreviousNicknames.Contains(null!)), "Nutzer unvollständig");
-        Check(d.Users.All(u => u.LastNickname is "" || StoredName(u.LastNickname, ProtocolInfo.MaxNicknameLength)), "Nickname ungültig");
-        Unique(d.Users.Select(u => u.Fingerprint), "Nutzer doppelt");
-        Check(d.Users.All(u => u.GroupIds.All(groups.Contains)), "Nutzer in einer unbekannten Gruppe");
-        Check(d.Users.Any(u => u.GroupIds.Contains(WellKnownGroups.Admin)), "kein Mitglied der Admin-Gruppe");
-
-        Check(d.Bans.All(b => b.Fingerprint is not null && b.Nickname is not null && b.Reason is not null && b.CreatedBy is not null), "Ban unvollständig");
-        Unique(d.Bans.Select(b => b.Id), "Ban-Id doppelt");
-
-        // Package 83: the looser rule names had before, not TextRules. Stored data with a name new input would refuse keeps
-        // loading on start, so a backup of it must stay restorable; control characters are still refused.
-        static bool StoredName(string? name, int max) => name?.Trim() is { Length: > 0 } n && n.Length <= max && !n.Any(char.IsControl);
-
-        static void Check(bool ok, string reason)
-        {
-            if (!ok) throw new InvalidDataException(reason);
-        }
-
-        static void Unique<T>(IEnumerable<T> ids, string reason)
-        {
-            var seen = new HashSet<T>();
-            Check(ids.All(seen.Add), reason);
-        }
+        if (d.FindProblem() is { } problem) throw new InvalidDataException(problem);
     }
 
     public void Delete(string path)

@@ -4,6 +4,7 @@ using System.Text;
 using OVS.Server.Data;
 using OVS.Server.Data.Records;
 using OVS.Server.Logging;
+using OVS.Server.Rules;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -206,6 +207,14 @@ public sealed partial class ServerState
 
     static void Fail(Session session, Request request, string code, string? detail = null) =>
         session.Send(new Error(request.RequestId, code, detail));
+
+    /// <summary>Fails the request with a rule's refusal; false when the rule allows it.</summary>
+    static bool Refuse(Session session, Request request, Refusal? refusal)
+    {
+        if (refusal is null) return false;
+        Fail(session, request, refusal.Code, refusal.Detail);
+        return true;
+    }
 
     /// <summary>Package 87: at most ListPageSize entries from offset, so no list outgrows a frame.</summary>
     static List<T> Page<T>(IEnumerable<T> all, int offset) => all.Skip(offset).Take(Limits.ListPageSize).ToList();

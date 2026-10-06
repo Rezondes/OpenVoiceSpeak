@@ -1,6 +1,9 @@
 using OVS.Server.Permissions;
+using OVS.Server.Rules;
 using OVS.Server.Security;
 using OVS.Shared.Permissions;
+using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Channels;
 
 namespace OVS.Server.Data.Records;
 
@@ -68,6 +71,87 @@ public sealed class ServerData
                 if (Groups[i].Id != PermissionRules.AdminGroupId) Groups[i] = Groups[i] with { Permissions = Groups[i].Permissions & ~Permission.ChannelPasswordBypass };
         DataVersion = CurrentVersion;
         return true;
+    }
+
+    /// <summary>
+    /// Package 89 (A101): why a start of the server could not rely on this data, null when it can: every list present
+    /// without empty entries, names under the stored-name rule, unique ids, references that exist and at least one member
+    /// of the Admin group. The reason is English, for the log. A method, so it is never written to the file.
+    /// </summary>
+    public string? FindProblem() =>
+        FindListProblem() ?? FindSettingsProblem() ?? FindChannelProblem() ?? FindGroupProblem() ?? FindUserProblem() ?? FindBanProblem();
+
+    string? FindListProblem()
+    {
+        if (!new object?[] { Settings, Channels, Links, Groups, Users, Bans }.All(o => o is not null)) return "settings or a list is missing";
+        return Channels.Contains(null!) || Links.Contains(null!) || Groups.Contains(null!) || Users.Contains(null!) || Bans.Contains(null!)
+            ? "empty entry in a list"
+            : null;
+    }
+
+    string? FindSettingsProblem()
+    {
+        if (!StoredName(Settings.Name, ProtocolInfo.MaxNameLength) || Settings.WelcomeText is not { Length: <= ProtocolInfo.MaxTextLength })
+            return "server name or welcome text invalid";
+        return Settings.PasswordHash is null || PasswordHash.IsValidHash(Settings.PasswordHash) ? null : "password hash invalid"; // Package 91: both formats
+    }
+
+    /// <summary>Package 111: a separator has an empty name and description, is never the default channel and never linked.</summary>
+    string? FindChannelProblem()
+    {
+        if (!Channels.All(c => c.Kind switch
+            {
+                // Package 132: a separator's bitrate is never read (one stored before the package loads as 64)
+                ChannelKind.Voice => StoredName(c.Name, ProtocolInfo.MaxNameLength) && c.Description is { Length: <= ProtocolInfo.MaxTextLength }
+                                     && ChannelSettingsRule.CheckBitrate(c.Bitrate) is null,
+                ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, PasswordHash: null },
+                _ => false,
+            }))
+            return "channel name or bitrate invalid";
+        if (!AllUnique(Channels.Select(c => c.Id))) return "channel id twice";
+        var channels = Channels.Select(c => c.Id).ToHashSet();
+        if (!channels.Contains(DefaultChannelId)) return "default channel missing";
+        if (!Links.All(l => channels.Contains(l.A) && channels.Contains(l.B))) return "link to an unknown channel";
+        var separators = Channels.Where(c => c.Kind == ChannelKind.Separator).Select(c => c.Id).ToHashSet();
+        if (separators.Contains(DefaultChannelId)) return "separator as default channel";
+        return Links.Any(l => separators.Contains(l.A) || separators.Contains(l.B)) ? "link to a separator" : null;
+    }
+
+    string? FindGroupProblem()
+    {
+        if (!Groups.All(g => StoredName(g.Name, ProtocolInfo.MaxGroupNameLength) && g.Permissions.IsSubsetOf(Permission.All))) return "group invalid";
+        if (!AllUnique(Groups.Select(g => g.Id))) return "group id twice";
+        return Groups.Any(g => g.Id == WellKnownGroups.Guest) && Groups.Any(g => g.Id == WellKnownGroups.Admin) ? null : "guest or Admin group missing";
+    }
+
+    string? FindUserProblem()
+    {
+        if (!Users.All(u => u.Fingerprint is { Length: > 0 } && u.GroupIds is not null && u.PreviousNicknames is not null
+                            && !u.PreviousNicknames.Contains(null!)))
+            return "user incomplete";
+        if (!Users.All(u => u.LastNickname is "" || StoredName(u.LastNickname, ProtocolInfo.MaxNicknameLength))) return "nickname invalid";
+        if (!AllUnique(Users.Select(u => u.Fingerprint))) return "user twice";
+        var groups = Groups.Select(g => g.Id).ToHashSet();
+        if (!Users.All(u => u.GroupIds.All(groups.Contains))) return "user in an unknown group";
+        return Users.Any(u => u.GroupIds.Contains(WellKnownGroups.Admin)) ? null : "no member of the Admin group";
+    }
+
+    string? FindBanProblem()
+    {
+        if (!Bans.All(b => b.Fingerprint is not null && b.Nickname is not null && b.Reason is not null && b.CreatedBy is not null)) return "ban incomplete";
+        return AllUnique(Bans.Select(b => b.Id)) ? null : "ban id twice";
+    }
+
+    /// <summary>
+    /// Package 83: deliberately looser than the text rules for new input (TextRules): stored data with a name new input would
+    /// refuse keeps loading on start, so a backup of it must stay restorable; control characters are still refused.
+    /// </summary>
+    static bool StoredName(string? name, int max) => name?.Trim() is { Length: > 0 } n && n.Length <= max && !n.Any(char.IsControl);
+
+    static bool AllUnique<T>(IEnumerable<T> ids)
+    {
+        var seen = new HashSet<T>();
+        return ids.All(seen.Add);
     }
 
     static Permission WithViewRights(Permission p)
