@@ -210,10 +210,10 @@ public sealed partial class ServerState
 
         data.Settings.Name = name;
         data.Settings.WelcomeText = welcome;
-        if (r.Password is not null) data.Settings.PasswordHash = PasswordHash.Hash(r.Password);
-        if (r.Limits is { } limits && limits != data.Settings.Limits)
+        if (r.Password is not null) data.Settings.StoredPassword = StoredPassword.Create(r.Password);
+        if (r.Limits is { } limits && limits != data.Settings.ToServerLimits())
         {
-            var old = data.Settings.Limits;
+            var old = data.Settings.ToServerLimits();
             if (old.MaxUsers != limits.MaxUsers) changes.Add($"maximale Nutzer {old.MaxUsers} -> {limits.MaxUsers}");
             if (old.LogDays != limits.LogDays) changes.Add($"Logs aufbewahren {old.LogDays} -> {limits.LogDays} Tage");
             if (old.LogRotateDaily != limits.LogRotateDaily) changes.Add($"tägliche Log-Datei {(limits.LogRotateDaily ? "an" : "aus")}");

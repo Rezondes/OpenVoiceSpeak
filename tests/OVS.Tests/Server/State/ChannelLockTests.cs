@@ -248,16 +248,16 @@ public sealed class ChannelLockTests : IAsyncLifetime
         Assert.True(secret.HasPassword);
         Assert.True((await g.WaitForAsync<ChannelAdded>()).Channel.HasPassword);
         Assert.DoesNotContain("geheim1", DataFile);
-        var hash = Stored(DataFile).Channels.Single(c => c.Id == secret.Id).PasswordHash;
+        var hash = Stored(DataFile).Channels.Single(c => c.Id == secret.Id).StoredPassword?.Text;
         Assert.StartsWith("pbkdf2$", hash);
 
         var edit = new EditChannel(secret.Id, "Geheim", "", secret.Order);
         await a.SendAsync(edit);
         Assert.True((await a.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == secret.Id)).Channel.HasPassword); // null keeps it
-        Assert.Equal(hash, Stored(DataFile).Channels.Single(c => c.Id == secret.Id).PasswordHash);
+        Assert.Equal(hash, Stored(DataFile).Channels.Single(c => c.Id == secret.Id).StoredPassword?.Text);
         await a.SendAsync(edit with { Password = "neu2" });
         Assert.True((await a.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == secret.Id)).Channel.HasPassword);
-        Assert.NotEqual(hash, Stored(DataFile).Channels.Single(c => c.Id == secret.Id).PasswordHash);
+        Assert.NotEqual(hash, Stored(DataFile).Channels.Single(c => c.Id == secret.Id).StoredPassword?.Text);
         await JoinAsync(g, secret.Id, "neu2");
 
         Assert.Equal(Codes.InvalidValue, await ErrorOfAsync(a, edit with { Password = new string('x', ProtocolInfo.MaxPasswordLength + 1) }));
@@ -267,7 +267,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
 
         await a.SendAsync(edit with { Password = "" });
         Assert.False((await a.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == secret.Id)).Channel.HasPassword);
-        Assert.Null(Stored(DataFile).Channels.Single(c => c.Id == secret.Id).PasswordHash);
+        Assert.Null(Stored(DataFile).Channels.Single(c => c.Id == secret.Id).StoredPassword?.Text);
         Assert.False((await CreateWithPasswordAsync("Offen", "")).HasPassword);
         Assert.DoesNotContain(server.Log, l => l.Contains("geheim1") || l.Contains("neu2"));
     }

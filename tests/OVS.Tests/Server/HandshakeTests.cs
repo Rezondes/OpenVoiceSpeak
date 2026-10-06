@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using OVS.Server.Data;
 using OVS.Server.Data.Records;
+using OVS.Server.Security;
 using OVS.Server.Tls;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -214,16 +215,16 @@ public class HandshakeTests
     public async Task OldSha256Hash_LoginWorks_UpgradedAfter()
     {
         var legacy = Convert.ToHexStringLower(SHA256.HashData("alt"u8));
-        await using var server = await TestServer.StartAsync(d => d.Settings.PasswordHash = legacy);
+        await using var server = await TestServer.StartAsync(d => d.Settings.StoredPassword = StoredPassword.FromStored(legacy));
 
         await using (var wrong = await TestClient.OpenAsync(server.Port))
             Assert.Equal(Codes.WrongPassword, Assert.IsType<Rejected>(await wrong.HandshakeAsync("anna", "falsch")).Code);
-        Assert.Equal(legacy, OnDisk(server).Settings.PasswordHash); // a wrong password changes nothing
+        Assert.Equal(legacy, OnDisk(server).Settings.StoredPassword?.Text); // a wrong password changes nothing
 
         await using (var right = await TestClient.OpenAsync(server.Port))
             Assert.IsType<Welcome>(await right.HandshakeAsync("anna", "alt"));
         var upgraded = OnDisk(server).Settings; // saved at once, not only with the next debounced save
-        Assert.StartsWith("pbkdf2$", upgraded.PasswordHash);
+        Assert.StartsWith("pbkdf2$", upgraded.StoredPassword?.Text);
         Assert.True(upgraded.CheckPassword("alt"));
 
         await using var again = await TestClient.OpenAsync(server.Port);
@@ -235,9 +236,9 @@ public class HandshakeTests
     public async Task EmptyPassword_StillOpenServer()
     {
         await using var server = await TestServer.StartAsync(password: "");
-        Assert.Null(OnDisk(server).Settings.PasswordHash);
+        Assert.Null(OnDisk(server).Settings.StoredPassword);
         await using var client = await TestClient.OpenAsync(server.Port);
         Assert.IsType<Welcome>(await client.HandshakeAsync("anna", "irgendwas"));
-        Assert.Null(OnDisk(server).Settings.PasswordHash);
+        Assert.Null(OnDisk(server).Settings.StoredPassword);
     }
 }

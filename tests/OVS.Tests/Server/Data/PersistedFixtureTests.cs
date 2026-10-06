@@ -32,7 +32,7 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
         Assert.Equivalent(Expected(version), data, strict: true);
         Assert.Equal(Order(Expected(version)), Order(data)); // Equivalent ignores the order of list entries
         Assert.True(data.Settings.CheckPassword("geheim"));
-        Assert.True(PasswordHash.Verify(data.Channels[1].PasswordHash, "kanal"));
+        Assert.True(data.Channels[1].StoredPassword!.Matches("kanal"));
     }
 
     [Theory]
@@ -74,7 +74,7 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
             DataVersion = 6,
             Settings = new ServerSettings
             {
-                Name = "Fixture-Server", WelcomeText = "Willkommen", PasswordHash = "ADDB0F5E7826C857D7376D1BD9BC33C0C544790A2EAC96144A8AF22B1298C940",
+                Name = "Fixture-Server", WelcomeText = "Willkommen", StoredPassword = StoredPassword.FromStored("ADDB0F5E7826C857D7376D1BD9BC33C0C544790A2EAC96144A8AF22B1298C940"),
                 MaxUsers = 42, LogDays = 14, LogRotateDaily = false, AutoRestart = true, AutoRestartTime = new TimeOnly(4, 30),
             },
             DefaultChannelId = lobby,
@@ -85,9 +85,9 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
                 {
                     Id = raid, Name = "Raid", Description = "Mit Passwort", Order = 1, IsMuted = true, MaxUsers = 5,
                     Bitrate = version == PersistedFixtures.Current ? 96 : 64,
-                    PasswordHash = version == PersistedFixtures.Current
+                    StoredPassword = StoredPassword.FromStored(version == PersistedFixtures.Current
                         ? "pbkdf2$100000$a2BpHGlppwK6yp1mDZn5tA==$EejxIRWPgCIybTZ9pfE1Kbk37mJiDIlVdKpYu9oqJVg="
-                        : "pbkdf2$100000$/hf+SY0bsSEoY+Pwayi35g==$RiowhwpqRi2niCqqwfd950YHK57+Ko/doXpSRnRAz8k=",
+                        : "pbkdf2$100000$/hf+SY0bsSEoY+Pwayi35g==$RiowhwpqRi2niCqqwfd950YHK57+Ko/doXpSRnRAz8k="),
                 },
                 new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000003"), Order = 2, Kind = ChannelKind.Separator },
                 new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000004"), Name = "Gesperrt", Order = 3, AllowedGroupIds = [] },

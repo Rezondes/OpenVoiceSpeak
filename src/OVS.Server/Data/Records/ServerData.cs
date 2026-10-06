@@ -40,7 +40,7 @@ public sealed class ServerData
     public static ServerData CreateDefault(ServerConfig config)
     {
         var lobby = new ChannelRecord { Id = Guid.NewGuid(), Name = "Lobby" };
-        var settings = new ServerSettings { Name = config.ServerName, PasswordHash = PasswordHash.Hash(config.Password) };
+        var settings = new ServerSettings { Name = config.ServerName, StoredPassword = StoredPassword.Create(config.Password) };
         settings.TakeStartValues(config);
         return new ServerData
         {
@@ -93,7 +93,7 @@ public sealed class ServerData
     {
         if (!StoredName(Settings.Name, ProtocolInfo.MaxNameLength) || Settings.WelcomeText is not { Length: <= ProtocolInfo.MaxTextLength })
             return "server name or welcome text invalid";
-        return Settings.PasswordHash is null || PasswordHash.IsValidHash(Settings.PasswordHash) ? null : "password hash invalid"; // Package 91: both formats
+        return Settings.StoredPassword is null || Settings.StoredPassword.IsValid() ? null : "password hash invalid"; // Package 91: both formats
     }
 
     /// <summary>Package 111: a separator has an empty name and description, is never the default channel and never linked.</summary>
@@ -104,7 +104,7 @@ public sealed class ServerData
                 // Package 132: a separator's bitrate is never read (one stored before the package loads as 64)
                 ChannelKind.Voice => StoredName(c.Name, ProtocolInfo.MaxNameLength) && c.Description is { Length: <= ProtocolInfo.MaxTextLength }
                                      && ChannelSettingsRule.CheckBitrate(c.Bitrate) is null,
-                ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, PasswordHash: null },
+                ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, StoredPassword: null },
                 _ => false,
             }))
             return "channel name or bitrate invalid";

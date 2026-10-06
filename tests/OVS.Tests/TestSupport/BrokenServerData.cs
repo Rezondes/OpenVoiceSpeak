@@ -1,4 +1,5 @@
 using OVS.Server.Data.Records;
+using OVS.Server.Security;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Channels;
@@ -32,7 +33,7 @@ static class BrokenServerData
             case "server-name-control": d.Settings.Name = "a\u0001"; break;
             case "welcome-null": d.Settings.WelcomeText = null!; break;
             case "welcome-too-long": d.Settings.WelcomeText = new string('w', ProtocolInfo.MaxTextLength + 1); break;
-            case "bad-password-hash": d.Settings.PasswordHash = "kein-hash"; break;
+            case "bad-password-hash": d.Settings.StoredPassword = StoredPassword.FromStored("kein-hash"); break;
             case "channel-name-empty": lobby.Name = " "; break;
             case "channel-name-control": lobby.Name = "a\u0007b"; break;
             case "channel-description-too-long": lobby.Description = new string('d', ProtocolInfo.MaxTextLength + 1); break;
@@ -56,7 +57,7 @@ static class BrokenServerData
             case "separator-described": d.Channels.Add(Separator(c => c.Description = "Text")); break;
             case "separator-muted": d.Channels.Add(Separator(c => c.IsMuted = true)); break;
             case "separator-locked": d.Channels.Add(Separator(c => c.AllowedGroupIds = [])); break;
-            case "separator-password": d.Channels.Add(Separator(c => c.PasswordHash = "kein-hash")); break;
+            case "separator-password": d.Channels.Add(Separator(c => c.StoredPassword = StoredPassword.FromStored("kein-hash"))); break;
             case "group-name-too-long": d.Groups[1] = d.Groups[1] with { Name = new string('g', 33) }; break;
             case "group-unknown-permission": d.Groups[1] = d.Groups[1] with { Permissions = (Permission)(1 << 28) }; break;
             case "group-id-twice": d.Groups.Add(d.Groups[1] with { Name = "Kopie" }); break;

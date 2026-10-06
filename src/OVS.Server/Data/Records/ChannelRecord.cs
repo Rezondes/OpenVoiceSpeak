@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using OVS.Server.Security;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Channels;
 
@@ -18,8 +20,9 @@ public sealed class ChannelRecord
     /// empty once its groups were deleted, which means admins only. Older files load as null, without a new data version.
     /// </summary>
     public List<Guid>? AllowedGroupIds { get; set; }
-    /// <summary>Package 94 (A109): salted PBKDF2 like the server password (PasswordHash.Hash); null = no password lock.</summary>
-    public string? PasswordHash { get; set; }
+    /// <summary>Package 94 (A109): salted PBKDF2 like the server password; null = no password lock.</summary>
+    [JsonPropertyName("passwordHash")]
+    public StoredPassword? StoredPassword { get; set; }
     /// <summary>Package 111: older files load as voice channels, without a new data version.</summary>
     public ChannelKind Kind { get; set; }
     /// <summary>
@@ -27,4 +30,7 @@ public sealed class ChannelRecord
     /// data version. A separator gets 0 and is never asked for it.
     /// </summary>
     public int Bitrate { get; set; } = ProtocolInfo.DefaultBitrate;
+
+    /// <summary>Constant-time in both formats; true when there is no password.</summary>
+    public bool CheckPassword(string? password) => StoredPassword?.Matches(password) ?? true;
 }

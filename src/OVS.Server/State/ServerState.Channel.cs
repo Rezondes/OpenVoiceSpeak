@@ -63,13 +63,13 @@ public sealed partial class ServerState
             IsMuted = r.IsMuted,
             MaxUsers = r.MaxUsers,
             AllowedGroupIds = allowed,
-            PasswordHash = PasswordHash.Hash(r.Password ?? ""),
+            StoredPassword = StoredPassword.Create(r.Password ?? ""),
             Bitrate = r.Bitrate,
         };
         data.Channels.Add(channel);
         Persist();
         var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null,
-            allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.PasswordHash is null ? null : "mit Passwort",
+            allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.StoredPassword is null ? null : "mit Passwort",
             r.Bitrate != ProtocolInfo.DefaultBitrate ? $"Qualität {r.Bitrate} kbps" : null }.OfType<string>().ToList();
         ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
         logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
@@ -118,7 +118,7 @@ public sealed partial class ServerState
         if (channel.IsMuted != r.IsMuted) changes.Add(r.IsMuted ? "stumm geschaltet" : "Stummschaltung aufgehoben");
         if (channel.MaxUsers != r.MaxUsers) changes.Add(r.MaxUsers == 0 ? "Nutzerlimit aufgehoben" : $"Nutzerlimit {r.MaxUsers}");
         if (!SameGroups(channel.AllowedGroupIds, allowed)) changes.Add(allowed is null ? "Gruppen-Sperre aufgehoben" : $"nur für {GroupNames(allowed)}");
-        if (r.Password is not null && (r.Password.Length > 0 || channel.PasswordHash is not null))
+        if (r.Password is not null && (r.Password.Length > 0 || channel.StoredPassword is not null))
             changes.Add(r.Password.Length == 0 ? "Passwort entfernt" : "Passwort gesetzt"); // never the password itself
         if (channel.Bitrate != r.Bitrate) changes.Add($"Qualität {r.Bitrate} kbps");
 
@@ -127,7 +127,7 @@ public sealed partial class ServerState
         channel.IsMuted = r.IsMuted;
         channel.MaxUsers = r.MaxUsers; // lowering it below the current count sends nobody away
         channel.AllowedGroupIds = allowed; // Package 93 (A108): nor does a lock
-        if (r.Password is not null) channel.PasswordHash = PasswordHash.Hash(r.Password); // Package 94: "" removes it
+        if (r.Password is not null) channel.StoredPassword = StoredPassword.Create(r.Password); // Package 94: "" removes it
         channel.Bitrate = r.Bitrate; // Package 132: the senders inside follow the ChannelUpdated
         Persist();
         if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {s.Nickname}: {string.Join(", ", changes)}");
@@ -164,7 +164,7 @@ public sealed partial class ServerState
     string? LockRefusal(Session actor, ChannelRecord channel, string? password, bool moving)
     {
         if (!ChannelAccess.GroupsAllow(channel.AllowedGroupIds, actor.GroupIds)) return Codes.ChannelLocked;
-        if (!ChannelAccess.NeedsPassword(channel.PasswordHash is not null, actor.GroupIds, actor.Permissions, moving)) return null;
+        if (!ChannelAccess.NeedsPassword(channel.StoredPassword is not null, actor.GroupIds, actor.Permissions, moving)) return null;
         if (moving || string.IsNullOrEmpty(password)) return Codes.ChannelPasswordRequired;
         return CheckChannelPassword(actor, channel, password);
     }
@@ -178,7 +178,7 @@ public sealed partial class ServerState
         var now = time.GetUtcNow();
         var failures = actor.ChannelPasswordFailures;
         if (failures.TryGetValue(channel.Id, out var f) && now < f.BlockedUntil) return Codes.RateLimited;
-        if (PasswordHash.Verify(channel.PasswordHash, password))
+        if (channel.CheckPassword(password))
         {
             failures.Remove(channel.Id);
             return null;

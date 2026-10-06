@@ -309,37 +309,45 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
 
     /// <summary>Package 91: PBKDF2-SHA256 with a random salt; the same password twice gives two different values that both verify.</summary>
     [Fact]
-    public void PasswordHash_Pbkdf2_SaltedUnique()
+    public void StoredPassword_Pbkdf2_SaltedUnique()
     {
-        var first = PasswordHash.Hash("geheim");
-        var second = PasswordHash.Hash("geheim");
+        var first = StoredPassword.Create("geheim");
+        var second = StoredPassword.Create("geheim");
         Assert.NotNull(first);
         Assert.NotEqual(first, second);
         foreach (var hash in new[] { first!, second! })
         {
-            var parts = hash.Split('$');
+            var parts = hash.Text.Split('$');
             Assert.Equal(4, parts.Length);
             Assert.Equal("pbkdf2", parts[0]);
             Assert.True(int.Parse(parts[1]) >= 100_000);
             Assert.Equal(16, Convert.FromBase64String(parts[2]).Length);
             Assert.Equal(32, Convert.FromBase64String(parts[3]).Length);
-            var settings = new ServerSettings { PasswordHash = hash };
+            var settings = new ServerSettings { StoredPassword = hash };
             Assert.True(settings.CheckPassword("geheim"));
             Assert.False(settings.CheckPassword("Geheim"));
             Assert.False(settings.CheckPassword(null));
-            Assert.True(PasswordHash.IsValidHash(hash)); // a backup holding it passes the restore check
+            Assert.True(hash.IsValid()); // a backup holding it passes the restore check
         }
-        Assert.Null(PasswordHash.Hash(""));
+        Assert.Null(StoredPassword.Create(""));
 
         // the old unsalted SHA-256 hex still verifies and is still valid in a backup, garbage is neither
-        var legacy = new ServerSettings { PasswordHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("alt"u8)) };
+        var legacy = new ServerSettings { StoredPassword = StoredPassword.FromStored(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("alt"u8))) };
         Assert.True(legacy.CheckPassword("alt"));
         Assert.False(legacy.CheckPassword("neu"));
-        Assert.True(PasswordHash.IsValidHash(legacy.PasswordHash));
+        Assert.True(legacy.StoredPassword!.IsValid());
         foreach (var bad in new[] { "pbkdf2$1$AAAA$AAAA", "pbkdf2$100000$x$y", "md5$1$2$3", "abc", "" })
         {
-            Assert.False(PasswordHash.IsValidHash(bad));
-            Assert.False(new ServerSettings { PasswordHash = bad }.CheckPassword("alt"));
+            Assert.False(StoredPassword.FromStored(bad).IsValid());
+            Assert.False(new ServerSettings { StoredPassword = StoredPassword.FromStored(bad) }.CheckPassword("alt"));
         }
+    }
+
+    /// <summary>A stored password that is not a string still makes the data file count as damaged (never overwritten).</summary>
+    [Fact]
+    public void LoadOrCreate_NumberAsPassword_Damaged()
+    {
+        File.WriteAllText(FilePath, """{"settings":{"name":"S","welcomeText":"","passwordHash":5}}""");
+        Assert.Throws<InvalidDataException>(() => new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()));
     }
 }

@@ -1,8 +1,11 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using OVS.Server;
 using OVS.Server.Data.Records;
 using OVS.Server.Security;
 using OVS.Shared.Permissions;
+using OVS.Shared.Protocol.Framing;
+using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server.Data.Records;
@@ -20,6 +23,28 @@ public class ServerDataTests
     [Fact]
     public void FindProblem_ValidData_None() => Assert.Null(Valid().FindProblem());
 
+    /// <summary>The server settings write only their stored values: the limits and the legacy check are methods, not keys.</summary>
+    [Fact]
+    public void Json_ServerSettings_OnlyStoredKeys()
+    {
+        var settings = new ServerSettings
+        {
+            StoredPassword = StoredPassword.FromStored(new string('A', 64)), MaxUsers = 42, LogDays = 14, LogRotateDaily = false,
+            AutoRestart = true, AutoRestartTime = new TimeOnly(4, 30),
+        };
+
+        var keys = JsonDocument.Parse(JsonSerializer.Serialize(settings, ProtocolJson.Indented)).RootElement.EnumerateObject().Select(p => p.Name);
+
+        Assert.Equal(["name", "welcomeText", "passwordHash", "maxUsers", "logDays", "logRotateDaily", "autoRestart", "autoRestartTime"], keys);
+    }
+
+    [Fact]
+    public void ToServerLimits_StoredSettings_SameValues()
+    {
+        var settings = new ServerSettings { MaxUsers = 42, LogDays = 14, LogRotateDaily = false, AutoRestart = true, AutoRestartTime = new TimeOnly(4, 30) };
+        Assert.Equal(new ServerLimits(42, 14, false, true, new TimeOnly(4, 30)), settings.ToServerLimits());
+    }
+
     /// <summary>Package 91: both stored formats of the server password count as valid.</summary>
     [Theory]
     [InlineData("pbkdf2")]
@@ -27,9 +52,9 @@ public class ServerDataTests
     public void FindProblem_StoredPasswordHash_None(string format)
     {
         var data = Valid();
-        data.Settings.PasswordHash = format == "pbkdf2"
-            ? PasswordHash.Hash("geheim")
-            : Convert.ToHexString(SHA256.HashData("geheim"u8)); // the legacy format: uppercase SHA-256 hex
+        data.Settings.StoredPassword = format == "pbkdf2"
+            ? StoredPassword.Create("geheim")
+            : StoredPassword.FromStored(Convert.ToHexString(SHA256.HashData("geheim"u8))); // the legacy format: uppercase SHA-256 hex
         Assert.Null(data.FindProblem());
     }
 

@@ -76,7 +76,7 @@ That is 2 + 90 = 92 types. Data records and enums go to the area they belong to 
 - The root keeps `Program`, `ServerConfig` (E4), `ControlServer`, `Session`, `ServerHost`, `AdminToken`, `Limits` (it holds all limits, not only throttling, E5), `RequestShape` and `MalformedRequest` (a top-level `internal sealed record`, E6; its name in the server log stays "MalformedRequest").
 - `Data/`: `DataStore` and the backup types `BackupStore`, `BackupManifest`, `BackupContent`, `ServerIconStore` (E2). `Data/Records/`: the persisted types `ServerSettings`, `ChannelRecord`, `ChannelLink`, `UserRecord`, `BanRecord`, `ServerData` (E1).
 - `State/`: `ServerState` and its parts (§ServerState).
-- `Permissions/`: `PermissionRules`, `Group` (E3). `Rules/`: the pure request rules of the server, one class per concept (`ChannelSettingsRule`, `ChannelCapacity`, `ChannelLinkRule`, `ModerationRule`, `ServerLimitsRule`) and the `Refusal` they return (N7). `Throttling/`: `RateLimiter` (it limits requests too, so it is not in `Voice/`, E5). `Logging/`: `LogReader`, `LogExport`, `ServerLogs`. `Security/`: `PasswordHash` (E7, introduced by the refactoring). `Tls/`, `Voice/`, `Exceptions/`.
+- `Permissions/`: `PermissionRules`, `Group` (E3). `Rules/`: the pure request rules of the server, one class per concept (`ChannelSettingsRule`, `ChannelCapacity`, `ChannelLinkRule`, `ModerationRule`, `ServerLimitsRule`) and the `Refusal` they return (N7). `Throttling/`: `RateLimiter` (it limits requests too, so it is not in `Voice/`, E5). `Logging/`: `LogReader`, `LogExport`, `ServerLogs`. `Security/`: `StoredPassword` (E7, introduced by the refactoring as `PasswordHash`; a value object since N10). `Tls/`, `Voice/`, `Exceptions/`.
 
 ### ServerState
 
@@ -168,7 +168,7 @@ Where code that several places need lives. All of these are introduced by the re
 | `OVS.Shared.Permissions.ChannelAccess` | `IsJoinable` (no separator), `GroupsAllow` (the group lock, admins pass), `NeedsPassword` (bypass only when joining); "full" stays a server rule | N1 |
 | `OVS.Shared.Moderation.BanStatusRule` | `Evaluate(liftedAt, expiresAt, now)`: `BanRecord.IsActive` and the client's ban list and user cards | N1, N18 |
 | `ProtocolInfo` constants | the name and text lengths (`MaxNameLength`, `MaxTextLength`, `MaxGroupNameLength`, `MaxNicknameLength`), `MaxUsersMin`, `MaxUsersMax`, `MaxUsersDefault`, `LogDaysMax`, `LogDaysDefault` | I8, I9 |
-| `OVS.Server.Security.PasswordHash` | PBKDF2 hashing, verifying and `IsValidHash`, with a byte-identical stored format | E7 |
+| `OVS.Server.Security.StoredPassword` | the stored server and channel password: `Create` (PBKDF2), `FromStored` (any text verbatim), `Matches`, `IsValid`, `IsLegacy`; its JSON converter writes the stored text back byte-identical | E7, N10 |
 | `OVS.Server.Rules` | `ChannelSettingsRule` (kind, separator, name and description, limit, group lock, password on the default channel, bitrate), `ChannelCapacity.IsFull`, `ChannelLinkRule`, `ModerationRule` (reason, duration), `ServerLimitsRule` (the ranges of `MaxUsers` and `LogDays` for the administration and `ServerConfig`); each returns a `Refusal` (code and English detail) or null | N7 |
 | `ServerData.FindProblem` | the invariants a start relies on (lists, names, ids, references, an Admin member); `BackupStore.Validate` throws its reason. Stored names use a deliberately looser rule than `TextRules` (Package 83) | N7, N11 |
 | `ServerState` private helpers | `PasswordTooLong`, `NextChannelOrder`, `UsersAsAdminTuples`, `Refuse` (fails a request with a rule's `Refusal`) | I10, I11, I12 |
@@ -350,7 +350,7 @@ Decided from those answers:
 | E4 | `ServerConfig` stays in the root; `ConfigException` goes to `Exceptions/` | |
 | E5 | `RateLimiter` goes to `Throttling/`; `Limits.cs` stays in the root | `Limits.cs` holds all limits, not only throttling |
 | E6 | `MalformedRequest` becomes a top-level internal type in the server root | B10 |
-| E7 | PBKDF2 hashing moves to `Security/PasswordHash.cs` (server); the stored hash format stays byte-identical | DRY (A3), neutral |
+| E7 | PBKDF2 hashing moves to `Security/StoredPassword.cs` (server; introduced as `PasswordHash`, a value object since N10); the stored hash format stays byte-identical | DRY (A3), neutral |
 | E8 | `DeleteQuietly`, the atomic write (with a flush parameter) and `ReadChunk` move to Shared `IO/SafeFile.cs` (namespace `OVS.Shared.IO`) | DRY across Client and Server |
 | F1 | Yes, everywhere (A1 c) | |
 | F2 | `Audio/` gets subfolders:<br>• `Capture`: CapturePipeline, StereoInput, FrameChunker, SincResampler<br>• `Processing`: AutoGain, NoiseSuppressor, EchoCanceller, VolumeCurve<br>• `Transmit`: TransmitController, TransmitMode, Transmission, VoiceActivityDetector, LossAdapter<br>• `Codec`: AudioFormat, VoiceEncoder, VoiceDecoder<br>• `Playback`: Mixer, SoftLimiter, JitterBuffer, ActiveSpeaker, ReceiveStats<br>• `Devices`: AudioDevice, AudioDevices, IAudioDeviceFactory, WasapiDevices, DeviceWatcher<br>• `Sounds`: SoundEvent, SoundSynth, SoundQueue, SoundImport, SoundLibrary<br>`AudioEngine` and `SpeakerReports` stay in `Audio/` | 30 files flat in one folder would be hard to read |

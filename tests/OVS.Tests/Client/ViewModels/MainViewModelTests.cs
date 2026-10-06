@@ -1681,7 +1681,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     static Action<OVS.Server.Data.Records.ServerData> SecretChannel(Guid id) => d => d.Channels.Add(new OVS.Server.Data.Records.ChannelRecord
     {
-        Id = id, Name = "Geheim", Order = 1, PasswordHash = OVS.Server.Security.PasswordHash.Hash("pw"),
+        Id = id, Name = "Geheim", Order = 1, StoredPassword = OVS.Server.Security.StoredPassword.Create("pw"),
     });
 
     /// <summary>AC2: back into the password channel, deafened as before, with one notice; the server sees the state too.</summary>

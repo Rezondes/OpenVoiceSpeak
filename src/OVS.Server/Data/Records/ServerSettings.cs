@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using OVS.Server.Security;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 
@@ -7,7 +9,9 @@ public sealed class ServerSettings
 {
     public string Name { get; set; } = "";
     public string WelcomeText { get; set; } = "";
-    public string? PasswordHash { get; set; }
+    /// <summary>The server password as stored (persisted under "passwordHash"); null = no password.</summary>
+    [JsonPropertyName("passwordHash")]
+    public StoredPassword? StoredPassword { get; set; }
     // Package 69: formerly environment variables, now changed in the administration (A85)
     public int MaxUsers { get; set; } = ProtocolInfo.MaxUsersDefault;
     /// <summary>0 keeps every log file.</summary>
@@ -27,11 +31,12 @@ public sealed class ServerSettings
         AutoRestartTime = config.AutoRestartAt ?? config.AutoRestartTime;
     }
 
-    public ServerLimits Limits => new(MaxUsers, LogDays, LogRotateDaily, AutoRestart, AutoRestartTime);
+    /// <summary>The editable limits as the protocol message carries them; a method, so it is not persisted.</summary>
+    public ServerLimits ToServerLimits() => new(MaxUsers, LogDays, LogRotateDaily, AutoRestart, AutoRestartTime);
 
-    /// <summary>The unsalted SHA-256 hex from before Package 91.</summary>
-    public bool HasLegacyHash => Security.PasswordHash.IsLegacy(PasswordHash);
+    /// <summary>True when the server password is still the unsalted SHA-256 hex from before Package 91; a method, so it is not persisted.</summary>
+    public bool HasLegacyHash() => StoredPassword?.IsLegacy() ?? false;
 
     /// <summary>Constant-time in both formats; true when there is no password.</summary>
-    public bool CheckPassword(string? password) => Security.PasswordHash.Verify(PasswordHash, password);
+    public bool CheckPassword(string? password) => StoredPassword?.Matches(password) ?? true;
 }

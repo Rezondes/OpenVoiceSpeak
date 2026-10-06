@@ -5727,7 +5727,7 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Tests (TDD)
 
-1. `DataStoreTests > "PasswordHash_Pbkdf2_SaltedUnique"` (AC1): the same password twice gives different stored values that both verify
+1. `DataStoreTests > "StoredPassword_Pbkdf2_SaltedUnique"` (AC1): the same password twice gives different stored values that both verify
 2. `HandshakeTests > "OldSha256Hash_LoginWorks_UpgradedAfter"` (AC2)
 3. `HandshakeTests > "EmptyPassword_StillOpenServer"` (AC3)
 
