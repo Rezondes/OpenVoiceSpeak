@@ -135,6 +135,8 @@ docker run --rm -v openvoicespeak_ovs-data:/data -v "$PWD":/backup alpine tar xz
 docker compose pull && docker compose up -d
 ```
 
+Ein Downgrade des Servers auf ein älteres Image wird nicht unterstützt; wer zurück will, spielt die vor dem Update gesicherten Daten wieder ein.
+
 Der Container läuft als Nutzer `app` (UID 1654). Nutzt du statt des benannten Volumes einen Bind-Mount, muss dieser Nutzer darauf schreiben dürfen:
 
 ```bash
@@ -293,4 +295,4 @@ OVS_SHOTS=/tmp/ovs-shots dotnet test tests/OVS.Tests --filter "FullyQualifiedNam
 cd website && npm run clips -- /tmp/ovs-shots
 ```
 
-Der Umsetzungsplan steht in `PLAN.md`.
+Der Umsetzungsplan steht in `PLAN.md`. Wer am Code mitarbeitet, liest zuerst `CODING-RULES.md`: Aufbau, Namen und Entwurfsregeln, die für jede Änderung gelten.
