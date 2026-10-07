@@ -686,6 +686,27 @@ public sealed class MainViewModelTests : IAsyncLifetime
             Assert.Single(log.Split(Environment.NewLine), l => l.Contains(line));
     }
 
+    /// <summary>Package 126: UDP that never answers is logged as not reachable once more than 5 s passed on the view model's clock.</summary>
+    [Fact]
+    public async Task UdpUnreachable_MoreThanFiveSecondsOnTheClock_Logged()
+    {
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
+        var time = new ManualTimeProvider();
+        await RunOnAsync(time);
+        await OnUi(() => vm.VoiceRelay = relay.EndPoint);
+        await ConnectAsync(saveBookmark: false);
+        string Logged()
+        {
+            vm.Tick();
+            return ClientLogText();
+        }
+
+        time.Advance(TimeSpan.FromSeconds(5));
+        Assert.DoesNotContain("UDP nicht erreichbar", await OnUi(Logged));
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.Contains("UDP nicht erreichbar", await OnUi(Logged));
+    }
+
     /// <summary>Package 141 (AC5): the ping text names voice over TCP while it is in use, and drops it once UDP answers again.</summary>
     [Fact]
     public async Task VoiceOverTcp_ShownInPingText()

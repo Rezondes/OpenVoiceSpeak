@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests;
 
@@ -32,11 +33,10 @@ static class SourceLayout
         {
             var top = Path.Combine(repo, root);
             if (!Directory.Exists(top)) continue;
-            foreach (var full in Directory.EnumerateFiles(top, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+            foreach (var full in RepoPaths.SourceFiles(top, "*").Order(StringComparer.Ordinal))
             {
                 var path = Path.GetRelativePath(repo, full).Replace('\\', '/');
                 var parts = path.Split('/');
-                if (parts.Any(p => p is "bin" or "obj") || path.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase)) continue;
                 var project = parts[0] == "tools" ? "tools/render-icon" : parts[0] + "/" + parts[1];
                 if (path.EndsWith(".cs", StringComparison.Ordinal))
                 {

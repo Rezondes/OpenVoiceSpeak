@@ -46,9 +46,9 @@ public sealed class VoiceClient : IDisposable
 
     /// <param name="time">Package 126: drives the Hello retries and the loss detection (tests pass a manual clock).</param>
     /// <param name="control">Package 141: the connection voice falls back to while UDP does not work.</param>
-    public VoiceClient(IPEndPoint server, uint sessionId, byte[] key, TimeProvider? time = null, ClientConnection? control = null)
+    public VoiceClient(IPEndPoint server, uint sessionId, byte[] key, TimeProvider time, ClientConnection? control = null)
     {
-        this.time = time ?? TimeProvider.System;
+        this.time = time;
         this.control = control;
         if (control is not null) control.VoiceDownReceived += OnVoiceDown;
         origin = this.time.GetTimestamp();
@@ -298,7 +298,7 @@ public sealed class VoiceClient : IDisposable
         udp.Dispose();
         try
         {
-            receiveLoop?.Wait(TimeSpan.FromSeconds(1));
+            receiveLoop?.Wait(TimeSpan.FromSeconds(1)); // clock: real time
         }
         catch (AggregateException)
         {

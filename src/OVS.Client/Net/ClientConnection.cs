@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -26,14 +25,16 @@ public sealed class ClientConnection : IAsyncDisposable
     readonly FrameWriter writer;
     readonly CancellationTokenSource cts = new();
     readonly CancellationTokenSource pingCts = new(); // stopped first on dispose, before the TLS shutdown (also voice, Package 141)
+    readonly TimeProvider time;
     long pingSentAt;
     int disconnectRaised;
     Task? receiveLoop, pingLoop, voiceLoop;
 
-    ClientConnection(TcpClient tcp, SslStream ssl, Welcome welcome)
+    ClientConnection(TcpClient tcp, SslStream ssl, Welcome welcome, TimeProvider time)
     {
         this.tcp = tcp;
         this.ssl = ssl;
+        this.time = time;
         reader = new FrameReader(ssl);
         writer = new FrameWriter(ssl);
         Welcome = welcome;
@@ -60,14 +61,21 @@ public sealed class ClientConnection : IAsyncDisposable
     /// <summary>Raised once: server Disconnected reason, or ConnectionLost.</summary>
     public event Action<string, string?>? Disconnected;
 
+    /// <summary>The clock of the ping's round trip.</summary>
+    internal TimeProvider Time => time;
+
+    /// <param name="time">
+    /// The clock of the ping's round trip (tests pass a manual one). The ping itself goes every 5 s of real time: it keeps
+    /// the connection alive against the server's idle timeout, which runs in real time.
+    /// </param>
     public static async Task<ClientConnection> ConnectAsync(string host, int port, ClientIdentity identity, string nickname,
-        string? password, KnownServers known, Func<TofuPrompt, Task<bool>> confirm, CancellationToken ct = default)
+        string? password, KnownServers known, Func<TofuPrompt, Task<bool>> confirm, TimeProvider time, CancellationToken ct = default)
     {
         var tcp = new TcpClient();
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            timeout.CancelAfter(TimeSpan.FromSeconds(10)); // clock: real time
             await tcp.ConnectAsync(host, port, timeout.Token);
 
             // Self-signed server certs are pinned by fingerprint (TOFU) instead of a CA chain.
@@ -78,10 +86,10 @@ public sealed class ClientConnection : IAsyncDisposable
             var check = known.Check(host, port, fingerprint);
             if (check != TofuResult.Known)
             {
-                timeout.CancelAfter(Timeout.InfiniteTimeSpan); // the user may take their time
+                timeout.CancelAfter(Timeout.InfiniteTimeSpan); // clock: real time, the user may take their time
                 if (!await confirm(new TofuPrompt(host, port, fingerprint, check))) throw new TofuRejectedException();
                 known.Trust(host, port, fingerprint);
-                timeout.CancelAfter(TimeSpan.FromSeconds(10));
+                timeout.CancelAfter(TimeSpan.FromSeconds(10)); // clock: real time
             }
 
             var reader = new FrameReader(ssl);
@@ -98,7 +106,7 @@ public sealed class ClientConnection : IAsyncDisposable
             switch (reply)
             {
                 case Welcome welcome:
-                    var connection = new ClientConnection(tcp, ssl, welcome);
+                    var connection = new ClientConnection(tcp, ssl, welcome, time);
                     connection.Start();
                     return connection;
                 case Rejected rejected:
@@ -164,7 +172,7 @@ public sealed class ClientConnection : IAsyncDisposable
                         (reason, detail) = (d.Reason, d.Detail);
                         break;
                     case Pong:
-                        LastRoundTrip = Stopwatch.GetElapsedTime(Interlocked.Read(ref pingSentAt));
+                        LastRoundTrip = time.GetElapsedTime(Interlocked.Read(ref pingSentAt));
                         break;
                     case VoiceDown voice:
                         VoiceDownReceived?.Invoke(voice);
@@ -190,9 +198,9 @@ public sealed class ClientConnection : IAsyncDisposable
         {
             while (!pingCts.IsCancellationRequested)
             {
-                Interlocked.Exchange(ref pingSentAt, Stopwatch.GetTimestamp());
+                Interlocked.Exchange(ref pingSentAt, time.GetTimestamp());
                 await writer.WriteAsync(new Ping(), pingCts.Token);
-                await Task.Delay(PingInterval, pingCts.Token);
+                await Task.Delay(PingInterval, pingCts.Token); // clock: real time, keepalive against the server's real-time idle timeout
             }
         }
         catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
@@ -212,7 +220,7 @@ public sealed class ClientConnection : IAsyncDisposable
     {
         try
         {
-            await ssl.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(1));
+            await ssl.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(1)); // clock: real time
         }
         catch (Exception e) when (e is IOException or ObjectDisposedException or NotSupportedException
                                       or InvalidOperationException or TimeoutException)
@@ -231,7 +239,7 @@ public sealed class ClientConnection : IAsyncDisposable
         await CloseGracefullyAsync(ssl);
         // Wait until the server has read the close_notify and closed its side. Closing the socket while its last
         // messages are still unread makes Windows send a reset, and the server logs "Verbindung abgebrochen".
-        if (receiveLoop is not null) await Task.WhenAny(receiveLoop, Task.Delay(TimeSpan.FromSeconds(1)));
+        if (receiveLoop is not null) await Task.WhenAny(receiveLoop, Task.Delay(TimeSpan.FromSeconds(1))); // clock: real time
         cts.Cancel();
         tcp.Dispose();
         if (receiveLoop is not null) await receiveLoop;

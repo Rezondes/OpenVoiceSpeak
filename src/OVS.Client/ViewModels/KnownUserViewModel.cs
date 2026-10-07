@@ -9,11 +9,11 @@ namespace OVS.Client.ViewModels;
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
 /// <param name="busy">Package 98: the card's actions, running until a user list shows their result.</param>
 public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggleViewModel> toggles, IReadOnlyList<BanInfo> bans,
-    AdminViewModel? owner = null, PendingViewModel? busy = null, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
+    AdminViewModel? owner, PendingViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
 {
     public KnownUserInfo Info { get; } = info;
     public object MotionKey => Info.Fingerprint;
-    public PendingViewModel Busy { get; } = busy ?? new PendingViewModel(TimeProvider.System);
+    public PendingViewModel Busy { get; } = busy;
     public string Fingerprint => Info.Fingerprint;
     public string Nickname => Info.LastNickname;
     public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;

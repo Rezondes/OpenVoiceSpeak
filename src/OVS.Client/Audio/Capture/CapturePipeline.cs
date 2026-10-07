@@ -134,13 +134,13 @@ public sealed class CapturePipeline : IDisposable
 
     void ToneLoop(double frequency)
     {
-        var clock = Stopwatch.StartNew();
+        var clock = Stopwatch.StartNew(); // clock: real time
         var frame = new float[AudioFormat.FrameSamples];
         double phase = 0, step = 2 * Math.PI * frequency / AudioFormat.SampleRate;
         for (long n = 0; running; n++)
         {
             var wait = AudioFormat.FrameDuration * n - clock.Elapsed;
-            if (wait > TimeSpan.Zero) Thread.Sleep(wait);
+            if (wait > TimeSpan.Zero) Thread.Sleep(wait); // clock: real time
             for (int i = 0; i < frame.Length; i++, phase += step) frame[i] = 0.3f * (float)Math.Sin(phase);
             Feed(frame, AudioFormat.SampleRate);
         }
@@ -346,7 +346,7 @@ public sealed class CapturePipeline : IDisposable
             capture.StopRecording();
             capture.Dispose();
         }
-        if (toneThread is { IsAlive: true }) toneThread.Join(200); // one never started (fed by hand) cannot be joined
+        if (toneThread is { IsAlive: true }) toneThread.Join(200); // clock: real time, one never started (fed by hand) cannot be joined
         lock (gate) // a late frame on the capture thread must not reach the freed native state
         {
             Suppressor?.Dispose();

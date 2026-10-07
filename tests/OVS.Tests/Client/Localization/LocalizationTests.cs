@@ -73,9 +73,8 @@ public class LocalizationTests
 
     /// <summary>The XAML files the text check reads, relative to the client folder with '/'.</summary>
     static List<string> XamlFiles() =>
-        Directory.GetFiles(RepoPaths.ClientSource, "*.axaml", SearchOption.AllDirectories)
+        RepoPaths.SourceFiles(RepoPaths.ClientSource, "*.axaml")
             .Select(file => Path.GetRelativePath(RepoPaths.ClientSource, file).Replace('\\', '/'))
-            .Where(file => !file.StartsWith("bin/") && !file.StartsWith("obj/"))
             .ToList();
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>

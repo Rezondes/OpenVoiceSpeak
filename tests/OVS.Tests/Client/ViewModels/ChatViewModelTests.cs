@@ -70,6 +70,27 @@ public class ChatViewModelTests
         Assert.Equal(0, f.Chat.General.Unread); // the open tab counts nothing
     }
 
+    /// <summary>Own messages and the chat's markers carry the local time of the connection's clock.</summary>
+    [Fact]
+    public async Task Entries_ClockMovedOn_StampedWithItsLocalTime()
+    {
+        var f = Create(Guest | P.ChatServer);
+        var time = (ManualTimeProvider)f.Server.Time;
+        time.Advance(TimeSpan.FromHours(3)); // far from the machine's own clock
+        var now = time.GetLocalNow().DateTime;
+
+        f.Chat.Draft = "Hallo";
+        await f.Chat.SendCommand.ExecuteAsync(null);
+        f.User(2).MessageCommand.Execute(null);
+        f.Server.Apply(new UserLeft(2)); // "offline" in the private tab
+        f.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest | P.ChatServer))); // "entered" in the channel tab
+
+        Assert.Equal(now, f.Chat.General.Entries[^1].Time);
+        Assert.Equal(now, f.Private("@bert")!.Entries[^1].Time);
+        Assert.Equal(now, f.Chat.ChannelTab.Entries[^1].Time);
+        Assert.Equal(DateTimeKind.Local, f.Chat.General.Entries[^1].Time.Kind);
+    }
+
     /// <summary>Package 98 (AC2): a sent message shows at once, greyed until the server's echo; refused, it can be sent again.</summary>
     [Fact]
     public async Task SentMessage_PendingUntilEcho_ErrorRetry()

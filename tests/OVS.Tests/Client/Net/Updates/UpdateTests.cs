@@ -93,9 +93,9 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         Assert.Equal("alt", File.ReadAllText(exe + ".old"));
         Assert.Equal([exe], restarted);
 
-        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe)); // next start
+        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System)); // next start
         Assert.False(File.Exists(exe + ".old"));
-        Assert.Null(await UpdateInstaller.CleanupOldAsync(exe)); // nothing left to do
+        Assert.Null(await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System)); // nothing left to do
     }
 
     [Fact]
@@ -201,8 +201,24 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         _ = Task.Delay(700).ContinueWith(_ => locked.Dispose());
 
         // up to 10 s of retries: the release above may come late on a busy runner, it still has to wait for it
-        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, attempts: 100, pause: TimeSpan.FromMilliseconds(100)));
+        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System, attempts: 100, pause: TimeSpan.FromMilliseconds(100)));
         Assert.False(File.Exists(exe + ".old"));
+    }
+
+    /// <summary>The retry pause runs on the given clock: a locked file is tried again once the pause has passed on it.</summary>
+    [Fact]
+    public async Task CleanupOld_LockedFile_RetriedAfterThePauseOnTheClock()
+    {
+        var exe = Path.Combine(dir, "OVS.Client.exe");
+        File.WriteAllText(exe + ".old", "alt");
+        var time = new ManualTimeProvider();
+        Task<string?> cleanup;
+        using (new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None))
+            cleanup = UpdateInstaller.CleanupOldAsync(exe, time, attempts: 2, pause: TimeSpan.FromHours(1));
+
+        Assert.False(cleanup.IsCompleted); // the first try failed, the pause waits for the clock
+        time.Advance(TimeSpan.FromHours(1));
+        Assert.Equal("Alte Version entfernt", await cleanup.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
     [Fact]
@@ -213,7 +229,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         using var locked = new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None);
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
-        var result = await UpdateInstaller.CleanupOldAsync(exe, attempts: 3, pause: TimeSpan.FromMilliseconds(100));
+        var result = await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System, attempts: 3, pause: TimeSpan.FromMilliseconds(100));
         Assert.StartsWith("Alte Version konnte nicht entfernt werden", result);
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), clock.Elapsed.ToString()); // gives up instead of hanging (with room for a slow runner)
         Assert.True(File.Exists(exe + ".old"));
@@ -230,7 +246,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
             CreateNoWindow = true,
         })!;
 
-        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, old.Id));
+        Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System, old.Id));
         Assert.True(old.HasExited); // deleted only after the old process was gone
         Assert.False(File.Exists(exe + ".old"));
     }

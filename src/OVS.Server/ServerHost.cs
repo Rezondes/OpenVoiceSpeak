@@ -69,7 +69,7 @@ public static class ServerHost
             certificate = ServerCertificate.LoadOrCreate(config.DataDir);
             control = new ControlServer(state, certificate, endpoint);
             control.Start();
-            voice = new UdpVoiceServer(state, endpoint);
+            voice = new UdpVoiceServer(state, endpoint, time);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or CryptographicException or SocketException)
         {

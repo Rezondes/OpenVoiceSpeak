@@ -48,7 +48,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     [AvaloniaFact]
     public void Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert()
     {
-        var vm = new SettingsViewModel(new ClientSettings(), null, null);
+        var vm = new SettingsViewModel(new ClientSettings(), null, null, TimeProvider.System);
         Assert.False(vm.HasChanges);
         var before = vm.VadThresholdDb;
         vm.VadThresholdDb = before - 5;
@@ -342,9 +342,9 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         for (int i = 0; i < 200; i++)
         {
             var current = new ClientSettings { InputGain = (float)(random.NextDouble() * 2), OutputVolume = (float)random.NextDouble() };
-            Assert.False(new SettingsViewModel(current, null, null).HasChanges, $"{current.InputGain} {current.OutputVolume}");
+            Assert.False(new SettingsViewModel(current, null, null, TimeProvider.System).HasChanges, $"{current.InputGain} {current.OutputVolume}");
         }
-        var missing = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg" }, null, null);
+        var missing = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg" }, null, null, TimeProvider.System);
         missing.ShowDevices([], []); // the saved device is gone: the fallback is no change of the user's
         Assert.False(missing.HasChanges);
     }

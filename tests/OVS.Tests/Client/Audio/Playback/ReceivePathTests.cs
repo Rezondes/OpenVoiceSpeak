@@ -23,6 +23,9 @@ public class ReceivePathTests
     /// <summary>Distinct, recognisable frames: frame n is a sine with amplitude 0.1 * (n+1).</summary>
     static byte[] Frame(uint n) => new VoiceEncoder().Encode(Sine(0.1f * (n % 8 + 1)));
 
+    /// <summary>The arrival of frames pushed in one go: the same moment for all of them.</summary>
+    const double Burst = 0;
+
     [Fact]
     public void EncodeDecode_Sine_PreservesEnergy()
     {
@@ -39,9 +42,9 @@ public class ReceivePathTests
     public void BelowStartDelay_PullReturnsNull()
     {
         var jb = new JitterBuffer();
-        jb.Push(0, Frame(0), false);
+        jb.Push(0, Frame(0), false, Burst);
         Assert.Null(jb.Pull());
-        jb.Push(1, Frame(1), false);
+        jb.Push(1, Frame(1), false, Burst);
         Assert.NotNull(jb.Pull()); // 2 frames = 40 ms cushion
     }
 
@@ -49,7 +52,7 @@ public class ReceivePathTests
     public void ShortSpurt_PlaysAfterWaiting()
     {
         var jb = new JitterBuffer();
-        jb.Push(0, Frame(0), false);
+        jb.Push(0, Frame(0), false, Burst);
         Assert.Null(jb.Pull());
         Assert.NotNull(jb.Pull()); // waited StartDelay ticks (40 ms), plays the lone frame
     }
@@ -58,9 +61,9 @@ public class ReceivePathTests
     public void OutOfOrder_WithinDelay_PlayedInOrder()
     {
         var jb = new JitterBuffer();
-        jb.Push(1, Frame(1), false);
-        jb.Push(3, Frame(3), false);
-        jb.Push(2, Frame(2), false);
+        jb.Push(1, Frame(1), false, Burst);
+        jb.Push(3, Frame(3), false, Burst);
+        jb.Push(2, Frame(2), false, Burst);
         var reference = new VoiceDecoder();
         foreach (uint n in new uint[] { 1, 2, 3 })
             Assert.Equal(reference.Decode(Frame(n)), jb.Pull());
@@ -70,7 +73,7 @@ public class ReceivePathTests
     public void Gap_ProducesPlcFrame_ThenContinues()
     {
         var jb = new JitterBuffer();
-        foreach (uint n in new uint[] { 1, 2, 4 }) jb.Push(n, Frame(n), false);
+        foreach (uint n in new uint[] { 1, 2, 4 }) jb.Push(n, Frame(n), false, Burst);
         var played = Enumerable.Range(0, 3).Select(_ => jb.Pull()).ToList();
         Assert.All(played, p => Assert.Equal(AudioFormat.StereoFrameSamples, Assert.IsType<float[]>(p).Length));
         Assert.Equal(1, jb.Buffered); // 3 was concealed, 4 is next
@@ -86,7 +89,7 @@ public class ReceivePathTests
         var input = Enumerable.Range(0, 8).Select(n => Sine(0.5f, n * AudioFormat.FrameSamples)).ToList();
         var packets = input.Select(f => encoder.Encode(f)).ToList();
         var jb = new JitterBuffer();
-        for (uint n = 0; n < packets.Count; n++) if (n != 5) jb.Push(n, packets[(int)n], false);
+        for (uint n = 0; n < packets.Count; n++) if (n != 5) jb.Push(n, packets[(int)n], false, Burst);
         var played = Enumerable.Range(0, 6).Select(_ => jb.Pull()!).ToList();
 
         var clean = new VoiceDecoder(); // what frame 5 sounds like when nothing is lost
@@ -106,10 +109,10 @@ public class ReceivePathTests
     public void LatePacket_Dropped()
     {
         var jb = new JitterBuffer();
-        foreach (uint n in new uint[] { 5, 6, 7 }) jb.Push(n, Frame(n), false);
+        foreach (uint n in new uint[] { 5, 6, 7 }) jb.Push(n, Frame(n), false, Burst);
         jb.Pull();
         jb.Pull();
-        jb.Push(4, Frame(4), false);
+        jb.Push(4, Frame(4), false, Burst);
         Assert.Equal(1, jb.Buffered); // only 7 left
     }
 
@@ -117,7 +120,7 @@ public class ReceivePathTests
     public void TalkPause_RebuffersAndContinuesAtSameSeq()
     {
         var jb = new JitterBuffer();
-        foreach (uint n in new uint[] { 0, 1, 2 }) jb.Push(n, Frame(n), false);
+        foreach (uint n in new uint[] { 0, 1, 2 }) jb.Push(n, Frame(n), false, Burst);
         for (int i = 0; i < 3; i++) Assert.NotNull(jb.Pull());
         // pause: two concealed ticks, then silence
         Assert.NotNull(jb.Pull());
@@ -125,7 +128,7 @@ public class ReceivePathTests
         Assert.Null(jb.Pull());
         Assert.Null(jb.Pull());
         // sender resumes with seq 3 (its counter did not move while silent)
-        foreach (uint n in new uint[] { 3, 4, 5 }) jb.Push(n, Frame(n), false);
+        foreach (uint n in new uint[] { 3, 4, 5 }) jb.Push(n, Frame(n), false, Burst);
         Assert.Equal(new VoiceDecoder().Decode(Frame(3)).Length, jb.Pull()!.Length);
         Assert.Equal(2, jb.Buffered);
     }
@@ -134,7 +137,7 @@ public class ReceivePathTests
     public void Overflow_CappedAt10()
     {
         var jb = new JitterBuffer();
-        for (uint n = 0; n < 15; n++) jb.Push(n, Frame(n), false);
+        for (uint n = 0; n < 15; n++) jb.Push(n, Frame(n), false, Burst);
         Assert.Equal(JitterBuffer.MaxFrames, jb.Buffered);
         Assert.Equal(5, jb.Lost); // Package 133: dropped, never played
     }
@@ -159,6 +162,23 @@ public class ReceivePathTests
         // |D| is the difference of two offsets uniform in ±15 ms; its mean is the width over 3: 10 ms
         Assert.InRange(Run(15), 5, 15);
         Assert.InRange(Run(0), 0, 2);
+    }
+
+    /// <summary>
+    /// A frame that comes without its arrival is stamped when the mixer gets it, in real time (the network's): frames pushed
+    /// back to back arrive at nearly one moment while their numbers move on by 20 ms each, which counts as jitter.
+    /// </summary>
+    [Fact]
+    public void Mixer_NoArrivalGiven_StampsEachPushInRealTime()
+    {
+        var mixer = new Mixer();
+        for (uint n = 0; n < 50; n++)
+        {
+            mixer.Push(1, n, Frames[n % 8], false);
+            mixer.Tick();
+        }
+        double jitter = mixer.Stats().JitterMs;
+        Assert.True(jitter > 10, $"jitter {jitter} ms");
     }
 
     /// <summary>
@@ -647,9 +667,9 @@ public class ReceivePathTests
     public void OneBytePacket_Concealed()
     {
         var jb = new JitterBuffer();
-        jb.Push(0, Frame(0), false);
-        jb.Push(1, [Frame(1)[0]], false); // the table of contents byte alone
-        jb.Push(2, Frame(2), false);
+        jb.Push(0, Frame(0), false, Burst);
+        jb.Push(1, [Frame(1)[0]], false, Burst); // the table of contents byte alone
+        jb.Push(2, Frame(2), false, Burst);
         for (int i = 0; i < 3; i++) Assert.Equal(AudioFormat.StereoFrameSamples, jb.Pull()!.Length);
     }
 
@@ -703,18 +723,18 @@ public class ReceivePathTests
     {
         static byte[] Copy(uint n) => Frame(n + 3); // recognisably not the frame itself
         var jb = new JitterBuffer();
-        jb.Push(0, Frame(0), false);
-        jb.Push(1, Frame(1), false, copy: Copy(0)); // 0 arrived: its copy is ignored
-        jb.Push(3, Frame(3), false, copy: Copy(2)); // 2 missing: kept
-        jb.Push(2, Frame(2), false);                // arrives after all: replaces the copy
-        jb.Push(5, Frame(5), false, copy: Copy(4)); // 4 never comes in time
+        jb.Push(0, Frame(0), false, Burst);
+        jb.Push(1, Frame(1), false, Burst, copy: Copy(0)); // 0 arrived: its copy is ignored
+        jb.Push(3, Frame(3), false, Burst, copy: Copy(2)); // 2 missing: kept
+        jb.Push(2, Frame(2), false, Burst);                // arrives after all: replaces the copy
+        jb.Push(5, Frame(5), false, Burst, copy: Copy(4)); // 4 never comes in time
         var reference = new VoiceDecoder();
         foreach (var packet in new[] { Frame(0), Frame(1), Frame(2), Frame(3), Copy(4), Frame(5) })
             Assert.Equal(reference.Decode(packet), jb.Pull());
 
-        jb.Push(4, Frame(4), false);                // too late, 4 played from its copy
-        jb.Push(6, Frame(6), false, copy: Copy(5)); // 5 played already
-        jb.Push(6, Frame(6), false, copy: Copy(5)); // a duplicate
+        jb.Push(4, Frame(4), false, Burst);                // too late, 4 played from its copy
+        jb.Push(6, Frame(6), false, Burst, copy: Copy(5)); // 5 played already
+        jb.Push(6, Frame(6), false, Burst, copy: Copy(5)); // a duplicate
         Assert.Equal(reference.Decode(Frame(6)), jb.Pull());
         Assert.Equal(0, jb.Buffered);
         Assert.Equal((0, 0, 0, 1), (jb.Lost, jb.Rebuilt, jb.Concealed, jb.Recovered));
@@ -723,8 +743,8 @@ public class ReceivePathTests
 
         // review: a lost onset plays from the copy in the frame after it, but no copy older than that starts a spurt
         var fresh = new JitterBuffer();
-        fresh.Push(11, Frame(11), false, copy: Copy(10));
-        fresh.Push(12, Frame(12), false, copy: Copy(11));
+        fresh.Push(11, Frame(11), false, Burst, copy: Copy(10));
+        fresh.Push(12, Frame(12), false, Burst, copy: Copy(11));
         var start = new VoiceDecoder();
         Assert.Equal(start.Decode(Copy(10)), fresh.Pull());
         Assert.Equal(start.Decode(Frame(11)), fresh.Pull());
@@ -733,8 +753,8 @@ public class ReceivePathTests
         for (int i = 0; i < 3; i++) fresh.Pull(); // the spurt ends (two frames concealed), next is 13
         start.Decode([]);
         start.Decode([]);
-        fresh.Push(16, Frame(16), false, copy: Copy(15)); // 13 and 14 never come, 15 from its copy
-        fresh.Push(17, Frame(17), false);
+        fresh.Push(16, Frame(16), false, Burst, copy: Copy(15)); // 13 and 14 never come, 15 from its copy
+        fresh.Push(17, Frame(17), false, Burst);
         Assert.Equal(start.Decode(Copy(15)), fresh.Pull());
         Assert.Equal(start.Decode(Frame(16)), fresh.Pull());
         Assert.Equal((2, 2), (fresh.Recovered, fresh.Lost));

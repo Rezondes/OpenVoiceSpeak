@@ -13,7 +13,7 @@ public sealed class AudioDebugLog : IDisposable
     readonly KeyPoller keys;
     readonly AudioEngine audio;
     readonly ClientLog log;
-    readonly Timer timer;
+    readonly Timer timer; // clock: debug
     long lastFrames;
     float lastLevel = -120f;
 
@@ -25,7 +25,7 @@ public sealed class AudioDebugLog : IDisposable
         keys.Changed += OnKeys;
         audio.InputLevel += OnLevel;
         Write($"gestartet, Tasten: {(keys.Bindings.Count == 0 ? "keine" : string.Join(", ", keys.Bindings.Select(b => $"{KeyActions.Label(b.Action)} = {b.Chord.Name}")))}");
-        timer = new Timer(_ => OnSecond(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        timer = new Timer(_ => OnSecond(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)); // clock: debug
     }
 
     // Package 130: the keys themselves, without the release delay (Changed fires on the key's edges)

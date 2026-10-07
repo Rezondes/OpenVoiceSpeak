@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -124,7 +123,7 @@ public sealed class LogReader(string dataDir, TimeProvider time)
     /// </summary>
     public LogSearchResult Search(string? requestId, SearchLogs search)
     {
-        var clock = Stopwatch.StartNew();
+        long started = time.GetTimestamp();
         var hits = new List<LogHit>();
         bool timedOut = false;
         var files = ListWithPaths(null).Where(e => e.Info is var f
@@ -139,7 +138,7 @@ public sealed class LogReader(string dataDir, TimeProvider time)
             foreach (var line in ReadLines(path))
             {
                 number++;
-                if (number % 1024 == 0 && clock.Elapsed > ServerTuning.LogSearchTimeout)
+                if (number % 1024 == 0 && time.GetElapsedTime(started) > ServerTuning.LogSearchTimeout)
                 {
                     timedOut = true;
                     break;

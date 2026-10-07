@@ -15,15 +15,18 @@ namespace OVS.Server.Voice;
 public sealed class UdpVoiceServer : IDisposable
 {
     readonly ServerState state;
+    readonly TimeProvider time;
     readonly Socket socket;
     readonly CancellationTokenSource cts = new();
     // Package 141: the sessions' voice state is touched by the UDP loop and by VoiceUp from the control connections, one at a time
     readonly SemaphoreSlim gate = new(1, 1);
     Task? loop;
 
-    public UdpVoiceServer(ServerState state, IPEndPoint endpoint)
+    /// <param name="time">The clock the state runs on: it counts the seconds of the bad packets' budget.</param>
+    public UdpVoiceServer(ServerState state, IPEndPoint endpoint, TimeProvider time)
     {
         this.state = state;
+        this.time = time;
         socket = new Socket(endpoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         try
         {
@@ -245,7 +248,7 @@ public sealed class UdpVoiceServer : IDisposable
 
     bool OverBudget(IPAddress source)
     {
-        long second = Environment.TickCount64 / 1000;
+        long second = time.GetTimestamp() / time.TimestampFrequency;
         if (second != badSecond)
         {
             badPackets.Clear(); // also bounds the table to the sources of one second

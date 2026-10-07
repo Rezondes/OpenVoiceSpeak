@@ -112,7 +112,7 @@ public static unsafe class Splash
         switch (message)
         {
             case WM_TIMER: // fading out
-                double faded = Stopwatch.GetElapsedTime(fadeStart).TotalSeconds / FadeSeconds;
+                double faded = Stopwatch.GetElapsedTime(fadeStart).TotalSeconds / FadeSeconds; // clock: frame timing
                 if (faded >= 1)
                 {
                     DestroyWindow(hwnd);
@@ -124,8 +124,8 @@ public static unsafe class Splash
             case WM_CLOSE:
                 if (fadeStart == 0)
                 {
-                    fadeStart = Stopwatch.GetTimestamp();
-                    SetTimer(hwnd, 1, 16, 0);
+                    fadeStart = Stopwatch.GetTimestamp(); // clock: frame timing
+                    SetTimer(hwnd, 1, 16, 0); // clock: frame timing
                 }
                 return 0;
             case WM_DESTROY:

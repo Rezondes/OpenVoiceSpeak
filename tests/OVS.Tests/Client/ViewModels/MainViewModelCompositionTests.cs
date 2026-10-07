@@ -86,6 +86,19 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     }
 
     [Fact]
+    public async Task AddNotice_ClockMovedOn_StampedWithItsLocalTime()
+    {
+        await using var vm = WithOwnParts(a => a());
+        time.Advance(TimeSpan.FromHours(3)); // far from the machine's own clock
+
+        vm.AddNotice("Saved");
+
+        var notice = Assert.Single(vm.Notices);
+        Assert.Equal(time.GetLocalNow().DateTime, notice.Time);
+        Assert.Equal(DateTimeKind.Local, notice.Time.Kind);
+    }
+
+    [Fact]
     public async Task OpenSettings_GivenClock_PendingMarksRunOnIt()
     {
         await using var vm = WithOwnParts(a => a());
@@ -144,11 +157,12 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     }
 
     [Fact]
-    public async Task Connect_GivenClock_ServerAndVoiceRunOnIt()
+    public async Task Connect_GivenClock_ConnectionPartsHoldIt()
     {
         var (server, ui, vm) = await ConnectAsync();
         try
         {
+            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.ConnectionTime)));
             Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Server?.Time)));
             Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Voice?.Time)));
         }

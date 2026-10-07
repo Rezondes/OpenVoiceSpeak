@@ -334,7 +334,7 @@ public static class ItemMotion
         void BuildUpOnceShown()
         {
             var source = list.ItemsSource;
-            var since = System.Diagnostics.Stopwatch.StartNew();
+            var since = System.Diagnostics.Stopwatch.StartNew(); // clock: frame timing
             void OnLayout(object? sender, EventArgs e)
             {
                 // gone, switched to the simplified display, or not shown soon (the drawer is closed): it just shows later
@@ -385,7 +385,7 @@ public static class ItemMotion
         public void TrackPlaces()
         {
             if (!watching) return;
-            trackUntil = Environment.TickCount64 + (long)Motion.Slow.TotalMilliseconds + StaggerSteps * StaggerMs;
+            trackUntil = Environment.TickCount64 + (long)Motion.Slow.TotalMilliseconds + StaggerSteps * StaggerMs; // clock: frame timing
             if (tracking) return;
             // the places noted last may be stale (a row grew, the list was laid out anew): where the rows sit now is where
             // they glide from. Asked by what each row still shows (the list's indexes may have moved on with the change);
@@ -403,9 +403,9 @@ public static class ItemMotion
             while (tracking)
             {
                 int passes = layoutPasses;
-                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(trackUntil - Environment.TickCount64, 100)));
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(trackUntil - Environment.TickCount64, 100))); // clock: frame timing
                 // a move still waiting for its layout pass (the UI thread was busy) keeps it, unless the list is gone
-                if (tracking && passes == layoutPasses && Environment.TickCount64 >= trackUntil && (!moved || !list.IsAttachedToVisualTree())) Untrack();
+                if (tracking && passes == layoutPasses && Environment.TickCount64 >= trackUntil && (!moved || !list.IsAttachedToVisualTree())) Untrack(); // clock: frame timing
             }
         }
 
@@ -433,7 +433,7 @@ public static class ItemMotion
             same &= now.Count == places.Count;
             moved = false;
             places = now;
-            if (same && Environment.TickCount64 >= trackUntil) Untrack();
+            if (same && Environment.TickCount64 >= trackUntil) Untrack(); // clock: frame timing
         }
 
         /// <summary>
@@ -604,7 +604,7 @@ public static class ItemMotion
     static async Task Flash(Control container)
     {
         container.Classes.Set("fresh", true);
-        await Task.Delay(FlashMs);
+        await Task.Delay(FlashMs); // clock: frame timing
         container.Classes.Set("fresh", false);
     }
 }

@@ -162,7 +162,7 @@ public sealed class KeyPoller : IDisposable
             if (holdChanged) Changed?.Invoke();
             for (int i = 0; i < KeyActions.All.Count; i++)
                 if (pressed.Contains(KeyActions.All[i])) Pressed?.Invoke(KeyActions.All[i]);
-            Thread.Sleep(10);
+            Thread.Sleep(10); // clock: real time
         }
     }
 
@@ -191,7 +191,7 @@ public sealed class KeyPoller : IDisposable
     public void Dispose()
     {
         cts.Cancel();
-        thread.Join(200);
+        thread.Join(200); // clock: real time
         cts.Dispose();
     }
 }

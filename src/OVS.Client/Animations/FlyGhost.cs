@@ -51,7 +51,7 @@ public static class FlyGhost
         overlay.Children.Add(ghost);
         var done = new TaskCompletionSource();
         var top = TopLevel.GetTopLevel(overlay);
-        var clock = Stopwatch.StartNew();
+        var clock = Stopwatch.StartNew(); // clock: frame timing
         var target = from;
         void Frame(TimeSpan _)
         {

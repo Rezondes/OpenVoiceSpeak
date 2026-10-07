@@ -10,11 +10,11 @@ namespace OVS.Client.ViewModels;
 /// <summary>Package 80: one card of the ban overview with everything the server stores about the ban (A97).</summary>
 /// <param name="now">The client's time when the list was built: status and remaining time as of then.</param>
 /// <param name="busy">Package 98: the unban, running until the new ban list comes.</param>
-public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, PendingViewModel? busy = null) : ObservableObject, IMotionKey
+public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, PendingViewModel busy) : ObservableObject, IMotionKey
 {
     public object MotionKey => Ban.Id;
     public BanInfo Ban { get; } = ban;
-    public PendingViewModel Busy { get; } = busy ?? new PendingViewModel(TimeProvider.System);
+    public PendingViewModel Busy { get; } = busy;
     public string Nickname => Ban.Nickname;
     public string Fingerprint => Ban.Fingerprint;
     public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;

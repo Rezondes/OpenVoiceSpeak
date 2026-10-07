@@ -675,7 +675,7 @@ public sealed class AudioEngine : IDisposable
         }
         if (Text(warnings) is { } text) Warning?.Invoke(text);
         var bytes = new byte[AudioFormat.StereoFrameSamples * sizeof(float)];
-        var clock = Stopwatch.StartNew();
+        var clock = Stopwatch.StartNew(); // clock: real time
         long ticks = 0;
         while (running)
         {
@@ -697,7 +697,7 @@ public sealed class AudioEngine : IDisposable
                 // No speaker: keep mixing on our own clock and throw the audio away.
                 if (clock.Elapsed < AudioFormat.FrameDuration * ticks)
                 {
-                    Thread.Sleep(5);
+                    Thread.Sleep(5); // clock: real time
                     continue;
                 }
                 ticks++;
@@ -706,7 +706,7 @@ public sealed class AudioEngine : IDisposable
             }
             if (buffer.BufferedDuration >= TargetBuffer)
             {
-                Thread.Sleep(5);
+                Thread.Sleep(5); // clock: real time
                 continue;
             }
             var frame = MixForSpeaker();
@@ -721,7 +721,7 @@ public sealed class AudioEngine : IDisposable
     bool TryEnd()
     {
         // the end of the last tone: what is still buffered, plus what the device itself holds (opened with 30 ms)
-        if (playback?.BufferedDuration is { } left) Thread.Sleep(left + DeviceLatency);
+        if (playback?.BufferedDuration is { } left) Thread.Sleep(left + DeviceLatency); // clock: real time
         lock (gate)
         lock (threadGate)
         {
@@ -790,7 +790,7 @@ public sealed class AudioEngine : IDisposable
         wake.Set();
         Thread? thread;
         lock (threadGate) thread = playbackThread;
-        thread?.Join(500);
+        thread?.Join(500); // clock: real time
         lock (gate) StopDevices();
     }
 }

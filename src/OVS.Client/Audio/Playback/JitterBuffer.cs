@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using OVS.Client.Audio.Codec;
 using OVS.Shared.Voice;
 
@@ -62,20 +61,19 @@ public sealed class JitterBuffer
     /// <summary>Package 124: frames waiting, or playing (concealing a loss counts): the next Pull may return audio.</summary>
     public bool Busy => playing || frames.Count > 0;
 
-    /// <param name="arrivalMs">Package 133: when the frame arrived in ms, on any clock; now by default.</param>
+    /// <param name="arrivalMs">Package 133: when the frame arrived in ms, on any clock (the mixer stamps it as it comes).</param>
     /// <param name="copy">Package 136 (A145): the frame before this one, kept only while that one is missing and still to play.</param>
-    public void Push(uint seq, byte[] opus, bool viaLink, double? arrivalMs = null, byte[]? copy = null)
+    public void Push(uint seq, byte[] opus, bool viaLink, double arrivalMs, byte[]? copy = null)
     {
         ViaLink = viaLink;
         if (frames.ContainsKey(seq)) return; // Package 136 (review): a duplicate is neither counted nor stored again
         Received++;
-        double arrival = arrivalMs ?? NowMs();
-        double transit = arrival - (double)FrameMs * seq;
+        double transit = arrivalMs - (double)FrameMs * seq;
         // a talk pause shifts the transit by its length (the frame number stood still), so there is a sample only while
         // playing: a frame that starts a spurt, also after a short pause, starts anew. A jump in the frame numbers while
         // playing (another route, a hostile sender) is no jitter either: more than the buffer holds is not a sample.
         bool idle = !playing && frames.Count == 0;
-        bool close = arrival - lastArrival <= LossWindow.FreshAfter.TotalMilliseconds;
+        bool close = arrivalMs - lastArrival <= LossWindow.FreshAfter.TotalMilliseconds;
         if (!close)
         {
             // Package 134 (review): after a long silence one noisy spurt end must not hold back the next spurt fully
@@ -99,7 +97,7 @@ public sealed class JitterBuffer
         }
         // the same rule as LossWindow: after a silence of a second the frame numbers may have moved on through routing
         if (idle) resumed = close;
-        lastArrival = arrival;
+        lastArrival = arrivalMs;
         if (started && seq < next) return; // too late, already played or concealed
         frames[seq] = opus;
         copies.Remove(seq); // what arrived itself wins over its copy
@@ -122,8 +120,6 @@ public sealed class JitterBuffer
         foreach (var key in copies.Keys)
             if (key < next) copies.Remove(key);
     }
-
-    public static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
 
     /// <returns>20 ms of PCM, or null while buffering or idle.</returns>
     public float[]? Pull()

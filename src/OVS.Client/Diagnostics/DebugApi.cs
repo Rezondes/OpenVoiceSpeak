@@ -352,9 +352,9 @@ public sealed class DebugApi : IDisposable
             return;
         }
         vm.Keys.Simulate(action, true);
-        await Task.Delay(50); // a few polls of the key thread
+        await Task.Delay(50); // clock: debug, a few polls of the key thread
         vm.Keys.Simulate(action, false);
-        await Task.Delay(30);
+        await Task.Delay(30); // clock: debug
     }
 
     static JsonElement? Optional(JsonElement body, string name) =>
@@ -391,7 +391,7 @@ public sealed class DebugApi : IDisposable
         listener.Close();
         try
         {
-            loop.Wait(TimeSpan.FromSeconds(1));
+            loop.Wait(TimeSpan.FromSeconds(1)); // clock: debug
         }
         catch (AggregateException)
         {

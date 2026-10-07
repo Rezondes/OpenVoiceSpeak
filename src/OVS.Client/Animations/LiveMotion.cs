@@ -199,13 +199,13 @@ public static class LiveMotion
         }
         if (follower.Running) return;
         follower.Running = true;
-        follower.Last = Stopwatch.GetTimestamp();
+        follower.Last = Stopwatch.GetTimestamp(); // clock: frame timing
         top.RequestAnimationFrame(Step);
 
         void Step(TimeSpan _)
         {
-            double ms = Stopwatch.GetElapsedTime(follower.Last).TotalMilliseconds;
-            follower.Last = Stopwatch.GetTimestamp();
+            double ms = Stopwatch.GetElapsedTime(follower.Last).TotalMilliseconds; // clock: frame timing
+            follower.Last = Stopwatch.GetTimestamp(); // clock: frame timing
             double target = Math.Clamp(follower.Target, meter.Minimum, meter.Maximum), gap = target - meter.Value;
             double tau = (gap > 0 ? Attack : Release).TotalMilliseconds / 4;
             if (!Motion.IsAnimated || Math.Abs(gap) < (meter.Maximum - meter.Minimum) / 100) meter.Value = target; // the last per cent at once

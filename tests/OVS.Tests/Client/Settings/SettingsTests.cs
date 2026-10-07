@@ -245,7 +245,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(200, vm.OutputVolumePercent);
     }
 
-    static SettingsViewModel Vm(ClientSettings? s = null, params AudioDevice[] inputs) => new(s ?? new ClientSettings(), inputs, []);
+    static SettingsViewModel Vm(ClientSettings? s = null, params AudioDevice[] inputs) => new(s ?? new ClientSettings(), inputs, [], TimeProvider.System);
 
     /// <summary>Package 29: a new profile starts without any key.</summary>
     [Fact]
@@ -362,7 +362,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice()
     {
-        var vm = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "box" }, null, null);
+        var vm = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "box" }, null, null, TimeProvider.System);
         Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], vm.Inputs.Select(i => i.Name));
         Assert.Equal(("weg", "box"), (vm.SelectedInput.Id, vm.SelectedOutput.Id));
         Assert.Null(vm.DeviceHint);
@@ -374,7 +374,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal("box", vm.SelectedOutput.Id);
         Assert.NotNull(vm.DeviceHint);
 
-        var chosen = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg" }, null, null);
+        var chosen = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg" }, null, null, TimeProvider.System);
         chosen.SelectedInput = chosen.Inputs[0]; // the user picks "Standard" while loading
         chosen.ShowDevices([new AudioDevice("da", "Headset")], []);
         Assert.Null(chosen.SelectedInput.Id);

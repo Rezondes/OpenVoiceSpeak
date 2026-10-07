@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Processing;
 
@@ -44,17 +45,20 @@ public sealed class Mixer
     /// <summary>The output volume as the slider value; Package 128: through <see cref="VolumeCurve"/> like the per-speaker volume.</summary>
     public float Volume { get; set; } = 1f;
 
-    /// <param name="arrivalMs">Package 133: when it arrived (tests); now by default, taken before waiting for the lock.</param>
+    /// <param name="arrivalMs">Package 133: when it arrived (tests); by default read in real time, before waiting for the lock.</param>
     /// <param name="copy">Package 136: the frame before it, if it came along.</param>
     public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink, double? arrivalMs = null, byte[]? copy = null)
     {
-        double at = arrivalMs ?? JitterBuffer.NowMs();
+        double at = arrivalMs ?? ReadArrivalMs();
         lock (gate)
         {
             if (!speakers.TryGetValue(speakerId, out var speaker)) speakers[speakerId] = speaker = new Speaker();
             speaker.Buffer.Push(seq, opus, viaLink, at, copy);
         }
     }
+
+    /// <summary>A frame's arrival in ms: it came over the real network, so it is measured in real time; one timestamp read, nothing allocated.</summary>
+    static double ReadArrivalMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency; // clock: real time
 
     ReceiveStats retired; // Package 133: the counts of the speakers removed so far
 

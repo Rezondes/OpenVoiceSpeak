@@ -38,7 +38,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly SoundLibrary sounds;
     ClientConnection? connection;
     VoiceClient? voice;
-    DateTime connectedAt;
+    long connectedAt; // a timestamp of Time
     bool? udpLogged;
     bool udpWasReachable; // Package 126
     /// <summary>Why the last connect attempt was refused, e.g. WrongPassword (Package 40).</summary>
@@ -304,7 +304,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(string.IsNullOrEmpty(choice.Password) ? "" : " mit Passwort")}");
         using var identity = ClientStorage.LoadOrCreateIdentity(storageDir);
         return await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
-            string.IsNullOrEmpty(choice.Password) ? null : choice.Password, known, ConfirmTofuLogged);
+            string.IsNullOrEmpty(choice.Password) ? null : choice.Password, known, ConfirmTofuLogged, Time);
     }
 
     /// <summary>A connection the server welcomed becomes the current session.</summary>
@@ -338,7 +338,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         udp.Start();
 
         ResetStats();
-        connectedAt = DateTime.UtcNow;
+        connectedAt = Time.GetTimestamp();
         udpLogged = null;
         udpWasReachable = false;
         Server = vm;
@@ -379,7 +379,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task<string> CheckForUpdatesAsync()
     {
         if (Updates is not { IsEnabled: true } updates) return Strings.Update_LocalBuild;
-        using var timeout = new CancellationTokenSource(PendingViewModel.Timeout); // Package 98 (A113): 10 s like every other wait
+        using var timeout = new CancellationTokenSource(PendingViewModel.Timeout); // clock: real time, the HTTP request's bound; Package 98 (A113): 10 s like every other wait
         var result = await updates.CheckAsync(timeout.Token);
         if (result.Error is { } error)
         {
@@ -723,6 +723,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Package 135: tests wait for its ping answers.</summary>
     internal VoiceClient? Voice => voice;
+    /// <summary>The clock of the current connection's ping round trip (tests check it is <see cref="Time"/>).</summary>
+    internal TimeProvider? ConnectionTime => connection?.Time;
 
     /// <summary>Package 122: how often the speaker gain table was built and the logo checked against its hash (tests count them).</summary>
     internal int GainTableBuilds { get; private set; }
@@ -817,7 +819,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             Log.Write(udpWasReachable ? "UDP wieder erreichbar" : "UDP erreichbar");
             udpLogged = udpWasReachable = true;
         }
-        else if (udpLogged == true || (udpLogged is null && DateTime.UtcNow - connectedAt > TimeSpan.FromSeconds(5)))
+        else if (udpLogged == true || (udpLogged is null && Time.GetElapsedTime(connectedAt) > TimeSpan.FromSeconds(5)))
         {
             Log.Write("UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)");
             udpLogged = false;
@@ -917,7 +919,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (Page == Page.Settings) return;
         ClosePage();
-        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Keys, Time)
+        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Time, Keys)
         {
             EditKeyBinding = Dialogs.EditKeyBinding,
             CheckNow = CheckForUpdatesAsync,
@@ -1052,7 +1054,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public void AddNotice(string text, NoticeKind kind = NoticeKind.Info)
     {
         Log.Write("Meldung: " + text);
-        var notice = new Notice(DateTime.Now, text, kind);
+        var notice = new Notice(DateTime.SpecifyKind(Time.GetLocalNow().DateTime, DateTimeKind.Local), text, kind);
         Notices.Insert(0, notice);
         Chat?.AddNotice(notice);
         while (Notices.Count > 200) Notices.RemoveAt(Notices.Count - 1);

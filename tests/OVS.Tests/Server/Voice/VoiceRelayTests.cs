@@ -623,4 +623,34 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await a.SendAsync(new CreateChannel("Nach der Flut", ""));
         await a.WaitForAsync<ChannelAdded>(m => m.Channel.Name == "Nach der Flut");
     }
+
+    /// <summary>Package 88: the budget of bad packets is per second of the server's clock; a new second on it lets a source reach decryption again.</summary>
+    [Fact]
+    public async Task BadPacketBudget_NewSecondOnTheClock_StartsAfresh()
+    {
+        var time = new ManualTimeProvider();
+        await using var timed = await TestServer.StartAsync(time: time);
+        await using var x = await TestClient.ConnectAsync(timed, "x");
+        await using var y = await TestClient.ConnectAsync(timed, "y");
+        using var vx = new TestVoice(x, timed.VoiceEndPoint);
+        await vx.HelloAsync();
+        // y's live session id, sealed with a wrong key, from y's address: a valid header that fails only at decryption
+        using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
+        using var flood = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        var garbage = stranger.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, y.Id, 0, 0), []);
+        async Task<long> DropsAfterAsync(int packets)
+        {
+            for (int i = 0; i < packets; i++) await flood.SendAsync(garbage, timed.VoiceEndPoint);
+            await vx.SendAsync(PacketType.Ping, []); // one receive loop: x's answer comes after the packets before it were handled
+            Assert.NotNull(await vx.ReceiveAsync());
+            return timed.Voice.PreFilterDrops;
+        }
+
+        long drops = 0;
+        for (int round = 0; round < 50 && drops == 0; round++) drops = await DropsAfterAsync(100); // all in one second of the clock
+        Assert.True(drops > 0);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(drops, await DropsAfterAsync(10)); // a new second: tried (and refused) at decryption again, none dropped before
+    }
 }

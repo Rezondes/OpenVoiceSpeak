@@ -72,7 +72,7 @@ public sealed class TestServer : IAsyncDisposable
             try
             {
                 control.Start();
-                voice = new UdpVoiceServer(state, endpoint);
+                voice = new UdpVoiceServer(state, endpoint, time);
             }
             catch (SocketException) when (attempt < 100 && port is null)
             {

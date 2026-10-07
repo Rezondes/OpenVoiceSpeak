@@ -309,8 +309,8 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var ban = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "Spam", "mod", null);
         object[] Keys() =>
         [
-            new KnownUserViewModel(new KnownUserInfo("fpA", "anna", []), false, [], []).MotionKey,
-            new BanViewModel(ban, now, false, () => Task.CompletedTask).MotionKey,
+            new KnownUserViewModel(new KnownUserInfo("fpA", "anna", []), false, [], [], null, new PendingViewModel(TimeProvider.System)).MotionKey,
+            new BanViewModel(ban, now, false, () => Task.CompletedTask, new PendingViewModel(TimeProvider.System)).MotionKey,
             new BackupViewModel(new BackupInfo("b1.zip", now, 1, "1.0"), _ => Task.CompletedTask, _ => Task.CompletedTask).MotionKey,
             new LogFileViewModel(new LogFileInfo("server-1", LogKind.Server, null, null, now, now, 1)).MotionKey,
             new LinkRowViewModel(1, FakeServers.Lobby, "Lobby", false, []).MotionKey,

@@ -17,4 +17,13 @@ static class RepoPaths
 
     /// <summary>The client's source folder, <c>src/OVS.Client</c>.</summary>
     public static string ClientSource => Path.Combine(Root, "src", "OVS.Client");
+
+    /// <summary>
+    /// The files under <paramref name="dir"/> that match <paramref name="pattern"/>, without build output (a <c>bin</c> or
+    /// <c>obj</c> folder at any depth) and generated <c>*.Designer.cs</c> files.
+    /// </summary>
+    public static IEnumerable<string> SourceFiles(string dir, string pattern) =>
+        Directory.EnumerateFiles(dir, pattern, SearchOption.AllDirectories).Where(file =>
+            !Path.GetRelativePath(dir, file).Split('/', '\\').Any(part => part is "bin" or "obj")
+            && !file.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase));
 }

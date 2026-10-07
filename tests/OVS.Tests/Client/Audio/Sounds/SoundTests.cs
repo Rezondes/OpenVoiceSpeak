@@ -118,7 +118,7 @@ public class SoundTests
     {
         SoundEvent[] talk = [SoundEvent.TalkKeyDown, SoundEvent.TalkKeyUp];
         Assert.All(talk, e => Assert.Equal(0f, AudioEngine.GainFor(new ClientSettings(), e)));
-        var page = new OVS.Client.ViewModels.SettingsViewModel(new ClientSettings(), [], []);
+        var page = new OVS.Client.ViewModels.SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System);
         var rows = page.SoundRows.Where(r => talk.Contains(r.Event)).ToList();
         Assert.Equal(["Sprechtaste gedrückt", "Sprechtaste losgelassen"], rows.Select(r => r.Label));
         Assert.All(rows, r => Assert.True(r.Muted));

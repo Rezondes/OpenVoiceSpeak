@@ -86,6 +86,9 @@ public sealed partial class ChatViewModel : ObservableObject
 
     void Add(ChatTabViewModel tab, ChatEntry entry, bool countUnread = true) => tab.Add(entry, countUnread && tab != Selected && !entry.IsOwn);
 
+    /// <summary>The time of the connection's clock as the chat shows it: local, like a received message's.</summary>
+    DateTime LocalNow() => DateTime.SpecifyKind(server.Time.GetLocalNow().DateTime, DateTimeKind.Local);
+
     void OnChat(ChatMessage m)
     {
         var entry = new ChatEntry(m.SentAt.LocalDateTime, m.Text, m.FromNickname, m.FromSessionId == server.Mirror.SelfId);
@@ -138,7 +141,7 @@ public sealed partial class ChatViewModel : ObservableObject
         bool online = user is not null;
         if (online == tab.IsOnline) return;
         tab.IsOnline = online;
-        tab.Add(new ChatEntry(DateTime.Now, online ? string.Format(Strings.Chat_BackOnline, tab.Title) : string.Format(Strings.Chat_Offline, tab.Title)), countUnread: false);
+        tab.Add(new ChatEntry(LocalNow(), online ? string.Format(Strings.Chat_BackOnline, tab.Title) : string.Format(Strings.Chat_Offline, tab.Title)), countUnread: false);
     }
 
     /// <summary>
@@ -156,7 +159,7 @@ public sealed partial class ChatViewModel : ObservableObject
             channelId = channel?.Id;
             ChannelTab.Entries.Clear();
             ChannelTab.Unread = 0;
-            if (channel is not null) Add(ChannelTab, new ChatEntry(DateTime.Now, string.Format(Strings.Chat_Entered, channel.Name)), countUnread: false);
+            if (channel is not null) Add(ChannelTab, new ChatEntry(LocalNow(), string.Format(Strings.Chat_Entered, channel.Name)), countUnread: false);
         }
         ChannelTab.Title = channel?.Name ?? "";
         OnPropertyChanged(nameof(CanWrite));
@@ -189,7 +192,7 @@ public sealed partial class ChatViewModel : ObservableObject
         // Package 98: shown at once, greyed until the server's echo
         Task Send(PendingViewModel pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
         var sending = new ChatSendingViewModel(server.NewPending(), Send);
-        Add(tab, new ChatEntry(DateTime.Now, text, server.Mirror.Self?.Nickname ?? "", IsOwn: true, Sending: sending));
+        Add(tab, new ChatEntry(LocalNow(), text, server.Mirror.Self?.Nickname ?? "", IsOwn: true, Sending: sending));
         await Send(sending.Pending);
     }
 }

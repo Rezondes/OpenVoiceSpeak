@@ -16,9 +16,9 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     KnownServers Known() => new(dir);
 
     Task<ClientConnection> Connect(TestServer server, string nick, ClientIdentity? id = null, Func<TofuPrompt, Task<bool>>? confirm = null,
-        KnownServers? known = null, string? password = null) =>
+        KnownServers? known = null, string? password = null, TimeProvider? time = null) =>
         ClientConnection.ConnectAsync("127.0.0.1", server.Port, id ?? ClientIdentity.Create(), nick, password,
-            known ?? Known(), confirm ?? (_ => Task.FromResult(true)));
+            known ?? Known(), confirm ?? (_ => Task.FromResult(true)), time ?? TimeProvider.System);
 
     [Fact]
     public void KnownServers_Check_Cases()
@@ -123,14 +123,25 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         Assert.Equal((ReasonCodes.Kicked, "tschüss"), await reason.Task.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
+    /// <summary>The ping round trip is measured on the connection's clock: on a clock that stands still it takes no time.</summary>
+    [Fact]
+    public async Task Ping_ClockStandingStill_RoundTripZero()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var connection = await Connect(server, "a", time: new ManualTimeProvider());
+
+        await AsyncWait.Until(() => connection.LastRoundTrip is not null); // the first ping goes out at once
+        Assert.Equal(TimeSpan.Zero, connection.LastRoundTrip);
+    }
+
     [Fact]
     public async Task Voice_SendFromA_ReceivedByB_Identical()
     {
         await using var server = await TestServer.StartAsync();
         await using var a = await Connect(server, "a");
         await using var b = await Connect(server, "b");
-        using var va = new VoiceClient(server.VoiceEndPoint, a.Welcome.SessionId, Convert.FromBase64String(a.Welcome.VoiceKey));
-        using var vb = new VoiceClient(server.VoiceEndPoint, b.Welcome.SessionId, Convert.FromBase64String(b.Welcome.VoiceKey));
+        using var va = Voice(a, server.VoiceEndPoint);
+        using var vb = Voice(b, server.VoiceEndPoint);
         var received = new TaskCompletionSource<(uint Speaker, byte Target, byte[] Opus)>();
         vb.VoiceReceived += (speaker, _, target, opus, _) => received.TrySetResult((speaker, target, opus));
         va.Start();
@@ -153,8 +164,8 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         await using var server = await TestServer.StartAsync();
         await using var a = await Connect(server, "a");
         await using var b = await Connect(server, "b");
-        using var va = new VoiceClient(server.VoiceEndPoint, a.Welcome.SessionId, Convert.FromBase64String(a.Welcome.VoiceKey));
-        using var vb = new VoiceClient(server.VoiceEndPoint, b.Welcome.SessionId, Convert.FromBase64String(b.Welcome.VoiceKey));
+        using var va = Voice(a, server.VoiceEndPoint);
+        using var vb = Voice(b, server.VoiceEndPoint);
         var seqs = new List<uint>();
         var two = new TaskCompletionSource();
         vb.VoiceReceived += (_, speakerSeq, _, _, _) =>
@@ -178,7 +189,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     }
 
     static VoiceClient Voice(ClientConnection c, IPEndPoint to, TimeProvider? time = null) =>
-        new(to, c.Welcome.SessionId, Convert.FromBase64String(c.Welcome.VoiceKey), time);
+        new(to, c.Welcome.SessionId, Convert.FromBase64String(c.Welcome.VoiceKey), time ?? TimeProvider.System);
 
     /// <summary>Package 126: advances the voice clock in steps of the Hello retry, so every timer tick runs.</summary>
     static void Advance(ManualTimeProvider time, TimeSpan by)

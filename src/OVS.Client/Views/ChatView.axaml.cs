@@ -123,7 +123,7 @@ public partial class ChatView : UserControl
         if (gliding) return; // the running glide follows the end as it grows
         gliding = true;
         double from = glidSet = Scroller.Offset.Y;
-        var clock = Stopwatch.StartNew();
+        var clock = Stopwatch.StartNew(); // clock: frame timing
         void Frame(TimeSpan _)
         {
             if (!gliding) return; // the reader took over

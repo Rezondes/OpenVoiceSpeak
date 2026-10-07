@@ -63,12 +63,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
     /// <param name="time">Package 98: the clock of the waiting states (tests use a manual one).</param>
-    public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, KeyPoller? keys = null,
-        TimeProvider? time = null)
+    public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, TimeProvider time,
+        KeyPoller? keys = null)
     {
         this.keys = keys;
-        Saving = new PendingViewModel(time ?? TimeProvider.System, PendingViewModel.UiPost());
-        Checking = new PendingViewModel(time ?? TimeProvider.System, PendingViewModel.UiPost());
+        Saving = new PendingViewModel(time, PendingViewModel.UiPost());
+        Checking = new PendingViewModel(time, PendingViewModel.UiPost());
         basis = current;
         (savedInputId, savedOutputId) = (current.InputDeviceId, current.OutputDeviceId);
         (inputs, selectedInput, bool inputFellBack) = DeviceOptions(savedInputId, inputDevices);

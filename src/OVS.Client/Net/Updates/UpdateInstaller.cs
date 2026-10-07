@@ -80,7 +80,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         var buffer = new byte[81920];
         long bytes = 0, reported = -1;
         long step = total is > 0 and var t ? Math.Max(1, t / 100) : long.MaxValue;
-        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var clock = System.Diagnostics.Stopwatch.StartNew(); // clock: real time, how often the download reports its progress
         int read;
         while ((read = await source.ReadAsync(buffer, cancel)) > 0)
         {
@@ -99,8 +99,9 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
     /// still be closing, and Windows keeps a just-ended exe locked for a moment, so it waits for that process (at
     /// most <paramref name="waitForExit"/>) and tries a few times.
     /// </summary>
+    /// <param name="time">The clock of the pauses between the tries (the wait for the old process is real time).</param>
     /// <returns>What happened, for the log; null when there was nothing to remove.</returns>
-    public static async Task<string?> CleanupOldAsync(string? exePath, int? oldPid = null, TimeSpan? waitForExit = null,
+    public static async Task<string?> CleanupOldAsync(string? exePath, TimeProvider time, int? oldPid = null, TimeSpan? waitForExit = null,
         int attempts = 5, TimeSpan? pause = null)
     {
         if (exePath is null || !File.Exists(exePath + ".old")) return null;
@@ -109,7 +110,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
             try
             {
                 using var old = System.Diagnostics.Process.GetProcessById(pid);
-                using var timeout = new CancellationTokenSource(waitForExit ?? TimeSpan.FromSeconds(10));
+                using var timeout = new CancellationTokenSource(waitForExit ?? TimeSpan.FromSeconds(10)); // clock: real time
                 await old.WaitForExitAsync(timeout.Token);
             }
             catch (Exception e) when (e is ArgumentException or InvalidOperationException or OperationCanceledException)
@@ -127,7 +128,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 if (i >= attempts) return $"Alte Version konnte nicht entfernt werden: {e.Message}";
-                await Task.Delay(pause ?? TimeSpan.FromMilliseconds(500));
+                await Task.Delay(pause ?? TimeSpan.FromMilliseconds(500), time);
             }
         }
     }

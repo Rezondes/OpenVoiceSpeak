@@ -36,7 +36,7 @@ internal static class Program
         // Package 43/63: the exe replaced by the last update, in the background so the window does not wait for it
         _ = Task.Run(async () =>
         {
-            if (await UpdateInstaller.CleanupOldAsync(Environment.ProcessPath, Options.AfterUpdatePid) is { } result) Log?.Write(result);
+            if (await UpdateInstaller.CleanupOldAsync(Environment.ProcessPath, Time, Options.AfterUpdatePid) is { } result) Log?.Write(result);
         });
         Settings = ClientSettings.Load(Options.ProfileDir, out var settingsWarning);
         SettingsWarning = settingsWarning;
