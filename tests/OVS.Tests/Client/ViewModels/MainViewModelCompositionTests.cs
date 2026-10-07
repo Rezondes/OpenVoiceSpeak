@@ -1,4 +1,5 @@
 using OVS.Client.Audio;
+using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Dialogs;
 using OVS.Client.Input;
@@ -35,7 +36,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         keys ??= new KeyPoller(time);
         var soundLibrary = new SoundLibrary(Parts, log.Write);
         return MainViewModelSetup.Compose(Profile, post, time, log, settings ?? new ClientSettings(), settingsWarning, new KnownServers(Parts),
-            new ServerIconCache(Parts), soundLibrary, new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, log.Write, soundLibrary.Samples),
+            new ServerIconCache(Parts), soundLibrary, new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log.Write), soundLibrary.Samples),
             hardware is null ? null : hardware.ListActive);
     }
 
@@ -46,7 +47,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var log = new ClientLog(Parts, time);
         var leave = new LeaveTimer(time);
         var keys = new KeyPoller(time);
-        var audio = new AudioEngine(keys, time, hardware: null, log.Write);
+        var audio = new AudioEngine(keys, time, hardware: null, new NativeCaptureFilters(log.Write));
 
         await using var vm = MainViewModelSetup.Compose(Profile, a => a(), time, log, settings, null, new KnownServers(Parts),
             new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), leave, keys, audio);
@@ -57,6 +58,15 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         Assert.Same(keys, vm.Keys);
         Assert.Same(audio, vm.Audio);
         Assert.Same(time, vm.Time);
+    }
+
+    /// <summary>Package 123, 140: a filter library that cannot load is told in the client log, the one <see cref="MainViewModel.Create"/> was given.</summary>
+    [Fact]
+    public async Task Create_GivenClientLog_CaptureFiltersLogToIt()
+    {
+        await using var vm = MainViewModelSetup.Create(Profile, a => a(), time: time);
+
+        Assert.Equal(new Action<string>(vm.Log.Write), vm.Audio.Filters.Log);
     }
 
     [Fact]

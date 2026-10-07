@@ -1,7 +1,6 @@
 using OVS.Client.Audio;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
-using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
@@ -351,16 +350,16 @@ public class VoiceFilterTests
 
     /// <summary>
     /// AC7: without the native library the voice still goes out, unfiltered (the one log line is
-    /// <c>DeviceLifecycleTests.SetTone_FilterLibrariesMissing_NoFiltersAndOneLogLineEach</c>).
+    /// <c>NativeCaptureFiltersTests.AttachTo_LibrariesMissing_NoFiltersAndOneLogLineEach</c>).
     /// </summary>
     [Fact]
     public async Task MissingNativeLibrary_CaptureRunsWithoutSuppressor()
     {
-        Assert.Null(NoiseSuppressor.Create(out var error, "ovs-no-such-rnnoise"));
+        Assert.Null(NoiseSuppressor.Create(out var error, NativeCaptureFiltersTests.NoNoiseLibrary));
         Assert.False(string.IsNullOrEmpty(error));
 
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { DeviceLifecycle = { NoiseLibrary = "ovs-no-such-rnnoise" } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null, new NativeCaptureFilters(log: null, noiseLibrary: NativeCaptureFiltersTests.NoNoiseLibrary));
         engine.Configure(new ClientSettings()); // noise suppression on by default
         engine.DeviceLifecycle.SetTone(440);
         int levels = 0;
@@ -397,7 +396,7 @@ public class VoiceFilterTests
         var pipeline = CapturePipeline.Manual();
         pipeline.Canceller = EchoCanceller.Create(out var error);
         Assert.True(pipeline.Canceller is not null, error);
-        pipeline.Canceller.DelayMs = DeviceLifecycle.EchoDelayMs; // the engine's hint, not the 60 ms of the test path
+        pipeline.Canceller.DelayMs = AudioEngine.EchoDelayMs; // the engine's hint, not the 60 ms of the test path
         pipeline.EchoCancellation = true;
         pipeline.ChooseTarget = _ =>
         {
@@ -483,7 +482,7 @@ public class VoiceFilterTests
             Assert.Equal(3, canceller.RenderedFrames);
         }
 
-        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null) { DeviceLifecycle = { EchoLibrary = "ovs-no-such-aec" } };
+        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null, new NativeCaptureFilters(log: null, echoLibrary: NativeCaptureFiltersTests.NoEchoLibrary));
         missing.Configure(new ClientSettings());
         missing.DeviceLifecycle.SetTone(440);
         Assert.Null(missing.DeviceLifecycle.Capture!.Canceller);

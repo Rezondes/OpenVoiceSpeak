@@ -33,12 +33,15 @@ public sealed class CapturePipeline : IDisposable
 
     CapturePipeline() { }
 
+    /// <summary>The microphone's buffer in WASAPI (its latency); part of the echo canceller's delay hint.</summary>
+    internal const int MicBufferMs = 20;
+
     /// <param name="failed">Package 137: the device stopped with an error (unplugged, invalidated); any thread, must not block.</param>
     internal static CapturePipeline FromDevice(MMDevice? device, Action<Exception>? failed = null)
     {
         var pipeline = new CapturePipeline();
         // Event driven with a 20 ms buffer: the default polls a 100 ms buffer and adds up to 50 ms latency.
-        var capture = new WasapiCapture(device ?? WasapiCapture.GetDefaultCaptureDevice(), useEventSync: true, audioBufferMillisecondsLength: 20);
+        var capture = new WasapiCapture(device ?? WasapiCapture.GetDefaultCaptureDevice(), useEventSync: true, audioBufferMillisecondsLength: MicBufferMs);
         float[] samples = []; // reused: only the capture thread touches it
         var sides = new StereoInput(); // Package 142: one per opened device
         capture.DataAvailable += (_, e) =>

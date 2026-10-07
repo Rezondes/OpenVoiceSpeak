@@ -1403,7 +1403,7 @@ public class SendPathTests
         using var pipeline = CapturePipeline.Manual();
         pipeline.Canceller = EchoCanceller.Create(out var error);
         Assert.True(pipeline.Canceller is not null, error);
-        pipeline.Canceller.DelayMs = DeviceLifecycle.EchoDelayMs;
+        pipeline.Canceller.DelayMs = AudioEngine.EchoDelayMs;
         pipeline.Suppressor = NoiseSuppressor.Create(out error);
         Assert.True(pipeline.Suppressor is not null, error);
         (pipeline.EchoCancellation, pipeline.NoiseSuppression, pipeline.AutoGain, pipeline.Music) = (true, true, true, true);

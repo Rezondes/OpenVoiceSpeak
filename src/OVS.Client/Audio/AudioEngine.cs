@@ -4,6 +4,7 @@ using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Playback;
+using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
@@ -23,6 +24,12 @@ public sealed class AudioEngine : IDisposable
 {
     /// <summary>How much the playback loop keeps buffered for the speaker; the echo canceller's delay hint starts from it.</summary>
     internal const int TargetBufferMs = 40;
+
+    /// <summary>
+    /// Package 140 (A149): the echo canceller's delay hint, from a mixed frame to its echo in the capture: the playback
+    /// buffer, the speaker's device buffer and the microphone's.
+    /// </summary>
+    internal const int EchoDelayMs = TargetBufferMs + WasapiHardware.SpeakerBufferMs + CapturePipeline.MicBufferMs;
 
     // Small buffers keep mouth-to-ear latency low; the refill loop wakes about every 15 ms.
     static readonly TimeSpan TargetBuffer = TimeSpan.FromMilliseconds(TargetBufferMs);
@@ -47,18 +54,22 @@ public sealed class AudioEngine : IDisposable
     long framesSent, mixes;
 
     /// <param name="time">Package 135: the clock of the loss adapter (tests pass a manual one); Package 137: of the device reopen.</param>
-    /// <param name="log">A line for the client log (Package 123: when noise suppression cannot load).</param>
     /// <param name="hardware">Package 124: where microphone and speaker come from; null runs without them (--no-audio, tests).</param>
+    /// <param name="filters">
+    /// Package 123, 140: the filters each new capture gets, with their log line when a library cannot load; null: the
+    /// shipped libraries, without a log.
+    /// </param>
     /// <param name="samples">Package 48: a sound's samples for its setting (the profile's own tones); null: the default tones.</param>
-    public AudioEngine(KeyPoller keys, TimeProvider time, IAudioHardware? hardware, Action<string>? log = null,
+    public AudioEngine(KeyPoller keys, TimeProvider time, IAudioHardware? hardware, NativeCaptureFilters? filters = null,
         Func<SoundEvent, SoundSetting, float[]>? samples = null)
     {
         this.keys = keys;
+        Filters = filters ?? new NativeCaptureFilters(log: null);
         Loss = new LossAdapter(time, ProtocolDefaults.Bitrate);
         Sounds = new SoundPlayer(soundQueue, () => settings, () => deafened, Kick, samples); // before the keys' tones can ask for it
         // before the keys' tones can start the playback thread, which opens the speaker through it
         DeviceLifecycle = new DeviceLifecycle(gate, hardware, time, () => micWanted, () => PlaybackRunning, ConfigureCapture,
-            () => voiceDetected = false, Report, log);
+            () => voiceDetected = false, Report);
         keys.Changed += OnKeysChanged;
     }
 
@@ -67,6 +78,9 @@ public sealed class AudioEngine : IDisposable
     /// lock, each new capture set up by <see cref="ConfigureCapture"/>.
     /// </summary>
     public DeviceLifecycle DeviceLifecycle { get; }
+
+    /// <summary>Package 123, 140: attached to each new capture in <see cref="ConfigureCapture"/>, under gate.</summary>
+    internal NativeCaptureFilters Filters { get; }
 
     /// <summary>
     /// Package 131 (A140): a talk key that acts in this mode is down, the bare key without the release delay: link
@@ -210,11 +224,12 @@ public sealed class AudioEngine : IDisposable
     ClientSettings Current => live ?? settings;
 
     /// <summary>
-    /// Sets a new capture up before it starts (<see cref="DeviceLifecycle"/> calls it under gate): the send path's decision and
-    /// encoder values, the settings in use, the encoded frames and the level.
+    /// Sets a new capture up before it starts (<see cref="DeviceLifecycle"/> calls it under gate): its filters, the send
+    /// path's decision and encoder values, the settings in use, the encoded frames and the level.
     /// </summary>
     void ConfigureCapture(CapturePipeline capture)
     {
+        Filters.AttachTo(capture, EchoDelayMs);
         capture.ChooseTarget = ChooseTarget;
         capture.Bitrate = () => EncoderBitrate; // Package 132
         capture.LossHint = () => EncoderLossHint; // Package 135

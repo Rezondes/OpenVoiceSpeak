@@ -77,12 +77,15 @@ sealed class WasapiHardware : IAudioHardware
     public CapturePipeline OpenInput(string? deviceId, List<string> warnings) =>
         CapturePipeline.FromDevice(Open(deviceId, AudioDirection.Input, warnings), e => Failed?.Invoke(AudioDirection.Input, e));
 
+    /// <summary>The speaker's own buffer in WASAPI (its latency); part of the echo canceller's delay hint.</summary>
+    internal const int SpeakerBufferMs = 30;
+
     public PlaybackBuffer OpenOutput(string? deviceId, List<string> warnings)
     {
         var device = Open(deviceId, AudioDirection.Output, warnings);
         var output = device is null
-            ? new WasapiOut(AudioClientShareMode.Shared, 30)
-            : new WasapiOut(device, AudioClientShareMode.Shared, true, 30);
+            ? new WasapiOut(AudioClientShareMode.Shared, SpeakerBufferMs)
+            : new WasapiOut(device, AudioClientShareMode.Shared, true, SpeakerBufferMs);
         output.PlaybackStopped += (_, e) =>
         {
             if (e.Exception is { } error) Failed?.Invoke(AudioDirection.Output, error); // Package 137: a stop of our own carries none

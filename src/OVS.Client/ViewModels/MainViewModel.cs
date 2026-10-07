@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Devices;
+using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Exceptions;
@@ -86,7 +87,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         AudioEngine? audio = null;
         try
         {
-            audio = new AudioEngine(keys, time, hardware, log.Write, soundLibrary.Samples);
+            audio = new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log.Write), soundLibrary.Samples);
             return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new KnownServers(storageDir),
                 new ServerIconCache(storageDir), soundLibrary, new LeaveTimer(time, () => post), keys, audio,
                 hardware is null ? null : hardware.ListActive);

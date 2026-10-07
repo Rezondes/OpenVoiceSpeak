@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Devices;
+using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
@@ -13,6 +14,7 @@ using OVS.Client.Localization;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
+using OVS.Tests.Client.Audio.Processing;
 using OVS.Tests.TestSupport;
 using Key = Avalonia.Input.Key;
 using PhysicalKey = Avalonia.Input.PhysicalKey;
@@ -631,7 +633,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     /// <summary>
     /// Package 140 (A149, AC4): echo cancellation is on by default, also for a file without the key; it round-trips, is
     /// previewed live and reaches the running capture without a restart; a missing library turns it off (its one log line:
-    /// <c>DeviceLifecycleTests.SetTone_FilterLibrariesMissing_NoFiltersAndOneLogLineEach</c>).
+    /// <c>NativeCaptureFiltersTests.AttachTo_LibrariesMissing_NoFiltersAndOneLogLineEach</c>).
     /// </summary>
     [Fact]
     public async Task EchoCancellation_DefaultLiveMissingLib()
@@ -663,7 +665,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
             Assert.False(capture.EchoCancellation);
         }
 
-        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null) { DeviceLifecycle = { EchoLibrary = "ovs-no-such-aec" } };
+        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null, new NativeCaptureFilters(log: null, echoLibrary: NativeCaptureFiltersTests.NoEchoLibrary));
         missing.Configure(new ClientSettings());
         missing.DeviceLifecycle.SetTone(440);
         int levels = 0;

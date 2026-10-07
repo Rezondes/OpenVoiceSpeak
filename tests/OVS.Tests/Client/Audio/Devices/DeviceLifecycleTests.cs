@@ -6,11 +6,11 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Client.Audio.Devices;
 
 /// <summary>
-/// Package 124 (the devices open only while needed), 137 (device changes and broken streams), 123 and 140 (the filters
-/// and their native libraries), 131 (a closed capture told to the engine): the capture (microphone or test tone) and the
-/// speaker opened, closed and reopened on a fake hardware and a manual clock. The engine's side is played by fields: its
-/// lock, whether the microphone is wanted and the playback thread runs, the configuring of a new capture, the closed
-/// captures and the reports. Everything runs on the test thread (the settle timer fires inside <c>Advance</c>).
+/// Package 124 (the devices open only while needed), 137 (device changes and broken streams), 131 (a closed capture told
+/// to the engine): the capture (microphone or test tone) and the speaker opened, closed and reopened on a fake hardware
+/// and a manual clock. The engine's side is played by fields: its lock, whether the microphone is wanted and the playback
+/// thread runs, the configuring of a new capture, the closed captures and the reports. Everything runs on the test
+/// thread (the settle timer fires inside <c>Advance</c>).
 /// </summary>
 public sealed class DeviceLifecycleTests : IDisposable
 {
@@ -19,7 +19,6 @@ public sealed class DeviceLifecycleTests : IDisposable
     readonly ManualTimeProvider time = new();
     readonly List<CapturePipeline> configured = [];
     readonly List<IReadOnlyList<string>> reports = [];
-    readonly List<string> log = [];
     readonly DeviceLifecycle devices;
     bool micWanted, playbackRunning;
     Exception? configureFails;
@@ -29,7 +28,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
     /// <summary>A lifecycle on the fields above; without hardware it runs as with --no-audio.</summary>
     DeviceLifecycle Create(IAudioHardware? on) =>
-        new(gate, on, time, () => micWanted, () => playbackRunning, Configure, () => capturesClosed++, reports.Add, log.Add);
+        new(gate, on, time, () => micWanted, () => playbackRunning, Configure, () => capturesClosed++, reports.Add);
 
     void Configure(CapturePipeline capture)
     {
@@ -67,7 +66,7 @@ public sealed class DeviceLifecycleTests : IDisposable
     }
 
     [Fact]
-    public void SyncCaptureAndReport_MicWanted_OpensTheChosenMicWithItsFiltersConfigured()
+    public void SyncCaptureAndReport_MicWanted_OpensAndConfiguresTheChosenMic()
     {
         hardware.Present.Add("headset", AudioDirection.Input);
         Choose("headset");
@@ -79,8 +78,6 @@ public sealed class DeviceLifecycleTests : IDisposable
         Assert.Equal(("headset", 1), (hardware.Open.Mic, hardware.Counts.MicsOpen));
         var capture = Assert.Single(configured);
         Assert.Same(capture, devices.Capture);
-        Assert.NotNull(capture.Suppressor);
-        Assert.Equal(DeviceLifecycle.EchoDelayMs, capture.Canceller!.DelayMs);
     }
 
     [Fact]
@@ -268,31 +265,6 @@ public sealed class DeviceLifecycleTests : IDisposable
         }
 
         Assert.Null(without.Capture);
-    }
-
-    [Fact]
-    public void SetTone_FilterLibrariesMissing_NoFiltersAndOneLogLineEach()
-    {
-        var missing = Create(null);
-        missing.NoiseLibrary = "ovs-no-such-rnnoise";
-        missing.EchoLibrary = "ovs-no-such-aec";
-        CapturePipeline capture;
-        try
-        {
-            missing.SetTone(440);
-            missing.SetTone(440); // a second capture neither tries nor logs again
-            capture = missing.Capture!;
-        }
-        finally
-        {
-            missing.SetTone(null);
-        }
-
-        Assert.Null(capture.Suppressor);
-        Assert.Null(capture.Canceller);
-        Assert.Equal(2, log.Count);
-        Assert.Single(log, line => line.Contains("ovs-no-such-rnnoise"));
-        Assert.Single(log, line => line.Contains("ovs-no-such-aec"));
     }
 
     [Fact]

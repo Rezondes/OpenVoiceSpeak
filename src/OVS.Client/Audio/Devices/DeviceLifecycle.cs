@@ -1,35 +1,25 @@
 using System.Diagnostics;
 using OVS.Client.Audio.Capture;
-using OVS.Client.Audio.Processing;
 using OVS.Client.Localization;
 
 namespace OVS.Client.Audio.Devices;
 
 /// <summary>
-/// Package 124, 137: opens a configured capture (with its filters) and the speaker, closes them, and reopens them after
+/// Package 124, 137: opens a configured capture and the speaker, closes them, and reopens them after
 /// device changes once those have been quiet. The capture is the microphone or, while one is set, a test tone in its
 /// place. It runs under the audio engine's lock, which it is handed (no lock of its own; a member marked "under gate"
-/// asserts that its caller holds it). The engine configures each new capture (the send path and the settings in use)
-/// through the callback it hands in, before the capture starts, and turns what failed into a notice.
+/// asserts that its caller holds it). The engine configures each new capture (its filters, the send path and the
+/// settings in use) through the callback it hands in, before the capture starts, and turns what failed into a notice.
 /// </summary>
 public sealed class DeviceLifecycle
 {
-    /// <summary>
-    /// Package 140 (A149): the echo canceller's delay hint, from a mixed frame to its echo in the capture: the playback
-    /// buffer (<see cref="AudioEngine.TargetBufferMs"/>), the speaker's device buffer (30 ms) and the microphone's (20 ms).
-    /// </summary>
-    internal const int EchoDelayMs = AudioEngine.TargetBufferMs + 30 + 20;
-
     readonly object gate; // the engine's: the devices and settings
     readonly IAudioHardware? hardware;
     readonly Func<bool> micWanted, playbackRunning;
     readonly Action<CapturePipeline> configure;
     readonly Action captureClosed;
     readonly Action<IReadOnlyList<string>> report;
-    readonly Action<string>? log;
     readonly ITimer? settle; // Package 137: the reopen after device changes, once they have been quiet
-    bool noiseSuppressorMissing; // logged once, then no further tries
-    bool echoCancellerMissing; // Package 140: the same
     bool running = true; // under gate
     string? inputId, outputId; // the chosen devices, null for "Standard"; under gate
     CapturePipeline? capture;
@@ -42,12 +32,11 @@ public sealed class DeviceLifecycle
     /// <param name="time">Package 137: the clock of the settle timer and of a stream error's age.</param>
     /// <param name="micWanted">Package 124: whether the microphone is needed now (the engine's flags).</param>
     /// <param name="playbackRunning">Whether the playback thread runs, which needs the speaker.</param>
-    /// <param name="configure">Sets a new capture up for the send path and the settings in use, before it starts. Under gate.</param>
+    /// <param name="configure">Sets a new capture up (its filters, the send path, the settings in use) before it starts. Under gate.</param>
     /// <param name="captureClosed">Package 131: a capture was closed for a reopen after a device change or by <see cref="Close"/>.</param>
     /// <param name="report">Package 124: the warnings of one round of opens in the background, for one notice; called only with some.</param>
-    /// <param name="log">A line for the client log (Package 123: when a filter's native library cannot load).</param>
     internal DeviceLifecycle(object gate, IAudioHardware? hardware, TimeProvider time, Func<bool> micWanted, Func<bool> playbackRunning,
-        Action<CapturePipeline> configure, Action captureClosed, Action<IReadOnlyList<string>> report, Action<string>? log)
+        Action<CapturePipeline> configure, Action captureClosed, Action<IReadOnlyList<string>> report)
     {
         this.gate = gate;
         this.hardware = hardware;
@@ -56,7 +45,6 @@ public sealed class DeviceLifecycle
         this.configure = configure;
         this.captureClosed = captureClosed;
         this.report = report;
-        this.log = log;
         micEndpoint = new Endpoint(time);
         speakerEndpoint = new Endpoint(time);
         if (hardware is null) return;
@@ -240,12 +228,6 @@ public sealed class DeviceLifecycle
         warnings.AddRange(opened);
     }
 
-    /// <summary>Package 123: the native RNNoise library; tests name a missing one before a capture opens.</summary>
-    internal string NoiseLibrary { get; set; } = NoiseSuppressor.Library;
-
-    /// <summary>Package 140: the native echo canceller; tests name a missing one before a capture opens.</summary>
-    internal string EchoLibrary { get; set; } = EchoCanceller.Library;
-
     internal CapturePipeline? Capture => capture;
 
     /// <summary>The open speaker, or null; the playback thread reads it per frame.</summary>
@@ -351,8 +333,6 @@ public sealed class DeviceLifecycle
             if (device) RecordOpen(micEndpoint, inputId, AudioDirection.Input);
             capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(inputId, opened);
             if (capture is null) return;
-            capture.Suppressor = CreateSuppressor();
-            capture.Canceller = CreateCanceller(); // Package 140: like the suppressor, also while switched off
             configure(capture);
             capture.Start();
         }
@@ -366,34 +346,6 @@ public sealed class DeviceLifecycle
         {
             if (device) ReportFallback(opened, micEndpoint, Strings.Audio_MicLost, warnings);
         }
-    }
-
-    /// <summary>Created even while switched off, so the switch on the settings page acts at once.</summary>
-    NoiseSuppressor? CreateSuppressor()
-    {
-        if (noiseSuppressorMissing) return null;
-        var suppressor = NoiseSuppressor.Create(out var error, NoiseLibrary);
-        if (suppressor is null)
-        {
-            noiseSuppressorMissing = true; // AC7: the voice goes out unfiltered instead of not at all
-            log?.Invoke($"Noise suppression off: {NoiseLibrary} cannot be loaded ({error})");
-        }
-        return suppressor;
-    }
-
-    /// <summary>Package 140 (A149): a missing library turns echo cancellation off with one log line.</summary>
-    EchoCanceller? CreateCanceller()
-    {
-        if (echoCancellerMissing) return null;
-        var canceller = EchoCanceller.Create(out var error, EchoLibrary);
-        if (canceller is null)
-        {
-            echoCancellerMissing = true;
-            log?.Invoke($"Echo cancellation off: {EchoLibrary} cannot be loaded ({error})");
-            return null;
-        }
-        canceller.DelayMs = EchoDelayMs;
-        return canceller;
     }
 
     /// <summary>Under gate.</summary>
