@@ -553,7 +553,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         window.Close();
 
         using var keys = new KeyPoller(TimeProvider.System); // the engine takes the switch without restarting the microphone
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
         engine.SetTone(440);
         var capture = engine.Capture!;
@@ -605,7 +605,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         window.Close();
 
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
         Assert.Equal(TimeSpan.FromMilliseconds(20), keys.ReleaseDelay);
         engine.ApplyLive(new ClientSettings { PttReleaseDelayMs = 700 });
@@ -650,7 +650,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.False(ClientSettings.Load(dir, out _).EchoCancellation);
 
         using var keys = new KeyPoller(TimeProvider.System);
-        using (var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false))
+        using (var engine = new AudioEngine(keys, TimeProvider.System, hardware: null))
         {
             engine.Configure(new ClientSettings());
             engine.SetTone(440);
@@ -663,7 +663,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         }
 
         var log = new List<string>();
-        using var missing = new AudioEngine(keys, TimeProvider.System, useDevices: false, log: line =>
+        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null, log: line =>
         {
             lock (log) log.Add(line);
         }) { EchoLibrary = "ovs-no-such-aec" };
@@ -719,7 +719,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(Transmission.Music, ClientSettings.Load(dir, out _).Transmission);
 
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
         engine.SetTone(440);
         var capture = engine.Capture!;

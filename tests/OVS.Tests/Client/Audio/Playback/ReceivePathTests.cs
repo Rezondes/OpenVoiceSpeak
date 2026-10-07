@@ -1,5 +1,6 @@
 using OVS.Client.Audio;
 using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Input;
@@ -643,7 +644,7 @@ public class ReceivePathTests
     public async Task Playback_IdleDoesNotMix_WakesOnVoice()
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: nothing is sent
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true };
         long heardAt = -1;
         engine.SpeakersChanged += active =>
         {
@@ -767,27 +768,27 @@ public class ReceivePathTests
     [Fact]
     public async Task ChosenOutputRemoved_FallsBack_Returns()
     {
-        using var rig = new DeviceRig(new ClientSettings { OutputDeviceId = "headset" }, "headset");
+        using var rig = new DeviceRig(new ClientSettings { OutputDeviceId = "headset" }, ("headset", AudioDirection.Output));
         await rig.ConnectAsync();
-        Assert.Equal("headset", rig.Devices.Open.Speaker);
+        Assert.Equal("headset", rig.Hardware.Open.Speaker);
 
-        rig.Devices.Present.Remove("headset");
-        rig.Devices.RaiseChanged();
+        rig.Hardware.Present.Remove("headset");
+        rig.Hardware.RaiseChanged();
         rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
-        Assert.Equal(1, rig.Devices.Counts.Speakers);
+        Assert.Equal(1, rig.Hardware.Counts.Speakers);
         rig.Time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal(("speaker-default", 1), (rig.Devices.Open.Speaker, rig.Devices.Counts.SpeakersOpen));
+        Assert.Equal(("speaker-default", 1), (rig.Hardware.Open.Speaker, rig.Hardware.Counts.SpeakersOpen));
         Assert.Equal([Strings.Audio_SpeakerLost], rig.Notices);
 
-        var before = rig.Devices.Counts;
+        var before = rig.Hardware.Counts;
         rig.Change(); // something else changed: nothing reopens, no second notice
-        Assert.Equal(before, rig.Devices.Counts);
-        Assert.Equal("speaker-default", rig.Devices.Open.Speaker);
+        Assert.Equal(before, rig.Hardware.Counts);
+        Assert.Equal("speaker-default", rig.Hardware.Open.Speaker);
         Assert.Single(rig.Notices);
 
-        rig.Devices.Present.Add("headset");
+        rig.Hardware.Present.Add("headset", AudioDirection.Output);
         rig.Change();
-        Assert.Equal(("headset", 1), (rig.Devices.Open.Speaker, rig.Devices.Counts.SpeakersOpen));
+        Assert.Equal(("headset", 1), (rig.Hardware.Open.Speaker, rig.Hardware.Counts.SpeakersOpen));
         Assert.Single(rig.Notices);
     }
 

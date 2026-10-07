@@ -1,9 +1,6 @@
 using OVS.Client.Localization;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using NAudio.CoreAudioApi;
-using NAudio.Wave;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Devices;
@@ -38,7 +35,7 @@ public sealed class AudioEngine : IDisposable
     readonly object gate = new(); // the devices and settings
     readonly object threadGate = new(); // the playback thread's start and end; never held while taking gate
     readonly KeyPoller keys;
-    readonly IAudioDeviceFactory? devices;
+    readonly IAudioHardware? hardware;
     readonly ITimer? settle; // Package 137: the reopen after device changes, once they have been quiet
     readonly Action<string>? log;
     bool noiseSuppressorMissing; // logged once, then no further tries
@@ -54,8 +51,7 @@ public sealed class AudioEngine : IDisposable
     ClientSettings settings = new();
     ClientSettings? live; // the settings page's values until the next Configure
     CapturePipeline? capture;
-    IDisposable? output;
-    volatile BufferedWaveProvider? playback;
+    volatile PlaybackBuffer? playback; // the open speaker
     readonly SpeakerReports speakerReports = new();
     byte? lastTarget;
     int levelCounter;
@@ -66,26 +62,26 @@ public sealed class AudioEngine : IDisposable
 
     /// <param name="time">Package 135: the clock of the loss adapter (tests pass a manual one).</param>
     /// <param name="log">A line for the client log (Package 123: when noise suppression cannot load).</param>
-    /// <param name="devices">Package 124: where microphone and speaker come from; the real ones by default (tests pass fakes).</param>
-    public AudioEngine(KeyPoller keys, TimeProvider time, bool useDevices = true, Action<string>? log = null, IAudioDeviceFactory? devices = null)
+    /// <param name="hardware">Package 124: where microphone and speaker come from; null runs without them (--no-audio, tests).</param>
+    public AudioEngine(KeyPoller keys, TimeProvider time, IAudioHardware? hardware, Action<string>? log = null)
     {
         this.keys = keys;
         this.time = time;
         Loss = new LossAdapter(this.time, ProtocolDefaults.Bitrate);
-        this.devices = devices ?? (useDevices ? WasapiDevices.Instance : null);
+        this.hardware = hardware;
         this.log = log;
         keys.Changed += OnKeysChanged;
-        if (this.devices is null) return;
+        if (hardware is null) return;
         settle = this.time.CreateTimer(_ => ReopenAfterChange(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        this.devices.Changed += OnDeviceChanged;
-        this.devices.Failed += OnDeviceFailed;
+        hardware.Changed += OnDeviceChanged;
+        hardware.Failed += OnDeviceFailed;
     }
 
     /// <summary>
-    /// Whether the microphone and speaker are the system's (false with --no-audio, and with the fake devices of the tests):
-    /// only then is there a device list to load and a device restart that takes long.
+    /// Whether it runs on a microphone and a speaker (false with --no-audio and in most tests): only then is there a
+    /// device list to load and a device restart that may take long.
     /// </summary>
-    public bool UsesSystemDevices => devices is WasapiDevices;
+    public bool OpensDevices => hardware is not null;
 
     /// <summary>
     /// Package 137: what one direction opened last, so a device change reopens it only when another device would open
@@ -123,9 +119,9 @@ public sealed class AudioEngine : IDisposable
     }
 
     /// <summary>Package 137: an open device's stream broke; on its own thread, so it only marks it and arms the timer.</summary>
-    void OnDeviceFailed(DataFlow flow, Exception error)
+    void OnDeviceFailed(AudioDirection direction, Exception error)
     {
-        Volatile.Write(ref (flow == DataFlow.Capture ? mic : speaker).StreamError, error);
+        Volatile.Write(ref (direction == AudioDirection.Input ? mic : speaker).StreamError, error);
         OnDeviceChanged();
     }
 
@@ -144,8 +140,8 @@ public sealed class AudioEngine : IDisposable
             deviceReopen = true;
             try
             {
-                ReopenIfDue(mic, DataFlow.Capture, settings.InputDeviceId, ToneHz is null && micWanted, capture is not null, ReopenCapture, Strings.Audio_MicFailed, warnings);
-                ReopenIfDue(speaker, DataFlow.Render, settings.OutputDeviceId, output is not null || PlaybackRunning, output is not null, ReopenOutput, Strings.Audio_SpeakerFailed, warnings);
+                ReopenIfDue(mic, AudioDirection.Input, settings.InputDeviceId, ToneHz is null && micWanted, capture is not null, ReopenCapture, Strings.Audio_MicFailed, warnings);
+                ReopenIfDue(speaker, AudioDirection.Output, settings.OutputDeviceId, playback is not null || PlaybackRunning, playback is not null, ReopenOutput, Strings.Audio_SpeakerFailed, warnings);
             }
             finally
             {
@@ -156,13 +152,13 @@ public sealed class AudioEngine : IDisposable
     }
 
     /// <summary>Package 137: one direction after a device change; a failure becomes a notice in its own words. Under gate.</summary>
-    void ReopenIfDue(Endpoint endpoint, DataFlow flow, string? chosen, bool needed, bool open, Action<List<string>> reopen, string failedText, List<string> warnings)
+    void ReopenIfDue(Endpoint endpoint, AudioDirection direction, string? chosen, bool needed, bool open, Action<List<string>> reopen, string failedText, List<string> warnings)
     {
         var error = Interlocked.Exchange(ref endpoint.StreamError, null);
-        if (!needed || devices is null) return;
+        if (!needed || hardware is null) return;
         try
         {
-            if (devices.Resolve(chosen, flow) == endpoint.Id)
+            if (hardware.FindCurrentDeviceId(chosen, direction) == endpoint.Id)
             {
                 if (open && error is null) return; // an unrelated change: the device in use stays as it is
                 if (error is not null) endpoint.Failures = time.GetElapsedTime(endpoint.OpenedAt) < StableAfter ? endpoint.Failures + 1 : 1;
@@ -198,9 +194,9 @@ public sealed class AudioEngine : IDisposable
     }
 
     /// <summary>Package 137: what a direction opens now; another device than last time starts its failure count anew. Under gate.</summary>
-    void Opening(Endpoint endpoint, string? chosen, DataFlow flow)
+    void Opening(Endpoint endpoint, string? chosen, AudioDirection direction)
     {
-        var id = devices!.Resolve(chosen, flow);
+        var id = hardware!.FindCurrentDeviceId(chosen, direction);
         if (id != endpoint.Id) endpoint.Failures = 0;
         endpoint.Id = id;
         endpoint.OpenedAt = time.GetTimestamp();
@@ -424,7 +420,7 @@ public sealed class AudioEngine : IDisposable
             keys.ReleaseDelay = TimeSpan.FromMilliseconds(settings.PttReleaseDelayMs); // Package 130
             mic.Failures = speaker.Failures = 0; // Package 137: saving tries a given-up device again
             var warnings = new List<string>();
-            bool speakerOpen = output is not null || PlaybackRunning;
+            bool speakerOpen = playback is not null || PlaybackRunning;
             StopDevices();
             SyncCapture(warnings);
             if (speakerOpen) StartOutput(warnings); // a device changed while connected takes effect at once
@@ -433,7 +429,7 @@ public sealed class AudioEngine : IDisposable
     }
 
     /// <summary>
-    /// Package 137: the factory's fallback warning as it reaches the user. After a device change it names the device
+    /// Package 137: the hardware's fallback warning as it reaches the user. After a device change it names the device
     /// that went missing, once until that device is back; any other open warns as before. Under gate.
     /// </summary>
     void Report(List<string> opened, Endpoint endpoint, string lost, List<string> warnings)
@@ -470,7 +466,7 @@ public sealed class AudioEngine : IDisposable
             if (micWanted == MicNeeded) return;
             micWanted = MicNeeded;
         }
-        if (devices is null) return; // the test tone needs no device and runs as long as it is set
+        if (hardware is null) return; // the test tone needs no device and runs as long as it is set
         ThreadPool.QueueUserWorkItem(_ =>
         {
             var warnings = new List<string>();
@@ -490,7 +486,7 @@ public sealed class AudioEngine : IDisposable
     void SyncCapture(List<string> warnings)
     {
         if (!running) return; // an open queued before Dispose comes too late
-        bool needed = ToneHz is not null || (micWanted && devices is not null);
+        bool needed = ToneHz is not null || (micWanted && hardware is not null);
         if (needed && capture is null) StartCapture(warnings);
         else if (!needed && capture is not null)
         {
@@ -505,8 +501,8 @@ public sealed class AudioEngine : IDisposable
         bool device = ToneHz is null; // Package 137: the test tone leaves the microphone's state alone
         try
         {
-            if (device) Opening(mic, settings.InputDeviceId, DataFlow.Capture);
-            capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : devices?.OpenCapture(settings.InputDeviceId, opened);
+            if (device) Opening(mic, settings.InputDeviceId, AudioDirection.Input);
+            capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(settings.InputDeviceId, opened);
             if (capture is null) return;
             var values = live ?? settings;
             capture.Gain = values.InputGain;
@@ -525,7 +521,7 @@ public sealed class AudioEngine : IDisposable
             capture.Level += OnLevel;
             capture.Start();
         }
-        catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException or NotSupportedException)
+        catch (Exception e) // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
         {
             capture?.Dispose();
             capture = null;
@@ -569,14 +565,14 @@ public sealed class AudioEngine : IDisposable
     /// <summary>Under gate.</summary>
     void StartOutput(List<string> warnings)
     {
-        if (devices is null || output is not null || !running) return;
+        if (hardware is null || playback is not null || !running) return;
         var opened = new List<string>();
         try
         {
-            Opening(speaker, settings.OutputDeviceId, DataFlow.Render);
-            (playback, output) = devices.OpenOutput(settings.OutputDeviceId, opened);
+            Opening(speaker, settings.OutputDeviceId, AudioDirection.Output);
+            playback = hardware.OpenOutput(settings.OutputDeviceId, opened);
         }
-        catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException)
+        catch (Exception e) // a device that cannot open throws (IAudioHardware)
         {
             warnings.Add(string.Format(Strings.Audio_SpeakerFailed, e.Message));
             speaker.Failures++;
@@ -764,9 +760,9 @@ public sealed class AudioEngine : IDisposable
 
     void CloseOutput()
     {
+        var open = playback;
         playback = null;
-        output?.Dispose();
-        output = null;
+        open?.Dispose();
     }
 
     void StopDevices()
@@ -780,10 +776,10 @@ public sealed class AudioEngine : IDisposable
     public void Dispose()
     {
         keys.Changed -= OnKeysChanged;
-        if (devices is not null)
+        if (hardware is not null)
         {
-            devices.Changed -= OnDeviceChanged; // Package 137: Windows stops notifying
-            devices.Failed -= OnDeviceFailed;
+            hardware.Changed -= OnDeviceChanged; // Package 137: Windows stops notifying
+            hardware.Failed -= OnDeviceFailed;
         }
         settle?.Dispose();
         lock (gate) running = false; // a microphone open still queued finds the engine gone (SyncCapture)

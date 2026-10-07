@@ -49,7 +49,8 @@ public sealed class DebugApiTests : IAsyncLifetime
             probe.Start();
             i.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
             probe.Stop();
-            i.api = new DebugApi(i.vm, i.Port, work => i.ui.InvokeAsync(work));
+            // the debug API lists the system's devices while the view model runs without any, as with --no-audio
+            i.api = new DebugApi(i.vm, i.Port, work => i.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
             i.Http = new HttpClient { BaseAddress = new Uri($"http://localhost:{i.Port}/") };
             i.Http.DefaultRequestHeaders.Add(DebugApi.Header, "1");
             return i;
@@ -133,11 +134,11 @@ public sealed class DebugApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Devices_AreListed()
+    public async Task Devices_ViewModelWithoutAudio_ListsTheHardwaresDevices()
     {
         var devices = JsonDocument.Parse(await anna.Http.GetStringAsync("devices")).RootElement;
-        Assert.Equal(JsonValueKind.Array, devices.GetProperty("inputs").ValueKind);
-        Assert.Equal(JsonValueKind.Array, devices.GetProperty("outputs").ValueKind);
+        Assert.Equal("mic-1", devices.GetProperty("inputs").EnumerateArray().Single().GetProperty("id").GetString());
+        Assert.Equal("Speakers", devices.GetProperty("outputs").EnumerateArray().Single().GetProperty("name").GetString());
     }
 
     [Fact]

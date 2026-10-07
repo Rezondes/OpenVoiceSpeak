@@ -1,4 +1,5 @@
 using OVS.Client.Audio;
+using OVS.Client.Audio.Devices;
 using OVS.Client.Input;
 using OVS.Client.Settings;
 using OVS.Tests.Client.Audio.Transmit;
@@ -11,17 +12,17 @@ namespace OVS.Tests.TestSupport;
 /// </summary>
 internal sealed class DeviceRig : IDisposable
 {
-    public readonly FakeAudioDevices Devices = new();
+    public readonly FakeAudioHardware Hardware = new();
     public readonly ManualTimeProvider Time = new();
     public readonly KeyPoller Keys;
     public readonly AudioEngine Engine;
     readonly List<string> notices = [];
 
-    public DeviceRig(ClientSettings settings, params string[] present)
+    public DeviceRig(ClientSettings settings, params (string Id, AudioDirection Direction)[] present)
     {
-        Devices.Present.UnionWith(present);
+        foreach (var (id, direction) in present) Hardware.Present.Add(id, direction);
         Keys = new KeyPoller(Time);
-        Engine = new AudioEngine(Keys, Time, useDevices: false, devices: Devices);
+        Engine = new AudioEngine(Keys, Time, hardware: Hardware);
         Engine.Warning += text =>
         {
             lock (notices) notices.Add(text);
@@ -38,14 +39,14 @@ internal sealed class DeviceRig : IDisposable
     public async Task ConnectAsync()
     {
         Engine.Connected = true;
-        await SendPathTests.Until(() => Devices.Counts is { MicsOpen: 1, SpeakersOpen: 1 });
-        Assert.Equal((1, 1, 1, 1), Devices.Counts);
+        await SendPathTests.Until(() => Hardware.Counts is { MicsOpen: 1, SpeakersOpen: 1 });
+        Assert.Equal((1, 1, 1, 1), Hardware.Counts);
     }
 
     /// <summary>A device change, and the quiet time after it runs out.</summary>
     public void Change()
     {
-        Devices.RaiseChanged();
+        Hardware.RaiseChanged();
         Time.Advance(AudioEngine.DeviceSettle);
     }
 

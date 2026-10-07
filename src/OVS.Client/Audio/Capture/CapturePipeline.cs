@@ -34,7 +34,7 @@ public sealed class CapturePipeline : IDisposable
     CapturePipeline() { }
 
     /// <param name="failed">Package 137: the device stopped with an error (unplugged, invalidated); any thread, must not block.</param>
-    public static CapturePipeline FromDevice(MMDevice? device, Action<Exception>? failed = null)
+    internal static CapturePipeline FromDevice(MMDevice? device, Action<Exception>? failed = null)
     {
         var pipeline = new CapturePipeline();
         // Event driven with a 20 ms buffer: the default polls a 100 ms buffer and adds up to 50 ms latency.
@@ -59,7 +59,7 @@ public sealed class CapturePipeline : IDisposable
     /// <summary>Package 142: the music encoder once music was sent (tests see it is one and the same).</summary>
     internal VoiceEncoder? MusicEncoder => musicEncoder;
 
-    /// <summary>Package 124: a pipeline fed by hand (tests), e.g. what a fake device factory hands out.</summary>
+    /// <summary>Package 124: a pipeline fed by hand (tests), e.g. what a fake audio hardware hands out.</summary>
     internal static CapturePipeline Manual() => new();
 
     /// <summary>Synthetic microphone for tests and the debug API: a steady sine, one frame every 20 ms.</summary>

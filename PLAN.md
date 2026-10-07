@@ -1766,7 +1766,7 @@ Die manuellen Ende-zu-Ende-Checks brauchen sonst zwei Rechner, Headsets und echt
 
 ### Tests (TDD)
 
-`DebugApiTests.cs`: `"MissingHeader_Forbidden"` (AC1), `"Devices_AreListed"`, `"UnknownChannel_IsBadRequest"`, `"FullFlow_Linking_PttAndLinkPtt"` (AC2 bis AC4), `"DeafenedClient_HearsNothing_UntilUndeafened"` (AC4), `"AdminActions_ThroughApi"` (AC5). AC6 ist durch die zwei getrennten Profile in jedem dieser Tests abgedeckt.
+`DebugApiTests.cs`: `"MissingHeader_Forbidden"` (AC1), `"Devices_ViewModelWithoutAudio_ListsTheHardwaresDevices"`, `"UnknownChannel_IsBadRequest"`, `"FullFlow_Linking_PttAndLinkPtt"` (AC2 bis AC4), `"DeafenedClient_HearsNothing_UntilUndeafened"` (AC4), `"AdminActions_ThroughApi"` (AC5). AC6 ist durch die zwei getrennten Profile in jedem dieser Tests abgedeckt.
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~DebugApiTests"`
 
@@ -3508,15 +3508,15 @@ Dieselbe Funktion steckt in `AudioDevices.Open`, das `AudioEngine.Configure` bei
 Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
 
 1. `MainViewModelTests > "OpenSettings_DoesNotWaitForDeviceList"` (AC1, AC2) - Reproduktion, muss zuerst rot sein
-   - Gegeben: `DeviceSource`, das bis zur Freigabe blockiert, gespeichertes Eingabegerät "mic-2"
+   - Gegeben: `FakeAudioHardware.Listing`, das bis zur Freigabe blockiert, gespeichertes Eingabegerät "mic-2"
    - Erwartet: `OpenSettings` kehrt in unter 100 ms zurück, `Page` ist Settings, das Eingabefeld zeigt den Platzhalter, kein `DeviceHint`. Nach der Freigabe enthält `Inputs` die Geräte, "mic-2" ist ausgewählt.
 2. `SettingsTests > "Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice"` (AC2, AC3)
    - Gegeben: `SettingsViewModel` ohne Liste, der Nutzer wählt "Standard", danach `ShowDevices` ohne das gespeicherte Gerät
    - Erwartet: Auswahl "Standard" bleibt. Ohne Nutzerauswahl erscheint der Hinweis "Gerät fehlt" erst nach `ShowDevices`.
 3. `MainViewModelTests > "OpenSettings_DoesNotWaitForDeviceList"` (AC4)
-   - Gegeben: erstes Öffnen mit Liste A geladen, zweites Öffnen mit blockierendem `DeviceSource`
+   - Gegeben: erstes Öffnen mit Liste A geladen, zweites Öffnen mit blockierendem `FakeAudioHardware.Listing`
    - Erwartet: Liste A ist sofort da, nach der Freigabe die neue Liste
-4. Bestehende Tests zu `AudioDevices.Resolve` bleiben grün, `Open` nutzt dieselbe Entscheidung über die ID (AC5)
+4. Bestehende Tests zu `SettingsViewModel.Resolve` bleiben grün, `Open` nutzt dieselbe Entscheidung über die ID (AC5)
 5. Manueller Check AC6 mit dem Messprogramm und am echten Client
 
 Testbefehl: `dotnet test`
@@ -7401,7 +7401,7 @@ The UI itself is already idle: no looping animation runs without its state (A117
 
 ### Tests (TDD)
 
-1. `MainViewModelTests > "AudioDevices_OpenOnlyWhenNeeded"` (AC1): a fake device factory counts open and close through start, connect, self test, settings page and disconnect.
+1. `MainViewModelTests > "Devices_WhileNeeded_OpenAndCloseAgain"` (AC1): a fake device factory counts open and close through start, connect, self test, settings page and disconnect.
 2. `ReceivePathTests > "Playback_IdleDoesNotMix_WakesOnVoice"` (AC2): count `Mix` calls over 500 ms idle (0), then one voice packet is mixed within one frame.
 3. `IdleCostTests > "SteadyState_AllocatesNothing"` (AC3): `GC.GetAllocatedBytesForCurrentThread` around 100 capture frames, mixer ticks, decodes and key polls after warm-up.
 4. `ReceivePathTests > "SpeakerPause_KeepsDecoder"` (AC4)

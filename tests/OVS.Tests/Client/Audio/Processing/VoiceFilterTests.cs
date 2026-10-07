@@ -357,7 +357,7 @@ public class VoiceFilterTests
 
         var log = new List<string>();
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false, log: line =>
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null, log: line =>
         {
             lock (log) log.Add(line);
         }) { NoiseLibrary = "ovs-no-such-rnnoise" };
@@ -469,7 +469,7 @@ public class VoiceFilterTests
     public void EchoCanceller_FedFromSpeakerMix_OnlyWhenOn()
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        using (var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false))
+        using (var engine = new AudioEngine(keys, TimeProvider.System, hardware: null))
         {
             engine.Configure(new ClientSettings());
             engine.SetTone(440);
@@ -485,7 +485,7 @@ public class VoiceFilterTests
             Assert.Equal(3, canceller.RenderedFrames);
         }
 
-        using var missing = new AudioEngine(keys, TimeProvider.System, useDevices: false) { EchoLibrary = "ovs-no-such-aec" };
+        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null) { EchoLibrary = "ovs-no-such-aec" };
         missing.Configure(new ClientSettings());
         missing.SetTone(440);
         Assert.Null(missing.Capture!.Canceller);

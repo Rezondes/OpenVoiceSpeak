@@ -1002,14 +1002,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var gate = new ManualResetEventSlim();
         var settings = new ClientSettings { InputDeviceId = "mic-2" };
         settings.Save(dir);
-        var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post)));
-        main.DeviceSource = flow =>
+        var hardware = new FakeAudioHardware
         {
-            gate.Wait(TimeSpan.FromSeconds(10));
-            return flow == NAudio.CoreAudioApi.DataFlow.Capture
-                ? [new AudioDevice("mic-1", "Headset"), new AudioDevice("mic-2", "XLR Mic")]
-                : [new AudioDevice("out-1", "Kopfhörer")];
+            Listing = direction =>
+            {
+                gate.Wait(TimeSpan.FromSeconds(10));
+                return direction == AudioDirection.Input
+                    ? [new AudioDevice("mic-1", "Headset"), new AudioDevice("mic-2", "XLR Mic")]
+                    : [new AudioDevice("out-1", "Kopfhörer")];
+            },
         };
+        hardware.Present.Add("mic-2", AudioDirection.Input); // the saved microphone is plugged in, as the list says
+        var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, hardware: hardware)));
 
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var (page, inputs, hint) = await OnUi(() =>
@@ -1272,7 +1276,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public void Deafened_Engine_IgnoresIncomingVoice()
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Deafened = true };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Deafened = true };
         engine.OnVoice(7, 0, 0, new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]));
         Assert.Empty(engine.FramesReceived);
         Assert.Equal(0, engine.Mixer.SpeakerCount);
@@ -1300,7 +1304,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task ToneInput_ReportsInputLevel()
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         var level = new TaskCompletionSource<float>();
         engine.InputLevel += db => level.TrySetResult(db);
         engine.SetTone(440);
@@ -1533,15 +1537,15 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task AudioEngine_DisposedWhileMicOpening_StaysClosed()
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        var devices = new FakeAudioDevices();
+        var hardware = new FakeAudioHardware();
         for (int i = 0; i < 50; i++)
         {
-            var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false, devices: devices);
+            var engine = new AudioEngine(keys, TimeProvider.System, hardware: hardware);
             engine.LevelMeter = true;
             engine.Dispose();
         }
         await Task.Delay(500); // the queued opens have run by now
-        Assert.Equal(0, devices.Counts.MicsOpen);
+        Assert.Equal(0, hardware.Counts.MicsOpen);
     }
 
     /// <summary>
@@ -1552,7 +1556,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task AudioEngine_LiveSettingsBeforeMicOpen_Applied()
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false, devices: new FakeAudioDevices());
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: new FakeAudioHardware());
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, VadThresholdDb = -25, NoiseSuppression = false, AutoGain = true });
         engine.LevelMeter = true;
         var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -1570,11 +1574,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// changed in the settings while connected is switched at once.
     /// </summary>
     [Fact]
-    public async Task AudioDevices_OpenOnlyWhenNeeded()
+    public async Task Devices_WhileNeeded_OpenAndCloseAgain()
     {
-        var devices = new FakeAudioDevices();
+        var hardware = new FakeAudioHardware();
         var own = Directory.CreateTempSubdirectory("ovs-devices-").FullName;
-        var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(own, ui.Post, keyState: keys.IsDown, audioDevices: devices, trustServers: true)));
+        var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(own, ui.Post, keyState: keys.IsDown, hardware: hardware, trustServers: true)));
         Task Do(Func<Task> work) => ui.InvokeAsync<object?>(async () =>
         {
             await work();
@@ -1586,7 +1590,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             var watch = System.Diagnostics.Stopwatch.StartNew();
             while (true)
             {
-                var (mics, micsOpen, speakers, speakersOpen) = devices.Counts;
+                var (mics, micsOpen, speakers, speakersOpen) = hardware.Counts;
                 var now = (mics, micsOpen, speakers, speakersOpen, main.Audio.PlaybackRunning);
                 if (now == expected || watch.ElapsedMilliseconds > 10_000) return now;
                 await Task.Delay(20);
@@ -1619,7 +1623,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             Assert.Equal((3, 1, 2, 1, true), await Settled((3, 1, 2, 1, true)));
             await Do(() => main.ApplySettingsAsync(new ClientSettings { InputDeviceId = "mic-2" }));
             Assert.Equal((4, 1, 3, 1, true), await Settled((4, 1, 3, 1, true)));
-            Assert.Equal("mic-2", devices.LastMicId);
+            Assert.Equal("mic-2", hardware.LastMicId);
 
             await Do(main.DisconnectAsync);
             Assert.Equal((4, 0, 3, 0, false), await Settled((4, 0, 3, 0, false)));

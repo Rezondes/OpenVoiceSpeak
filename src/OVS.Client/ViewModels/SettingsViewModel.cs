@@ -231,9 +231,15 @@ public sealed partial class SettingsViewModel : ObservableObject
             return (options, options[^1], false);
         }
         options.AddRange(devices.Select(d => new AudioDeviceOption(d.Id, d.Name)));
-        var (id, fellBack) = AudioDevices.Resolve(wanted, devices);
+        var (id, fellBack) = Resolve(wanted, devices);
         return (options, options.First(o => o.Id == id), fellBack);
     }
+
+    /// <summary>Saved device id, or null (= default device) if it is gone. FellBack tells the UI to show a hint.</summary>
+    static (string? Id, bool FellBack) Resolve(string? wanted, IReadOnlyList<AudioDevice> available) =>
+        wanted is null ? (null, false)
+        : available.Any(d => d.Id == wanted) ? (wanted, false)
+        : (null, true);
 
     /// <summary>The loaded list: a device the user picked meanwhile stays, otherwise the saved one is looked up.</summary>
     public void ShowDevices(IReadOnlyList<AudioDevice> inputDevices, IReadOnlyList<AudioDevice> outputDevices)

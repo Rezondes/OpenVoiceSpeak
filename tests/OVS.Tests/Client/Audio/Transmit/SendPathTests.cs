@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
-using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Capture;
@@ -55,7 +54,7 @@ public class SendPathTests
     public async Task PttKey_BelowThreshold_SendsOnlyInPttMode(TransmitMode mode, bool expectFrames)
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: a real key pressed while the tests run does not count
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f, VadAutomatic = false }); // test tone is -13.5 dBFS: below
         engine.SetTone(440);
         keys.Simulate(ptt: true);
@@ -77,7 +76,7 @@ public class SendPathTests
     public async Task PushToMute_Held_SendsNothing(TransmitMode mode)
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -40f }); // tone at -13.5 dBFS: well above
         keys.Simulate(KeyAction.PushToMute, true);
         keys.Simulate(ptt: true);
@@ -97,7 +96,7 @@ public class SendPathTests
     public async Task ChannelMuted_SendsNothing()
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
         engine.SetTone(440);
         await CaptureRunning(engine);
@@ -137,7 +136,7 @@ public class SendPathTests
                     new KeyBinding(KeyAction.PushToMute, new KeyChord(Mute)),
                 ],
             };
-            Engine = new AudioEngine(Keys, Time, useDevices: false) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
+            Engine = new AudioEngine(Keys, Time, hardware: null) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
             Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
             Pipeline.DecideTarget = Engine.Decide;
             Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
@@ -749,7 +748,7 @@ public class SendPathTests
     /// <summary>A tone engine without devices; the playback clock still mixes, so LastOutputLevelDb shows what would be heard.</summary>
     static AudioEngine ToneEngine(KeyPoller keys, ClientSettings settings)
     {
-        var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
+        var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(settings);
         engine.SetTone(440); // 0.3 amplitude: -13.5 dBFS
         return engine;
@@ -1000,32 +999,32 @@ public class SendPathTests
     [Fact]
     public async Task ChosenMicRemoved_FallsBack_Returns()
     {
-        using var rig = new DeviceRig(new ClientSettings { InputDeviceId = "headset" }, "headset");
+        using var rig = new DeviceRig(new ClientSettings { InputDeviceId = "headset" }, ("headset", AudioDirection.Input));
         await rig.ConnectAsync();
-        Assert.Equal("headset", rig.Devices.Open.Mic);
+        Assert.Equal("headset", rig.Hardware.Open.Mic);
 
-        rig.Devices.Present.Remove("headset");
-        rig.Devices.RaiseChanged();
+        rig.Hardware.Present.Remove("headset");
+        rig.Hardware.RaiseChanged();
         rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
-        Assert.Equal(1, rig.Devices.Counts.Mics); // still quiet: nothing yet
+        Assert.Equal(1, rig.Hardware.Counts.Mics); // still quiet: nothing yet
         rig.Time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal(("mic-default", 1), (rig.Devices.Open.Mic, rig.Devices.Counts.MicsOpen));
+        Assert.Equal(("mic-default", 1), (rig.Hardware.Open.Mic, rig.Hardware.Counts.MicsOpen));
         Assert.Equal([Strings.Audio_MicLost], rig.Notices);
         Assert.True(AudioEngine.DeviceSettle < TimeSpan.FromSeconds(1));
 
-        var before = rig.Devices.Counts;
+        var before = rig.Hardware.Counts;
         rig.Change(); // something else changed: nothing reopens, no second notice
-        Assert.Equal(before, rig.Devices.Counts);
-        Assert.Equal("mic-default", rig.Devices.Open.Mic);
+        Assert.Equal(before, rig.Hardware.Counts);
+        Assert.Equal("mic-default", rig.Hardware.Open.Mic);
         Assert.Single(rig.Notices);
 
-        rig.Devices.Present.Add("headset");
+        rig.Hardware.Present.Add("headset", AudioDirection.Input);
         rig.Change();
-        Assert.Equal(("headset", 1), (rig.Devices.Open.Mic, rig.Devices.Counts.MicsOpen));
+        Assert.Equal(("headset", 1), (rig.Hardware.Open.Mic, rig.Hardware.Counts.MicsOpen));
         Assert.Single(rig.Notices);
         Assert.NotNull(rig.Engine.Capture);
 
-        rig.Devices.Present.Remove("headset"); // gone again: a notice again
+        rig.Hardware.Present.Remove("headset"); // gone again: a notice again
         rig.Change();
         Assert.Equal([Strings.Audio_MicLost, Strings.Audio_MicLost], rig.Notices);
     }
@@ -1039,20 +1038,20 @@ public class SendPathTests
     {
         using var rig = new DeviceRig(new ClientSettings());
         await rig.ConnectAsync();
-        Assert.Equal(("mic-default", "speaker-default"), rig.Devices.Open);
+        Assert.Equal(("mic-default", "speaker-default"), rig.Hardware.Open);
 
         rig.Change();
-        Assert.Equal((1, 1, 1, 1), rig.Devices.Counts);
+        Assert.Equal((1, 1, 1, 1), rig.Hardware.Counts);
 
-        rig.Devices.DefaultMic = "usb-mic";
+        rig.Hardware.DefaultMic = "usb-mic";
         rig.Change();
-        Assert.Equal(("usb-mic", "speaker-default"), rig.Devices.Open);
-        Assert.Equal((2, 1, 1, 1), rig.Devices.Counts); // only the microphone
+        Assert.Equal(("usb-mic", "speaker-default"), rig.Hardware.Open);
+        Assert.Equal((2, 1, 1, 1), rig.Hardware.Counts); // only the microphone
 
-        rig.Devices.DefaultSpeaker = "usb-speaker";
+        rig.Hardware.DefaultSpeaker = "usb-speaker";
         rig.Change();
-        Assert.Equal(("usb-mic", "usb-speaker"), rig.Devices.Open);
-        Assert.Equal((2, 1, 2, 1), rig.Devices.Counts); // only the speaker
+        Assert.Equal(("usb-mic", "usb-speaker"), rig.Hardware.Open);
+        Assert.Equal((2, 1, 2, 1), rig.Hardware.Counts); // only the speaker
         Assert.Empty(rig.Notices); // nothing chosen went missing
     }
 
@@ -1067,29 +1066,29 @@ public class SendPathTests
         using var rig = new DeviceRig(new ClientSettings());
         await rig.ConnectAsync();
 
-        rig.Devices.RaiseFailed(DataFlow.Render);
+        rig.Hardware.RaiseFailed(AudioDirection.Output);
         rig.Time.Advance(AudioEngine.DeviceSettle);
-        Assert.Equal((1, 1, 2, 1), rig.Devices.Counts); // only the speaker, on the same device
-        Assert.Equal("speaker-default", rig.Devices.Open.Speaker);
+        Assert.Equal((1, 1, 2, 1), rig.Hardware.Counts); // only the speaker, on the same device
+        Assert.Equal("speaker-default", rig.Hardware.Open.Speaker);
 
-        rig.Devices.RaiseFailed(DataFlow.Capture);
+        rig.Hardware.RaiseFailed(AudioDirection.Input);
         rig.Time.Advance(AudioEngine.DeviceSettle);
-        rig.Devices.RaiseFailed(DataFlow.Capture);
+        rig.Hardware.RaiseFailed(AudioDirection.Input);
         rig.Time.Advance(AudioEngine.DeviceSettle);
-        Assert.Equal((3, 1, 2, 1), rig.Devices.Counts);
+        Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
         Assert.Empty(rig.Notices);
 
-        rig.Devices.RaiseFailed(DataFlow.Capture); // the third failure in a row: given up
+        rig.Hardware.RaiseFailed(AudioDirection.Input); // the third failure in a row: given up
         rig.Time.Advance(AudioEngine.DeviceSettle);
-        Assert.Equal((3, 1, 2, 1), rig.Devices.Counts);
+        Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
         Assert.Equal([string.Format(Strings.Audio_MicFailed, "device invalidated")], rig.Notices);
         rig.Change();
         rig.Time.Advance(TimeSpan.FromSeconds(30));
-        Assert.Equal((3, 1, 2, 1), rig.Devices.Counts);
+        Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
 
-        rig.Devices.DefaultMic = "usb-mic";
+        rig.Hardware.DefaultMic = "usb-mic";
         rig.Change();
-        Assert.Equal(("usb-mic", 4), (rig.Devices.Open.Mic, rig.Devices.Counts.Mics));
+        Assert.Equal(("usb-mic", 4), (rig.Hardware.Open.Mic, rig.Hardware.Counts.Mics));
         Assert.Single(rig.Notices);
     }
 
@@ -1100,22 +1099,38 @@ public class SendPathTests
         using var rig = new DeviceRig(new ClientSettings());
         await rig.ConnectAsync();
 
-        rig.Devices.DefaultMic = "usb-mic";
-        rig.Devices.DefaultSpeaker = "usb-speaker";
+        rig.Hardware.DefaultMic = "usb-mic";
+        rig.Hardware.DefaultSpeaker = "usb-speaker";
         for (int i = 0; i < 5; i++)
         {
-            rig.Devices.RaiseChanged();
+            rig.Hardware.RaiseChanged();
             rig.Time.Advance(TimeSpan.FromMilliseconds(500));
         }
-        rig.Devices.RaiseChanged();
-        rig.Devices.RaiseChanged();
+        rig.Hardware.RaiseChanged();
+        rig.Hardware.RaiseChanged();
         rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
-        Assert.Equal((1, 1, 1, 1), rig.Devices.Counts);
+        Assert.Equal((1, 1, 1, 1), rig.Hardware.Counts);
 
         rig.Time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal((2, 1, 2, 1), rig.Devices.Counts);
+        Assert.Equal((2, 1, 2, 1), rig.Hardware.Counts);
         rig.Time.Advance(TimeSpan.FromSeconds(5));
-        Assert.Equal((2, 1, 2, 1), rig.Devices.Counts);
+        Assert.Equal((2, 1, 2, 1), rig.Hardware.Counts);
+    }
+
+    /// <summary>Every device unplugged: microphone and speaker fail to open, the user gets a notice for each, nothing crashes.</summary>
+    [Fact]
+    public async Task Connect_EveryDeviceUnplugged_NoticeForMicAndSpeaker()
+    {
+        using var rig = new DeviceRig(new ClientSettings());
+        rig.Hardware.DefaultMic = rig.Hardware.DefaultSpeaker = null;
+
+        rig.Engine.Connected = true;
+        await Until(() => rig.Notices.Count == 2);
+
+        Assert.Equal((0, 0, 0, 0), rig.Hardware.Counts);
+        Assert.Equivalent(new[] { string.Format(Strings.Audio_MicFailed, "no microphone"), string.Format(Strings.Audio_SpeakerFailed, "no speaker") },
+            rig.Notices, strict: true);
+        Assert.Null(rig.Engine.Capture);
     }
 
     /// <summary>
@@ -1128,26 +1143,26 @@ public class SendPathTests
         var rig = new DeviceRig(new ClientSettings());
         try
         {
-            Assert.Equal(1, rig.Devices.Subscribers);
+            Assert.Equal(1, rig.Hardware.Subscribers);
             rig.Change();
-            Assert.Equal((0, 0, 0, 0), rig.Devices.Counts);
+            Assert.Equal((0, 0, 0, 0), rig.Hardware.Counts);
 
             await rig.ConnectAsync();
             rig.Engine.Connected = false;
-            await Until(() => rig.Devices.Counts.MicsOpen == 0 && !rig.Engine.PlaybackRunning);
-            Assert.Equal((1, 0, 1, 0), rig.Devices.Counts);
+            await Until(() => rig.Hardware.Counts.MicsOpen == 0 && !rig.Engine.PlaybackRunning);
+            Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
             rig.Change();
-            Assert.Equal((1, 0, 1, 0), rig.Devices.Counts);
+            Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
 
-            rig.Devices.RaiseChanged(); // pending when the engine goes away
+            rig.Hardware.RaiseChanged(); // pending when the engine goes away
         }
         finally
         {
             rig.Dispose();
         }
-        Assert.Equal(0, rig.Devices.Subscribers);
+        Assert.Equal(0, rig.Hardware.Subscribers);
         rig.Time.Advance(TimeSpan.FromSeconds(5));
-        Assert.Equal((1, 0, 1, 0), rig.Devices.Counts);
+        Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
     }
 
     /// <summary>
@@ -1448,7 +1463,7 @@ public class SendPathTests
         Assert.True(gain.Vad.LastLevelDb > -30, $"{gain.Vad.LastLevelDb} dBFS");
 
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings { Transmission = Transmission.Music });
         engine.SetTone(440);
         var canceller = engine.Capture!.Canceller!;

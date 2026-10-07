@@ -36,6 +36,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly KnownServers known;
     readonly ServerIconCache icons;
     readonly SoundLibrary sounds;
+    readonly Func<AudioDirection, List<AudioDevice>>? listDevices;
     ClientConnection? connection;
     VoiceClient? voice;
     long connectedAt; // a timestamp of Time
@@ -72,19 +73,22 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// the audio engine, the trusted fingerprints, the logo cache, the own tones and the leave timer, all on
     /// <paramref name="time"/>. The composition root (App) builds it through here.
     /// </summary>
-    /// <param name="useAudioDevices">False runs without microphone and speaker (tests, debug API with test tone).</param>
+    /// <param name="hardware">
+    /// The microphones and speakers for the engine and the settings page: the system's in the app, fakes in tests; null
+    /// runs without them (--no-audio, tests, debug API with test tone).
+    /// </param>
     /// <param name="keyState">The state of a virtual key, the keyboard by default (tests pass a fake one).</param>
-    /// <param name="devices">Where microphone and speaker come from when not the system's (tests pass fakes).</param>
     public static MainViewModel Create(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings,
-        string? settingsWarning, bool useAudioDevices, Func<int, bool>? keyState = null, IAudioDeviceFactory? devices = null)
+        string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null)
     {
         var keys = new KeyPoller(time, keyState);
         AudioEngine? audio = null;
         try
         {
-            audio = new AudioEngine(keys, time, useAudioDevices, log.Write, devices);
+            audio = new AudioEngine(keys, time, hardware, log.Write);
             return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new KnownServers(storageDir),
-                new ServerIconCache(storageDir), new SoundLibrary(storageDir, log.Write), new LeaveTimer(time, () => post), keys, audio);
+                new ServerIconCache(storageDir), new SoundLibrary(storageDir, log.Write), new LeaveTimer(time, () => post), keys, audio,
+                hardware is null ? null : hardware.ListActive);
         }
         catch
         {
@@ -99,9 +103,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <param name="settings">The settings as loaded from <paramref name="storageDir"/>.</param>
     /// <param name="settingsWarning">Why the settings file could not be read, shown as a warning notice; null when it could.</param>
     /// <param name="keys">Disposed with this view model, after <paramref name="audio"/>.</param>
-    /// <param name="audio">Disposed with this view model, after the disconnect; whether it uses the system's devices decides the device list.</param>
+    /// <param name="audio">
+    /// Disposed with this view model, after the disconnect. When it opens devices, their list loads at the start and a
+    /// device restart runs off the UI thread.
+    /// </param>
+    /// <param name="listDevices">The active devices of a direction, for the settings page; null: none, an empty list.</param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
-        KnownServers knownServers, ServerIconCache icons, SoundLibrary sounds, LeaveTimer leave, KeyPoller keys, AudioEngine audio)
+        KnownServers knownServers, ServerIconCache icons, SoundLibrary sounds, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
+        Func<AudioDirection, List<AudioDevice>>? listDevices)
     {
         this.storageDir = storageDir;
         this.post = post;
@@ -115,8 +124,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Leave = leave;
         SyncBookmarks();
 
-        DeviceSource = audio.UsesSystemDevices ? AudioDevices.List : _ => [];
-        if (audio.UsesSystemDevices) RefreshDevices();
+        this.listDevices = listDevices;
+        if (audio.OpensDevices) RefreshDevices();
         Keys = keys;
         Audio = audio;
         Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
@@ -153,19 +162,17 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         ApplySettings(Settings);
     }
 
+    (List<AudioDevice> Inputs, List<AudioDevice> Outputs)? knownDevices;
+    int deviceLoads;
+
     /// <summary>
     /// Package 52: reading a device's name takes 30 to 50 ms, with many (virtual) devices together more than half a
     /// second. So the list is loaded in the background and the settings open with the last one known.
     /// </summary>
-    public Func<NAudio.CoreAudioApi.DataFlow, List<AudioDevice>> DeviceSource { get; set; }
-    (List<AudioDevice> Inputs, List<AudioDevice> Outputs)? knownDevices;
-    int deviceLoads;
-
     void RefreshDevices()
     {
-        var source = DeviceSource;
         int load = ++deviceLoads;
-        Task.Run(() => (source(NAudio.CoreAudioApi.DataFlow.Capture), source(NAudio.CoreAudioApi.DataFlow.Render)))
+        Task.Run(() => (listDevices?.Invoke(AudioDirection.Input) ?? [], listDevices?.Invoke(AudioDirection.Output) ?? []))
             .ContinueWith(t => post(() =>
             {
                 if (load != deviceLoads) return; // a newer list is on its way
@@ -219,7 +226,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task ApplySettingsAsync(ClientSettings settings)
     {
         var configure = Prepare(settings);
-        Applied(Audio.UsesSystemDevices ? await Task.Run(configure) : configure());
+        Applied(Audio.OpensDevices ? await Task.Run(configure) : configure());
     }
 
     /// <summary>Everything but the audio devices; returns their restart.</summary>

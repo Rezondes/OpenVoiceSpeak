@@ -1,5 +1,4 @@
 using System.Net;
-using NAudio.CoreAudioApi;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
@@ -54,13 +53,16 @@ public sealed class DebugApi : IDisposable
     readonly HttpListener listener = new();
     readonly MainViewModel vm;
     readonly Func<Func<Task<object?>>, Task<object?>> onUi;
+    readonly Func<AudioDirection, List<AudioDevice>> listDevices;
     readonly Task loop;
 
     /// <param name="onUi">Runs a function on the UI thread; every view model access goes through it.</param>
-    public DebugApi(MainViewModel vm, int port, Func<Func<Task<object?>>, Task<object?>> onUi)
+    /// <param name="listDevices">The system's active devices of a direction, which /devices lists (also when the client runs without them).</param>
+    public DebugApi(MainViewModel vm, int port, Func<Func<Task<object?>>, Task<object?>> onUi, Func<AudioDirection, List<AudioDevice>> listDevices)
     {
         this.vm = vm;
         this.onUi = onUi;
+        this.listDevices = listDevices;
         listener.Prefixes.Add($"http://localhost:{port}/");
         listener.Start();
         loop = Task.Run(LoopAsync);
@@ -131,7 +133,7 @@ public sealed class DebugApi : IDisposable
     {
         if (method == "GET" && path == "/state") return State();
         if (method == "GET" && path == "/devices")
-            return new { Inputs = AudioDevices.List(DataFlow.Capture), Outputs = AudioDevices.List(DataFlow.Render) };
+            return new { Inputs = listDevices(AudioDirection.Input), Outputs = listDevices(AudioDirection.Output) };
         if (method != "POST") throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
 
         switch (path)

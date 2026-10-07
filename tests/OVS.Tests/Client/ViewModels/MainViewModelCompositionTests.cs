@@ -23,14 +23,18 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     string Parts => Path.Combine(dir, "parts");
     string Profile => Path.Combine(dir, "profile");
 
-    /// <summary>A main view model on <see cref="Profile"/>, every part made on <see cref="Parts"/> and <see cref="time"/>.</summary>
+    /// <summary>
+    /// A main view model on <see cref="Profile"/>, every part made on <see cref="Parts"/> and <see cref="time"/>; the engine
+    /// and the device list on <paramref name="hardware"/>, as <see cref="MainViewModel.Create"/> wires them.
+    /// </summary>
     MainViewModel WithOwnParts(Action<Action> post, ClientSettings? settings = null, string? settingsWarning = null, KeyPoller? keys = null,
-        AudioEngine? audio = null)
+        FakeAudioHardware? hardware = null)
     {
         var log = new ClientLog(Parts, time);
         keys ??= new KeyPoller(time);
         return MainViewModelSetup.Compose(Profile, post, time, log, settings ?? new ClientSettings(), settingsWarning, new KnownServers(Parts),
-            new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), new LeaveTimer(time), keys, audio ?? new AudioEngine(keys, time, useDevices: false, log.Write));
+            new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, log.Write),
+            hardware is null ? null : hardware.ListActive);
     }
 
     [Fact]
@@ -40,7 +44,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var log = new ClientLog(Parts, time);
         var leave = new LeaveTimer(time);
         var keys = new KeyPoller(time);
-        var audio = new AudioEngine(keys, time, useDevices: false, log.Write);
+        var audio = new AudioEngine(keys, time, hardware: null, log.Write);
 
         await using var vm = MainViewModelSetup.Compose(Profile, a => a(), time, log, settings, null, new KnownServers(Parts),
             new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), leave, keys, audio);
@@ -112,33 +116,100 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     }
 
     [Fact]
+    public async Task OpenSettings_GivenHardware_ListsItsDevices()
+    {
+        var hardware = new FakeAudioHardware { Listing = FakeAudioHardware.ListOneEach };
+        await using var vm = WithOwnParts(a => a(), hardware: hardware);
+
+        vm.OpenSettings();
+        await AsyncWait.Until(() => vm.SettingsPage!.Outputs.Count == 2); // the list loads in the background
+
+        Assert.Equal([null, "mic-1"], vm.SettingsPage!.Inputs.Select(o => o.Id).ToList()); // after the default device
+        Assert.Equal([null, "out-1"], vm.SettingsPage.Outputs.Select(o => o.Id).ToList());
+    }
+
+    [Fact]
+    public async Task OpenSettings_ListLoadedAtStart_ShowsItAtOnce()
+    {
+        using var later = new ManualResetEventSlim(); // every list after the first waits for it
+        int calls = 0;
+        var hardware = new FakeAudioHardware
+        {
+            Listing = direction =>
+            {
+                if (Interlocked.Increment(ref calls) > 2) later.Wait(TimeSpan.FromSeconds(10));
+                return FakeAudioHardware.ListOneEach(direction);
+            },
+        };
+        bool loaded = false;
+        await using var vm = WithOwnParts(a =>
+        {
+            a();
+            Volatile.Write(ref loaded, true); // the start's list is the only thing posted
+        }, hardware: hardware);
+        await AsyncWait.Until(() => Volatile.Read(ref loaded));
+
+        vm.OpenSettings(); // its own refresh waits
+
+        Assert.Equal([null, "mic-1"], vm.SettingsPage!.Inputs.Select(o => o.Id).ToList());
+        later.Set();
+    }
+
+    [Fact]
+    public async Task ApplySettingsAsync_GivenHardware_RestartsDevicesOffTheCallingThread()
+    {
+        var hardware = new FakeAudioHardware();
+        await using var vm = WithOwnParts(a => a(), hardware: hardware);
+        vm.OpenSettings(); // the level meter opens the microphone
+        await AsyncWait.Until(() => hardware.Counts.MicsOpen == 1);
+
+        hardware.OpenGate.Reset(); // the restart's open waits, so a restart on this thread would not return
+        var applying = vm.ApplySettingsAsync(new ClientSettings());
+        Assert.False(applying.IsCompleted);
+        hardware.OpenGate.Set();
+        await applying;
+
+        Assert.Equal((2, 1), (hardware.Counts.Mics, hardware.Counts.MicsOpen)); // the microphone opened anew
+    }
+
+    [Fact]
+    public async Task ApplySettingsAsync_WithoutHardware_CompletesOnTheCallingThread()
+    {
+        await using var vm = WithOwnParts(a => a());
+
+        var applying = vm.ApplySettingsAsync(new ClientSettings());
+
+        Assert.True(applying.IsCompleted);
+    }
+
+    [Fact]
     public async Task DisposeAsync_GivenKeysAndAudio_DisposesBoth()
     {
         Thread? poller = null;
-        var devices = new FakeAudioDevices();
+        var hardware = new FakeAudioHardware();
         var keys = new KeyPoller(time, _ =>
         {
             poller = Thread.CurrentThread;
             return false;
         });
-        var vm = WithOwnParts(a => a(), keys: keys, audio: new AudioEngine(keys, time, useDevices: false, devices: devices));
+        var vm = WithOwnParts(a => a(), keys: keys, hardware: hardware);
         await AsyncWait.Until(() => poller is not null);
 
         await vm.DisposeAsync();
 
         Assert.False(poller!.IsAlive); // the key poller's thread ended
-        Assert.Equal(0, devices.Subscribers); // the engine no longer listens to the devices
+        Assert.Equal(0, hardware.Subscribers); // the engine no longer listens to the devices
     }
 
     [Fact]
     public void Create_ConstructorThrows_DisposesTheAudioEngine()
     {
-        var devices = new FakeAudioDevices();
+        var hardware = new FakeAudioHardware();
 
         Assert.ThrowsAny<Exception>(() => MainViewModel.Create(Profile, a => a(), time, new ClientLog(Parts, time), settings: null!, null,
-            useAudioDevices: false, devices: devices));
+            hardware: hardware));
 
-        Assert.Equal(0, devices.Subscribers);
+        Assert.Equal(0, hardware.Subscribers);
     }
 
     [Fact]

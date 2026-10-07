@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using OVS.Client.Appearance;
+using OVS.Client.Audio.Devices;
 using OVS.Client.Diagnostics;
 using OVS.Client.Dialogs;
 using OVS.Client.Logging;
@@ -35,10 +36,12 @@ public partial class App : Application
             var settingsWarning = Program.SettingsWarning;
             // The fallback only for a start that did not go through Main (such as the previewer):
             var settings = Program.Settings ??= ClientSettings.Load(options.ProfileDir, out settingsWarning);
+            // The system's microphones and speakers: the view model gets none with --no-audio, the debug API lists them anyway.
+            var hardware = new WasapiHardware();
             // The view model's parts (keys, audio engine, stores, leave timer) are built by MainViewModel.Create on the one
             // clock; the view model disposes the keys and the audio engine with itself (desktop.Exit below).
             var vm = MainViewModel.Create(options.ProfileDir, action => Dispatcher.UIThread.Post(action), time, log, settings, settingsWarning,
-                options.UseAudioDevices);
+                options.UseAudioDevices ? hardware : null);
             ApplyTheme(vm.Settings.Theme);
             vm.PropertyChanged += (_, e) =>
             {
@@ -54,7 +57,7 @@ public partial class App : Application
             DebugApi? debugApi = null;
             if (options.DebugApiPort is { } port)
             {
-                debugApi = new DebugApi(vm, port, work => Dispatcher.UIThread.InvokeAsync(work));
+                debugApi = new DebugApi(vm, port, work => Dispatcher.UIThread.InvokeAsync(work), hardware.ListActive);
                 window.Title += $" (Debug-API :{port})";
             }
             var audioDebug = options.AudioDebug

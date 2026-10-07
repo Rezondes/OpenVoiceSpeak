@@ -1,10 +1,7 @@
-using NAudio.CoreAudioApi;
-using NAudio.Wave;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Localization;
-using OVS.Shared.Voice;
 
 namespace OVS.Tests.TestSupport;
 
@@ -12,16 +9,31 @@ namespace OVS.Tests.TestSupport;
 /// Package 124: counts the microphones and speakers the engine opens and closes, without hardware. Package 137: knows
 /// which devices are plugged in and which are the defaults, falls back like the real one, and raises device changes.
 /// </summary>
-public sealed class FakeAudioDevices : IAudioDeviceFactory
+public sealed class FakeAudioHardware : IAudioHardware
 {
     readonly List<(string Device, CapturePipeline Capture)> captures = [];
     readonly List<(string Device, FakeOutput Output)> outputs = [];
     readonly List<string?> captureIds = [];
     Action? changed;
 
-    /// <summary>Package 137: the devices plugged in; a requested id that is not here opens the default with a warning.</summary>
-    public readonly HashSet<string> Present = [];
-    public volatile string DefaultMic = "mic-default", DefaultSpeaker = "speaker-default";
+    /// <summary>
+    /// Package 137: the devices plugged in, each with its direction; a requested id that is not here, or of the other
+    /// direction, opens the default with a warning.
+    /// </summary>
+    public readonly Dictionary<string, AudioDirection> Present = [];
+
+    /// <summary>The defaults; null when none is left (every device unplugged): then an open of the default throws, like the real one.</summary>
+    public volatile string? DefaultMic = "mic-default", DefaultSpeaker = "speaker-default";
+
+    /// <summary>Opens wait while it is reset (at most 10 s), so a test can tell on which thread they run.</summary>
+    public readonly ManualResetEventSlim OpenGate = new(true);
+
+    /// <summary>What <see cref="ListActive"/> returns, on the caller's thread (a test may block it like a slow device list); none by default.</summary>
+    public Func<AudioDirection, List<AudioDevice>> Listing { get; init; } = _ => [];
+
+    /// <summary>A <see cref="Listing"/> with one microphone ("mic-1", "Headset") and one speaker ("out-1", "Speakers").</summary>
+    public static List<AudioDevice> ListOneEach(AudioDirection direction) =>
+        direction == AudioDirection.Input ? [new AudioDevice("mic-1", "Headset")] : [new AudioDevice("out-1", "Speakers")];
 
     public event Action? Changed
     {
@@ -29,7 +41,7 @@ public sealed class FakeAudioDevices : IAudioDeviceFactory
         remove { lock (captures) changed -= value; }
     }
 
-    public event Action<DataFlow, Exception>? Failed;
+    public event Action<AudioDirection, Exception>? Failed;
 
     /// <summary>Package 137: as Windows reports a device added, removed or a new default.</summary>
     public void RaiseChanged()
@@ -40,30 +52,33 @@ public sealed class FakeAudioDevices : IAudioDeviceFactory
     }
 
     /// <summary>Package 137: as an open device's stream stopping with an error.</summary>
-    public void RaiseFailed(DataFlow flow) => Failed?.Invoke(flow, new InvalidOperationException("device invalidated"));
+    public void RaiseFailed(AudioDirection direction) => Failed?.Invoke(direction, new InvalidOperationException("device invalidated"));
 
-    public string? Resolve(string? deviceId, DataFlow flow) =>
-        Resolve(deviceId, flow == DataFlow.Capture ? DefaultMic : DefaultSpeaker, []);
+    public List<AudioDevice> ListActive(AudioDirection direction) => Listing(direction);
+
+    public string? FindCurrentDeviceId(string? deviceId, AudioDirection direction) => Resolve(deviceId, direction, []);
 
     public int Subscribers
     {
         get { lock (captures) return changed?.GetInvocationList().Length ?? 0; }
     }
 
-    string Resolve(string? id, string fallback, List<string> warnings)
+    string? Resolve(string? id, AudioDirection direction, List<string> warnings)
     {
+        var fallback = direction == AudioDirection.Input ? DefaultMic : DefaultSpeaker;
         lock (Present)
         {
             if (id is null) return fallback;
-            if (Present.Contains(id)) return id;
+            if (Present.TryGetValue(id, out var present) && present == direction) return id;
         }
         warnings.Add(Strings.Audio_DeviceFallback);
         return fallback;
     }
 
-    public CapturePipeline OpenCapture(string? deviceId, List<string> warnings)
+    public CapturePipeline OpenInput(string? deviceId, List<string> warnings)
     {
-        var device = Resolve(deviceId, DefaultMic, warnings);
+        OpenGate.Wait(TimeSpan.FromSeconds(10));
+        var device = Resolve(deviceId, AudioDirection.Input, warnings) ?? throw new InvalidOperationException("no microphone");
         var capture = CapturePipeline.Manual();
         lock (captures)
         {
@@ -73,18 +88,14 @@ public sealed class FakeAudioDevices : IAudioDeviceFactory
         return capture;
     }
 
-    public (BufferedWaveProvider Buffer, IDisposable Device) OpenOutput(string? deviceId, List<string> warnings)
+    public PlaybackBuffer OpenOutput(string? deviceId, List<string> warnings)
     {
-        var device = Resolve(deviceId, DefaultSpeaker, warnings);
+        OpenGate.Wait(TimeSpan.FromSeconds(10));
+        var device = Resolve(deviceId, AudioDirection.Output, warnings) ?? throw new InvalidOperationException("no speaker");
         var output = new FakeOutput();
         lock (outputs) outputs.Add((device, output));
         // Nothing plays it: one frame long, so it never holds the engine's 40 ms and the tones run through at once.
-        var buffer = new BufferedWaveProvider(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2)) // Package 142: stereo, as the real one
-        {
-            BufferDuration = AudioFormat.FrameDuration,
-            DiscardOnBufferOverflow = true,
-        };
-        return (buffer, output);
+        return new PlaybackBuffer(AudioFormat.FrameDuration, output);
     }
 
     /// <summary>Opened so far and open now, for microphones and speakers.</summary>
