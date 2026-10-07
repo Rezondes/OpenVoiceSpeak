@@ -47,7 +47,7 @@ public class HandshakeTests
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
         var result = await client.HandshakeAsync("anna", badSignature: true);
-        Assert.Equal(Codes.BadSignature, Assert.IsType<Rejected>(result).Code);
+        Assert.Equal(ReasonCodes.BadSignature, Assert.IsType<Rejected>(result).Code);
         Assert.Null(await client.ReadRawAsync());
     }
 
@@ -57,7 +57,7 @@ public class HandshakeTests
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
         var result = await client.HandshakeAsync("anna", certHash: RandomNumberGenerator.GetBytes(32));
-        Assert.Equal(Codes.BadSignature, Assert.IsType<Rejected>(result).Code);
+        Assert.Equal(ReasonCodes.BadSignature, Assert.IsType<Rejected>(result).Code);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class HandshakeTests
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
         var result = await client.HandshakeAsync("anna", version: 0);
-        Assert.Equal(Codes.VersionMismatch, Assert.IsType<Rejected>(result).Code);
+        Assert.Equal(ReasonCodes.VersionMismatch, Assert.IsType<Rejected>(result).Code);
     }
 
     [Theory]
@@ -81,7 +81,7 @@ public class HandshakeTests
         await using var client = await TestClient.OpenAsync(server.Port);
         var result = await client.HandshakeAsync("anna", given);
         if (accepted) Assert.IsType<Welcome>(result);
-        else Assert.Equal(Codes.WrongPassword, Assert.IsType<Rejected>(result).Code);
+        else Assert.Equal(ReasonCodes.WrongPassword, Assert.IsType<Rejected>(result).Code);
     }
 
     [Fact]
@@ -97,14 +97,14 @@ public class HandshakeTests
         }
         static string Code(Message m) => Assert.IsType<Rejected>(m).Code;
 
-        for (int i = 0; i < 5; i++) Assert.Equal(Codes.WrongPassword, Code(await Try("falsch")));
-        Assert.Equal(Codes.TooManyPasswordAttempts, Code(await Try("pw"))); // blocked: not even the right one
+        for (int i = 0; i < 5; i++) Assert.Equal(ReasonCodes.WrongPassword, Code(await Try("falsch")));
+        Assert.Equal(ReasonCodes.TooManyPasswordAttempts, Code(await Try("pw"))); // blocked: not even the right one
         clock.Advance(TimeSpan.FromMinutes(1));
         Assert.IsType<Welcome>(await Try("pw"));
 
-        Assert.Equal(Codes.WrongPassword, Code(await Try("falsch"))); // 6th: 2 minutes
+        Assert.Equal(ReasonCodes.WrongPassword, Code(await Try("falsch"))); // 6th: 2 minutes
         clock.Advance(TimeSpan.FromMinutes(1));
-        Assert.Equal(Codes.TooManyPasswordAttempts, Code(await Try("pw")));
+        Assert.Equal(ReasonCodes.TooManyPasswordAttempts, Code(await Try("pw")));
         clock.Advance(TimeSpan.FromMinutes(1));
         Assert.IsType<Welcome>(await Try("pw"));
     }
@@ -115,7 +115,7 @@ public class HandshakeTests
         await using var server = await TestServer.StartAsync(maxUsers: 1);
         await using var first = await TestClient.ConnectAsync(server);
         await using var second = await TestClient.OpenAsync(server.Port);
-        Assert.Equal(Codes.ServerFull, Assert.IsType<Rejected>(await second.HandshakeAsync("bert")).Code);
+        Assert.Equal(ReasonCodes.ServerFull, Assert.IsType<Rejected>(await second.HandshakeAsync("bert")).Code);
     }
 
     [Theory]
@@ -127,7 +127,7 @@ public class HandshakeTests
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
-        Assert.Equal(Codes.NicknameInvalid, Assert.IsType<Rejected>(await client.HandshakeAsync(nickname)).Code);
+        Assert.Equal(ReasonCodes.NicknameInvalid, Assert.IsType<Rejected>(await client.HandshakeAsync(nickname)).Code);
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class HandshakeTests
         await using var server = await TestServer.StartAsync();
         await using var first = await TestClient.ConnectAsync(server, "Anna");
         await using var second = await TestClient.OpenAsync(server.Port);
-        Assert.Equal(Codes.NicknameTaken, Assert.IsType<Rejected>(await second.HandshakeAsync(" anna ")).Code);
+        Assert.Equal(ReasonCodes.NicknameTaken, Assert.IsType<Rejected>(await second.HandshakeAsync(" anna ")).Code);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class HandshakeTests
         await using var fresh = await TestClient.ConnectAsync(server, "anna", old.Identity);
 
         var bye = await old.WaitForAsync<Disconnected>();
-        Assert.Equal(Codes.ReplacedByNewConnection, bye.Reason);
+        Assert.Equal(ReasonCodes.ReplacedByNewConnection, bye.Reason);
         Assert.True(await old.WaitClosedAsync());
         Assert.NotEqual(old.Id, fresh.Id);
         Assert.Equal(1, server.State.SessionCount);
@@ -218,7 +218,7 @@ public class HandshakeTests
         await using var server = await TestServer.StartAsync(d => d.Settings.StoredPassword = StoredPassword.FromStored(legacy));
 
         await using (var wrong = await TestClient.OpenAsync(server.Port))
-            Assert.Equal(Codes.WrongPassword, Assert.IsType<Rejected>(await wrong.HandshakeAsync("anna", "falsch")).Code);
+            Assert.Equal(ReasonCodes.WrongPassword, Assert.IsType<Rejected>(await wrong.HandshakeAsync("anna", "falsch")).Code);
         Assert.Equal(legacy, OnDisk(server).Settings.StoredPassword?.Text); // a wrong password changes nothing
 
         await using (var right = await TestClient.OpenAsync(server.Port))

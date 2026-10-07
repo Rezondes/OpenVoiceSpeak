@@ -228,7 +228,7 @@ public class ServerViewModelTests
 
         await bravo.JoinCommand.ExecuteAsync(null);
         Assert.Empty(f.Sent);
-        Assert.Equal(ErrorTexts.For(Codes.ChannelLocked), notice);
+        Assert.Equal(ErrorTexts.For(ReasonCodes.ChannelLocked), notice);
 
         f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak, [WellKnownGroups.Guest, raid])));
         Assert.True(bravo.CanJoin);
@@ -266,7 +266,7 @@ public class ServerViewModelTests
         answer = "falsch";
         await bravo.JoinCommand.ExecuteAsync(null);
         Assert.Equal(new JoinChannel(Bravo, "falsch"), f.Sent[^1] with { RequestId = null });
-        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.WrongChannelPassword));
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.WrongChannelPassword));
         answer = "geheim";
         await bravo.JoinCommand.ExecuteAsync(null); // asked again
         Assert.Equal(new JoinChannel(Bravo, "geheim"), f.Sent[^1] with { RequestId = null });
@@ -299,8 +299,8 @@ public class ServerViewModelTests
         var f = Create();
         string? notice = null;
         f.Vm.Notice += n => notice = n;
-        f.Vm.Apply(new Error("r1", Codes.PermissionDenied));
-        Assert.Equal(ErrorTexts.For(Codes.PermissionDenied), notice);
+        f.Vm.Apply(new Error("r1", ReasonCodes.PermissionDenied));
+        Assert.Equal(ErrorTexts.For(ReasonCodes.PermissionDenied), notice);
     }
 
     [Theory]
@@ -439,7 +439,7 @@ public class ServerViewModelTests
 
         await f.Channel(Bravo).MoveUpCommand.ExecuteAsync(null);
         Assert.Equal(new[] { Lobby, Bravo, Alpha }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
-        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied)); // Package 98: refused, the server's order is back
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.PermissionDenied)); // Package 98: refused, the server's order is back
         await f.Channel(Lobby).MoveDownCommand.ExecuteAsync(null);
         Assert.Equal(new[] { Alpha, Lobby, Bravo }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
 
@@ -453,10 +453,10 @@ public class ServerViewModelTests
         var f = Create(P.ChannelEdit);
         await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
         Assert.Equal(new[] { Bravo, Lobby, Alpha }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
-        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied)); // Package 98: refused, the server's order is back
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.PermissionDenied)); // Package 98: refused, the server's order is back
         await f.Vm.MoveChannelAsync(f.Channel(Lobby), f.Channel(Bravo), after: true);
         Assert.Equal(new[] { Alpha, Bravo, Lobby }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
-        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied));
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.PermissionDenied));
 
         int before = f.Sent.Count;
         await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Lobby), after: true); // already there
@@ -707,9 +707,9 @@ public class ServerViewModelTests
         await alpha.JoinCommand.ExecuteAsync(null);
         f.Time.Advance(ShowAfter);
         Assert.True(alpha.IsBusy);
-        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.ChannelFull));
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.ChannelFull));
         Assert.False(alpha.IsBusy);
-        Assert.Equal(ErrorTexts.For(Codes.ChannelFull), notices[^1]);
+        Assert.Equal(ErrorTexts.For(ReasonCodes.ChannelFull), notices[^1]);
 
         // no answer at all: a visible error after 10 s, then it can be tried again
         await alpha.JoinCommand.ExecuteAsync(null);
@@ -735,7 +735,7 @@ public class ServerViewModelTests
         Assert.Equal([Bravo, Lobby, Alpha], Order());
         f.Time.Advance(ShowAfter);
         Assert.True(f.Channel(Bravo).IsBusy);
-        f.Vm.Apply(new Error(refused.RequestId, Codes.PermissionDenied));
+        f.Vm.Apply(new Error(refused.RequestId, ReasonCodes.PermissionDenied));
         Assert.Equal([Lobby, Alpha, Bravo], Order());
         Assert.False(f.Channel(Bravo).IsBusy);
 
@@ -964,9 +964,9 @@ public class ServerViewModelTests
         Assert.Equal(new UnassignGroup("fp2", Raid), f.Sent[^1] with { RequestId = null });
         f.Time.Advance(ShowAfter);
         Assert.True(anna.IsBusy);
-        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.PermissionDenied));
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.PermissionDenied));
         Assert.False(anna.IsBusy);
-        Assert.Equal(ErrorTexts.For(Codes.PermissionDenied), notices[^1]);
+        Assert.Equal(ErrorTexts.For(ReasonCodes.PermissionDenied), notices[^1]);
         Assert.True(anna.Groups.Single(t => t.GroupId == Raid).IsChecked);
 
         // a change made elsewhere shows the next time the menu opens
@@ -1056,9 +1056,9 @@ public class ServerViewModelTests
         var done = f.Vm.DropUser(anna, f.Channel(Bravo));
         Assert.Equal(new MoveUser(2, Bravo), f.Sent[^1] with { RequestId = null });
         Assert.False(done.IsCompleted); // waits for the server
-        f.Vm.Apply(new Error(f.Sent[^1].RequestId, Codes.ChannelFull));
+        f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.ChannelFull));
         await done;
-        Assert.Equal(ErrorTexts.For(Codes.ChannelFull), notices[^1]);
+        Assert.Equal(ErrorTexts.For(ReasonCodes.ChannelFull), notices[^1]);
         Assert.Equal(Lobby, anna.ChannelId);
         Assert.Contains(anna, f.Channel(Lobby).Users);
         Assert.False(anna.IsBusy);

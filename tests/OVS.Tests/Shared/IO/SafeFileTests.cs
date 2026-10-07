@@ -71,7 +71,7 @@ public sealed class SafeFileTests() : TempDirectoryTest("ovs-safefile-", quiet: 
     public void ReadChunk_OutsideAndInside()
     {
         var path = Path.Combine(dir, "gross.bin");
-        var content = new byte[ProtocolInfo.BackupChunkBytes + 10];
+        var content = new byte[ProtocolLimits.BackupChunkBytes + 10];
         Random.Shared.NextBytes(content);
         File.WriteAllBytes(path, content);
 
@@ -80,9 +80,9 @@ public sealed class SafeFileTests() : TempDirectoryTest("ovs-safefile-", quiet: 
 
         var (first, total) = SafeFile.ReadChunk(path, 0)!.Value;
         Assert.Equal(content.Length, total);
-        Assert.Equal(content[..ProtocolInfo.BackupChunkBytes], first);
-        var (rest, _) = SafeFile.ReadChunk(path, ProtocolInfo.BackupChunkBytes)!.Value;
-        Assert.Equal(content[ProtocolInfo.BackupChunkBytes..], rest);
+        Assert.Equal(content[..ProtocolLimits.BackupChunkBytes], first);
+        var (rest, _) = SafeFile.ReadChunk(path, ProtocolLimits.BackupChunkBytes)!.Value;
+        Assert.Equal(content[ProtocolLimits.BackupChunkBytes..], rest);
         Assert.Empty(SafeFile.ReadChunk(path, content.Length)!.Value.Bytes);
     }
 }

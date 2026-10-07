@@ -5,7 +5,7 @@ namespace OVS.Shared.Voice;
 /// <summary>
 /// Voice plaintext in both directions: [frameSeq 4 BE][length of current 2 BE][current opus][previous opus, optional].
 /// Package 136 (A145): the previous frame rides along on lossy legs, so a lost frame can be played in full from the next
-/// packet. The server takes the parts apart with <see cref="TryRead"/> without copying.
+/// packet. The server takes the parts apart with <see cref="TryReadRanges"/> without copying.
 /// </summary>
 public static class RelayPayload
 {
@@ -36,7 +36,7 @@ public static class RelayPayload
 
     /// <summary>Strict bounds: the current frame 1 to MaxOpusSize bytes inside the payload, the copy (the rest, possibly
     /// empty) at most MaxOpusSize, the whole at most <see cref="MaxSize"/>.</summary>
-    public static bool TryRead(ReadOnlySpan<byte> payload, out uint frameSeq, out Range current, out Range copy)
+    public static bool TryReadRanges(ReadOnlySpan<byte> payload, out uint frameSeq, out Range current, out Range copy)
     {
         frameSeq = 0;
         current = copy = default;
@@ -51,11 +51,11 @@ public static class RelayPayload
     }
 
     /// <summary>The client's side: the frame, and the copy of the one before it or null.</summary>
-    public static bool TryParse(byte[] payload, out uint frameSeq, out byte[] opus, out byte[]? copy)
+    public static bool TryReadArrays(byte[] payload, out uint frameSeq, out byte[] opus, out byte[]? copy)
     {
         opus = [];
         copy = null;
-        if (!TryRead(payload, out frameSeq, out var current, out var rest)) return false;
+        if (!TryReadRanges(payload, out frameSeq, out var current, out var rest)) return false;
         opus = payload[current];
         if (payload.Length > rest.Start.Value) copy = payload[rest];
         return true;

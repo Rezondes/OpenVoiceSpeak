@@ -911,8 +911,8 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void ErrorTexts_EveryCodeHasText()
     {
-        foreach (var code in Codes.All()) Assert.True(ErrorTexts.Has(code), code);
-        Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(Codes.PermissionDenied, "x")); // server details stay out of the UI (A45)
+        foreach (var code in ReasonCodes.All()) Assert.True(ErrorTexts.Has(code), code);
+        Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(ReasonCodes.PermissionDenied, "x")); // server details stay out of the UI (A45)
     }
 
     /// <summary>Package 98 (AC5): "Speichern" is busy while the audio devices restart and closes afterwards; the update check spins.</summary>

@@ -64,6 +64,13 @@ public static class ServerTuning
     // ---- Package 81: log pages and searches ----
     /// <summary>Log jobs one session may have waiting or running; one more is answered with RateLimited.</summary>
     public const int MaxQueuedLogJobs = 4;
+    public const int MaxLogLineLength = 2000; // Package 81: longer lines are cut with a marker
+    public static readonly TimeSpan LogSearchTimeout = TimeSpan.FromSeconds(5); // Package 81
+    public const long MaxLogDownloadBytes = 200L * 1024 * 1024; // Package 82 (A99): one file or zip, in BackupChunkBytes chunks
+
+    // ---- Chat ----
+    public const int ChatBurst = 5; // messages per ChatWindow
+    public static readonly TimeSpan ChatWindow = TimeSpan.FromSeconds(5);
 
     // ---- Package 94: channel passwords ----
     /// <summary>Wrong channel passwords per session and channel within ChannelPasswordWindow; then RateLimited for ChannelPasswordBlock.</summary>

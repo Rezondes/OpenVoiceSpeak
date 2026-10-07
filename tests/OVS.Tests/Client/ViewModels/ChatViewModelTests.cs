@@ -89,7 +89,7 @@ public class ChatViewModelTests
         f.Chat.Draft = "Zweite";
         await f.Chat.SendCommand.ExecuteAsync(null);
         var second = f.Chat.General.Entries[^1];
-        f.Server.Apply(new Error(f.LastChat.RequestId, Codes.RateLimited));
+        f.Server.Apply(new Error(f.LastChat.RequestId, ReasonCodes.RateLimited));
         Assert.True(second.Sending!.IsFailed);
         Assert.False(second.Sending.IsWaiting);
         Assert.Equal("Zweite", second.Text);
@@ -127,7 +127,7 @@ public class ChatViewModelTests
 
         f.Chat.Draft = new string('x', ChatViewModel.CounterFrom - 1);
         Assert.False(f.Chat.ShowCounter);
-        f.Chat.Draft = new string('x', ProtocolInfo.MaxChatLength);
+        f.Chat.Draft = new string('x', ProtocolLimits.MaxChatLength);
         Assert.True(f.Chat.ShowCounter);
         Assert.True(f.Chat.SendCommand.CanExecute(null));
         f.Chat.Draft += "x";
@@ -205,11 +205,11 @@ public class ChatViewModelTests
         f.Chat.Draft = "zu viel";
         await f.Chat.SendCommand.ExecuteAsync(null);
 
-        f.Server.Apply(new Error(f.LastChat.RequestId, Codes.RateLimited, null));
-        Assert.Equal(ErrorTexts.For(Codes.RateLimited, null), f.Chat.ComposerError);
+        f.Server.Apply(new Error(f.LastChat.RequestId, ReasonCodes.RateLimited, null));
+        Assert.Equal(ErrorTexts.For(ReasonCodes.RateLimited, null), f.Chat.ComposerError);
         Assert.Empty(notices);
 
-        f.Server.Apply(new Error("r99", Codes.PermissionDenied, null)); // not a chat request: stays a notice
+        f.Server.Apply(new Error("r99", ReasonCodes.PermissionDenied, null)); // not a chat request: stays a notice
         Assert.Single(notices);
         f.Chat.Selected = f.Chat.General;
         Assert.Null(f.Chat.ComposerError);

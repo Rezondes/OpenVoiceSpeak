@@ -22,7 +22,7 @@ public class ShutdownTests
 
         foreach (var client in new[] { a, b })
         {
-            Assert.Equal(Codes.ServerShutdown, (await client.WaitForAsync<Disconnected>()).Reason);
+            Assert.Equal(ReasonCodes.ServerShutdown, (await client.WaitForAsync<Disconnected>()).Reason);
             Assert.True(await client.WaitClosedAsync());
         }
         Assert.True(stopped < TimeSpan.FromSeconds(2), $"took {stopped}");

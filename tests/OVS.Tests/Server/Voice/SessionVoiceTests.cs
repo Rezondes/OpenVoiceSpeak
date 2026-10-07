@@ -187,6 +187,6 @@ public sealed class SessionVoiceTests : IDisposable
     {
         voice.Dispose();
         Assert.Throws<ObjectDisposedException>(() =>
-            voice.Crypto.Seal(Direction.ServerToClient, new VoiceHeader(PacketType.Ping, 1, 1, 0), []));
+            voice.Crypto.Seal(PacketDirection.ServerToClient, new VoiceHeader(PacketType.Ping, 1, 1, 0), []));
     }
 }

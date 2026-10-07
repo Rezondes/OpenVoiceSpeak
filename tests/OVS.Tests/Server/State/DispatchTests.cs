@@ -99,8 +99,8 @@ public sealed class DispatchTests
         harness.Handle(session, request);
 
         var answers = StateHarness.Drain(session);
-        Assert.DoesNotContain(answers, m => m is Error { Code: Codes.UnknownRequest });
-        Assert.DoesNotContain(answers, m => m is Error { Code: Codes.RateLimited }); // not stopped by the request budget before its handler
+        Assert.DoesNotContain(answers, m => m is Error { Code: ReasonCodes.UnknownRequest });
+        Assert.DoesNotContain(answers, m => m is Error { Code: ReasonCodes.RateLimited }); // not stopped by the request budget before its handler
     }
 
     /// <summary>Transfers (one chunk per answer) are exempt from the request budget; every other request counts.</summary>
@@ -118,7 +118,7 @@ public sealed class DispatchTests
 
             harness.Handle(session, Factories[type]() with { RequestId = "r" });
 
-            if (!StateHarness.Drain(session).Any(m => m is Error { RequestId: "r", Code: Codes.RateLimited })) passed.Add(type.Name);
+            if (!StateHarness.Drain(session).Any(m => m is Error { RequestId: "r", Code: ReasonCodes.RateLimited })) passed.Add(type.Name);
             harness.State.Remove(session);
         }
         Assert.Equal(["DownloadBackup", "DownloadLogChunk", "UploadBackupChunk"], passed);

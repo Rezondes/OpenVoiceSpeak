@@ -50,7 +50,7 @@ public static class SafeFile
         using var file = File.OpenRead(path);
         if (offset < 0 || offset > file.Length) return null;
         file.Position = offset;
-        var bytes = new byte[Math.Min(ProtocolInfo.BackupChunkBytes, file.Length - offset)];
+        var bytes = new byte[Math.Min(ProtocolLimits.BackupChunkBytes, file.Length - offset)];
         file.ReadExactly(bytes);
         return (bytes, file.Length);
     }

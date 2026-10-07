@@ -18,7 +18,7 @@ public sealed class ServerIconStore
             var bytes = File.ReadAllBytes(path);
             png = ServerIconFormat.Validate(bytes) is null ? bytes : null; // a broken file behaves like no logo
         }
-        Hash = png is null ? null : ServerIconFormat.Hash(png);
+        Hash = png is null ? null : ServerIconFormat.ComputeHash(png);
         Base64 = png is null ? null : Convert.ToBase64String(png);
     }
 
@@ -38,7 +38,7 @@ public sealed class ServerIconStore
             SafeFile.WriteAtomic(path, value, flushToDisk: false);
         }
         png = value;
-        Hash = value is null ? null : ServerIconFormat.Hash(value);
+        Hash = value is null ? null : ServerIconFormat.ComputeHash(value);
         Base64 = value is null ? null : Convert.ToBase64String(value);
     }
 }

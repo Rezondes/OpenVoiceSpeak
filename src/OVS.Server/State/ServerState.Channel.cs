@@ -16,12 +16,12 @@ public sealed partial class ServerState
     {
         if (FindChannel(r.ChannelId) is not { } channel)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return;
         }
         if (!ChannelAccess.IsJoinable(channel.Kind))
         {
-            Fail(s, r, Codes.NotJoinable); // Package 111: also for admins
+            Fail(s, r, ReasonCodes.NotJoinable); // Package 111: also for admins
             return;
         }
         var from = s.ChannelId;
@@ -33,7 +33,7 @@ public sealed partial class ServerState
         }
         if (IsFull(channel, s) && !s.Permissions.Has(Permission.ChannelJoinFull))
         {
-            Fail(s, r, Codes.ChannelFull);
+            Fail(s, r, ReasonCodes.ChannelFull);
             return;
         }
         ChannelLog(from, $"{s.Nickname} hat den Channel verlassen (wechselt nach {ChannelName(r.ChannelId)})");
@@ -70,9 +70,9 @@ public sealed partial class ServerState
         saves.Persist();
         var options = new[] { r.IsMuted ? "stumm" : null, r.MaxUsers > 0 ? $"Nutzerlimit {r.MaxUsers}" : null,
             allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.StoredPassword is null ? null : "mit Passwort",
-            r.Bitrate != ProtocolInfo.DefaultBitrate ? $"Qualität {r.Bitrate} kbps" : null }.OfType<string>().ToList();
+            r.Bitrate != ProtocolDefaults.Bitrate ? $"Qualität {r.Bitrate} kbps" : null }.OfType<string>().ToList();
         ChannelLog(channel.Id, $"Channel angelegt von {s.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
-        logs.Server($"Channel '{channel.Name}' angelegt von {s.Nickname}");
+        logs.WriteServerLine($"Channel '{channel.Name}' angelegt von {s.Nickname}");
         var added = new ChannelAdded(Info(channel));
         BroadcastExcept(s, added);
         s.Outbox.Send(added with { RequestId = r.RequestId }); // Package 110: the creator recognises its own channel by the request
@@ -91,7 +91,7 @@ public sealed partial class ServerState
         };
         data.Channels.Add(separator);
         saves.Persist();
-        logs.Server($"Trenner angelegt von {s.Nickname}");
+        logs.WriteServerLine($"Trenner angelegt von {s.Nickname}");
         var added = new ChannelAdded(Info(separator));
         BroadcastExcept(s, added);
         s.Outbox.Send(added with { RequestId = r.RequestId });
@@ -103,7 +103,7 @@ public sealed partial class ServerState
         var channel = FindChannel(r.ChannelId);
         if (channel is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return;
         }
         if (Refuse(s, r, ChannelSettingsRule.CheckEditable(channel.Kind))
@@ -163,9 +163,9 @@ public sealed partial class ServerState
     /// </summary>
     string? LockRefusal(Session actor, ChannelRecord channel, string? password, bool moving)
     {
-        if (!ChannelAccess.GroupsAllow(channel.AllowedGroupIds, actor.GroupIds)) return Codes.ChannelLocked;
+        if (!ChannelAccess.GroupsAllow(channel.AllowedGroupIds, actor.GroupIds)) return ReasonCodes.ChannelLocked;
         if (!ChannelAccess.NeedsPassword(channel.StoredPassword is not null, actor.GroupIds, actor.Permissions, moving)) return null;
-        if (moving || string.IsNullOrEmpty(password)) return Codes.ChannelPasswordRequired;
+        if (moving || string.IsNullOrEmpty(password)) return ReasonCodes.ChannelPasswordRequired;
         return CheckChannelPassword(actor, channel, password);
     }
 
@@ -176,16 +176,16 @@ public sealed partial class ServerState
     string? CheckChannelPassword(Session actor, ChannelRecord channel, string password)
     {
         var now = time.GetUtcNow();
-        if (channelPasswordGuesses.IsBlocked(actor.Id, channel.Id, now)) return Codes.RateLimited;
+        if (channelPasswordGuesses.IsBlocked(actor.Id, channel.Id, now)) return ReasonCodes.RateLimited;
         if (channel.CheckPassword(password))
         {
             channelPasswordGuesses.Forget(actor.Id, channel.Id);
             return null;
         }
         int count = channelPasswordGuesses.RecordFailure(actor.Id, channel.Id, now);
-        logs.Server($"Falsches Channel-Passwort von {actor.Nickname} für '{channel.Name}' ({count}. Versuch)" +
+        logs.WriteServerLine($"Falsches Channel-Passwort von {actor.Nickname} für '{channel.Name}' ({count}. Versuch)" +
                     (count >= ServerTuning.ChannelPasswordFailures ? $", gesperrt für {ServerTuning.ChannelPasswordBlock.TotalMinutes:0} Minuten" : ""));
-        return Codes.WrongChannelPassword;
+        return ReasonCodes.WrongChannelPassword;
     }
 
     /// <summary>Package 36: Order becomes the position in the list, every changed channel is broadcast.</summary>
@@ -195,7 +195,7 @@ public sealed partial class ServerState
         var ids = r.ChannelIds ?? [];
         if (ids.Count != data.Channels.Count || !ids.ToHashSet().SetEquals(data.Channels.Select(c => c.Id)))
         {
-            Fail(s, r, Codes.InvalidValue, "Die neue Reihenfolge muss jeden Channel genau einmal enthalten.");
+            Fail(s, r, ReasonCodes.InvalidValue, "Die neue Reihenfolge muss jeden Channel genau einmal enthalten.");
             return;
         }
         var changed = new List<ChannelRecord>();
@@ -208,7 +208,7 @@ public sealed partial class ServerState
         }
         if (changed.Count == 0) return;
         saves.Persist();
-        logs.Server($"Channels umsortiert von {s.Nickname}: {string.Join(", ", ids.Select(ChannelName))}");
+        logs.WriteServerLine($"Channels umsortiert von {s.Nickname}: {string.Join(", ", ids.Select(ChannelName))}");
         foreach (var channel in changed) Broadcast(new ChannelUpdated(Info(channel)));
     }
 
@@ -218,12 +218,12 @@ public sealed partial class ServerState
         var channel = FindChannel(r.ChannelId);
         if (channel is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return;
         }
         if (channel.Id == data.DefaultChannelId)
         {
-            Fail(s, r, Codes.CannotDeleteDefault);
+            Fail(s, r, ReasonCodes.CannotDeleteDefault);
             return;
         }
 
@@ -243,7 +243,7 @@ public sealed partial class ServerState
             Broadcast(new ChannelsUnlinked(link.A, link.B));
         }
         ChannelLog(channel.Id, $"Channel gelöscht von {s.Nickname}");
-        logs.Server(channel.Kind == ChannelKind.Separator ? $"Trenner gelöscht von {s.Nickname}" : $"Channel '{channel.Name}' gelöscht von {s.Nickname}");
+        logs.WriteServerLine(channel.Kind == ChannelKind.Separator ? $"Trenner gelöscht von {s.Nickname}" : $"Channel '{channel.Name}' gelöscht von {s.Nickname}");
         data.Channels.Remove(channel);
         saves.Persist();
         Broadcast(new ChannelRemoved(channel.Id));
@@ -254,13 +254,13 @@ public sealed partial class ServerState
         if (!Require(s, r, Permission.UserMove)) return;
         if (!sessions.TryGetValue(r.SessionId, out var target) || FindChannel(r.ChannelId) is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return;
         }
         if (!CanModerate(s, r, target.Permissions, target.Fingerprint)) return; // Package 84: never oneself, that is JoinChannel
         if (!ChannelAccess.IsJoinable(FindChannel(r.ChannelId)!.Kind))
         {
-            Fail(s, r, Codes.NotJoinable); // Package 111
+            Fail(s, r, ReasonCodes.NotJoinable); // Package 111
             return;
         }
         if (target.ChannelId == r.ChannelId) return; // already there: nothing to check, announce or log
@@ -271,7 +271,7 @@ public sealed partial class ServerState
         }
         if (IsFull(FindChannel(r.ChannelId)!, target) && !s.Permissions.Has(Permission.ChannelJoinFull))
         {
-            Fail(s, r, Codes.ChannelFull); // the mover needs the right, not the one being moved
+            Fail(s, r, ReasonCodes.ChannelFull); // the mover needs the right, not the one being moved
             return;
         }
         var from = target.ChannelId;

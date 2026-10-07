@@ -70,7 +70,7 @@ public sealed partial class ServerState
         logReader = stores.LogReader; // Package 81
         logExporter = stores.LogExporter;
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
-        saves = new SaveScheduler(gate, WriteData, time, line => logs.Server(line));
+        saves = new SaveScheduler(gate, WriteData, time, line => logs.WriteServerLine(line));
         bool pruned = PruneGuests(time.GetUtcNow());
         if (data.Migrate(config) || pruned) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
@@ -78,8 +78,8 @@ public sealed partial class ServerState
         if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
-            logs.Server($"Admin-Token: {adminToken.Generate()}  (im Client unter 'Admin-Token einlösen' eingeben)", toFile: false);
-            logs.Server("Admin-Token erzeugt, es steht nur in der Konsolenausgabe", toConsole: false);
+            logs.WriteServerLine($"Admin-Token: {adminToken.Generate()}  (im Client unter 'Admin-Token einlösen' eingeben)", toFile: false);
+            logs.WriteServerLine("Admin-Token erzeugt, es steht nur in der Konsolenausgabe", toConsole: false);
         }
     }
 
@@ -108,7 +108,7 @@ public sealed partial class ServerState
         };
         foreach (var (key, given, stored) in values)
             if (config.GivenStartValues.Contains(key) && given != stored)
-                logs.Server($"Hinweis: {key}={given} wird ignoriert, es gilt der gespeicherte Wert {stored} (änderbar in der Verwaltung unter Server)");
+                logs.WriteServerLine($"Hinweis: {key}={given} wird ignoriert, es gilt der gespeicherte Wert {stored} (änderbar in der Verwaltung unter Server)");
 
         static string OnOff(bool on) => on ? "an" : "aus";
     }
@@ -190,20 +190,20 @@ public sealed partial class ServerState
             // Package 83: a malformed request is answered before any handler or limit of its own sees it
             if (RequestShape.Problem(request) is { } problem)
             {
-                Fail(session, request, Codes.InvalidValue, problem);
+                Fail(session, request, ReasonCodes.InvalidValue, problem);
                 return;
             }
             try
             {
                 BeforeRequest?.Invoke(request);
-                if (route.Handler is null) Fail(session, request, Codes.UnknownRequest);
+                if (route.Handler is null) Fail(session, request, ReasonCodes.UnknownRequest);
                 else route.Handler(this, session, request);
             }
             catch (Exception e)
             {
                 // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
-                logs.Server($"Fehler bei Anfrage {request.GetType().Name} von {session.Nickname}: {e.GetType().Name}: {e.Message}");
-                Fail(session, request, Codes.InvalidValue);
+                logs.WriteServerLine($"Fehler bei Anfrage {request.GetType().Name} von {session.Nickname}: {e.GetType().Name}: {e.Message}");
+                Fail(session, request, ReasonCodes.InvalidValue);
             }
         }
     }
@@ -217,7 +217,7 @@ public sealed partial class ServerState
         lock (gate)
         {
             if (!IsCurrent(session) || !Admissible(session, requestId, isTransfer: false)) return;
-            session.Outbox.Send(new Error(requestId, Codes.InvalidValue, problem));
+            session.Outbox.Send(new Error(requestId, ReasonCodes.InvalidValue, problem));
         }
     }
 
@@ -229,7 +229,7 @@ public sealed partial class ServerState
     bool Require(Session session, Request request, Permission permission)
     {
         if (session.Permissions.Has(permission)) return true;
-        Fail(session, request, Codes.PermissionDenied);
+        Fail(session, request, ReasonCodes.PermissionDenied);
         return false;
     }
 
@@ -254,8 +254,8 @@ public sealed partial class ServerState
     /// <summary>Packages 83 and 94: a server or channel password longer than MaxPasswordLength is refused; true when it was.</summary>
     static bool PasswordTooLong(Session session, Request request, string? password)
     {
-        if (password is not { Length: > ProtocolInfo.MaxPasswordLength }) return false;
-        Fail(session, request, Codes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolInfo.MaxPasswordLength} Zeichen.");
+        if (password is not { Length: > ProtocolLimits.MaxPasswordLength }) return false;
+        Fail(session, request, ReasonCodes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolLimits.MaxPasswordLength} Zeichen.");
         return true;
     }
 

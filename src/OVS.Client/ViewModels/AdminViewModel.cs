@@ -815,13 +815,13 @@ public sealed partial class AdminViewModel : ObservableObject
         try
         {
             await using var file = File.OpenRead(path);
-            if (file.Length > ProtocolInfo.MaxBackupUploadBytes)
+            if (file.Length > ProtocolLimits.MaxBackupUploadBytes)
             {
-                server.ShowNotice(ErrorTexts.For(Codes.BackupTooLarge));
+                server.ShowNotice(ErrorTexts.For(ReasonCodes.BackupTooLarge));
                 return;
             }
             var uploadId = Guid.NewGuid().ToString("N");
-            var buffer = new byte[ProtocolInfo.BackupChunkBytes];
+            var buffer = new byte[ProtocolLimits.BackupChunkBytes];
             for (long offset = 0; ;)
             {
                 int read = await file.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false);
@@ -911,7 +911,7 @@ public sealed partial class AdminViewModel : ObservableObject
     PendingViewModel? SendGroup()
     {
         if (SelectedGroup is not { IsReadOnly: false } g) return null;
-        GroupError = TextRules.Name(g.Name, ProtocolInfo.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
+        GroupError = TextRules.NormalizeName(g.Name, ProtocolLimits.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
         if (GroupError is not null || GroupSave.IsRunning) return null;
         // Package 98: busy until the server's groups arrive; a refused group stays for correcting
         var sent = server.SendConfirmed(g.Id is { } id ? new UpdateGroup(id, g.Name, g.Permissions) : new CreateGroup(g.Name, g.Permissions),
@@ -1013,9 +1013,9 @@ public sealed partial class AdminViewModel : ObservableObject
     PendingViewModel? SendServerSettings()
     {
         // Package 83: the server's rules, checked before anything is sent or cleared
-        SettingsError = TextRules.Name(ServerName, ProtocolInfo.MaxNameLength) is null ? Strings.Dlg_NameInvalid
-            : TextRules.Text(WelcomeText, ProtocolInfo.MaxTextLength) is null ? Strings.Dlg_TextInvalid
-            : !RemovePassword && NewPassword.Length > ProtocolInfo.MaxPasswordLength ? Strings.Ui_PasswordTooLong
+        SettingsError = TextRules.NormalizeName(ServerName, ProtocolLimits.MaxNameLength) is null ? Strings.Dlg_NameInvalid
+            : TextRules.NormalizeText(WelcomeText, ProtocolLimits.MaxTextLength) is null ? Strings.Dlg_TextInvalid
+            : !RemovePassword && NewPassword.Length > ProtocolLimits.MaxPasswordLength ? Strings.Ui_PasswordTooLong
             : null;
         if (SettingsError is not null) return null;
         string? password = RemovePassword ? "" : NewPassword.Length > 0 ? NewPassword : null;

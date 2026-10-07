@@ -118,7 +118,7 @@ public sealed class UdpVoiceServer : IDisposable
             CountBad(source);
             return;
         }
-        if (!sender.Voice.Crypto.TryOpen(Direction.ClientToServer, packet.Span, out header, out var plain))
+        if (!sender.Voice.Crypto.TryOpen(PacketDirection.ClientToServer, packet.Span, out header, out var plain))
         {
             CountBad(source);
             return;
@@ -143,7 +143,7 @@ public sealed class UdpVoiceServer : IDisposable
                 await SendAsync(sender.Voice, new VoiceHeader(PacketType.Ping, sender.Id, sender.Voice.OutSeq.Next(), 0), answer);
                 break;
             // Voice plaintext has the same format in both directions (RelayPayload), so it is relayed as is where it fits.
-            case PacketType.Voice when RelayPayload.TryRead(plain, out var frame, out var current, out var copy):
+            case PacketType.Voice when RelayPayload.TryReadRanges(plain, out var frame, out var current, out var copy):
                 if (frame > sender.Voice.LastUdpFrame) sender.Voice.LastUdpFrame = frame; // Package 141: VoiceUp older than this is stale
                 await VoiceAsync(sender, header.Target, plain, frame, current, copy);
                 break;
@@ -263,7 +263,7 @@ public sealed class UdpVoiceServer : IDisposable
     async Task SendAsync(SessionVoice to, VoiceHeader header, byte[] payload)
     {
         if (to.UdpEndpoint is not { } endpoint) return;
-        await socket.SendToAsync(to.Crypto.Seal(Direction.ServerToClient, header, payload), SocketFlags.None, endpoint);
+        await socket.SendToAsync(to.Crypto.Seal(PacketDirection.ServerToClient, header, payload), SocketFlags.None, endpoint);
     }
 
     public void Dispose()

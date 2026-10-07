@@ -74,7 +74,7 @@ public sealed class ClientConnection : IAsyncDisposable
             var ssl = new SslStream(tcp.GetStream(), false, (_, _, _, _) => true);
             await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions { TargetHost = host }, timeout.Token);
 
-            var fingerprint = CertFingerprint.Of(ssl.RemoteCertificate!);
+            var fingerprint = CertFingerprint.ComputeHex(ssl.RemoteCertificate!);
             var check = known.Check(host, port, fingerprint);
             if (check != TofuResult.Known)
             {
@@ -86,11 +86,11 @@ public sealed class ClientConnection : IAsyncDisposable
 
             var reader = new FrameReader(ssl);
             var writer = new FrameWriter(ssl);
-            await writer.WriteAsync(new ClientHello(ProtocolInfo.Version, nickname, Convert.ToBase64String(identity.PublicKey), password), timeout.Token);
+            await writer.WriteAsync(new ClientHello(WireProtocol.Version, nickname, Convert.ToBase64String(identity.PublicKey), password), timeout.Token);
             var reply = await reader.ReadAsync(timeout.Token);
             if (reply is Challenge challenge)
             {
-                var proof = identity.Sign(ClientIdentity.ProofData(Convert.FromBase64String(challenge.Nonce), CertFingerprint.Hash(ssl.RemoteCertificate!)));
+                var proof = identity.Sign(ClientIdentity.ProofData(Convert.FromBase64String(challenge.Nonce), CertFingerprint.Compute(ssl.RemoteCertificate!)));
                 await writer.WriteAsync(new ClientProof(Convert.ToBase64String(proof)), timeout.Token);
                 reply = await reader.ReadAsync(timeout.Token);
             }
@@ -104,7 +104,7 @@ public sealed class ClientConnection : IAsyncDisposable
                 case Rejected rejected:
                     throw new ConnectionRejectedException(rejected.Code, rejected.Detail);
                 default:
-                    throw new ConnectionRejectedException(Codes.ProtocolError, reply?.GetType().Name);
+                    throw new ConnectionRejectedException(ReasonCodes.ProtocolError, reply?.GetType().Name);
             }
         }
         catch
@@ -152,7 +152,7 @@ public sealed class ClientConnection : IAsyncDisposable
 
     async Task ReceiveLoopAsync()
     {
-        string reason = Codes.ConnectionLost;
+        string reason = ReasonCodes.ConnectionLost;
         string? detail = null;
         try
         {

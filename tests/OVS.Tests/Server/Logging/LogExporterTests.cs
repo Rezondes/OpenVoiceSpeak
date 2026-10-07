@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using OVS.Server;
 using OVS.Server.Logging;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
@@ -83,7 +84,7 @@ public sealed class LogExporterTests : TempDirectoryTest
         WriteLog(ServerLog, "server\n");
         var (export, code) = exporter.Export(DownloadId, [ServerLog, "server/2025-09-09_00-00-00.log"], new Dictionary<Guid, string>());
         Assert.Null(export);
-        Assert.Equal(Codes.NotFound, code);
+        Assert.Equal(ReasonCodes.NotFound, code);
         Assert.False(Directory.Exists(ExportDir));
     }
 
@@ -94,7 +95,7 @@ public sealed class LogExporterTests : TempDirectoryTest
         File.WriteAllText(Path.Combine(dir, "secret.log"), "secret\n");
         var (export, code) = exporter.Export(DownloadId, ["server/../../secret.log"], new Dictionary<Guid, string>());
         Assert.Null(export);
-        Assert.Equal(Codes.NotFound, code);
+        Assert.Equal(ReasonCodes.NotFound, code);
         Assert.False(Directory.Exists(ExportDir));
     }
 
@@ -105,11 +106,11 @@ public sealed class LogExporterTests : TempDirectoryTest
         {
             var path = WriteLog(id, "");
             using var big = File.OpenWrite(path);
-            big.SetLength(ProtocolInfo.MaxLogDownloadBytes / 2 + 1);
+            big.SetLength(ServerTuning.MaxLogDownloadBytes / 2 + 1);
         }
         var (export, code) = exporter.Export(DownloadId, [ServerLog, "server/2025-01-02_00-00-00.log"], new Dictionary<Guid, string>());
         Assert.Null(export);
-        Assert.Equal(Codes.LogsTooLarge, code);
+        Assert.Equal(ReasonCodes.LogsTooLarge, code);
         Assert.False(Directory.Exists(ExportDir));
     }
 

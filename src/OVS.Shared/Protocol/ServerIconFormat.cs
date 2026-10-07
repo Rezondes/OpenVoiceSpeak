@@ -15,7 +15,7 @@ public static class ServerIconFormat
     static ReadOnlySpan<byte> Signature => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
     /// <summary>Identifies a logo; clients compare it with their cache before downloading.</summary>
-    public static string Hash(ReadOnlySpan<byte> png) => Convert.ToHexStringLower(SHA256.HashData(png))[..32];
+    public static string ComputeHash(ReadOnlySpan<byte> png) => Convert.ToHexStringLower(SHA256.HashData(png))[..32];
 
     /// <returns>Null when valid, otherwise the reason in words.</returns>
     public static string? Validate(ReadOnlySpan<byte> png)

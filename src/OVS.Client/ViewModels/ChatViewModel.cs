@@ -72,8 +72,8 @@ public sealed partial class ChatViewModel : ObservableObject
 
     public string Placeholder => CanWrite ? string.Format(Strings.Chat_MessageTo, Selected.Title) : "";
     public bool ShowCounter => Draft.Length >= CounterFrom;
-    public bool IsTooLong => Draft.Length > ProtocolInfo.MaxChatLength;
-    public string CounterText => $"{Draft.Length} / {ProtocolInfo.MaxChatLength}";
+    public bool IsTooLong => Draft.Length > ProtocolLimits.MaxChatLength;
+    public string CounterText => $"{Draft.Length} / {ProtocolLimits.MaxChatLength}";
 
     partial void OnSelectedChanged(ChatTabViewModel value)
     {
@@ -171,7 +171,7 @@ public sealed partial class ChatViewModel : ObservableObject
     async Task Send()
     {
         // Package 83: the server's text rules, so the draft stays for correcting
-        if (TextRules.Text(Draft, ProtocolInfo.MaxChatLength) is not { } checkedText)
+        if (TextRules.NormalizeText(Draft, ProtocolLimits.MaxChatLength) is not { } checkedText)
         {
             ComposerError = Strings.Chat_InvalidChars;
             return;

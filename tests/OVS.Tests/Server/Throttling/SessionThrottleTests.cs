@@ -1,6 +1,5 @@
 using OVS.Server;
 using OVS.Server.Throttling;
-using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server.Throttling;
@@ -157,10 +156,10 @@ public sealed class SessionThrottleTests
     [Fact]
     public void TryChat_ChatBurstPerWindow_RefusedUntilTheWindowPassed()
     {
-        for (int i = 0; i < ProtocolInfo.ChatBurst; i++) Assert.True(throttle.TryChat());
+        for (int i = 0; i < ServerTuning.ChatBurst; i++) Assert.True(throttle.TryChat());
         Assert.False(throttle.TryChat());
 
-        time.Advance(ProtocolInfo.ChatWindow);
+        time.Advance(ServerTuning.ChatWindow);
         Assert.True(throttle.TryChat());
     }
 }

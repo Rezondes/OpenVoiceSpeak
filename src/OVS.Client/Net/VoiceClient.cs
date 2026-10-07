@@ -218,7 +218,7 @@ public sealed class VoiceClient : IDisposable
         {
             lock (sendGate)
             {
-                var packet = sendCrypto.Seal(Direction.ClientToServer, new VoiceHeader(type, sessionId, seq.Next(), target), payload);
+                var packet = sendCrypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(type, sessionId, seq.Next(), target), payload);
                 udp.Send(packet, packet.Length);
             }
         }
@@ -245,12 +245,12 @@ public sealed class VoiceClient : IDisposable
                 continue;
             }
 
-            if (!receiveCrypto.TryOpen(Direction.ServerToClient, result.Buffer, out var header, out var plain)) continue;
+            if (!receiveCrypto.TryOpen(PacketDirection.ServerToClient, result.Buffer, out var header, out var plain)) continue;
             if (!replay.Accept(header.Seq)) continue;
             uint speakerSeq = 0;
             byte[] opus = [];
             byte[]? copy = null;
-            bool voice = header.Type == PacketType.Voice && RelayPayload.TryParse(plain, out speakerSeq, out opus, out copy);
+            bool voice = header.Type == PacketType.Voice && RelayPayload.TryReadArrays(plain, out speakerSeq, out opus, out copy);
             bool back;
             lock (stateGate)
             {

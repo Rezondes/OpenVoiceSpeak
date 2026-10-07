@@ -20,10 +20,10 @@ namespace OVS.Client.Logging;
 public sealed class ClientLog
 {
     public const int KeepDays = 30;
-    readonly LogFiles files;
+    readonly LogFileWriter files;
 
     public ClientLog(string profileDir, TimeProvider time) =>
-        files = new LogFiles(Path.Combine(profileDir, "logs"), KeepDays, time, line => System.Diagnostics.Trace.WriteLine(line));
+        files = new LogFileWriter(Path.Combine(profileDir, "logs"), KeepDays, time, line => System.Diagnostics.Trace.WriteLine(line));
 
     // Package 124: every server message was logged on the UI thread, a file opened and closed per line. Lines now queue
     // and a pool thread writes what has gathered, opening the file once per batch (not held open: readers that lock the
@@ -35,7 +35,7 @@ public sealed class ClientLog
     /// <summary>Queues the line with the time of the call; it is written in the background, in order.</summary>
     public void Write(string text)
     {
-        var line = $"{files.Stamp()} {text}";
+        var line = $"{files.FormatNow()} {text}";
         lock (pending)
         {
             pending.Enqueue(line);
@@ -75,7 +75,7 @@ public sealed class ClientLog
                         Writing?.Invoke();
                         files.Append("", "client-", lines);
                     }
-                    catch (Exception e) // writing never throws (LogFiles catches IO errors); anything else costs a batch, not the log
+                    catch (Exception e) // writing never throws (LogFileWriter catches IO errors); anything else costs a batch, not the log
                     {
                         System.Diagnostics.Trace.WriteLine($"Log konnte nicht geschrieben werden: {e.Message}");
                     }

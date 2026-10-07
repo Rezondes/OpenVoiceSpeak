@@ -392,7 +392,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         while (true)
         {
             await ConnectAsync(new ConnectChoice(bookmark.Host, bookmark.Port, bookmark.Nickname, password, SaveBookmark: true, SavePassword: save));
-            if (lastRejection != Codes.WrongPassword || Dialogs.AskPassword is not { } ask) return;
+            if (lastRejection != ReasonCodes.WrongPassword || Dialogs.AskPassword is not { } ask) return;
             if (await ask(bookmark.Name) is not { } answer) return;
             (password, save) = (answer.Password, answer.Save);
         }
@@ -470,7 +470,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (conn != connection) return;
         var text = string.Format(Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
         if (!string.IsNullOrEmpty(detail)) Log.Write($"Getrennt vom Server: {reason} ({detail})");
-        if (reason is Codes.ConnectionLost or Codes.ServerShutdown or Codes.ServerRestart && lastChoice is { } choice && Server is { } s)
+        if (reason is ReasonCodes.ConnectionLost or ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart && lastChoice is { } choice && Server is { } s)
         {
             StartReconnect(choice, text, s);
             return;
@@ -515,7 +515,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     }
 
     /// <summary>Review: refusals that say "not now" rather than "no": the next attempt may get in.</summary>
-    static bool IsPassing(string code) => code is Codes.ServerShutdown or Codes.ServerRestart or Codes.RateLimited;
+    static bool IsPassing(string code) => code is ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart or ReasonCodes.RateLimited;
 
     async Task<bool> ReconnectOnceAsync(int generation, ConnectChoice choice, Restore restore)
     {
@@ -652,7 +652,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.HasSpeakLinked = s?.HasSpeakLinked ?? false;
         Audio.ChannelMuted = s?.CurrentChannel?.IsMuted == true;
         // Package 132: join, move, edit; clamped, so a hand-edited server file cannot hand Opus an invalid bitrate
-        Audio.ChannelBitrate = Math.Clamp(s?.CurrentChannel?.Bitrate ?? ProtocolInfo.DefaultBitrate, ProtocolInfo.MinBitrate, ProtocolInfo.MaxBitrate);
+        Audio.ChannelBitrate = Math.Clamp(s?.CurrentChannel?.Bitrate ?? ProtocolDefaults.Bitrate, ProtocolLimits.MinBitrate, ProtocolLimits.MaxBitrate);
         if (s?.CurrentChannel?.Id != bitrateChannel)
         {
             bitrateChannel = s?.CurrentChannel?.Id;
@@ -831,8 +831,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 icons.Remove(host, port);
                 return;
             }
-            if (vm.IconPng is { } shown && ServerIconFormat.Hash(shown) == hash) return;
-            if (icons.Load(host, port) is { } cached && ServerIconFormat.Hash(cached) == hash)
+            if (vm.IconPng is { } shown && ServerIconFormat.ComputeHash(shown) == hash) return;
+            if (icons.Load(host, port) is { } cached && ServerIconFormat.ComputeHash(cached) == hash)
             {
                 vm.IconPng = cached;
                 return;
@@ -845,7 +845,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         vm.AdminMessage += m =>
         {
             // Refused within the server's interval: asked once more afterwards, if that logo is still wanted.
-            if (m is not Error { Code: Codes.RateLimited } e || pending is not { IsCompletedSuccessfully: true } p || p.Result != e.RequestId) return;
+            if (m is not Error { Code: ReasonCodes.RateLimited } e || pending is not { IsCompletedSuccessfully: true } p || p.Result != e.RequestId) return;
             var hash = requested;
             if (retried == hash) return;
             retried = hash;
@@ -866,7 +866,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         {
             if (icon.PngBase64 is null || icon.Hash != vm.IconHash) return;
             var png = Convert.FromBase64String(icon.PngBase64);
-            if (ServerIconFormat.Hash(png) != icon.Hash) return;
+            if (ServerIconFormat.ComputeHash(png) != icon.Hash) return;
             icons.Save(host, port, png);
             vm.IconPng = png;
             OnSettingsListsChanged(); // the bookmark tile shows it too

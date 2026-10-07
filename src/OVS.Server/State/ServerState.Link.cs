@@ -50,7 +50,7 @@ public sealed partial class ServerState
         data.Links.AddRange(toAdd);
         data.Links.RemoveAll(toRemove.Contains);
         saves.Persist();
-        logs.Server($"Links geändert von {s.Nickname}: {toAdd.Count} gesetzt, {toRemove.Count} entfernt");
+        logs.WriteServerLine($"Links geändert von {s.Nickname}: {toAdd.Count} gesetzt, {toRemove.Count} entfernt");
         foreach (var link in toAdd)
         {
             LogLink(link, $"gesetzt von {s.Nickname}");

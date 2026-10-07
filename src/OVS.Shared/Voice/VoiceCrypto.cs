@@ -8,7 +8,7 @@ public sealed class VoiceCrypto(byte[] key) : IDisposable
 {
     readonly AesGcm aes = new(key, VoiceHeader.TagSize);
 
-    public byte[] Seal(Direction direction, VoiceHeader header, ReadOnlySpan<byte> plaintext)
+    public byte[] Seal(PacketDirection direction, VoiceHeader header, ReadOnlySpan<byte> plaintext)
     {
         var packet = new byte[VoiceHeader.Size + plaintext.Length + VoiceHeader.TagSize];
         if (packet.Length > VoiceHeader.MaxPacketSize) throw new ArgumentException("Voice payload too large");
@@ -22,7 +22,7 @@ public sealed class VoiceCrypto(byte[] key) : IDisposable
         return packet;
     }
 
-    public bool TryOpen(Direction direction, ReadOnlySpan<byte> packet, out VoiceHeader header, out byte[] plaintext)
+    public bool TryOpen(PacketDirection direction, ReadOnlySpan<byte> packet, out VoiceHeader header, out byte[] plaintext)
     {
         plaintext = [];
         if (!VoiceHeader.TryRead(packet, out header)) return false;
@@ -42,7 +42,7 @@ public sealed class VoiceCrypto(byte[] key) : IDisposable
         return true;
     }
 
-    static void Nonce(Direction direction, uint seq, Span<byte> nonce)
+    static void Nonce(PacketDirection direction, uint seq, Span<byte> nonce)
     {
         nonce.Clear();
         nonce[0] = (byte)direction;

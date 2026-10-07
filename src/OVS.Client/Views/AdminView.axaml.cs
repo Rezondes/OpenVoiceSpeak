@@ -1,6 +1,7 @@
 using OVS.Client.Behaviors;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
+using OVS.Shared.Protocol;
 using Avalonia;
 using Avalonia.VisualTree;
 using Avalonia.Controls;
@@ -20,6 +21,10 @@ public partial class AdminView : UserControl
     public AdminView()
     {
         InitializeComponent();
+        // The ranges of the server limits; XAML cannot assign the int constants to these decimal properties
+        MaxUsersInput.Minimum = ProtocolLimits.MaxUsersMin;
+        MaxUsersInput.Maximum = ProtocolLimits.MaxUsersMax;
+        LogDaysInput.Maximum = ProtocolLimits.LogDaysMax;
         // Hidden tabs stay selectable; start on the first one the user may see.
         // Posted: the tabs' IsVisible bindings follow the new DataContext first.
         DataContextChanged += (_, _) => Dispatcher.UIThread.Post(() =>

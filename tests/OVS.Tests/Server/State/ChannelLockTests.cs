@@ -102,10 +102,10 @@ public sealed class ChannelLockTests : IAsyncLifetime
         Assert.Equal(new[] { ModGroup, RaidGroup }.Order(), (await g.WaitForAsync<ChannelAdded>()).Channel.AllowedGroupIds!.Order()); // everyone sees the lock
 
         await a.SendAsync(new CreateChannel("Fremd", "", AllowedGroupIds: [Guid.NewGuid()]) { RequestId = "u" });
-        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("u")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await a.ErrorAsync("u")).Code);
         var lobby = a.Welcome.Snapshot.Channels.Single(c => c.Id == Lobby);
         await a.SendAsync(new EditChannel(Lobby, lobby.Name, "", lobby.Order, AllowedGroupIds: [RaidGroup]) { RequestId = "d" });
-        Assert.Equal(Codes.InvalidValue, (await a.ErrorAsync("d")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await a.ErrorAsync("d")).Code);
 
         // null keeps the lock, the empty list removes it; an empty list on create means no lock
         Assert.Equal(new[] { ModGroup, RaidGroup }.Order(), (await EditAsync(raid with { Name = "Raid 2" }, null)).AllowedGroupIds!.Order());
@@ -117,7 +117,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
 
         // rights: only ChannelCreate/ChannelEdit set a lock
         await m.SendAsync(new EditChannel(raid.Id, raid.Name, "", raid.Order, AllowedGroupIds: [ModGroup]) { RequestId = "p" });
-        Assert.Equal(Codes.PermissionDenied, (await m.ErrorAsync("p")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await m.ErrorAsync("p")).Code);
     }
 
     /// <summary>Package 93: a data file from before the lock loads without a new data version, every channel open.</summary>
@@ -147,7 +147,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     public async Task Join_RequiresOneListedGroup_AdminAlways()
     {
         var raid = await CreateAsync("Raid", ModGroup, RaidGroup);
-        Assert.Equal(Codes.ChannelLocked, await RefusedJoinAsync(g, raid.Id));
+        Assert.Equal(ReasonCodes.ChannelLocked, await RefusedJoinAsync(g, raid.Id));
         await JoinAsync(r, raid.Id);
         await JoinAsync(m, raid.Id);
         await JoinAsync(a, raid.Id);
@@ -159,7 +159,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     {
         var raidOnly = await CreateAsync("Raid", RaidGroup);
         await m.SendAsync(new MoveUser(g.Id, raidOnly.Id) { RequestId = "mv" });
-        Assert.Equal(Codes.ChannelLocked, (await m.ErrorAsync("mv")).Code); // the mover is not in Raid
+        Assert.Equal(ReasonCodes.ChannelLocked, (await m.ErrorAsync("mv")).Code); // the mover is not in Raid
 
         var mods = await CreateAsync("Mods", ModGroup);
         await m.SendAsync(new MoveUser(g.Id, mods.Id));
@@ -223,8 +223,8 @@ public sealed class ChannelLockTests : IAsyncLifetime
         Assert.Equal([], (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == raid.Id)).Channel.AllowedGroupIds);
         Assert.Equal([ModGroup], (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == both.Id)).Channel.AllowedGroupIds);
 
-        Assert.Equal(Codes.ChannelLocked, await RefusedJoinAsync(r, raid.Id));
-        Assert.Equal(Codes.ChannelLocked, await RefusedJoinAsync(m, raid.Id));
+        Assert.Equal(ReasonCodes.ChannelLocked, await RefusedJoinAsync(r, raid.Id));
+        Assert.Equal(ReasonCodes.ChannelLocked, await RefusedJoinAsync(m, raid.Id));
         await JoinAsync(a, raid.Id);
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.Equal([], late.Welcome.Snapshot.Channels.Single(c => c.Id == raid.Id).AllowedGroupIds);
@@ -260,10 +260,10 @@ public sealed class ChannelLockTests : IAsyncLifetime
         Assert.NotEqual(hash, Stored(DataFile).Channels.Single(c => c.Id == secret.Id).StoredPassword?.Text);
         await JoinAsync(g, secret.Id, "neu2");
 
-        Assert.Equal(Codes.InvalidValue, await ErrorOfAsync(a, edit with { Password = new string('x', ProtocolInfo.MaxPasswordLength + 1) }));
+        Assert.Equal(ReasonCodes.InvalidValue, await ErrorOfAsync(a, edit with { Password = new string('x', ProtocolLimits.MaxPasswordLength + 1) }));
         var lobby = a.Welcome.Snapshot.Channels.Single(c => c.Id == Lobby);
-        Assert.Equal(Codes.InvalidValue, await ErrorOfAsync(a, new EditChannel(Lobby, lobby.Name, "", lobby.Order, Password: "x")));
-        Assert.Equal(Codes.PermissionDenied, await ErrorOfAsync(m, new CreateChannel("X", "", Password: "x")));
+        Assert.Equal(ReasonCodes.InvalidValue, await ErrorOfAsync(a, new EditChannel(Lobby, lobby.Name, "", lobby.Order, Password: "x")));
+        Assert.Equal(ReasonCodes.PermissionDenied, await ErrorOfAsync(m, new CreateChannel("X", "", Password: "x")));
 
         await a.SendAsync(edit with { Password = "" });
         Assert.False((await a.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == secret.Id)).Channel.HasPassword);
@@ -280,12 +280,12 @@ public sealed class ChannelLockTests : IAsyncLifetime
     {
         var secret = await CreateWithPasswordAsync("Geheim", "geheim1");
         await using var b = await TestClient.ConnectAsync(server, "umgeher", bypassId);
-        Assert.Equal(Codes.ChannelPasswordRequired, await RefusedJoinAsync(g, secret.Id, "a"));
-        Assert.Equal(Codes.WrongChannelPassword, await RefusedJoinAsync(g, secret.Id, "b", "falsch"));
+        Assert.Equal(ReasonCodes.ChannelPasswordRequired, await RefusedJoinAsync(g, secret.Id, "a"));
+        Assert.Equal(ReasonCodes.WrongChannelPassword, await RefusedJoinAsync(g, secret.Id, "b", "falsch"));
         await JoinAsync(g, secret.Id, "geheim1");
         await JoinAsync(b, secret.Id); // the bypass right
         await JoinAsync(a, secret.Id); // admins
-        Assert.Equal(Codes.ChannelPasswordRequired, await RefusedJoinAsync(m, secret.Id, "c"));
+        Assert.Equal(ReasonCodes.ChannelPasswordRequired, await RefusedJoinAsync(m, secret.Id, "c"));
     }
 
     [Fact]
@@ -293,9 +293,9 @@ public sealed class ChannelLockTests : IAsyncLifetime
     {
         var both = await CreateWithPasswordAsync("Beide", "geheim1", 0, RaidGroup);
         await using var b = await TestClient.ConnectAsync(server, "umgeher", bypassId);
-        Assert.Equal(Codes.ChannelLocked, await RefusedJoinAsync(b, both.Id, "a")); // the bypass is no group
-        Assert.Equal(Codes.ChannelLocked, await RefusedJoinAsync(g, both.Id, "b", "geheim1"));
-        Assert.Equal(Codes.ChannelPasswordRequired, await RefusedJoinAsync(r, both.Id, "c"));
+        Assert.Equal(ReasonCodes.ChannelLocked, await RefusedJoinAsync(b, both.Id, "a")); // the bypass is no group
+        Assert.Equal(ReasonCodes.ChannelLocked, await RefusedJoinAsync(g, both.Id, "b", "geheim1"));
+        Assert.Equal(ReasonCodes.ChannelPasswordRequired, await RefusedJoinAsync(r, both.Id, "c"));
         await JoinAsync(r, both.Id, "geheim1");
 
         await a.SendAsync(new AssignGroup(bypassId.Fingerprint, RaidGroup));
@@ -309,7 +309,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     {
         var secret = await CreateWithPasswordAsync("Geheim", "geheim1");
         await JoinAsync(m, secret.Id, "geheim1"); // even a mover who knows it and sits inside
-        Assert.Equal(Codes.ChannelPasswordRequired, await ErrorOfAsync(m, new MoveUser(g.Id, secret.Id)));
+        Assert.Equal(ReasonCodes.ChannelPasswordRequired, await ErrorOfAsync(m, new MoveUser(g.Id, secret.Id)));
         await a.SendAsync(new MoveUser(g.Id, secret.Id));
         await g.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ChannelId == secret.Id);
     }
@@ -320,7 +320,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     {
         var full = await CreateWithPasswordAsync("Voll", "geheim1", 1, RaidGroup);
         await JoinAsync(r, full.Id, "geheim1");
-        Assert.Equal(Codes.ChannelLocked, await ErrorOfAsync(m, new MoveUser(g.Id, full.Id))); // UserMove and ChannelJoinFull are not enough
+        Assert.Equal(ReasonCodes.ChannelLocked, await ErrorOfAsync(m, new MoveUser(g.Id, full.Id))); // UserMove and ChannelJoinFull are not enough
         Assert.Equal(Lobby, await ChannelOfAsync(g));
 
         await a.SendAsync(new MoveUser(g.Id, full.Id));
@@ -333,11 +333,11 @@ public sealed class ChannelLockTests : IAsyncLifetime
         var secret = await CreateWithPasswordAsync("Geheim", "geheim1");
         var other = await CreateWithPasswordAsync("Anders", "anders1");
         for (int i = 0; i < 5; i++)
-            Assert.Equal(Codes.WrongChannelPassword, await RefusedJoinAsync(g, secret.Id, "w" + i, "falsch" + i));
-        Assert.Equal(Codes.RateLimited, await RefusedJoinAsync(g, secret.Id, "x", "geheim1")); // even the right one
+            Assert.Equal(ReasonCodes.WrongChannelPassword, await RefusedJoinAsync(g, secret.Id, "w" + i, "falsch" + i));
+        Assert.Equal(ReasonCodes.RateLimited, await RefusedJoinAsync(g, secret.Id, "x", "geheim1")); // even the right one
         await JoinAsync(g, other.Id, "anders1"); // per channel
         time.Advance(TimeSpan.FromMinutes(4));
-        Assert.Equal(Codes.RateLimited, await RefusedJoinAsync(g, secret.Id, "y", "geheim1"));
+        Assert.Equal(ReasonCodes.RateLimited, await RefusedJoinAsync(g, secret.Id, "y", "geheim1"));
         time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(1));
         await JoinAsync(g, secret.Id, "geheim1");
 

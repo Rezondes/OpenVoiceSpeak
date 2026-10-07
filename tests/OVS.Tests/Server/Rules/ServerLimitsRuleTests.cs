@@ -15,6 +15,6 @@ public class ServerLimitsRuleTests
     [InlineData(50, 3651, "Keep logs: 0 to 3650 days.")]
     [InlineData(0, -1, "Max users: 1 to 100000.")] // the users first
     public void Check_UsersAndLogDays_RefusedOutsideTheRanges(int maxUsers, int logDays, string? detail) =>
-        Assert.Equal(detail is null ? null : new Refusal(Codes.InvalidValue, detail),
+        Assert.Equal(detail is null ? null : new Refusal(ReasonCodes.InvalidValue, detail),
             ServerLimitsRule.Check(new ServerLimits(maxUsers, logDays, true, false, new TimeOnly(4, 0))));
 }

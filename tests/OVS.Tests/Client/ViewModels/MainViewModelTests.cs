@@ -606,7 +606,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             var id = LastId();
             await OnUi(() =>
             {
-                server.Apply(new Error(id, Codes.RateLimited));
+                server.Apply(new Error(id, ReasonCodes.RateLimited));
                 return 0;
             });
             var before = Requests();
@@ -1832,16 +1832,16 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>AC3: none of these start a series; the session ends as before.</summary>
     [Theory]
-    [InlineData(Codes.Kicked)]
-    [InlineData(Codes.Banned)]
-    [InlineData(Codes.ReplacedByNewConnection)]
-    [InlineData(Codes.VersionMismatch)]
-    [InlineData(Codes.WrongPassword)]
+    [InlineData(ReasonCodes.Kicked)]
+    [InlineData(ReasonCodes.Banned)]
+    [InlineData(ReasonCodes.ReplacedByNewConnection)]
+    [InlineData(ReasonCodes.VersionMismatch)]
+    [InlineData(ReasonCodes.WrongPassword)]
     [InlineData("own")]
     public async Task NoReconnect_ForDeliberateReasons(string reason)
     {
         TestServer target = server;
-        await using var locked = reason == Codes.WrongPassword ? await TestServer.StartAsync(password: "alt") : null;
+        await using var locked = reason == ReasonCodes.WrongPassword ? await TestServer.StartAsync(password: "alt") : null;
         TestServer? replacement = null;
         try
         {

@@ -57,7 +57,7 @@ public sealed class ServerTuningTests
         // The burst passes (joining the own channel is a no-op), the rest is refused.
         for (int i = 0; i < ServerTuning.RequestBurst + 5; i++) await client.SendAsync(new JoinChannel(here) { RequestId = $"j{n++}" });
         var first = await client.WaitForAsync<Error>();
-        Assert.Equal(($"j{(int)ServerTuning.RequestBurst}", Codes.RateLimited), (first.RequestId, first.Code));
+        Assert.Equal(($"j{(int)ServerTuning.RequestBurst}", ReasonCodes.RateLimited), (first.RequestId, first.Code));
 
         // Keeps flooding: every half second more than the budget refills, so every batch ends refused.
         bool closed = false;
@@ -70,7 +70,7 @@ public sealed class ServerTuningTests
                 for (int i = 0; i < ServerTuning.RequestsPerSecond; i++)
                     await client.SendAsync(new JoinChannel(here) { RequestId = last = $"j{n++}" });
                 var error = await client.WaitForAsync<Error>(e => e.RequestId == last);
-                Assert.Equal(Codes.RateLimited, error.Code);
+                Assert.Equal(ReasonCodes.RateLimited, error.Code);
             }
             catch (Exception e) when (e is EndOfStreamException or IOException)
             {
@@ -106,7 +106,7 @@ public sealed class ServerTuningTests
         for (int i = 0; i < ServerTuning.RequestBurst; i++) await talker.SendAsync(new JoinChannel(here) { RequestId = $"j{i}" });
         await talker.SendAsync(new JoinChannel(here) { RequestId = "over" });
         var refused = await talker.WaitForAsync<Error>(); // the whole request burst passed: the voice took none of it
-        Assert.Equal(("over", Codes.RateLimited), (refused.RequestId, refused.Code));
+        Assert.Equal(("over", ReasonCodes.RateLimited), (refused.RequestId, refused.Code));
 
         time.Advance(TimeSpan.FromSeconds(1));
         await talker.SendAsync(new VoiceUp(99, 0, Convert.ToBase64String([4, 5, 6])));
@@ -197,7 +197,7 @@ public sealed class ServerTuningTests
         Assert.Equal(store.Base64, (await client.WaitForAsync<ServerIcon>()).PngBase64);
 
         await client.SendAsync(new GetServerIcon { RequestId = "i2" });
-        Assert.Equal(Codes.RateLimited, (await client.ErrorAsync("i2")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await client.ErrorAsync("i2")).Code);
 
         time.Advance(ServerTuning.IconInterval);
         await client.SendAsync(new GetServerIcon { RequestId = "i3" });
@@ -220,7 +220,7 @@ public sealed class ServerTuningTests
         await client.SendAsync(new GetServerIcon { RequestId = "i2" });
         Assert.Equal(changed.Settings.IconHash, (await client.WaitForAsync<ServerIcon>(i => i.RequestId == "i2")).Hash);
         await client.SendAsync(new GetServerIcon { RequestId = "i3" });
-        Assert.Equal(Codes.RateLimited, (await client.ErrorAsync("i3")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await client.ErrorAsync("i3")).Code);
 
         // Changed twice within the interval: still answered.
         await client.SendAsync(new SetServerIcon(Convert.ToBase64String(Png(2048))));
@@ -243,14 +243,14 @@ public sealed class ServerTuningTests
             await client.WaitForAsync<UserList>(l => l.RequestId == $"u{i}");
         }
         await client.SendAsync(new ListUsers { RequestId = "zu viel" });
-        Assert.Equal(Codes.RateLimited, (await client.ErrorAsync("zu viel")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await client.ErrorAsync("zu viel")).Code);
         await client.SendAsync(new ListBans { RequestId = "andere liste" }); // every list has its own budget
         await client.WaitForAsync<BanList>(l => l.RequestId == "andere liste");
 
         await client.SendAsync(new CreateBackup { RequestId = "b1" });
         await client.WaitForAsync<BackupList>(l => l.RequestId == "b1");
         await client.SendAsync(new CreateBackup { RequestId = "b2" });
-        Assert.Equal(Codes.RateLimited, (await client.ErrorAsync("b2")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await client.ErrorAsync("b2")).Code);
         time.Advance(ServerTuning.HeavyInterval);
         await client.SendAsync(new CreateBackup { RequestId = "b3" });
         await client.WaitForAsync<BackupList>(l => l.RequestId == "b3");
@@ -286,18 +286,18 @@ public sealed class ServerTuningTests
                 Assert.Equal("ok", await Ask(offset));
 
         // A page served in this round already counts like a first page.
-        Assert.Equal(Codes.RateLimited, await Ask(ServerTuning.ListPageSize));
+        Assert.Equal(ReasonCodes.RateLimited, await Ask(ServerTuning.ListPageSize));
 
         // Without a first page in the last 30 s every later page counts.
         time.Advance(TimeSpan.FromSeconds(31)); // the budget is full again
         for (int i = 0; i < ServerTuning.ListBurst; i++) Assert.Equal("ok", await Ask(1));
-        Assert.Equal(Codes.RateLimited, await Ask(1));
+        Assert.Equal(ReasonCodes.RateLimited, await Ask(1));
 
         // Asking for the same later page again within a round counts from the second time on.
         time.Advance(TimeSpan.FromSeconds(10));
         Assert.Equal("ok", await Ask(0));
         for (int i = 0; i < ServerTuning.ListBurst; i++) Assert.Equal("ok", await Ask(ServerTuning.ListPageSize));
-        Assert.Equal(Codes.RateLimited, await Ask(ServerTuning.ListPageSize));
+        Assert.Equal(ReasonCodes.RateLimited, await Ask(ServerTuning.ListPageSize));
     }
 
     [Fact]
@@ -312,13 +312,13 @@ public sealed class ServerTuningTests
         for (int i = 0; i < ServerTuning.AdminTokenFailures; i++)
         {
             await a.SendAsync(new RedeemAdminToken("falsch") { RequestId = $"t{i}" });
-            Assert.Equal(Codes.InvalidToken, (await a.ErrorAsync($"t{i}")).Code);
+            Assert.Equal(ReasonCodes.InvalidToken, (await a.ErrorAsync($"t{i}")).Code);
         }
         Assert.Equal(ServerTuning.AdminTokenFailures, server.Log.Count(l => l.Contains("Admin-Token falsch von rater")));
 
         // Same IP, other session: blocked too, even with the right token.
         await b.SendAsync(new RedeemAdminToken(token) { RequestId = "richtig" });
-        Assert.Equal(Codes.RateLimited, (await b.ErrorAsync("richtig")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await b.ErrorAsync("richtig")).Code);
         Assert.Equal(token, server.State.PendingAdminToken);
 
         time.Advance(ServerTuning.AdminTokenWindow);
@@ -356,7 +356,7 @@ public sealed class ServerTuningTests
 
         await a.SendAsync(new SetSelfState(true, false) { RequestId = id });
         var error = await a.WaitForAsync<Error>();
-        Assert.Equal((id[..ServerTuning.MaxRequestIdLength], Codes.InvalidValue), (error.RequestId, error.Code));
+        Assert.Equal((id[..ServerTuning.MaxRequestIdLength], ReasonCodes.InvalidValue), (error.RequestId, error.Code));
 
         await a.SendAsync(new SetSelfState(false, true) { RequestId = "kurz" });
         Assert.True((await b.WaitForAsync<UserUpdated>()).User.SelfDeafened); // the long one never ran

@@ -451,7 +451,7 @@ Im Verzeichnis gibt es noch keinen Code und kein Git-Repo, nur Tool-Artefakte. .
 
 Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
 
-1. `SmokeTests.cs > "ProtocolInfo_Defaults_AreStable"` deckt AC2 und AC5 ab.
+1. `SmokeTests.cs > "VersionAndPort_Defaults_AreStable"` deckt AC2 und AC5 ab.
    - Gegeben: nichts
    - Erwartet: `Version == 1`, `DefaultPort == 7000`
 2. Manuelle Checks:
@@ -1957,7 +1957,7 @@ Bisher läuft ein Serverprozess, bis er gestoppt wird, und nach Mitternacht begi
 
 ### Tests (TDD)
 
-1. `RestartScheduleTests > "NextAfter_TodayOrTomorrow_InLocalTime"` für vor, nach, genau zur Uhrzeit und knapp davor (AC1)
+1. `RestartScheduleTests > "FindNext_TodayOrTomorrow_InLocalTime"` für vor, nach, genau zur Uhrzeit und knapp davor (AC1)
 2. `ServerHostTests > "AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles"`: echter Lauf mit Neustart in 5 s, Client bekommt `ServerRestart`, ein neuer Client kommt in den neuen Lauf, zwei Logdateien (AC1, AC2, AC3)
 3. `ServerConfigTests > "Load_AutoRestart_OffByDefault_TimeDefaultsTo4am"`, `"Load_AutoRestartAndLogRotation_FromFile_EnvWins"`, `"Load_LogRotateDaily_OnByDefault"`, `"Load_InvalidRestartOrRotation_Throws"` (AC1, AC4)
 4. `ServerLogWriterTests > "RotateDailyOff_FileLastsUntilRestart_OldFilesStillDeleted"` (AC5)

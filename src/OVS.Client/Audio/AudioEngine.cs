@@ -71,7 +71,7 @@ public sealed class AudioEngine : IDisposable
     {
         this.keys = keys;
         this.time = time ?? TimeProvider.System;
-        Loss = new LossAdapter(this.time, ProtocolInfo.DefaultBitrate);
+        Loss = new LossAdapter(this.time, ProtocolDefaults.Bitrate);
         this.devices = devices ?? (useDevices ? WasapiDevices.Instance : null);
         this.log = log;
         keys.Changed += OnKeysChanged;
@@ -236,7 +236,7 @@ public sealed class AudioEngine : IDisposable
     /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
     public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
 
-    volatile int channelBitrate = ProtocolInfo.DefaultBitrate;
+    volatile int channelBitrate = ProtocolDefaults.Bitrate;
 
     /// <summary>
     /// Package 132 (A141): the own channel's kbps, set on join, move and when it is edited; also for link push-to-talk,
@@ -261,7 +261,7 @@ public sealed class AudioEngine : IDisposable
     /// Package 132: what the capture encodes with; the self test as a channel at the default would send it. Package 135:
     /// the adapted bitrate, at most the channel's.
     /// </summary>
-    internal int EncoderBitrate => selfTest ? ProtocolInfo.DefaultBitrate : Loss.BitrateKbps;
+    internal int EncoderBitrate => selfTest ? ProtocolDefaults.Bitrate : Loss.BitrateKbps;
 
     /// <summary>Package 135: the loss Opus expects; the self test sends nothing, so it keeps the initial one like its 64 kbps.</summary>
     internal int EncoderLossHint => selfTest ? LossAdapter.InitialHint : Loss.LossHint;

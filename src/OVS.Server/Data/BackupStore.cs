@@ -57,7 +57,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     (string Name, string Path) NewName(string prefix, DateTimeOffset now)
     {
         Directory.CreateDirectory(Folder);
-        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString(LogFiles.NameFormat);
+        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString(LogFileWriter.NameFormat);
         var name = stamp + Extension;
         for (int i = 2; File.Exists(Path.Combine(Folder, name)); i++) name = $"{stamp}_{i}{Extension}";
         return (name, Path.Combine(Folder, name));

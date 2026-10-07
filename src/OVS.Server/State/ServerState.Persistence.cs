@@ -31,7 +31,7 @@ public sealed partial class ServerState
         nextPrune = now + TimeSpan.FromDays(1);
         int removed = data.PruneGuests(now - ServerTuning.PruneGuestsAfter);
         if (removed > 0)
-            logs.Server($"{removed} ungenutzte Gast-Einträge entfernt (nur Gast, kein Bann, über {ServerTuning.PruneGuestsAfter.TotalDays:0} Tage nicht angemeldet)");
+            logs.WriteServerLine($"{removed} ungenutzte Gast-Einträge entfernt (nur Gast, kein Bann, über {ServerTuning.PruneGuestsAfter.TotalDays:0} Tage nicht angemeldet)");
         return removed > 0;
     }
 }

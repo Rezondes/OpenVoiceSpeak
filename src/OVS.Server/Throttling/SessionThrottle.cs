@@ -1,5 +1,3 @@
-using OVS.Shared.Protocol;
-
 namespace OVS.Server.Throttling;
 
 /// <summary>
@@ -55,8 +53,8 @@ public sealed class SessionThrottle(TimeProvider time)
     public bool TryChat()
     {
         var now = time.GetUtcNow();
-        while (chatTimes.Count > 0 && now - chatTimes.Peek() >= ProtocolInfo.ChatWindow) chatTimes.Dequeue();
-        if (chatTimes.Count >= ProtocolInfo.ChatBurst) return false;
+        while (chatTimes.Count > 0 && now - chatTimes.Peek() >= ServerTuning.ChatWindow) chatTimes.Dequeue();
+        if (chatTimes.Count >= ServerTuning.ChatBurst) return false;
         chatTimes.Enqueue(now);
         return true;
     }

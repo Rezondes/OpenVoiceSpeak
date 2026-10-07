@@ -156,7 +156,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         answers.Enqueue(LeaveChoice.Save);
         var leaving = vm.ClosePageAsync();
         var update = sent.OfType<UpdateGroup>().Last();
-        vm.Server!.Apply(new Error(update.RequestId, Codes.PermissionDenied));
+        vm.Server!.Apply(new Error(update.RequestId, ReasonCodes.PermissionDenied));
         await leaving;
         Assert.True(vm.IsAdminPage);
         Assert.True(admin.HasChanges(AdminPlace.Groups));

@@ -69,7 +69,7 @@ public sealed class BackupUploadTests() : TempDirectoryTest("ovs-upload-", quiet
     {
         var upload = NewUpload();
         upload.Append([1]);
-        Assert.False(upload.Overflows((int)ProtocolInfo.MaxBackupUploadBytes - 1));
+        Assert.False(upload.Overflows((int)ProtocolLimits.MaxBackupUploadBytes - 1));
     }
 
     [Fact]
@@ -77,6 +77,6 @@ public sealed class BackupUploadTests() : TempDirectoryTest("ovs-upload-", quiet
     {
         var upload = NewUpload();
         upload.Append([1]);
-        Assert.True(upload.Overflows((int)ProtocolInfo.MaxBackupUploadBytes));
+        Assert.True(upload.Overflows((int)ProtocolLimits.MaxBackupUploadBytes));
     }
 }

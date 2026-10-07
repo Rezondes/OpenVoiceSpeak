@@ -72,7 +72,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.NotNull(got);
         Assert.Equal(a.Id, got.Value.Header.SessionId);
         Assert.Equal(VoiceHeader.TargetChannel, got.Value.Header.Target);
-        Assert.True(RelayPayload.TryParse(got.Value.Plain, out var speakerSeq, out var opus, out _));
+        Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var speakerSeq, out var opus, out _));
         Assert.Equal(0u, speakerSeq);
         Assert.Equal(Opus, opus);
 
@@ -109,7 +109,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Null(await va.ReceiveAsync(300));
 
         using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
-        await va.SendRawAsync(stranger.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Ping, 4242, 0, 0), []));
+        await va.SendRawAsync(stranger.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, 4242, 0, 0), []));
         Assert.Null(await va.ReceiveAsync(300));
 
         var once = va.Seal(PacketType.Voice, Opus);
@@ -272,7 +272,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         {
             var got = await v.ReceiveVoiceAsync();
             Assert.NotNull(got);
-            Assert.True(RelayPayload.TryParse(got.Value.Plain, out var s, out var o, out var c));
+            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var s, out var o, out var c));
             Assert.Equal(seq, s);
             Assert.Equal(opus, o);
             Assert.Equal(copy, c);
@@ -367,7 +367,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         {
             var got = await v.ReceiveVoiceAsync();
             Assert.NotNull(got);
-            Assert.True(RelayPayload.TryParse(got.Value.Plain, out var s, out var o, out var c));
+            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var s, out var o, out var c));
             Assert.Equal(seq, s);
             Assert.Equal(opus, o);
             Assert.Equal(copy, c);
@@ -530,7 +530,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         var got = await vx.ReceiveVoiceAsync();
         Assert.NotNull(got);
         Assert.Equal(y.Id, got.Value.Header.SessionId);
-        Assert.True(RelayPayload.TryParse(got.Value.Plain, out var seq, out var opus, out var none));
+        Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var seq, out var opus, out var none));
         Assert.Equal(7u, seq);
         Assert.Equal(back, opus);
         Assert.Null(none);
@@ -543,7 +543,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.NotNull(await vy.ReceiveAsync());
         Assert.False(own.State.FindSession(y.Id)!.Voice.TcpVoice);
         await Send(4);
-        Assert.True(RelayPayload.TryParse((await vy.ReceiveVoiceAsync())!.Value.Plain, out seq, out _, out _));
+        Assert.True(RelayPayload.TryReadArrays((await vy.ReceiveVoiceAsync())!.Value.Plain, out seq, out _, out _));
         Assert.Equal(4u, seq);
         await y.AssertNoMessageAsync<VoiceDown>();
     }
@@ -612,7 +612,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         // c's live session id, sealed with a wrong key, from c's own address: passes every check up to decryption
         using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
         using var flood = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
-        var garbage = stranger.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Ping, c.Id, 0, 0), []);
+        var garbage = stranger.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, c.Id, 0, 0), []);
         var deadline = DateTime.UtcNow.AddSeconds(30); // ends as soon as the filter kicks in
         while (server.Voice.PreFilterDrops == 0 && DateTime.UtcNow < deadline)
             for (int i = 0; i < 100; i++) await flood.SendAsync(garbage, server.VoiceEndPoint);

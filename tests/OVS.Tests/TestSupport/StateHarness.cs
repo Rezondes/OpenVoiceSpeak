@@ -93,7 +93,7 @@ public sealed class StateHarness : IDisposable
 
     public void Dispose()
     {
-        State.CloseAll(new Disconnected(Codes.ServerShutdown));
+        State.CloseAll(new Disconnected(ReasonCodes.ServerShutdown));
         try
         {
             Directory.Delete(DataDir, true);

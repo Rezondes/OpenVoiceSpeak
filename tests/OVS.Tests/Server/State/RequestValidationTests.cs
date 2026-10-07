@@ -49,7 +49,7 @@ public sealed class RequestValidationTests
         await using var a = admin;
 
         await admin.SendRawAsync(json.Replace("{lobby}", admin.Welcome.Snapshot.DefaultChannelId.ToString()));
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("x")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("x")).Code);
         await AssertStillAnsweredAsync(admin);
         Assert.DoesNotContain(server.Log, l => l.Contains("Fehler bei Anfrage")); // checked, not caught
     }
@@ -66,7 +66,7 @@ public sealed class RequestValidationTests
         };
 
         await admin.SendAsync(new CreateChannel("Raid", "") { RequestId = "c" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("c")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("c")).Code);
         await AssertStillAnsweredAsync(admin);
         Assert.Contains(server.Log, l => l.Contains("Fehler bei Anfrage CreateChannel") && l.Contains("Testfehler"));
 
@@ -89,7 +89,7 @@ public sealed class RequestValidationTests
 
         harness.State.HandleMalformed(anna, requestId, "Unbekannter Typ");
 
-        Assert.Equal(new Error(requestId, Codes.InvalidValue, "Unbekannter Typ"), Assert.Single(StateHarness.Drain(anna)));
+        Assert.Equal(new Error(requestId, ReasonCodes.InvalidValue, "Unbekannter Typ"), Assert.Single(StateHarness.Drain(anna)));
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public sealed class RequestValidationTests
         harness.State.HandleMalformed(anna, id, "Unbekannter Typ");
 
         var error = Assert.IsType<Error>(Assert.Single(StateHarness.Drain(anna)));
-        Assert.Equal((id[..ServerTuning.MaxRequestIdLength], Codes.InvalidValue), (error.RequestId, error.Code));
+        Assert.Equal((id[..ServerTuning.MaxRequestIdLength], ReasonCodes.InvalidValue), (error.RequestId, error.Code));
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public sealed class RequestValidationTests
 
         harness.State.HandleMalformed(anna, "r", "Unbekannter Typ");
 
-        Assert.Equal(new Error("r", Codes.RateLimited), Assert.Single(StateHarness.Drain(anna)));
+        Assert.Equal(new Error("r", ReasonCodes.RateLimited), Assert.Single(StateHarness.Drain(anna)));
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public sealed class RequestValidationTests
 
         harness.Handle(anna, new CreateChannel("Raid", null!) { RequestId = "r" });
 
-        Assert.Equal(new Error("r", Codes.RateLimited), Assert.Single(StateHarness.Drain(anna)));
+        Assert.Equal(new Error("r", ReasonCodes.RateLimited), Assert.Single(StateHarness.Drain(anna)));
     }
 
     [Theory]
@@ -173,26 +173,26 @@ public sealed class RequestValidationTests
 
         var client = await TestClient.OpenAsync(server.Port);
         await using (client)
-            Assert.Equal(Codes.NicknameInvalid, Assert.IsType<Rejected>(await client.HandshakeAsync(name, pump: false)).Code);
+            Assert.Equal(ReasonCodes.NicknameInvalid, Assert.IsType<Rejected>(await client.HandshakeAsync(name, pump: false)).Code);
 
         await admin.SendAsync(new CreateChannel(name, "") { RequestId = "c" });
-        Assert.Equal(Codes.InvalidName, (await admin.ErrorAsync("c")).Code);
+        Assert.Equal(ReasonCodes.InvalidName, (await admin.ErrorAsync("c")).Code);
         await admin.SendAsync(new CreateGroup(name, Permission.Speak) { RequestId = "g" });
-        Assert.Equal(Codes.InvalidName, (await admin.ErrorAsync("g")).Code);
+        Assert.Equal(ReasonCodes.InvalidName, (await admin.ErrorAsync("g")).Code);
         await admin.SendAsync(new UpdateServerSettings(name, "", null) { RequestId = "s" });
-        Assert.Equal(Codes.InvalidName, (await admin.ErrorAsync("s")).Code);
+        Assert.Equal(ReasonCodes.InvalidName, (await admin.ErrorAsync("s")).Code);
     }
 
     [Fact]
     public void Names_TrimmedAndOrdinaryUnicodeKept()
     {
-        Assert.Equal("Raid", TextRules.Name("  Raid \u2028", 64));
-        Assert.Equal("J\u00FCrgen \u00E9\u00E8", TextRules.Name("J\u00FCrgen \u00E9\u00E8", 32));
-        Assert.Null(TextRules.Name("   ", 32));
-        Assert.Null(TextRules.Name(new string('x', 33), 32));
-        Assert.Null(TextRules.Name("a\uD800b", 32)); // lone surrogate
-        Assert.Null(TextRules.Text("a\uD800b", 500));
-        Assert.Equal("a\nb", TextRules.Text("a\r\nb", 500));
+        Assert.Equal("Raid", TextRules.NormalizeName("  Raid \u2028", 64));
+        Assert.Equal("J\u00FCrgen \u00E9\u00E8", TextRules.NormalizeName("J\u00FCrgen \u00E9\u00E8", 32));
+        Assert.Null(TextRules.NormalizeName("   ", 32));
+        Assert.Null(TextRules.NormalizeName(new string('x', 33), 32));
+        Assert.Null(TextRules.NormalizeName("a\uD800b", 32)); // lone surrogate
+        Assert.Null(TextRules.NormalizeText("a\uD800b", 500));
+        Assert.Equal("a\nb", TextRules.NormalizeText("a\r\nb", 500));
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public sealed class RequestValidationTests
         {
             var other = await TestClient.OpenAsync(server.Port);
             await using (other)
-                Assert.Equal(Codes.NicknameTaken, Assert.IsType<Rejected>(await other.HandshakeAsync(name, pump: false)).Code);
+                Assert.Equal(ReasonCodes.NicknameTaken, Assert.IsType<Rejected>(await other.HandshakeAsync(name, pump: false)).Code);
         }
 
         // the owner gets it, and while online it is taken normalized as well
@@ -219,7 +219,7 @@ public sealed class RequestValidationTests
         await using var anna = await TestClient.ConnectAsync(server, "anna");
         var copy = await TestClient.OpenAsync(server.Port);
         await using (copy)
-            Assert.Equal(Codes.NicknameTaken, Assert.IsType<Rejected>(await copy.HandshakeAsync("\uFF21NNA", pump: false)).Code);
+            Assert.Equal(ReasonCodes.NicknameTaken, Assert.IsType<Rejected>(await copy.HandshakeAsync("\uFF21NNA", pump: false)).Code);
     }
 
     /// <summary>Old data can hold one stored name twice: it belongs to the record that logged in last.</summary>
@@ -248,7 +248,7 @@ public sealed class RequestValidationTests
         {
             var client = await TestClient.OpenAsync(server.Port, id);
             await using (client)
-                Assert.Equal(Codes.NicknameTaken, Assert.IsType<Rejected>(await client.HandshakeAsync(name, pump: false)).Code);
+                Assert.Equal(ReasonCodes.NicknameTaken, Assert.IsType<Rejected>(await client.HandshakeAsync(name, pump: false)).Code);
         }
 
         await using (await TestClient.ConnectAsync(server, "Steven", b)) { }
@@ -278,11 +278,11 @@ public sealed class RequestValidationTests
         foreach (var bad in new[] { "a\u0007b", "a\u0085b", "a\u202Eb", "a\u200Fb", "a\u2028b", "a\rb", "a\tb" })
         {
             await admin.SendAsync(new UpdateServerSettings("Testserver", bad, null) { RequestId = $"w{n}" });
-            Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync($"w{n}")).Code);
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"w{n}")).Code);
             await admin.SendAsync(new CreateChannel($"Kanal {n}", bad) { RequestId = $"d{n}" });
-            Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync($"d{n}")).Code);
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"d{n}")).Code);
             await admin.SendAsync(new SendChat(ChatTarget.Channel, null, bad) { RequestId = $"c{n}" });
-            Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync($"c{n}")).Code);
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"c{n}")).Code);
             n++;
         }
         await admin.AssertNoMessageAsync<ChatMessage>();
@@ -307,7 +307,7 @@ public sealed class RequestValidationTests
         Assert.Equal(int.MaxValue, (await admin.WaitForAsync<ChannelAdded>()).Channel.Order);
 
         await admin.SendAsync(new UpdateServerSettings("Testserver", "", new string('p', 129)) { RequestId = "long" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("long")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("long")).Code);
         Assert.False((await ConnectedSettingsAsync(server)).HasPassword);
         await admin.SendAsync(new UpdateServerSettings("Testserver", "", new string('p', 128)));
         Assert.True((await admin.WaitForAsync<ServerSettingsChanged>()).Settings.HasPassword);
@@ -328,10 +328,10 @@ public sealed class RequestValidationTests
         await using var _ = server;
         await using var a = admin;
 
-        for (int i = 0; i <= ProtocolInfo.ChatBurst; i++)
+        for (int i = 0; i <= ServerTuning.ChatBurst; i++)
         {
             await admin.SendRawAsync($$"""{"type":"sendChat","requestId":"t{{i}}","target":7,"toSessionId":null,"text":"hallo"}""");
-            Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync($"t{i}")).Code);
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"t{i}")).Code);
         }
 
         // none of them counted against the chat limit

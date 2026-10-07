@@ -72,9 +72,9 @@ public sealed class LinkCommandTests : IAsyncLifetime
         await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
         var separator = (await a.WaitForAsync<ChannelAdded>(c => c.Channel.Kind == ChannelKind.Separator)).Channel.Id;
         await m.SendAsync(new LinkChannels(x, separator) { RequestId = "l" });
-        Assert.Equal(Codes.InvalidLink, (await m.ErrorAsync("l")).Code);
+        Assert.Equal(ReasonCodes.InvalidLink, (await m.ErrorAsync("l")).Code);
         await m.SendAsync(new SetChannelLinks([new LinkInfo(separator, y)], []) { RequestId = "s" });
-        Assert.Equal(Codes.InvalidLink, (await m.ErrorAsync("s")).Code);
+        Assert.Equal(ReasonCodes.InvalidLink, (await m.ErrorAsync("s")).Code);
         Assert.Empty(server.State.LinkedChannels(separator));
     }
 
@@ -82,14 +82,14 @@ public sealed class LinkCommandTests : IAsyncLifetime
     public async Task Link_SameChannel_InvalidLink()
     {
         await m.SendAsync(new LinkChannels(x, x) { RequestId = "l" });
-        Assert.Equal(Codes.InvalidLink, (await m.ErrorAsync("l")).Code);
+        Assert.Equal(ReasonCodes.InvalidLink, (await m.ErrorAsync("l")).Code);
     }
 
     [Fact]
     public async Task Link_UnknownChannel_NotFound()
     {
         await m.SendAsync(new LinkChannels(x, Guid.NewGuid()) { RequestId = "l" });
-        Assert.Equal(Codes.NotFound, (await m.ErrorAsync("l")).Code);
+        Assert.Equal(ReasonCodes.NotFound, (await m.ErrorAsync("l")).Code);
     }
 
     [Fact]
@@ -166,9 +166,9 @@ public sealed class LinkCommandTests : IAsyncLifetime
     public async Task Link_AsGuest_PermissionDenied()
     {
         await g.SendAsync(new LinkChannels(x, y) { RequestId = "l" });
-        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("l")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("l")).Code);
         await g.SendAsync(new UnlinkChannels(x, y) { RequestId = "u" });
-        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("u")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("u")).Code);
     }
 
     // ---- Package 38: link matrix ----
@@ -180,7 +180,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
         await g.WaitForAsync<ChannelsLinked>();
 
         await m.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(y, lobby), new LinkInfo(lobby, x)], [new LinkInfo(x, lobby)]) { RequestId = "beides" });
-        Assert.Equal(Codes.InvalidValue, (await m.ErrorAsync("beides")).Code); // the same link set and removed
+        Assert.Equal(ReasonCodes.InvalidValue, (await m.ErrorAsync("beides")).Code); // the same link set and removed
 
         await m.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(y, lobby)], [new LinkInfo(x, lobby)]));
         var linked = new[] { await g.WaitForAsync<ChannelsLinked>(), await g.WaitForAsync<ChannelsLinked>() };
@@ -197,9 +197,9 @@ public sealed class LinkCommandTests : IAsyncLifetime
     public async Task SetLinks_UnknownOrSelf_NothingChanged()
     {
         await a.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(x, Guid.NewGuid())], []) { RequestId = "fremd" });
-        Assert.Equal(Codes.NotFound, (await a.ErrorAsync("fremd")).Code);
+        Assert.Equal(ReasonCodes.NotFound, (await a.ErrorAsync("fremd")).Code);
         await a.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(y, y)], []) { RequestId = "selbst" });
-        Assert.Equal(Codes.InvalidLink, (await a.ErrorAsync("selbst")).Code);
+        Assert.Equal(ReasonCodes.InvalidLink, (await a.ErrorAsync("selbst")).Code);
         await g.AssertNoMessageAsync<ChannelsLinked>();
     }
 
@@ -207,6 +207,6 @@ public sealed class LinkCommandTests : IAsyncLifetime
     public async Task SetLinks_WithoutRight_Denied()
     {
         await g.SendAsync(new SetChannelLinks([new LinkInfo(x, y)], []) { RequestId = "r" });
-        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("r")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("r")).Code);
     }
 }

@@ -13,12 +13,12 @@ public class ModerationRuleTests
     [InlineData("a\u0007b", false)]
     [InlineData("bidi ‮", false)]
     public void CheckReason_Text_OneLineWithoutControlCharacters(string? reason, bool allowed) =>
-        Assert.Equal(allowed ? null : new Refusal(Codes.InvalidValue, "A reason has at most 200 characters and no line breaks or control characters."),
+        Assert.Equal(allowed ? null : new Refusal(ReasonCodes.InvalidValue, "A reason has at most 200 characters and no line breaks or control characters."),
             ModerationRule.CheckReason(reason));
 
     [Theory]
-    [InlineData(ProtocolInfo.MaxReasonLength, true)]
-    [InlineData(ProtocolInfo.MaxReasonLength + 1, false)]
+    [InlineData(ProtocolLimits.MaxReasonLength, true)]
+    [InlineData(ProtocolLimits.MaxReasonLength + 1, false)]
     public void CheckReason_Length_AtMostMax(int length, bool allowed) =>
         Assert.Equal(allowed, ModerationRule.CheckReason(new string('x', length)) is null);
 
@@ -28,5 +28,5 @@ public class ModerationRuleTests
     [InlineData(0, false)]
     [InlineData(-5, false)]
     public void CheckDuration_Minutes_PositiveOrPermanent(int? minutes, bool allowed) =>
-        Assert.Equal(allowed ? null : new Refusal(Codes.InvalidValue, "The duration must be positive."), ModerationRule.CheckDuration(minutes));
+        Assert.Equal(allowed ? null : new Refusal(ReasonCodes.InvalidValue, "The duration must be positive."), ModerationRule.CheckDuration(minutes));
 }

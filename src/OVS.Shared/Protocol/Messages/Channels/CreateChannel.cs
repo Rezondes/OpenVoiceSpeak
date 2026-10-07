@@ -7,4 +7,4 @@ namespace OVS.Shared.Protocol.Messages.Channels;
 /// <param name="Bitrate">Package 132: kbps, MinBitrate to MaxBitrate; a separator keeps the default (it gets none).</param>
 public sealed record CreateChannel(string Name, string Description, bool IsMuted = false, int MaxUsers = 0,
     IReadOnlyList<Guid>? AllowedGroupIds = null, string? Password = null, ChannelKind Kind = ChannelKind.Voice,
-    int Bitrate = ProtocolInfo.DefaultBitrate) : Request;
+    int Bitrate = ProtocolDefaults.Bitrate) : Request;

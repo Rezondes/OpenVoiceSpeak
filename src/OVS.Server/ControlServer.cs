@@ -21,7 +21,7 @@ namespace OVS.Server;
 public sealed class ControlServer(ServerState state, X509Certificate2 certificate, IPEndPoint endpoint) : IAsyncDisposable
 {
     readonly TcpListener listener = new(endpoint);
-    readonly byte[] certHash = CertFingerprint.Hash(certificate);
+    readonly byte[] certHash = CertFingerprint.Compute(certificate);
     readonly CancellationTokenSource stopping = new();
     readonly ConcurrentDictionary<Task, byte> connections = new();
     SemaphoreSlim? handshakes; // Package 86: created on Start, after MaxPendingHandshakes is set
@@ -46,7 +46,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
     {
         if (stopping.IsCancellationRequested) return;
         listener.Stop(); // first, so nobody new connects to a server that is going away
-        state.CloseAll(new Disconnected(restart ? Codes.ServerRestart : Codes.ServerShutdown));
+        state.CloseAll(new Disconnected(restart ? ReasonCodes.ServerRestart : ReasonCodes.ServerShutdown));
         await Task.WhenAny(Task.WhenAll(connections.Keys), Task.Delay(TimeSpan.FromSeconds(2)));
         stopping.Cancel();
         if (acceptLoop is not null) await acceptLoop;
@@ -87,7 +87,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             if (!state.TryAddConnection(ip))
             {
                 state.ReleaseConnection(ip);
-                state.LogRejected(ip, Codes.TooManyConnections, null, null);
+                state.LogRejected(ip, ReasonCodes.TooManyConnections, null, null);
                 tcp.Dispose();
                 continue;
             }
@@ -165,21 +165,21 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             return null;
         }
 
-        if (await reader.ReadAsync(ct) is not ClientHello hello) return await Reject(Codes.ProtocolError);
-        if (hello.ProtocolVersion != ProtocolInfo.Version)
-            return await Reject(Codes.VersionMismatch, $"Server spricht Protokollversion {ProtocolInfo.Version}");
-        var nickname = TextRules.Name(hello.Nickname, ProtocolInfo.MaxNicknameLength);
-        if (nickname is null) return await Reject(Codes.NicknameInvalid);
+        if (await reader.ReadAsync(ct) is not ClientHello hello) return await Reject(ReasonCodes.ProtocolError);
+        if (hello.ProtocolVersion != WireProtocol.Version)
+            return await Reject(ReasonCodes.VersionMismatch, $"Server spricht Protokollversion {WireProtocol.Version}");
+        var nickname = TextRules.NormalizeName(hello.Nickname, ProtocolLimits.MaxNicknameLength);
+        if (nickname is null) return await Reject(ReasonCodes.NicknameInvalid);
         logName = nickname;
-        if (!TryBase64(hello.PublicKey, out var publicKey)) return await Reject(Codes.ProtocolError);
+        if (!TryBase64(hello.PublicKey, out var publicKey)) return await Reject(ReasonCodes.ProtocolError);
 
         var nonce = RandomNumberGenerator.GetBytes(32);
         await writer.WriteAsync(new Challenge(Convert.ToBase64String(nonce)), ct);
 
         if (await reader.ReadAsync(ct) is not ClientProof proof || !TryBase64(proof.Signature, out var signature))
-            return await Reject(Codes.ProtocolError);
+            return await Reject(ReasonCodes.ProtocolError);
         if (!ClientIdentity.Verify(publicKey, ClientIdentity.ProofData(nonce, certHash), signature))
-            return await Reject(Codes.BadSignature);
+            return await Reject(ReasonCodes.BadSignature);
 
         logFingerprint = ClientIdentity.ComputeFingerprint(publicKey);
         var (session, rejection) = state.Admit(logFingerprint, nickname, ip, hello.Password);

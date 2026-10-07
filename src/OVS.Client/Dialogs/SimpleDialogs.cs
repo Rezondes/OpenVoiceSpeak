@@ -261,9 +261,9 @@ public static class SimpleDialogs
             Field(Strings.Dlg_ServerPassword, password, Strings.Dlg_PasswordEditHint), save);
         return Show(overlay, Strings.Dlg_EditBookmark, "Edit", body, () =>
             string.IsNullOrWhiteSpace(name.Text) || string.IsNullOrWhiteSpace(host.Text)
-            || TextRules.Name(nickname.Text, ProtocolInfo.MaxNicknameLength) is null // Package 83: the server's nickname rule
+            || TextRules.NormalizeName(nickname.Text, ProtocolLimits.MaxNicknameLength) is null // Package 83: the server's nickname rule
                 ? null
-                : new BookmarkEdit(name.Text.Trim(), host.Text.Trim(), (int)(port.Value ?? 7000), nickname.Text.Trim(), password.Text, save.IsChecked == true),
+                : new BookmarkEdit(name.Text.Trim(), host.Text.Trim(), (int)(port.Value ?? ProtocolDefaults.Port), nickname.Text.Trim(), password.Text, save.IsChecked == true),
             Strings.Dlg_Save);
     }
 
@@ -447,7 +447,7 @@ public static class SimpleDialogs
     public static Task<ConnectChoice?> Connect(OverlayHost overlay, ClientSettings settings, Bookmark? preselect = null)
     {
         var host = new TextBox { Watermark = Strings.Dlg_HostExample };
-        var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = 7000, FormatString = "0", Increment = 1, Width = 130 };
+        var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = ProtocolDefaults.Port, FormatString = "0", Increment = 1, Width = 130 };
         var nickname = new TextBox();
         var password = new TextBox { PasswordChar = '•', RevealPassword = false };
         var reveal = new ToggleButton { Content = Icon("Eye", "muted"), Width = 36, Margin = new Thickness(6, 0, 0, 0) };
@@ -497,13 +497,13 @@ public static class SimpleDialogs
             {
                 string? problem = string.IsNullOrWhiteSpace(host.Text) ? Strings.Dlg_AddressMissing
                     : string.IsNullOrWhiteSpace(nickname.Text) ? Strings.Dlg_NicknameMissing
-                    : TextRules.Name(nickname.Text, ProtocolInfo.MaxNicknameLength) is null ? Strings.Dlg_NicknameInvalid // Package 83
+                    : TextRules.NormalizeName(nickname.Text, ProtocolLimits.MaxNicknameLength) is null ? Strings.Dlg_NicknameInvalid // Package 83
                     : null;
                 error.Text = problem ?? "";
                 error.IsVisible = problem is not null;
                 return problem is not null
                     ? null
-                    : new ConnectChoice(host.Text!.Trim(), (int)(port.Value ?? 7000), nickname.Text!.Trim(), password.Text, save.IsChecked == true,
+                    : new ConnectChoice(host.Text!.Trim(), (int)(port.Value ?? ProtocolDefaults.Port), nickname.Text!.Trim(), password.Text, save.IsChecked == true,
                         savePassword.IsChecked == true);
             },
             Strings.Dlg_Connect);

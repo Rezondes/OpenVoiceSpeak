@@ -29,7 +29,7 @@ public sealed class ChannelRecord
     /// Package 132 (A141): kbps; older files load as 64 (the channels move from the old fixed 32 kbps), without a new
     /// data version. A separator gets 0 and is never asked for it.
     /// </summary>
-    public int Bitrate { get; set; } = ProtocolInfo.DefaultBitrate;
+    public int Bitrate { get; set; } = ProtocolDefaults.Bitrate;
 
     /// <summary>Constant-time in both formats; true when there is no password.</summary>
     public bool CheckPassword(string? password) => StoredPassword?.Matches(password) ?? true;

@@ -13,9 +13,9 @@ public sealed class ServerSettings
     [JsonPropertyName("passwordHash")]
     public StoredPassword? StoredPassword { get; set; }
     // Package 69: formerly environment variables, now changed in the administration (A85)
-    public int MaxUsers { get; set; } = ProtocolInfo.MaxUsersDefault;
+    public int MaxUsers { get; set; } = ProtocolDefaults.MaxUsers;
     /// <summary>0 keeps every log file.</summary>
-    public int LogDays { get; set; } = ProtocolInfo.LogDaysDefault;
+    public int LogDays { get; set; } = ProtocolDefaults.LogDays;
     public bool LogRotateDaily { get; set; } = true;
     public bool AutoRestart { get; set; }
     /// <summary>Server local time.</summary>

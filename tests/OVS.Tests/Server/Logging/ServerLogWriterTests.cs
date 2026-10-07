@@ -36,7 +36,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         // Regression: File.ReadAllText (and editors) lock the file against writers; the line used to be dropped.
         var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), _ => { });
-        logs.Server("eins");
+        logs.WriteServerLine("eins");
         var path = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Single();
         var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         // A dedicated thread, not a timer continuation: the writer retries for only about 100 ms, and on a busy
@@ -47,7 +47,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
             reader.Dispose();
         }, TaskCreationOptions.LongRunning);
 
-        logs.Server("zwei");
+        logs.WriteServerLine("zwei");
         await release;
         Assert.Contains("zwei", File.ReadAllText(path));
     }
@@ -81,7 +81,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var logs = new ServerLogWriter(dir, 30, time, console.Add);
         var start = Start(time);
         time.Advance(TimeSpan.FromMinutes(5));
-        logs.Server("Hallo Welt");
+        logs.WriteServerLine("Hallo Welt");
 
         Assert.Contains(console, l => l.EndsWith("Hallo Welt"));
         var file = Path.Combine(dir, "logs", "server", start + ".log");
@@ -95,14 +95,14 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var channel = Guid.NewGuid();
         var first = Start(time);
         var logs = new ServerLogWriter(dir, 30, time, _ => { });
-        logs.Server("Lauf eins");
-        logs.Channel(channel, "Raid", "Lauf eins");
+        logs.WriteServerLine("Lauf eins");
+        logs.WriteChannelLine(channel, "Raid", "Lauf eins");
 
         time.Advance(TimeSpan.FromMinutes(90));
         var second = Start(time);
         logs = new ServerLogWriter(dir, 30, time, _ => { });
-        logs.Server("Lauf zwei");
-        logs.Channel(channel, "Raid", "Lauf zwei");
+        logs.WriteServerLine("Lauf zwei");
+        logs.WriteChannelLine(channel, "Raid", "Lauf zwei");
 
         foreach (var folder in new[] { Path.Combine(dir, "logs", "server"), Path.Combine(dir, "logs", "channels", channel.ToString()) })
         {
@@ -118,9 +118,9 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var time = new ManualTimeProvider();
         var first = Start(time);
         var logs = new ServerLogWriter(dir, 30, time, _ => { });
-        logs.Server("eins");
+        logs.WriteServerLine("eins");
         time.Advance(TimeSpan.FromDays(1));
-        logs.Server("zwei");
+        logs.WriteServerLine("zwei");
 
         Assert.Contains("eins", File.ReadAllText(Path.Combine(dir, "logs", "server", first + ".log")));
         Assert.Contains("zwei", File.ReadAllText(Path.Combine(dir, "logs", "server", Start(time) + ".log")));
@@ -133,7 +133,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var console = new List<string>();
         var logs = new ServerLogWriter(dir, 30, time, console.Add);
         var id = Guid.NewGuid();
-        logs.Channel(id, "Raid", "anna hat den Channel betreten");
+        logs.WriteChannelLine(id, "Raid", "anna hat den Channel betreten");
 
         Assert.Empty(console);
         Assert.Contains("[Raid] anna hat den Channel betreten", File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log")));
@@ -146,8 +146,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var time = new ManualTimeProvider();
         var logs = new ServerLogWriter(dir, 30, time, _ => { });
         var id = Guid.NewGuid();
-        logs.Channel(id, "Raid", "hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\0e\u001b[31m");
-        logs.Channel(id, "Raid", @"Pfad C:\neu äöü");
+        logs.WriteChannelLine(id, "Raid", "hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\0e\u001b[31m");
+        logs.WriteChannelLine(id, "Raid", @"Pfad C:\neu äöü");
 
         var lines = File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log"))
             .Split(Environment.NewLine);
@@ -164,7 +164,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var time = new ManualTimeProvider();
         var console = new List<string>();
         var logs = new ServerLogWriter(dir, 30, time, console.Add);
-        logs.Server("a\rb\nc\u2028d\u2029e\u001b[31mrot\u009b2J\u0007");
+        logs.WriteServerLine("a\rb\nc\u2028d\u2029e\u001b[31mrot\u009b2J\u0007");
 
         var line = Assert.Single(console);
         Assert.EndsWith(@" a\rb\nc\u2028d\u2029e\u001B[31mrot\u009B2J\u0007", line);
@@ -212,7 +212,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         Assert.False(File.Exists(Path.Combine(channel, Start(time, -40) + ".log")));
 
         time.Advance(TimeSpan.FromDays(26)); // the -5 file is now 31 days old: cleanup at day change
-        logs.Server("neuer Tag");
+        logs.WriteServerLine("neuer Tag");
         Assert.False(File.Exists(Path.Combine(server, Start(time, -31) + ".log")));
     }
 
@@ -223,13 +223,13 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var server = Path.Combine(dir, "logs", "server");
         var start = Start(time);
         var logs = new ServerLogWriter(dir, 30, time, _ => { }, newFileEachDay: false);
-        logs.Server("eins");
+        logs.WriteServerLine("eins");
         Touch(server, Start(time, -29));
 
         time.Advance(TimeSpan.FromDays(2)); // the other file is now 31 days old
-        logs.Server("zwei");
+        logs.WriteServerLine("zwei");
         time.Advance(TimeSpan.FromDays(40)); // the running file is older than the retention, but still in use
-        logs.Server("drei");
+        logs.WriteServerLine("drei");
 
         Assert.Equal([start + ".log"], Directory.GetFiles(server).Select(Path.GetFileName));
         var text = File.ReadAllText(Path.Combine(server, start + ".log"));
@@ -246,12 +246,12 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var start = Start(time);
         Touch(server, Start(time, -10));
         var logs = new ServerLogWriter(dir, 30, time, _ => { });
-        logs.Server("eins");
+        logs.WriteServerLine("eins");
         Assert.True(File.Exists(Path.Combine(server, Start(time, -10) + ".log")));
 
         logs.Update(5, newFileEachDay: false);
         time.Advance(TimeSpan.FromDays(1));
-        logs.Server("zwei");
+        logs.WriteServerLine("zwei");
 
         Assert.Equal([start + ".log"], Directory.GetFiles(server).Select(Path.GetFileName)); // old file gone, no new day file
         Assert.Contains("zwei", File.ReadAllText(Path.Combine(server, start + ".log")));
@@ -263,7 +263,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
         Touch(server, Start(time, -400));
-        new ServerLogWriter(dir, 0, time, _ => { }).Server("x");
+        new ServerLogWriter(dir, 0, time, _ => { }).WriteServerLine("x");
         Assert.True(File.Exists(Path.Combine(server, Start(time, -400) + ".log")));
     }
 
@@ -273,9 +273,9 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         File.WriteAllText(Path.Combine(dir, "logs"), "ich bin eine Datei, kein Ordner");
         var console = new List<string>();
         var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), console.Add);
-        logs.Server("eins");
-        logs.Channel(Guid.NewGuid(), "Raid", "zwei");
-        logs.Server("drei");
+        logs.WriteServerLine("eins");
+        logs.WriteChannelLine(Guid.NewGuid(), "Raid", "zwei");
+        logs.WriteServerLine("drei");
         Assert.Single(console, l => l.Contains("Log konnte nicht geschrieben werden"));
         Assert.Contains(console, l => l.EndsWith("drei")); // the console keeps working
     }

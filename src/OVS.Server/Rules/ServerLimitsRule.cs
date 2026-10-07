@@ -7,18 +7,18 @@ namespace OVS.Server.Rules;
 public static class ServerLimitsRule
 {
     /// <summary>The range of the user limit.</summary>
-    public static (int Min, int Max) MaxUsers => (ProtocolInfo.MaxUsersMin, ProtocolInfo.MaxUsersMax);
+    public static (int Min, int Max) MaxUsers => (ProtocolLimits.MaxUsersMin, ProtocolLimits.MaxUsersMax);
 
     /// <summary>0 keeps every log file.</summary>
-    public static (int Min, int Max) LogDays => (0, ProtocolInfo.LogDaysMax);
+    public static (int Min, int Max) LogDays => (0, ProtocolLimits.LogDaysMax);
 
     static bool IsInRange(int value, (int Min, int Max) range) => value >= range.Min && value <= range.Max;
 
     /// <summary>The users first, then the log days; null when both are in range.</summary>
     public static Refusal? Check(ServerLimits limits)
     {
-        if (!IsInRange(limits.MaxUsers, MaxUsers)) return new(Codes.InvalidValue, $"Max users: {MaxUsers.Min} to {MaxUsers.Max}.");
-        if (!IsInRange(limits.LogDays, LogDays)) return new(Codes.InvalidValue, $"Keep logs: {LogDays.Min} to {LogDays.Max} days.");
+        if (!IsInRange(limits.MaxUsers, MaxUsers)) return new(ReasonCodes.InvalidValue, $"Max users: {MaxUsers.Min} to {MaxUsers.Max}.");
+        if (!IsInRange(limits.LogDays, LogDays)) return new(ReasonCodes.InvalidValue, $"Keep logs: {LogDays.Min} to {LogDays.Max} days.");
         return null;
     }
 }

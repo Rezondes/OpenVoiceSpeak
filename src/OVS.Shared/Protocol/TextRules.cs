@@ -11,10 +11,10 @@ namespace OVS.Shared.Protocol;
 public static class TextRules
 {
     /// <summary>
-    /// A trimmed name of 1..max chars, else null. Refused: control characters, format characters (category Cf: zero-width,
+    /// Returns the trimmed name when it has 1..max chars and is allowed, or null. Refused: control characters, format characters (category Cf: zero-width,
     /// bidi controls), line and paragraph separators and lone surrogates.
     /// </summary>
-    public static string? Name(string? name, int max)
+    public static string? NormalizeName(string? name, int max)
     {
         var n = name?.Trim();
         return n is { Length: > 0 } && n.Length <= max && Clean(n, r => Rune.IsControl(r) || Rune.GetUnicodeCategory(r)
@@ -22,11 +22,12 @@ public static class TextRules
     }
 
     /// <summary>
-    /// A multi-line text of at most max chars with "\r\n" turned into "\n", else null; not trimmed. Refused: every other
+    /// Returns the multi-line text with "\r\n" turned into "\n" when it has at most max chars and is allowed, or null;
+    /// not trimmed. Refused: every other
     /// control character (C0 and C1, also a lone "\r" or a tab), bidi controls, line and paragraph separators and lone surrogates.
     /// Other format characters stay allowed, emoji sequences need the zero-width joiner.
     /// </summary>
-    public static string? Text(string? text, int max)
+    public static string? NormalizeText(string? text, int max)
     {
         var t = text?.Replace("\r\n", "\n");
         return t is not null && t.Length <= max && Clean(t, r => r.Value != '\n' && (Rune.IsControl(r) || IsBidiControl(r)

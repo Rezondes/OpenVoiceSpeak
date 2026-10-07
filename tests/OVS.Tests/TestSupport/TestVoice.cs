@@ -32,7 +32,7 @@ public sealed class TestVoice : IDisposable
     }
 
     public byte[] SealRaw(PacketType type, byte[] plaintext, byte target = 0) =>
-        crypto.Seal(Direction.ClientToServer, new VoiceHeader(type, sessionId, Seq.Next(), target), plaintext);
+        crypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(type, sessionId, Seq.Next(), target), plaintext);
 
     uint nextFrame;
 
@@ -68,7 +68,7 @@ public sealed class TestVoice : IDisposable
             {
                 continue;
             }
-            if (crypto.TryOpen(Direction.ServerToClient, result.Buffer, out var header, out var plain)) return (header, plain);
+            if (crypto.TryOpen(PacketDirection.ServerToClient, result.Buffer, out var header, out var plain)) return (header, plain);
         }
     }
 

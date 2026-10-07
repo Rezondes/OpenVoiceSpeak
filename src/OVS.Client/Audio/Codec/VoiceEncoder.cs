@@ -31,7 +31,7 @@ public sealed class VoiceEncoder
         Channels = music ? 2 : 1;
         encoder = OpusCodecFactory.CreateEncoder(AudioFormat.SampleRate, Channels,
             music ? OpusApplication.OPUS_APPLICATION_AUDIO : OpusApplication.OPUS_APPLICATION_VOIP);
-        encoder.Bitrate = ProtocolInfo.DefaultBitrate * 1000;
+        encoder.Bitrate = ProtocolDefaults.Bitrate * 1000;
         encoder.SignalType = music ? OpusSignal.OPUS_SIGNAL_MUSIC : OpusSignal.OPUS_SIGNAL_VOICE;
         encoder.Complexity = Complexity;
         // Package 124: DTX stays off. Push-to-talk and voice activation already stop sending in pauses; within one, DTX

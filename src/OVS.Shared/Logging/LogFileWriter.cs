@@ -10,7 +10,7 @@ namespace OVS.Shared.Logging;
 /// Files older than the retention are deleted at start and at each day change, either way.
 /// Writing never throws: the first failure goes to onFailure, later ones are dropped.
 /// </summary>
-public sealed class LogFiles
+public sealed class LogFileWriter
 {
     /// <summary>The start of a log file in its name, in local time; LogReader on the server reads it back.</summary>
     public const string NameFormat = "yyyy-MM-dd_HH-mm-ss";
@@ -26,7 +26,7 @@ public sealed class LogFiles
     bool failureReported;
 
     /// <param name="keepDays">0 keeps every file.</param>
-    public LogFiles(string root, int keepDays, TimeProvider time, Action<string> onFailure, bool newFileEachDay = true)
+    public LogFileWriter(string root, int keepDays, TimeProvider time, Action<string> onFailure, bool newFileEachDay = true)
     {
         this.root = root;
         this.keepDays = keepDays;
@@ -48,7 +48,7 @@ public sealed class LogFiles
         }
     }
 
-    public string Stamp() => time.GetLocalNow().ToString("yyyy-MM-dd HH:mm:ss.fff");
+    public string FormatNow() => time.GetLocalNow().ToString("yyyy-MM-dd HH:mm:ss.fff");
 
     void StartFile(DateTimeOffset now)
     {
@@ -74,14 +74,14 @@ public sealed class LogFiles
                 var dir = Path.Combine(root, folder);
                 Directory.CreateDirectory(dir);
                 var text = new StringBuilder();
-                foreach (var line in lines) text.Append(OneLine(line)).Append(Environment.NewLine);
+                foreach (var line in lines) text.Append(EscapeToOneLine(line)).Append(Environment.NewLine);
                 AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), text.ToString());
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 if (failureReported) return;
                 failureReported = true;
-                onFailure(OneLine($"{Stamp()} Log konnte nicht geschrieben werden: {e.Message}"));
+                onFailure(EscapeToOneLine($"{FormatNow()} Log konnte nicht geschrieben werden: {e.Message}"));
             }
         }
     }
@@ -92,7 +92,7 @@ public sealed class LogFiles
     /// Package 90: also used for the server console; ESC (U+001B) and the C1 CSI (U+009B) are control characters as well,
     /// so no ANSI escape sequence reaches a terminal or docker logs.
     /// </summary>
-    public static string OneLine(string line)
+    public static string EscapeToOneLine(string line)
     {
         if (!line.Any(IsBreaking)) return line;
         var text = new StringBuilder(line.Length + 16);

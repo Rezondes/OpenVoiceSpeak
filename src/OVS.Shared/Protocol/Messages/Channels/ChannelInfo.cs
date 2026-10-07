@@ -9,4 +9,4 @@ namespace OVS.Shared.Protocol.Messages.Channels;
 /// <param name="Bitrate">Package 132 (A141): kbps its senders encode with, MinBitrate to MaxBitrate; 0 for a separator.</param>
 public sealed record ChannelInfo(Guid Id, string Name, string Description, int Order, bool IsMuted = false, int MaxUsers = 0,
     IReadOnlyList<Guid>? AllowedGroupIds = null, bool HasPassword = false, ChannelKind Kind = ChannelKind.Voice,
-    int Bitrate = ProtocolInfo.DefaultBitrate);
+    int Bitrate = ProtocolDefaults.Bitrate);

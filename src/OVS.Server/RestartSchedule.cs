@@ -31,14 +31,14 @@ public static class RestartSchedule
                 var wait = Timeout.InfiniteTimeSpan;
                 if (on)
                 {
-                    var next = NextAfter(time.GetUtcNow(), at, time.LocalTimeZone);
+                    var next = FindNext(time.GetUtcNow(), at, time.LocalTimeZone);
                     if (logged != (on, at))
-                        logs.Server($"Automatischer Neustart täglich um {at:HH:mm:ss}, der nächste am {TimeZoneInfo.ConvertTime(next, time.LocalTimeZone):yyyy-MM-dd HH:mm:ss}");
+                        logs.WriteServerLine($"Automatischer Neustart täglich um {at:HH:mm:ss}, der nächste am {TimeZoneInfo.ConvertTime(next, time.LocalTimeZone):yyyy-MM-dd HH:mm:ss}");
                     wait = next - time.GetUtcNow();
                 }
                 else if (logged is { On: true })
                 {
-                    logs.Server("Automatischer Neustart ausgeschaltet");
+                    logs.WriteServerLine("Automatischer Neustart ausgeschaltet");
                 }
                 logged = (on, at);
 
@@ -59,7 +59,7 @@ public static class RestartSchedule
     /// The next moment the wall clock in the zone shows the given time. One second of slack, so a timer that fires
     /// a hair early cannot make the next run restart right away a second time.
     /// </summary>
-    public static DateTimeOffset NextAfter(DateTimeOffset now, TimeOnly at, TimeZoneInfo zone)
+    public static DateTimeOffset FindNext(DateTimeOffset now, TimeOnly at, TimeZoneInfo zone)
     {
         var local = TimeZoneInfo.ConvertTime(now.AddSeconds(1), zone).DateTime;
         var candidate = local.Date + at.ToTimeSpan();

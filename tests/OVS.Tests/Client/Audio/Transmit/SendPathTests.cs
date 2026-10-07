@@ -948,13 +948,13 @@ public class SendPathTests
         {
             using var cts = new CancellationTokenSource(10_000);
             var got = await server.ReceiveAsync(cts.Token);
-            Assert.True(serverCrypto.TryOpen(Direction.ClientToServer, got.Buffer, out var header, out var plain));
+            Assert.True(serverCrypto.TryOpen(PacketDirection.ClientToServer, got.Buffer, out var header, out var plain));
             return (header, plain, got.RemoteEndPoint);
         }
         var from = (await Receive()).From; // the Hello
         async Task Report(LossReport uplink)
         {
-            var answer = serverCrypto.Seal(Direction.ServerToClient, new VoiceHeader(PacketType.Ping, 5, serverSeq.Next(), 0), new PingPayload(0, uplink).Build());
+            var answer = serverCrypto.Seal(PacketDirection.ServerToClient, new VoiceHeader(PacketType.Ping, 5, serverSeq.Next(), 0), new PingPayload(0, uplink).Build());
             await server.SendAsync(answer, from);
             var watch = System.Diagnostics.Stopwatch.StartNew();
             while (client.UplinkLoss != uplink && watch.ElapsedMilliseconds < 10_000) await Task.Delay(10);
@@ -966,7 +966,7 @@ public class SendPathTests
             client.SendVoice(frames[n], target);
             var (header, plain, _) = await Receive();
             Assert.Equal(PacketType.Voice, header.Type);
-            Assert.True(RelayPayload.TryParse(plain, out var seq, out var opus, out var copy));
+            Assert.True(RelayPayload.TryReadArrays(plain, out var seq, out var opus, out var copy));
             Assert.Equal((uint)n, seq);
             Assert.Equal(frames[n], opus);
             return copy;
@@ -1281,7 +1281,7 @@ public class SendPathTests
         Assert.InRange(ToneIn(settled, 1, 1000), 0.29, 0.31);
         Assert.True(ToneIn(settled, 0, 1000) < 0.003 && ToneIn(settled, 1, 440) < 0.003, "the sides stay apart");
 
-        var loud = new MusicRig { Kbps = OVS.Shared.Protocol.ProtocolInfo.MaxBitrate };
+        var loud = new MusicRig { Kbps = OVS.Shared.Protocol.ProtocolLimits.MaxBitrate };
         var random = new Random(142);
         for (int n = 0; n < 50; n++)
             loud.Feed(Enumerable.Range(0, AudioFormat.StereoFrameSamples).Select(_ => 0.5f * (2 * random.NextSingle() - 1)).ToArray(), 2);

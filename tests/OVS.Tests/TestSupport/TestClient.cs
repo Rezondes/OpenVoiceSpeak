@@ -28,7 +28,7 @@ public sealed class TestClient : IAsyncDisposable
         Identity = identity;
         reader = new FrameReader(ssl);
         writer = new FrameWriter(ssl);
-        ServerCertHash = CertFingerprint.Hash(ssl.RemoteCertificate!);
+        ServerCertHash = CertFingerprint.Compute(ssl.RemoteCertificate!);
     }
 
     public ClientIdentity Identity { get; }
@@ -56,7 +56,7 @@ public sealed class TestClient : IAsyncDisposable
     }
 
     /// <returns>Welcome on success, otherwise the Rejected message.</returns>
-    public async Task<Message> HandshakeAsync(string nickname, string? password = null, int version = ProtocolInfo.Version,
+    public async Task<Message> HandshakeAsync(string nickname, string? password = null, int version = WireProtocol.Version,
         bool badSignature = false, byte[]? certHash = null, bool pump = true)
     {
         // Generous: the server answers under its state lock, which a debounced save on a slow CI disk can hold for seconds.

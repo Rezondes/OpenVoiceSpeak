@@ -52,7 +52,7 @@ public class AdminCommandTests
         Assert.Equal(Permission.All, (await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id)).User.Permissions);
 
         await b.SendAsync(new RedeemAdminToken("egal") { RequestId = "t" });
-        Assert.Equal(Codes.InvalidToken, (await b.ErrorAsync("t")).Code);
+        Assert.Equal(ReasonCodes.InvalidToken, (await b.ErrorAsync("t")).Code);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class AdminCommandTests
         await using var server = await TestServer.StartAsync();
         await using var a = await TestClient.ConnectAsync(server);
         await a.SendAsync(new RedeemAdminToken("falsch") { RequestId = "t" });
-        Assert.Equal(Codes.InvalidToken, (await a.ErrorAsync("t")).Code);
+        Assert.Equal(ReasonCodes.InvalidToken, (await a.ErrorAsync("t")).Code);
         Assert.NotNull(server.State.PendingAdminToken);
     }
 
@@ -107,16 +107,16 @@ public class AdminCommandTests
         await using var v = await TestClient.ConnectAsync(server, identity: manager);
 
         await v.SendAsync(new CreateGroup("Hack", Permission.UserBan) { RequestId = "g" });
-        Assert.Equal(Codes.PermissionDenied, (await v.ErrorAsync("g")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await v.ErrorAsync("g")).Code);
 
         await v.SendAsync(new CreateGroup("Ok", Permission.Speak));
         await v.WaitForAsync<GroupsChanged>();
     }
 
     [Theory]
-    [InlineData("", Codes.InvalidName)]
-    [InlineData("123456789012345678901234567890123", Codes.InvalidName)]
-    [InlineData(" gast ", Codes.NameTaken)]
+    [InlineData("", ReasonCodes.InvalidName)]
+    [InlineData("123456789012345678901234567890123", ReasonCodes.InvalidName)]
+    [InlineData(" gast ", ReasonCodes.NameTaken)]
     public async Task CreateGroup_InvalidOrDuplicateName_Error(string name, string code)
     {
         var admin = ClientIdentity.Create();
@@ -139,7 +139,7 @@ public class AdminCommandTests
         var modGroup = z.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
 
         await z.SendAsync(new AssignGroup(assigner.Fingerprint, modGroup) { RequestId = "a" });
-        Assert.Equal(Codes.PermissionDenied, (await z.ErrorAsync("a")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await z.ErrorAsync("a")).Code);
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class AdminCommandTests
             _ => new DeleteGroup(PermissionRules.GuestGroupId),
         };
         await a.SendAsync(r with { RequestId = "p" });
-        Assert.Equal(Codes.ProtectedGroup, (await a.ErrorAsync("p")).Code);
+        Assert.Equal(ReasonCodes.ProtectedGroup, (await a.ErrorAsync("p")).Code);
     }
 
     [Fact]
@@ -258,7 +258,7 @@ public class AdminCommandTests
         await using var a = await TestClient.ConnectAsync(server, identity: admin);
 
         await a.SendAsync(new UnassignGroup(admin.Fingerprint, PermissionRules.AdminGroupId) { RequestId = "u" });
-        Assert.Equal(Codes.LastAdmin, (await a.ErrorAsync("u")).Code);
+        Assert.Equal(ReasonCodes.LastAdmin, (await a.ErrorAsync("u")).Code);
     }
 
     [Fact]
@@ -279,9 +279,9 @@ public class AdminCommandTests
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == mod.Id);
 
         await z.SendAsync(new UnassignGroup(mod.Identity.Fingerprint, PermissionRules.GuestGroupId) { RequestId = "stronger" });
-        Assert.Equal(Codes.PermissionDenied, (await z.ErrorAsync("stronger")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await z.ErrorAsync("stronger")).Code);
         await z.SendAsync(new AssignGroup(mod.Identity.Fingerprint, assigner) { RequestId = "strongerAssign" });
-        Assert.Equal(Codes.PermissionDenied, (await z.ErrorAsync("strongerAssign")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await z.ErrorAsync("strongerAssign")).Code);
 
         // a plain guest is weaker: allowed
         await z.SendAsync(new AssignGroup(guest.Identity.Fingerprint, assigner));
@@ -298,7 +298,7 @@ public class AdminCommandTests
         await using var server = await TestServer.StartAsync();
         await using var g = await TestClient.ConnectAsync(server);
         await g.SendAsync(new ListUsers { RequestId = "l" });
-        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("l")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("l")).Code);
     }
 
     [Fact]
@@ -313,7 +313,7 @@ public class AdminCommandTests
         Assert.Equal(new ServerSettingsInfo("Neu", "Hallo", true), changed.Settings with { Limits = null });
 
         await using var without = await TestClient.OpenAsync(server.Port);
-        Assert.Equal(Codes.WrongPassword, Assert.IsType<Rejected>(await without.HandshakeAsync("x")).Code);
+        Assert.Equal(ReasonCodes.WrongPassword, Assert.IsType<Rejected>(await without.HandshakeAsync("x")).Code);
         await using var with = await TestClient.OpenAsync(server.Port);
         Assert.IsType<Welcome>(await with.HandshakeAsync("y", "pw"));
 
@@ -325,8 +325,8 @@ public class AdminCommandTests
     }
 
     [Theory]
-    [InlineData("", "", Codes.InvalidName)]
-    [InlineData("ok", "LONG", Codes.InvalidValue)]
+    [InlineData("", "", ReasonCodes.InvalidName)]
+    [InlineData("ok", "LONG", ReasonCodes.InvalidValue)]
     public async Task UpdateSettings_InvalidValues_Error(string name, string welcome, string code)
     {
         var admin = ClientIdentity.Create();
@@ -353,13 +353,13 @@ public class AdminCommandTests
 
         await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { MaxUsers = 0 }) { RequestId = "1" });
         var error = await a.ErrorAsync("1");
-        Assert.Equal((Codes.InvalidValue, "Max users: 1 to 100000."), (error.Code, error.Detail));
+        Assert.Equal((ReasonCodes.InvalidValue, "Max users: 1 to 100000."), (error.Code, error.Detail));
         await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { LogDays = 5000 }) { RequestId = "2" });
         error = await a.ErrorAsync("2");
-        Assert.Equal((Codes.InvalidValue, "Keep logs: 0 to 3650 days."), (error.Code, error.Detail));
+        Assert.Equal((ReasonCodes.InvalidValue, "Keep logs: 0 to 3650 days."), (error.Code, error.Detail));
         await a.SendAsync(new UpdateServerSettings("Neu", "", new string('p', 129), NewLimits) { RequestId = "3" });
         error = await a.ErrorAsync("3");
-        Assert.Equal((Codes.InvalidValue, "Ein Passwort hat höchstens 128 Zeichen."), (error.Code, error.Detail));
+        Assert.Equal((ReasonCodes.InvalidValue, "Ein Passwort hat höchstens 128 Zeichen."), (error.Code, error.Detail));
         var store = new DataStore(Path.Combine(server.DataDir, DataStore.FileName));
         var unchanged = store.LoadOrCreate(() => throw new InvalidOperationException()).Settings;
         Assert.Equal(("Testserver", 50, 30), (unchanged.Name, unchanged.MaxUsers, unchanged.LogDays)); // nothing half applied
@@ -388,7 +388,7 @@ public class AdminCommandTests
         Assert.Equal(3, server.State.SessionCount);
 
         await using var d = await TestClient.OpenAsync(server.Port);
-        Assert.Equal(Codes.ServerFull, Assert.IsType<Rejected>(await d.HandshakeAsync("vierter")).Code);
+        Assert.Equal(ReasonCodes.ServerFull, Assert.IsType<Rejected>(await d.HandshakeAsync("vierter")).Code);
         Assert.Equal(3, server.State.SessionCount);
     }
 
@@ -410,7 +410,7 @@ public class AdminCommandTests
         await using var server = await TestServer.StartAsync();
         await using var g = await TestClient.ConnectAsync(server);
         await g.SendAsync(new UpdateServerSettings("x", "", null) { RequestId = "s" });
-        Assert.Equal(Codes.PermissionDenied, (await g.ErrorAsync("s")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("s")).Code);
     }
 
     [Fact]
@@ -466,7 +466,7 @@ public class AdminCommandTests
         Assert.Equal(ids, late.Welcome.Snapshot.Groups.Select(g => g.Id));
 
         await mod.SendAsync(new Kick(admin.Id, "") { RequestId = "k" }); // the moderator still cannot touch the admin
-        Assert.Equal(Codes.PermissionDenied, (await mod.ErrorAsync("k")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await mod.ErrorAsync("k")).Code);
     }
 
     [Fact]
@@ -480,9 +480,9 @@ public class AdminCommandTests
         var ids = admin.Welcome.Snapshot.Groups.Select(g => g.Id).ToList();
 
         await admin.SendAsync(new ReorderGroups(ids.Skip(1).ToList()) { RequestId = "fehlt" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("fehlt")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("fehlt")).Code);
         await guest.SendAsync(new ReorderGroups(ids) { RequestId = "recht" });
-        Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("recht")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("recht")).Code);
     }
 
     /// <summary>Package 71: the overview shows a user's active bans, also to someone who may not see the ban list.</summary>
@@ -535,8 +535,8 @@ public class AdminCommandTests
     [MemberData(nameof(RightPerRequest))]
     public async Task EachAdminRequest_RequiresItsOwnRight(string action, Permission right)
     {
-        Assert.Equal(Codes.PermissionDenied, await ErrorOfAsync(action, Permission.All & ~right));
-        Assert.NotEqual(Codes.PermissionDenied, await ErrorOfAsync(action, Permission.All));
+        Assert.Equal(ReasonCodes.PermissionDenied, await ErrorOfAsync(action, Permission.All & ~right));
+        Assert.NotEqual(ReasonCodes.PermissionDenied, await ErrorOfAsync(action, Permission.All));
     }
 
     /// <summary>
@@ -596,10 +596,10 @@ public class AdminCommandTests
         var created = (await c.WaitForAsync<GroupsChanged>()).Groups.Single(g => g.Name == "Neu");
 
         await c.SendAsync(new UpdateGroup(created.Id, "Anders", Permission.Speak) { RequestId = "u" });
-        Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync("u")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync("u")).Code);
         await c.SendAsync(new DeleteGroup(created.Id) { RequestId = "d" });
-        Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync("d")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync("d")).Code);
         await c.SendAsync(new ReorderGroups([.. ids.Append(created.Id).Reverse()]) { RequestId = "o" });
-        Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync("o")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync("o")).Code);
     }
 }

@@ -942,7 +942,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             vm.Chat!.Draft = text;
             _ = vm.Chat.SendCommand.ExecuteAsync(null);
         }
-        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(vm.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.Codes.RateLimited));
+        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(vm.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.ReasonCodes.RateLimited));
         // rows that spin: joining a channel, a server mute
         _ = server.Channels.Single(c => c.Name == "Raid").JoinCommand.ExecuteAsync(null);
         _ = server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);

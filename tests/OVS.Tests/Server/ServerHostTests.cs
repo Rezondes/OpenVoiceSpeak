@@ -16,9 +16,9 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
         // Regression: a client connecting right after the restart notice was admitted into the run that was going away.
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
-        server.State.CloseAll(new Disconnected(Codes.ServerRestart));
+        server.State.CloseAll(new Disconnected(ReasonCodes.ServerRestart));
         var rejected = Assert.IsType<Rejected>(await client.HandshakeAsync("spaet"));
-        Assert.Equal(Codes.ServerRestart, rejected.Code);
+        Assert.Equal(ReasonCodes.ServerRestart, rejected.Code);
     }
 
     static async Task<TestClient?> TryConnectAsync(int port, string nickname)
@@ -77,7 +77,7 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
         await using (anna)
         {
             var bye = await anna.WaitForAsync<Disconnected>(timeoutMs: 30_000);
-            Assert.Equal(Codes.ServerRestart, bye.Reason);
+            Assert.Equal(ReasonCodes.ServerRestart, bye.Reason);
         }
 
         var bert = await ConnectWhenUpAsync(port, "bert", host);

@@ -241,8 +241,8 @@ public class LogsViewModelTests
                     case DownloadLogChunk c:
                         Assert.Equal("d1", c.DownloadId);
                         progress.Add((logs!.Owner!.IsTransferring, logs.Owner.TransferPercent, File.Exists(target + ".part"), File.Exists(target)));
-                        if (fail && c.Offset > 0) return new Error(r.RequestId, Codes.NotFound);
-                        var size = (int)Math.Min(ProtocolInfo.BackupChunkBytes, zip.Length - c.Offset);
+                        if (fail && c.Offset > 0) return new Error(r.RequestId, ReasonCodes.NotFound);
+                        var size = (int)Math.Min(ProtocolLimits.BackupChunkBytes, zip.Length - c.Offset);
                         return new LogChunk(r.RequestId, "d1", c.Offset, zip.Length, Convert.ToBase64String(zip, (int)c.Offset, size), c.Offset + size >= zip.Length);
                     default:
                         return null;

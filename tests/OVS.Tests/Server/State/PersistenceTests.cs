@@ -27,7 +27,7 @@ public sealed class PersistenceTests
 
         harness.Handle(a, new CreateChannel("Raid", "") { RequestId = "c" });
 
-        Assert.Equal(new Error("c", Codes.InvalidValue), Assert.Single(StateHarness.Drain(a)));
+        Assert.Equal(new Error("c", ReasonCodes.InvalidValue), Assert.Single(StateHarness.Drain(a)));
         Assert.Empty(StateHarness.Drain(guest));
     }
 

@@ -21,10 +21,10 @@ public sealed partial class ServerState
         if (!Require(s, r, right)) return;
 
         // Package 83: line breaks are fine, other control and bidi characters are not
-        var text = TextRules.Text(r.Text, ProtocolInfo.MaxChatLength)?.Trim() ?? "";
+        var text = TextRules.NormalizeText(r.Text, ProtocolLimits.MaxChatLength)?.Trim() ?? "";
         if (text.Length == 0)
         {
-            Fail(s, r, Codes.InvalidValue, $"Eine Nachricht hat 1 bis {ProtocolInfo.MaxChatLength} Zeichen, ohne Steuerzeichen.");
+            Fail(s, r, ReasonCodes.InvalidValue, $"Eine Nachricht hat 1 bis {ProtocolLimits.MaxChatLength} Zeichen, ohne Steuerzeichen.");
             return;
         }
 
@@ -34,19 +34,19 @@ public sealed partial class ServerState
             to = r.ToSessionId is { } id ? sessions.GetValueOrDefault(id) : null;
             if (to is null)
             {
-                Fail(s, r, Codes.NotFound, "Der Empfänger ist nicht online.");
+                Fail(s, r, ReasonCodes.NotFound, "Der Empfänger ist nicht online.");
                 return;
             }
             if (to == s)
             {
-                Fail(s, r, Codes.InvalidValue, "Eine private Nachricht an dich selbst geht nicht.");
+                Fail(s, r, ReasonCodes.InvalidValue, "Eine private Nachricht an dich selbst geht nicht.");
                 return;
             }
         }
 
         if (!s.Throttle.TryChat())
         {
-            Fail(s, r, Codes.RateLimited);
+            Fail(s, r, ReasonCodes.RateLimited);
             return;
         }
         s.ChatMessages++; // Package 70
@@ -56,7 +56,7 @@ public sealed partial class ServerState
         switch (r.Target)
         {
             case ChatTarget.Server:
-                logs.Server($"Chat von {s.Nickname}: {text}");
+                logs.WriteServerLine($"Chat von {s.Nickname}: {text}");
                 Broadcast(message);
                 break;
             case ChatTarget.Channel:
@@ -64,7 +64,7 @@ public sealed partial class ServerState
                 foreach (var member in sessions.Values.Where(x => x.ChannelId == s.ChannelId)) member.Outbox.Send(message);
                 break;
             case ChatTarget.Private:
-                logs.Server($"{s.Nickname} schreibt privat an {to!.Nickname}"); // never the content (A29)
+                logs.WriteServerLine($"{s.Nickname} schreibt privat an {to!.Nickname}"); // never the content (A29)
                 to.Outbox.Send(message);
                 s.Outbox.Send(message);
                 break;

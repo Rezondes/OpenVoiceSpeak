@@ -195,9 +195,9 @@ public sealed class WireFreezeTests
     }
 
     [Fact]
-    public void Codes_Values_Unchanged()
+    public void ReasonCodes_Values_Unchanged()
     {
-        var actual = Codes.All().Order(StringComparer.Ordinal).ToArray();
+        var actual = ReasonCodes.All().Order(StringComparer.Ordinal).ToArray();
         Assert.True(CodeValues.SequenceEqual(actual), Literal(actual));
     }
 

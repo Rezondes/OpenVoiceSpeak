@@ -1,3 +1,4 @@
+using OVS.Server;
 using OVS.Server.Data.Records;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
@@ -74,7 +75,7 @@ public sealed class ChatTests
         await using var other = await TestClient.ConnectAsync(server, "andere");
 
         await sender.SendAsync(new SendChat(target, other.Id, "hallo") { RequestId = "c" });
-        Assert.Equal(Codes.PermissionDenied, (await sender.ErrorAsync("c")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await sender.ErrorAsync("c")).Code);
         await other.AssertNoMessageAsync<ChatMessage>();
     }
 
@@ -92,11 +93,11 @@ public sealed class ChatTests
             await gast.SendAsync(request with { RequestId = id });
             return (await gast.ErrorAsync(id)).Code;
         }
-        Assert.Equal(Codes.InvalidValue, await Code(new SendChat(ChatTarget.Channel, null, "   "), "leer"));
-        Assert.Equal(Codes.InvalidValue, await Code(new SendChat(ChatTarget.Channel, null, new string('x', ProtocolInfo.MaxChatLength + 1)), "lang"));
-        Assert.Equal(Codes.NotFound, await Code(new SendChat(ChatTarget.Private, 999, "hallo"), "offline"));
-        Assert.Equal(Codes.InvalidValue, await Code(new SendChat(ChatTarget.Private, gast.Id, "ich"), "selbst"));
-        await gast.SendAsync(new SendChat(ChatTarget.Channel, null, new string('x', ProtocolInfo.MaxChatLength)));
+        Assert.Equal(ReasonCodes.InvalidValue, await Code(new SendChat(ChatTarget.Channel, null, "   "), "leer"));
+        Assert.Equal(ReasonCodes.InvalidValue, await Code(new SendChat(ChatTarget.Channel, null, new string('x', ProtocolLimits.MaxChatLength + 1)), "lang"));
+        Assert.Equal(ReasonCodes.NotFound, await Code(new SendChat(ChatTarget.Private, 999, "hallo"), "offline"));
+        Assert.Equal(ReasonCodes.InvalidValue, await Code(new SendChat(ChatTarget.Private, gast.Id, "ich"), "selbst"));
+        await gast.SendAsync(new SendChat(ChatTarget.Channel, null, new string('x', ProtocolLimits.MaxChatLength)));
         await chef.WaitForAsync<ChatMessage>(); // exactly the limit is fine
     }
 
@@ -110,11 +111,11 @@ public sealed class ChatTests
         await using var _g = gast;
         await using var _w = weit;
 
-        for (int i = 0; i < ProtocolInfo.ChatBurst; i++) await gast.SendAsync(new SendChat(ChatTarget.Channel, null, $"n{i}"));
+        for (int i = 0; i < ServerTuning.ChatBurst; i++) await gast.SendAsync(new SendChat(ChatTarget.Channel, null, $"n{i}"));
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, "zu viel") { RequestId = "sechs" });
-        Assert.Equal(Codes.RateLimited, (await gast.ErrorAsync("sechs")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await gast.ErrorAsync("sechs")).Code);
 
-        time.Advance(ProtocolInfo.ChatWindow);
+        time.Advance(ServerTuning.ChatWindow);
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, "wieder da"));
         await chef.WaitForAsync<ChatMessage>(m => m.Text == "wieder da");
     }

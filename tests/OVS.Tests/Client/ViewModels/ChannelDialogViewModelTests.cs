@@ -49,7 +49,7 @@ public class ChannelDialogViewModelTests
         Assert.Null(vm.Result());
         vm.Name = "  Raid  ";
         vm.MaxUsers = 5000;
-        Assert.Equal(ProtocolInfo.MaxChannelUsers, vm.MaxUsers);
+        Assert.Equal(ProtocolLimits.MaxChannelUsers, vm.MaxUsers);
         vm.MaxUsers = -3;
         Assert.Equal(0m, vm.MaxUsers);
         vm.MaxUsers = null; // an emptied number field
@@ -121,7 +121,7 @@ public class ChannelDialogViewModelTests
         var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { Name = "Neu" };
         Assert.False(create.HasPassword);
         Assert.Null(create.Result()!.Password);
-        create.Password = new string('x', ProtocolInfo.MaxPasswordLength + 1);
+        create.Password = new string('x', ProtocolLimits.MaxPasswordLength + 1);
         Assert.Null(create.Result());
         Assert.Equal(Strings.Dlg_PasswordTooLong, create.Error);
 

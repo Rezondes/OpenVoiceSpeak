@@ -1318,10 +1318,10 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Click(OverlayButton(main, "Bannen"));
         Advance(time, 150);
         Assert.True(SpinnerIn(main.Overlay));
-        server.Apply(new Error(sent.OfType<Ban>().Single().RequestId, Codes.PermissionDenied));
+        server.Apply(new Error(sent.OfType<Ban>().Single().RequestId, ReasonCodes.PermissionDenied));
         Dispatcher.UIThread.RunJobs();
         Assert.True(main.Overlay.IsOpen);
-        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == ErrorTexts.For(Codes.PermissionDenied) && t.IsEffectivelyVisible);
+        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == ErrorTexts.For(ReasonCodes.PermissionDenied) && t.IsEffectivelyVisible);
         Assert.True(OverlayButton(main, "Bannen").IsEnabled);
         Assert.False(SpinnerIn(main.Overlay));
 

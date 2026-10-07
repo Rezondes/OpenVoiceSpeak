@@ -32,12 +32,12 @@ static class BrokenServerData
             case "server-name-null": d.Settings.Name = null!; break;
             case "server-name-control": d.Settings.Name = "a\u0001"; break;
             case "welcome-null": d.Settings.WelcomeText = null!; break;
-            case "welcome-too-long": d.Settings.WelcomeText = new string('w', ProtocolInfo.MaxTextLength + 1); break;
+            case "welcome-too-long": d.Settings.WelcomeText = new string('w', ProtocolLimits.MaxTextLength + 1); break;
             case "bad-password-hash": d.Settings.StoredPassword = StoredPassword.FromStored("kein-hash"); break;
             case "channel-name-empty": lobby.Name = " "; break;
             case "channel-name-control": lobby.Name = "a\u0007b"; break;
-            case "channel-description-too-long": lobby.Description = new string('d', ProtocolInfo.MaxTextLength + 1); break;
-            case "channel-bitrate-low": lobby.Bitrate = ProtocolInfo.MinBitrate - 1; break;
+            case "channel-description-too-long": lobby.Description = new string('d', ProtocolLimits.MaxTextLength + 1); break;
+            case "channel-bitrate-low": lobby.Bitrate = ProtocolLimits.MinBitrate - 1; break;
             case "channel-bitrate-high": lobby.Bitrate = 200; break;
             case "unknown-kind": lobby.Kind = (ChannelKind)7; break;
             case "channel-id-twice": d.Channels.Add(new ChannelRecord { Id = lobby.Id, Name = "Zweite" }); break;

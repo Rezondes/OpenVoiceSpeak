@@ -14,8 +14,8 @@ public sealed partial class ServerState
     void OnKick(Session s, Kick r)
     {
         if (!Require(s, r, Permission.UserKick) || !FindTarget(s, r, r.SessionId, out var target) || !ValidateReason(s, r, r.Reason)) return;
-        logs.Server($"{target.Nickname} wurde von {s.Nickname} gekickt: {r.Reason}");
-        RemoveLocked(target, new Disconnected(Codes.Kicked, r.Reason));
+        logs.WriteServerLine($"{target.Nickname} wurde von {s.Nickname} gekickt: {r.Reason}");
+        RemoveLocked(target, new Disconnected(ReasonCodes.Kicked, r.Reason));
     }
 
     void OnBan(Session s, Ban r)
@@ -33,7 +33,7 @@ public sealed partial class ServerState
         var ip = online?.Ip.ToString() ?? user.LastIp;
         if (r.IncludeIp && ip is null)
         {
-            Fail(s, r, Codes.InvalidValue, "Für diesen Nutzer ist keine IP-Adresse bekannt.");
+            Fail(s, r, ReasonCodes.InvalidValue, "Für diesen Nutzer ist keine IP-Adresse bekannt.");
             return;
         }
         AddBan(s, user.Fingerprint, online?.Nickname ?? user.LastNickname, r.IncludeIp ? ip : null, r.Reason, r.DurationMinutes, online);
@@ -46,8 +46,8 @@ public sealed partial class ServerState
         data.Users.Remove(user);
         int bans = data.Bans.RemoveAll(b => b.Fingerprint == user.Fingerprint); // Package 80: the history as well
         saves.Persist();
-        logs.Server($"Nutzerdaten von {user.LastNickname} gelöscht von {s.Nickname} ({user.Fingerprint[..Math.Min(12, user.Fingerprint.Length)]}, {bans} Bans)");
-        if (online is not null) RemoveLocked(online, new Disconnected(Codes.UserDeleted));
+        logs.WriteServerLine($"Nutzerdaten von {user.LastNickname} gelöscht von {s.Nickname} ({user.Fingerprint[..Math.Min(12, user.Fingerprint.Length)]}, {bans} Bans)");
+        if (online is not null) RemoveLocked(online, new Disconnected(ReasonCodes.UserDeleted));
     }
 
     void AddBan(Session s, string fingerprint, string nickname, string? ip, string reason, int? durationMinutes, Session? online)
@@ -68,8 +68,8 @@ public sealed partial class ServerState
         });
         saves.Persist();
         var duration = durationMinutes is { } m ? $"für {m} Minuten" : "dauerhaft";
-        logs.Server($"{nickname} wurde von {s.Nickname} gebannt {duration}{(ip is not null ? " mit IP" : "")}{(online is null ? " (offline)" : "")}: {reason}");
-        if (online is not null) RemoveLocked(online, new Disconnected(Codes.Banned, reason));
+        logs.WriteServerLine($"{nickname} wurde von {s.Nickname} gebannt {duration}{(ip is not null ? " mit IP" : "")}{(online is null ? " (offline)" : "")}: {reason}");
+        if (online is not null) RemoveLocked(online, new Disconnected(ReasonCodes.Banned, reason));
     }
 
     /// <summary>ModerationRule.CheckDuration; false when the request was refused.</summary>
@@ -82,7 +82,7 @@ public sealed partial class ServerState
         var ban = data.Bans.FirstOrDefault(b => b.Id == r.BanId && b.IsActive(now)); // Package 80: history cannot be lifted again
         if (ban is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return;
         }
         // Package 84 (A102): only who could ban the user now; offline the stored groups count, a deleted user has none
@@ -90,7 +90,7 @@ public sealed partial class ServerState
         ban.LiftedAt = now; // Package 80 (A97): kept as history
         ban.LiftedBy = s.Nickname;
         saves.Persist();
-        logs.Server($"Bann von {ban.Nickname} aufgehoben von {s.Nickname}");
+        logs.WriteServerLine($"Bann von {ban.Nickname} aufgehoben von {s.Nickname}");
         if (s.Permissions.Has(Permission.BansView)) SendBanList(s, r.RequestId); // Package 84: the list only for who may see it
     }
 
@@ -121,7 +121,7 @@ public sealed partial class ServerState
             user.ServerMuted = muted;
             saves.Persist();
         }
-        logs.Server($"{nickname} serverseitig {(muted ? "stummgeschaltet" : "wieder freigegeben")} von {s.Nickname}{(online is null ? " (offline)" : "")}");
+        logs.WriteServerLine($"{nickname} serverseitig {(muted ? "stummgeschaltet" : "wieder freigegeben")} von {s.Nickname}{(online is null ? " (offline)" : "")}");
         if (online is null) return;
         online.ServerMuted = muted;
         BroadcastUser(online);
@@ -148,12 +148,12 @@ public sealed partial class ServerState
         online = sessions.Values.FirstOrDefault(x => x.Fingerprint == fingerprint);
         if (user is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return false;
         }
         if (lastAdminFirst && IsLastAdmin(fingerprint))
         {
-            Fail(s, r, Codes.LastAdmin);
+            Fail(s, r, ReasonCodes.LastAdmin);
             return false;
         }
         return CanModerate(s, r, online?.Permissions ?? PermissionRules.Effective(user.GroupIds, data.Groups), fingerprint);
@@ -163,12 +163,12 @@ public sealed partial class ServerState
     {
         if (!sessions.TryGetValue(sessionId, out target!))
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return false;
         }
         if (lastAdminFirst && IsLastAdmin(target.Fingerprint))
         {
-            Fail(s, r, Codes.LastAdmin);
+            Fail(s, r, ReasonCodes.LastAdmin);
             return false;
         }
         return CanModerate(s, r, target.Permissions, target.Fingerprint);
@@ -178,7 +178,7 @@ public sealed partial class ServerState
     bool CanModerate(Session s, Request r, Permission targetRights, string targetFingerprint)
     {
         if (s.Permissions.CanModerate(s.Fingerprint, targetRights, targetFingerprint)) return true;
-        Fail(s, r, Codes.PermissionDenied);
+        Fail(s, r, ReasonCodes.PermissionDenied);
         return false;
     }
 

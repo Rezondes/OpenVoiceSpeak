@@ -60,29 +60,29 @@ public sealed partial class ServerState
             {
                 ban.CountBlockedAttempt(ipText, now); // Package 80 (A97)
                 saves.PersistAtMostOncePerMinute(ban.Id);
-                return (null, new Rejected(Codes.Banned, BanText(ban)));
+                return (null, new Rejected(ReasonCodes.Banned, BanText(ban)));
             }
 
             // A source that guessed wrong too often is turned away before its password is even looked at.
             if (data.Settings.StoredPassword is not null && passwordGuesses.IsBlocked(source, now))
-                return (null, new Rejected(Codes.TooManyPasswordAttempts));
+                return (null, new Rejected(ReasonCodes.TooManyPasswordAttempts));
             // Package 91: PBKDF2 with 100,000 iterations, about 10 ms on a desktop CPU, under the lock
             // ponytail: verified under the global lock; move it before the lock if slow hosts make logins stall the server
             if (!data.Settings.CheckPassword(password))
             {
                 passwordGuesses.RecordFailure(source, now);
-                return (null, new Rejected(Codes.WrongPassword));
+                return (null, new Rejected(ReasonCodes.WrongPassword));
             }
             if (data.Settings.HasLegacyHash()) // Package 91: the right password turns the old unsalted hash into the new format
             {
                 data.Settings.StoredPassword = StoredPassword.Create(password ?? "");
                 saves.Persist();
-                logs.Server("Serverpasswort-Hash auf PBKDF2 umgestellt");
+                logs.WriteServerLine("Serverpasswort-Hash auf PBKDF2 umgestellt");
             }
 
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
             if (sessions.Count - (replaced is null ? 0 : 1) >= data.Settings.MaxUsers)
-                return (null, new Rejected(Codes.ServerFull));
+                return (null, new Rejected(ReasonCodes.ServerFull));
             // Package 83: normalized, and an offline user's last name is taken as well
             // ponytail: one linear pass over all users per login; index the keys if the user list grows into the tens of thousands
             var key = NicknameKey(nickname);
@@ -92,17 +92,17 @@ public sealed partial class ServerState
                 .OrderByDescending(u => u.LastLogin ?? DateTimeOffset.MinValue).ThenBy(u => u.FirstSeen).ThenBy(u => u.Fingerprint, StringComparer.Ordinal)
                 .FirstOrDefault();
             if (sessions.Values.Any(s => s != replaced && NicknameKey(s.Nickname) == key) || owner is not null && owner.Fingerprint != fingerprint)
-                return (null, new Rejected(Codes.NicknameTaken));
+                return (null, new Rejected(ReasonCodes.NicknameTaken));
 
             var user = FindUser(fingerprint);
             if (user is null && !newIdentities.TryCount(source, now, out bool firstRefusal))
             {
                 if (firstRefusal)
-                    logs.Server($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({ServerTuning.NewIdentitiesPerHour} pro Stunde)");
-                return (null, new Rejected(Codes.RateLimited));
+                    logs.WriteServerLine($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({ServerTuning.NewIdentitiesPerHour} pro Stunde)");
+                return (null, new Rejected(ReasonCodes.RateLimited));
             }
 
-            if (replaced is not null) RemoveLocked(replaced, new Disconnected(Codes.ReplacedByNewConnection));
+            if (replaced is not null) RemoveLocked(replaced, new Disconnected(ReasonCodes.ReplacedByNewConnection));
 
             if (user is null)
             {
@@ -124,7 +124,7 @@ public sealed partial class ServerState
             session.Outbox.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
                 if (other != session) other.Outbox.Send(new UserJoined(Info(session, other))); // Package 92: per recipient
-            logs.Server($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
+            logs.WriteServerLine($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
             ChannelLog(session.ChannelId, $"{nickname} hat den Channel betreten (verbunden)");
             return (session, null);
         }
@@ -143,11 +143,11 @@ public sealed partial class ServerState
     {
         lock (gate)
         {
-            closedWith = final is Disconnected d ? d.Reason : Codes.ServerShutdown;
+            closedWith = final is Disconnected d ? d.Reason : ReasonCodes.ServerShutdown;
             var why = final switch
             {
-                Disconnected { Reason: Codes.ServerRestart } => "Server startet neu",
-                Disconnected { Reason: Codes.Restoring } => "Server wird aus einem Backup wiederhergestellt", // Package 74
+                Disconnected { Reason: ReasonCodes.ServerRestart } => "Server startet neu",
+                Disconnected { Reason: ReasonCodes.Restoring } => "Server wird aus einem Backup wiederhergestellt", // Package 74
                 _ => "Server fährt herunter",
             };
             var now = time.GetUtcNow();
@@ -160,7 +160,7 @@ public sealed partial class ServerState
                 if (!statsCounted) AddSessionStats(s, now);
                 ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
             }
-            logs.Server($"{why}, {sessions.Count} Nutzer getrennt");
+            logs.WriteServerLine($"{why}, {sessions.Count} Nutzer getrennt");
             saves.Close(force: sessions.Count > 0); // the running sessions' statistics, or what is still pending
             sessions.Clear();
             voiceSessions.Clear();
@@ -170,7 +170,7 @@ public sealed partial class ServerState
     public void LogRejected(IPAddress ip, string code, string? nickname, string? fingerprint)
     {
         var who = nickname is null ? "" : fingerprint is null ? $" ({nickname})" : $" ({nickname}, {fingerprint[..12]})";
-        logs.Server($"Verbindung von {ip} abgelehnt: {code}{who}");
+        logs.WriteServerLine($"Verbindung von {ip} abgelehnt: {code}{who}");
     }
 
     void RemoveLocked(Session session, Message? final, string reason = "getrennt")
@@ -187,14 +187,14 @@ public sealed partial class ServerState
         Broadcast(new UserLeft(session.Id));
         if (final is Disconnected d) reason = d.Reason switch
         {
-            Codes.Kicked => "gekickt",
-            Codes.Banned => "gebannt",
-            Codes.ReplacedByNewConnection => "durch neue Verbindung ersetzt",
-            Codes.UserDeleted => "Nutzerdaten gelöscht",
-            Codes.RateLimited => "zu viele Anfragen", // Package 86
+            ReasonCodes.Kicked => "gekickt",
+            ReasonCodes.Banned => "gebannt",
+            ReasonCodes.ReplacedByNewConnection => "durch neue Verbindung ersetzt",
+            ReasonCodes.UserDeleted => "Nutzerdaten gelöscht",
+            ReasonCodes.RateLimited => "zu viele Anfragen", // Package 86
             _ => d.Reason,
         };
-        logs.Server($"{session.Nickname} getrennt ({reason})");
+        logs.WriteServerLine($"{session.Nickname} getrennt ({reason})");
         ChannelLog(session.ChannelId, $"{session.Nickname} hat den Channel verlassen ({reason})");
     }
 
@@ -213,7 +213,7 @@ public sealed partial class ServerState
     /// <summary>Package 111: a separator has no log of its own (nothing happens in it).</summary>
     void ChannelLog(Guid channelId, string text)
     {
-        if (FindChannel(channelId) is { Kind: ChannelKind.Voice } channel) logs.Channel(channel.Id, channel.Name, text);
+        if (FindChannel(channelId) is { Kind: ChannelKind.Voice } channel) logs.WriteChannelLine(channel.Id, channel.Name, text);
     }
 
     string ChannelName(Guid id) => FindChannel(id) is { } c ? c.Kind == ChannelKind.Separator ? "(Trenner)" : c.Name : "?";

@@ -89,10 +89,10 @@ public class PendingViewModelTests
         var pending = server.NewPending();
         var id = await server.SendAsync(new OVS.Shared.Protocol.Messages.ServerBackups.CreateBackup(), pending: pending);
         Assert.True(pending.Answers(id));
-        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error("anderes", OVS.Shared.Protocol.Codes.PermissionDenied));
+        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error("anderes", OVS.Shared.Protocol.ReasonCodes.PermissionDenied));
         Assert.True(pending.IsRunning);
-        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(id, OVS.Shared.Protocol.Codes.PermissionDenied));
+        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(id, OVS.Shared.Protocol.ReasonCodes.PermissionDenied));
         Assert.False(pending.IsRunning);
-        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(OVS.Shared.Protocol.Codes.PermissionDenied), pending.Error);
+        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(OVS.Shared.Protocol.ReasonCodes.PermissionDenied), pending.Error);
     }
 }

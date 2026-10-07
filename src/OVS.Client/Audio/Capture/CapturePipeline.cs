@@ -115,7 +115,7 @@ public sealed class CapturePipeline : IDisposable
     /// Package 132 (A141): asked for every frame sent, the kbps to encode it with. The encoder takes a change here, on the
     /// capture thread under the pipeline's lock, so a join, move or channel edit never races an encode.
     /// </summary>
-    public Func<int> Bitrate { get; set; } = () => ProtocolInfo.DefaultBitrate;
+    public Func<int> Bitrate { get; set; } = () => ProtocolDefaults.Bitrate;
 
     /// <summary>Package 135 (A144): asked like <see cref="Bitrate"/>, the loss in percent Opus is told to expect.</summary>
     public Func<int> LossHint { get; set; } = () => LossAdapter.InitialHint;

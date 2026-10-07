@@ -9,7 +9,7 @@ public static class ErrorTexts
     /// A45: the server's own detail texts are German and meant for operators, so they only go to the client log.
     /// Kick and ban are different: their detail is the reason a person typed in.
     /// </summary>
-    static readonly HashSet<string> DetailShown = [Codes.Kicked, Codes.Banned];
+    static readonly HashSet<string> DetailShown = [ReasonCodes.Kicked, ReasonCodes.Banned];
 
     static string? Text(string code) => Strings.ResourceManager.GetString("Error_" + code, Strings.Culture);
 

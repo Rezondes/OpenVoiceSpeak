@@ -235,7 +235,7 @@ public sealed class DebugApi : IDisposable
         {
             await vm.ConnectAsync(new ConnectChoice(
                 Text(body, "host"),
-                Optional(body, "port")?.GetInt32() ?? ProtocolInfo.DefaultPort,
+                Optional(body, "port")?.GetInt32() ?? ProtocolDefaults.Port,
                 Text(body, "nickname"),
                 Optional(body, "password")?.GetString(),
                 SaveBookmark: false));

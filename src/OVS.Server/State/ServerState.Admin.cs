@@ -23,21 +23,21 @@ public sealed partial class ServerState
         var now = time.GetUtcNow();
         if (adminTokenGuesses.IsBlocked(source, now))
         {
-            Fail(s, r, Codes.RateLimited);
+            Fail(s, r, ReasonCodes.RateLimited);
             return;
         }
         if (!adminToken.TryRedeem(r.Token))
         {
             adminTokenGuesses.RecordFailure(source, now);
-            logs.Server($"Admin-Token falsch von {s.Nickname} ({s.Ip})");
-            Fail(s, r, Codes.InvalidToken);
+            logs.WriteServerLine($"Admin-Token falsch von {s.Nickname} ({s.Ip})");
+            Fail(s, r, ReasonCodes.InvalidToken);
             return;
         }
         var user = FindUser(s.Fingerprint)!;
         if (!user.GroupIds.Contains(AdminGroupId)) user.GroupIds.Add(AdminGroupId);
         saves.Persist();
         RecomputePermissions();
-        logs.Server($"{s.Nickname} hat das Admin-Token eingelöst");
+        logs.WriteServerLine($"{s.Nickname} hat das Admin-Token eingelöst");
     }
 
     void OnCreateGroup(Session s, CreateGroup r)
@@ -46,13 +46,13 @@ public sealed partial class ServerState
         if (!ValidateGroupName(s, r, null, r.Name, out var name)) return;
         if (!GroupRules.CanSave(s.Permissions, null, null, r.Permissions))
         {
-            Fail(s, r, Codes.PermissionDenied);
+            Fail(s, r, ReasonCodes.PermissionDenied);
             return;
         }
         var permissions = r.Permissions & Permission.All;
         data.Groups.Add(new GroupRecord(Guid.NewGuid(), name, permissions));
         saves.Persist();
-        logs.Server($"Gruppe '{name}' angelegt von {s.Nickname} ({permissions})");
+        logs.WriteServerLine($"Gruppe '{name}' angelegt von {s.Nickname} ({permissions})");
         BroadcastGroups(); // Package 92: per recipient
     }
 
@@ -63,7 +63,7 @@ public sealed partial class ServerState
         var ids = r.GroupIds ?? [];
         if (ids.Count != data.Groups.Count || !ids.ToHashSet().SetEquals(data.Groups.Select(g => g.Id)))
         {
-            Fail(s, r, Codes.InvalidValue, "Die neue Reihenfolge muss jede Gruppe genau einmal enthalten.");
+            Fail(s, r, ReasonCodes.InvalidValue, "Die neue Reihenfolge muss jede Gruppe genau einmal enthalten.");
             return;
         }
         var reordered = ids.Select(id => data.Groups.Single(g => g.Id == id)).ToList();
@@ -71,7 +71,7 @@ public sealed partial class ServerState
         data.Groups.Clear();
         data.Groups.AddRange(reordered);
         saves.Persist();
-        logs.Server($"Gruppen umsortiert von {s.Nickname}: {string.Join(", ", reordered.Select(g => g.Name))}");
+        logs.WriteServerLine($"Gruppen umsortiert von {s.Nickname}: {string.Join(", ", reordered.Select(g => g.Name))}");
         BroadcastGroups(); // Package 92: per recipient
     }
 
@@ -81,18 +81,18 @@ public sealed partial class ServerState
         var group = data.Groups.FirstOrDefault(g => g.Id == r.GroupId);
         if (group is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return;
         }
         if (group.Id == AdminGroupId)
         {
-            Fail(s, r, Codes.ProtectedGroup);
+            Fail(s, r, ReasonCodes.ProtectedGroup);
             return;
         }
         if (!ValidateGroupName(s, r, group.Id, r.Name, out var name)) return;
         if (!GroupRules.CanSave(s.Permissions, group.Id, group.Permissions, r.Permissions))
         {
-            Fail(s, r, Codes.PermissionDenied);
+            Fail(s, r, ReasonCodes.PermissionDenied);
             return;
         }
         var permissions = r.Permissions & Permission.All;
@@ -101,7 +101,7 @@ public sealed partial class ServerState
         if (group.Permissions != permissions) changes.Add($"Rechte {group.Permissions} -> {permissions}");
         data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = permissions };
         saves.Persist();
-        if (changes.Count > 0) logs.Server($"Gruppe '{group.Name}' geändert von {s.Nickname}: {string.Join(", ", changes)}");
+        if (changes.Count > 0) logs.WriteServerLine($"Gruppe '{group.Name}' geändert von {s.Nickname}: {string.Join(", ", changes)}");
         RecomputePermissions(groupsChanged: true); // Package 92: the groups per recipient, judged by the new rights
     }
 
@@ -111,17 +111,17 @@ public sealed partial class ServerState
         var group = data.Groups.FirstOrDefault(g => g.Id == r.GroupId);
         if (group is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return;
         }
         if (GroupRules.IsProtected(group.Id))
         {
-            Fail(s, r, Codes.ProtectedGroup);
+            Fail(s, r, ReasonCodes.ProtectedGroup);
             return;
         }
         if (!CanDeleteGroup(s.Permissions, group))
         {
-            Fail(s, r, Codes.PermissionDenied);
+            Fail(s, r, ReasonCodes.PermissionDenied);
             return;
         }
         data.Groups.Remove(group);
@@ -129,7 +129,7 @@ public sealed partial class ServerState
         // Package 93 (A109): gone from every group lock; a lock left empty means admins only, until someone edits it
         var unlocked = data.Channels.Where(c => c.AllowedGroupIds?.Remove(group.Id) == true).ToList();
         saves.Persist();
-        logs.Server($"Gruppe '{group.Name}' gelöscht von {s.Nickname}");
+        logs.WriteServerLine($"Gruppe '{group.Name}' gelöscht von {s.Nickname}");
         foreach (var channel in unlocked)
             ChannelLog(channel.Id, $"Gruppe '{group.Name}' aus der Gruppen-Sperre entfernt (Gruppe gelöscht)");
         RecomputePermissions(groupsChanged: true); // Package 92: the groups per recipient, judged by the new rights
@@ -144,7 +144,7 @@ public sealed partial class ServerState
         if (user.GroupIds.Contains(r.GroupId)) return;
         user.GroupIds.Add(r.GroupId);
         saves.Persist();
-        logs.Server($"Gruppe '{group.Name}' an {user.LastNickname} vergeben von {s.Nickname}");
+        logs.WriteServerLine($"Gruppe '{group.Name}' an {user.LastNickname} vergeben von {s.Nickname}");
         RecomputePermissions();
     }
 
@@ -154,13 +154,13 @@ public sealed partial class ServerState
         if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out var group)) return;
         if (WouldRemoveLastAdmin(UsersAsAdminTuples(), user.Fingerprint, r.GroupId))
         {
-            Fail(s, r, Codes.LastAdmin);
+            Fail(s, r, ReasonCodes.LastAdmin);
             return;
         }
         if (!CanModerate(s, r, RightsOf(user.Fingerprint), user.Fingerprint)) return; // Package 84: only on weaker users
         if (!user.GroupIds.Remove(r.GroupId)) return;
         saves.Persist();
-        logs.Server($"Gruppe '{group.Name}' von {user.LastNickname} entfernt von {s.Nickname}");
+        logs.WriteServerLine($"Gruppe '{group.Name}' von {user.LastNickname} entfernt von {s.Nickname}");
         RecomputePermissions();
     }
 
@@ -187,15 +187,15 @@ public sealed partial class ServerState
     void OnUpdateServerSettings(Session s, UpdateServerSettings r)
     {
         if (!Require(s, r, Permission.ServerConfig)) return;
-        var name = TextRules.Name(r.Name, ProtocolInfo.MaxNameLength);
+        var name = TextRules.NormalizeName(r.Name, ProtocolLimits.MaxNameLength);
         if (name is null)
         {
-            Fail(s, r, Codes.InvalidName);
+            Fail(s, r, ReasonCodes.InvalidName);
             return;
         }
-        if (TextRules.Text(r.WelcomeText ?? "", ProtocolInfo.MaxTextLength) is not { } welcome) // Package 83: multi-line, no control or bidi characters
+        if (TextRules.NormalizeText(r.WelcomeText ?? "", ProtocolLimits.MaxTextLength) is not { } welcome) // Package 83: multi-line, no control or bidi characters
         {
-            Fail(s, r, Codes.InvalidValue, "Willkommenstext zu lang oder mit unerlaubten Zeichen");
+            Fail(s, r, ReasonCodes.InvalidValue, "Willkommenstext zu lang oder mit unerlaubten Zeichen");
             return;
         }
         if (PasswordTooLong(s, r, r.Password)) return; // Package 83: "" still removes it
@@ -224,7 +224,7 @@ public sealed partial class ServerState
             logs.Update(limits.LogDays, limits.LogRotateDaily);
         }
         saves.Persist();
-        logs.Server($"Servereinstellungen geändert von {s.Nickname}: {(changes.Count > 0 ? string.Join(", ", changes) : "keine Änderung")}");
+        logs.WriteServerLine($"Servereinstellungen geändert von {s.Nickname}: {(changes.Count > 0 ? string.Join(", ", changes) : "keine Änderung")}");
         BroadcastSettings();
         SettingsChanged?.Invoke();
     }
@@ -239,33 +239,33 @@ public sealed partial class ServerState
             var buffer = new byte[Base64Size.Decoded(r.PngBase64.Length)];
             if (!Convert.TryFromBase64String(r.PngBase64, buffer, out int written))
             {
-                Fail(s, r, Codes.InvalidValue, "Das Logo ist kein gültiges Base64.");
+                Fail(s, r, ReasonCodes.InvalidValue, "Das Logo ist kein gültiges Base64.");
                 return;
             }
             png = buffer[..written];
             if (ServerIconFormat.Validate(png) is { } problem)
             {
-                Fail(s, r, Codes.InvalidValue, problem);
+                Fail(s, r, ReasonCodes.InvalidValue, problem);
                 return;
             }
         }
         icon.Set(png);
-        logs.Server(png is null ? $"Server-Logo entfernt von {s.Nickname}" : $"Server-Logo geändert von {s.Nickname} ({png.Length / 1024} KB)");
+        logs.WriteServerLine(png is null ? $"Server-Logo entfernt von {s.Nickname}" : $"Server-Logo geändert von {s.Nickname} ({png.Length / 1024} KB)");
         BroadcastSettings();
     }
 
     bool ValidateGroupName(Session s, Request r, Guid? self, string? rawName, out string name)
     {
-        name = TextRules.Name(rawName, ProtocolInfo.MaxGroupNameLength) ?? "";
+        name = TextRules.NormalizeName(rawName, ProtocolLimits.MaxGroupNameLength) ?? "";
         if (name.Length == 0)
         {
-            Fail(s, r, Codes.InvalidName);
+            Fail(s, r, ReasonCodes.InvalidName);
             return false;
         }
         var n = name;
         if (data.Groups.Any(g => g.Id != self && string.Equals(g.Name, n, StringComparison.OrdinalIgnoreCase)))
         {
-            Fail(s, r, Codes.NameTaken);
+            Fail(s, r, ReasonCodes.NameTaken);
             return false;
         }
         return true;
@@ -277,12 +277,12 @@ public sealed partial class ServerState
         group = data.Groups.FirstOrDefault(g => g.Id == groupId)!;
         if (user is null || group is null)
         {
-            Fail(s, r, Codes.NotFound);
+            Fail(s, r, ReasonCodes.NotFound);
             return false;
         }
         if (!CanAssign(s.Permissions, group))
         {
-            Fail(s, r, Codes.PermissionDenied);
+            Fail(s, r, ReasonCodes.PermissionDenied);
             return false;
         }
         return true;

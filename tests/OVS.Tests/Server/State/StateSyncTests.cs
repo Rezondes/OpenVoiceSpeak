@@ -90,7 +90,7 @@ public class StateSyncTests
     [Fact]
     public async Task ChannelInfo_CarriesBitrate()
     {
-        Assert.True(ProtocolInfo.Version >= 12); // 12 brought the bitrate; Package 133 raised it to 13 (SmokeTests pins the current one)
+        Assert.True(WireProtocol.Version >= 12); // 12 brought the bitrate; Package 133 raised it to 13 (SmokeTests pins the current one)
         var admin = OVS.Shared.Identity.ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
         await using (var a = await TestClient.ConnectAsync(server, identity: admin))
@@ -117,7 +117,7 @@ public class StateSyncTests
         // Welcome is a valid message type but not a request; it is simply ignored.
         await a.SendAsync(new Pong());
         await a.SendAsync(new JoinChannel(Guid.NewGuid()) { RequestId = "j" });
-        Assert.Equal(Codes.NotFound, (await a.ErrorAsync("j")).Code);
+        Assert.Equal(ReasonCodes.NotFound, (await a.ErrorAsync("j")).Code);
     }
 
     // ---- Package 92: clients get only the rights data they need ----

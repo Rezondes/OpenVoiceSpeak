@@ -114,7 +114,7 @@ public sealed partial class LogsViewModel : ObservableObject
                 Hits.Clear();
                 foreach (var hit in result.Hits) Hits.Add(new LogHitViewModel(hit, TitleOf(hit.FileId)));
                 HitsText = result.TimedOut ? string.Format(Strings.Ui_LogHitsTimedOut, result.Hits.Count)
-                    : result.Truncated ? string.Format(Strings.Ui_LogHitsTruncated, ProtocolInfo.MaxLogHits)
+                    : result.Truncated ? string.Format(Strings.Ui_LogHitsTruncated, ProtocolLimits.MaxLogHits)
                     : result.Hits.Count == 0 ? Strings.Ui_LogNoHits
                     : string.Format(Strings.Ui_LogHits, result.Hits.Count);
                 ShowHits = true;
@@ -340,6 +340,6 @@ public sealed partial class LogsViewModel : ObservableObject
                    ?? allFiles.Where(f => f.Id == hit.FileId).Select(f => new LogFileViewModel(f)).FirstOrDefault();
         if (file is null) return Task.CompletedTask;
         LineFilter = "";
-        return OpenAt(file, (hit.Line - 1) / ProtocolInfo.LogPageLines + 1, hit.Line);
+        return OpenAt(file, (hit.Line - 1) / WireProtocol.LogPageLines + 1, hit.Line);
     }
 }

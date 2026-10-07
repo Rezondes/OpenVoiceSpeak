@@ -50,8 +50,8 @@ public static class ServerHost
             // Package 69: retention and daily files come from server-data.json, which ServerState reads; keeping
             // everything until then stops a stale start value from deleting files.
             logs = new ServerLogWriter(config.DataDir, 0, time, console);
-            logs.Server(restarted ? "OpenVoiceSpeak-Server startet (automatischer Neustart)" : "OpenVoiceSpeak-Server startet");
-            logs.Server($"Version {BuildInfo.Current.Version}"); // Package 42
+            logs.WriteServerLine(restarted ? "OpenVoiceSpeak-Server startet (automatischer Neustart)" : "OpenVoiceSpeak-Server startet");
+            logs.WriteServerLine($"Version {BuildInfo.Current.Version}"); // Package 42
             state = new ServerState(config, time, logs, ServerStores.Open(config, time));
         }
         catch (Exception e) when (e is ConfigException or InvalidDataException)
@@ -74,14 +74,14 @@ public static class ServerHost
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or CryptographicException or SocketException)
         {
             // e.g. port already in use, or a damaged cert.pfx
-            logs.Server($"Start fehlgeschlagen: {e.Message}", toConsole: false);
+            logs.WriteServerLine($"Start fehlgeschlagen: {e.Message}", toConsole: false);
             error($"Start fehlgeschlagen: {e.Message}");
             return RunEnd.Failed;
         }
         voice.Start();
 
-        logs.Server($"Listening on {endpoint} (TCP und UDP)");
-        logs.Server($"Zertifikat-Fingerprint: {CertFingerprint.Of(certificate)}");
+        logs.WriteServerLine($"Listening on {endpoint} (TCP und UDP)");
+        logs.WriteServerLine($"Zertifikat-Fingerprint: {CertFingerprint.ComputeHex(certificate)}");
 
         // Package 74: a restore from the administration ends the run like a restart, on the backup's files
         using var runEnd = CancellationTokenSource.CreateLinkedTokenSource(stop);
@@ -92,14 +92,14 @@ public static class ServerHost
         var restore = state.PendingRestore;
         if (restore is not null) restart = !stop.IsCancellationRequested;
 
-        logs.Server(restore is not null ? "Wiederherstellung aus einem Backup ..." : restart ? "Automatischer Neustart ..." : "Fahre herunter ...");
+        logs.WriteServerLine(restore is not null ? "Wiederherstellung aus einem Backup ..." : restart ? "Automatischer Neustart ..." : "Fahre herunter ...");
         if (afterWait is not null) await afterWait(state);
         await control.StopAsync(restart);
         // A restore accepted while the run was ending: after CloseAll every request is rejected, so none can come later.
         if (restore is null && state.PendingRestore is { } late)
         {
             restore = late;
-            logs.Server("Wiederherstellung aus einem Backup beim Beenden angefordert ...");
+            logs.WriteServerLine("Wiederherstellung aus einem Backup beim Beenden angefordert ...");
         }
         await control.DisposeAsync();
         voice.Dispose();
@@ -109,14 +109,14 @@ public static class ServerHost
             try
             {
                 restore.ApplyTo(config.DataDir);
-                logs.Server($"Backup eingespielt (Datenversion {restore.Manifest.DataVersion}, Serverversion {restore.Manifest.ServerVersion})");
+                logs.WriteServerLine($"Backup eingespielt (Datenversion {restore.Manifest.DataVersion}, Serverversion {restore.Manifest.ServerVersion})");
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                logs.Server($"Backup einspielen fehlgeschlagen: {e.Message}");
+                logs.WriteServerLine($"Backup einspielen fehlgeschlagen: {e.Message}");
             }
         }
-        logs.Server(restart ? "Server beendet, startet neu" : "Server beendet");
+        logs.WriteServerLine(restart ? "Server beendet, startet neu" : "Server beendet");
         return restart ? RunEnd.Restart : RunEnd.Stopped;
     }
 }

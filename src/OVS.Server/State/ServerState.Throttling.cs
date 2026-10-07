@@ -17,14 +17,14 @@ public sealed partial class ServerState
         switch (isTransfer ? null : s.Throttle.TakeRequest())
         {
             case true:
-                RemoveLocked(s, new Disconnected(Codes.RateLimited));
+                RemoveLocked(s, new Disconnected(ReasonCodes.RateLimited));
                 return false;
             case false:
-                s.Outbox.Send(new Error(id, Codes.RateLimited));
+                s.Outbox.Send(new Error(id, ReasonCodes.RateLimited));
                 return false;
         }
         if (id == requestId) return true;
-        s.Outbox.Send(new Error(id, Codes.InvalidValue, $"RequestId länger als {ServerTuning.MaxRequestIdLength} Zeichen"));
+        s.Outbox.Send(new Error(id, ReasonCodes.InvalidValue, $"RequestId länger als {ServerTuning.MaxRequestIdLength} Zeichen"));
         return false;
     }
 
@@ -32,7 +32,7 @@ public sealed partial class ServerState
     static bool Throttle(Session s, Request r, double perSecond, double burst = 1)
     {
         if (s.Throttle.TryTakeCostly(r.GetType(), perSecond, burst)) return true;
-        Fail(s, r, Codes.RateLimited);
+        Fail(s, r, ReasonCodes.RateLimited);
         return false;
     }
 
@@ -59,7 +59,7 @@ public sealed partial class ServerState
         bool allowed = s.Throttle.TryTakeCostly(r.GetType(), 1 / ServerTuning.IconInterval.TotalSeconds, 1);
         if (!allowed && icon.Hash == s.ServedIconHash)
         {
-            Fail(s, r, Codes.RateLimited);
+            Fail(s, r, ReasonCodes.RateLimited);
             return;
         }
         s.ServedIconHash = icon.Hash;

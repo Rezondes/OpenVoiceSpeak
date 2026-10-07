@@ -13,9 +13,9 @@ public class VoicePacketTests
     {
         using var crypto = new VoiceCrypto(Key);
         var header = new VoiceHeader(PacketType.Voice, 7, 42, VoiceHeader.TargetLinked);
-        var packet = crypto.Seal(Direction.ClientToServer, header, Opus);
+        var packet = crypto.Seal(PacketDirection.ClientToServer, header, Opus);
 
-        Assert.True(crypto.TryOpen(Direction.ClientToServer, packet, out var h, out var plain));
+        Assert.True(crypto.TryOpen(PacketDirection.ClientToServer, packet, out var h, out var plain));
         Assert.Equal(header, h);
         Assert.Equal(Opus, plain);
     }
@@ -24,10 +24,10 @@ public class VoicePacketTests
     public void SealOpen_ServerToClient_RoundTripsSpeakerSeq()
     {
         using var crypto = new VoiceCrypto(Key);
-        var packet = crypto.Seal(Direction.ServerToClient, new VoiceHeader(PacketType.Voice, 3, 1, 0), RelayPayload.Build(999, Opus));
+        var packet = crypto.Seal(PacketDirection.ServerToClient, new VoiceHeader(PacketType.Voice, 3, 1, 0), RelayPayload.Build(999, Opus));
 
-        Assert.True(crypto.TryOpen(Direction.ServerToClient, packet, out _, out var plain));
-        Assert.True(RelayPayload.TryParse(plain, out var speakerSeq, out var opus, out var copy));
+        Assert.True(crypto.TryOpen(PacketDirection.ServerToClient, packet, out _, out var plain));
+        Assert.True(RelayPayload.TryReadArrays(plain, out var speakerSeq, out var opus, out var copy));
         Assert.Equal(999u, speakerSeq);
         Assert.Equal(Opus, opus);
         Assert.Null(copy);
@@ -37,24 +37,24 @@ public class VoicePacketTests
     [Fact]
     public void RelayPayload_WithCopy_RoundTrip_SizeLimit()
     {
-        Assert.True(OVS.Shared.Protocol.ProtocolInfo.Version >= 14); // 14 brought the copy; SmokeTests pins the current one
+        Assert.True(OVS.Shared.Protocol.WireProtocol.Version >= 14); // 14 brought the copy; SmokeTests pins the current one
         var previous = RandomNumberGenerator.GetBytes(50);
 
         var single = RelayPayload.Build(7, Opus);
         Assert.Equal(6 + Opus.Length, single.Length);
-        Assert.True(RelayPayload.TryParse(single, out var seq, out var opus, out var copy));
+        Assert.True(RelayPayload.TryReadArrays(single, out var seq, out var opus, out var copy));
         Assert.Equal(7u, seq);
         Assert.Equal(Opus, opus);
         Assert.Null(copy);
 
         var both = RelayPayload.Build(8, Opus, previous);
         Assert.Equal(6 + Opus.Length + previous.Length, both.Length);
-        Assert.True(RelayPayload.TryParse(both, out seq, out opus, out copy));
+        Assert.True(RelayPayload.TryReadArrays(both, out seq, out opus, out copy));
         Assert.Equal(8u, seq);
         Assert.Equal(Opus, opus);
         Assert.Equal(previous, copy);
         // the server takes the parts without copying
-        Assert.True(RelayPayload.TryRead(both, out seq, out var current, out var rest));
+        Assert.True(RelayPayload.TryReadRanges(both, out seq, out var current, out var rest));
         Assert.Equal(Opus, both[current]);
         Assert.Equal(previous, both[rest]);
 
@@ -62,11 +62,11 @@ public class VoicePacketTests
         var largest = RandomNumberGenerator.GetBytes(VoiceHeader.MaxOpusSize);
         var big = RelayPayload.Build(9, largest, largest);
         Assert.Equal(6 + VoiceHeader.MaxOpusSize, big.Length);
-        Assert.True(RelayPayload.TryParse(big, out _, out opus, out copy));
+        Assert.True(RelayPayload.TryReadArrays(big, out _, out opus, out copy));
         Assert.Equal(largest, opus);
         Assert.Null(copy);
         using (var crypto = new VoiceCrypto(Key))
-            crypto.Seal(Direction.ServerToClient, new VoiceHeader(PacketType.Voice, 1, 1, 0), RelayPayload.Build(9, Opus, RandomNumberGenerator.GetBytes(RelayPayload.MaxSize - 6 - Opus.Length)));
+            crypto.Seal(PacketDirection.ServerToClient, new VoiceHeader(PacketType.Voice, 1, 1, 0), RelayPayload.Build(9, Opus, RandomNumberGenerator.GetBytes(RelayPayload.MaxSize - 6 - Opus.Length)));
         Assert.Throws<ArgumentException>(() => RelayPayload.Build(1, new byte[VoiceHeader.MaxOpusSize + 1]));
         Assert.Throws<ArgumentException>(() => RelayPayload.Build(1, []));
 
@@ -78,14 +78,14 @@ public class VoicePacketTests
             raw[5] = (byte)length;
             return raw;
         }
-        Assert.False(RelayPayload.TryParse(new byte[5], out _, out _, out _));
-        Assert.False(RelayPayload.TryParse(Raw(0, 0, 10), out _, out _, out _));
-        Assert.False(RelayPayload.TryParse(Raw(VoiceHeader.MaxOpusSize + 1, VoiceHeader.MaxOpusSize + 1, 0), out _, out _, out _));
-        Assert.False(RelayPayload.TryParse(Raw(11, 10, 0), out _, out _, out _));
-        Assert.False(RelayPayload.TryParse(Raw(0xFFFF, 10, 0), out _, out _, out _));
-        Assert.False(RelayPayload.TryParse(Raw(10, 10, VoiceHeader.MaxOpusSize + 1), out _, out _, out _));
-        Assert.False(RelayPayload.TryParse(Raw(VoiceHeader.MaxOpusSize, VoiceHeader.MaxOpusSize, RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize + 1), out _, out _, out _));
-        Assert.True(RelayPayload.TryParse(Raw(VoiceHeader.MaxOpusSize, VoiceHeader.MaxOpusSize, RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize), out _, out _, out copy));
+        Assert.False(RelayPayload.TryReadArrays(new byte[5], out _, out _, out _));
+        Assert.False(RelayPayload.TryReadArrays(Raw(0, 0, 10), out _, out _, out _));
+        Assert.False(RelayPayload.TryReadArrays(Raw(VoiceHeader.MaxOpusSize + 1, VoiceHeader.MaxOpusSize + 1, 0), out _, out _, out _));
+        Assert.False(RelayPayload.TryReadArrays(Raw(11, 10, 0), out _, out _, out _));
+        Assert.False(RelayPayload.TryReadArrays(Raw(0xFFFF, 10, 0), out _, out _, out _));
+        Assert.False(RelayPayload.TryReadArrays(Raw(10, 10, VoiceHeader.MaxOpusSize + 1), out _, out _, out _));
+        Assert.False(RelayPayload.TryReadArrays(Raw(VoiceHeader.MaxOpusSize, VoiceHeader.MaxOpusSize, RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize + 1), out _, out _, out _));
+        Assert.True(RelayPayload.TryReadArrays(Raw(VoiceHeader.MaxOpusSize, VoiceHeader.MaxOpusSize, RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize), out _, out _, out copy));
         Assert.Equal(RelayPayload.MaxSize - 6 - VoiceHeader.MaxOpusSize, copy!.Length);
     }
 
@@ -93,9 +93,9 @@ public class VoicePacketTests
     public void SealOpen_EmptyPayload_ForHelloAndPing()
     {
         using var crypto = new VoiceCrypto(Key);
-        var packet = crypto.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Hello, 1, 0, 0), []);
+        var packet = crypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Hello, 1, 0, 0), []);
         Assert.Equal(26, packet.Length);
-        Assert.True(crypto.TryOpen(Direction.ClientToServer, packet, out var h, out var plain));
+        Assert.True(crypto.TryOpen(PacketDirection.ClientToServer, packet, out var h, out var plain));
         Assert.Equal(PacketType.Hello, h.Type);
         Assert.Empty(plain);
     }
@@ -104,12 +104,12 @@ public class VoicePacketTests
     public void TryOpen_AnyByteFlipped_False()
     {
         using var crypto = new VoiceCrypto(Key);
-        var packet = crypto.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Voice, 7, 42, 0), Opus);
+        var packet = crypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Voice, 7, 42, 0), Opus);
         for (int i = 0; i < packet.Length; i++)
         {
             var tampered = (byte[])packet.Clone();
             tampered[i] ^= 0x01;
-            Assert.False(crypto.TryOpen(Direction.ClientToServer, tampered, out _, out _), $"byte {i}");
+            Assert.False(crypto.TryOpen(PacketDirection.ClientToServer, tampered, out _, out _), $"byte {i}");
         }
     }
 
@@ -118,8 +118,8 @@ public class VoicePacketTests
     {
         using var a = new VoiceCrypto(Key);
         using var b = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
-        var packet = a.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Voice, 1, 1, 0), Opus);
-        Assert.False(b.TryOpen(Direction.ClientToServer, packet, out _, out _));
+        var packet = a.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Voice, 1, 1, 0), Opus);
+        Assert.False(b.TryOpen(PacketDirection.ClientToServer, packet, out _, out _));
     }
 
     [Theory]
@@ -129,15 +129,15 @@ public class VoicePacketTests
     public void TryOpen_BadLength_False(int length)
     {
         using var crypto = new VoiceCrypto(Key);
-        Assert.False(crypto.TryOpen(Direction.ClientToServer, new byte[length], out _, out _));
+        Assert.False(crypto.TryOpen(PacketDirection.ClientToServer, new byte[length], out _, out _));
     }
 
     [Fact]
     public void TryOpen_WrongDirection_False()
     {
         using var crypto = new VoiceCrypto(Key);
-        var packet = crypto.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Voice, 1, 5, 0), Opus);
-        Assert.False(crypto.TryOpen(Direction.ServerToClient, packet, out _, out _));
+        var packet = crypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Voice, 1, 5, 0), Opus);
+        Assert.False(crypto.TryOpen(PacketDirection.ServerToClient, packet, out _, out _));
     }
 
     /// <summary>Package 133 (A142): the ping carries the sender's time and the loss it sees from the other side.</summary>
@@ -153,8 +153,8 @@ public class VoicePacketTests
         Assert.Equal(0.0, new LossReport(0, 0).Percent); // nothing expected (a talk pause) is no loss
 
         using var crypto = new VoiceCrypto(Key);
-        var packet = crypto.Seal(Direction.ClientToServer, new VoiceHeader(PacketType.Ping, 1, 0, 0), bytes);
-        Assert.True(crypto.TryOpen(Direction.ClientToServer, packet, out _, out var plain));
+        var packet = crypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, 1, 0, 0), bytes);
+        Assert.True(crypto.TryOpen(PacketDirection.ClientToServer, packet, out _, out var plain));
         Assert.True(PingPayload.TryParse(plain, out var opened));
         Assert.Equal(ping, opened);
 

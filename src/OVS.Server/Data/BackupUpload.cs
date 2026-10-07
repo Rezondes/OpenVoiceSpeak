@@ -13,7 +13,7 @@ public sealed class BackupUpload(string id, string path)
     public bool Continues(long offset) => offset == Received;
 
     /// <summary>The upload would grow past MaxBackupUploadBytes with length more bytes.</summary>
-    public bool Overflows(int length) => Received + length > ProtocolInfo.MaxBackupUploadBytes;
+    public bool Overflows(int length) => Received + length > ProtocolLimits.MaxBackupUploadBytes;
 
     /// <summary>Writes the chunk (the first one replaces a stale file); counts it only once it is written.</summary>
     public void Append(ReadOnlySpan<byte> bytes)

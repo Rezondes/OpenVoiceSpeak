@@ -18,7 +18,7 @@ public sealed partial class ServerState
     /// <summary>Package 141: a sustained VoiceUp flood ends the session like a request flood (Package 86).</summary>
     public void DisconnectFlood(Session session)
     {
-        lock (gate) RemoveLocked(session, new Disconnected(Codes.RateLimited));
+        lock (gate) RemoveLocked(session, new Disconnected(ReasonCodes.RateLimited));
     }
 
     /// <returns>Package 136: also the sender's channel, read under the lock, as a copy must not cross a move.</returns>

@@ -19,9 +19,9 @@ public sealed class RestartScheduleTests
     [InlineData(4, 30, 0, 28)]  // after the time: tomorrow
     [InlineData(4, 0, 0, 28)]   // exactly now: tomorrow
     [InlineData(3, 59, 59, 28)] // less than a second before: tomorrow, a timer firing early must not restart twice
-    public void NextAfter_TodayOrTomorrow_InLocalTime(int hour, int minute, int second, int expectedDay)
+    public void FindNext_TodayOrTomorrow_InLocalTime(int hour, int minute, int second, int expectedDay)
     {
-        var next = RestartSchedule.NextAfter(Local(hour, minute, second).ToUniversalTime(), new TimeOnly(4, 0, 0), Plus2);
+        var next = RestartSchedule.FindNext(Local(hour, minute, second).ToUniversalTime(), new TimeOnly(4, 0, 0), Plus2);
         Assert.Equal(Local(4, 0, 0, expectedDay), next);
     }
 

@@ -68,12 +68,12 @@ public sealed class LogReader(string dataDir, TimeProvider time)
             .Select(f => f.FullName);
     }
 
-    /// <summary>The start in the name (server local time, like LogFiles writes it), else the creation time.</summary>
+    /// <summary>The start in the name (server local time, like LogFileWriter writes it), else the creation time.</summary>
     DateTimeOffset StartOf(FileInfo file)
     {
         var name = Path.GetFileNameWithoutExtension(file.Name);
-        if (name.Length >= LogFiles.NameFormat.Length
-            && DateTime.TryParseExact(name[^LogFiles.NameFormat.Length..], LogFiles.NameFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var local))
+        if (name.Length >= LogFileWriter.NameFormat.Length
+            && DateTime.TryParseExact(name[^LogFileWriter.NameFormat.Length..], LogFileWriter.NameFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var local))
             return new DateTimeOffset(local, time.LocalTimeZone.GetUtcOffset(local));
         return new DateTimeOffset(file.CreationTimeUtc, TimeSpan.Zero);
     }
@@ -90,24 +90,24 @@ public sealed class LogReader(string dataDir, TimeProvider time)
 
     static IEnumerable<string> ReadLines(string path)
     {
-        // shared like LogFiles appends: the running server keeps writing, retention may delete meanwhile
+        // shared like LogFileWriter appends: the running server keeps writing, retention may delete meanwhile
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new StreamReader(stream, Encoding.UTF8);
         while (reader.ReadLine() is { } line) yield return line;
     }
 
-    /// <summary>Page of ProtocolInfo.LogPageLines lines, the last one for null or a page past the end.</summary>
+    /// <summary>Page of WireProtocol.LogPageLines lines, the last one for null or a page past the end.</summary>
     public LogPage ReadPage(string? requestId, string id, string path, int? page)
     {
         ReadHook?.Invoke(id);
-        const int size = ProtocolInfo.LogPageLines;
+        const int size = WireProtocol.LogPageLines;
         var wanted = new List<string>();
         var last = new List<string>();
         int total = 0;
         foreach (var line in ReadLines(path))
         {
             if (total % size == 0) last.Clear();
-            var cut = Cut(line, ProtocolInfo.MaxLogLineLength);
+            var cut = Cut(line, ServerTuning.MaxLogLineLength);
             last.Add(cut);
             if (page is { } p && total / size == p - 1) wanted.Add(cut);
             total++;
@@ -132,26 +132,26 @@ public sealed class LogReader(string dataDir, TimeProvider time)
             && (search.To is null || f.Start <= search.To) && (search.From is null || f.LastWrite >= search.From));
         foreach (var (file, path) in files)
         {
-            if (hits.Count > ProtocolInfo.MaxLogHits || timedOut) break;
+            if (hits.Count > ProtocolLimits.MaxLogHits || timedOut) break;
             ReadHook?.Invoke(file.Id);
             var found = new Queue<LogHit>(); // the file's last hits, as many as can still be used
-            int room = ProtocolInfo.MaxLogHits + 1 - hits.Count, number = 0;
+            int room = ProtocolLimits.MaxLogHits + 1 - hits.Count, number = 0;
             foreach (var line in ReadLines(path))
             {
                 number++;
-                if (number % 1024 == 0 && clock.Elapsed > ProtocolInfo.LogSearchTimeout)
+                if (number % 1024 == 0 && clock.Elapsed > ServerTuning.LogSearchTimeout)
                 {
                     timedOut = true;
                     break;
                 }
                 if (!line.Contains(search.Query, StringComparison.OrdinalIgnoreCase)) continue;
-                found.Enqueue(new LogHit(file.Id, number, Cut(line, ProtocolInfo.MaxLogLineLength)));
+                found.Enqueue(new LogHit(file.Id, number, Cut(line, ServerTuning.MaxLogLineLength)));
                 if (found.Count > room) found.Dequeue();
             }
             hits.AddRange(found.Reverse());
         }
-        bool truncated = hits.Count > ProtocolInfo.MaxLogHits;
-        if (truncated) hits.RemoveRange(ProtocolInfo.MaxLogHits, hits.Count - ProtocolInfo.MaxLogHits);
+        bool truncated = hits.Count > ProtocolLimits.MaxLogHits;
+        if (truncated) hits.RemoveRange(ProtocolLimits.MaxLogHits, hits.Count - ProtocolLimits.MaxLogHits);
         var texts = Fit(hits.Select(h => h.Text).ToList());
         return new LogSearchResult(requestId, hits.Select((h, i) => h with { Text = texts[i] }).ToList(), truncated, timedOut);
     }
@@ -173,7 +173,7 @@ public sealed class LogReader(string dataDir, TimeProvider time)
     static List<string> Fit(List<string> lines)
     {
         if (lines.Sum(JsonBytes) <= LineBudget) return lines;
-        int low = 0, high = ProtocolInfo.MaxLogLineLength;
+        int low = 0, high = ServerTuning.MaxLogLineLength;
         while (low < high)
         {
             int mid = (low + high + 1) / 2;

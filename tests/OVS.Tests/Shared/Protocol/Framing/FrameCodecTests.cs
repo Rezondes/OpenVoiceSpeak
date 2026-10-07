@@ -38,8 +38,8 @@ public class FrameCodecTests
     [Fact]
     public async Task WriteThenRead_Error_KeepsFields()
     {
-        var reader = new FrameReader(new MemoryStream(await Encode(new Error("r1", Codes.NotFound, "x"))));
-        Assert.Equal(new Error("r1", Codes.NotFound, "x"), await reader.ReadAsync());
+        var reader = new FrameReader(new MemoryStream(await Encode(new Error("r1", ReasonCodes.NotFound, "x"))));
+        Assert.Equal(new Error("r1", ReasonCodes.NotFound, "x"), await reader.ReadAsync());
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class FrameCodecTests
     [Fact]
     public async Task Read_TrickledBytes_AssemblesFrame()
     {
-        var expected = new Error(null, Codes.InvalidName);
+        var expected = new Error(null, ReasonCodes.InvalidName);
         var reader = new FrameReader(new TrickleStream(await Encode(expected)));
         Assert.Equal(expected, await reader.ReadAsync());
     }

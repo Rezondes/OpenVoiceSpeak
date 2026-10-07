@@ -44,7 +44,7 @@ public sealed class ServerIconTests
 
         await admin.SendAsync(new SetServerIcon(Convert.ToBase64String(png)) { RequestId = "r1" });
         var changed = await guest.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash is not null);
-        Assert.Equal(ServerIconFormat.Hash(png), changed.Settings.IconHash);
+        Assert.Equal(ServerIconFormat.ComputeHash(png), changed.Settings.IconHash);
 
         await guest.SendAsync(new GetServerIcon { RequestId = "r2" });
         var icon = await guest.WaitForAsync<ServerIcon>();
@@ -56,12 +56,12 @@ public sealed class ServerIconTests
     public static TheoryData<string, string, string> Invalid => new()
     {
         // what, expected code, expected detail part
-        { "zu gross", Codes.InvalidValue, "zu gross" },
-        { "kein png", Codes.InvalidValue, "kein PNG" },
-        { "nicht quadratisch", Codes.InvalidValue, "quadratisch" },
-        { "zu klein", Codes.InvalidValue, "Pixel" },
-        { "kein base64", Codes.InvalidValue, "Base64" },
-        { "ohne recht", Codes.PermissionDenied, "" },
+        { "zu gross", ReasonCodes.InvalidValue, "zu gross" },
+        { "kein png", ReasonCodes.InvalidValue, "kein PNG" },
+        { "nicht quadratisch", ReasonCodes.InvalidValue, "quadratisch" },
+        { "zu klein", ReasonCodes.InvalidValue, "Pixel" },
+        { "kein base64", ReasonCodes.InvalidValue, "Base64" },
+        { "ohne recht", ReasonCodes.PermissionDenied, "" },
     };
 
     [Theory]
@@ -105,7 +105,7 @@ public sealed class ServerIconTests
         server = await server.RestartAsync();
         await using var _ = server;
         await using var again = await TestClient.ConnectAsync(server, "chef", adminId);
-        Assert.Equal(ServerIconFormat.Hash(png), again.Welcome.Snapshot.Settings.IconHash);
+        Assert.Equal(ServerIconFormat.ComputeHash(png), again.Welcome.Snapshot.Settings.IconHash);
 
         await again.SendAsync(new SetServerIcon(null));
         await again.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash is null);

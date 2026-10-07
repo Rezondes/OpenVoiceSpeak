@@ -29,7 +29,7 @@ public class Base64InputTests
         await using var a = admin;
 
         // exactly BackupChunkBytes (one '=') and one byte less (two '=') pass
-        foreach (var (size, padding) in new[] { (ProtocolInfo.BackupChunkBytes, 1), (ProtocolInfo.BackupChunkBytes - 1, 2) })
+        foreach (var (size, padding) in new[] { (ProtocolLimits.BackupChunkBytes, 1), (ProtocolLimits.BackupChunkBytes - 1, 2) })
         {
             var text = Convert.ToBase64String(new byte[size]);
             Assert.Equal(padding, Padding(text));
@@ -40,8 +40,8 @@ public class Base64InputTests
 
         // one byte more is refused
         var tooLarge = Guid.NewGuid().ToString("N");
-        await admin.SendAsync(new UploadBackupChunk(tooLarge, 0, Convert.ToBase64String(new byte[ProtocolInfo.BackupChunkBytes + 1]), false) { RequestId = "gross" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("gross")).Code);
+        await admin.SendAsync(new UploadBackupChunk(tooLarge, 0, Convert.ToBase64String(new byte[ProtocolLimits.BackupChunkBytes + 1]), false) { RequestId = "gross" });
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("gross")).Code);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class Base64InputTests
             var text = Convert.ToBase64String(png);
             Assert.Equal(padding, Padding(text));
             await admin.SendAsync(new SetServerIcon(text) { RequestId = "logo" + size });
-            await admin.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash == ServerIconFormat.Hash(png));
+            await admin.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash == ServerIconFormat.ComputeHash(png));
         }
     }
 

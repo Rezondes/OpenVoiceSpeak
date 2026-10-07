@@ -25,7 +25,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     /// <summary>Package 35: 0 = unlimited.</summary>
     [ObservableProperty] int maxUsers;
     /// <summary>Package 132 (A141): kbps its senders encode with; 0 for a separator.</summary>
-    [ObservableProperty] int bitrate = ProtocolInfo.DefaultBitrate;
+    [ObservableProperty] int bitrate = ProtocolDefaults.Bitrate;
     /// <summary>"3/5" for a limited channel, otherwise just the count.</summary>
     [ObservableProperty] string slotText = "0";
     [ObservableProperty] bool canCreate;
@@ -136,7 +136,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     {
         if (IsSeparator) return Task.CompletedTask; // Package 111: a double click on the line does nothing
         if (CanJoin) return owner.JoinAsync(Id);
-        owner.ShowNotice(ErrorTexts.For(Codes.ChannelLocked)); // Package 93: the server would refuse it anyway
+        owner.ShowNotice(ErrorTexts.For(ReasonCodes.ChannelLocked)); // Package 93: the server would refuse it anyway
         return Task.CompletedTask;
     }
 

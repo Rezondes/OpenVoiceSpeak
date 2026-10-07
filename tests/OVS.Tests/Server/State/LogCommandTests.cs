@@ -156,9 +156,9 @@ public sealed class LogCommandTests
 
         // an empty or too long query is refused
         await admin.SendAsync(new SearchLogs("  ") { RequestId = "leer" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("leer")).Code);
-        await admin.SendAsync(new SearchLogs(new string('x', ProtocolInfo.MaxLogQueryLength + 1)) { RequestId = "lang" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("lang")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("leer")).Code);
+        await admin.SendAsync(new SearchLogs(new string('x', ProtocolLimits.MaxLogQueryLength + 1)) { RequestId = "lang" });
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("lang")).Code);
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public sealed class LogCommandTests
         foreach (var request in new Request[] { new ListLogs(), new ReadLog("server/x.log"), new SearchLogs("x") })
         {
             await guest.SendAsync(request with { RequestId = "g" });
-            Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("g")).Code);
+            Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("g")).Code);
         }
 
         var files = await ListAsync(admin);
@@ -188,10 +188,10 @@ public sealed class LogCommandTests
         foreach (var id in escapes)
         {
             await admin.SendAsync(new ReadLog(id) { RequestId = "r" });
-            Assert.Equal(Codes.NotFound, (await admin.ErrorAsync("r")).Code);
+            Assert.Equal(ReasonCodes.NotFound, (await admin.ErrorAsync("r")).Code);
         }
         await admin.SendAsync(new ReadLog(files[0].Id, 0) { RequestId = "p" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("p")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("p")).Code);
     }
 
     [Fact]
@@ -206,12 +206,12 @@ public sealed class LogCommandTests
 
         var page = await ReadAsync(admin, "server/2025-01-01_00-00-00.log");
         Assert.Equal("kurz", page.Lines[0]);
-        Assert.StartsWith(longLine[..ProtocolInfo.MaxLogLineLength], page.Lines[1]);
+        Assert.StartsWith(longLine[..ServerTuning.MaxLogLineLength], page.Lines[1]);
         Assert.EndsWith(" [...]", page.Lines[1]);
-        Assert.True(page.Lines[1].Length < ProtocolInfo.MaxLogLineLength + 10);
+        Assert.True(page.Lines[1].Length < ServerTuning.MaxLogLineLength + 10);
         var hit = Assert.Single((await SearchAsync(admin, new SearchLogs("gesucht"))).Hits);
         Assert.StartsWith("Anfang ", hit.Text);
-        Assert.True(hit.Text.Length < ProtocolInfo.MaxLogLineLength + 10);
+        Assert.True(hit.Text.Length < ServerTuning.MaxLogLineLength + 10);
 
         // a full page of long lines with umlauts (6 bytes each in JSON) still fits one message; lines are cut further
         WriteLines(Path.Combine(dir, "2025-01-02_00-00-00.log"), Enumerable.Range(1, 1000).Select(i => $"{i} " + new string('ä', 3000)));
@@ -269,8 +269,8 @@ public sealed class LogCommandTests
         Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30)), "search did not start");
         for (int i = 1; i <= 5; i++) await admin.SendAsync(new SearchLogs("gesucht") { RequestId = $"s{i}" });
         // s0 runs, s1 to s3 wait in the session's queue of 4, s4 and s5 are refused
-        Assert.Equal(Codes.RateLimited, (await admin.ErrorAsync("s4")).Code);
-        Assert.Equal(Codes.RateLimited, (await admin.ErrorAsync("s5")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await admin.ErrorAsync("s4")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, (await admin.ErrorAsync("s5")).Code);
         release.Set();
         for (int i = 0; i <= 3; i++) await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == $"s{i}", 30_000);
 
@@ -409,7 +409,7 @@ public sealed class LogCommandTests
         foreach (var request in new Request[] { new PrepareLogDownload([id]), new DownloadLogChunk("0123456789abcdef0123456789abcdef", 0) })
         {
             await leser.SendAsync(request with { RequestId = "d" });
-            Assert.Equal(Codes.PermissionDenied, (await leser.ErrorAsync("d")).Code);
+            Assert.Equal(ReasonCodes.PermissionDenied, (await leser.ErrorAsync("d")).Code);
         }
 
         // more than 200 MB together is refused, nothing is copied
@@ -417,17 +417,17 @@ public sealed class LogCommandTests
         foreach (var name in new[] { "2025-01-01_00-00-00.log", "2025-01-02_00-00-00.log" })
             using (var big = File.Create(Path.Combine(dir, name))) big.SetLength(101L * 1024 * 1024);
         await chef.SendAsync(new PrepareLogDownload(["server/2025-01-01_00-00-00.log", "server/2025-01-02_00-00-00.log"]) { RequestId = "gross" });
-        Assert.Equal(Codes.LogsTooLarge, (await chef.ErrorAsync("gross")).Code);
+        Assert.Equal(ReasonCodes.LogsTooLarge, (await chef.ErrorAsync("gross")).Code);
         Assert.False(Directory.Exists(ExportDir(server)) && Directory.EnumerateFileSystemEntries(ExportDir(server)).Any());
 
         // unknown or no files, unknown download
         time.Advance(ServerTuning.HeavyInterval);
         await chef.SendAsync(new PrepareLogDownload([id, "../server-data.json"]) { RequestId = "fremd" });
-        Assert.Equal(Codes.NotFound, (await chef.ErrorAsync("fremd")).Code);
+        Assert.Equal(ReasonCodes.NotFound, (await chef.ErrorAsync("fremd")).Code);
         await chef.SendAsync(new PrepareLogDownload([]) { RequestId = "leer" });
-        Assert.Equal(Codes.InvalidValue, (await chef.ErrorAsync("leer")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await chef.ErrorAsync("leer")).Code);
         await chef.SendAsync(new DownloadLogChunk("0123456789abcdef0123456789abcdef", 0) { RequestId = "unbekannt" });
-        Assert.Equal(Codes.NotFound, (await chef.ErrorAsync("unbekannt")).Code);
+        Assert.Equal(ReasonCodes.NotFound, (await chef.ErrorAsync("unbekannt")).Code);
     }
 
     [Fact]
@@ -437,7 +437,7 @@ public sealed class LogCommandTests
         await using var _ = server;
         await using var a = admin;
         await using var other = await TestClient.ConnectAsync(server, "anna");
-        var content = new byte[3 * ProtocolInfo.BackupChunkBytes / 2 + 17];
+        var content = new byte[3 * ProtocolLimits.BackupChunkBytes / 2 + 17];
         Random.Shared.NextBytes(content);
         File.WriteAllBytes(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), content);
         using var entered = new SemaphoreSlim(0);
@@ -459,7 +459,7 @@ public sealed class LogCommandTests
         // one chunk per request, nothing more without asking
         await admin.SendAsync(new DownloadLogChunk(ready.DownloadId, 0) { RequestId = "c1" });
         var first = await admin.WaitForAsync<LogChunk>(c => c.RequestId == "c1");
-        Assert.Equal(ProtocolInfo.BackupChunkBytes, Convert.FromBase64String(first.DataBase64).Length);
+        Assert.Equal(ProtocolLimits.BackupChunkBytes, Convert.FromBase64String(first.DataBase64).Length);
         Assert.False(first.IsLast);
         await admin.AssertNoMessageAsync<LogChunk>();
         Assert.Equal(content, await PullAsync(admin, ready));

@@ -111,7 +111,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
 
         await admin.SendAsync(new RestoreBackup(backup));
         // a restore writes a safety backup and the data file first, slow on a CI disk
-        Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+        Assert.Equal(ReasonCodes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
         // The disconnect arrives while the server still holds its lock and writes the data file on closing; reading the
         // pending restore takes that lock, so the file is complete once it returns.
         Assert.NotNull(server.State.PendingRestore);
@@ -195,7 +195,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         foreach (var name in new[] { "kaputt", "ohne-manifest", "zu-neu", "ohne-zertifikat", "daten-kaputt" })
         {
             await admin.SendAsync(new RestoreBackup(name + ".ovsbackup") { RequestId = name });
-            Assert.Equal(Codes.InvalidBackup, (await admin.ErrorAsync(name)).Code);
+            Assert.Equal(ReasonCodes.InvalidBackup, (await admin.ErrorAsync(name)).Code);
         }
         await other.AssertNoMessageAsync<Disconnected>();
         Assert.Equal(dataBefore, File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName)));
@@ -232,7 +232,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             {
                 var id = $"x{n++}";
                 await admin.SendAsync(request with { RequestId = id });
-                Assert.Equal(Codes.NotFound, (await admin.ErrorAsync(id)).Code);
+                Assert.Equal(ReasonCodes.NotFound, (await admin.ErrorAsync(id)).Code);
             }
         }
         Assert.True(File.Exists(outside));
@@ -246,7 +246,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         {
             var id = $"g{n++}";
             await guest.SendAsync(request with { RequestId = id });
-            Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync(id)).Code);
+            Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync(id)).Code);
         }
         Assert.Single(Directory.GetFiles(backups, "*.ovsbackup"));
         await guest.AssertNoMessageAsync<Disconnected>();
@@ -301,11 +301,11 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Equal(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path)), System.Security.Cryptography.SHA256.HashData(received.ToArray()));
 
         await admin.SendAsync(new DownloadBackup(info.FileName, received.Length + 1) { RequestId = "weit" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("weit")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("weit")).Code);
         await admin.SendAsync(new DownloadBackup(info.FileName, -1) { RequestId = "minus" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("minus")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("minus")).Code);
         await admin.SendAsync(new DownloadBackup("../" + DataStore.FileName, 0) { RequestId = "raus" });
-        Assert.Equal(Codes.NotFound, (await admin.ErrorAsync("raus")).Code);
+        Assert.Equal(ReasonCodes.NotFound, (await admin.ErrorAsync("raus")).Code);
     }
 
     /// <summary>Sends the bytes in chunks of the given size, each after the answer to the one before; returns the last answer.</summary>
@@ -363,25 +363,25 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
 
         // over 50 MB: refused as soon as a chunk crosses the limit
         var tooLarge = await UploadAsync(admin, new byte[50 * 1024 * 1024 + 1]);
-        Assert.Equal(Codes.BackupTooLarge, Assert.IsType<Error>(tooLarge).Code);
+        Assert.Equal(ReasonCodes.BackupTooLarge, Assert.IsType<Error>(tooLarge).Code);
         Assert.Empty(UploadFiles(server.DataDir));
 
         // a chunk bigger than 512 KB, a wrong offset, a bad id and bad base64
         var id = Guid.NewGuid().ToString("N");
         await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[Chunk + 1]), false) { RequestId = "gross" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("gross")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("gross")).Code);
         await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[10]), false) { RequestId = "ok" });
         Assert.Equal(10, (await admin.WaitForAsync<UploadBackupAck>(r => r.RequestId == "ok")).Received);
         await admin.SendAsync(new UploadBackupChunk(id, 5, Convert.ToBase64String(new byte[10]), false) { RequestId = "luecke" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("luecke")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("luecke")).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         foreach (var bad in new[] { "../../x", "..\\x", "abc", "", id.ToUpperInvariant(), id + "0" })
         {
             await admin.SendAsync(new UploadBackupChunk(bad, 0, Convert.ToBase64String(new byte[10]), false) { RequestId = "id" + bad });
-            Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("id" + bad)).Code);
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("id" + bad)).Code);
         }
         await admin.SendAsync(new UploadBackupChunk(id, 0, "kein base64!", false) { RequestId = "b64" });
-        Assert.Equal(Codes.InvalidValue, (await admin.ErrorAsync("b64")).Code);
+        Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("b64")).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.False(File.Exists(Path.Combine(server.DataDir, "x")));
 
@@ -417,7 +417,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         foreach (var bytes in new[] { new byte[] { 1, 2, 3, 4 }, File.ReadAllBytes(scratch) })
         {
             var answer = Assert.IsType<Error>(await UploadAsync(admin, bytes));
-            Assert.Equal(Codes.InvalidBackup, answer.Code);
+            Assert.Equal(ReasonCodes.InvalidBackup, answer.Code);
         }
         var name = Assert.Single(Directory.GetFiles(Path.Combine(server.DataDir, "backups"), "*.ovsbackup"));
         Assert.Empty(UploadFiles(server.DataDir));
@@ -425,9 +425,9 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
 
         // AC5: the right ServerConfig for both directions
         await guest.SendAsync(new DownloadBackup(Path.GetFileName(name), 0) { RequestId = "g1" });
-        Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("g1")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("g1")).Code);
         await guest.SendAsync(new UploadBackupChunk(Guid.NewGuid().ToString("N"), 0, Convert.ToBase64String(File.ReadAllBytes(name)), true) { RequestId = "g2" });
-        Assert.Equal(Codes.PermissionDenied, (await guest.ErrorAsync("g2")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("g2")).Code);
         Assert.Single(Directory.GetFiles(Path.Combine(server.DataDir, "backups"), "*.ovsbackup"));
         Assert.Empty(UploadFiles(server.DataDir));
     }
@@ -533,8 +533,8 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             await admin2.WaitForAsync<ChannelAdded>();
 
             await admin2.SendAsync(new RestoreBackup(backup));
-            Assert.Equal(Codes.Restoring, (await admin2.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
-            Assert.Equal(Codes.Restoring, (await anna.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+            Assert.Equal(ReasonCodes.Restoring, (await admin2.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+            Assert.Equal(ReasonCodes.Restoring, (await anna.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
             await admin2.DisposeAsync();
 
             await using var again = await ConnectWhenUpAsync(host.Port, "chef", adminId, host.Run);
@@ -581,7 +581,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             host.Stop(); // a plain shutdown: the wait ends, the sessions are still open
             await gap.Task.WaitAsync(TimeSpan.FromSeconds(30));
             await admin.SendAsync(new RestoreBackup(backup));
-            Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+            Assert.Equal(ReasonCodes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
             sent.SetResult();
             Assert.Equal(0, await host.Run.WaitAsync(TimeSpan.FromSeconds(30)));
         }
@@ -616,7 +616,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
 
             File.WriteAllBytes(Path.Combine(dir, ServerIconStore.FileName), TestImages.Encode(64, 64)); // a logo the backup does not have
             await admin.SendAsync(new RestoreBackup("alt.ovsbackup"));
-            Assert.Equal(Codes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+            Assert.Equal(ReasonCodes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
             await admin.DisposeAsync();
 
             await using var again = await ConnectWhenUpAsync(host.Port, "chef", adminId, host.Run);
@@ -656,7 +656,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         {
             var id = $"c{n++}";
             await c.SendAsync(request with { RequestId = id });
-            Assert.Equal(Codes.PermissionDenied, (await c.ErrorAsync(id)).Code);
+            Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync(id)).Code);
         }
 
         await k.SendAsync(new ListBackups { RequestId = "l" });
@@ -665,9 +665,9 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.True((await k.WaitForAsync<BackupChunk>(ch => ch.RequestId == "d")).IsLast);
         // uploading and restoring are not part of the right
         await k.SendAsync(new RestoreBackup(name) { RequestId = "r" });
-        Assert.Equal(Codes.PermissionDenied, (await k.ErrorAsync("r")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await k.ErrorAsync("r")).Code);
         var bytes = File.ReadAllBytes(Path.Combine(server.DataDir, "backups", name));
-        Assert.Equal(Codes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(k, bytes)).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(k, bytes)).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         await k.SendAsync(new DeleteBackup(name) { RequestId = "x" });
         Assert.Empty((await k.WaitForAsync<BackupList>(l => l.RequestId == "x")).Backups);
@@ -695,9 +695,9 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         var bytes = File.ReadAllBytes(Path.Combine(backups, name));
 
         // every right, but not in the Admin group
-        Assert.Equal(Codes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(all, bytes)).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(all, bytes)).Code);
         await all.SendAsync(new RestoreBackup(name) { RequestId = "r" });
-        Assert.Equal(Codes.PermissionDenied, (await all.ErrorAsync("r")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await all.ErrorAsync("r")).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         await all.SendAsync(new ListBackups { RequestId = "l" });
         Assert.Single((await all.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups);
@@ -710,7 +710,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         LeaveAdminGroup(server.State, second.Fingerprint);
         await two.WaitForAsync<UserUpdated>(u => u.User.Nickname == "zweiter" && !u.User.GroupIds.Contains(WellKnownGroups.Admin));
         await two.SendAsync(new UploadBackupChunk(id, 100, Convert.ToBase64String(bytes, 100, bytes.Length - 100), true) { RequestId = "c1" });
-        Assert.Equal(Codes.PermissionDenied, (await two.ErrorAsync("c1")).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, (await two.ErrorAsync("c1")).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.Single(Directory.GetFiles(backups, "*.ovsbackup"));
 
@@ -762,7 +762,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         WriteArchive(archive, new(good) { ["server-data.json"] = JsonSerializer.SerializeToUtf8Bytes(data, ProtocolJson.Options) });
 
         // uploaded: refused with the same check, no file left
-        Assert.Equal(Codes.InvalidBackup, Assert.IsType<Error>(await UploadAsync(admin, File.ReadAllBytes(archive))).Code);
+        Assert.Equal(ReasonCodes.InvalidBackup, Assert.IsType<Error>(await UploadAsync(admin, File.ReadAllBytes(archive))).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.Contains(server.Log, l => l.Contains("Hochgeladenes Backup ist ungültig"));
 
@@ -770,7 +770,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         File.Copy(archive, Path.Combine(backups, "kaputt.ovsbackup"));
         var dataBefore = File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName));
         await admin.SendAsync(new RestoreBackup("kaputt.ovsbackup") { RequestId = "r" });
-        Assert.Equal(Codes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
+        Assert.Equal(ReasonCodes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
         await admin.AssertNoMessageAsync<Disconnected>();
         Assert.Equal(dataBefore, File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName)));
         Assert.DoesNotContain(Directory.GetFiles(backups), f => Path.GetFileName(f).StartsWith("vor-wiederherstellung_"));
@@ -804,14 +804,14 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         await admin.SendAsync(new ListBackups { RequestId = "l" });
         Assert.Equal("?", (await admin.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups.Single(b => b.FileName == "gross.ovsbackup").ServerVersion);
         await admin.SendAsync(new RestoreBackup("gross.ovsbackup") { RequestId = "r" });
-        Assert.Equal(Codes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
+        Assert.Equal(ReasonCodes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
 
         // at most 50 backups: creating and uploading beyond that are refused
         for (int i = 0; i < 48; i++) File.WriteAllBytes(Path.Combine(backups, $"alt-{i:00}.ovsbackup"), [1]);
         time.Advance(TimeSpan.FromMinutes(1));
         await admin.SendAsync(new CreateBackup { RequestId = "q" });
-        Assert.Equal(Codes.BackupQuotaExceeded, (await admin.ErrorAsync("q")).Code);
-        Assert.Equal(Codes.BackupQuotaExceeded, Assert.IsType<Error>(await UploadAsync(admin, bytes)).Code);
+        Assert.Equal(ReasonCodes.BackupQuotaExceeded, (await admin.ErrorAsync("q")).Code);
+        Assert.Equal(ReasonCodes.BackupQuotaExceeded, Assert.IsType<Error>(await UploadAsync(admin, bytes)).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.Equal(50, Directory.GetFiles(backups, "*.ovsbackup").Length);
         Assert.Contains(server.Log, l => l.Contains("Backup-Limit erreicht"));

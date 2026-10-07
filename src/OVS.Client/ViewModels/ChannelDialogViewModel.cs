@@ -30,7 +30,7 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     public string ConfirmText => mode == ChannelDialogMode.Create ? Strings.Dlg_Create : Strings.Dlg_Save;
     public bool CanLimitUsers => mode != ChannelDialogMode.EditDefault;
     public string SlotsHint => CanLimitUsers ? Strings.Dlg_MaxUsersHint : Strings.Dlg_MaxUsersDefault;
-    public decimal MaxSlots => ProtocolInfo.MaxChannelUsers;
+    public decimal MaxSlots => ProtocolLimits.MaxChannelUsers;
 
     /// <summary>Package 93: every group of the server, in its order, ticked when in the channel's lock.</summary>
     public IReadOnlyList<GroupChoiceViewModel> Groups { get; } =
@@ -54,8 +54,8 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
 
     /// <summary>Package 132 (A141): "Qualität" in kbps, also for the default channel.</summary>
     [ObservableProperty] decimal? bitrate = current.Bitrate;
-    public decimal MinBitrate => ProtocolInfo.MinBitrate;
-    public decimal MaxBitrate => ProtocolInfo.MaxBitrate;
+    public decimal MinBitrate => ProtocolLimits.MinBitrate;
+    public decimal MaxBitrate => ProtocolLimits.MaxBitrate;
 
     partial void OnBitrateChanged(decimal? value)
     {
@@ -75,9 +75,9 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
         }
         // Package 83: the same TextRules as the server; an empty name stays quiet as before
         Error = string.IsNullOrWhiteSpace(Name) ? null
-            : TextRules.Name(Name, ProtocolInfo.MaxNameLength) is null ? Strings.Dlg_NameInvalid
-            : TextRules.Text(Description ?? "", ProtocolInfo.MaxTextLength) is null ? Strings.Dlg_TextInvalid
-            : (Password ?? "").Length > ProtocolInfo.MaxPasswordLength ? Strings.Dlg_PasswordTooLong
+            : TextRules.NormalizeName(Name, ProtocolLimits.MaxNameLength) is null ? Strings.Dlg_NameInvalid
+            : TextRules.NormalizeText(Description ?? "", ProtocolLimits.MaxTextLength) is null ? Strings.Dlg_TextInvalid
+            : (Password ?? "").Length > ProtocolLimits.MaxPasswordLength ? Strings.Dlg_PasswordTooLong
             : null;
         var ticked = Groups.Where(g => g.IsChecked).Select(g => g.Id).ToList();
         bool changed = CanLockGroups && !ticked.ToHashSet().SetEquals(current.AllowedGroupIds ?? []);

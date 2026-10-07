@@ -61,7 +61,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
 
         var prompt = Assert.Single(prompts);
         Assert.Equal(TofuResult.Unknown, prompt.Result);
-        Assert.Equal(CertFingerprint.Of(server.Certificate), prompt.Fingerprint);
+        Assert.Equal(CertFingerprint.ComputeHex(server.Certificate), prompt.Fingerprint);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     {
         await using var server = await TestServer.StartAsync(password: "pw");
         var e = await Assert.ThrowsAsync<ConnectionRejectedException>(() => Connect(server, "a"));
-        Assert.Equal(Codes.WrongPassword, e.Code);
+        Assert.Equal(ReasonCodes.WrongPassword, e.Code);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         victim.Disconnected += (r, d) => reason.TrySetResult((r, d));
 
         await a.SendAsync(new Kick(victim.Welcome.SessionId, "tschüss"));
-        Assert.Equal((Codes.Kicked, "tschüss"), await reason.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal((ReasonCodes.Kicked, "tschüss"), await reason.Task.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
     [Fact]
@@ -441,7 +441,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     [Fact]
     public async Task UdpBlocked_VoiceOverTcp()
     {
-        Assert.Equal(15, ProtocolInfo.Version);
+        Assert.Equal(15, WireProtocol.Version);
         await using var server = await TestServer.StartAsync();
         await using var a = await Connect(server, "a");
         await using var b = await Connect(server, "b");

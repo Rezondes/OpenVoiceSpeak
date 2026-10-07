@@ -294,7 +294,7 @@ public class AdminViewModelTests
         var guest = Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Gast");
         guest.IsChecked = false;
         await guest.ToggleCommand.ExecuteAsync(null);
-        server.Apply(new Error(sent.OfType<UnassignGroup>().Single().RequestId, Codes.LastAdmin));
+        server.Apply(new Error(sent.OfType<UnassignGroup>().Single().RequestId, ReasonCodes.LastAdmin));
         server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [ModGroup])])); // even if it changed some other way
         Assert.Single(heard);
     }
@@ -419,8 +419,8 @@ public class AdminViewModelTests
             {
                 if (r is not DownloadBackup d) return null;
                 progress.Add((vm!.IsTransferring, vm.TransferPercent, vm.TransferText));
-                if (failAt is not null && d.Offset > 0) return new Error(r.RequestId, Codes.NotFound);
-                var size = (int)Math.Min(OVS.Shared.Protocol.ProtocolInfo.BackupChunkBytes, archive.Length - d.Offset);
+                if (failAt is not null && d.Offset > 0) return new Error(r.RequestId, ReasonCodes.NotFound);
+                var size = (int)Math.Min(OVS.Shared.Protocol.ProtocolLimits.BackupChunkBytes, archive.Length - d.Offset);
                 return new BackupChunk(r.RequestId, d.FileName, d.Offset, archive.Length, Convert.ToBase64String(archive, (int)d.Offset, size),
                     d.Offset + size >= archive.Length);
             }
@@ -481,7 +481,7 @@ public class AdminViewModelTests
                 Assert.Equal(received.Length, c.Offset);
                 received.Write(Convert.FromBase64String(c.DataBase64));
                 if (!c.IsLast) return new UploadBackupAck(r.RequestId, c.UploadId, received.Length);
-                return invalid ? new Error(r.RequestId, Codes.InvalidBackup) : new BackupUploaded(r.RequestId, info);
+                return invalid ? new Error(r.RequestId, ReasonCodes.InvalidBackup) : new BackupUploaded(r.RequestId, info);
             }
             var (admin, _, sent) = Create(P.All, dialogs: dialogs, reply: Reply, groupIds: [WellKnownGroups.Admin]);
             vm = admin;
@@ -744,7 +744,7 @@ public class AdminViewModelTests
         Assert.False(vm.MoveGroupUpCommand.CanExecute(null));
         await vm.MoveGroupDownCommand.ExecuteAsync(null);
         Assert.Equal(new[] { ModGroup, WellKnownGroups.Guest, WellKnownGroups.Admin }, ((ReorderGroups)sent[^1]).GroupIds);
-        server.Apply(new Error(sent[^1].RequestId, Codes.PermissionDenied)); // Package 98: refused, the server's order is back
+        server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied)); // Package 98: refused, the server's order is back
 
         vm.SelectedGroup = Group(vm, "Admin");
         Assert.False(vm.MoveGroupDownCommand.CanExecute(null));
@@ -1192,7 +1192,7 @@ public class AdminViewModelTests
                     var now = clock!.GetUtcNow();
                     if (refilled is { } at) tokens = Math.Min(4, tokens + (now - at).TotalSeconds * 2);
                     refilled = now;
-                    if (tokens < 1) return new Error(l.RequestId, Codes.RateLimited);
+                    if (tokens < 1) return new Error(l.RequestId, ReasonCodes.RateLimited);
                     tokens--;
                     return new UserList(l.RequestId, [new KnownUserInfo("fpX", "Xaver", [.. groups], CanBeModeratedByMe: true)]);
                 default: return null;
@@ -1277,10 +1277,10 @@ public class AdminViewModelTests
         Assert.Equal(Strings.Dlg_TextInvalid, vm.SettingsError);
 
         vm.WelcomeText = "Hallo";
-        vm.NewPassword = new string('p', ProtocolInfo.MaxPasswordLength + 1);
+        vm.NewPassword = new string('p', ProtocolLimits.MaxPasswordLength + 1);
         await vm.SaveServerSettingsCommand.ExecuteAsync(null);
         Assert.Equal(Strings.Ui_PasswordTooLong, vm.SettingsError);
-        Assert.Equal(new string('p', ProtocolInfo.MaxPasswordLength + 1), vm.NewPassword); // kept for correcting
+        Assert.Equal(new string('p', ProtocolLimits.MaxPasswordLength + 1), vm.NewPassword); // kept for correcting
         Assert.DoesNotContain(sent, r => r is UpdateServerSettings);
 
         vm.NewPassword = "kurz";
@@ -1371,9 +1371,9 @@ public class AdminViewModelTests
         Assert.True(vm.Restoring.IsBusy);
         server.Apply(new BackupList(null, [new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
         Assert.True(vm.Restoring.IsBusy); // the safety backup appears, the disconnect is still to come
-        server.Apply(new Error(restore.RequestId, Codes.NotFound)); // refused: the card comes back with the error
+        server.Apply(new Error(restore.RequestId, ReasonCodes.NotFound)); // refused: the card comes back with the error
         Assert.False(vm.Restoring.IsBusy);
-        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(Codes.NotFound), vm.Restoring.Error);
+        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(ReasonCodes.NotFound), vm.Restoring.Error);
     }
 
     /// <summary>Package 98 (AC4): the user card's actions spin until a user list asked for after them shows the change.</summary>
@@ -1406,9 +1406,9 @@ public class AdminViewModelTests
         var assign = sent.OfType<AssignGroup>().Single();
         time.Advance(ShowAfter);
         Assert.True(Card().Busy.IsBusy);
-        server.Apply(new Error(assign.RequestId, Codes.PermissionDenied));
+        server.Apply(new Error(assign.RequestId, ReasonCodes.PermissionDenied));
         Assert.False(Card().Busy.IsBusy);
-        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(Codes.PermissionDenied), Card().Busy.Error);
+        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(ReasonCodes.PermissionDenied), Card().Busy.Error);
 
         // deleting: busy until the next list, where the card is gone
         time.Advance(TimeSpan.FromSeconds(1));
@@ -1446,7 +1446,7 @@ public class AdminViewModelTests
         Assert.Equal(team, Order()[0]);
         time.Advance(ShowAfter);
         Assert.True(vm.GroupReorder.IsBusy);
-        server.Apply(new Error(reorder.RequestId, Codes.PermissionDenied));
+        server.Apply(new Error(reorder.RequestId, ReasonCodes.PermissionDenied));
         Assert.Equal(before, Order());
         Assert.False(vm.GroupReorder.IsBusy);
     }

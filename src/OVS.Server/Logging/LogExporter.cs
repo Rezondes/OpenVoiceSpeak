@@ -38,10 +38,10 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
         var chosen = new List<(LogFileInfo Info, string Path)>();
         foreach (var id in ids)
         {
-            if (!listed.TryGetValue(id, out var entry)) return (null, Codes.NotFound);
+            if (!listed.TryGetValue(id, out var entry)) return (null, ReasonCodes.NotFound);
             chosen.Add(entry);
         }
-        if (chosen.Sum(e => e.Info.Size) > ProtocolInfo.MaxLogDownloadBytes) return (null, Codes.LogsTooLarge);
+        if (chosen.Sum(e => e.Info.Size) > ServerTuning.MaxLogDownloadBytes) return (null, ReasonCodes.LogsTooLarge);
         Directory.CreateDirectory(ExportDir);
         bool single = chosen.Count == 1;
         var path = Path.Combine(ExportDir, downloadId + (single ? ".log" : ".zip"));
@@ -70,10 +70,10 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
             throw;
         }
         var size = new FileInfo(path).Length;
-        if (size > ProtocolInfo.MaxLogDownloadBytes)
+        if (size > ServerTuning.MaxLogDownloadBytes)
         {
             SafeFile.DeleteQuietly(path);
-            return (null, Codes.LogsTooLarge);
+            return (null, ReasonCodes.LogsTooLarge);
         }
         var name = single ? Path.GetFileName(chosen[0].Path)
             : $"ovs-logs_{Local(chosen.Min(e => e.Info.Start)):yyyy-MM-dd}_{Local(chosen.Max(e => e.Info.LastWrite)):yyyy-MM-dd}.zip";

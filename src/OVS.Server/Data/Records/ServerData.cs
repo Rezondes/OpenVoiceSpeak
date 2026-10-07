@@ -102,7 +102,7 @@ public sealed class ServerData
 
     string? FindSettingsProblem()
     {
-        if (!StoredName(Settings.Name, ProtocolInfo.MaxNameLength) || Settings.WelcomeText is not { Length: <= ProtocolInfo.MaxTextLength })
+        if (!StoredName(Settings.Name, ProtocolLimits.MaxNameLength) || Settings.WelcomeText is not { Length: <= ProtocolLimits.MaxTextLength })
             return "server name or welcome text invalid";
         return Settings.StoredPassword is null || Settings.StoredPassword.IsValid() ? null : "password hash invalid"; // Package 91: both formats
     }
@@ -113,7 +113,7 @@ public sealed class ServerData
         if (!Channels.All(c => c.Kind switch
             {
                 // Package 132: a separator's bitrate is never read (one stored before the package loads as 64)
-                ChannelKind.Voice => StoredName(c.Name, ProtocolInfo.MaxNameLength) && c.Description is { Length: <= ProtocolInfo.MaxTextLength }
+                ChannelKind.Voice => StoredName(c.Name, ProtocolLimits.MaxNameLength) && c.Description is { Length: <= ProtocolLimits.MaxTextLength }
                                      && ChannelSettingsRule.CheckBitrate(c.Bitrate) is null,
                 ChannelKind.Separator => c is { Name: "", Description: "", IsMuted: false, MaxUsers: 0, AllowedGroupIds: null, StoredPassword: null },
                 _ => false,
@@ -130,7 +130,7 @@ public sealed class ServerData
 
     string? FindGroupProblem()
     {
-        if (!Groups.All(g => StoredName(g.Name, ProtocolInfo.MaxGroupNameLength) && g.Permissions.IsSubsetOf(Permission.All))) return "group invalid";
+        if (!Groups.All(g => StoredName(g.Name, ProtocolLimits.MaxGroupNameLength) && g.Permissions.IsSubsetOf(Permission.All))) return "group invalid";
         if (!AllUnique(Groups.Select(g => g.Id))) return "group id twice";
         return Groups.Any(g => g.Id == WellKnownGroups.Guest) && Groups.Any(g => g.Id == WellKnownGroups.Admin) ? null : "guest or Admin group missing";
     }
@@ -140,7 +140,7 @@ public sealed class ServerData
         if (!Users.All(u => u.Fingerprint is { Length: > 0 } && u.GroupIds is not null && u.PreviousNicknames is not null
                             && !u.PreviousNicknames.Contains(null!)))
             return "user incomplete";
-        if (!Users.All(u => u.LastNickname is "" || StoredName(u.LastNickname, ProtocolInfo.MaxNicknameLength))) return "nickname invalid";
+        if (!Users.All(u => u.LastNickname is "" || StoredName(u.LastNickname, ProtocolLimits.MaxNicknameLength))) return "nickname invalid";
         if (!AllUnique(Users.Select(u => u.Fingerprint))) return "user twice";
         var groups = Groups.Select(g => g.Id).ToHashSet();
         if (!Users.All(u => u.GroupIds.All(groups.Contains))) return "user in an unknown group";

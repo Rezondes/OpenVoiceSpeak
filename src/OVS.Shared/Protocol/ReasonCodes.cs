@@ -1,7 +1,7 @@
 namespace OVS.Shared.Protocol;
 
-/// <summary>Every code the server can put into Error, Rejected or Disconnected.</summary>
-public static class Codes
+/// <summary>Every reason code an Error, Rejected or Disconnected carries; ConnectionLost is set by the client itself.</summary>
+public static class ReasonCodes
 {
     // Rejected (handshake)
     public const string VersionMismatch = nameof(VersionMismatch);
@@ -45,9 +45,9 @@ public static class Codes
     public const string WrongChannelPassword = nameof(WrongChannelPassword); // Package 94
     public const string InvalidBackup = nameof(InvalidBackup); // Package 74
     public const string BackupTooLarge = nameof(BackupTooLarge); // Package 75: an upload over MaxBackupUploadBytes
-    public const string LogsTooLarge = nameof(LogsTooLarge); // Package 82: a log download over MaxLogDownloadBytes
+    public const string LogsTooLarge = nameof(LogsTooLarge); // Package 82: a log download over ServerTuning.MaxLogDownloadBytes
     public const string BackupQuotaExceeded = nameof(BackupQuotaExceeded); // Package 89: too many backups or too many bytes in total
 
     public static IEnumerable<string> All() =>
-        typeof(Codes).GetFields().Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!);
+        typeof(ReasonCodes).GetFields().Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!);
 }

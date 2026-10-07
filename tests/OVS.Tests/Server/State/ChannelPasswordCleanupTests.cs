@@ -25,7 +25,7 @@ public sealed class ChannelPasswordCleanupTests : IDisposable
     {
         var guest = harness.Admit("gast");
         harness.Handle(guest, new JoinChannel(Secret, "falsch") { RequestId = "j" });
-        Assert.Contains(StateHarness.Drain(guest), m => m is Error { Code: Codes.WrongChannelPassword });
+        Assert.Contains(StateHarness.Drain(guest), m => m is Error { Code: ReasonCodes.WrongChannelPassword });
         return guest;
     }
 
@@ -48,7 +48,7 @@ public sealed class ChannelPasswordCleanupTests : IDisposable
     public void CloseAll_SessionWithAWrongPassword_NothingLeft()
     {
         AdmitWithAWrongPassword();
-        harness.State.CloseAll(new Disconnected(Codes.ServerShutdown));
+        harness.State.CloseAll(new Disconnected(ReasonCodes.ServerShutdown));
         Assert.Equal(0, Tracked);
     }
 }

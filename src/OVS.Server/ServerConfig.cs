@@ -15,7 +15,7 @@ namespace OVS.Server;
 /// <param name="AutoRestartAt">Daily restart time in server local time, null when the automatic restart is off.</param>
 /// <param name="LogRotateDaily">True begins new log files after midnight, false keeps them until the next start.</param>
 public sealed record ServerConfig(
-    int Port, string DataDir, int MaxUsers, string ServerName, string Password, int LogDays = ProtocolInfo.LogDaysDefault,
+    int Port, string DataDir, int MaxUsers, string ServerName, string Password, int LogDays = ProtocolDefaults.LogDays,
     TimeOnly? AutoRestartAt = null, bool LogRotateDaily = true)
 {
     public const string FileName = "server-config.json";
@@ -49,9 +49,9 @@ public sealed record ServerConfig(
 
         var file = ReadFile(Path.Combine(dataDir, FileName));
 
-        int port = Int("OVS_PORT", getEnv("OVS_PORT"), file.Port, ProtocolInfo.DefaultPort, (1, 65535));
-        int maxUsers = Int("OVS_MAX_USERS", getEnv("OVS_MAX_USERS"), file.MaxUsers, ProtocolInfo.MaxUsersDefault, ServerLimitsRule.MaxUsers);
-        int logDays = Int("OVS_LOG_DAYS", getEnv("OVS_LOG_DAYS"), file.LogDays, ProtocolInfo.LogDaysDefault, ServerLimitsRule.LogDays); // 0 = keep forever
+        int port = Int("OVS_PORT", getEnv("OVS_PORT"), file.Port, ProtocolDefaults.Port, (1, 65535));
+        int maxUsers = Int("OVS_MAX_USERS", getEnv("OVS_MAX_USERS"), file.MaxUsers, ProtocolDefaults.MaxUsers, ServerLimitsRule.MaxUsers);
+        int logDays = Int("OVS_LOG_DAYS", getEnv("OVS_LOG_DAYS"), file.LogDays, ProtocolDefaults.LogDays, ServerLimitsRule.LogDays); // 0 = keep forever
         bool autoRestart = Bool("OVS_AUTO_RESTART", getEnv("OVS_AUTO_RESTART"), file.AutoRestart, false);
         var restartTime = Time("OVS_AUTO_RESTART_TIME", getEnv("OVS_AUTO_RESTART_TIME") ?? file.AutoRestartTime, DefaultRestartTime);
         bool logRotateDaily = Bool("OVS_LOG_ROTATE_DAILY", getEnv("OVS_LOG_ROTATE_DAILY"), file.LogRotateDaily, true);
@@ -59,8 +59,8 @@ public sealed record ServerConfig(
         string password = getEnv("OVS_PASSWORD") ?? file.Password ?? "";
 
         name = name.Trim();
-        if (name.Length is < 1 or > ProtocolInfo.MaxNameLength)
-            throw new ConfigException($"OVS_SERVER_NAME muss 1 bis {ProtocolInfo.MaxNameLength} Zeichen lang sein.");
+        if (name.Length is < 1 or > ProtocolLimits.MaxNameLength)
+            throw new ConfigException($"OVS_SERVER_NAME muss 1 bis {ProtocolLimits.MaxNameLength} Zeichen lang sein.");
 
         var given = new (string Key, object? FileValue)[]
             {

@@ -35,7 +35,7 @@ public sealed class IdentityFloodTests
         for (int i = 0; i < ServerTuning.NewIdentitiesPerHour; i++)
             Assert.Null(state.Admit(Fp(i), $"neu{i}", ip, null).Rejection);
         // the rest of the same /64 is refused, another /64 is not
-        Assert.Equal(Codes.RateLimited, state.Admit(Fp(100), "zuviel", IPAddress.Parse("2001:db8:1:2::99"), null).Rejection?.Code);
+        Assert.Equal(ReasonCodes.RateLimited, state.Admit(Fp(100), "zuviel", IPAddress.Parse("2001:db8:1:2::99"), null).Rejection?.Code);
         Assert.Contains(server.Log, l => l.Contains("zu viele neue Identitäten") && l.Contains("2001:db8:1:2::99"));
         Assert.Null(state.Admit(Fp(101), "anderes", IPAddress.Parse("2001:db8:1:3::10"), null).Rejection);
         // known fingerprints are never throttled
@@ -49,7 +49,7 @@ public sealed class IdentityFloodTests
         var v4 = IPAddress.Loopback;
         for (int i = 0; i < ServerTuning.NewIdentitiesPerHour; i++) Assert.Null(state.Admit(Fp(200 + i), $"lokal{i}", v4, null).Rejection);
         await using var client = await TestClient.OpenAsync(server.Port);
-        Assert.Equal(Codes.RateLimited, Assert.IsType<Rejected>(await client.HandshakeAsync("flut")).Code);
+        Assert.Equal(ReasonCodes.RateLimited, Assert.IsType<Rejected>(await client.HandshakeAsync("flut")).Code);
     }
 
     [Fact]

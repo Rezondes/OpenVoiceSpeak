@@ -161,7 +161,7 @@ public sealed partial class ServerViewModel : ObservableObject
         switch (message)
         {
             case Error e:
-                if (e.Code is Codes.WrongChannelPassword or Codes.ChannelPasswordRequired && pendingPassword is { } wrong)
+                if (e.Code is ReasonCodes.WrongChannelPassword or ReasonCodes.ChannelPasswordRequired && pendingPassword is { } wrong)
                 {
                     channelPasswords.Remove(wrong.Channel); // Package 94: changed meanwhile, ask again next time
                     pendingPassword = null;
@@ -442,7 +442,7 @@ public sealed partial class ServerViewModel : ObservableObject
         // InvalidOperationException: a request raced a disconnect that had already shut TLS down.
         catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException or InvalidOperationException)
         {
-            var text = ErrorTexts.For(Codes.ConnectionLost);
+            var text = ErrorTexts.For(ReasonCodes.ConnectionLost);
             if (pending?.Answers(id) == true) pending.Fail(text);
             Notice?.Invoke(text);
         }

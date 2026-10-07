@@ -66,7 +66,7 @@ public sealed class LossAdapter(TimeProvider time, int channelKbps)
         cleanSince = loss < CleanBelow ? cleanSince ?? now : null;
         if (now - lossySince >= StepDownAfter)
         {
-            bitrate = Math.Max(bitrate / 2, ProtocolInfo.MinBitrate);
+            bitrate = Math.Max(bitrate / 2, ProtocolLimits.MinBitrate);
             lossySince = now; // the next step needs another 5 s
         }
         if (now - cleanSince >= StepUpAfter)
