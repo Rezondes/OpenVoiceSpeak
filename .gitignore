@@ -491,3 +491,6 @@ ruvector.db
 agentdb.rvf
 agentdb.rvf.lock
 publish/
+
+# /brag launch video output
+brag-output*/
