@@ -209,6 +209,15 @@ public sealed class WireFreezeTests
         Assert.True(Enums.SequenceEqual(actual), Literal(actual));
     }
 
+    [Fact]
+    public void Messages_EveryConcreteSubtype_IsRegistered()
+    {
+        var concrete = typeof(Message).Assembly.GetTypes().Where(t => !t.IsAbstract && typeof(Message).IsAssignableFrom(t))
+            .Select(t => t.FullName!).Order(StringComparer.Ordinal).ToArray();
+        var registered = MessageTypes().Select(t => t.FullName!).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(concrete, registered);
+    }
+
     static IEnumerable<Type> MessageTypes() => typeof(Message).GetCustomAttributes<JsonDerivedTypeAttribute>().Select(a => a.DerivedType);
 
     static string PropertyNames(Type type) =>

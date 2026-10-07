@@ -611,13 +611,13 @@ public sealed partial class ServerViewModel : ObservableObject
         await channel.JoinCommand.ExecuteAsync(null);
         if (joining is { } join) await join.Completion;
     }
-    public PendingViewModel Kick(uint sessionId, string reason) => SendConfirmed(new Kick(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+    public PendingViewModel Kick(uint sessionId, string reason) => SendConfirmed(new KickSession(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
     public PendingViewModel Ban(uint sessionId, BanChoice choice) =>
-        SendConfirmed(new Ban(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+        SendConfirmed(new BanSession(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
     public PendingViewModel ServerMute(uint sessionId, bool muted)
     {
         var row = userVms.GetValueOrDefault(sessionId);
-        return SendConfirmed(new SetServerMute(sessionId, muted), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ServerMuted == muted,
+        return SendConfirmed(new SetSessionServerMute(sessionId, muted), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ServerMuted == muted,
             busy: on => row?.IsBusy = on);
     }
 

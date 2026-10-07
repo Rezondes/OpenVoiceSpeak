@@ -666,7 +666,7 @@ public class ServerViewModelTests
         var dialogs = new DialogCallbacks { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
         var f = Create(Moderator, dialogs: dialogs, others: User(2, "gast", Lobby, P.Speak));
         await f.User(2).BanCommand.ExecuteAsync(null);
-        Assert.Equal(new Ban(2, "spam", 60, true), f.Sent[^1] with { RequestId = null });
+        Assert.Equal(new BanSession(2, "spam", 60, true), f.Sent[^1] with { RequestId = null });
     }
 
     [Fact]

@@ -173,6 +173,8 @@ public sealed class ClientLog
         string Person(string fingerprint) =>
             mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == fingerprint)?.Nickname ?? fingerprint[..Math.Min(12, fingerprint.Length)];
         static string YesNo(bool b) => b ? "ja" : "nein";
+        static string BanTerms(int? minutes, bool includeIp) => $"{(minutes is { } m ? $"{m} Minuten" : "dauerhaft")}{(includeIp ? ", mit IP" : "")}";
+        static string ServerMute(bool muted) => $"serverseitig {(muted ? "stummschalten" : "freigeben")}";
 
         var text = request switch
         {
@@ -210,11 +212,13 @@ public sealed class ClientLog
                 "" => ", Passwort entfernen",
                 _ => ", Passwort setzen",
             },
-            Kick r => $"{Nick(r.SessionId)} kicken: {r.Reason}",
-            Ban r => $"{Nick(r.SessionId)} bannen ({(r.DurationMinutes is { } m ? $"{m} Minuten" : "dauerhaft")}{(r.IncludeIp ? ", mit IP" : "")}): {r.Reason}",
+            KickSession r => $"{Nick(r.SessionId)} kicken: {r.Reason}",
+            BanSession r => $"{Nick(r.SessionId)} bannen ({BanTerms(r.DurationMinutes, r.IncludeIp)}): {r.Reason}",
+            BanKnownUser r => $"{Person(r.Fingerprint)} bannen ({BanTerms(r.DurationMinutes, r.IncludeIp)}): {r.Reason}",
+            DeleteKnownUser r => $"Nutzerdaten von {Person(r.Fingerprint)} löschen",
             Unban r => $"Bann {r.BanId} aufheben",
-            SetServerMute r => $"{Nick(r.SessionId)} serverseitig {(r.Muted ? "stummschalten" : "freigeben")}",
-            SetStoredServerMute r => $"Nutzer {r.Fingerprint[..Math.Min(12, r.Fingerprint.Length)]} serverseitig {(r.Muted ? "stummschalten" : "freigeben")}",
+            SetSessionServerMute r => $"{Nick(r.SessionId)} {ServerMute(r.Muted)}",
+            SetKnownUserServerMute r => $"Nutzer {r.Fingerprint[..Math.Min(12, r.Fingerprint.Length)]} {ServerMute(r.Muted)}",
             _ => request.GetType().Name,
         };
         return $"Anfrage {request.RequestId}: {text}";

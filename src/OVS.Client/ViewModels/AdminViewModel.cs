@@ -615,7 +615,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         var ipKnown = user.Info.LastIp is not null;
         return ServerViewModel.Ask<BanChoice>(server.Dialogs.Ban is { } ban ? submit => ban(user.Nickname, ipKnown, submit) : null,
-            choice => CardAction(user.Fingerprint, new BanUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown), bans: true));
+            choice => CardAction(user.Fingerprint, new BanKnownUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown), bans: true));
     }
 
     internal Task UnbanUserAsync(KnownUserViewModel user)
@@ -627,14 +627,14 @@ public sealed partial class AdminViewModel : ObservableObject
     /// <summary>Package 85: works offline too; the card follows with the next user list.</summary>
     internal Task LiftMuteAsync(KnownUserViewModel user)
     {
-        CardAction(user.Fingerprint, new SetStoredServerMute(user.Fingerprint, false));
+        CardAction(user.Fingerprint, new SetKnownUserServerMute(user.Fingerprint, false));
         return Task.CompletedTask;
     }
 
     internal async Task DeleteUserAsync(KnownUserViewModel user)
     {
         if (server.Dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
-        CardAction(user.Fingerprint, new DeleteUser(user.Fingerprint), bans: true);
+        CardAction(user.Fingerprint, new DeleteKnownUser(user.Fingerprint), bans: true);
     }
 
     // ---- Package 98 (A113): a card's actions spin until a user list asked for after them shows the result ----

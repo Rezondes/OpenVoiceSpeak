@@ -119,7 +119,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         var reason = new TaskCompletionSource<(string, string?)>();
         victim.Disconnected += (r, d) => reason.TrySetResult((r, d));
 
-        await a.SendAsync(new Kick(victim.Welcome.SessionId, "tschüss"));
+        await a.SendAsync(new KickSession(victim.Welcome.SessionId, "tschüss"));
         Assert.Equal((ReasonCodes.Kicked, "tschüss"), await reason.Task.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 

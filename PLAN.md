@@ -1042,9 +1042,9 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminTokenTests|FullyQuali
 ### Tests (TDD)
 
 1. `ModerationTests.cs`:
-   - `"Kick_TargetDisconnectedOthersUserLeft"` (AC1)
-   - `"Ban_PersistsAndDisconnects_ReconnectRejected"` (AC2)
-   - `"Ban_PersistsAndDisconnects_ReconnectRejected"`, `"IpBan_OtherIdentitySameIp_Rejected"` (AC3)
+   - `"KickSession_TargetDisconnectedOthersUserLeft"` (AC1)
+   - `"BanSession_PersistsAndDisconnects_ReconnectRejected"` (AC2)
+   - `"BanSession_PersistsAndDisconnects_ReconnectRejected"`, `"IpBan_OtherIdentitySameIp_Rejected"` (AC3)
    - `"ExpiredBan_HandshakeSucceeds"` (AC4)
    - `"Unban_AllowsReconnect"`, `"ListBans_AsGuest_PermissionDenied"` (AC5)
    - `"ServerMute_BroadcastsUserUpdated"` (AC6)
@@ -4645,15 +4645,15 @@ Testbefehl: `dotnet test`
 
 ### Tests (TDD)
 
-1. `ModerationTests > "BanUser_Offline_BlocksNextLogin"` (AC1): Gast verbindet, trennt, Moderator bannt per Fingerabdruck, Gast bekommt `Banned`
-2. `ModerationTests > "BanUser_OfflineWithIp_UsesLastIp"` (AC1)
-3. `ModerationTests > "BanUser_StrongerOrSelf_Denied"` (AC2)
-4. `ModerationTests > "BanUser_Online_Disconnected"` (AC2)
-5. `ModerationTests > "DeleteUser_RemovesRecordAndBans_RejoinsAsNew"` (AC4)
+1. `ModerationTests > "BanKnownUser_Offline_BlocksNextLogin"` (AC1): Gast verbindet, trennt, Moderator bannt per Fingerabdruck, Gast bekommt `Banned`
+2. `ModerationTests > "BanKnownUser_OfflineWithIp_UsesLastIp"` (AC1)
+3. `ModerationTests > "BanKnownUser_StrongerOrSelf_Denied"` (AC2)
+4. `ModerationTests > "BanKnownUser_Online_Disconnected"` (AC2)
+5. `ModerationTests > "DeleteKnownUser_RemovesRecordAndBans_RejoinsAsNew"` (AC4)
    - Gegeben: Nutzer in Gruppe Moderator mit Statistiken und einem abgelaufenen und einem aktiven Ban
    - Erwartet: kein `UserRecord`, keine Bans mit dem Fingerabdruck, erneuter Login als Gast mit neuem `FirstSeen`
-6. `ModerationTests > "DeleteUser_Online_KickedWithMessage"` (AC4)
-7. `ModerationTests > "DeleteUser_SelfLastAdminStronger_Denied"` (AC5)
+6. `ModerationTests > "DeleteKnownUser_Online_KickedWithMessage"` (AC4)
+7. `ModerationTests > "DeleteKnownUser_SelfLastAdminStronger_Denied"` (AC5)
 8. `AdminViewModelTests > "DeleteUser_AsksFirst_SendsOnlyAfterConfirm"` (AC3)
 9. `AdminViewModelTests > "BanUnbanDeleteButtons_ByStateAndRight"` (AC1, AC5, AC6): Bannen und Entbannen nur mit `UserBan`, Löschen nur mit `UserDelete`
 10. `UiSmokeTests`: Lösch-Dialog rendert, `LocalizationTests`, `SettingsTests > "ErrorTexts_EveryCodeHasText"` (AC6)
@@ -5141,7 +5141,7 @@ Testbefehl: `dotnet test`
 
 ### Tests (TDD)
 
-1. `ModerationTests > "Ban_StoresCreatedAtCreatorDuration"` (AC1)
+1. `ModerationTests > "BanSession_Created_StoresCreatedAtCreatorDuration"` (AC1)
    - Given: moderator bans a guest online for 60 minutes with IP, `ManualTimeProvider`
    - Expected: `CreatedAt` = now, `CreatedByFingerprint` = moderator, `DurationMinutes` = 60, IP flag true, in `BanList` too
 2. `ModerationTests > "Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive"` (AC2)
@@ -5445,7 +5445,7 @@ Test command: `dotnet test tests/OVS.Tests`
 1. `ModerationTests > "ServerMute_Persists_AcrossReconnect"` (AC1, AC2)
 2. `ModerationTests > "ServerMute_NoVoiceBeforeWelcome"` (AC2): voice packets right after Hello are not relayed
 3. `AdminViewModelTests > "UserCard_ShowsServerMute_LiftOffline"` (AC3)
-4. `ModerationTests > "DeleteUser_RemovesMute"` (AC4)
+4. `ModerationTests > "DeleteKnownUser_MutedUser_RemovesMute"` (AC4)
 
 Test command: `dotnet test tests/OVS.Tests`
 

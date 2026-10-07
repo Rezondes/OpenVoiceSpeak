@@ -178,7 +178,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     {
         await va.HelloAsync();
         await vb.HelloAsync();
-        await a.SendAsync(new SetServerMute(b.Id, true));
+        await a.SendAsync(new SetSessionServerMute(b.Id, true));
         await b.WaitForAsync<UserUpdated>(u => u.User.SessionId == b.Id && u.User.ServerMuted);
 
         await vb.SendAsync(PacketType.Voice, Opus);
@@ -489,7 +489,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await HeardTcp(c, a.Id, 2, Opus, VoiceHeader.TargetLinked);
         await b.AssertNoMessageAsync<VoiceDown>(); // deafened
 
-        await a.SendAsync(new SetServerMute(c.Id, true));
+        await a.SendAsync(new SetSessionServerMute(c.Id, true));
         await c.WaitForAsync<UserUpdated>(u => u.User.SessionId == c.Id && u.User.ServerMuted);
         await SendTcpAsync(c, 0, Opus, VoiceHeader.TargetLinked);
         await a.AssertNoMessageAsync<VoiceDown>(); // server muted

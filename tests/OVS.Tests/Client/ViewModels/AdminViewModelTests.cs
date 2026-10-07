@@ -935,12 +935,12 @@ public class AdminViewModelTests
 
         await user.DeleteCommand.ExecuteAsync(null);
         Assert.Equal("Xaver", asked);
-        Assert.Empty(sent.OfType<DeleteUser>());
+        Assert.Empty(sent.OfType<DeleteKnownUser>());
 
         answer = true;
         await user.DeleteCommand.ExecuteAsync(null);
-        var index = sent.FindIndex(r => r is DeleteUser);
-        Assert.Equal(new DeleteUser("fpX"), sent[index] with { RequestId = null });
+        var index = sent.FindIndex(r => r is DeleteKnownUser);
+        Assert.Equal(new DeleteKnownUser("fpX"), sent[index] with { RequestId = null });
         Assert.Equal([typeof(ListUsers), typeof(ListBans)], sent.Skip(index + 1).Select(r => r.GetType())); // both tabs follow
     }
 
@@ -993,12 +993,12 @@ public class AdminViewModelTests
 
         await vm.Users.Single(u => u.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
         Assert.True(ipOffered);
-        Assert.Equal(new BanUser("fpX", "spam", 60, true), sent.OfType<BanUser>().Last() with { RequestId = null });
+        Assert.Equal(new BanKnownUser("fpX", "spam", 60, true), sent.OfType<BanKnownUser>().Last() with { RequestId = null });
         Assert.IsType<ListUsers>(sent[^1]);
 
         await vm.Users.Single(u => u.Nickname == "Otto").BanCommand.ExecuteAsync(null); // no IP known: the option is locked
         Assert.False(ipOffered);
-        Assert.Equal(new BanUser("fpOld", "spam", 60, false), sent.OfType<BanUser>().Last() with { RequestId = null });
+        Assert.Equal(new BanKnownUser("fpOld", "spam", 60, false), sent.OfType<BanKnownUser>().Last() with { RequestId = null });
 
         await vm.Users.Single(u => u.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
         Assert.Equal([ban1.Id, ban2.Id], sent.OfType<Unban>().Select(u => u.BanId));
@@ -1068,7 +1068,7 @@ public class AdminViewModelTests
         Assert.Equal((false, false), (vm.Users.Single(u => u.Nickname == "Yvonne").IsServerMuted, vm.Users.Single(u => u.Nickname == "Yvonne").CanLiftMute));
 
         await x.LiftMuteCommand.ExecuteAsync(null);
-        Assert.Equal(new SetStoredServerMute("fpX", false), sent[^2] with { RequestId = null });
+        Assert.Equal(new SetKnownUserServerMute("fpX", false), sent[^2] with { RequestId = null });
         Assert.IsType<ListUsers>(sent[^1]);
     }
 
@@ -1389,7 +1389,7 @@ public class AdminViewModelTests
         KnownUserViewModel Card() => vm.Users.Single(u => u.Fingerprint == "fpX");
 
         await Card().LiftMuteCommand.ExecuteAsync(null);
-        Assert.Single(sent.OfType<SetStoredServerMute>());
+        Assert.Single(sent.OfType<SetKnownUserServerMute>());
         time.Advance(ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new UserList("r", [xaver])); // an older list: still waiting

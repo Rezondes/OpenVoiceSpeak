@@ -10,6 +10,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Chat;
 using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.Links;
+using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
@@ -69,6 +70,17 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         Assert.Equal("Server hat kein Logo", ClientLog.Describe(new ServerIcon(null, null, null), mirror));
         Assert.Equal("Anfrage r8: Privatnachricht an bert", ClientLog.Describe(new SendChat(ChatTarget.Private, 2, "psst") { RequestId = "r8" }, mirror));
         Assert.Equal("Anfrage r9: Chat im Channel", ClientLog.Describe(new SendChat(ChatTarget.Channel, null, "x") { RequestId = "r9" }, mirror));
+    }
+
+    [Fact]
+    public void Describe_KnownUserRequest_NamesPersonAndBanTerms()
+    {
+        var mirror = Mirror();
+        Assert.Equal("Anfrage r1: bert bannen (60 Minuten, mit IP): spam",
+            ClientLog.Describe(new BanKnownUser("fp2", "spam", 60, true) { RequestId = "r1" }, mirror));
+        Assert.Equal("Anfrage r2: abcdef012345 bannen (dauerhaft): ",
+            ClientLog.Describe(new BanKnownUser("abcdef0123456789", "", null, false) { RequestId = "r2" }, mirror));
+        Assert.Equal("Anfrage r3: Nutzerdaten von bert löschen", ClientLog.Describe(new DeleteKnownUser("fp2") { RequestId = "r3" }, mirror));
     }
 
     string LogText()

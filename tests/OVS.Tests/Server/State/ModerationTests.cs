@@ -50,19 +50,19 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Kick_TargetDisconnectedOthersUserLeft()
+    public async Task KickSession_TargetDisconnectedOthersUserLeft()
     {
         var gId = g.Id;
-        await m.SendAsync(new Kick(gId, "Spam"));
+        await m.SendAsync(new KickSession(gId, "Spam"));
         Assert.Equal(new Disconnected(ReasonCodes.Kicked, "Spam"), await g.WaitForAsync<Disconnected>());
         Assert.True(await g.WaitClosedAsync());
         Assert.Equal(gId, (await a.WaitForAsync<UserLeft>()).SessionId);
     }
 
     [Fact]
-    public async Task Ban_PersistsAndDisconnects_ReconnectRejected()
+    public async Task BanSession_PersistsAndDisconnects_ReconnectRejected()
     {
-        await m.SendAsync(new Ban(g.Id, "Beleidigung", 60, false));
+        await m.SendAsync(new BanSession(g.Id, "Beleidigung", 60, false));
         Assert.Equal(ReasonCodes.Banned, (await g.WaitForAsync<Disconnected>()).Reason);
 
         var rejected = Assert.IsType<Rejected>(await ReconnectGuestAsync());
@@ -74,7 +74,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task IpBan_OtherIdentitySameIp_Rejected()
     {
-        await a.SendAsync(new Ban(g.Id, "raus", null, IncludeIp: true));
+        await a.SendAsync(new BanSession(g.Id, "raus", null, IncludeIp: true));
         await g.WaitForAsync<Disconnected>();
         var rejected = Assert.IsType<Rejected>(await ReconnectGuestAsync(ClientIdentity.Create()));
         Assert.Equal(ReasonCodes.Banned, rejected.Code);
@@ -87,7 +87,7 @@ public sealed class ModerationTests : IAsyncLifetime
     {
         var (target, _) = server.State.Admit("fpv6-000000000001", "v6", IPAddress.Parse("2001:db8:7:8::1"), null);
         Assert.NotNull(target);
-        await a.SendAsync(new Ban(target.Id, "raus", null, IncludeIp: true));
+        await a.SendAsync(new BanSession(target.Id, "raus", null, IncludeIp: true));
         await a.WaitForAsync<UserLeft>(u => u.SessionId == target.Id);
 
         var rejected = server.State.Admit("fpv6-000000000002", "v6b", IPAddress.Parse("2001:db8:7:8:ffff::2"), null);
@@ -98,7 +98,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task ExpiredBan_HandshakeSucceeds()
     {
-        await m.SendAsync(new Ban(g.Id, "kurz", 10, false));
+        await m.SendAsync(new BanSession(g.Id, "kurz", 10, false));
         await g.WaitForAsync<Disconnected>();
         time.Advance(TimeSpan.FromMinutes(11));
         Assert.IsType<Welcome>(await ReconnectGuestAsync());
@@ -107,7 +107,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task Unban_AllowsReconnect()
     {
-        await m.SendAsync(new Ban(g.Id, "x", null, false));
+        await m.SendAsync(new BanSession(g.Id, "x", null, false));
         await g.WaitForAsync<Disconnected>();
 
         await m.SendAsync(new ListBans { RequestId = "l" });
@@ -130,7 +130,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task ServerMute_BroadcastsUserUpdated()
     {
-        await m.SendAsync(new SetServerMute(g.Id, true));
+        await m.SendAsync(new SetSessionServerMute(g.Id, true));
         Assert.True((await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id)).User.ServerMuted);
     }
 
@@ -142,9 +142,9 @@ public sealed class ModerationTests : IAsyncLifetime
     {
         Request r = action switch
         {
-            "kick" => new Kick(a.Id, "x"),
-            "ban" => new Ban(a.Id, "x", null, false),
-            _ => new SetServerMute(a.Id, true),
+            "kick" => new KickSession(a.Id, "x"),
+            "ban" => new BanSession(a.Id, "x", null, false),
+            _ => new SetSessionServerMute(a.Id, true),
         };
         await m.SendAsync(r with { RequestId = "r" });
         // Package 84: a ban on the last admin is refused as such before the rank is looked at
@@ -158,7 +158,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [InlineData("ban", "\u001b[31mrot")]
     public async Task KickBan_ReasonWithLineBreakOrControl_InvalidValue(string action, string reason)
     {
-        Request r = action == "kick" ? new Kick(g.Id, reason) : new Ban(g.Id, reason, null, false);
+        Request r = action == "kick" ? new KickSession(g.Id, reason) : new BanSession(g.Id, reason, null, false);
         await m.SendAsync(r with { RequestId = "r" });
         Assert.Equal(ReasonCodes.InvalidValue, (await m.ErrorAsync("r")).Code);
 
@@ -169,19 +169,19 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Ban_ReasonTooLong_InvalidValue_MaxLengthAccepted()
+    public async Task BanSession_ReasonAtAndOverMaxLength_OnlyOverRefused()
     {
-        await m.SendAsync(new Ban(g.Id, new string('x', ProtocolLimits.MaxReasonLength + 1), null, false) { RequestId = "r" });
+        await m.SendAsync(new BanSession(g.Id, new string('x', ProtocolLimits.MaxReasonLength + 1), null, false) { RequestId = "r" });
         Assert.Equal(ReasonCodes.InvalidValue, (await m.ErrorAsync("r")).Code);
 
-        await m.SendAsync(new Ban(g.Id, new string('x', ProtocolLimits.MaxReasonLength), null, false));
+        await m.SendAsync(new BanSession(g.Id, new string('x', ProtocolLimits.MaxReasonLength), null, false));
         Assert.Equal(ReasonCodes.Banned, (await g.WaitForAsync<Disconnected>()).Reason);
     }
 
     [Fact]
-    public async Task Kick_EmptyReason_Allowed()
+    public async Task KickSession_EmptyReason_Allowed()
     {
-        await m.SendAsync(new Kick(g.Id, ""));
+        await m.SendAsync(new KickSession(g.Id, ""));
         Assert.Equal(new Disconnected(ReasonCodes.Kicked, ""), await g.WaitForAsync<Disconnected>());
     }
 
@@ -196,7 +196,7 @@ public sealed class ModerationTests : IAsyncLifetime
     public async Task ServerMute_Persists_AcrossReconnect()
     {
         // Package 85: stored on the user's record, applied on the next login
-        await m.SendAsync(new SetServerMute(g.Id, true));
+        await m.SendAsync(new SetSessionServerMute(g.Id, true));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
         Assert.True((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
         Assert.True(StoredUser(guestId.Fingerprint).ServerMuted);
@@ -207,7 +207,7 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.True((await a.WaitForAsync<UserJoined>(j => j.User.SessionId == g.Id)).User.ServerMuted);
 
         // lifting is stored the same way
-        await m.SendAsync(new SetServerMute(g.Id, false));
+        await m.SendAsync(new SetSessionServerMute(g.Id, false));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && !u.User.ServerMuted);
         Assert.False(StoredUser(guestId.Fingerprint).ServerMuted);
         await g.DisposeAsync();
@@ -218,7 +218,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task ServerMute_NoVoiceBeforeWelcome()
     {
-        await m.SendAsync(new SetServerMute(g.Id, true));
+        await m.SendAsync(new SetSessionServerMute(g.Id, true));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
         await g.DisposeAsync();
         g = await TestClient.ConnectAsync(server, "gast", guestId);
@@ -231,7 +231,7 @@ public sealed class ModerationTests : IAsyncLifetime
         await vg.SendAsync(OVS.Shared.Voice.PacketType.Voice, new byte[80], OVS.Shared.Voice.VoiceHeader.TargetChannel);
         Assert.Null(await va.ReceiveVoiceAsync(500));
 
-        await m.SendAsync(new SetServerMute(g.Id, false));
+        await m.SendAsync(new SetSessionServerMute(g.Id, false));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && !u.User.ServerMuted);
         // resent until heard: a busy runner can drop a datagram even on loopback, and this part is about the mute being lifted
         (OVS.Shared.Voice.VoiceHeader Header, byte[] Plain)? heard = null;
@@ -244,22 +244,22 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task StoredServerMute_LiftedOffline_RankChecked()
+    public async Task SetKnownUserServerMute_LiftedOffline_RankChecked()
     {
-        await m.SendAsync(new SetServerMute(g.Id, true));
+        await m.SendAsync(new SetSessionServerMute(g.Id, true));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
         await GuestOfflineAsync();
 
-        await m.SendAsync(new SetStoredServerMute(adminId.Fingerprint, true) { RequestId = "stronger" });
+        await m.SendAsync(new SetKnownUserServerMute(adminId.Fingerprint, true) { RequestId = "stronger" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await m.ErrorAsync("stronger")).Code);
-        await m.SendAsync(new SetStoredServerMute(modId.Fingerprint, false) { RequestId = "self" });
+        await m.SendAsync(new SetKnownUserServerMute(modId.Fingerprint, false) { RequestId = "self" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await m.ErrorAsync("self")).Code);
-        await m.SendAsync(new SetStoredServerMute("unbekannt", false) { RequestId = "unknown" });
+        await m.SendAsync(new SetKnownUserServerMute("unbekannt", false) { RequestId = "unknown" });
         Assert.Equal(ReasonCodes.NotFound, (await m.ErrorAsync("unknown")).Code);
 
-        await m.SendAsync(new SetStoredServerMute(guestId.Fingerprint, false));
+        await m.SendAsync(new SetKnownUserServerMute(guestId.Fingerprint, false));
         // the list comes from another session: first make sure m's request is done (m's answers come in order)
-        await m.SendAsync(new SetStoredServerMute("unbekannt", false) { RequestId = "done" });
+        await m.SendAsync(new SetKnownUserServerMute("unbekannt", false) { RequestId = "done" });
         await m.ErrorAsync("done");
         Assert.False((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
         Assert.False(StoredUser(guestId.Fingerprint).ServerMuted);
@@ -268,21 +268,21 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.False(back.Welcome.Snapshot.Users.Single(u => u.SessionId == back.Id).ServerMuted);
 
         // online it acts on the session at once
-        await m.SendAsync(new SetStoredServerMute(guestId.Fingerprint, true));
+        await m.SendAsync(new SetKnownUserServerMute(guestId.Fingerprint, true));
         Assert.True((await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == back.Id)).User.ServerMuted);
 
         // without UserMute
-        await back.SendAsync(new SetStoredServerMute(modId.Fingerprint, true) { RequestId = "noRight" });
+        await back.SendAsync(new SetKnownUserServerMute(modId.Fingerprint, true) { RequestId = "noRight" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await back.ErrorAsync("noRight")).Code);
     }
 
     [Fact]
-    public async Task DeleteUser_RemovesMute()
+    public async Task DeleteKnownUser_MutedUser_RemovesMute()
     {
-        await m.SendAsync(new SetServerMute(g.Id, true));
+        await m.SendAsync(new SetSessionServerMute(g.Id, true));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ServerMuted);
         Assert.True((await UsersAsync(a)).Single(u => u.Fingerprint == guestId.Fingerprint).ServerMuted);
-        await a.SendAsync(new DeleteUser(guestId.Fingerprint));
+        await a.SendAsync(new DeleteKnownUser(guestId.Fingerprint));
         await g.WaitForAsync<Disconnected>();
 
         g = await TestClient.ConnectAsync(server, "gast", guestId);
@@ -293,7 +293,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task Bans_SurviveRestart()
     {
-        await m.SendAsync(new Ban(g.Id, "x", null, false));
+        await m.SendAsync(new BanSession(g.Id, "x", null, false));
         await g.WaitForAsync<Disconnected>();
         await a.DisposeAsync();
         await m.DisposeAsync();
@@ -328,10 +328,10 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task BanUser_Offline_BlocksNextLogin()
+    public async Task BanKnownUser_Offline_BlocksNextLogin()
     {
         await GuestOfflineAsync();
-        await m.SendAsync(new BanUser(guestId.Fingerprint, "weg", null, false));
+        await m.SendAsync(new BanKnownUser(guestId.Fingerprint, "weg", null, false));
         var ban = Assert.Single(await BansAsync(m));
         Assert.Equal((guestId.Fingerprint, "gast", "weg", "mod", (string?)null), (ban.Fingerprint, ban.Nickname, ban.Reason, ban.CreatedBy, ban.Ip));
 
@@ -341,60 +341,60 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task BanUser_OfflineWithIp_UsesLastIp()
+    public async Task BanKnownUser_OfflineWithIp_UsesLastIp()
     {
         await GuestOfflineAsync();
-        await m.SendAsync(new BanUser(guestId.Fingerprint, "", 60, IncludeIp: true));
+        await m.SendAsync(new BanKnownUser(guestId.Fingerprint, "", 60, IncludeIp: true));
         Assert.Equal("127.0.0.1", Assert.Single(await BansAsync(m)).Ip);
         Assert.Equal(ReasonCodes.Banned, Assert.IsType<Rejected>(await ReconnectGuestAsync(ClientIdentity.Create())).Code); // same IP, other identity
     }
 
     [Fact]
-    public async Task BanUser_StrongerOrSelf_Denied()
+    public async Task BanKnownUser_StrongerOrSelf_Denied()
     {
         // Package 84: the stronger user has every right without being in the Admin group (the last admin is refused as such)
         var chef = await ConnectChefAsync();
-        await m.SendAsync(new BanUser(chef.Identity.Fingerprint, "x", null, false) { RequestId = "online" });
+        await m.SendAsync(new BanKnownUser(chef.Identity.Fingerprint, "x", null, false) { RequestId = "online" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await m.ErrorAsync("online")).Code);
-        await m.SendAsync(new BanUser(modId.Fingerprint, "x", null, false) { RequestId = "self" });
+        await m.SendAsync(new BanKnownUser(modId.Fingerprint, "x", null, false) { RequestId = "self" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await m.ErrorAsync("self")).Code);
-        await m.SendAsync(new BanUser("unbekannt", "x", null, false) { RequestId = "unknown" });
+        await m.SendAsync(new BanKnownUser("unbekannt", "x", null, false) { RequestId = "unknown" });
         Assert.Equal(ReasonCodes.NotFound, (await m.ErrorAsync("unknown")).Code);
-        await g.SendAsync(new BanUser(modId.Fingerprint, "x", null, false) { RequestId = "guest" });
+        await g.SendAsync(new BanKnownUser(modId.Fingerprint, "x", null, false) { RequestId = "guest" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("guest")).Code);
 
         // offline, the rights come from the stored groups
         var chefSession = chef.Id;
         await chef.DisposeAsync();
         await m.WaitForAsync<UserLeft>(l => l.SessionId == chefSession);
-        await m.SendAsync(new BanUser(chef.Identity.Fingerprint, "x", null, false) { RequestId = "offline" });
+        await m.SendAsync(new BanKnownUser(chef.Identity.Fingerprint, "x", null, false) { RequestId = "offline" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await m.ErrorAsync("offline")).Code);
         Assert.Empty(await BansAsync(m));
     }
 
     [Fact]
-    public async Task BanUser_Online_Disconnected()
+    public async Task BanKnownUser_Online_Disconnected()
     {
-        await m.SendAsync(new BanUser(guestId.Fingerprint, "raus", 60, false));
+        await m.SendAsync(new BanKnownUser(guestId.Fingerprint, "raus", 60, false));
         Assert.Equal(new Disconnected(ReasonCodes.Banned, "raus"), await g.WaitForAsync<Disconnected>());
         Assert.True(await g.WaitClosedAsync());
         Assert.NotNull(Assert.Single(await BansAsync(m)).ExpiresAt);
     }
 
     [Fact]
-    public async Task DeleteUser_RemovesRecordAndBans_RejoinsAsNew()
+    public async Task DeleteKnownUser_RemovesRecordAndBans_RejoinsAsNew()
     {
         var modGroup = a.Welcome.Snapshot.Groups.Single(x => x.Name == "Moderator").Id;
         await a.SendAsync(new AssignGroup(guestId.Fingerprint, modGroup));
         await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id);
         await GuestOfflineAsync();
-        await a.SendAsync(new BanUser(guestId.Fingerprint, "kurz", 10, false));
+        await a.SendAsync(new BanKnownUser(guestId.Fingerprint, "kurz", 10, false));
         Assert.Single(await BansAsync(a));
         time.Advance(TimeSpan.FromMinutes(11)); // expired, kept as history (Package 80)
-        await a.SendAsync(new BanUser(guestId.Fingerprint, "lang", null, true));
+        await a.SendAsync(new BanKnownUser(guestId.Fingerprint, "lang", null, true));
         Assert.Equal(2, (await BansAsync(a)).Count);
 
-        await a.SendAsync(new DeleteUser(guestId.Fingerprint));
+        await a.SendAsync(new DeleteKnownUser(guestId.Fingerprint));
         Assert.DoesNotContain(await UsersAsync(a), u => u.Fingerprint == guestId.Fingerprint);
         Assert.Empty(await BansAsync(a));
         Assert.DoesNotContain(guestId.Fingerprint, File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
@@ -409,10 +409,10 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeleteUser_Online_KickedWithMessage()
+    public async Task DeleteKnownUser_Online_KickedWithMessage()
     {
         var gId = g.Id;
-        await a.SendAsync(new DeleteUser(guestId.Fingerprint));
+        await a.SendAsync(new DeleteKnownUser(guestId.Fingerprint));
         Assert.Equal(ReasonCodes.UserDeleted, (await g.WaitForAsync<Disconnected>()).Reason);
         Assert.True(await g.WaitClosedAsync());
         Assert.Equal(gId, (await m.WaitForAsync<UserLeft>()).SessionId);
@@ -420,11 +420,11 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeleteUser_SelfLastAdminStronger_Denied()
+    public async Task DeleteKnownUser_SelfLastAdminStronger_Denied()
     {
-        await m.SendAsync(new DeleteUser(guestId.Fingerprint) { RequestId = "noRight" }); // Moderator has no UserDelete
+        await m.SendAsync(new DeleteKnownUser(guestId.Fingerprint) { RequestId = "noRight" }); // Moderator has no UserDelete
         Assert.Equal(ReasonCodes.PermissionDenied, (await m.ErrorAsync("noRight")).Code);
-        await a.SendAsync(new DeleteUser(adminId.Fingerprint) { RequestId = "lastAdmin" });
+        await a.SendAsync(new DeleteKnownUser(adminId.Fingerprint) { RequestId = "lastAdmin" });
         Assert.Equal(ReasonCodes.LastAdmin, (await a.ErrorAsync("lastAdmin")).Code);
 
         // a deleter without the Admin group: not the stronger moderator, not the last admin, not itself
@@ -434,11 +434,11 @@ public sealed class ModerationTests : IAsyncLifetime
         await using var d = await TestClient.ConnectAsync(server, "loescher", deleter);
         await a.SendAsync(new AssignGroup(deleter.Fingerprint, group));
         await d.WaitForAsync<UserUpdated>(u => u.User.SessionId == d.Id && u.User.Permissions.HasFlag(Permission.UserDelete));
-        await d.SendAsync(new DeleteUser(modId.Fingerprint) { RequestId = "stronger" });
+        await d.SendAsync(new DeleteKnownUser(modId.Fingerprint) { RequestId = "stronger" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await d.ErrorAsync("stronger")).Code);
-        await d.SendAsync(new DeleteUser(deleter.Fingerprint) { RequestId = "self" });
+        await d.SendAsync(new DeleteKnownUser(deleter.Fingerprint) { RequestId = "self" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await d.ErrorAsync("self")).Code);
-        await d.SendAsync(new DeleteUser(guestId.Fingerprint));
+        await d.SendAsync(new DeleteKnownUser(guestId.Fingerprint));
         Assert.Equal(ReasonCodes.UserDeleted, (await g.WaitForAsync<Disconnected>()).Reason);
     }
 
@@ -452,11 +452,11 @@ public sealed class ModerationTests : IAsyncLifetime
         new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Bans;
 
     [Fact]
-    public async Task Ban_StoresCreatedAtCreatorDuration()
+    public async Task BanSession_Created_StoresCreatedAtCreatorDuration()
     {
         time.Advance(TimeSpan.FromMinutes(3));
         var now = time.GetUtcNow();
-        await m.SendAsync(new Ban(g.Id, "laut", 60, IncludeIp: true));
+        await m.SendAsync(new BanSession(g.Id, "laut", 60, IncludeIp: true));
         await g.WaitForAsync<Disconnected>();
 
         var ban = Assert.Single(await BansAsync(m));
@@ -470,7 +470,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive()
     {
-        await m.SendAsync(new Ban(g.Id, "weg", null, false));
+        await m.SendAsync(new BanSession(g.Id, "weg", null, false));
         await g.WaitForAsync<Disconnected>();
         var lifted = Assert.Single(await BansAsync(m));
         time.Advance(TimeSpan.FromMinutes(1));
@@ -480,7 +480,7 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal(ReasonCodes.NotFound, (await m.ErrorAsync("again")).Code);
         Assert.IsType<Welcome>(await ReconnectGuestAsync());
 
-        await m.SendAsync(new BanUser(guestId.Fingerprint, "kurz", 10, false));
+        await m.SendAsync(new BanKnownUser(guestId.Fingerprint, "kurz", 10, false));
         Assert.Equal(2, (await BansAsync(m)).Count);
         Assert.Equal(ReasonCodes.Banned, Assert.IsType<Rejected>(await ReconnectGuestAsync()).Code);
         time.Advance(TimeSpan.FromMinutes(11));
@@ -501,11 +501,11 @@ public sealed class ModerationTests : IAsyncLifetime
     {
         await a.SendAsync(new UpdateServerSettings("Testserver", "", null, new ServerLimits(50, 1, true, false, new TimeOnly(4, 0))));
         await a.WaitForAsync<ServerSettingsChanged>();
-        await m.SendAsync(new Ban(g.Id, "alt", 10, false));
+        await m.SendAsync(new BanSession(g.Id, "alt", 10, false));
         await g.WaitForAsync<Disconnected>();
         g = m;
         time.Advance(TimeSpan.FromMinutes(11));
-        await m.SendAsync(new BanUser(guestId.Fingerprint, "dauer", null, false));
+        await m.SendAsync(new BanKnownUser(guestId.Fingerprint, "dauer", null, false));
         Assert.Equal(2, (await BansAsync(m)).Count);
 
         time.Advance(TimeSpan.FromHours(23)); // the expired ban ended 23 h ago: still kept
@@ -521,7 +521,7 @@ public sealed class ModerationTests : IAsyncLifetime
 
         await m.SendAsync(new Unban(active.Id) { RequestId = "u" });
         await m.WaitForAsync<BanList>(b => b.RequestId == "u");
-        await a.SendAsync(new DeleteUser(guestId.Fingerprint));
+        await a.SendAsync(new DeleteKnownUser(guestId.Fingerprint));
         Assert.DoesNotContain(await UsersAsync(a), u => u.Fingerprint == guestId.Fingerprint);
         Assert.Empty(await BansAsync(a));
         Assert.Empty(StoredBans());
@@ -530,7 +530,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task BlockedAttempts_Counted_SavedAtMostPerMinute()
     {
-        await m.SendAsync(new Ban(g.Id, "raus", null, false));
+        await m.SendAsync(new BanSession(g.Id, "raus", null, false));
         await g.WaitForAsync<Disconnected>();
         for (int i = 0; i < 3; i++)
         {
@@ -576,8 +576,8 @@ public sealed class ModerationTests : IAsyncLifetime
         var lobby = a.Welcome.Snapshot.DefaultChannelId;
         Request[] requests =
         [
-            new Kick(m2.Id, "x"), new Ban(m2.Id, "x", null, false), new BanUser(m2.Identity.Fingerprint, "x", null, false),
-            new SetServerMute(m2.Id, true), new MoveUser(m2.Id, lobby),
+            new KickSession(m2.Id, "x"), new BanSession(m2.Id, "x", null, false), new BanKnownUser(m2.Identity.Fingerprint, "x", null, false),
+            new SetSessionServerMute(m2.Id, true), new MoveUser(m2.Id, lobby),
         ];
         for (int i = 0; i < requests.Length; i++)
         {
@@ -589,9 +589,9 @@ public sealed class ModerationTests : IAsyncLifetime
         await using var a2 = await ConnectInGroupAsync("admin2", PermissionRules.AdminGroupId);
         Request[] onAdmin =
         [
-            new Kick(a.Id, "x"), new SetServerMute(a.Id, true), new MoveUser(a.Id, lobby), new DeleteUser(adminId.Fingerprint),
+            new KickSession(a.Id, "x"), new SetSessionServerMute(a.Id, true), new MoveUser(a.Id, lobby), new DeleteKnownUser(adminId.Fingerprint),
             new UnassignGroup(adminId.Fingerprint, PermissionRules.AdminGroupId), new AssignGroup(adminId.Fingerprint, GroupId("Moderator")),
-            new BanUser(adminId.Fingerprint, "x", null, false),
+            new BanKnownUser(adminId.Fingerprint, "x", null, false),
         ];
         for (int i = 0; i < onAdmin.Length; i++)
         {
@@ -616,7 +616,7 @@ public sealed class ModerationTests : IAsyncLifetime
         var lobby = a.Welcome.Snapshot.DefaultChannelId;
         if (action == "unmute")
         {
-            await a.SendAsync(new SetServerMute(m.Id, true));
+            await a.SendAsync(new SetSessionServerMute(m.Id, true));
             await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == m.Id && u.User.ServerMuted);
         }
         // the moderator for its own rights, a user with every right (not the Admin group) for group changes and delete
@@ -625,14 +625,14 @@ public sealed class ModerationTests : IAsyncLifetime
         var groupsBefore = (await UsersAsync(a)).Single(u => u.Fingerprint == fingerprint).GroupIds;
         Request r = action switch
         {
-            "kick" => new Kick(actor.Id, "x"),
-            "ban" => new Ban(actor.Id, "x", null, false),
-            "banUser" => new BanUser(fingerprint, "x", null, false),
-            "unmute" => new SetServerMute(actor.Id, false),
+            "kick" => new KickSession(actor.Id, "x"),
+            "ban" => new BanSession(actor.Id, "x", null, false),
+            "banUser" => new BanKnownUser(fingerprint, "x", null, false),
+            "unmute" => new SetSessionServerMute(actor.Id, false),
             "move" => new MoveUser(actor.Id, lobby),
             "assign" => new AssignGroup(fingerprint, GroupId("Moderator")),
             "unassign" => new UnassignGroup(fingerprint, groupsBefore[^1]),
-            _ => new DeleteUser(fingerprint),
+            _ => new DeleteKnownUser(fingerprint),
         };
         await actor.SendAsync(r with { RequestId = "self" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await actor.ErrorAsync("self")).Code);
@@ -645,18 +645,18 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task LastAdmin_CannotBeBanned()
     {
-        await a.SendAsync(new Ban(a.Id, "x", null, false) { RequestId = "self" });
+        await a.SendAsync(new BanSession(a.Id, "x", null, false) { RequestId = "self" });
         Assert.Equal(ReasonCodes.LastAdmin, (await a.ErrorAsync("self")).Code);
-        await a.SendAsync(new BanUser(adminId.Fingerprint, "x", null, false) { RequestId = "selfUser" });
+        await a.SendAsync(new BanKnownUser(adminId.Fingerprint, "x", null, false) { RequestId = "selfUser" });
         Assert.Equal(ReasonCodes.LastAdmin, (await a.ErrorAsync("selfUser")).Code);
-        await m.SendAsync(new Ban(a.Id, "x", null, false) { RequestId = "online" });
+        await m.SendAsync(new BanSession(a.Id, "x", null, false) { RequestId = "online" });
         Assert.Equal(ReasonCodes.LastAdmin, (await m.ErrorAsync("online")).Code);
 
         var adminSession = a.Id;
         await a.DisposeAsync();
         await m.WaitForAsync<UserLeft>(l => l.SessionId == adminSession);
         a = m;
-        await m.SendAsync(new BanUser(adminId.Fingerprint, "x", null, true) { RequestId = "offline" });
+        await m.SendAsync(new BanKnownUser(adminId.Fingerprint, "x", null, true) { RequestId = "offline" });
         Assert.Equal(ReasonCodes.LastAdmin, (await m.ErrorAsync("offline")).Code);
         Assert.Empty(await BansAsync(m));
     }
@@ -664,7 +664,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [Fact]
     public async Task Unban_StrongerBannedUser_Denied_NoBanListWithoutBansView()
     {
-        await m.SendAsync(new Ban(g.Id, "x", null, false));
+        await m.SendAsync(new BanSession(g.Id, "x", null, false));
         await g.WaitForAsync<Disconnected>();
         g = m;
         var ban = Assert.Single(await BansAsync(m));

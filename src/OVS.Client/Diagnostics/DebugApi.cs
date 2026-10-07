@@ -198,16 +198,16 @@ public sealed class DebugApi : IDisposable
                 await server.SendAsync(new MoveUser(User(server, Text(body, "user")).SessionId, Channel(server, Text(body, "channel")).Id));
                 break;
             case "/kick":
-                await server.SendAsync(new Kick(User(server, Text(body, "user")).SessionId, Optional(body, "reason")?.GetString() ?? ""));
+                await server.SendAsync(new KickSession(User(server, Text(body, "user")).SessionId, Optional(body, "reason")?.GetString() ?? ""));
                 break;
             case "/ban":
-                await server.SendAsync(new Ban(User(server, Text(body, "user")).SessionId,
+                await server.SendAsync(new BanSession(User(server, Text(body, "user")).SessionId,
                     Optional(body, "reason")?.GetString() ?? "",
                     Optional(body, "minutes")?.GetInt32(),
                     Optional(body, "ip")?.GetBoolean() ?? false));
                 break;
             case "/server-mute":
-                await server.SendAsync(new SetServerMute(User(server, Text(body, "user")).SessionId, body.GetProperty("value").GetBoolean()));
+                await server.SendAsync(new SetSessionServerMute(User(server, Text(body, "user")).SessionId, body.GetProperty("value").GetBoolean()));
                 break;
             case "/chat":
                 var target = Enum.TryParse<ChatTarget>(Text(body, "target"), ignoreCase: true, out var t)

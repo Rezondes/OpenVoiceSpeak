@@ -129,7 +129,7 @@ public sealed class ChatTests
         await using var _g = gast;
         await using var _w = weit;
 
-        await chef.SendAsync(new SetServerMute(gast.Id, true));
+        await chef.SendAsync(new SetSessionServerMute(gast.Id, true));
         await gast.WaitForAsync<UserUpdated>(u => u.User.SessionId == gast.Id && u.User.ServerMuted);
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, "stumm, aber lesbar"));
         await chef.WaitForAsync<ChatMessage>(m => m.Text == "stumm, aber lesbar");

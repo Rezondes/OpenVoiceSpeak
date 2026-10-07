@@ -11,14 +11,14 @@ namespace OVS.Server.State;
 
 public sealed partial class ServerState
 {
-    void OnKick(Session s, Kick r)
+    void OnKickSession(Session s, KickSession r)
     {
         if (!Require(s, r, Permission.UserKick) || !FindTarget(s, r, r.SessionId, out var target) || !ValidateReason(s, r, r.Reason)) return;
         logs.WriteServerLine($"{target.Nickname} wurde von {s.Nickname} gekickt: {r.Reason}");
         RemoveLocked(target, new Disconnected(ReasonCodes.Kicked, r.Reason));
     }
 
-    void OnBan(Session s, Ban r)
+    void OnBanSession(Session s, BanSession r)
     {
         if (!Require(s, r, Permission.UserBan) || !FindTarget(s, r, r.SessionId, out var target, lastAdminFirst: true)
             || !ValidateReason(s, r, r.Reason) || !ValidateDuration(s, r, r.DurationMinutes)) return;
@@ -26,7 +26,7 @@ public sealed partial class ServerState
     }
 
     /// <summary>Package 72: the same ban by fingerprint, for online and offline users alike.</summary>
-    void OnBanUser(Session s, BanUser r)
+    void OnBanKnownUser(Session s, BanKnownUser r)
     {
         if (!Require(s, r, Permission.UserBan) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online, lastAdminFirst: true)
             || !ValidateReason(s, r, r.Reason) || !ValidateDuration(s, r, r.DurationMinutes)) return;
@@ -40,7 +40,7 @@ public sealed partial class ServerState
     }
 
     /// <summary>Package 72 (A88): record, groups, statistics and bans go; the log files stay and age out.</summary>
-    void OnDeleteUser(Session s, DeleteUser r)
+    void OnDeleteKnownUser(Session s, DeleteKnownUser r)
     {
         if (!Require(s, r, Permission.UserDelete) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online, lastAdminFirst: true)) return;
         data.Users.Remove(user);
@@ -100,14 +100,14 @@ public sealed partial class ServerState
         SendBanList(s, r.RequestId, Math.Max(0, r.Offset));
     }
 
-    void OnSetServerMute(Session s, SetServerMute r)
+    void OnSetSessionServerMute(Session s, SetSessionServerMute r)
     {
         if (!Require(s, r, Permission.UserMute) || !FindTarget(s, r, r.SessionId, out var target)) return;
         SetServerMuted(s, FindUser(target.Fingerprint), target, target.Nickname, r.Muted);
     }
 
     /// <summary>Package 85: the same by fingerprint, for offline users too (the user card).</summary>
-    void OnSetStoredServerMute(Session s, SetStoredServerMute r)
+    void OnSetKnownUserServerMute(Session s, SetKnownUserServerMute r)
     {
         if (!Require(s, r, Permission.UserMute) || !FindKnownTarget(s, r, r.Fingerprint, out var user, out var online)) return;
         SetServerMuted(s, user, online, online?.Nickname ?? user.LastNickname, r.Muted);

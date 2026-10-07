@@ -465,7 +465,7 @@ public class AdminCommandTests
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.Equal(ids, late.Welcome.Snapshot.Groups.Select(g => g.Id));
 
-        await mod.SendAsync(new Kick(admin.Id, "") { RequestId = "k" }); // the moderator still cannot touch the admin
+        await mod.SendAsync(new KickSession(admin.Id, "") { RequestId = "k" }); // the moderator still cannot touch the admin
         Assert.Equal(ReasonCodes.PermissionDenied, (await mod.ErrorAsync("k")).Code);
     }
 
@@ -561,17 +561,17 @@ public class AdminCommandTests
         {
             "listUsers" => new ListUsers(),
             "listBans" => new ListBans(),
-            "ban" => new Ban(t.Id, "x", null, false),
+            "ban" => new BanSession(t.Id, "x", null, false),
             "unban" => new Unban(Guid.NewGuid()),
-            "kick" => new Kick(t.Id, "x"),
+            "kick" => new KickSession(t.Id, "x"),
             "assign" => new AssignGroup(target.Fingerprint, mod),
             "unassign" => new UnassignGroup(target.Fingerprint, PermissionRules.GuestGroupId),
             "createGroup" => new CreateGroup("Neu", Permission.Speak),
             "updateGroup" => new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak),
             "reorderGroups" => new ReorderGroups(groups.Select(g => g.Id).Reverse().ToList()),
             "deleteGroup" => new DeleteGroup(mod),
-            "banUser" => new BanUser(target.Fingerprint, "x", null, false),
-            "deleteUser" => new DeleteUser(target.Fingerprint),
+            "banUser" => new BanKnownUser(target.Fingerprint, "x", null, false),
+            "deleteUser" => new DeleteKnownUser(target.Fingerprint),
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         };
         await a.SendAsync(r with { RequestId = "r" });

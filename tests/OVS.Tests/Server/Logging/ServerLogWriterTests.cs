@@ -311,9 +311,9 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await admin.SendAsync(new UnassignGroup(g1.Identity.Fingerprint, team.Id));
         await admin.SendAsync(new DeleteGroup(team.Id));
         await admin.SendAsync(new UpdateServerSettings("Neuer Name", "Hallo", "pw"));
-        await admin.SendAsync(new SetServerMute(g1.Id, true));
-        await admin.SendAsync(new Kick(g1.Id, "Spam"));
-        await admin.SendAsync(new Ban(g2.Id, "Troll", 60, true));
+        await admin.SendAsync(new SetSessionServerMute(g1.Id, true));
+        await admin.SendAsync(new KickSession(g1.Id, "Spam"));
+        await admin.SendAsync(new BanSession(g2.Id, "Troll", 60, true));
         await admin.SendAsync(new ListBans { RequestId = "l" });
         var ban = Assert.Single((await admin.WaitForAsync<BanList>(b => b.RequestId == "l")).Bans);
         await admin.SendAsync(new Unban(ban.Id));

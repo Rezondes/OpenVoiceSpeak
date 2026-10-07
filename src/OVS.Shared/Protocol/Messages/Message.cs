@@ -79,15 +79,15 @@ namespace OVS.Shared.Protocol.Messages;
 [JsonDerivedType(typeof(DownloadLogChunk), "downloadLogChunk")]
 [JsonDerivedType(typeof(LogChunk), "logChunk")]
 // Moderation
-[JsonDerivedType(typeof(Kick), "kick")]
-[JsonDerivedType(typeof(Ban), "ban")]
+[JsonDerivedType(typeof(KickSession), "kick")]
+[JsonDerivedType(typeof(BanSession), "ban")]
 [JsonDerivedType(typeof(Unban), "unban")]
-[JsonDerivedType(typeof(BanUser), "banUser")]
-[JsonDerivedType(typeof(DeleteUser), "deleteUser")]
+[JsonDerivedType(typeof(BanKnownUser), "banUser")]
+[JsonDerivedType(typeof(DeleteKnownUser), "deleteUser")]
 [JsonDerivedType(typeof(ListBans), "listBans")]
 [JsonDerivedType(typeof(BanList), "banList")]
-[JsonDerivedType(typeof(SetServerMute), "setServerMute")]
-[JsonDerivedType(typeof(SetStoredServerMute), "setStoredServerMute")] // Package 85
+[JsonDerivedType(typeof(SetSessionServerMute), "setServerMute")]
+[JsonDerivedType(typeof(SetKnownUserServerMute), "setStoredServerMute")] // Package 85
 // Links
 [JsonDerivedType(typeof(LinkChannels), "linkChannels")]
 [JsonDerivedType(typeof(SetChannelLinks), "setChannelLinks")]
