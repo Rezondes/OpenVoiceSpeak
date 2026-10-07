@@ -459,27 +459,25 @@ public class VoiceFilterTests
     }
 
     /// <summary>
-    /// Package 140: the frame mixed for the speaker feeds the far end while the switch is on and a canceller exists;
-    /// switched off, or without the library, it is skipped.
+    /// Package 140: the engine's speaker mix reaches the canceller of the capture it opened, and the live switch reaches
+    /// that capture; without the library there is no canceller and the mix goes on. When the far end is fed is the
+    /// playback loop's rule (PlaybackLoopTests).
     /// </summary>
     [Fact]
-    public void EchoCanceller_FedFromSpeakerMix_OnlyWhenOn()
+    public void EchoCanceller_EngineMixAndLiveSwitch_ReachTheOpenCapture()
     {
         using var keys = new KeyPoller(TimeProvider.System);
         using (var engine = new AudioEngine(keys, TimeProvider.System, hardware: null))
         {
             engine.Configure(new ClientSettings());
             engine.DeviceLifecycle.SetTone(440);
-            var canceller = engine.DeviceLifecycle.Capture!.Canceller!;
+            var capture = engine.DeviceLifecycle.Capture!;
             engine.MixForSpeaker();
-            engine.MixForSpeaker();
-            Assert.Equal(2, canceller.RenderedFrames);
+            Assert.Equal(1, capture.Canceller!.RenderedFrames);
             engine.ApplyLive(new ClientSettings { EchoCancellation = false });
-            engine.MixForSpeaker();
-            Assert.Equal(2, canceller.RenderedFrames);
+            Assert.False(capture.EchoCancellation);
             engine.ApplyLive(new ClientSettings());
-            engine.MixForSpeaker();
-            Assert.Equal(3, canceller.RenderedFrames);
+            Assert.True(capture.EchoCancellation);
         }
 
         using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null, new NativeCaptureFilters(log: null, echoLibrary: NativeCaptureFiltersTests.NoEchoLibrary));

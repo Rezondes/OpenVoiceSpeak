@@ -7266,7 +7266,7 @@ The tests only know `FakeServers.Crowded` (8 channels, 20 users). Wall-clock lim
 1. `PerformanceTests > "UserUpdated_UpdatesOnlyThatUser"` (AC1): count `UserViewModel.Update` calls through a test counter on `FakeServers.Large`.
 2. `PerformanceTests > "MuteChange_DoesNotRefitSidebar_RenameDoes"` (AC2)
 3. `PerformanceTests > "StateChanged_GainTableAndIconHashOnlyWhenNeeded"` (AC3)
-4. `PerformanceTests > "ManySpeakers_SpeakingUpdatesThrottledAndScoped"` (AC4): a mixer fed with 20 speakers on a manual clock.
+4. `PerformanceTests > "ManySpeakers_SpeakingUpdatesThrottledAndScoped"`, `PlaybackLoopTests > "Run_VoiceClearedAfterItsReport_RunsOnUntilTheSilenceIsReported"` (AC4): a mixer fed with 20 speakers on a manual clock.
 5. `PerformanceTests > "NoMove_NoPlaceTracking"` (AC5)
 6. `MotionStyleTests > "SpeakingRing_NoAnimatedShadow"` (AC6)
 7. `MotionCoverageTests.JoinLeaveStorm_EndsBounded` on `FakeServers.Large`, and the whole suite (AC7)
@@ -7402,7 +7402,7 @@ The UI itself is already idle: no looping animation runs without its state (A117
 ### Tests (TDD)
 
 1. `MainViewModelTests > "Devices_WhileNeeded_OpenAndCloseAgain"` (AC1): a fake device factory counts open and close through start, connect, self test, settings page and disconnect.
-2. `ReceivePathTests > "Playback_IdleDoesNotMix_WakesOnVoice"` (AC2): count `Mix` calls over 500 ms idle (0), then one voice packet is mixed within one frame.
+2. `ReceivePathTests > "Playback_IdleDoesNotMix_WakesOnVoice"`, `PlaybackLoopTests > "Kick_LoopWaitingWhileNeeded_WakesItToPlayTheTone"`, `PlaybackLoopTests > "Wake_NoLongerNeeded_ClosesTheSpeakerAndEnds"`, `PlaybackLoopTests > "Kick_NothingQueuedNorNeeded_OpensTheSpeakerThenClosesItAndEnds"` (AC2): count `Mix` calls over 500 ms idle (0), then one voice packet is mixed within one frame.
 3. `IdleCostTests > "SteadyState_AllocatesNothing"` (AC3): `GC.GetAllocatedBytesForCurrentThread` around 100 capture frames, mixer ticks, decodes and key polls after warm-up.
 4. `ReceivePathTests > "SpeakerPause_KeepsDecoder"` (AC4)
 5. `MainViewModelTests > "MessageLog_OffUiThread_InOrder"` (AC5)
@@ -8212,7 +8212,7 @@ OVS has no echo cancellation (A18, A131): someone on speakers with voice activat
 ### Tests (TDD)
 
 1. `VoiceFilterTests > "EchoCanceller_Loads"` (AC1)
-2. `VoiceFilterTests > "EchoCanceller_RemovesFarEnd_KeepsNearEnd"` (AC2)
+2. `VoiceFilterTests > "EchoCanceller_RemovesFarEnd_KeepsNearEnd"`, `PlaybackLoopTests > "MixForSpeaker_CaptureHasCanceller_FedOnlyWhileOnInVoiceMode"` (AC2)
 3. `VoiceFilterTests > "EchoCanceller_NoFarEnd_Unchanged"` (AC3)
 4. `SettingsTests > "EchoCancellation_DefaultLiveMissingLib"`, `NativeCaptureFiltersTests > "AttachTo_LibrariesMissing_NoFiltersAndOneLogLineEach"` (AC4)
 

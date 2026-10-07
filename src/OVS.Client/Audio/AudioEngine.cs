@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using OVS.Client.Audio.Capture;
-using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Processing;
@@ -15,43 +13,33 @@ using OVS.Shared.Voice;
 namespace OVS.Client.Audio;
 
 /// <summary>
-/// Owns the mixer and the playback clock, and the microphone and speaker through <see cref="DeviceLifecycle"/>.
-/// Recreating devices on Configure keeps the connection. Without devices (--no-audio) the mixer runs on its own 20 ms
-/// clock, so reception and indicators still work. Package 124 (A132): the devices are only open while needed, and the
-/// playback loop sleeps while there is nothing to play.
+/// Owns the mixer, the microphone and speaker through <see cref="DeviceLifecycle"/> and the playback thread through
+/// <see cref="PlaybackLoop"/>. Recreating devices on Configure keeps the connection. Without devices (--no-audio) the
+/// mixer runs on its own 20 ms clock, so reception and indicators still work. Package 124 (A132): the devices are only
+/// open while needed, and the playback loop sleeps while there is nothing to play.
 /// </summary>
 public sealed class AudioEngine : IDisposable
 {
-    /// <summary>How much the playback loop keeps buffered for the speaker; the echo canceller's delay hint starts from it.</summary>
-    internal const int TargetBufferMs = 40;
-
     /// <summary>
     /// Package 140 (A149): the echo canceller's delay hint, from a mixed frame to its echo in the capture: the playback
     /// buffer, the speaker's device buffer and the microphone's.
     /// </summary>
-    internal const int EchoDelayMs = TargetBufferMs + WasapiHardware.SpeakerBufferMs + CapturePipeline.MicBufferMs;
-
-    // Small buffers keep mouth-to-ear latency low; the refill loop wakes about every 15 ms.
-    static readonly TimeSpan TargetBuffer = TimeSpan.FromMilliseconds(TargetBufferMs);
-    static readonly TimeSpan DeviceLatency = TimeSpan.FromMilliseconds(40);
+    internal const int EchoDelayMs = PlaybackLoop.TargetBufferMs + WasapiHardware.SpeakerBufferMs + CapturePipeline.MicBufferMs;
 
     readonly object gate = new(); // the devices and settings
-    readonly object threadGate = new(); // the playback thread's start and end; never held while taking gate
+    readonly object micGate = new(); // the micWanted transition; never held while taking gate
     readonly KeyPoller keys;
-    Thread? playbackThread;
-    readonly AutoResetEvent wake = new(false);
+    readonly PlaybackLoop playbackLoop;
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
-    volatile bool running = true; // the playback thread's end; the devices keep their own under gate
     volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, channelMuted, selfTest, levelMeter, micWanted, voiceDetected;
     bool talkKeyHeld; // key thread only (Package 131)
     bool loopbackFrame; // capture thread only: the frame just decided goes to the own ears
     uint loopbackSeq;
     ClientSettings settings = new();
     ClientSettings? live; // the settings page's values until the next Configure
-    readonly SpeakerReports speakerReports = new();
     byte? lastTarget;
     int levelCounter;
-    long framesSent, mixes;
+    long framesSent;
 
     /// <param name="time">Package 135: the clock of the loss adapter (tests pass a manual one); Package 137: of the device reopen.</param>
     /// <param name="hardware">Package 124: where microphone and speaker come from; null runs without them (--no-audio, tests).</param>
@@ -66,10 +54,11 @@ public sealed class AudioEngine : IDisposable
         this.keys = keys;
         Filters = filters ?? new NativeCaptureFilters(log: null);
         Loss = new LossAdapter(time, ProtocolDefaults.Bitrate);
-        Sounds = new SoundPlayer(soundQueue, () => settings, () => deafened, Kick, samples); // before the keys' tones can ask for it
         // before the keys' tones can start the playback thread, which opens the speaker through it
         DeviceLifecycle = new DeviceLifecycle(gate, hardware, time, () => micWanted, () => PlaybackRunning, ConfigureCapture,
             () => voiceDetected = false, Report);
+        playbackLoop = new PlaybackLoop(gate, DeviceLifecycle, Mixer, soundQueue, () => PlaybackNeeded, () => selfTest, () => deafened);
+        Sounds = new SoundPlayer(soundQueue, () => settings, () => deafened, playbackLoop.Kick, samples); // before the keys' tones can ask for it
         keys.Changed += OnKeysChanged;
     }
 
@@ -239,12 +228,9 @@ public sealed class AudioEngine : IDisposable
     }
 
     /// <summary>Package 124: tests count the frames mixed and see whether the playback thread runs.</summary>
-    internal long MixCount => Interlocked.Read(ref mixes);
+    internal long MixCount => playbackLoop.MixCount;
 
-    internal bool PlaybackRunning
-    {
-        get { lock (threadGate) return playbackThread is not null; }
-    }
+    internal bool PlaybackRunning => playbackLoop.Running;
 
     // ---- Sounds (Package 47, 48) ----
 
@@ -265,12 +251,20 @@ public sealed class AudioEngine : IDisposable
 
     public long FramesSent => Interlocked.Read(ref framesSent);
     public IReadOnlyDictionary<uint, long> FramesReceived => new Dictionary<uint, long>(framesReceived);
-    public float LastOutputLevelDb { get; private set; } = -120f;
+
+    /// <summary>The voices' level in the last frame mixed, before the tones.</summary>
+    public float LastOutputLevelDb => playbackLoop.LastOutputLevelDb;
 
     /// <summary>Set to VoiceClient.SendVoice while connected.</summary>
     public Action<byte[], byte>? Send { get; set; }
 
-    public event Action<List<ActiveSpeaker>>? SpeakersChanged;
+    /// <summary>Package 122: who is heard, on the playback thread, at most every 100 ms and once more when all fell silent.</summary>
+    public event Action<List<ActiveSpeaker>>? SpeakersChanged
+    {
+        add => playbackLoop.SpeakersChanged += value;
+        remove => playbackLoop.SpeakersChanged -= value;
+    }
+
     public event Action<byte?>? TransmitChanged;
     public event Action<float>? InputLevel;
 
@@ -306,9 +300,10 @@ public sealed class AudioEngine : IDisposable
     /// </summary>
     void DevicesChanged()
     {
-        if (PlaybackNeeded) StartPlayback();
-        wake.Set(); // the idle loop sees that the self test began, or that it may end
-        lock (threadGate)
+        // the idle loop sees that the self test began, or that it may end
+        if (PlaybackNeeded) playbackLoop.Kick();
+        else playbackLoop.Wake();
+        lock (micGate)
         {
             if (micWanted == MicNeeded) return;
             micWanted = MicNeeded;
@@ -322,7 +317,7 @@ public sealed class AudioEngine : IDisposable
         if (loopbackFrame)
         {
             Mixer.Push(SelfTestSpeaker, loopbackSeq++, opus, false);
-            Kick();
+            playbackLoop.Kick();
             return;
         }
         if (Send is not { } send) return;
@@ -367,131 +362,17 @@ public sealed class AudioEngine : IDisposable
         if (deafened) return;
         framesReceived.AddOrUpdate(speaker, 1, (_, n) => n + 1);
         Mixer.Push(speaker, seq, opus, target == VoiceHeader.TargetLinked, copy: copy);
-        Kick();
+        playbackLoop.Kick();
     }
 
-    // ---- Playback (Package 124: only while needed, asleep while there is nothing to play) ----
-
-    /// <summary>Something to play arrived: the playback loop runs (started if needed) and is awake.</summary>
-    void Kick()
-    {
-        StartPlayback();
-        wake.Set();
-    }
-
-    void StartPlayback()
-    {
-        lock (threadGate)
-        {
-            if (playbackThread is not null || !running) return;
-            playbackThread = new Thread(PlaybackLoop) { IsBackground = true, Name = "Playback" };
-            playbackThread.Start();
-        }
-    }
-
-    /// <summary>A voice to play or conceal, a tone, the self test, or a speaker report still due (the UI clears its marks).</summary>
-    bool HasWork => selfTest || soundQueue.Count > 0 || Mixer.HasWork || speakerReports.Pending;
-
-    void PlaybackLoop()
-    {
-        DeviceLifecycle.OpenSpeakerAndReport();
-        var bytes = new byte[AudioFormat.StereoFrameSamples * sizeof(float)];
-        var clock = Stopwatch.StartNew(); // clock: real time
-        long ticks = 0;
-        while (running)
-        {
-            if (!HasWork)
-            {
-                if (!PlaybackNeeded)
-                {
-                    if (TryEnd()) return;
-                    continue; // something came up meanwhile: look again instead of waiting for a wake that may not come
-                }
-                wake.WaitOne(); // a voice, a tone, the self test or the end wakes it
-                clock.Restart(); // the own clock starts anew: the first frame at once, no catching up on the pause
-                ticks = 0;
-                continue;
-            }
-            var buffer = DeviceLifecycle.Speaker;
-            if (buffer is null)
-            {
-                // No speaker: keep mixing on our own clock and throw the audio away.
-                if (clock.Elapsed < AudioFormat.FrameDuration * ticks)
-                {
-                    Thread.Sleep(5); // clock: real time
-                    continue;
-                }
-                ticks++;
-                Mix();
-                continue;
-            }
-            if (buffer.BufferedDuration >= TargetBuffer)
-            {
-                Thread.Sleep(5); // clock: real time
-                continue;
-            }
-            var frame = MixForSpeaker();
-            Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
-            buffer.AddSamples(bytes, 0, bytes.Length);
-            ticks = (long)(clock.Elapsed / AudioFormat.FrameDuration);
-        }
-    }
-
-    /// <summary>Not needed any more and nothing left: closes the speaker once the last frames played, and ends the thread.</summary>
-    /// <returns>False when something came up meanwhile.</returns>
-    bool TryEnd()
-    {
-        // the end of the last tone: what is still buffered, plus what the device itself holds (opened with 30 ms)
-        if (DeviceLifecycle.Speaker?.BufferedDuration is { } left) Thread.Sleep(left + DeviceLatency); // clock: real time
-        lock (gate)
-        lock (threadGate)
-        {
-            if (PlaybackNeeded || HasWork) return false;
-            DeviceLifecycle.CloseSpeaker();
-            playbackThread = null;
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Package 140: a frame for the speaker, which is also the echo canceller's far end: exactly what goes to the speaker
-    /// (voices after the limiter, and the tones), also in the self test, where it keeps the own voice from coming back
-    /// through the speakers. Playback thread; internal so tests mix by hand. Package 142: the frame is stereo, the
-    /// canceller hears it downmixed (a mono voice exactly as before); in music mode the capture does not use it.
-    /// </summary>
-    internal float[] MixForSpeaker()
-    {
-        var frame = Mix();
-        if (DeviceLifecycle.Capture is { EchoCancellation: true, Music: false, Canceller: { } canceller })
-        {
-            for (int i = 0; i < farEnd.Length; i++) farEnd[i] = 0.5f * (frame[2 * i] + frame[2 * i + 1]);
-            canceller.Render(farEnd);
-        }
-        return frame;
-    }
-
-    readonly float[] farEnd = new float[AudioFormat.FrameSamples]; // Package 142: playback thread only
-
-    float[] Mix()
-    {
-        Interlocked.Increment(ref mixes);
-        var (frame, active) = Mixer.Tick();
-        if (deafened && !selfTest) Array.Clear(frame); // in the self test only the own voice is in the mixer
-        LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame, 2); // voice only, before the tones; Package 142: the louder side
-        soundQueue.MixInto(frame);
-        if (speakerReports.Next(active) is { } report) SpeakersChanged?.Invoke(report);
-        return frame;
-    }
+    /// <summary>Package 140: a frame for the speaker and the echo canceller's far end, as the playback thread mixes it; tests mix by hand.</summary>
+    internal float[] MixForSpeaker() => playbackLoop.MixForSpeaker();
 
     public void Dispose()
     {
         keys.Changed -= OnKeysChanged;
         DeviceLifecycle.StopWatching(); // Windows stops notifying (Package 137); a microphone open still queued finds the devices gone
-        running = false;
-        wake.Set();
-        Thread? thread;
-        lock (threadGate) thread = playbackThread;
-        thread?.Join(500); // clock: real time
+        playbackLoop.Stop();
         lock (gate) DeviceLifecycle.Close();
     }
 }

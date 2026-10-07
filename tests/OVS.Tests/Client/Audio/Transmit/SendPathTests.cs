@@ -1392,7 +1392,8 @@ public class SendPathTests
 
     /// <summary>
     /// Package 142 (AC3, A151): in music mode echo cancellation, noise suppression and automatic gain leave the signal
-    /// alone although switched on; back in voice mode they act again. The speaker mix feeds the canceller only in voice mode.
+    /// alone although switched on; back in voice mode they act again. The engine's music setting reaches the open capture
+    /// (that its canceller then gets no far end is the playback loop's rule, PlaybackLoopTests).
     /// </summary>
     [Fact]
     public void MusicMode_FiltersOff()
@@ -1442,14 +1443,9 @@ public class SendPathTests
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings { AudioContent = AudioContent.Music });
         engine.DeviceLifecycle.SetTone(440);
-        var canceller = engine.DeviceLifecycle.Capture!.Canceller!;
-        Assert.True(engine.DeviceLifecycle.Capture.Music);
-        engine.MixForSpeaker();
-        Assert.Equal(0, canceller.RenderedFrames);
+        Assert.True(engine.DeviceLifecycle.Capture!.Music);
         engine.ApplyLive(new ClientSettings());
         Assert.False(engine.DeviceLifecycle.Capture.Music);
-        engine.MixForSpeaker();
-        Assert.Equal(1, canceller.RenderedFrames);
     }
 
     /// <summary>

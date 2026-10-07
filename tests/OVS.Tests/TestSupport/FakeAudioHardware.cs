@@ -116,9 +116,14 @@ public sealed class FakeAudioHardware : IAudioHardware
         if (StartFails) throw new InvalidOperationException("device cannot start");
         var output = new FakeOutput();
         lock (outputs) outputs.Add((device, output));
-        // Nothing plays it: one frame long, so it never holds the engine's 40 ms and the tones run through at once.
-        return new PlaybackBuffer(AudioFormat.FrameDuration, output);
+        return new PlaybackBuffer(SpeakerBuffer, output);
     }
+
+    /// <summary>
+    /// How much an opened speaker's buffer holds. Nothing plays it: one frame by default, so it never holds the playback's
+    /// target (<see cref="OVS.Client.Audio.Playback.PlaybackLoop.TargetBufferMs"/>) and the tones run through at once.
+    /// </summary>
+    public TimeSpan SpeakerBuffer { get; set; } = AudioFormat.FrameDuration;
 
     /// <summary>Opened so far and open now, for microphones and speakers.</summary>
     public (int Mics, int MicsOpen, int Speakers, int SpeakersOpen) Counts
