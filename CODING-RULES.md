@@ -219,7 +219,7 @@ Every review of new or changed code answers each point below for that change, na
 - Red flag: a German log line or exception message in new or moved code, e.g. `"Channel angelegt von ..."` in a moved handler.
 
 **DRY (don't repeat yourself)**
-- Does the change copy logic that exists elsewhere (a helper in §Shared helpers, a rule in `PermissionRules`, the server's `Rules/` or the shared `GroupRules`, `ChannelAccess`, `BanStatusRule`, a settings mapping in `AudioEngine`)? Use or extend the one place.
+- Does the change copy logic that exists elsewhere (a helper in §Shared helpers, a rule in `PermissionRules`, the server's `Rules/` or the shared `GroupRules`, `ChannelAccess`, `BanStatusRule`, the settings mapping `AudioEngine.Apply` with `ApplyCaptureSettings(CapturePipeline, ClientSettings)` and `GainFor` for the sound settings, guarded by `AudioEngineSettingsTests`)? Use or extend the one place.
 - Does a new setting, sound, key action or request need edits in several lists that must agree? Prefer one table or one mapping method over parallel switches.
 - Red flag: the same predicate in client and server (e.g. "is this ban active"); put it in `OVS.Shared`.
 

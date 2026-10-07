@@ -311,19 +311,37 @@ public sealed class AudioEngine : IDisposable
         lock (gate)
         {
             this.live = live; // Package 124: a microphone still opening in the background takes these too
-            Mode = live.Mode;
-            Mixer.Volume = live.OutputVolume;
-            keys.ReleaseDelay = TimeSpan.FromMilliseconds(live.PttReleaseDelayMs); // Package 130
-            if (capture is null) return;
-            capture.Gain = live.InputGain;
-            capture.Vad.ThresholdDb = live.VadThresholdDb;
-            capture.Vad.Automatic = live.VadAutomatic;
-            capture.NoiseSuppression = live.NoiseSuppression;
-            capture.AutoGain = live.AutoGain;
-            capture.EchoCancellation = live.EchoCancellation; // Package 140
-            capture.Music = live.Transmission == Transmission.Music; // Package 142
+            Apply(live);
         }
     }
+
+    /// <summary>
+    /// The one place that copies settings onto the engine, its keys and the open capture: the live preview and a save
+    /// both come here, and a capture that opens later takes the same values through <see cref="ApplyCaptureSettings"/>.
+    /// The open capture is there only for the live preview (a save closes it first). Under gate.
+    /// </summary>
+    void Apply(ClientSettings values)
+    {
+        Mode = values.Mode;
+        Mixer.Volume = values.OutputVolume;
+        keys.ReleaseDelay = TimeSpan.FromMilliseconds(values.PttReleaseDelayMs); // Package 130
+        if (capture is not null) ApplyCaptureSettings(capture, values);
+    }
+
+    /// <summary>The settings a capture works with; a new capture setting is mapped here and nowhere else.</summary>
+    internal static void ApplyCaptureSettings(CapturePipeline capture, ClientSettings values)
+    {
+        capture.Gain = values.InputGain;
+        capture.Vad.ThresholdDb = values.VadThresholdDb;
+        capture.Vad.Automatic = values.VadAutomatic;
+        capture.NoiseSuppression = values.NoiseSuppression;
+        capture.AutoGain = values.AutoGain;
+        capture.EchoCancellation = values.EchoCancellation; // Package 140
+        capture.Music = values.Transmission == Transmission.Music; // Package 142
+    }
+
+    /// <summary>The settings in use: the settings page's while it previews, else the saved ones.</summary>
+    ClientSettings Current => live ?? settings;
 
     /// <summary>Package 123: the native RNNoise library; tests name a missing one.</summary>
     internal string NoiseLibrary { get; init; } = NoiseSuppressor.Library;
@@ -405,7 +423,7 @@ public sealed class AudioEngine : IDisposable
     public event Action<float>? InputLevel;
 
     /// <summary>Package 129 (A138): the voice gate's threshold in use, for the level meter; the manual one without a microphone.</summary>
-    public float InputThresholdDb => capture?.Vad.ThresholdInUseDb ?? (live ?? settings).VadThresholdDb;
+    public float InputThresholdDb => capture?.Vad.ThresholdInUseDb ?? Current.VadThresholdDb;
 
     /// <summary>Takes the settings; the devices open now only if they are needed (Package 124), and then with these.</summary>
     /// <returns>A warning for the user, or null.</returns>
@@ -415,13 +433,17 @@ public sealed class AudioEngine : IDisposable
         {
             settings = newSettings;
             live = null;
-            Mode = settings.Mode;
-            Mixer.Volume = settings.OutputVolume;
-            keys.ReleaseDelay = TimeSpan.FromMilliseconds(settings.PttReleaseDelayMs); // Package 130
             mic.Failures = speaker.Failures = 0; // Package 137: saving tries a given-up device again
             var warnings = new List<string>();
             bool speakerOpen = playback is not null || PlaybackRunning;
-            StopDevices();
+            try
+            {
+                StopDevices();
+            }
+            finally
+            {
+                Apply(settings); // after the capture closed (also when closing threw): the one that opens next takes them in StartCapture
+            }
             SyncCapture(warnings);
             if (speakerOpen) StartOutput(warnings); // a device changed while connected takes effect at once
             return Text(warnings);
@@ -504,19 +526,12 @@ public sealed class AudioEngine : IDisposable
             if (device) Opening(mic, settings.InputDeviceId, AudioDirection.Input);
             capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(settings.InputDeviceId, opened);
             if (capture is null) return;
-            var values = live ?? settings;
-            capture.Gain = values.InputGain;
             capture.DecideTarget = Decide;
             capture.Bitrate = () => EncoderBitrate; // Package 132
             capture.LossHint = () => EncoderLossHint; // Package 135
-            capture.Vad.ThresholdDb = values.VadThresholdDb;
-            capture.Vad.Automatic = values.VadAutomatic;
             capture.Suppressor = CreateSuppressor();
-            capture.NoiseSuppression = values.NoiseSuppression;
-            capture.AutoGain = values.AutoGain;
             capture.Canceller = CreateCanceller(); // Package 140: like the suppressor, also while switched off
-            capture.EchoCancellation = values.EchoCancellation;
-            capture.Music = values.Transmission == Transmission.Music; // Package 142
+            ApplyCaptureSettings(capture, Current);
             capture.FrameEncoded += OnFrameEncoded;
             capture.Level += OnLevel;
             capture.Start();
