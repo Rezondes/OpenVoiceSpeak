@@ -14,7 +14,7 @@ public sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposab
     public IPEndPoint? UdpEndpoint { get; set; }
     public ReplayWindow Replay { get; } = new();
     public SeqCounter OutSeq { get; } = new();
-    public RateLimiter Limiter { get; } = new(time, Limits.VoicePerSecond, Limits.VoiceBurst);
+    public RateLimiter Limiter { get; } = new(time, ServerTuning.VoicePerSecond, ServerTuning.VoiceBurst);
     volatile bool tcpVoice;
     /// <summary>Package 141: the newest frame number this sender sent over UDP, -1 before the first.</summary>
     public long LastUdpFrame { get; set; } = -1;

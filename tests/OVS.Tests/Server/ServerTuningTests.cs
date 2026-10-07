@@ -21,7 +21,7 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Server;
 
 /// <summary>Package 86: request budget, costly requests, outbox limits and the accept path.</summary>
-public sealed class LimitsTests
+public sealed class ServerTuningTests
 {
     /// <summary>Just enough PNG for the server's header check, filled with random bytes up to size.</summary>
     static byte[] Png(int size)
@@ -55,9 +55,9 @@ public sealed class LimitsTests
         int n = 0;
 
         // The burst passes (joining the own channel is a no-op), the rest is refused.
-        for (int i = 0; i < Limits.RequestBurst + 5; i++) await client.SendAsync(new JoinChannel(here) { RequestId = $"j{n++}" });
+        for (int i = 0; i < ServerTuning.RequestBurst + 5; i++) await client.SendAsync(new JoinChannel(here) { RequestId = $"j{n++}" });
         var first = await client.WaitForAsync<Error>();
-        Assert.Equal(($"j{(int)Limits.RequestBurst}", Codes.RateLimited), (first.RequestId, first.Code));
+        Assert.Equal(($"j{(int)ServerTuning.RequestBurst}", Codes.RateLimited), (first.RequestId, first.Code));
 
         // Keeps flooding: every half second more than the budget refills, so every batch ends refused.
         bool closed = false;
@@ -67,7 +67,7 @@ public sealed class LimitsTests
             string last = "";
             try
             {
-                for (int i = 0; i < Limits.RequestsPerSecond; i++)
+                for (int i = 0; i < ServerTuning.RequestsPerSecond; i++)
                     await client.SendAsync(new JoinChannel(here) { RequestId = last = $"j{n++}" });
                 var error = await client.WaitForAsync<Error>(e => e.RequestId == last);
                 Assert.Equal(Codes.RateLimited, error.Code);
@@ -99,11 +99,11 @@ public sealed class LimitsTests
         for (int i = 0; i < 500 && !server.State.FindSession(listener.Id)!.Voice.TcpVoice; i++) await Task.Delay(20);
 
         for (uint n = 0; n < 30; n++) await talker.SendAsync(new VoiceUp(n, 0, Convert.ToBase64String([1, 2, 3])));
-        for (uint n = 0; n < Limits.VoiceBurst; n++) Assert.Equal(n, (await listener.WaitForAsync<VoiceDown>()).Seq);
+        for (uint n = 0; n < ServerTuning.VoiceBurst; n++) Assert.Equal(n, (await listener.WaitForAsync<VoiceDown>()).Seq);
         await listener.AssertNoMessageAsync<VoiceDown>();
 
         var here = talker.Welcome.Snapshot.DefaultChannelId;
-        for (int i = 0; i < Limits.RequestBurst; i++) await talker.SendAsync(new JoinChannel(here) { RequestId = $"j{i}" });
+        for (int i = 0; i < ServerTuning.RequestBurst; i++) await talker.SendAsync(new JoinChannel(here) { RequestId = $"j{i}" });
         await talker.SendAsync(new JoinChannel(here) { RequestId = "over" });
         var refused = await talker.WaitForAsync<Error>(); // the whole request burst passed: the voice took none of it
         Assert.Equal(("over", Codes.RateLimited), (refused.RequestId, refused.Code));
@@ -178,9 +178,9 @@ public sealed class LimitsTests
         var frame = SessionOutbox.Encode(new VoiceDown(2, 0, 0, Convert.ToBase64String(new byte[1275])));
         for (int i = 0; i < 1000; i++) session.Outbox.SendVoice(frame);
         Assert.Null(session.Outbox.AbortReason);
-        Assert.Equal(Limits.MaxQueuedVoice, session.Outbox.Outgoing.Count);
+        Assert.Equal(ServerTuning.MaxQueuedVoice, session.Outbox.Outgoing.Count);
         session.Outbox.Send(new Pong()); // other messages still fit
-        Assert.Equal(Limits.MaxQueuedVoice + 1, session.Outbox.Outgoing.Count);
+        Assert.Equal(ServerTuning.MaxQueuedVoice + 1, session.Outbox.Outgoing.Count);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public sealed class LimitsTests
         await client.SendAsync(new GetServerIcon { RequestId = "i2" });
         Assert.Equal(Codes.RateLimited, (await client.ErrorAsync("i2")).Code);
 
-        time.Advance(Limits.IconInterval);
+        time.Advance(ServerTuning.IconInterval);
         await client.SendAsync(new GetServerIcon { RequestId = "i3" });
         Assert.Equal("i3", (await client.WaitForAsync<ServerIcon>()).RequestId);
     }
@@ -237,7 +237,7 @@ public sealed class LimitsTests
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time);
         await using var client = await TestClient.ConnectAsync(server, "chef", admin);
 
-        for (int i = 0; i < Limits.ListBurst; i++)
+        for (int i = 0; i < ServerTuning.ListBurst; i++)
         {
             await client.SendAsync(new ListUsers { RequestId = $"u{i}" });
             await client.WaitForAsync<UserList>(l => l.RequestId == $"u{i}");
@@ -251,7 +251,7 @@ public sealed class LimitsTests
         await client.WaitForAsync<BackupList>(l => l.RequestId == "b1");
         await client.SendAsync(new CreateBackup { RequestId = "b2" });
         Assert.Equal(Codes.RateLimited, (await client.ErrorAsync("b2")).Code);
-        time.Advance(Limits.HeavyInterval);
+        time.Advance(ServerTuning.HeavyInterval);
         await client.SendAsync(new CreateBackup { RequestId = "b3" });
         await client.WaitForAsync<BackupList>(l => l.RequestId == "b3");
     }
@@ -281,23 +281,23 @@ public sealed class LimitsTests
         }
 
         // Normal paging through all 450 users, a whole burst of times: never throttled.
-        for (int round = 0; round < Limits.ListBurst; round++)
-            foreach (var offset in new[] { 0, Limits.ListPageSize, 2 * Limits.ListPageSize })
+        for (int round = 0; round < ServerTuning.ListBurst; round++)
+            foreach (var offset in new[] { 0, ServerTuning.ListPageSize, 2 * ServerTuning.ListPageSize })
                 Assert.Equal("ok", await Ask(offset));
 
         // A page served in this round already counts like a first page.
-        Assert.Equal(Codes.RateLimited, await Ask(Limits.ListPageSize));
+        Assert.Equal(Codes.RateLimited, await Ask(ServerTuning.ListPageSize));
 
         // Without a first page in the last 30 s every later page counts.
         time.Advance(TimeSpan.FromSeconds(31)); // the budget is full again
-        for (int i = 0; i < Limits.ListBurst; i++) Assert.Equal("ok", await Ask(1));
+        for (int i = 0; i < ServerTuning.ListBurst; i++) Assert.Equal("ok", await Ask(1));
         Assert.Equal(Codes.RateLimited, await Ask(1));
 
         // Asking for the same later page again within a round counts from the second time on.
         time.Advance(TimeSpan.FromSeconds(10));
         Assert.Equal("ok", await Ask(0));
-        for (int i = 0; i < Limits.ListBurst; i++) Assert.Equal("ok", await Ask(Limits.ListPageSize));
-        Assert.Equal(Codes.RateLimited, await Ask(Limits.ListPageSize));
+        for (int i = 0; i < ServerTuning.ListBurst; i++) Assert.Equal("ok", await Ask(ServerTuning.ListPageSize));
+        Assert.Equal(Codes.RateLimited, await Ask(ServerTuning.ListPageSize));
     }
 
     [Fact]
@@ -309,19 +309,19 @@ public sealed class LimitsTests
         await using var b = await TestClient.ConnectAsync(server, "zweiter");
         var token = server.State.PendingAdminToken!;
 
-        for (int i = 0; i < Limits.AdminTokenFailures; i++)
+        for (int i = 0; i < ServerTuning.AdminTokenFailures; i++)
         {
             await a.SendAsync(new RedeemAdminToken("falsch") { RequestId = $"t{i}" });
             Assert.Equal(Codes.InvalidToken, (await a.ErrorAsync($"t{i}")).Code);
         }
-        Assert.Equal(Limits.AdminTokenFailures, server.Log.Count(l => l.Contains("Admin-Token falsch von rater")));
+        Assert.Equal(ServerTuning.AdminTokenFailures, server.Log.Count(l => l.Contains("Admin-Token falsch von rater")));
 
         // Same IP, other session: blocked too, even with the right token.
         await b.SendAsync(new RedeemAdminToken(token) { RequestId = "richtig" });
         Assert.Equal(Codes.RateLimited, (await b.ErrorAsync("richtig")).Code);
         Assert.Equal(token, server.State.PendingAdminToken);
 
-        time.Advance(Limits.AdminTokenWindow);
+        time.Advance(ServerTuning.AdminTokenWindow);
         await b.SendAsync(new RedeemAdminToken(token) { RequestId = "spaeter" });
         await b.WaitForAsync<UserUpdated>(u => u.User.SessionId == b.Id);
         Assert.Null(server.State.PendingAdminToken);
@@ -356,7 +356,7 @@ public sealed class LimitsTests
 
         await a.SendAsync(new SetSelfState(true, false) { RequestId = id });
         var error = await a.WaitForAsync<Error>();
-        Assert.Equal((id[..Limits.MaxRequestIdLength], Codes.InvalidValue), (error.RequestId, error.Code));
+        Assert.Equal((id[..ServerTuning.MaxRequestIdLength], Codes.InvalidValue), (error.RequestId, error.Code));
 
         await a.SendAsync(new SetSelfState(false, true) { RequestId = "kurz" });
         Assert.True((await b.WaitForAsync<UserUpdated>()).User.SelfDeafened); // the long one never ran
@@ -370,7 +370,7 @@ public sealed class LimitsTests
         for (int i = 0; i < 20; i++) session.Outbox.Send(big);
 
         Assert.True(session.Outbox.Aborted.IsCancellationRequested);
-        Assert.True(session.Outbox.QueuedBytes <= Limits.MaxOutboxBytes, $"{session.Outbox.QueuedBytes} bytes queued");
+        Assert.True(session.Outbox.QueuedBytes <= ServerTuning.MaxOutboxBytes, $"{session.Outbox.QueuedBytes} bytes queued");
     }
 
     [Fact]
@@ -387,7 +387,7 @@ public sealed class LimitsTests
         {
             for (int i = 0; i < 60; i++)
             {
-                time.Advance(Limits.IconInterval);
+                time.Advance(ServerTuning.IconInterval);
                 await client.SendAsync(new GetServerIcon { RequestId = $"i{i}" });
             }
         }

@@ -38,7 +38,7 @@ public sealed partial class ServerState
     readonly UploadFolder uploads; // Package 75
     readonly ServerData data;
     readonly TimeProvider time;
-    readonly ServerLogs logs;
+    readonly ServerLogWriter logs;
     readonly Dictionary<uint, Session> sessions = [];
     /// <summary>Package 88: the same sessions for the UDP path, read without the lock; changed together with sessions.</summary>
     readonly ConcurrentDictionary<uint, Session> voiceSessions = new();
@@ -56,7 +56,7 @@ public sealed partial class ServerState
 
     /// <param name="stores">From <see cref="ServerStores.Open"/>, so the crash cleanups have run.</param>
     /// <exception cref="ArgumentException">The stores belong to another data folder than <paramref name="config"/>.</exception>
-    public ServerState(ServerConfig config, TimeProvider time, ServerLogs logs, ServerStores stores)
+    public ServerState(ServerConfig config, TimeProvider time, ServerLogWriter logs, ServerStores stores)
     {
         if (stores.DataDir != config.DataDir)
             throw new ArgumentException($"The stores are in {stores.DataDir}, the config names {config.DataDir}", nameof(stores));
@@ -245,7 +245,7 @@ public sealed partial class ServerState
     }
 
     /// <summary>Package 87: at most ListPageSize entries from offset, so no list outgrows a frame.</summary>
-    static List<T> Page<T>(IEnumerable<T> all, int offset) => all.Skip(offset).Take(Limits.ListPageSize).ToList();
+    static List<T> Page<T>(IEnumerable<T> all, int offset) => all.Skip(offset).Take(ServerTuning.ListPageSize).ToList();
 
     UserRecord? FindUser(string fingerprint) => data.Users.FirstOrDefault(u => u.Fingerprint == fingerprint);
 

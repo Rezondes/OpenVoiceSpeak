@@ -32,7 +32,7 @@ public sealed class IdentityFloodTests
         var state = server.State;
         var ip = IPAddress.Parse("2001:db8:1:2::10");
 
-        for (int i = 0; i < Limits.NewIdentitiesPerHour; i++)
+        for (int i = 0; i < ServerTuning.NewIdentitiesPerHour; i++)
             Assert.Null(state.Admit(Fp(i), $"neu{i}", ip, null).Rejection);
         // the rest of the same /64 is refused, another /64 is not
         Assert.Equal(Codes.RateLimited, state.Admit(Fp(100), "zuviel", IPAddress.Parse("2001:db8:1:2::99"), null).Rejection?.Code);
@@ -47,7 +47,7 @@ public sealed class IdentityFloodTests
 
         // over the network: a refused handshake with the code
         var v4 = IPAddress.Loopback;
-        for (int i = 0; i < Limits.NewIdentitiesPerHour; i++) Assert.Null(state.Admit(Fp(200 + i), $"lokal{i}", v4, null).Rejection);
+        for (int i = 0; i < ServerTuning.NewIdentitiesPerHour; i++) Assert.Null(state.Admit(Fp(200 + i), $"lokal{i}", v4, null).Rejection);
         await using var client = await TestClient.OpenAsync(server.Port);
         Assert.Equal(Codes.RateLimited, Assert.IsType<Rejected>(await client.HandshakeAsync("flut")).Code);
     }
@@ -68,7 +68,7 @@ public sealed class IdentityFloodTests
         }
         Assert.All(OnDisk(server).Users, u => Assert.Equal(0, u.LoginCount)); // nothing written yet
 
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
         Assert.All(OnDisk(server).Users, u => Assert.Equal(1, u.LoginCount));
 
         // a pending save is never lost on shutdown
@@ -87,7 +87,7 @@ public sealed class IdentityFloodTests
         var mod = Guid.NewGuid();
         await using var server = await TestServer.StartAsync(d =>
         {
-            d.Groups.Add(new Group(mod, "Mod", default));
+            d.Groups.Add(new GroupRecord(mod, "Mod", default));
             d.Users.Add(new UserRecord { Fingerprint = Fp(1), LastNickname = "alt", GroupIds = [guest], LastLogin = now.AddDays(-91) });
             d.Users.Add(new UserRecord { Fingerprint = Fp(2), LastNickname = "nie", GroupIds = [guest], FirstSeen = now.AddDays(-100) });
             d.Users.Add(new UserRecord { Fingerprint = Fp(3), LastNickname = "gebannt", GroupIds = [guest], LastLogin = now.AddDays(-200) });
@@ -103,7 +103,7 @@ public sealed class IdentityFloodTests
         time.Advance(TimeSpan.FromDays(81));
         var (session, _) = server.State.Admit(Fp(4), "mod", IPAddress.Loopback, null);
         server.State.Remove(session!);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
         Assert.Equal([Fp(3), Fp(4)], OnDisk(server).Users.Select(u => u.Fingerprint));
     }
 
@@ -116,13 +116,13 @@ public sealed class IdentityFloodTests
         server.State.BeforeSave = () => { if (failing) throw new IOException("Datei gesperrt"); };
 
         var (session, _) = server.State.Admit(Fp(1), "neu", IPAddress.Loopback, null);
-        time.Advance(Limits.SaveDelay); // on the timer thread an escaping exception would end the server
-        time.Advance(Limits.SaveDelay); // still locked: retried, but logged only once
+        time.Advance(ServerTuning.SaveDelay); // on the timer thread an escaping exception would end the server
+        time.Advance(ServerTuning.SaveDelay); // still locked: retried, but logged only once
         Assert.Single(server.Log, l => l.Contains("nicht gespeichert") && l.Contains("Datei gesperrt"));
         Assert.DoesNotContain(OnDisk(server).Users, u => u.Fingerprint == Fp(1));
 
         failing = false;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
         Assert.Contains(OnDisk(server).Users, u => u.Fingerprint == Fp(1));
         Assert.Single(server.Log, l => l.Contains("wieder gespeichert"));
 
@@ -169,7 +169,7 @@ public sealed class IdentityFloodTests
                 await client.SendAsync(ask(all.Count) with { RequestId = id });
                 var (_, offset, total, items) = read(await client.WaitForAsync<TList>(l => read(l).Id == id, slow));
                 Assert.Equal(all.Count, offset);
-                Assert.InRange(items.Count, 1, Limits.ListPageSize);
+                Assert.InRange(items.Count, 1, ServerTuning.ListPageSize);
                 all.AddRange(items);
                 if (all.Count >= total) return all;
             }

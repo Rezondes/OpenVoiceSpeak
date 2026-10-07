@@ -20,7 +20,7 @@ public sealed class NewIdentityLimitTests
 
     void Fill(IPAddress? source = null)
     {
-        for (int i = 0; i < Limits.NewIdentitiesPerHour; i++) Assert.True(Count(source));
+        for (int i = 0; i < ServerTuning.NewIdentitiesPerHour; i++) Assert.True(Count(source));
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public sealed class NewIdentityLimitTests
     public void TryCount_JustBeforeTheWindowEnds_Refused()
     {
         Fill();
-        time.Advance(Limits.NewIdentityWindow - Tick);
+        time.Advance(ServerTuning.NewIdentityWindow - Tick);
         Assert.False(Count());
     }
 
@@ -58,10 +58,10 @@ public sealed class NewIdentityLimitTests
     public void TryCount_WindowAfterTheFirst_CountedAgain()
     {
         Assert.True(Count());
-        time.Advance(Limits.NewIdentityWindow / 2);
-        for (int i = 1; i < Limits.NewIdentitiesPerHour; i++) Assert.True(Count()); // later ones do not move the window
+        time.Advance(ServerTuning.NewIdentityWindow / 2);
+        for (int i = 1; i < ServerTuning.NewIdentitiesPerHour; i++) Assert.True(Count()); // later ones do not move the window
         Assert.False(Count());
-        time.Advance(Limits.NewIdentityWindow / 2);
+        time.Advance(ServerTuning.NewIdentityWindow / 2);
         Assert.True(Count());
     }
 
@@ -70,7 +70,7 @@ public sealed class NewIdentityLimitTests
     {
         Fill();
         Assert.False(Count());
-        time.Advance(Limits.NewIdentityWindow);
+        time.Advance(ServerTuning.NewIdentityWindow);
         Fill();
         Assert.False(limit.TryCount(Source, Now, out bool first));
         Assert.True(first);
@@ -80,12 +80,12 @@ public sealed class NewIdentityLimitTests
     public void TryCount_WindowEndedBeforeTheSweep_CountedAndFirstRefusalAgain()
     {
         Assert.True(Count(OtherSource)); // the first call sweeps and sets the next sweep a window later
-        time.Advance(Limits.NewIdentityWindow - TimeSpan.FromMinutes(1));
+        time.Advance(ServerTuning.NewIdentityWindow - TimeSpan.FromMinutes(1));
         Fill();
         Assert.False(Count());
         time.Advance(TimeSpan.FromMinutes(1));
         Assert.True(Count(IPAddress.Parse("10.0.0.3"))); // sweeps OtherSource, keeps Source
-        time.Advance(Limits.NewIdentityWindow - TimeSpan.FromMinutes(1));
+        time.Advance(ServerTuning.NewIdentityWindow - TimeSpan.FromMinutes(1));
         Fill(); // Source's window ended, no sweep is due: the window itself starts again
         Assert.False(limit.TryCount(Source, Now, out bool first));
         Assert.True(first);
@@ -103,7 +103,7 @@ public sealed class NewIdentityLimitTests
     public void TryCount_SweepJustBeforeTheWindowEnds_KeepsTheOldSource()
     {
         Assert.True(Count());
-        time.Advance(Limits.NewIdentityWindow - Tick);
+        time.Advance(ServerTuning.NewIdentityWindow - Tick);
         Assert.True(Count(OtherSource));
         Assert.Equal(2, limit.SourceCount);
     }
@@ -112,7 +112,7 @@ public sealed class NewIdentityLimitTests
     public void TryCount_SweepAWindowLater_DropsEndedSources()
     {
         Assert.True(Count());
-        time.Advance(Limits.NewIdentityWindow);
+        time.Advance(ServerTuning.NewIdentityWindow);
         Assert.True(Count(OtherSource));
         Assert.Equal(1, limit.SourceCount);
     }
@@ -121,11 +121,11 @@ public sealed class NewIdentityLimitTests
     public void TryCount_SweepOncePerWindow_NotBeforeTheNextSweep()
     {
         Assert.True(Count(OtherSource)); // the first call sweeps and sets the next sweep a window later
-        time.Advance(Limits.NewIdentityWindow - TimeSpan.FromMinutes(1));
+        time.Advance(ServerTuning.NewIdentityWindow - TimeSpan.FromMinutes(1));
         Assert.True(Count());
         time.Advance(TimeSpan.FromMinutes(1));
         Assert.True(Count(IPAddress.Parse("10.0.0.3"))); // sweeps OtherSource, keeps Source, the next sweep a window later
-        time.Advance(Limits.NewIdentityWindow - TimeSpan.FromMinutes(1));
+        time.Advance(ServerTuning.NewIdentityWindow - TimeSpan.FromMinutes(1));
         Assert.True(Count(IPAddress.Parse("10.0.0.4"))); // Source's window ended now, but no sweep is due yet
         Assert.Equal(3, limit.SourceCount);
     }

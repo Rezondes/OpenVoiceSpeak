@@ -101,7 +101,7 @@ public class AdminCommandTests
         var manager = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(d =>
         {
-            d.Groups.Add(new Group(Guid.NewGuid(), "Verwalter", Permission.GroupsCreate | Permission.Speak));
+            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Verwalter", Permission.GroupsCreate | Permission.Speak));
             TestServer.Grant(manager, "Verwalter")(d);
         });
         await using var v = await TestClient.ConnectAsync(server, identity: manager);
@@ -132,7 +132,7 @@ public class AdminCommandTests
         var assigner = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(d =>
         {
-            d.Groups.Add(new Group(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign | Permission.Speak));
+            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign | Permission.Speak));
             TestServer.Grant(assigner, "Zuweiser")(d);
         });
         await using var z = await TestClient.ConnectAsync(server, identity: assigner);
@@ -494,7 +494,7 @@ public class AdminCommandTests
         var time = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(d =>
         {
-            d.Groups.Add(new Group(Guid.NewGuid(), "Leser", Permission.UsersView));
+            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Leser", Permission.UsersView));
             TestServer.Grant(viewer, "Leser")(d);
             d.Users.Add(new UserRecord { Fingerprint = guest.Fingerprint, LastNickname = "gast", GroupIds = [PermissionRules.GuestGroupId] });
             d.Users.Add(new UserRecord { Fingerprint = "frei", LastNickname = "Frei", GroupIds = [PermissionRules.GuestGroupId] });
@@ -550,7 +550,7 @@ public class AdminCommandTests
         await using var server = await TestServer.StartAsync(d =>
         {
             TestServer.Grant(ClientIdentity.Create(), "Admin")(d); // someone else is admin, so no token is pending
-            d.Groups.Add(new Group(Guid.NewGuid(), "Tester", rights));
+            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Tester", rights));
             TestServer.Grant(actor, "Tester")(d);
         });
         await using var a = await TestClient.ConnectAsync(server, "tester", actor);
@@ -586,7 +586,7 @@ public class AdminCommandTests
         var creator = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(d =>
         {
-            d.Groups.Add(new Group(Guid.NewGuid(), "Anleger", Permission.GroupsCreate | Permission.Speak));
+            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Anleger", Permission.GroupsCreate | Permission.Speak));
             TestServer.Grant(creator, "Anleger")(d);
         });
         await using var c = await TestClient.ConnectAsync(server, identity: creator);

@@ -13,9 +13,9 @@ public sealed class AdminTokenGuessLimit
     /// <summary>An ended window is forgotten here.</summary>
     public bool IsBlocked(IPAddress source, DateTimeOffset now)
     {
-        if (failures.TryGetValue(source, out var f) && now - f.First >= Limits.AdminTokenWindow)
+        if (failures.TryGetValue(source, out var f) && now - f.First >= ServerTuning.AdminTokenWindow)
             failures.Remove(source);
-        return failures.GetValueOrDefault(source).Count >= Limits.AdminTokenFailures;
+        return failures.GetValueOrDefault(source).Count >= ServerTuning.AdminTokenFailures;
     }
 
     /// <summary>Counts a wrong admin token; the window runs from the first one.</summary>

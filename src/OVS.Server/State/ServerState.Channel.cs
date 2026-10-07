@@ -184,7 +184,7 @@ public sealed partial class ServerState
         }
         int count = channelPasswordGuesses.RecordFailure(actor.Id, channel.Id, now);
         logs.Server($"Falsches Channel-Passwort von {actor.Nickname} für '{channel.Name}' ({count}. Versuch)" +
-                    (count >= Limits.ChannelPasswordFailures ? $", gesperrt für {Limits.ChannelPasswordBlock.TotalMinutes:0} Minuten" : ""));
+                    (count >= ServerTuning.ChannelPasswordFailures ? $", gesperrt für {ServerTuning.ChannelPasswordBlock.TotalMinutes:0} Minuten" : ""));
         return Codes.WrongChannelPassword;
     }
 

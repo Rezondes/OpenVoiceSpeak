@@ -7,14 +7,14 @@ namespace OVS.Server.Logging;
 /// a new file per server start and optionally per day, see LogFiles.
 /// A failing disk never takes the server down: the first write error is reported on the console.
 /// </summary>
-public sealed class ServerLogs
+public sealed class ServerLogWriter
 {
     readonly LogFiles files;
     readonly Action<string> console;
 
     /// <param name="keepDays">0 keeps every file.</param>
     /// <param name="newFileEachDay">False keeps the files of this run until the next start.</param>
-    public ServerLogs(string dataDir, int keepDays, TimeProvider time, Action<string> console, bool newFileEachDay = true)
+    public ServerLogWriter(string dataDir, int keepDays, TimeProvider time, Action<string> console, bool newFileEachDay = true)
     {
         files = new LogFiles(Path.Combine(dataDir, "logs"), keepDays, time, console, newFileEachDay);
         this.console = console;

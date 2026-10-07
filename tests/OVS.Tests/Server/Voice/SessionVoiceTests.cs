@@ -30,7 +30,7 @@ public sealed class SessionVoiceTests : IDisposable
     [Fact]
     public void Limiter_PastVoiceBurst_Refused()
     {
-        for (int i = 0; i < Limits.VoiceBurst; i++) Assert.True(voice.Limiter.TryTake());
+        for (int i = 0; i < ServerTuning.VoiceBurst; i++) Assert.True(voice.Limiter.TryTake());
         Assert.False(voice.Limiter.TryTake());
     }
 

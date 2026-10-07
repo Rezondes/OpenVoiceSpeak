@@ -170,7 +170,7 @@ public sealed class ServerConfigTests : IDisposable
     public void EnvDiffersFromStored_HintInLog()
     {
         var lines = new List<string>();
-        var logs = new ServerLogs(dir, 0, TimeProvider.System, lines.Add);
+        var logs = new ServerLogWriter(dir, 0, TimeProvider.System, lines.Add);
         var first = ServerConfig.Load(Env(("OVS_MAX_USERS", "20"), ("OVS_LOG_DAYS", "7")));
         _ = new ServerState(first, TimeProvider.System, logs, ServerStores.Open(first, TimeProvider.System));
         Assert.DoesNotContain(lines, l => l.Contains("OVS_"));

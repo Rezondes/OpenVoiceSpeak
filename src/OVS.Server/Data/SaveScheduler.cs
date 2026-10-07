@@ -46,13 +46,13 @@ public sealed class SaveScheduler(object gate, Action save, TimeProvider time, A
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
                     // A virus scanner or backup tool holds the file, or the disk is full: keep the changes and try again.
-                    if (!failed) log($"Serverdaten nicht gespeichert, neuer Versuch alle {Limits.SaveDelay.TotalSeconds:0} s: {e.Message}");
+                    if (!failed) log($"Serverdaten nicht gespeichert, neuer Versuch alle {ServerTuning.SaveDelay.TotalSeconds:0} s: {e.Message}");
                     failed = true;
-                    timer!.Change(Limits.SaveDelay, Timeout.InfiniteTimeSpan);
+                    timer!.Change(ServerTuning.SaveDelay, Timeout.InfiniteTimeSpan);
                 }
             }
         }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        timer.Change(Limits.SaveDelay, Timeout.InfiniteTimeSpan);
+        timer.Change(ServerTuning.SaveDelay, Timeout.InfiniteTimeSpan);
     }
 
     /// <summary>Writes a pending debounced save now.</summary>

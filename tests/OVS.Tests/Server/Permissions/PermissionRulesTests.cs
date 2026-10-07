@@ -7,10 +7,10 @@ namespace OVS.Tests.Server.Permissions;
 
 public class PermissionRulesTests
 {
-    static readonly List<Group> Groups = DefaultGroups();
-    static Group Guest => Groups.Single(g => g.Name == "Gast");
-    static Group Moderator => Groups.Single(g => g.Name == "Moderator");
-    static Group Admin => Groups.Single(g => g.Name == "Admin");
+    static readonly List<GroupRecord> Groups = DefaultGroups();
+    static GroupRecord Guest => Groups.Single(g => g.Name == "Gast");
+    static GroupRecord Moderator => Groups.Single(g => g.Name == "Moderator");
+    static GroupRecord Admin => Groups.Single(g => g.Name == "Admin");
 
     [Fact]
     public void Effective_Cases()
@@ -21,7 +21,7 @@ public class PermissionRulesTests
         Assert.Equal(GuestPermissions, Effective([Guest.Id, Guid.NewGuid()], Groups));
         Assert.Equal(P.All, Effective([Admin.Id], Groups));
         // Admin is always All, even if the stored group lost flags
-        Assert.Equal(P.All, Effective([AdminGroupId], [new Group(AdminGroupId, "Admin", P.None)]));
+        Assert.Equal(P.All, Effective([AdminGroupId], [new GroupRecord(AdminGroupId, "Admin", P.None)]));
     }
 
     [Fact]

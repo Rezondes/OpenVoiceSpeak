@@ -113,7 +113,7 @@ public sealed class DispatchTests
         foreach (var type in RequestTypes())
         {
             var session = harness.Admit("anna", anna);
-            for (int i = 0; i < Limits.RequestBurst; i++) harness.Handle(session, new JoinChannel(Unknown));
+            for (int i = 0; i < ServerTuning.RequestBurst; i++) harness.Handle(session, new JoinChannel(Unknown));
             StateHarness.Drain(session);
 
             harness.Handle(session, Factories[type]() with { RequestId = "r" });

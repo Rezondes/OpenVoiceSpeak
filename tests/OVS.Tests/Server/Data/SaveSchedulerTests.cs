@@ -42,11 +42,11 @@ public sealed class SaveSchedulerTests
             scheduler.PersistSoon();
         });
 
-        time.Advance(Limits.SaveDelay - Tick);
+        time.Advance(ServerTuning.SaveDelay - Tick);
         Assert.Equal(0, saves);
         time.Advance(Tick);
         Assert.Equal(1, saves);
-        time.Advance(Limits.SaveDelay * 3);
+        time.Advance(ServerTuning.SaveDelay * 3);
         Assert.Equal(1, saves);
     }
 
@@ -54,7 +54,7 @@ public sealed class SaveSchedulerTests
     public void PersistSoon_AgainBeforeSaveDelay_SavesAtTheFirstDeadline()
     {
         Locked(scheduler.PersistSoon);
-        time.Advance(Limits.SaveDelay - Tick);
+        time.Advance(ServerTuning.SaveDelay - Tick);
 
         Locked(scheduler.PersistSoon);
         time.Advance(Tick);
@@ -66,10 +66,10 @@ public sealed class SaveSchedulerTests
     public void PersistSoon_AfterATimerSave_SavesAgain()
     {
         Locked(scheduler.PersistSoon);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Locked(scheduler.PersistSoon);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(2, saves);
     }
@@ -79,7 +79,7 @@ public sealed class SaveSchedulerTests
     {
         Locked(scheduler.PersistSoon);
 
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.True(lastUnderGate);
     }
@@ -90,7 +90,7 @@ public sealed class SaveSchedulerTests
         Locked(scheduler.PersistSoon);
 
         Locked(scheduler.Persist);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(1, saves);
     }
@@ -103,7 +103,7 @@ public sealed class SaveSchedulerTests
 
         Assert.Throws<IOException>(() => Locked(scheduler.Persist));
         failing = false;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(1, saves);
     }
@@ -132,8 +132,8 @@ public sealed class SaveSchedulerTests
         Locked(scheduler.PersistSoon);
         failing = true;
 
-        time.Advance(Limits.SaveDelay);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(2, attempts);
     }
@@ -144,8 +144,8 @@ public sealed class SaveSchedulerTests
         Locked(scheduler.PersistSoon);
         failing = true;
 
-        time.Advance(Limits.SaveDelay);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal("Serverdaten nicht gespeichert, neuer Versuch alle 2 s: Datei gesperrt", Assert.Single(log));
     }
@@ -157,8 +157,8 @@ public sealed class SaveSchedulerTests
         failing = true;
         failure = new UnauthorizedAccessException("kein Zugriff");
 
-        time.Advance(Limits.SaveDelay);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal("Serverdaten nicht gespeichert, neuer Versuch alle 2 s: kein Zugriff", Assert.Single(log));
     }
@@ -168,10 +168,10 @@ public sealed class SaveSchedulerTests
     {
         Locked(scheduler.PersistSoon);
         failing = true;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         failing = false;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal("Serverdaten werden wieder gespeichert", log[^1]);
     }
@@ -181,11 +181,11 @@ public sealed class SaveSchedulerTests
     {
         Locked(scheduler.PersistSoon);
         failing = true;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         failing = false;
-        time.Advance(Limits.SaveDelay);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(2, attempts);
     }
@@ -195,13 +195,13 @@ public sealed class SaveSchedulerTests
     {
         Locked(scheduler.PersistSoon);
         failing = true;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
         failing = false;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Locked(scheduler.PersistSoon);
         failing = true;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(2, log.Count(l => l.StartsWith("Serverdaten nicht gespeichert")));
     }
@@ -211,7 +211,7 @@ public sealed class SaveSchedulerTests
     {
         Locked(scheduler.PersistSoon);
         failing = true;
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         failing = false;
         Locked(scheduler.Persist);
@@ -234,7 +234,7 @@ public sealed class SaveSchedulerTests
 
         Locked(scheduler.FlushPending);
         Locked(scheduler.FlushPending);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(1, saves);
     }
@@ -253,7 +253,7 @@ public sealed class SaveSchedulerTests
         Locked(scheduler.PersistSoon);
 
         Locked(() => scheduler.Close(force: false));
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(1, saves);
     }
@@ -293,7 +293,7 @@ public sealed class SaveSchedulerTests
         Locked(() => scheduler.Close(force: false));
 
         Locked(scheduler.PersistSoon);
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(0, attempts);
     }
@@ -302,11 +302,11 @@ public sealed class SaveSchedulerTests
     [Fact]
     public void TimerSave_DueWhileClosing_WritesNothing()
     {
-        using var closer = time.CreateTimer(_ => Locked(() => scheduler.Close(force: false)), null, Limits.SaveDelay, Timeout.InfiniteTimeSpan);
+        using var closer = time.CreateTimer(_ => Locked(() => scheduler.Close(force: false)), null, ServerTuning.SaveDelay, Timeout.InfiniteTimeSpan);
         Locked(scheduler.PersistSoon);
         failing = true; // the save on close fails, so the change stays pending
 
-        time.Advance(Limits.SaveDelay);
+        time.Advance(ServerTuning.SaveDelay);
 
         Assert.Equal(1, attempts);
     }

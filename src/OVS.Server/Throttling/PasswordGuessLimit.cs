@@ -13,8 +13,8 @@ public sealed class PasswordGuessLimit
 
     /// <summary>From the 5th wrong password on: blocked 1, 2, 4, ... minutes (at most 60) after the last wrong one.</summary>
     public static TimeSpan BlockFor(int count) =>
-        count < Limits.FreePasswordFailures ? TimeSpan.Zero
-            : TimeSpan.FromMinutes(Math.Min(60, 1 << Math.Min(count - Limits.FreePasswordFailures, 6)));
+        count < ServerTuning.FreePasswordFailures ? TimeSpan.Zero
+            : TimeSpan.FromMinutes(Math.Min(60, 1 << Math.Min(count - ServerTuning.FreePasswordFailures, 6)));
 
     /// <summary>True while the source is within its block after the last wrong password.</summary>
     public bool IsBlocked(IPAddress source, DateTimeOffset now) =>
@@ -26,10 +26,10 @@ public sealed class PasswordGuessLimit
         if (now >= nextSweep)
         {
             foreach (var (key, f) in failures)
-                if (now - f.Last >= Limits.PasswordFailureMemory) failures.Remove(key);
-            nextSweep = now + Limits.PasswordFailureMemory;
+                if (now - f.Last >= ServerTuning.PasswordFailureMemory) failures.Remove(key);
+            nextSweep = now + ServerTuning.PasswordFailureMemory;
         }
-        int count = failures.TryGetValue(source, out var old) && now - old.Last < Limits.PasswordFailureMemory ? old.Count : 0;
+        int count = failures.TryGetValue(source, out var old) && now - old.Last < ServerTuning.PasswordFailureMemory ? old.Count : 0;
         failures[source] = (count + 1, now);
     }
 

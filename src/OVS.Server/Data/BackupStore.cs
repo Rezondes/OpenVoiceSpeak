@@ -11,7 +11,7 @@ namespace OVS.Server.Data;
 /// Package 74 (A90): the backup archives (<see cref="BackupArchive"/>) in &lt;DataDir&gt;/backups: create, list, find,
 /// delete, the quota, and adopting a finished upload. Requests only ever name a file from List().
 /// </summary>
-public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount = Limits.MaxBackups, long maxBytes = Limits.MaxBackupBytes)
+public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount = ServerTuning.MaxBackups, long maxBytes = ServerTuning.MaxBackupBytes)
 {
     public const string FolderName = "backups";
     public const string Extension = ".ovsbackup";

@@ -1,10 +1,10 @@
 namespace OVS.Server;
 
 /// <summary>
-/// Package 86 (A103): tunable limits of the control channel in one place. The numbers are starting values,
+/// Tunable limits and timings of the server. The numbers are starting values,
 /// not protocol constants; clients only ever see RateLimited or a disconnect.
 /// </summary>
-public static class Limits
+public static class ServerTuning
 {
     // ---- Requests per session (Ping is not a request and never counts) ----
     public const double RequestsPerSecond = 20;

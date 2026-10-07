@@ -74,7 +74,7 @@ public sealed class ServerStoresTests() : TempDirectoryTest("ovs-stores-", quiet
         var other = Directory.CreateDirectory(Path.Combine(dir, "other")).FullName;
         var stores = ServerStores.Open(Config with { DataDir = other }, new ManualTimeProvider());
 
-        Assert.Throws<ArgumentException>(() => new ServerState(Config, new ManualTimeProvider(), new ServerLogs(dir, 0, new ManualTimeProvider(), _ => { }), stores));
+        Assert.Throws<ArgumentException>(() => new ServerState(Config, new ManualTimeProvider(), new ServerLogWriter(dir, 0, new ManualTimeProvider(), _ => { }), stores));
     }
 
     [Fact]

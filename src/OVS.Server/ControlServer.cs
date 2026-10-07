@@ -29,8 +29,8 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
 
     public TimeSpan HandshakeTimeout { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(15);
-    public TimeSpan WriteTimeout { get; init; } = Limits.WriteTimeout;
-    public int MaxPendingHandshakes { get; init; } = Limits.MaxPendingHandshakes;
+    public TimeSpan WriteTimeout { get; init; } = ServerTuning.WriteTimeout;
+    public int MaxPendingHandshakes { get; init; } = ServerTuning.MaxPendingHandshakes;
 
     public IPEndPoint LocalEndPoint => (IPEndPoint)listener.LocalEndpoint;
 

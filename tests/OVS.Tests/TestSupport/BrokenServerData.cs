@@ -42,7 +42,7 @@ static class BrokenServerData
             case "unknown-kind": lobby.Kind = (ChannelKind)7; break;
             case "channel-id-twice": d.Channels.Add(new ChannelRecord { Id = lobby.Id, Name = "Zweite" }); break;
             case "no-default-channel": d.DefaultChannelId = Guid.NewGuid(); break;
-            case "dangling-link": d.Links.Add(ChannelLink.Of(lobby.Id, Guid.NewGuid())); break;
+            case "dangling-link": d.Links.Add(ChannelLinkRecord.Of(lobby.Id, Guid.NewGuid())); break;
             case "separator-default": // Package 111
                 d.Channels.Single(c => c.Id == d.DefaultChannelId).Name = "";
                 d.Channels.Single(c => c.Id == d.DefaultChannelId).Kind = ChannelKind.Separator;
@@ -50,7 +50,7 @@ static class BrokenServerData
             case "separator-linked":
                 var separator = new ChannelRecord { Id = Guid.NewGuid(), Order = 9, Kind = ChannelKind.Separator };
                 d.Channels.Add(separator);
-                d.Links.Add(ChannelLink.Of(d.DefaultChannelId, separator.Id));
+                d.Links.Add(ChannelLinkRecord.Of(d.DefaultChannelId, separator.Id));
                 break;
             case "separator-named": d.Channels.Add(Separator(c => c.Name = "Name")); break;
             case "separator-with-options": d.Channels.Add(Separator(c => c.MaxUsers = 5)); break;

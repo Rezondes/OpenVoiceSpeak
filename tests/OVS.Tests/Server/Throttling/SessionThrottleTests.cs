@@ -22,7 +22,7 @@ public sealed class SessionThrottleTests
     /// <summary>Refuses a request every half FloodPause (no pause counts) from now until <paramref name="end"/> later.</summary>
     void RefuseRequestsFor(TimeSpan end)
     {
-        var half = Limits.FloodPause / 2;
+        var half = ServerTuning.FloodPause / 2;
         Assert.False(RefuseNextRequest());
         for (var elapsed = half; elapsed <= end; elapsed += half)
         {
@@ -34,37 +34,37 @@ public sealed class SessionThrottleTests
     [Fact]
     public void TakeRequest_WithinBurst_MayRun()
     {
-        for (int i = 0; i < Limits.RequestBurst; i++) Assert.Null(throttle.TakeRequest());
+        for (int i = 0; i < ServerTuning.RequestBurst; i++) Assert.Null(throttle.TakeRequest());
     }
 
     [Fact]
     public void TakeRequest_PastBurst_Refused()
     {
-        for (int i = 0; i < Limits.RequestBurst; i++) throttle.TakeRequest();
+        for (int i = 0; i < ServerTuning.RequestBurst; i++) throttle.TakeRequest();
         Assert.False(throttle.TakeRequest());
     }
 
     [Fact]
     public void TakeRequest_RefusedWithoutPause_DisconnectAfterFloodTime()
     {
-        RefuseRequestsFor(Limits.FloodDisconnectAfter - Limits.FloodPause / 2);
-        time.Advance(Limits.FloodPause / 2);
+        RefuseRequestsFor(ServerTuning.FloodDisconnectAfter - ServerTuning.FloodPause / 2);
+        time.Advance(ServerTuning.FloodPause / 2);
         Assert.True(RefuseNextRequest());
     }
 
     [Fact]
     public void TakeRequest_GapOfFloodPause_FloodGoesOn()
     {
-        RefuseRequestsFor(Limits.FloodDisconnectAfter - Limits.FloodPause);
-        time.Advance(Limits.FloodPause);
+        RefuseRequestsFor(ServerTuning.FloodDisconnectAfter - ServerTuning.FloodPause);
+        time.Advance(ServerTuning.FloodPause);
         Assert.True(RefuseNextRequest());
     }
 
     [Fact]
     public void TakeRequest_GapLongerThanFloodPause_StartsTheFloodTimeAgain()
     {
-        RefuseRequestsFor(Limits.FloodDisconnectAfter - Limits.FloodPause);
-        time.Advance(Limits.FloodPause + TimeSpan.FromTicks(1));
+        RefuseRequestsFor(ServerTuning.FloodDisconnectAfter - ServerTuning.FloodPause);
+        time.Advance(ServerTuning.FloodPause + TimeSpan.FromTicks(1));
         Assert.False(RefuseNextRequest());
     }
 
@@ -73,7 +73,7 @@ public sealed class SessionThrottleTests
     {
         var step = TimeSpan.FromMilliseconds(500);
         Assert.False(throttle.RefuseVoice());
-        for (var elapsed = step; elapsed < Limits.FloodDisconnectAfter; elapsed += step)
+        for (var elapsed = step; elapsed < ServerTuning.FloodDisconnectAfter; elapsed += step)
         {
             time.Advance(step);
             Assert.False(throttle.RefuseVoice());
@@ -87,7 +87,7 @@ public sealed class SessionThrottleTests
     {
         var step = TimeSpan.FromMilliseconds(500);
         Assert.False(throttle.RefuseVoice());
-        for (var elapsed = step; elapsed < Limits.FloodDisconnectAfter; elapsed += step)
+        for (var elapsed = step; elapsed < ServerTuning.FloodDisconnectAfter; elapsed += step)
         {
             time.Advance(step);
             Assert.False(throttle.RefuseVoice());
@@ -111,7 +111,7 @@ public sealed class SessionThrottleTests
     public void TakeFollowPage_AfterListRoundWindow_NotFree()
     {
         throttle.StartListRound(typeof(string));
-        time.Advance(Limits.ListRoundWindow + TimeSpan.FromSeconds(1));
+        time.Advance(ServerTuning.ListRoundWindow + TimeSpan.FromSeconds(1));
 
         Assert.False(throttle.TakeFollowPage(typeof(string), 200));
     }
@@ -120,7 +120,7 @@ public sealed class SessionThrottleTests
     public void TakeFollowPage_AtListRoundWindow_Free()
     {
         throttle.StartListRound(typeof(string));
-        time.Advance(Limits.ListRoundWindow);
+        time.Advance(ServerTuning.ListRoundWindow);
 
         Assert.True(throttle.TakeFollowPage(typeof(string), 200));
     }

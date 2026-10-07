@@ -631,7 +631,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     // ---- Package 89 (A101): the right BackupsManage, upload and restore only for the Admin group, full validation ----
 
     static Action<ServerData> AddGroup(string name, Permission permissions) =>
-        d => d.Groups.Add(new OVS.Server.Permissions.Group(Guid.NewGuid(), name, permissions));
+        d => d.Groups.Add(new OVS.Server.Permissions.GroupRecord(Guid.NewGuid(), name, permissions));
 
     [Fact]
     public async Task BackupsManage_Required_ServerConfigAloneNotEnough()

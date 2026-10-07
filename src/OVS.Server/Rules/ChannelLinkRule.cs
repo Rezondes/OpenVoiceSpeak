@@ -17,6 +17,6 @@ public static class ChannelLinkRule
     }
 
     /// <summary>Package 38: the link matrix cannot set and remove the same link in one request.</summary>
-    public static Refusal? CheckChanges(IEnumerable<ChannelLink> toAdd, IEnumerable<ChannelLink> toRemove) =>
+    public static Refusal? CheckChanges(IEnumerable<ChannelLinkRecord> toAdd, IEnumerable<ChannelLinkRecord> toRemove) =>
         toAdd.Intersect(toRemove).Any() ? new(Codes.InvalidValue, "A link cannot be set and removed at once.") : null;
 }

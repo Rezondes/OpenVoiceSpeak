@@ -50,7 +50,7 @@ public sealed partial class ServerState
             return;
         }
         var permissions = r.Permissions & Permission.All;
-        data.Groups.Add(new Group(Guid.NewGuid(), name, permissions));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), name, permissions));
         saves.Persist();
         logs.Server($"Gruppe '{name}' angelegt von {s.Nickname} ({permissions})");
         BroadcastGroups(); // Package 92: per recipient
@@ -271,7 +271,7 @@ public sealed partial class ServerState
         return true;
     }
 
-    bool FindAssignment(Session s, Request r, string fingerprint, Guid groupId, out UserRecord user, out Group group)
+    bool FindAssignment(Session s, Request r, string fingerprint, Guid groupId, out UserRecord user, out GroupRecord group)
     {
         user = FindUser(fingerprint)!;
         group = data.Groups.FirstOrDefault(g => g.Id == groupId)!;

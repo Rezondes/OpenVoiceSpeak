@@ -7,10 +7,10 @@ public sealed class LogJobQueue
     Task jobs = Task.CompletedTask;
     int queued;
 
-    /// <summary>Runs job after the session's earlier ones; false when Limits.MaxQueuedLogJobs are waiting already.</summary>
+    /// <summary>Runs job after the session's earlier ones; false when ServerTuning.MaxQueuedLogJobs are waiting already.</summary>
     public bool TryQueue(Action job)
     {
-        if (Interlocked.Increment(ref queued) > Limits.MaxQueuedLogJobs)
+        if (Interlocked.Increment(ref queued) > ServerTuning.MaxQueuedLogJobs)
         {
             Interlocked.Decrement(ref queued);
             return false;

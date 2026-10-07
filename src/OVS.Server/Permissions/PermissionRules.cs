@@ -16,23 +16,23 @@ public static class PermissionRules
     /// <summary>What a guest may do on a new server, and what existing servers add once (A28).</summary>
     public const Permission GuestPermissions = Permission.Speak | Permission.ChatChannel | Permission.ChatPrivate;
 
-    public static List<Group> DefaultGroups() =>
+    public static List<GroupRecord> DefaultGroups() =>
     [
         new(GuestGroupId, "Gast", GuestPermissions),
         new(Guid.NewGuid(), "Moderator", ModeratorPermissions),
         new(AdminGroupId, "Admin", Permission.All),
     ];
 
-    public static Permission Effective(IEnumerable<Guid> groupIds, IEnumerable<Group> groups)
+    public static Permission Effective(IEnumerable<Guid> groupIds, IEnumerable<GroupRecord> groups)
     {
         var ids = groupIds.ToHashSet();
         if (ids.Contains(AdminGroupId)) return Permission.All;
         return groups.Where(g => ids.Contains(g.Id)).Aggregate(Permission.None, (acc, g) => acc | g.Permissions);
     }
 
-    public static bool CanDeleteGroup(Permission actor, Group group) => GroupRules.CanDelete(actor, group.Id, group.Permissions);
+    public static bool CanDeleteGroup(Permission actor, GroupRecord group) => GroupRules.CanDelete(actor, group.Id, group.Permissions);
 
-    public static bool CanAssign(Permission actor, Group group) => GroupRules.CanAssign(actor, group.Id, group.Permissions);
+    public static bool CanAssign(Permission actor, GroupRecord group) => GroupRules.CanAssign(actor, group.Id, group.Permissions);
 
     public static bool WouldRemoveLastAdmin(IEnumerable<(string Fingerprint, IReadOnlyCollection<Guid> GroupIds)> users,
         string fingerprint, Guid groupId)

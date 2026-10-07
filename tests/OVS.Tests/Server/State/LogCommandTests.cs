@@ -374,7 +374,7 @@ public sealed class LogCommandTests
         Assert.Empty(Directory.GetFiles(ExportDir(server)));
 
         // the session ends: its prepared download goes with it
-        time.Advance(Limits.HeavyInterval);
+        time.Advance(ServerTuning.HeavyInterval);
         await PrepareAsync(admin, [.. files.Keys]);
         Assert.Single(Directory.GetFiles(ExportDir(server)));
         await admin.DisposeAsync();
@@ -398,7 +398,7 @@ public sealed class LogCommandTests
         var server = await TestServer.StartAsync(data =>
         {
             TestServer.Grant(admin, "Admin")(data);
-            var group = new Group(Guid.NewGuid(), "Leser", Permission.LogsView | Permission.Speak);
+            var group = new GroupRecord(Guid.NewGuid(), "Leser", Permission.LogsView | Permission.Speak);
             data.Groups.Add(group);
             data.Users.Add(new UserRecord { Fingerprint = reader.Fingerprint, LastNickname = "leser", GroupIds = [group.Id] });
         }, time: time);
@@ -421,7 +421,7 @@ public sealed class LogCommandTests
         Assert.False(Directory.Exists(ExportDir(server)) && Directory.EnumerateFileSystemEntries(ExportDir(server)).Any());
 
         // unknown or no files, unknown download
-        time.Advance(Limits.HeavyInterval);
+        time.Advance(ServerTuning.HeavyInterval);
         await chef.SendAsync(new PrepareLogDownload([id, "../server-data.json"]) { RequestId = "fremd" });
         Assert.Equal(Codes.NotFound, (await chef.ErrorAsync("fremd")).Code);
         await chef.SendAsync(new PrepareLogDownload([]) { RequestId = "leer" });

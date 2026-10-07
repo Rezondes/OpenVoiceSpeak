@@ -13,7 +13,7 @@ using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Server.Logging;
 
-public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: false)
+public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quiet: false)
 {
     /// <summary>File name of a run started at the provider's current time (plus an offset).</summary>
     static string Start(TimeProvider time, int offsetDays = 0) =>
@@ -35,7 +35,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
     public async Task ReaderLockingTheFile_LineIsNotLost()
     {
         // Regression: File.ReadAllText (and editors) lock the file against writers; the line used to be dropped.
-        var logs = new ServerLogs(dir, 30, new ManualTimeProvider(), _ => { });
+        var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), _ => { });
         logs.Server("eins");
         var path = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Single();
         var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -71,14 +71,14 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
         Assert.Fail($"Erwartet {string.Join(" | ", expected.Where(e => !text.Contains(e)))} in:\n{text}");
     }
 
-    // ---- ServerLogs itself ----
+    // ---- ServerLogWriter itself ----
 
     [Fact]
     public void ServerLine_GoesToConsoleAndFileOfThisStart()
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
-        var logs = new ServerLogs(dir, 30, time, console.Add);
+        var logs = new ServerLogWriter(dir, 30, time, console.Add);
         var start = Start(time);
         time.Advance(TimeSpan.FromMinutes(5));
         logs.Server("Hallo Welt");
@@ -94,13 +94,13 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
         var time = new ManualTimeProvider();
         var channel = Guid.NewGuid();
         var first = Start(time);
-        var logs = new ServerLogs(dir, 30, time, _ => { });
+        var logs = new ServerLogWriter(dir, 30, time, _ => { });
         logs.Server("Lauf eins");
         logs.Channel(channel, "Raid", "Lauf eins");
 
         time.Advance(TimeSpan.FromMinutes(90));
         var second = Start(time);
-        logs = new ServerLogs(dir, 30, time, _ => { });
+        logs = new ServerLogWriter(dir, 30, time, _ => { });
         logs.Server("Lauf zwei");
         logs.Channel(channel, "Raid", "Lauf zwei");
 
@@ -117,7 +117,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
     {
         var time = new ManualTimeProvider();
         var first = Start(time);
-        var logs = new ServerLogs(dir, 30, time, _ => { });
+        var logs = new ServerLogWriter(dir, 30, time, _ => { });
         logs.Server("eins");
         time.Advance(TimeSpan.FromDays(1));
         logs.Server("zwei");
@@ -131,7 +131,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
-        var logs = new ServerLogs(dir, 30, time, console.Add);
+        var logs = new ServerLogWriter(dir, 30, time, console.Add);
         var id = Guid.NewGuid();
         logs.Channel(id, "Raid", "anna hat den Channel betreten");
 
@@ -144,7 +144,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
     {
         // Regression (CWE-117): chat text and reasons come from guests; a CR/LF used to add a forged, timestamped line.
         var time = new ManualTimeProvider();
-        var logs = new ServerLogs(dir, 30, time, _ => { });
+        var logs = new ServerLogWriter(dir, 30, time, _ => { });
         var id = Guid.NewGuid();
         logs.Channel(id, "Raid", "hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\0e\u001b[31m");
         logs.Channel(id, "Raid", @"Pfad C:\neu äöü");
@@ -163,7 +163,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
-        var logs = new ServerLogs(dir, 30, time, console.Add);
+        var logs = new ServerLogWriter(dir, 30, time, console.Add);
         logs.Server("a\rb\nc\u2028d\u2029e\u001b[31mrot\u009b2J\u0007");
 
         var line = Assert.Single(console);
@@ -206,7 +206,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
         Touch(server, Start(time, -5));
         Touch(channel, Start(time, -40));
 
-        var logs = new ServerLogs(dir, 30, time, _ => { }); // cleanup at start
+        var logs = new ServerLogWriter(dir, 30, time, _ => { }); // cleanup at start
         Assert.False(File.Exists(Path.Combine(server, Start(time, -31) + ".log")));
         Assert.True(File.Exists(Path.Combine(server, Start(time, -5) + ".log")));
         Assert.False(File.Exists(Path.Combine(channel, Start(time, -40) + ".log")));
@@ -222,7 +222,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
         var start = Start(time);
-        var logs = new ServerLogs(dir, 30, time, _ => { }, newFileEachDay: false);
+        var logs = new ServerLogWriter(dir, 30, time, _ => { }, newFileEachDay: false);
         logs.Server("eins");
         Touch(server, Start(time, -29));
 
@@ -245,7 +245,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
         var server = Path.Combine(dir, "logs", "server");
         var start = Start(time);
         Touch(server, Start(time, -10));
-        var logs = new ServerLogs(dir, 30, time, _ => { });
+        var logs = new ServerLogWriter(dir, 30, time, _ => { });
         logs.Server("eins");
         Assert.True(File.Exists(Path.Combine(server, Start(time, -10) + ".log")));
 
@@ -263,7 +263,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
         Touch(server, Start(time, -400));
-        new ServerLogs(dir, 0, time, _ => { }).Server("x");
+        new ServerLogWriter(dir, 0, time, _ => { }).Server("x");
         Assert.True(File.Exists(Path.Combine(server, Start(time, -400) + ".log")));
     }
 
@@ -272,7 +272,7 @@ public sealed class ServerLogsTests() : TempDirectoryTest("ovs-logs-", quiet: fa
     {
         File.WriteAllText(Path.Combine(dir, "logs"), "ich bin eine Datei, kein Ordner");
         var console = new List<string>();
-        var logs = new ServerLogs(dir, 30, new ManualTimeProvider(), console.Add);
+        var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), console.Add);
         logs.Server("eins");
         logs.Channel(Guid.NewGuid(), "Raid", "zwei");
         logs.Server("drei");

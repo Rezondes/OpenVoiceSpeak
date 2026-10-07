@@ -12,7 +12,7 @@ public sealed partial class ServerState
     /// <summary>The per-session budget and the RequestId length; false when the request was answered or the session dropped.</summary>
     bool Admissible(Session s, string? requestId, bool isTransfer)
     {
-        var id = requestId is { Length: > Limits.MaxRequestIdLength } tooLong ? tooLong[..Limits.MaxRequestIdLength] : requestId;
+        var id = requestId is { Length: > ServerTuning.MaxRequestIdLength } tooLong ? tooLong[..ServerTuning.MaxRequestIdLength] : requestId;
         // Transfers are pull-based (one chunk per answer) and need the budget less than their speed does.
         switch (isTransfer ? null : s.Throttle.TakeRequest())
         {
@@ -24,7 +24,7 @@ public sealed partial class ServerState
                 return false;
         }
         if (id == requestId) return true;
-        s.Outbox.Send(new Error(id, Codes.InvalidValue, $"RequestId länger als {Limits.MaxRequestIdLength} Zeichen"));
+        s.Outbox.Send(new Error(id, Codes.InvalidValue, $"RequestId länger als {ServerTuning.MaxRequestIdLength} Zeichen"));
         return false;
     }
 
@@ -43,12 +43,12 @@ public sealed partial class ServerState
     static bool ThrottleList(Session s, Request r, int offset)
     {
         if (offset > 0 && s.Throttle.TakeFollowPage(r.GetType(), offset)) return true;
-        if (!Throttle(s, r, Limits.ListsPerSecond, Limits.ListBurst)) return false;
+        if (!Throttle(s, r, ServerTuning.ListsPerSecond, ServerTuning.ListBurst)) return false;
         if (offset <= 0) s.Throttle.StartListRound(r.GetType());
         return true;
     }
 
-    static bool ThrottleHeavy(Session s, Request r) => Throttle(s, r, 1 / Limits.HeavyInterval.TotalSeconds);
+    static bool ThrottleHeavy(Session s, Request r) => Throttle(s, r, 1 / ServerTuning.HeavyInterval.TotalSeconds);
 
     /// <summary>
     /// Needs no right, but one answer can be ~700 KB: from the cached string, once per IconInterval.
@@ -56,7 +56,7 @@ public sealed partial class ServerState
     /// </summary>
     void OnGetServerIcon(Session s, GetServerIcon r)
     {
-        bool allowed = s.Throttle.TryTakeCostly(r.GetType(), 1 / Limits.IconInterval.TotalSeconds, 1);
+        bool allowed = s.Throttle.TryTakeCostly(r.GetType(), 1 / ServerTuning.IconInterval.TotalSeconds, 1);
         if (!allowed && icon.Hash == s.ServedIconHash)
         {
             Fail(s, r, Codes.RateLimited);

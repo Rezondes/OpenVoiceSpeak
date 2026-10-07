@@ -98,7 +98,7 @@ public sealed partial class ServerState
             if (user is null && !newIdentities.TryCount(source, now, out bool firstRefusal))
             {
                 if (firstRefusal)
-                    logs.Server($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({Limits.NewIdentitiesPerHour} pro Stunde)");
+                    logs.Server($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({ServerTuning.NewIdentitiesPerHour} pro Stunde)");
                 return (null, new Rejected(Codes.RateLimited));
             }
 

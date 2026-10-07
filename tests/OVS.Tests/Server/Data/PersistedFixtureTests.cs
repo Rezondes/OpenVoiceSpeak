@@ -92,13 +92,13 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
                 new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000003"), Order = 2, Kind = ChannelKind.Separator },
                 new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000004"), Name = "Gesperrt", Order = 3, AllowedGroupIds = [] },
             ],
-            Links = [new ChannelLink(lobby, raid)],
+            Links = [new ChannelLinkRecord(lobby, raid)],
             Groups =
             [
-                new Group(WellKnownGroups.Guest, "Gast", Permission.Speak | Permission.ChatChannel | Permission.ChatPrivate),
-                new Group(moderator, "Moderator", PermissionRules.ModeratorPermissions),
-                new Group(WellKnownGroups.Admin, "Admin", Permission.All),
-                new Group(team, "Team", Permission.Speak | Permission.ChannelCreate | Permission.ChatChannel),
+                new GroupRecord(WellKnownGroups.Guest, "Gast", Permission.Speak | Permission.ChatChannel | Permission.ChatPrivate),
+                new GroupRecord(moderator, "Moderator", PermissionRules.ModeratorPermissions),
+                new GroupRecord(WellKnownGroups.Admin, "Admin", Permission.All),
+                new GroupRecord(team, "Team", Permission.Speak | Permission.ChannelCreate | Permission.ChatChannel),
             ],
             Users =
             [

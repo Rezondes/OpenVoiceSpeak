@@ -24,22 +24,22 @@ public sealed class AdminTokenGuessLimitTests
     [Fact]
     public void IsBlocked_BelowLimit_False()
     {
-        Fail(Limits.AdminTokenFailures - 1);
+        Fail(ServerTuning.AdminTokenFailures - 1);
         Assert.False(limit.IsBlocked(Source, Now));
     }
 
     [Fact]
     public void IsBlocked_LimitReached_True()
     {
-        Fail(Limits.AdminTokenFailures);
+        Fail(ServerTuning.AdminTokenFailures);
         Assert.True(limit.IsBlocked(Source, Now));
     }
 
     [Fact]
     public void IsBlocked_JustBeforeTheWindowEnds_True()
     {
-        Fail(Limits.AdminTokenFailures);
-        time.Advance(Limits.AdminTokenWindow - Tick);
+        Fail(ServerTuning.AdminTokenFailures);
+        time.Advance(ServerTuning.AdminTokenWindow - Tick);
         Assert.True(limit.IsBlocked(Source, Now));
     }
 
@@ -47,8 +47,8 @@ public sealed class AdminTokenGuessLimitTests
     public void IsBlocked_WindowAfterTheFirstFailure_False()
     {
         Fail(1);
-        time.Advance(Limits.AdminTokenWindow - TimeSpan.FromMinutes(1));
-        Fail(Limits.AdminTokenFailures - 1); // later failures do not move the window
+        time.Advance(ServerTuning.AdminTokenWindow - TimeSpan.FromMinutes(1));
+        Fail(ServerTuning.AdminTokenFailures - 1); // later failures do not move the window
         Assert.True(limit.IsBlocked(Source, Now));
         time.Advance(TimeSpan.FromMinutes(1));
         Assert.False(limit.IsBlocked(Source, Now));
@@ -57,17 +57,17 @@ public sealed class AdminTokenGuessLimitTests
     [Fact]
     public void RecordFailure_AfterTheWindowWasChecked_CountStartsAgain()
     {
-        Fail(Limits.AdminTokenFailures);
-        time.Advance(Limits.AdminTokenWindow);
+        Fail(ServerTuning.AdminTokenFailures);
+        time.Advance(ServerTuning.AdminTokenWindow);
         Assert.False(limit.IsBlocked(Source, Now));
-        Fail(Limits.AdminTokenFailures - 1);
+        Fail(ServerTuning.AdminTokenFailures - 1);
         Assert.False(limit.IsBlocked(Source, Now));
     }
 
     [Fact]
     public void IsBlocked_OtherSource_False()
     {
-        Fail(Limits.AdminTokenFailures);
+        Fail(ServerTuning.AdminTokenFailures);
         Assert.False(limit.IsBlocked(OtherSource, Now));
     }
 }

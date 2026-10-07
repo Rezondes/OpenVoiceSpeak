@@ -42,14 +42,14 @@ public sealed class SessionOutboxTests
 
         Assert.True(outbox.Aborted.IsCancellationRequested);
         Assert.Equal("Sendepuffer voll", outbox.AbortReason);
-        Assert.True(outbox.QueuedBytes <= Limits.MaxOutboxBytes, $"{outbox.QueuedBytes} bytes queued");
+        Assert.True(outbox.QueuedBytes <= ServerTuning.MaxOutboxBytes, $"{outbox.QueuedBytes} bytes queued");
     }
 
     [Fact]
     public void Send_OverMessageLimit_Aborts()
     {
         var outbox = new SessionOutbox();
-        for (int i = 0; i < Limits.MaxOutboxMessages; i++) outbox.Send(new Pong());
+        for (int i = 0; i < ServerTuning.MaxOutboxMessages; i++) outbox.Send(new Pong());
         Assert.False(outbox.Aborted.IsCancellationRequested);
 
         outbox.Send(new Pong());
@@ -77,9 +77,9 @@ public sealed class SessionOutboxTests
         for (int i = 0; i < 1000; i++) outbox.SendVoice(frame);
 
         Assert.Null(outbox.AbortReason);
-        Assert.Equal(Limits.MaxQueuedVoice, outbox.Outgoing.Count);
+        Assert.Equal(ServerTuning.MaxQueuedVoice, outbox.Outgoing.Count);
         outbox.Send(new Pong());
-        Assert.Equal(Limits.MaxQueuedVoice + 1, outbox.Outgoing.Count);
+        Assert.Equal(ServerTuning.MaxQueuedVoice + 1, outbox.Outgoing.Count);
     }
 
     [Fact]

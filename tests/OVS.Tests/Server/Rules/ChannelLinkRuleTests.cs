@@ -23,9 +23,9 @@ public class ChannelLinkRuleTests
     [Fact]
     public void CheckChanges_OneLinkSetAndRemoved_Refused() =>
         Assert.Equal(new Refusal(Codes.InvalidValue, "A link cannot be set and removed at once."),
-            ChannelLinkRule.CheckChanges([ChannelLink.Of(A, B)], [ChannelLink.Of(C, A), ChannelLink.Of(B, A)]));
+            ChannelLinkRule.CheckChanges([ChannelLinkRecord.Of(A, B)], [ChannelLinkRecord.Of(C, A), ChannelLinkRecord.Of(B, A)]));
 
     [Fact]
     public void CheckChanges_Disjoint_Allowed() =>
-        Assert.Null(ChannelLinkRule.CheckChanges([ChannelLink.Of(A, B)], [ChannelLink.Of(A, C)]));
+        Assert.Null(ChannelLinkRule.CheckChanges([ChannelLinkRecord.Of(A, B)], [ChannelLinkRecord.Of(A, C)]));
 }

@@ -25,9 +25,9 @@ public sealed class ChannelPasswordGuessLimit
         if (!failures.TryGetValue(sessionId, out var channels))
             failures[sessionId] = channels = [];
         channels.TryGetValue(channelId, out var f);
-        if (now - f.First > Limits.ChannelPasswordWindow || f.Count >= Limits.ChannelPasswordFailures) f = (0, now, default);
+        if (now - f.First > ServerTuning.ChannelPasswordWindow || f.Count >= ServerTuning.ChannelPasswordFailures) f = (0, now, default);
         f.Count++;
-        if (f.Count >= Limits.ChannelPasswordFailures) f.BlockedUntil = now + Limits.ChannelPasswordBlock;
+        if (f.Count >= ServerTuning.ChannelPasswordFailures) f.BlockedUntil = now + ServerTuning.ChannelPasswordBlock;
         channels[channelId] = f;
         return f.Count;
     }

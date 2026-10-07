@@ -152,7 +152,7 @@ public sealed class UdpVoiceServer : IDisposable
 
     /// <summary>
     /// Package 141 (A150): voice from the control connection. Checked like a UDP payload (target, at most MaxOpusSize bytes,
-    /// the base64 length before decoding), then the sender's voice budget (Limits.VoicePerSecond, shared with its UDP
+    /// the base64 length before decoding), then the sender's voice budget (ServerTuning.VoicePerSecond, shared with its UDP
     /// packets, never the request budget) and the same relay as UDP voice. Over the budget it is dropped quietly like UDP
     /// (TCP delivers in bursts after a stall, so an honest talker does that). An invalid one is dropped as well, but invalid
     /// ones without a pause end the session like a request flood (Package 86); unlike UDP the sender cannot be spoofed here. A frame not newer than the last one on UDP is stale (sent before the client switched
@@ -251,7 +251,7 @@ public sealed class UdpVoiceServer : IDisposable
             badPackets.Clear(); // also bounds the table to the sources of one second
             badSecond = second;
         }
-        return badPackets.GetValueOrDefault(source) >= Limits.BadVoicePacketsPerSecond;
+        return badPackets.GetValueOrDefault(source) >= ServerTuning.BadVoicePacketsPerSecond;
     }
 
     void CountBad(IPAddress source)

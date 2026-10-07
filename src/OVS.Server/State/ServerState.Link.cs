@@ -11,7 +11,7 @@ public sealed partial class ServerState
     void OnLinkChannels(Session s, LinkChannels r)
     {
         if (!Require(s, r, Permission.ChannelLink) || !CheckLink(s, r, r.A, r.B)) return;
-        var link = ChannelLink.Of(r.A, r.B);
+        var link = ChannelLinkRecord.Of(r.A, r.B);
         if (data.Links.Contains(link)) return;
         data.Links.Add(link);
         saves.Persist();
@@ -22,7 +22,7 @@ public sealed partial class ServerState
     void OnUnlinkChannels(Session s, UnlinkChannels r)
     {
         if (!Require(s, r, Permission.ChannelLink)) return;
-        var link = ChannelLink.Of(r.A, r.B);
+        var link = ChannelLinkRecord.Of(r.A, r.B);
         if (!data.Links.Remove(link)) return;
         saves.Persist();
         LogLink(link, $"entfernt von {s.Nickname}");
@@ -40,8 +40,8 @@ public sealed partial class ServerState
         var remove = (r.Remove ?? []).ToList();
         foreach (var l in add.Concat(remove))
             if (!CheckLink(s, r, l.A, l.B)) return;
-        var toAdd = add.Select(l => ChannelLink.Of(l.A, l.B)).Distinct().ToList();
-        var toRemove = remove.Select(l => ChannelLink.Of(l.A, l.B)).Distinct().ToList();
+        var toAdd = add.Select(l => ChannelLinkRecord.Of(l.A, l.B)).Distinct().ToList();
+        var toRemove = remove.Select(l => ChannelLinkRecord.Of(l.A, l.B)).Distinct().ToList();
         if (Refuse(s, r, ChannelLinkRule.CheckChanges(toAdd, toRemove))) return;
         toAdd.RemoveAll(data.Links.Contains);
         toRemove.RemoveAll(l => !data.Links.Contains(l));
@@ -64,7 +64,7 @@ public sealed partial class ServerState
     }
 
     /// <summary>A link concerns both channels, so it goes into both channel logs.</summary>
-    void LogLink(ChannelLink link, string what)
+    void LogLink(ChannelLinkRecord link, string what)
     {
         ChannelLog(link.A, $"Link zu {ChannelName(link.B)} {what}");
         ChannelLog(link.B, $"Link zu {ChannelName(link.A)} {what}");

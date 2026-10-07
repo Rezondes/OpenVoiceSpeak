@@ -37,8 +37,8 @@ public sealed class ChannelLockTests : IAsyncLifetime
     {
         server = await TestServer.StartAsync(d =>
         {
-            d.Groups.Insert(1, new Group(Guid.NewGuid(), "Raid", Permission.Speak));
-            d.Groups.Insert(1, new Group(Guid.NewGuid(), "Umgeher", Permission.Speak | Permission.ChannelPasswordBypass));
+            d.Groups.Insert(1, new GroupRecord(Guid.NewGuid(), "Raid", Permission.Speak));
+            d.Groups.Insert(1, new GroupRecord(Guid.NewGuid(), "Umgeher", Permission.Speak | Permission.ChannelPasswordBypass));
             int mod = d.Groups.FindIndex(x => x.Name == "Moderator");
             d.Groups[mod] = d.Groups[mod] with { Permissions = d.Groups[mod].Permissions | Permission.ChannelJoinFull };
             TestServer.Grant(adminId, "Admin")(d);

@@ -124,12 +124,12 @@ public sealed class RequestValidationTests
         using var harness = new StateHarness();
         var anna = harness.Admit("anna");
         StateHarness.Drain(anna);
-        var id = new string('x', Limits.MaxRequestIdLength + 1);
+        var id = new string('x', ServerTuning.MaxRequestIdLength + 1);
 
         harness.State.HandleMalformed(anna, id, "Unbekannter Typ");
 
         var error = Assert.IsType<Error>(Assert.Single(StateHarness.Drain(anna)));
-        Assert.Equal((id[..Limits.MaxRequestIdLength], Codes.InvalidValue), (error.RequestId, error.Code));
+        Assert.Equal((id[..ServerTuning.MaxRequestIdLength], Codes.InvalidValue), (error.RequestId, error.Code));
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class RequestValidationTests
     {
         using var harness = new StateHarness();
         var anna = harness.Admit("anna");
-        for (int i = 0; i < Limits.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
+        for (int i = 0; i < ServerTuning.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
         StateHarness.Drain(anna);
 
         harness.State.HandleMalformed(anna, "r", "Unbekannter Typ");
@@ -150,7 +150,7 @@ public sealed class RequestValidationTests
     {
         using var harness = new StateHarness();
         var anna = harness.Admit("anna");
-        for (int i = 0; i < Limits.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
+        for (int i = 0; i < ServerTuning.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
         StateHarness.Drain(anna);
 
         harness.Handle(anna, new CreateChannel("Raid", null!) { RequestId = "r" });

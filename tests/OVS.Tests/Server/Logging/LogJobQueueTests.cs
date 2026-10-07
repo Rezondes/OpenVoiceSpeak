@@ -39,7 +39,7 @@ public sealed class LogJobQueueTests : IDisposable
     ManualResetEventSlim FillBehindOneJob()
     {
         var lastRan = NewEvent();
-        for (int i = 1; i < Limits.MaxQueuedLogJobs - 1; i++) Assert.True(queue.TryQueue(() => { }));
+        for (int i = 1; i < ServerTuning.MaxQueuedLogJobs - 1; i++) Assert.True(queue.TryQueue(() => { }));
         Assert.True(queue.TryQueue(lastRan.Set));
         return lastRan;
     }

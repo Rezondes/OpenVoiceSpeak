@@ -20,8 +20,8 @@ public sealed class ServerData
     public ServerSettings Settings { get; set; } = new();
     public Guid DefaultChannelId { get; set; }
     public List<ChannelRecord> Channels { get; set; } = [];
-    public List<ChannelLink> Links { get; set; } = [];
-    public List<Group> Groups { get; set; } = [];
+    public List<ChannelLinkRecord> Links { get; set; } = [];
+    public List<GroupRecord> Groups { get; set; } = [];
     public List<UserRecord> Users { get; set; } = [];
     public List<BanRecord> Bans { get; set; } = [];
 

@@ -36,7 +36,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var store = new DataStore(FilePath);
         var data = store.LoadOrCreate(() => ServerData.CreateDefault(Config));
         data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Raid", Order = 1 });
-        data.Links.Add(ChannelLink.Of(data.Channels[0].Id, data.Channels[1].Id));
+        data.Links.Add(ChannelLinkRecord.Of(data.Channels[0].Id, data.Channels[1].Id));
         data.Users.Add(new UserRecord { Fingerprint = "ab", LastNickname = "x", GroupIds = [data.Groups[0].Id], FirstSeen = DateTimeOffset.UnixEpoch });
         store.Save(data);
 
@@ -135,7 +135,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         store.Save(old);
 
         var config = Config with { MaxUsers = 20, LogDays = 7, AutoRestartAt = new TimeOnly(3, 30), LogRotateDaily = false };
-        var logs = new ServerLogs(dir, 0, TimeProvider.System, _ => { });
+        var logs = new ServerLogWriter(dir, 0, TimeProvider.System, _ => { });
         _ = new ServerState(config, TimeProvider.System, logs, ServerStores.Open(config, TimeProvider.System));
 
         var migrated = store.LoadOrCreate(() => throw new InvalidOperationException());
@@ -215,11 +215,11 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var data = ServerData.CreateDefault(Config);
         data.DataVersion = 3;
         data.Groups.Clear();
-        data.Groups.Add(new Group(Guid.NewGuid(), "Verwalter", Permission.GroupsManage | Permission.Speak));
-        data.Groups.Add(new Group(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign));
-        data.Groups.Add(new Group(Guid.NewGuid(), "Banner", Permission.UserBan | Permission.UserKick));
-        data.Groups.Add(new Group(Guid.NewGuid(), "Normal", Permission.Speak | Permission.ChatChannel));
-        data.Groups.Add(new Group(Guid.NewGuid(), "Alles", Permission.None));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Verwalter", Permission.GroupsManage | Permission.Speak));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Banner", Permission.UserBan | Permission.UserKick));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Normal", Permission.Speak | Permission.ChatChannel));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Alles", Permission.None));
         store.Save(data);
         // as a version 3 file stores them: text flags, "All" for every right of that time
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
@@ -247,9 +247,9 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var store = new DataStore(FilePath);
         var data = ServerData.CreateDefault(Config);
         data.DataVersion = 4;
-        data.Groups.Add(new Group(Guid.NewGuid(), "Konfig", Permission.ServerConfig | Permission.Speak));
-        data.Groups.Add(new Group(Guid.NewGuid(), "Normal", Permission.Speak | Permission.LogsView));
-        data.Groups.Add(new Group(Guid.NewGuid(), "Alles", Permission.None));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Konfig", Permission.ServerConfig | Permission.Speak));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Normal", Permission.Speak | Permission.LogsView));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Alles", Permission.None));
         store.Save(data);
         // "All" as a version 4 file stores it for every right of that time
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
@@ -282,7 +282,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var store = new DataStore(FilePath);
         var data = ServerData.CreateDefault(Config);
         data.DataVersion = 5;
-        data.Groups.Add(new Group(Guid.NewGuid(), "Alles", Permission.None));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Alles", Permission.None));
         store.Save(data);
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
         json["groups"]!.AsArray().Single(g => g!["name"]!.GetValue<string>() == "Alles")!["permissions"] = "All";

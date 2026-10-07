@@ -47,7 +47,7 @@ public sealed class TestServer : IAsyncDisposable
 
         time ??= TimeProvider.System;
         var log = new ConcurrentQueue<string>();
-        var logs = new ServerLogs(dataDir, config.LogDays, time, log.Enqueue);
+        var logs = new ServerLogWriter(dataDir, config.LogDays, time, log.Enqueue);
         var certificate = ServerCertificate.LoadOrCreate(dataDir);
         // Same port number for TCP and UDP, like in production, so real clients find the voice socket.
         // Windows (Hyper-V, Docker) reserves chunks of the dynamic port range per protocol, so an ephemeral
@@ -65,8 +65,8 @@ public sealed class TestServer : IAsyncDisposable
                 // meanwhile and must not be dropped as idle (the timeouts themselves have their own tests).
                 IdleTimeout = idleTimeout ?? TimeSpan.FromSeconds(60),
                 HandshakeTimeout = handshakeTimeout ?? TimeSpan.FromSeconds(30),
-                WriteTimeout = writeTimeout ?? Limits.WriteTimeout,
-                MaxPendingHandshakes = maxPendingHandshakes ?? Limits.MaxPendingHandshakes,
+                WriteTimeout = writeTimeout ?? ServerTuning.WriteTimeout,
+                MaxPendingHandshakes = maxPendingHandshakes ?? ServerTuning.MaxPendingHandshakes,
             };
             UdpVoiceServer voice;
             try

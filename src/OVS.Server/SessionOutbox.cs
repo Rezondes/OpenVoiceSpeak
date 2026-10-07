@@ -13,7 +13,7 @@ namespace OVS.Server;
 /// </summary>
 public sealed class SessionOutbox
 {
-    readonly Channel<byte[]> outbox = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(Limits.MaxOutboxMessages) { SingleReader = true });
+    readonly Channel<byte[]> outbox = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(ServerTuning.MaxOutboxMessages) { SingleReader = true });
     readonly CancellationTokenSource aborted = new();
     long queuedBytes;
     volatile bool closing; // after Close or Abort: later messages are dropped quietly
@@ -45,19 +45,19 @@ public sealed class SessionOutbox
             Abort("Nachricht zu gross");
             return;
         }
-        if (Interlocked.Add(ref queuedBytes, frame.Length) <= Limits.MaxOutboxBytes && outbox.Writer.TryWrite(frame)) return;
+        if (Interlocked.Add(ref queuedBytes, frame.Length) <= ServerTuning.MaxOutboxBytes && outbox.Writer.TryWrite(frame)) return;
         Interlocked.Add(ref queuedBytes, -frame.Length);
         if (!closing) Abort("Sendepuffer voll");
     }
 
     /// <summary>
     /// Package 141: a VoiceDown frame for a listener on TCP. Never blocks and never aborts: dropped while the outbox already
-    /// holds <see cref="Limits.MaxQueuedVoice"/> messages or half its bytes, so a slow reader only loses voice and the
+    /// holds <see cref="ServerTuning.MaxQueuedVoice"/> messages or half its bytes, so a slow reader only loses voice and the
     /// relay never waits for it.
     /// </summary>
     public void SendVoice(byte[]? frame)
     {
-        if (closing || frame is null || outbox.Reader.Count >= Limits.MaxQueuedVoice || QueuedBytes + frame.Length > Limits.MaxOutboxBytes / 2) return;
+        if (closing || frame is null || outbox.Reader.Count >= ServerTuning.MaxQueuedVoice || QueuedBytes + frame.Length > ServerTuning.MaxOutboxBytes / 2) return;
         Interlocked.Add(ref queuedBytes, frame.Length);
         if (!outbox.Writer.TryWrite(frame)) Interlocked.Add(ref queuedBytes, -frame.Length);
     }

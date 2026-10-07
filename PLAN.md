@@ -389,7 +389,7 @@ Alle Packages 1 bis 61 sind umgesetzt. Die Tests laufen mit `dotnet test` und `c
 | 17 | Pegelmesser mit Markierung der Schwelle | Pegel und Schwellen-Slider auf derselben Skala direkt untereinander, dazu die Anzeige "über/unter der Schwelle" | Der Slider-Knopf ist die Markierung. |
 | alle | eigene Dateien für DataStore, Group, VoiceCrypto, ReplayWindow, RateLimiter, AudioFormat, TransmitController, VoiceActivityDetector, FrameChunker, IdentityStore, KnownServers, AudioDevices | jeweils in der thematisch passenden Datei zusammengefasst, z. B. `DataStore` in `Data/ServerData.cs` | weniger Kleinstdateien. Die Tests sind entsprechend zusammengefasst. |
 | Tests | Netzwerktests auf Port 0 | Zufallsport zwischen 20000 und 45000 mit Wiederholung | TCP und UDP brauchen dieselbe Portnummer, und Windows reserviert für UDP Teile des dynamischen Bereichs. |
-| 31 | `ServerLogsTests > "Chat_Logged_PrivateWithoutContent"` | `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` | Der Test braucht drei verbundene Clients, die Hilfen dafür liegen in `ChatTests`. |
+| 31 | `ServerLogWriterTests > "Chat_Logged_PrivateWithoutContent"` | `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` | Der Test braucht drei verbundene Clients, die Hilfen dafür liegen in `ChatTests`. |
 | 32 | AC8 (Scrollverhalten) als manueller Check | `UiSmokeTests > "Chat_FollowsNewLines_UnlessScrolledUp"` | Headless mit Skia lässt sich das Scrollen verlässlich prüfen. |
 | 32 | "Allgemein" zeigt Meldungen ab dem Verbinden | "Allgemein" übernimmt beim Verbinden auch die Meldungen davor | So geht z. B. eine Geräte-Warnung vom Start nicht verloren, wie früher in der Aktivität. |
 | 49 | `sections/*.tsx`, `styles.css`, Screenshots als PNG | alle Abschnitte in `App.tsx`, Stil in `index.css`, Screenshots als WebP (je Sprache hell und dunkel), Icons aus den Fluent-Pfaden des Clients (`icons.ts`) | eine kleine Seite braucht keine Aufteilung, WebP ist etwa ein Drittel so gross. In der Galerie steht der Privatchat statt einer Wiederholung des Hero-Bilds. |
@@ -691,7 +691,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerConfigTests"`
    - `"SameIdentityTwice_OldSessionReplaced"` (AC8)
    - `"NoHandshake_ClosedAfterTimeout"` mit Timeout 200 ms (AC9)
    - `"NoPing_SessionRemovedAfterIdleTimeout"` mit Timeout 300 ms (AC10)
-   - `LimitsTests > "OverLimitConnection_ClosedBeforeTls"` (AC11)
+   - `ServerTuningTests > "OverLimitConnection_ClosedBeforeTls"` (AC11)
      (Hinweis zur Referenz: Seit f598a4e wird eine Verbindung über dem Limit pro IP schon vor TLS geschlossen, statt `Rejected(TooManyConnections)` zu bekommen; der Test prüft das Schliessen.)
 4. Manueller Check zu AC14: `dotnet run --project src/OVS.Server` und die Logausgabe ansehen.
 
@@ -1834,16 +1834,16 @@ Bisher schreibt der Server nur wenige Zeilen auf die Konsole (`docker compose lo
 
 ### Tests (TDD)
 
-`ServerLogsTests.cs`, mit `ManualTimeProvider` und temporärem Datenverzeichnis:
+`ServerLogWriterTests.cs`, mit `ManualTimeProvider` und temporärem Datenverzeichnis:
 1. `"ServerLine_GoesToConsoleAndFileOfThisStart"`, `"EachStart_OwnFile_SharedByServerAndChannelLogs"`, `"DayChange_StartsNewFile_NamedAfterThatMoment"` (AC1)
 2. `"ConnectDisconnectRejected_Logged"`, `"AdminActions_LoggedWithActor"` für Gruppen, Zuweisung, Einstellungen, Kick, Ban, Unban und Server-Mute (AC2)
 3. `"JoinMoveLeave_LoggedInChannelLogs"` (Beitritt, Verschieben im alten und neuen Channel, Trennen), `"Link_LoggedInBothChannels_EditDeleteLogged"` (AC3)
 4. `"TokenAndPassword_NeverInFiles"` (AC4)
 5. `"OldFiles_DeletedAfterRetention"`, `"RetentionZero_KeepsAll"` und in `ServerConfigTests` `"Load_InvalidLogDays_Throws"` (AC5)
-6. `ServerLogsTests > "WriteFailure_DoesNotThrow_ReportsOnce"`, dazu `"ReaderLockingTheFile_LineIsNotLost"`: Ein Leser, der die Datei sperrt, kostet keine Zeile (AC6)
+6. `ServerLogWriterTests > "WriteFailure_DoesNotThrow_ReportsOnce"`, dazu `"ReaderLockingTheFile_LineIsNotLost"`: Ein Leser, der die Datei sperrt, kostet keine Zeile (AC6)
 7. `"RenamedChannel_SameFolderAfterRestart"` (AC7)
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerLogsTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerLogWriterTests"`
 
 ### Out of Scope
 
@@ -1957,13 +1957,13 @@ Bisher läuft ein Serverprozess, bis er gestoppt wird, und nach Mitternacht begi
 
 ### Tests (TDD)
 
-1. `ServerHostTests > "NextRestart_TodayOrTomorrow_InLocalTime"` für vor, nach, genau zur Uhrzeit und knapp davor (AC1)
+1. `RestartScheduleTests > "NextAfter_TodayOrTomorrow_InLocalTime"` für vor, nach, genau zur Uhrzeit und knapp davor (AC1)
 2. `ServerHostTests > "AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles"`: echter Lauf mit Neustart in 5 s, Client bekommt `ServerRestart`, ein neuer Client kommt in den neuen Lauf, zwei Logdateien (AC1, AC2, AC3)
 3. `ServerConfigTests > "Load_AutoRestart_OffByDefault_TimeDefaultsTo4am"`, `"Load_AutoRestartAndLogRotation_FromFile_EnvWins"`, `"Load_LogRotateDaily_OnByDefault"`, `"Load_InvalidRestartOrRotation_Throws"` (AC1, AC4)
-4. `ServerLogsTests > "RotateDailyOff_FileLastsUntilRestart_OldFilesStillDeleted"` (AC5)
+4. `ServerLogWriterTests > "RotateDailyOff_FileLastsUntilRestart_OldFilesStillDeleted"` (AC5)
 5. `ServerHostTests > "ShuttingDown_HandshakeRejectedWithTheReason"`, Regression aus Test 2, der vereinzelt einen Client im alten Lauf fand (AC6)
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerHostTests|FullyQualifiedName~ServerConfigTests|FullyQualifiedName~ServerLogsTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerHostTests|FullyQualifiedName~ServerConfigTests|FullyQualifiedName~ServerLogWriterTests"`
 
 ### Out of Scope
 
@@ -2408,10 +2408,10 @@ Es gibt heute keinen Text-Chat. Die Rechte belegen die Bits 0 bis 12, die neuen 
 2. `ChatTests > "NoRight_PermissionDenied_NobodyGetsIt"` als Theory je Ziel (AC2)
 3. `ChatTests > "Invalid_EmptyTooLongOfflineSelf"` (AC3), `"RateLimit_SixthInFiveSeconds"` mit `ManualTimeProvider` (AC4), `"ServerMuted_CanWrite"` (AC5)
 4. `PermissionRulesTests > "DefaultGroups_HaveDocumentedPermissions"` (um die Chat-Rechte erweitert) und `DataStoreTests > "LoadVersion1_GuestGetsChatRights_Once"` (AC6)
-5. `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` (AC7, beim Chat statt in `ServerLogsTests`, weil es drei verbundene Clients braucht)
+5. `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` (AC7, beim Chat statt in `ServerLogWriterTests`, weil es drei verbundene Clients braucht)
 6. `DebugApiTests > "Chat_RoundTrip"` zwischen zwei echten Clients (AC8), `ClientLogTests` für `ChatMessage` und `SendChat`
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~DataStoreTests|FullyQualifiedName~ServerLogsTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~ClientLogTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~DataStoreTests|FullyQualifiedName~ServerLogWriterTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~ClientLogTests"`
 
 ### Umsetzungsschritte
 
@@ -4486,10 +4486,10 @@ Testbefehl: `dotnet test`
 4. `AdminCommandTests > "MaxUsersLowered_NextJoinRejected_NobodyKicked"` (AC3)
    - Gegeben: 3 Nutzer verbunden, Limit auf 2
    - Erwartet: alle 3 bleiben, ein vierter bekommt `ServerFull`
-5. `ServerHostTests > "AutoRestartChanged_ScheduleFollows"` (AC3)
+5. `RestartScheduleTests > "AutoRestartChanged_ScheduleFollows"` (AC3)
    - Gegeben: `ManualTimeProvider`, Neustart aus, dann per Einstellung an für in 10 Minuten
    - Erwartet: nach 10 Minuten Zeitvorschub startet ein neuer Lauf. Ausschalten davor verhindert ihn.
-6. `ServerLogsTests > "RetentionChangedAtRuntime_NextCleanupUsesIt"` (AC3)
+6. `ServerLogWriterTests > "RetentionChangedAtRuntime_NextCleanupUsesIt"` (AC3)
 7. `AdminViewModelTests > "SaveServerSettings_SendsAllFields"` (AC1), bestehende `AdminViewModelTests > "SaveServerSettings_PasswordSemantics"` bleibt grün
 8. `UiSmokeTests`: neue Felder im Server-Tab, `LocalizationTests` (AC6)
 
@@ -5472,7 +5472,7 @@ Test command: `dotnet test tests/OVS.Tests`
 - `src/OVS.Server/ServerState.cs` (change): budget check in `Handle`, no-op suppression
 - `src/OVS.Server/Data/ServerIconStore.cs` (change): cached base64
 - `src/OVS.Server/Commands/ChannelCommands.cs`, `AdminCommands.cs`, `BackupCommands.cs`, `LogCommands.cs` (change)
-- `tests/OVS.Tests/Server/LimitsTests.cs` (new)
+- `tests/OVS.Tests/Server/ServerTuningTests.cs` (new)
 
 ### Context
 
@@ -5494,13 +5494,13 @@ Audit findings:
 
 ### Tests (TDD)
 
-1. `LimitsTests > "RequestFlood_RateLimited_ThenDisconnected"` (AC1)
-2. `LimitsTests > "ServerIcon_CachedAndThrottled"` (AC2)
-3. `LimitsTests > "AdminTokenGuessing_Throttled_Logged"` (AC2)
-4. `LimitsTests > "NoOpJoinAndSelfState_NoBroadcast"` (AC3)
-5. `LimitsTests > "NonReadingClient_DisconnectedAndSlotFreed"` (AC4): a raw TLS client that never reads, flooding icon requests; the server stays under the byte cap and the slot is free within the timeout
-6. `LimitsTests > "LongRequestId_Rejected"` (AC5)
-7. `LimitsTests > "OverLimitConnection_ClosedBeforeTls"` (AC6)
+1. `ServerTuningTests > "RequestFlood_RateLimited_ThenDisconnected"` (AC1)
+2. `ServerTuningTests > "ServerIcon_CachedAndThrottled"` (AC2)
+3. `ServerTuningTests > "AdminTokenGuessing_Throttled_Logged"` (AC2)
+4. `ServerTuningTests > "NoOpJoinAndSelfState_NoBroadcast"` (AC3)
+5. `ServerTuningTests > "NonReadingClient_DisconnectedAndSlotFreed"` (AC4): a raw TLS client that never reads, flooding icon requests; the server stays under the byte cap and the slot is free within the timeout
+6. `ServerTuningTests > "LongRequestId_Rejected"` (AC5)
+7. `ServerTuningTests > "OverLimitConnection_ClosedBeforeTls"` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5686,8 +5686,8 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Tests (TDD)
 
-1. `ServerLogsTests > "ConsoleLine_EscapedLikeFile"` (AC1)
-2. `ServerLogsTests > "ChatWithFakeLine_OneLineOnly"` (AC2)
+1. `ServerLogWriterTests > "ConsoleLine_EscapedLikeFile"` (AC1)
+2. `ServerLogWriterTests > "ChatWithFakeLine_OneLineOnly"` (AC2)
 3. `LogCommandTests > "RefusedSearch_NotLogged"` (AC3)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -8248,7 +8248,7 @@ Test command: `dotnet test tests/OVS.Tests`
 - `src/OVS.Client/Net/VoiceClient.cs`, `Net/ClientConnection.cs` (change): a voice transport that switches to TCP per A150 and back when UDP answers again; `VoiceDown` raises `VoiceReceived` like UDP
 - `src/OVS.Client/ViewModels/MainViewModel.cs` (change): the ping text ", Sprache über TCP"
 - `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
-- `tests/OVS.Tests/Server/VoiceRelayTests.cs`, `VoiceRoutingTests.cs`, `LimitsTests.cs`, `Client/ClientNetTests.cs` (change)
+- `tests/OVS.Tests/Server/VoiceRelayTests.cs`, `VoiceRoutingTests.cs`, `ServerTuningTests.cs`, `Client/ClientNetTests.cs` (change)
 
 ### Context
 
@@ -8267,11 +8267,11 @@ Voice is UDP only; a TCP fallback was out of scope until now and the user asked 
 
 1. `VoiceRoutingTests` and `VoiceRelayTests` extended with a TCP variant (AC3)
 2. `VoiceRelayTests > "TcpAndUdp_Mixed"` (AC2)
-3. `LimitsTests > "VoiceUp_OwnBudget"` (AC4)
+3. `ServerTuningTests > "VoiceUp_OwnBudget"` (AC4)
 4. `ClientNetTests > "UdpBlocked_VoiceOverTcp"` (AC1, AC6)
 5. `ClientNetTests > "UdpBack_SwitchesBack"` (AC5)
 
-(as built: `VoiceUp(Seq, Target, Opus)` and `VoiceDown(SessionId, Seq, Target, Opus)` carry the frame number and the Opus frame as base64; protocol version 15. An empty `VoiceUp` only moves the session's voice to TCP, so a client that only listens gets `VoiceDown` too (the plan named no switch message); the client repeats it with every Hello while on TCP (review), as one can be lost or overtaken by an older UDP ping, and it takes no voice token (it relays nothing, like a `Ping`), so the repeats cannot starve the UDP Hellos that share the budget. It carries the next frame number. The server marks the session `TcpVoice` on a `VoiceUp` and clears it on a UDP ping or voice packet, not on a Hello, which is only the client's probe. The server sends each frame to each recipient on one path only, and the client sends each frame once, so no frame is duplicated; during a switch the server may still use the old path for a moment (the client accepts `VoiceDown` on either path). Stale TCP voice after a switch back is limited (review): the client drops the `VoiceUp` frames still queued when a Hello is answered, and the server ignores a `VoiceUp` whose frame number is not newer than the sender's last UDP frame (`Session.LastUdpFrame`), so it neither plays twice nor moves the session to TCP again; at most the one frame being written can still arrive, and the next UDP ping undoes its switch. Likewise a listen-only client's announce in flight can set `TcpVoice` again after the ping that cleared it; harmless (the client accepts `VoiceDown`) until its next ping clears it. `VoiceUp` is no request: the control read loop hands it (like `Ping`) to `UdpVoiceServer.VoiceUpAsync` through `ServerState.VoiceOverTcp`, which checks it like a UDP payload (target 0 or 1, base64 length before decoding, at most `MaxOpusSize` bytes; anything else dropped quietly) and takes a token of the sender's voice budget `Session.Limiter` (`Limits.VoicePerSecond` 60, `VoiceBurst` 10), the same bucket as its UDP packets and never the request budget. Over the budget a valid frame is dropped quietly like UDP: TCP delivers in bursts after a retransmission stall, so an honest talker exceeds the burst of 10 now and then (second review). Invalid ones (target, size, base64) count toward Package 86's flood rule with their own clock (`Session.RefuseVoice`, sharing `Flooding` with `TakeRequest`): invalid ones without a pause over `FloodPause` for `FloodDisconnectAfter` end the session with `RateLimited` (`ServerState.DisconnectFlood`). UDP refusals do not count (spoofable). A repeated empty switch on a session already on TCP returns before the voice gate. After the way in, UDP and TCP senders share `VoiceAsync` (uplink window of 133, routing through `ServerState.VoiceRecipients`, the speech time of 70) and `RelayAsync` (`TrackFrame` and the copies of 136); a `SemaphoreSlim` in `UdpVoiceServer` now serialises the UDP loop and the `VoiceUp` handlers, as both touch the sessions' voice state. `VoiceRouting.Recipients` accepts a bound UDP endpoint or `TcpVoice`. A TCP listener never gets copies (a reliable leg loses nothing) but, like UDP listeners without copies, a frame recovered from a UDP sender's copy as its own `VoiceDown` first; `VoiceDown` is encoded once per frame for all TCP listeners and queued with `Session.SendVoice`, which drops it (never aborts) while the outbox holds `Limits.MaxQueuedVoice` (15, 300 ms after review, so a slow listener's delay stays bounded) messages or half its bytes, so a slow reader loses voice, not its connection, and holds up nobody. Loss over TCP: the server still counts the frames in the uplink window (so a switch makes no false gaps), the client reports `UplinkLoss` as zero while on TCP, counts `VoiceDown` in its downlink window and sends no copies there; the loss adapter (135) gets no figures on TCP and keeps its bitrate. Client: `VoiceClient` takes the `ClientConnection` and moves to TCP when UDP has not answered 5 s after `Start`, or at once when lost (15 s, Package 126); it goes back as soon as a Hello is answered, and its next ping moves the server back. Deviation: UDP is tried with 126's Hellos every 2 s, not every 30 s, which meets AC5's 30 s and needs no extra timer. `ClientConnection.SendVoice` never waits: a bounded queue of 10 frames (200 ms, more is dropped) written in order by its own loop (not marked single-reader, as `DropPendingVoice` reads too), emptied by `DropPendingVoice` on the switch back; `VoiceDown` is raised by its own event on the receive thread, outside `MessageReceived`. The ping text shows ", Sprache über TCP" / ", voice over TCP" (`Ping_VoiceOverTcp`) instead of the UDP warning; the signal icon stays crossed out while UDP is unreachable. Tests: `VoiceRoutingTests` run routing, rights, deafened and muted cases for both paths, `VoiceRelayTests > Tcp_RoutingLikeUdp`, `Tcp_InvalidVoice_Dropped` and `TcpAndUdp_Mixed` (AC2, AC3), `Tcp_StaleVoiceUp_AfterUdp_Ignored`, `LimitsTests > VoiceUp_OwnBudget`, `VoiceUpFlood_Disconnected_TalkingIsNot` (also bursts of 20 every second) and `VoiceDown_SlowListener_DroppedNotAborted` (AC4), `ClientNetTests > UdpBlocked_VoiceOverTcp` (AC1, AC6; also the repeated switch) and `UdpBack_SwitchesBack` (AC5), `MainViewModelTests > VoiceOverTcp_ShownInPingText` (AC5); `VoicePacketTests` no longer pins the version, `SmokeTests` pins 15. Not tested on their own: that `RelayAsync` queues TCP voice through the dropping `Session.SendVoice` (seen in the code; a reliable test needs a listener whose socket buffers fill) and the client's cap of 10 queued frames (racy against its write loop).)
+(as built: `VoiceUp(Seq, Target, Opus)` and `VoiceDown(SessionId, Seq, Target, Opus)` carry the frame number and the Opus frame as base64; protocol version 15. An empty `VoiceUp` only moves the session's voice to TCP, so a client that only listens gets `VoiceDown` too (the plan named no switch message); the client repeats it with every Hello while on TCP (review), as one can be lost or overtaken by an older UDP ping, and it takes no voice token (it relays nothing, like a `Ping`), so the repeats cannot starve the UDP Hellos that share the budget. It carries the next frame number. The server marks the session `TcpVoice` on a `VoiceUp` and clears it on a UDP ping or voice packet, not on a Hello, which is only the client's probe. The server sends each frame to each recipient on one path only, and the client sends each frame once, so no frame is duplicated; during a switch the server may still use the old path for a moment (the client accepts `VoiceDown` on either path). Stale TCP voice after a switch back is limited (review): the client drops the `VoiceUp` frames still queued when a Hello is answered, and the server ignores a `VoiceUp` whose frame number is not newer than the sender's last UDP frame (`Session.LastUdpFrame`), so it neither plays twice nor moves the session to TCP again; at most the one frame being written can still arrive, and the next UDP ping undoes its switch. Likewise a listen-only client's announce in flight can set `TcpVoice` again after the ping that cleared it; harmless (the client accepts `VoiceDown`) until its next ping clears it. `VoiceUp` is no request: the control read loop hands it (like `Ping`) to `UdpVoiceServer.VoiceUpAsync` through `ServerState.VoiceOverTcp`, which checks it like a UDP payload (target 0 or 1, base64 length before decoding, at most `MaxOpusSize` bytes; anything else dropped quietly) and takes a token of the sender's voice budget `Session.Limiter` (`ServerTuning.VoicePerSecond` 60, `VoiceBurst` 10), the same bucket as its UDP packets and never the request budget. Over the budget a valid frame is dropped quietly like UDP: TCP delivers in bursts after a retransmission stall, so an honest talker exceeds the burst of 10 now and then (second review). Invalid ones (target, size, base64) count toward Package 86's flood rule with their own clock (`Session.RefuseVoice`, sharing `Flooding` with `TakeRequest`): invalid ones without a pause over `FloodPause` for `FloodDisconnectAfter` end the session with `RateLimited` (`ServerState.DisconnectFlood`). UDP refusals do not count (spoofable). A repeated empty switch on a session already on TCP returns before the voice gate. After the way in, UDP and TCP senders share `VoiceAsync` (uplink window of 133, routing through `ServerState.VoiceRecipients`, the speech time of 70) and `RelayAsync` (`TrackFrame` and the copies of 136); a `SemaphoreSlim` in `UdpVoiceServer` now serialises the UDP loop and the `VoiceUp` handlers, as both touch the sessions' voice state. `VoiceRouting.Recipients` accepts a bound UDP endpoint or `TcpVoice`. A TCP listener never gets copies (a reliable leg loses nothing) but, like UDP listeners without copies, a frame recovered from a UDP sender's copy as its own `VoiceDown` first; `VoiceDown` is encoded once per frame for all TCP listeners and queued with `Session.SendVoice`, which drops it (never aborts) while the outbox holds `ServerTuning.MaxQueuedVoice` (15, 300 ms after review, so a slow listener's delay stays bounded) messages or half its bytes, so a slow reader loses voice, not its connection, and holds up nobody. Loss over TCP: the server still counts the frames in the uplink window (so a switch makes no false gaps), the client reports `UplinkLoss` as zero while on TCP, counts `VoiceDown` in its downlink window and sends no copies there; the loss adapter (135) gets no figures on TCP and keeps its bitrate. Client: `VoiceClient` takes the `ClientConnection` and moves to TCP when UDP has not answered 5 s after `Start`, or at once when lost (15 s, Package 126); it goes back as soon as a Hello is answered, and its next ping moves the server back. Deviation: UDP is tried with 126's Hellos every 2 s, not every 30 s, which meets AC5's 30 s and needs no extra timer. `ClientConnection.SendVoice` never waits: a bounded queue of 10 frames (200 ms, more is dropped) written in order by its own loop (not marked single-reader, as `DropPendingVoice` reads too), emptied by `DropPendingVoice` on the switch back; `VoiceDown` is raised by its own event on the receive thread, outside `MessageReceived`. The ping text shows ", Sprache über TCP" / ", voice over TCP" (`Ping_VoiceOverTcp`) instead of the UDP warning; the signal icon stays crossed out while UDP is unreachable. Tests: `VoiceRoutingTests` run routing, rights, deafened and muted cases for both paths, `VoiceRelayTests > Tcp_RoutingLikeUdp`, `Tcp_InvalidVoice_Dropped` and `TcpAndUdp_Mixed` (AC2, AC3), `Tcp_StaleVoiceUp_AfterUdp_Ignored`, `ServerTuningTests > VoiceUp_OwnBudget`, `VoiceUpFlood_Disconnected_TalkingIsNot` (also bursts of 20 every second) and `VoiceDown_SlowListener_DroppedNotAborted` (AC4), `ClientNetTests > UdpBlocked_VoiceOverTcp` (AC1, AC6; also the repeated switch) and `UdpBack_SwitchesBack` (AC5), `MainViewModelTests > VoiceOverTcp_ShownInPingText` (AC5); `VoicePacketTests` no longer pins the version, `SmokeTests` pins 15. Not tested on their own: that `RelayAsync` queues TCP voice through the dropping `Session.SendVoice` (seen in the code; a reliable test needs a listener whose socket buffers fill) and the client's cap of 10 queued frames (racy against its write loop).)
 
 Test command: `dotnet test tests/OVS.Tests`
 

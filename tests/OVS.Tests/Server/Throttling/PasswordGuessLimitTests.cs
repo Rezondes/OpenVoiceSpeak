@@ -47,14 +47,14 @@ public sealed class PasswordGuessLimitTests
     [Fact]
     public void IsBlocked_BelowFreeFailures_False()
     {
-        Fail(Limits.FreePasswordFailures - 1);
+        Fail(ServerTuning.FreePasswordFailures - 1);
         Assert.False(limit.IsBlocked(Source, Now));
     }
 
     [Fact]
     public void IsBlocked_FreeFailuresReached_TrueUntilOneMinuteAfterTheLast()
     {
-        Fail(Limits.FreePasswordFailures);
+        Fail(ServerTuning.FreePasswordFailures);
         Assert.True(limit.IsBlocked(Source, Now));
         time.Advance(TimeSpan.FromMinutes(1) - Tick);
         Assert.True(limit.IsBlocked(Source, Now));
@@ -65,15 +65,15 @@ public sealed class PasswordGuessLimitTests
     [Fact]
     public void IsBlocked_OtherSource_False()
     {
-        Fail(Limits.FreePasswordFailures);
+        Fail(ServerTuning.FreePasswordFailures);
         Assert.False(limit.IsBlocked(OtherSource, Now));
     }
 
     [Fact]
     public void RecordFailure_JustWithinTheMemory_CountGoesOn()
     {
-        Fail(Limits.FreePasswordFailures);
-        time.Advance(Limits.PasswordFailureMemory - Tick);
+        Fail(ServerTuning.FreePasswordFailures);
+        time.Advance(ServerTuning.PasswordFailureMemory - Tick);
         Assert.False(limit.IsBlocked(Source, Now));
         Fail(1);
         Assert.True(limit.IsBlocked(Source, Now + TimeSpan.FromMinutes(2) - Tick)); // the 6th: two minutes
@@ -83,8 +83,8 @@ public sealed class PasswordGuessLimitTests
     [Fact]
     public void RecordFailure_MemoryAfterTheLast_CountStartsAgain()
     {
-        Fail(Limits.FreePasswordFailures);
-        time.Advance(Limits.PasswordFailureMemory);
+        Fail(ServerTuning.FreePasswordFailures);
+        time.Advance(ServerTuning.PasswordFailureMemory);
         Fail(1);
         Assert.False(limit.IsBlocked(Source, Now));
     }
@@ -93,11 +93,11 @@ public sealed class PasswordGuessLimitTests
     public void RecordFailure_MemoryAfterTheLastBeforeTheSweep_CountStartsAgain()
     {
         Fail(1, OtherSource); // the first call sweeps and sets the next sweep a memory later
-        time.Advance(Limits.PasswordFailureMemory - TimeSpan.FromHours(1));
-        Fail(Limits.FreePasswordFailures);
+        time.Advance(ServerTuning.PasswordFailureMemory - TimeSpan.FromHours(1));
+        Fail(ServerTuning.FreePasswordFailures);
         time.Advance(TimeSpan.FromHours(1));
         Fail(1, ThirdSource); // sweeps OtherSource, keeps Source
-        time.Advance(Limits.PasswordFailureMemory - TimeSpan.FromHours(1));
+        time.Advance(ServerTuning.PasswordFailureMemory - TimeSpan.FromHours(1));
         Fail(1); // Source's last is a memory ago, no sweep is due: the count itself starts again
         Assert.False(limit.IsBlocked(Source, Now));
     }
@@ -106,7 +106,7 @@ public sealed class PasswordGuessLimitTests
     public void RecordFailure_SweepJustBeforeTheMemoryEnds_KeepsTheOldSource()
     {
         Fail(1);
-        time.Advance(Limits.PasswordFailureMemory - Tick);
+        time.Advance(ServerTuning.PasswordFailureMemory - Tick);
         Fail(1, OtherSource);
         Assert.Equal(2, limit.SourceCount);
     }
@@ -115,7 +115,7 @@ public sealed class PasswordGuessLimitTests
     public void RecordFailure_SweepAMemoryLater_DropsForgottenSources()
     {
         Fail(1);
-        time.Advance(Limits.PasswordFailureMemory);
+        time.Advance(ServerTuning.PasswordFailureMemory);
         Fail(1, OtherSource);
         Assert.Equal(1, limit.SourceCount);
     }
@@ -124,11 +124,11 @@ public sealed class PasswordGuessLimitTests
     public void RecordFailure_SweepOncePerMemory_NotBeforeTheNextSweep()
     {
         Fail(1, OtherSource); // the first call sweeps and sets the next sweep a memory later
-        time.Advance(Limits.PasswordFailureMemory - TimeSpan.FromHours(1));
+        time.Advance(ServerTuning.PasswordFailureMemory - TimeSpan.FromHours(1));
         Fail(1);
         time.Advance(TimeSpan.FromHours(1));
         Fail(1, ThirdSource); // sweeps OtherSource, keeps Source, the next sweep a memory later
-        time.Advance(Limits.PasswordFailureMemory - TimeSpan.FromHours(1));
+        time.Advance(ServerTuning.PasswordFailureMemory - TimeSpan.FromHours(1));
         Fail(1, FourthSource); // Source is a memory old now, but no sweep is due yet
         Assert.Equal(3, limit.SourceCount);
     }

@@ -10,7 +10,7 @@ using OVS.Shared.Protocol.Messages.LogAccess;
 namespace OVS.Server.Logging;
 
 /// <summary>
-/// Package 81 (A98): lists, pages and searches the log files ServerLogs writes. Only *.log files directly in
+/// Package 81 (A98): lists, pages and searches the log files ServerLogWriter writes. Only *.log files directly in
 /// logs/server and logs/channels/&lt;guid&gt; exist for it, never links; a file is found only by the id of its own listing,
 /// so no path from a client is ever opened. Thread-safe, meant to run off the state lock.
 /// </summary>

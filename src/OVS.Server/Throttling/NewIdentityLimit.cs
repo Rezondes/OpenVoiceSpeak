@@ -18,11 +18,11 @@ public sealed class NewIdentityLimit
         if (now >= nextSweep)
         {
             foreach (var (key, e) in windows)
-                if (now - e.First >= Limits.NewIdentityWindow) windows.Remove(key);
-            nextSweep = now + Limits.NewIdentityWindow;
+                if (now - e.First >= ServerTuning.NewIdentityWindow) windows.Remove(key);
+            nextSweep = now + ServerTuning.NewIdentityWindow;
         }
-        (int Count, DateTimeOffset First, bool RefusalReported) entry = windows.TryGetValue(source, out var old) && now - old.First < Limits.NewIdentityWindow ? old : (0, now, false);
-        if (entry.Count >= Limits.NewIdentitiesPerHour)
+        (int Count, DateTimeOffset First, bool RefusalReported) entry = windows.TryGetValue(source, out var old) && now - old.First < ServerTuning.NewIdentityWindow ? old : (0, now, false);
+        if (entry.Count >= ServerTuning.NewIdentitiesPerHour)
         {
             firstRefusal = !entry.RefusalReported;
             windows[source] = entry with { RefusalReported = true };

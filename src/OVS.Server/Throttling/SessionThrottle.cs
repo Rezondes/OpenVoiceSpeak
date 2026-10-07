@@ -9,7 +9,7 @@ namespace OVS.Server.Throttling;
 /// </summary>
 public sealed class SessionThrottle(TimeProvider time)
 {
-    readonly RateLimiter requests = new(time, Limits.RequestsPerSecond, Limits.RequestBurst);
+    readonly RateLimiter requests = new(time, ServerTuning.RequestsPerSecond, ServerTuning.RequestBurst);
     readonly Dictionary<Type, RateLimiter> costly = [];
     DateTimeOffset floodSince, lastRefused;
     DateTimeOffset voiceFloodSince, voiceLastRefused;
@@ -32,9 +32,9 @@ public sealed class SessionThrottle(TimeProvider time)
     bool Flooding(ref DateTimeOffset since, ref DateTimeOffset last)
     {
         var now = time.GetUtcNow();
-        if (now - last > Limits.FloodPause) since = now;
+        if (now - last > ServerTuning.FloodPause) since = now;
         last = now;
-        return now - since >= Limits.FloodDisconnectAfter;
+        return now - since >= ServerTuning.FloodDisconnectAfter;
     }
 
     /// <summary>Starts a round for a list kind when its first page is answered; later pages are then free via <see cref="TakeFollowPage"/>.</summary>
@@ -42,7 +42,7 @@ public sealed class SessionThrottle(TimeProvider time)
 
     /// <summary>True when this later page follows a recent first page and was not sent in that round yet.</summary>
     public bool TakeFollowPage(Type kind, int offset) =>
-        listRounds.TryGetValue(kind, out var round) && time.GetUtcNow() - round.Start <= Limits.ListRoundWindow && round.Served.Add(offset);
+        listRounds.TryGetValue(kind, out var round) && time.GetUtcNow() - round.Start <= ServerTuning.ListRoundWindow && round.Served.Add(offset);
 
     /// <summary>The own bucket of a costly request kind, created on first use.</summary>
     public bool TryTakeCostly(Type kind, double perSecond, double burst)
