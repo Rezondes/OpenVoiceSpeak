@@ -47,7 +47,7 @@ internal sealed class DeviceRig : IDisposable
     public void Change()
     {
         Hardware.RaiseChanged();
-        Time.Advance(AudioEngine.DeviceSettle);
+        Time.Advance(DeviceLifecycle.SettleTime);
     }
 
     public void Dispose()

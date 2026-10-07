@@ -85,13 +85,13 @@ public class AudioEngineSettingsTests
         using var keys = new KeyPoller(TimeProvider.System, keyState: _ => false);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
-        engine.SetTone(440);
-        var capture = engine.Capture!;
+        engine.DeviceLifecycle.SetTone(440);
+        var capture = engine.DeviceLifecycle.Capture!;
         AssertHoldsNoneChanged(engine, keys); // a default changed to a value below would leave nothing to see
 
         engine.ApplyLive(CreateAllChanged());
 
-        Assert.Same(capture, engine.Capture);
+        Assert.Same(capture, engine.DeviceLifecycle.Capture);
         AssertTakesAllChanged(engine, keys);
     }
 
@@ -101,7 +101,7 @@ public class AudioEngineSettingsTests
     {
         using var keys = new KeyPoller(TimeProvider.System, keyState: _ => false);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
-        engine.SetTone(440);
+        engine.DeviceLifecycle.SetTone(440);
         AssertHoldsNoneChanged(engine, keys);
 
         engine.Configure(CreateAllChanged());
@@ -116,13 +116,13 @@ public class AudioEngineSettingsTests
         using var keys = new KeyPoller(TimeProvider.System, keyState: _ => false);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
-        engine.SetTone(440);
+        engine.DeviceLifecycle.SetTone(440);
         engine.ApplyLive(new ClientSettings());
-        var previewed = engine.Capture;
+        var previewed = engine.DeviceLifecycle.Capture;
 
         engine.Configure(CreateAllChanged());
 
-        Assert.NotSame(previewed, engine.Capture);
+        Assert.NotSame(previewed, engine.DeviceLifecycle.Capture);
         AssertTakesAllChanged(engine, keys);
     }
 
@@ -136,7 +136,7 @@ public class AudioEngineSettingsTests
 
     static void AssertTakesAllChanged(AudioEngine engine, KeyPoller keys)
     {
-        var capture = engine.Capture!;
+        var capture = engine.DeviceLifecycle.Capture!;
         var changed = CreateAllChanged();
         foreach (var (setting, (_, read, value)) in CaptureReadouts)
             Assert.Equal((setting, value), (setting, read(capture)));
@@ -146,7 +146,7 @@ public class AudioEngineSettingsTests
 
     static void AssertHoldsNoneChanged(AudioEngine engine, KeyPoller keys)
     {
-        var capture = engine.Capture!;
+        var capture = engine.DeviceLifecycle.Capture!;
         var changed = CreateAllChanged();
         foreach (var (setting, (_, read, value)) in CaptureReadouts)
             Assert.NotEqual((setting, value), (setting, read(capture)));

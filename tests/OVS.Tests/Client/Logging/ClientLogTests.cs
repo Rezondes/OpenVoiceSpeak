@@ -264,7 +264,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         using (new OVS.Client.Diagnostics.AudioDebugLog(keys, engine, new ClientLog(dir, TimeProvider.System)))
         {
-            engine.SetTone(440);
+            engine.DeviceLifecycle.SetTone(440);
             keys.Simulate(ptt: true);
             await Eventually(null, "Audio-Debug: PTT gedrückt");
             // The rate comes from a real one-second timer: on a busy runner a single second may be stretched,

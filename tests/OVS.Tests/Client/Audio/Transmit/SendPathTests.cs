@@ -56,7 +56,7 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: a real key pressed while the tests run does not count
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f, VadAutomatic = false }); // test tone is -13.5 dBFS: below
-        engine.SetTone(440);
+        engine.DeviceLifecycle.SetTone(440);
         keys.Simulate(ptt: true);
         await Until(() => keys.IsDown(KeyAction.PushToTalk)); // the key thread saw it
         if (expectFrames) await Until(() => engine.FramesSent > 0);
@@ -81,7 +81,7 @@ public class SendPathTests
         keys.Simulate(KeyAction.PushToMute, true);
         keys.Simulate(ptt: true);
         await Until(() => keys.MuteHeld && keys.IsDown(KeyAction.PushToTalk)); // the key thread saw both (it polls every 10 ms, when it gets a turn)
-        engine.SetTone(440);
+        engine.DeviceLifecycle.SetTone(440);
         await CaptureRunning(engine);
         await Task.Delay(400);
         Assert.Equal(0, engine.FramesSent);
@@ -98,7 +98,7 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
-        engine.SetTone(440);
+        engine.DeviceLifecycle.SetTone(440);
         await CaptureRunning(engine);
         await Task.Delay(400);
         Assert.Equal(0, engine.FramesSent);
@@ -310,7 +310,7 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         engine.ChannelBitrate = 48;
-        Assert.Equal(48, engine.Capture!.Bitrate());
+        Assert.Equal(48, engine.DeviceLifecycle.Capture!.Bitrate());
     }
 
     /// <summary>Package 135: the server's figure every 2 s on the rig's clock, as the main view model passes it on.</summary>
@@ -391,7 +391,7 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         engine.Loss.Report(new LossReport(100, 20));
-        Assert.Equal(30, engine.Capture!.LossHint());
+        Assert.Equal(30, engine.DeviceLifecycle.Capture!.LossHint());
     }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
@@ -750,7 +750,7 @@ public class SendPathTests
     {
         var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(settings);
-        engine.SetTone(440); // 0.3 amplitude: -13.5 dBFS
+        engine.DeviceLifecycle.SetTone(440); // 0.3 amplitude: -13.5 dBFS
         return engine;
     }
 
@@ -860,16 +860,16 @@ public class SendPathTests
     {
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
-        var capture = engine.Capture!;
+        var capture = engine.DeviceLifecycle.Capture!;
         Assert.NotNull(capture.Suppressor);
         Assert.Equal((true, true), (capture.NoiseSuppression, capture.AutoGain)); // the defaults (Package 127: automatic gain on)
 
         engine.ApplyLive(new ClientSettings { NoiseSuppression = false, AutoGain = false });
-        Assert.Same(capture, engine.Capture); // no restart
+        Assert.Same(capture, engine.DeviceLifecycle.Capture); // no restart
         Assert.Equal((false, false), (capture.NoiseSuppression, capture.AutoGain));
 
         engine.ApplyLive(new ClientSettings()); // what closing the settings page does
-        Assert.Same(capture, engine.Capture);
+        Assert.Same(capture, engine.DeviceLifecycle.Capture);
         Assert.Equal((true, true), (capture.NoiseSuppression, capture.AutoGain));
     }
 
@@ -993,8 +993,9 @@ public class SendPathTests
     // ---- Package 137: audio device changes ----
 
     /// <summary>
-    /// Package 137 (AC1): the chosen microphone unplugged while connected: within the 800 ms after the change the capture
-    /// runs on the default, with one notice, also over further changes; plugged in again, the capture is back on it.
+    /// Package 137 (AC1), through the engine: the chosen microphone unplugged while connected: once the changes settled
+    /// (under 1 s) the capture runs on the default, with one notice; plugged in again, the capture is back on it. The
+    /// rule itself (the quiet time, unrelated changes, a second loss) is in <c>DeviceLifecycleTests</c>.
     /// </summary>
     [Fact]
     public async Task ChosenMicRemoved_FallsBack_Returns()
@@ -1004,29 +1005,16 @@ public class SendPathTests
         Assert.Equal("headset", rig.Hardware.Open.Mic);
 
         rig.Hardware.Present.Remove("headset");
-        rig.Hardware.RaiseChanged();
-        rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
-        Assert.Equal(1, rig.Hardware.Counts.Mics); // still quiet: nothing yet
-        rig.Time.Advance(TimeSpan.FromMilliseconds(1));
+        rig.Change();
         Assert.Equal(("mic-default", 1), (rig.Hardware.Open.Mic, rig.Hardware.Counts.MicsOpen));
         Assert.Equal([Strings.Audio_MicLost], rig.Notices);
-        Assert.True(AudioEngine.DeviceSettle < TimeSpan.FromSeconds(1));
-
-        var before = rig.Hardware.Counts;
-        rig.Change(); // something else changed: nothing reopens, no second notice
-        Assert.Equal(before, rig.Hardware.Counts);
-        Assert.Equal("mic-default", rig.Hardware.Open.Mic);
-        Assert.Single(rig.Notices);
+        Assert.True(DeviceLifecycle.SettleTime < TimeSpan.FromSeconds(1));
 
         rig.Hardware.Present.Add("headset", AudioDirection.Input);
         rig.Change();
         Assert.Equal(("headset", 1), (rig.Hardware.Open.Mic, rig.Hardware.Counts.MicsOpen));
         Assert.Single(rig.Notices);
-        Assert.NotNull(rig.Engine.Capture);
-
-        rig.Hardware.Present.Remove("headset"); // gone again: a notice again
-        rig.Change();
-        Assert.Equal([Strings.Audio_MicLost, Strings.Audio_MicLost], rig.Notices);
+        Assert.NotNull(rig.Engine.DeviceLifecycle.Capture);
     }
 
     /// <summary>
@@ -1056,9 +1044,9 @@ public class SendPathTests
     }
 
     /// <summary>
-    /// Package 137: a stream that stops with an error reopens its own direction on the same device; when that fails again
-    /// and again right after opening, it is given up with one notice instead of a silent reopen every 800 ms. Another
-    /// device becoming the one to open tries again.
+    /// Package 137, through the engine: a stream that stops with an error reopens its own direction on the same device;
+    /// when that fails again and again right after opening, it is given up with one notice instead of a silent reopen
+    /// every 800 ms. The counting rule (its 10 s window, failed opens, another device) is in <c>DeviceLifecycleTests</c>.
     /// </summary>
     [Fact]
     public async Task StreamError_Reopens_BacksOff()
@@ -1067,32 +1055,27 @@ public class SendPathTests
         await rig.ConnectAsync();
 
         rig.Hardware.RaiseFailed(AudioDirection.Output);
-        rig.Time.Advance(AudioEngine.DeviceSettle);
+        rig.Time.Advance(DeviceLifecycle.SettleTime);
         Assert.Equal((1, 1, 2, 1), rig.Hardware.Counts); // only the speaker, on the same device
         Assert.Equal("speaker-default", rig.Hardware.Open.Speaker);
 
         rig.Hardware.RaiseFailed(AudioDirection.Input);
-        rig.Time.Advance(AudioEngine.DeviceSettle);
+        rig.Time.Advance(DeviceLifecycle.SettleTime);
         rig.Hardware.RaiseFailed(AudioDirection.Input);
-        rig.Time.Advance(AudioEngine.DeviceSettle);
+        rig.Time.Advance(DeviceLifecycle.SettleTime);
         Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
         Assert.Empty(rig.Notices);
 
         rig.Hardware.RaiseFailed(AudioDirection.Input); // the third failure in a row: given up
-        rig.Time.Advance(AudioEngine.DeviceSettle);
+        rig.Time.Advance(DeviceLifecycle.SettleTime);
         Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
         Assert.Equal([string.Format(Strings.Audio_MicFailed, "device invalidated")], rig.Notices);
-        rig.Change();
-        rig.Time.Advance(TimeSpan.FromSeconds(30));
-        Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
-
-        rig.Hardware.DefaultMic = "usb-mic";
-        rig.Change();
-        Assert.Equal(("usb-mic", 4), (rig.Hardware.Open.Mic, rig.Hardware.Counts.Mics));
-        Assert.Single(rig.Notices);
     }
 
-    /// <summary>Package 137 (AC4): changes keep coming within 800 ms of each other: one reopen, 800 ms after the last.</summary>
+    /// <summary>
+    /// Package 137 (AC4), through the engine: several changes at once cause one reopen of each direction, after the quiet
+    /// time on the engine's clock. Changes that keep coming are in <c>DeviceLifecycleTests</c>.
+    /// </summary>
     [Fact]
     public async Task Changes_Debounced()
     {
@@ -1101,19 +1084,12 @@ public class SendPathTests
 
         rig.Hardware.DefaultMic = "usb-mic";
         rig.Hardware.DefaultSpeaker = "usb-speaker";
-        for (int i = 0; i < 5; i++)
-        {
-            rig.Hardware.RaiseChanged();
-            rig.Time.Advance(TimeSpan.FromMilliseconds(500));
-        }
         rig.Hardware.RaiseChanged();
         rig.Hardware.RaiseChanged();
-        rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
+        rig.Time.Advance(DeviceLifecycle.SettleTime - TimeSpan.FromMilliseconds(1));
         Assert.Equal((1, 1, 1, 1), rig.Hardware.Counts);
 
         rig.Time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal((2, 1, 2, 1), rig.Hardware.Counts);
-        rig.Time.Advance(TimeSpan.FromSeconds(5));
         Assert.Equal((2, 1, 2, 1), rig.Hardware.Counts);
     }
 
@@ -1130,7 +1106,7 @@ public class SendPathTests
         Assert.Equal((0, 0, 0, 0), rig.Hardware.Counts);
         Assert.Equivalent(new[] { string.Format(Strings.Audio_MicFailed, "no microphone"), string.Format(Strings.Audio_SpeakerFailed, "no speaker") },
             rig.Notices, strict: true);
-        Assert.Null(rig.Engine.Capture);
+        Assert.Null(rig.Engine.DeviceLifecycle.Capture);
     }
 
     /// <summary>
@@ -1427,7 +1403,7 @@ public class SendPathTests
         using var pipeline = CapturePipeline.Manual();
         pipeline.Canceller = EchoCanceller.Create(out var error);
         Assert.True(pipeline.Canceller is not null, error);
-        pipeline.Canceller.DelayMs = AudioEngine.EchoDelayMs;
+        pipeline.Canceller.DelayMs = DeviceLifecycle.EchoDelayMs;
         pipeline.Suppressor = NoiseSuppressor.Create(out error);
         Assert.True(pipeline.Suppressor is not null, error);
         (pipeline.EchoCancellation, pipeline.NoiseSuppression, pipeline.AutoGain, pipeline.Music) = (true, true, true, true);
@@ -1465,13 +1441,13 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings { AudioContent = AudioContent.Music });
-        engine.SetTone(440);
-        var canceller = engine.Capture!.Canceller!;
-        Assert.True(engine.Capture.Music);
+        engine.DeviceLifecycle.SetTone(440);
+        var canceller = engine.DeviceLifecycle.Capture!.Canceller!;
+        Assert.True(engine.DeviceLifecycle.Capture.Music);
         engine.MixForSpeaker();
         Assert.Equal(0, canceller.RenderedFrames);
         engine.ApplyLive(new ClientSettings());
-        Assert.False(engine.Capture.Music);
+        Assert.False(engine.DeviceLifecycle.Capture.Music);
         engine.MixForSpeaker();
         Assert.Equal(1, canceller.RenderedFrames);
     }

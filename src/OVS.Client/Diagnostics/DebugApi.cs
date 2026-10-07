@@ -157,8 +157,8 @@ public sealed class DebugApi : IDisposable
                 await SetServerIconAsync(body);
                 return new { ok = true };
             case "/tone":
-                vm.Audio.SetTone(Optional(body, "hz")?.GetDouble());
-                return new { ok = true, toneHz = vm.Audio.ToneHz };
+                vm.Audio.DeviceLifecycle.SetTone(Optional(body, "hz")?.GetDouble());
+                return new { ok = true, toneHz = vm.Audio.DeviceLifecycle.ToneHz };
             case "/settings":
                 var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
                 // Package 127: a body without a version keeps the current one (a missing key reads as 0)
@@ -319,7 +319,7 @@ public sealed class DebugApi : IDisposable
                 vm.Audio.FramesSent,
                 vm.Audio.FramesReceived,
                 vm.Audio.LastOutputLevelDb,
-                vm.Audio.ToneHz,
+                vm.Audio.DeviceLifecycle.ToneHz,
                 Ptt = vm.Keys.PttDown,
                 LinkPtt = vm.Keys.LinkPttDown,
                 PushToMute = vm.Keys.MuteHeld,

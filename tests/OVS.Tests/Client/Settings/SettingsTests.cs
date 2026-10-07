@@ -555,11 +555,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         using var keys = new KeyPoller(TimeProvider.System); // the engine takes the switch without restarting the microphone
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
-        engine.SetTone(440);
-        var capture = engine.Capture!;
+        engine.DeviceLifecycle.SetTone(440);
+        var capture = engine.DeviceLifecycle.Capture!;
         Assert.True(capture.Vad.Automatic);
         engine.ApplyLive(new ClientSettings { VadAutomatic = false });
-        Assert.Same(capture, engine.Capture);
+        Assert.Same(capture, engine.DeviceLifecycle.Capture);
         Assert.False(capture.Vad.Automatic);
         Assert.Equal(capture.Vad.ThresholdInUseDb, engine.InputThresholdDb);
     }
@@ -630,7 +630,8 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>
     /// Package 140 (A149, AC4): echo cancellation is on by default, also for a file without the key; it round-trips, is
-    /// previewed live and reaches the running capture without a restart; a missing library turns it off with one log line.
+    /// previewed live and reaches the running capture without a restart; a missing library turns it off (its one log line:
+    /// <c>DeviceLifecycleTests.SetTone_FilterLibrariesMissing_NoFiltersAndOneLogLineEach</c>).
     /// </summary>
     [Fact]
     public async Task EchoCancellation_DefaultLiveMissingLib()
@@ -653,30 +654,24 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         using (var engine = new AudioEngine(keys, TimeProvider.System, hardware: null))
         {
             engine.Configure(new ClientSettings());
-            engine.SetTone(440);
-            var capture = engine.Capture!;
+            engine.DeviceLifecycle.SetTone(440);
+            var capture = engine.DeviceLifecycle.Capture!;
             Assert.NotNull(capture.Canceller);
             Assert.True(capture.EchoCancellation);
             engine.ApplyLive(live[^1]); // switched off on the page: the same capture, the switch off
-            Assert.Same(capture, engine.Capture);
+            Assert.Same(capture, engine.DeviceLifecycle.Capture);
             Assert.False(capture.EchoCancellation);
         }
 
-        var log = new List<string>();
-        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null, log: line =>
-        {
-            lock (log) log.Add(line);
-        }) { EchoLibrary = "ovs-no-such-aec" };
+        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null) { DeviceLifecycle = { EchoLibrary = "ovs-no-such-aec" } };
         missing.Configure(new ClientSettings());
-        missing.SetTone(440);
-        missing.SetTone(440); // a second capture start does not log again
+        missing.DeviceLifecycle.SetTone(440);
         int levels = 0;
         missing.InputLevel += _ => Interlocked.Increment(ref levels);
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (Volatile.Read(ref levels) == 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
         Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
-        Assert.Null(missing.Capture!.Canceller);
-        lock (log) Assert.Single(log, line => line.Contains("Echounterdrückung"));
+        Assert.Null(missing.DeviceLifecycle.Capture!.Canceller);
     }
 
     /// <summary>
@@ -721,11 +716,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
-        engine.SetTone(440);
-        var capture = engine.Capture!;
+        engine.DeviceLifecycle.SetTone(440);
+        var capture = engine.DeviceLifecycle.Capture!;
         Assert.False(capture.Music);
         engine.ApplyLive(live[^1]);
-        Assert.Same(capture, engine.Capture); // no restart
+        Assert.Same(capture, engine.DeviceLifecycle.Capture); // no restart
         Assert.True(capture.Music);
         engine.ApplyLive(new ClientSettings()); // "Abbrechen"
         Assert.False(capture.Music);

@@ -15,6 +15,7 @@ public sealed class FakeAudioHardware : IAudioHardware
     readonly List<(string Device, FakeOutput Output)> outputs = [];
     readonly List<string?> captureIds = [];
     Action? changed;
+    Action<AudioDirection, Exception>? failed;
 
     /// <summary>
     /// Package 137: the devices plugged in, each with its direction; a requested id that is not here, or of the other
@@ -27,6 +28,9 @@ public sealed class FakeAudioHardware : IAudioHardware
 
     /// <summary>Opens wait while it is reset (at most 10 s), so a test can tell on which thread they run.</summary>
     public readonly ManualResetEventSlim OpenGate = new(true);
+
+    /// <summary>While set, a device that resolves still cannot start: its open throws (as an exclusive or broken device).</summary>
+    public volatile bool StartFails;
 
     /// <summary>What <see cref="ListActive"/> returns, on the caller's thread (a test may block it like a slow device list); none by default.</summary>
     public Func<AudioDirection, List<AudioDevice>> Listing { get; init; } = _ => [];
@@ -41,7 +45,11 @@ public sealed class FakeAudioHardware : IAudioHardware
         remove { lock (captures) changed -= value; }
     }
 
-    public event Action<AudioDirection, Exception>? Failed;
+    public event Action<AudioDirection, Exception>? Failed
+    {
+        add { lock (captures) failed += value; }
+        remove { lock (captures) failed -= value; }
+    }
 
     /// <summary>Package 137: as Windows reports a device added, removed or a new default.</summary>
     public void RaiseChanged()
@@ -51,8 +59,15 @@ public sealed class FakeAudioHardware : IAudioHardware
         handler?.Invoke();
     }
 
-    /// <summary>Package 137: as an open device's stream stopping with an error.</summary>
-    public void RaiseFailed(AudioDirection direction) => Failed?.Invoke(direction, new InvalidOperationException("device invalidated"));
+    /// <summary>Package 137: as an open device's stream stopping with an error; only an open stream can break.</summary>
+    public void RaiseFailed(AudioDirection direction)
+    {
+        var (mic, speaker) = Open;
+        if ((direction == AudioDirection.Input ? mic : speaker) is null) throw new InvalidOperationException($"no open {direction} stream to fail");
+        Action<AudioDirection, Exception>? handler;
+        lock (captures) handler = failed;
+        handler?.Invoke(direction, new InvalidOperationException("device invalidated"));
+    }
 
     public List<AudioDevice> ListActive(AudioDirection direction) => Listing(direction);
 
@@ -61,6 +76,11 @@ public sealed class FakeAudioHardware : IAudioHardware
     public int Subscribers
     {
         get { lock (captures) return changed?.GetInvocationList().Length ?? 0; }
+    }
+
+    public int FailedSubscribers
+    {
+        get { lock (captures) return failed?.GetInvocationList().Length ?? 0; }
     }
 
     string? Resolve(string? id, AudioDirection direction, List<string> warnings)
@@ -79,6 +99,7 @@ public sealed class FakeAudioHardware : IAudioHardware
     {
         OpenGate.Wait(TimeSpan.FromSeconds(10));
         var device = Resolve(deviceId, AudioDirection.Input, warnings) ?? throw new InvalidOperationException("no microphone");
+        if (StartFails) throw new InvalidOperationException("device cannot start");
         var capture = CapturePipeline.Manual();
         lock (captures)
         {
@@ -92,6 +113,7 @@ public sealed class FakeAudioHardware : IAudioHardware
     {
         OpenGate.Wait(TimeSpan.FromSeconds(10));
         var device = Resolve(deviceId, AudioDirection.Output, warnings) ?? throw new InvalidOperationException("no speaker");
+        if (StartFails) throw new InvalidOperationException("device cannot start");
         var output = new FakeOutput();
         lock (outputs) outputs.Add((device, output));
         // Nothing plays it: one frame long, so it never holds the engine's 40 ms and the tones run through at once.

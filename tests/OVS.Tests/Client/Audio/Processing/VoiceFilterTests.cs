@@ -1,6 +1,7 @@
 using OVS.Client.Audio;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
@@ -348,29 +349,26 @@ public class VoiceFilterTests
         Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
     }
 
-    /// <summary>AC7: without the native library the voice still goes out, unfiltered, and the log says why once.</summary>
+    /// <summary>
+    /// AC7: without the native library the voice still goes out, unfiltered (the one log line is
+    /// <c>DeviceLifecycleTests.SetTone_FilterLibrariesMissing_NoFiltersAndOneLogLineEach</c>).
+    /// </summary>
     [Fact]
-    public async Task MissingNativeLibrary_TurnsOffWithLog()
+    public async Task MissingNativeLibrary_CaptureRunsWithoutSuppressor()
     {
         Assert.Null(NoiseSuppressor.Create(out var error, "ovs-no-such-rnnoise"));
         Assert.False(string.IsNullOrEmpty(error));
 
-        var log = new List<string>();
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null, log: line =>
-        {
-            lock (log) log.Add(line);
-        }) { NoiseLibrary = "ovs-no-such-rnnoise" };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { DeviceLifecycle = { NoiseLibrary = "ovs-no-such-rnnoise" } };
         engine.Configure(new ClientSettings()); // noise suppression on by default
-        engine.SetTone(440);
-        engine.SetTone(440); // a second capture start does not log again
+        engine.DeviceLifecycle.SetTone(440);
         int levels = 0;
         engine.InputLevel += _ => Interlocked.Increment(ref levels);
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (Volatile.Read(ref levels) == 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
         Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
-        Assert.Null(engine.Capture!.Suppressor);
-        lock (log) Assert.Single(log, line => line.Contains("Rauschunterdrückung"));
+        Assert.Null(engine.DeviceLifecycle.Capture!.Suppressor);
     }
 
     // ---- Package 140 (A149): echo cancellation ----
@@ -399,7 +397,7 @@ public class VoiceFilterTests
         var pipeline = CapturePipeline.Manual();
         pipeline.Canceller = EchoCanceller.Create(out var error);
         Assert.True(pipeline.Canceller is not null, error);
-        pipeline.Canceller.DelayMs = AudioEngine.EchoDelayMs; // the engine's hint, not the 60 ms of the test path
+        pipeline.Canceller.DelayMs = DeviceLifecycle.EchoDelayMs; // the engine's hint, not the 60 ms of the test path
         pipeline.EchoCancellation = true;
         pipeline.ChooseTarget = _ =>
         {
@@ -472,8 +470,8 @@ public class VoiceFilterTests
         using (var engine = new AudioEngine(keys, TimeProvider.System, hardware: null))
         {
             engine.Configure(new ClientSettings());
-            engine.SetTone(440);
-            var canceller = engine.Capture!.Canceller!;
+            engine.DeviceLifecycle.SetTone(440);
+            var canceller = engine.DeviceLifecycle.Capture!.Canceller!;
             engine.MixForSpeaker();
             engine.MixForSpeaker();
             Assert.Equal(2, canceller.RenderedFrames);
@@ -485,10 +483,10 @@ public class VoiceFilterTests
             Assert.Equal(3, canceller.RenderedFrames);
         }
 
-        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null) { EchoLibrary = "ovs-no-such-aec" };
+        using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null) { DeviceLifecycle = { EchoLibrary = "ovs-no-such-aec" } };
         missing.Configure(new ClientSettings());
-        missing.SetTone(440);
-        Assert.Null(missing.Capture!.Canceller);
+        missing.DeviceLifecycle.SetTone(440);
+        Assert.Null(missing.DeviceLifecycle.Capture!.Canceller);
         Assert.Equal(AudioFormat.StereoFrameSamples, missing.MixForSpeaker().Length); // no canceller: just the mix (Package 142: stereo)
     }
 }

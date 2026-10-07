@@ -127,7 +127,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         SyncBookmarks();
 
         this.listDevices = listDevices;
-        if (audio.OpensDevices) RefreshDevices();
+        if (audio.DeviceLifecycle.OpensDevices) RefreshDevices();
         Keys = keys;
         Audio = audio;
         Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
@@ -227,7 +227,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task ApplySettingsAsync(ClientSettings settings)
     {
         var configure = Prepare(settings);
-        Applied(Audio.OpensDevices ? await Task.Run(configure) : configure());
+        Applied(Audio.DeviceLifecycle.OpensDevices ? await Task.Run(configure) : configure());
     }
 
     /// <summary>Everything but the audio devices; returns their restart.</summary>

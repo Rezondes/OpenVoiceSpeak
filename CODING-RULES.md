@@ -105,7 +105,7 @@ The saving (`Persist`, `PersistSoon` with the save timer and retry, close) is su
   - `Transmit/`: TransmitRule, TransmitMode, AudioContent, VoiceActivityDetector, LossAdapter
   - `Codec/`: AudioFormat, VoiceEncoder, VoiceDecoder
   - `Playback/`: VoiceMixer, SoftLimiter, JitterBuffer, ActiveSpeaker, ReceiveStats
-  - `Devices/`: AudioDevice, AudioDirection, IAudioHardware, WasapiHardware, PlaybackBuffer, DeviceWatcher
+  - `Devices/`: AudioDevice, AudioDirection, IAudioHardware, WasapiHardware, PlaybackBuffer, DeviceWatcher, DeviceLifecycle (opens a configured capture (with its filters) and the speaker, closes them and reopens them after device changes, under the engine's lock, which its "under gate" members assert; the engine holds it as `AudioEngine.DeviceLifecycle`, chooses the devices and restarts them through it, configures each new capture through a callback and joins its warnings into one notice in `AudioEngine.Report`)
   - `Sounds/`: SoundEvent, SoundSynth, SoundQueue, SoundPlayer (which notification sound plays, how loud, from which samples, and the preview of one sound's setting; the engine holds it as `AudioEngine.Sounds`), SoundImport, SoundLibrary
 - **`Net/`** is flat; `Net/Updates/` holds the six update types (`UpdateOffer`, `UpdatePhase`, `UpdateProgress`, `UpdateCheckResult`, `UpdateChecker`, `UpdateInstaller`) (F3).
 - **`Input/`** and **`Settings/`** are flat; `PasswordProtector` is in `Settings/`, as it only protects stored settings (F3, F4).
@@ -148,7 +148,7 @@ Nested types that stay nested (private and used only by their container, B9, B14
 
 - Server: `ServerHost.RunEnd`, `ServerConfig.FileValues`
 - Shared: `LossWindow.Stream`
-- Client: `MainViewModel.Restore`, `AudioEngine.Endpoint`, `VoiceMixer.Speaker`, `SoundQueue.Playing`, `ItemMotion.Departure` and `Tracker`, `LiveMotion.Follower`, `PageMotion.Switching` and `Revealer`, `EchoCanceller.Native`, `NoiseSuppressor.Native`
+- Client: `MainViewModel.Restore`, `DeviceLifecycle.Endpoint`, `VoiceMixer.Speaker`, `SoundQueue.Playing`, `ItemMotion.Departure` and `Tracker`, `LiveMotion.Follower`, `PageMotion.Switching` and `Revealer`, `EchoCanceller.Native`, `NoiseSuppressor.Native`
 - Tests: `ManualTimeProvider.Timer`, `ChatViewModelTests.Fixture`, `ServerViewModelTests.Fixture`, `DebugApiTests.Instance`, `LiveMotionTests.ToleranceComparer`, `MotionCoverageTests.Walk`, `Step` and `Result`, `ReorderDragTests.Tree`, `UserDragTests.Tree`, `SendPathTests.TalkRig` and `MusicRig`, `VoiceFilterTests.PinkNoise`, `BackupTests.Host`, `FakeAudioHardware.FakeOutput`, `TestDispatcher.Context`
 
 Hoisted, because they are not private or are used outside their container: `AdminPlace` (was `AdminViewModel.Place`), `WebsiteScene` (was `WebsiteShots.Scene`), `DeviceRig` (was `SendPathTests.DeviceRig`), `LogExport` (was `LogReader.LogExport`), `DownloadChunk` (was `ChunkedDownload.Chunk`), the Win32 structs of `Splash`, `DialogKind` (was `SimpleDialogs.Kind`) and `SmallArt` (was `LogoRenderer.SmallArt`) (B10, B11).

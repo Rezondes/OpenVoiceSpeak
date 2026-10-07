@@ -976,7 +976,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             vm.OpenSettings();
-            vm.Audio.SetTone(440);
+            vm.Audio.DeviceLifecycle.SetTone(440);
             return 0;
         });
         var level = await OnUiUntil(() => vm.SettingsPage!.InputLevelDb, l => l >= -30);
@@ -1293,7 +1293,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
             vm.OpenSettings();
-            vm.Audio.SetTone(440);
+            vm.Audio.DeviceLifecycle.SetTone(440);
             return 0;
         });
         Assert.Equal(-28, await OnUiUntil(() => vm.SettingsPage!.ThresholdInUseDb, t => t == -28));
@@ -1307,7 +1307,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         var level = new TaskCompletionSource<float>();
         engine.InputLevel += db => level.TrySetResult(db);
-        engine.SetTone(440);
+        engine.DeviceLifecycle.SetTone(440);
         // 0.3 amplitude sine: RMS 0.212 = -13.5 dBFS
         Assert.InRange(await level.Task.WaitAsync(TimeSpan.FromSeconds(10)), -15f, -12f);
     }
@@ -1512,7 +1512,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 VadThresholdDb = -50,
                 KeyBindings = [new(KeyAction.PushToMute, new KeyChord(MuteKey))],
             });
-            vm.Audio.SetTone(440); // -13.5 dBFS: well above the threshold
+            vm.Audio.DeviceLifecycle.SetTone(440); // -13.5 dBFS: well above the threshold
             await vm.SetSelfTestAsync(true);
             return null;
         });
@@ -1560,12 +1560,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, VadThresholdDb = -25, NoiseSuppression = false, AutoGain = true });
         engine.LevelMeter = true;
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (engine.Capture is null && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
-        var capture = engine.Capture!;
+        while (engine.DeviceLifecycle.Capture is null && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        var capture = engine.DeviceLifecycle.Capture!;
         Assert.Equal((0.5f, -25f, false, true), (capture.Gain, capture.Vad.ThresholdDb, capture.NoiseSuppression, capture.AutoGain));
 
         engine.Configure(new ClientSettings { InputGain = 0.8f });
-        Assert.Equal(0.8f, engine.Capture!.Gain);
+        Assert.Equal(0.8f, engine.DeviceLifecycle.Capture!.Gain);
     }
 
     /// <summary>

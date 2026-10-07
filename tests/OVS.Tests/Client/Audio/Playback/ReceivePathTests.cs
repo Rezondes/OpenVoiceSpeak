@@ -774,7 +774,7 @@ public class ReceivePathTests
 
         rig.Hardware.Present.Remove("headset");
         rig.Hardware.RaiseChanged();
-        rig.Time.Advance(AudioEngine.DeviceSettle - TimeSpan.FromMilliseconds(1));
+        rig.Time.Advance(DeviceLifecycle.SettleTime - TimeSpan.FromMilliseconds(1));
         Assert.Equal(1, rig.Hardware.Counts.Speakers);
         rig.Time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(("speaker-default", 1), (rig.Hardware.Open.Speaker, rig.Hardware.Counts.SpeakersOpen));
