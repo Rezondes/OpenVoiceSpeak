@@ -60,6 +60,9 @@ public sealed class VoiceClient : IDisposable
         receiveCrypto = new VoiceCrypto(key);
     }
 
+    /// <summary>The clock of the Hello retries and the loss detection.</summary>
+    internal TimeProvider Time => time;
+
     /// <summary>speakerId, speakerSeq, target, opus, the copy of the frame before it or null (Package 136). Raised on the receive thread.</summary>
     public event Action<uint, uint, byte, byte[], byte[]?>? VoiceReceived;
 

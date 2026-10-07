@@ -98,7 +98,7 @@ The saving (`Persist`, `PersistSoon` with the save timer and retry, close) is su
 
 ### Client
 
-- **Root:** `Program`, `ClientOptions`, `App`, `Splash` (F5).
+- **Root:** `Program`, `ClientOptions`, `App`, `Splash` (F5). `Program.Main` and `App.OnFrameworkInitializationCompleted` are the composition roots (N14): `Program` holds the one clock (`Program.Time`), makes the client log and reads the settings once (`Program.Settings` with `Program.SettingsWarning`; the UI language comes from them); `App` hands them to `MainViewModel.Create`, which builds the key poller, the audio engine, the trusted server fingerprints (`KnownServers`), the logo cache, the own tones and the leave timer on that clock, then the view model. The view model builds none of them, reads the clock as `Time` and disposes the key poller and the engine with itself. The dialogs (`Dialogs`, `ConfirmTofu`) and the updater are set on it once the window exists, since every dialog lives in the window's overlay.
 - **`Audio/`** keeps `AudioEngine` and `SpeakerReports` and has subfolders (F2):
   - `Capture/`: CapturePipeline, StereoInput, FrameChunker, SincResampler
   - `Processing/`: AutoGain, NoiseSuppressor, EchoCanceller, VolumeCurve
@@ -183,7 +183,7 @@ Where code that several places need lives. All of these are introduced by the re
 | `TestSupport/AsyncWait` | `Until(Func<bool>)` | J5 |
 | `TestSupport/RepoPaths` | the repository root and `src/OVS.Client` | J5 |
 | `TestSupport/StateHarness` | a `ServerState` without sockets: temporary data folder, `ManualTimeProvider`, seeded data, `Admit`, `Handle`, the decoded outbox (`Drain`, `WaitForAsync`) and `ChangeStoredData` under the lock | N7 |
-| `TestSupport/MainViewModelSetup` | `Create` (the only place the tests construct a `MainViewModel`, without audio devices; optional key state, audio device factory, dialogs, server and trusting every certificate) and `ShowServer(vm, server)` (the only place the tests set the shown server) | N13 |
+| `TestSupport/MainViewModelSetup` | `Create` (through `MainViewModel.Create`, like the composition root: log and settings from the test folder, on the system clock or a given one, without audio devices; optional key state, audio device factory, dialogs, server and trusting every certificate), `Compose` (the tests' only direct call of the `MainViewModel` constructor, with parts the caller built) and `ShowServer(vm, server)` (the only place the tests set the shown server) | N13, N14 |
 | `TestSupport/BrokenServerData` | `Break(data, variant)`: valid server data broken in one named way, shared by the `ServerData.FindProblem` tests and the backup restore tests | N7 |
 | `TestSupport/PersistedFixtures` | the persisted files of 3d5c4db and the release deploy-4053cfa in `TestSupport/Fixtures`, and their date | N11 |
 | `TestSupport/TempDirectoryTest` | base class for tests whose `Dispose` only deletes their temporary folder | J5 |

@@ -4,9 +4,13 @@ using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Net;
 
-/// <summary>Trust on first use: remembers each server's certificate fingerprint per host:port.</summary>
-public sealed class KnownServers(string path)
+/// <summary>Trust on first use: remembers each server's certificate fingerprint per host:port, in the profile folder.</summary>
+public sealed class KnownServers(string profileDir)
 {
+    /// <summary>The pin file in the profile folder.</summary>
+    public const string FileName = "known_servers.json";
+
+    readonly string path = Path.Combine(profileDir, FileName);
     Dictionary<string, string>? pins;
 
     public TofuResult Check(string host, int port, string fingerprint)

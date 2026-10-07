@@ -73,8 +73,8 @@ public class SoundTests
     [Fact]
     public void CustomSource_IsPlayed_MutedSoundNotRecorded()
     {
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false);
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
         engine.Configure(new ClientSettings { Sounds = { [SoundEvent.UserLeft] = new SoundSetting(Muted: true) } });
         var asked = new List<SoundEvent>();
         engine.SoundSource = e =>
@@ -91,8 +91,8 @@ public class SoundTests
     [Fact]
     public void Deafened_OnlyOwnMicAndSoundTones_AllOffNothing()
     {
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false);
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
         engine.Configure(new ClientSettings());
         engine.Deafened = true;
         engine.PlaySound(SoundEvent.UserJoined);
@@ -129,8 +129,8 @@ public class SoundTests
         rows[0].ResetCommand.Execute(null); // back to the default: off again
         Assert.True(rows[0].Muted);
 
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false);
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
         engine.Configure(new ClientSettings());
         engine.Connected = true;
         async Task PressAndRelease(KeyAction action, int expected)

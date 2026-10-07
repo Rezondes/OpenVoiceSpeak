@@ -54,8 +54,8 @@ public class SendPathTests
     [InlineData(TransmitMode.PushToTalk, true)]
     public async Task PttKey_BelowThreshold_SendsOnlyInPttMode(TransmitMode mode, bool expectFrames)
     {
-        using var keys = new KeyPoller(); // no bindings: a real key pressed while the tests run does not count
-        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var keys = new KeyPoller(TimeProvider.System); // no bindings: a real key pressed while the tests run does not count
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f, VadAutomatic = false }); // test tone is -13.5 dBFS: below
         engine.SetTone(440);
         keys.Simulate(ptt: true);
@@ -76,8 +76,8 @@ public class SendPathTests
     [InlineData(TransmitMode.VoiceActivation)]
     public async Task PushToMute_Held_SendsNothing(TransmitMode mode)
     {
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -40f }); // tone at -13.5 dBFS: well above
         keys.Simulate(KeyAction.PushToMute, true);
         keys.Simulate(ptt: true);
@@ -96,8 +96,8 @@ public class SendPathTests
     [Fact]
     public async Task ChannelMuted_SendsNothing()
     {
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
         engine.SetTone(440);
         await CaptureRunning(engine);
@@ -128,7 +128,7 @@ public class SendPathTests
 
         public TalkRig(int releaseDelayMs)
         {
-            Keys = new KeyPoller(Fake.IsDown, Time)
+            Keys = new KeyPoller(Time, Fake.IsDown)
             {
                 Bindings =
                 [
@@ -137,7 +137,7 @@ public class SendPathTests
                     new KeyBinding(KeyAction.PushToMute, new KeyChord(Mute)),
                 ],
             };
-            Engine = new AudioEngine(Keys, useDevices: false, time: Time) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
+            Engine = new AudioEngine(Keys, Time, useDevices: false) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
             Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
             Pipeline.DecideTarget = Engine.Decide;
             Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
@@ -308,7 +308,7 @@ public class SendPathTests
         Assert.Equal(0, rig.Engine.FramesSent);
 
         // a real capture asks the engine too
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         engine.ChannelBitrate = 48;
         Assert.Equal(48, engine.Capture!.Bitrate());
@@ -389,7 +389,7 @@ public class SendPathTests
         Assert.Equal(30, opus.PacketLossPercent);
 
         // a real capture asks the engine too
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         engine.Loss.Report(new LossReport(100, 20));
         Assert.Equal(30, engine.Capture!.LossHint());
@@ -749,7 +749,7 @@ public class SendPathTests
     /// <summary>A tone engine without devices; the playback clock still mixes, so LastOutputLevelDb shows what would be heard.</summary>
     static AudioEngine ToneEngine(KeyPoller keys, ClientSettings settings)
     {
-        var engine = new AudioEngine(keys, useDevices: false);
+        var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
         engine.Configure(settings);
         engine.SetTone(440); // 0.3 amplitude: -13.5 dBFS
         return engine;
@@ -770,7 +770,7 @@ public class SendPathTests
     [Fact]
     public async Task SelfTest_PlaysOwnVoice_SendsNothing_OthersSilent()
     {
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -50 });
         int sent = 0;
         engine.Send = (_, _) => Interlocked.Increment(ref sent);
@@ -794,7 +794,7 @@ public class SendPathTests
     [Fact]
     public async Task SelfTest_FollowsMode_PushToTalkWithoutKeySilent()
     {
-        using var keys = new KeyPoller(); // no bindings: the PTT key is never down
+        using var keys = new KeyPoller(TimeProvider.System); // no bindings: the PTT key is never down
         using var ptt = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
         ptt.SelfTest = true;
         await CaptureRunning(ptt); // the tone is being gated, so the silence below proves something
@@ -814,7 +814,7 @@ public class SendPathTests
     public async Task SelfTest_PushToTalk_KeyHeld_PlaysBack()
     {
         bool held = false;
-        using var keys = new KeyPoller(vk => vk == KeyPoller.VkRControl && Volatile.Read(ref held));
+        using var keys = new KeyPoller(TimeProvider.System, vk => vk == KeyPoller.VkRControl && Volatile.Read(ref held));
         keys.Bindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl))];
         using var engine = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
         engine.SelfTest = true;
@@ -833,7 +833,7 @@ public class SendPathTests
     [Fact]
     public async Task ApplyLive_ChangesGainAndVolume_WithoutRestart()
     {
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         var levels = new List<float>();
         engine.InputLevel += db =>
@@ -859,7 +859,7 @@ public class SendPathTests
     [Fact]
     public void ApplyLive_SwitchesFilters_WithoutRestart()
     {
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         var capture = engine.Capture!;
         Assert.NotNull(capture.Suppressor);
@@ -1447,8 +1447,8 @@ public class SendPathTests
         for (int n = 0; n < 150; n++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate);
         Assert.True(gain.Vad.LastLevelDb > -30, $"{gain.Vad.LastLevelDb} dBFS");
 
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false);
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
         engine.Configure(new ClientSettings { Transmission = Transmission.Music });
         engine.SetTone(440);
         var canceller = engine.Capture!.Canceller!;

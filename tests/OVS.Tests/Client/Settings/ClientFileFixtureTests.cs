@@ -55,7 +55,8 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
     [MemberData(nameof(PersistedFixtures.Versions), MemberType = typeof(PersistedFixtures))]
     public void KnownServers_FixtureOfVersion_KeepsEveryPin(string version)
     {
-        var known = new KnownServers(PersistedFixtures.CopyTo(version, KnownServersFile, dir));
+        PersistedFixtures.CopyTo(version, KnownServersFile, dir); // read back by the name the code uses: the name on disk is pinned too
+        var known = new KnownServers(dir);
 
         Assert.Equal(TofuResult.Known, known.Check(" Voice.Example.org", 9987, FirstPin));
         Assert.Equal(TofuResult.Known, known.Check("127.0.0.1", 9000, SecondPin));

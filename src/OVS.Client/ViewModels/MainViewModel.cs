@@ -33,7 +33,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     readonly string storageDir;
     readonly Action<Action> post;
-    readonly bool useAudioDevices;
     readonly KnownServers known;
     readonly ServerIconCache icons;
     readonly SoundLibrary sounds;
@@ -68,29 +67,60 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] string transmitText = "";
     [ObservableProperty] string voiceHint = "";
 
+    /// <summary>
+    /// A main view model on the profile folder <paramref name="storageDir"/> with the parts it runs on: the key poller,
+    /// the audio engine, the trusted fingerprints, the logo cache, the own tones and the leave timer, all on
+    /// <paramref name="time"/>. The composition root (App) builds it through here.
+    /// </summary>
     /// <param name="useAudioDevices">False runs without microphone and speaker (tests, debug API with test tone).</param>
-    /// <param name="keyState">Package 125: the state of a virtual key, the keyboard by default (tests pass a fake one).</param>
-    /// <param name="audioDevices">Package 124: where microphone and speaker come from, when not the real ones (tests).</param>
-    public MainViewModel(string storageDir, Action<Action> post, bool useAudioDevices = true, ClientLog? log = null, Func<int, bool>? keyState = null, IAudioDeviceFactory? audioDevices = null)
+    /// <param name="keyState">The state of a virtual key, the keyboard by default (tests pass a fake one).</param>
+    /// <param name="devices">Where microphone and speaker come from when not the system's (tests pass fakes).</param>
+    public static MainViewModel Create(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings,
+        string? settingsWarning, bool useAudioDevices, Func<int, bool>? keyState = null, IAudioDeviceFactory? devices = null)
+    {
+        var keys = new KeyPoller(time, keyState);
+        AudioEngine? audio = null;
+        try
+        {
+            audio = new AudioEngine(keys, time, useAudioDevices, log.Write, devices);
+            return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new KnownServers(storageDir),
+                new ServerIconCache(storageDir), new SoundLibrary(storageDir, log.Write), new LeaveTimer(time, () => post), keys, audio);
+        }
+        catch
+        {
+            audio?.Dispose(); // nobody else owns them yet
+            keys.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Runs on the given parts and builds none of them (<see cref="Create"/> builds them).</summary>
+    /// <param name="time">The client's one clock: <see cref="Time"/>, handed on to everything built here.</param>
+    /// <param name="settings">The settings as loaded from <paramref name="storageDir"/>.</param>
+    /// <param name="settingsWarning">Why the settings file could not be read, shown as a warning notice; null when it could.</param>
+    /// <param name="keys">Disposed with this view model, after <paramref name="audio"/>.</param>
+    /// <param name="audio">Disposed with this view model, after the disconnect; whether it uses the system's devices decides the device list.</param>
+    public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
+        KnownServers knownServers, ServerIconCache icons, SoundLibrary sounds, LeaveTimer leave, KeyPoller keys, AudioEngine audio)
     {
         this.storageDir = storageDir;
         this.post = post;
-        this.useAudioDevices = useAudioDevices;
-        Log = log ?? new ClientLog(storageDir, TimeProvider.System);
-        known = new KnownServers(Path.Combine(storageDir, "known_servers.json"));
-        icons = new ServerIconCache(storageDir);
-        Settings = ClientSettings.Load(storageDir, out var warning);
-        if (warning is not null) AddNotice(warning, NoticeKind.Warning);
+        Time = time;
+        Log = log;
+        known = knownServers;
+        this.icons = icons;
+        Settings = settings;
+        if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
-        Leave = new LeaveTimer(TimeProvider.System, () => this.post);
+        Leave = leave;
         SyncBookmarks();
 
-        DeviceSource = useAudioDevices ? AudioDevices.List : _ => [];
-        if (useAudioDevices) RefreshDevices();
-        Keys = new KeyPoller(keyState);
-        Audio = new AudioEngine(Keys, useAudioDevices, Log.Write, audioDevices);
+        DeviceSource = audio.UsesSystemDevices ? AudioDevices.List : _ => [];
+        if (audio.UsesSystemDevices) RefreshDevices();
+        Keys = keys;
+        Audio = audio;
         Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
-        sounds = new SoundLibrary(storageDir, Log.Write);
+        this.sounds = sounds;
         Audio.SoundSource = sound => sounds.Samples(sound, Settings.SoundFor(sound)); // Package 48
         Audio.TransmitChanged += target => post(() =>
         {
@@ -146,6 +176,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     public ClientSettings Settings { get; private set; }
     public ClientLog Log { get; }
+    /// <summary>The client's one clock: the reconnect, the hints and the statistics, and each connection's view model and voice.</summary>
+    public TimeProvider Time { get; }
     public KeyPoller Keys { get; }
     public AudioEngine Audio { get; }
     public ObservableCollection<Notice> Notices { get; } = [];
@@ -187,7 +219,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public async Task ApplySettingsAsync(ClientSettings settings)
     {
         var configure = Prepare(settings);
-        Applied(useAudioDevices ? await Task.Run(configure) : configure());
+        Applied(Audio.UsesSystemDevices ? await Task.Run(configure) : configure());
     }
 
     /// <summary>Everything but the audio devices; returns their restart.</summary>
@@ -284,7 +316,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         {
             Log.Write(ClientLog.Describe(request, mirror));
             return conn.SendAsync(request);
-        }, TimeProvider.System, Dialogs) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
+        }, Time, Dialogs) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
         vm.Notice += text => AddNotice(text, NoticeKind.Error);
         TrackServerIcon(vm, choice.Host, choice.Port);
         vm.PropertyChanged += OnServerPropertyChanged;
@@ -297,7 +329,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
 
         var udp = new VoiceClient(VoiceRelay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
-            Convert.FromBase64String(conn.Welcome.VoiceKey), VoiceTime, conn); // Package 141: falls back to the TLS connection
+            Convert.FromBase64String(conn.Welcome.VoiceKey), Time, conn); // Package 141: falls back to the TLS connection
         // Package 139 (review): owned from here on, so a failure below is torn down with them (DisconnectAsync)
         connection = conn;
         voice = udp;
@@ -508,7 +540,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Log.Write($"Verbindung verloren, neue Versuche nach {string.Join(", ", Reconnector.Delays.Select(d => $"{d.TotalSeconds:0}"))} s");
         lostText = text;
         _ = DisconnectAsync(text, sound: false);
-        reconnector ??= new Reconnector(Clock, post);
+        reconnector ??= new Reconnector(Time, post);
         IsReconnecting = true;
         reconnector.Start(generation => ReconnectOnceAsync(generation, choice, restore), GiveUp);
         UpdateReconnectStatus();
@@ -607,7 +639,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     void UpdateReconnectStatus()
     {
         if (!IsReconnecting || reconnector?.NextAttemptAt is not { } at) return;
-        var left = Math.Max(1, (int)Math.Ceiling((at - Clock.GetUtcNow()).TotalSeconds));
+        var left = Math.Max(1, (int)Math.Ceiling((at - Time.GetUtcNow()).TotalSeconds));
         Status = string.Format(Strings.Status_Reconnecting, left);
     }
 
@@ -686,9 +718,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         SyncGains();
     }
 
-    /// <summary>Package 126: tests send UDP through a lossy relay instead of to the server, on their own clock.</summary>
+    /// <summary>Package 126: tests send UDP through a lossy relay instead of to the server.</summary>
     internal IPEndPoint? VoiceRelay { get; set; }
-    internal TimeProvider? VoiceTime { get; set; }
 
     /// <summary>Package 135: tests wait for its ping answers.</summary>
     internal VoiceClient? Voice => voice;
@@ -738,7 +769,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (voice is not { } v) return;
         Stats.Unreachable = !v.Reachable;
-        var now = Clock.GetUtcNow();
+        var now = Time.GetUtcNow();
         if (now - statsAt < StatsInterval) return;
         statsAt = now;
         var (roundTrip, count) = v.RoundTripSample;
@@ -750,8 +781,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [RelayCommand]
     Task ShowConnectionDetails() => Dialogs.ConnectionDetails?.Invoke(Stats) ?? Task.CompletedTask;
 
-    /// <summary>Package 131: the clock of the muted hint (tests use a manual one).</summary>
-    internal TimeProvider Clock { get; set; } = TimeProvider.System;
     static readonly TimeSpan MutedHintHold = TimeSpan.FromSeconds(2);
     DateTimeOffset mutedTalkAt = DateTimeOffset.MinValue;
 
@@ -770,7 +799,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             mutedTalkAt = DateTimeOffset.MinValue; // muting again later must not bring back an old attempt
             return "";
         }
-        var now = Clock.GetUtcNow();
+        var now = Time.GetUtcNow();
         if (Audio.TalkKeyHeld || (Audio.Mode == TransmitMode.VoiceActivation && Audio.VoiceDetected)) mutedTalkAt = now;
         return now - mutedTalkAt < MutedHintHold ? why : "";
     }
@@ -888,7 +917,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (Page == Page.Settings) return;
         ClosePage();
-        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Keys)
+        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Keys, Time)
         {
             EditKeyBinding = Dialogs.EditKeyBinding,
             CheckNow = CheckForUpdatesAsync,

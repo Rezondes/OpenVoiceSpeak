@@ -260,8 +260,8 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     [Fact]
     public async Task AudioDebug_WritesToClientLog()
     {
-        using var keys = new KeyPoller(); // no bindings: only simulated keys count
-        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
         using (new OVS.Client.Diagnostics.AudioDebugLog(keys, engine, new ClientLog(dir, TimeProvider.System)))
         {
             engine.SetTone(440);

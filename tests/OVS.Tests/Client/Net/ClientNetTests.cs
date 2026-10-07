@@ -13,7 +13,7 @@ namespace OVS.Tests.Client.Net;
 
 public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: false)
 {
-    KnownServers Known() => new(Path.Combine(dir, "known_servers.json"));
+    KnownServers Known() => new(dir);
 
     Task<ClientConnection> Connect(TestServer server, string nick, ClientIdentity? id = null, Func<TofuPrompt, Task<bool>>? confirm = null,
         KnownServers? known = null, string? password = null) =>

@@ -13,14 +13,15 @@ internal sealed class DeviceRig : IDisposable
 {
     public readonly FakeAudioDevices Devices = new();
     public readonly ManualTimeProvider Time = new();
-    public readonly KeyPoller Keys = new();
+    public readonly KeyPoller Keys;
     public readonly AudioEngine Engine;
     readonly List<string> notices = [];
 
     public DeviceRig(ClientSettings settings, params string[] present)
     {
         Devices.Present.UnionWith(present);
-        Engine = new AudioEngine(Keys, useDevices: false, devices: Devices, time: Time);
+        Keys = new KeyPoller(Time);
+        Engine = new AudioEngine(Keys, Time, useDevices: false, devices: Devices);
         Engine.Warning += text =>
         {
             lock (notices) notices.Add(text);

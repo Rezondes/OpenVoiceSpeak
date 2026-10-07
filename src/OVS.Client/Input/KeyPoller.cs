@@ -29,15 +29,15 @@ public sealed class KeyPoller : IDisposable
     readonly TimeProvider time;
     long pttReleased, linkPttReleased, releaseDelay; // Package 130: time stamps of the last release (0: never), ticks
 
+    /// <param name="time">Package 130: the clock of the release delay (tests use a manual one).</param>
     /// <param name="keyState">
     /// Package 121: the polled state of a virtual key, the keyboard by default. Tests pass a fake one, so a key goes
     /// through the bindings like a real one (<see cref="Simulate(KeyAction, bool)"/> skips them).
     /// </param>
-    /// <param name="time">Package 130: the clock of the release delay (tests use a manual one).</param>
-    public KeyPoller(Func<int, bool>? keyState = null, TimeProvider? time = null)
+    public KeyPoller(TimeProvider time, Func<int, bool>? keyState = null)
     {
         this.keyState = keyState ?? IsKeyDown;
-        this.time = time ?? TimeProvider.System;
+        this.time = time;
         thread = new Thread(Loop) { IsBackground = true, Name = "KeyPoller" };
         thread.Start();
     }

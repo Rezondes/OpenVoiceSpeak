@@ -52,6 +52,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     Task<T> OnUi<T>(Func<T> read) => ui.InvokeAsync(() => Task.FromResult(read()));
 
+    /// <summary>Replaces the view model by one on <paramref name="time"/> (same folder, keys and trust; the dialogs set so far carry over).</summary>
+    async Task RunOnAsync(TimeProvider time)
+    {
+        var dialogs = vm.Dialogs;
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            await vm.DisposeAsync();
+            return null;
+        });
+        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, dialogs: dialogs, trustServers: true, time: time)));
+    }
+
     /// <summary>
     /// Reads on the UI thread until the value fits, at most 10 s by the clock (not by a loop count: network, audio and
     /// pool threads may come late on a busy runner). Returns the last value, so the caller's assert names it.
@@ -188,9 +200,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task TalkWhileMuted_ShowsHint_2s()
     {
         var time = new ManualTimeProvider();
+        await RunOnAsync(time);
         await OnUi(() =>
         {
-            vm.Clock = time;
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             return vm.Server!.SetSelfStateAsync(true, false);
         });
@@ -652,7 +664,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
-        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime) = (relay.EndPoint, time));
+        await RunOnAsync(time);
+        await OnUi(() => vm.VoiceRelay = relay.EndPoint);
         await ConnectAsync(saveBookmark: false);
         string Logged()
         {
@@ -679,7 +692,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
         var time = new ManualTimeProvider();
-        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime) = (relay.EndPoint, time));
+        await RunOnAsync(time);
+        await OnUi(() => vm.VoiceRelay = relay.EndPoint);
         await ConnectAsync(saveBookmark: false);
         string Ping()
         {
@@ -711,7 +725,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider(); // the voice client's and the refresh's clock
         ConnectionStatsViewModel? shown = null;
-        await OnUi(() => (vm.VoiceRelay, vm.VoiceTime, vm.Clock, vm.Dialogs) = (relay.EndPoint, time, time, new DialogCallbacks
+        await RunOnAsync(time);
+        await OnUi(() => (vm.VoiceRelay, vm.Dialogs) = (relay.EndPoint, new DialogCallbacks
         {
             ConnectionDetails = s =>
             {
@@ -1235,8 +1250,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public void Deafened_Engine_IgnoresIncomingVoice()
     {
-        using var keys = new KeyPoller(); // no bindings: only simulated keys count
-        using var engine = new AudioEngine(keys, useDevices: false) { Deafened = true };
+        using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Deafened = true };
         engine.OnVoice(7, 0, 0, new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]));
         Assert.Empty(engine.FramesReceived);
         Assert.Equal(0, engine.Mixer.SpeakerCount);
@@ -1263,8 +1278,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task ToneInput_ReportsInputLevel()
     {
-        using var keys = new KeyPoller(); // no bindings: only simulated keys count
-        using var engine = new AudioEngine(keys, useDevices: false);
+        using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false);
         var level = new TaskCompletionSource<float>();
         engine.InputLevel += db => level.TrySetResult(db);
         engine.SetTone(440);
@@ -1496,11 +1511,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task AudioEngine_DisposedWhileMicOpening_StaysClosed()
     {
-        using var keys = new KeyPoller();
+        using var keys = new KeyPoller(TimeProvider.System);
         var devices = new FakeAudioDevices();
         for (int i = 0; i < 50; i++)
         {
-            var engine = new AudioEngine(keys, useDevices: false, devices: devices);
+            var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false, devices: devices);
             engine.LevelMeter = true;
             engine.Dispose();
         }
@@ -1515,8 +1530,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task AudioEngine_LiveSettingsBeforeMicOpen_Applied()
     {
-        using var keys = new KeyPoller();
-        using var engine = new AudioEngine(keys, useDevices: false, devices: new FakeAudioDevices());
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false, devices: new FakeAudioDevices());
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, VadThresholdDb = -25, NoiseSuppression = false, AutoGain = true });
         engine.LevelMeter = true;
         var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -1653,9 +1668,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// <summary>Connects anna on the manual reconnect clock.</summary>
     async Task ConnectTo(TestServer to, string? password = null)
     {
+        if (vm.Time != reconnectTime) await RunOnAsync(reconnectTime);
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.Clock = reconnectTime;
             await vm.ConnectAsync(new ConnectChoice("127.0.0.1", to.Port, "anna", password, SaveBookmark: false));
             return null;
         });

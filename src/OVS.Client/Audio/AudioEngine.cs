@@ -64,13 +64,13 @@ public sealed class AudioEngine : IDisposable
     readonly Endpoint mic = new(), speaker = new(); // Package 137, under gate (but StreamError)
     bool deviceReopen; // Package 137, under gate: the open running is the one after a device change
 
+    /// <param name="time">Package 135: the clock of the loss adapter (tests pass a manual one).</param>
     /// <param name="log">A line for the client log (Package 123: when noise suppression cannot load).</param>
     /// <param name="devices">Package 124: where microphone and speaker come from; the real ones by default (tests pass fakes).</param>
-    /// <param name="time">Package 135: the clock of the loss adapter (tests pass a manual one).</param>
-    public AudioEngine(KeyPoller keys, bool useDevices = true, Action<string>? log = null, IAudioDeviceFactory? devices = null, TimeProvider? time = null)
+    public AudioEngine(KeyPoller keys, TimeProvider time, bool useDevices = true, Action<string>? log = null, IAudioDeviceFactory? devices = null)
     {
         this.keys = keys;
-        this.time = time ?? TimeProvider.System;
+        this.time = time;
         Loss = new LossAdapter(this.time, ProtocolDefaults.Bitrate);
         this.devices = devices ?? (useDevices ? WasapiDevices.Instance : null);
         this.log = log;
@@ -80,6 +80,12 @@ public sealed class AudioEngine : IDisposable
         this.devices.Changed += OnDeviceChanged;
         this.devices.Failed += OnDeviceFailed;
     }
+
+    /// <summary>
+    /// Whether the microphone and speaker are the system's (false with --no-audio, and with the fake devices of the tests):
+    /// only then is there a device list to load and a device restart that takes long.
+    /// </summary>
+    public bool UsesSystemDevices => devices is WasapiDevices;
 
     /// <summary>
     /// Package 137: what one direction opened last, so a device change reopens it only when another device would open

@@ -622,8 +622,8 @@ public class ReceivePathTests
     [Fact]
     public async Task Playback_IdleDoesNotMix_WakesOnVoice()
     {
-        using var keys = new KeyPoller(); // no bindings: nothing is sent
-        using var engine = new AudioEngine(keys, useDevices: false) { Connected = true };
+        using var keys = new KeyPoller(TimeProvider.System); // no bindings: nothing is sent
+        using var engine = new AudioEngine(keys, TimeProvider.System, useDevices: false) { Connected = true };
         long heardAt = -1;
         engine.SpeakersChanged += active =>
         {

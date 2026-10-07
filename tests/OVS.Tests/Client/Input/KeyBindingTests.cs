@@ -94,7 +94,7 @@ public class KeyBindingTests
     {
         const int Shift_ = 0x10, LShift = 0xA0, Ctrl_ = 0x11, RCtrl = KeyPoller.VkRControl;
         var fake = new FakeKeys();
-        using var keys = new KeyPoller(fake.IsDown);
+        using var keys = new KeyPoller(TimeProvider.System, fake.IsDown);
         async Task<KeyChord?> Capture(params (bool Down, int[] Keys)[] steps)
         {
             var chord = keys.CaptureNextChordAsync();

@@ -26,11 +26,19 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var options = Program.Options;
-            var log = Program.Log ??= new ClientLog(options.ProfileDir, TimeProvider.System);
+            var time = Program.Time;
+            // The fallback only for a start that did not go through Main (such as the previewer):
+            var log = Program.Log ??= new ClientLog(options.ProfileDir, time);
             var args = string.Join(' ', Environment.GetCommandLineArgs().Skip(1));
             log.Write($"OpenVoiceSpeak-Client {BuildInfo.Current.Version} startet, Profil {options.ProfileDir}, " +
                       $"Optionen: {(args.Length > 0 ? args : "keine")}");
-            var vm = new MainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), options.UseAudioDevices, log);
+            var settingsWarning = Program.SettingsWarning;
+            // The fallback only for a start that did not go through Main (such as the previewer):
+            var settings = Program.Settings ??= ClientSettings.Load(options.ProfileDir, out settingsWarning);
+            // The view model's parts (keys, audio engine, stores, leave timer) are built by MainViewModel.Create on the one
+            // clock; the view model disposes the keys and the audio engine with itself (desktop.Exit below).
+            var vm = MainViewModel.Create(options.ProfileDir, action => Dispatcher.UIThread.Post(action), time, log, settings, settingsWarning,
+                options.UseAudioDevices);
             ApplyTheme(vm.Settings.Theme);
             vm.PropertyChanged += (_, e) =>
             {
