@@ -63,11 +63,14 @@ public sealed class AudioEngine : IDisposable
     /// <param name="time">Package 135: the clock of the loss adapter (tests pass a manual one).</param>
     /// <param name="log">A line for the client log (Package 123: when noise suppression cannot load).</param>
     /// <param name="hardware">Package 124: where microphone and speaker come from; null runs without them (--no-audio, tests).</param>
-    public AudioEngine(KeyPoller keys, TimeProvider time, IAudioHardware? hardware, Action<string>? log = null)
+    /// <param name="samples">Package 48: a sound's samples for its setting (the profile's own tones); null: the default tones.</param>
+    public AudioEngine(KeyPoller keys, TimeProvider time, IAudioHardware? hardware, Action<string>? log = null,
+        Func<SoundEvent, SoundSetting, float[]>? samples = null)
     {
         this.keys = keys;
         this.time = time;
         Loss = new LossAdapter(this.time, ProtocolDefaults.Bitrate);
+        Sounds = new SoundPlayer(soundQueue, () => settings, () => deafened, Kick, samples); // before the keys' tones can ask for it
         this.hardware = hardware;
         this.log = log;
         keys.Changed += OnKeysChanged;
@@ -217,7 +220,7 @@ public sealed class AudioEngine : IDisposable
         bool held = TalkKeyHeld;
         if (held == talkKeyHeld) return;
         talkKeyHeld = held;
-        if (connected || selfTest) PlaySound(held ? SoundEvent.TalkKeyDown : SoundEvent.TalkKeyUp);
+        if (connected || selfTest) Sounds.Play(held ? SoundEvent.TalkKeyDown : SoundEvent.TalkKeyUp);
     }
 
     public VoiceMixer Mixer { get; } = new();
@@ -361,42 +364,10 @@ public sealed class AudioEngine : IDisposable
 
     // ---- Sounds (Package 47, 48) ----
 
-    /// <summary>Where a tone's samples come from: the default tone, or the user's own file (set by the main view model).</summary>
-    public Func<SoundEvent, float[]>? SoundSource { get; set; }
+    /// <summary>The notification sounds, on the saved settings, the deafened flag and the samples source; the playback loop mixes what they queue.</summary>
+    public SoundPlayer Sounds { get; }
 
-    /// <summary>"Alle Sounds aus" and "stumm" silence it, otherwise the sound's own volume times the overall one.</summary>
-    public static float GainFor(ClientSettings settings, SoundEvent sound) =>
-        !settings.SoundsEnabled || settings.SoundFor(sound) is { Muted: true } ? 0f : settings.SoundVolume * settings.SoundFor(sound).Volume;
-
-    public SoundQueue Sounds { get; } = new();
-    readonly Queue<SoundEvent> recentSounds = new();
-
-    /// <summary>The last tones actually played, newest last (debug API).</summary>
-    public IReadOnlyList<SoundEvent> RecentSounds
-    {
-        get { lock (recentSounds) return [.. recentSounds]; }
-    }
-
-    /// <summary>Plays a tone on top of the voice. With the sound off only the own microphone and sound tones play (A46).</summary>
-    public void PlaySound(SoundEvent sound)
-    {
-        if (deafened && sound is not (SoundEvent.MicOff or SoundEvent.MicOn or SoundEvent.SoundOff or SoundEvent.SoundOn)) return;
-        float gain = GainFor(settings, sound);
-        if (gain <= 0) return;
-        PlaySamples((SoundSource ?? SoundSynth.Render)(sound), gain);
-        lock (recentSounds)
-        {
-            recentSounds.Enqueue(sound);
-            while (recentSounds.Count > 20) recentSounds.Dequeue();
-        }
-    }
-
-    /// <summary>Package 124: any tone, also while not connected (a preview): the speaker opens for it and closes afterwards.</summary>
-    public void PlaySamples(float[] samples, float gain)
-    {
-        Sounds.Play(samples, gain);
-        Kick();
-    }
+    readonly SoundQueue soundQueue = new(); // filled by Sounds, mixed by the playback loop
 
     public bool Deafened
     {
@@ -671,7 +642,7 @@ public sealed class AudioEngine : IDisposable
     }
 
     /// <summary>A voice to play or conceal, a tone, the self test, or a speaker report still due (the UI clears its marks).</summary>
-    bool HasWork => selfTest || Sounds.Count > 0 || Mixer.HasWork || speakerReports.Pending;
+    bool HasWork => selfTest || soundQueue.Count > 0 || Mixer.HasWork || speakerReports.Pending;
 
     void PlaybackLoop()
     {
@@ -768,7 +739,7 @@ public sealed class AudioEngine : IDisposable
         var (frame, active) = Mixer.Tick();
         if (deafened && !selfTest) Array.Clear(frame); // in the self test only the own voice is in the mixer
         LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame, 2); // voice only, before the tones; Package 142: the louder side
-        Sounds.MixInto(frame);
+        soundQueue.MixInto(frame);
         if (speakerReports.Next(active) is { } report) SpeakersChanged?.Invoke(report);
         return frame;
     }

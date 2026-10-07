@@ -35,7 +35,7 @@ public class AudioEngineSettingsTests
 
     /// <summary>
     /// Settings the engine's apply leaves alone: the devices are opened by id, the sound settings are read per tone
-    /// (<see cref="AudioEngine.GainFor"/>), the rest is not the engine's.
+    /// (<see cref="OVS.Client.Audio.Sounds.SoundPlayer.GainFor"/>), the rest is not the engine's.
     /// </summary>
     static readonly string[] NotApplied =
     [

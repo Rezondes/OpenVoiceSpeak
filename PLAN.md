@@ -3211,12 +3211,12 @@ Die Audio-Engine (`Audio/AudioEngine.cs`) mischt eingehende Sprache in `Playback
 1. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` (AC1)
 2. `SoundTests > "Queue_MixesIntoBuffer_WithVolume_Overlaps"` (AC2)
 3. `ServerViewModelTests > "SoundEvents_FromMessages"` als Theory je Nachricht, dazu `"SoundEvents_OwnChanges_NotDoubled"` (AC3)
-4. `SoundTests > "Deafened_OnlyOwnMicAndSoundTones_AllOffNothing"` (AC4)
+4. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` (AC4)
 5. `SettingsTests > "Sounds_GlobalSettings_RoundTrip"` und `UiSmokeTests`: Abschnitt "Sounds" (AC5)
 6. `DebugApiTests > "Sounds_ListedInState"` mit zwei echten Clients (AC3, AC6)
 7. Manueller Check (offen, braucht Ohren): Töne klingen angenehm und sind im Spiel hörbar, nicht zu laut
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~UiSmokeTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundTests|FullyQualifiedName~SoundPlayerTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~UiSmokeTests"`
 
 ### Umsetzungsschritte
 
@@ -3262,12 +3262,12 @@ Nach Package 47 gibt es feste Standardtöne und nur globale Einstellungen. Die W
 
 1. `SoundImportTests > "Wav_UpToFiveSeconds_Accepted_CopiedAsMono48k"`, `"TooLong_NotAudio_WrongType_Missing_Rejected"` mit selbst erzeugten WAV-Dateien (AC2, AC3)
 2. `SoundImportTests > "CustomSound_MissingFile_FallsBackToDefault_LoggedOnce"` (AC2, AC6)
-3. `SoundTests > "Volume_PerSoundTimesGlobal_MutedSilent"` (AC5)
+3. `SoundPlayerTests > "Volume_PerSoundTimesGlobal_MutedSilent"` und `"Play_MutedSound_NeitherRenderedNorQueuedNorRecorded"` (AC5)
 4. `SettingsTests > "Sounds_PerEvent_RoundTrip_ResetDeletesCopy"` (AC4, AC5)
 5. `UiSmokeTests`: eine Zeile je Sound mit allen Bedienelementen, beide Designs (AC1)
 6. Manueller Check (offen, braucht Ohren): eine echte MP3-Datei auswählen und hören
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundImportTests|FullyQualifiedName~SoundTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~UiSmokeTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~SoundImportTests|FullyQualifiedName~SoundTests|FullyQualifiedName~SoundPlayerTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~UiSmokeTests"`
 
 ### Umsetzungsschritte
 
@@ -3811,7 +3811,7 @@ Der Mixer meldet aktive Sprecher mit `ActiveSpeaker.ViaLink` (gesetzt, wenn das 
 2. `ServerViewModelTests > "LinkVoice_NotForOwnChannelOrSelf"` (AC3)
    - Gegeben: Sprecher ohne Link, eigene Session mit Link
    - Erwartet: kein `LinkVoice`
-3. `SoundTests > "Deafened_OnlyOwnMicAndSoundTones_AllOffNothing"` um `LinkVoice` ergänzt (AC3)
+3. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` um `LinkVoice` ergänzt (AC3)
 4. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` deckt den neuen Ton mit ab, dazu Pegel unter dem der Privatnachricht (AC4)
 5. `LocalizationTests` bleiben grün (AC4)
 6. Manueller Check AC5
@@ -3968,7 +3968,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
    - Gegeben: eigener Channel ohne Link mit `TargetLinked`, dann verlinkt mit `TargetChannel`
    - Erwartet: kein Ton
 3. `ServerViewModelTests > "LinkVoice_NotForOwnChannelOrSelf"` bleibt grün: `LinkVoice` weiter nie für die eigene Session (AC5)
-4. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"`: `OwnLinkVoice` gleich `LinkVoice`, sonst weiter alle verschieden. `"Deafened_OnlyOwnMicAndSoundTones_AllOffNothing"` um `OwnLinkVoice` ergänzt (AC3, AC4)
+4. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"`: `OwnLinkVoice` gleich `LinkVoice`, sonst weiter alle verschieden. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` um `OwnLinkVoice` ergänzt (AC3, AC4)
 5. `SettingsTests > "Sounds_LinkRows_Independent"` (AC4): Stumm für `OwnLinkVoice` lässt `LinkVoice` unberührt
 6. `LocalizationTests` bleiben grün (AC5)
 7. Manueller Check AC6
@@ -4707,7 +4707,7 @@ Sounds sind die Werte von `SoundEvent` (Reihenfolge = Reihenfolge in den Einstel
 3. `ServerViewModelTests > "OwnGroupsChanged_SoundOnce_NotOnConnect"` (AC2)
 4. `AdminViewModelTests > "AssignGroup_SoundWhenListConfirms_NotOnError"` (AC3)
 5. `ServerViewModelTests > "OwnGroupChangedByMe_OnlyOneSound"` (AC4)
-6. `SoundTests > "Deafened_OnlyOwnMicAndSoundTones_AllOffNothing"` bleibt grün (AC5)
+6. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` bleibt grün (AC5)
 
 Testbefehl: `dotnet test`
 

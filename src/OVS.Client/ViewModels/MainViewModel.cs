@@ -35,7 +35,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly Action<Action> post;
     readonly KnownServers known;
     readonly ServerIconCache icons;
-    readonly SoundLibrary sounds;
+    readonly SoundLibrary soundLibrary;
     readonly Func<AudioDirection, List<AudioDevice>>? listDevices;
     ClientConnection? connection;
     VoiceClient? voice;
@@ -82,12 +82,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null)
     {
         var keys = new KeyPoller(time, keyState);
+        var soundLibrary = new SoundLibrary(storageDir, log.Write); // holds no handle; the engine plays its tones
         AudioEngine? audio = null;
         try
         {
-            audio = new AudioEngine(keys, time, hardware, log.Write);
+            audio = new AudioEngine(keys, time, hardware, log.Write, soundLibrary.Samples);
             return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new KnownServers(storageDir),
-                new ServerIconCache(storageDir), new SoundLibrary(storageDir, log.Write), new LeaveTimer(time, () => post), keys, audio,
+                new ServerIconCache(storageDir), soundLibrary, new LeaveTimer(time, () => post), keys, audio,
                 hardware is null ? null : hardware.ListActive);
         }
         catch
@@ -107,9 +108,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// Disposed with this view model, after the disconnect. When it opens devices, their list loads at the start and a
     /// device restart runs off the UI thread.
     /// </param>
+    /// <param name="soundLibrary">The own tones; cleaned up after each save (the engine plays them, <see cref="Create"/> hands it the same library).</param>
     /// <param name="listDevices">The active devices of a direction, for the settings page; null: none, an empty list.</param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
-        KnownServers knownServers, ServerIconCache icons, SoundLibrary sounds, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
+        KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
         Func<AudioDirection, List<AudioDevice>>? listDevices)
     {
         this.storageDir = storageDir;
@@ -129,8 +131,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Keys = keys;
         Audio = audio;
         Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
-        this.sounds = sounds;
-        Audio.SoundSource = sound => sounds.Samples(sound, Settings.SoundFor(sound)); // Package 48
+        this.soundLibrary = soundLibrary;
         Audio.TransmitChanged += target => post(() =>
         {
             Log.Write(target switch
@@ -235,7 +236,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings = settings.Clamp();
         Appearance = BackgroundAppearance.From(Settings);
         Settings.Save(storageDir);
-        sounds.CleanUp(Settings); // own tones nobody points to any more
+        soundLibrary.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();
         var keysText = Settings.KeyBindings.Count == 0 ? "keine" : string.Join(", ", Settings.KeyBindings.Select(b => $"{b.Action} {b.Chord.Name}"));
         Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
@@ -327,7 +328,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         vm.Notice += text => AddNotice(text, NoticeKind.Error);
         TrackServerIcon(vm, choice.Host, choice.Port);
         vm.PropertyChanged += OnServerPropertyChanged;
-        vm.SoundRequested += Audio.PlaySound; // Package 47
+        vm.SoundRequested += Audio.Sounds.Play; // Package 47
         conn.MessageReceived += m => post(() =>
         {
             if (ClientLog.Describe(m, mirror) is { } line) Log.Write(line);
@@ -353,7 +354,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Status = string.Format(Strings.Status_Connected, vm.ServerName);
         Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
                   $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
-        Audio.PlaySound(SoundEvent.Connected);
+        Audio.Sounds.Play(SoundEvent.Connected);
         if (!restored && vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
         lastChoice = choice with { SaveBookmark = false }; // Package 139: what a reconnect uses, the password in memory only
     }
@@ -489,7 +490,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (Page == Page.Admin) CloseAdmin(); // administration needs a server
         var conn = connection;
         connection = null;
-        if (conn is not null && sound) Audio.PlaySound(SoundEvent.Disconnected);
+        if (conn is not null && sound) Audio.Sounds.Play(SoundEvent.Disconnected);
         if (conn is not null) Status = status;
         if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
         stateBeforeSelfTest = null; // nothing to restore at a server that is gone
@@ -633,7 +634,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         lastChoice = null; // review: the server password stays no longer than needed
         if (status is not null) Status = status;
         AddNotice(lostText, NoticeKind.Warning);
-        if (sound) Audio.PlaySound(SoundEvent.Disconnected);
+        if (sound) Audio.Sounds.Play(SoundEvent.Disconnected);
     }
 
     void StopReconnect()
@@ -931,7 +932,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             EditKeyBinding = Dialogs.EditKeyBinding,
             CheckNow = CheckForUpdatesAsync,
             ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
-            PreviewSound = (sound, setting, overall) => Audio.PlaySamples(sounds.Samples(sound, setting), overall * setting.Volume),
+            PreviewSound = Audio.Sounds.Preview,
             LivePreview = live => // Package 53, 61, 121
             {
                 Audio.ApplyLive(live);

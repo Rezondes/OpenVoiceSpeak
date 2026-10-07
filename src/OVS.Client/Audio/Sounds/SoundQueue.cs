@@ -17,7 +17,7 @@ public sealed class SoundQueue
         get { lock (playing) return playing.Count; }
     }
 
-    public void Play(float[] samples, float gain)
+    public void Add(float[] samples, float gain)
     {
         if (gain <= 0 || samples.Length == 0) return;
         lock (playing) playing.Add(new Playing(samples, gain));

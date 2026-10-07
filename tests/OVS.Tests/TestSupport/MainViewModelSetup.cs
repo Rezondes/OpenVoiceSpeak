@@ -42,9 +42,9 @@ static class MainViewModelSetup
     /// own. The view model disposes <paramref name="keys"/> and <paramref name="audio"/> with itself.
     /// </summary>
     public static MainViewModel Compose(string dir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
-        KnownServers knownServers, ServerIconCache icons, SoundLibrary sounds, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
+        KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
         Func<AudioDirection, List<AudioDevice>>? listDevices = null) =>
-        new(dir, post, time, log, settings, settingsWarning, knownServers, icons, sounds, leave, keys, audio, listDevices);
+        new(dir, post, time, log, settings, settingsWarning, knownServers, icons, soundLibrary, leave, keys, audio, listDevices);
 
     /// <summary>Shows <paramref name="server"/> as the connected server (null: none); returns it, like an assignment.</summary>
     public static ServerViewModel? ShowServer(MainViewModel vm, ServerViewModel? server) => vm.Server = server;

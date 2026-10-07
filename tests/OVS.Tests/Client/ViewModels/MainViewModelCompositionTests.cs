@@ -25,15 +25,17 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
 
     /// <summary>
     /// A main view model on <see cref="Profile"/>, every part made on <see cref="Parts"/> and <see cref="time"/>; the engine
-    /// and the device list on <paramref name="hardware"/>, as <see cref="MainViewModel.Create"/> wires them.
+    /// and the device list on <paramref name="hardware"/>, the engine's tones from the same sound library, as
+    /// <see cref="MainViewModel.Create"/> wires them.
     /// </summary>
     MainViewModel WithOwnParts(Action<Action> post, ClientSettings? settings = null, string? settingsWarning = null, KeyPoller? keys = null,
         FakeAudioHardware? hardware = null)
     {
         var log = new ClientLog(Parts, time);
         keys ??= new KeyPoller(time);
+        var soundLibrary = new SoundLibrary(Parts, log.Write);
         return MainViewModelSetup.Compose(Profile, post, time, log, settings ?? new ClientSettings(), settingsWarning, new KnownServers(Parts),
-            new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, log.Write),
+            new ServerIconCache(Parts), soundLibrary, new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, log.Write, soundLibrary.Samples),
             hardware is null ? null : hardware.ListActive);
     }
 

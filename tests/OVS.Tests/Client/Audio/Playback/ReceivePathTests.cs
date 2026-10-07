@@ -822,7 +822,7 @@ public class ReceivePathTests
 
         var sounds = new SoundQueue();
         var tone = SoundSynth.Render(SoundEvent.Connected);
-        sounds.Play(tone, 1f);
+        sounds.Add(tone, 1f);
         var mixed = new float[AudioFormat.StereoFrameSamples];
         sounds.MixInto(mixed);
         for (int i = 0; i < AudioFormat.FrameSamples; i++)

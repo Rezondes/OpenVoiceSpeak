@@ -1895,7 +1895,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 replacement = await TestServer.StartAsync(password: "neu", port: port);
                 reconnectTime.Advance(TimeSpan.FromSeconds(1));
                 Assert.StartsWith("Abgelehnt", await OnUiUntil(() => vm.Status, s => s.StartsWith("Abgelehnt")));
-                Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.RecentSounds)); // review: the series ended, so the tone
+                Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent)); // review: the series ended, so the tone
                 target = replacement;
             }
             else
@@ -1987,7 +1987,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() => vm.OpenAdminAsync());
         Assert.True(await OnUi(() => vm.IsAdminPage));
         var before = await OnUi(() => vm.Notices.Count);
-        Assert.Contains(SoundEvent.Connected, await OnUi(() => vm.Audio.RecentSounds)); // the tones are counted at all
+        Assert.Contains(SoundEvent.Connected, await OnUi(() => vm.Audio.Sounds.Recent)); // the tones are counted at all
 
         await own.DisposeAsync(); // ServerShutdown, and nobody answers any more
         Assert.True(await OnUiUntil(() => vm.IsReconnecting, r => r));
@@ -2005,14 +2005,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
             reconnectTime.Advance(TimeSpan.FromSeconds(next) - TimeSpan.FromMilliseconds(600));
             Assert.Equal("Verbindung verloren, neuer Versuch in 1 s", await TickStatus());
         }
-        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => vm.Audio.RecentSounds));
+        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
         Assert.Empty(await NoticesSince(before));
 
         reconnectTime.Advance(TimeSpan.FromMilliseconds(600)); // the fifth attempt fails too
         Assert.False(await OnUiUntil(() => vm.IsReconnecting, r => !r));
         Assert.Equal("Getrennt: Der Server wurde heruntergefahren.", await TickStatus());
         Assert.Equal(["Getrennt: Der Server wurde heruntergefahren."], await NoticesSince(before));
-        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.RecentSounds));
+        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
     }
 
     /// <summary>AC6: the last channel is gone or no longer lets me in: I stay in the default channel, with one notice about it.</summary>

@@ -43,70 +43,41 @@ public class SoundTests
     public void Queue_MixesIntoBuffer_WithVolume_Overlaps()
     {
         var queue = new SoundQueue();
-        queue.Play([0.5f, 0.5f, 0.5f], gain: 0.5f);
-        queue.Play([0.9f, 0.9f], gain: 1f);
+        queue.Add([0.5f, 0.5f, 0.5f], gain: 0.5f);
+        queue.Add([0.9f, 0.9f], gain: 1f);
         var frame = new float[] { 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f }; // Package 142: interleaved stereo
         queue.MixInto(frame);
         Assert.Equal([1f, 1f, 1f, 1f, 0.35f, 0.35f, 0.1f, 0.1f], frame.Select(v => MathF.Round(v, 3))); // voice kept, sum clamped to 1
         Assert.Equal(0, queue.Count); // both finished
 
-        queue.Play(new float[1000], gain: 0f); // silent: not even queued
+        queue.Add(new float[1000], gain: 0f); // silent: not even queued
         Assert.Equal(0, queue.Count);
     }
 
-    /// <summary>Package 48: the sound's own volume times the overall one; muted or all off is silent.</summary>
+    /// <summary>
+    /// The engine's sounds play on what the engine holds: its configured settings, its deafened flag and the samples
+    /// source it was given (the rules themselves are <see cref="SoundPlayerTests"/>).
+    /// </summary>
     [Fact]
-    public void Volume_PerSoundTimesGlobal_MutedSilent()
-    {
-        var settings = new ClientSettings
-        {
-            SoundVolume = 0.5f,
-            Sounds = { [SoundEvent.MicOn] = new SoundSetting(Volume: 0.4f), [SoundEvent.MicOff] = new SoundSetting(Muted: true) },
-        };
-        Assert.Equal(0.2f, AudioEngine.GainFor(settings, SoundEvent.MicOn), 3);
-        Assert.Equal(0.5f, AudioEngine.GainFor(settings, SoundEvent.Connected), 3); // not set: 100 %
-        Assert.Equal(0f, AudioEngine.GainFor(settings, SoundEvent.MicOff));
-        settings.SoundsEnabled = false;
-        Assert.Equal(0f, AudioEngine.GainFor(settings, SoundEvent.MicOn));
-    }
-
-    [Fact]
-    public void CustomSource_IsPlayed_MutedSoundNotRecorded()
+    public void Sounds_EngineConfiguredThenDeafened_PlayerFollowsBoth()
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
-        engine.Configure(new ClientSettings { Sounds = { [SoundEvent.UserLeft] = new SoundSetting(Muted: true) } });
-        var asked = new List<SoundEvent>();
-        engine.SoundSource = e =>
+        var asked = new List<(SoundEvent Sound, SoundSetting Setting)>();
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null, samples: (sound, setting) =>
         {
-            asked.Add(e);
+            asked.Add((sound, setting));
             return [0.1f];
-        };
-        engine.PlaySound(SoundEvent.UserJoined);
-        engine.PlaySound(SoundEvent.UserLeft);
-        Assert.Equal([SoundEvent.UserJoined], asked);
-        Assert.Equal([SoundEvent.UserJoined], engine.RecentSounds);
-    }
+        });
+        var own = new SoundSetting(Volume: 0.5f, File: "own.wav");
+        engine.Configure(new ClientSettings { Sounds = { [SoundEvent.UserJoined] = own, [SoundEvent.UserLeft] = new SoundSetting(Muted: true) } });
 
-    [Fact]
-    public void Deafened_OnlyOwnMicAndSoundTones_AllOffNothing()
-    {
-        using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
-        engine.Configure(new ClientSettings());
+        engine.Sounds.Play(SoundEvent.UserJoined);
+        engine.Sounds.Play(SoundEvent.UserLeft); // muted in the configured settings
         engine.Deafened = true;
-        engine.PlaySound(SoundEvent.UserJoined);
-        engine.PlaySound(SoundEvent.PrivateMessage);
-        engine.PlaySound(SoundEvent.LinkVoice);
-        engine.PlaySound(SoundEvent.OwnLinkVoice);
-        engine.PlaySound(SoundEvent.SoundOff);
-        engine.PlaySound(SoundEvent.MicOn);
-        Assert.Equal([SoundEvent.SoundOff, SoundEvent.MicOn], engine.RecentSounds);
+        engine.Sounds.Play(SoundEvent.ChannelEntered); // deafened
 
-        engine.Deafened = false;
-        engine.Configure(new ClientSettings { SoundsEnabled = false });
-        engine.PlaySound(SoundEvent.Connected);
-        Assert.Equal(2, engine.RecentSounds.Count);
+        Assert.Equal([(SoundEvent.UserJoined, own)], asked);
+        Assert.Equal([SoundEvent.UserJoined], engine.Sounds.Recent);
     }
 
     /// <summary>
@@ -117,7 +88,7 @@ public class SoundTests
     public async Task TalkKeySounds_OffByDefault_PlayWhenOn()
     {
         SoundEvent[] talk = [SoundEvent.TalkKeyDown, SoundEvent.TalkKeyUp];
-        Assert.All(talk, e => Assert.Equal(0f, AudioEngine.GainFor(new ClientSettings(), e)));
+        Assert.All(talk, e => Assert.Equal(0f, SoundPlayer.GainFor(new ClientSettings(), e)));
         var page = new OVS.Client.ViewModels.SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System);
         var rows = page.SoundRows.Where(r => talk.Contains(r.Event)).ToList();
         Assert.Equal(["Sprechtaste gedrückt", "Sprechtaste losgelassen"], rows.Select(r => r.Label));
@@ -138,20 +109,20 @@ public class SoundTests
             keys.Simulate(action, true);
             await Until(() => keys.IsDown(action));
             keys.Simulate(action, false);
-            await Until(() => engine.RecentSounds.Count >= expected && !keys.IsDown(action));
+            await Until(() => engine.Sounds.Recent.Count >= expected && !keys.IsDown(action));
             await Task.Delay(50); // a few more polls: nothing else plays
         }
         await PressAndRelease(KeyAction.PushToTalk, 0);
-        Assert.Empty(engine.RecentSounds); // off by default
+        Assert.Empty(engine.Sounds.Recent); // off by default
 
         engine.Configure(on);
         await PressAndRelease(KeyAction.PushToTalk, 2);
         await PressAndRelease(KeyAction.LinkPushToTalk, 4);
-        Assert.Equal([.. talk, .. talk], engine.RecentSounds);
+        Assert.Equal([.. talk, .. talk], engine.Sounds.Recent);
 
         engine.Connected = false; // not connected: the keys do nothing, so no tone
         await PressAndRelease(KeyAction.PushToTalk, 4);
-        Assert.Equal(4, engine.RecentSounds.Count);
+        Assert.Equal(4, engine.Sounds.Recent.Count);
     }
 
     static async Task Until(Func<bool> done)

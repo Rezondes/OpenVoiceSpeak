@@ -139,9 +139,9 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         rows[SoundEvent.ServerMessage].Muted = true;
         rows[SoundEvent.ChannelMessage].VolumePercent = 40;
         var saved = vm.ToSettings(new ClientSettings());
-        Assert.Equal(0f, AudioEngine.GainFor(saved, SoundEvent.ServerMessage));
-        Assert.Equal(saved.SoundVolume * 0.4f, AudioEngine.GainFor(saved, SoundEvent.ChannelMessage), 3);
-        Assert.Equal(saved.SoundVolume, AudioEngine.GainFor(saved, SoundEvent.PrivateMessage), 3);
+        Assert.Equal(0f, SoundPlayer.GainFor(saved, SoundEvent.ServerMessage));
+        Assert.Equal(saved.SoundVolume * 0.4f, SoundPlayer.GainFor(saved, SoundEvent.ChannelMessage), 3);
+        Assert.Equal(saved.SoundVolume, SoundPlayer.GainFor(saved, SoundEvent.PrivateMessage), 3);
     }
 
     /// <summary>Package 60: the own link tone has its own row, independent of the one for others.</summary>
@@ -153,8 +153,8 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(("Sprache über Link", "Eigene Sprache über Link"), (rows[SoundEvent.LinkVoice].Label, rows[SoundEvent.OwnLinkVoice].Label));
         rows[SoundEvent.OwnLinkVoice].Muted = true;
         var saved = vm.ToSettings(new ClientSettings());
-        Assert.Equal(0f, AudioEngine.GainFor(saved, SoundEvent.OwnLinkVoice));
-        Assert.Equal(saved.SoundVolume, AudioEngine.GainFor(saved, SoundEvent.LinkVoice), 3);
+        Assert.Equal(0f, SoundPlayer.GainFor(saved, SoundEvent.OwnLinkVoice));
+        Assert.Equal(saved.SoundVolume, SoundPlayer.GainFor(saved, SoundEvent.LinkVoice), 3);
     }
 
     /// <summary>Package 73: the two group tones have their own rows, independent of each other.</summary>
@@ -167,8 +167,8 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         rows[SoundEvent.GroupChanged].Muted = true;
         rows[SoundEvent.GroupChangedByMe].VolumePercent = 30;
         var saved = vm.ToSettings(new ClientSettings());
-        Assert.Equal(0f, AudioEngine.GainFor(saved, SoundEvent.GroupChanged));
-        Assert.Equal(saved.SoundVolume * 0.3f, AudioEngine.GainFor(saved, SoundEvent.GroupChangedByMe), 3);
+        Assert.Equal(0f, SoundPlayer.GainFor(saved, SoundEvent.GroupChanged));
+        Assert.Equal(saved.SoundVolume * 0.3f, SoundPlayer.GainFor(saved, SoundEvent.GroupChangedByMe), 3);
     }
 
     [Fact]
