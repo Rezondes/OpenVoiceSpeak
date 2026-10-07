@@ -172,7 +172,7 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_NoArrivalGiven_StampsEachPushInRealTime()
     {
-        var mixer = new Mixer();
+        var mixer = new VoiceMixer();
         for (uint n = 0; n < 50; n++)
         {
             mixer.Push(1, n, Frames[n % 8], false);
@@ -403,7 +403,7 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_Stats_SumOverSpeakers()
     {
-        var mixer = new Mixer();
+        var mixer = new VoiceMixer();
         for (uint n = 0; n < 6; n++)
         {
             if (n != 2) mixer.Push(1, n, Frames[n], false, 20.0 * n);
@@ -421,13 +421,13 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_SumsAndClamps()
     {
-        var mixer = new Mixer();
+        var mixer = new VoiceMixer();
         var (silence, active) = mixer.Tick();
         Assert.All(silence, s => Assert.Equal(0f, s));
         Assert.Empty(active);
 
         // Feed identical steady frames to two speakers and compare with one speaker; quiet enough to stay below the limiter.
-        var single = new Mixer();
+        var single = new VoiceMixer();
         var encoder = new VoiceEncoder(); // a fresh stream: no start-up transient from another test's encoder state
         for (uint n = 0; n < 6; n++)
         {
@@ -448,7 +448,7 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_LoudInput_ClampedToUnit()
     {
-        var mixer = new Mixer { Volume = 10f };
+        var mixer = new VoiceMixer { Volume = 10f };
         for (uint n = 0; n < 3; n++) mixer.Push(1, n, Encoder.Encode(Sine(0.8f)), false);
         var (frame, _) = mixer.Tick();
         // the loudest sample lands on the threshold, give or take float rounding
@@ -460,7 +460,7 @@ public class ReceivePathTests
     {
         var encoder = new VoiceEncoder();
         var packets = Enumerable.Range(0, 8).Select(n => encoder.Encode(Sine(amplitude, n * AudioFormat.FrameSamples))).ToList();
-        var mixer = new Mixer { Volume = volume };
+        var mixer = new VoiceMixer { Volume = volume };
         for (int n = 0; n < packets.Count; n++) mixer.Push(1, (uint)n, packets[n], false);
         var mixed = new List<float>();
         for (int tick = 0; tick < 20 && mixed.Count < frames * AudioFormat.StereoFrameSamples; tick++)
@@ -479,7 +479,7 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_DefaultBoost_DoublesQuietVoice()
     {
-        Assert.Equal(2f, Mixer.DefaultVoiceBoost);
+        Assert.Equal(2f, VoiceMixer.DefaultVoiceBoost);
         var (mixed, reference) = MixedAndDirect(0.2f, 1f);
         Assert.Equal(reference.Length, mixed.Length);
         Assert.InRange(Db(mixed, reference), 5.5, 6.5);
@@ -509,9 +509,9 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_SpeakerGain_OnlyThatSpeaker()
     {
-        (float[] A, float[] B) Run(Action<Mixer> setup, uint[] speakersA, uint[] speakersB)
+        (float[] A, float[] B) Run(Action<VoiceMixer> setup, uint[] speakersA, uint[] speakersB)
         {
-            Mixer a = new(), b = new();
+            VoiceMixer a = new(), b = new();
             setup(a);
             var encoders = new Dictionary<uint, VoiceEncoder> { [1] = new(), [2] = new() };
             for (uint n = 0; n < 6; n++)
@@ -530,7 +530,7 @@ public class ReceivePathTests
             return ([.. outA], [.. outB]);
         }
 
-        Assert.Equal(1f, new Mixer().SpeakerGain(1)); // no entry: 100 %
+        Assert.Equal(1f, new VoiceMixer().SpeakerGain(1)); // no entry: 100 %
 
         var (louder, plain) = Run(m => m.SetSpeakerGains(new Dictionary<uint, float> { [1] = 1.5f }), [1], [1]);
         for (int i = 0; i < plain.Length; i++) Assert.Equal(2 * plain[i], louder[i], 3); // Package 128: 150 % is twice
@@ -545,7 +545,7 @@ public class ReceivePathTests
     {
         var encoder = new VoiceEncoder();
         var packets = Enumerable.Range(0, 6).Select(n => encoder.Encode(Sine(0.1f, n * AudioFormat.FrameSamples))).ToList();
-        Mixer loud = new(), normal = new();
+        VoiceMixer loud = new(), normal = new();
         loud.SetSpeakerGains(new Dictionary<uint, float> { [1] = 2f });
         for (int n = 0; n < packets.Count; n++)
         {
@@ -600,7 +600,7 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_ActiveSpeakers_ReportViaLink()
     {
-        var mixer = new Mixer();
+        var mixer = new VoiceMixer();
         for (uint n = 0; n < 3; n++)
         {
             mixer.Push(7, n, Frame(n), viaLink: true);
@@ -618,7 +618,7 @@ public class ReceivePathTests
     [Fact]
     public void SpeakerPause_KeepsDecoder()
     {
-        var mixer = new Mixer();
+        var mixer = new VoiceMixer();
         for (uint n = 0; n < 3; n++) mixer.Push(1, n, Frame(n), false);
         for (int i = 0; i < 3; i++) Assert.Single(mixer.Tick().Active);
         var buffer = mixer.BufferOf(1);
@@ -629,7 +629,7 @@ public class ReceivePathTests
         Assert.Same(buffer, mixer.BufferOf(1));
         Assert.Single(mixer.Tick().Active);
 
-        for (int i = 0; i < Mixer.IdleTicksUntilRemoved + 10; i++) mixer.Tick();
+        for (int i = 0; i < VoiceMixer.IdleTicksUntilRemoved + 10; i++) mixer.Tick();
         Assert.Null(mixer.BufferOf(1));
 
         mixer.Push(2, 0, Frame(0), false);
@@ -711,7 +711,7 @@ public class ReceivePathTests
         int madeUpWithout = without.Concealed + without.Rebuilt, madeUpWith = with.Concealed + with.Rebuilt;
         Assert.True(madeUpWith <= 0.2 * madeUpWithout, $"{madeUpWith} with copies vs {madeUpWithout} without");
 
-        var mixer = new Mixer();
+        var mixer = new VoiceMixer();
         mixer.Push(1, 0, packets[0], false, 0);
         mixer.Push(1, 2, packets[2], false, 40, packets[1]);
         for (int i = 0; i < 3; i++) mixer.Tick();
@@ -802,7 +802,7 @@ public class ReceivePathTests
         Assert.Equal(2 * AudioFormat.FrameSamples, AudioFormat.StereoFrameSamples);
         var encoder = new VoiceEncoder();
         var packets = Enumerable.Range(0, 10).Select(n => encoder.Encode(Sine(0.6f, n * AudioFormat.FrameSamples))).ToList();
-        var mixer = new Mixer { Volume = 2f }; // 0.6 × 4 × 2: far above the threshold
+        var mixer = new VoiceMixer { Volume = 2f }; // 0.6 × 4 × 2: far above the threshold
         for (int n = 0; n < packets.Count; n++)
             if (n != 4) mixer.Push(1, (uint)n, packets[n], false); // 4 lost: rebuilt from 5, then the end is concealed
         int played = 0;

@@ -162,6 +162,7 @@ public sealed class WireFreezeTests
     [
         "AppLanguage: System, German, English",
         "AppTheme: System, Light, Dark",
+        "AudioContent: Voice, Music",
         "ChannelKind: Voice, Separator",
         "ChatTarget: Server, Channel, Private",
         "ChordModifiers: None, Ctrl, Shift, Alt",
@@ -170,7 +171,6 @@ public sealed class WireFreezeTests
         "LogKind: Server, Channel",
         "Permission: None, Speak, SpeakLinked, ChannelCreate, ChannelEdit, ChannelDelete, ChannelLink, UserMove, UserMute, UserKick, UserBan, GroupsManage, GroupsAssign, ServerConfig, ChatServer, ChatChannel, ChatPrivate, ChannelJoinFull, UsersView, BansView, GroupsView, GroupsCreate, GroupsDelete, UserDelete, LogsView, LogsDownload, BackupsManage, ChannelPasswordBypass, All",
         "SoundEvent: MicOff, MicOn, SoundOff, SoundOn, Connected, Disconnected, ChannelEntered, UserJoined, UserLeft, ServerMuted, Moved, PrivateMessage, ServerMessage, ChannelMessage, LinkVoice, OwnLinkVoice, GroupChanged, GroupChangedByMe, TalkKeyDown, TalkKeyUp",
-        "Transmission: Voice, Music",
         "TransmitMode: PushToTalk, VoiceActivation",
     ];
 

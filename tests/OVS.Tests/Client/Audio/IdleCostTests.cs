@@ -77,7 +77,7 @@ public class IdleCostTests
         Assert.True(concentus.Min() > 0, "Concentus allocates per decode; if not any more, the checks below can demand 0");
 
         // a mixer tick with two speakers; the packets arrive between the ticks, as from the network
-        var mixer = new Mixer();
+        var mixer = new VoiceMixer();
         int seq = 0;
         for (; seq < 3; seq++)
         {
@@ -141,7 +141,7 @@ public class IdleCostTests
         var frames = Enumerable.Range(0, WarmUp + Windows * Runs + 1).Select(StereoSine).ToList();
         var sender = CapturePipeline.Manual();
         sender.Music = true;
-        sender.DecideTarget = _ => VoiceHeaderTarget;
+        sender.ChooseTarget = _ => VoiceHeaderTarget;
         sender.FrameEncoded += (_, _) => { }; // as the engine listens
         var own = new VoiceEncoder(music: true) { Mono = false }; // stereo, as the pipeline sets it
         own.Encode(new float[AudioFormat.StereoFrameSamples]);

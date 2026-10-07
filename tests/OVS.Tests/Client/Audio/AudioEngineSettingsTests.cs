@@ -19,7 +19,7 @@ public class AudioEngineSettingsTests
         [nameof(ClientSettings.NoiseSuppression)] = (s => s.NoiseSuppression = false, p => p.NoiseSuppression, false),
         [nameof(ClientSettings.AutoGain)] = (s => s.AutoGain = false, p => p.AutoGain, false),
         [nameof(ClientSettings.EchoCancellation)] = (s => s.EchoCancellation = false, p => p.EchoCancellation, false),
-        [nameof(ClientSettings.Transmission)] = (s => s.Transmission = Transmission.Music, p => p.Music, true),
+        [nameof(ClientSettings.AudioContent)] = (s => s.AudioContent = AudioContent.Music, p => p.Music, true),
     };
 
     /// <summary>

@@ -5,7 +5,7 @@ using OVS.Client.Audio.Processing;
 namespace OVS.Client.Audio.Playback;
 
 /// <summary>One jitter buffer per speaker, summed into one 20 ms frame per tick. Thread-safe.</summary>
-public sealed class Mixer
+public sealed class VoiceMixer
 {
     /// <summary>
     /// Package 124: a speaker keeps the jitter buffer and decoder over talk pauses (they were made anew after 500 ms
@@ -64,7 +64,7 @@ public sealed class Mixer
 
     /// <summary>Under gate.</summary>
     void Retire(JitterBuffer b) =>
-        retired = new ReceiveStats(retired.Received + b.Received, retired.Lost + b.Lost, retired.Rebuilt + b.Rebuilt, retired.Concealed + b.Concealed, 0, 0, retired.Recovered + b.Recovered);
+        retired = retired.Add(ReceiveStats.Of(b)) with { JitterMs = 0, DelayMs = 0 }; // a gone speaker's jitter is not shown
 
     /// <summary>
     /// Package 133 (A142): for the connection details, every 2 s on the UI thread. The jitter is the worst one of the speakers
@@ -75,12 +75,7 @@ public sealed class Mixer
         lock (gate)
         {
             var sum = retired;
-            foreach (var speaker in speakers.Values)
-            {
-                var b = speaker.Buffer;
-                sum = new ReceiveStats(sum.Received + b.Received, sum.Lost + b.Lost, sum.Rebuilt + b.Rebuilt, sum.Concealed + b.Concealed,
-                    Math.Max(sum.JitterMs, b.JitterMs), Math.Max(sum.DelayMs, b.DelayMs), sum.Recovered + b.Recovered);
-            }
+            foreach (var speaker in speakers.Values) sum = sum.Add(ReceiveStats.Of(speaker.Buffer));
             return sum;
         }
     }

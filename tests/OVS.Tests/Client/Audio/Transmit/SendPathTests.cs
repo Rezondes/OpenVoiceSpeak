@@ -27,7 +27,7 @@ public class SendPathTests
 
     public static TheoryData<TransmitMode, bool, bool, bool, bool, bool, byte?> Cases => new()
     {
-        // mode, ptt, linkPtt, vad, selfMuted, hasSpeakLinked, expected
+        // mode, ptt, linkPtt, vad, muted, hasSpeakLinked, expected
         { PushToTalk, true, true, false, true, true, null },         // muted beats everything
         { PushToTalk, false, true, false, false, true, Link },        // link ptt with right
         { PushToTalk, false, true, false, false, false, Ch },         // link ptt without right
@@ -44,8 +44,8 @@ public class SendPathTests
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void Decide_Cases(TransmitMode mode, bool ptt, bool link, bool vad, bool muted, bool speakLinked, byte? expected) =>
-        Assert.Equal(expected, TransmitController.Decide(mode, ptt, link, vad, muted, speakLinked));
+    public void ChooseTarget_EachRuleRow_ReturnsExpectedTarget(TransmitMode mode, bool ptt, bool link, bool vad, bool muted, bool speakLinked, byte? expected) =>
+        Assert.Equal(expected, TransmitRule.ChooseTarget(mode, ptt, link, vad, muted, speakLinked));
 
     /// <summary>Package 25: with voice activation only the voice opens the microphone, not the PTT key.</summary>
     [Theory]
@@ -138,7 +138,7 @@ public class SendPathTests
             };
             Engine = new AudioEngine(Keys, Time, hardware: null) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
             Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
-            Pipeline.DecideTarget = Engine.Decide;
+            Pipeline.ChooseTarget = Engine.ChooseTarget;
             Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
             Pipeline.LossHint = () => Engine.EncoderLossHint; // Package 135
             Pipeline.FrameEncoded += (opus, target) =>
@@ -549,7 +549,7 @@ public class SendPathTests
     {
         var pipeline = CapturePipeline.FromTone(440); // never started, fed by hand
         var sent = new List<float>();
-        pipeline.DecideTarget = voice => voice ? Ch : null;
+        pipeline.ChooseTarget = voice => voice ? Ch : null;
         pipeline.FrameEncoded += (_, _) => sent.Add(0);
         pipeline.Feed(Constant(0.001f), AudioFormat.SampleRate); // quiet: nothing
         Assert.Empty(sent);
@@ -920,7 +920,7 @@ public class SendPathTests
         Assert.Equal(64_000, opus.Bitrate); // Package 132: the default channel bitrate until the channel's is known
 
         var pipeline = CapturePipeline.Manual();
-        pipeline.DecideTarget = _ => Ch; // as if the key is held through the pause
+        pipeline.ChooseTarget = _ => Ch; // as if the key is held through the pause
         var sizes = new List<int>();
         pipeline.FrameEncoded += (packet, _) => sizes.Add(packet.Length);
         for (int i = 0; i < 50; i++) pipeline.Feed(Constant(0f), AudioFormat.SampleRate);
@@ -1214,7 +1214,7 @@ public class SendPathTests
     sealed class MusicRig
     {
         public readonly CapturePipeline Pipeline = CapturePipeline.Manual();
-        public readonly Mixer Receiver = new();
+        public readonly VoiceMixer Receiver = new();
         public readonly List<byte[]> Packets = [];
         public readonly List<float> Heard = []; // interleaved stereo
         public int Kbps = 64;
@@ -1224,7 +1224,7 @@ public class SendPathTests
         {
             Pipeline.Music = true;
             Pipeline.Bitrate = () => Kbps;
-            Pipeline.DecideTarget = _ => Ch;
+            Pipeline.ChooseTarget = _ => Ch;
             Pipeline.FrameEncoded += (opus, _) =>
             {
                 Packets.Add(opus);
@@ -1432,7 +1432,7 @@ public class SendPathTests
         Assert.True(pipeline.Suppressor is not null, error);
         (pipeline.EchoCancellation, pipeline.NoiseSuppression, pipeline.AutoGain, pipeline.Music) = (true, true, true, true);
         var levels = new List<float>();
-        pipeline.DecideTarget = _ =>
+        pipeline.ChooseTarget = _ =>
         {
             levels.Add(pipeline.Vad.LastLevelDb);
             return null;
@@ -1455,7 +1455,7 @@ public class SendPathTests
         // the automatic gain alone, on a quiet tone it would raise toward -20 dBFS
         using var gain = CapturePipeline.Manual();
         (gain.AutoGain, gain.Music) = (true, true);
-        gain.DecideTarget = _ => null;
+        gain.ChooseTarget = _ => null;
         for (int n = 0; n < 150; n++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate); // -40 dBFS
         Assert.Equal(-40f, gain.Vad.LastLevelDb, 0.01f);
         gain.Music = false;
@@ -1464,7 +1464,7 @@ public class SendPathTests
 
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
-        engine.Configure(new ClientSettings { Transmission = Transmission.Music });
+        engine.Configure(new ClientSettings { AudioContent = AudioContent.Music });
         engine.SetTone(440);
         var canceller = engine.Capture!.Canceller!;
         Assert.True(engine.Capture.Music);
@@ -1484,7 +1484,7 @@ public class SendPathTests
     public async Task MusicMode_PttAndVad()
     {
         using var rig = new TalkRig(0);
-        rig.Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0, Transmission = Transmission.Music });
+        rig.Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0, AudioContent = AudioContent.Music });
         rig.Pipeline.Music = true; // as ApplyLive and StartCapture set it on the engine's capture
         var packets = new List<byte[]>();
         rig.Pipeline.FrameEncoded += (opus, _) => packets.Add(opus);
@@ -1515,7 +1515,7 @@ public class SendPathTests
         vad.Music = true;
         vad.Vad.ThresholdDb = -32;
         int sent = 0;
-        vad.DecideTarget = voice => voice ? Ch : null;
+        vad.ChooseTarget = voice => voice ? Ch : null;
         vad.FrameEncoded += (_, _) => sent++;
         float amplitude = MathF.Pow(10, -27 / 20f); // -30 dBFS RMS on the left, silence on the right: -33 dB over both
         for (int i = 0; i < 3; i++) vad.Feed(StereoTones(i, right: 0, amplitude: amplitude), AudioFormat.SampleRate, 2);

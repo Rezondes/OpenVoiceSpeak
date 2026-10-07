@@ -107,7 +107,7 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
             settings.NoiseSuppression = false;
             settings.AutoGain = false;
             settings.EchoCancellation = false;
-            settings.Transmission = Transmission.Music;
+            settings.AudioContent = AudioContent.Music;
         }
         return settings;
     }

@@ -220,7 +220,7 @@ public sealed class AudioEngine : IDisposable
         if (connected || selfTest) PlaySound(held ? SoundEvent.TalkKeyDown : SoundEvent.TalkKeyUp);
     }
 
-    public Mixer Mixer { get; } = new();
+    public VoiceMixer Mixer { get; } = new();
     public TransmitMode Mode { get; set; }
     public bool SelfMuted { get => selfMuted; set => selfMuted = value; }
     public bool HasSpeakLinked { get => hasSpeakLinked; set => hasSpeakLinked = value; }
@@ -337,7 +337,7 @@ public sealed class AudioEngine : IDisposable
         capture.NoiseSuppression = values.NoiseSuppression;
         capture.AutoGain = values.AutoGain;
         capture.EchoCancellation = values.EchoCancellation; // Package 140
-        capture.Music = values.Transmission == Transmission.Music; // Package 142
+        capture.Music = values.AudioContent == AudioContent.Music; // Package 142
     }
 
     /// <summary>The settings in use: the settings page's while it previews, else the saved ones.</summary>
@@ -526,7 +526,7 @@ public sealed class AudioEngine : IDisposable
             if (device) Opening(mic, settings.InputDeviceId, AudioDirection.Input);
             capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(settings.InputDeviceId, opened);
             if (capture is null) return;
-            capture.DecideTarget = Decide;
+            capture.ChooseTarget = ChooseTarget;
             capture.Bitrate = () => EncoderBitrate; // Package 132
             capture.LossHint = () => EncoderLossHint; // Package 135
             capture.Suppressor = CreateSuppressor();
@@ -612,7 +612,7 @@ public sealed class AudioEngine : IDisposable
     }
 
     /// <summary>The capture's decision per frame; internal so tests feed frames by hand (Package 130).</summary>
-    internal byte? Decide(bool voiceActive)
+    internal byte? ChooseTarget(bool voiceActive)
     {
         loopbackFrame = false;
         voiceDetected = voiceActive;
@@ -624,11 +624,11 @@ public sealed class AudioEngine : IDisposable
                 lastTarget = null;
                 TransmitChanged?.Invoke(null);
             }
-            loopbackFrame = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, keys.MuteHeld, hasSpeakLinked) is not null;
+            loopbackFrame = TransmitRule.ChooseTarget(mode: Mode, pttDown: keys.PttDown, linkPttDown: keys.LinkPttDown, vadActive: voiceActive, muted: keys.MuteHeld, hasSpeakLinked: hasSpeakLinked) is not null;
             return loopbackFrame ? VoiceHeader.TargetChannel : null;
         }
         // Push-to-mute counts like the own mute: it beats every way of sending (Package 29).
-        var target = TransmitController.Decide(Mode, keys.PttDown, keys.LinkPttDown, voiceActive, selfMuted || !connected || keys.MuteHeld || channelMuted, hasSpeakLinked);
+        var target = TransmitRule.ChooseTarget(mode: Mode, pttDown: keys.PttDown, linkPttDown: keys.LinkPttDown, vadActive: voiceActive, muted: selfMuted || !connected || keys.MuteHeld || channelMuted, hasSpeakLinked: hasSpeakLinked);
         if (target != lastTarget)
         {
             lastTarget = target;

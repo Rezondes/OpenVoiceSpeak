@@ -85,7 +85,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         noiseSuppression = current.NoiseSuppression;
         autoGain = current.AutoGain;
         echoCancellation = current.EchoCancellation;
-        isMusic = current.Transmission == Transmission.Music;
+        isMusic = current.AudioContent == AudioContent.Music;
         pttReleaseDelayMs = current.PttReleaseDelayMs;
         KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingViewModel(b, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
@@ -427,7 +427,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         NoiseSuppression = NoiseSuppression,
         AutoGain = AutoGain,
         EchoCancellation = EchoCancellation,
-        Transmission = IsMusic ? Transmission.Music : Transmission.Voice,
+        AudioContent = IsMusic ? AudioContent.Music : AudioContent.Voice,
         Theme = SelectedTheme.Value,
         Language = SelectedLanguage.Value,
         CheckForUpdates = CheckForUpdates,

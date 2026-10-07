@@ -78,7 +78,7 @@ public class VoiceFilterTests
     {
         using var pipeline = Pipeline(noiseSuppression);
         var seen = new List<(float, bool)>();
-        pipeline.DecideTarget = voice =>
+        pipeline.ChooseTarget = voice =>
         {
             seen.Add((pipeline.Vad.LastLevelDb, voice));
             return null;
@@ -200,7 +200,7 @@ public class VoiceFilterTests
         using var pipeline = Pipeline(noiseSuppression);
         pipeline.AutoGain = true;
         var levels = new List<float>();
-        pipeline.DecideTarget = _ =>
+        pipeline.ChooseTarget = _ =>
         {
             levels.Add(pipeline.Vad.LastLevelDb);
             return null;
@@ -401,7 +401,7 @@ public class VoiceFilterTests
         Assert.True(pipeline.Canceller is not null, error);
         pipeline.Canceller.DelayMs = AudioEngine.EchoDelayMs; // the engine's hint, not the 60 ms of the test path
         pipeline.EchoCancellation = true;
-        pipeline.DecideTarget = _ =>
+        pipeline.ChooseTarget = _ =>
         {
             sent.Add(pipeline.Vad.LastLevelDb);
             return null;

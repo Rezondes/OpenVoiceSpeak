@@ -242,15 +242,15 @@ public sealed class MainViewModelTests : IAsyncLifetime
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             return vm.Server!.SetSelfStateAsync(true, false);
         });
-        vm.Audio.Decide(true); // the voice gate hears voice, the capture thread asks
+        vm.Audio.ChooseTarget(true); // the voice gate hears voice, the capture thread asks
         Assert.Equal("", await TickHint()); // push-to-talk mode: voice alone is no attempt to talk
         await OnUi(() =>
         {
             vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
-            return vm.Audio.Decide(false);
+            return vm.Audio.ChooseTarget(false);
         });
         Assert.Equal("", await TickHint());
-        vm.Audio.Decide(true);
+        vm.Audio.ChooseTarget(true);
         Assert.Equal(SelfMutedHint, await TickHint());
     }
 

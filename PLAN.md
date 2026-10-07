@@ -1387,14 +1387,14 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~OpusCodecTests|FullyQualif
 
 ### Tests (TDD)
 
-1. `SendPathTests.cs > [Theory] "Decide_Cases"` mit einer Zeile pro Regel sowie den Kombinationen PTT+Link und VAD+Link (AC1 bis AC6)
+1. `SendPathTests.cs > [Theory] "ChooseTarget_EachRuleRow_ReturnsExpectedTarget"` mit einer Zeile pro Regel sowie den Kombinationen PTT+Link und VAD+Link (AC1 bis AC6)
 2. `SendPathTests.cs`:
    - `"Vad_SilenceInactive_LoudActive_Hangover9Frames"` (AC7)
      (Hinweis zur Referenz: Der Test prüft 9 Frames Nachlauf statt 15; geändert mit Package 129 (8ee9b6c).)
 3. `SendPathTests.cs > "FrameChunker_IrregularInput_ExactFrames_NoLoss"` (AC8)
 4. Manuelle Checks für AC9 und AC10 mit einem Debug-Schalter `--audio-debug` in `Program.cs` des Clients.
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~TransmitController|FullyQualifiedName~VoiceActivityDetector|FullyQualifiedName~FrameChunker"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~SendPathTests.ChooseTarget|FullyQualifiedName~SendPathTests.Vad_|FullyQualifiedName~FrameChunker"`
 
 ### Umsetzungsschritte
 
@@ -2060,7 +2060,7 @@ Neue Regeln in Prioritätsreihenfolge: stumm, dann Link-PTT, dann im PTT-Modus d
 
 ### Tests (TDD)
 
-1. `SendPathTests > "Decide_Cases"`, neue Zeile `{ VoiceActivation, ptt: true, link: false, vad: false, ..., expected: null }` als Reproduktion, muss vor dem Fix rot sein (AC1)
+1. `SendPathTests > "ChooseTarget_EachRuleRow_ReturnsExpectedTarget"`, neue Zeile `{ VoiceActivation, ptt: true, link: false, vad: false, ..., expected: null }` als Reproduktion, muss vor dem Fix rot sein (AC1)
 2. Neue Zeilen für AC2 (`vad: true` mit `ptt: true` ergibt Target 0) und AC4 (bestehende PTT-Zeilen bleiben)
 3. Bestehende Zeile `{ VoiceActivation, false, true, true, ..., Link }` bleibt grün (AC3)
 4. `SendPathTests > "PttKey_BelowThreshold_SendsOnlyInPttMode"`: `AudioEngine` ohne Geräte, Testton (-13.5 dBFS), Schwelle -10 dBFS, `keys.Simulate(ptt: true)`, nach 400 ms hat die Sprachaktivierung 0 Frames gesendet, der PTT-Modus zur Gegenprobe mehr als 0 (AC1, AC4, Ende-zu-Ende im Client)

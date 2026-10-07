@@ -66,7 +66,8 @@ public sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 140 (A149): WebRTC's echo canceller on the sent signal; on also for a file from before without the key.</summary>
     public bool EchoCancellation { get; set; } = true;
     /// <summary>Package 142 (A151): speech by default, also for a file from before without the key.</summary>
-    public Transmission Transmission { get; set; } = Transmission.Voice;
+    [JsonPropertyName("transmission")] // the key of the settings file: it keeps the name the property had
+    public AudioContent AudioContent { get; set; } = AudioContent.Voice;
     public AppTheme Theme { get; set; } = AppTheme.System;
     /// <summary>Package 45: follows Windows unless set; takes effect at the next start.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.System;

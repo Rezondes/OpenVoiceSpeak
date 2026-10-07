@@ -109,7 +109,7 @@ public sealed class CapturePipeline : IDisposable
     bool autoGainOn;
 
     /// <summary>Called per frame with the VAD result; returns the target or null to stay silent.</summary>
-    public Func<bool, byte?> DecideTarget { get; set; } = _ => null;
+    public Func<bool, byte?> ChooseTarget { get; set; } = _ => null;
 
     /// <summary>
     /// Package 132 (A141): asked for every frame sent, the kbps to encode it with. The encoder takes a change here, on the
@@ -189,7 +189,7 @@ public sealed class CapturePipeline : IDisposable
                 if (autoGainOn && !music) autoGain.Process(frame, voiceProbability); // Package 127: RNNoise's rating decides what is speech
                 bool voice = Vad.Process(frame, channels); // Package 142: the louder side
                 Level?.Invoke(Vad.LastLevelDb);
-                var target = DecideTarget(voice);
+                var target = ChooseTarget(voice);
                 if (target is { } t)
                 {
                     int kbps = Bitrate();

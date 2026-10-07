@@ -45,10 +45,10 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     [Fact]
     public void Scanner_FindsNonPrivateNestedType()
     {
-        Write("src/OVS.Client/Audio/Playback/Mixer.cs",
-            "namespace OVS.Client.Audio.Playback;\n\npublic sealed class Mixer\n{\n    sealed class Speaker;\n\n    private enum Mode { A, B }\n\n    internal sealed record Slot(int Index);\n}\n");
+        Write("src/OVS.Client/Audio/Playback/Gauge.cs",
+            "namespace OVS.Client.Audio.Playback;\n\npublic sealed class Gauge\n{\n    sealed class Speaker;\n\n    private enum Mode { A, B }\n\n    internal sealed record Slot(int Index);\n}\n");
         var problems = Check();
-        Assert.Equal(["src/OVS.Client/Audio/Playback/Mixer.cs: nested types only private: Slot is internal"], problems);
+        Assert.Equal(["src/OVS.Client/Audio/Playback/Gauge.cs: nested types only private: Slot is internal"], problems);
     }
 
     [Fact]

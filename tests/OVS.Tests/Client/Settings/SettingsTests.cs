@@ -687,10 +687,10 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [AvaloniaFact]
     public void TransmissionMode_DefaultLive()
     {
-        Assert.Equal(Transmission.Voice, new ClientSettings().Transmission);
+        Assert.Equal(AudioContent.Voice, new ClientSettings().AudioContent);
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
         var old = ClientSettings.Load(dir, out _);
-        Assert.Equal(Transmission.Voice, old.Transmission);
+        Assert.Equal(AudioContent.Voice, old.AudioContent);
 
         var vm = Vm(old);
         var live = new List<ClientSettings>();
@@ -710,13 +710,13 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         music.IsChecked = true; // clicked
         Dispatcher.UIThread.RunJobs();
         Assert.True(vm.IsMusic);
-        Assert.Equal(Transmission.Music, live[^1].Transmission);
+        Assert.Equal(AudioContent.Music, live[^1].AudioContent);
         Assert.True(vm.HasChanges);
         Assert.All(filters, f => Assert.False(f.IsEffectivelyEnabled));
         Assert.All(filters, f => Assert.True(f.IsChecked)); // still on for speech
         window.Close();
         vm.ToSettings(old).Save(dir);
-        Assert.Equal(Transmission.Music, ClientSettings.Load(dir, out _).Transmission);
+        Assert.Equal(AudioContent.Music, ClientSettings.Load(dir, out _).AudioContent);
 
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
