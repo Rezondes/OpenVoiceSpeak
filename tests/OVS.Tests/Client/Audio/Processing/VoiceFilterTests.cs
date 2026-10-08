@@ -367,7 +367,7 @@ public class VoiceFilterTests
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (Volatile.Read(ref levels) == 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
         Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
-        Assert.Null(engine.DeviceLifecycle.Capture!.Suppressor);
+        Assert.Null(engine.DeviceLifecycle.CaptureSource.Capture!.Suppressor);
     }
 
     // ---- Package 140 (A149): echo cancellation ----
@@ -471,7 +471,7 @@ public class VoiceFilterTests
         {
             engine.Configure(new ClientSettings());
             engine.DeviceLifecycle.SetTone(440);
-            var capture = engine.DeviceLifecycle.Capture!;
+            var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
             engine.MixForSpeaker();
             Assert.Equal(1, capture.Canceller!.RenderedFrames);
             engine.ApplyLive(new ClientSettings { EchoCancellation = false });
@@ -483,7 +483,7 @@ public class VoiceFilterTests
         using var missing = new AudioEngine(keys, TimeProvider.System, hardware: null, new NativeCaptureFilters(log: null, echoLibrary: NativeCaptureFiltersTests.NoEchoLibrary));
         missing.Configure(new ClientSettings());
         missing.DeviceLifecycle.SetTone(440);
-        Assert.Null(missing.DeviceLifecycle.Capture!.Canceller);
+        Assert.Null(missing.DeviceLifecycle.CaptureSource.Capture!.Canceller);
         Assert.Equal(AudioFormat.StereoFrameSamples, missing.MixForSpeaker().Length); // no canceller: just the mix (Package 142: stereo)
     }
 }

@@ -1560,12 +1560,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, VadThresholdDb = -25, NoiseSuppression = false, AutoGain = true });
         engine.LevelMeter = true;
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (engine.DeviceLifecycle.Capture is null && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
-        var capture = engine.DeviceLifecycle.Capture!;
+        while (engine.DeviceLifecycle.CaptureSource.Capture is null && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         Assert.Equal((0.5f, -25f, false, true), (capture.Gain, capture.Vad.ThresholdDb, capture.NoiseSuppression, capture.AutoGain));
 
         engine.Configure(new ClientSettings { InputGain = 0.8f });
-        Assert.Equal(0.8f, engine.DeviceLifecycle.Capture!.Gain);
+        Assert.Equal(0.8f, engine.DeviceLifecycle.CaptureSource.Capture!.Gain);
     }
 
     /// <summary>

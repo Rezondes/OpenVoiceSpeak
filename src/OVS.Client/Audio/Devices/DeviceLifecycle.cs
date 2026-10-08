@@ -6,23 +6,22 @@ namespace OVS.Client.Audio.Devices;
 
 /// <summary>
 /// Package 124, 137: opens a configured capture and the speaker, closes them, and reopens them after
-/// device changes once those have been quiet. The capture is the microphone or, while one is set, a test tone in its
-/// place. It runs under the audio engine's lock, which it is handed (no lock of its own; a member marked "under gate"
-/// asserts that its caller holds it). The engine configures each new capture (its filters, the send path and the
-/// settings in use) through the callback it hands in, before the capture starts, and turns what failed into a notice.
+/// device changes once those have been quiet. The capture comes from its <see cref="CaptureSource"/> (the microphone
+/// or, while one is set, a test tone in its place), which opens, holds and closes it; this type decides when. It runs
+/// under the audio engine's lock, which it is handed (no lock of its own; a member marked "under gate" asserts that its
+/// caller holds it). The engine configures each new capture through the callback it hands in, before the capture
+/// starts, and turns what failed into a notice.
 /// </summary>
 public sealed class DeviceLifecycle
 {
     readonly object gate; // the engine's: the devices and settings
     readonly IAudioHardware? hardware;
     readonly Func<bool> micWanted, playbackRunning;
-    readonly Action<CapturePipeline> configure;
     readonly Action captureClosed;
     readonly Action<IReadOnlyList<string>> report;
     readonly ITimer? settle; // Package 137: the reopen after device changes, once they have been quiet
     bool running = true; // under gate
     string? inputId, outputId; // the chosen devices, null for "Standard"; under gate
-    CapturePipeline? capture;
     volatile PlaybackBuffer? speaker; // the open speaker
     readonly Endpoint micEndpoint, speakerEndpoint; // Package 137, under gate (but StreamError)
     bool deviceReopen; // Package 137, under gate: the open running is the one after a device change
@@ -32,7 +31,7 @@ public sealed class DeviceLifecycle
     /// <param name="time">Package 137: the clock of the settle timer and of a stream error's age.</param>
     /// <param name="micWanted">Package 124: whether the microphone is needed now (the engine's flags).</param>
     /// <param name="playbackRunning">Whether the playback thread runs, which needs the speaker.</param>
-    /// <param name="configure">Sets a new capture up (its filters, the send path, the settings in use) before it starts. Under gate.</param>
+    /// <param name="configure">The engine's set-up of a new capture, handed to the <see cref="CaptureSource"/> (see there).</param>
     /// <param name="captureClosed">Package 131: a capture was closed for a reopen after a device change or by <see cref="Close"/>.</param>
     /// <param name="report">Package 124: the warnings of one round of opens in the background, for one notice; called only with some.</param>
     internal DeviceLifecycle(object gate, IAudioHardware? hardware, TimeProvider time, Func<bool> micWanted, Func<bool> playbackRunning,
@@ -42,11 +41,11 @@ public sealed class DeviceLifecycle
         this.hardware = hardware;
         this.micWanted = micWanted;
         this.playbackRunning = playbackRunning;
-        this.configure = configure;
         this.captureClosed = captureClosed;
         this.report = report;
         micEndpoint = new Endpoint(time);
         speakerEndpoint = new Endpoint(time);
+        CaptureSource = new CaptureSource(gate, hardware, configure);
         if (hardware is null) return;
         settle = time.CreateTimer(_ => ReopenAfterChange(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         hardware.Changed += OnDeviceChanged;
@@ -58,6 +57,9 @@ public sealed class DeviceLifecycle
     /// device list to load and a device restart that may take long.
     /// </summary>
     public bool OpensDevices => hardware is not null;
+
+    /// <summary>The capture and where it comes from (the microphone or the test tone); opened and closed as this type decides.</summary>
+    public CaptureSource CaptureSource { get; }
 
     /// <summary>
     /// Package 137: what one direction opened last and how often it failed in a row, so a device change reopens it only
@@ -140,7 +142,7 @@ public sealed class DeviceLifecycle
             deviceReopen = true;
             try
             {
-                ReopenIfDue(micEndpoint, AudioDirection.Input, inputId, ToneHz is null && micWanted(), capture is not null, ReopenCapture, Strings.Audio_MicFailed, warnings);
+                ReopenIfDue(micEndpoint, AudioDirection.Input, inputId, CaptureSource.UsesMicrophone && micWanted(), CaptureSource.Capture is not null, ReopenCapture, Strings.Audio_MicFailed, warnings);
                 ReopenIfDue(speakerEndpoint, AudioDirection.Output, outputId, SpeakerInUse, speaker is not null, ReopenSpeaker, Strings.Audio_SpeakerFailed, warnings);
             }
             finally
@@ -182,7 +184,7 @@ public sealed class DeviceLifecycle
     void ReopenCapture(List<string> warnings)
     {
         Debug.Assert(Monitor.IsEntered(gate));
-        CloseCapture();
+        CaptureSource.Close();
         captureClosed();
         SyncCapture(warnings);
     }
@@ -228,8 +230,6 @@ public sealed class DeviceLifecycle
         warnings.AddRange(opened);
     }
 
-    internal CapturePipeline? Capture => capture;
-
     /// <summary>The open speaker, or null; the playback thread reads it per frame.</summary>
     internal PlaybackBuffer? Speaker => speaker;
 
@@ -243,15 +243,12 @@ public sealed class DeviceLifecycle
         }
     }
 
-    /// <summary>Test tone frequency replacing the microphone, or null for the real microphone.</summary>
-    public double? ToneHz { get; private set; }
-
     public void SetTone(double? frequency)
     {
         lock (gate)
         {
-            ToneHz = frequency;
-            CloseCapture();
+            CaptureSource.ToneHz = frequency;
+            CaptureSource.Close();
             SyncCapture([]);
         }
     }
@@ -317,9 +314,9 @@ public sealed class DeviceLifecycle
     {
         Debug.Assert(Monitor.IsEntered(gate));
         if (!running) return; // an open queued before the engine's Dispose comes too late
-        bool needed = ToneHz is not null || (micWanted() && hardware is not null);
-        if (needed && capture is null) StartCapture(warnings);
-        else if (!needed) CloseCapture();
+        bool needed = !CaptureSource.UsesMicrophone || (micWanted() && hardware is not null);
+        if (needed && CaptureSource.Capture is null) StartCapture(warnings);
+        else if (!needed) CaptureSource.Close();
     }
 
     /// <summary>Under gate.</summary>
@@ -327,18 +324,15 @@ public sealed class DeviceLifecycle
     {
         Debug.Assert(Monitor.IsEntered(gate));
         var opened = new List<string>();
-        bool device = ToneHz is null; // Package 137: the test tone leaves the microphone's state alone
+        bool device = CaptureSource.UsesMicrophone; // Package 137: the test tone leaves the microphone's state alone
         try
         {
             if (device) RecordOpen(micEndpoint, inputId, AudioDirection.Input);
-            capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(inputId, opened);
-            if (capture is null) return;
-            configure(capture);
-            capture.Start();
+            CaptureSource.Open(inputId, opened);
         }
         catch (Exception e) // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
         {
-            CloseCapture();
+            CaptureSource.Close();
             warnings.Add(string.Format(Strings.Audio_MicFailed, e.Message));
             if (device) micEndpoint.OpenFailed();
         }
@@ -379,19 +373,11 @@ public sealed class DeviceLifecycle
         open?.Dispose();
     }
 
-    /// <summary>Under gate.</summary>
-    void CloseCapture()
-    {
-        Debug.Assert(Monitor.IsEntered(gate));
-        capture?.Dispose();
-        capture = null;
-    }
-
     /// <summary>Closes the capture and the speaker. Under gate.</summary>
     internal void Close()
     {
         Debug.Assert(Monitor.IsEntered(gate));
-        CloseCapture();
+        CaptureSource.Close();
         captureClosed(); // Package 131: no microphone, no voice
         CloseSpeaker();
     }

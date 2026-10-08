@@ -10,7 +10,8 @@ namespace OVS.Tests.Client.Audio.Devices;
 /// to the engine): the capture (microphone or test tone) and the speaker opened, closed and reopened on a fake hardware
 /// and a manual clock. The engine's side is played by fields: its lock, whether the microphone is wanted and the playback
 /// thread runs, the configuring of a new capture, the closed captures and the reports. Everything runs on the test
-/// thread (the settle timer fires inside <c>Advance</c>).
+/// thread (the settle timer fires inside <c>Advance</c>). How a capture is opened from its source and set up is in
+/// <c>CaptureSourceTests</c>.
 /// </summary>
 public sealed class DeviceLifecycleTests : IDisposable
 {
@@ -23,6 +24,7 @@ public sealed class DeviceLifecycleTests : IDisposable
     bool micWanted, playbackRunning;
     Exception? configureFails;
     int capturesClosed;
+    int levels; // frames the configured captures delivered once started
 
     public DeviceLifecycleTests() => devices = Create(hardware);
 
@@ -33,6 +35,7 @@ public sealed class DeviceLifecycleTests : IDisposable
     void Configure(CapturePipeline capture)
     {
         configured.Add(capture);
+        capture.Level += _ => Interlocked.Increment(ref levels);
         if (configureFails is { } error) throw error;
     }
 
@@ -66,7 +69,7 @@ public sealed class DeviceLifecycleTests : IDisposable
     }
 
     [Fact]
-    public void SyncCaptureAndReport_MicWanted_OpensAndConfiguresTheChosenMic()
+    public void SyncCaptureAndReport_MicWanted_OpensTheChosenMic()
     {
         hardware.Present.Add("headset", AudioDirection.Input);
         Choose("headset");
@@ -76,8 +79,6 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         Assert.Empty(reports);
         Assert.Equal(("headset", 1), (hardware.Open.Mic, hardware.Counts.MicsOpen));
-        var capture = Assert.Single(configured);
-        Assert.Same(capture, devices.Capture);
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         devices.SyncCaptureAndReport();
 
         Assert.Equal((1, 0), (hardware.Counts.Mics, hardware.Counts.MicsOpen));
-        Assert.Null(devices.Capture);
+        Assert.Null(devices.CaptureSource.Capture);
     }
 
     [Fact]
@@ -101,7 +102,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         devices.SyncCaptureAndReport();
 
         Assert.Equal([string.Format(Strings.Audio_MicFailed, "no microphone")], Assert.Single(reports));
-        Assert.Null(devices.Capture);
+        Assert.Null(devices.CaptureSource.Capture);
         Assert.Empty(configured);
     }
 
@@ -115,7 +116,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         Assert.Equal((1, 0), (hardware.Counts.Mics, hardware.Counts.MicsOpen));
         Assert.True(Assert.Single(configured).IsDisposed);
-        Assert.Null(devices.Capture);
+        Assert.Null(devices.CaptureSource.Capture);
         Assert.Equal([string.Format(Strings.Audio_MicFailed, "configure failed")], Assert.Single(reports));
     }
 
@@ -128,7 +129,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         without.SyncCaptureAndReport();
 
         Assert.False(without.OpensDevices);
-        Assert.Null(without.Capture);
+        Assert.Null(without.CaptureSource.Capture);
         Assert.Empty(reports);
     }
 
@@ -175,7 +176,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         lock (gate) devices.Close();
 
         Assert.Equal((1, 0, 1, 0), hardware.Counts);
-        Assert.Null(devices.Capture);
+        Assert.Null(devices.CaptureSource.Capture);
         Assert.Null(devices.Speaker);
         Assert.Equal(1, capturesClosed);
     }
@@ -237,9 +238,9 @@ public sealed class DeviceLifecycleTests : IDisposable
         try
         {
             devices.SetTone(440);
-            Assert.Equal(440, devices.ToneHz);
+            Assert.Equal(440, devices.CaptureSource.ToneHz);
             Assert.Equal((1, 0), (hardware.Counts.Mics, hardware.Counts.MicsOpen)); // the tone is no device
-            Assert.Same(configured[^1], devices.Capture);
+            Assert.Same(configured[^1], devices.CaptureSource.Capture);
         }
         finally
         {
@@ -251,20 +252,48 @@ public sealed class DeviceLifecycleTests : IDisposable
     }
 
     [Fact]
-    public void SetTone_NoHardware_OpensTheTone()
+    public void SetTone_NoHardware_OpensTheToneUntilItEnds()
     {
         var without = Create(null);
         try
         {
             without.SetTone(440);
-            Assert.Same(Assert.Single(configured), without.Capture);
+            Assert.Same(Assert.Single(configured), without.CaptureSource.Capture);
         }
         finally
         {
             without.SetTone(null);
         }
 
-        Assert.Null(without.Capture);
+        Assert.Null(without.CaptureSource.Capture);
+    }
+
+    [Fact]
+    public async Task SetTone_NoMicWanted_StartsTheToneWithoutADevice()
+    {
+        try
+        {
+            devices.SetTone(440);
+
+            await AsyncWait.Until(() => Volatile.Read(ref levels) > 0); // started: its thread delivers frames
+            Assert.Equal((0, 0, 0, 0), hardware.Counts);
+        }
+        finally
+        {
+            devices.SetTone(null);
+        }
+    }
+
+    [Fact]
+    public void SetTone_AfterStopWatching_OpensNoTone()
+    {
+        devices.StopWatching();
+
+        devices.SetTone(440);
+
+        Assert.Equal(440, devices.CaptureSource.ToneHz);
+        Assert.Null(devices.CaptureSource.Capture);
+        Assert.Empty(configured);
     }
 
     [Fact]
@@ -274,12 +303,12 @@ public sealed class DeviceLifecycleTests : IDisposable
         try
         {
             devices.SetTone(440);
-            var tone = devices.Capture;
+            var tone = devices.CaptureSource.Capture;
             hardware.DefaultMic = "usb-mic";
 
             Change();
 
-            Assert.Same(tone, devices.Capture);
+            Assert.Same(tone, devices.CaptureSource.Capture);
             Assert.Equal(0, hardware.Counts.Mics);
         }
         finally
@@ -303,7 +332,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         time.Advance(TimeSpan.FromMilliseconds(1));
 
         Assert.Equal(("headset", 2, 1), (hardware.Open.Mic, hardware.Counts.Mics, hardware.Counts.MicsOpen));
-        Assert.Same(configured[^1], devices.Capture);
+        Assert.Same(configured[^1], devices.CaptureSource.Capture);
         Assert.Equal(1, capturesClosed);
         Assert.Single(reports);
     }
@@ -476,7 +505,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         var failed = string.Format(Strings.Audio_MicFailed, "device cannot start");
         Assert.Equal([failed, failed, failed], Notices); // no fourth try
-        Assert.Null(devices.Capture);
+        Assert.Null(devices.CaptureSource.Capture);
     }
 
     [Fact]

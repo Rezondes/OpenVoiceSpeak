@@ -29,7 +29,7 @@ public class AudioEngineTests
         try
         {
             engine.DeviceLifecycle.SetTone(440);
-            var capture = engine.DeviceLifecycle.Capture!;
+            var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
 
             Assert.True(capture.Suppressor is not null, "the engine attached no noise suppressor");
             Assert.Equal(AudioEngine.EchoDelayMs, capture.Canceller!.DelayMs); // the engine hands its hint to the filters
@@ -49,7 +49,7 @@ public class AudioEngineTests
         try
         {
             engine.DeviceLifecycle.SetTone(440);
-            var capture = engine.DeviceLifecycle.Capture!;
+            var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
 
             Assert.Null(capture.Suppressor);
             Assert.NotNull(capture.Canceller);

@@ -232,7 +232,7 @@ public sealed class PlaybackLoopTests : IDisposable
     {
         micWanted = true;
         devices.SyncCaptureAndReport();
-        var capture = devices.Capture!;
+        var capture = devices.CaptureSource.Capture!;
         capture.Canceller = EchoCanceller.Create(out var error);
         Assert.True(capture.Canceller is not null, error);
         capture.EchoCancellation = true;

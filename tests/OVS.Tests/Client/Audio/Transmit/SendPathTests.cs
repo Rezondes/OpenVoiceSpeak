@@ -310,7 +310,7 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         engine.ChannelBitrate = 48;
-        Assert.Equal(48, engine.DeviceLifecycle.Capture!.Bitrate());
+        Assert.Equal(48, engine.DeviceLifecycle.CaptureSource.Capture!.Bitrate());
     }
 
     /// <summary>Package 135: the server's figure every 2 s on the rig's clock, as the main view model passes it on.</summary>
@@ -391,7 +391,7 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
         engine.Loss.Report(new LossReport(100, 20));
-        Assert.Equal(30, engine.DeviceLifecycle.Capture!.LossHint());
+        Assert.Equal(30, engine.DeviceLifecycle.CaptureSource.Capture!.LossHint());
     }
 
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
@@ -830,16 +830,16 @@ public class SendPathTests
     {
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings());
-        var capture = engine.DeviceLifecycle.Capture!;
+        var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         Assert.NotNull(capture.Suppressor);
         Assert.Equal((true, true), (capture.NoiseSuppression, capture.AutoGain)); // the defaults (Package 127: automatic gain on)
 
         engine.ApplyLive(new ClientSettings { NoiseSuppression = false, AutoGain = false });
-        Assert.Same(capture, engine.DeviceLifecycle.Capture); // no restart
+        Assert.Same(capture, engine.DeviceLifecycle.CaptureSource.Capture); // no restart
         Assert.Equal((false, false), (capture.NoiseSuppression, capture.AutoGain));
 
         engine.ApplyLive(new ClientSettings()); // what closing the settings page does
-        Assert.Same(capture, engine.DeviceLifecycle.Capture);
+        Assert.Same(capture, engine.DeviceLifecycle.CaptureSource.Capture);
         Assert.Equal((true, true), (capture.NoiseSuppression, capture.AutoGain));
     }
 
@@ -974,7 +974,7 @@ public class SendPathTests
         rig.Change();
         Assert.Equal(("headset", 1), (rig.Hardware.Open.Mic, rig.Hardware.Counts.MicsOpen));
         Assert.Single(rig.Notices);
-        Assert.NotNull(rig.Engine.DeviceLifecycle.Capture);
+        Assert.NotNull(rig.Engine.DeviceLifecycle.CaptureSource.Capture);
     }
 
     /// <summary>
@@ -1066,7 +1066,7 @@ public class SendPathTests
         Assert.Equal((0, 0, 0, 0), rig.Hardware.Counts);
         Assert.Equivalent(new[] { string.Format(Strings.Audio_MicFailed, "no microphone"), string.Format(Strings.Audio_SpeakerFailed, "no speaker") },
             rig.Notices, strict: true);
-        Assert.Null(rig.Engine.DeviceLifecycle.Capture);
+        Assert.Null(rig.Engine.DeviceLifecycle.CaptureSource.Capture);
     }
 
     /// <summary>
@@ -1403,9 +1403,9 @@ public class SendPathTests
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings { AudioContent = AudioContent.Music });
         engine.DeviceLifecycle.SetTone(440);
-        Assert.True(engine.DeviceLifecycle.Capture!.Music);
+        Assert.True(engine.DeviceLifecycle.CaptureSource.Capture!.Music);
         engine.ApplyLive(new ClientSettings());
-        Assert.False(engine.DeviceLifecycle.Capture.Music);
+        Assert.False(engine.DeviceLifecycle.CaptureSource.Capture.Music);
     }
 
     /// <summary>

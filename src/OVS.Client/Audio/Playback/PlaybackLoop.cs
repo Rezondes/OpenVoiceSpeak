@@ -163,7 +163,7 @@ internal sealed class PlaybackLoop
     internal float[] MixForSpeaker()
     {
         var frame = Mix();
-        if (devices.Capture is { EchoCancellation: true, Music: false, Canceller: { } canceller })
+        if (devices.CaptureSource.Capture is { EchoCancellation: true, Music: false, Canceller: { } canceller })
         {
             SampleConversion.Downmix(frame, farEnd);
             canceller.Render(farEnd);

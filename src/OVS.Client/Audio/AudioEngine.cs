@@ -194,7 +194,7 @@ public sealed class AudioEngine : IDisposable
         Mode = values.Mode;
         Mixer.Volume = values.OutputVolume;
         keys.ReleaseDelay = TimeSpan.FromMilliseconds(values.PttReleaseDelayMs); // Package 130
-        if (DeviceLifecycle.Capture is { } capture) ApplyCaptureSettings(capture, values);
+        if (DeviceLifecycle.CaptureSource.Capture is { } capture) ApplyCaptureSettings(capture, values);
     }
 
     /// <summary>The settings a capture works with; a new capture setting is mapped here and nowhere else.</summary>
@@ -213,8 +213,8 @@ public sealed class AudioEngine : IDisposable
     ClientSettings Current => live ?? settings;
 
     /// <summary>
-    /// Sets a new capture up before it starts (<see cref="DeviceLifecycle"/> calls it under gate): its filters, the send
-    /// path's decision and encoder values, the settings in use, the encoded frames and the level.
+    /// Sets a new capture up before it starts (the lifecycle's <see cref="CaptureSource"/> calls it under gate): its
+    /// filters, the send path's decision and encoder values, the settings in use, the encoded frames and the level.
     /// </summary>
     void ConfigureCapture(CapturePipeline capture)
     {
@@ -269,7 +269,7 @@ public sealed class AudioEngine : IDisposable
     public event Action<float>? InputLevel;
 
     /// <summary>Package 129 (A138): the voice gate's threshold in use, for the level meter; the manual one without a microphone.</summary>
-    public float InputThresholdDb => DeviceLifecycle.Capture?.Vad.ThresholdInUseDb ?? Current.VadThresholdDb;
+    public float InputThresholdDb => DeviceLifecycle.CaptureSource.Capture?.Vad.ThresholdInUseDb ?? Current.VadThresholdDb;
 
     /// <summary>Takes the settings; the devices open now only if they are needed (Package 124), and then with these.</summary>
     /// <returns>A warning for the user, or null.</returns>

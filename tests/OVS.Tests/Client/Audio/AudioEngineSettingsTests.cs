@@ -86,12 +86,12 @@ public class AudioEngineSettingsTests
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
         engine.DeviceLifecycle.SetTone(440);
-        var capture = engine.DeviceLifecycle.Capture!;
+        var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         AssertHoldsNoneChanged(engine, keys); // a default changed to a value below would leave nothing to see
 
         engine.ApplyLive(CreateAllChanged());
 
-        Assert.Same(capture, engine.DeviceLifecycle.Capture);
+        Assert.Same(capture, engine.DeviceLifecycle.CaptureSource.Capture);
         AssertTakesAllChanged(engine, keys);
     }
 
@@ -118,11 +118,11 @@ public class AudioEngineSettingsTests
         engine.Configure(new ClientSettings());
         engine.DeviceLifecycle.SetTone(440);
         engine.ApplyLive(new ClientSettings());
-        var previewed = engine.DeviceLifecycle.Capture;
+        var previewed = engine.DeviceLifecycle.CaptureSource.Capture;
 
         engine.Configure(CreateAllChanged());
 
-        Assert.NotSame(previewed, engine.DeviceLifecycle.Capture);
+        Assert.NotSame(previewed, engine.DeviceLifecycle.CaptureSource.Capture);
         AssertTakesAllChanged(engine, keys);
     }
 
@@ -136,7 +136,7 @@ public class AudioEngineSettingsTests
 
     static void AssertTakesAllChanged(AudioEngine engine, KeyPoller keys)
     {
-        var capture = engine.DeviceLifecycle.Capture!;
+        var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         var changed = CreateAllChanged();
         foreach (var (setting, (_, read, value)) in CaptureReadouts)
             Assert.Equal((setting, value), (setting, read(capture)));
@@ -146,7 +146,7 @@ public class AudioEngineSettingsTests
 
     static void AssertHoldsNoneChanged(AudioEngine engine, KeyPoller keys)
     {
-        var capture = engine.DeviceLifecycle.Capture!;
+        var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         var changed = CreateAllChanged();
         foreach (var (setting, (_, read, value)) in CaptureReadouts)
             Assert.NotEqual((setting, value), (setting, read(capture)));

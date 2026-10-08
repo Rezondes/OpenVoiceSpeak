@@ -158,7 +158,7 @@ public sealed class DebugApi : IDisposable
                 return new { ok = true };
             case "/tone":
                 vm.Audio.DeviceLifecycle.SetTone(Optional(body, "hz")?.GetDouble());
-                return new { ok = true, toneHz = vm.Audio.DeviceLifecycle.ToneHz };
+                return new { ok = true, toneHz = vm.Audio.DeviceLifecycle.CaptureSource.ToneHz };
             case "/settings":
                 var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
                 // Package 127: a body without a version keeps the current one (a missing key reads as 0)
@@ -319,7 +319,7 @@ public sealed class DebugApi : IDisposable
                 vm.Audio.FramesSent,
                 vm.Audio.FramesReceived,
                 vm.Audio.LastOutputLevelDb,
-                vm.Audio.DeviceLifecycle.ToneHz,
+                vm.Audio.DeviceLifecycle.CaptureSource.ToneHz,
                 Ptt = vm.Keys.PttDown,
                 LinkPtt = vm.Keys.LinkPttDown,
                 PushToMute = vm.Keys.MuteHeld,

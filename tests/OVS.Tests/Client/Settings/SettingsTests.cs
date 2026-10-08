@@ -558,10 +558,10 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
         engine.DeviceLifecycle.SetTone(440);
-        var capture = engine.DeviceLifecycle.Capture!;
+        var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         Assert.True(capture.Vad.Automatic);
         engine.ApplyLive(new ClientSettings { VadAutomatic = false });
-        Assert.Same(capture, engine.DeviceLifecycle.Capture);
+        Assert.Same(capture, engine.DeviceLifecycle.CaptureSource.Capture);
         Assert.False(capture.Vad.Automatic);
         Assert.Equal(capture.Vad.ThresholdInUseDb, engine.InputThresholdDb);
     }
@@ -657,11 +657,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         {
             engine.Configure(new ClientSettings());
             engine.DeviceLifecycle.SetTone(440);
-            var capture = engine.DeviceLifecycle.Capture!;
+            var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
             Assert.NotNull(capture.Canceller);
             Assert.True(capture.EchoCancellation);
             engine.ApplyLive(live[^1]); // switched off on the page: the same capture, the switch off
-            Assert.Same(capture, engine.DeviceLifecycle.Capture);
+            Assert.Same(capture, engine.DeviceLifecycle.CaptureSource.Capture);
             Assert.False(capture.EchoCancellation);
         }
 
@@ -673,7 +673,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (Volatile.Read(ref levels) == 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
         Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
-        Assert.Null(missing.DeviceLifecycle.Capture!.Canceller);
+        Assert.Null(missing.DeviceLifecycle.CaptureSource.Capture!.Canceller);
     }
 
     /// <summary>
@@ -719,10 +719,10 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
         engine.DeviceLifecycle.SetTone(440);
-        var capture = engine.DeviceLifecycle.Capture!;
+        var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         Assert.False(capture.Music);
         engine.ApplyLive(live[^1]);
-        Assert.Same(capture, engine.DeviceLifecycle.Capture); // no restart
+        Assert.Same(capture, engine.DeviceLifecycle.CaptureSource.Capture); // no restart
         Assert.True(capture.Music);
         engine.ApplyLive(new ClientSettings()); // "Abbrechen"
         Assert.False(capture.Music);
