@@ -41,7 +41,7 @@ public class LogsViewModelTests
             {
                 ListLogs => new LogList(r.RequestId, [ServerFile, RaidFile, OldServerFile, OldFile]),
                 ReadLog read => Page(read),
-                SearchLogs => searchResult,
+                SearchLogs => searchResult is { } found ? found with { RequestId = r.RequestId } : null, // answered under its id
                 _ => null,
             };
             if (answer is not null) server!.Apply(answer);

@@ -526,13 +526,13 @@ public class ServerViewModelTests
     {
         var f = Create(P.All | P.GroupsAssign, [WellKnownGroups.Guest, WellKnownGroups.Admin]);
         var admin = new AdminViewModel(f.Vm);
-        f.Vm.Apply(new UserList("r", [new KnownUserInfo("fp1", "ich", [WellKnownGroups.Guest, WellKnownGroups.Admin])]));
+        admin.Apply(new UserList("r", [new KnownUserInfo("fp1", "ich", [WellKnownGroups.Guest, WellKnownGroups.Admin])]));
         var heard = Sounds(f.Vm);
         var guest = Assert.Single(admin.Users).Toggles.Single(t => t.GroupId == WellKnownGroups.Guest);
         guest.IsChecked = false;
         await guest.ToggleCommand.ExecuteAsync(null);
         f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.All, [WellKnownGroups.Admin]))); // the server tells me first
-        f.Vm.Apply(new UserList("r", [new KnownUserInfo("fp1", "ich", [WellKnownGroups.Admin])]));
+        admin.Apply(new UserList("r", [new KnownUserInfo("fp1", "ich", [WellKnownGroups.Admin])]));
         Assert.Equal([SoundEvent.GroupChangedByMe], heard);
 
         f.Vm.Apply(new UserUpdated(User(1, "ich", Lobby, P.All, [WellKnownGroups.Guest, WellKnownGroups.Admin]))); // someone else gives it back

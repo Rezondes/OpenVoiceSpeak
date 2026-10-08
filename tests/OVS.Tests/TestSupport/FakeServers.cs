@@ -17,7 +17,8 @@ public static class FakeServers
 {
     public static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid();
 
-    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, DialogCallbacks? dialogs = null)
+    /// <param name="reply">The server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
+    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "Start", 0), new ChannelInfo(Raid, "Raid", "", 1)],
@@ -28,11 +29,14 @@ public static class FakeServers
                 // Package 92: others come without rights, with the server's judgement instead
                 new UserInfo(2, "fp2", "anna", Raid, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true),
             ]);
-        return new ServerViewModel(Snapshots.Mirror(snapshot), r =>
+        ServerViewModel? server = null;
+        server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
         {
             sent?.Add(r);
+            if (reply?.Invoke(r) is { } answer) server!.Apply(answer);
             return Task.CompletedTask;
         }, time ?? TimeProvider.System, dialogs);
+        return server;
     }
 
     /// <summary>Package 67: own user "ich" (admin) in the first channel, which is the default; all channels linked with each other.</summary>

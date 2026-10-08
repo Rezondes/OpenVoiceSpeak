@@ -94,7 +94,7 @@ public sealed class OneClockTests
     [InlineData("var cancel = new CancellationTokenSource();", false)]
     [InlineData("receiveLoop?.Wait(TimeSpan.FromSeconds(1));", true)]
     [InlineData("await ssl.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(1));", true)]
-    [InlineData("var answer = await ReplyFor(id).Task.WaitAsync(AnswerTimeout, time);", false)]
+    [InlineData("var answer = await awaited.Task.WaitAsync(AnswerTimeout, time);", false)]
     [InlineData("await turn.WaitAsync();", false)]
     [InlineData("await reply.WaitAsync(token);", false)]
     [InlineData("thread?.Join(500);", true)]

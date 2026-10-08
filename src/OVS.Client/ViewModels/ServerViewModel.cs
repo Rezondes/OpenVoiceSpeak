@@ -87,7 +87,6 @@ public sealed partial class ServerViewModel : ObservableObject
     public event Action<string>? Notice;
     /// <summary>Package 75: a notice from the administration page (e.g. a failed backup transfer).</summary>
     internal void ShowNotice(string text) => Notice?.Invoke(text);
-    public event Action<Message>? AdminMessage;
     public event Action<ServerIcon>? IconReceived;
 
     // ---- Chat (Package 31) ----
@@ -170,19 +169,25 @@ public sealed partial class ServerViewModel : ObservableObject
                 if (e.RequestId is { } failed && waiting.Remove(failed, out var pending) && pending.Answers(failed)) pending.Fail(text); // Package 97
                 if (e.RequestId?.StartsWith(ChatRequestPrefix) == true && ChatError is { } chatError) chatError(text);
                 else Notice?.Invoke(text);
-                AdminMessage?.Invoke(message); // Package 73: the admin page drops what the server refused
+                Routes.Deliver(e.RequestId, message); // Package 73: the sender drops what the server refused
                 return;
             case UserList list:
                 LastUserList = list;
-                AdminMessage?.Invoke(message);
+                Routes.Deliver(list.RequestId, message);
                 return;
             case BanList list:
                 LastBanList = list;
-                AdminMessage?.Invoke(message);
+                Routes.Deliver(list.RequestId, message);
                 return;
-            case BackupList or BackupChunk or UploadBackupAck or BackupUploaded or LogList or LogPage or LogSearchResult or LogDownloadReady or LogChunk: // Packages 74, 75, 81, 82
-                AdminMessage?.Invoke(message);
-                return;
+            case BackupList a: Routes.Deliver(a.RequestId, a); return; // Package 74
+            case BackupChunk a: Routes.Deliver(a.RequestId, a); return; // Package 75
+            case UploadBackupAck a: Routes.Deliver(a.RequestId, a); return;
+            case BackupUploaded a: Routes.Deliver(a.RequestId, a); return;
+            case LogList a: Routes.Deliver(a.RequestId, a); return; // Package 81
+            case LogPage a: Routes.Deliver(a.RequestId, a); return;
+            case LogSearchResult a: Routes.Deliver(a.RequestId, a); return;
+            case LogDownloadReady a: Routes.Deliver(a.RequestId, a); return; // Package 82
+            case LogChunk a: Routes.Deliver(a.RequestId, a); return;
             case ServerIcon icon:
                 IconReceived?.Invoke(icon);
                 return;
@@ -424,9 +429,11 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>Sends a request and returns the id it got, so an answer or error can be matched (Package 73).</summary>
     /// <param name="id">A fixed id instead of a new one, e.g. the round a later list page belongs to.</param>
     /// <param name="pending">Package 97: marked running under the request's id before sending; the server's error for it ends it.</param>
-    public async Task<string> SendAsync(Request request, string? id = null, PendingViewModel? pending = null)
+    /// <param name="route">Gets the answers to the request and the server's error for it, until its owner removes the route.</param>
+    public async Task<string> SendAsync(Request request, string? id = null, PendingViewModel? pending = null, Action<Message>? route = null)
     {
         id ??= $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}";
+        if (route is not null) Routes.Add(id, route); // before sending: the answer can come at once
         if (pending is not null)
         {
             foreach (var over in waiting.Where(w => !w.Value.Answers(w.Key)).Select(w => w.Key).ToList()) waiting.Remove(over);
@@ -446,6 +453,9 @@ public sealed partial class ServerViewModel : ObservableObject
         }
         return id;
     }
+
+    /// <summary>Who gets the answers to each request (by its id); the owners remove their routes.</summary>
+    internal AnswerRoutes Routes { get; } = new();
 
     // ---- Package 97 (A113): waiting states ----
 

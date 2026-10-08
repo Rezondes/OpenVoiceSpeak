@@ -88,15 +88,21 @@ public sealed partial class LogsViewModel : ObservableObject
     public PendingViewModel FilesLoad { get; }
     public PendingViewModel Searching { get; }
 
-    public Task RequestAsync() => server.SendAsync(new ListLogs(), pending: FilesLoad);
+    public Task RequestAsync() => SendRoutedAsync(new ListLogs(), pending: FilesLoad);
 
-    /// <summary>The server's answers, passed on by the administration page.</summary>
-    public void Apply(Message message)
+    /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
+    Task<string> SendRoutedAsync(Request request, string? id = null, PendingViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
+
+    /// <summary>The administration page closed: no answer reaches the tab any more.</summary>
+    internal void Detach() => server.Routes.RemoveAll(Apply);
+
+    /// <summary>The server's answers to the tab's requests (sent with this as their route).</summary>
+    internal void Apply(Message message)
     {
         switch (message)
         {
             case LogList list:
-                if (filePages.Add(list.RequestId, list.Offset, list.Total, list.Files, (id, o) => _ = server.SendAsync(new ListLogs(o), id)) is not { } files) break;
+                if (filePages.Add(list.RequestId, list.Offset, list.Total, list.Files, (id, o) => _ = SendRoutedAsync(new ListLogs(o), id)) is not { } files) break;
                 allFiles = files;
                 FilesLoad.Done();
                 selected.IntersectWith(allFiles.Select(f => f.Id)); // files gone meanwhile (retention) drop out
@@ -257,7 +263,7 @@ public sealed partial class LogsViewModel : ObservableObject
         }
         SelectedFile = Files.Live().FirstOrDefault(f => f.Info.Id == file.Info.Id);
         targetLine = line;
-        return server.SendAsync(new ReadLog(file.Info.Id, page));
+        return SendRoutedAsync(new ReadLog(file.Info.Id, page));
     }
 
     Task Load(int? page) => OpenFile is { } file ? OpenAt(file, page, null) : Task.CompletedTask;
@@ -321,7 +327,7 @@ public sealed partial class LogsViewModel : ObservableObject
     {
         if (Searching.IsRunning) return Task.CompletedTask;
         var source = SelectedSource?.Value;
-        return server.SendAsync(new SearchLogs(SearchText, source?.Kind, source?.ChannelId, From, To), pending: Searching);
+        return SendRoutedAsync(new SearchLogs(SearchText, source?.Kind, source?.ChannelId, From, To), pending: Searching);
     }
 
     [RelayCommand]

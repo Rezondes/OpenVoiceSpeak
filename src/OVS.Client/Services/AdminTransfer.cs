@@ -12,65 +12,53 @@ namespace OVS.Client.Services;
 /// Packages 75 (A91) and 82 (A99): the administration's file transfers to and from this PC, chunk by chunk and one at a
 /// time: a backup down or up, the chosen log files down. The backups and the logs tab share it, and with it the progress.
 /// </summary>
-/// <param name="send">Sends a request and returns the id it got.</param>
+/// <param name="send">Sends a request whose answers, and the server's error for it, go to the given route.</param>
+/// <param name="removeRoutes">Removes the routes to a handler, so no further answer reaches it.</param>
 /// <param name="showNotice">Shows a failed transfer to the user.</param>
 /// <param name="time">The clock an answer is waited for on.</param>
-internal sealed partial class AdminTransfer(Func<Request, Task<string>> send, Action<string> showNotice, TimeProvider time) : ObservableObject
+internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task> send, Action<Action<Message>> removeRoutes, Action<string> showNotice,
+    TimeProvider time) : ObservableObject
 {
     static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(30);
     [ObservableProperty] bool isRunning;
     [ObservableProperty] double percent;
     [ObservableProperty] string progressText = "";
-    /// <summary>Answers by request id; an answer can come before SendAsync returns, so whoever comes first adds the entry.</summary>
-    readonly Dictionary<string, TaskCompletionSource<Message>> replies = [];
+    /// <summary>The answer awaited now; one request at a time.</summary>
+    TaskCompletionSource<Message>? reply;
+    /// <summary>
+    /// Where the answers to the latest request go. It stays until the next request or <see cref="Cancel"/>, since the server
+    /// can send more after the answer (the new backup list after an upload's last chunk).
+    /// </summary>
+    Action<Message>? route;
 
-    /// <summary>The server's answers, passed on by the administration page; an error counts only while a transfer runs.</summary>
-    internal void Apply(Message message)
-    {
-        switch (message)
-        {
-            case Error e:
-                if (IsRunning && e.RequestId is { } failed) ReplyFor(failed).TrySetResult(e);
-                break;
-            case BackupChunk { RequestId: { } id }:
-                ReplyFor(id).TrySetResult(message);
-                break;
-            case UploadBackupAck { RequestId: { } id }:
-                ReplyFor(id).TrySetResult(message);
-                break;
-            case BackupUploaded { RequestId: { } id }:
-                ReplyFor(id).TrySetResult(message);
-                break;
-            case LogDownloadReady { RequestId: { } id }: // Package 82
-                ReplyFor(id).TrySetResult(message);
-                break;
-            case LogChunk { RequestId: { } id }:
-                ReplyFor(id).TrySetResult(message);
-                break;
-        }
-    }
-
-    /// <summary>Package 75: the administration page closed; a running transfer stops and cleans up.</summary>
+    /// <summary>Package 75: the administration page closed; a running transfer stops and cleans up, and no answer reaches it any more.</summary>
     internal void Cancel()
     {
-        foreach (var reply in replies.Values) reply.TrySetCanceled();
+        reply?.TrySetCanceled();
+        RemoveRoute();
     }
 
-    TaskCompletionSource<Message> ReplyFor(string requestId)
+    void RemoveRoute()
     {
-        if (!replies.TryGetValue(requestId, out var reply))
-            replies[requestId] = reply = new TaskCompletionSource<Message>(TaskCreationOptions.RunContinuationsAsynchronously);
-        return reply;
+        if (route is not null) removeRoutes(route);
+        route = null;
     }
 
     /// <summary>The server's answer to one request, or null (error, timeout, page closed). The server shows its own errors as a notice.</summary>
     /// <param name="failedText">The notice when no answer comes in time.</param>
-    async Task<Message?> RequestAsync(Request request, string failedText)
+    /// <param name="followUp">Gets what the server sends after the answer.</param>
+    async Task<Message?> RequestAsync(Request request, string failedText, Action<Message>? followUp = null)
     {
-        var id = await send(request);
+        RemoveRoute();
+        var awaited = reply = new TaskCompletionSource<Message>(TaskCreationOptions.RunContinuationsAsynchronously);
+        route = answer =>
+        {
+            if (!awaited.TrySetResult(answer)) followUp?.Invoke(answer);
+        };
+        await send(request, route);
         try
         {
-            var answer = await ReplyFor(id).Task.WaitAsync(AnswerTimeout, time);
+            var answer = await awaited.Task.WaitAsync(AnswerTimeout, time);
             return answer is Error ? null : answer;
         }
         catch (TimeoutException)
@@ -82,10 +70,6 @@ internal sealed partial class AdminTransfer(Func<Request, Task<string>> send, Ac
         {
             return null;
         }
-        finally
-        {
-            replies.Remove(id);
-        }
     }
 
     void ShowProgress(string format, long done, long total)
@@ -96,7 +80,7 @@ internal sealed partial class AdminTransfer(Func<Request, Task<string>> send, Ac
 
     /// <summary>
     /// One transfer, none while another runs: the progress starts at zero; an IO error, and with catchFormat a chunk that is
-    /// not base64, ends it with the notice failedText; at the end the answers left over go.
+    /// not base64, ends it with the notice failedText.
     /// </summary>
     async Task RunAsync(string progressFormat, string failedText, bool catchFormat, Func<Task> body)
     {
@@ -113,7 +97,6 @@ internal sealed partial class AdminTransfer(Func<Request, Task<string>> send, Ac
         }
         finally
         {
-            replies.Clear(); // answers to other failed requests that came in meanwhile
             IsRunning = false;
         }
     }
@@ -140,8 +123,9 @@ internal sealed partial class AdminTransfer(Func<Request, Task<string>> send, Ac
         });
 
     /// <summary>Sends the file in chunks, each after the server's answer.</summary>
+    /// <param name="followUp">Gets the backup list the server sends after storing the upload.</param>
     /// <returns>The backup the server stored; null when another transfer runs, the file is too large, the server refused it or the transfer failed.</returns>
-    internal async Task<BackupInfo?> UploadBackupAsync(string path)
+    internal async Task<BackupInfo?> UploadBackupAsync(string path, Action<Message> followUp)
     {
         BackupInfo? uploaded = null;
         await RunAsync(Strings.Backup_Uploading, Strings.Backup_TransferFailed, catchFormat: false, async () =>
@@ -159,7 +143,7 @@ internal sealed partial class AdminTransfer(Func<Request, Task<string>> send, Ac
                 int read = await file.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false);
                 bool last = offset + read >= file.Length;
                 var chunk = new UploadBackupChunk(uploadId, offset, Convert.ToBase64String(buffer, 0, read), last);
-                var answer = await RequestAsync(chunk, Strings.Backup_TransferFailed);
+                var answer = await RequestAsync(chunk, Strings.Backup_TransferFailed, followUp);
                 offset += read;
                 ShowProgress(Strings.Backup_Uploading, offset, file.Length);
                 if (answer is BackupUploaded u) uploaded = u.Backup;

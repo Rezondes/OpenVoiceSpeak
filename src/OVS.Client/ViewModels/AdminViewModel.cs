@@ -12,7 +12,6 @@ using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
-using OVS.Shared.Protocol.Messages.LogAccess;
 using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.ServerInfo;
@@ -77,8 +76,8 @@ public sealed partial class AdminViewModel : ObservableObject
         GroupSave = server.NewPending();
         GroupReorder = server.NewPending();
         IconUpload = server.NewPending();
-        userRefresh = new("u", () => !detached && ShowUsers, id => server.SendAsync(new ListUsers(), id, UsersLoad), server.Time);
-        banRefresh = new("b", () => !detached && ShowBans, id => server.SendAsync(new ListBans(), id, BansLoad), server.Time);
+        userRefresh = new("u", () => !detached && ShowUsers, id => SendRoutedAsync(new ListUsers(), id, UsersLoad), server.Time);
+        banRefresh = new("b", () => !detached && ShowBans, id => SendRoutedAsync(new ListBans(), id, BansLoad), server.Time);
         // Package 97: a list that never came no longer blocks the next request ("Aktualisieren" retries)
         UsersLoad.TimedOut += userRefresh.Completed;
         BansLoad.TimedOut += banRefresh.Completed;
@@ -115,7 +114,6 @@ public sealed partial class AdminViewModel : ObservableObject
         onlineFingerprints = OnlineFingerprints();
         judgedActor = Actor;
         judgedGroups = server.Mirror.Groups;
-        server.AdminMessage += OnAdminMessage;
         server.StateChanged += OnStateChanged;
         server.PropertyChanged += OnServerPropertyChanged;
         serverName = loadedName = server.Mirror.Settings.Name;
@@ -124,7 +122,7 @@ public sealed partial class AdminViewModel : ObservableObject
         hasPassword = server.Mirror.Settings.HasPassword;
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
-        Transfer = new AdminTransfer(request => server.SendAsync(request), server.ShowNotice, server.Time);
+        Transfer = new AdminTransfer((request, route) => server.SendAsync(request, route: route), server.Routes.RemoveAll, server.ShowNotice, server.Time);
         Logs = new LogsViewModel(server, Transfer);
         GroupsPlace = AdminPlace.Create(() => Groups.Live().Any(g => g.HasChanges), GroupSave,
             () => SelectedGroup is { HasChanges: true } ? SendGroup() : null, DiscardGroups);
@@ -191,7 +189,10 @@ public sealed partial class AdminViewModel : ObservableObject
     public void Detach()
     {
         detached = true;
-        server.AdminMessage -= OnAdminMessage;
+        // ponytail: every request the page sent keeps its route until here (a list refresh at most once a second); drop a
+        // list round's route once a newer round is complete if pages ever stay open for days
+        server.Routes.RemoveAll(Apply); // no answer reaches the closed page
+        Logs.Detach();
         server.StateChanged -= OnStateChanged;
         server.PropertyChanged -= OnServerPropertyChanged;
         Transfer.Cancel(); // Package 75: a transfer stops and cleans up
@@ -238,7 +239,7 @@ public sealed partial class AdminViewModel : ObservableObject
     public async Task RequestListsAsync()
     {
         await RefreshUsersAndBansAsync();
-        if (ShowBackups) await server.SendAsync(new ListBackups(), pending: BackupsLoad);
+        if (ShowBackups) await SendRoutedAsync(new ListBackups(), pending: BackupsLoad);
         if (ShowLogs) await Logs.RequestAsync();
     }
 
@@ -278,9 +279,13 @@ public sealed partial class AdminViewModel : ObservableObject
         MoveGroupDownCommand.NotifyCanExecuteChanged();
     }
 
-    void OnAdminMessage(Message message)
+    /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
+    Task<string> SendRoutedAsync(Request request, string? id = null, PendingViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
+
+    /// <summary>The server's answers to the page's own requests (sent with this as their route) and its errors for them.</summary>
+    internal void Apply(Message answer)
     {
-        switch (message)
+        switch (answer)
         {
             case Error e:
                 userRefresh.Failed(e.RequestId);
@@ -288,7 +293,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 if (pendingGroupChanges.RemoveAll(p => p.RequestId == e.RequestId) > 0) UpdateOwnGroupChangePending();
                 break;
             case UserList list:
-                if (userPages.Add(list.RequestId, list.Offset, list.Total, list.Users, (id, o) => _ = server.SendAsync(new ListUsers(o), id)) is not { } users) break;
+                if (userPages.Add(list.RequestId, list.Offset, list.Total, list.Users, (id, o) => _ = SendRoutedAsync(new ListUsers(o), id)) is not { } users) break;
                 userRefresh.Completed();
                 UsersLoad.Done();
                 ConfirmCards(userRefresh.RoundOf(list.RequestId));
@@ -297,25 +302,21 @@ public sealed partial class AdminViewModel : ObservableObject
                 RebuildUsers();
                 break;
             case BackupList list:
-                if (backupPages.Add(list.RequestId, list.Offset, list.Total, list.Backups, (id, o) => _ = server.SendAsync(new ListBackups(o), id)) is not { } backups) break;
+                if (backupPages.Add(list.RequestId, list.Offset, list.Total, list.Backups, (id, o) => _ = SendRoutedAsync(new ListBackups(o), id)) is not { } backups) break;
                 backupInfos = backups;
                 BackupsLoad.Done();
                 BackupCreate.Done(); // the new backup is in the list (Restoring waits for the disconnect)
                 RebuildBackups();
                 break;
             case BanList list:
-                if (banPages.Add(list.RequestId, list.Offset, list.Total, list.Bans, (id, o) => _ = server.SendAsync(new ListBans(o), id)) is not { } bans) break;
+                if (banPages.Add(list.RequestId, list.Offset, list.Total, list.Bans, (id, o) => _ = SendRoutedAsync(new ListBans(o), id)) is not { } bans) break;
                 banRefresh.Completed();
                 BansLoad.Done();
                 foreach (var busy in banBusy.Values) busy.Done(); // Package 98: an unban is answered with the new list
                 allBans = bans;
                 RebuildBans();
                 break;
-            case LogList or LogPage or LogSearchResult: // Package 81
-                Logs.Apply(message);
-                break;
         }
-        Transfer.Apply(message); // Package 75, 82: the answers to its chunks, and errors while it runs
     }
 
     void RebuildGroups()
@@ -533,7 +534,7 @@ public sealed partial class AdminViewModel : ObservableObject
         var type = SelectedBanTypeFilter?.Value ?? BanTypeFilter.All;
         var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan) && MayActOnBanned(ban.Fingerprint), async () =>
         {
-            await server.SendAsync(new Unban(ban.Id), pending: BanBusy(ban.Id)); // answered with the new ban list
+            await SendRoutedAsync(new Unban(ban.Id), pending: BanBusy(ban.Id)); // answered with the new ban list
             await userRefresh.RequestAsync(); // Package 72: the user cards follow
         }, BanBusy(ban.Id))).ToList();
         var visible = all.Where(b => b.Matches(search) && status switch
@@ -622,7 +623,7 @@ public sealed partial class AdminViewModel : ObservableObject
 
         async Task SendAsync()
         {
-            await server.SendAsync(request, pending: busy);
+            await SendRoutedAsync(request, pending: busy); // an unban's own answer: the new ban list
             if (bans) await RefreshUsersAndBansAsync();
             else await userRefresh.RequestAsync();
         }
@@ -657,12 +658,12 @@ public sealed partial class AdminViewModel : ObservableObject
 
     /// <summary>Answered with the new list; Package 97: busy until then, a second click meanwhile is ignored.</summary>
     [RelayCommand]
-    Task NewBackup() => BackupCreate.IsRunning ? Task.CompletedTask : server.SendAsync(new CreateBackup(), pending: BackupCreate);
+    Task NewBackup() => BackupCreate.IsRunning ? Task.CompletedTask : SendRoutedAsync(new CreateBackup(), pending: BackupCreate);
 
     async Task DeleteBackupAsync(BackupViewModel backup)
     {
         if (server.Dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Backup_ConfirmDelete, backup.Title))) return;
-        await server.SendAsync(new DeleteBackup(backup.Info.FileName));
+        await SendRoutedAsync(new DeleteBackup(backup.Info.FileName)); // answered with the new list
     }
 
     /// <summary>Everyone, this client too, is disconnected with Restoring once the server accepted the backup.</summary>
@@ -684,7 +685,7 @@ public sealed partial class AdminViewModel : ObservableObject
     /// <summary>Uploads the file; with restore, asks the red question of Package 74 once it is stored.</summary>
     internal async Task UploadBackupAsync(string path, bool restore)
     {
-        if (!CanUploadRestore || await Transfer.UploadBackupAsync(path) is not { } uploaded || !restore) return;
+        if (!CanUploadRestore || await Transfer.UploadBackupAsync(path, Apply) is not { } uploaded || !restore) return;
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
         await server.SendAsync(new RestoreBackup(uploaded.FileName), pending: Restoring);
     }
@@ -706,8 +707,8 @@ public sealed partial class AdminViewModel : ObservableObject
         bool own = fingerprint == server.Mirror.Self?.Fingerprint;
         if (own) server.OwnGroupChangePending = true; // set before sending: the server's update can come at once
         cardAskedBefore[fingerprint] = userRefresh.Sent; // Package 98: the card spins until a later list shows it
-        var id = await server.SendAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId),
-            pending: CardBusy(fingerprint));
+        var id = await SendRoutedAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId),
+            pending: CardBusy(fingerprint)); // its error drops the change
         pendingGroupChanges.Add((id, fingerprint, toggle.GroupId, toggle.IsChecked, userRefresh.Sent));
         UpdateOwnGroupChangePending();
         await userRefresh.RequestAsync();

@@ -12,8 +12,8 @@ using static OVS.Tests.TestSupport.HangGuard;
 namespace OVS.Tests.Client.Services;
 
 /// <summary>
-/// Packages 75 and 82: the administration's file transfers without a server. Requests go out and answers come in through
-/// the delegates; a manual clock waits for them, so an answer that never comes times out only when a test moves the clock.
+/// Packages 75 and 82: the administration's file transfers without a server. Requests go out and answers come back through
+/// each request's route; a manual clock waits for them, so an answer that never comes times out only when a test moves it.
 /// </summary>
 public sealed class AdminTransferTests : TempDirectoryTest
 {
@@ -25,11 +25,15 @@ public sealed class AdminTransferTests : TempDirectoryTest
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
     readonly List<string> notices = [];
+    /// <summary>Where the answers to each request go, by its id, until the transfer removes the route.</summary>
+    readonly AnswerRoutes routes = new();
+    /// <summary>What an upload's route passed on after the answer.</summary>
+    readonly List<Message> followUps = [];
     readonly AdminTransfer transfer;
-    /// <summary>The server's answer to a request (sent with its id), applied before the id returns: the hardest order. Null: none.</summary>
+    /// <summary>The server's answer to a request (sent with its id), applied before the send returns: the hardest order. Null: none.</summary>
     Func<Request, Message?> answer = _ => null;
 
-    public AdminTransferTests() : base("ovs-transfer-", quiet: false) => transfer = new AdminTransfer(Send, notices.Add, time);
+    public AdminTransferTests() : base("ovs-transfer-", quiet: false) => transfer = new AdminTransfer(Send, routes.RemoveAll, notices.Add, time);
 
     static byte[] RandomBytes(int count)
     {
@@ -38,13 +42,17 @@ public sealed class AdminTransferTests : TempDirectoryTest
         return bytes;
     }
 
-    Task<string> Send(Request request)
+    Task Send(Request request, Action<Message> route)
     {
         var withId = request with { RequestId = $"r{sent.Count + 1}" };
         sent.Add(withId);
-        if (answer(withId) is { } reply) transfer.Apply(reply);
-        return Task.FromResult(withId.RequestId!);
+        routes.Add(withId.RequestId!, route);
+        if (answer(withId) is { } reply) routes.Deliver(withId.RequestId, reply);
+        return Task.CompletedTask;
     }
+
+    /// <summary>The requests whose route is still in place.</summary>
+    IEnumerable<string> Routed() => sent.Select(r => r.RequestId!).Where(id => routes.Find(id) is not null);
 
     /// <summary>A server that has <see cref="Content"/> as backup "b.ovsbackup" and as log download "d7", in chunks of <see cref="ChunkSize"/>.</summary>
     static Message? Serve(Request r) => r switch
@@ -203,7 +211,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
 
         var backup = transfer.DownloadBackupAsync("c.ovsbackup", Target("c.bin"));
         var logs = transfer.DownloadLogsAsync(["a"], Target("l.zip"));
-        var uploaded = transfer.UploadBackupAsync(upload);
+        var uploaded = transfer.UploadBackupAsync(upload, followUps.Add);
 
         Assert.True(backup.IsCompleted && logs.IsCompleted && uploaded.IsCompleted);
         Assert.Null(await uploaded);
@@ -230,6 +238,40 @@ public sealed class AdminTransferTests : TempDirectoryTest
         Assert.Equal([target], Directory.GetFiles(dir));
     }
 
+    [Fact]
+    public async Task Cancel_WhileSending_StopsWithoutRouteOrNotice()
+    {
+        answer = _ => { transfer.Cancel(); return null; }; // the page closes while the request goes out
+
+        await Bound(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
+
+        Assert.Empty(Routed());
+        Assert.Empty(notices);
+        Assert.False(transfer.IsRunning);
+    }
+
+    /// <summary>Each request has its own route, until the next request or Cancel.</summary>
+    [Fact]
+    public async Task Download_ChunksAnswered_OnlyTheLastRequestKeepsItsRoute()
+    {
+        answer = Serve;
+
+        await Bound(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
+
+        Assert.Equal(["r3"], Routed());
+    }
+
+    [Fact]
+    public async Task Cancel_AfterADownload_RemovesTheLastRoute()
+    {
+        answer = Serve;
+        await Bound(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
+
+        transfer.Cancel();
+
+        Assert.Empty(Routed());
+    }
+
     // ---- Upload ----
 
     [Fact]
@@ -249,7 +291,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
             return c.IsLast ? new BackupUploaded(r.RequestId, stored) : new UploadBackupAck(r.RequestId, c.UploadId, received.Length);
         };
 
-        Assert.Same(stored, await Bound(transfer.UploadBackupAsync(path)));
+        Assert.Same(stored, await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
 
         var chunks = sent.Cast<UploadBackupChunk>().ToList();
         Assert.Equal(content, received.ToArray());
@@ -262,6 +304,22 @@ public sealed class AdminTransferTests : TempDirectoryTest
         Assert.Equal(string.Format(Strings.Backup_Uploading, 100), transfer.ProgressText);
         Assert.False(transfer.IsRunning);
         Assert.Empty(notices);
+        Assert.Empty(followUps);
+    }
+
+    [Fact]
+    public async Task UploadBackupAsync_ListAfterTheStoredBackup_GoesToTheFollowUp()
+    {
+        var path = Target("up.ovsbackup");
+        File.WriteAllBytes(path, [1, 2, 3]);
+        var stored = new BackupInfo("hochgeladen_2026-01-01_12-00-00.ovsbackup", time.GetUtcNow(), 3, "dev.0000");
+        answer = r => new BackupUploaded(r.RequestId, stored);
+        Assert.Same(stored, await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
+
+        var list = new BackupList("r1", [stored]);
+        routes.Deliver("r1", list); // the server sends the new list right after the stored backup
+
+        Assert.Same(list, Assert.Single(followUps));
     }
 
     [Fact]
@@ -271,7 +329,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         File.WriteAllBytes(path, new byte[ProtocolLimits.BackupChunkBytes + 1]);
         answer = r => new Error(r.RequestId, ReasonCodes.InvalidBackup); // the server shows its own
 
-        Assert.Null(await Bound(transfer.UploadBackupAsync(path)));
+        Assert.Null(await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
 
         Assert.Single(sent);
         Assert.Empty(notices);
@@ -287,7 +345,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         using (var file = File.Create(path)) file.SetLength(ProtocolLimits.MaxBackupUploadBytes + over);
         answer = r => new Error(r.RequestId, ReasonCodes.InvalidBackup); // ends an upload after its first chunk
 
-        Assert.Null(await Bound(transfer.UploadBackupAsync(path)));
+        Assert.Null(await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
 
         Assert.Equal(refused ? 0 : 1, sent.Count);
         string[] expected = refused ? [ErrorTexts.For(ReasonCodes.BackupTooLarge)] : [];
@@ -298,7 +356,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     [Fact]
     public async Task UploadBackupAsync_FileMissing_NullWithNotice()
     {
-        Assert.Null(await Bound(transfer.UploadBackupAsync(Target("missing.ovsbackup"))));
+        Assert.Null(await Bound(transfer.UploadBackupAsync(Target("missing.ovsbackup"), followUps.Add)));
 
         Assert.Empty(sent);
         Assert.Equal([Strings.Backup_TransferFailed], notices);

@@ -288,7 +288,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Contains("Ausgewählte miteinander verlinken", Texts(main));
         Assert.Contains(main.GetVisualDescendants().OfType<CheckBox>(), c => AutomationProperties.GetName(c) == "Link Lobby und Raid");
         // Package 71: the user overview with search, filters and every stored value
-        vm.Server.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
+        vm.AdminPage!.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
             DateTimeOffset.Now, 4, TimeSpan.FromHours(2), "10.0.0.2", ["anni"], TimeSpan.FromMinutes(3), 7, CanBeModeratedByMe: true)]));
         main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Nutzer").IsSelected = true;
         Dispatcher.UIThread.RunJobs();
@@ -301,7 +301,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         foreach (var text in new[] { "Bannen", "Nutzerdaten löschen" }) // Package 72: the actions of the card
             Assert.Contains(text, Texts(main));
         // Package 80: the ban overview with search, filters and every detail
-        vm.Server.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
+        vm.AdminPage!.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
             "fp2", null, null, null, 2, DateTimeOffset.Now, "10.0.0.4")]));
         main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Bans").IsSelected = true;
         Dispatcher.UIThread.RunJobs();
@@ -1473,7 +1473,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         }, () => [new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid)]);
         Tab("Server");
         page.FindControl<Button>("NewBackupButton")!.BringIntoView();
-        Waits("backup", () => _ = admin.NewBackupCommand.ExecuteAsync(null), () => [new BackupList(null, [])]);
+        Waits("backup", () => _ = admin.NewBackupCommand.ExecuteAsync(null), () => [new BackupList(Last<CreateBackup>().RequestId, [])]);
         page.FindControl<Border>("IconDrop")!.BringIntoView();
         Waits("logo", () => _ = admin.UploadIconAsync(TestImages.Encode(64, 64), null), () => [new ServerSettingsChanged(server.Mirror.Settings)]);
         Tab("Logs");

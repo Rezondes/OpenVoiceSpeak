@@ -589,9 +589,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Request server logo")));
     }
 
-    /// <summary>A refused logo request is sent once more after the server's interval, if the logo is still wanted.</summary>
+    /// <summary>
+    /// A refused logo request is sent once more after the server's interval, if the logo is still wanted; only the newest
+    /// request's refusal counts (an older request keeps no route).
+    /// </summary>
     [Fact]
-    public async Task ServerIcon_RateLimited_RetriedOnceAfterInterval()
+    public async Task ServerIcon_RateLimited_RetriedOnceOnlyForTheNewestRequest()
     {
         var time = new ManualTimeProvider();
         var sent = new List<Request>();
@@ -642,6 +645,17 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(1, Requests());
         Assert.Equal(2, await AfterRefusal(expectRetry: true));
         Assert.Equal(2, await AfterRefusal(expectRetry: false)); // only once
+
+        // the logo changes: only the newest request's refusal counts
+        var older = LastId();
+        await OnUi(() =>
+        {
+            server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { IconHash = "def" }));
+            return 0;
+        });
+        Assert.Equal(3, Requests());
+        Assert.Null(await OnUi(() => server.Routes.Find(older)));
+        Assert.NotNull(await OnUi(() => server.Routes.Find(LastId())));
     }
 
     [Fact]

@@ -178,15 +178,15 @@ public class AdminViewModelTests
     public void UserTogglesAndUnban_ByRight()
     {
         var (view, server, _) = Create(P.UsersView | P.BansView | P.Speak);
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])); // weaker, no right to act
+        view.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])); // weaker, no right to act
         Assert.All(Assert.Single(view.Users).Toggles, t => Assert.False(t.IsEnabled));
-        server.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
+        view.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
         Assert.False(Assert.Single(view.Bans).UnbanCommand.CanExecute(null));
 
         var (act, actServer, _) = Create(P.UsersView | P.BansView | P.GroupsAssign | P.UserBan | P.Speak);
-        actServer.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
+        act.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
         Assert.True(Assert.Single(act.Users).Toggles.Single(t => t.Name == "Gast").IsEnabled);
-        actServer.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
+        act.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
         Assert.True(Assert.Single(act.Bans).UnbanCommand.CanExecute(null));
     }
 
@@ -217,7 +217,7 @@ public class AdminViewModelTests
     public async Task AssignGroup_SendsRequest_DisablesHigherGroups()
     {
         var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak);
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
+        vm.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
 
         var user = Assert.Single(vm.Users);
         var guest = user.Toggles.Single(t => t.Name == "Gast");
@@ -246,7 +246,7 @@ public class AdminViewModelTests
             new GroupInfo(ModGroup, "Moderator", P.None, false),
             new GroupInfo(WellKnownGroups.Admin, "Admin", P.None, false),
         ]));
-        server.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true }, Known("fpA", "Anna", [WellKnownGroups.Admin])]));
+        vm.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true }, Known("fpA", "Anna", [WellKnownGroups.Admin])]));
         var xaver = vm.Users.Single(u => u.Nickname == "Xaver");
         Assert.Equal([true, false, false], xaver.Toggles.Select(t => t.IsEnabled));
         Assert.All(vm.Users.Single(u => u.Nickname == "Anna").Toggles, t => Assert.False(t.IsEnabled)); // stronger: nothing
@@ -279,23 +279,23 @@ public class AdminViewModelTests
         var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
         var heard = new List<OVS.Client.Audio.Sounds.SoundEvent>();
         server.SoundRequested += heard.Add;
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+        vm.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
 
         var mod = Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Moderator");
         mod.IsChecked = true;
         await mod.ToggleCommand.ExecuteAsync(null);
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])])); // an older answer: not yet
+        vm.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])])); // an older answer: not yet
         Assert.Empty(heard);
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])]));
+        vm.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])]));
         Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.GroupChangedByMe], heard);
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])])); // only once
+        vm.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])])); // only once
         Assert.Single(heard);
 
         var guest = Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Gast");
         guest.IsChecked = false;
         await guest.ToggleCommand.ExecuteAsync(null);
         server.Apply(new Error(sent.OfType<UnassignGroup>().Single().RequestId, ReasonCodes.LastAdmin));
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [ModGroup])])); // even if it changed some other way
+        vm.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [ModGroup])])); // even if it changed some other way
         Assert.Single(heard);
     }
 
@@ -316,7 +316,7 @@ public class AdminViewModelTests
 
         var older = new BackupInfo("2026-01-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 1, 1, 10, 0, 0, TimeSpan.Zero), 2_500_000, "010126.abcd");
         var newer = new BackupInfo("2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 2, 1, 10, 0, 0, TimeSpan.Zero), 800, "dev.0000");
-        server.Apply(new BackupList("r", [newer, older]));
+        vm.Apply(new BackupList("r", [newer, older]));
         Assert.Equal([newer.FileName, older.FileName], vm.Backups.Select(b => b.Info.FileName));
         Assert.Contains($"{2.4:0.0} MB", vm.Backups[1].Details);
         Assert.Contains("010126.abcd", vm.Backups[1].Details);
@@ -338,7 +338,7 @@ public class AdminViewModelTests
         await vm.Backups[1].RestoreCommand.ExecuteAsync(null);
         Assert.Equal([new DeleteBackup(older.FileName), new RestoreBackup(older.FileName)], sent.Select(r => r with { RequestId = null }));
 
-        server.Apply(new BackupList("r", []));
+        vm.Apply(new BackupList("r", []));
         Assert.True(vm.HasNoBackups);
 
         var (other, _, otherSent) = Create(P.Speak | P.UsersView);
@@ -367,7 +367,7 @@ public class AdminViewModelTests
         Assert.True(keeperServer.CanAdminister);
         await keeper.RequestListsAsync();
         Assert.Contains(keeperSent, r => r is ListBackups);
-        keeperServer.Apply(new BackupList("r", [info]));
+        keeper.Apply(new BackupList("r", [info]));
         Assert.False(keeper.Backups[0].CanRestore);
         await keeper.Backups[0].RestoreCommand.ExecuteAsync(null);
         Assert.DoesNotContain(keeperSent, r => r is RestoreBackup);
@@ -393,7 +393,7 @@ public class AdminViewModelTests
         // a member of the Admin group, until they leave it
         var (admin, adminServer, adminSent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
         Assert.True(admin.CanUploadRestore);
-        adminServer.Apply(new BackupList("r", [info]));
+        admin.Apply(new BackupList("r", [info]));
         Assert.True(admin.Backups[0].CanRestore);
         await admin.Backups[0].RestoreCommand.ExecuteAsync(null);
         Assert.Contains(adminSent, r => r is RestoreBackup);
@@ -413,7 +413,7 @@ public class AdminViewModelTests
             var info = new BackupInfo("2026-02-01_10-00-00.ovsbackup", DateTimeOffset.UtcNow, archive.Length, "dev.0000");
             var (vm, server, sent) = Create(P.BackupsManage | P.Speak, reply: r => r is DownloadBackup d
                 ? new BackupChunk(r.RequestId, d.FileName, d.Offset, archive.Length, Convert.ToBase64String(archive), true) : null);
-            server.Apply(new BackupList("r", [info]));
+            vm.Apply(new BackupList("r", [info]));
 
             var target = Path.Combine(dir, "mein-backup.ovsbackup");
             await HangGuard.Bound(vm.DownloadBackupAsync(vm.Backups[0], target));
@@ -524,7 +524,7 @@ public class AdminViewModelTests
     {
         var (vm, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
-        server.Apply(new BanList("r",
+        vm.Apply(new BanList("r",
         [
             BanOf("Troll", now.AddMinutes(90), "10.0.0.9", "Spam", created: now.AddMinutes(-30), minutes: 120, attempts: 3,
                 lastAttempt: now.AddMinutes(-5), lastIp: "10.0.0.8", fp: "abcdef0123456789abcdef"),
@@ -570,7 +570,7 @@ public class AdminViewModelTests
     {
         var (vm, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
-        server.Apply(new BanList("r",
+        vm.Apply(new BanList("r",
         [
             BanOf("Troll", ip: "10.0.0.9", reason: "Werbung", fp: "ffabc12ff", created: now),
             BanOf("Lisa", by: "Chef", liftedAt: now, liftedBy: "Aufheber", created: now.AddDays(-1)),
@@ -585,7 +585,7 @@ public class AdminViewModelTests
     {
         var (vm, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
-        server.Apply(new BanList("r",
+        vm.Apply(new BanList("r",
         [
             BanOf("Anna", created: now.AddDays(-1), attempts: 5),
             BanOf("bert", now.AddHours(1), "10.0.0.2", created: now.AddHours(-2), minutes: 180),
@@ -636,13 +636,13 @@ public class AdminViewModelTests
             BanOf("Cleo", now.AddHours(-1), created: now.AddDays(-1)),
             BanOf("Dino", created: now.AddDays(-1), liftedAt: now, liftedBy: "admin"),
         ];
-        viewServer.Apply(new BanList("r", bans));
+        view.Apply(new BanList("r", bans));
         ShowAllBans(view);
         Assert.All(view.Bans, b => Assert.False(b.CanUnban)); // read-only without UserBan
         Assert.All(view.Bans, b => Assert.False(b.UnbanCommand.CanExecute(null)));
 
         var (vm, server, sent) = Create(P.BansView | P.UserBan);
-        server.Apply(new BanList("r", bans));
+        vm.Apply(new BanList("r", bans));
         ShowAllBans(vm);
         Assert.Equal(["Anna", "bert"], vm.Bans.Where(b => b.CanUnban).Select(b => b.Nickname).Order());
         Assert.False(vm.Bans.Single(b => b.Nickname == "Dino").UnbanCommand.CanExecute(null));
@@ -652,7 +652,7 @@ public class AdminViewModelTests
         vm.Bans.Single().UnbanCommand.Execute(null);
         Assert.Equal(new Unban(bans[1].Id), sent.OfType<Unban>().Single() with { RequestId = null });
 
-        server.Apply(new BanList("u", [.. bans[..1], bans[1] with { LiftedAt = now, LiftedBy = "ich" }, .. bans[2..]]));
+        vm.Apply(new BanList("u", [.. bans[..1], bans[1] with { LiftedAt = now, LiftedBy = "ich" }, .. bans[2..]]));
         Assert.Equal(("bert", BanStatusFilter.All, BanSortOrder.Name), (vm.BanSearchText, vm.SelectedBanStatusFilter.Value, vm.SelectedBanSortOrder.Value));
         var bert = Assert.Single(vm.Bans);
         Assert.Equal((BanStatus.Lifted, false), (bert.Status, bert.CanUnban));
@@ -762,7 +762,7 @@ public class AdminViewModelTests
         var (vm, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak);
         var ban = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "Spam", "mod", T0.AddDays(2));
         server.Apply(new UserJoined(Online(2, "fpX0123456789abcdef", "Xaver")));
-        server.Apply(new UserList("r",
+        vm.Apply(new UserList("r",
         [
             Known("fpX0123456789abcdef", "Xaver", [WellKnownGroups.Guest, ModGroup], previous: ["Xav", "X"], bans: [ban]),
             new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest]), // saved before Package 70
@@ -802,7 +802,7 @@ public class AdminViewModelTests
     public void Search_MatchesNicknamePreviousFingerprintIp(string search, string expected)
     {
         var (vm, server, _) = Create(P.UsersView);
-        server.Apply(new UserList("r",
+        vm.Apply(new UserList("r",
         [
             Known("ffff0000", "Xaver", previous: ["Altname"], ip: "10.0.0.7"),
             Known("00AB12cd", "Berta", ip: "192.168.1.20"),
@@ -817,7 +817,7 @@ public class AdminViewModelTests
         var (vm, server, _) = Create(P.UsersView);
         var ban = new BanInfo(Guid.NewGuid(), "fpC", "Cora", null, "", "mod", null);
         server.Apply(new UserJoined(Online(2, "fpB", "Bert")));
-        server.Apply(new UserList("r",
+        vm.Apply(new UserList("r",
         [
             Known("fpA", "anton", lastLogin: T0.AddDays(-1), online: TimeSpan.FromHours(5)),
             Known("fpB", "Bert", [WellKnownGroups.Guest, ModGroup], lastLogin: T0, online: TimeSpan.FromHours(1)),
@@ -854,7 +854,7 @@ public class AdminViewModelTests
     {
         var (vm, server, _) = Create(P.UsersView);
         Assert.True(vm.ShowUsers);
-        server.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
+        vm.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
         vm.SearchText = "ber";
         var berta = Assert.Single(vm.Users);
         Assert.Equal("10.0.0.7", berta.LastIpText);
@@ -867,7 +867,7 @@ public class AdminViewModelTests
     {
         var (vm, server, sent) = Create(P.UsersView);
         var time = (ManualTimeProvider)server.Time;
-        server.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
+        vm.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
         vm.SearchText = "ber";
         vm.SelectedStatusFilter = vm.StatusFilters.Single(f => f.Value == UserStatusFilter.Online);
         Assert.Empty(vm.Users);
@@ -885,7 +885,7 @@ public class AdminViewModelTests
         await ListUsersSent(sent, 2);
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
 
-        server.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta"), Known("fpC", "Carla")]));
+        vm.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta"), Known("fpC", "Carla")]));
         Assert.Equal("ber", vm.SearchText);
         Assert.Equal(UserStatusFilter.Online, vm.SelectedStatusFilter.Value);
         Assert.Empty(vm.Users);
@@ -909,7 +909,7 @@ public class AdminViewModelTests
             },
         };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserDelete | P.Speak, dialogs: dialogs);
-        server.Apply(new UserList("r", [Known("fpX", "Xaver")]));
+        vm.Apply(new UserList("r", [Known("fpX", "Xaver")]));
         var user = Assert.Single(vm.Users);
 
         await user.DeleteCommand.ExecuteAsync(null);
@@ -945,11 +945,11 @@ public class AdminViewModelTests
         }
 
         var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
-        viewServer.Apply(new UserList("r", users));
+        view.Apply(new UserList("r", users));
         Assert.All(view.Users, u => Assert.Equal((false, false, false), (u.CanBan, u.CanUnban, u.CanDelete)));
 
         var (banOnly, banServer, _) = Create(P.UsersView | P.UserBan | P.Speak | P.UserKick);
-        banServer.Apply(new UserList("r", users));
+        banOnly.Apply(new UserList("r", users));
         Assert.Equal((true, false, false), Buttons(banOnly, "Xaver"));
 
         BanChoice? choice = new("spam", 60, true);
@@ -963,7 +963,7 @@ public class AdminViewModelTests
             },
         };
         var (vm, server, sent) = Create(P.UsersView | P.UserBan | P.UserDelete | P.Speak | P.UserKick, dialogs: dialogs);
-        server.Apply(new UserList("r", users));
+        vm.Apply(new UserList("r", users));
         Assert.Equal((true, false, true), Buttons(vm, "Xaver"));
         Assert.Equal((false, true, true), Buttons(vm, "Bert"));   // banned: unban instead of ban
         Assert.Equal((true, false, true), Buttons(vm, "Mod"));    // Speak and UserKick are a subset (judged by the server)
@@ -1007,8 +1007,8 @@ public class AdminViewModelTests
         static P Rights(KnownUserInfo user) =>
             user.GroupIds.Contains(WellKnownGroups.Admin) ? P.All : user.GroupIds.Contains(ModGroup) ? P.Speak | P.UserKick : P.Speak;
         var (vm, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
-        server.Apply(new UserList("r", users.Select(u => u with { CanBeModeratedByMe = P.All.CanModerate("fp1", Rights(u), u.Fingerprint) }).ToList()));
-        server.Apply(new BanList("b", [banX, banA]));
+        vm.Apply(new UserList("r", users.Select(u => u with { CanBeModeratedByMe = P.All.CanModerate("fp1", Rights(u), u.Fingerprint) }).ToList()));
+        vm.Apply(new BanList("b", [banX, banA]));
         foreach (var user in users)
         {
             var allowed = P.All.CanModerate("fp1", Rights(user), user.Fingerprint);
@@ -1034,13 +1034,13 @@ public class AdminViewModelTests
             Known("fpY", "Yvonne") with { CanBeModeratedByMe = true },
         ];
         var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
-        viewServer.Apply(new UserList("r", users));
+        view.Apply(new UserList("r", users));
         var seen = view.Users.Single(u => u.Nickname == "Xaver");
         Assert.True(seen.IsServerMuted);
         Assert.False(seen.CanLiftMute); // shown, but without UserMute not offered
 
         var (vm, server, sent) = Create(P.UsersView | P.UserMute | P.Speak | P.UserKick);
-        server.Apply(new UserList("r", users));
+        vm.Apply(new UserList("r", users));
         var x = vm.Users.Single(u => u.Nickname == "Xaver");
         Assert.Equal((true, true, true), (x.IsServerMuted, x.CanLiftMute, x.HasActions));
         Assert.Equal((true, false), (vm.Users.Single(u => u.Nickname == "Anna").IsServerMuted, vm.Users.Single(u => u.Nickname == "Anna").CanLiftMute));
@@ -1123,12 +1123,12 @@ public class AdminViewModelTests
         UserList PageAt(string? id, int offset) => new(id, users.Skip(offset).Take(2).ToList(), offset, users.Count);
         var (vm, server, sent) = Create(P.UsersView | P.Speak, reply: r => r is ListUsers l && l.Offset > 0 ? PageAt(l.RequestId, l.Offset) : null);
 
-        server.Apply(PageAt("r", 0));
+        vm.Apply(PageAt("r", 0));
         Assert.Equal([2, 4], sent.OfType<ListUsers>().Select(l => l.Offset));
         Assert.Equal(users.Select(u => u.Fingerprint), vm.Users.Select(u => u.Fingerprint).Order());
 
         // a stale page of an older round is ignored
-        server.Apply(PageAt("alt", 4));
+        vm.Apply(PageAt("alt", 4));
         Assert.Equal(5, vm.Users.Count);
     }
 
@@ -1141,7 +1141,7 @@ public class AdminViewModelTests
         UserList PageOf(List<KnownUserInfo> all, string? id, int offset) => new(id, all.Skip(offset).Take(200).ToList(), offset, all.Count);
         var (vm, server, sent) = Create(P.UsersView | P.Speak);
 
-        server.Apply(PageOf(before, "r0", 0));
+        vm.Apply(PageOf(before, "r0", 0));
         server.Apply(new UserJoined(Online(2, "fpNew", "Aaron")));
         var fresh = sent.OfType<ListUsers>().Single(l => l.Offset == 0).RequestId;
         server.Apply(PageOf(after, fresh, 0));
@@ -1181,7 +1181,7 @@ public class AdminViewModelTests
         clock = (ManualTimeProvider)server.Time;
         var notices = new List<string>();
         server.Notice += notices.Add;
-        server.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
+        vm.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
         GroupToggleViewModel Box(string name) => Assert.Single(vm.Users).Toggles.Single(t => t.Name == name);
 
         foreach (var (name, on) in new[] { ("Moderator", true), ("Gast", false), ("Moderator", false), ("Gast", true), ("Moderator", true) })
@@ -1208,7 +1208,7 @@ public class AdminViewModelTests
         var before = new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true);
         server.Apply(new UserJoined(Online(2, "fpX", "Xaver"))); // a refresh is on its way when the box is ticked
         var older = sent.OfType<ListUsers>().Single().RequestId;
-        server.Apply(new UserList("r", [before]));
+        vm.Apply(new UserList("r", [before]));
         GroupToggleViewModel Mod() => Assert.Single(vm.Users).Toggles.Single(t => t.Name == "Moderator");
 
         Mod().IsChecked = true;
@@ -1231,7 +1231,7 @@ public class AdminViewModelTests
         var ban = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
         var dialogs = new DialogCallbacks { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.Speak, dialogs: dialogs);
-        server.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
+        vm.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
             Known("fpB", "Bert", bans: [ban]) with { CanBeModeratedByMe = true }]));
 
         await vm.Users.Single(u => u.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
@@ -1334,21 +1334,21 @@ public class AdminViewModelTests
         var (vm, server, sent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
         var time = (ManualTimeProvider)server.Time;
         BackupInfo older = new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 900, "dev");
-        server.Apply(new BackupList(null, [older]));
+        vm.Apply(new BackupList(null, [older]));
 
         await vm.NewBackupCommand.ExecuteAsync(null);
         await vm.NewBackupCommand.ExecuteAsync(null); // a second click meanwhile is ignored
         Assert.Single(sent.OfType<CreateBackup>());
         time.Advance(ShowAfter);
         Assert.True(vm.BackupCreate.IsBusy);
-        server.Apply(new BackupList(null, [new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
+        vm.Apply(new BackupList(null, [new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
         Assert.False(vm.BackupCreate.IsBusy);
 
         await vm.Backups[1].RestoreCommand.ExecuteAsync(null);
         var restore = Assert.IsType<RestoreBackup>(sent[^1]);
         time.Advance(ShowAfter);
         Assert.True(vm.Restoring.IsBusy);
-        server.Apply(new BackupList(null, [new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
+        vm.Apply(new BackupList(null, [new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
         Assert.True(vm.Restoring.IsBusy); // the safety backup appears, the disconnect is still to come
         server.Apply(new Error(restore.RequestId, ReasonCodes.NotFound)); // refused: the card comes back with the error
         Assert.False(vm.Restoring.IsBusy);
@@ -1364,14 +1364,14 @@ public class AdminViewModelTests
             dialogs: dialogs);
         var time = (ManualTimeProvider)server.Time;
         var xaver = Known("fpX", "Xaver") with { CanBeModeratedByMe = true, ServerMuted = true };
-        server.Apply(new UserList("r", [xaver]));
+        vm.Apply(new UserList("r", [xaver]));
         KnownUserViewModel Card() => vm.Users.Single(u => u.Fingerprint == "fpX");
 
         await Card().LiftMuteCommand.ExecuteAsync(null);
         Assert.Single(sent.OfType<SetKnownUserServerMute>());
         time.Advance(ShowAfter);
         Assert.True(Card().Busy.IsBusy);
-        server.Apply(new UserList("r", [xaver])); // an older list: still waiting
+        vm.Apply(new UserList("r", [xaver])); // an older list: still waiting
         Assert.True(Card().Busy.IsBusy);
         var asked = sent.OfType<ListUsers>().Last().RequestId;
         server.Apply(new UserList(asked, [xaver with { ServerMuted = false }]));
@@ -1439,8 +1439,8 @@ public class AdminViewModelTests
         server.Leave.Delay = TimeSpan.FromMinutes(1);
         var keep = new BanInfo(Guid.NewGuid(), "fpA", "Anton", null, "", "mod", null);
         var lifted = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null);
-        server.Apply(new BanList("b", [keep, lifted]));
-        server.Apply(new BanList("c", [keep]));
+        view.Apply(new BanList("b", [keep, lifted]));
+        view.Apply(new BanList("c", [keep]));
         Assert.Equal(2, view.Bans.Count);
         Assert.Equal("Anton", Assert.Single(view.Bans.Live()).Nickname);
         Assert.True(CollectionSync.IsLeaving(view.Bans, view.Bans.Single(b => b.Nickname == "Xaver")));

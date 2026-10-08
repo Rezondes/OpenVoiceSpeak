@@ -1,0 +1,346 @@
+using System.Runtime.CompilerServices;
+using OVS.Client.Dialogs;
+using OVS.Client.Localization;
+using OVS.Client.Services;
+using OVS.Client.ViewModels;
+using OVS.Shared.Permissions;
+using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Groups;
+using OVS.Shared.Protocol.Messages.Links;
+using OVS.Shared.Protocol.Messages.LogAccess;
+using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.ServerBackups;
+using OVS.Shared.Protocol.Messages.ServerInfo;
+using OVS.Shared.Protocol.Messages.Users;
+using OVS.Tests.TestSupport;
+using static OVS.Tests.TestSupport.HangGuard;
+
+namespace OVS.Tests.Client.ViewModels;
+
+/// <summary>
+/// The server's answers go by request id to the route their request was sent with (ServerViewModel.Routes), and the
+/// administration page, its logs tab and its transfer send each request that needs its answer with their own route.
+/// </summary>
+public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", quiet: false)
+{
+    readonly ManualTimeProvider time = new();
+    readonly List<Request> sent = [];
+    readonly List<Message> received = [];
+
+    ServerViewModel Server(Func<Request, Message?>? reply = null, DialogCallbacks? dialogs = null) => FakeServers.Admin(sent, time, dialogs, reply);
+
+    // ---- The routes of ServerViewModel ----
+
+    [Fact]
+    public async Task SendAsync_AnsweredBeforeTheIdReturns_ReachesTheRoute()
+    {
+        var server = Server(reply: r => new BackupList(r.RequestId, []));
+
+        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+
+        Assert.Equal(id, Assert.IsType<BackupList>(Assert.Single(received)).RequestId);
+    }
+
+    [Fact]
+    public async Task Apply_SecondAnswerUnderTheId_ReachesTheRouteToo()
+    {
+        var server = Server();
+        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        BackupList first = new(id, [], 0, 2), second = new(id, [], 1, 2);
+
+        server.Apply(first);
+        server.Apply(second);
+
+        Assert.Equal([first, second], received);
+    }
+
+    [Fact]
+    public async Task Apply_AnswerToAnotherRequest_ReachesNoRoute()
+    {
+        var server = Server();
+        await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var other = await Bound(server.SendAsync(new ListBackups())); // without a route
+
+        server.Apply(new BackupList(other, []));
+        server.Apply(new BackupList(null, []));
+
+        Assert.Empty(received);
+    }
+
+    [Fact]
+    public async Task RemoveAll_TwoHandlers_OnlyTheRemovedOneGetsNothing()
+    {
+        var server = Server();
+        var kept = new List<Message>();
+        var first = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var second = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var other = await Bound(server.SendAsync(new ListBans(), route: kept.Add));
+
+        server.Routes.RemoveAll(received.Add);
+        server.Apply(new BackupList(first, []));
+        server.Apply(new BackupList(second, []));
+        server.Apply(new BanList(other, []));
+
+        Assert.Empty(received);
+        Assert.Single(kept);
+        Assert.Equal([null, null], new[] { first, second }.Select(server.Routes.Find));
+    }
+
+    [Fact]
+    public async Task Apply_ErrorForARoutedRequest_ReachesTheRouteWithNoticeAndPendingError()
+    {
+        var server = Server();
+        var notices = new List<string>();
+        server.Notice += notices.Add;
+        var pending = server.NewPending();
+        var id = await Bound(server.SendAsync(new ListBackups(), pending: pending, route: received.Add));
+        var error = new Error(id, ReasonCodes.PermissionDenied);
+
+        server.Apply(error);
+
+        Assert.Same(error, Assert.Single(received));
+        Assert.Equal([ErrorTexts.For(ReasonCodes.PermissionDenied)], notices);
+        Assert.Equal(ErrorTexts.For(ReasonCodes.PermissionDenied), pending.Error);
+    }
+
+    [Fact]
+    public void Apply_ListsWithoutARoute_LastUserAndBanListKept()
+    {
+        var server = Server();
+        var users = new UserList("u9", []);
+        var bans = new BanList("b9", []);
+
+        server.Apply(users);
+        server.Apply(bans);
+
+        Assert.Same(users, server.LastUserList);
+        Assert.Same(bans, server.LastBanList);
+    }
+
+    /// <summary>The answers that carry a request id but are not routed, why, and one of each.</summary>
+    static readonly Dictionary<string, (string Reason, Func<string, Message> Sample)> AnswersNotRouted = new()
+    {
+        [nameof(ChannelAdded)] = ("a change every client gets; the creator's copy confirms its mark (SendConfirmed matches the id)",
+            id => new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 9), id)),
+        [nameof(ServerIcon)] = ("goes to IconReceived, which takes a logo only when it matches the current hash", id => new ServerIcon(id, null, null)),
+    };
+
+    static IEnumerable<Type> AnswerTypes() => typeof(Message).Assembly.GetTypes()
+        .Where(t => t.IsSubclassOf(typeof(Message)) && !t.IsAbstract && !t.IsSubclassOf(typeof(Request)) && t.GetProperty("RequestId") is not null)
+        .OrderBy(t => t.Name, StringComparer.Ordinal);
+
+    public static TheoryData<string> RoutedAnswerNames => new(AnswerTypes().Select(t => t.Name).Where(n => !AnswersNotRouted.ContainsKey(n)));
+    public static TheoryData<string> NotRoutedAnswerNames => new(AnswersNotRouted.Keys);
+
+    [Fact]
+    public void AnswersNotRouted_EveryEntry_AnAnswerType()
+    {
+        Assert.Subset(AnswerTypes().Select(t => t.Name).ToHashSet(), AnswersNotRouted.Keys.ToHashSet());
+    }
+
+    /// <summary>Every answer with a request id reaches the route of its request, unless listed above with its reason.</summary>
+    [Theory]
+    [MemberData(nameof(RoutedAnswerNames))]
+    public async Task Apply_EveryAnswerType_ReachesTheRouteOfItsRequest(string typeName)
+    {
+        var type = AnswerTypes().Single(t => t.Name == typeName);
+        var server = Server();
+        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var answer = type == typeof(Error) ? new Error(id, ReasonCodes.InvalidValue) : (Message)RuntimeHelpers.GetUninitializedObject(type);
+        type.GetProperty("RequestId")!.SetValue(answer, id);
+
+        server.Apply(answer);
+
+        Assert.Same(answer, Assert.Single(received));
+    }
+
+    [Theory]
+    [MemberData(nameof(NotRoutedAnswerNames))]
+    public async Task Apply_AnswerListedAsNotRouted_SkipsTheRouteOfItsRequest(string typeName)
+    {
+        var server = Server();
+        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+
+        server.Apply(AnswersNotRouted[typeName].Sample(id));
+
+        Assert.Empty(received);
+    }
+
+    // ---- The administration page ----
+
+    static readonly KnownUserInfo Xaver = new("fpX", "Xaver", [WellKnownGroups.Guest], ServerMuted: true, CanBeModeratedByMe: true,
+        Bans: [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "Spam", "ich", null)]);
+    static readonly KnownUserInfo Yvonne = new("fpY", "Yvonne", [WellKnownGroups.Guest], CanBeModeratedByMe: true);
+    static readonly BackupInfo Stored = new("2026-01-01_12-00-00.ovsbackup", DateTimeOffset.UnixEpoch, 3, "dev.0000");
+    static readonly LogFileInfo ServerLog = new("server/2026-01-01_12-00-00.log", LogKind.Server, null, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, 3);
+    static readonly Guid Team = Guid.NewGuid();
+
+    /// <summary>Who gets the answers to each request the page sends: the page, its logs tab or its transfer.</summary>
+    static readonly Dictionary<string, string> Owners = new()
+    {
+        [nameof(ListUsers)] = "page", [nameof(ListBans)] = "page", [nameof(Unban)] = "page", [nameof(AssignGroup)] = "page", [nameof(UnassignGroup)] = "page",
+        [nameof(BanKnownUser)] = "page", [nameof(DeleteKnownUser)] = "page", [nameof(SetKnownUserServerMute)] = "page",
+        [nameof(ListBackups)] = "page", [nameof(CreateBackup)] = "page", [nameof(DeleteBackup)] = "page",
+        [nameof(ListLogs)] = "logs", [nameof(ReadLog)] = "logs", [nameof(SearchLogs)] = "logs",
+        [nameof(DownloadBackup)] = "transfer", [nameof(UploadBackupChunk)] = "transfer", [nameof(PrepareLogDownload)] = "transfer",
+        [nameof(DownloadLogChunk)] = "transfer",
+    };
+
+    /// <summary>The requests the page sends without a route, and why no answer of theirs is needed.</summary>
+    static readonly Dictionary<string, string> RequestsNotRouted = new()
+    {
+        [nameof(RestoreBackup)] = "answered by the disconnect of every client; its error ends Restoring",
+        [nameof(CreateGroup)] = "confirmed by the groups every client gets (SendConfirmed); its error ends the save's mark",
+        [nameof(UpdateGroup)] = "confirmed by the groups every client gets (SendConfirmed); its error ends the save's mark",
+        [nameof(ReorderGroups)] = "confirmed by the groups every client gets (SendConfirmed); its error ends the order's mark",
+        [nameof(DeleteGroup)] = "shown by the groups every client gets; its error shows as a notice",
+        [nameof(UpdateServerSettings)] = "confirmed by the settings every client gets (SendConfirmed)",
+        [nameof(SetServerIcon)] = "confirmed by the settings every client gets (SendConfirmed)",
+        [nameof(SetChannelLinks)] = "confirmed by the links every client gets (SendConfirmed)",
+    };
+
+    /// <summary>The answers each request gets besides an error, as the server sends them; a new answer type needs its requests here.</summary>
+    static readonly Dictionary<Type, Type[]> AnswersOf = new()
+    {
+        [typeof(ListUsers)] = [typeof(UserList)],
+        [typeof(ListBans)] = [typeof(BanList)],
+        [typeof(Unban)] = [typeof(BanList)],
+        [typeof(ListBackups)] = [typeof(BackupList)],
+        [typeof(CreateBackup)] = [typeof(BackupList)],
+        [typeof(DeleteBackup)] = [typeof(BackupList)],
+        [typeof(DownloadBackup)] = [typeof(BackupChunk)],
+        [typeof(UploadBackupChunk)] = [typeof(UploadBackupAck), typeof(BackupUploaded), typeof(BackupList)],
+        [typeof(ListLogs)] = [typeof(LogList)],
+        [typeof(ReadLog)] = [typeof(LogPage)],
+        [typeof(SearchLogs)] = [typeof(LogSearchResult)],
+        [typeof(PrepareLogDownload)] = [typeof(LogDownloadReady)],
+        [typeof(DownloadLogChunk)] = [typeof(LogChunk)],
+        [typeof(CreateChannel)] = [typeof(ChannelAdded)],
+        [typeof(GetServerIcon)] = [typeof(ServerIcon)],
+    };
+
+    /// <summary>A request answered with a routed answer type must be decided for the page: an owner of its route, or a reason.</summary>
+    [Fact]
+    public void AnswersOf_RequestWithARoutedAnswer_InOwnersOrRequestsNotRouted()
+    {
+        Assert.Equal(AnswerTypes().Where(t => t != typeof(Error)).Select(t => t.Name),
+            AnswersOf.Values.SelectMany(a => a).Select(t => t.Name).Distinct().Order(StringComparer.Ordinal));
+        var withRoutedAnswer = AnswersOf.Where(a => a.Value.Any(t => !AnswersNotRouted.ContainsKey(t.Name))).Select(a => a.Key.Name);
+        Assert.All(withRoutedAnswer, name => Assert.True(Owners.ContainsKey(name) || RequestsNotRouted.ContainsKey(name), $"{name} is not decided"));
+    }
+
+    /// <summary>Every request the page sends (each action once) goes with the route of its owner, or is listed without one.</summary>
+    [Fact]
+    public async Task AdminPage_EveryRequest_RoutedToItsOwnerOrListed()
+    {
+        var routes = new List<(Request Request, Action<Message>? Route)>();
+        ServerViewModel server = null!;
+        server = Server(r =>
+        {
+            routes.Add((r, server.Routes.Find(r.RequestId!))); // a route is in place before the request goes out
+            return r switch
+            {
+                ListUsers => new UserList(r.RequestId, [Xaver, Yvonne]),
+                ListBans => new BanList(r.RequestId, Xaver.Bans!),
+                ListBackups => new BackupList(r.RequestId, [Stored]),
+                ListLogs => new LogList(r.RequestId, [ServerLog]),
+                CreateGroup c => new GroupsChanged([.. server.Mirror.Groups, new GroupInfo(Team, c.Name, c.Permissions, true)]),
+                DownloadBackup => new BackupChunk(r.RequestId, Stored.FileName, 0, 3, "AQID", true),
+                UploadBackupChunk => new BackupUploaded(r.RequestId, Stored),
+                PrepareLogDownload => new LogDownloadReady(r.RequestId, "d1", "server.log", 3),
+                DownloadLogChunk => new LogChunk(r.RequestId, "d1", 0, 3, "AQID", true),
+                _ => null,
+            };
+        }, new DialogCallbacks
+        {
+            Confirm = _ => Task.FromResult(true),
+            ConfirmRestore = _ => Task.FromResult(true),
+            ConfirmDeleteUser = _ => Task.FromResult(true),
+            Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("Spam", null, false)),
+        });
+        var page = new AdminViewModel(server);
+        var file = Path.Combine(dir, "up.ovsbackup");
+        File.WriteAllBytes(file, [1, 2, 3]);
+
+        await Bound(page.RequestListsAsync());
+        KnownUserViewModel Card(string fingerprint) => page.Users.Single(u => u.Fingerprint == fingerprint);
+        await Bound(Card("fpX").UnbanCommand.ExecuteAsync(null));
+        await Bound(Card("fpX").LiftMuteCommand.ExecuteAsync(null));
+        await Bound(Card("fpY").BanCommand.ExecuteAsync(null));
+        await Bound(Card("fpY").DeleteCommand.ExecuteAsync(null));
+        var guest = Card("fpY").Toggles.Single(t => t.GroupId == WellKnownGroups.Guest);
+        guest.IsChecked = false;
+        await Bound(guest.ToggleCommand.ExecuteAsync(null));
+        var admin = Card("fpY").Toggles.Single(t => t.GroupId == WellKnownGroups.Admin);
+        admin.IsChecked = true;
+        await Bound(admin.ToggleCommand.ExecuteAsync(null));
+        await Bound(page.Bans.Single().UnbanCommand.ExecuteAsync(null));
+        await Bound(page.NewBackupCommand.ExecuteAsync(null));
+        await Bound(page.Backups.Single().DeleteCommand.ExecuteAsync(null));
+        await Bound(page.Backups.Single().RestoreCommand.ExecuteAsync(null));
+        await Bound(page.DownloadBackupAsync(page.Backups.Single(), Path.Combine(dir, "down.ovsbackup")));
+        await Bound(page.UploadBackupAsync(file, restore: false));
+        page.Logs.Files.Single().IsSelected = true;
+        await Bound(page.Logs.DownloadAsync(Path.Combine(dir, "server.log")));
+        page.Logs.OpenCommand.Execute(page.Logs.Files.Single());
+        page.Logs.SearchText = "Start";
+        page.Logs.SearchCommand.Execute(null);
+        await Bound(page.NewGroupCommand.ExecuteAsync(null));
+        await Bound(page.SaveGroupCommand.ExecuteAsync(null));
+        GroupEditViewModel TeamRow() => page.Groups.Single(g => g.Id == Team);
+        page.SelectedGroup = TeamRow();
+        await Bound(page.SaveGroupCommand.ExecuteAsync(null));
+        await Bound(page.MoveGroupAsync(TeamRow(), page.Groups[0], after: false));
+        page.SelectedGroup = TeamRow();
+        await Bound(page.DeleteGroupCommand.ExecuteAsync(null));
+        await Bound(page.SaveServerSettingsCommand.ExecuteAsync(null));
+        page.RemoveIconCommand.Execute(null);
+        page.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
+        await Bound(page.Links.ApplyCommand.ExecuteAsync(null));
+
+        string OwnerOf(Action<Message>? route) =>
+            route is null ? "none"
+            : route == (Action<Message>)page.Apply ? "page"
+            : route == (Action<Message>)page.Logs.Apply ? "logs"
+            : route.Method.DeclaringType?.DeclaringType == typeof(AdminTransfer) ? "transfer" // a request's own closure in the transfer
+            : "other";
+        var owners = routes.GroupBy(r => r.Request.GetType().Name)
+            .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => OwnerOf(r.Route)).Distinct()));
+        var expected = Owners.Concat(RequestsNotRouted.Keys.Select(name => KeyValuePair.Create(name, "none"))).ToDictionary();
+        Assert.Equal(expected.OrderBy(e => e.Key, StringComparer.Ordinal), owners.OrderBy(o => o.Key, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task AdminPage_Detached_KeepsNoRouteAndGetsNoAnswer()
+    {
+        var server = Server();
+        var page = new AdminViewModel(server);
+        await Bound(page.RequestListsAsync());
+
+        page.Detach();
+        server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [Yvonne]));
+        server.Apply(new LogList(sent.OfType<ListLogs>().Single().RequestId, [ServerLog]));
+
+        Assert.Empty(page.Users);
+        Assert.Empty(page.Logs.Files);
+        Assert.All(sent, r => Assert.Null(server.Routes.Find(r.RequestId!)));
+    }
+
+    /// <summary>Package 75 (AC2): the server stores the upload and sends its new list; the backup shows in the page's list.</summary>
+    [Fact]
+    public async Task AdminPage_UploadStored_TheFollowingListShowsTheBackup()
+    {
+        var server = Server(r => r is UploadBackupChunk ? new BackupUploaded(r.RequestId, Stored) : null);
+        var page = new AdminViewModel(server);
+        var file = Path.Combine(dir, "up.ovsbackup");
+        File.WriteAllBytes(file, [1, 2, 3]);
+        await Bound(page.UploadBackupAsync(file, restore: false));
+
+        server.Apply(new BackupList(sent.OfType<UploadBackupChunk>().Single().RequestId, [Stored]));
+
+        Assert.Equal([Stored.FileName], page.Backups.Select(b => b.Info.FileName));
+    }
+}

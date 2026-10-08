@@ -24,6 +24,7 @@ using OVS.Client.Settings;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 
@@ -858,7 +859,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         string? requested = null, retried = null, seen = null;
         bool synced = false;
-        Task<string>? pending = null;
         void Sync()
         {
             var hash = vm.IconHash;
@@ -879,18 +879,19 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             }
             if (requested == hash) return;
             requested = hash;
-            pending = vm.SendAsync(new GetServerIcon());
+            vm.Routes.RemoveAll(OnIconAnswer); // only the newest request's refusal counts
+            _ = vm.SendAsync(new GetServerIcon(), route: OnIconAnswer);
         }
         vm.StateChanged += Sync;
-        vm.AdminMessage += m =>
+        void OnIconAnswer(Message answer)
         {
             // Refused within the server's interval: asked once more afterwards, if that logo is still wanted.
-            if (m is not Error { Code: ReasonCodes.RateLimited } e || pending is not { IsCompletedSuccessfully: true } p || p.Result != e.RequestId) return;
+            if (answer is not Error { Code: ReasonCodes.RateLimited }) return;
             var hash = requested;
             if (retried == hash) return;
             retried = hash;
             _ = RetryAsync(hash);
-        };
+        }
         async Task RetryAsync(string? hash)
         {
             await Task.Delay(IconRetryDelay, vm.Time);

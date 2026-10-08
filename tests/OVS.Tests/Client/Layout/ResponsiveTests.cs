@@ -433,9 +433,10 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = Open(width, server, out var vm);
         _ = vm.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
+        var admin = (AdminViewModel)main.GetVisualDescendants().OfType<AdminView>().Single().DataContext!;
         var groups = server.Mirror.Groups.Select(g => g.Id).ToList();
         // Package 71: cards with every detail, long previous nicknames and an active ban
-        server.Apply(new OVS.Shared.Protocol.Messages.Users.UserList("r", Enumerable.Range(1, 20)
+        admin.Apply(new OVS.Shared.Protocol.Messages.Users.UserList("r", Enumerable.Range(1, 20)
             .Select(i => new OVS.Shared.Protocol.Messages.Users.KnownUserInfo(new string((char)('a' + i % 6), 64), $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]],
                 DateTimeOffset.Now.AddDays(-40), DateTimeOffset.Now.AddHours(-i), i, TimeSpan.FromHours(30 + i), "2001:db8:85a3::8a2e:370:7334",
                 ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, i % 2 == 0, null,
@@ -445,17 +446,16 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             .ToList()));
         // Package 80: 12 bans of every status (active, expired, lifted, old without details), all shown
         var now = DateTimeOffset.Now;
-        server.Apply(new OVS.Shared.Protocol.Messages.Moderation.BanList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(),
+        admin.Apply(new OVS.Shared.Protocol.Messages.Moderation.BanList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(),
             new string((char)('a' + i % 6), 64), $"Störenfried mit langem Namen {i}", i % 2 == 0 ? "2001:db8:85a3::8a2e:370:7334" : null,
             i % 3 == 0 ? "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert" : "", "Moderator mit langem Namen",
             (i % 4) switch { 0 => null, 1 => now.AddDays(3), 2 => now.AddDays(-1), _ => now.AddHours(5) },
             i == 11 ? null : now.AddDays(-i - 2), i == 11 ? null : new string('f', 64), i % 4 is 1 or 3 ? 4320 : i % 4 == 2 ? 1440 : null,
             i % 4 == 3 ? now.AddHours(-1) : null, i % 4 == 3 ? "Administrator mit langem Namen" : null, i * 7,
             i % 2 == 1 ? now.AddMinutes(-i) : null, i % 2 == 1 ? "2001:db8:85a3::8a2e:370:7335" : null)).ToList()));
-        var admin = (AdminViewModel)main.GetVisualDescendants().OfType<AdminView>().Single().DataContext!;
         admin.SelectedBanStatusFilter = admin.BanStatusFilters.Single(f => f.Value == BanStatusFilter.All);
         // Package 74: backups in the server tab, one of them the safety backup with the longer title
-        server.Apply(new OVS.Shared.Protocol.Messages.ServerBackups.BackupList("r",
+        admin.Apply(new OVS.Shared.Protocol.Messages.ServerBackups.BackupList("r",
         [
             new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 12_345_678, "300926.1a2b"),
             new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 800_000, "dev.0000"),
@@ -463,7 +463,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         ]));
         // Package 81: log files of the server and of channels with long names, one opened on a page with long lines
         var channel = server.Mirror.Channels.Values.First(c => c.Name.StartsWith("Raid")).Id;
-        server.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.LogAccess.LogFileInfo(
+        admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.LogAccess.LogFileInfo(
             i % 3 == 0 ? $"server/2026-09-{30 - i:00}_12-00-00.log" : $"channels/{channel}/2026-09-{30 - i:00}_12-00-00.log",
             i % 3 == 0 ? OVS.Shared.Protocol.Messages.LogAccess.LogKind.Server : OVS.Shared.Protocol.Messages.LogAccess.LogKind.Channel, i % 3 == 0 ? null : channel,
             i % 3 == 0 ? null : i == 11 ? "Ein gelöschter Channel mit einem sehr langen Namen" : "Raidgruppe Nummer 2",
@@ -471,7 +471,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // Package 82: some files checked (the Server tab's transfer above shows here too)
         foreach (var file in admin.Logs.Files.Where((_, i) => i % 2 == 0)) file.IsSelected = true;
         admin.Logs.OpenCommand.Execute(admin.Logs.Files[0]);
-        server.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogPage(null, admin.Logs.Files[0].Info.Id, 3, 3, 2001, Enumerable.Range(2001, 40)
+        admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogPage(null, admin.Logs.Files[0].Info.Id, 3, 3, 2001, Enumerable.Range(2001, 40)
             .Select(n => n % 5 == 0 ? $"2026-09-30 12:00:{n % 60:00}.000 Mitspieler{n} verbunden (" + new string('a', 64) + ", 2001:db8:85a3::8a2e:370:7334) " + new string('x', 300)
                 : $"2026-09-30 12:00:{n % 60:00}.000 Zeile {n}").ToList()));
         admin.Logs.LineFilter = "0";

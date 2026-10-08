@@ -4814,7 +4814,7 @@ Steuernachrichten sind höchstens 1 MiB gross (`FrameReader.MaxFrameSize`). Base
 3. `BackupTests > "Upload_TooLargeOrAborted_NoFileLeft"` (AC3)
 4. `BackupTests > "Upload_InvalidArchive_Rejected"` (AC2)
 5. `AdminViewModelTests > "DownloadBackupAsync_BackupChosen_SavesItsArchive"`, `AdminTransferTests > [Theory] "Download_ChunksAnswered_FileInPlaceWithProgress"` (AC1, AC3)
-6. `AdminViewModelTests > "UploadAndRestore_AsksFirst"`, `AdminTransferTests > "UploadBackupAsync_ChunksAcknowledged_ReturnsTheStoredBackupWithProgress"`, `[Theory] "UploadBackupAsync_FileSize_RefusedOnlyOverTheLimit"` (AC2, AC3)
+6. `AdminViewModelTests > "UploadAndRestore_AsksFirst"`, `AdminTransferTests > "UploadBackupAsync_ChunksAcknowledged_ReturnsTheStoredBackupWithProgress"`, `[Theory] "UploadBackupAsync_FileSize_RefusedOnlyOverTheLimit"`, `AnswerRoutingTests > "AdminPage_UploadStored_TheFollowingListShowsTheBackup"` (AC2, AC3)
 7. `LocalizationTests` (AC5)
 
 Testbefehl: `dotnet test`
