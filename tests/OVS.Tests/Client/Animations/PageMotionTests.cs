@@ -18,12 +18,6 @@ namespace OVS.Tests.Client.Animations;
 [Collection(MotionCollection.Name)]
 public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: true)
 {
-    public override void Dispose()
-    {
-        Motion.IsAnimated = true;
-        base.Dispose();
-    }
-
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -38,7 +32,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         main.Show();
         MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
-        Motion.Apply(main, display); // the display is one for the app: pin it against what other tests left queued
+        Motion.Apply(main, display);
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still moves
         return main;
     }
@@ -273,6 +267,29 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         Frame();
         Assert.Equal(1, last.Opacity);
         main.Close();
+    }
+
+    /// <summary>The switch itself shows the waiting sections, before any layout pass would look at them again.</summary>
+    [AvaloniaFact]
+    public void Reveal_SwitchToSimplified_WaitingSectionShowsAtOnce()
+    {
+        var sections = Enumerable.Range(0, 3).Select(_ => new Border { Height = 150 }).ToArray();
+        var scroll = new ScrollViewer { Content = new StackPanel { Children = { sections[0], sections[1], sections[2] } } };
+        PageMotion.SetReveal(scroll, true);
+        var window = new Window { Width = 300, Height = 200, Content = scroll };
+        int running = AnimationCounter.Running;
+        window.Show();
+        try
+        {
+            MotionWait.Until(() => sections[2].Opacity == 0 && AnimationCounter.Running <= running); // the third waits, the first two have faded up
+            Assert.Equal(0, sections[2].Opacity); // below the fold: it waits
+            Motion.Apply(window, DisplayMode.Simplified);
+            Assert.Equal(1, sections[2].Opacity);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     /// <summary>

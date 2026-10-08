@@ -167,7 +167,7 @@ public static class ItemMotion
     /// <summary>The picture is taken now, before the row folds away; it flies only if the entry turns up elsewhere.</summary>
     static void Depart(object item, Control container)
     {
-        if (!Motion.IsAnimated || grounded.ContainsKey(item) || OverlayLayer.GetOverlayLayer(container) is not { } overlay || FlyGhost.VisibleRect(container, overlay) is not { } from) return;
+        if (!Motion.IsAnimated(container) || grounded.ContainsKey(item) || OverlayLayer.GetOverlayLayer(container) is not { } overlay || FlyGhost.VisibleRect(container, overlay) is not { } from) return;
         if (departures.Remove(item, out var earlier)) earlier.Picture.Dispose();
         departures[item] = new Departure(overlay, DragVisuals.Snapshot(container), from);
         QueuePairing();
@@ -221,7 +221,7 @@ public static class ItemMotion
         EndEntry(container);
         container.IsHitTestVisible = false;
         container.Classes.Set("leaving", true);
-        if (!Motion.IsAnimated) return;
+        if (!Motion.IsAnimated(container)) return;
         var cancel = new CancellationTokenSource();
         folding.AddOrUpdate(container, cancel);
         container.ClipToBounds = true;
@@ -317,8 +317,9 @@ public static class ItemMotion
                     filled = false;
                     fading = false;
                     // the window already shows (a hidden tree is not in the visual tree yet, so ask the logical one)
-                    if (GetBuildUp(list) && Motion.IsAnimated && Avalonia.LogicalTree.LogicalExtensions.FindLogicalAncestorOfType<Window>(list) is { IsVisible: true })
-                        BuildUpOnceShown();
+                    if (GetBuildUp(list) && Avalonia.LogicalTree.LogicalExtensions.FindLogicalAncestorOfType<Window>(list) is { IsVisible: true } window
+                        && Motion.IsAnimated(window))
+                        BuildUpOnceShown(window);
                 }
                 TrackPlaces();
                 QueueSettle();
@@ -331,14 +332,14 @@ public static class ItemMotion
         /// made while the tree is still hidden (its visibility follows a moment later), so it plays once it is laid out
         /// visible.
         /// </summary>
-        void BuildUpOnceShown()
+        void BuildUpOnceShown(Window window)
         {
             var source = list.ItemsSource;
             var since = System.Diagnostics.Stopwatch.StartNew(); // clock: frame timing
             void OnLayout(object? sender, EventArgs e)
             {
                 // gone, switched to the simplified display, or not shown soon (the drawer is closed): it just shows later
-                if (list.ItemsSource != source || !Motion.IsAnimated || since.ElapsedMilliseconds > 500)
+                if (list.ItemsSource != source || !Motion.IsAnimated(window) || since.ElapsedMilliseconds > 500)
                 {
                     list.LayoutUpdated -= OnLayout;
                     return;
@@ -360,7 +361,7 @@ public static class ItemMotion
 
         void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
-            if (e.Action == NotifyCollectionChangedAction.Move && GetFlip(list) && Motion.IsAnimated && !held) moved = true;
+            if (e.Action == NotifyCollectionChangedAction.Move && GetFlip(list) && Motion.IsAnimated(list) && !held) moved = true;
             TrackPlacesAround(list);
             QueueSettle();
         }
@@ -462,7 +463,7 @@ public static class ItemMotion
                 return;
             }
             var key = IMotionKey.KeyOf(item);
-            if (key is null || !Motion.IsAnimated) return;
+            if (key is null || !Motion.IsAnimated(list)) return;
             if (!list.IsEffectivelyVisible) // a hidden list makes its rows at once; nobody sees them arrive
             {
                 known.Add(key);

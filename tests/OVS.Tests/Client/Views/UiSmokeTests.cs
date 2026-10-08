@@ -192,7 +192,6 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
         LooksLikeBefore("admin");
         Assert.DoesNotContain("animated", main.Classes);
-        Motion.IsAnimated = true;
         main.Close();
     }
 

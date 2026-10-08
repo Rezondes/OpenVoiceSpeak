@@ -17,10 +17,8 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 100: hover, press and focus effects exist only in the animated display.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class MotionStyleTests : IDisposable
+public sealed class MotionStyleTests
 {
-    public void Dispose() => Motion.IsAnimated = true;
-
     static Window Host(Control content, bool animated)
     {
         var window = new Window { Width = 400, Height = 300, Content = new StackPanel { Margin = new Thickness(20), Spacing = 10, Children = { content } } };

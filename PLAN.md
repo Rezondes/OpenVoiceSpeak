@@ -6163,7 +6163,7 @@ There's no display mode today. `Theme`, opacity and blur already show how an app
 2. `MainViewModelTests > "Display_LivePreviewAndCancelRevert"` (AC2)
    - Given: the settings page switches to Simplified.
    - Expected: `LivePreview` gets `Simplified`; after cancelling, the applied mode is `Animated` again.
-3. `MotionTests > "Apply_SetsWindowClassAndDurations"` (AC3)
+3. `MotionTests > "Apply_SetsWindowClassAndDurations"`, `"Apply_TwoWindows_EachControlFollowsItsOwnWindow"` (AC3)
 4. `UiSmokeTests > "Simplified_LooksLikeBefore"` (AC4)
    - Given: baselines in `tests/OVS.Tests/Client/Baselines/`, captured once from the current `main` before any change.
    - Expected: pixel-equal frames.
@@ -6428,7 +6428,7 @@ Test command: `dotnet test tests/OVS.Tests`
 3. `PageMotionTests > "AdminAndChatTabs_FadeIn_MarkFlies"` (AC3)
 4. `PageMotionTests > "SettingsSections_FadeUpOnce"` (AC4)
 5. `PageMotionTests > "RapidSwitch_EndsClean"` (AC5)
-6. `PageMotionTests > "Simplified_Instant"`, `ResponsiveTests` (AC6)
+6. `PageMotionTests > "Simplified_Instant"`, `"Reveal_SwitchToSimplified_WaitingSectionShowsAtOnce"`, `ResponsiveTests` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
 

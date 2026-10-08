@@ -57,10 +57,8 @@ namespace OVS.Tests.Client.Animations;
 /// </para>
 /// </summary>
 [Collection(MotionCollection.Name)]
-public sealed class MotionCoverageTests : IDisposable
+public sealed class MotionCoverageTests
 {
-    public void Dispose() => Motion.IsAnimated = true;
-
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -120,7 +118,6 @@ public sealed class MotionCoverageTests : IDisposable
         var results = new List<Result>();
         foreach (var step in Steps(walk)) results.Add(Run(walk, step));
         main.Close();
-        Motion.IsAnimated = true;
         try
         {
             Directory.Delete(dir, true);
@@ -176,7 +173,7 @@ public sealed class MotionCoverageTests : IDisposable
     /// <param name="watchLeast">False for what only prepares or sets back: no waiting state or transition to see there.</param>
     static void Settle(Walk w, Action? look = null, bool watchLeast = true)
     {
-        bool animated = Motion.IsAnimated;
+        bool animated = Motion.IsAnimated(w.Main);
         int least = !watchLeast ? 0 : animated ? 160 : 20, hold = animated ? 25 : 10;
         var watch = Stopwatch.StartNew();
         string? last = null;

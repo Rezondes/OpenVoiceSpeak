@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -10,9 +11,10 @@ internal static class ShakeMotion
     /// <summary>How far one swing goes, in px.</summary>
     const double Swing = 6;
 
-    internal static void Shake(Animatable target)
+    /// <summary>Shakes <paramref name="target"/> once; nothing in the simplified display of its window.</summary>
+    internal static void Shake(Visual target)
     {
-        if (!Motion.IsAnimated) return;
+        if (!Motion.IsAnimated(target)) return;
         var shake = new Animation { Duration = TimeSpan.FromMilliseconds(360), Easing = Motion.Ease };
         double[] steps = [0, -Swing, Swing, -Swing, Swing, -Swing / 2, 0];
         for (int i = 0; i < steps.Length; i++)

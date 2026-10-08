@@ -18,12 +18,6 @@ namespace OVS.Tests.Client.Animations;
 [Collection(MotionCollection.Name)]
 public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: true)
 {
-    public override void Dispose()
-    {
-        Motion.IsAnimated = true;
-        base.Dispose();
-    }
-
     /// <summary>Lets the clock run until the condition holds (at most 5 s): on a busy machine frames come late.</summary>
     static void SettleUntil(Func<bool> done)
     {
@@ -209,6 +203,26 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         Assert.True((badge.RenderTransform?.Value.M11 ?? 1) < 1 || badge.Opacity < 1, "the badge pops in");
         MotionWait.Eventually(() => Assert.Equal(1, badge.RenderTransform?.Value.M11 ?? 1, 2));
         main.Close();
+    }
+
+    [AvaloniaFact]
+    public void UnreadBadge_Simplified_StartsNoAnimation()
+    {
+        var (main, vm, server, _) = Open(DisplayMode.Simplified);
+        try
+        {
+            vm.Chat!.Selected = vm.Chat.Tabs[1];
+            Dispatcher.UIThread.RunJobs();
+            int unread = vm.Chat.Tabs[0].Unread, started = AnimationCounter.Started;
+            server.Apply(From("anna", 2, "Hallo"));
+            Dispatcher.UIThread.RunJobs(); // the badge's job too
+            Assert.Equal(unread + 1, vm.Chat.Tabs[0].Unread);
+            Assert.Equal(started, AnimationCounter.Started);
+        }
+        finally
+        {
+            main.Close();
+        }
     }
 
     [AvaloniaFact]

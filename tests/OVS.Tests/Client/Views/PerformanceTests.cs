@@ -24,12 +24,6 @@ namespace OVS.Tests.Client.Views;
 [Collection(MotionCollection.Name)]
 public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: true)
 {
-    public override void Dispose()
-    {
-        Motion.IsAnimated = true;
-        base.Dispose();
-    }
-
     /// <summary>
     /// Everything the tree shows and offers, per channel and user in their order, to compare incremental updates with a
     /// full rebuild.

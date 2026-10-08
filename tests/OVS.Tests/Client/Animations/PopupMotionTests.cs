@@ -15,10 +15,8 @@ namespace OVS.Tests.Client.Animations;
 /// the simplified display shows it at once.
 /// </summary>
 [Collection(MotionCollection.Name)]
-public sealed class PopupMotionTests : IDisposable
+public sealed class PopupMotionTests
 {
-    public void Dispose() => Motion.IsAnimated = true;
-
     static (Window Window, Popup Popup, Border Content) Show(DisplayMode display)
     {
         var anchor = new Button { Content = "Anker", VerticalAlignment = VerticalAlignment.Bottom };
@@ -90,7 +88,7 @@ public sealed class PopupMotionTests : IDisposable
         {
             int started = AnimationCounter.Started, running = AnimationCounter.Running;
             popup.IsOpen = true;
-            Assert.Equal(started + 1, AnimationCounter.Started); // Motion registered the handler on its first use
+            Assert.Equal(started + 1, AnimationCounter.Started); // the app registered the handler at its start
             MotionWait.Until(() => AnimationCounter.Running <= running);
             Motion.Apply(window, DisplayMode.Simplified); // closes without a fading picture
             popup.IsOpen = false;

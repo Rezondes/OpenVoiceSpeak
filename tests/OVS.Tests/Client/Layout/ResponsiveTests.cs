@@ -113,16 +113,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         display = DisplayMode.Simplified;
         new ClientSettings { Display = display }.Save(dir);
-        try
-        {
-            Settings_FitAt360_480_600_1100(width, "de-DE");
-            Assert.False(Motion.IsAnimated); // the window took the simplified display from the settings
-            Admin_EveryTabFits(width, "de-DE");
-        }
-        finally
-        {
-            Motion.IsAnimated = true;
-        }
+        Settings_FitAt360_480_600_1100(width, "de-DE");
+        Admin_EveryTabFits(width, "de-DE");
     }
 
     [AvaloniaFact]
@@ -334,6 +326,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var settings = new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.ToggleMute, new KeyChord(0x70))], Display = display };
         settings.Save(dir);
         var main = Open(width, null, out var vm);
+        Assert.Equal(display == DisplayMode.Animated, Motion.IsAnimated(main)); // the window took the display from the settings
         vm.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         Assert.True(vm.SettingsPage!.ShowPttHint);

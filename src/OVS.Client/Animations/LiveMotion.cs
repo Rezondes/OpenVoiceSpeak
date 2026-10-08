@@ -60,7 +60,7 @@ public static class LiveMotion
         Visual.IsVisibleProperty.Changed.AddClassHandler<Control>((control, e) =>
         {
             bool turn = GetTurn(control);
-            if (!turn && !GetPop(control) || !Motion.IsAnimated || !control.IsAttachedToVisualTree()) return; // not while a row is built
+            if (!turn && !GetPop(control) || !Motion.IsAnimated(control) || !control.IsAttachedToVisualTree()) return; // not while a row is built
             bool shown = e.GetNewValue<bool>();
             if (turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d), (RotateTransform.AngleProperty, TurnFrom, 0d));
             else if (!turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d),
@@ -73,10 +73,10 @@ public static class LiveMotion
         });
         TextBlock.TextProperty.Changed.AddClassHandler<TextBlock>((text, e) =>
         {
-            if (GetTick(text) && Motion.IsAnimated && text.IsAttachedToVisualTree()
+            if (GetTick(text) && Motion.IsAnimated(text) && text.IsAttachedToVisualTree()
                 && Count(e.GetOldValue<string?>()) is { } before && Count(e.GetNewValue<string?>()) is { } after)
                 Tick(text, before, after);
-            else if (GetFade(text) && Motion.IsAnimated && text.IsAttachedToVisualTree() && e.GetOldValue<string?>() is not null)
+            else if (GetFade(text) && Motion.IsAnimated(text) && text.IsAttachedToVisualTree() && e.GetOldValue<string?>() is not null)
                 FadeIn(text);
         });
         LevelProperty.Changed.AddClassHandler<RangeBase>((meter, e) => Follow(meter, e.GetNewValue<double>()));
@@ -85,7 +85,7 @@ public static class LiveMotion
     /// <summary>Fades a control in, e.g. a busy spinner that shows or the content a busy button gets back.</summary>
     public static void FadeIn(Visual? visual, double from = 0)
     {
-        if (visual is not null && Motion.IsAnimated) Run(visual, Motion.Normal, Motion.Ease, (Visual.OpacityProperty, from, 1d));
+        if (visual is not null && Motion.IsAnimated(visual)) Run(visual, Motion.Normal, Motion.Ease, (Visual.OpacityProperty, from, 1d));
     }
 
     static Task Run(Animatable target, TimeSpan duration, Easing easing, params (AvaloniaProperty Property, double From, double To)[] values) =>
@@ -192,7 +192,7 @@ public static class LiveMotion
         // a new model (the settings opened again) or a meter nobody sees shows the level at once, no sweep from the old one
         bool fresh = !ReferenceEquals(follower.Model, meter.DataContext);
         follower.Model = meter.DataContext;
-        if (!Motion.IsAnimated || fresh || !meter.IsEffectivelyVisible || TopLevel.GetTopLevel(meter) is not { } top)
+        if (!Motion.IsAnimated(meter) || fresh || !meter.IsEffectivelyVisible || TopLevel.GetTopLevel(meter) is not { } top)
         {
             meter.Value = level;
             return;
@@ -208,7 +208,7 @@ public static class LiveMotion
             follower.Last = Stopwatch.GetTimestamp(); // clock: frame timing
             double target = Math.Clamp(follower.Target, meter.Minimum, meter.Maximum), gap = target - meter.Value;
             double tau = (gap > 0 ? Attack : Release).TotalMilliseconds / 4;
-            if (!Motion.IsAnimated || Math.Abs(gap) < (meter.Maximum - meter.Minimum) / 100) meter.Value = target; // the last per cent at once
+            if (!Motion.IsAnimated(top) || Math.Abs(gap) < (meter.Maximum - meter.Minimum) / 100) meter.Value = target; // the last per cent at once
             else meter.Value += gap * (1 - Math.Exp(-ms / tau));
             if (meter.Value == target)
             {

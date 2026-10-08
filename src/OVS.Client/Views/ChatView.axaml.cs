@@ -41,12 +41,10 @@ public partial class ChatView : UserControl
         History.ContainerPrepared += OnEntryShown;
         DataContextChanged += (_, _) => Watch();
         // the pill belongs to the animated display only
-        void OnDisplayChanged()
+        PropertyChanged += (_, e) =>
         {
-            if (!Motion.IsAnimated) HidePill();
-        }
-        AttachedToVisualTree += (_, _) => Motion.Changed += OnDisplayChanged;
-        DetachedFromVisualTree += (_, _) => Motion.Changed -= OnDisplayChanged;
+            if (e.Property == Motion.DisplayProperty && !Motion.IsAnimated(this)) HidePill();
+        };
     }
 
     void Watch()
@@ -115,7 +113,7 @@ public partial class ChatView : UserControl
     /// <summary>New lines while at the end: in the animated display the list glides there, otherwise it jumps.</summary>
     void Follow()
     {
-        if (!Motion.IsAnimated || TopLevel.GetTopLevel(this) is not { } top)
+        if (!Motion.IsAnimated(this) || TopLevel.GetTopLevel(this) is not { } top)
         {
             Scroller.ScrollToEnd();
             return;
@@ -127,7 +125,7 @@ public partial class ChatView : UserControl
         void Frame(TimeSpan _)
         {
             if (!gliding) return; // the reader took over
-            if (!Motion.IsAnimated) // the simplified display came meanwhile: straight to the end
+            if (!Motion.IsAnimated(top)) // the simplified display came meanwhile: straight to the end
             {
                 gliding = false;
                 Scroller.ScrollToEnd();
@@ -158,7 +156,7 @@ public partial class ChatView : UserControl
         foreach (ChatEntry entry in e.NewItems)
         {
             if (entry.Sending is { } sending) WatchSending(entry, sending);
-            if (!Motion.IsAnimated) continue;
+            if (!Motion.IsAnimated(this)) continue;
             arriving.Add(entry);
             if (!atEnd && !entry.IsOwn) ShowPill(); // reading further up: nothing scrolls, the pill says there is more
         }
@@ -167,7 +165,7 @@ public partial class ChatView : UserControl
     /// <summary>A new line slides in: one's own from the composer (right, below), anyone else's from the left.</summary>
     void OnEntryShown(object? sender, ContainerPreparedEventArgs e)
     {
-        if (e.Container.DataContext is not ChatEntry entry || !arriving.Remove(entry) || !Motion.IsAnimated) return;
+        if (e.Container.DataContext is not ChatEntry entry || !arriving.Remove(entry) || !Motion.IsAnimated(this)) return;
         double side = entry.IsOwn ? Arrive : -Arrive;
         _ = new Animation
         {
@@ -218,7 +216,7 @@ public partial class ChatView : UserControl
                 queued = false;
                 bool ended = wasWaiting && !sending.IsWaiting;
                 wasWaiting = sending.IsWaiting;
-                if (!ended || !Motion.IsAnimated || History.ContainerFromItem(entry) is not { } container) return;
+                if (!ended || !Motion.IsAnimated(this) || History.ContainerFromItem(entry) is not { } container) return;
                 if (!sending.IsFailed) ShowSent(container);
                 else if (container.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault(w => w.Name == "NotSent") is { } notSent) ShakeMotion.Shake(notSent);
             }, DispatcherPriority.Background);
@@ -290,7 +288,10 @@ public partial class ChatView : UserControl
             if (e.PropertyName != nameof(ChatTabViewModel.Unread)) return;
             int now = tab.Unread; // read here, shown on the UI thread
             bool popIn = before == 0;
-            if (now > before && Motion.IsAnimated) Dispatcher.UIThread.Post(() => Badge(tab, popIn), DispatcherPriority.Background);
+            if (now > before) Dispatcher.UIThread.Post(() => // the display is a property of the window: asked there as well
+            {
+                if (Motion.IsAnimated(this)) Badge(tab, popIn);
+            }, DispatcherPriority.Background);
             before = now;
         };
         tabsWatched[tab] = handler;

@@ -9,10 +9,8 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 105, 106: a refused input or a failed connect shakes its card once (3 times 6 px).</summary>
 [Collection(MotionCollection.Name)]
-public sealed class ShakeMotionTests : IDisposable
+public sealed class ShakeMotionTests
 {
-    public void Dispose() => Motion.IsAnimated = true;
-
     static (Window Window, Border Card) Show(DisplayMode display)
     {
         var card = new Border { Width = 120, Height = 60 };

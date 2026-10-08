@@ -7,7 +7,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using OVS.Client.Animations;
-using OVS.Client.Interop;
 
 namespace OVS.Client.Behaviors;
 
@@ -20,15 +19,6 @@ namespace OVS.Client.Behaviors;
 public sealed class ReorderDrag
 {
     public const double Threshold = 6, Scale = 1.03, Tilt = 3, DimmedOpacity = 0.4;
-
-    /// <summary>
-    /// The Windows setting "Show animations in Windows" is off: the gap opens without sliding. The tilt stays, it is a
-    /// static pose and not an animation. Tests replace it.
-    /// </summary>
-    public static Func<bool> ReducedMotion { get; set; } = () =>
-        OperatingSystem.IsWindows() && NativeMethods.SystemParametersInfo(SpiGetClientAreaAnimation, 0, out var on, 0) && on == 0;
-
-    const uint SpiGetClientAreaAnimation = 0x1042;
 
     readonly ItemsControl list;
     readonly Func<object, bool> canDrag;
@@ -84,7 +74,7 @@ public sealed class ReorderDrag
     {
         if (source is null || OverlayLayer.GetOverlayLayer(list) is not { } overlay) return false;
         dragging = true;
-        bool reduced = ReducedMotion();
+        bool reduced = Motion.IsReduced(list); // reduced: the gap opens without sliding
         preview = DragVisuals.Lift(source);
         // the drop target: a dashed frame of the item's size where it will land, below the lifted preview
         placeholder = new Rectangle

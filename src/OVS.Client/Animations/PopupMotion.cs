@@ -27,8 +27,9 @@ internal static class PopupMotion
     static bool registered;
 
     /// <summary>
-    /// Hooks the opening and closing of every popup, once: a second call adds no second handler. <see cref="Motion"/>
-    /// calls it when it is first used.
+    /// Hooks the opening and closing of every popup, once: a second call adds no second handler. The app calls it at its
+    /// start (<c>App.OnFrameworkInitializationCompleted</c>); the headless tests build the app anew for every test, so
+    /// there it is called once per test.
     /// </summary>
     internal static void Register()
     {
@@ -39,7 +40,8 @@ internal static class PopupMotion
 
     static void OnIsOpenChanged(Popup popup, AvaloniaPropertyChangedEventArgs e)
     {
-        if (!Motion.IsAnimated || popup.Child is not { } child) return;
+        // the display of the window it opens in, asked through its anchor like the closing picture below
+        if (!Motion.IsAnimated(popup.PlacementTarget ?? popup) || popup.Child is not { } child) return;
         if (!e.GetNewValue<bool>())
         {
             FadeAway(popup, child);
@@ -83,7 +85,7 @@ internal static class PopupMotion
             var bitmap = DragVisuals.Snapshot(child, top.RenderScaling); // now, while it is still laid out
             picture = bitmap;
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); // after what the close started
-            if (top is MainWindow { Overlay.IsOpen: true } || !Motion.IsAnimated) return;
+            if (top is MainWindow { Overlay.IsOpen: true } || !Motion.IsAnimated(top)) return;
             var at = overlay.PointToClient(screen);
             ghost = new Image { Source = bitmap, Width = child.Bounds.Width, Height = child.Bounds.Height, IsHitTestVisible = false, Classes = { GhostClass } };
             Canvas.SetLeft(ghost, at.X);

@@ -27,12 +27,6 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
 {
     MainWindow? opening; // the window being opened, for a look during its build-up
 
-    public override void Dispose()
-    {
-        Motion.IsAnimated = true;
-        base.Dispose();
-    }
-
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();

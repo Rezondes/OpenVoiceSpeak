@@ -17,12 +17,6 @@ namespace OVS.Tests.Client.Animations;
 [Collection(MotionCollection.Name)]
 public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", quiet: true)
 {
-    public override void Dispose()
-    {
-        Motion.IsAnimated = true;
-        base.Dispose();
-    }
-
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();

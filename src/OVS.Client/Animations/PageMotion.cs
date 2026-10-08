@@ -47,7 +47,7 @@ public static class PageMotion
     /// when nothing changed after all.</param>
     public static void Leave(Control host, Border layer, Func<(Vector In, Vector Away)?> motion)
     {
-        if (!Motion.IsAnimated || host.Bounds.Width <= 0) return;
+        if (!Motion.IsAnimated(host) || host.Bounds.Width <= 0) return;
         var state = switching.GetValue(layer, _ => new Switching());
         if (state.Pending) return; // the picture of the page that was there at the start of the change already lies on top
         Stop(host, layer); // a switch in the middle of a switch: the old one ends at once
@@ -135,7 +135,7 @@ public static class PageMotion
     static void OnTabChanged(object? sender, SelectionChangedEventArgs e)
     {
         // SelectionChanged bubbles: a list inside a tab (the groups in the administration) is not a tab change
-        if (!Motion.IsAnimated || sender is not SelectingItemsControl tabs || e.Source != tabs || e.RemovedItems.Count == 0 || e.AddedItems.Count == 0
+        if (sender is not SelectingItemsControl tabs || !Motion.IsAnimated(tabs) || e.Source != tabs || e.RemovedItems.Count == 0 || e.AddedItems.Count == 0
             || e.RemovedItems[0] is not { } removed || !tabs.IsEffectivelyVisible)
             return;
         int from = tabs.Items.IndexOf(removed), to = tabs.SelectedIndex;
@@ -203,8 +203,10 @@ public static class PageMotion
             this.scroll = scroll;
             scroll.ScrollChanged += (_, _) => Look();
             scroll.LayoutUpdated += (_, _) => Look();
-            scroll.AttachedToVisualTree += (_, _) => Motion.Changed += Look;
-            scroll.DetachedFromVisualTree += (_, _) => Motion.Changed -= Look;
+            scroll.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == Motion.DisplayProperty) Look();
+            };
         }
 
         IEnumerable<Control> Sections() => (scroll.Content as Panel)?.Children ?? (IEnumerable<Control>)[];
@@ -215,7 +217,7 @@ public static class PageMotion
             foreach (var section in Sections())
             {
                 if (shown.Contains(section)) continue;
-                if (!Motion.IsAnimated)
+                if (!Motion.IsAnimated(scroll))
                 {
                     section.ClearValue(Visual.OpacityProperty); // the simplified display shows everything as it is
                     shown.Add(section); // and back in the animated display it is not shown a second time

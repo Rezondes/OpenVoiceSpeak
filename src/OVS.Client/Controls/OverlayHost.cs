@@ -63,7 +63,7 @@ public sealed class OverlayHost : Panel
             card.Child = content;
             ClearValue(IsHitTestVisibleProperty);
             IsVisible = true;
-            if (Motion.IsAnimated) _ = Play(appear: true);
+            if (Motion.IsAnimated(this)) _ = Play(appear: true);
             Dispatcher.UIThread.Post(() => focus?.Focus(), DispatcherPriority.Loaded);
             await current.Task;
         }
@@ -82,7 +82,7 @@ public sealed class OverlayHost : Panel
     /// <summary>The card goes (played back in the animated display); then the next dialog may come.</summary>
     async Task Gone()
     {
-        if (Motion.IsAnimated)
+        if (Motion.IsAnimated(this))
         {
             var cancel = closing = new CancellationTokenSource();
             await Play(appear: false, cancel.Token);

@@ -133,8 +133,8 @@ public partial class MainWindow : Window
         if (watchedVm is null) return;
         Motion.Apply(this, watchedVm.Appearance.Display);
         // Package 102: what is gone stays a moment to fold away, only in the animated display
-        watchedVm.Leave.Delay = Motion.Duration(Motion.Normal);
-        if (watchedVm.Server is { } server) server.Leave.Delay = Motion.Duration(Motion.Normal);
+        watchedVm.Leave.Delay = Motion.ChooseDuration(this, Motion.Normal);
+        if (watchedVm.Server is { } server) server.Leave.Delay = Motion.ChooseDuration(this, Motion.Normal);
     }
 
     /// <summary>
@@ -180,7 +180,7 @@ public partial class MainWindow : Window
 
     static void FadeIn(Visual target)
     {
-        if (!Motion.IsAnimated) return;
+        if (!Motion.IsAnimated(target)) return;
         _ = new Avalonia.Animation.Animation
         {
             Duration = Motion.Normal,
@@ -322,7 +322,7 @@ public partial class MainWindow : Window
     {
         bool was = drawerOpen;
         drawerOpen = open && Classes.Contains("compact");
-        if (drawerOpen == was || !Motion.IsAnimated || !Classes.Contains("compact"))
+        if (drawerOpen == was || !Motion.IsAnimated(this) || !Classes.Contains("compact"))
         {
             drawerCancel?.Cancel();
             StillDrawer();

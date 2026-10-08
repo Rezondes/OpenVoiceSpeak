@@ -93,7 +93,7 @@ public static class FlyGhost
     /// </summary>
     public static async Task Highlight(Border fromRow, Border toRow)
     {
-        if (!Motion.IsAnimated || OverlayLayer.GetOverlayLayer(toRow) is not { } overlay
+        if (!Motion.IsAnimated(toRow) || OverlayLayer.GetOverlayLayer(toRow) is not { } overlay
             || VisibleRect(fromRow, overlay) is not { } from || VisibleRect(toRow, overlay) is null)
             return;
         // translucent: it passes over other rows in the overlay, their names stay readable underneath

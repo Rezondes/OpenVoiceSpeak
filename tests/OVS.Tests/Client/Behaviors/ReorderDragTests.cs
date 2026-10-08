@@ -6,7 +6,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
-using OVS.Client.Behaviors;
+using OVS.Client.Animations;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
 using OVS.Shared.Protocol.Messages;
@@ -19,14 +19,6 @@ namespace OVS.Tests.Client.Behaviors;
 [Collection(MotionCollection.Name)]
 public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: true)
 {
-    readonly Func<bool> reducedMotion = ReorderDrag.ReducedMotion;
-
-    public override void Dispose()
-    {
-        ReorderDrag.ReducedMotion = reducedMotion;
-        base.Dispose();
-    }
-
     sealed record Tree(MainWindow Main, MainViewModel Vm, ItemsControl List, List<Request> Sent)
     {
         public Control Container(string name) => List.ContainerFromItem(Vm.Server!.Channels.Single(c => c.Name == name))!;
@@ -50,11 +42,13 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         }
     }
 
-    Tree Open(ServerViewModel? server = null)
+    /// <param name="reduced">The Windows setting "Show animations in Windows" is off, set on this window.</param>
+    Tree Open(bool reduced, ServerViewModel? server = null)
     {
         var sent = new List<Request>();
         var vm = MainViewModelSetup.Create(dir, a => a(), server: server ?? FakeServers.Admin(sent));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        main.SetValue(Motion.ReducedProperty, reduced);
         main.Show();
         Dispatcher.UIThread.RunJobs();
         return new Tree(main, vm, main.FindControl<ItemsControl>("ChannelItems")!, sent);
@@ -69,8 +63,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void Preview_Scale103_Tilt3_ShadowPlus8()
     {
-        ReorderDrag.ReducedMotion = () => false;
-        var tree = Open();
+        var tree = Open(reduced: false);
         Assert.Null(tree.Preview);
         tree.DragAbove("Raid", "Lobby");
 
@@ -94,9 +87,8 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void Placeholder_HasDraggedItemHeight_AtTarget()
     {
-        ReorderDrag.ReducedMotion = () => true;
         // "ich" and two more sit in the second channel, the first has two users: the dragged block is the taller one
-        var tree = Open(FakeServers.Crowded());
+        var tree = Open(reduced: true, FakeServers.Crowded());
         var names = tree.Vm.Server!.Channels.Select(c => c.Name).ToList();
         var height = tree.Container(names[1]).Bounds.Height;
         Assert.NotEqual(height, tree.Container(names[0]).Bounds.Height);
@@ -113,8 +105,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void Placeholder_DashedFrame_FillsTheGap()
     {
-        ReorderDrag.ReducedMotion = () => true;
-        var tree = Open();
+        var tree = Open(reduced: true);
         var overlay = OverlayLayer.GetOverlayLayer(tree.List)!;
         var lobbyTop = tree.Container("Lobby").TranslatePoint(default, overlay)!.Value.Y; // where the gap opens
         var height = tree.Container("Raid").Bounds.Height;
@@ -138,8 +129,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void DragToEnd_GapAndFrameBelowLastItem()
     {
-        ReorderDrag.ReducedMotion = () => true;
-        var tree = Open();
+        var tree = Open(reduced: true);
         var overlay = OverlayLayer.GetOverlayLayer(tree.List)!;
         var raid = tree.Container("Raid");
         var below = raid.TranslatePoint(new Point(raid.Bounds.Width / 2, raid.Bounds.Height - 2), tree.Main)!.Value;
@@ -166,8 +156,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void Drop_ItemTakesPlaceholderSlot_NoJump()
     {
-        ReorderDrag.ReducedMotion = () => true;
-        var tree = Open();
+        var tree = Open(reduced: true);
         var end = tree.DragAbove("Raid", "Lobby");
         var gapTop = tree.Top("Lobby") - tree.Container("Lobby").Margin.Top;
         var lobbyTop = tree.Top("Lobby");
@@ -193,8 +182,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void EscOrOutside_Cancels_NothingSent()
     {
-        ReorderDrag.ReducedMotion = () => true;
-        var tree = Open();
+        var tree = Open(reduced: true);
         void AssertCleared()
         {
             Assert.Null(tree.Preview);
@@ -224,8 +212,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void ReducedMotion_KeepsTilt_GapDoesNotSlide()
     {
-        ReorderDrag.ReducedMotion = () => true;
-        var tree = Open();
+        var tree = Open(reduced: true);
         tree.DragAbove("Raid", "Lobby");
 
         // the tilt is a static pose, not an animation: it stays with reduced animations
@@ -236,8 +223,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         Assert.Null(tree.Container("Lobby").Transitions); // the gap opens at once instead of sliding
         tree.Main.Close();
 
-        ReorderDrag.ReducedMotion = () => false;
-        tree = Open();
+        tree = Open(reduced: false);
         tree.DragAbove("Raid", "Lobby");
         Assert.NotEmpty(tree.Container("Lobby").Transitions!);
         tree.Main.Close();
@@ -247,8 +233,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void DropBesideFoldingChannel_IsIgnored()
     {
-        ReorderDrag.ReducedMotion = () => true;
-        var tree = Open();
+        var tree = Open(reduced: true);
         var server = tree.Vm.Server!;
         server.Leave.Delay = TimeSpan.FromMinutes(1);
         var raid = tree.Container("Raid");
@@ -273,7 +258,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     [AvaloniaFact]
     public void DropThenServerOrder_NoSecondMove()
     {
-        var tree = Open();
+        var tree = Open(reduced: false);
         var end = tree.DragAbove("Raid", "Lobby");
         tree.Main.MouseUp(end, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();

@@ -4,10 +4,12 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using OVS.Client.Animations;
 using OVS.Client.Appearance;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Diagnostics;
 using OVS.Client.Dialogs;
+using OVS.Client.Interop;
 using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Client.Net.Updates;
@@ -24,6 +26,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Package 105: every popup moves; also in the headless tests, which have no desktop lifetime
+        PopupMotion.Register();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var options = Program.Options;
@@ -48,6 +52,7 @@ public partial class App : Application
                 if (e.PropertyName == nameof(MainViewModel.Settings)) ApplyTheme(vm.Settings.Theme);
             };
             var window = new MainWindow { DataContext = vm };
+            Motion.FollowReduced(window, IsReducedBySystem); // Package 96
             WindowAppearance.Apply(this, window, vm.Appearance); // Package 61
             vm.PropertyChanged += (_, e) =>
             {
@@ -104,6 +109,12 @@ public partial class App : Application
         }
         base.OnFrameworkInitializationCompleted();
     }
+
+    /// <summary>The Windows setting behind <see cref="Motion.ReducedProperty"/>.</summary>
+    static bool IsReducedBySystem() =>
+        OperatingSystem.IsWindows() && NativeMethods.SystemParametersInfo(SpiGetClientAreaAnimation, 0, out var on, 0) && on == 0;
+
+    const uint SpiGetClientAreaAnimation = 0x1042;
 
     void ApplyTheme(AppTheme theme) => RequestedThemeVariant = theme switch
     {
