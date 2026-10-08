@@ -3380,10 +3380,10 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
    - Gegeben: Sinus mit Spitze 0,5
    - Erwartet: Ausgabe gleich Eingabe (Abweichung unter 0,001)
 5. `ReceivePathTests > "Mixer_SumsAndClamps"` und `"Mixer_LoudInput_ClampedToUnit"` anpassen: Summe zweier Sprecher = 2 × einzeln bis zur Schwelle, Grenze 0,95 statt 1
-6. `SendPathTests > "ToMono_StereoSignalOnOneChannel_KeepsFullLevel"` (AC5)
+6. `SampleConversionTests > "ReadMono_StereoSignalOnOneChannel_KeepsFullLevel"` (AC5)
    - Gegeben: Float-Stereo, links Sinus 0,5, rechts 0 (und umgekehrt)
    - Erwartet: Mono-Spitze 0,5 statt 0,25
-7. `SendPathTests > "ToMono_FloatStereo_Averages"` bleibt grün: gleiche oder ähnlich laute Kanäle werden weiter gemittelt (AC5)
+7. `SampleConversionTests > "ReadMono_FloatStereo_Averages"` bleibt grün: gleiche oder ähnlich laute Kanäle werden weiter gemittelt (AC5)
 8. Manueller Check AC6 mit zwei Clients und der Debug-API
 
 Testbefehl: `dotnet test`

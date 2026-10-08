@@ -57,13 +57,13 @@ public class IdleCostTests
         new Random(1).NextBytes(stereo);
         var pipeline = CapturePipeline.Manual();
         float[] mono = [];
-        Assert.Equal(0, Allocated(() => pipeline.Feed(CapturePipeline.ToMono(stereo, stereo.Length, pcm16, ref mono), pcm16.SampleRate)).Min());
+        Assert.Equal(0, Allocated(() => pipeline.Feed(SampleConversion.ReadMono(stereo, stereo.Length, pcm16, ref mono), pcm16.SampleRate)).Min());
 
         // ... and float mono at 48 kHz, where the resampler passes the samples through
         var float48 = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1);
         var floats = new byte[AudioFormat.HalfFrameSamples * float48.BlockAlign];
         var direct = CapturePipeline.Manual();
-        Assert.Equal(0, Allocated(() => direct.Feed(CapturePipeline.ToMono(floats, floats.Length, float48, ref mono), float48.SampleRate)).Min());
+        Assert.Equal(0, Allocated(() => direct.Feed(SampleConversion.ReadMono(floats, floats.Length, float48, ref mono), float48.SampleRate)).Min());
 
         // Decoding: Concentus (managed Opus) allocates inside every decode, about 28 KB a frame, which only native libopus
         // would avoid (out of scope). So the decoder and a mixer tick must allocate exactly what Concentus does on the same
@@ -128,12 +128,12 @@ public class IdleCostTests
         music.Music = true;
         float[] samples = [];
         var sides = new StereoInput(); // judging the sides (review) allocates nothing either
-        Assert.Equal(0, Allocated(() => music.Feed(CapturePipeline.ToStereo(stereo, stereo.Length, pcm16, ref samples, sides), pcm16.SampleRate, 2)).Min());
+        Assert.Equal(0, Allocated(() => music.Feed(SampleConversion.ReadStereo(stereo, stereo.Length, pcm16, ref samples, sides), pcm16.SampleRate, 2)).Min());
         var stereoFloats = new byte[AudioFormat.HalfFrameSamples * 2 * sizeof(float)];
         var direct48 = CapturePipeline.Manual();
         direct48.Music = true;
         var float48Stereo = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2);
-        Assert.Equal(0, Allocated(() => direct48.Feed(CapturePipeline.ToStereo(stereoFloats, stereoFloats.Length, float48Stereo, ref samples, sides), AudioFormat.SampleRate, 2)).Min());
+        Assert.Equal(0, Allocated(() => direct48.Feed(SampleConversion.ReadStereo(stereoFloats, stereoFloats.Length, float48Stereo, ref samples, sides), AudioFormat.SampleRate, 2)).Min());
 
         // ... and while sending in stereo it allocates what the Opus encoder and the packet arrays do, nothing more: the
         // same frames through an encoder of its own, the pre-roll frame first as the pipeline sends it. Taken in turns,

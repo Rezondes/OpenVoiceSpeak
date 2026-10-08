@@ -715,36 +715,6 @@ public class SendPathTests
         Assert.Equal(0, windows.Min()); // one clean window: the runtime may allocate now and then (IdleCostTests)
     }
 
-    [Fact]
-    public void ToMono_FloatStereo_Averages()
-    {
-        float[] stereo = [0.2f, 0.4f, -1f, 1f];
-        var bytes = new byte[stereo.Length * 4];
-        Buffer.BlockCopy(stereo, 0, bytes, 0, bytes.Length);
-        float[] buffer = [];
-        var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2), ref buffer);
-        Assert.Equal(0.3f, mono[0], 5);
-        Assert.Equal(0f, mono[1], 5);
-    }
-
-    /// <summary>Package 50 (A53): interfaces and some headsets deliver the voice on one channel only; averaging halved it.</summary>
-    [Fact]
-    public void ToMono_StereoSignalOnOneChannel_KeepsFullLevel()
-    {
-        foreach (int voiced in new[] { 0, 1 })
-        {
-            var stereo = new float[2 * AudioFormat.HalfFrameSamples];
-            for (int i = 0; i < AudioFormat.HalfFrameSamples; i++) stereo[2 * i + voiced] = 0.5f * MathF.Sin(2 * MathF.PI * 440 * i / 48_000f);
-            var bytes = new byte[stereo.Length * 4];
-            Buffer.BlockCopy(stereo, 0, bytes, 0, bytes.Length);
-            float[] buffer = [];
-            var mono = CapturePipeline.ToMono(bytes, bytes.Length, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2), ref buffer).ToArray();
-            Assert.Equal(AudioFormat.HalfFrameSamples, mono.Length);
-            Assert.InRange(mono.Max(), 0.49f, 0.5f);
-            for (int i = 0; i < AudioFormat.HalfFrameSamples; i++) Assert.Equal(stereo[2 * i + voiced], mono[i]);
-        }
-    }
-
     /// <summary>A tone engine without devices; the playback clock still mixes, so LastOutputLevelDb shows what would be heard.</summary>
     static AudioEngine ToneEngine(KeyPoller keys, ClientSettings settings)
     {
@@ -893,16 +863,6 @@ public class SendPathTests
         float[] loud = [0.9f, -0.95f, 1.2f, 0.3f]; // at 100 % nothing changes but the clamp at ±1, as before
         CapturePipeline.ApplyGain(loud, 1f);
         Assert.Equal([0.9f, -0.95f, 1f, 0.3f], loud);
-    }
-
-    [Fact]
-    public void ToMono_Pcm16Mono_Scales()
-    {
-        short[] pcm = [16384, -32768];
-        var bytes = new byte[4];
-        Buffer.BlockCopy(pcm, 0, bytes, 0, 4);
-        float[] buffer = [];
-        Assert.Equal([0.5f, -1f], CapturePipeline.ToMono(bytes, 4, new WaveFormat(48_000, 16, 1), ref buffer).ToArray());
     }
 
     /// <summary>
@@ -1298,7 +1258,7 @@ public class SendPathTests
             var frame = StereoTones(n, left, right, amplitude); // 20 ms, as WASAPI hands it over
             var bytes = new byte[frame.Length * sizeof(float)];
             Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
-            return CapturePipeline.ToStereo(bytes, bytes.Length, format, ref buffer, sides).ToArray();
+            return SampleConversion.ReadStereo(bytes, bytes.Length, format, ref buffer, sides).ToArray();
         }
         int window = (int)(StereoInput.OneSidedAfter / AudioFormat.FrameDuration);
 

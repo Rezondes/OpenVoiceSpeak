@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Sounds;
@@ -164,7 +165,7 @@ internal sealed class PlaybackLoop
         var frame = Mix();
         if (devices.Capture is { EchoCancellation: true, Music: false, Canceller: { } canceller })
         {
-            for (int i = 0; i < farEnd.Length; i++) farEnd[i] = 0.5f * (frame[2 * i] + frame[2 * i + 1]);
+            SampleConversion.Downmix(frame, farEnd);
             canceller.Render(farEnd);
         }
         return frame;

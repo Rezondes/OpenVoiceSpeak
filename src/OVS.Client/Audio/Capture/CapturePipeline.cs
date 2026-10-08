@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using OVS.Client.Audio.Codec;
@@ -48,8 +47,8 @@ public sealed class CapturePipeline : IDisposable
         {
             var format = capture.WaveFormat;
             if (pipeline.Music && format.Channels >= 2) // Package 142: without the downmix; a mono device stays mono
-                pipeline.Feed(ToStereo(e.Buffer, e.BytesRecorded, format, ref samples, sides), format.SampleRate, 2);
-            else pipeline.Feed(ToMono(e.Buffer, e.BytesRecorded, format, ref samples), format.SampleRate);
+                pipeline.Feed(SampleConversion.ReadStereo(e.Buffer, e.BytesRecorded, format, ref samples, sides), format.SampleRate, 2);
+            else pipeline.Feed(SampleConversion.ReadMono(e.Buffer, e.BytesRecorded, format, ref samples), format.SampleRate);
         };
         capture.RecordingStopped += (_, e) =>
         {
@@ -157,10 +156,10 @@ public sealed class CapturePipeline : IDisposable
             bool music = Music; // Package 142: once per chunk, so a switch never splits a frame
             if (channels == 2 && !music)
             {
-                // switched to voice mode while the device thread converted a chunk: averaged like ToMono does
+                // switched to voice mode while the device thread converted a chunk: averaged, not the one-sided rule of ReadMono
                 int count = samples.Length / 2;
                 if (downmixed.Length < count) downmixed = new float[count];
-                for (int i = 0; i < count; i++) downmixed[i] = 0.5f * (samples[2 * i] + samples[2 * i + 1]);
+                SampleConversion.Downmix(samples, downmixed.AsSpan(0, count));
                 samples = downmixed.AsSpan(0, count);
                 channels = 1;
             }
@@ -245,96 +244,6 @@ public sealed class CapturePipeline : IDisposable
             // above the knee: the same slope at the knee, then flattening toward 1 (reached only by rounding)
             frame[i] = magnitude <= knee ? s : MathF.CopySign(knee + room * MathF.Tanh((magnitude - knee) / room), s);
         }
-    }
-
-    /// <summary>
-    /// The capture buffer as mono samples, written into <paramref name="mono"/>, which grows when needed and is kept by
-    /// the caller (Package 124: nothing allocated per callback). The result is valid until the next call with it.
-    /// </summary>
-    public static Span<float> ToMono(byte[] buffer, int bytes, WaveFormat format, ref float[] mono)
-    {
-        int channels = format.Channels;
-        var interleaved = ToFloat(buffer, bytes, format, ref mono);
-        if (channels == 1) return interleaved;
-        // Mixed down in place: sample i is written only after everything before sample i * channels was read.
-        var result = interleaved[..(interleaved.Length / channels)];
-        if (DominantChannel(interleaved, channels) is { } only)
-        {
-            for (int i = 0; i < result.Length; i++) result[i] = interleaved[i * channels + only];
-            return result;
-        }
-        for (int i = 0; i < result.Length; i++)
-        {
-            float sum = 0;
-            for (int c = 0; c < channels; c++) sum += interleaved[i * channels + c];
-            result[i] = sum / channels;
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// Package 142 (A151): the capture buffer as interleaved stereo from its first two channels, without the downmix of
-    /// <see cref="ToMono"/>, written into <paramref name="stereo"/> like there. The format has at least 2 channels.
-    /// Package 142 (review): with <paramref name="sides"/> an instrument on one input of a two-input interface plays on
-    /// both sides at full level (Package 50's one-sided rule, with hysteresis, see StereoInput).
-    /// </summary>
-    public static Span<float> ToStereo(byte[] buffer, int bytes, WaveFormat format, ref float[] stereo, StereoInput? sides = null)
-    {
-        int channels = format.Channels;
-        var interleaved = ToFloat(buffer, bytes, format, ref stereo);
-        var result = interleaved[..(interleaved.Length / channels * 2)];
-        if (channels > 2)
-        {
-            // in place like ToMono: frame i is written only after everything before sample i * channels was read
-            for (int i = 0; i < result.Length / 2; i++)
-            {
-                float left = interleaved[i * channels], right = interleaved[i * channels + 1];
-                result[2 * i] = left;
-                result[2 * i + 1] = right;
-            }
-        }
-        if (sides?.OnlySide(result, format.SampleRate) is { } only)
-            for (int i = 0; i < result.Length / 2; i++) result[2 * i + 1 - only] = result[2 * i + only];
-        return result;
-    }
-
-    /// <summary>The capture buffer's samples as floats, still interleaved, in <paramref name="samples"/> (grown when needed).</summary>
-    static Span<float> ToFloat(byte[] buffer, int bytes, WaveFormat format, ref float[] samples)
-    {
-        bool isFloat = format.Encoding == WaveFormatEncoding.IeeeFloat || (format is WaveFormatExtensible ext && ext.SubFormat == NAudio.MediaFoundation.AudioSubtypes.MFAudioFormat_Float);
-        if (!isFloat && format.BitsPerSample != 16) throw new NotSupportedException($"Aufnahmeformat {format} wird nicht unterstützt");
-        int count = bytes / (isFloat ? sizeof(float) : sizeof(short));
-        if (samples.Length < count) samples = new float[count];
-        var interleaved = samples.AsSpan(0, count);
-        if (isFloat)
-        {
-            MemoryMarshal.Cast<byte, float>(buffer.AsSpan(0, bytes)).CopyTo(interleaved);
-        }
-        else
-        {
-            var shorts = MemoryMarshal.Cast<byte, short>(buffer.AsSpan(0, bytes));
-            for (int i = 0; i < shorts.Length; i++) interleaved[i] = shorts[i] / 32768f;
-        }
-        return interleaved;
-    }
-
-    /// <summary>
-    /// Package 50 (A53): a channel at least 6 dB (four times the energy) above the average of the others carries the
-    /// voice alone, e.g. an interface or headset that reports stereo but fills one side. Averaging would halve it.
-    /// </summary>
-    static int? DominantChannel(ReadOnlySpan<float> interleaved, int channels)
-    {
-        Span<double> energy = channels <= 32 ? stackalloc double[channels] : new double[channels];
-        for (int i = 0; i < interleaved.Length; i++) energy[i % channels] += interleaved[i] * interleaved[i];
-        int loudest = 0;
-        double total = 0;
-        for (int c = 0; c < channels; c++)
-        {
-            total += energy[c];
-            if (energy[c] > energy[loudest]) loudest = c;
-        }
-        double others = (total - energy[loudest]) / (channels - 1);
-        return energy[loudest] > 0 && energy[loudest] >= 4 * others ? loudest : null;
     }
 
     /// <summary>Package 124: tests count the devices still open.</summary>
