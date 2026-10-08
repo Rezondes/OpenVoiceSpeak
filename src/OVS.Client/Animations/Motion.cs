@@ -1,17 +1,10 @@
-using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Media;
-using Avalonia.Styling;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
-using OVS.Client.Behaviors;
 using OVS.Client.Layout;
 using OVS.Client.Settings;
-using OVS.Client.Views;
 
 namespace OVS.Client.Animations;
 
@@ -34,105 +27,8 @@ public static class Motion
     /// <summary>The usual curve; <see cref="Pop"/> overshoots a little for things that pop in.</summary>
     public static readonly Easing Ease = new CubicEaseOut(), Pop = new BackEaseOut();
 
-    /// <summary>Package 105: how far a popup slides from its anchor while it fades in.</summary>
-    public const double PopupSlide = 4;
-
-    public const string PopupGhostClass = "popupGhost";
-
-    /// <summary>
-    /// Package 105: every popup (context menus, flyouts, dropdowns, tooltips) fades in and slides out of its anchor:
-    /// down below it, up above it. Package 109: they close at once, as Avalonia takes them away (keys and clicks no
-    /// longer reach them), and a picture of them fades where they were.
-    /// </summary>
-    static Motion() => Popup.IsOpenProperty.Changed.AddClassHandler<Popup>((popup, e) =>
-    {
-        if (!IsAnimated || popup.Child is not { } child) return;
-        if (!e.GetNewValue<bool>())
-        {
-            FadeAway(popup, child);
-            return;
-        }
-        // where it lies on the screen once laid out (closed, it has no place any more); its own slide does not count
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (popup.IsOpen && child.GetVisualParent() is { } parent && TopLevel.GetTopLevel(parent) is not null)
-                popupPlaces.AddOrUpdate(popup, parent.PointToScreen(child.Bounds.Position));
-        }, DispatcherPriority.Background);
-        double from = popup.Placement.ToString().StartsWith("Top", StringComparison.Ordinal) ? PopupSlide : -PopupSlide;
-        var start = new KeyFrame { Cue = new Cue(0), Setters = { new Setter(TranslateTransform.YProperty, from) } };
-        var end = new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.YProperty, 0d) } };
-        // Package 115: a tooltip fades in by its theme already; a second fade on top made it blink once more at the end
-        if (child is not ToolTip)
-        {
-            start.Setters.Add(new Setter(Visual.OpacityProperty, 0d));
-            end.Setters.Add(new Setter(Visual.OpacityProperty, 1d));
-        }
-        _ = new Animation { Duration = Normal, Easing = Ease, FillMode = FillMode.Backward, Children = { start, end } }.Play(child);
-    });
-
-    static readonly ConditionalWeakTable<Popup, object> popupPlaces = [];
-
-    /// <summary>
-    /// A picture of the closed popup in the window's overlay fades out where the popup was. The overlay lies above the
-    /// dialogs, so not when a dialog is open or opens with the close (a menu entry that asks something).
-    /// </summary>
-    static async void FadeAway(Popup popup, Control child)
-    {
-        var anchor = popup.PlacementTarget ?? popup;
-        if (!popupPlaces.TryGetValue(popup, out var place) || place is not PixelPoint screen || child.Bounds.Width <= 0
-            || OverlayLayer.GetOverlayLayer(anchor) is not { } overlay || TopLevel.GetTopLevel(anchor) is not { } top)
-            return;
-        popupPlaces.Remove(popup);
-        Image? ghost = null;
-        IDisposable? picture = null;
-        try
-        {
-            var bitmap = DragVisuals.Snapshot(child, top.RenderScaling); // now, while it is still laid out
-            picture = bitmap;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); // after what the close started
-            if (top is MainWindow { Overlay.IsOpen: true } || !IsAnimated) return;
-            var at = overlay.PointToClient(screen);
-            ghost = new Image { Source = bitmap, Width = child.Bounds.Width, Height = child.Bounds.Height, IsHitTestVisible = false, Classes = { PopupGhostClass } };
-            Canvas.SetLeft(ghost, at.X);
-            Canvas.SetTop(ghost, at.Y);
-            overlay.Children.Add(ghost);
-            await FadeOut(ghost);
-        }
-        catch (Exception)
-        {
-            // only a picture: if it cannot be taken or shown, the popup is just gone, as in the simplified display
-        }
-        finally
-        {
-            if (ghost is not null) overlay.Children.Remove(ghost);
-            picture?.Dispose(); // also when something failed between the picture and its image
-        }
-    }
-
-    static Task FadeOut(Image ghost) => new Animation
-    {
-        Duration = Fast,
-        Easing = Ease,
-        FillMode = FillMode.Forward, // stays faded until it is taken away
-        Children =
-        {
-            new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 1d) } },
-            new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 0d) } },
-        },
-    }.Play(ghost);
-
-    public const double ShakeBy = 6;
-
-    /// <summary>Package 105, 106: a refused input or a failed connect shakes its card once (3 times 6 px).</summary>
-    public static void Shake(Animatable target)
-    {
-        if (!IsAnimated) return;
-        var shake = new Animation { Duration = TimeSpan.FromMilliseconds(360), Easing = Ease };
-        double[] steps = [0, -ShakeBy, ShakeBy, -ShakeBy, ShakeBy, -ShakeBy / 2, 0];
-        for (int i = 0; i < steps.Length; i++)
-            shake.Children.Add(new KeyFrame { Cue = new Cue((double)i / (steps.Length - 1)), Setters = { new Setter(TranslateTransform.XProperty, steps[i]) } });
-        _ = shake.Play(target);
-    }
+    /// <summary>The popups move from the first use of the display on (<see cref="PopupMotion"/>).</summary>
+    static Motion() => PopupMotion.Register();
 
     /// <summary>
     /// Package 108: starts an animation from code and asks for one frame as a safety measure. In the headless tests,
@@ -142,31 +38,10 @@ public static class Motion
     /// </summary>
     public static Task Play(this Animation animation, Animatable target, CancellationToken cancel = default)
     {
-        var run = Count(animation.RunAsync(target, cancel));
+        var run = AnimationCounter.Count(animation.RunAsync(target, cancel));
         // asked after the pending work: the animation joins the clock only then
         if (target is Visual visual && TopLevel.GetTopLevel(visual) is { } top)
             Dispatcher.UIThread.Post(() => top.RequestAnimationFrame(_ => { }), DispatcherPriority.Background);
-        return run;
-    }
-
-    // ---- Package 109: a test hook, every animation started from code passes here (Play, FlyGhost.Fly) ----
-
-    static int started, running;
-
-    /// <summary>Animations started from code since the last <see cref="ResetStarted"/>.</summary>
-    public static int Started => Volatile.Read(ref started);
-
-    /// <summary>Animations started from code that have not ended yet (finished or cancelled).</summary>
-    public static int Running => Volatile.Read(ref running);
-
-    public static void ResetStarted() => Interlocked.Exchange(ref started, 0);
-
-    /// <summary>Counts an animation that starts and, once its task ends, no longer counts it as running.</summary>
-    public static Task Count(Task run)
-    {
-        Interlocked.Increment(ref started);
-        Interlocked.Increment(ref running);
-        run.ContinueWith(_ => Interlocked.Decrement(ref running), TaskContinuationOptions.ExecuteSynchronously);
         return run;
     }
 

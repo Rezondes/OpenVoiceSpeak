@@ -131,7 +131,7 @@ public sealed class OverlayHost : Panel
     /// <summary>Package 105: a refused input (a field missing, the server said no) shakes the card once.</summary>
     public void Shake()
     {
-        if (IsOpen) Motion.Shake(card);
+        if (IsOpen) ShakeMotion.Shake(card);
     }
 
     public void Close() => current?.TrySetResult();

@@ -181,7 +181,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         {
             foreach (var added in e.NewItems?.OfType<Image>() ?? [])
             {
-                if (!added.Classes.Contains(Motion.PopupGhostClass)) continue;
+                if (!added.Classes.Contains(PopupMotion.GhostClass)) continue;
                 pictures++;
                 ghost ??= added;
                 faded ??= MotionWait.Record(added, v => v.Opacity);
@@ -223,7 +223,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         // every picture put in the overlay counts, not only one a frame finds there: under load its fade is over within a frame
         int pictures = 0;
         OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
-            pictures += e.NewItems?.OfType<Image>().Count(i => i.Classes.Contains(Motion.PopupGhostClass)) ?? 0;
+            pictures += e.NewItems?.OfType<Image>().Count(i => i.Classes.Contains(PopupMotion.GhostClass)) ?? 0;
         row.ContextMenu.Close();
         _ = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
         MotionWait.Settle(200);

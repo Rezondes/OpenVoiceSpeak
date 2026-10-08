@@ -220,7 +220,7 @@ public partial class ChatView : UserControl
                 wasWaiting = sending.IsWaiting;
                 if (!ended || !Motion.IsAnimated || History.ContainerFromItem(entry) is not { } container) return;
                 if (!sending.IsFailed) ShowSent(container);
-                else if (container.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault(w => w.Name == "NotSent") is { } notSent) Motion.Shake(notSent);
+                else if (container.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault(w => w.Name == "NotSent") is { } notSent) ShakeMotion.Shake(notSent);
             }, DispatcherPriority.Background);
         };
     }

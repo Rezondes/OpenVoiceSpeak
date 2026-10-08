@@ -172,7 +172,7 @@ public partial class MainWindow : Window
         if (property != nameof(MainViewModel.IsConnecting)) return;
         if (wasConnecting && !vm.IsConnecting && vm.Server is null)
         {
-            Motion.Shake(StartCard);
+            ShakeMotion.Shake(StartCard);
             FadeIn(StatusText);
         }
         wasConnecting = vm.IsConnecting;

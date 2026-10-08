@@ -71,7 +71,7 @@ public static class FlyGhost
             }
         }
         Frame(default);
-        return Motion.Count(done.Task);
+        return AnimationCounter.Count(done.Task);
     }
 
     /// <summary>A picture of a row flying to its new place; <paramref name="landed"/> runs in the frame it lands, then the picture is let go.</summary>

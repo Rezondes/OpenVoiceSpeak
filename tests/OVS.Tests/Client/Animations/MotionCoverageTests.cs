@@ -36,7 +36,7 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>
 /// Package 109: one walk through every user action of the client, in both displays. In the animated display each
-/// action starts at least one animation (counted by <see cref="Motion.Started"/>; for effects that only a style plays,
+/// action starts at least one animation (counted by <see cref="AnimationCounter.Started"/>; for effects that only a style plays,
 /// a hover or a check mark, the target is seen passing through in-between values), in the simplified one none, and
 /// both end in the same state.
 /// <para>
@@ -89,7 +89,7 @@ public sealed class MotionCoverageTests : IDisposable
         public List<Request> Sent { get; } = [];
         public AdminViewModel Admin => Vm.AdminPage!;
         /// <summary>Animations still running from before the walk (other tests' windows): the walk waits for its own only.</summary>
-        public int Running { get; } = Motion.Running;
+        public int Running { get; } = AnimationCounter.Running;
     }
 
     /// <param name="Look">For effects only a style plays: the visual whose transitions are watched.</param>
@@ -149,7 +149,7 @@ public sealed class MotionCoverageTests : IDisposable
                 looks.Add(Looks(visual));
             }
         }
-        Motion.ResetStarted();
+        AnimationCounter.ResetStarted();
         Look();
         step.Act(w);
         Settle(w, Look);
@@ -163,7 +163,7 @@ public sealed class MotionCoverageTests : IDisposable
         // transition of the animated display (Motion.Fast or Motion.Normal long; Fluent's own are shorter, the
         // simplified display has none of these)
         var movers = seen.Where(p => p.Value.Count >= 3 || p.Value.Count == 2 && HasMotionTransition(p.Key)).Select(p => $"{p.Key.GetType().Name} {string.Join(".", (p.Key as StyledElement)?.Classes ?? [])} {(p.Key as StyledElement)?.Name}").ToList();
-        return new Result(step.Name, Motion.Started, movers.Count > 0, State(w), string.Join("; ", movers.Take(5)));
+        return new Result(step.Name, AnimationCounter.Started, movers.Count > 0, State(w), string.Join("; ", movers.Take(5)));
     }
 
     /// <summary>
@@ -186,7 +186,7 @@ public sealed class MotionCoverageTests : IDisposable
             Frame();
             look?.Invoke();
             Thread.Sleep(1);
-            if (Motion.Running > w.Running || Rows(w).Any(r => r.Classes.Contains("entering") || r.Classes.Contains("leaving")))
+            if (AnimationCounter.Running > w.Running || Rows(w).Any(r => r.Classes.Contains("entering") || r.Classes.Contains("leaving")))
             {
                 last = null;
                 continue;
@@ -662,8 +662,8 @@ public sealed class MotionCoverageTests : IDisposable
         MotionWait.Connected(main); // under load connecting takes longer: the storm starts on a still tree
         var before = server.Channels.ToDictionary(c => c.Name, c => string.Join(",", c.Users.Select(u => u.Nickname)));
         var tree = main.FindControl<ItemsControl>("ChannelItems")!;
-        int running = Motion.Running;
-        Motion.ResetStarted();
+        int running = AnimationCounter.Running;
+        AnimationCounter.ResetStarted();
 
         // 100 changes spread over 800 ms, with frames in between (as many as the machine manages)
         var channels = server.Channels.Select(c => c.Id).ToList();
@@ -680,10 +680,10 @@ public sealed class MotionCoverageTests : IDisposable
             Thread.Sleep(1);
         }
         long stormMs = storm.ElapsedMilliseconds;
-        Assert.True(Motion.Started > 50, $"the storm animated ({Motion.Started})");
+        Assert.True(AnimationCounter.Started > 50, $"the storm animated ({AnimationCounter.Started})");
 
         var bound = Motion.Slow + TimeSpan.FromMilliseconds(8 * ItemMotion.StaggerMs);
-        bool Settled() => Motion.Running <= running
+        bool Settled() => AnimationCounter.Running <= running
             && server.Channels.All(c => before[c.Name] == string.Join(",", c.Users.Select(u => u.Nickname)))
             && tree.GetVisualDescendants().OfType<ContentPresenter>().Where(p => p.DataContext is UserViewModel && p.Parent is Panel)
                 .All(p => p.Opacity == 1 && !p.Classes.Contains("entering") && !p.Classes.Contains("leaving"));
@@ -698,14 +698,14 @@ public sealed class MotionCoverageTests : IDisposable
         }
         var took = after.Elapsed;
         var margin = TimeSpan.FromMilliseconds(300) + 4 * gap;
-        Assert.True(Settled(), $"the tree is right and nothing runs any more ({Motion.Running} running, {running} before)");
+        Assert.True(Settled(), $"the tree is right and nothing runs any more ({AnimationCounter.Running} running, {running} before)");
         Assert.True(took <= bound + margin, $"settled {took.TotalMilliseconds:F0} ms after the last change (bound {bound.TotalMilliseconds} ms "
             + $"+ {margin.TotalMilliseconds:F0} ms; longest frame gap {gap.TotalMilliseconds:F0} ms, the storm took {stormMs} ms)");
 
-        Motion.ResetStarted();
+        AnimationCounter.ResetStarted();
         Watch(500);
-        Assert.Equal(0, Motion.Started); // nothing was queued for later
-        Assert.True(Motion.Running <= running);
+        Assert.Equal(0, AnimationCounter.Started); // nothing was queued for later
+        Assert.True(AnimationCounter.Running <= running);
         main.Close();
         try
         {

@@ -114,6 +114,12 @@ static class MotionWait
         return seen;
     }
 
+    /// <summary>How far the render transform of <paramref name="visual"/> moves it sideways (0 without one).</summary>
+    public static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
+
+    /// <summary>How far the render transform of <paramref name="visual"/> moves it down (0 without one).</summary>
+    public static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
+
     /// <summary>The connect sequence is over: the pictures have gone, the server view and every channel row stand still.</summary>
     public static bool IsConnected(MainWindow main)
     {

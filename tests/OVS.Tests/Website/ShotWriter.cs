@@ -33,7 +33,7 @@ public static class ShotWriter
     /// Nothing in the window moves or waits to move: no animation started from code runs, no page switch is pending, no
     /// row enters or flashes (the flash waits on real time).
     /// </summary>
-    public static bool Quiet(Visual root) => Motion.Running == 0 && !root.GetVisualDescendants().OfType<StyledElement>()
+    public static bool Quiet(Visual root) => AnimationCounter.Running == 0 && !root.GetVisualDescendants().OfType<StyledElement>()
         .Any(e => e.Classes.Contains("entering") || e.Classes.Contains("fresh") || e.Classes.Contains(PageMotion.PageGhostClass));
 
     /// <summary>
