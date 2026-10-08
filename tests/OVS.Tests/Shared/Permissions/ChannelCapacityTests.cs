@@ -1,6 +1,6 @@
-using OVS.Server.Rules;
+using OVS.Shared.Permissions;
 
-namespace OVS.Tests.Server.Rules;
+namespace OVS.Tests.Shared.Permissions;
 
 public class ChannelCapacityTests
 {

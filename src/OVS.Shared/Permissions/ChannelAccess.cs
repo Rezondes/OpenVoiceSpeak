@@ -3,8 +3,8 @@ using OVS.Shared.Protocol.Messages.Channels;
 namespace OVS.Shared.Permissions;
 
 /// <summary>
-/// Packages 93, 94 and 111 (A106 to A110): who may enter a channel. Admin-group members pass every lock; "full" stays a server
-/// rule because only the server knows who is inside.
+/// Packages 93, 94 and 111 (A106 to A110): who may enter a channel. Admin-group members pass every lock; whether a channel is
+/// too full to enter (<see cref="ChannelCapacity"/>) only the server decides, because only the server knows who is inside.
 /// </summary>
 public static class ChannelAccess
 {

@@ -654,6 +654,28 @@ public class ServerViewModelTests
     }
 
     [Fact]
+    public void SlotText_UserJoins_ChangeRaised()
+    {
+        var f = Create(others: [User(2, "anna", Bravo, P.Speak)]);
+        var changed = new List<string?>();
+        f.Channel(Bravo).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        f.Vm.Apply(new UserJoined(User(3, "bert", Bravo, P.Speak)));
+        Assert.Equal("2", f.Channel(Bravo).SlotText);
+        Assert.Contains(nameof(ChannelViewModel.SlotText), changed); // the counter's text follows
+    }
+
+    [Fact]
+    public void MaxUsers_LimitChanges_ChangeRaised()
+    {
+        var f = Create(others: [User(2, "anna", Bravo, P.Speak)]);
+        var changed = new List<string?>();
+        f.Channel(Bravo).PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, MaxUsers: 5)));
+        Assert.Equal(5, f.Channel(Bravo).MaxUsers);
+        Assert.Contains(nameof(ChannelViewModel.MaxUsers), changed);
+    }
+
+    [Fact]
     public void RedeemToken_HiddenForAdmin()
     {
         Assert.True(Create().Vm.CanRedeemToken);

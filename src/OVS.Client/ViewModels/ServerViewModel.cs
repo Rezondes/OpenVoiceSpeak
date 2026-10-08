@@ -258,13 +258,16 @@ public sealed partial class ServerViewModel : ObservableObject
     void ShowUsers(Guid channelId)
     {
         if (!channelVms.TryGetValue(channelId, out var channel) || Mirror.Channels.GetValueOrDefault(channelId) is not { } info) return;
-        var users = Mirror.Users.Values.Where(u => u.ChannelId == channelId).OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase)
-            .Select(u => userVms[u.SessionId]).ToList();
-        CollectionSync.Sync(channel.Users, users, Leave);
-        channel.SlotText = SlotText(info, users.Count);
+        ShowUsers(channel, info, Mirror.Users.Values.Where(u => u.ChannelId == channelId), u => userVms[u.SessionId]);
     }
 
-    static string SlotText(ChannelInfo channel, int count) => channel.MaxUsers > 0 ? $"{count}/{channel.MaxUsers}" : count.ToString();
+    /// <summary>The users inside a channel by name into its list (Package 102: one who left folds away) and its slot counter.</summary>
+    void ShowUsers(ChannelViewModel channel, ChannelInfo info, IEnumerable<UserInfo> inside, Func<UserInfo, UserViewModel> viewModelOf)
+    {
+        var users = inside.OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase).Select(viewModelOf).ToList();
+        CollectionSync.Sync(channel.Users, users, Leave);
+        channel.Slots = new ChannelSlots(users.Count, info.MaxUsers);
+    }
 
     /// <summary>Package 102: one that is still folding away stays known, so coming back meanwhile is the same entry again.</summary>
     void ForgetGoneUsers()
@@ -329,17 +332,12 @@ public sealed partial class ServerViewModel : ObservableObject
             channel.Update(c, linked, c.Id == Mirror.DefaultChannelId, self?.ChannelId == c.Id, SelfPermissions);
             channel.UpdateLock(c, groups, self?.GroupIds ?? []);
 
-            var users = byChannel[c.Id]
-                .OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase)
-                .Select(u =>
-                {
-                    if (!userVms.TryGetValue(u.SessionId, out var user)) userVms[u.SessionId] = user = new UserViewModel(this, u.SessionId);
-                    user.Update(u, u.SessionId == Mirror.SelfId, SelfPermissions, groups);
-                    return user;
-                })
-                .ToList();
-            CollectionSync.Sync(channel.Users, users, Leave);
-            channel.SlotText = SlotText(c, users.Count);
+            ShowUsers(channel, c, byChannel[c.Id], u =>
+            {
+                if (!userVms.TryGetValue(u.SessionId, out var user)) userVms[u.SessionId] = user = new UserViewModel(this, u.SessionId);
+                user.Update(u, u.SessionId == Mirror.SelfId, SelfPermissions, groups);
+                return user;
+            });
             desired.Add(channel);
         }
         CollectionSync.Sync(Channels, desired, Leave);

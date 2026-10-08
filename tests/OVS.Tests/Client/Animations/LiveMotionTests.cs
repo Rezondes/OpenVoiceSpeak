@@ -77,9 +77,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         return done();
     }, atLeast);
 
-    static double Scale(Visual v) => v.RenderTransform?.Value.M11 ?? 1;
     static double Turned(Visual v) => v.RenderTransform?.Value.M12 ?? 0;
-    static double OffsetY(Visual v) => v.RenderTransform?.Value.M32 ?? 0;
     static byte GlowAlpha(Border ring) => ring.BoxShadow.Count == 0 ? (byte)0 : ring.BoxShadow[0].Color.A;
 
     static Border OwnRing(MainWindow main) =>
@@ -133,8 +131,8 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         // a whole 900 ms loop at least, and on until both ends were seen: under load a frame can land anywhere in it
         WatchUntil(() => high > 1.03 && low < 1.02, () =>
         {
-            low = Math.Min(low, Scale(ring.Child!));
-            high = Math.Max(high, Scale(ring.Child!));
+            low = Math.Min(low, MotionWait.Scale(ring.Child!));
+            high = Math.Max(high, MotionWait.Scale(ring.Child!));
         }, atLeast: 1100);
         Assert.Contains("speaking", ring.Classes);
         Assert.True(high > 1.03 && high <= 1.061, $"the ring breathes up to 1.06 ({high})"); // Package 122: the avatar inside it, the glow stays still
@@ -148,7 +146,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         // every step of the fade as it happens: under load one frame can outlast it
         var glows = MotionWait.Record(ring, v => GlowAlpha((Border)v));
         server.SetSelfTransmitting(null);
-        MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (Scale(ring.Child!), GlowAlpha(ring)))); // the loop stops with the speaking
+        MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (MotionWait.Scale(ring.Child!), GlowAlpha(ring)))); // the loop stops with the speaking
         Assert.True(glows.Any(a => a is > 0 and < 0x99), "the glow fades out");
 
         server.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked);
@@ -175,7 +173,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     {
         bool popped = false;
         var main = Open(out _, out var server, buildUp: () => popped |= opening is { } m && (Ghosts(m).Any()
-            || m.GetVisualDescendants().OfType<PathIcon>().Any(i => (LiveMotion.GetPop(i) || LiveMotion.GetTurn(i)) && (i.Opacity < 1 || Scale(i) != 1 || Turned(i) != 0))));
+            || m.GetVisualDescendants().OfType<PathIcon>().Any(i => (LiveMotion.GetPop(i) || LiveMotion.GetTurn(i)) && (i.Opacity < 1 || MotionWait.Scale(i) != 1 || Turned(i) != 0))));
         Assert.False(popped, "nothing pops while the tree is first built");
         var serverMuted = StateIcon(main, 2, "danger");
         Assert.True(serverMuted.IsEffectivelyVisible);
@@ -187,7 +185,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         overlay.Children.CollectionChanged += (_, e) =>
         {
             foreach (var added in e.NewItems?.OfType<PathIcon>() ?? [])
-                if (added.Classes.Contains(LiveMotion.GhostClass)) copies.Add((MotionWait.Record(added, v => v.Opacity), MotionWait.Record(added, Scale)));
+                if (added.Classes.Contains(LiveMotion.GhostClass)) copies.Add((MotionWait.Record(added, v => v.Opacity), MotionWait.Record(added, MotionWait.Scale)));
         };
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
         MotionWait.Until(() => copies.Count > 0 && !Ghosts(main).Any());
@@ -196,12 +194,12 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         Assert.Empty(Ghosts(main));
 
         var fades = MotionWait.Record(serverMuted, v => v.Opacity);
-        var scales = MotionWait.Record(serverMuted, Scale);
+        var scales = MotionWait.Record(serverMuted, MotionWait.Scale);
         server.Apply(new UserUpdated(Anna(serverMuted: true)));
         MotionWait.Eventually(() =>
         {
             Assert.True(fades.Any(o => o < 0.9) && scales.Any(s => s < 0.95), $"the icon pops in ({fades.DefaultIfEmpty(1).Min()}, {scales.DefaultIfEmpty(1).Min()})");
-            Assert.Equal((1d, 1d), (serverMuted.Opacity, Scale(serverMuted)));
+            Assert.Equal((1d, 1d), (serverMuted.Opacity, MotionWait.Scale(serverMuted)));
         });
 
         // my own mute button flips its icon with a short rotation
@@ -266,11 +264,11 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Settle(400);
         Assert.Equal("1/3", counter.Text);
 
-        MotionWait.Until(() => (OffsetY(counter), Scale(counter), counter.Opacity) == (0d, 1d, 1d)); // the tick to "1/3" is over
+        MotionWait.Until(() => (MotionWait.OffsetY(counter), MotionWait.Scale(counter), counter.Opacity) == (0d, 1d, 1d)); // the tick to "1/3" is over
         // every value as it happens: under load one frame can outlast the whole tick
-        var rises = MotionWait.Record(counter, OffsetY);
-        var pulses = MotionWait.Record(counter, Scale);
-        bool Still() => (OffsetY(counter), Scale(counter), counter.Opacity) == (0d, 1d, 1d);
+        var rises = MotionWait.Record(counter, MotionWait.OffsetY);
+        var pulses = MotionWait.Record(counter, MotionWait.Scale);
+        bool Still() => (MotionWait.OffsetY(counter), MotionWait.Scale(counter), counter.Opacity) == (0d, 1d, 1d);
         server.Apply(new UserJoined(new UserInfo(3, "fp3", "bob", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
         MotionWait.Until(() => rises.Any(y => y > 1) && Still(), atLeast: 400);
         Assert.Equal("2/3", counter.Text);
@@ -283,13 +281,13 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         {
             Assert.Equal("3/3", counter.Text);
             Assert.True(pulses.Any(s => s > 1.1), $"a full channel pulses its counter ({pulses.DefaultIfEmpty(1).Max()})");
-            Assert.Equal((0d, 1d, 1d), (OffsetY(counter), Scale(counter), counter.Opacity));
+            Assert.Equal((0d, 1d, 1d), (MotionWait.OffsetY(counter), MotionWait.Scale(counter), counter.Opacity));
         });
 
         // once only: it stays full without pulsing again
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "Voll", 1, MaxUsers: 3)));
         double big = 1;
-        Watch(400, () => big = Math.Max(big, Scale(counter)));
+        Watch(400, () => big = Math.Max(big, MotionWait.Scale(counter)));
         Assert.Equal(1, big, 3);
         main.Close();
     }
@@ -446,7 +444,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         double high = 1, dim = 1;
         Watch(600, () =>
         {
-            high = Math.Max(high, Scale(ring.Child!));
+            high = Math.Max(high, MotionWait.Scale(ring.Child!));
             dim = Math.Min(dim, transmit.Opacity);
         });
         Assert.Contains("speaking", ring.Classes);
@@ -473,8 +471,8 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         double moved = 0, big = 1;
         Watch(200, () =>
         {
-            moved = Math.Max(moved, Math.Abs(OffsetY(counter)));
-            big = Math.Max(big, Scale(counter));
+            moved = Math.Max(moved, Math.Abs(MotionWait.OffsetY(counter)));
+            big = Math.Max(big, MotionWait.Scale(counter));
         });
         Assert.Equal("1/1", counter.Text);
         Assert.Equal((0d, 1d), (moved, big));

@@ -216,7 +216,7 @@
                       <Border Classes="separatorLine" IsVisible="{Binding IsSeparator}" />
                       <DockPanel IsVisible="{Binding IsVoice}">
                         <TextBlock DockPanel.Dock="Right" Classes="caption channelCount" VerticalAlignment="Center" Margin="8,0,0,0"
-                                   Text="{Binding SlotText}" anim:LiveMotion.Tick="True" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
+                                   Text="{Binding SlotText}" anim:LiveMotion.Slots="{Binding Slots}" ToolTip.Tip="{x:Static l:Strings.Ui_UsersInChannel}" />
                         <!-- Package 98: joining, moving or deleting waits for the server -->
                         <ctl:BusySpinner DockPanel.Dock="Right" Margin="8,0,0,0" IsVisible="{Binding IsBusy}" />
                         <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->

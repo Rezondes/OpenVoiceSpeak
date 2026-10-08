@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Animation;
@@ -22,7 +21,8 @@ namespace OVS.Client.Animations;
 /// at most 8 steps. The first fill of a list does not play this; it fades in once as a whole, and so does a list
 /// that was empty and gets a whole batch at once (the administration lists arriving from the server), except where
 /// every entry counts on its own (<see cref="FlashProperty"/>, the channel tree, whose first fill just shows).
-/// Rebuilt lists keep their entries by <see cref="IMotionKey"/>, so only really new ones play it.
+/// Rebuilt lists keep their entries by <see cref="IMotionKey"/>, so only really new ones play it. Per list, an
+/// <see cref="EntryTracker"/> decides which entries are new and a <see cref="PlaceTracker"/> where moved ones glide from.
 /// </summary>
 public static class ItemMotion
 {
@@ -73,7 +73,7 @@ public static class ItemMotion
     /// </summary>
     public static void Hold(ItemsControl list)
     {
-        if (trackers.TryGetValue(list, out var tracker)) tracker.Hold();
+        if (placeTrackers.TryGetValue(list, out var tracker)) tracker.Hold();
     }
 
     /// <summary>
@@ -93,11 +93,12 @@ public static class ItemMotion
 
     static readonly Dictionary<object, int> grounded = new(ReferenceEqualityComparer.Instance);
 
-    static readonly ConditionalWeakTable<ItemsControl, Tracker> trackers = [];
+    static readonly ConditionalWeakTable<ItemsControl, EntryTracker> entryTrackers = [];
+    static readonly ConditionalWeakTable<ItemsControl, PlaceTracker> placeTrackers = [];
 
     /// <summary>Package 102: the lists showing a collection, to find the row of an entry that starts leaving.</summary>
     static readonly ConditionalWeakTable<object, List<WeakReference<ItemsControl>>> showing = [];
-    static readonly ConditionalWeakTable<Control, CancellationTokenSource> folding = [], gliding = [], entering = [];
+    static readonly ConditionalWeakTable<Control, CancellationTokenSource> folding = [], entering = [];
 
     /// <summary>
     /// Package 109: a row that starts leaving (or is handed to another entry) while it still slides in ends its entry at
@@ -115,19 +116,20 @@ public static class ItemMotion
     {
         EnterProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
         {
-            if (e.GetNewValue<bool>()) trackers.GetValue(list, l => new Tracker(l));
+            if (e.GetNewValue<bool>()) entryTrackers.GetValue(list, l => new EntryTracker(l));
         });
         FlipProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
         {
-            if (e.GetNewValue<bool>()) trackers.GetValue(list, l => new Tracker(l)).WatchPlaces();
+            if (e.GetNewValue<bool>()) placeTrackers.GetValue(list, l => new PlaceTracker(l));
         });
         CollectionSync.LeavingChanged += OnLeavingChanged;
     }
 
     /// <summary>Package 122: whether the list notes its entries' places on layout passes right now (tests ask).</summary>
-    internal static bool TracksPlaces(ItemsControl list) => trackers.TryGetValue(list, out var tracker) && tracker.Tracking;
+    internal static bool TracksPlaces(ItemsControl list) => placeTrackers.TryGetValue(list, out var tracker) && tracker.Tracking;
 
-    static void Show(object? source, ItemsControl list, bool on)
+    /// <summary>Package 102: notes that <paramref name="list"/> shows <paramref name="source"/> now (<paramref name="on"/>) or no longer.</summary>
+    internal static void Show(object? source, ItemsControl list, bool on)
     {
         if (source is null) return;
         var lists = showing.GetValue(source, _ => []);
@@ -149,10 +151,10 @@ public static class ItemMotion
     }
 
     /// <summary>Package 122: a list changes; the lists around it grow, shrink or shift as well (the channel tree around a channel's users).</summary>
-    static void TrackPlacesAround(ItemsControl list)
+    internal static void TrackPlacesAround(ItemsControl list)
     {
         foreach (var changed in list.GetSelfAndVisualAncestors().OfType<ItemsControl>())
-            if (trackers.TryGetValue(changed, out var tracker)) tracker.TrackPlaces();
+            if (placeTrackers.TryGetValue(changed, out var tracker)) tracker.Track();
     }
 
     // ---- Package 103: a user who switches channels flies from the old row to the new one ----
@@ -173,7 +175,7 @@ public static class ItemMotion
         QueuePairing();
     }
 
-    static void Arrive(object item, Control container)
+    internal static void Arrive(object item, Control container)
     {
         arrivals[item] = container;
         QueuePairing();
@@ -215,7 +217,7 @@ public static class ItemMotion
             });
 
     /// <summary>Folds the row away: it fades, drifts to the left and closes its height; it cannot be clicked any more.</summary>
-    static void Leave(Control container)
+    internal static void Leave(Control container)
     {
         Stay(container);
         EndEntry(container);
@@ -273,277 +275,21 @@ public static class ItemMotion
         container.Classes.Set("leaving", false);
     }
 
-    /// <summary>A recycled row starts whole and still, whatever its last entry was doing.</summary>
-    static void Reset(Control container)
+    /// <summary>A recycled row starts whole, whatever its last entry was doing (its glide ends in <see cref="PlaceTracker"/>).</summary>
+    internal static void Reset(Control container)
     {
         Stay(container);
         EndEntry(container);
-        if (gliding.TryGetValue(container, out var cancel))
-        {
-            cancel.Cancel();
-            gliding.Remove(container);
-        }
         container.ClearValue(Visual.OpacityProperty);
         container.ClearValue(Layoutable.MaxHeightProperty);
         flown.Remove(container);
-    }
-
-    sealed class Tracker
-    {
-        readonly ItemsControl list;
-        HashSet<object> known = []; // the entries as of the last settled change
-        bool filled, fading, batchQueued, settleQueued, fillBatch, held, moved, watching, tracking;
-        int batch;
-        Dictionary<object, double> places = []; // Package 103: where each entry sat after the last layout
-        long trackUntil;
-        int layoutPasses;
-
-        public bool Tracking => tracking;
-
-        public Tracker(ItemsControl list)
-        {
-            this.list = list;
-            list.ContainerPrepared += OnPrepared;
-            list.ContainerClearing += (_, e) => Reset(e.Container);
-            Show(list.ItemsSource, list, true);
-            list.Items.CollectionChanged += OnItemsChanged;
-            list.PropertyChanged += (_, e) =>
-            {
-                if (e.Property != ItemsControl.ItemsSourceProperty) return;
-                Show(e.OldValue, list, false);
-                Show(e.NewValue, list, true);
-                if (e.OldValue is null) // a list that appears (connecting) is a first fill again
-                {
-                    filled = false;
-                    fading = false;
-                    // the window already shows (a hidden tree is not in the visual tree yet, so ask the logical one)
-                    if (GetBuildUp(list) && Avalonia.LogicalTree.LogicalExtensions.FindLogicalAncestorOfType<Window>(list) is { IsVisible: true } window
-                        && Motion.IsAnimated(window))
-                        BuildUpOnceShown(window);
-                }
-                TrackPlaces();
-                QueueSettle();
-            };
-            QueueSettle();
-        }
-
-        /// <summary>
-        /// Package 106: the tree that appears while the window shows (connecting) builds up entry by entry. Its rows are
-        /// made while the tree is still hidden (its visibility follows a moment later), so it plays once it is laid out
-        /// visible.
-        /// </summary>
-        void BuildUpOnceShown(Window window)
-        {
-            var source = list.ItemsSource;
-            var since = System.Diagnostics.Stopwatch.StartNew(); // clock: frame timing
-            void OnLayout(object? sender, EventArgs e)
-            {
-                // gone, switched to the simplified display, or not shown soon (the drawer is closed): it just shows later
-                if (list.ItemsSource != source || !Motion.IsAnimated(window) || since.ElapsedMilliseconds > 500)
-                {
-                    list.LayoutUpdated -= OnLayout;
-                    return;
-                }
-                if (!list.IsEffectivelyVisible) return;
-                list.LayoutUpdated -= OnLayout;
-                int index = 0;
-                foreach (var container in list.GetRealizedContainers().OrderBy(list.IndexFromContainer).ToList())
-                    Enter(container, index++, flash: false, fly: false);
-            }
-            list.LayoutUpdated += OnLayout;
-        }
-
-        public void Hold()
-        {
-            held = true;
-            Dispatcher.UIThread.Post(() => held = false, DispatcherPriority.Background);
-        }
-
-        void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (e.Action == NotifyCollectionChangedAction.Move && GetFlip(list) && Motion.IsAnimated(list) && !held) moved = true;
-            TrackPlacesAround(list);
-            QueueSettle();
-        }
-
-        /// <summary>
-        /// Package 103 (FLIP): after a layout the list notes where each entry sits (a moved entry gets a new row at once,
-        /// so its old place cannot be asked for when the move is announced). After a change of order each entry that
-        /// moved glides from its old place to the new one.
-        /// </summary>
-        public void WatchPlaces()
-        {
-            if (watching) return;
-            watching = true;
-            TrackPlaces();
-        }
-
-        /// <summary>
-        /// Package 122: the places only change around a change of the list (or of one inside it), so only then does the
-        /// list note them on its layout passes: until whatever the change started (entering, leaving, gliding) is over
-        /// and they stay the same. The places noted last stay for the next change.
-        /// </summary>
-        public void TrackPlaces()
-        {
-            if (!watching) return;
-            trackUntil = Environment.TickCount64 + (long)Motion.Slow.TotalMilliseconds + StaggerSteps * StaggerMs; // clock: frame timing
-            if (tracking) return;
-            // the places noted last may be stale (a row grew, the list was laid out anew): where the rows sit now is where
-            // they glide from. Asked by what each row still shows (the list's indexes may have moved on with the change);
-            // a row made for the change has no place yet and keeps the one noted
-            foreach (var container in list.GetRealizedContainers())
-                if (container.IsArrangeValid && IMotionKey.KeyOf(container.DataContext) is { } key) places[key] = container.Bounds.Y;
-            tracking = true;
-            list.LayoutUpdated += OnLayoutUpdated;
-            _ = UntrackWhenStillAsync();
-        }
-
-        /// <summary>A list nothing lays out any more is still: the places noted on its last layout pass are where its entries sit.</summary>
-        async Task UntrackWhenStillAsync()
-        {
-            while (tracking)
-            {
-                int passes = layoutPasses;
-                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(trackUntil - Environment.TickCount64, 100))); // clock: frame timing
-                // a move still waiting for its layout pass (the UI thread was busy) keeps it, unless the list is gone
-                if (tracking && passes == layoutPasses && Environment.TickCount64 >= trackUntil && (!moved || !list.IsAttachedToVisualTree())) Untrack(); // clock: frame timing
-            }
-        }
-
-        void Untrack()
-        {
-            tracking = false;
-            moved = false; // a later pass must not glide from these places
-            list.LayoutUpdated -= OnLayoutUpdated;
-        }
-
-        void OnLayoutUpdated(object? sender, EventArgs e)
-        {
-            layoutPasses++;
-            var now = new Dictionary<object, double>();
-            bool same = true;
-            foreach (var container in list.GetRealizedContainers())
-            {
-                if (IMotionKey.KeyOf(list.ItemFromContainer(container)) is not { } key) continue;
-                now.TryAdd(key, container.Bounds.Y);
-                bool known = places.TryGetValue(key, out var was);
-                same &= known && was == container.Bounds.Y;
-                if (moved && !held && known && Math.Abs(was - container.Bounds.Y) >= 0.5)
-                    Glide(container, was - container.Bounds.Y);
-            }
-            same &= now.Count == places.Count;
-            moved = false;
-            places = now;
-            if (same && Environment.TickCount64 >= trackUntil) Untrack(); // clock: frame timing
-        }
-
-        /// <summary>
-        /// Once a change is complete (after the layout that shows it) the list knows its entries again: a rebuild
-        /// (clear, then add the same entries) does not count them as new, and entries that came while the list was
-        /// hidden (the drawer, a closed page) do not slide in when it shows.
-        /// </summary>
-        void QueueSettle()
-        {
-            if (settleQueued) return;
-            settleQueued = true;
-            Dispatcher.UIThread.Post(() =>
-            {
-                settleQueued = false;
-                known = list.Items.Select(IMotionKey.KeyOf).OfType<object>().ToHashSet();
-                filled = true;
-            }, DispatcherPriority.Background);
-        }
-
-        void OnPrepared(object? sender, ContainerPreparedEventArgs e)
-        {
-            var item = list.ItemFromContainer(e.Container) ?? e.Container.DataContext;
-            if (item is not null && list.ItemsSource is { } source && CollectionSync.IsLeaving(source, item))
-            {
-                Leave(e.Container); // shown in the middle of folding away (a scrolled list): folded at once
-                return;
-            }
-            var key = IMotionKey.KeyOf(item);
-            if (key is null || !Motion.IsAnimated(list)) return;
-            if (!list.IsEffectivelyVisible) // a hidden list makes its rows at once; nobody sees them arrive
-            {
-                known.Add(key);
-                return;
-            }
-            if (!filled || (fillBatch && !known.Contains(key)))
-            {
-                // the first fill: one fade for the whole list, no entry on its own. Not in the channel tree: a channel
-                // that moves gets a new user list, whose users were there all along (connecting is Package 106)
-                if (!GetFlash(list)) FadeList();
-                return;
-            }
-            if (!known.Add(key)) return;
-            if (known.Count == 1 && batch == 0 && !GetFlash(list) && settleQueued)
-            {
-                // an empty list gets a whole batch at once (an administration list arriving from the server)
-                fillBatch = true;
-                FadeList();
-                QueueBatchEnd();
-                return;
-            }
-            if (GetFly(list)) Arrive(item!, e.Container);
-            Enter(e.Container, batch++, GetFlash(list), GetFly(list));
-            QueueBatchEnd();
-        }
-
-        void FadeList()
-        {
-            if (fading) return;
-            fading = true;
-            _ = new Animation
-            {
-                Duration = Motion.Normal,
-                Easing = Motion.Ease,
-                FillMode = FillMode.Backward,
-                Children =
-                {
-                    new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d) } },
-                    new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d) } },
-                },
-            }.Play(list).ContinueWith(_ => fading = false, TaskScheduler.FromCurrentSynchronizationContext());
-        }
-
-        /// <summary>Entries prepared in the same round of the dispatcher came together.</summary>
-        void QueueBatchEnd()
-        {
-            if (batchQueued) return;
-            batchQueued = true;
-            Dispatcher.UIThread.Post(() =>
-            {
-                batchQueued = false;
-                batch = 0;
-                fillBatch = false;
-            }, DispatcherPriority.Background);
-        }
-    }
-
-    /// <summary>Package 103: the entry starts where it was and glides to its new place.</summary>
-    static void Glide(Control container, double from)
-    {
-        var cancel = new CancellationTokenSource();
-        gliding.AddOrUpdate(container, cancel);
-        _ = new Animation
-        {
-            Duration = Motion.Slow,
-            Easing = Motion.Ease,
-            FillMode = FillMode.Backward,
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(TranslateTransform.YProperty, from) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.YProperty, 0d) } },
-            },
-        }.Play(container, cancel.Token);
     }
 
     /// <param name="fly">
     /// A list whose entries may fly in from another (Package 103): the entry waits hidden until the pairing has looked
     /// for its departure; if a picture flies to it, it only opens its height and shows when the picture lands.
     /// </param>
-    static async void Enter(Control container, int index, bool flash, bool fly)
+    internal static async void Enter(Control container, int index, bool flash, bool fly)
     {
         container.ClipToBounds = true;
         container.Classes.Set("entering", true);

@@ -8,6 +8,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using OVS.Client.Models;
 using OVS.Client.Views;
 
 namespace OVS.Client.Animations;
@@ -26,8 +27,11 @@ public static class LiveMotion
     /// <summary>The icon turns in with a short rotation when it shows (the own mute and deafen buttons).</summary>
     public static readonly AttachedProperty<bool> TurnProperty = AvaloniaProperty.RegisterAttached<Control, bool>("Turn", typeof(LiveMotion));
 
-    /// <summary>A counter ("3/10" or "3") that ticks to its new number and pulses once when it gets full.</summary>
-    public static readonly AttachedProperty<bool> TickProperty = AvaloniaProperty.RegisterAttached<TextBlock, bool>("Tick", typeof(LiveMotion));
+    /// <summary>
+    /// The numbers of a slot counter ("3/10" or "3"): when they change it ticks to its new number, and it pulses once when
+    /// the channel gets full. Null (the default, also while the row has no model) ticks nothing.
+    /// </summary>
+    public static readonly AttachedProperty<ChannelSlots?> SlotsProperty = AvaloniaProperty.RegisterAttached<TextBlock, ChannelSlots?>("Slots", typeof(LiveMotion));
 
     /// <summary>Package 109: a text that fades in anew when it changes (a renamed channel).</summary>
     public static readonly AttachedProperty<bool> FadeProperty = AvaloniaProperty.RegisterAttached<TextBlock, bool>("Fade", typeof(LiveMotion));
@@ -42,8 +46,8 @@ public static class LiveMotion
     public static void SetPop(Control control, bool value) => control.SetValue(PopProperty, value);
     public static bool GetTurn(Control control) => control.GetValue(TurnProperty);
     public static void SetTurn(Control control, bool value) => control.SetValue(TurnProperty, value);
-    public static bool GetTick(TextBlock text) => text.GetValue(TickProperty);
-    public static void SetTick(TextBlock text, bool value) => text.SetValue(TickProperty, value);
+    public static ChannelSlots? GetSlots(TextBlock text) => text.GetValue(SlotsProperty);
+    public static void SetSlots(TextBlock text, ChannelSlots? value) => text.SetValue(SlotsProperty, value);
     public static bool GetFade(TextBlock text) => text.GetValue(FadeProperty);
     public static void SetFade(TextBlock text, bool value) => text.SetValue(FadeProperty, value);
     public static double GetLevel(RangeBase meter) => meter.GetValue(LevelProperty);
@@ -71,12 +75,15 @@ public static class LiveMotion
                 PopOut(control);
             }
         });
+        SlotsProperty.Changed.AddClassHandler<TextBlock>((text, e) =>
+        {
+            if (Motion.IsAnimated(text) && text.IsAttachedToVisualTree()
+                && e.GetOldValue<ChannelSlots?>() is { } before && e.GetNewValue<ChannelSlots?>() is { } after)
+                Tick(text, before, after);
+        });
         TextBlock.TextProperty.Changed.AddClassHandler<TextBlock>((text, e) =>
         {
-            if (GetTick(text) && Motion.IsAnimated(text) && text.IsAttachedToVisualTree()
-                && Count(e.GetOldValue<string?>()) is { } before && Count(e.GetNewValue<string?>()) is { } after)
-                Tick(text, before, after);
-            else if (GetFade(text) && Motion.IsAnimated(text) && text.IsAttachedToVisualTree() && e.GetOldValue<string?>() is not null)
+            if (GetFade(text) && Motion.IsAnimated(text) && text.IsAttachedToVisualTree() && e.GetOldValue<string?>() is not null)
                 FadeIn(text);
         });
         LevelProperty.Changed.AddClassHandler<RangeBase>((meter, e) => Follow(meter, e.GetNewValue<double>()));
@@ -146,24 +153,12 @@ public static class LiveMotion
         overlay.Children.Remove(ghost);
     }
 
-    /// <summary>"3/10" is 3 of at most 10, "3" is 3 without a limit; null when it is no counter.</summary>
-    internal static (int Count, int Max)? Count(string? text)
+    static void Tick(TextBlock text, ChannelSlots before, ChannelSlots after)
     {
-        var parts = (text ?? "").Split('/');
-        if (!int.TryParse(parts[0], out int count)) return null;
-        if (parts.Length == 1) return (count, 0);
-        return parts.Length == 2 && int.TryParse(parts[1], out int max) ? (count, max) : null;
-    }
-
-    static bool IsFull((int Count, int Max) slots) => slots.Max > 0 && slots.Count >= slots.Max;
-
-    static void Tick(TextBlock text, (int Count, int Max) before, (int Count, int Max) after)
-    {
-        if (after == before) return;
         var cancel = Replace(text);
         // a higher number comes up from below, a lower one down from above
-        Run(text, Motion.Normal, Motion.Ease, FillMode.Backward, cancel, (TranslateTransform.YProperty, after.Count >= before.Count ? TickBy : -TickBy, 0d), (Visual.OpacityProperty, 0d, 1d));
-        if (!IsFull(after) || IsFull(before)) return;
+        Run(text, Motion.Normal, Motion.Ease, FillMode.Backward, cancel, (TranslateTransform.YProperty, after.UserCount >= before.UserCount ? TickBy : -TickBy, 0d), (Visual.OpacityProperty, 0d, 1d));
+        if (!after.IsFull || before.IsFull) return;
         var pulse = new Animation { Duration = Motion.Slow, Easing = Motion.Ease };
         foreach (var (cue, scale) in new[] { (0d, 1d), (0.4, FullPulse), (1d, 1d) })
             pulse.Children.Add(new KeyFrame { Cue = new Cue(cue), Setters = { new Setter(ScaleTransform.ScaleXProperty, scale), new Setter(ScaleTransform.ScaleYProperty, scale) } });

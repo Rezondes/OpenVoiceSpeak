@@ -120,6 +120,9 @@ static class MotionWait
     /// <summary>How far the render transform of <paramref name="visual"/> moves it down (0 without one).</summary>
     public static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
 
+    /// <summary>How far the render transform of <paramref name="visual"/> scales it sideways (1 without one).</summary>
+    public static double Scale(Visual visual) => visual.RenderTransform?.Value.M11 ?? 1;
+
     /// <summary>The connect sequence is over: the pictures have gone, the server view and every channel row stand still.</summary>
     public static bool IsConnected(MainWindow main)
     {

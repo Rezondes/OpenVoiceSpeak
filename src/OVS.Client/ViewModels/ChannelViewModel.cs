@@ -1,6 +1,7 @@
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -23,11 +24,16 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     /// <summary>Package 34: nobody in this channel is heard.</summary>
     [ObservableProperty] bool isMuted;
     /// <summary>Package 35: 0 = unlimited.</summary>
-    [ObservableProperty] int maxUsers;
+    public int MaxUsers => Slots.MaxUsers;
     /// <summary>Package 132 (A141): kbps its senders encode with; 0 for a separator.</summary>
     [ObservableProperty] int bitrate = ProtocolDefaults.Bitrate;
+    /// <summary>The users in this channel (Package 102: not those still folding away) and its limit, for the slot counter.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SlotText))]
+    [NotifyPropertyChangedFor(nameof(MaxUsers))]
+    ChannelSlots slots;
     /// <summary>"3/5" for a limited channel, otherwise just the count.</summary>
-    [ObservableProperty] string slotText = "0";
+    public string SlotText => Slots.ToString();
     [ObservableProperty] bool canCreate;
     /// <summary>The right to edit channels; also moves them (up, down, drag), separators too.</summary>
     [ObservableProperty]
@@ -82,7 +88,6 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         IsDefault = isDefault;
         IsCurrent = isCurrent;
         IsMuted = info.IsMuted;
-        MaxUsers = info.MaxUsers;
         Bitrate = info.Bitrate;
         CanCreate = actor.Has(Permission.ChannelCreate);
         CanEdit = actor.Has(Permission.ChannelEdit);

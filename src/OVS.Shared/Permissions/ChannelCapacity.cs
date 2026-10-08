@@ -1,6 +1,6 @@
-namespace OVS.Server.Rules;
+namespace OVS.Shared.Permissions;
 
-/// <summary>When a channel is full.</summary>
+/// <summary>When a channel is full: the server's join rule and the client's slot counter.</summary>
 public static class ChannelCapacity
 {
     /// <summary>Package 35: limited and no free slot; othersInside does not count the user who wants in.</summary>

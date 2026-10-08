@@ -2618,7 +2618,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRoutingTests|FullyQua
 3. `ChannelCommandTests > "Edit_DefaultChannelLimit_Invalid"`, `"Edit_LimitOutOfRange_Invalid"` (AC1)
 4. `ChannelCommandTests > "Edit_LimitBelowCount_NobodyRemoved_PersistedInSnapshot"` (AC4, AC6)
 5. `PermissionRulesTests`: `All` enthält `ChannelJoinFull` (AC5)
-6. `ServerViewModelTests > "SlotText_LimitedAndUnlimited"` (AC5)
+6. `ServerViewModelTests > "SlotText_LimitedAndUnlimited"`, `"SlotText_UserJoins_ChangeRaised"`, `"MaxUsers_LimitChanges_ChangeRaised"`, `ChannelSlotsTests > "ToString_LimitedOrUnlimited_CountOfLimitOrCountAlone"` (AC5)
 7. `UiSmokeTests`: Feld im Dialog, "3/5" im Baum; `SmokeTests`: Version 5
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
@@ -6374,11 +6374,11 @@ Reordering by another admin, or a move confirmed by the server, arrives as a `Sy
 
 ### Tests (TDD)
 
-1. `ItemMotionTests > "ServerReorder_RowsGlideFromOldOffset"` (AC1): the `TranslateTransform` right after the change equals the old offset and is 0 after the duration.
+1. `ItemMotionTests > "ServerReorder_RowsGlideFromOldOffset"`, `PlaceTrackerTests > "Move_FlipWithoutEnter_MovedRowsGlideFromTheirOldPlaces"` (AC1): the `TranslateTransform` right after the change equals the old offset and is 0 after the duration.
 2. `ItemMotionTests > "UserSwitch_GhostFliesOldToNew_LandsOnTheRow"` (AC2): the overlay contains a ghost whose start and end positions match both rows.
 3. `ItemMotionTests > "OwnSwitch_CurrentHighlightSlides"` (AC3)
 4. `ItemMotionTests > "GroupReorder_Glides"` (AC4)
-5. `ReorderDragTests > "DropThenServerOrder_NoSecondMove"` (AC5)
+5. `ReorderDragTests > "DropThenServerOrder_NoSecondMove"`, `PlaceTrackerTests > "Hold_MoveRightAfter_NoRowGlides"`, `"Hold_MoveAfterTheHoldEnded_RowsGlide"` (AC5)
 6. `ItemMotionTests > "OffscreenEnd_NoGhost"` (AC6)
 7. `ItemMotionTests > "Simplified_Jumps"` (AC7)
 
@@ -6626,11 +6626,11 @@ Test command: `dotnet test tests/OVS.Tests`
 
 1. `LiveMotionTests > "Speaking_RingBreathesWhileSpeaking_StopsAfter"` (AC1)
 2. `LiveMotionTests > "MuteIcons_PopInOut"` (AC2)
-3. `LiveMotionTests > "SlotCounter_TicksAndPulsesWhenFull"` (AC3)
+3. `LiveMotionTests > "SlotCounter_TicksAndPulsesWhenFull"`, `SlotCounterTests > "Slots_NumbersChange_TickAndPulseOnlyWhenItGetsFullThenRest"`, `"Slots_UserCountChanges_HigherComesFromBelowLowerFromAbove"`, `"Slots_FirstNumbers_StartNoAnimation"`, `"Slots_CounterInNoWindow_StartNoAnimation"`, `ChannelSlotsTests > "IsFull_AnyNumbers_AsTheSharedCapacityRule"`, `ChannelCapacityTests > "IsFull_LimitAndOthersInside_FullWhenNoFreeSlot"` (AC3)
 4. `LiveMotionTests > "LevelMeter_AttackRelease"` (AC4)
 5. `LiveMotionTests > "Busy_ShimmerCrossFadesBack"` (AC5)
 6. `LiveMotionTests > "Idle_NoRunningLoops"` (AC6): count the running animations on an idle connected view = 0.
-7. `LiveMotionTests > "Simplified_AsToday"` (AC7)
+7. `LiveMotionTests > "Simplified_AsToday"`, `SlotCounterTests > "Slots_Simplified_StartNoAnimation"` (AC7)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -7267,7 +7267,7 @@ The tests only know `FakeServers.Crowded` (8 channels, 20 users). Wall-clock lim
 2. `PerformanceTests > "MuteChange_DoesNotRefitSidebar_RenameDoes"` (AC2)
 3. `PerformanceTests > "StateChanged_GainTableAndIconHashOnlyWhenNeeded"` (AC3)
 4. `PerformanceTests > "ManySpeakers_SpeakingUpdatesThrottledAndScoped"`, `PlaybackLoopTests > "Run_VoiceClearedAfterItsReport_RunsOnUntilTheSilenceIsReported"` (AC4): a mixer fed with 20 speakers on a manual clock.
-5. `PerformanceTests > "NoMove_NoPlaceTracking"` (AC5)
+5. `PerformanceTests > "NoMove_NoPlaceTracking"`, `PlaceTrackerTests > "Change_FlipListInsideAFlipList_OuterListTracksPlaces"`, `EntryTrackerTests > "Add_EnterWithoutFlip_NotesNoPlaces"`, `"Change_EnterListInsideAFlipList_OuterListTracksPlaces"` (AC5)
 6. `MotionStyleTests > "SpeakingRing_NoAnimatedShadow"` (AC6)
 7. `MotionCoverageTests.JoinLeaveStorm_EndsBounded` on `FakeServers.Large`, and the whole suite (AC7)
 

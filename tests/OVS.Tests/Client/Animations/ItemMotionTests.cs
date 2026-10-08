@@ -50,11 +50,6 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         return (window, list);
     }
 
-    static Control Container(ItemsControl list, string key) =>
-        list.GetRealizedContainers().Single(c => c.DataContext is KeyedRow row && row.Key == key);
-
-    static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
-
     /// <summary>
     /// Every vertical offset any row of the list takes from now on, with the item it showed: not only what a frame
     /// happens to see, under load one frame can outlast the whole glide.
@@ -99,14 +94,14 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var (_, list) = Host(rows);
         rows.Insert(1, new KeyedRow("neu"));
         Frame();
-        var row = Container(list, "neu");
+        var row = KeyedList.Container(list, "neu");
         Assert.True(row.Opacity < 1, $"fades in ({row.Opacity})");
-        Assert.True(OffsetY(row) > 0, "rises from below");
+        Assert.True(MotionWait.OffsetY(row) > 0, "rises from below");
         Assert.True(row.Bounds.Height < 30, $"opens its height ({row.Bounds.Height})");
         MotionWait.Eventually(() =>
         {
             Assert.Equal(1, row.Opacity, 2);
-            Assert.Equal(0, OffsetY(row), 2);
+            Assert.Equal(0, MotionWait.OffsetY(row), 2);
             Assert.Equal(30, row.Bounds.Height, 1);
         });
     }
@@ -116,12 +111,12 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     {
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (window, list) = Host(rows);
-        var below = Container(list, "b");
+        var below = KeyedList.Container(list, "b");
         double before = below.TranslatePoint(default, window)!.Value.Y;
         // every place it takes on the way, not one frame's: under load one frame can outlast the whole slide
         var tops = MotionWait.Record(below, v => v.TranslatePoint(default, window)!.Value.Y);
         rows.Insert(1, new KeyedRow("neu"));
-        MotionWait.Until(() => !Container(list, "neu").Classes.Contains("entering"));
+        MotionWait.Until(() => !KeyedList.Container(list, "neu").Classes.Contains("entering"));
         MotionWait.Eventually(() => Assert.Equal(before + 30, below.TranslatePoint(default, window)!.Value.Y, 1));
         double after = below.TranslatePoint(default, window)!.Value.Y;
         Assert.True(tops.Any(during => during > before && during < after), $"{before} < one of {string.Join(" ", tops.Distinct())} < {after}");
@@ -155,7 +150,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
         rows.Add(new KeyedRow("c"));
         Frame();
-        Assert.Contains("entering", Container(list, "c").Classes);
+        Assert.Contains("entering", KeyedList.Container(list, "c").Classes);
     }
 
     [AvaloniaFact]
@@ -179,7 +174,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         MotionWait.Settle(50);
         list.IsVisible = true;
         Frame();
-        Assert.DoesNotContain("entering", Container(list, "b").Classes);
+        Assert.DoesNotContain("entering", KeyedList.Container(list, "b").Classes);
     }
 
     [AvaloniaFact]
@@ -192,13 +187,13 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         bool staggered = false;
         MotionWait.Until(() =>
         {
-            double first = Container(list, "r0").Opacity, eighth = Container(list, "r7").Opacity, last = Container(list, "r11").Opacity;
+            double first = KeyedList.Container(list, "r0").Opacity, eighth = KeyedList.Container(list, "r7").Opacity, last = KeyedList.Container(list, "r11").Opacity;
             staggered |= first > eighth;
             Assert.Equal(eighth, last, 2); // everything after the 8th step comes with it: never longer than 8 steps plus Motion.Normal
-            return rows.All(r => !Container(list, r.Key).Classes.Contains("entering"));
+            return rows.All(r => !KeyedList.Container(list, r.Key).Classes.Contains("entering"));
         });
         Assert.True(staggered, "staggered: the first one fades in before the eighth");
-        Assert.All(rows.Select(r => Container(list, r.Key)), c => Assert.Equal(1, c.Opacity, 2));
+        Assert.All(rows.Select(r => KeyedList.Container(list, r.Key)), c => Assert.Equal(1, c.Opacity, 2));
     }
 
     [AvaloniaFact]
@@ -208,7 +203,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var (_, list) = Host(rows, animated: false);
         rows.Add(new KeyedRow("b"));
         Frame();
-        var row = Container(list, "b");
+        var row = KeyedList.Container(list, "b");
         Assert.DoesNotContain("entering", row.Classes);
         Assert.Equal(1, row.Opacity);
         Assert.Equal(30, row.Bounds.Height, 1);
@@ -350,13 +345,13 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b"), new("c") };
         var (window, list) = Host(rows);
         var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = Motion.Normal };
-        var below = Container(list, "c");
+        var below = KeyedList.Container(list, "c");
         double before = below.TranslatePoint(default, window)!.Value.Y;
         // what the rows do while b folds, recorded as it happens: the list lets it go after Motion.Normal of real time,
         // and under load one frame can take as long
-        var b = Container(list, "b");
+        var b = KeyedList.Container(list, "b");
         var faint = MotionWait.Record(b, v => v.Opacity);
-        var drift = MotionWait.Record(b, OffsetX);
+        var drift = MotionWait.Record(b, MotionWait.OffsetX);
         var tops = new List<double>(); // c's place after every layout pass, whichever container shows it
         list.LayoutUpdated += (_, _) =>
         {
@@ -372,7 +367,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         CollectionSync.Sync(rows, [new KeyedRow("a", 2), new KeyedRow("b", 2), new KeyedRow("c", 2)], leave); // back meanwhile
         MotionWait.Eventually(() =>
         {
-            var back = Container(list, "b");
+            var back = KeyedList.Container(list, "b");
             Assert.Equal(1, back.Opacity, 2);
             Assert.Equal(30, back.Bounds.Height, 1);
             Assert.True(back.IsHitTestVisible);
@@ -391,8 +386,6 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         Assert.DoesNotContain(server.Channels, c => c.Name == "Raid");
         main.Close();
     }
-
-    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
 
     // ---- Package 103: moves ----
 
@@ -414,12 +407,12 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1))); // another admin puts Raid first
         Frame();
         raid = ChannelContainer(main, "Raid"); // a moved entry gets a new row
-        double now = raid.TranslatePoint(default, main)!.Value.Y - OffsetY(raid);
+        double now = raid.TranslatePoint(default, main)!.Value.Y - MotionWait.OffsetY(raid);
         Assert.True(now < before, "Raid is first now");
         for (int i = 0; i < 5; i++) Frame();
-        double most = Math.Max(OffsetY(raid), Most(seen, item => item is ChannelViewModel { Name: "Raid" }));
+        double most = Math.Max(MotionWait.OffsetY(raid), Most(seen, item => item is ChannelViewModel { Name: "Raid" }));
         Assert.True(most > 0.5 * (before - now), $"it starts where it was: {most} of {before - now}");
-        MotionWait.Eventually(() => Assert.Equal(0, OffsetY(raid), 2));
+        MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetY(raid), 2));
         main.Close();
     }
 
@@ -544,7 +537,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         double gast = Least(seen, item => item is KeyedRow { Key: "Gast" });
         Assert.True(admin > 30, $"Admin glides up from 60 px below ({admin})");
         Assert.True(gast < -15, $"the others make room, gliding as well ({gast})");
-        MotionWait.Eventually(() => Assert.Equal(0, OffsetY(Container(list, "Admin")), 2));
+        MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetY(KeyedList.Container(list, "Admin")), 2));
     }
 
     /// <summary>
@@ -558,8 +551,8 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var (_, list) = Host(rows, flip: true);
         MotionWait.Until(() => !ItemMotion.TracksPlaces(list));
         Assert.False(ItemMotion.TracksPlaces(list));
-        Container(list, "a").GetVisualDescendants().OfType<Border>().First().Height = 60; // b, c and d move down by 30
-        MotionWait.Until(() => Container(list, "b").Bounds.Y == 60);
+        KeyedList.Container(list, "a").GetVisualDescendants().OfType<Border>().First().Height = 60; // b, c and d move down by 30
+        MotionWait.Until(() => KeyedList.Container(list, "b").Bounds.Y == 60);
         Assert.False(ItemMotion.TracksPlaces(list));
 
         var seen = WatchOffsets(list);
@@ -567,7 +560,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         for (int i = 0; i < 5; i++) Frame();
         Assert.True(Most(seen, item => item is KeyedRow { Key: "d" }) > 15, "d glides up from below");
         Assert.Equal(0, seen.Where(s => s.Item is KeyedRow { Key: "b" }).Select(s => Math.Abs(s.Y)).DefaultIfEmpty(0).Max(), 1);
-        MotionWait.Eventually(() => Assert.Equal(0, OffsetY(Container(list, "d")), 2));
+        MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetY(KeyedList.Container(list, "d")), 2));
     }
 
     [AvaloniaFact]
@@ -629,7 +622,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1)));
         server.Apply(new UserUpdated(Anna(FakeServers.Lobby)));
         Frame();
-        Assert.Equal(0, OffsetY(ChannelContainer(main, "Raid")));
+        Assert.Equal(0, MotionWait.OffsetY(ChannelContainer(main, "Raid")));
         MotionWait.Settle(60);
         Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
         main.Close();
@@ -643,14 +636,14 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var (_, list) = Host(rows);
         var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = TimeSpan.FromSeconds(5) }; // stays long after its fold
         CollectionSync.Sync(rows, [new KeyedRow("a", 1)], leave);
-        MotionWait.Eventually(() => Assert.Equal(0, Container(list, "b").Opacity, 2)); // folded
+        MotionWait.Eventually(() => Assert.Equal(0, KeyedList.Container(list, "b").Opacity, 2)); // folded
         CollectionSync.Sync(rows, [new KeyedRow("a", 2), new KeyedRow("b", 2)], leave);
         MotionWait.Eventually(() =>
         {
-            var b = Container(list, "b");
+            var b = KeyedList.Container(list, "b");
             Assert.Equal(1, b.Opacity, 2);
             Assert.Equal(30, b.Bounds.Height, 1);
-            Assert.Equal(0, OffsetX(b));
+            Assert.Equal(0, MotionWait.OffsetX(b));
         });
     }
 }
