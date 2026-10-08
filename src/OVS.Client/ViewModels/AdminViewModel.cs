@@ -124,7 +124,8 @@ public sealed partial class AdminViewModel : ObservableObject
         hasPassword = server.Mirror.Settings.HasPassword;
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
-        Logs = new LogsViewModel(server, this);
+        Transfer = new AdminTransfer(request => server.SendAsync(request), server.ShowNotice, server.Time);
+        Logs = new LogsViewModel(server, Transfer);
         GroupsPlace = AdminPlace.Create(() => Groups.Live().Any(g => g.HasChanges), GroupSave,
             () => SelectedGroup is { HasChanges: true } ? SendGroup() : null, DiscardGroups);
         LinksPlace = AdminPlace.Create(() => Links.HasPending, Links.Applying, Links.SendPending, () => Links.DiscardCommand.Execute(null));
@@ -193,7 +194,7 @@ public sealed partial class AdminViewModel : ObservableObject
         server.AdminMessage -= OnAdminMessage;
         server.StateChanged -= OnStateChanged;
         server.PropertyChanged -= OnServerPropertyChanged;
-        foreach (var reply in replies.Values) reply.TrySetCanceled(); // Package 75: a transfer stops and cleans up
+        Transfer.Cancel(); // Package 75: a transfer stops and cleans up
     }
 
     // ---- Server logo (Package 30) ----
@@ -285,22 +286,6 @@ public sealed partial class AdminViewModel : ObservableObject
                 userRefresh.Failed(e.RequestId);
                 banRefresh.Failed(e.RequestId);
                 if (pendingGroupChanges.RemoveAll(p => p.RequestId == e.RequestId) > 0) UpdateOwnGroupChangePending();
-                if (IsTransferring && e.RequestId is { } failed) Reply(failed).TrySetResult(e);
-                break;
-            case BackupChunk { RequestId: { } id }:
-                Reply(id).TrySetResult(message);
-                break;
-            case UploadBackupAck { RequestId: { } id }:
-                Reply(id).TrySetResult(message);
-                break;
-            case BackupUploaded { RequestId: { } id }:
-                Reply(id).TrySetResult(message);
-                break;
-            case LogDownloadReady { RequestId: { } id }: // Package 82
-                Reply(id).TrySetResult(message);
-                break;
-            case LogChunk { RequestId: { } id }:
-                Reply(id).TrySetResult(message);
                 break;
             case UserList list:
                 if (userPages.Add(list.RequestId, list.Offset, list.Total, list.Users, (id, o) => _ = server.SendAsync(new ListUsers(o), id)) is not { } users) break;
@@ -330,6 +315,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 Logs.Apply(message);
                 break;
         }
+        Transfer.Apply(message); // Package 75, 82: the answers to its chunks, and errors while it runs
     }
 
     void RebuildGroups()
@@ -689,139 +675,16 @@ public sealed partial class AdminViewModel : ObservableObject
 
     // ---- Package 75: download to and upload from this PC, chunk by chunk (A91) ----
 
-    static readonly TimeSpan TransferTimeout = TimeSpan.FromSeconds(30);
-    [ObservableProperty] bool isTransferring;
-    [ObservableProperty] double transferPercent;
-    [ObservableProperty] string transferText = "";
-    /// <summary>Answers by request id; an answer can come before SendAsync returns, so whoever comes first adds the entry.</summary>
-    readonly Dictionary<string, TaskCompletionSource<Message>> replies = [];
+    /// <summary>Packages 75 and 82: backups and log files to and from this PC, one transfer at a time; the logs tab shares it.</summary>
+    internal AdminTransfer Transfer { get; }
 
-    TaskCompletionSource<Message> Reply(string requestId)
-    {
-        if (!replies.TryGetValue(requestId, out var reply))
-            replies[requestId] = reply = new TaskCompletionSource<Message>(TaskCreationOptions.RunContinuationsAsynchronously);
-        return reply;
-    }
+    /// <summary>Saves the backup to target (chosen in the save dialog).</summary>
+    internal Task DownloadBackupAsync(BackupViewModel backup, string target) => Transfer.DownloadBackupAsync(backup.Info.FileName, target);
 
-    /// <summary>The server's answer to one request, or null (error, timeout, page closed). The server shows its own errors as a notice.</summary>
-    async Task<Message?> RequestAsync(Request request, string? failedText = null)
+    /// <summary>Uploads the file; with restore, asks the red question of Package 74 once it is stored.</summary>
+    internal async Task UploadBackupAsync(string path, bool restore)
     {
-        var id = await server.SendAsync(request);
-        try
-        {
-            var answer = await Reply(id).Task.WaitAsync(TransferTimeout, server.Time);
-            return answer is Error ? null : answer;
-        }
-        catch (TimeoutException)
-        {
-            server.ShowNotice(failedText ?? Strings.Backup_TransferFailed);
-            return null;
-        }
-        catch (OperationCanceledException)
-        {
-            return null;
-        }
-        finally
-        {
-            replies.Remove(id);
-        }
-    }
-
-    void Progress(string format, long done, long total)
-    {
-        TransferPercent = total <= 0 ? 100 : done * 100d / total;
-        TransferText = string.Format(format, (int)Math.Round(TransferPercent));
-    }
-
-    /// <summary>Writes to a temporary file next to target and moves it into place only once the last chunk arrived.</summary>
-    public async Task DownloadBackupAsync(BackupViewModel backup, string target)
-    {
-        if (IsTransferring) return;
-        IsTransferring = true;
-        Progress(Strings.Backup_Downloading, 0, 1);
-        try
-        {
-            await ChunkedDownload.RunAsync(target,
-                async offset => await RequestAsync(new DownloadBackup(backup.Info.FileName, offset)) is BackupChunk c ? new(c.Offset, c.TotalSize, c.DataBase64, c.IsLast) : null,
-                (done, total) => Progress(Strings.Backup_Downloading, done, total));
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException)
-        {
-            server.ShowNotice(Strings.Backup_TransferFailed);
-        }
-        finally
-        {
-            replies.Clear(); // answers to other failed requests that came in meanwhile
-            IsTransferring = false;
-        }
-    }
-
-    /// <summary>
-    /// Package 82 (A99): the server copies the chosen log files (one .log or a zip), then they come chunk by chunk like a backup,
-    /// with the same progress; one transfer at a time.
-    /// </summary>
-    internal async Task DownloadLogsAsync(IReadOnlyList<string> fileIds, string target)
-    {
-        if (IsTransferring || fileIds.Count == 0) return;
-        IsTransferring = true;
-        Progress(Strings.Logs_Downloading, 0, 1);
-        try
-        {
-            if (await RequestAsync(new PrepareLogDownload(fileIds), Strings.Logs_TransferFailed) is not LogDownloadReady ready) return;
-            await ChunkedDownload.RunAsync(target,
-                async offset => await RequestAsync(new DownloadLogChunk(ready.DownloadId, offset), Strings.Logs_TransferFailed) is LogChunk c
-                    ? new(c.Offset, c.TotalSize, c.DataBase64, c.IsLast) : null,
-                (done, total) => Progress(Strings.Logs_Downloading, done, total));
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException)
-        {
-            server.ShowNotice(Strings.Logs_TransferFailed);
-        }
-        finally
-        {
-            replies.Clear(); // answers to other failed requests that came in meanwhile
-            IsTransferring = false;
-        }
-    }
-
-    /// <summary>Sends the file in chunks, each after the server's answer; with restore, asks the red question of Package 74 once it is stored.</summary>
-    public async Task UploadBackupAsync(string path, bool restore)
-    {
-        if (IsTransferring || !CanUploadRestore) return;
-        IsTransferring = true;
-        Progress(Strings.Backup_Uploading, 0, 1);
-        BackupInfo? uploaded = null;
-        try
-        {
-            await using var file = File.OpenRead(path);
-            if (file.Length > ProtocolLimits.MaxBackupUploadBytes)
-            {
-                server.ShowNotice(ErrorTexts.For(ReasonCodes.BackupTooLarge));
-                return;
-            }
-            var uploadId = Guid.NewGuid().ToString("N");
-            var buffer = new byte[ProtocolLimits.BackupChunkBytes];
-            for (long offset = 0; ;)
-            {
-                int read = await file.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false);
-                bool last = offset + read >= file.Length;
-                var answer = await RequestAsync(new UploadBackupChunk(uploadId, offset, Convert.ToBase64String(buffer, 0, read), last));
-                offset += read;
-                Progress(Strings.Backup_Uploading, offset, file.Length);
-                if (answer is BackupUploaded u) uploaded = u.Backup;
-                if (last || answer is not UploadBackupAck) break;
-            }
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            server.ShowNotice(Strings.Backup_TransferFailed);
-        }
-        finally
-        {
-            replies.Clear(); // answers to other failed requests that came in meanwhile
-            IsTransferring = false;
-        }
-        if (!restore || uploaded is null) return;
+        if (!CanUploadRestore || await Transfer.UploadBackupAsync(path) is not { } uploaded || !restore) return;
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
         await server.SendAsync(new RestoreBackup(uploaded.FileName), pending: Restoring);
     }

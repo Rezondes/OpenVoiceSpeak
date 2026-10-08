@@ -654,22 +654,22 @@
                         </StackPanel>
                       </Button>
                       <!-- Package 89 (A101): upload and restore only for members of the Admin group -->
-                      <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
+                      <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !Transfer.IsRunning}" IsVisible="{Binding CanUploadRestore}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                           <PathIcon Classes="nudgeUp sm" Data="{StaticResource Icon.ArrowUp}" />
                           <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
                         </StackPanel>
                       </Button>
-                      <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !IsTransferring}" IsVisible="{Binding CanUploadRestore}">
+                      <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !Transfer.IsRunning}" IsVisible="{Binding CanUploadRestore}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                           <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
                           <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
                         </StackPanel>
                       </Button>
                     </WrapPanel>
-                    <StackPanel Name="BackupTransfer" Spacing="4" IsVisible="{Binding IsTransferring}">
-                      <TextBlock Classes="caption" Text="{Binding TransferText}" />
-                      <ProgressBar Minimum="0" Maximum="100" Value="{Binding TransferPercent}" Height="8" CornerRadius="4" />
+                    <StackPanel Name="BackupTransfer" Spacing="4" IsVisible="{Binding Transfer.IsRunning}">
+                      <TextBlock Classes="caption" Text="{Binding Transfer.ProgressText}" />
+                      <ProgressBar Minimum="0" Maximum="100" Value="{Binding Transfer.Percent}" Height="8" CornerRadius="4" />
                     </StackPanel>
                     <TextBlock Classes="danger" Text="{Binding BackupCreate.Error}" TextWrapping="Wrap" IsVisible="{Binding BackupCreate.HasError}" />
                     <ContentControl Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding BackupsLoad.HasState}" />
@@ -779,9 +779,9 @@
                 </Button>
                 <TextBlock Classes="caption" Text="{Binding SelectionText}" VerticalAlignment="Center" />
               </WrapPanel>
-              <StackPanel Name="LogTransfer" Spacing="4" IsVisible="{Binding Owner.IsTransferring}">
-                <TextBlock Classes="caption" Text="{Binding Owner.TransferText}" />
-                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Owner.TransferPercent}" Height="8" CornerRadius="4" />
+              <StackPanel Name="LogTransfer" Spacing="4" IsVisible="{Binding Transfer.IsRunning}">
+                <TextBlock Classes="caption" Text="{Binding Transfer.ProgressText}" />
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Transfer.Percent}" Height="8" CornerRadius="4" />
               </StackPanel>
             </StackPanel>
             <!-- file list (or the hits of a search) beside the opened file; under narrow one after the other (styles in Controls.axaml) -->

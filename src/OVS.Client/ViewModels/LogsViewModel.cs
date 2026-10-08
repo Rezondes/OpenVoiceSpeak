@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
 using OVS.Client.Models;
+using OVS.Client.Services;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
@@ -52,11 +53,11 @@ public sealed partial class LogsViewModel : ObservableObject
     [ObservableProperty] bool showHits;
     [ObservableProperty] string hitsText = "";
 
-    /// <param name="owner">The administration page; its transfer machinery and progress carry the download.</param>
-    public LogsViewModel(ServerViewModel server, AdminViewModel? owner = null)
+    /// <param name="transfer">The administration page's transfer; it carries the download and shows its progress.</param>
+    internal LogsViewModel(ServerViewModel server, AdminTransfer transfer)
     {
         this.server = server;
-        Owner = owner;
+        Transfer = transfer;
         FilesLoad = server.NewPending();
         Searching = server.NewPending();
         Searching.PropertyChanged += (_, e) =>
@@ -82,7 +83,7 @@ public sealed partial class LogsViewModel : ObservableObject
     public bool HasLines => Lines.Count > 0;
     public ObservableCollection<LogHitViewModel> Hits { get; } = [];
 
-    public AdminViewModel? Owner { get; }
+    internal AdminTransfer Transfer { get; }
     /// <summary>Package 97 (A113): the file list's loading state and the running search.</summary>
     public PendingViewModel FilesLoad { get; }
     public PendingViewModel Searching { get; }
@@ -226,7 +227,7 @@ public sealed partial class LogsViewModel : ObservableObject
     }
 
     /// <summary>Saves the selection to target (chosen in the save dialog).</summary>
-    public Task DownloadAsync(string target) => Owner?.DownloadLogsAsync(SelectedIds, target) ?? Task.CompletedTask;
+    public Task DownloadAsync(string target) => Transfer.DownloadLogsAsync(SelectedIds, target);
 
     string TitleOf(string fileId) => allFiles.FirstOrDefault(f => f.Id == fileId) is { } f ? LogFileViewModel.TitleOf(f) : fileId;
 

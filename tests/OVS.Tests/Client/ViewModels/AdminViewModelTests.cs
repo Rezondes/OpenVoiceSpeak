@@ -402,52 +402,24 @@ public class AdminViewModelTests
         Assert.False(admin.Backups[0].CanRestore);
     }
 
-    /// <summary>Package 75: the backup arrives chunk by chunk, each asked for, and is only moved to the chosen path when complete.</summary>
+    /// <summary>Package 75: "Herunterladen" saves the chosen backup at the chosen path (the chunks: AdminTransferTests).</summary>
     [Fact]
-    public async Task Download_SavesToChosenPath_Progress()
+    public async Task DownloadBackupAsync_BackupChosen_SavesItsArchive()
     {
         var dir = Directory.CreateTempSubdirectory("ovs-download-").FullName;
         try
         {
-            var archive = new byte[1_200_000];
-            Random.Shared.NextBytes(archive);
+            byte[] archive = [1, 2, 3];
             var info = new BackupInfo("2026-02-01_10-00-00.ovsbackup", DateTimeOffset.UtcNow, archive.Length, "dev.0000");
-            AdminViewModel? vm = null;
-            var progress = new List<(bool Busy, double Percent, string Text)>();
-            string? failAt = null;
-            Message? Reply(Request r)
-            {
-                if (r is not DownloadBackup d) return null;
-                progress.Add((vm!.IsTransferring, vm.TransferPercent, vm.TransferText));
-                if (failAt is not null && d.Offset > 0) return new Error(r.RequestId, ReasonCodes.NotFound);
-                var size = (int)Math.Min(OVS.Shared.Protocol.ProtocolLimits.BackupChunkBytes, archive.Length - d.Offset);
-                return new BackupChunk(r.RequestId, d.FileName, d.Offset, archive.Length, Convert.ToBase64String(archive, (int)d.Offset, size),
-                    d.Offset + size >= archive.Length);
-            }
-            var (admin, server, sent) = Create(P.BackupsManage | P.Speak, reply: Reply);
-            vm = admin;
+            var (vm, server, sent) = Create(P.BackupsManage | P.Speak, reply: r => r is DownloadBackup d
+                ? new BackupChunk(r.RequestId, d.FileName, d.Offset, archive.Length, Convert.ToBase64String(archive), true) : null);
             server.Apply(new BackupList("r", [info]));
 
             var target = Path.Combine(dir, "mein-backup.ovsbackup");
-            await vm.DownloadBackupAsync(vm.Backups[0], target);
-            Assert.Equal(archive, File.ReadAllBytes(target));
-            Assert.Equal([0L, 524_288L, 1_048_576L], sent.OfType<DownloadBackup>().Select(d => d.Offset));
-            Assert.All(sent.OfType<DownloadBackup>(), d => Assert.Equal(info.FileName, d.FileName));
-            Assert.All(progress, p => Assert.True(p.Busy));
-            Assert.Equal([0d, 43.7, 87.4], progress.Select(p => Math.Round(p.Percent, 1)));
-            Assert.Equal(string.Format(OVS.Client.Localization.Strings.Backup_Downloading, 44), progress[1].Text);
-            Assert.False(vm.IsTransferring);
-            Assert.Equal([target], Directory.GetFiles(dir));
+            await HangGuard.Bound(vm.DownloadBackupAsync(vm.Backups[0], target));
 
-            // an error in the middle: the file there before stays as it was, no half file is left
-            File.WriteAllText(target, "alt");
-            failAt = "second";
-            sent.Clear();
-            await vm.DownloadBackupAsync(vm.Backups[0], target);
-            Assert.Equal(2, sent.Count);
-            Assert.Equal("alt", File.ReadAllText(target));
-            Assert.Equal([target], Directory.GetFiles(dir));
-            Assert.False(vm.IsTransferring);
+            Assert.Equal(info.FileName, Assert.Single(sent.OfType<DownloadBackup>()).FileName);
+            Assert.Equal(archive, File.ReadAllBytes(target));
         }
         finally
         {
@@ -455,47 +427,32 @@ public class AdminViewModelTests
         }
     }
 
-    /// <summary>Package 75: the file goes up chunk by chunk; "Hochladen und wiederherstellen" asks the red question of Package 74 first.</summary>
+    /// <summary>
+    /// Package 75: "Hochladen und wiederherstellen" asks the red question of Package 74 once the server stored the upload
+    /// (the chunks: AdminTransferTests).
+    /// </summary>
     [Fact]
     public async Task UploadAndRestore_AsksFirst()
     {
         var dir = Directory.CreateTempSubdirectory("ovs-upload-").FullName;
         try
         {
-            var archive = new byte[1_100_000];
-            Random.Shared.NextBytes(archive);
+            byte[] archive = [1, 2, 3];
             var file = Path.Combine(dir, "backup.ovsbackup");
             File.WriteAllBytes(file, archive);
             var info = new BackupInfo("hochgeladen_2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 1, 5, 9, 0, 0, TimeSpan.Zero), archive.Length, "dev.0000");
             var asked = new List<string>();
             bool answer = false;
             var dialogs = new DialogCallbacks { ConfirmRestore = title => { asked.Add(title); return Task.FromResult(answer); } };
-            AdminViewModel? vm = null;
-            var received = new MemoryStream();
-            var busy = new List<bool>();
             bool invalid = false;
-            Message? Reply(Request r)
-            {
-                if (r is not UploadBackupChunk c) return null;
-                busy.Add(vm!.IsTransferring);
-                Assert.Equal(received.Length, c.Offset);
-                received.Write(Convert.FromBase64String(c.DataBase64));
-                if (!c.IsLast) return new UploadBackupAck(r.RequestId, c.UploadId, received.Length);
-                return invalid ? new Error(r.RequestId, ReasonCodes.InvalidBackup) : new BackupUploaded(r.RequestId, info);
-            }
-            var (admin, _, sent) = Create(P.All, dialogs: dialogs, reply: Reply, groupIds: [WellKnownGroups.Admin]);
-            vm = admin;
+            Message? Reply(Request r) => r is not UploadBackupChunk ? null
+                : invalid ? new Error(r.RequestId, ReasonCodes.InvalidBackup) : new BackupUploaded(r.RequestId, info);
+            var (vm, _, sent) = Create(P.All, dialogs: dialogs, reply: Reply, groupIds: [WellKnownGroups.Admin]);
 
-            // only upload: no question, no restore
-            await vm.UploadBackupAsync(file, restore: false);
-            Assert.Equal(archive, received.ToArray());
-            var chunks = sent.OfType<UploadBackupChunk>().ToList();
-            Assert.Equal(3, chunks.Count);
-            Assert.Single(chunks.Select(c => c.UploadId).Distinct());
-            Assert.Matches("^[0-9a-f]{32}$", chunks[0].UploadId);
-            Assert.Equal([false, false, true], chunks.Select(c => c.IsLast));
-            Assert.All(busy, Assert.True);
-            Assert.False(vm.IsTransferring);
+            // only upload: it reaches the server, no question, no restore
+            await HangGuard.Bound(vm.UploadBackupAsync(file, restore: false));
+            var first = Assert.Single(sent.OfType<UploadBackupChunk>());
+            Assert.Equal(archive, Convert.FromBase64String(first.DataBase64));
             Assert.Empty(asked);
             Assert.DoesNotContain(sent, r => r is RestoreBackup);
 
@@ -503,24 +460,46 @@ public class AdminViewModelTests
             foreach (var yes in new[] { false, true })
             {
                 answer = yes;
-                received.SetLength(0);
                 sent.Clear();
-                await vm.UploadBackupAsync(file, restore: true);
-                Assert.Equal(archive, received.ToArray());
+                await HangGuard.Bound(vm.UploadBackupAsync(file, restore: true));
+                Assert.Single(sent.OfType<UploadBackupChunk>());
                 Assert.Equal(yes ? [new RestoreBackup(info.FileName)] : [], sent.OfType<RestoreBackup>().Select(r => r with { RequestId = null }));
             }
             Assert.Equal(2, asked.Count);
             Assert.All(asked, a => Assert.Contains(new BackupViewModel(info, _ => Task.CompletedTask, _ => Task.CompletedTask).Title, a));
-            Assert.NotEqual(sent.OfType<UploadBackupChunk>().First().UploadId, chunks[0].UploadId); // a new id per upload
+            Assert.NotEqual(sent.OfType<UploadBackupChunk>().First().UploadId, first.UploadId); // a new id per upload
 
             // the server refuses the archive: nothing to restore, no question
             invalid = true;
-            received.SetLength(0);
             sent.Clear();
-            await vm.UploadBackupAsync(file, restore: true);
+            await HangGuard.Bound(vm.UploadBackupAsync(file, restore: true));
             Assert.Equal(2, asked.Count);
             Assert.DoesNotContain(sent, r => r is RestoreBackup);
-            Assert.False(vm.IsTransferring);
+            Assert.False(vm.Transfer.IsRunning);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    /// <summary>Upload and restore only for members of the Admin group, also when called without the button.</summary>
+    [Fact]
+    public void UploadBackupAsync_OutsideTheAdminGroup_ReturnsWithoutSending()
+    {
+        var dir = Directory.CreateTempSubdirectory("ovs-upload-").FullName;
+        try
+        {
+            var file = Path.Combine(dir, "backup.ovsbackup");
+            File.WriteAllBytes(file, [1, 2, 3]);
+            var (vm, _, sent) = Create(P.All); // all rights, but not in the Admin group
+
+            var upload = vm.UploadBackupAsync(file, restore: true);
+
+            Assert.False(vm.CanUploadRestore);
+            Assert.True(upload.IsCompleted);
+            Assert.DoesNotContain(sent, r => r is UploadBackupChunk);
+            Assert.False(vm.Transfer.IsRunning);
         }
         finally
         {

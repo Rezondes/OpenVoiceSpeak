@@ -4813,8 +4813,8 @@ Steuernachrichten sind höchstens 1 MiB gross (`FrameReader.MaxFrameSize`). Base
 2. `BackupTests > "Upload_ValidatedStored_Listed"` (AC2)
 3. `BackupTests > "Upload_TooLargeOrAborted_NoFileLeft"` (AC3)
 4. `BackupTests > "Upload_InvalidArchive_Rejected"` (AC2)
-5. `AdminViewModelTests > "Download_SavesToChosenPath_Progress"` (AC1, AC3)
-6. `AdminViewModelTests > "UploadAndRestore_AsksFirst"` (AC2)
+5. `AdminViewModelTests > "DownloadBackupAsync_BackupChosen_SavesItsArchive"`, `AdminTransferTests > [Theory] "Download_ChunksAnswered_FileInPlaceWithProgress"` (AC1, AC3)
+6. `AdminViewModelTests > "UploadAndRestore_AsksFirst"`, `AdminTransferTests > "UploadBackupAsync_ChunksAcknowledged_ReturnsTheStoredBackupWithProgress"`, `[Theory] "UploadBackupAsync_FileSize_RefusedOnlyOverTheLimit"` (AC2, AC3)
 7. `LocalizationTests` (AC5)
 
 Testbefehl: `dotnet test`
@@ -5288,7 +5288,7 @@ After Package 81 the client knows the log files by id. Backups (Package 75) alre
 3. `LogCommandTests > "Download_RequiresLogsDownload_TooLargeRejected"` (AC1, AC4)
 4. `LogCommandTests > "Download_ChunkedPullBased_ChatStillFlows"` (AC4, AC5)
 5. `LogsViewModelTests > "Selection_AllInPeriod_None_SingleVsZip"` (AC2)
-6. `LogsViewModelTests > "Download_PartFileMovedAtEnd_Progress"` (AC4)
+6. `LogsViewModelTests > "DownloadAsync_TwoFilesSelected_SavesTheirZip"`, `AdminTransferTests > [Theory] "Download_ChunksAnswered_FileInPlaceWithProgress"`, `[Theory] "Download_ErrorForASecondChunk_OldFileKeptWithoutNotice"` (AC4)
 7. `ResponsiveTests > "Admin_EveryTabFits"` with the selection and progress, `LocalizationTests` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -5644,7 +5644,7 @@ All backup requests need `ServerConfig` (BackupCommands.cs). A holder of that ri
 3. `BackupTests > "UploadAndRestore_OnlyAdminGroup_CheckedPerChunk"` (AC2)
 4. `BackupTests > "Restore_InvalidContent_RejectedServerStillStarts"` (AC3): Theory null users, null settings, null channels, invalid names, dangling group ids, no admin
 5. `BackupTests > "ManifestCap_Quota_ListingCached"` (AC4)
-6. `AdminViewModelTests > "BackupButtons_ByRightAndAdminGroup_DownloadWarns"` (AC2, AC5)
+6. `AdminViewModelTests > "BackupButtons_ByRightAndAdminGroup_DownloadWarns"`, `"UploadBackupAsync_OutsideTheAdminGroup_ReturnsWithoutSending"` (AC2, AC5)
 7. `LocalizationTests` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`

@@ -500,11 +500,17 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Admin_EveryTabFits(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = OpenAdmin(width, out var page);
-        // Package 75: a transfer in progress, so its progress line is checked with the rest of the Server tab
         var admin = (AdminViewModel)page.DataContext!;
-        admin.IsTransferring = true;
-        admin.TransferPercent = 42;
-        admin.TransferText = string.Format(Strings.Backup_Uploading, 42);
+        // Package 75: nothing running, so neither progress shows, the backups' on the Server tab and the logs' on theirs
+        foreach (var (header, progress) in new[] { (Strings.Ui_Server, "BackupTransfer"), (Strings.Ui_Logs, "LogTransfer") })
+        {
+            SelectTab(page, Enumerable.Range(0, AdminTabs(page).ItemCount).Single(i => ((TabItem)AdminTabs(page).ContainerFromIndex(i)!).Header as string == header));
+            Assert.False(page.FindControl<Control>(progress)!.IsEffectivelyVisible, progress);
+        }
+        // Package 75: a transfer in progress, so its progress line is checked with the rest of the Server tab
+        admin.Transfer.IsRunning = true;
+        admin.Transfer.Percent = 42;
+        admin.Transfer.ProgressText = string.Format(Strings.Backup_Uploading, 42);
         // Package 97: the waiting states, checked with the rest: a refresh, a first load, a failed refresh, busy buttons
         admin.UsersLoad.IsBusy = true;
         admin.BansLoad.HasSucceeded = false;
@@ -550,7 +556,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Download && t.IsEffectivelyVisible));
         foreach (var name in new[] { "UploadBackupButton", "UploadRestoreButton", "BackupTransfer" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
-        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.TransferText && t.IsEffectivelyVisible);
+        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.Transfer.ProgressText && t.IsEffectivelyVisible);
         // Package 97: "Backup anlegen" busy (checked above), then the whole card while restoring
         Assert.Contains(page.FindControl<Button>("NewBackupButton")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
         admin.Restoring.IsBusy = true;

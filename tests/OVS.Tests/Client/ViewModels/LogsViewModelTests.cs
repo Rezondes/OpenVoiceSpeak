@@ -219,57 +219,27 @@ public class LogsViewModelTests
         Assert.False(logs.CanDownload);
     }
 
+    /// <summary>Package 82: the checked files' ids go to the server and their zip arrives (the chunks: AdminTransferTests).</summary>
     [Fact]
-    public async Task Download_PartFileMovedAtEnd_Progress()
+    public async Task DownloadAsync_TwoFilesSelected_SavesTheirZip()
     {
         var dir = Directory.CreateTempSubdirectory("ovs-logdownload-").FullName;
         try
         {
-            var zip = new byte[1_200_000];
-            Random.Shared.NextBytes(zip);
-            string? target = null;
-            bool fail = false;
-            LogsViewModel? logs = null;
-            var progress = new List<(bool Busy, double Percent, bool PartExists, bool TargetExists)>();
-            Message? Reply(Request r)
+            byte[] zip = [1, 2, 3];
+            var (logs, sent) = Create(perms: Permission.LogsView | Permission.LogsDownload, reply: r => r switch
             {
-                switch (r)
-                {
-                    case PrepareLogDownload p:
-                        Assert.Equal([ServerFile.Id, RaidFile.Id], p.FileIds);
-                        return new LogDownloadReady(r.RequestId, "d1", "ovs-logs.zip", zip.Length);
-                    case DownloadLogChunk c:
-                        Assert.Equal("d1", c.DownloadId);
-                        progress.Add((logs!.Owner!.IsTransferring, logs.Owner.TransferPercent, File.Exists(target + ".part"), File.Exists(target)));
-                        if (fail && c.Offset > 0) return new Error(r.RequestId, ReasonCodes.NotFound);
-                        var size = (int)Math.Min(ProtocolLimits.BackupChunkBytes, zip.Length - c.Offset);
-                        return new LogChunk(r.RequestId, "d1", c.Offset, zip.Length, Convert.ToBase64String(zip, (int)c.Offset, size), c.Offset + size >= zip.Length);
-                    default:
-                        return null;
-                }
-            }
-            var (created, sent) = Create(perms: Permission.LogsView | Permission.LogsDownload, reply: Reply);
-            logs = created;
+                PrepareLogDownload => new LogDownloadReady(r.RequestId, "d1", "ovs-logs.zip", zip.Length),
+                DownloadLogChunk c => new LogChunk(r.RequestId, c.DownloadId, c.Offset, zip.Length, Convert.ToBase64String(zip), true),
+                _ => null,
+            });
             logs.Files[0].IsSelected = logs.Files[1].IsSelected = true;
-            target = Path.Combine(dir, "logs.zip");
+            var target = Path.Combine(dir, "logs.zip");
 
-            await logs.DownloadAsync(target);
+            await HangGuard.Bound(logs.DownloadAsync(target));
+
+            Assert.Equal([ServerFile.Id, RaidFile.Id], Assert.Single(sent.OfType<PrepareLogDownload>()).FileIds);
             Assert.Equal(zip, File.ReadAllBytes(target));
-            Assert.Equal([0L, 524_288L, 1_048_576L], sent.OfType<DownloadLogChunk>().Select(c => c.Offset));
-            Assert.Equal([0d, 43.7, 87.4], progress.Select(p => Math.Round(p.Percent, 1)));
-            Assert.All(progress, p => Assert.True(p.Busy && !p.TargetExists));
-            Assert.All(progress.Skip(1), p => Assert.True(p.PartExists));
-            Assert.Equal(string.Format(OVS.Client.Localization.Strings.Logs_Downloading, 100), logs.Owner!.TransferText);
-            Assert.False(logs.Owner.IsTransferring);
-            Assert.Equal([target], Directory.GetFiles(dir));
-
-            // a failed chunk leaves the file there before untouched and no half file
-            File.WriteAllText(target, "alt");
-            fail = true;
-            await logs.DownloadAsync(target);
-            Assert.Equal("alt", File.ReadAllText(target));
-            Assert.Equal([target], Directory.GetFiles(dir));
-            Assert.False(logs.Owner.IsTransferring);
         }
         finally
         {
