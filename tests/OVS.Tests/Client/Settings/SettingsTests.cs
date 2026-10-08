@@ -255,7 +255,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     {
         // Package 59 (replaces "no keys at all" from Package 29): a new profile can talk right away
         var fresh = ClientSettings.Load(dir, out _);
-        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()))], fresh.KeyBindings);
+        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, DefaultPushToTalk.Choose(DefaultPushToTalk.CountMouseButtons()))], fresh.KeyBindings);
         Assert.Equal(TransmitMode.PushToTalk, fresh.Mode);
 
         new ClientSettings().Save(dir); // an existing profile without keys keeps them that way
@@ -270,8 +270,8 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     {
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{"mode":"PushToTalk","pttKey":5,"linkPttKey":6}""");
         var s = ClientSettings.Load(dir, out _);
-        Assert.Equal(new KeyChord(KeyPoller.VkXButton1), s.ChordFor(KeyAction.PushToTalk));
-        Assert.Equal(new KeyChord(KeyPoller.VkXButton2), s.ChordFor(KeyAction.LinkPushToTalk));
+        Assert.Equal(new KeyChord(VirtualKeys.XButton1), s.ChordFor(KeyAction.PushToTalk));
+        Assert.Equal(new KeyChord(VirtualKeys.XButton2), s.ChordFor(KeyAction.LinkPushToTalk));
 
         s.Save(dir);
         var json = File.ReadAllText(Path.Combine(dir, ClientSettings.FileName));
@@ -294,7 +294,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public async Task KeyList_StartsEmpty_AddEditRemove()
     {
-        var answers = new Queue<KeyBinding?>([Bind(KeyAction.PushToMute, KeyPoller.VkXButton1), null, Bind(KeyAction.ToggleMute, 0x70)]);
+        var answers = new Queue<KeyBinding?>([Bind(KeyAction.PushToMute, VirtualKeys.XButton1), null, Bind(KeyAction.ToggleMute, 0x70)]);
         var vm = ListVm(answers);
         await vm.AddKeyBindingCommand.ExecuteAsync(null);
         Assert.Equal("Push-to-Mute (stumm, solange gedrückt)", vm.KeyBindings.Single().Label);
@@ -312,7 +312,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public async Task KeyList_SameActionTwoKeys_Saves()
     {
-        var vm = ListVm(new([Bind(KeyAction.PushToMute, KeyPoller.VkXButton1), Bind(KeyAction.PushToMute, KeyPoller.VkXButton2)]));
+        var vm = ListVm(new([Bind(KeyAction.PushToMute, VirtualKeys.XButton1), Bind(KeyAction.PushToMute, VirtualKeys.XButton2)]));
         await vm.AddKeyBindingCommand.ExecuteAsync(null);
         await vm.AddKeyBindingCommand.ExecuteAsync(null);
         Assert.True(vm.CanSave);
@@ -341,7 +341,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void KeyList_ExistingProfile_ShownAsList()
     {
-        var s = new ClientSettings { KeyBindings = [Bind(KeyAction.PushToTalk, KeyPoller.VkXButton1), Bind(KeyAction.LinkPushToTalk, KeyPoller.VkXButton2)] };
+        var s = new ClientSettings { KeyBindings = [Bind(KeyAction.PushToTalk, VirtualKeys.XButton1), Bind(KeyAction.LinkPushToTalk, VirtualKeys.XButton2)] };
         var vm = Vm(s);
         Assert.Equal(["Maustaste 4", "Maustaste 5"], vm.KeyBindings.Select(b => b.ChordName));
         Assert.Equal(s.KeyBindings, vm.ToSettings(new ClientSettings()).KeyBindings);
@@ -792,13 +792,37 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.False(vm.ShowPttHint);
         vm.VoiceActivation = false;
         Assert.True(vm.ShowPttHint);
-        var ptt = new KeyBindingViewModel(new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1)), vm);
+        var ptt = new KeyBindingViewModel(new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1)), vm);
         vm.KeyBindings.Add(ptt);
         Assert.False(vm.ShowPttHint);
         vm.KeyBindings.Remove(ptt);
         vm.KeyBindings.Add(new KeyBindingViewModel(new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x4D)), vm));
         Assert.True(vm.ShowPttHint); // another key does not help
         Assert.True(changes.Count(c => c == nameof(SettingsViewModel.ShowPttHint)) >= 4);
+    }
+
+    /// <summary>The key dialog captures through the chord capture the page was given (the key poller's in the app).</summary>
+    [Fact]
+    public async Task AddKeyBinding_CaptureGiven_DialogGetsItsChord()
+    {
+        var chord = new KeyChord(0x70, ChordModifiers.Ctrl);
+        var vm = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System, () => Task.FromResult(chord));
+        KeyChord? captured = null;
+        vm.EditKeyBinding = async (_, capture) => { captured = await capture(KeyAction.ToggleMute); return null; };
+        await vm.AddKeyBindingCommand.ExecuteAsync(null);
+        Assert.Equal(chord, captured);
+    }
+
+    [Fact]
+    public async Task AddKeyBinding_NoCapture_DialogGetsNoChord()
+    {
+        var vm = Vm();
+        bool asked = false;
+        KeyChord? captured = new(0x70);
+        vm.EditKeyBinding = async (_, capture) => { asked = true; captured = await capture(KeyAction.ToggleMute); return null; };
+        await vm.AddKeyBindingCommand.ExecuteAsync(null);
+        Assert.True(asked);
+        Assert.Null(captured);
     }
 
     [Fact]
@@ -809,12 +833,12 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         vm.EditKeyBinding = (current, _) =>
         {
             shown = current;
-            return Task.FromResult<KeyBinding?>(new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl)));
+            return Task.FromResult<KeyBinding?>(new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl)));
         };
         await vm.SetPttKeyCommand.ExecuteAsync(null);
         Assert.Equal(KeyAction.PushToTalk, shown!.Action);
         Assert.Equal(0, shown.Chord.Key); // no key yet: the user presses one
-        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl))], vm.KeyBindings.Select(b => b.Binding));
+        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl))], vm.KeyBindings.Select(b => b.Binding));
         Assert.False(vm.ShowPttHint);
     }
 

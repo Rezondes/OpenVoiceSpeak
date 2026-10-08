@@ -169,6 +169,6 @@ public class IdleCostTests
         ];
         Func<int, bool> isDown = vk => vk == 0x7A;
         var tracker = new KeyStateTracker();
-        Assert.Equal(0, Allocated(() => tracker.Update(KeyActions.Resolve(bindings, isDown, ChordModifiers.Ctrl))).Min());
+        Assert.Equal(0, Allocated(() => tracker.Update(KeyBindingMatcher.Resolve(bindings, isDown, ChordModifiers.Ctrl))).Min());
     }
 }

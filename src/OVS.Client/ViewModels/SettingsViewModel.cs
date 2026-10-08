@@ -14,7 +14,7 @@ namespace OVS.Client.ViewModels;
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
-    readonly KeyPoller? keys;
+    readonly Func<Task<KeyChord>>? captureChord;
 
     [ObservableProperty] AudioDeviceOption selectedInput;
     [ObservableProperty] AudioDeviceOption selectedOutput;
@@ -63,10 +63,11 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
     /// <param name="time">Package 98: the clock of the waiting states (tests use a manual one).</param>
+    /// <param name="captureChord">The next chord the user presses (the key poller's capture); without it the key dialog captures nothing.</param>
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, TimeProvider time,
-        KeyPoller? keys = null)
+        Func<Task<KeyChord>>? captureChord = null)
     {
-        this.keys = keys;
+        this.captureChord = captureChord;
         Saving = new PendingViewModel(time, PendingViewModel.UiPost());
         Checking = new PendingViewModel(time, PendingViewModel.UiPost());
         basis = current;
@@ -272,8 +273,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     string? KeyConflict =>
         KeyBindings.GroupBy(b => b.Binding.Chord).Where(g => g.Count() > 1).Select(g => g.Select(b => b.Binding.Action).Distinct().ToList())
             .Select(actions => actions.Count > 1
-                ? string.Format(Strings.Keys_Conflict, KeyActions.Label(actions[0]), KeyActions.Label(actions[1]))
-                : string.Format(Strings.Keys_Duplicate, KeyActions.Label(actions[0])))
+                ? string.Format(Strings.Keys_Conflict, KeyActionLabels.Localize(actions[0]), KeyActionLabels.Localize(actions[1]))
+                : string.Format(Strings.Keys_Duplicate, KeyActionLabels.Localize(actions[0])))
             .FirstOrDefault();
 
     public bool HasKeyConflict => KeyConflict is not null;
@@ -304,7 +305,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     Task<KeyChord?> CaptureAsync(KeyAction action) =>
-        keys is null ? Task.FromResult<KeyChord?>(null) : keys.CaptureNextChordAsync().ContinueWith(t => (KeyChord?)t.Result, TaskScheduler.Default);
+        captureChord is null ? Task.FromResult<KeyChord?>(null) : captureChord().ContinueWith(t => (KeyChord?)t.Result, TaskScheduler.Default);
 
     [RelayCommand]
     async Task AddKeyBinding()

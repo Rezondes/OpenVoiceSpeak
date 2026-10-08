@@ -1,23 +1,8 @@
-using OVS.Client.Localization;
-
 namespace OVS.Client.Input;
 
-public static class KeyActions
+/// <summary>Which key bindings the keys pressed right now trigger.</summary>
+public static class KeyBindingMatcher
 {
-    public static readonly IReadOnlyList<KeyAction> All = Enum.GetValues<KeyAction>();
-
-    public static bool IsHold(KeyAction action) => action is KeyAction.PushToTalk or KeyAction.LinkPushToTalk or KeyAction.PushToMute;
-
-    public static string Label(KeyAction action) => action switch
-    {
-        KeyAction.PushToTalk => Strings.KeyAction_PushToTalk,
-        KeyAction.LinkPushToTalk => Strings.KeyAction_LinkPushToTalk,
-        KeyAction.PushToMute => Strings.KeyAction_PushToMute,
-        KeyAction.ToggleMute => Strings.KeyAction_ToggleMute,
-        KeyAction.ToggleDeafen => Strings.KeyAction_ToggleDeafen,
-        _ => action.ToString(),
-    };
-
     /// <summary>
     /// The actions whose chord is fully pressed. Extra modifiers do not hurt (Shift held while running still lets
     /// a plain PTT key work), but for one key only the bindings with the most matching modifiers count,
@@ -43,7 +28,4 @@ public static class KeyActions
 
     static bool Matches(KeyBinding binding, Func<int, bool> isDown, ChordModifiers held) =>
         binding.Chord.Key != 0 && (binding.Chord.Modifiers & held) == binding.Chord.Modifiers && isDown(binding.Chord.Key);
-
-    /// <summary>The hold actions (<see cref="IsHold"/>) as one set.</summary>
-    public static readonly KeyActionSet Holds = new KeyActionSet().With(KeyAction.PushToTalk).With(KeyAction.LinkPushToTalk).With(KeyAction.PushToMute);
 }

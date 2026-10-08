@@ -347,7 +347,7 @@ public sealed class DebugApi : IDisposable
     {
         var name = Text(body, "action");
         if (!Enum.TryParse<KeyAction>(name, ignoreCase: true, out var action))
-            throw new DebugApiException($"Unbekannte Aktion '{name}', erlaubt: {string.Join(", ", KeyActions.All)}");
+            throw new DebugApiException($"Unbekannte Aktion '{name}', erlaubt: {string.Join(", ", KeyActionTraits.All)}");
         if (Optional(body, "down") is { } down)
         {
             vm.Keys.Simulate(action, down.GetBoolean());

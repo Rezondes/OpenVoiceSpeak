@@ -272,8 +272,8 @@ public static class SimpleDialogs
     {
         var action = new ComboBox
         {
-            ItemsSource = KeyActions.All.Select(KeyActions.Label).ToList(),
-            SelectedIndex = current is null ? -1 : KeyActions.All.ToList().IndexOf(current.Action),
+            ItemsSource = KeyActionTraits.All.Select(KeyActionLabels.Localize).ToList(),
+            SelectedIndex = current is null ? -1 : KeyActionTraits.All.ToList().IndexOf(current.Action),
             PlaceholderText = Strings.Dlg_ChooseAction,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -294,7 +294,7 @@ public static class SimpleDialogs
             hint.IsVisible = true;
             try
             {
-                if (await capture(action.SelectedIndex >= 0 ? KeyActions.All[action.SelectedIndex] : KeyAction.PushToTalk) is { } captured)
+                if (await capture(action.SelectedIndex >= 0 ? KeyActionTraits.All[action.SelectedIndex] : KeyAction.PushToTalk) is { } captured)
                 {
                     chord = captured;
                     keyText.Text = captured.Name;
@@ -313,7 +313,7 @@ public static class SimpleDialogs
             string? problem = action.SelectedIndex < 0 ? Strings.Dlg_ActionMissing : chord is null ? Strings.Dlg_KeyMissing : null;
             error.Text = problem ?? "";
             error.IsVisible = problem is not null;
-            return problem is null ? new KeyBinding(KeyActions.All[action.SelectedIndex], chord!) : null;
+            return problem is null ? new KeyBinding(KeyActionTraits.All[action.SelectedIndex], chord!) : null;
         }, Strings.Dlg_Save);
     }
 

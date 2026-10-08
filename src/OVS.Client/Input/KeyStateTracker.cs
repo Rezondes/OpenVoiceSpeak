@@ -10,6 +10,6 @@ public sealed class KeyStateTracker
     {
         int changed = active.Bits ^ previous.Bits;
         previous = active;
-        return (new KeyActionSet(changed & active.Bits & ~KeyActions.Holds.Bits), (changed & KeyActions.Holds.Bits) != 0);
+        return (new KeyActionSet(changed & active.Bits & ~KeyActionTraits.Holds.Bits), (changed & KeyActionTraits.Holds.Bits) != 0);
     }
 }

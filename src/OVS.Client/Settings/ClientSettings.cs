@@ -129,7 +129,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
         warning = null;
         var path = Path.Combine(directory, FileName);
         if (!File.Exists(path)) // Package 59: a new profile gets a push-to-talk key, an existing one keeps its choice
-            return new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()))] };
+            return new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, DefaultPushToTalk.Choose(DefaultPushToTalk.CountMouseButtons()))] };
         try
         {
             return (JsonSerializer.Deserialize<ClientSettings>(File.ReadAllBytes(path), ProtocolJson.Indented) ?? new ClientSettings()).MigrateKeys().Clamp().Migrate(directory);

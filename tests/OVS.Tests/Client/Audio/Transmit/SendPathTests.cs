@@ -114,7 +114,7 @@ public class SendPathTests
     /// </summary>
     sealed class TalkRig : IDisposable
     {
-        public const int Ptt = KeyPoller.VkRControl, LinkPtt = KeyPoller.VkXButton1, Mute = KeyPoller.VkXButton2;
+        public const int Ptt = VirtualKeys.RControl, LinkPtt = VirtualKeys.XButton1, Mute = VirtualKeys.XButton2;
         public readonly FakeKeys Fake = new();
         public readonly ManualTimeProvider Time = new();
         public readonly KeyPoller Keys;
@@ -783,8 +783,8 @@ public class SendPathTests
     public async Task SelfTest_PushToTalk_KeyHeld_PlaysBack()
     {
         bool held = false;
-        using var keys = new KeyPoller(TimeProvider.System, vk => vk == KeyPoller.VkRControl && Volatile.Read(ref held));
-        keys.Bindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl))];
+        using var keys = new KeyPoller(TimeProvider.System, vk => vk == VirtualKeys.RControl && Volatile.Read(ref held));
+        keys.Bindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl))];
         using var engine = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
         engine.SelfTest = true;
         await CaptureRunning(engine);

@@ -11,7 +11,7 @@ public sealed partial class KeyBindingViewModel(KeyBinding binding, SettingsView
     [NotifyPropertyChangedFor(nameof(Label), nameof(ChordName))]
     KeyBinding binding = binding;
 
-    public string Label => KeyActions.Label(Binding.Action);
+    public string Label => KeyActionLabels.Localize(Binding.Action);
     public string ChordName => Binding.Chord.Name;
 
     [RelayCommand]

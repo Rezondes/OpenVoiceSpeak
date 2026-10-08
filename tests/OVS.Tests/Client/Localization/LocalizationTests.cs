@@ -42,7 +42,7 @@ public class LocalizationTests
     {
         Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(ReasonCodes.PermissionDenied));
         Assert.Equal("You don't have the right to do that.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.PermissionDenied)));
-        Assert.Equal("Mouse button 4", TestCulture.With("en-US", () => OVS.Client.Input.KeyPoller.KeyName(OVS.Client.Input.KeyPoller.VkXButton1)));
+        Assert.Equal("Mouse button 4", TestCulture.With("en-US", () => OVS.Client.Input.VirtualKeys.Localize(OVS.Client.Input.VirtualKeys.XButton1)));
         Assert.Equal("Enter full channels", TestCulture.With("en-US", () => PermissionLabels.All.Last().Label));
         // Package 75: download and upload of backups
         Assert.Equal("Das Backup ist grösser als 50 MB.", ErrorTexts.For(ReasonCodes.BackupTooLarge));

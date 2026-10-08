@@ -12,7 +12,7 @@ public class KeyBindingTests
     static KeyBinding Bind(KeyAction action, int key, ChordModifiers modifiers = None) => new(action, new KeyChord(key, modifiers));
 
     static HashSet<KeyAction> Resolve(KeyBinding[] bindings, int[] down, ChordModifiers held) =>
-        KeyActions.All.Where(KeyActions.Resolve(bindings, down.Contains, held).Contains).ToHashSet();
+        KeyActionTraits.All.Where(KeyBindingMatcher.Resolve(bindings, down.Contains, held).Contains).ToHashSet();
 
     static KeyActionSet Set(params KeyAction[] actions) => actions.Aggregate(new KeyActionSet(), (set, action) => set.With(action));
 
@@ -20,19 +20,27 @@ public class KeyBindingTests
     [Fact]
     public void DefaultPtt_Mouse4WithSideButtons_ElseRightCtrl()
     {
-        Assert.Equal(new KeyChord(KeyPoller.VkXButton1), DefaultKeys.PushToTalk(mouseButtons: 5));
-        Assert.Equal(new KeyChord(KeyPoller.VkXButton1), DefaultKeys.PushToTalk(mouseButtons: 7));
-        Assert.Equal(new KeyChord(KeyPoller.VkRControl), DefaultKeys.PushToTalk(mouseButtons: 3));
-        Assert.Equal(new KeyChord(KeyPoller.VkRControl), DefaultKeys.PushToTalk(mouseButtons: 0)); // no mouse at all
-        Assert.InRange(KeyPoller.MouseButtonCount(), 0, 32);
+        Assert.Equal(new KeyChord(VirtualKeys.XButton1), DefaultPushToTalk.Choose(mouseButtons: 5));
+        Assert.Equal(new KeyChord(VirtualKeys.XButton1), DefaultPushToTalk.Choose(mouseButtons: 7));
+        Assert.Equal(new KeyChord(VirtualKeys.RControl), DefaultPushToTalk.Choose(mouseButtons: 3));
+        Assert.Equal(new KeyChord(VirtualKeys.RControl), DefaultPushToTalk.Choose(mouseButtons: 0)); // no mouse at all
+        Assert.InRange(DefaultPushToTalk.CountMouseButtons(), 0, 32);
     }
 
     [Fact]
     public void RightCtrl_NameAndResolves()
     {
-        Assert.Equal("Strg rechts", new KeyChord(KeyPoller.VkRControl).Name);
-        KeyBinding[] bindings = [Bind(KeyAction.PushToTalk, KeyPoller.VkRControl)];
-        Assert.Equal([KeyAction.PushToTalk], Resolve(bindings, [KeyPoller.VkRControl], Ctrl)); // Windows reports Ctrl as held, too
+        Assert.Equal("Strg rechts", new KeyChord(VirtualKeys.RControl).Name);
+        KeyBinding[] bindings = [Bind(KeyAction.PushToTalk, VirtualKeys.RControl)];
+        Assert.Equal([KeyAction.PushToTalk], Resolve(bindings, [VirtualKeys.RControl], Ctrl)); // Windows reports Ctrl as held, too
+    }
+
+    /// <summary>A binding without a key (the dialog's "no key yet") never fires, even if the poll reports key 0 down.</summary>
+    [Fact]
+    public void Resolve_BindingWithoutKey_NeverActive()
+    {
+        KeyBinding[] bindings = [Bind(KeyAction.PushToTalk, 0), Bind(KeyAction.ToggleMute, F1)];
+        Assert.Equal([KeyAction.ToggleMute], Resolve(bindings, [0, F1], None));
     }
 
     [Fact]
@@ -46,11 +54,11 @@ public class KeyBindingTests
     [Fact]
     public void Resolve_RequiresAllModifiers_ExtraOnesDoNotHurt()
     {
-        KeyBinding[] bindings = [Bind(KeyAction.ToggleDeafen, M, Ctrl | Shift), Bind(KeyAction.PushToTalk, KeyPoller.VkXButton1)];
+        KeyBinding[] bindings = [Bind(KeyAction.ToggleDeafen, M, Ctrl | Shift), Bind(KeyAction.PushToTalk, VirtualKeys.XButton1)];
         Assert.Empty(Resolve(bindings, [M], Ctrl));
         Assert.Equal([KeyAction.ToggleDeafen], Resolve(bindings, [M], Ctrl | Shift));
         // Shift held while running in a game: the plain PTT key still works.
-        Assert.Equal([KeyAction.PushToTalk], Resolve(bindings, [KeyPoller.VkXButton1], Shift));
+        Assert.Equal([KeyAction.PushToTalk], Resolve(bindings, [VirtualKeys.XButton1], Shift));
         Assert.Empty(Resolve(bindings, [], Ctrl | Shift | Alt));
     }
 
@@ -72,16 +80,16 @@ public class KeyBindingTests
     [Fact]
     public void SameActionTwoKeys_EitherHolds_EndsWhenBothUp()
     {
-        KeyBinding[] bindings = [Bind(KeyAction.PushToMute, KeyPoller.VkXButton1), Bind(KeyAction.PushToMute, KeyPoller.VkXButton2)];
+        KeyBinding[] bindings = [Bind(KeyAction.PushToMute, VirtualKeys.XButton1), Bind(KeyAction.PushToMute, VirtualKeys.XButton2)];
         var tracker = new KeyStateTracker();
         (bool Active, bool Changed) Poll(params int[] down)
         {
-            var active = KeyActions.Resolve(bindings, down.Contains, None);
+            var active = KeyBindingMatcher.Resolve(bindings, down.Contains, None);
             return (active.Contains(KeyAction.PushToMute), tracker.Update(active).HoldChanged);
         }
-        Assert.Equal((true, true), Poll(KeyPoller.VkXButton1));
-        Assert.Equal((true, false), Poll(KeyPoller.VkXButton1, KeyPoller.VkXButton2));
-        Assert.Equal((true, false), Poll(KeyPoller.VkXButton2)); // the first let go, the second still holds
+        Assert.Equal((true, true), Poll(VirtualKeys.XButton1));
+        Assert.Equal((true, false), Poll(VirtualKeys.XButton1, VirtualKeys.XButton2));
+        Assert.Equal((true, false), Poll(VirtualKeys.XButton2)); // the first let go, the second still holds
         Assert.Equal((false, true), Poll());
     }
 
@@ -92,7 +100,7 @@ public class KeyBindingTests
     [Fact]
     public async Task Capture_SingleModifier_OnRelease()
     {
-        const int Shift_ = 0x10, LShift = 0xA0, Ctrl_ = 0x11, RCtrl = KeyPoller.VkRControl;
+        const int Shift_ = VirtualKeys.Shift, LShift = 0xA0, Ctrl_ = VirtualKeys.Control, RCtrl = VirtualKeys.RControl;
         var fake = new FakeKeys();
         using var keys = new KeyPoller(TimeProvider.System, fake.IsDown);
         async Task<KeyChord?> Capture(params (bool Down, int[] Keys)[] steps)
@@ -132,6 +140,6 @@ public class KeyBindingTests
     public void ChordName_IsReadable()
     {
         Assert.Equal("Strg+Umschalt+M", new KeyChord(M, Ctrl | Shift).Name);
-        Assert.Equal("Maustaste 4", new KeyChord(KeyPoller.VkXButton1).Name);
+        Assert.Equal("Maustaste 4", new KeyChord(VirtualKeys.XButton1).Name);
     }
 }

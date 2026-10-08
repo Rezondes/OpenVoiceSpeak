@@ -839,7 +839,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     void OnKeyAction(KeyAction action)
     {
         if (Server is not { } server) return;
-        Log.Write($"Taste: {KeyActions.Label(action)}");
+        Log.Write($"Taste: {KeyActionLabels.Localize(action)}");
         switch (action)
         {
             case KeyAction.ToggleMute: server.ToggleMuteCommand.Execute(null); break;
@@ -928,7 +928,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (Page == Page.Settings) return;
         ClosePage();
-        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Time, Keys)
+        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Time, Keys.CaptureNextChordAsync)
         {
             EditKeyBinding = Dialogs.EditKeyBinding,
             CheckNow = CheckForUpdatesAsync,

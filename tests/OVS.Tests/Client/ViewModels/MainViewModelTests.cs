@@ -546,7 +546,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             var s = vm.Settings;
-            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1))];
+            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1))];
             vm.ApplySettings(s);
             return 0;
         });
@@ -556,7 +556,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() => // Package 41: several PTT keys are all listed
         {
             var s = vm.Settings;
-            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton1)), new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkXButton2))];
+            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1)), new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton2))];
             vm.ApplySettings(s);
             return 0;
         });
@@ -934,7 +934,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task StartScreen_BookmarksAndConnectingState()
     {
         Assert.False(await OnUi(() => vm.HasBookmarks));
-        Assert.Equal($"PTT: {DefaultKeys.PushToTalk(KeyPoller.MouseButtonCount()).Name}", await OnUi(() => vm.TalkHint)); // Package 59: new profiles get a PTT key
+        Assert.Equal($"PTT: {DefaultPushToTalk.Choose(DefaultPushToTalk.CountMouseButtons()).Name}", await OnUi(() => vm.TalkHint)); // Package 59: new profiles get a PTT key
         var changed = new List<string?>();
         await OnUi(() =>
         {
@@ -1106,6 +1106,35 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
     }
 
+    /// <summary>The settings page captures keys through the key poller: a key pressed while its dialog captures is the chord it gets.</summary>
+    [Fact]
+    public async Task OpenSettings_KeyPressedDuringCapture_PageGetsThePollersChord()
+    {
+        const int F1 = 0x70;
+        Task<KeyChord?>? captured = null;
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.OpenSettings();
+            vm.SettingsPage!.EditKeyBinding = (_, capture) =>
+            {
+                captured = capture(KeyAction.ToggleMute);
+                return Task.FromResult<KeyBinding?>(null);
+            };
+            await vm.SettingsPage.AddKeyBindingCommand.ExecuteAsync(null);
+            return null;
+        });
+        await keys.NextSweep(); // the first sweep of a capture only records what is already down
+        keys.Set(true, F1);
+        try
+        {
+            Assert.Equal(new KeyChord(F1), await captured!.WaitAsync(TimeSpan.FromSeconds(5)));
+        }
+        finally
+        {
+            keys.Set(false, F1);
+        }
+    }
+
     /// <summary>
     /// Package 121: a key set on the page works at once (so the self test hears push-to-talk), leaving without saving
     /// brings the saved keys back, saving keeps the new ones.
@@ -1113,7 +1142,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task SettingsPage_KeyBindingLive_RevertedOnCancel()
     {
-        var key = new KeyBinding(KeyAction.PushToTalk, new KeyChord(KeyPoller.VkRControl));
+        var key = new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl));
         async Task<IReadOnlyList<KeyBinding>> SetKeyOnPage()
         {
             await ui.InvokeAsync<object?>(async () =>

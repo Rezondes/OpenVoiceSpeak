@@ -12,5 +12,5 @@ public sealed record KeyChord(int Key, ChordModifiers Modifiers = ChordModifiers
         (Modifiers.HasFlag(ChordModifiers.Ctrl) ? Strings.Key_CtrlPlus : "") +
         (Modifiers.HasFlag(ChordModifiers.Shift) ? Strings.Key_ShiftPlus : "") +
         (Modifiers.HasFlag(ChordModifiers.Alt) ? "Alt+" : "") +
-        KeyPoller.KeyName(Key);
+        VirtualKeys.Localize(Key);
 }

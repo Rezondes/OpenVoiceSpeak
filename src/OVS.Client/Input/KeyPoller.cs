@@ -1,5 +1,4 @@
 using OVS.Client.Interop;
-using OVS.Client.Localization;
 
 namespace OVS.Client.Input;
 
@@ -9,15 +8,6 @@ namespace OVS.Client.Input;
 /// </summary>
 public sealed class KeyPoller : IDisposable
 {
-    public const int VkXButton1 = 0x05;
-    public const int VkXButton2 = 0x06;
-    public const int VkRControl = 0xA3;
-    const int SmCMouseButtons = 43;
-
-    /// <summary>Package 59: how many buttons Windows knows the mouse has (0 without a mouse).</summary>
-    public static int MouseButtonCount() => NativeMethods.GetSystemMetrics(SmCMouseButtons);
-    const int VkShift = 0x10, VkControl = 0x11, VkMenu = 0x12;
-
     readonly CancellationTokenSource cts = new();
     readonly Thread thread;
     readonly object gate = new();
@@ -97,15 +87,10 @@ public sealed class KeyPoller : IDisposable
 
     static bool IsKeyDown(int vk) => vk != 0 && (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
 
-    static bool IsModifier(int vk) => vk is VkShift or VkControl or VkMenu or (>= 0xA0 and <= 0xA5);
-
-    /// <summary>Left or right Shift, Ctrl, Alt: Windows reports these along with the plain modifier.</summary>
-    static bool IsSidedModifier(int vk) => vk is >= 0xA0 and <= 0xA5;
-
     ChordModifiers HeldModifiers() =>
-        (keyState(VkControl) ? ChordModifiers.Ctrl : 0) |
-        (keyState(VkShift) ? ChordModifiers.Shift : 0) |
-        (keyState(VkMenu) ? ChordModifiers.Alt : 0);
+        (keyState(VirtualKeys.Control) ? ChordModifiers.Ctrl : 0) |
+        (keyState(VirtualKeys.Shift) ? ChordModifiers.Shift : 0) |
+        (keyState(VirtualKeys.Menu) ? ChordModifiers.Alt : 0);
 
     /// <summary>
     /// Resolves with the next pressed key plus the modifiers held with it (left and right mouse button excluded).
@@ -137,9 +122,9 @@ public sealed class KeyPoller : IDisposable
                     if (primed && isDown != wasDown[vk])
                     {
                         KeyChord? chord = null;
-                        if (!IsModifier(vk)) chord = isDown ? new KeyChord(vk, held) : null;
-                        else if (IsSidedModifier(vk) && isDown) lone = lone == 0 ? vk : -1;
-                        else if (IsSidedModifier(vk) && lone == vk) chord = new KeyChord(vk);
+                        if (!VirtualKeys.IsModifier(vk)) chord = isDown ? new KeyChord(vk, held) : null;
+                        else if (VirtualKeys.IsSidedModifier(vk) && isDown) lone = lone == 0 ? vk : -1;
+                        else if (VirtualKeys.IsSidedModifier(vk) && lone == vk) chord = new KeyChord(vk);
                         if (chord is not null)
                         {
                             capture = null;
@@ -151,7 +136,7 @@ public sealed class KeyPoller : IDisposable
                 primedFor = pending;
             }
 
-            var active = KeyActions.Resolve(bindings, keyState, held);
+            var active = KeyBindingMatcher.Resolve(bindings, keyState, held);
             lock (gate) active = new KeyActionSet(active.Bits | simulated.Bits);
             var (pressed, holdChanged) = tracker.Update(active);
             // Package 130: the release time goes first, so a reader never sees the key up without it
@@ -160,33 +145,11 @@ public sealed class KeyPoller : IDisposable
             if (released.Contains(KeyAction.LinkPushToTalk)) Interlocked.Exchange(ref linkPttReleased, time.GetTimestamp());
             down = active.Bits;
             if (holdChanged) Changed?.Invoke();
-            for (int i = 0; i < KeyActions.All.Count; i++)
-                if (pressed.Contains(KeyActions.All[i])) Pressed?.Invoke(KeyActions.All[i]);
+            for (int i = 0; i < KeyActionTraits.All.Count; i++)
+                if (pressed.Contains(KeyActionTraits.All[i])) Pressed?.Invoke(KeyActionTraits.All[i]);
             Thread.Sleep(10); // clock: real time
         }
     }
-
-    public static string KeyName(int vk) => vk switch
-    {
-        0 => Strings.Key_None,
-        VkXButton1 => Strings.Key_Mouse4,
-        VkXButton2 => Strings.Key_Mouse5,
-        0x04 => Strings.Key_MouseMiddle,
-        >= 0x70 and <= 0x87 => "F" + (vk - 0x6F),
-        >= 0x30 and <= 0x5A => ((char)vk).ToString(),
-        0x10 => Strings.Key_Shift,
-        0x11 => Strings.Key_Ctrl,
-        0x12 => "Alt",
-        0x14 => Strings.Key_CapsLock,
-        0x20 => Strings.Key_Space,
-        0xA0 => Strings.Key_LeftShift,
-        0xA1 => Strings.Key_RightShift,
-        0xA2 => Strings.Key_LeftCtrl,
-        0xA3 => Strings.Key_RightCtrl,
-        0xA4 => Strings.Key_LeftAlt,
-        0xA5 => Strings.Key_RightAlt,
-        _ => string.Format(Strings.Key_Unknown, vk),
-    };
 
     public void Dispose()
     {
