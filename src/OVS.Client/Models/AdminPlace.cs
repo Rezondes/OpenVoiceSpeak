@@ -1,4 +1,22 @@
+using OVS.Client.ViewModels;
+
 namespace OVS.Client.Models;
 
-/// <summary>The places of this page that need a manual save (A122).</summary>
-public enum AdminPlace { Groups, Links, Server }
+/// <summary>
+/// A place of the administration page that needs a manual save (A122), carried by its tab: whether it holds changes,
+/// saving them (waits for the server; false when it refused, did not answer or the input is invalid) and throwing them away.
+/// </summary>
+internal sealed record AdminPlace(Func<bool> HasChanges, Func<Task<bool>> SaveAsync, Action Discard)
+{
+    /// <summary>
+    /// A place whose save waits for one already on its way first (it may be the one the user means), then sends only
+    /// when there is a change and waits for the server's answer; send gives null when the input is invalid.
+    /// </summary>
+    internal static AdminPlace Create(Func<bool> hasChanges, PendingViewModel? pendingSave, Func<PendingViewModel?> send, Action discard) =>
+        new(hasChanges, async () =>
+        {
+            if (pendingSave is { IsRunning: true }) await pendingSave.Completion;
+            if (!hasChanges()) return true;
+            return send() is { } sent && await sent.Completion is null;
+        }, discard);
+}

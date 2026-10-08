@@ -37,8 +37,8 @@ public partial class AdminView : UserControl
         // Package 114: leaving a tab or a group with unsaved changes asks first; "Weiter bearbeiten" goes back
         Tabs.SelectionChanged += async (_, e) =>
         {
-            if (e.Source != Tabs || stepping || Vm is not { } vm || e.RemovedItems is not [TabItem left] || PlaceOf(left) is not { } place
-                || !vm.HasChanges(place))
+            if (e.Source != Tabs || stepping || Vm is not { } vm || e.RemovedItems is not [TabItem { Tag: AdminPlace place } left]
+                || !place.HasChanges())
                 return;
             var wanted = Tabs.SelectedItem;
             Step(() => Tabs.SelectedItem = left);
@@ -51,7 +51,7 @@ public partial class AdminView : UserControl
                 return;
             var wanted = vm.SelectedGroup;
             Step(() => vm.SelectedGroup = left);
-            if (!await vm.ConfirmLeaveAsync(AdminPlace.Groups)) return;
+            if (!await vm.ConfirmLeaveAsync(vm.GroupsPlace)) return;
             // a save rebuilds the rows: the wanted group again by its id (a draft is only itself)
             var again = wanted?.Id is { } id ? vm.Groups.Live().FirstOrDefault(g => g.Id == id) : vm.Groups.Contains(wanted!) ? wanted : null;
             if (again is not null) Step(() => vm.SelectedGroup = again);
@@ -81,9 +81,6 @@ public partial class AdminView : UserControl
             stepping = false;
         }
     }
-
-    AdminPlace? PlaceOf(TabItem tab) =>
-        tab == GroupsTab ? AdminPlace.Groups : tab == LinksTab ? AdminPlace.Links : tab == ServerTab ? AdminPlace.Server : null;
 
     /// <summary>The Windows file dialog is the one agreed exception to "no second window" (A20).</summary>
     async void OnPickIcon(object? sender, RoutedEventArgs e)

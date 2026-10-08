@@ -125,6 +125,11 @@ public sealed partial class AdminViewModel : ObservableObject
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
         Logs = new LogsViewModel(server, this);
+        GroupsPlace = AdminPlace.Create(() => Groups.Live().Any(g => g.HasChanges), GroupSave,
+            () => SelectedGroup is { HasChanges: true } ? SendGroup() : null, DiscardGroups);
+        LinksPlace = AdminPlace.Create(() => Links.HasPending, Links.Applying, Links.SendPending, () => Links.DiscardCommand.Execute(null));
+        ServerPlace = AdminPlace.Create(() => ServerSettingsChanged, null, SendServerSettings, ReloadServerSettings);
+        Places = [GroupsPlace, LinksPlace, ServerPlace];
         RebuildGroups();
         RebuildGroupFilters();
         RebuildUsers();
@@ -376,14 +381,25 @@ public sealed partial class AdminViewModel : ObservableObject
         }
     }
 
-    public bool HasChanges(AdminPlace place) => place switch
-    {
-        AdminPlace.Groups => Groups.Live().Any(g => g.HasChanges),
-        AdminPlace.Links => Links.HasPending,
-        _ => ServerSettingsChanged,
-    };
+    // Package 114: the places that need a manual save; each tab of the view carries its own
+    internal AdminPlace GroupsPlace { get; }
+    internal AdminPlace LinksPlace { get; }
+    internal AdminPlace ServerPlace { get; }
 
-    public bool HasAnyChanges => Enum.GetValues<AdminPlace>().Any(HasChanges);
+    /// <summary>Every place in saving order (the edited group comes first).</summary>
+    internal IReadOnlyList<AdminPlace> Places { get; }
+
+    public bool HasAnyChanges => Places.Any(p => p.HasChanges());
+
+    void DiscardGroups()
+    {
+        foreach (var g in Groups.Live().Where(g => g.Id is not null)) g.Revert();
+        var drafts = Groups.Live().Where(g => g.Id is null).ToList();
+        if (drafts.Count == 0) return;
+        if (drafts.Contains(SelectedGroup!)) SelectGroup(null);
+        CollectionSync.Sync(Groups, Groups.Live().Except(drafts).ToList(), server.Leave);
+        if (SelectedGroup is null) SelectGroup(Groups.Live().FirstOrDefault());
+    }
 
     /// <summary>What the server tab's fields were loaded with (the server's settings then).</summary>
     string loadedName = "", loadedWelcome = "";
@@ -429,55 +445,18 @@ public sealed partial class AdminViewModel : ObservableObject
         LoadLimits();
     }
 
-    /// <summary>Saves the place and waits for the server; false when it refused, did not answer or the input is invalid.</summary>
-    public async Task<bool> SaveAsync(AdminPlace place)
-    {
-        // a save already on its way is waited for first, it may be the one the user means
-        if (place == AdminPlace.Groups && GroupSave.IsRunning) await GroupSave.Completion;
-        if (place == AdminPlace.Links && Links.Applying.IsRunning) await Links.Applying.Completion;
-        if (!HasChanges(place)) return true;
-        PendingViewModel? sent = place switch
-        {
-            AdminPlace.Groups => SelectedGroup is { HasChanges: true } ? SendGroup() : null,
-            AdminPlace.Links => Links.SendPending(),
-            _ => SendServerSettings(),
-        };
-        return sent is not null && await sent.Completion is null;
-    }
-
-    public void Discard(AdminPlace place)
-    {
-        switch (place)
-        {
-            case AdminPlace.Groups:
-                foreach (var g in Groups.Live().Where(g => g.Id is not null)) g.Revert();
-                var drafts = Groups.Live().Where(g => g.Id is null).ToList();
-                if (drafts.Count == 0) break;
-                if (drafts.Contains(SelectedGroup!)) SelectGroup(null);
-                CollectionSync.Sync(Groups, Groups.Live().Except(drafts).ToList(), server.Leave);
-                if (SelectedGroup is null) SelectGroup(Groups.Live().FirstOrDefault());
-                break;
-            case AdminPlace.Links:
-                Links.DiscardCommand.Execute(null);
-                break;
-            default:
-                ReloadServerSettings();
-                break;
-        }
-    }
-
     /// <summary>Asks before leaving the place (another tab, another group); false = stay.</summary>
-    public async Task<bool> ConfirmLeaveAsync(AdminPlace place)
+    internal async Task<bool> ConfirmLeaveAsync(AdminPlace place)
     {
-        if (!HasChanges(place)) return true;
+        if (!place.HasChanges()) return true;
         switch (server.Dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard)
         {
             case LeaveChoice.Stay:
                 return false;
             case LeaveChoice.Save:
-                return await SaveAsync(place);
+                return await place.SaveAsync();
             default:
-                Discard(place);
+                place.Discard();
                 return true;
         }
     }
@@ -892,7 +871,7 @@ public sealed partial class AdminViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanNewGroup))]
     async Task NewGroup()
     {
-        if (!await ConfirmLeaveAsync(AdminPlace.Groups)) return; // Package 114: the edited group comes first
+        if (!await ConfirmLeaveAsync(GroupsPlace)) return; // Package 114: the edited group comes first
         var group = new GroupEditViewModel(null, Strings.Group_New, Permission.Speak, Actor);
         Groups.Add(group);
         SelectGroup(group);

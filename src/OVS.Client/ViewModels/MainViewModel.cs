@@ -1042,8 +1042,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (choice == LeaveChoice.Discard) return true;
         if (!adminOnly && SettingsPage is { HasChanges: true } settings && !await settings.SaveAsync()) return false;
         if (AdminPage is { } admin)
-            foreach (var place in Enum.GetValues<AdminPlace>().Where(admin.HasChanges))
-                if (!await admin.SaveAsync(place)) return false; // its error shows on the page, which stays
+            foreach (var place in admin.Places.Where(p => p.HasChanges()))
+                if (!await place.SaveAsync()) return false; // its error shows on the page, which stays
         return true;
     }
 

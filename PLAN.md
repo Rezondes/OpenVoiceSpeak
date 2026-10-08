@@ -6970,17 +6970,17 @@ Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Pac
 
 ### Tests (TDD)
 
-(as built: all of them in `tests/OVS.Tests/Client/LeaveGuardTests.cs`, with `ResponsiveTests.Dialogs_FitAt360` for the modal; the X of the settings page got its own `LeaveCommand`, "Abbrechen" keeps `CancelCommand`; with three answers the dialog stacks its buttons in full width, the default one first, because the card is at most 460 px wide)
+(as built: all of them in `tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs`, the administration's saving places also in `tests/OVS.Tests/Client/ViewModels/AdminPlaceTests.cs`, with `ResponsiveTests.Dialogs_FitAt360` for the modal; the X of the settings page got its own `LeaveCommand`, "Abbrechen" keeps `CancelCommand`; with three answers the dialog stacks its buttons in full width, the default one first, because the card is at most 460 px wide)
 
 (as built, from three review rounds: the settings page compares with what it showed when it opened, not with the file, since the sliders do not round-trip exactly; the server tab and an edited group follow the server in the fields the user did not touch, so a save never undoes another admin; edited group rows survive server updates, which used to drop them silently; a device list arriving with the page open no longer crashes the change check)
 
 1. `LeaveGuardTests > "Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert"` (AC1)
-2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"` (AC1)
+2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"`, `AdminPlaceTests > "HasAnyChanges_OnlyLinksChanged_True"` (AC1)
 3. `LeaveGuardTests > "LeaveWithChanges_Asks_KeepEditingStays"` (AC1, AC2)
    - Given: a fake `AskLeave` that answers each choice in turn.
    - Expected: correct behaviour for a page change, a disconnect and a window close.
-4. `LeaveGuardTests > "LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"` (AC3, AC4)
-5. `LeaveGuardTests > "AdminTabSwitch_WithChanges_AsksAndStays"` and `"OtherGroup_WithChanges_AsksAndStays"` (AC1, AC2)
+4. `LeaveGuardTests > "LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"`, `AdminPlaceTests > "SaveAsync_GroupSaveOnItsWay_WaitsForItAndSendsNoSecond"`, `"SaveAsync_LinkSaveOnItsWay_WaitsForItInsteadOfFailing"`, `"SaveAsync_NoChanges_TrueWithoutSending"`, `"SaveAsync_LinksChanged_SendsTheLinksAndTrueOnceConfirmed"`, `"SaveAsync_ServerNameChanged_SendsTheSettingsAndTrueOnceConfirmed"`, `"SaveAsync_ServerNameBlank_FalseWithoutSending"`, `"Discard_LinksChanged_NoChangesLeft"` and `"Places_SavingOrder_GroupsLinksServer"` (AC3, AC4)
+5. `LeaveGuardTests > "AdminTabSwitch_WithChanges_AsksAndStays"` and `"OtherGroup_WithChanges_AsksAndStays"`, `AdminPlaceTests > "Places_EveryPlace_CarriedByExactlyOneTab"` and `"SavingTabs_DataContextSet_CarryTheirOwnPlace"` (AC1, AC2)
 6. `LeaveGuardTests > "CancelAndDiscardButtons_DoNotAsk"` (AC5)
 7. `LocalizationTests` and `ResponsiveTests > [Theory] "Dialogs_FitAt360"` (AC6)
 
