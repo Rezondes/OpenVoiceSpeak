@@ -65,7 +65,7 @@ public partial class MainWindow : Window
     async Task ConnectAsync(Bookmark? preselect)
     {
         if (Vm.IsConnecting) return;
-        if (await SimpleDialogs.Connect(Overlay, Vm.Settings, preselect) is { } choice) await Vm.ConnectAsync(choice);
+        if (await ConnectDialog.ShowAsync(Overlay, Vm.Settings, preselect) is { } choice) await Vm.ConnectAsync(choice);
     }
 
     // ---- Bookmarks in the sidebar (Package 40): a click connects right away ----

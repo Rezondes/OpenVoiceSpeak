@@ -681,28 +681,28 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     /// <summary>Every dialog of <c>UiSmokeTests.ExercisePagesAndDialogs</c>, plus the password and bookmark dialogs.</summary>
     static Task OpenDialog(string name, OverlayHost o, ClientSettings settings, ServerViewModel server) => name switch
     {
-        "Connect" => SimpleDialogs.Connect(o, settings),
-        "TofuMismatch" => SimpleDialogs.Tofu(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
-        "TofuUnknown" => SimpleDialogs.Tofu(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Unknown)),
-        "Ban" => SimpleDialogs.Ban(o, "Mitspieler mit langem Namen"),
-        "BanWithoutIp" => SimpleDialogs.Ban(o, "Mitspieler mit langem Namen", ipKnown: false),
-        "DeleteUser" => SimpleDialogs.ConfirmDeleteUser(o, "Mitspieler mit langem Namen"),
-        "Confirm" => SimpleDialogs.Confirm(o, "Channel \"Raidgruppe Nummer 2\" wirklich löschen? Alle darin landen in der Lobby."),
-        "Update" => SimpleDialogs.OfferUpdate(o, new OVS.Client.Net.Updates.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
+        "Connect" => ConnectDialog.ShowAsync(o, settings),
+        "TofuMismatch" => TofuDialog.ShowAsync(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
+        "TofuUnknown" => TofuDialog.ShowAsync(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Unknown)),
+        "Ban" => BanDialog.ShowAsync(o, "Mitspieler mit langem Namen"),
+        "BanWithoutIp" => BanDialog.ShowAsync(o, "Mitspieler mit langem Namen", ipKnown: false),
+        "DeleteUser" => DeleteUserDialog.ShowAsync(o, "Mitspieler mit langem Namen"),
+        "Confirm" => ConfirmDialog.ShowAsync(o, "Channel \"Raidgruppe Nummer 2\" wirklich löschen? Alle darin landen in der Lobby."),
+        "Update" => UpdateOfferDialog.ShowAsync(o, new OVS.Client.Net.Updates.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
             string.Join("\n", Enumerable.Range(1, 30).Select(i => $"- Neuerung Nummer {i} mit etwas mehr Text")), DateTimeOffset.UtcNow,
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))),
-        "KeyBinding" => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<KeyChord?>(null)),
+        "KeyBinding" => KeyBindingDialog.ShowAsync(o, null, _ => Task.FromResult<KeyChord?>(null)),
         "ChannelCreate" => ChannelDialogView.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
         "ChannelEdit" => ChannelDialogView.ShowAsync(o, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8,
             AllowedGroupIds: [server.Mirror.Groups[2].Id]), ChannelDialogMode.Edit, server.Mirror.Groups), // Package 93: with its groups
-        "PickChannel" => SimpleDialogs.PickChannel(o, "Verschieben nach", server.Channels),
-        "AskText" => SimpleDialogs.AskText(o, Strings.Dialog_RedeemToken, "Token:"),
-        "Password" => SimpleDialogs.AskPassword(o, "Gilde"),
-        "ChannelPassword" => SimpleDialogs.AskChannelPassword(o, "Raidgruppe am Donnerstagabend"), // Package 94
-        "Bookmark" => SimpleDialogs.EditBookmark(o, settings.Bookmarks[0]),
-        "BackupDownload" => SimpleDialogs.ConfirmBackupDownload(o), // Package 89
-        "Leave" => SimpleDialogs.AskLeave(o), // Package 114: three buttons
-        "ConnectionDetails" => SimpleDialogs.ConnectionDetails(o, Measured()), // Package 133
+        "PickChannel" => ChannelPickerDialog.ShowAsync(o, "Verschieben nach", server.Channels),
+        "AskText" => TextDialog.ShowAsync(o, Strings.Dialog_RedeemToken, "Token:"),
+        "Password" => ServerPasswordDialog.ShowAsync(o, "Gilde"),
+        "ChannelPassword" => ChannelPasswordDialog.ShowAsync(o, "Raidgruppe am Donnerstagabend"), // Package 94
+        "Bookmark" => BookmarkDialog.ShowAsync(o, settings.Bookmarks[0]),
+        "BackupDownload" => BackupDownloadDialog.ShowAsync(o), // Package 89
+        "Leave" => LeaveDialog.ShowAsync(o), // Package 114: three buttons
+        "ConnectionDetails" => ConnectionDetailsDialog.ShowAsync(o, Measured()), // Package 133
         _ => throw new ArgumentException(name),
     };
 
@@ -923,7 +923,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
         ServerViewModel? server = null;
-        server = FakeServers.Admin(time: time, dialogs: SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
+        server = FakeServers.Admin(time: time, dialogs: OverlayDialogs.Create(main.Overlay, () => server?.Mirror.Groups));
         MainViewModelSetup.ShowServer(vm, server);
         // the connect sequence (at most 700 ms) is over before anything is clicked; the server's clock is a manual one
         MotionWait.WaitFor(() => false, 800);

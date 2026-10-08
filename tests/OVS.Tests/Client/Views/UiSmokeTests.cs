@@ -320,11 +320,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             Dispatcher.UIThread.RunJobs();
             Assert.True(shown.IsCompleted, title);
         }
-        Dialog(o => SimpleDialogs.Connect(o, vm.Settings), "Mit Server verbinden");
+        Dialog(o => ConnectDialog.ShowAsync(o, vm.Settings), "Mit Server verbinden");
 
         // Package 39: "Passwort speichern" needs a password and the bookmark; a saved one is filled in
         vm.Settings.Bookmarks.Insert(0, new Bookmark("Gilde", "gilde.example.org", 7000, "ich", PasswordProtector.Protect("pw")));
-        var connecting = SimpleDialogs.Connect(main.Overlay, vm.Settings, vm.Settings.Bookmarks[0]);
+        var connecting = ConnectDialog.ShowAsync(main.Overlay, vm.Settings, vm.Settings.Bookmarks[0]);
         Dispatcher.UIThread.RunJobs();
         var boxes = main.Overlay.GetVisualDescendants().OfType<CheckBox>().ToList();
         var savePassword = boxes.Single(c => c.Content is string text && text.StartsWith("Passwort speichern"));
@@ -337,20 +337,20 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Dispatcher.UIThread.RunJobs();
         Assert.True(connecting.IsCompleted);
         vm.Settings.Bookmarks.RemoveAt(0);
-        Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Mismatch)), "Serverzertifikat prüfen");
-        Dialog(o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
-        Dialog(o => SimpleDialogs.Ban(o, "anna"), "anna bannen");
-        Dialog(o => SimpleDialogs.Confirm(o, "Wirklich?"), "Bestätigen");
-        Dialog(o => SimpleDialogs.ConfirmDeleteUser(o, "anna"), "Alle Daten von anna löschen?"); // Package 72
-        _ = SimpleDialogs.ConfirmDeleteUser(main.Overlay, "anna");
+        Dialog(o => TofuDialog.ShowAsync(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Mismatch)), "Serverzertifikat prüfen");
+        Dialog(o => TofuDialog.ShowAsync(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)), "Serverzertifikat prüfen");
+        Dialog(o => BanDialog.ShowAsync(o, "anna"), "anna bannen");
+        Dialog(o => ConfirmDialog.ShowAsync(o, "Wirklich?"), "Bestätigen");
+        Dialog(o => DeleteUserDialog.ShowAsync(o, "anna"), "Alle Daten von anna löschen?"); // Package 72
+        _ = DeleteUserDialog.ShowAsync(main.Overlay, "anna");
         Dispatcher.UIThread.RunJobs();
         foreach (var text in new[] { "Endgültig löschen", "Nutzerdatensatz", "Gruppen", "Statistiken", "Bans" })
             Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains(text) == true);
         main.Overlay.Close();
         Dispatcher.UIThread.RunJobs();
-        Dialog(o => SimpleDialogs.OfferUpdate(o, new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
+        Dialog(o => UpdateOfferDialog.ShowAsync(o, new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))), "Update verfügbar");
-        Dialog(o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)), "Tastenaktion hinzufügen");
+        Dialog(o => KeyBindingDialog.ShowAsync(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)), "Tastenaktion hinzufügen");
         // Package 54: one dialog for creating and editing, with every option both times
         (string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled) ChannelDialogShows(ChannelEdit current, ChannelDialogMode mode)
         {
@@ -377,8 +377,8 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal(("Channel bearbeiten", "Raid", true, 8m, true), (edit.Title, edit.Name, edit.Muted, edit.Slots, edit.SlotsEnabled));
         Assert.Contains("Speichern", edit.Buttons);
         Assert.False(ChannelDialogShows(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault).SlotsEnabled);
-        Dialog(o => SimpleDialogs.PickChannel(o, "Verschieben nach", vm.Server!.Channels), "Verschieben nach");
-        Dialog(o => SimpleDialogs.AskText(o, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
+        Dialog(o => ChannelPickerDialog.ShowAsync(o, "Verschieben nach", vm.Server!.Channels), "Verschieben nach");
+        Dialog(o => TextDialog.ShowAsync(o, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
     }
 
     /// <summary>A20: settings, administration and all dialogs live inside the one main window.</summary>
@@ -406,14 +406,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         Dispatcher.UIThread.RunJobs();
 
-        var first = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
+        var first = ConfirmDialog.ShowAsync(main.Overlay, "Weg damit?");
         Dispatcher.UIThread.RunJobs();
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
         Assert.True(first.IsCompleted);
         Assert.False(first.Result);
 
-        var second = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
+        var second = ConfirmDialog.ShowAsync(main.Overlay, "Weg damit?");
         Dispatcher.UIThread.RunJobs();
         main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
         Dispatcher.UIThread.RunJobs();
@@ -449,28 +449,23 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.False(logo.GetVisualDescendants().OfType<Viewbox>().Single().IsVisible);
         Assert.Single(main.GetVisualDescendants().OfType<LogoMark>(), l => l.Bounds.Width >= 64); // start screen
         Button ButtonNamed(string name) => bar.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == name);
-        void Click(Button b)
-        {
-            b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Dispatcher.UIThread.RunJobs();
-        }
 
         Assert.Contains("OpenVoiceSpeak [zweit]", Texts(bar));
         MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("· Gilde", Texts(bar));
 
-        Click(ButtonNamed("Maximieren"));
+        OverlayRig.Click(ButtonNamed("Maximieren"));
         Assert.Equal(WindowState.Maximized, main.WindowState);
-        Click(ButtonNamed("Wiederherstellen")); // the same button, relabelled
+        OverlayRig.Click(ButtonNamed("Wiederherstellen")); // the same button, relabelled
         Assert.Equal(WindowState.Normal, main.WindowState);
-        Click(ButtonNamed("Minimieren"));
+        OverlayRig.Click(ButtonNamed("Minimieren"));
         Assert.Equal(WindowState.Minimized, main.WindowState);
         main.WindowState = WindowState.Normal;
 
         bool closed = false;
         main.Closed += (_, _) => closed = true;
-        Click(ButtonNamed("Schliessen"));
+        OverlayRig.Click(ButtonNamed("Schliessen"));
         Assert.True(closed);
     }
 
@@ -784,7 +779,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             WindowAppearance.Apply(app, main, new BackgroundAppearance(0.5f, true));
             Assert.Equal(WindowTransparencyLevel.AcrylicBlur, main.TransparencyLevelHint[0]);
 
-            _ = SimpleDialogs.Confirm(main.Overlay, "?");
+            _ = ConfirmDialog.ShowAsync(main.Overlay, "?");
             Dispatcher.UIThread.RunJobs();
             var card = main.Overlay.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("dialog"));
             Assert.Equal(1, ((ISolidColorBrush)card.Background!).Opacity); // dialogs stay solid
@@ -1222,11 +1217,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             vm.ClosePage();
             foreach (var open in new Func<OverlayHost, Task>[]
             {
-                o => SimpleDialogs.Connect(o, vm.Settings), o => SimpleDialogs.Ban(o, "anna"), o => SimpleDialogs.Confirm(o, "?"),
+                o => ConnectDialog.ShowAsync(o, vm.Settings), o => BanDialog.ShowAsync(o, "anna"), o => ConfirmDialog.ShowAsync(o, "?"),
                 o => ChannelDialogView.ShowAsync(o, new ChannelEdit("Raid", ""), ChannelDialogMode.Edit),
                 o => ChannelDialogView.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
-                o => SimpleDialogs.EditKeyBinding(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
-                o => SimpleDialogs.Tofu(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)),
+                o => KeyBindingDialog.ShowAsync(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
+                o => TofuDialog.ShowAsync(o, new TofuPrompt("h", 1, new string('a', 64), TofuResult.Unknown)),
             })
             {
                 _ = open(main.Overlay);
@@ -1263,7 +1258,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var sent = new List<Request>();
         var time = new ManualTimeProvider();
         ServerViewModel? server = null;
-        server = FakeServers.Admin(sent, time, SimpleDialogs.For(main.Overlay, () => server?.Mirror.Groups));
+        server = FakeServers.Admin(sent, time, OverlayDialogs.Create(main.Overlay, () => server?.Mirror.Groups));
         MainViewModelSetup.ShowServer(vm, server);
         Dispatcher.UIThread.RunJobs();
         return (main, vm, server, sent, time);
@@ -1279,12 +1274,6 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Overlay.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == text
             || b.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == text && t.IsEffectivelyVisible));
 
-    static void Click(Button button)
-    {
-        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Dispatcher.UIThread.RunJobs();
-    }
-
     static bool SpinnerIn(Visual root) => root.GetVisualDescendants().OfType<BusySpinner>().Any(s => s.IsEffectivelyVisible);
 
     /// <summary>Package 98 (AC3): a dialog that sends keeps its card open with a busy button until the server confirms; errors show inside.</summary>
@@ -1297,14 +1286,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         _ = server.NewChannelCommand.ExecuteAsync(null);
         Dispatcher.UIThread.RunJobs();
         main.Overlay.GetVisualDescendants().OfType<TextBox>().First().Text = "Neu";
-        Click(OverlayButton(main, "Anlegen"));
+        OverlayRig.Click(OverlayButton(main, "Anlegen"));
         Assert.Single(sent.OfType<CreateChannel>());
         Assert.True(main.Overlay.IsOpen);
         Advance(time, 150);
         var create = OverlayButton(main, "Anlegen");
         Assert.False(create.IsEnabled);
         Assert.True(SpinnerIn(create));
-        Click(create); // a second click meanwhile sends nothing
+        OverlayRig.Click(create); // a second click meanwhile sends nothing
         Assert.Single(sent.OfType<CreateChannel>());
         server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 2), sent.OfType<CreateChannel>().Single().RequestId));
         Dispatcher.UIThread.RunJobs();
@@ -1314,7 +1303,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var anna = server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna");
         _ = anna.BanCommand.ExecuteAsync(null);
         Dispatcher.UIThread.RunJobs();
-        Click(OverlayButton(main, "Bannen"));
+        OverlayRig.Click(OverlayButton(main, "Bannen"));
         Advance(time, 150);
         Assert.True(SpinnerIn(main.Overlay));
         server.Apply(new Error(sent.OfType<BanSession>().Single().RequestId, ReasonCodes.PermissionDenied));
@@ -1325,7 +1314,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.False(SpinnerIn(main.Overlay));
 
         // no answer at all: after 10 s the card says so and stays
-        Click(OverlayButton(main, "Bannen"));
+        OverlayRig.Click(OverlayButton(main, "Bannen"));
         Advance(time, 10_000);
         Assert.True(main.Overlay.IsOpen);
         Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == OVS.Client.Localization.Strings.Pending_NoAnswer && t.IsEffectivelyVisible);
@@ -1336,7 +1325,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         _ = server.RedeemTokenCommand.ExecuteAsync(null);
         Dispatcher.UIThread.RunJobs();
         main.Overlay.GetVisualDescendants().OfType<TextBox>().Single().Text = "geheim";
-        Click(OverlayButton(main, "OK"));
+        OverlayRig.Click(OverlayButton(main, "OK"));
         Advance(time, 150);
         Assert.True(main.Overlay.IsOpen);
         server.Apply(new UserUpdated(server.Mirror.Self!));
@@ -1378,7 +1367,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         {
             Dispatcher.UIThread.RunJobs();
             fill?.Invoke(main.Overlay);
-            Click(OverlayButton(main, ok));
+            OverlayRig.Click(OverlayButton(main, ok));
         }
 
         // ---- the channel tree and the chat ----

@@ -97,7 +97,7 @@ public sealed class WebsiteShots
             s.Bookmarks.Add(new Bookmark(lang == "en" ? "Friday crew" : "Freitagsrunde", "friends.example.org", 7000, "Steffi"));
             s.Bookmarks.Add(new Bookmark(lang == "en" ? "Club" : "Verein", "club.example.org", 7010, "Steffi"));
         });
-        _ = SimpleDialogs.Connect(scene.Window.Overlay, scene.Vm.Settings, scene.Vm.Settings.Bookmarks[0]);
+        _ = ConnectDialog.ShowAsync(scene.Window.Overlay, scene.Vm.Settings, scene.Vm.Settings.Bookmarks[0]);
         ShotWriter.Settle(600);
         Shows(scene.Window, "Gilde Nordlicht");
         scene.Save(Folder, "start");

@@ -110,7 +110,7 @@ public sealed class MotionCoverageTests
         new ClientSettings { Display = display }.Save(dir);
         var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
-        vm.Dialogs = SimpleDialogs.For(main.Overlay, () => vm.Server?.Mirror.Groups);
+        vm.Dialogs = OverlayDialogs.Create(main.Overlay, () => vm.Server?.Mirror.Groups);
         main.Show();
         Watch(200);
         Motion.Apply(main, display);
@@ -388,11 +388,11 @@ public sealed class MotionCoverageTests
     static IEnumerable<Step> Steps(Walk w)
     {
         // ---- home ----
-        foreach (var s in Dialog("connect", x => _ = SimpleDialogs.Connect(x.Main.Overlay, x.Vm.Settings))) yield return s;
-        foreach (var s in Dialog("server password", x => _ = SimpleDialogs.AskPassword(x.Main.Overlay, "Gilde"))) yield return s;
-        foreach (var s in Dialog("certificate", x => _ = SimpleDialogs.Tofu(x.Main.Overlay, new TofuPrompt("gilde.example.org", 7000, "AB:CD:EF:01", TofuResult.Unknown))))
+        foreach (var s in Dialog("connect", x => _ = ConnectDialog.ShowAsync(x.Main.Overlay, x.Vm.Settings))) yield return s;
+        foreach (var s in Dialog("server password", x => _ = ServerPasswordDialog.ShowAsync(x.Main.Overlay, "Gilde"))) yield return s;
+        foreach (var s in Dialog("certificate", x => _ = TofuDialog.ShowAsync(x.Main.Overlay, new TofuPrompt("gilde.example.org", 7000, "AB:CD:EF:01", TofuResult.Unknown))))
             yield return s;
-        foreach (var s in Dialog("update offer", x => _ = SimpleDialogs.OfferUpdate(x.Main.Overlay,
+        foreach (var s in Dialog("update offer", x => _ = UpdateOfferDialog.ShowAsync(x.Main.Overlay,
             new UpdateOffer("9.9.9", "v9.9.9", "Neu", DateTimeOffset.Now, new Uri("https://example.org/ovs.exe"), new Uri("https://example.org/ovs.sha256")))))
             yield return s;
         yield return new("connect, and it fails", x =>
@@ -444,7 +444,7 @@ public sealed class MotionCoverageTests
         foreach (var s in Dialog("link channels", x => _ = Channel(x, "Altes Archiv").LinkCommand.ExecuteAsync(null))) yield return s;
         yield return new("link channels", x => x.Server.Apply(new ChannelsLinked(Archive, FakeServers.Lobby)));
         yield return new("unlink channels", x => x.Server.Apply(new ChannelsUnlinked(Archive, FakeServers.Lobby)));
-        foreach (var s in Dialog("channel password", x => _ = SimpleDialogs.AskChannelPassword(x.Main.Overlay, "Raid"))) yield return s;
+        foreach (var s in Dialog("channel password", x => _ = ChannelPasswordDialog.ShowAsync(x.Main.Overlay, "Raid"))) yield return s;
         foreach (var s in Dialog("delete channel", x => _ = Channel(x, "Altes Archiv").DeleteCommand.ExecuteAsync(null))) yield return s;
         yield return new("delete a channel", x => x.Server.Apply(new ChannelRemoved(Archive)));
 

@@ -59,7 +59,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var scrims = MotionWait.Record(Scrim(overlay), v => v.Opacity);
         var cards = MotionWait.Record(Card(overlay), v => v.Opacity);
         var scales = MotionWait.Record(Card(overlay), Scale);
-        var answer = SimpleDialogs.Confirm(overlay, "Weg damit?");
+        var answer = ConfirmDialog.ShowAsync(overlay, "Weg damit?");
         MotionWait.Eventually(() =>
         {
             Assert.Contains(cards, o => o < 1); // it has begun
@@ -84,8 +84,8 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     {
         var main = Open(out _);
         var overlay = main.Overlay;
-        var first = SimpleDialogs.Confirm(overlay, "Erste Frage?");
-        var second = SimpleDialogs.Confirm(overlay, "Zweite Frage?"); // waits its turn
+        var first = ConfirmDialog.ShowAsync(overlay, "Erste Frage?");
+        var second = ConfirmDialog.ShowAsync(overlay, "Zweite Frage?"); // waits its turn
         MotionWait.Settle(350);
         Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Erste Frage?");
         // what the card holds from now on, in order: under load one frame can outlast the whole fold
@@ -114,7 +114,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         overlay.Close();
         await second;
         Frame();
-        var third = SimpleDialogs.Confirm(overlay, "Dritte Frage?");
+        var third = ConfirmDialog.ShowAsync(overlay, "Dritte Frage?");
         Frame();
         Assert.True(overlay.IsOpen);
         Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Dritte Frage?");
@@ -128,7 +128,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     {
         var main = Open(out var vm);
         var overlay = main.Overlay;
-        _ = SimpleDialogs.Connect(overlay, vm.Settings, null); // nothing filled in
+        _ = ConnectDialog.ShowAsync(overlay, vm.Settings, null); // nothing filled in
         MotionWait.Settle(350);
         MotionWait.Eventually(() => Assert.Equal(1, Card(overlay).Opacity, 2)); // it has popped up: the shake is the only movement
         var swings = MotionWait.Record(Card(overlay), OffsetX); // every swing as it happens: under load one frame can outlast the shake
@@ -219,7 +219,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
             pictures += e.NewItems?.OfType<Image>().Count(i => i.Classes.Contains(PopupMotion.GhostClass)) ?? 0;
         row.ContextMenu.Close();
-        _ = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
+        _ = ConfirmDialog.ShowAsync(main.Overlay, "Weg damit?");
         MotionWait.Settle(200);
         Assert.True(main.Overlay.IsOpen);
         Assert.Equal(0, pictures);
@@ -260,7 +260,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     {
         var main = Open(out _, DisplayMode.Simplified, width: 360);
         var overlay = main.Overlay;
-        _ = SimpleDialogs.Confirm(overlay, "Weg damit?");
+        _ = ConfirmDialog.ShowAsync(overlay, "Weg damit?");
         Frame();
         Assert.Equal((1d, 1d), (Card(overlay).Opacity, Scale(Card(overlay))));
         overlay.Close();
@@ -284,12 +284,12 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     {
         var main = Open(out _);
         var overlay = main.Overlay;
-        var first = SimpleDialogs.Confirm(overlay, "Erste Frage?");
+        var first = ConfirmDialog.ShowAsync(overlay, "Erste Frage?");
         MotionWait.Settle(350);
         overlay.Close();
         await first;
         MotionWait.Eventually(() => Assert.False(overlay.IsVisible)); // fully gone
-        var second = SimpleDialogs.Confirm(overlay, "Zweite Frage?");
+        var second = ConfirmDialog.ShowAsync(overlay, "Zweite Frage?");
         MotionWait.Settle(350);
         MotionWait.Eventually(() =>
         {

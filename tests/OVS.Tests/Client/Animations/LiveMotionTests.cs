@@ -233,7 +233,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         Assert.True(StateIcon(main, 2, "danger").IsEffectivelyVisible);
 
         // a dialog is open: no copy over it
-        _ = SimpleDialogs.Confirm(main.Overlay, "Weg damit?");
+        _ = ConfirmDialog.ShowAsync(main.Overlay, "Weg damit?");
         MotionWait.Settle(300);
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
         bool ghost = false;

@@ -17,6 +17,6 @@ public partial class ChannelDialogView : UserControl
         Func<ChannelEdit, PendingViewModel>? submit = null)
     {
         var vm = new ChannelDialogViewModel(current, mode, groups);
-        return SimpleDialogs.Show(overlay, vm.Title, "Speaker", new ChannelDialogView { DataContext = vm }, vm.Result, vm.ConfirmText, submit: submit);
+        return DialogFrame.ShowAsync(overlay, vm.Title, "Speaker", new ChannelDialogView { DataContext = vm }, vm.Result, new(vm.ConfirmText, Submit: submit));
     }
 }

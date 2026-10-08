@@ -69,8 +69,8 @@ public partial class App : Application
                 ? new AudioDebugLog(vm.Keys, vm.Audio, log)
                 : null;
             var overlay = window.Overlay; // every dialog lives inside the main window (A20)
-            vm.Dialogs = SimpleDialogs.For(overlay, () => vm.Server?.Mirror.Groups);
-            vm.ConfirmTofu = prompt => SimpleDialogs.Tofu(overlay, prompt);
+            vm.Dialogs = OverlayDialogs.Create(overlay, () => vm.Server?.Mirror.Groups);
+            vm.ConfirmTofu = prompt => TofuDialog.ShowAsync(overlay, prompt);
 
             var timer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, (_, _) => vm.Tick());
             timer.Start();
