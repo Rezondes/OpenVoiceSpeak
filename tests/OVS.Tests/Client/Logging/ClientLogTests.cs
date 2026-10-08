@@ -4,85 +4,15 @@ using OVS.Client.Input;
 using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
-using OVS.Shared.Permissions;
-using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
-using OVS.Shared.Protocol.Messages.Chat;
 using OVS.Shared.Protocol.Messages.Groups;
-using OVS.Shared.Protocol.Messages.Links;
-using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.ServerInfo;
-using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Logging;
 
 public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet: true)
 {
-    static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid(), Mods = Guid.NewGuid();
-
-    static UserInfo User(uint id, Guid channel, string nick, bool muted = false) =>
-        new(id, "fp" + id, nick, channel, muted, false, false, Permission.Speak, []);
-
-    static StateMirror Mirror() => Snapshots.Mirror(Snapshots.Snapshot(
-        "S", "", Lobby,
-        [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Raid, "Raid", "", 1)],
-        [new GroupInfo(Mods, "Moderator", Permission.Speak)],
-        [User(1, Lobby, "ich"), User(2, Lobby, "bert")]));
-
-    public static TheoryData<Message, string> Deltas => new()
-    {
-        { new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 2)), "Channel 'Neu' angelegt" },
-        { new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "", "", 2, Kind: ChannelKind.Separator)), "Trenner angelegt" },
-        { new ChannelUpdated(new ChannelInfo(Guid.NewGuid(), "", "", 3, Kind: ChannelKind.Separator)), "Trenner verschoben" },
-        { new ChannelUpdated(new ChannelInfo(Raid, "Raid 2", "", 1)), "Channel 'Raid' umbenannt in 'Raid 2'" },
-        { new ChannelRemoved(Raid), "Channel 'Raid' gelöscht" },
-        { new UserJoined(User(3, Raid, "carla")), "carla verbunden, Channel 'Raid'" },
-        { new UserUpdated(User(2, Raid, "bert")), "bert wechselt von 'Lobby' nach 'Raid'" },
-        { new UserUpdated(User(2, Lobby, "bert", muted: true)), "bert stumm" },
-        { new UserLeft(2), "bert getrennt" },
-        { new ChannelsLinked(Lobby, Raid), "Channels 'Lobby' und 'Raid' verlinkt" },
-        { new ChannelsUnlinked(Lobby, Raid), "Link zwischen 'Lobby' und 'Raid' entfernt" },
-        { new GroupsChanged([new GroupInfo(Mods, "Mods", Permission.Speak)]), "Gruppen geändert: Mods" },
-        { new ServerSettingsChanged(new ServerSettingsInfo("Neu", "", true)), "Servereinstellungen geändert: Name 'Neu', mit Passwort" },
-        { new ChatMessage(ChatTarget.Server, 2, "bert", null, null, "Hallo", default), "Chat (Allgemein) bert: Hallo" },
-        { new ChatMessage(ChatTarget.Channel, 2, "bert", Lobby, null, "hier", default), "Chat in 'Lobby' bert: hier" },
-        { new ChatMessage(ChatTarget.Private, 2, "bert", null, 1, "psst", default), "Privat bert an ich: psst" },
-    };
-
-    [Theory]
-    [MemberData(nameof(Deltas))]
-    public void Describe_Message(Message message, string expected) =>
-        Assert.Equal(expected, ClientLog.Describe(message, Mirror()));
-
-    [Fact]
-    public void Describe_Request_UsesNames_NeverSecrets()
-    {
-        var mirror = Mirror();
-        Assert.Equal("Anfrage r1: Channel 'Raid' betreten", ClientLog.Describe(new JoinChannel(Raid) { RequestId = "r1" }, mirror));
-        Assert.Equal("Anfrage r2: bert nach 'Raid' verschieben", ClientLog.Describe(new MoveUser(2, Raid) { RequestId = "r2" }, mirror));
-        Assert.Equal("Anfrage r3: Gruppe 'Moderator' an bert vergeben", ClientLog.Describe(new AssignGroup("fp2", Mods) { RequestId = "r3" }, mirror));
-        Assert.Equal("Anfrage r4: Admin-Token einlösen", ClientLog.Describe(new RedeemAdminToken("geheim-token") { RequestId = "r4" }, mirror));
-        Assert.Equal("Anfrage r5: Servereinstellungen ändern: Name 'S', Passwort setzen",
-            ClientLog.Describe(new UpdateServerSettings("S", "", "geheim") { RequestId = "r5" }, mirror));
-        Assert.Equal("Anfrage r6: Server-Logo setzen", ClientLog.Describe(new SetServerIcon("AAAA") { RequestId = "r6" }, mirror));
-        Assert.Equal("Anfrage r7: Server-Logo entfernen", ClientLog.Describe(new SetServerIcon(null) { RequestId = "r7" }, mirror));
-        Assert.Equal("Server hat kein Logo", ClientLog.Describe(new ServerIcon(null, null, null), mirror));
-        Assert.Equal("Anfrage r8: Privatnachricht an bert", ClientLog.Describe(new SendChat(ChatTarget.Private, 2, "psst") { RequestId = "r8" }, mirror));
-        Assert.Equal("Anfrage r9: Chat im Channel", ClientLog.Describe(new SendChat(ChatTarget.Channel, null, "x") { RequestId = "r9" }, mirror));
-    }
-
-    [Fact]
-    public void Describe_KnownUserRequest_NamesPersonAndBanTerms()
-    {
-        var mirror = Mirror();
-        Assert.Equal("Anfrage r1: bert bannen (60 Minuten, mit IP): spam",
-            ClientLog.Describe(new BanKnownUser("fp2", "spam", 60, true) { RequestId = "r1" }, mirror));
-        Assert.Equal("Anfrage r2: abcdef012345 bannen (dauerhaft): ",
-            ClientLog.Describe(new BanKnownUser("abcdef0123456789", "", null, false) { RequestId = "r2" }, mirror));
-        Assert.Equal("Anfrage r3: Nutzerdaten von bert löschen", ClientLog.Describe(new DeleteKnownUser("fp2") { RequestId = "r3" }, mirror));
-    }
-
     string LogText()
     {
         var folder = Path.Combine(dir, "logs");
@@ -143,12 +73,12 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "", null, false)));
             await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             await using (await TestClient.ConnectAsync(server, "bert"))
-                await Eventually(null, "bert verbunden, Channel 'Lobby'");
+                await Eventually(null, "bert connected, channel 'Lobby'");
             await Eventually(() => Run(ui, () =>
             {
                 vm.Tick();
                 return Task.CompletedTask;
-            }), "bert getrennt", "UDP erreichbar");
+            }), "bert disconnected", "UDP erreichbar");
             await Run(ui, vm.DisconnectAsync);
 
             var log = await Eventually(null,
@@ -174,16 +104,16 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         {
             await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             await Run(ui, () => vm.Server!.SendAsync(new CreateChannel("Raid", "")));
-            await Eventually(null, "Channel 'Raid' angelegt");
+            await Eventually(null, "Channel 'Raid' created");
             var raid = await ui.InvokeAsync(() => Task.FromResult(vm.Server!.Channels.Single(c => c.Name == "Raid").Id));
             await Run(ui, () => vm.Server!.JoinAsync(raid));
             await Run(ui, () => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
 
             await Eventually(null,
-                "Anfrage r1: Channel 'Raid' anlegen",
-                "Anfrage r2: Channel 'Raid' betreten",
-                "anna wechselt von 'Lobby' nach 'Raid'",
-                "Anfrage r3: Eigener Status: stumm");
+                "Request r1: Create channel 'Raid'",
+                "Request r2: Join channel 'Raid'",
+                "anna moves from 'Lobby' to 'Raid'",
+                "Request r3: Own state: muted");
         }
         finally
         {
@@ -201,7 +131,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             await Run(ui, () => vm.Server!.SendAsync(new RedeemAdminToken("Token-0815-geheim")));
             await Run(ui, () => vm.Server!.SendAsync(new UpdateServerSettings("Testserver", "", "Neues-Passwort-42")));
 
-            var log = await Eventually(null, "mit Passwort", "Admin-Token einlösen", "Passwort setzen", "Servereinstellungen geändert");
+            var log = await Eventually(null, "with password", "Redeem admin token", "set password", "Server settings changed");
             Assert.DoesNotContain("Serverpasswort-4711", log);
             Assert.DoesNotContain("Token-0815-geheim", log);
             Assert.DoesNotContain("Neues-Passwort-42", log);

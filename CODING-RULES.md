@@ -111,6 +111,7 @@ The saving (`Persist`, `PersistSoon` with the save timer and retry, close) is su
 - **`Input/`** and **`Settings/`** are flat; in `Input/`, `KeyPoller` polls the keys and captures the next chord, `KeyBindingMatcher` resolves which bindings the pressed keys trigger, `KeyActionTraits` lists the actions and the hold ones, `KeyActionLabels` and `VirtualKeys` (the known key codes, the modifiers, a key's shown name) hold the texts, `DefaultPushToTalk` chooses the key of a new profile; `SettingsViewModel` gets only the poller's chord capture as a `Func`; `PasswordProtector` is in `Settings/`, as it only protects stored settings (F3, F4).
 - **`Localization/`:** `ErrorTexts`, `PermissionLabels`, `Language`, `AppLanguage`, and `Formats` (§Shared helpers) (F5, H10).
 - **`Diagnostics/`** (was `Debug/`, C4): `DebugApi`, `AudioDebugLog`.
+- **`Logging/`:** `ClientLog` writes the client log (queued lines, one file per start, through the shared `LogFileWriter`); `ProtocolLogText` describes a server message or an own request in words, with the names from the `StateMirror` (N2).
 - **`Interop/`:** `NativeMethods` (an `internal static partial class` with every `[LibraryImport]` of the client; a function used in several places is declared once) and one file per Win32 struct under its Win32 name (`POINT`, `SIZE`, `BLENDFUNCTION`, `MSG`, `BITMAPINFOHEADER`, `WNDCLASSEXW`), with unchanged layout (B13).
 - **`Views/`:** `MainWindow`, `AdminView`, `ChatView`, `SettingsView`, `TitleBarView`, `ChannelDialogView` (G2, G3).
 - **`Controls/`:** `BusySpinner`, `LogoMark`, `OverlayHost` (G1, G4).
@@ -185,6 +186,7 @@ Where code that several places need lives. All of these are introduced by the re
 | `TestSupport/StateHarness` | a `ServerState` without sockets: temporary data folder, `ManualTimeProvider`, seeded data, `Admit`, `Handle`, the decoded outbox (`Drain`, `WaitForAsync`) and `ChangeStoredData` under the lock | N7 |
 | `TestSupport/MainViewModelSetup` | `Create` (through `MainViewModel.Create`, like the composition root: log and settings from the test folder, on the system clock or a given one, without audio hardware; optional key state, a fake audio hardware, dialogs, server and trusting every certificate), `Compose` (the tests' only direct call of the `MainViewModel` constructor, with parts the caller built) and `ShowServer(vm, server)` (the only place the tests set the shown server) | N13, N14 |
 | `TestSupport/BrokenServerData` | `Break(data, variant)`: valid server data broken in one named way, shared by the `ServerData.FindProblem` tests and the backup restore tests | N7 |
+| `TestSupport/RequestSamples` | `Factories`: one well-formed instance of every request type (ids and names no server knows), shared by `DispatchTests` and `ProtocolLogTextTests` | N7 |
 | `TestSupport/PersistedFixtures` | the persisted files of 3d5c4db and the release deploy-4053cfa in `TestSupport/Fixtures`, and their date | N11 |
 | `TestSupport/TempDirectoryTest` | base class for tests whose `Dispose` only deletes their temporary folder | J5 |
 | `TestSupport/Rows` | row lookups and the row center of the UI tests | J5 |

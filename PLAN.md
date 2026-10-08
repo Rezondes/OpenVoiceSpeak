@@ -1896,15 +1896,15 @@ Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` sc
 ### Tests (TDD)
 
 `ClientLogTests.cs`:
-1. `[Theory] "Describe_Message"` für jede Delta-Art, mit Namen aus dem `StateMirror` (AC1)
-2. `"Connect_Disconnect_Logged"` über `MainViewModel` gegen `TestServer` (AC1)
-3. `"OwnActions_Logged"` über `ServerViewModel`, denselben Weg, den auch die Debug-API nimmt (AC1). Dazu `"Describe_Request_UsesNames_NeverSecrets"`.
-4. `"EachStart_OwnFile_OldFilesDeleted"` mit `ManualTimeProvider`, auch über Mitternacht (AC2)
+1. `ProtocolLogTextTests > "Describe_ServerMessage_InWordsWithNamesFromTheMirror"` für jede Delta-Art, mit Namen aus dem `StateMirror` (AC1)
+2. `ClientLogTests > "Connect_Disconnect_Logged"` über `MainViewModel` gegen `TestServer` (AC1)
+3. `ClientLogTests > "OwnActions_Logged"` über `ServerViewModel`, denselben Weg, den auch die Debug-API nimmt (AC1). Dazu `ProtocolLogTextTests > "Describe_Request_UsesNames_NeverSecrets"`.
+4. `ClientLogTests > "EachStart_OwnFile_OldFilesDeleted"` mit `ManualTimeProvider`, auch über Mitternacht (AC2)
 5. `"PasswordAndToken_NeverLogged"` (AC3)
 6. `"AudioDebug_WritesToClientLog"` (AC4), ersetzt `MainViewModelTests.AudioDebugLog_RecordsKeysAndFrameRate`
 7. `"WriteFailure_DoesNotThrow"` (AC5)
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientLogTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientLogTests|FullyQualifiedName~ProtocolLogTextTests"`
 
 ### Out of Scope
 
@@ -2344,7 +2344,7 @@ Seitenleiste und Lesezeichen zeigen den ersten Buchstaben des Servernamens. Nach
 3. `ServerIconTests > "Icon_SurvivesRestart_AndCanBeRemoved"` (AC4)
 4. `IconImportTests > "Import_TooBigWrongFormatNotSquareTooSmall_Rejected"`, `"Import_Jpg1024_Becomes256Png"` und `"Import_SmallSquarePng_KeepsItsSize"`, headless mit Avalonia und Skia (AC2)
 5. `UiSmokeTests`: mit Logo zeigt die Seitenleiste ein Bild statt des Buchstabens (AC3), Kachel mit Cache-Datei zeigt es ebenfalls (AC6)
-6. `ClientLogTests > "Describe_Request_UsesNames_NeverSecrets"` um die neuen Nachrichten erweitert
+6. `ProtocolLogTextTests > "Describe_Request_UsesNames_NeverSecrets"` um die neuen Nachrichten erweitert
 7. `MainViewModelTests > "ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile"`: echter Server mit Logo, der erste Verbindungsaufbau lädt es, der zweite nimmt es aus dem Cache, die Kachel zeigt es (AC3, AC6)
 
 **Umsetzungsnotizen:**
@@ -2352,7 +2352,7 @@ Seitenleiste und Lesezeichen zeigen den ersten Buchstaben des Servernamens. Nach
 - `ServerIconCache` fängt Plattenfehler selbst ab: Der Cache ist nur eine Abkürzung und darf nie das Verbinden verhindern. Gefunden hat das der Test: `File.Delete` wirft, wenn der Ordner `server-icons` noch fehlt.
 - Das Logo gilt sofort nach der Auswahl, unabhängig von "Servereinstellungen speichern".
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerIconTests|FullyQualifiedName~IconImportTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerIconTests|FullyQualifiedName~IconImportTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~ProtocolLogTextTests"`
 
 ### Umsetzungsschritte
 
@@ -2409,9 +2409,9 @@ Es gibt heute keinen Text-Chat. Die Rechte belegen die Bits 0 bis 12, die neuen 
 3. `ChatTests > "Invalid_EmptyTooLongOfflineSelf"` (AC3), `"RateLimit_SixthInFiveSeconds"` mit `ManualTimeProvider` (AC4), `"ServerMuted_CanWrite"` (AC5)
 4. `PermissionRulesTests > "DefaultGroups_HaveDocumentedPermissions"` (um die Chat-Rechte erweitert) und `DataStoreTests > "LoadVersion1_GuestGetsChatRights_Once"` (AC6)
 5. `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` (AC7, beim Chat statt in `ServerLogWriterTests`, weil es drei verbundene Clients braucht)
-6. `DebugApiTests > "Chat_RoundTrip"` zwischen zwei echten Clients (AC8), `ClientLogTests` für `ChatMessage` und `SendChat`
+6. `DebugApiTests > "Chat_RoundTrip"` zwischen zwei echten Clients (AC8), `ProtocolLogTextTests` für `ChatMessage` und `SendChat`
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~DataStoreTests|FullyQualifiedName~ServerLogWriterTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~ClientLogTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~DataStoreTests|FullyQualifiedName~ServerLogWriterTests|FullyQualifiedName~DebugApiTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~ProtocolLogTextTests"`
 
 ### Umsetzungsschritte
 
@@ -2668,10 +2668,10 @@ Channels haben ein `Order`-Feld, der Baum sortiert nach `Order`, dann nach Name.
 2. `ChannelCommandTests > "Reorder_IncompleteDuplicateUnknown_Invalid"`, `"Reorder_WithoutRight_Denied"` (AC3)
 3. `ServerViewModelTests > "MoveUpDown_SendFullOrder_DisabledAtEdges"` (AC2)
 4. `ServerViewModelTests > "DropOnChannel_SendsOrderWithSourceBeforeOrAfterTarget"`: die Einfüge-Logik liegt im ViewModel und ist ohne Maus testbar (AC1)
-5. `UiSmokeTests`: Kontextmenü enthält beide Einträge, ohne Recht ist Ziehen aus (AC1, AC2); `ClientLogTests`, `SmokeTests` (AC5)
+5. `UiSmokeTests`: Kontextmenü enthält beide Einträge, ohne Recht ist Ziehen aus (AC1, AC2); `ProtocolLogTextTests`, `SmokeTests` (AC5)
 6. `UiSmokeTests > "ChannelTree_DragRaidAboveLobby_SendsOrder"`: Ziehen mit echten Mausereignissen im Headless-Fenster, kurzer Klick zieht nicht. Offen bleibt nur der Blick auf die Einfügemarke am echten Bildschirm.
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~SmokeTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~ProtocolLogTextTests|FullyQualifiedName~SmokeTests"`
 
 ### Umsetzungsschritte
 
@@ -2768,9 +2768,9 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminCommandTests|FullyQua
    - Gegeben: 8 Channels ohne Links, alle ausgewählt
    - Erwartet: nach "Übernehmen" eine Anfrage mit 28 Paaren, 0 Entfernungen
 4. `AdminViewModelTests > "LinkMatrix_ToggleDiscardAndRemoteChange"` (AC1, AC3, AC5)
-5. `UiSmokeTests`: Tab "Links" in beiden Designs; `ClientLogTests`, `SmokeTests` (AC5)
+5. `UiSmokeTests`: Tab "Links" in beiden Designs; `ProtocolLogTextTests`, `SmokeTests` (AC5)
 
-Testbefehl: `dotnet test --filter "FullyQualifiedName~LinkCommandTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~SmokeTests"`
+Testbefehl: `dotnet test --filter "FullyQualifiedName~LinkCommandTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~ProtocolLogTextTests|FullyQualifiedName~SmokeTests"`
 
 ### Umsetzungsschritte
 

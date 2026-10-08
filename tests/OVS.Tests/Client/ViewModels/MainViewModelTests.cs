@@ -586,7 +586,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(png, (await OnUi(() => vm.Bookmarks)).Single().Icon);
 
         var log = ClientLogText();
-        Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Server-Logo anfordern")));
+        Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Request server logo")));
     }
 
     /// <summary>A refused logo request is sent once more after the server's interval, if the logo is still wanted.</summary>
@@ -1701,7 +1701,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             Assert.DoesNotContain(uiThread, whileRunning);
             var log = string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(own, "logs"), "client-*.log").Select(File.ReadAllText));
             var order = new List<string>();
-            for (int i = 0; i < 5; i++) order.AddRange([$"gast{i} verbunden", $"gast{i} getrennt"]);
+            for (int i = 0; i < 5; i++) order.AddRange([$"gast{i} connected", $"gast{i} disconnected"]);
             order.Add("Verbindung getrennt (eigene Aktion)"); // written while closing
             var positions = order.Select(line => log.IndexOf(line, StringComparison.Ordinal)).ToList();
             Assert.DoesNotContain(-1, positions);

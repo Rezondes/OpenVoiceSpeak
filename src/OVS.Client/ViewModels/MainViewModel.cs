@@ -323,7 +323,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         var mirror = new StateMirror(conn.Welcome);
         var vm = new ServerViewModel(mirror, request =>
         {
-            Log.Write(ClientLog.Describe(request, mirror));
+            Log.Write(ProtocolLogText.Describe(request, mirror));
             return conn.SendAsync(request);
         }, Time, Dialogs) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
         vm.Notice += text => AddNotice(text, NoticeKind.Error);
@@ -332,7 +332,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         vm.SoundRequested += Audio.Sounds.Play; // Package 47
         conn.MessageReceived += m => post(() =>
         {
-            if (ClientLog.Describe(m, mirror) is { } line) Log.Write(line);
+            if (ProtocolLogText.Describe(m, mirror) is { } line) Log.Write(line);
             vm.Apply(m);
         });
         conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
