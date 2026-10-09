@@ -95,7 +95,7 @@ public sealed class UsersAndBansViewModelTests
     }
 
     [Fact]
-    public async Task OnStateChanged_SomeoneGoesOffline_AsksForTheUserListAgain()
+    public async Task FollowServer_SomeoneGoesOffline_AsksForTheUserListAgain()
     {
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
@@ -103,20 +103,20 @@ public sealed class UsersAndBansViewModelTests
         server.Apply(new UserLeft(2)); // anna, online until now
         time.Advance(TimeSpan.FromSeconds(2));
 
-        section.OnStateChanged();
+        section.FollowServer();
 
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
     }
 
     [Fact]
-    public async Task OnStateChanged_NothingChanged_AsksForNothing()
+    public async Task FollowServer_NothingChanged_AsksForNothing()
     {
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
         server.Apply(new UserList(IdOf<ListUsers>(), [Yvonne]));
         time.Advance(TimeSpan.FromSeconds(2));
 
-        section.OnStateChanged();
+        section.FollowServer();
 
         Assert.Single(sent.OfType<ListUsers>());
     }
@@ -134,7 +134,7 @@ public sealed class UsersAndBansViewModelTests
         server.Apply(new UserLeft(2)); // would ask for the user list again
         time.Advance(TimeSpan.FromSeconds(2));
         await Bound(section.RefreshAsync());
-        section.OnStateChanged();
+        section.FollowServer();
 
         Assert.Equal(askedBefore, sent.Count);
     }

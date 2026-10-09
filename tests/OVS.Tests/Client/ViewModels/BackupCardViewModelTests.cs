@@ -40,11 +40,11 @@ public sealed class BackupCardViewModelTests
         server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Lobby, false, false, false, rights, [])));
 
     [Fact]
-    public async Task RequestAsync_BackupsManageHeld_AsksForTheBackupListAndShowsItsAnswerAndEndsTheLoad()
+    public async Task RefreshAsync_BackupsManageHeld_AsksForTheBackupListAndShowsItsAnswerAndEndsTheLoad()
     {
         var rig = Create();
 
-        await Bound(rig.Section.RequestAsync());
+        await Bound(rig.Section.RefreshAsync());
         rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer, Older]));
 
         Assert.Single(sent.OfType<ListBackups>());
@@ -53,12 +53,12 @@ public sealed class BackupCardViewModelTests
     }
 
     [Fact]
-    public async Task RequestAsync_BackupsManageMissing_AsksForNothing()
+    public async Task RefreshAsync_BackupsManageMissing_AsksForNothing()
     {
         var rig = Create();
         StripOwnRights(rig.Server);
 
-        await Bound(rig.Section.RequestAsync());
+        await Bound(rig.Section.RefreshAsync());
 
         Assert.False(rig.Section.ShowBackups);
         Assert.Empty(sent);
@@ -68,7 +68,7 @@ public sealed class BackupCardViewModelTests
     public async Task Apply_ListInTwoPages_AsksForTheSecondPageAndShowsBothAfterIt()
     {
         var rig = Create();
-        await Bound(rig.Section.RequestAsync());
+        await Bound(rig.Section.RefreshAsync());
         var roundId = IdOf<ListBackups>();
 
         rig.Server.Apply(new BackupList(roundId, [Newer], 0, 2));
@@ -98,7 +98,7 @@ public sealed class BackupCardViewModelTests
     public async Task Apply_AnswerThatIsNoBackupList_ChangesNothing()
     {
         var rig = Create();
-        await Bound(rig.Section.RequestAsync());
+        await Bound(rig.Section.RefreshAsync());
 
         rig.Section.Apply(new Error(IdOf<ListBackups>(), "denied"));
 
@@ -107,29 +107,29 @@ public sealed class BackupCardViewModelTests
     }
 
     [Fact]
-    public async Task OnStateChanged_AdminGroupLeft_TakesTheRestoreButtonsAway()
+    public async Task FollowServer_AdminGroupLeft_TakesTheRestoreButtonsAway()
     {
         var rig = Create();
-        await Bound(rig.Section.RequestAsync());
+        await Bound(rig.Section.RefreshAsync());
         rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer]));
         Assert.True(rig.Section.Backups[0].CanRestore);
 
         LeaveAdminGroup(rig.Server);
-        rig.Section.OnStateChanged();
+        rig.Section.FollowServer();
 
         Assert.False(rig.Section.CanUploadRestore);
         Assert.False(rig.Section.Backups[0].CanRestore);
     }
 
     [Fact]
-    public async Task OnStateChanged_NothingChanged_KeepsTheRows()
+    public async Task FollowServer_NothingChanged_KeepsTheRows()
     {
         var rig = Create();
-        await Bound(rig.Section.RequestAsync());
+        await Bound(rig.Section.RefreshAsync());
         rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer]));
         var row = rig.Section.Backups[0];
 
-        rig.Section.OnStateChanged();
+        rig.Section.FollowServer();
 
         Assert.Same(row, rig.Section.Backups[0]);
     }
@@ -138,7 +138,7 @@ public sealed class BackupCardViewModelTests
     public async Task Detach_ListInFlight_IgnoresItsAnswerAndKeepsNoRoute()
     {
         var rig = Create();
-        await Bound(rig.Section.RequestAsync());
+        await Bound(rig.Section.RefreshAsync());
 
         rig.Section.Detach();
         rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer]));

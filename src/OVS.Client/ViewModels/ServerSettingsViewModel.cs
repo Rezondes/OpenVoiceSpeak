@@ -53,7 +53,7 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
     internal bool ShowServerSettings => server.SelfPermissions.Has(Permission.ServerConfig);
 
     /// <summary>The server's state changed: the password flag, limits that arrive late, and new settings from the server follow.</summary>
-    internal void OnStateChanged()
+    internal void FollowServer()
     {
         HasPassword = server.Mirror.Settings.HasPassword;
         if (loadedLimits is null) LoadLimits(); // e.g. arriving with the ServerConfig right; later ones never overwrite edits

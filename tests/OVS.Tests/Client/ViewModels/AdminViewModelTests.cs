@@ -1479,4 +1479,19 @@ public class AdminViewModelTests
         Assert.DoesNotContain(second, view.GroupList.Groups);
         Assert.Null(view.GroupList.SelectedGroup);
     }
+
+    [Fact]
+    public async Task OnServerStateChanged_LogsDownloadRightLost_LogRowsLoseTheirCheckboxes()
+    {
+        var logFile = new LogFileInfo("server/2026-01-10_12-00-00.log", LogKind.Server, null, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, 10);
+        var time = new ManualTimeProvider();
+        var server = FakeServers.Admin(time: time, reply: request => request is ListLogs ? new LogList(request.RequestId, [logFile]) : null);
+        var page = new AdminViewModel(server);
+        await HangGuard.Bound(page.RequestListsAsync());
+        Assert.True(page.Logs.Files.Single().CanSelect);
+
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Lobby, false, false, false, P.All & ~P.LogsDownload, [WellKnownGroups.Admin])));
+
+        Assert.False(page.Logs.Files.Single().CanSelect);
+    }
 }

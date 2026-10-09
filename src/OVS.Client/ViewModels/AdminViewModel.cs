@@ -10,7 +10,8 @@ namespace OVS.Client.ViewModels;
 
 /// <summary>
 /// The administration page: it composes the groups tab, the users and bans tabs, the backup and settings cards of the server tab,
-/// the links and logs tabs. Every tab only shows with the matching right.
+/// the links and logs tabs. Every tab only shows with the matching right. It lists the sections once (<see cref="AdminSection"/>)
+/// and asks them to refresh, follow the server and let go of their routes.
 /// </summary>
 public sealed partial class AdminViewModel : ObservableObject
 {
@@ -21,7 +22,7 @@ public sealed partial class AdminViewModel : ObservableObject
         this.server = server;
         UsersAndBans = new UsersAndBansViewModel(server);
         IconUpload = server.NewPending();
-        server.StateChanged += OnStateChanged;
+        server.StateChanged += OnServerStateChanged;
         server.PropertyChanged += OnServerPropertyChanged;
         ServerSettings = new ServerSettingsViewModel(server);
         Links = new LinkMatrixViewModel(server);
@@ -30,7 +31,20 @@ public sealed partial class AdminViewModel : ObservableObject
         Logs = new LogsViewModel(server, Transfer);
         GroupList = new GroupListViewModel(server, ConfirmLeaveAsync);
         Places = [GroupList.Place, Links.Place, ServerSettings.Place];
+        // The lists are asked for in this order; each section owns the right its own code checks (users and bans, backups,
+        // settings, logs), the page keeps those of the groups and links tabs, which have no refresh.
+        sections =
+        [
+            new(FollowServer: GroupList.FollowServer),
+            new(UsersAndBans.RefreshAsync, UsersAndBans.FollowServer, UsersAndBans.Detach),
+            new(FollowServer: Links.Rebuild),
+            new(FollowServer: ServerSettings.FollowServer),
+            new(BackupCard.RefreshAsync, BackupCard.FollowServer, BackupCard.Detach),
+            new(Logs.RefreshAsync, Logs.FollowServer, Logs.Detach),
+        ];
     }
+
+    readonly IReadOnlyList<AdminSection> sections;
 
     Permission Actor => server.SelfPermissions;
     // Package 76: seeing a tab and acting in it are separate rights
@@ -42,7 +56,7 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool ShowServerSettings => ServerSettings.ShowServerSettings;
     public bool ShowBackups => BackupCard.ShowBackups;
     public bool ShowLinks => Actor.Has(Permission.ChannelLink);
-    public bool ShowLogs => Actor.Has(Permission.LogsView); // Package 81
+    public bool ShowLogs => Logs.ShowLogs; // Package 81
     public LinkMatrixViewModel Links { get; }
     public LogsViewModel Logs { get; }
     /// <summary>The users and bans tabs.</summary>
@@ -64,10 +78,8 @@ public sealed partial class AdminViewModel : ObservableObject
 
     public void Detach()
     {
-        UsersAndBans.Detach();
-        BackupCard.Detach();
-        Logs.Detach();
-        server.StateChanged -= OnStateChanged;
+        foreach (var section in sections) section.Detach?.Invoke();
+        server.StateChanged -= OnServerStateChanged;
         server.PropertyChanged -= OnServerPropertyChanged;
         Transfer.Cancel(); // Package 75: a transfer stops and cleans up
     }
@@ -109,18 +121,16 @@ public sealed partial class AdminViewModel : ObservableObject
 
     public async Task RequestListsAsync()
     {
-        await UsersAndBans.RefreshAsync();
-        await BackupCard.RequestAsync();
-        if (ShowLogs) await Logs.RequestAsync();
+        foreach (var section in sections)
+        {
+            if (section.Refresh is { } refresh) await refresh();
+        }
     }
 
-    void OnStateChanged()
+    void OnServerStateChanged()
     {
         OnPropertyChanged(nameof(HasIcon));
-        GroupList.OnStateChanged();
-        UsersAndBans.OnStateChanged();
-        Links.Rebuild();
-        ServerSettings.OnStateChanged();
+        foreach (var section in sections) section.FollowServer?.Invoke();
         OnPropertyChanged(nameof(ShowLinks));
         OnPropertyChanged(nameof(ShowGroups));
         OnPropertyChanged(nameof(ShowUsers));
@@ -129,8 +139,6 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowServerSettings));
         OnPropertyChanged(nameof(ShowBackups));
         OnPropertyChanged(nameof(ShowLogs));
-        BackupCard.OnStateChanged();
-        Logs.RightsChanged(); // Package 82
     }
 
     // Package 114: the places that need a manual save; each section builds its own and its tab of the view carries it

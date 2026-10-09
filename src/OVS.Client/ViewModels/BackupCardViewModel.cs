@@ -54,7 +54,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     internal bool HasNoBackups => !Backups.Live().Any();
 
     /// <summary>Asks for the backup list when the backups are shown.</summary>
-    internal Task RequestAsync() => ShowBackups ? SendRoutedAsync(new ListBackups(), pending: BackupsLoad) : Task.CompletedTask;
+    internal Task RefreshAsync() => ShowBackups ? SendRoutedAsync(new ListBackups(), pending: BackupsLoad) : Task.CompletedTask;
 
     /// <summary>The page closed: no answer reaches this section.</summary>
     internal void Detach()
@@ -64,7 +64,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     }
 
     /// <summary>The server's state changed: the restore buttons come and go with the Admin group (Package 89).</summary>
-    internal void OnStateChanged()
+    internal void FollowServer()
     {
         if (CanUploadRestore != backupsForAdmin) RebuildBackups();
     }

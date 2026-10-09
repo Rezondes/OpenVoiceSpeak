@@ -55,7 +55,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
     internal AdminPlace Place { get; }
 
     /// <summary>The server's state changed: the groups are built again, and the rights decide the buttons.</summary>
-    internal void OnStateChanged()
+    internal void FollowServer()
     {
         RebuildGroups();
         NewGroupCommand.NotifyCanExecuteChanged();

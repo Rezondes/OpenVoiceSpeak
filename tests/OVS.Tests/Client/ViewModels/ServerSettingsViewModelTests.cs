@@ -29,7 +29,7 @@ public sealed class ServerSettingsViewModelTests
     static void ApplyServerSettings(Rig rig, Func<ServerSettingsInfo, ServerSettingsInfo> change)
     {
         rig.Server.Apply(new ServerSettingsChanged(change(rig.Server.Mirror.Settings)));
-        rig.Card.OnStateChanged();
+        rig.Card.FollowServer();
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_ServerLosesItsPassword_HasPasswordFollows()
+    public void FollowServer_ServerLosesItsPassword_HasPasswordFollows()
     {
         var rig = Create();
         Assert.True(rig.Card.HasPassword);
@@ -99,7 +99,7 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_LimitsArriveLater_HasLimitsAndShowsTheirValues()
+    public void FollowServer_LimitsArriveLater_HasLimitsAndShowsTheirValues()
     {
         var rig = Create();
         Assert.False(rig.Card.HasLimits);
@@ -112,7 +112,7 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_OtherAdminRenamesTheServer_AnUntouchedNameFollows()
+    public void FollowServer_OtherAdminRenamesTheServer_AnUntouchedNameFollows()
     {
         var rig = Create();
 
@@ -123,7 +123,7 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_OtherAdminRenamesTheServer_AnEditedNameStays()
+    public void FollowServer_OtherAdminRenamesTheServer_AnEditedNameStays()
     {
         var rig = Create();
         rig.Card.Name = "Eigener Name";
@@ -135,12 +135,12 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_NothingChanged_KeepsTheEdits()
+    public void FollowServer_NothingChanged_KeepsTheEdits()
     {
         var rig = Create();
         rig.Card.Name = "Eigener Name";
 
-        rig.Card.OnStateChanged();
+        rig.Card.FollowServer();
 
         Assert.Equal("Eigener Name", rig.Card.Name);
     }
@@ -203,7 +203,7 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_OtherAdminChangesLimits_UntouchedLimitsFollow()
+    public void FollowServer_OtherAdminChangesLimits_UntouchedLimitsFollow()
     {
         var rig = Create();
         ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits });
@@ -215,7 +215,7 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_OtherAdminChangesLimits_EditedLimitsStay()
+    public void FollowServer_OtherAdminChangesLimits_EditedLimitsStay()
     {
         var rig = Create();
         ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits });

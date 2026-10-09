@@ -89,7 +89,11 @@ public sealed partial class LogsViewModel : ObservableObject
     public PendingViewModel FilesLoad { get; }
     public PendingViewModel Searching { get; }
 
-    public Task RequestAsync() => SendRoutedAsync(new ListLogs(), pending: FilesLoad);
+    /// <summary>Package 81: the logs are shown and asked for with LogsView.</summary>
+    internal bool ShowLogs => server.SelfPermissions.Has(Permission.LogsView);
+
+    /// <summary>Asks for the log file list when the logs are shown.</summary>
+    internal Task RefreshAsync() => ShowLogs ? SendRoutedAsync(new ListLogs(), pending: FilesLoad) : Task.CompletedTask;
 
     /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
     Task<string> SendRoutedAsync(Request request, string? id = null, PendingViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
@@ -193,8 +197,8 @@ public sealed partial class LogsViewModel : ObservableObject
         }
     }
 
-    /// <summary>The own rights changed: checkboxes come and go with LogsDownload.</summary>
-    public void RightsChanged()
+    /// <summary>The server's state changed: checkboxes come and go with LogsDownload (Package 82).</summary>
+    internal void FollowServer()
     {
         if (ShowDownload == downloadRight) return;
         downloadRight = ShowDownload;

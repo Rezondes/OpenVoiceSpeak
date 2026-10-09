@@ -182,6 +182,17 @@ public class LogsViewModelTests
         Assert.Empty(logs.Hits);
     }
 
+    [Fact]
+    public void RefreshAsync_LogsViewMissing_SendsNothing()
+    {
+        var (logs, sent) = Create(perms: Permission.Speak);
+        sent.Clear();
+
+        _ = logs.RefreshAsync();
+
+        Assert.Empty(sent);
+    }
+
     // ---- Package 82: download ----
 
     [Fact]

@@ -144,7 +144,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     }
 
     /// <summary>The server's state changed: the group filter, the online status and the cards follow.</summary>
-    internal void OnStateChanged()
+    internal void FollowServer()
     {
         RebuildGroupFilters();
         // Package 71: online status at once from the live state, the stored data follows with a new list

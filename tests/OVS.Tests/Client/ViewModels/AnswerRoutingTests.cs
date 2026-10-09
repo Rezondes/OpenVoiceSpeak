@@ -233,9 +233,11 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         Assert.All(withRoutedAnswer, name => Assert.True(Owners.ContainsKey(name) || RequestsNotRouted.ContainsKey(name), $"{name} is not decided"));
     }
 
-    /// <summary>Every request the page sends (each action once) goes with the route of its owner, or is listed without one.</summary>
-    [Fact]
-    public async Task AdminPage_EveryRequest_RoutedToItsOwnerOrListed()
+    /// <summary>A page that went through every action once, on its server, and the route each request went out with.</summary>
+    sealed record DrivenPage(AdminViewModel Page, ServerViewModel Server, List<(Request Request, Action<Message>? Route)> Sent);
+
+    /// <summary>Opens a page with every right, drives each of its actions once (see <see cref="DrivenPage"/>) and answers what the server would.</summary>
+    async Task<DrivenPage> DriveEveryActionAsync()
     {
         var routes = new List<(Request Request, Action<Message>? Route)>();
         ServerViewModel server = null!;
@@ -301,6 +303,14 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         page.RemoveIconCommand.Execute(null);
         page.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
         await Bound(page.Links.ApplyCommand.ExecuteAsync(null));
+        return new DrivenPage(page, server, routes);
+    }
+
+    /// <summary>Every request the page sends (each action once) goes with the route of its owner, or is listed without one.</summary>
+    [Fact]
+    public async Task AdminPage_EveryRequest_RoutedToItsOwnerOrListed()
+    {
+        var (page, _, routes) = await DriveEveryActionAsync();
 
         string OwnerOf(Action<Message>? route) =>
             route is null ? "none"
@@ -329,6 +339,21 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         Assert.Empty(page.UsersAndBans.Users);
         Assert.Empty(page.Logs.Files);
         Assert.All(sent, r => Assert.Null(server.Routes.Find(r.RequestId!)));
+    }
+
+    /// <summary>A section that keeps a route past the page's close would get answers for a page nobody sees.</summary>
+    [Fact]
+    public async Task AdminPage_DetachedAfterEveryAction_NoRouteOfAnyChildSectionRemains()
+    {
+        var (page, server, requests) = await DriveEveryActionAsync();
+        var routesKeptBefore = requests.Where(pair => server.Routes.Find(pair.Request.RequestId!) is not null).Select(pair => pair.Request.GetType().Name).ToHashSet();
+        Assert.Contains(nameof(ListUsers), routesKeptBefore);
+        Assert.Contains(nameof(ListBackups), routesKeptBefore);
+        Assert.Contains(nameof(ListLogs), routesKeptBefore);
+
+        page.Detach();
+
+        Assert.All(requests, pair => Assert.Null(server.Routes.Find(pair.Request.RequestId!)));
     }
 
     /// <summary>Package 75 (AC2): the server stores the upload and sends its new list; the backup shows in the page's list.</summary>

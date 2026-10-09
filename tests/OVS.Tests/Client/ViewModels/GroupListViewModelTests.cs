@@ -37,7 +37,7 @@ public sealed class GroupListViewModelTests
             asked.Add(place);
             return Task.FromResult(leaveConfirmed);
         });
-        server.StateChanged += list.OnStateChanged; // the page tells the tab about every state change
+        server.StateChanged += list.FollowServer; // the page tells the tab about every state change
         return new Rig(list, server);
     }
 
@@ -66,7 +66,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_GroupAdded_RowListedAndSelectionKept()
+    public void FollowServer_GroupAdded_RowListedAndSelectionKept()
     {
         var rig = Create();
         rig.Section.SelectedGroup = Row(rig, "Admin");
@@ -78,7 +78,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_SelectedGroupRemoved_FirstGroupSelected()
+    public void FollowServer_SelectedGroupRemoved_FirstGroupSelected()
     {
         var rig = Create();
         ServerGroups(rig, Guest, Team, Admin);
@@ -90,7 +90,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_DraftSelected_DraftStaysListedAndSelected()
+    public void FollowServer_DraftSelected_DraftStaysListedAndSelected()
     {
         var rig = Create();
         rig.Section.NewGroupCommand.Execute(null);
@@ -104,7 +104,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_GroupUntouched_RowBuiltAnewWithTheServersRights()
+    public void FollowServer_GroupUntouched_RowBuiltAnewWithTheServersRights()
     {
         var rig = Create();
         var before = Row(rig, "Gast");
@@ -116,7 +116,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_GroupEdited_SameRowKeepsTheNameAndFollowsTheRights()
+    public void FollowServer_GroupEdited_SameRowKeepsTheNameAndFollowsTheRights()
     {
         var rig = Create();
         var edited = Row(rig, "Gast");
@@ -129,7 +129,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_GroupEditedAndOwnRightsChanged_NewRowCarriesTheEdit()
+    public void FollowServer_GroupEditedAndOwnRightsChanged_NewRowCarriesTheEdit()
     {
         var rig = Create();
         var edited = Row(rig, "Gast");
@@ -142,7 +142,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_GroupEditedAndOwnManageRightLost_RowReadOnlyAndEditDropped()
+    public void FollowServer_GroupEditedAndOwnManageRightLost_RowReadOnlyAndEditDropped()
     {
         var rig = Create();
         Row(rig, "Gast").Name = "Neu";
@@ -154,7 +154,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_EditedGroupBecomesStrongerThanTheActor_RowReadOnlyAndEditDropped()
+    public void FollowServer_EditedGroupBecomesStrongerThanTheActor_RowReadOnlyAndEditDropped()
     {
         var rig = Create();
         OwnRights(rig, Permission.Speak | Permission.GroupsView | Permission.GroupsManage);
@@ -169,7 +169,7 @@ public sealed class GroupListViewModelTests
     // ---- a new group ----
 
     [Fact]
-    public void OnStateChanged_CreateRightLostAndGained_NewGroupCanExecuteOnlyWithIt()
+    public void FollowServer_CreateRightLostAndGained_NewGroupCanExecuteOnlyWithIt()
     {
         var rig = Create();
 
@@ -181,7 +181,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_ServerMovesTheEditedSelectedGroup_MoveUpDisabledAndAllThreeCommandsAskedAgain()
+    public void FollowServer_ServerMovesTheEditedSelectedGroup_MoveUpDisabledAndAllThreeCommandsAskedAgain()
     {
         var rig = Create();
         ServerGroups(rig, Guest, Team, Admin);
@@ -200,7 +200,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void OnStateChanged_SelectionMovesByCode_IsSelectingInCodeOnlyWhileItMoves()
+    public void FollowServer_SelectionMovesByCode_IsSelectingInCodeOnlyWhileItMoves()
     {
         var rig = Create();
         ServerGroups(rig, Guest, Team, Admin);
