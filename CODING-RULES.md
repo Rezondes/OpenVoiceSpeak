@@ -207,6 +207,7 @@ Where code that several places need lives. All of these are introduced by the re
 | `TestSupport/DialogCase`, `TestSupport/DialogCaseTable` | `DialogCase`: one way to open a dialog (type, opener, buttons, red, what Enter gives); `DialogCaseTable`: `All`, `Find`, `FindDialogTypes`; every dialog type needs a case | J1 |
 | `TestSupport/KeyedList` | a list of `KeyedRow` entries with item motion: `Create`, `Show` in an animated window, `Still` (no animation running, no places noted), `Container` (the row of a key) | J1 |
 | `TestSupport/Snapshots` | the `UserInfo` builder and the snapshot and `StateMirror` construction of the client tests | J5 |
+| `TestSupport/FakeServers` | ready client servers (`Admin` and others), the shared `GuestGroup` and `AdminGroup`, and `SetOwnRightsAndGroups` (the own user gets exactly these rights and groups) | J5 |
 | `TestSupport/MotionWait` | `Settle(int)` and `WaitFor(Func<bool>, int)`; the transform readers `OffsetX`, `OffsetY` and `Scale` | J5 |
 | `TestSupport/AsyncWait` | `Until(Func<bool>)` | J5 |
 | `TestSupport/HangGuard` | `Bound(task)`: a test-side guard only, an awaited task that never completes fails the test with a `TimeoutException` after `Limit` (10 s) instead of hanging the run; a passing test never waits for it | J1, N23 |

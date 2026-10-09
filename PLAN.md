@@ -4763,7 +4763,7 @@ Backups gehen heute nur per `docker run ... tar` über das Volume (README). Im D
 4. `BackupTests > "Restore_Invalid_NothingChanged"` (AC3): kaputtes Zip, fehlendes Manifest, zu neue Datenversion
 5. `BackupTests > "Restore_OlderDataVersion_Migrated"` (AC4)
 6. `BackupTests > "PathTraversal_AndMissingRight_Rejected"` (AC5)
-7. `AdminViewModelTests > "Backups_ListCreateDeleteRestore_AskFirst"` (AC2, AC3)
+7. `BackupCardViewModelTests > "Apply_TwoBackups_ShowsThemInTheServersOrderWithSizeAndHashDetails"`, `"Apply_EmptyListAfterTwoBackups_HasNoBackups"`, `"NewBackup_Executed_SendsCreateBackup"`, `"DeleteAndRestore_AnsweredNo_AskForTheBackupsTitleAndSendNothing"`, `"DeleteAndRestore_AnsweredYes_SendDeleteThenRestoreOfThatBackup"`, `AdminViewModelTests > [Theory] "RequestListsAsync_ByRights_AsksForTheBackupListOnlyWithBackupsManage"` (AC2, AC3)
 8. `UiSmokeTests`, `LocalizationTests`, `SettingsTests > "ErrorTexts_EveryCodeHasText"` (AC6)
 
 Testbefehl: `dotnet test`
@@ -4813,8 +4813,8 @@ Steuernachrichten sind höchstens 1 MiB gross (`FrameReader.MaxFrameSize`). Base
 2. `BackupTests > "Upload_ValidatedStored_Listed"` (AC2)
 3. `BackupTests > "Upload_TooLargeOrAborted_NoFileLeft"` (AC3)
 4. `BackupTests > "Upload_InvalidArchive_Rejected"` (AC2)
-5. `AdminViewModelTests > "DownloadBackupAsync_BackupChosen_SavesItsArchive"`, `AdminTransferTests > [Theory] "Download_ChunksAnswered_FileInPlaceWithProgress"` (AC1, AC3)
-6. `AdminViewModelTests > "UploadAndRestore_AsksFirst"`, `AdminTransferTests > "UploadBackupAsync_ChunksAcknowledged_ReturnsTheStoredBackupWithProgress"`, `[Theory] "UploadBackupAsync_FileSize_RefusedOnlyOverTheLimit"`, `AnswerRoutingTests > "AdminPage_UploadStored_TheFollowingListShowsTheBackup"` (AC2, AC3)
+5. `BackupCardViewModelTests > "DownloadBackupAsync_BackupChosen_SendsTheDownloadRequestAndSavesItsArchive"`, `AdminTransferTests > [Theory] "Download_ChunksAnswered_FileInPlaceWithProgress"` (AC1, AC3)
+6. `BackupCardViewModelTests > "UploadBackupAsync_RestoreNotWanted_SendsTheArchiveAsksNothingAndRestoresNothing"`, `[Theory] "UploadBackupAsync_RestoreWanted_AsksOnceAboutTheStoredBackupAndRestoresItOnlyWhenAnsweredYes"`, `"UploadBackupAsync_TwoUploads_SendEachArchiveUnderItsOwnUploadId"`, `"UploadBackupAsync_ServerRefusesTheArchive_AsksNothingRestoresNothingAndEndsTheTransfer"`, `AdminTransferTests > "UploadBackupAsync_ChunksAcknowledged_ReturnsTheStoredBackupWithProgress"`, `[Theory] "UploadBackupAsync_FileSize_RefusedOnlyOverTheLimit"`, `AnswerRoutingTests > "AdminPage_UploadStored_TheFollowingListShowsTheBackup"` (AC2, AC3)
 7. `LocalizationTests` (AC5)
 
 Testbefehl: `dotnet test`
@@ -5644,7 +5644,7 @@ All backup requests need `ServerConfig` (BackupCommands.cs). A holder of that ri
 3. `BackupTests > "UploadAndRestore_OnlyAdminGroup_CheckedPerChunk"` (AC2)
 4. `BackupTests > "Restore_InvalidContent_RejectedServerStillStarts"` (AC3): Theory null users, null settings, null channels, invalid names, dangling group ids, no admin
 5. `BackupTests > "ManifestCap_Quota_ListingCached"` (AC4)
-6. `AdminViewModelTests > "BackupButtons_ByRightAndAdminGroup_DownloadWarns"`, `"UploadBackupAsync_OutsideTheAdminGroup_ReturnsWithoutSending"` (AC2, AC5)
+6. `BackupCardViewModelTests > "CanUploadRestore_AdminGroupMember_True"`, `"CanUploadRestore_AllRightsButNotInTheAdminGroup_False"`, `"Restore_BackupsManageWithoutTheAdminGroup_RowCannotRestoreAndSendsNothing"`, `"Restore_AdminGroupMember_RowCanRestoreAndTheRestoreIsSent"`, `"ConfirmDownloadAsync_WarningAnsweredNoThenYes_ReturnsEachAnswerAfterAskingEachTime"`, `"ConfirmDownloadAsync_NoWarningDialogRegistered_ReturnsFalse"`, `"UploadBackupAsync_OutsideTheAdminGroup_ReturnsWithoutSending"`, `AdminViewModelTests > [Theory] "ServerTab_OneCardRight_ShowsTheTabAndOnlyThatCard"`, `"OnServerStateChanged_AdminGroupLeft_BackupRowsLoseRestoreAndUploadRestore"` (AC2, AC5)
 7. `LocalizationTests` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -6050,7 +6050,7 @@ There is no shared busy component. Only connecting (`IsConnecting`, indeterminat
 2. `PendingViewModelTests > "NoAnswer_TimesOutWithError_Retryable"` (AC2)
 3. `AdminViewModelTests > "Lists_ShowLoadingUntilFirstPage_RefreshKeepsContent"` (AC3)
 4. `LogsViewModelTests > "Search_BusyUntilResult"` (AC4)
-5. `AdminViewModelTests > "BackupCreateAndRestore_ShowBusy"` (AC5)
+5. `BackupCardViewModelTests > "NewBackup_ClickedTwice_SendsOnceShowsBusyAfterTheDelayAndEndsWithTheNewList"`, `"Restore_ConfirmedThenRefused_StaysBusyThroughTheSafetyBackupAndEndsWithTheErrorText"` (AC5)
 6. `ResponsiveTests.Admin_EveryTabFits` with busy states, `LocalizationTests` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`

@@ -7,7 +7,6 @@ using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
-using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 using static OVS.Tests.TestSupport.HangGuard;
 
@@ -17,9 +16,7 @@ namespace OVS.Tests.Client.ViewModels;
 public sealed class GroupListViewModelTests
 {
     static readonly Guid TeamId = Guid.NewGuid();
-    static readonly GroupInfo Guest = new(WellKnownGroups.Guest, "Gast", Permission.Speak, true);
     static readonly GroupInfo Team = new(TeamId, "Team", Permission.Speak, true);
-    static readonly GroupInfo Admin = new(WellKnownGroups.Admin, "Admin", Permission.All, true);
 
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
@@ -45,9 +42,6 @@ public sealed class GroupListViewModelTests
 
     static void ServerGroups(Rig rig, params GroupInfo[] groups) => rig.Server.Apply(new GroupsChanged(groups));
 
-    static void OwnRights(Rig rig, Permission rights) =>
-        rig.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Lobby, false, false, false, rights, [WellKnownGroups.Admin])));
-
     /// <summary>Everything the tab does here completes at once, so a test that is not async sees the end of it (no context moves it).</summary>
     static void Move(Rig rig, GroupEditViewModel source, GroupEditViewModel target, bool after) =>
         Assert.True(rig.Section.MoveGroupAsync(source, target, after).IsCompletedSuccessfully);
@@ -71,7 +65,7 @@ public sealed class GroupListViewModelTests
         var rig = Create();
         rig.Section.SelectedGroup = Row(rig, "Admin");
 
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
 
         Assert.Equal(["Gast", "Team", "Admin"], Names(rig));
         Assert.Equal(WellKnownGroups.Admin, rig.Section.SelectedGroup?.Id);
@@ -81,10 +75,10 @@ public sealed class GroupListViewModelTests
     public void FollowServer_SelectedGroupRemoved_FirstGroupSelected()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         rig.Section.SelectedGroup = Row(rig, "Team");
 
-        ServerGroups(rig, Guest, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, FakeServers.AdminGroup);
 
         Assert.Equal("Gast", rig.Section.SelectedGroup?.Name);
     }
@@ -96,7 +90,7 @@ public sealed class GroupListViewModelTests
         rig.Section.NewGroupCommand.Execute(null);
         var draft = rig.Section.SelectedGroup;
 
-        ServerGroups(rig, Guest, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, FakeServers.AdminGroup);
 
         Assert.Null(draft?.Id);
         Assert.Same(draft, rig.Section.SelectedGroup);
@@ -109,7 +103,7 @@ public sealed class GroupListViewModelTests
         var rig = Create();
         var before = Row(rig, "Gast");
 
-        ServerGroups(rig, Guest with { Permissions = Permission.Speak | Permission.SpeakLinked }, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup with { Permissions = Permission.Speak | Permission.SpeakLinked }, FakeServers.AdminGroup);
 
         Assert.NotSame(before, Row(rig, "Gast"));
         Assert.Equal(Permission.Speak | Permission.SpeakLinked, Row(rig, "Gast").Permissions);
@@ -122,7 +116,7 @@ public sealed class GroupListViewModelTests
         var edited = Row(rig, "Gast");
         edited.Name = "Neu";
 
-        ServerGroups(rig, Guest with { Permissions = Permission.Speak | Permission.SpeakLinked }, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup with { Permissions = Permission.Speak | Permission.SpeakLinked }, FakeServers.AdminGroup);
 
         Assert.Same(edited, Row(rig, "Neu"));
         Assert.Equal(Permission.Speak | Permission.SpeakLinked, edited.Permissions);
@@ -135,7 +129,7 @@ public sealed class GroupListViewModelTests
         var edited = Row(rig, "Gast");
         edited.Name = "Neu";
 
-        OwnRights(rig, Permission.All & ~Permission.UserBan);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.All & ~Permission.UserBan, [WellKnownGroups.Admin]);
 
         Assert.NotSame(edited, Row(rig, "Neu"));
         Assert.True(Row(rig, "Neu").HasChanges);
@@ -147,7 +141,7 @@ public sealed class GroupListViewModelTests
         var rig = Create();
         Row(rig, "Gast").Name = "Neu";
 
-        OwnRights(rig, Permission.GroupsView);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.GroupsView, [WellKnownGroups.Admin]);
 
         Assert.True(Row(rig, "Gast").IsReadOnly);
         Assert.False(Row(rig, "Gast").HasChanges);
@@ -157,10 +151,10 @@ public sealed class GroupListViewModelTests
     public void FollowServer_EditedGroupBecomesStrongerThanTheActor_RowReadOnlyAndEditDropped()
     {
         var rig = Create();
-        OwnRights(rig, Permission.Speak | Permission.GroupsView | Permission.GroupsManage);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.Speak | Permission.GroupsView | Permission.GroupsManage, [WellKnownGroups.Admin]);
         Row(rig, "Gast").Name = "Neu";
 
-        ServerGroups(rig, Guest with { Permissions = Permission.Speak | Permission.UserBan }, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup with { Permissions = Permission.Speak | Permission.UserBan }, FakeServers.AdminGroup);
 
         Assert.True(Row(rig, "Gast").IsReadOnly);
         Assert.False(Row(rig, "Gast").HasChanges);
@@ -173,9 +167,9 @@ public sealed class GroupListViewModelTests
     {
         var rig = Create();
 
-        OwnRights(rig, Permission.GroupsView);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.GroupsView, [WellKnownGroups.Admin]);
         Assert.False(rig.Section.NewGroupCommand.CanExecute(null));
-        OwnRights(rig, Permission.All);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.All, [WellKnownGroups.Admin]);
 
         Assert.True(rig.Section.NewGroupCommand.CanExecute(null));
     }
@@ -184,7 +178,7 @@ public sealed class GroupListViewModelTests
     public void FollowServer_ServerMovesTheEditedSelectedGroup_MoveUpDisabledAndAllThreeCommandsAskedAgain()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         Row(rig, "Team").Name = "Neu";
         rig.Section.SelectedGroup = Row(rig, "Neu");
         Assert.True(rig.Section.MoveGroupUpCommand.CanExecute(null));
@@ -193,7 +187,7 @@ public sealed class GroupListViewModelTests
         rig.Section.MoveGroupUpCommand.CanExecuteChanged += (_, _) => raised.Add("up");
         rig.Section.MoveGroupDownCommand.CanExecuteChanged += (_, _) => raised.Add("down");
 
-        ServerGroups(rig, Team, Guest, Admin); // the edited row stays the selected one, now first
+        ServerGroups(rig, Team, FakeServers.GuestGroup, FakeServers.AdminGroup); // the edited row stays the selected one, now first
 
         Assert.False(rig.Section.MoveGroupUpCommand.CanExecute(null));
         Assert.Equal(["down", "new", "up"], raised.Order());
@@ -203,7 +197,7 @@ public sealed class GroupListViewModelTests
     public void FollowServer_SelectionMovesByCode_IsSelectingInCodeOnlyWhileItMoves()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         rig.Section.SelectedGroup = Row(rig, "Team");
         var duringChange = new List<bool>();
         rig.Section.PropertyChanged += (_, args) =>
@@ -211,7 +205,7 @@ public sealed class GroupListViewModelTests
             if (args.PropertyName == nameof(GroupListViewModel.SelectedGroup)) duringChange.Add(rig.Section.IsSelectingInCode);
         };
 
-        ServerGroups(rig, Guest, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, FakeServers.AdminGroup);
         rig.Section.SelectedGroup = Row(rig, "Admin");
 
         Assert.Equal([true, false], duringChange);
@@ -302,7 +296,7 @@ public sealed class GroupListViewModelTests
         Assert.Equal(new CreateGroup("Team", Permission.Speak), Assert.Single(sent) with { RequestId = null });
         Assert.Contains(rig.Section.Groups.Live(), row => row.Id is null);
 
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
 
         Assert.DoesNotContain(rig.Section.Groups.Live(), row => row.Id is null);
         Assert.Equal(TeamId, rig.Section.SelectedGroup?.Id);
@@ -330,7 +324,7 @@ public sealed class GroupListViewModelTests
         rig.Section.SaveGroupCommand.Execute(null);
         rig.Section.SelectedGroup = Row(rig, "Admin");
 
-        ServerGroups(rig, Guest, Team with { Name = Strings.Group_New }, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team with { Name = Strings.Group_New }, FakeServers.AdminGroup);
 
         Assert.DoesNotContain(rig.Section.Groups.Live(), row => row.Id is null);
         Assert.Equal(WellKnownGroups.Admin, rig.Section.SelectedGroup?.Id);
@@ -342,7 +336,7 @@ public sealed class GroupListViewModelTests
     public void MoveGroupCommands_FirstMiddleLastSelected_UpExceptAtTheTopDownExceptAtTheBottom()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
 
         rig.Section.SelectedGroup = Row(rig, "Gast");
         Assert.False(rig.Section.MoveGroupUpCommand.CanExecute(null));
@@ -359,10 +353,10 @@ public sealed class GroupListViewModelTests
     public void MoveGroupCommands_ManageRightLost_CannotExecute()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         rig.Section.SelectedGroup = Row(rig, "Team");
 
-        OwnRights(rig, Permission.All & ~Permission.GroupsManage);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.All & ~Permission.GroupsManage, [WellKnownGroups.Admin]);
 
         Assert.False(rig.Section.MoveGroupUpCommand.CanExecute(null));
         Assert.False(rig.Section.MoveGroupDownCommand.CanExecute(null));
@@ -382,7 +376,7 @@ public sealed class GroupListViewModelTests
     public void MoveGroupDown_GroupSelected_SendsTheFullOrderAndShowsItAtOnce()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         rig.Section.SelectedGroup = Row(rig, "Gast");
 
         rig.Section.MoveGroupDownCommand.Execute(null);
@@ -395,7 +389,7 @@ public sealed class GroupListViewModelTests
     public void MoveGroupUp_GroupSelected_SendsTheFullOrder()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         rig.Section.SelectedGroup = Row(rig, "Admin");
 
         rig.Section.MoveGroupUpCommand.Execute(null);
@@ -432,10 +426,10 @@ public sealed class GroupListViewModelTests
     public void MoveGroupAsync_GroupFoldingAway_SendsNothing()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         var folding = Row(rig, "Team");
         rig.Server.Leave.Delay = TimeSpan.FromMinutes(1);
-        ServerGroups(rig, Guest, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, FakeServers.AdminGroup);
         Assert.True(CollectionSync.IsLeaving(rig.Section.Groups, folding));
 
         Move(rig, folding, Row(rig, "Gast"), after: false);
@@ -447,7 +441,7 @@ public sealed class GroupListViewModelTests
     public void MoveGroupAsync_WithoutTheManageRight_SendsNothing()
     {
         var rig = Create();
-        OwnRights(rig, Permission.All & ~Permission.GroupsManage);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.All & ~Permission.GroupsManage, [WellKnownGroups.Admin]);
 
         Move(rig, Row(rig, "Admin"), Row(rig, "Gast"), after: false);
 
@@ -471,7 +465,7 @@ public sealed class GroupListViewModelTests
     public async Task MoveGroupAsync_TwoOrdersSent_OlderAnswerChangesNothingAndNewerRefusalBringsTheServerOrderBack()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         Move(rig, Row(rig, "Admin"), Row(rig, "Gast"), after: false);
         var olderRequestId = sent[^1].RequestId;
         Move(rig, Row(rig, "Team"), Row(rig, "Admin"), after: false);
@@ -491,7 +485,7 @@ public sealed class GroupListViewModelTests
     public void DeleteGroup_SavedGroupSelected_SendsItsDeletion()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         rig.Section.SelectedGroup = Row(rig, "Team");
 
         rig.Section.DeleteGroupCommand.Execute(null);
@@ -545,7 +539,7 @@ public sealed class GroupListViewModelTests
 
         Assert.IsType<UpdateGroup>(Assert.Single(sent));
         Assert.False(saving.IsCompleted);
-        ServerGroups(rig, Guest with { Name = "Neu" }, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, FakeServers.AdminGroup);
         Assert.True(await Bound(saving));
         Assert.False(rig.Section.Place.HasChanges());
     }
@@ -554,7 +548,7 @@ public sealed class GroupListViewModelTests
     public async Task Place_OtherGroupEdited_HasChangesButSavingSendsNothingAndFails()
     {
         var rig = Create();
-        ServerGroups(rig, Guest, Team, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         Row(rig, "Team").Name = "Neu";
         rig.Section.SelectedGroup = Row(rig, "Gast");
 
@@ -573,7 +567,7 @@ public sealed class GroupListViewModelTests
         var saving = rig.Section.Place.SaveAsync();
 
         Assert.False(saving.IsCompleted);
-        ServerGroups(rig, Guest with { Name = "Neu" }, Admin);
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, FakeServers.AdminGroup);
         Assert.True(await Bound(saving));
         Assert.Single(sent);
     }

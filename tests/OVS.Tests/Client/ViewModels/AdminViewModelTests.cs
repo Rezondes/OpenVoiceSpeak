@@ -299,212 +299,47 @@ public class AdminViewModelTests
         Assert.Single(heard);
     }
 
-    /// <summary>Package 74: the backups in the server tab; deleting and restoring only after a question.</summary>
-    [Fact]
-    public async Task Backups_ListCreateDeleteRestore_AskFirst()
+    /// <summary>Package 74: the backup list is asked for with BackupsManage and not otherwise (the card: BackupCardViewModelTests).</summary>
+    [Theory]
+    [InlineData(P.All, true)]
+    [InlineData(P.BackupsManage | P.Speak, true)]
+    [InlineData(P.Speak | P.UsersView, false)]
+    [InlineData(P.ServerConfig, false)]
+    public async Task RequestListsAsync_ByRights_AsksForTheBackupListOnlyWithBackupsManage(P perms, bool asks)
     {
-        var asked = new List<string>();
-        bool answer = false;
-        var dialogs = new DialogCallbacks
-        {
-            Confirm = text => { asked.Add("delete " + text); return Task.FromResult(answer); },
-            ConfirmRestore = name => { asked.Add("restore " + name); return Task.FromResult(answer); },
-        };
-        var (vm, server, sent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
-        await vm.RequestListsAsync();
-        Assert.Contains(sent, r => r is ListBackups);
+        var (vm, _, sent) = Create(perms);
 
-        var older = new BackupInfo("2026-01-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 1, 1, 10, 0, 0, TimeSpan.Zero), 2_500_000, "010126.abcd");
-        var newer = new BackupInfo("2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 2, 1, 10, 0, 0, TimeSpan.Zero), 800, "dev.0000");
-        vm.BackupCard.Apply(new BackupList("r", [newer, older]));
-        Assert.Equal([newer.FileName, older.FileName], vm.BackupCard.Backups.Select(b => b.Info.FileName));
-        Assert.Contains($"{2.4:0.0} MB", vm.BackupCard.Backups[1].Details);
-        Assert.Contains("010126.abcd", vm.BackupCard.Backups[1].Details);
-        Assert.Contains("1 KB", vm.BackupCard.Backups[0].Details);
-        Assert.False(vm.BackupCard.HasNoBackups);
+        await HangGuard.Bound(vm.RequestListsAsync());
 
-        await vm.BackupCard.NewBackupCommand.ExecuteAsync(null);
-        Assert.IsType<CreateBackup>(sent[^1]);
+        Assert.Equal(asks, sent.Any(r => r is ListBackups));
+    }
 
-        sent.Clear();
-        await vm.BackupCard.Backups[1].DeleteCommand.ExecuteAsync(null);
-        await vm.BackupCard.Backups[1].RestoreCommand.ExecuteAsync(null);
-        Assert.Empty(sent); // said no
-        Assert.Equal(2, asked.Count);
-        Assert.All(asked, a => Assert.Contains(vm.BackupCard.Backups[1].Title, a));
+    /// <summary>The page tells the backup card about every state change (the card itself: BackupCardViewModelTests).</summary>
+    [Fact]
+    public void OnServerStateChanged_AdminGroupLeft_BackupRowsLoseRestoreAndUploadRestore()
+    {
+        var (vm, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
+        vm.BackupCard.Apply(new BackupList("r", [new BackupInfo("2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 2, 1, 10, 0, 0, TimeSpan.Zero), 800, "dev.0000")]));
+        Assert.True(vm.BackupCard.Backups[0].CanRestore);
 
-        answer = true;
-        await vm.BackupCard.Backups[1].DeleteCommand.ExecuteAsync(null);
-        await vm.BackupCard.Backups[1].RestoreCommand.ExecuteAsync(null);
-        Assert.Equal([new DeleteBackup(older.FileName), new RestoreBackup(older.FileName)], sent.Select(r => r with { RequestId = null }));
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [])));
 
-        vm.BackupCard.Apply(new BackupList("r", []));
-        Assert.True(vm.BackupCard.HasNoBackups);
-
-        var (other, _, otherSent) = Create(P.Speak | P.UsersView);
-        await other.RequestListsAsync();
-        Assert.DoesNotContain(otherSent, r => r is ListBackups);
+        Assert.False(vm.BackupCard.CanUploadRestore);
+        Assert.False(vm.BackupCard.Backups[0].CanRestore);
     }
 
     /// <summary>
-    /// Package 89 (A101): the backups card with BackupsManage alone, upload and restore only for members of the Admin group,
-    /// and a warning before every download (the file holds the private key and user data).
+    /// Package 89 (A101): the server tab opens with BackupsManage alone (the backups card only) or with ServerConfig alone
+    /// (the settings card only).
     /// </summary>
-    [Fact]
-    public async Task BackupButtons_ByRightAndAdminGroup_DownloadWarns()
+    [Theory]
+    [InlineData(P.BackupsManage | P.Speak, true, false)]
+    [InlineData(P.ServerConfig, false, true)]
+    public void ServerTab_OneCardRight_ShowsTheTabAndOnlyThatCard(P perms, bool backups, bool settings)
     {
-        int warned = 0;
-        bool answer = false;
-        var dialogs = new DialogCallbacks
-        {
-            ConfirmBackupDownload = () => { warned++; return Task.FromResult(answer); },
-            ConfirmRestore = _ => Task.FromResult(true),
-        };
-        var info = new BackupInfo("2026-02-01_10-00-00.ovsbackup", DateTimeOffset.UtcNow, 800, "dev.0000");
+        var (vm, _, _) = Create(perms);
 
-        var (keeper, keeperServer, keeperSent) = Create(P.BackupsManage | P.Speak, dialogs: dialogs);
-        Assert.Equal((true, true, false, false), (keeper.ShowServer, keeper.ShowBackups, keeper.ShowServerSettings, keeper.BackupCard.CanUploadRestore));
-        Assert.True(keeperServer.CanAdminister);
-        await keeper.RequestListsAsync();
-        Assert.Contains(keeperSent, r => r is ListBackups);
-        keeper.BackupCard.Apply(new BackupList("r", [info]));
-        Assert.False(keeper.BackupCard.Backups[0].CanRestore);
-        await keeper.BackupCard.Backups[0].RestoreCommand.ExecuteAsync(null);
-        Assert.DoesNotContain(keeperSent, r => r is RestoreBackup);
-
-        // the download asks first; no means no file picker and no transfer
-        Assert.False(await keeper.BackupCard.ConfirmDownloadAsync());
-        answer = true;
-        Assert.True(await keeper.BackupCard.ConfirmDownloadAsync());
-        Assert.Equal(2, warned);
-        var (bare, _, _) = Create(P.BackupsManage);
-        Assert.False(await bare.BackupCard.ConfirmDownloadAsync()); // no dialog: cancelled
-
-        // ServerConfig alone: the settings, no backups
-        var (config, _, configSent) = Create(P.ServerConfig);
-        Assert.Equal((true, false, true), (config.ShowServer, config.ShowBackups, config.ShowServerSettings));
-        await config.RequestListsAsync();
-        Assert.DoesNotContain(configSent, r => r is ListBackups);
-
-        // all rights without the Admin group: still no upload or restore
-        var (almighty, _, _) = Create(P.All, dialogs: dialogs);
-        Assert.False(almighty.BackupCard.CanUploadRestore);
-
-        // a member of the Admin group, until they leave it
-        var (admin, adminServer, adminSent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
-        Assert.True(admin.BackupCard.CanUploadRestore);
-        admin.BackupCard.Apply(new BackupList("r", [info]));
-        Assert.True(admin.BackupCard.Backups[0].CanRestore);
-        await admin.BackupCard.Backups[0].RestoreCommand.ExecuteAsync(null);
-        Assert.Contains(adminSent, r => r is RestoreBackup);
-        adminServer.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [])));
-        Assert.False(admin.BackupCard.CanUploadRestore);
-        Assert.False(admin.BackupCard.Backups[0].CanRestore);
-    }
-
-    /// <summary>Package 75: "Herunterladen" saves the chosen backup at the chosen path (the chunks: AdminTransferTests).</summary>
-    [Fact]
-    public async Task DownloadBackupAsync_BackupChosen_SavesItsArchive()
-    {
-        var dir = Directory.CreateTempSubdirectory("ovs-download-").FullName;
-        try
-        {
-            byte[] archive = [1, 2, 3];
-            var info = new BackupInfo("2026-02-01_10-00-00.ovsbackup", DateTimeOffset.UtcNow, archive.Length, "dev.0000");
-            var (vm, server, sent) = Create(P.BackupsManage | P.Speak, reply: r => r is DownloadBackup d
-                ? new BackupChunk(r.RequestId, d.FileName, d.Offset, archive.Length, Convert.ToBase64String(archive), true) : null);
-            vm.BackupCard.Apply(new BackupList("r", [info]));
-
-            var target = Path.Combine(dir, "mein-backup.ovsbackup");
-            await HangGuard.Bound(vm.BackupCard.DownloadBackupAsync(vm.BackupCard.Backups[0], target));
-
-            Assert.Equal(info.FileName, Assert.Single(sent.OfType<DownloadBackup>()).FileName);
-            Assert.Equal(archive, File.ReadAllBytes(target));
-        }
-        finally
-        {
-            Directory.Delete(dir, true);
-        }
-    }
-
-    /// <summary>
-    /// Package 75: "Hochladen und wiederherstellen" asks the red question of Package 74 once the server stored the upload
-    /// (the chunks: AdminTransferTests).
-    /// </summary>
-    [Fact]
-    public async Task UploadAndRestore_AsksFirst()
-    {
-        var dir = Directory.CreateTempSubdirectory("ovs-upload-").FullName;
-        try
-        {
-            byte[] archive = [1, 2, 3];
-            var file = Path.Combine(dir, "backup.ovsbackup");
-            File.WriteAllBytes(file, archive);
-            var info = new BackupInfo("hochgeladen_2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 1, 5, 9, 0, 0, TimeSpan.Zero), archive.Length, "dev.0000");
-            var asked = new List<string>();
-            bool answer = false;
-            var dialogs = new DialogCallbacks { ConfirmRestore = title => { asked.Add(title); return Task.FromResult(answer); } };
-            bool invalid = false;
-            Message? Reply(Request r) => r is not UploadBackupChunk ? null
-                : invalid ? new Error(r.RequestId, ReasonCodes.InvalidBackup) : new BackupUploaded(r.RequestId, info);
-            var (vm, _, sent) = Create(P.All, dialogs: dialogs, reply: Reply, groupIds: [WellKnownGroups.Admin]);
-
-            // only upload: it reaches the server, no question, no restore
-            await HangGuard.Bound(vm.BackupCard.UploadBackupAsync(file, restore: false));
-            var first = Assert.Single(sent.OfType<UploadBackupChunk>());
-            Assert.Equal(archive, Convert.FromBase64String(first.DataBase64));
-            Assert.Empty(asked);
-            Assert.DoesNotContain(sent, r => r is RestoreBackup);
-
-            // upload and restore: said no, then yes
-            foreach (var yes in new[] { false, true })
-            {
-                answer = yes;
-                sent.Clear();
-                await HangGuard.Bound(vm.BackupCard.UploadBackupAsync(file, restore: true));
-                Assert.Single(sent.OfType<UploadBackupChunk>());
-                Assert.Equal(yes ? [new RestoreBackup(info.FileName)] : [], sent.OfType<RestoreBackup>().Select(r => r with { RequestId = null }));
-            }
-            Assert.Equal(2, asked.Count);
-            Assert.All(asked, a => Assert.Contains(new BackupViewModel(info, _ => Task.CompletedTask, _ => Task.CompletedTask).Title, a));
-            Assert.NotEqual(sent.OfType<UploadBackupChunk>().First().UploadId, first.UploadId); // a new id per upload
-
-            // the server refuses the archive: nothing to restore, no question
-            invalid = true;
-            sent.Clear();
-            await HangGuard.Bound(vm.BackupCard.UploadBackupAsync(file, restore: true));
-            Assert.Equal(2, asked.Count);
-            Assert.DoesNotContain(sent, r => r is RestoreBackup);
-            Assert.False(vm.Transfer.IsRunning);
-        }
-        finally
-        {
-            Directory.Delete(dir, true);
-        }
-    }
-
-    /// <summary>Upload and restore only for members of the Admin group, also when called without the button.</summary>
-    [Fact]
-    public void UploadBackupAsync_OutsideTheAdminGroup_ReturnsWithoutSending()
-    {
-        var dir = Directory.CreateTempSubdirectory("ovs-upload-").FullName;
-        try
-        {
-            var file = Path.Combine(dir, "backup.ovsbackup");
-            File.WriteAllBytes(file, [1, 2, 3]);
-            var (vm, _, sent) = Create(P.All); // all rights, but not in the Admin group
-
-            var upload = vm.BackupCard.UploadBackupAsync(file, restore: true);
-
-            Assert.False(vm.BackupCard.CanUploadRestore);
-            Assert.True(upload.IsCompleted);
-            Assert.DoesNotContain(sent, r => r is UploadBackupChunk);
-            Assert.False(vm.Transfer.IsRunning);
-        }
-        finally
-        {
-            Directory.Delete(dir, true);
-        }
+        Assert.Equal((true, backups, settings), (vm.ShowServer, vm.ShowBackups, vm.ShowServerSettings));
     }
 
     // ---- Package 80: ban overview with details, history, search and filter ----
@@ -1286,8 +1121,6 @@ public class AdminViewModelTests
 
     // ---- Package 97 (A113): waiting states ----
 
-    static readonly TimeSpan ShowAfter = TimeSpan.FromMilliseconds(150);
-
     /// <summary>Package 97 (AC3): every list shows its loading state until the first page is complete; a refresh keeps the content.</summary>
     [Fact]
     public async Task Lists_ShowLoadingUntilFirstPage_RefreshKeepsContent()
@@ -1297,7 +1130,7 @@ public class AdminViewModelTests
         await vm.RequestListsAsync();
         PendingViewModel[] loads = [vm.UsersAndBans.UsersLoad, vm.UsersAndBans.BansLoad, vm.BackupCard.BackupsLoad, vm.Logs.FilesLoad];
         Assert.All(loads, l => Assert.True(l.IsRunning && !l.IsBusy)); // nothing shows before 150 ms
-        time.Advance(ShowAfter);
+        time.Advance(PendingViewModel.ShowAfter);
         Assert.All(loads, l => Assert.True(l.IsFirstLoad && !l.IsRefreshing));
 
         // the users come in two pages: loading until the list is complete
@@ -1314,7 +1147,7 @@ public class AdminViewModelTests
         // a refresh: the old cards stay, with a small spinner instead of the loading state
         time.Advance(TimeSpan.FromSeconds(1));
         await vm.RefreshCommand.ExecuteAsync(null);
-        time.Advance(ShowAfter);
+        time.Advance(PendingViewModel.ShowAfter);
         Assert.All(loads, l => Assert.True(l.IsRefreshing && !l.IsFirstLoad));
         Assert.Equal(2, vm.UsersAndBans.Users.Count);
 
@@ -1324,35 +1157,6 @@ public class AdminViewModelTests
         Assert.All(loads, l => Assert.False(l.IsBusy));
         await vm.RefreshCommand.ExecuteAsync(null);
         Assert.All(loads, l => Assert.True(l.IsRunning && l.Error is null));
-    }
-
-    /// <summary>Package 97 (AC5): "Backup anlegen" is busy until the new list, "Wiederherstellen" until the disconnect or an error.</summary>
-    [Fact]
-    public async Task BackupCreateAndRestore_ShowBusy()
-    {
-        var dialogs = new DialogCallbacks { ConfirmRestore = _ => Task.FromResult(true) };
-        var (vm, server, sent) = Create(P.All, dialogs: dialogs, groupIds: [WellKnownGroups.Admin]);
-        var time = (ManualTimeProvider)server.Time;
-        BackupInfo older = new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 900, "dev");
-        vm.BackupCard.Apply(new BackupList(null, [older]));
-
-        await vm.BackupCard.NewBackupCommand.ExecuteAsync(null);
-        await vm.BackupCard.NewBackupCommand.ExecuteAsync(null); // a second click meanwhile is ignored
-        Assert.Single(sent.OfType<CreateBackup>());
-        time.Advance(ShowAfter);
-        Assert.True(vm.BackupCard.BackupCreate.IsBusy);
-        vm.BackupCard.Apply(new BackupList(null, [new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
-        Assert.False(vm.BackupCard.BackupCreate.IsBusy);
-
-        await vm.BackupCard.Backups[1].RestoreCommand.ExecuteAsync(null);
-        var restore = Assert.IsType<RestoreBackup>(sent[^1]);
-        time.Advance(ShowAfter);
-        Assert.True(vm.BackupCard.Restoring.IsBusy);
-        vm.BackupCard.Apply(new BackupList(null, [new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 900, "dev"), older]));
-        Assert.True(vm.BackupCard.Restoring.IsBusy); // the safety backup appears, the disconnect is still to come
-        server.Apply(new Error(restore.RequestId, ReasonCodes.NotFound)); // refused: the card comes back with the error
-        Assert.False(vm.BackupCard.Restoring.IsBusy);
-        Assert.Equal(OVS.Client.Localization.ErrorTexts.For(ReasonCodes.NotFound), vm.BackupCard.Restoring.Error);
     }
 
     /// <summary>Package 98 (AC4): the user card's actions spin until a user list asked for after them shows the change.</summary>
@@ -1369,7 +1173,7 @@ public class AdminViewModelTests
 
         await Card().LiftMuteCommand.ExecuteAsync(null);
         Assert.Single(sent.OfType<SetKnownUserServerMute>());
-        time.Advance(ShowAfter);
+        time.Advance(PendingViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         vm.UsersAndBans.Apply(new UserList("r", [xaver])); // an older list: still waiting
         Assert.True(Card().Busy.IsBusy);
@@ -1383,7 +1187,7 @@ public class AdminViewModelTests
         box.IsChecked = true;
         await box.ToggleCommand.ExecuteAsync(null);
         var assign = sent.OfType<AssignGroup>().Single();
-        time.Advance(ShowAfter);
+        time.Advance(PendingViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new Error(assign.RequestId, ReasonCodes.PermissionDenied));
         Assert.False(Card().Busy.IsBusy);
@@ -1392,7 +1196,7 @@ public class AdminViewModelTests
         // deleting: busy until the next list, where the card is gone
         time.Advance(TimeSpan.FromSeconds(1));
         await Card().DeleteCommand.ExecuteAsync(null);
-        time.Advance(ShowAfter);
+        time.Advance(PendingViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new UserList(sent.OfType<ListUsers>().Last().RequestId, []));
         Assert.Empty(vm.UsersAndBans.Users);
@@ -1409,7 +1213,7 @@ public class AdminViewModelTests
         await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
         Assert.IsType<CreateGroup>(sent[^1]);
         Assert.Contains(vm.GroupList.Groups, g => g.Id is null && g.Name == "Team"); // stays until the server has it
-        time.Advance(ShowAfter);
+        time.Advance(PendingViewModel.ShowAfter);
         Assert.True(vm.GroupList.GroupSave.IsBusy);
         var team = Guid.NewGuid();
         server.Apply(new GroupsChanged([.. server.Mirror.Groups, new GroupInfo(team, "Team", P.Speak, true)]));
@@ -1423,7 +1227,7 @@ public class AdminViewModelTests
         await HangGuard.Bound(vm.GroupList.MoveGroupAsync(vm.GroupList.Groups.Single(g => g.Id == team), vm.GroupList.Groups[0], after: false));
         var reorder = Assert.IsType<ReorderGroups>(sent[^1]);
         Assert.Equal(team, Order()[0]);
-        time.Advance(ShowAfter);
+        time.Advance(PendingViewModel.ShowAfter);
         Assert.True(vm.GroupList.GroupReorder.IsBusy);
         server.Apply(new Error(reorder.RequestId, ReasonCodes.PermissionDenied));
         Assert.Equal(before, Order());
@@ -1490,7 +1294,7 @@ public class AdminViewModelTests
         await HangGuard.Bound(page.RequestListsAsync());
         Assert.True(page.Logs.Files.Single().CanSelect);
 
-        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Lobby, false, false, false, P.All & ~P.LogsDownload, [WellKnownGroups.Admin])));
+        FakeServers.SetOwnRightsAndGroups(server, P.All & ~P.LogsDownload, [WellKnownGroups.Admin]);
 
         Assert.False(page.Logs.Files.Single().CanSelect);
     }

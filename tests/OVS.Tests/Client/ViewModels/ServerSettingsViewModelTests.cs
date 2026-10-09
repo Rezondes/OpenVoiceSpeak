@@ -4,7 +4,6 @@ using OVS.Shared.Permissions;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.ServerInfo;
-using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.ViewModels;
@@ -44,7 +43,7 @@ public sealed class ServerSettingsViewModelTests
     public void HasChanges_NameEditedWithoutTheRight_False()
     {
         var rig = Create();
-        rig.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Lobby, false, false, false, Permission.Speak, [])));
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.Speak, []);
 
         rig.Card.Name = "Neu";
 

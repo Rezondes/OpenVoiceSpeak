@@ -17,15 +17,26 @@ public static class FakeServers
 {
     public static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid();
 
+    /// <summary>The two groups every server here has: guests may speak, the Admin group holds all rights.</summary>
+    public static readonly GroupInfo GuestGroup = new(WellKnownGroups.Guest, "Gast", Permission.Speak, true),
+        AdminGroup = new(WellKnownGroups.Admin, "Admin", Permission.All, true);
+
+    /// <summary>The own user "ich", in the lobby.</summary>
+    static UserInfo Me(Permission rights, IReadOnlyList<Guid> groups) => new(1, "fp1", "ich", Lobby, false, false, false, rights, groups);
+
+    /// <summary>The own user "ich" keeps the name and channel and gets exactly these rights and groups (none of the old ones stay), as the server would report it.</summary>
+    public static void SetOwnRightsAndGroups(ServerViewModel server, Permission rights, IReadOnlyList<Guid> groups) =>
+        server.Apply(new UserUpdated(Me(rights, groups)));
+
     /// <param name="reply">The server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
     public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "Start", 0), new ChannelInfo(Raid, "Raid", "", 1)],
             [new LinkInfo(Lobby, Raid)],
-            [new GroupInfo(WellKnownGroups.Guest, "Gast", Permission.Speak, true), new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All, true)],
+            [GuestGroup, AdminGroup],
             [
-                new UserInfo(1, "fp1", "ich", Lobby, false, false, false, Permission.All, [WellKnownGroups.Admin]),
+                Me(Permission.All, [WellKnownGroups.Admin]),
                 // Package 92: others come without rights, with the server's judgement instead
                 new UserInfo(2, "fp2", "anna", Raid, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true),
             ]);
@@ -45,7 +56,7 @@ public static class FakeServers
         var channels = names.Select((n, i) => new ChannelInfo(Guid.NewGuid(), n, "", i)).ToList();
         var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
         var snapshot = Snapshots.Snapshot("Gilde", "", channels[0].Id, channels,
-            [new GroupInfo(WellKnownGroups.Admin, "Admin", Permission.All, true)],
+            [AdminGroup],
             [new UserInfo(1, "fp1", "ich", channels[0].Id, false, false, false, Permission.All, [WellKnownGroups.Admin])], links: links);
         return new ServerViewModel(Snapshots.Mirror(snapshot), _ => Task.CompletedTask, TimeProvider.System);
     }
@@ -57,10 +68,10 @@ public static class FakeServers
         var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
         var groups = new List<GroupInfo>
         {
-            new(WellKnownGroups.Guest, "Gast", Permission.Speak, true),
+            GuestGroup,
             new(Guid.NewGuid(), "Moderator", Permission.Speak | Permission.UserKick, true),
             new(Guid.NewGuid(), "Veteranen der alten Gilde", Permission.Speak, true),
-            new(WellKnownGroups.Admin, "Admin", Permission.All, true),
+            AdminGroup,
         };
         var users = Enumerable.Range(1, 20).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Mitspieler{i}",
             channels[i % 8].Id, false, false, false, i == 1 ? Permission.All : Permission.None, // Package 92: others without rights
@@ -84,8 +95,8 @@ public static class FakeServers
         var links = channels.Skip(1).Select((b, i) => new LinkInfo(channels[i].Id, b.Id)).ToList();
         var groups = new List<GroupInfo>
         {
-            new(WellKnownGroups.Guest, "Gast", Permission.Speak, true),
-            new(WellKnownGroups.Admin, "Admin", Permission.All, true),
+            GuestGroup,
+            AdminGroup,
         };
         var users = Enumerable.Range(1, 400).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Spieler{i:000}",
             channels[(i - 1) % 40].Id, false, false, false, i == 1 ? Permission.All : Permission.None,
