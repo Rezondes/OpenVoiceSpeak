@@ -676,10 +676,10 @@ public class AdminViewModelTests
     public async Task SaveServerSettings_PasswordSemantics(string newPassword, bool remove, string? expected)
     {
         var (vm, _, sent) = Create(P.ServerConfig, hasPassword: true);
-        vm.ServerName = "Neu";
-        vm.NewPassword = newPassword;
-        vm.RemovePassword = remove;
-        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        vm.ServerSettings.Name = "Neu";
+        vm.ServerSettings.NewPassword = newPassword;
+        vm.ServerSettings.RemovePassword = remove;
+        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
         Assert.Equal(new UpdateServerSettings("Neu", "Hallo", expected), sent[^1] with { RequestId = null });
     }
 
@@ -688,14 +688,14 @@ public class AdminViewModelTests
     public async Task SaveServerSettings_SendsAllFields()
     {
         var (vm, server, sent) = Create(P.ServerConfig, limits: new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)));
-        Assert.Equal((50m, 30m, true, false, new TimeSpan(4, 0, 0)), (vm.MaxUsers, vm.LogDays, vm.LogRotateDaily, vm.AutoRestart, vm.AutoRestartTime));
+        Assert.Equal((50m, 30m, true, false, new TimeSpan(4, 0, 0)), (vm.ServerSettings.MaxUsers, vm.ServerSettings.LogDays, vm.ServerSettings.LogRotateDaily, vm.ServerSettings.AutoRestart, vm.ServerSettings.AutoRestartTime));
 
-        vm.MaxUsers = 12;
-        vm.LogDays = 0;
-        vm.LogRotateDaily = false;
-        vm.AutoRestart = true;
-        vm.AutoRestartTime = new TimeSpan(3, 30, 0);
-        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        vm.ServerSettings.MaxUsers = 12;
+        vm.ServerSettings.LogDays = 0;
+        vm.ServerSettings.LogRotateDaily = false;
+        vm.ServerSettings.AutoRestart = true;
+        vm.ServerSettings.AutoRestartTime = new TimeSpan(3, 30, 0);
+        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
         Assert.Equal(new UpdateServerSettings("Server", "Hallo", null, new ServerLimits(12, 0, false, true, new TimeOnly(3, 30))),
             sent[^1] with { RequestId = null });
     }
@@ -704,13 +704,13 @@ public class AdminViewModelTests
     public async Task SaveServerSettings_LimitsUnknown_LeftUnchanged()
     {
         var (vm, server, sent) = Create(P.ServerConfig);
-        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
+        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
         Assert.Null(((UpdateServerSettings)sent[^1]).Limits);
 
         // they arrive later, e.g. after the right was granted
         server.Apply(new ServerSettingsChanged(new ServerSettingsInfo("Server", "Hallo", false, null, new ServerLimits(8, 1, true, true, new TimeOnly(2, 0)))));
-        Assert.Equal(8m, vm.MaxUsers);
-        Assert.Equal(new TimeSpan(2, 0, 0), vm.AutoRestartTime);
+        Assert.Equal(8m, vm.ServerSettings.MaxUsers);
+        Assert.Equal(new TimeSpan(2, 0, 0), vm.ServerSettings.AutoRestartTime);
     }
 
     // ---- Package 37: group order ----
@@ -1246,25 +1246,25 @@ public class AdminViewModelTests
     public async Task SaveServerSettings_InvalidInput_ErrorNothingSent()
     {
         var (vm, _, sent) = Create(P.ServerConfig);
-        vm.ServerName = "Server" + (char)0x200B;
-        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
-        Assert.Equal(Strings.Dlg_NameInvalid, vm.SettingsError);
+        vm.ServerSettings.Name = "Server" + (char)0x200B;
+        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(Strings.Dlg_NameInvalid, vm.ServerSettings.Error);
 
-        vm.ServerName = "Server";
-        vm.WelcomeText = "a" + (char)0x2066 + "b";
-        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
-        Assert.Equal(Strings.Dlg_TextInvalid, vm.SettingsError);
+        vm.ServerSettings.Name = "Server";
+        vm.ServerSettings.WelcomeText = "a" + (char)0x2066 + "b";
+        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(Strings.Dlg_TextInvalid, vm.ServerSettings.Error);
 
-        vm.WelcomeText = "Hallo";
-        vm.NewPassword = new string('p', ProtocolLimits.MaxPasswordLength + 1);
-        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
-        Assert.Equal(Strings.Ui_PasswordTooLong, vm.SettingsError);
-        Assert.Equal(new string('p', ProtocolLimits.MaxPasswordLength + 1), vm.NewPassword); // kept for correcting
+        vm.ServerSettings.WelcomeText = "Hallo";
+        vm.ServerSettings.NewPassword = new string('p', ProtocolLimits.MaxPasswordLength + 1);
+        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(Strings.Ui_PasswordTooLong, vm.ServerSettings.Error);
+        Assert.Equal(new string('p', ProtocolLimits.MaxPasswordLength + 1), vm.ServerSettings.NewPassword); // kept for correcting
         Assert.DoesNotContain(sent, r => r is UpdateServerSettings);
 
-        vm.NewPassword = "kurz";
-        await vm.SaveServerSettingsCommand.ExecuteAsync(null);
-        Assert.Null(vm.SettingsError);
+        vm.ServerSettings.NewPassword = "kurz";
+        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
+        Assert.Null(vm.ServerSettings.Error);
         Assert.Equal(new UpdateServerSettings("Server", "Hallo", "kurz"), sent[^1] with { RequestId = null });
     }
 

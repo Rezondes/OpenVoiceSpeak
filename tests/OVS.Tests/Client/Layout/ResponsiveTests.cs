@@ -659,6 +659,33 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     }
 
     [AvaloniaFact]
+    public void Admin_ServerSettings_RefusedNameShowsTheErrorUntilReload()
+    {
+        var main = OpenAdmin(1100, out var page);
+        try
+        {
+            SelectTab(page, 4);
+            var card = ((AdminViewModel)page.DataContext!).ServerSettings;
+            var error = page.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("danger") && text.DataContext == card);
+            Assert.False(error.IsEffectivelyVisible);
+
+            card.Name = "";
+            card.SaveCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(error.IsEffectivelyVisible);
+            Assert.Equal(Strings.Dlg_NameInvalid, error.Text);
+
+            card.Reload();
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(error.IsEffectivelyVisible);
+        }
+        finally
+        {
+            main.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void Admin_LinkMatrix_ScrollsTitlesStay()
     {
         var main = OpenAdmin(360, out var page);

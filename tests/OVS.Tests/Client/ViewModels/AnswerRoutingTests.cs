@@ -297,7 +297,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         await Bound(page.MoveGroupAsync(TeamRow(), page.Groups[0], after: false));
         page.SelectedGroup = TeamRow();
         await Bound(page.DeleteGroupCommand.ExecuteAsync(null));
-        await Bound(page.SaveServerSettingsCommand.ExecuteAsync(null));
+        await Bound(page.ServerSettings.SaveCommand.ExecuteAsync(null));
         page.RemoveIconCommand.Execute(null);
         page.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
         await Bound(page.Links.ApplyCommand.ExecuteAsync(null));

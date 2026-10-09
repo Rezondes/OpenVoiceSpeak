@@ -76,7 +76,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         admin.GroupsPlace.Discard();
         Assert.False(admin.GroupsPlace.HasChanges());
 
-        admin.ServerName = "Neu";
+        admin.ServerSettings.Name = "Neu";
         Assert.True(admin.ServerPlace.HasChanges());
         admin.ServerPlace.Discard();
         Assert.False(admin.ServerPlace.HasChanges());
@@ -114,7 +114,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     {
         var vm = Main();
         await vm.OpenAdminAsync();
-        vm.AdminPage!.ServerName = "Neu";
+        vm.AdminPage!.ServerSettings.Name = "Neu";
         answers.Enqueue(LeaveChoice.Stay);
         await vm.DisconnectCommand.ExecuteAsync(null);
         Assert.Equal(1, asked);
@@ -194,7 +194,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         await vm.OpenAdminAsync();
-        vm.AdminPage!.ServerName = "Neu";
+        vm.AdminPage!.ServerSettings.Name = "Neu";
         answers.Enqueue(LeaveChoice.Stay);
         main.Close();
         Dispatcher.UIThread.RunJobs();
@@ -222,20 +222,20 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var serverTab = page.FindControl<TabItem>("ServerTab")!;
         tabs.SelectedItem = serverTab;
         Dispatcher.UIThread.RunJobs();
-        vm.AdminPage!.ServerName = "Neu";
+        vm.AdminPage!.ServerSettings.Name = "Neu";
 
         answers.Enqueue(LeaveChoice.Stay);
         tabs.SelectedItem = page.FindControl<TabItem>("GroupsTab");
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(1, asked);
         Assert.Same(serverTab, tabs.SelectedItem);
-        Assert.Equal("Neu", vm.AdminPage.ServerName);
+        Assert.Equal("Neu", vm.AdminPage.ServerSettings.Name);
 
         answers.Enqueue(LeaveChoice.Discard);
         tabs.SelectedItem = page.FindControl<TabItem>("GroupsTab");
         Dispatcher.UIThread.RunJobs();
         Assert.Same(page.FindControl<TabItem>("GroupsTab"), tabs.SelectedItem);
-        Assert.Equal("Gilde", vm.AdminPage.ServerName); // discarded
+        Assert.Equal("Gilde", vm.AdminPage.ServerSettings.Name); // discarded
         main.Close();
     }
 
@@ -322,11 +322,11 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var admin = vm.AdminPage!;
         var settings = vm.Server!.Mirror.Settings;
         vm.Server.Apply(new ServerSettingsChanged(settings with { Name = "Anderer Name" })); // another admin
-        Assert.Equal("Anderer Name", admin.ServerName);
+        Assert.Equal("Anderer Name", admin.ServerSettings.Name);
         Assert.False(admin.HasAnyChanges);
 
-        admin.ServerName = "Neu ";
-        admin.WelcomeText = "Zeile 1" + (char)13 + (char)10 + "Zeile 2";
+        admin.ServerSettings.Name = "Neu ";
+        admin.ServerSettings.WelcomeText = "Zeile 1" + (char)13 + (char)10 + "Zeile 2";
         Assert.True(admin.ServerPlace.HasChanges());
         vm.Server.Apply(new ServerSettingsChanged(vm.Server.Mirror.Settings with { Name = "Neu", WelcomeText = "Zeile 1" + (char)10 + "Zeile 2" }));
         Assert.False(admin.ServerPlace.HasChanges());
@@ -370,12 +370,12 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         await vm.OpenAdminAsync();
         var admin = vm.AdminPage!;
-        admin.NewPassword = "geheim";
-        admin.ServerName = "Mein Name";
+        admin.ServerSettings.NewPassword = "geheim";
+        admin.ServerSettings.Name = "Mein Name";
         vm.Server!.Apply(new ServerSettingsChanged(vm.Server.Mirror.Settings with { WelcomeText = "Neu von jemand anderem" }));
-        Assert.Equal("geheim", admin.NewPassword);
-        Assert.Equal("Mein Name", admin.ServerName); // the edit stays
-        Assert.Equal("Neu von jemand anderem", admin.WelcomeText); // the untouched field follows
+        Assert.Equal("geheim", admin.ServerSettings.NewPassword);
+        Assert.Equal("Mein Name", admin.ServerSettings.Name); // the edit stays
+        Assert.Equal("Neu von jemand anderem", admin.ServerSettings.WelcomeText); // the untouched field follows
         Assert.True(admin.ServerPlace.HasChanges());
     }
 

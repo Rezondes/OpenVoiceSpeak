@@ -146,7 +146,7 @@ public sealed class AdminPlaceTests
         var sent = new List<Request>();
         var server = FakeServers.Admin(sent, new ManualTimeProvider());
         var admin = new AdminViewModel(server);
-        admin.ServerName = "Neu";
+        admin.ServerSettings.Name = "Neu";
         var saving = admin.ServerPlace.SaveAsync();
         Assert.Equal("Neu", Assert.Single(sent.OfType<UpdateServerSettings>()).Name);
         Assert.Empty(sent.OfType<SetChannelLinks>());
@@ -162,7 +162,7 @@ public sealed class AdminPlaceTests
     {
         var sent = new List<Request>();
         var admin = Admin(sent);
-        admin.ServerName = "   ";
+        admin.ServerSettings.Name = "   ";
         Assert.True(admin.ServerPlace.HasChanges());
         Assert.False(await admin.ServerPlace.SaveAsync());
         Assert.Empty(sent);

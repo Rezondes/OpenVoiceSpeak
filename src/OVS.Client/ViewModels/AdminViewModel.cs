@@ -15,8 +15,8 @@ using OVS.Shared.Protocol.Messages.ServerInfo;
 namespace OVS.Client.ViewModels;
 
 /// <summary>
-/// The administration page: it composes the users and bans tabs, the backup card of the server tab, the links and logs tabs
-/// and holds the groups and the server settings itself. Every tab only shows with the matching right.
+/// The administration page: it composes the users and bans tabs, the backup and settings cards of the server tab, the links and logs tabs
+/// and holds the groups itself. Every tab only shows with the matching right.
 /// </summary>
 public sealed partial class AdminViewModel : ObservableObject
 {
@@ -25,18 +25,6 @@ public sealed partial class AdminViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveGroupCommand), nameof(DeleteGroupCommand), nameof(MoveGroupUpCommand), nameof(MoveGroupDownCommand))]
     GroupEditViewModel? selectedGroup;
-    [ObservableProperty] string serverName = "";
-    [ObservableProperty] string welcomeText = "";
-    [ObservableProperty] string newPassword = "";
-    [ObservableProperty] bool removePassword;
-    [ObservableProperty] bool hasPassword;
-    // Package 69: limits, logs and restart; null limits (not sent yet) leave them unchanged on save
-    ServerLimits? loadedLimits;
-    [ObservableProperty] decimal? maxUsers;
-    [ObservableProperty] decimal? logDays;
-    [ObservableProperty] bool logRotateDaily;
-    [ObservableProperty] bool autoRestart;
-    [ObservableProperty] TimeSpan? autoRestartTime;
     public AdminViewModel(ServerViewModel server)
     {
         this.server = server;
@@ -46,11 +34,7 @@ public sealed partial class AdminViewModel : ObservableObject
         IconUpload = server.NewPending();
         server.StateChanged += OnStateChanged;
         server.PropertyChanged += OnServerPropertyChanged;
-        serverName = loadedName = server.Mirror.Settings.Name;
-        welcomeText = loadedWelcome = server.Mirror.Settings.WelcomeText;
-        seenSettings = server.Mirror.Settings;
-        hasPassword = server.Mirror.Settings.HasPassword;
-        LoadLimits();
+        ServerSettings = new ServerSettingsViewModel(server);
         Links = new LinkMatrixViewModel(server);
         Transfer = new AdminTransfer((request, route) => server.SendAsync(request, route: route), server.Routes.RemoveAll, server.ShowNotice, server.Time);
         BackupCard = new BackupCardViewModel(server, Transfer);
@@ -58,7 +42,7 @@ public sealed partial class AdminViewModel : ObservableObject
         GroupsPlace = AdminPlace.Create(() => Groups.Live().Any(g => g.HasChanges), GroupSave,
             () => SelectedGroup is { HasChanges: true } ? SendGroup() : null, DiscardGroups);
         LinksPlace = AdminPlace.Create(() => Links.HasPending, Links.Applying, Links.SendPending, () => Links.DiscardCommand.Execute(null));
-        ServerPlace = AdminPlace.Create(() => ServerSettingsChanged, null, SendServerSettings, ReloadServerSettings);
+        ServerPlace = AdminPlace.Create(() => ServerSettings.HasChanges, null, ServerSettings.Send, ServerSettings.Reload);
         Places = [GroupsPlace, LinksPlace, ServerPlace];
         RebuildGroups();
     }
@@ -70,7 +54,7 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool ShowBans => UsersAndBans.ShowBans;
     /// <summary>Package 89: the server tab holds the settings (ServerConfig) and the backups (BackupsManage).</summary>
     public bool ShowServer => ShowServerSettings || ShowBackups;
-    public bool ShowServerSettings => Actor.Has(Permission.ServerConfig);
+    public bool ShowServerSettings => ServerSettings.ShowServerSettings;
     public bool ShowBackups => BackupCard.ShowBackups;
     public bool ShowLinks => Actor.Has(Permission.ChannelLink);
     public bool ShowLogs => Actor.Has(Permission.LogsView); // Package 81
@@ -80,6 +64,8 @@ public sealed partial class AdminViewModel : ObservableObject
     internal UsersAndBansViewModel UsersAndBans { get; }
     /// <summary>The backup card of the server tab.</summary>
     internal BackupCardViewModel BackupCard { get; }
+    /// <summary>The settings card of the server tab.</summary>
+    internal ServerSettingsViewModel ServerSettings { get; }
     /// <summary>Package 98: group save and order, and the server logo, until the server's update shows them.</summary>
     public PendingViewModel GroupSave { get; }
     public PendingViewModel GroupReorder { get; }
@@ -108,8 +94,7 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool HasIcon => server.IconHash is not null;
     public string ServerInitial => server.ServerName;
     [ObservableProperty] string? iconError;
-    /// <summary>Package 83: why the server settings or the group would be refused, null while they are fine.</summary>
-    [ObservableProperty] string? settingsError;
+    /// <summary>Package 83: why the group would be refused, null while it is fine.</summary>
     [ObservableProperty] string? groupError;
 
     void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -153,13 +138,7 @@ public sealed partial class AdminViewModel : ObservableObject
         RebuildGroups();
         UsersAndBans.OnStateChanged();
         Links.Rebuild();
-        HasPassword = server.Mirror.Settings.HasPassword;
-        if (loadedLimits is null) LoadLimits(); // e.g. arriving with the ServerConfig right; later ones never overwrite edits
-        if (!ReferenceEquals(server.Mirror.Settings, seenSettings)) // Package 114
-        {
-            seenSettings = server.Mirror.Settings;
-            SettingsArrived();
-        }
+        ServerSettings.OnStateChanged();
         OnPropertyChanged(nameof(ShowLinks));
         OnPropertyChanged(nameof(ShowGroups));
         OnPropertyChanged(nameof(ShowUsers));
@@ -242,50 +221,6 @@ public sealed partial class AdminViewModel : ObservableObject
         if (drafts.Contains(SelectedGroup!)) SelectGroup(null);
         CollectionSync.Sync(Groups, Groups.Live().Except(drafts).ToList(), server.Leave);
         if (SelectedGroup is null) SelectGroup(Groups.Live().FirstOrDefault());
-    }
-
-    /// <summary>What the server tab's fields were loaded with (the server's settings then).</summary>
-    string loadedName = "", loadedWelcome = "";
-    ServerSettingsInfo? seenSettings;
-
-    /// <summary>The server's normal form: a trimmed name, "\r\n" as "\n" (TextRules), so a saved edit is no change.</summary>
-    static string NormName(string? name) => name?.Trim() ?? "";
-    static string NormText(string? text) => (text ?? "").Replace("\r\n", "\n");
-
-    ServerLimits EditedLimits(ServerLimits l) =>
-        new((int)(MaxUsers ?? l.MaxUsers), (int)(LogDays ?? l.LogDays), LogRotateDaily, AutoRestart, AutoRestartTime is { } t ? TimeOnly.FromTimeSpan(t) : l.AutoRestartTime);
-
-    /// <summary>The server tab differs from what its fields were loaded with.</summary>
-    bool ServerSettingsChanged =>
-        ShowServerSettings && (NormName(ServerName) != NormName(loadedName) || NormText(WelcomeText) != NormText(loadedWelcome)
-                               || NewPassword.Length > 0 || RemovePassword || (loadedLimits is { } l && EditedLimits(l) != l));
-
-    /// <summary>
-    /// New settings from the server, field by field: an untouched field shows them (a change by another admin), and so
-    /// does an edited one that is now what the server has (the own save landed); an edit that still differs stays, and
-    /// so do the password fields (only a save empties them).
-    /// </summary>
-    void SettingsArrived()
-    {
-        var s = server.Mirror.Settings;
-        if (NormName(ServerName) == NormName(loadedName) || NormName(ServerName) == NormName(s.Name)) ServerName = loadedName = s.Name;
-        if (NormText(WelcomeText) == NormText(loadedWelcome) || NormText(WelcomeText) == NormText(s.WelcomeText)) WelcomeText = loadedWelcome = s.WelcomeText;
-        if (loadedLimits is { } l && s.Limits is { } now && now != l && (EditedLimits(l) == l || EditedLimits(l) == now))
-        {
-            loadedLimits = null;
-            LoadLimits();
-        }
-    }
-
-    void ReloadServerSettings()
-    {
-        ServerName = loadedName = server.Mirror.Settings.Name;
-        WelcomeText = loadedWelcome = server.Mirror.Settings.WelcomeText;
-        NewPassword = "";
-        RemovePassword = false;
-        SettingsError = null;
-        loadedLimits = null;
-        LoadLimits();
     }
 
     /// <summary>Asks before leaving the place (another tab, another group); false = stay.</summary>
@@ -406,47 +341,6 @@ public sealed partial class AdminViewModel : ObservableObject
             SelectGroup(null);
             CollectionSync.Sync(Groups, Groups.Live().Where(other => other != g).ToList(), server.Leave);
         }
-    }
-
-    public bool HasLimits => loadedLimits is not null;
-
-    void LoadLimits()
-    {
-        if (server.Mirror.Settings.Limits is not { } l) return;
-        loadedLimits = l;
-        MaxUsers = l.MaxUsers;
-        LogDays = l.LogDays;
-        LogRotateDaily = l.LogRotateDaily;
-        AutoRestart = l.AutoRestart;
-        AutoRestartTime = l.AutoRestartTime.ToTimeSpan();
-        OnPropertyChanged(nameof(HasLimits));
-    }
-
-    [RelayCommand]
-    Task SaveServerSettings()
-    {
-        SendServerSettings();
-        return Task.CompletedTask;
-    }
-
-    /// <summary>Package 114: waits for the server's new settings; null when the input breaks the server's rules.</summary>
-    PendingViewModel? SendServerSettings()
-    {
-        // Package 83: the server's rules, checked before anything is sent or cleared
-        SettingsError = TextRules.NormalizeName(ServerName, ProtocolLimits.MaxNameLength) is null ? Strings.Dlg_NameInvalid
-            : TextRules.NormalizeText(WelcomeText, ProtocolLimits.MaxTextLength) is null ? Strings.Dlg_TextInvalid
-            : !RemovePassword && NewPassword.Length > ProtocolLimits.MaxPasswordLength ? Strings.Ui_PasswordTooLong
-            : null;
-        if (SettingsError is not null) return null;
-        string? password = RemovePassword ? "" : NewPassword.Length > 0 ? NewPassword : null;
-        NewPassword = "";
-        RemovePassword = false;
-        // the server checks the ranges again; an emptied number field keeps the last known value
-        var limits = loadedLimits is { } l
-            ? new ServerLimits((int)(MaxUsers ?? l.MaxUsers), (int)(LogDays ?? l.LogDays), LogRotateDaily, AutoRestart,
-                AutoRestartTime is { } t ? TimeOnly.FromTimeSpan(t) : l.AutoRestartTime)
-            : null;
-        return server.SendConfirmed(new UpdateServerSettings(ServerName, WelcomeText, password, limits), m => m is ServerSettingsChanged);
     }
 
     [RelayCommand]
