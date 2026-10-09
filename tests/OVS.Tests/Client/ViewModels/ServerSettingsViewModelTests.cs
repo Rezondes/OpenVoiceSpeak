@@ -337,6 +337,20 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
+    public void Reload_ServerNoLongerReportsLimits_RaisesHasLimits()
+    {
+        var rig = Create(ReportedLimits);
+        ApplyServerSettings(rig, settings => settings with { Limits = null });
+        Assert.True(rig.Card.HasLimits);
+        var raised = new List<string?>();
+        rig.Card.PropertyChanged += (_, args) => raised.Add(args.PropertyName);
+
+        rig.Card.Reload();
+
+        Assert.Contains(nameof(ServerSettingsViewModel.HasLimits), raised);
+    }
+
+    [Fact]
     public void Reload_LimitEdited_ShowsTheServersLimitsAgain()
     {
         var rig = Create(ReportedLimits);

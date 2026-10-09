@@ -24,10 +24,15 @@ internal sealed partial class ServerIconViewModel : ObservableObject
     internal PendingViewModel IconUpload { get; }
 
     internal byte[]? IconPng => server.IconPng;
+    /// <summary>
+    /// The server reports an icon (its hash), not that the image is downloaded yet: the remove button shows while the
+    /// image still loads. The hash comes with the server's settings, so <see cref="FollowServer"/> raises this; the
+    /// image (<see cref="IconPng"/>) follows later and raises only itself.
+    /// </summary>
     internal bool HasIcon => server.IconHash is not null;
     [ObservableProperty] string? iconError;
 
-    /// <summary>The server's state changed: the icon may have been set or removed.</summary>
+    /// <summary>The server's state changed: the icon may have been set or removed. The only notifier of <see cref="HasIcon"/>.</summary>
     internal void FollowServer() => OnPropertyChanged(nameof(HasIcon));
 
     /// <summary>The page closed: the server no longer reaches this section.</summary>
@@ -36,16 +41,14 @@ internal sealed partial class ServerIconViewModel : ObservableObject
     void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
         if (args.PropertyName != nameof(ServerViewModel.IconPng)) return;
-        OnPropertyChanged(nameof(IconPng));
-        OnPropertyChanged(nameof(HasIcon));
+        OnPropertyChanged(nameof(IconPng)); // HasIcon is raised only by FollowServer on purpose: it reads the hash, not the image
     }
 
     /// <summary>Takes an already checked and scaled PNG (IconImport) or the reason it was refused.</summary>
-    internal Task UploadIconAsync(byte[]? png, string? error)
+    internal void UploadIcon(byte[]? png, string? error)
     {
         IconError = error;
         if (png is not null) SendIcon(Convert.ToBase64String(png));
-        return Task.CompletedTask;
     }
 
     [RelayCommand]

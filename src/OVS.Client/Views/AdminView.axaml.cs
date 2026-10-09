@@ -92,7 +92,7 @@ public partial class AdminView : UserControl
             AllowMultiple = false,
             FileTypeFilter = [new FilePickerFileType(Strings.Icon_PickFilter) { Patterns = ["*.png", "*.jpg", "*.jpeg"] }],
         });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) await UploadAsync(path);
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) UploadIcon(path);
     }
 
     // ---- Package 75: backups to and from this PC, through the same file dialogs ----
@@ -151,16 +151,16 @@ public partial class AdminView : UserControl
         IconDrop.Classes.Set("dropHover", file);
     }
 
-    async void OnIconDrop(object? sender, DragEventArgs e)
+    void OnIconDrop(object? sender, DragEventArgs e)
     {
         IconDrop.Classes.Remove("dropHover");
-        if (e.DataTransfer.TryGetFile()?.TryGetLocalPath() is { } path) await UploadAsync(path);
+        if (e.DataTransfer.TryGetFile()?.TryGetLocalPath() is { } path) UploadIcon(path);
     }
 
-    async Task UploadAsync(string path)
+    void UploadIcon(string path)
     {
         if (Vm is not { } page) return;
         var (png, error) = IconImport.Prepare(path);
-        await page.ServerIcon.UploadIconAsync(png, error);
+        page.ServerIcon.UploadIcon(png, error);
     }
 }

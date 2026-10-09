@@ -1083,6 +1083,19 @@ public class AdminViewModelTests
     }
 
     [Fact]
+    public void OnServerStateChanged_ServerReportsAnIconHash_IconSectionRaisesHasIconAndShowsIt()
+    {
+        var (page, server, _) = Create(P.All);
+        var raised = new List<string?>();
+        page.ServerIcon.PropertyChanged += (_, args) => raised.Add(args.PropertyName);
+
+        server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { IconHash = "abc" }));
+
+        Assert.True(page.ServerIcon.HasIcon);
+        Assert.Equal([nameof(ServerIconViewModel.HasIcon)], raised);
+    }
+
+    [Fact]
     public void Detach_ServerIconPngChangesAfterwards_IconSectionRaisesNothing()
     {
         var (page, server, _) = Create(P.All);

@@ -2,7 +2,6 @@ using OVS.Client.ViewModels;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
-using static OVS.Tests.TestSupport.HangGuard;
 
 namespace OVS.Tests.Client.ViewModels;
 
@@ -34,22 +33,22 @@ public sealed class ServerIconViewModelTests
         server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { IconHash = "abc" }));
 
     [Fact]
-    public async Task UploadIconAsync_PngGiven_SendsItAsBase64AndWaitsForTheSettings()
+    public void UploadIcon_PngGiven_SendsItAsBase64AndWaitsForTheSettings()
     {
         var rig = Create();
 
-        await Bound(rig.Section.UploadIconAsync(Png, null));
+        rig.Section.UploadIcon(Png, null);
 
         Assert.Equal(Convert.ToBase64String(Png), sent.OfType<SetServerIcon>().Single().PngBase64);
         Assert.True(rig.Section.IconUpload.IsRunning);
     }
 
     [Fact]
-    public async Task UploadIconAsync_RefusalOnly_ShowsTheRefusalAndSendsNothing()
+    public void UploadIcon_RefusalOnly_ShowsTheRefusalAndSendsNothing()
     {
         var rig = Create();
 
-        await Bound(rig.Section.UploadIconAsync(null, Refusal));
+        rig.Section.UploadIcon(null, Refusal);
 
         Assert.Equal(Refusal, rig.Section.IconError);
         Assert.Empty(sent);
@@ -57,47 +56,47 @@ public sealed class ServerIconViewModelTests
     }
 
     [Fact]
-    public async Task UploadIconAsync_RefusalShownBefore_RefusalGoneAndPngSent()
+    public void UploadIcon_RefusalShownBefore_RefusalGoneAndPngSent()
     {
         var rig = Create();
-        await Bound(rig.Section.UploadIconAsync(null, Refusal));
+        rig.Section.UploadIcon(null, Refusal);
 
-        await Bound(rig.Section.UploadIconAsync(Png, null));
+        rig.Section.UploadIcon(Png, null);
 
         Assert.Null(rig.Section.IconError);
         Assert.Single(sent.OfType<SetServerIcon>());
     }
 
     [Fact]
-    public async Task UploadIconAsync_AnotherUploadStillWaiting_SendsNoSecondOne()
+    public void UploadIcon_AnotherUploadStillWaiting_SendsNoSecondOne()
     {
         var rig = Create();
-        await Bound(rig.Section.UploadIconAsync(Png, null));
+        rig.Section.UploadIcon(Png, null);
 
-        await Bound(rig.Section.UploadIconAsync([4, 5], null));
+        rig.Section.UploadIcon([4, 5], null);
 
         Assert.Single(sent.OfType<SetServerIcon>());
     }
 
     [Fact]
-    public async Task UploadIconAsync_SettingsConfirmTheFirst_TheNextOneIsSent()
+    public void UploadIcon_SettingsConfirmTheFirst_TheNextOneIsSent()
     {
         var rig = Create();
-        await Bound(rig.Section.UploadIconAsync(Png, null));
+        rig.Section.UploadIcon(Png, null);
         ServerCarriesAnIcon(rig.Server);
 
-        await Bound(rig.Section.UploadIconAsync([4, 5], null));
+        rig.Section.UploadIcon([4, 5], null);
 
         Assert.Equal([Convert.ToBase64String(Png), Convert.ToBase64String([4, 5])], sent.OfType<SetServerIcon>().Select(request => request.PngBase64));
     }
 
     [Fact]
-    public async Task UploadIconAsync_NoAnswerWithinTheTimeout_StopsWaitingShowsTheErrorAndSendsNoNotice()
+    public void UploadIcon_NoAnswerWithinTheTimeout_StopsWaitingShowsTheErrorAndSendsNoNotice()
     {
         var rig = Create();
         var notices = new List<string>();
         rig.Server.Notice += notices.Add;
-        await Bound(rig.Section.UploadIconAsync(Png, null));
+        rig.Section.UploadIcon(Png, null);
 
         time.Advance(PendingViewModel.Timeout + TimeSpan.FromSeconds(1));
 
@@ -107,10 +106,10 @@ public sealed class ServerIconViewModelTests
     }
 
     [Fact]
-    public async Task RemoveIcon_ReasonShown_SendsAnEmptyIconClearsTheReasonAndWaits()
+    public void RemoveIcon_ReasonShown_SendsAnEmptyIconClearsTheReasonAndWaits()
     {
         var rig = Create();
-        await Bound(rig.Section.UploadIconAsync(null, Refusal));
+        rig.Section.UploadIcon(null, Refusal);
 
         rig.Section.RemoveIconCommand.Execute(null);
 
@@ -120,11 +119,11 @@ public sealed class ServerIconViewModelTests
     }
 
     [Fact]
-    public async Task RemoveIcon_UploadWaitingAndReasonShown_ClearsTheReasonAndSendsNothingMore()
+    public void RemoveIcon_UploadWaitingAndReasonShown_ClearsTheReasonAndSendsNothingMore()
     {
         var rig = Create();
-        await Bound(rig.Section.UploadIconAsync(Png, null));
-        await Bound(rig.Section.UploadIconAsync(null, Refusal));
+        rig.Section.UploadIcon(Png, null);
+        rig.Section.UploadIcon(null, Refusal);
 
         rig.Section.RemoveIconCommand.Execute(null);
 
@@ -141,11 +140,12 @@ public sealed class ServerIconViewModelTests
     }
 
     [Fact]
-    public void FollowServer_ServerCarriesAnIconNow_HasIconTrueAndRaised()
+    public void FollowServer_ServerReportsAnIconHashBeforeItsPngIsDownloaded_HasIconTrueAndRaised()
     {
         var rig = Create();
-        var raised = RaisedBy(rig.Section);
         ServerCarriesAnIcon(rig.Server);
+        Assert.Null(rig.Section.IconPng);
+        var raised = RaisedBy(rig.Section);
 
         rig.Section.FollowServer();
 
@@ -154,7 +154,7 @@ public sealed class ServerIconViewModelTests
     }
 
     [Fact]
-    public void IconPng_ServerGetsAnIcon_ReadsItAndRaisesIconPngAndHasIcon()
+    public void IconPng_ServerPngArrives_ReadsItAndRaisesOnlyIconPng()
     {
         var rig = Create();
         var raised = RaisedBy(rig.Section);
@@ -162,7 +162,17 @@ public sealed class ServerIconViewModelTests
         rig.Server.IconPng = Png;
 
         Assert.Same(Png, rig.Section.IconPng);
-        Assert.Equal([nameof(ServerIconViewModel.IconPng), nameof(ServerIconViewModel.HasIcon)], raised);
+        Assert.Equal([nameof(ServerIconViewModel.IconPng)], raised);
+    }
+
+    [Fact]
+    public void UploadIcon_PngGiven_RegistersNoAnswerRoute()
+    {
+        var rig = Create();
+
+        rig.Section.UploadIcon(Png, null);
+
+        Assert.Null(rig.Server.Routes.Find(Assert.Single(sent).RequestId!));
     }
 
     [Fact]

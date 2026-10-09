@@ -108,17 +108,17 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
 
     internal bool HasLimits => loadedLimits is not null;
 
-    /// <summary>Takes the server's limits as loaded; none reported (yet) leaves the card without limits.</summary>
+    /// <summary>Takes the server's limits as loaded; none reported (yet) leaves the card without limits. <see cref="HasLimits"/> is raised either way, so a bound limits block is also disabled again when the limits go away.</summary>
     void LoadLimits()
     {
         loadedLimits = server.Mirror.Settings.Limits;
+        OnPropertyChanged(nameof(HasLimits));
         if (loadedLimits is not { } limits) return;
         MaxUsers = limits.MaxUsers;
         LogDays = limits.LogDays;
         LogRotateDaily = limits.LogRotateDaily;
         AutoRestart = limits.AutoRestart;
         AutoRestartTime = limits.AutoRestartTime.ToTimeSpan();
-        OnPropertyChanged(nameof(HasLimits));
     }
 
     [RelayCommand]
