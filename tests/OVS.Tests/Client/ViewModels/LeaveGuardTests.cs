@@ -298,21 +298,6 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         main.Close();
     }
 
-    /// <summary>Found in review: any change on the server rebuilt the group rows and dropped the edit without a word.</summary>
-    [AvaloniaFact]
-    public async Task GroupEdit_SurvivesServerChanges()
-    {
-        var vm = Main();
-        await vm.OpenAdminAsync();
-        var admin = vm.AdminPage!;
-        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
-        Rename(admin, "Umbenannt");
-        var self = vm.Server!.Mirror.Users[vm.Server.Mirror.SelfId];
-        vm.Server.Apply(new UserUpdated(self with { SelfMuted = !self.SelfMuted })); // something else changes
-        Assert.Equal("Umbenannt", admin.GroupList.SelectedGroup!.Name);
-        Assert.True(admin.GroupList.Place.HasChanges());
-    }
-
     /// <summary>The page hands its leave question to the groups tab: a new group waits for the answer for the edited group.</summary>
     [AvaloniaFact]
     public async Task NewGroup_GroupEditedAndUserStays_AsksOnceAddsNoDraftAndKeepsTheEdit()
@@ -395,42 +380,5 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Assert.Equal("Mein Name", admin.ServerSettings.Name); // the edit stays
         Assert.Equal("Neu von jemand anderem", admin.ServerSettings.WelcomeText); // the untouched field follows
         Assert.True(admin.ServerSettings.Place.HasChanges());
-    }
-
-    /// <summary>Found in the second review: an edited row built for rights the user no longer has is rebuilt for the new ones.</summary>
-    [AvaloniaFact]
-    public async Task GroupEdit_RightsLost_RowFollowsRights()
-    {
-        var vm = Main();
-        await vm.OpenAdminAsync();
-        var admin = vm.AdminPage!;
-        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable && g.Id != WellKnownGroups.Admin);
-        var id = admin.GroupList.SelectedGroup.Id;
-        Rename(admin, "Umbenannt");
-        var self = vm.Server!.Mirror.Users[vm.Server.Mirror.SelfId];
-        vm.Server.Apply(new UserUpdated(self with { Permissions = Permission.All & ~Permission.GroupsManage }));
-        var row = admin.GroupList.Groups.Single(g => g.Id == id);
-        Assert.True(row.IsReadOnly);
-        Assert.False(admin.GroupList.Place.HasChanges()); // nothing that could still be saved
-    }
-
-    /// <summary>Found in the third review: an edited group follows another admin in what the user did not touch, so a save keeps both.</summary>
-    [AvaloniaFact]
-    public async Task GroupEdit_FollowsOtherAdminInUntouchedFields()
-    {
-        var vm = Main();
-        await vm.OpenAdminAsync();
-        var admin = vm.AdminPage!;
-        var row = admin.GroupList.Groups.First(g => g.IsEditable && g.Id == WellKnownGroups.Guest);
-        admin.GroupList.SelectedGroup = row;
-        Rename(admin, "Besucher");
-        var guest = vm.Server!.Mirror.Groups.Single(g => g.Id == WellKnownGroups.Guest);
-        vm.Server.Apply(new GroupsChanged(vm.Server.Mirror.Groups
-            .Select(g => g.Id == WellKnownGroups.Guest ? g with { Permissions = g.Permissions | Permission.ChatServer } : g).ToList()));
-        var shown = admin.GroupList.Groups.Single(g => g.Id == WellKnownGroups.Guest);
-        Assert.Equal("Besucher", shown.Name); // the edit stays
-        Assert.True(shown.Permissions.Has(Permission.ChatServer)); // the other admin s change is shown too
-        Assert.True(admin.GroupList.Place.HasChanges());
-        Assert.Equal(guest.Permissions | Permission.ChatServer, shown.Permissions);
     }
 }

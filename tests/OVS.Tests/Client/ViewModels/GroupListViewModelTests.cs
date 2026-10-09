@@ -7,6 +7,7 @@ using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
+using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
 using static OVS.Tests.TestSupport.HangGuard;
 
@@ -17,6 +18,7 @@ public sealed class GroupListViewModelTests
 {
     static readonly Guid TeamId = Guid.NewGuid();
     static readonly GroupInfo Team = new(TeamId, "Team", Permission.Speak, true);
+    static readonly GroupInfo Moderator = new(Guid.NewGuid(), "Moderator", Permission.Speak | Permission.UserKick, true);
 
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
@@ -26,9 +28,19 @@ public sealed class GroupListViewModelTests
     sealed record Rig(GroupListViewModel Section, ServerViewModel Server);
 
     /// <summary>A tab on a server that answers nothing by itself; like the page it hears every state change.</summary>
-    Rig Create()
+    Rig Create() => Build(FakeServers.Admin(sent, time));
+
+    /// <summary>A tab built for an actor who holds exactly these rights (and no group) on a server with exactly these groups.</summary>
+    Rig CreateFor(Permission rights, params GroupInfo[] groups)
     {
         var server = FakeServers.Admin(sent, time);
+        FakeServers.SetOwnRightsAndGroups(server, rights, []);
+        server.Apply(new GroupsChanged(groups));
+        return Build(server);
+    }
+
+    Rig Build(ServerViewModel server)
+    {
         var list = new GroupListViewModel(server, place =>
         {
             asked.Add(place);
@@ -110,7 +122,7 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void FollowServer_GroupEdited_SameRowKeepsTheNameAndFollowsTheRights()
+    public void FollowServer_GroupEdited_SameRowKeepsTheNameFollowsTheRightsAndStillHasChanges()
     {
         var rig = Create();
         var edited = Row(rig, "Gast");
@@ -120,6 +132,22 @@ public sealed class GroupListViewModelTests
 
         Assert.Same(edited, Row(rig, "Neu"));
         Assert.Equal(Permission.Speak | Permission.SpeakLinked, edited.Permissions);
+        Assert.True(rig.Section.Place.HasChanges());
+    }
+
+    [Fact]
+    public void FollowServer_OwnMuteChanged_EditedRowStaysSelectedWithItsEdit()
+    {
+        var rig = Create();
+        var edited = Row(rig, "Gast");
+        edited.Name = "Neu";
+        var self = rig.Server.Mirror.Users[rig.Server.Mirror.SelfId];
+
+        rig.Server.Apply(new UserUpdated(self with { SelfMuted = !self.SelfMuted }));
+
+        Assert.Same(edited, rig.Section.SelectedGroup);
+        Assert.Equal("Neu", rig.Section.SelectedGroup!.Name);
+        Assert.True(rig.Section.Place.HasChanges());
     }
 
     [Fact]
@@ -158,6 +186,125 @@ public sealed class GroupListViewModelTests
 
         Assert.True(Row(rig, "Gast").IsReadOnly);
         Assert.False(Row(rig, "Gast").HasChanges);
+    }
+
+    // ---- the rows and the commands by the actor's rights ----
+
+    [Fact]
+    public void Groups_ActorHoldsEveryRightOfTheGroupButNotAll_OnlyTheHeldRightsToggleTheRowShowsTheGroupsRightsAndItCanBeDeleted()
+    {
+        var rig = CreateFor(Permission.GroupsManage | Permission.GroupsDelete | Permission.Speak | Permission.UserKick,
+            FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+        var moderator = Row(rig, "Moderator");
+
+        Assert.True(moderator.Toggles.Single(toggle => toggle.Permission == Permission.UserKick).IsEnabled);
+        Assert.False(moderator.Toggles.Single(toggle => toggle.Permission == Permission.ServerConfig).IsEnabled);
+        Assert.Equal(Permission.Speak | Permission.UserKick, moderator.Permissions);
+        Assert.True(moderator.CanDelete);
+    }
+
+    [Fact]
+    public void Groups_ActorHoldsAllRights_AdminGroupReadOnlyWithDisabledTogglesAndNeitherProtectedGroupDeletable()
+    {
+        var rig = CreateFor(Permission.All, FakeServers.GuestGroup, FakeServers.AdminGroup);
+        var admin = Row(rig, "Admin");
+
+        Assert.True(admin.IsReadOnly);
+        Assert.All(admin.Toggles, toggle => Assert.False(toggle.IsEnabled));
+        Assert.False(admin.CanDelete);
+        Assert.False(Row(rig, "Gast").CanDelete);
+    }
+
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("Moderator")]
+    public void SelectedGroup_ProtectedOrStrongerGroupAndTheManageRightOnly_ReadOnlyAndNeitherSavableNorDeletable(string name)
+    {
+        var rig = CreateFor(Permission.GroupsManage | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+
+        rig.Section.SelectedGroup = Row(rig, name);
+
+        Assert.False(rig.Section.SaveGroupCommand.CanExecute(null));
+        Assert.False(rig.Section.DeleteGroupCommand.CanExecute(null));
+        Assert.True(rig.Section.SelectedGroup.IsReadOnly);
+    }
+
+    [Fact]
+    public void Commands_ViewRightOnly_NoCommandCanExecuteAndTheSelectedRowIsReadOnlyWithDisabledToggles()
+    {
+        var rig = CreateFor(Permission.GroupsView | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+
+        rig.Section.SelectedGroup = Row(rig, "Gast");
+
+        Assert.False(rig.Section.NewGroupCommand.CanExecute(null));
+        Assert.False(rig.Section.SaveGroupCommand.CanExecute(null));
+        Assert.False(rig.Section.DeleteGroupCommand.CanExecute(null));
+        Assert.False(rig.Section.MoveGroupDownCommand.CanExecute(null));
+        Assert.True(rig.Section.SelectedGroup.IsReadOnly);
+        Assert.All(rig.Section.SelectedGroup.Toggles, toggle => Assert.False(toggle.IsEnabled));
+    }
+
+    [Fact]
+    public void Commands_CreateRightOnly_NewGroupAllowedAndSavedGroupNotSavable()
+    {
+        var rig = CreateFor(Permission.GroupsView | Permission.GroupsCreate | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+
+        rig.Section.SelectedGroup = Row(rig, "Gast");
+
+        Assert.True(rig.Section.NewGroupCommand.CanExecute(null));
+        Assert.False(rig.Section.SaveGroupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Commands_CreateRightOnlyDraftAdded_DraftSavableAndDeletable()
+    {
+        var rig = CreateFor(Permission.GroupsView | Permission.GroupsCreate | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+
+        rig.Section.NewGroupCommand.Execute(null);
+
+        Assert.True(rig.Section.SaveGroupCommand.CanExecute(null));
+        Assert.True(rig.Section.DeleteGroupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Commands_ManageRightOnly_SavedGroupSavableAndMovableButNeitherNewNorDeletable()
+    {
+        var rig = CreateFor(Permission.GroupsView | Permission.GroupsManage | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+
+        rig.Section.SelectedGroup = Row(rig, "Gast");
+
+        Assert.False(rig.Section.NewGroupCommand.CanExecute(null));
+        Assert.True(rig.Section.SaveGroupCommand.CanExecute(null));
+        Assert.True(rig.Section.MoveGroupDownCommand.CanExecute(null));
+        Assert.False(rig.Section.DeleteGroupCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void Commands_DeleteRightAndTheModeratorsRights_ModeratorDeletableButNotSavable()
+    {
+        var rig = CreateFor(Permission.GroupsView | Permission.GroupsDelete | Permission.Speak | Permission.UserKick,
+            FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+
+        rig.Section.SelectedGroup = Row(rig, "Moderator");
+
+        Assert.True(rig.Section.DeleteGroupCommand.CanExecute(null));
+        Assert.False(rig.Section.SaveGroupCommand.CanExecute(null));
+    }
+
+    /// <summary>Every right is a checkbox, named in both languages.</summary>
+    [Theory]
+    [InlineData("de-DE", "Nutzerübersicht sehen", "Bans sehen", "Gruppen sehen", "Gruppen anlegen", "Gruppen löschen", "Nutzer löschen", "Gruppen bearbeiten", "Nutzer bannen und entbannen", "Passwort-Lock umgehen")]
+    [InlineData("en-US", "View user overview", "View bans", "View groups", "Create groups", "Delete groups", "Delete users", "Edit groups", "Ban and unban users", "Bypass password lock")]
+    public void Toggles_FirstRowInTheCulture_OneUniqueLabelPerSingleRightWithTheNewRightsNamed(string culture, string users, string bans, string groups,
+        string create, string delete, string userDelete, string manage, string ban, string bypass)
+    {
+        var labels = TestCulture.With(culture, () => Create().Section.Groups.First().Toggles.ToDictionary(toggle => toggle.Permission, toggle => toggle.Label));
+        var singleRights = Enum.GetValues<Permission>().Where(right => right != Permission.None && ((int)right & ((int)right - 1)) == 0).ToList();
+        Assert.Equal(singleRights.Order(), labels.Keys.Order());
+        Assert.Equal(labels.Count, labels.Values.Distinct().Count());
+        Assert.Equal([users, bans, groups, create, delete, userDelete, manage, ban, bypass],
+            new[] { Permission.UsersView, Permission.BansView, Permission.GroupsView, Permission.GroupsCreate, Permission.GroupsDelete, Permission.UserDelete,
+                Permission.GroupsManage, Permission.UserBan, Permission.ChannelPasswordBypass }.Select(right => labels[right]));
     }
 
     // ---- a new group ----
@@ -262,6 +409,62 @@ public sealed class GroupListViewModelTests
 
         Assert.Equal(Strings.Dlg_NameInvalid, rig.Section.GroupError);
         Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void SaveGroup_DraftNamedAndOneRightAdded_SendsTheCreateWithBothRights()
+    {
+        var rig = Create();
+        rig.Section.NewGroupCommand.Execute(null);
+        rig.Section.SelectedGroup!.Name = "Team";
+        rig.Section.SelectedGroup.Toggles.Single(toggle => toggle.Permission == Permission.SpeakLinked).IsChecked = true;
+
+        rig.Section.SaveGroupCommand.Execute(null);
+
+        Assert.Equal(new CreateGroup("Team", Permission.Speak | Permission.SpeakLinked), Assert.Single(sent) with { RequestId = null });
+    }
+
+    [Fact]
+    public void SaveGroup_DraftNameWithADirectionMark_ShowsTheErrorAndSendsNothing()
+    {
+        var rig = Create();
+        rig.Section.NewGroupCommand.Execute(null);
+        rig.Section.SelectedGroup!.Name = "Team" + (char)0x202E;
+
+        rig.Section.SaveGroupCommand.Execute(null);
+
+        Assert.Equal(Strings.Dlg_NameInvalid, rig.Section.GroupError);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void SaveGroup_DraftNameCorrectedAfterAnError_ClearsTheErrorAndSendsTheCreate()
+    {
+        var rig = Create();
+        rig.Section.NewGroupCommand.Execute(null);
+        rig.Section.SelectedGroup!.Name = "Team" + (char)0x202E;
+        rig.Section.SaveGroupCommand.Execute(null);
+        rig.Section.SelectedGroup.Name = "Team";
+
+        rig.Section.SaveGroupCommand.Execute(null);
+
+        Assert.Null(rig.Section.GroupError);
+        Assert.Equal(new CreateGroup("Team", Permission.Speak), Assert.Single(sent) with { RequestId = null });
+    }
+
+    [Fact]
+    public void SaveGroup_DraftSent_ShowsBusyAfterTheDelayUntilTheServersGroupsArrive()
+    {
+        var rig = Create();
+        rig.Section.NewGroupCommand.Execute(null);
+        rig.Section.SelectedGroup!.Name = "Team";
+        rig.Section.SaveGroupCommand.Execute(null);
+
+        time.Advance(PendingViewModel.ShowAfter);
+        Assert.True(rig.Section.GroupSave.IsBusy);
+        ServerGroups(rig, FakeServers.GuestGroup, FakeServers.AdminGroup, Team);
+
+        Assert.False(rig.Section.GroupSave.IsBusy);
     }
 
     [Fact]
@@ -449,16 +652,29 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public void MoveGroupAsync_RefusedByTheServer_OrderGoesBackAndTheBusyMarkEnds()
+    public void MoveGroupAsync_RefusedByTheServer_OrderGoesBackAndTheBusyMarkShowsAfterTheDelayThenEnds()
     {
         var rig = Create();
         Move(rig, Row(rig, "Admin"), Row(rig, "Gast"), after: false);
-        Assert.Equal(["Admin", "Gast"], Names(rig));
+        time.Advance(PendingViewModel.ShowAfter);
+        Assert.True(rig.Section.GroupReorder.IsBusy);
 
         rig.Server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied));
 
         Assert.Equal(["Gast", "Admin"], Names(rig));
         Assert.False(rig.Section.GroupReorder.IsRunning);
+        Assert.False(rig.Section.GroupReorder.IsBusy);
+    }
+
+    [Fact]
+    public void MoveGroupAsync_GroupDroppedBeforeTheFirst_SendsTheFullOrderWithItFirst()
+    {
+        var rig = Create();
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
+
+        Move(rig, Row(rig, "Admin"), Row(rig, "Gast"), after: false);
+
+        Assert.Equal([WellKnownGroups.Admin, WellKnownGroups.Guest, TeamId], Assert.IsType<ReorderGroups>(Assert.Single(sent)).GroupIds);
     }
 
     [Fact]

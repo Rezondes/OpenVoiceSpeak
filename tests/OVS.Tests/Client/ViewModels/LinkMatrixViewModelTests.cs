@@ -36,7 +36,7 @@ public sealed class LinkMatrixViewModelTests
 
         var saving = links.Place.SaveAsync();
 
-        Assert.Single(Assert.Single(sent.OfType<SetChannelLinks>()).Remove);
+        Assert.Single(Assert.IsType<SetChannelLinks>(Assert.Single(sent)).Remove);
         Assert.False(saving.IsCompleted);
         server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
         Assert.True(await Bound(saving));

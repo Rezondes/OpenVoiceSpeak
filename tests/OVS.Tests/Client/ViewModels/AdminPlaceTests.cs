@@ -5,9 +5,6 @@ using OVS.Client.Models;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
 using OVS.Shared.Protocol.Messages;
-using OVS.Shared.Protocol.Messages.Groups;
-using OVS.Shared.Protocol.Messages.Links;
-using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.ViewModels;
@@ -70,13 +67,17 @@ public sealed class AdminPlaceTests
     }
 
     [AvaloniaFact]
-    public void HasAnyChanges_OnlyLinksChanged_True()
+    public void HasAnyChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse()
     {
         var admin = Admin();
         admin.Links.UnlinkAll();
         Assert.False(admin.GroupList.Place.HasChanges());
         Assert.False(admin.ServerSettings.Place.HasChanges());
         Assert.True(admin.HasAnyChanges);
+
+        admin.Links.Place.Discard();
+
+        Assert.False(admin.HasAnyChanges);
     }
 
     [AvaloniaFact]
@@ -86,96 +87,5 @@ public sealed class AdminPlaceTests
         var admin = Admin(sent);
         foreach (var place in admin.Places) Assert.True(await HangGuard.Bound(place.SaveAsync()));
         Assert.Empty(sent);
-    }
-
-    [AvaloniaFact]
-    public async Task SaveAsync_GroupSaveOnItsWay_WaitsForItAndSendsNoSecond()
-    {
-        var sent = new List<Request>();
-        var server = FakeServers.Admin(sent, new ManualTimeProvider());
-        var admin = new AdminViewModel(server);
-        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
-        admin.GroupList.SelectedGroup.Name = "Umbenannt";
-        await HangGuard.Bound(admin.GroupList.SaveGroupCommand.ExecuteAsync(null)); // the save on its way
-        var saving = admin.GroupList.Place.SaveAsync();
-        Assert.False(saving.IsCompleted);
-
-        var update = Assert.Single(sent.OfType<UpdateGroup>());
-        server.Apply(new GroupsChanged(server.Mirror.Groups.Select(g => g.Id == update.GroupId ? g with { Name = update.Name } : g).ToList()));
-        Assert.True(await HangGuard.Bound(saving));
-        Assert.Single(sent.OfType<UpdateGroup>());
-    }
-
-    [AvaloniaFact]
-    public async Task SaveAsync_LinkSaveOnItsWay_WaitsForItInsteadOfFailing()
-    {
-        var sent = new List<Request>();
-        var server = FakeServers.Admin(sent, new ManualTimeProvider());
-        var admin = new AdminViewModel(server);
-        admin.Links.UnlinkAll();
-        await HangGuard.Bound(admin.Links.ApplyCommand.ExecuteAsync(null)); // the save on its way
-        var saving = admin.Links.Place.SaveAsync();
-        Assert.False(saving.IsCompleted);
-
-        server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
-        Assert.True(await HangGuard.Bound(saving));
-        Assert.Single(sent.OfType<SetChannelLinks>());
-    }
-
-    [AvaloniaFact]
-    public async Task SaveAsync_LinksChanged_SendsTheLinksAndTrueOnceConfirmed()
-    {
-        var sent = new List<Request>();
-        var server = FakeServers.Admin(sent, new ManualTimeProvider());
-        var admin = new AdminViewModel(server);
-        admin.Links.UnlinkAll();
-        var saving = admin.Links.Place.SaveAsync();
-        var request = Assert.Single(sent.OfType<SetChannelLinks>());
-        Assert.Single(request.Remove);
-        Assert.Empty(sent.OfType<UpdateServerSettings>());
-        Assert.False(saving.IsCompleted);
-
-        server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
-        Assert.True(await HangGuard.Bound(saving));
-        Assert.False(admin.Links.Place.HasChanges());
-    }
-
-    [AvaloniaFact]
-    public async Task SaveAsync_ServerNameChanged_SendsTheSettingsAndTrueOnceConfirmed()
-    {
-        var sent = new List<Request>();
-        var server = FakeServers.Admin(sent, new ManualTimeProvider());
-        var admin = new AdminViewModel(server);
-        admin.ServerSettings.Name = "Neu";
-        var saving = admin.ServerSettings.Place.SaveAsync();
-        Assert.Equal("Neu", Assert.Single(sent.OfType<UpdateServerSettings>()).Name);
-        Assert.Empty(sent.OfType<SetChannelLinks>());
-        Assert.False(saving.IsCompleted);
-
-        server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { Name = "Neu" }));
-        Assert.True(await HangGuard.Bound(saving));
-        Assert.False(admin.ServerSettings.Place.HasChanges());
-    }
-
-    [AvaloniaFact]
-    public async Task SaveAsync_ServerNameBlank_FalseWithoutSending()
-    {
-        var sent = new List<Request>();
-        var admin = Admin(sent);
-        admin.ServerSettings.Name = "   ";
-        Assert.True(admin.ServerSettings.Place.HasChanges());
-        Assert.False(await HangGuard.Bound(admin.ServerSettings.Place.SaveAsync()));
-        Assert.Empty(sent);
-    }
-
-    [AvaloniaFact]
-    public void Discard_LinksChanged_NoChangesLeft()
-    {
-        var admin = Admin();
-        admin.Links.UnlinkAll();
-        Assert.True(admin.Links.Place.HasChanges());
-        admin.Links.Place.Discard();
-        Assert.False(admin.Links.Place.HasChanges());
-        Assert.False(admin.HasAnyChanges);
     }
 }

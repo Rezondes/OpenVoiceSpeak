@@ -28,10 +28,10 @@ public class AdminViewModelTests
 
     /// <param name="reply">Package 75: the server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
     /// <param name="groupIds">Package 89: the own groups; upload and restore need the Admin group.</param>
-    static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false, ServerLimits? limits = null,
+    static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false,
         DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null, IReadOnlyList<Guid>? groupIds = null)
     {
-        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword, null, limits), Lobby,
+        var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
             [
                 new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak, Assignable(P.Speak)),
@@ -75,47 +75,6 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void GroupEditor_DisablesUnownedPermissions()
-    {
-        var (vm, _, _) = Create(P.GroupsManage | P.GroupsDelete | P.Speak | P.UserKick);
-        var mod = Group(vm, "Moderator");
-        Assert.True(mod.Toggles.Single(t => t.Permission == P.UserKick).IsEnabled);
-        Assert.False(mod.Toggles.Single(t => t.Permission == P.ServerConfig).IsEnabled);
-        Assert.Equal(P.Speak | P.UserKick, mod.Permissions);
-        Assert.True(mod.CanDelete);
-    }
-
-    [Fact]
-    public void AdminGroup_ReadOnly_ProtectedGroupsNotDeletable()
-    {
-        var (vm, _, _) = Create(P.All);
-        var admin = Group(vm, "Admin");
-        Assert.True(admin.IsReadOnly);
-        Assert.All(admin.Toggles, t => Assert.False(t.IsEnabled));
-        Assert.False(admin.CanDelete);
-        Assert.False(Group(vm, "Gast").CanDelete);
-    }
-
-    [Fact]
-    public void GroupButtons_DisabledForProtectedAndStrongerGroups()
-    {
-        var (vm, _, _) = Create(P.GroupsManage | P.Speak);
-        vm.GroupList.SelectedGroup = Group(vm, "Admin");
-        Assert.False(vm.GroupList.SaveGroupCommand.CanExecute(null));
-        Assert.False(vm.GroupList.DeleteGroupCommand.CanExecute(null));
-
-        vm.GroupList.SelectedGroup = Group(vm, "Gast");
-        Assert.True(vm.GroupList.SaveGroupCommand.CanExecute(null));
-        Assert.False(vm.GroupList.DeleteGroupCommand.CanExecute(null));
-
-        // Moderator can kick, the actor cannot: not editable, not deletable
-        vm.GroupList.SelectedGroup = Group(vm, "Moderator");
-        Assert.True(vm.GroupList.SelectedGroup.IsReadOnly);
-        Assert.False(vm.GroupList.SaveGroupCommand.CanExecute(null));
-        Assert.False(vm.GroupList.DeleteGroupCommand.CanExecute(null));
-    }
-
-    [Fact]
     public void BanDurations_AsPlanned()
     {
         Assert.Equal([("1 Stunde", (int?)60), ("1 Tag", 1440), ("7 Tage", 10080), ("Dauerhaft", null)], BanChoice.Durations);
@@ -140,40 +99,6 @@ public class AdminViewModelTests
         Assert.Equal(logs, sent.OfType<ListLogs>().Any());
     }
 
-    /// <summary>Package 76 (AC4): without the acting right the overview stays readable, only the action is locked.</summary>
-    [Fact]
-    public void GroupButtons_ByRight()
-    {
-        var (view, _, _) = Create(P.GroupsView | P.Speak);
-        view.GroupList.SelectedGroup = Group(view, "Gast");
-        Assert.False(view.GroupList.NewGroupCommand.CanExecute(null));
-        Assert.False(view.GroupList.SaveGroupCommand.CanExecute(null));
-        Assert.False(view.GroupList.DeleteGroupCommand.CanExecute(null));
-        Assert.False(view.GroupList.MoveGroupDownCommand.CanExecute(null));
-        Assert.True(view.GroupList.SelectedGroup.IsReadOnly);
-        Assert.All(view.GroupList.SelectedGroup.Toggles, t => Assert.False(t.IsEnabled));
-
-        var (create, _, _) = Create(P.GroupsView | P.GroupsCreate | P.Speak);
-        Assert.True(create.GroupList.NewGroupCommand.CanExecute(null));
-        create.GroupList.SelectedGroup = Group(create, "Gast");
-        Assert.False(create.GroupList.SaveGroupCommand.CanExecute(null));
-        create.GroupList.NewGroupCommand.Execute(null); // a new group can be saved (created) and dropped again
-        Assert.True(create.GroupList.SaveGroupCommand.CanExecute(null));
-        Assert.True(create.GroupList.DeleteGroupCommand.CanExecute(null));
-
-        var (edit, _, _) = Create(P.GroupsView | P.GroupsManage | P.Speak);
-        edit.GroupList.SelectedGroup = Group(edit, "Gast");
-        Assert.False(edit.GroupList.NewGroupCommand.CanExecute(null));
-        Assert.True(edit.GroupList.SaveGroupCommand.CanExecute(null));
-        Assert.True(edit.GroupList.MoveGroupDownCommand.CanExecute(null));
-        Assert.False(edit.GroupList.DeleteGroupCommand.CanExecute(null));
-
-        var (delete, _, _) = Create(P.GroupsView | P.GroupsDelete | P.Speak | P.UserKick);
-        delete.GroupList.SelectedGroup = Group(delete, "Moderator");
-        Assert.True(delete.GroupList.DeleteGroupCommand.CanExecute(null));
-        Assert.False(delete.GroupList.SaveGroupCommand.CanExecute(null));
-    }
-
     [Fact]
     public void UserTogglesAndUnban_ByRight()
     {
@@ -188,21 +113,6 @@ public class AdminViewModelTests
         Assert.True(Assert.Single(act.UsersAndBans.Users).Toggles.Single(t => t.Name == "Gast").IsEnabled);
         act.UsersAndBans.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
         Assert.True(Assert.Single(act.UsersAndBans.Bans).UnbanCommand.CanExecute(null));
-    }
-
-    /// <summary>Package 76 (AC1, AC7): every right is a checkbox, named in both languages.</summary>
-    [Theory]
-    [InlineData("de-DE", "Nutzerübersicht sehen", "Bans sehen", "Gruppen sehen", "Gruppen anlegen", "Gruppen löschen", "Nutzer löschen", "Gruppen bearbeiten", "Nutzer bannen und entbannen", "Passwort-Lock umgehen")]
-    [InlineData("en-US", "View user overview", "View bans", "View groups", "Create groups", "Delete groups", "Delete users", "Edit groups", "Ban and unban users", "Bypass password lock")]
-    public void GroupEditor_ListsNewRights(string culture, string users, string bans, string groups, string create, string delete,
-        string userDelete, string manage, string ban, string bypass)
-    {
-        var labels = TestCulture.With(culture, () => Create(P.All).Admin.GroupList.Groups.First().Toggles.ToDictionary(t => t.Permission, t => t.Label));
-        var single = Enum.GetValues<P>().Where(p => p != P.None && ((int)p & ((int)p - 1)) == 0).ToList();
-        Assert.Equal(single.Order(), labels.Keys.Order());
-        Assert.Equal(labels.Count, labels.Values.Distinct().Count());
-        Assert.Equal([users, bans, groups, create, delete, userDelete, manage, ban, bypass],
-            new[] { P.UsersView, P.BansView, P.GroupsView, P.GroupsCreate, P.GroupsDelete, P.UserDelete, P.GroupsManage, P.UserBan, P.ChannelPasswordBypass }.Select(p => labels[p]));
     }
 
     [Fact]
@@ -326,6 +236,22 @@ public class AdminViewModelTests
 
         Assert.False(vm.BackupCard.CanUploadRestore);
         Assert.False(vm.BackupCard.Backups[0].CanRestore);
+    }
+
+    /// <summary>The page tells the groups tab about every state change (the tab itself: GroupListViewModelTests).</summary>
+    [Fact]
+    public void OnServerStateChanged_ManageRightLostWhileAGroupIsEdited_RowReadOnlyAndNothingLeftToSave()
+    {
+        var (admin, server, _) = Create(P.All);
+        var edited = Group(admin, "Gast");
+        admin.GroupList.SelectedGroup = edited;
+        edited.Name = "Umbenannt";
+        Assert.True(admin.GroupList.Place.HasChanges());
+
+        FakeServers.SetOwnRightsAndGroups(server, P.All & ~P.GroupsManage, []);
+
+        Assert.True(admin.GroupList.Groups.Single(group => group.Id == WellKnownGroups.Guest).IsReadOnly);
+        Assert.False(admin.GroupList.Place.HasChanges());
     }
 
     /// <summary>
@@ -491,93 +417,6 @@ public class AdminViewModelTests
         Assert.Equal(("bert", BanStatusFilter.All, BanSortOrder.Name), (vm.UsersAndBans.BanSearchText, vm.UsersAndBans.SelectedBanStatusFilter.Value, vm.UsersAndBans.SelectedBanSortOrder.Value));
         var bert = Assert.Single(vm.UsersAndBans.Bans);
         Assert.Equal((BanStatus.Lifted, false), (bert.Status, bert.CanUnban));
-    }
-
-    [Fact]
-    public async Task NewGroup_SaveSendsCreate()
-    {
-        var (vm, _, sent) = Create(P.All);
-        vm.GroupList.NewGroupCommand.Execute(null);
-        vm.GroupList.SelectedGroup!.Name = "Team";
-        vm.GroupList.SelectedGroup.Toggles.Single(t => t.Permission == P.SpeakLinked).IsChecked = true;
-        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
-        Assert.Equal(new CreateGroup("Team", P.Speak | P.SpeakLinked), sent[^1] with { RequestId = null });
-    }
-
-    [Theory]
-    [InlineData("", false, null)]
-    [InlineData("neu", false, "neu")]
-    [InlineData("egal", true, "")]
-    public async Task SaveServerSettings_PasswordSemantics(string newPassword, bool remove, string? expected)
-    {
-        var (vm, _, sent) = Create(P.ServerConfig, hasPassword: true);
-        vm.ServerSettings.Name = "Neu";
-        vm.ServerSettings.NewPassword = newPassword;
-        vm.ServerSettings.RemovePassword = remove;
-        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
-        Assert.Equal(new UpdateServerSettings("Neu", "Hallo", expected), sent[^1] with { RequestId = null });
-    }
-
-    /// <summary>Package 69: the limits travel with name, welcome text and password.</summary>
-    [Fact]
-    public async Task SaveServerSettings_SendsAllFields()
-    {
-        var (vm, server, sent) = Create(P.ServerConfig, limits: new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)));
-        Assert.Equal((50m, 30m, true, false, new TimeSpan(4, 0, 0)), (vm.ServerSettings.MaxUsers, vm.ServerSettings.LogDays, vm.ServerSettings.LogRotateDaily, vm.ServerSettings.AutoRestart, vm.ServerSettings.AutoRestartTime));
-
-        vm.ServerSettings.MaxUsers = 12;
-        vm.ServerSettings.LogDays = 0;
-        vm.ServerSettings.LogRotateDaily = false;
-        vm.ServerSettings.AutoRestart = true;
-        vm.ServerSettings.AutoRestartTime = new TimeSpan(3, 30, 0);
-        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
-        Assert.Equal(new UpdateServerSettings("Server", "Hallo", null, new ServerLimits(12, 0, false, true, new TimeOnly(3, 30))),
-            sent[^1] with { RequestId = null });
-    }
-
-    [Fact]
-    public async Task SaveServerSettings_LimitsUnknown_LeftUnchanged()
-    {
-        var (vm, server, sent) = Create(P.ServerConfig);
-        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
-        Assert.Null(((UpdateServerSettings)sent[^1]).Limits);
-
-        // they arrive later, e.g. after the right was granted
-        server.Apply(new ServerSettingsChanged(new ServerSettingsInfo("Server", "Hallo", false, null, new ServerLimits(8, 1, true, true, new TimeOnly(2, 0)))));
-        Assert.Equal(8m, vm.ServerSettings.MaxUsers);
-        Assert.Equal(new TimeSpan(2, 0, 0), vm.ServerSettings.AutoRestartTime);
-    }
-
-    // ---- Package 37: group order ----
-
-    [Fact]
-    public async Task MoveGroupUpDown_SendsFullOrder()
-    {
-        var (vm, server, sent) = Create(P.All);
-        vm.GroupList.SelectedGroup = Group(vm, "Gast");
-        Assert.False(vm.GroupList.MoveGroupUpCommand.CanExecute(null));
-        await HangGuard.Bound(vm.GroupList.MoveGroupDownCommand.ExecuteAsync(null));
-        Assert.Equal(new[] { ModGroup, WellKnownGroups.Guest, WellKnownGroups.Admin }, ((ReorderGroups)sent[^1]).GroupIds);
-        server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied)); // Package 98: refused, the server's order is back
-
-        vm.GroupList.SelectedGroup = Group(vm, "Admin");
-        Assert.False(vm.GroupList.MoveGroupDownCommand.CanExecute(null));
-        await HangGuard.Bound(vm.GroupList.MoveGroupUpCommand.ExecuteAsync(null));
-        Assert.Equal(new[] { WellKnownGroups.Guest, WellKnownGroups.Admin, ModGroup }, ((ReorderGroups)sent[^1]).GroupIds);
-    }
-
-    [Fact]
-    public async Task DropGroup_SendsOrder_IgnoresUnsaved()
-    {
-        var (vm, _, sent) = Create(P.All);
-        await HangGuard.Bound(vm.GroupList.MoveGroupAsync(Group(vm, "Admin"), Group(vm, "Gast"), after: false));
-        Assert.Equal(new[] { WellKnownGroups.Admin, WellKnownGroups.Guest, ModGroup }, ((ReorderGroups)sent[^1]).GroupIds);
-
-        vm.GroupList.NewGroupCommand.Execute(null); // not saved yet: cannot be moved, is not in the order
-        var count = sent.Count;
-        await HangGuard.Bound(vm.GroupList.MoveGroupAsync(vm.GroupList.SelectedGroup!, Group(vm, "Gast"), after: false));
-        Assert.False(vm.GroupList.MoveGroupUpCommand.CanExecute(null));
-        Assert.Equal(count, sent.Count);
     }
 
     // ---- Package 71: user overview ----
@@ -1076,49 +915,6 @@ public class AdminViewModelTests
         Assert.Single(sent.OfType<ListUsers>());
     }
 
-    /// <summary>Package 83: the server's rules for names, welcome text and password, shown before sending.</summary>
-    [Fact]
-    public async Task SaveServerSettings_InvalidInput_ErrorNothingSent()
-    {
-        var (vm, _, sent) = Create(P.ServerConfig);
-        vm.ServerSettings.Name = "Server" + (char)0x200B;
-        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
-        Assert.Equal(Strings.Dlg_NameInvalid, vm.ServerSettings.Error);
-
-        vm.ServerSettings.Name = "Server";
-        vm.ServerSettings.WelcomeText = "a" + (char)0x2066 + "b";
-        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
-        Assert.Equal(Strings.Dlg_TextInvalid, vm.ServerSettings.Error);
-
-        vm.ServerSettings.WelcomeText = "Hallo";
-        vm.ServerSettings.NewPassword = new string('p', ProtocolLimits.MaxPasswordLength + 1);
-        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
-        Assert.Equal(Strings.Ui_PasswordTooLong, vm.ServerSettings.Error);
-        Assert.Equal(new string('p', ProtocolLimits.MaxPasswordLength + 1), vm.ServerSettings.NewPassword); // kept for correcting
-        Assert.DoesNotContain(sent, r => r is UpdateServerSettings);
-
-        vm.ServerSettings.NewPassword = "kurz";
-        await vm.ServerSettings.SaveCommand.ExecuteAsync(null);
-        Assert.Null(vm.ServerSettings.Error);
-        Assert.Equal(new UpdateServerSettings("Server", "Hallo", "kurz"), sent[^1] with { RequestId = null });
-    }
-
-    [Fact]
-    public async Task SaveGroup_InvalidName_ErrorNothingSent()
-    {
-        var (vm, _, sent) = Create(P.All);
-        vm.GroupList.NewGroupCommand.Execute(null);
-        vm.GroupList.SelectedGroup!.Name = "Team" + (char)0x202E;
-        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
-        Assert.Equal(Strings.Dlg_NameInvalid, vm.GroupList.GroupError);
-        Assert.DoesNotContain(sent, r => r is CreateGroup);
-
-        vm.GroupList.SelectedGroup!.Name = "Team";
-        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
-        Assert.Null(vm.GroupList.GroupError);
-        Assert.IsType<CreateGroup>(sent[^1]);
-    }
-
     // ---- Package 97 (A113): waiting states ----
 
     /// <summary>Package 97 (AC3): every list shows its loading state until the first page is complete; a refresh keeps the content.</summary>
@@ -1200,38 +996,6 @@ public class AdminViewModelTests
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new UserList(sent.OfType<ListUsers>().Last().RequestId, []));
         Assert.Empty(vm.UsersAndBans.Users);
-    }
-
-    /// <summary>Package 98 (AC4): group save spins until the server's groups arrive; a new group no longer disappears meanwhile.</summary>
-    [Fact]
-    public async Task GroupSave_AndReorder_BusyUntilGroupsChanged()
-    {
-        var (vm, server, sent) = Create(P.All);
-        var time = (ManualTimeProvider)server.Time;
-        vm.GroupList.NewGroupCommand.Execute(null);
-        vm.GroupList.SelectedGroup!.Name = "Team";
-        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
-        Assert.IsType<CreateGroup>(sent[^1]);
-        Assert.Contains(vm.GroupList.Groups, g => g.Id is null && g.Name == "Team"); // stays until the server has it
-        time.Advance(PendingViewModel.ShowAfter);
-        Assert.True(vm.GroupList.GroupSave.IsBusy);
-        var team = Guid.NewGuid();
-        server.Apply(new GroupsChanged([.. server.Mirror.Groups, new GroupInfo(team, "Team", P.Speak, true)]));
-        Assert.False(vm.GroupList.GroupSave.IsBusy);
-        Assert.DoesNotContain(vm.GroupList.Groups, g => g.Id is null);
-        Assert.Equal(team, vm.GroupList.SelectedGroup?.Id);
-
-        // reorder: the new order at once, back when refused
-        Guid?[] Order() => vm.GroupList.Groups.Select(g => g.Id).ToArray();
-        var before = Order();
-        await HangGuard.Bound(vm.GroupList.MoveGroupAsync(vm.GroupList.Groups.Single(g => g.Id == team), vm.GroupList.Groups[0], after: false));
-        var reorder = Assert.IsType<ReorderGroups>(sent[^1]);
-        Assert.Equal(team, Order()[0]);
-        time.Advance(PendingViewModel.ShowAfter);
-        Assert.True(vm.GroupList.GroupReorder.IsBusy);
-        server.Apply(new Error(reorder.RequestId, ReasonCodes.PermissionDenied));
-        Assert.Equal(before, Order());
-        Assert.False(vm.GroupList.GroupReorder.IsBusy);
     }
 
     /// <summary>Package 102: a lifted ban folds away in the real list, the count is right at once.</summary>

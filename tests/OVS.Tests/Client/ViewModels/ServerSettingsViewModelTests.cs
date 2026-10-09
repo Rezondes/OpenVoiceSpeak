@@ -1,6 +1,7 @@
 using OVS.Client.Localization;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
+using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.ServerInfo;
@@ -18,9 +19,11 @@ public sealed class ServerSettingsViewModelTests
 
     sealed record Rig(ServerSettingsViewModel Card, ServerViewModel Server);
 
-    Rig Create()
+    /// <param name="limits">Limits the server has reported before the card is built; none by default.</param>
+    Rig Create(ServerLimits? limits = null)
     {
         var server = FakeServers.Admin(sent, time);
+        if (limits is not null) server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { Limits = limits }));
         return new Rig(new ServerSettingsViewModel(server), server);
     }
 
@@ -175,6 +178,101 @@ public sealed class ServerSettingsViewModelTests
         Assert.False(rig.Card.RemovePassword);
     }
 
+    [Theory]
+    [InlineData("", false, null)]
+    [InlineData("neu", false, "neu")]
+    [InlineData("egal", true, "")]
+    public void Save_PasswordFieldsSet_SendsTheTypedPasswordTheEmptyOneToRemoveItOrNone(string newPassword, bool removePassword, string? expected)
+    {
+        var rig = Create();
+        rig.Card.Name = "Neu";
+        rig.Card.NewPassword = newPassword;
+        rig.Card.RemovePassword = removePassword;
+
+        rig.Card.SaveCommand.Execute(null);
+
+        Assert.Equal(new UpdateServerSettings("Neu", "Hallo", expected), Assert.Single(sent) with { RequestId = null });
+    }
+
+    /// <summary>The limits travel with name, welcome text and password.</summary>
+    [Fact]
+    public void Save_EveryLimitEdited_SendsTheEditedLimitsWithNameAndWelcomeTextAndNoPassword()
+    {
+        var rig = Create(ReportedLimits);
+        rig.Card.MaxUsers = 12;
+        rig.Card.LogDays = 0;
+        rig.Card.LogRotateDaily = false;
+        rig.Card.AutoRestart = true;
+        rig.Card.AutoRestartTime = new TimeSpan(3, 30, 0);
+
+        rig.Card.SaveCommand.Execute(null);
+
+        Assert.Equal(new UpdateServerSettings("Gilde", "Hallo", null, new ServerLimits(12, 0, false, true, new TimeOnly(3, 30))),
+            Assert.Single(sent) with { RequestId = null });
+    }
+
+    [Fact]
+    public void Save_LimitsNeverReported_SendsNoLimits()
+    {
+        var rig = Create();
+
+        rig.Card.SaveCommand.Execute(null);
+
+        Assert.Null(Assert.IsType<UpdateServerSettings>(Assert.Single(sent)).Limits);
+    }
+
+    [Fact]
+    public void Save_NameWithAZeroWidthSpace_ShowsTheNameErrorAndSendsNothing()
+    {
+        var rig = Create();
+        rig.Card.Name = "Server" + (char)0x200B;
+
+        rig.Card.SaveCommand.Execute(null);
+
+        Assert.Equal(Strings.Dlg_NameInvalid, rig.Card.Error);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void Save_WelcomeTextWithADirectionIsolate_ShowsTheTextErrorAndSendsNothing()
+    {
+        var rig = Create();
+        rig.Card.WelcomeText = "a" + (char)0x2066 + "b";
+
+        rig.Card.SaveCommand.Execute(null);
+
+        Assert.Equal(Strings.Dlg_TextInvalid, rig.Card.Error);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void Save_PasswordTooLong_ShowsTheErrorSendsNothingAndKeepsThePasswordForCorrecting()
+    {
+        var rig = Create();
+        var tooLong = new string('p', ProtocolLimits.MaxPasswordLength + 1);
+        rig.Card.NewPassword = tooLong;
+
+        rig.Card.SaveCommand.Execute(null);
+
+        Assert.Equal(Strings.Ui_PasswordTooLong, rig.Card.Error);
+        Assert.Equal(tooLong, rig.Card.NewPassword);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void Save_PasswordCorrectedAfterAnError_ClearsTheErrorAndSendsTheSettings()
+    {
+        var rig = Create();
+        rig.Card.NewPassword = new string('p', ProtocolLimits.MaxPasswordLength + 1);
+        rig.Card.SaveCommand.Execute(null);
+        rig.Card.NewPassword = "kurz";
+
+        rig.Card.SaveCommand.Execute(null);
+
+        Assert.Null(rig.Card.Error);
+        Assert.Equal(new UpdateServerSettings("Gilde", "Hallo", "kurz"), Assert.Single(sent) with { RequestId = null });
+    }
+
     [Fact]
     public void Send_NameInvalid_ShowsTheErrorAndKeepsThePasswordFields()
     {
@@ -193,8 +291,7 @@ public sealed class ServerSettingsViewModelTests
     [Fact]
     public void HasChanges_LimitEdited_True()
     {
-        var rig = Create();
-        ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits });
+        var rig = Create(ReportedLimits);
 
         rig.Card.MaxUsers = 12;
 
@@ -204,8 +301,7 @@ public sealed class ServerSettingsViewModelTests
     [Fact]
     public void FollowServer_OtherAdminChangesLimits_UntouchedLimitsFollow()
     {
-        var rig = Create();
-        ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits });
+        var rig = Create(ReportedLimits);
 
         ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits with { MaxUsers = 80 } });
 
@@ -216,8 +312,7 @@ public sealed class ServerSettingsViewModelTests
     [Fact]
     public void FollowServer_OtherAdminChangesLimits_EditedLimitsStay()
     {
-        var rig = Create();
-        ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits });
+        var rig = Create(ReportedLimits);
         rig.Card.LogDays = 5;
 
         ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits with { MaxUsers = 80 } });
@@ -229,8 +324,7 @@ public sealed class ServerSettingsViewModelTests
     [Fact]
     public void Reload_LimitEdited_ShowsTheServersLimitsAgain()
     {
-        var rig = Create();
-        ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits });
+        var rig = Create(ReportedLimits);
         rig.Card.MaxUsers = 12;
 
         rig.Card.Reload();
@@ -242,8 +336,7 @@ public sealed class ServerSettingsViewModelTests
     [Fact]
     public void Send_NumberFieldEmptied_SendsTheLoadedValue()
     {
-        var rig = Create();
-        ApplyServerSettings(rig, settings => settings with { Limits = ReportedLimits });
+        var rig = Create(ReportedLimits);
         rig.Card.MaxUsers = null;
 
         rig.Card.Send();

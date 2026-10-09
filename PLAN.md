@@ -1648,7 +1648,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientSettingsTests|FullyQ
    - `[Theory] "UserMenu_VisibilityByPermissionAndRank"` (AC2)
 2. `AdminViewModelTests.cs`:
    - `ServerViewModelTests > "LinkCandidates_ExcludesSelfAndLinked"` (AC3)
-   - `"GroupEditor_DisablesUnownedPermissions"`, `"AdminGroup_ReadOnly_ProtectedGroupsNotDeletable"` (AC4)
+   - `GroupListViewModelTests > "Groups_ActorHoldsEveryRightOfTheGroupButNotAll_OnlyTheHeldRightsToggleTheRowShowsTheGroupsRightsAndItCanBeDeleted"`, `"Groups_ActorHoldsAllRights_AdminGroupReadOnlyWithDisabledTogglesAndNeitherProtectedGroupDeletable"` (AC4)
    - `"AssignGroup_SendsRequest_DisablesHigherGroups"` (AC5)
    - `ServerViewModelTests > "Ban_SendsDurationAndIpFlag"` (AC6)
    - `[Theory] "Tabs_VisibleByPermission"` (AC7)
@@ -2713,7 +2713,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQ
 ### Tests (TDD)
 
 1. `AdminCommandTests > "ReorderGroups_PersistsAndBroadcasts_RankUnchanged"`, `"ReorderGroups_IncompleteOrWithoutRight_Rejected"` (AC2, AC3)
-2. `AdminViewModelTests > "MoveGroupUpDown_SendsFullOrder"` und `"DropGroup_SendsOrder_IgnoresUnsaved"` (AC1)
+2. `GroupListViewModelTests > "MoveGroupDown_GroupSelected_SendsTheFullOrderAndShowsItAtOnce"`, `"MoveGroupUp_GroupSelected_SendsTheFullOrder"`, `"MoveGroupAsync_GroupDroppedBeforeTheFirst_SendsTheFullOrderWithItFirst"` `"MoveGroupAsync_UnsavedGroup_SendsNothing"` und `"MoveGroupCommands_DraftSelected_CannotExecute"` (AC1)
 3. `ServerViewModelTests > "GroupNames_FollowGroupOrder"` (AC3)
 4. `AdminCommandTests > "ReorderGroups_PersistsAndBroadcasts_RankUnchanged"`: Moderator kann Admin weiterhin nicht kicken (AC4)
 5. `UiSmokeTests`: Pfeile in der Gruppenliste; `SmokeTests`: Version 7
@@ -4490,7 +4490,7 @@ Testbefehl: `dotnet test`
    - Gegeben: `ManualTimeProvider`, Neustart aus, dann per Einstellung an für in 10 Minuten
    - Erwartet: nach 10 Minuten Zeitvorschub startet ein neuer Lauf. Ausschalten davor verhindert ihn.
 6. `ServerLogWriterTests > "RetentionChangedAtRuntime_NextCleanupUsesIt"` (AC3)
-7. `AdminViewModelTests > "SaveServerSettings_SendsAllFields"` (AC1), bestehende `AdminViewModelTests > "SaveServerSettings_PasswordSemantics"` bleibt grün
+7. `ServerSettingsViewModelTests > "Save_EveryLimitEdited_SendsTheEditedLimitsWithNameAndWelcomeTextAndNoPassword"` (AC1), bestehende `ServerSettingsViewModelTests > [Theory] "Save_PasswordFieldsSet_SendsTheTypedPasswordTheEmptyOneToRemoveItOrNone"` bleibt grün
 8. `UiSmokeTests`: neue Felder im Server-Tab, `LocalizationTests` (AC6)
 
 Testbefehl: `dotnet test`
@@ -4909,8 +4909,8 @@ Sehen und Handeln hängen also am selben Recht. Die Standardgruppe Moderator hat
 5. `AdminViewModelTests > "Tabs_VisibleByPermission"` erweitert (AC2)
    - Gegeben: je nur `UsersView`, `BansView`, `GroupsView`, dann `GroupsAssign` allein
    - Erwartet: jeweils genau der passende Tab. Mit `GroupsAssign` allein keiner, und der Verwaltungs-Button ist ausgeblendet.
-6. `AdminViewModelTests > "GroupButtons_ByRight"` (AC4): Neu, Speichern, Sortieren, Löschen, Nutzer-Checkboxen, Entbannen einzeln gesperrt
-7. `AdminViewModelTests > "GroupEditor_ListsNewRights"`, `LocalizationTests` (AC1, AC7): Checkbox-Namen aus `Perm_*` in beiden Sprachen
+6. `GroupListViewModelTests > "Commands_ViewRightOnly_NoCommandCanExecuteAndTheSelectedRowIsReadOnlyWithDisabledToggles"`, `"Commands_CreateRightOnly_NewGroupAllowedAndSavedGroupNotSavable"`, `"Commands_CreateRightOnlyDraftAdded_DraftSavableAndDeletable"`, `"Commands_ManageRightOnly_SavedGroupSavableAndMovableButNeitherNewNorDeletable"` und `"Commands_DeleteRightAndTheModeratorsRights_ModeratorDeletableButNotSavable"` (AC4): Neu, Speichern, Sortieren, Löschen, Nutzer-Checkboxen, Entbannen einzeln gesperrt
+7. `GroupListViewModelTests > [Theory] "Toggles_FirstRowInTheCulture_OneUniqueLabelPerSingleRightWithTheNewRightsNamed"`, `LocalizationTests` (AC1, AC7): Checkbox-Namen aus `Perm_*` in beiden Sprachen
 
 Testbefehl: `dotnet test`
 
@@ -5896,7 +5896,7 @@ After Package 93 channels can be group-locked. The server password is stored as 
    - Expected: the admin moves the guest in; a moderator with `UserMove` and `ChannelJoinFull` is refused for the same move
 5. `ChannelLockTests > "WrongPasswords_Throttled_NotLogged"` (AC5)
 6. `ChannelLockTests > "PasswordChange_NobodyMovedOut"` (AC6)
-7. `PermissionRulesTests`, `DataStoreTests` (only Admin gets the new bit), `AdminViewModelTests > "GroupEditor_ListsNewRights"` (AC7)
+7. `PermissionRulesTests`, `DataStoreTests` (only Admin gets the new bit), `GroupListViewModelTests > [Theory] "Toggles_FirstRowInTheCulture_OneUniqueLabelPerSingleRightWithTheNewRightsNamed"` (AC7)
 8. `ServerViewModelTests > "JoinPasswordChannel_PromptsOnce_RememberedForSession"` (AC8)
 9. `ResponsiveTests.Dialogs_FitAt360` with the prompt, `LocalizationTests`, `SettingsTests > "ErrorTexts_EveryCodeHasText"` (AC9)
 
@@ -6975,11 +6975,11 @@ Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Pac
 (as built, from three review rounds: the settings page compares with what it showed when it opened, not with the file, since the sliders do not round-trip exactly; the server tab and an edited group follow the server in the fields the user did not touch, so a save never undoes another admin; edited group rows survive server updates, which used to drop them silently; a device list arriving with the page open no longer crashes the change check)
 
 1. `LeaveGuardTests > "Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert"` (AC1)
-2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"`, `AdminPlaceTests > "HasAnyChanges_OnlyLinksChanged_True"` (AC1)
+2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"`, `AdminPlaceTests > "HasAnyChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse"` (AC1)
 3. `LeaveGuardTests > "LeaveWithChanges_Asks_KeepEditingStays"` (AC1, AC2)
    - Given: a fake `AskLeave` that answers each choice in turn.
    - Expected: correct behaviour for a page change, a disconnect and a window close.
-4. `LeaveGuardTests > "LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"`, `AdminPlaceTests > "SaveAsync_GroupSaveOnItsWay_WaitsForItAndSendsNoSecond"`, `"SaveAsync_LinkSaveOnItsWay_WaitsForItInsteadOfFailing"`, `"SaveAsync_NoChanges_TrueWithoutSending"`, `"SaveAsync_LinksChanged_SendsTheLinksAndTrueOnceConfirmed"`, `"SaveAsync_ServerNameChanged_SendsTheSettingsAndTrueOnceConfirmed"`, `"SaveAsync_ServerNameBlank_FalseWithoutSending"`, `"Discard_LinksChanged_NoChangesLeft"` and `"Places_SavingOrder_GroupsLinksServer"` (AC3, AC4)
+4. `LeaveGuardTests > "LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"`, `AdminPlaceTests > "SaveAsync_NoChanges_TrueWithoutSending"` and `"Places_SavingOrder_GroupsLinksServer"`, `GroupListViewModelTests > "Place_GroupSaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `LinkMatrixViewModelTests > "Place_SaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_LinkMarked_HasChangesAndSavingSendsItAndWaitsForTheServer"`, `"PlaceDiscard_LinkMarked_LinkBackAndNoChanges"`, `ServerSettingsViewModelTests > "Place_NameEdited_HasChangesAndSavingSendsTheSettingsAndWaitsForTheServer"` and `"Place_NameBlank_HasChangesButSavingFailsWithoutSending"` (AC3, AC4)
 5. `LeaveGuardTests > "AdminTabSwitch_WithChanges_AsksAndStays"` and `"OtherGroup_WithChanges_AsksAndStays"`, `AdminPlaceTests > "Places_EveryPlace_CarriedByExactlyOneTab"` and `"SavingTabs_DataContextSet_CarryTheirOwnPlace"` (AC1, AC2)
 6. `LeaveGuardTests > "CancelAndDiscardButtons_DoNotAsk"` (AC5)
 7. `LocalizationTests` and `ResponsiveTests > [Theory] "Dialogs_FitAt360"` (AC6)
