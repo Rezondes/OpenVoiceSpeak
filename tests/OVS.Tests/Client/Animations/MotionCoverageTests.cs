@@ -243,7 +243,7 @@ public sealed class MotionCoverageTests
         if (vm.AdminPage is { } admin)
         {
             text.AppendLine($"admin tab={AdminTabs(w).SelectedIndex} groups={string.Join(",", admin.Groups.Select(g => $"{g.Name} {(int)g.Permissions}"))} selected={admin.SelectedGroup?.Name} "
-                + $"users={string.Join(",", admin.UsersAndBans.Users.Select(u => u.Nickname + (u.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.Backups.Count} logo={admin.HasIcon}");
+                + $"users={string.Join(",", admin.UsersAndBans.Users.Select(u => u.Nickname + (u.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.BackupCard.Backups.Count} logo={admin.HasIcon}");
             text.AppendLine($"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(r => r.IsSelected).Select(r => r.Name))} "
                 + $"server settings={admin.RemovePassword}/{admin.LogRotateDaily}/{admin.AutoRestart}");
             text.AppendLine($"logs hits={admin.Logs.ShowHits}/{admin.Logs.Hits.Count} open={admin.Logs.IsFileOpen} page={admin.Logs.Page} lines={admin.Logs.Lines.Count}");
@@ -564,13 +564,13 @@ public sealed class MotionCoverageTests
         });
         yield return new("create a backup", x =>
         {
-            x.Admin.NewBackupCommand.Execute(null);
+            x.Admin.BackupCard.NewBackupCommand.Execute(null);
             Watch(250); // the button waits for the server
             x.Server.Apply(new BackupList(LastId<CreateBackup>(x), [new BackupInfo("backup-1.zip", DateTimeOffset.Now, 1024, "1.0")]));
         });
-        foreach (var s in Dialog("restore backup", x => _ = x.Admin.Backups.Single().RestoreCommand.ExecuteAsync(null))) yield return s;
-        foreach (var s in Dialog("backup download warning", x => _ = x.Admin.ConfirmDownloadAsync())) yield return s;
-        foreach (var s in Dialog("delete backup", x => _ = x.Admin.Backups.Single().DeleteCommand.ExecuteAsync(null))) yield return s;
+        foreach (var s in Dialog("restore backup", x => _ = x.Admin.BackupCard.Backups.Single().RestoreCommand.ExecuteAsync(null))) yield return s;
+        foreach (var s in Dialog("backup download warning", x => _ = x.Admin.BackupCard.ConfirmDownloadAsync())) yield return s;
+        foreach (var s in Dialog("delete backup", x => _ = x.Admin.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null))) yield return s;
         yield return new("delete a backup", x => x.Server.Apply(new BackupList(LastId<ListBackups>(x), [])));
 
         yield return new("switch to the logs", x => AdminTabs(x).SelectedIndex = 5);

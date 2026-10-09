@@ -83,6 +83,7 @@ public sealed partial class LogsViewModel : ObservableObject
     public bool HasLines => Lines.Count > 0;
     public ObservableCollection<LogHitViewModel> Hits { get; } = [];
 
+    /// <summary>The page's one transfer, see <see cref="AdminViewModel.Transfer"/>.</summary>
     internal AdminTransfer Transfer { get; }
     /// <summary>Package 97 (A113): the file list's loading state and the running search.</summary>
     public PendingViewModel FilesLoad { get; }

@@ -101,9 +101,9 @@ public partial class AdminView : UserControl
 
     async void OnDownloadBackup(object? sender, RoutedEventArgs e)
     {
-        if ((sender as Control)?.DataContext is not BackupViewModel backup || Vm is not { } vm
+        if ((sender as Control)?.DataContext is not BackupViewModel backup || Vm is not { } page
             || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
-        if (!await vm.ConfirmDownloadAsync()) return; // Package 89: the warning comes before the file picker
+        if (!await page.BackupCard.ConfirmDownloadAsync()) return; // Package 89: the warning comes before the file picker
         var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = Strings.Backup_SaveTitle,
@@ -111,12 +111,12 @@ public partial class AdminView : UserControl
             DefaultExtension = "ovsbackup",
             FileTypeChoices = [BackupFiles],
         });
-        if (file?.TryGetLocalPath() is { } path) await vm.DownloadBackupAsync(backup, path);
+        if (file?.TryGetLocalPath() is { } path) await page.BackupCard.DownloadBackupAsync(backup, path);
     }
 
     async void OnUploadBackup(object? sender, RoutedEventArgs e)
     {
-        if (Vm is not { } vm || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
+        if (Vm is not { } page || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = Strings.Backup_OpenTitle,
@@ -124,7 +124,7 @@ public partial class AdminView : UserControl
             FileTypeFilter = [BackupFiles],
         });
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
-            await vm.UploadBackupAsync(path, restore: sender == UploadRestoreButton);
+            await page.BackupCard.UploadBackupAsync(path, restore: sender == UploadRestoreButton);
     }
 
     // ---- Package 82: the checked log files as one .log or a zip, through the same save dialog ----

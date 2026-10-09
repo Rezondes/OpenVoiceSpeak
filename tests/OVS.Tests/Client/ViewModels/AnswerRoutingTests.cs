@@ -178,13 +178,13 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     static readonly LogFileInfo ServerLog = new("server/2026-01-01_12-00-00.log", LogKind.Server, null, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, 3);
     static readonly Guid Team = Guid.NewGuid();
 
-    /// <summary>Who gets the answers to each request the page sends: the page, its users and bans tabs, its logs tab or its transfer.</summary>
+    /// <summary>Who gets the answers to each request the page sends: its users and bans tabs, its backup card, its logs tab or its transfer.</summary>
     static readonly Dictionary<string, string> Owners = new()
     {
         [nameof(ListUsers)] = "users and bans", [nameof(ListBans)] = "users and bans", [nameof(Unban)] = "users and bans",
         [nameof(AssignGroup)] = "users and bans", [nameof(UnassignGroup)] = "users and bans",
         [nameof(BanKnownUser)] = "users and bans", [nameof(DeleteKnownUser)] = "users and bans", [nameof(SetKnownUserServerMute)] = "users and bans",
-        [nameof(ListBackups)] = "page", [nameof(CreateBackup)] = "page", [nameof(DeleteBackup)] = "page",
+        [nameof(ListBackups)] = "backups", [nameof(CreateBackup)] = "backups", [nameof(DeleteBackup)] = "backups",
         [nameof(ListLogs)] = "logs", [nameof(ReadLog)] = "logs", [nameof(SearchLogs)] = "logs",
         [nameof(DownloadBackup)] = "transfer", [nameof(UploadBackupChunk)] = "transfer", [nameof(PrepareLogDownload)] = "transfer",
         [nameof(DownloadLogChunk)] = "transfer",
@@ -279,11 +279,11 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         admin.IsChecked = true;
         await Bound(admin.ToggleCommand.ExecuteAsync(null));
         await Bound(page.UsersAndBans.Bans.Single().UnbanCommand.ExecuteAsync(null));
-        await Bound(page.NewBackupCommand.ExecuteAsync(null));
-        await Bound(page.Backups.Single().DeleteCommand.ExecuteAsync(null));
-        await Bound(page.Backups.Single().RestoreCommand.ExecuteAsync(null));
-        await Bound(page.DownloadBackupAsync(page.Backups.Single(), Path.Combine(dir, "down.ovsbackup")));
-        await Bound(page.UploadBackupAsync(file, restore: false));
+        await Bound(page.BackupCard.NewBackupCommand.ExecuteAsync(null));
+        await Bound(page.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null));
+        await Bound(page.BackupCard.Backups.Single().RestoreCommand.ExecuteAsync(null));
+        await Bound(page.BackupCard.DownloadBackupAsync(page.BackupCard.Backups.Single(), Path.Combine(dir, "down.ovsbackup")));
+        await Bound(page.BackupCard.UploadBackupAsync(file, restore: false));
         page.Logs.Files.Single().IsSelected = true;
         await Bound(page.Logs.DownloadAsync(Path.Combine(dir, "server.log")));
         page.Logs.OpenCommand.Execute(page.Logs.Files.Single());
@@ -304,8 +304,8 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
 
         string OwnerOf(Action<Message>? route) =>
             route is null ? "none"
-            : route == (Action<Message>)page.Apply ? "page"
             : route == (Action<Message>)page.UsersAndBans.Apply ? "users and bans"
+            : route == (Action<Message>)page.BackupCard.Apply ? "backups"
             : route == (Action<Message>)page.Logs.Apply ? "logs"
             : route.Method.DeclaringType?.DeclaringType == typeof(AdminTransfer) ? "transfer" // a request's own closure in the transfer
             : "other";
@@ -339,10 +339,10 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         var page = new AdminViewModel(server);
         var file = Path.Combine(dir, "up.ovsbackup");
         File.WriteAllBytes(file, [1, 2, 3]);
-        await Bound(page.UploadBackupAsync(file, restore: false));
+        await Bound(page.BackupCard.UploadBackupAsync(file, restore: false));
 
         server.Apply(new BackupList(sent.OfType<UploadBackupChunk>().Single().RequestId, [Stored]));
 
-        Assert.Equal([Stored.FileName], page.Backups.Select(b => b.Info.FileName));
+        Assert.Equal([Stored.FileName], page.BackupCard.Backups.Select(b => b.Info.FileName));
     }
 }

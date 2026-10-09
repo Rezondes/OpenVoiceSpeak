@@ -455,7 +455,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             i % 2 == 1 ? now.AddMinutes(-i) : null, i % 2 == 1 ? "2001:db8:85a3::8a2e:370:7335" : null)).ToList()));
         admin.UsersAndBans.SelectedBanStatusFilter = admin.UsersAndBans.BanStatusFilters.Single(f => f.Value == BanStatusFilter.All);
         // Package 74: backups in the server tab, one of them the safety backup with the longer title
-        admin.Apply(new OVS.Shared.Protocol.Messages.ServerBackups.BackupList("r",
+        admin.BackupCard.Apply(new OVS.Shared.Protocol.Messages.ServerBackups.BackupList("r",
         [
             new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", DateTimeOffset.Now, 12_345_678, "300926.1a2b"),
             new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-1), 800_000, "dev.0000"),
@@ -516,7 +516,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         admin.UsersAndBans.BansLoad.HasSucceeded = false;
         admin.UsersAndBans.BansLoad.IsBusy = true;
         admin.Logs.FilesLoad.Error = Strings.Pending_NoAnswer;
-        admin.BackupCreate.IsBusy = true;
+        admin.BackupCard.BackupCreate.IsBusy = true;
         admin.Logs.Searching.IsBusy = true;
         Assert.Equal(12, admin.UsersAndBans.Bans.Count); // Package 80: every ban of every status is checked for width below
         Dispatcher.UIThread.RunJobs();
@@ -559,11 +559,11 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.Transfer.ProgressText && t.IsEffectivelyVisible);
         // Package 97: "Backup anlegen" busy (checked above), then the whole card while restoring
         Assert.Contains(page.FindControl<Button>("NewBackupButton")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
-        admin.Restoring.IsBusy = true;
+        admin.BackupCard.Restoring.IsBusy = true;
         Dispatcher.UIThread.RunJobs();
         Assert.True(page.FindControl<Control>("RestoringState")?.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
-        admin.Restoring.IsBusy = false;
+        admin.BackupCard.Restoring.IsBusy = false;
         // Package 85: the stored server mute on four cards, the lift button where the viewer outranks the user (checked for width above)
         SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Users));
         Assert.Equal(4, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_ServerMuted && t.IsEffectivelyVisible));

@@ -633,7 +633,7 @@
               </Border>
               <!-- Package 74: backups on the server, restored after a red question -->
               <Border Classes="card" IsVisible="{Binding ShowBackups}">
-                <Panel>
+                <Panel DataContext="{Binding BackupCard}" x:DataType="vm:BackupCardViewModel">
                   <!-- Package 97: the whole card waits for the disconnect that follows a restore -->
                   <StackPanel Name="RestoringState" Spacing="8" Margin="0,24" HorizontalAlignment="Center" IsVisible="{Binding Restoring.IsBusy}">
                     <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />

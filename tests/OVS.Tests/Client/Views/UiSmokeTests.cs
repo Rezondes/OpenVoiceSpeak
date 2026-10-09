@@ -187,7 +187,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         // the waiting states show 150 ms after their request (Package 97); they must not appear between the frames, so every
         // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
         var admin = vm.AdminPage!;
-        PendingViewModel[] loads = [admin.UsersAndBans.UsersLoad, admin.UsersAndBans.BansLoad, admin.BackupsLoad, admin.Logs.FilesLoad];
+        PendingViewModel[] loads = [admin.UsersAndBans.UsersLoad, admin.UsersAndBans.BansLoad, admin.BackupCard.BackupsLoad, admin.Logs.FilesLoad];
         MotionWait.WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
         Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
         LooksLikeBefore("admin");
@@ -1473,7 +1473,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         }, () => [new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid)]);
         Tab("Server");
         page.FindControl<Button>("NewBackupButton")!.BringIntoView();
-        Waits("backup", () => _ = admin.NewBackupCommand.ExecuteAsync(null), () => [new BackupList(Last<CreateBackup>().RequestId, [])]);
+        Waits("backup", () => _ = admin.BackupCard.NewBackupCommand.ExecuteAsync(null), () => [new BackupList(Last<CreateBackup>().RequestId, [])]);
         page.FindControl<Border>("IconDrop")!.BringIntoView();
         Waits("logo", () => _ = admin.UploadIconAsync(TestImages.Encode(64, 64), null), () => [new ServerSettingsChanged(server.Mirror.Settings)]);
         Tab("Logs");

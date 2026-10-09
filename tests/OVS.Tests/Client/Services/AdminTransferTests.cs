@@ -399,10 +399,18 @@ public sealed class AdminTransferTests : TempDirectoryTest
     }
 
     [Fact]
-    public void AdminPage_LogsTab_SharesTheOneTransfer()
+    public void AdminPage_Created_HandsTheLogsTabItsTransfer()
     {
         var page = new AdminViewModel(FakeServers.Admin(time: time));
 
         Assert.Same(page.Transfer, page.Logs.Transfer);
+    }
+
+    [Fact]
+    public void AdminPage_Created_HandsTheBackupCardItsTransfer()
+    {
+        var page = new AdminViewModel(FakeServers.Admin(time: time));
+
+        Assert.Same(page.Transfer, page.BackupCard.Transfer);
     }
 }

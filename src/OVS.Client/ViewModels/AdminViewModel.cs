@@ -10,20 +10,17 @@ using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Groups;
-using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Client.ViewModels;
 
 /// <summary>
-/// The administration page: it composes the users and bans, links and logs tabs and holds the groups, the backups and the
-/// server settings itself. Every tab only shows with the matching right.
+/// The administration page: it composes the users and bans tabs, the backup card of the server tab, the links and logs tabs
+/// and holds the groups and the server settings itself. Every tab only shows with the matching right.
 /// </summary>
 public sealed partial class AdminViewModel : ObservableObject
 {
     readonly ServerViewModel server;
-    // Package 87: the backup list comes in pages, collected until complete
-    readonly ListPages<BackupInfo> backupPages = new();
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveGroupCommand), nameof(DeleteGroupCommand), nameof(MoveGroupUpCommand), nameof(MoveGroupDownCommand))]
@@ -44,9 +41,6 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         this.server = server;
         UsersAndBans = new UsersAndBansViewModel(server);
-        BackupsLoad = server.NewPending();
-        BackupCreate = server.NewPending();
-        Restoring = server.NewPending();
         GroupSave = server.NewPending();
         GroupReorder = server.NewPending();
         IconUpload = server.NewPending();
@@ -59,6 +53,7 @@ public sealed partial class AdminViewModel : ObservableObject
         LoadLimits();
         Links = new LinkMatrixViewModel(server);
         Transfer = new AdminTransfer((request, route) => server.SendAsync(request, route: route), server.Routes.RemoveAll, server.ShowNotice, server.Time);
+        BackupCard = new BackupCardViewModel(server, Transfer);
         Logs = new LogsViewModel(server, Transfer);
         GroupsPlace = AdminPlace.Create(() => Groups.Live().Any(g => g.HasChanges), GroupSave,
             () => SelectedGroup is { HasChanges: true } ? SendGroup() : null, DiscardGroups);
@@ -76,28 +71,21 @@ public sealed partial class AdminViewModel : ObservableObject
     /// <summary>Package 89: the server tab holds the settings (ServerConfig) and the backups (BackupsManage).</summary>
     public bool ShowServer => ShowServerSettings || ShowBackups;
     public bool ShowServerSettings => Actor.Has(Permission.ServerConfig);
-    public bool ShowBackups => Actor.Has(Permission.BackupsManage);
-    /// <summary>Package 89 (A101): members of the Admin group only, as on the server; all rights alone are not enough.</summary>
-    public bool CanUploadRestore => server.IsAdmin;
+    public bool ShowBackups => BackupCard.ShowBackups;
     public bool ShowLinks => Actor.Has(Permission.ChannelLink);
     public bool ShowLogs => Actor.Has(Permission.LogsView); // Package 81
     public LinkMatrixViewModel Links { get; }
     public LogsViewModel Logs { get; }
     /// <summary>The users and bans tabs.</summary>
     internal UsersAndBansViewModel UsersAndBans { get; }
-    /// <summary>Package 97 (A113): the backups' loading state, and the backup actions that wait for the server.</summary>
-    public PendingViewModel BackupsLoad { get; }
-    public PendingViewModel BackupCreate { get; }
-    public PendingViewModel Restoring { get; }
+    /// <summary>The backup card of the server tab.</summary>
+    internal BackupCardViewModel BackupCard { get; }
     /// <summary>Package 98: group save and order, and the server logo, until the server's update shows them.</summary>
     public PendingViewModel GroupSave { get; }
     public PendingViewModel GroupReorder { get; }
     public PendingViewModel IconUpload { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
-    /// <summary>Package 74: the backups on the server, newest first.</summary>
-    public ObservableCollection<BackupViewModel> Backups { get; } = [];
-    public bool HasNoBackups => !Backups.Live().Any();
     /// <summary>The page asks to be closed (close button or Esc).</summary>
     public event Action? CloseRequested;
 
@@ -106,9 +94,8 @@ public sealed partial class AdminViewModel : ObservableObject
 
     public void Detach()
     {
-        // ponytail: every request the page sent keeps its route until here; see UsersAndBansViewModel.Detach for the lists
-        server.Routes.RemoveAll(Apply); // no answer reaches the closed page
         UsersAndBans.Detach();
+        BackupCard.Detach();
         Logs.Detach();
         server.StateChanged -= OnStateChanged;
         server.PropertyChanged -= OnServerPropertyChanged;
@@ -156,7 +143,7 @@ public sealed partial class AdminViewModel : ObservableObject
     public async Task RequestListsAsync()
     {
         await UsersAndBans.RefreshAsync();
-        if (ShowBackups) await SendRoutedAsync(new ListBackups(), pending: BackupsLoad);
+        await BackupCard.RequestAsync();
         if (ShowLogs) await Logs.RequestAsync();
     }
 
@@ -181,29 +168,11 @@ public sealed partial class AdminViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowServerSettings));
         OnPropertyChanged(nameof(ShowBackups));
         OnPropertyChanged(nameof(ShowLogs));
-        if (CanUploadRestore != backupsForAdmin) RebuildBackups(); // Package 89: restore buttons come and go with the Admin group
+        BackupCard.OnStateChanged();
         Logs.RightsChanged(); // Package 82
         NewGroupCommand.NotifyCanExecuteChanged();
         MoveGroupUpCommand.NotifyCanExecuteChanged();
         MoveGroupDownCommand.NotifyCanExecuteChanged();
-    }
-
-    /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
-    Task<string> SendRoutedAsync(Request request, string? id = null, PendingViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
-
-    /// <summary>The server's answers to the page's own requests (sent with this as their route) and its errors for them.</summary>
-    internal void Apply(Message answer)
-    {
-        switch (answer)
-        {
-            case BackupList list:
-                if (backupPages.Add(list.RequestId, list.Offset, list.Total, list.Backups, (id, o) => _ = SendRoutedAsync(new ListBackups(o), id)) is not { } backups) break;
-                backupInfos = backups;
-                BackupsLoad.Done();
-                BackupCreate.Done(); // the new backup is in the list (Restoring waits for the disconnect)
-                RebuildBackups();
-                break;
-        }
     }
 
     void RebuildGroups()
@@ -335,55 +304,8 @@ public sealed partial class AdminViewModel : ObservableObject
         }
     }
 
-    // ---- Package 74: backups ----
-
-    IReadOnlyList<BackupInfo> backupInfos = [];
-    bool backupsForAdmin;
-
-    void RebuildBackups()
-    {
-        backupsForAdmin = CanUploadRestore;
-        OnPropertyChanged(nameof(CanUploadRestore));
-        CollectionSync.Sync(Backups, backupInfos.Select(b => new BackupViewModel(b, DeleteBackupAsync, RestoreBackupAsync, backupsForAdmin)).ToList(), server.Leave);
-        OnPropertyChanged(nameof(HasNoBackups));
-    }
-
-    /// <summary>Package 89 (A101): asked before the file picker; the archive holds the certificate with its private key and all user data.</summary>
-    public async Task<bool> ConfirmDownloadAsync() => server.Dialogs.ConfirmBackupDownload is { } warn && await warn();
-
-    /// <summary>Answered with the new list; Package 97: busy until then, a second click meanwhile is ignored.</summary>
-    [RelayCommand]
-    Task NewBackup() => BackupCreate.IsRunning ? Task.CompletedTask : SendRoutedAsync(new CreateBackup(), pending: BackupCreate);
-
-    async Task DeleteBackupAsync(BackupViewModel backup)
-    {
-        if (server.Dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Backup_ConfirmDelete, backup.Title))) return;
-        await SendRoutedAsync(new DeleteBackup(backup.Info.FileName)); // answered with the new list
-    }
-
-    /// <summary>Everyone, this client too, is disconnected with Restoring once the server accepted the backup.</summary>
-    async Task RestoreBackupAsync(BackupViewModel backup)
-    {
-        if (!CanUploadRestore) return;
-        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(backup.Title)) return;
-        await server.SendAsync(new RestoreBackup(backup.Info.FileName), pending: Restoring); // Package 97: until the disconnect
-    }
-
-    // ---- Package 75: download to and upload from this PC, chunk by chunk (A91) ----
-
-    /// <summary>Packages 75 and 82: backups and log files to and from this PC, one transfer at a time; the logs tab shares it.</summary>
+    /// <summary>Packages 75 and 82: backups and log files to and from this PC, one transfer at a time; the backup card and the logs tab share it.</summary>
     internal AdminTransfer Transfer { get; }
-
-    /// <summary>Saves the backup to target (chosen in the save dialog).</summary>
-    internal Task DownloadBackupAsync(BackupViewModel backup, string target) => Transfer.DownloadBackupAsync(backup.Info.FileName, target);
-
-    /// <summary>Uploads the file; with restore, asks the red question of Package 74 once it is stored.</summary>
-    internal async Task UploadBackupAsync(string path, bool restore)
-    {
-        if (!CanUploadRestore || await Transfer.UploadBackupAsync(path, Apply) is not { } uploaded || !restore) return;
-        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
-        await server.SendAsync(new RestoreBackup(uploaded.FileName), pending: Restoring);
-    }
 
     bool CanNewGroup => Actor.Has(Permission.GroupsCreate);
 
