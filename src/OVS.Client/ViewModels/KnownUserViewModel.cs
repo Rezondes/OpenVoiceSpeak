@@ -1,5 +1,6 @@
 using OVS.Client.Collections;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.Users;
@@ -9,7 +10,7 @@ namespace OVS.Client.ViewModels;
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
 /// <param name="busy">Package 98: the card's actions, running until a user list shows their result.</param>
 public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggleViewModel> toggles, IReadOnlyList<BanInfo> bans,
-    AdminViewModel? owner, PendingViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
+    KnownUserActions actions, PendingViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
 {
     public KnownUserInfo Info { get; } = info;
     public object MotionKey => Info.Fingerprint;
@@ -33,16 +34,16 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     public bool HasActions => CanBan || CanUnban || CanDelete || CanLiftMute;
 
     [RelayCommand(CanExecute = nameof(CanLiftMute))]
-    Task LiftMute() => owner?.LiftMuteAsync(this) ?? Task.CompletedTask;
+    Task LiftMute() => actions.LiftMute(this);
 
     [RelayCommand(CanExecute = nameof(CanBan))]
-    Task Ban() => owner?.BanUserAsync(this) ?? Task.CompletedTask;
+    Task Ban() => actions.Ban(this);
 
     [RelayCommand(CanExecute = nameof(CanUnban))]
-    Task Unban() => owner?.UnbanUserAsync(this) ?? Task.CompletedTask;
+    Task Unban() => actions.Unban(this);
 
     [RelayCommand(CanExecute = nameof(CanDelete))]
-    Task Delete() => owner?.DeleteUserAsync(this) ?? Task.CompletedTask;
+    Task Delete() => actions.Delete(this);
 
     /// <summary>The longest running ban.</summary>
     public string BanText => Bans.OrderBy(b => b.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""

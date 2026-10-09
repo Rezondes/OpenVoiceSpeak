@@ -111,6 +111,7 @@ public sealed partial class AdminViewModel : ObservableObject
         selectedBanStatusFilter = BanStatusFilters[0];
         selectedBanTypeFilter = BanTypeFilters[0];
         selectedBanSortOrder = BanSortOrders[0];
+        userActions = new(Ban: BanUserAsync, Unban: UnbanUserAsync, Delete: DeleteUserAsync, LiftMute: LiftMuteAsync);
         onlineFingerprints = OnlineFingerprints();
         judgedActor = Actor;
         judgedGroups = server.Mirror.Groups;
@@ -493,7 +494,7 @@ public sealed partial class AdminViewModel : ObservableObject
                 g.AssignableByMe && weaker, // Package 92: judged by the server, group rights only reach GroupsView holders
                 t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
             var bans = (user.Bans ?? []).Where(b => BanStatusRule.Evaluate(b.LiftedAt, b.ExpiresAt, now) == BanStatus.Active).ToList();
-            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, this, CardBusy(user.Fingerprint),
+            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, userActions, CardBusy(user.Fingerprint),
                 canBan: Actor.Has(Permission.UserBan) && weaker && !lastAdmin && bans.Count == 0,
                 canUnban: Actor.Has(Permission.UserBan) && weaker && bans.Count > 0,
                 canDelete: Actor.Has(Permission.UserDelete) && weaker && !lastAdmin,
@@ -576,28 +577,31 @@ public sealed partial class AdminViewModel : ObservableObject
 
     // ---- Package 72: ban, unban and delete from a user card, online or offline ----
 
+    /// <summary>What the user cards call: the cards know no page, only these.</summary>
+    readonly KnownUserActions userActions;
+
     /// <summary>Package 98: the ban dialog stays open until a user list shows the ban.</summary>
-    internal Task BanUserAsync(KnownUserViewModel user)
+    Task BanUserAsync(KnownUserViewModel user)
     {
         var ipKnown = user.Info.LastIp is not null;
         return ServerViewModel.Ask<BanChoice>(server.Dialogs.Ban is { } ban ? submit => ban(user.Nickname, ipKnown, submit) : null,
             choice => CardAction(user.Fingerprint, new BanKnownUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown), bans: true));
     }
 
-    internal Task UnbanUserAsync(KnownUserViewModel user)
+    Task UnbanUserAsync(KnownUserViewModel user)
     {
         foreach (var ban in user.Bans) CardAction(user.Fingerprint, new Unban(ban.Id)); // each answered with the new ban list
         return Task.CompletedTask;
     }
 
     /// <summary>Package 85: works offline too; the card follows with the next user list.</summary>
-    internal Task LiftMuteAsync(KnownUserViewModel user)
+    Task LiftMuteAsync(KnownUserViewModel user)
     {
         CardAction(user.Fingerprint, new SetKnownUserServerMute(user.Fingerprint, false));
         return Task.CompletedTask;
     }
 
-    internal async Task DeleteUserAsync(KnownUserViewModel user)
+    async Task DeleteUserAsync(KnownUserViewModel user)
     {
         if (server.Dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
         CardAction(user.Fingerprint, new DeleteKnownUser(user.Fingerprint), bans: true);
