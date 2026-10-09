@@ -159,8 +159,8 @@ public partial class AdminView : UserControl
 
     async Task UploadAsync(string path)
     {
-        if (Vm is not { } vm) return;
+        if (Vm is not { } page) return;
         var (png, error) = IconImport.Prepare(path);
-        await vm.UploadIconAsync(png, error);
+        await page.ServerIcon.UploadIconAsync(png, error);
     }
 }

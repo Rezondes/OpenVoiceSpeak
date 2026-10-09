@@ -1475,7 +1475,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         page.FindControl<Button>("NewBackupButton")!.BringIntoView();
         Waits("backup", () => _ = admin.BackupCard.NewBackupCommand.ExecuteAsync(null), () => [new BackupList(Last<CreateBackup>().RequestId, [])]);
         page.FindControl<Border>("IconDrop")!.BringIntoView();
-        Waits("logo", () => _ = admin.UploadIconAsync(TestImages.Encode(64, 64), null), () => [new ServerSettingsChanged(server.Mirror.Settings)]);
+        Waits("logo", () => _ = admin.ServerIcon.UploadIconAsync(TestImages.Encode(64, 64), null), () => [new ServerSettingsChanged(server.Mirror.Settings)]);
         Tab("Logs");
         Waits("log search", () =>
         {

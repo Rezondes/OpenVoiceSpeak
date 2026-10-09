@@ -1494,4 +1494,36 @@ public class AdminViewModelTests
 
         Assert.False(page.Logs.Files.Single().CanSelect);
     }
+
+    [Fact]
+    public void OnServerStateChanged_ServerCarriesAnIconAndLosesItsPassword_IconSectionFollowsBeforeSettingsSectionAndPageTabs()
+    {
+        var (page, server, _) = Create(P.All, hasPassword: true);
+        var order = new List<string?>();
+        page.ServerIcon.PropertyChanged += (_, args) => order.Add("icon " + args.PropertyName);
+        page.ServerSettings.PropertyChanged += (_, args) => order.Add("settings " + args.PropertyName);
+        page.PropertyChanged += (_, args) => order.Add("page " + args.PropertyName);
+
+        server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { IconHash = "abc", HasPassword = false }));
+
+        var iconFollowed = order.IndexOf("icon " + nameof(ServerIconViewModel.HasIcon));
+        var settingsFollowed = order.IndexOf("settings " + nameof(ServerSettingsViewModel.HasPassword));
+        var tabsNotified = order.IndexOf("page " + nameof(AdminViewModel.ShowGroups));
+        Assert.Equal(0, iconFollowed);
+        Assert.True(iconFollowed < settingsFollowed);
+        Assert.True(settingsFollowed < tabsNotified);
+    }
+
+    [Fact]
+    public void Detach_ServerIconPngChangesAfterwards_IconSectionRaisesNothing()
+    {
+        var (page, server, _) = Create(P.All);
+        var raised = new List<string?>();
+        page.ServerIcon.PropertyChanged += (_, args) => raised.Add(args.PropertyName);
+        page.Detach();
+
+        server.IconPng = [1, 2, 3];
+
+        Assert.Empty(raised);
+    }
 }

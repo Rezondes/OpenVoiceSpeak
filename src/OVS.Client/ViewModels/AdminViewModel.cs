@@ -4,12 +4,11 @@ using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Models;
 using OVS.Client.Services;
 using OVS.Shared.Permissions;
-using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Client.ViewModels;
 
 /// <summary>
-/// The administration page: it composes the groups tab, the users and bans tabs, the backup and settings cards of the server tab,
+/// The administration page: it composes the groups tab, the users and bans tabs, the icon, backup and settings cards of the server tab,
 /// the links and logs tabs. Every tab only shows with the matching right. It lists the sections once (<see cref="AdminSection"/>)
 /// and asks them to refresh, follow the server and let go of their routes.
 /// </summary>
@@ -21,9 +20,8 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         this.server = server;
         UsersAndBans = new UsersAndBansViewModel(server);
-        IconUpload = server.NewPending();
         server.StateChanged += OnServerStateChanged;
-        server.PropertyChanged += OnServerPropertyChanged;
+        ServerIcon = new ServerIconViewModel(server);
         ServerSettings = new ServerSettingsViewModel(server);
         Links = new LinkMatrixViewModel(server);
         Transfer = new AdminTransfer((request, route) => server.SendAsync(request, route: route), server.Routes.RemoveAll, server.ShowNotice, server.Time);
@@ -31,10 +29,12 @@ public sealed partial class AdminViewModel : ObservableObject
         Logs = new LogsViewModel(server, Transfer);
         GroupList = new GroupListViewModel(server, ConfirmLeaveAsync);
         Places = [GroupList.Place, Links.Place, ServerSettings.Place];
-        // The lists are asked for in this order; each section owns the right its own code checks (users and bans, backups,
+        // The lists are asked for in this order (a section without a refresh, like the icon first, is listed only to follow
+        // the server and to let go of it); each section owns the right its own code checks (users and bans, backups,
         // settings, logs), the page keeps those of the groups and links tabs, which have no refresh.
         sections =
         [
+            new(FollowServer: ServerIcon.FollowServer, Detach: ServerIcon.Detach),
             new(FollowServer: GroupList.FollowServer),
             new(UsersAndBans.RefreshAsync, UsersAndBans.FollowServer, UsersAndBans.Detach),
             new(FollowServer: Links.Rebuild),
@@ -67,8 +67,8 @@ public sealed partial class AdminViewModel : ObservableObject
     internal ServerSettingsViewModel ServerSettings { get; }
     /// <summary>The groups tab.</summary>
     internal GroupListViewModel GroupList { get; }
-    /// <summary>Package 98: the server logo, until the server's update shows it.</summary>
-    public PendingViewModel IconUpload { get; }
+    /// <summary>The server icon in the settings card of the server tab.</summary>
+    internal ServerIconViewModel ServerIcon { get; }
 
     /// <summary>The page asks to be closed (close button or Esc).</summary>
     public event Action? CloseRequested;
@@ -80,43 +80,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         foreach (var section in sections) section.Detach?.Invoke();
         server.StateChanged -= OnServerStateChanged;
-        server.PropertyChanged -= OnServerPropertyChanged;
         Transfer.Cancel(); // Package 75: a transfer stops and cleans up
-    }
-
-    // ---- Server logo (Package 30) ----
-
-    public byte[]? IconPng => server.IconPng;
-    public bool HasIcon => server.IconHash is not null;
-    public string ServerInitial => server.ServerName;
-    [ObservableProperty] string? iconError;
-
-    void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(ServerViewModel.IconPng)) return;
-        OnPropertyChanged(nameof(IconPng));
-        OnPropertyChanged(nameof(HasIcon));
-    }
-
-    /// <summary>Takes an already checked and scaled PNG (IconImport) or the reason it was refused.</summary>
-    public Task UploadIconAsync(byte[]? png, string? error)
-    {
-        IconError = error;
-        if (png is not null) SendIcon(Convert.ToBase64String(png));
-        return Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    void RemoveIcon()
-    {
-        IconError = null;
-        SendIcon(null);
-    }
-
-    /// <summary>Package 98: the logo spins until the server's new settings carry it.</summary>
-    void SendIcon(string? pngBase64)
-    {
-        if (!IconUpload.IsRunning) server.SendConfirmed(new SetServerIcon(pngBase64), m => m is ServerSettingsChanged, IconUpload, notify: false);
     }
 
     public async Task RequestListsAsync()
@@ -129,7 +93,6 @@ public sealed partial class AdminViewModel : ObservableObject
 
     void OnServerStateChanged()
     {
-        OnPropertyChanged(nameof(HasIcon));
         foreach (var section in sections) section.FollowServer?.Invoke();
         OnPropertyChanged(nameof(ShowLinks));
         OnPropertyChanged(nameof(ShowGroups));

@@ -533,7 +533,7 @@
               <Border Classes="card" IsVisible="{Binding ShowServerSettings}">
                 <StackPanel Spacing="12">
                   <!-- Server logo (Package 30): pick a file or drop it onto the preview -->
-                  <StackPanel Spacing="4">
+                  <StackPanel Spacing="4" DataContext="{Binding ServerIcon}" x:DataType="vm:ServerIconViewModel">
                     <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_ServerLogo}" />
                     <DockPanel>
                       <Border x:Name="IconDrop" Classes="dropZone" DockPanel.Dock="Left" Width="72" Height="72" CornerRadius="16" ClipToBounds="True"

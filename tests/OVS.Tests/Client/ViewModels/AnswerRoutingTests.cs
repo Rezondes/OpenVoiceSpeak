@@ -300,7 +300,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         page.GroupList.SelectedGroup = TeamRow();
         await Bound(page.GroupList.DeleteGroupCommand.ExecuteAsync(null));
         await Bound(page.ServerSettings.SaveCommand.ExecuteAsync(null));
-        page.RemoveIconCommand.Execute(null);
+        page.ServerIcon.RemoveIconCommand.Execute(null);
         page.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
         await Bound(page.Links.ApplyCommand.ExecuteAsync(null));
         return new DrivenPage(page, server, routes);

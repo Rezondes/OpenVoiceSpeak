@@ -43,7 +43,7 @@ namespace OVS.Tests.Client.Animations;
 /// What the walk cannot drive headless, and why (AC1):
 /// <list type="bullet">
 /// <item>Picking a file (server logo, backup upload, own sounds): an OS file picker. What follows the pick is in the
-/// walk ("upload a logo" from <see cref="AdminViewModel.UploadIconAsync"/>).</item>
+/// walk ("upload a logo" from <see cref="ServerIconViewModel.UploadIconAsync"/>).</item>
 /// <item>Downloading a backup or a log: an OS save dialog that writes a file (the warning before it is in the walk).</item>
 /// <item>What brings up the server password, certificate, update offer and channel password dialogs: a real connection,
 /// an update check, a locked channel the admin of the fake server bypasses. The walk opens these dialogs directly.</item>
@@ -243,7 +243,7 @@ public sealed class MotionCoverageTests
         if (vm.AdminPage is { } admin)
         {
             text.AppendLine($"admin tab={AdminTabs(w).SelectedIndex} groups={string.Join(",", admin.GroupList.Groups.Select(g => $"{g.Name} {(int)g.Permissions}"))} selected={admin.GroupList.SelectedGroup?.Name} "
-                + $"users={string.Join(",", admin.UsersAndBans.Users.Select(u => u.Nickname + (u.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.BackupCard.Backups.Count} logo={admin.HasIcon}");
+                + $"users={string.Join(",", admin.UsersAndBans.Users.Select(user => user.Nickname + (user.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.BackupCard.Backups.Count} logo={admin.ServerIcon.HasIcon}");
             text.AppendLine($"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(r => r.IsSelected).Select(r => r.Name))} "
                 + $"server settings={admin.ServerSettings.RemovePassword}/{admin.ServerSettings.LogRotateDaily}/{admin.ServerSettings.AutoRestart}");
             text.AppendLine($"logs hits={admin.Logs.ShowHits}/{admin.Logs.Hits.Count} open={admin.Logs.IsFileOpen} page={admin.Logs.Page} lines={admin.Logs.Lines.Count}");
@@ -557,7 +557,7 @@ public sealed class MotionCoverageTests
         yield return new("upload a logo", x =>
         {
             var png = TestImages.Encode(64, 64);
-            _ = x.Admin.UploadIconAsync(png, null);
+            _ = x.Admin.ServerIcon.UploadIconAsync(png, null);
             Watch(250); // the logo waits for the server
             x.Server.Apply(new ServerSettingsChanged(x.Server.Mirror.Settings));
             x.Server.IconPng = png;
