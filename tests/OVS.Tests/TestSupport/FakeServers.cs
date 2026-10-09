@@ -21,6 +21,9 @@ public static class FakeServers
     public static readonly GroupInfo GuestGroup = new(WellKnownGroups.Guest, "Gast", Permission.Speak, true),
         AdminGroup = new(WellKnownGroups.Admin, "Admin", Permission.All, true);
 
+    /// <summary>A third group for the tests that list one more than the two every server has.</summary>
+    public static readonly GroupInfo ModeratorGroup = new(Guid.NewGuid(), "Moderator", Permission.Speak | Permission.UserKick, true);
+
     /// <summary>The own user "ich", in the lobby.</summary>
     static UserInfo Me(Permission rights, IReadOnlyList<Guid> groups) => new(1, "fp1", "ich", Lobby, false, false, false, rights, groups);
 
@@ -69,7 +72,7 @@ public static class FakeServers
         var groups = new List<GroupInfo>
         {
             GuestGroup,
-            new(Guid.NewGuid(), "Moderator", Permission.Speak | Permission.UserKick, true),
+            ModeratorGroup,
             new(Guid.NewGuid(), "Veteranen der alten Gilde", Permission.Speak, true),
             AdminGroup,
         };

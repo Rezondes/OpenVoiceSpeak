@@ -38,11 +38,9 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
     internal ServerSettingsViewModel(ServerViewModel server)
     {
         this.server = server;
-        name = loadedName = server.Mirror.Settings.Name;
-        welcomeText = loadedWelcome = server.Mirror.Settings.WelcomeText;
+        LoadFields();
         seenSettings = server.Mirror.Settings;
         hasPassword = server.Mirror.Settings.HasPassword;
-        LoadLimits();
         Place = AdminPlace.Create(() => HasChanges, null, Send, Reload);
     }
 
@@ -88,30 +86,33 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
         if (NormName(Name) == NormName(loadedName) || NormName(Name) == NormName(settings.Name)) Name = loadedName = settings.Name;
         if (NormText(WelcomeText) == NormText(loadedWelcome) || NormText(WelcomeText) == NormText(settings.WelcomeText)) WelcomeText = loadedWelcome = settings.WelcomeText;
         if (loadedLimits is { } loaded && settings.Limits is { } now && now != loaded && (EditedLimits(loaded) == loaded || EditedLimits(loaded) == now))
-        {
-            loadedLimits = null;
             LoadLimits();
-        }
     }
 
     /// <summary>Throws the edits away: the fields show the server's settings again.</summary>
     internal void Reload()
     {
-        Name = loadedName = server.Mirror.Settings.Name;
-        WelcomeText = loadedWelcome = server.Mirror.Settings.WelcomeText;
+        LoadFields();
         NewPassword = "";
         RemovePassword = false;
         Error = null;
-        loadedLimits = null;
+    }
+
+    /// <summary>The name, welcome text and limits show what the server reports now, and are what the card was loaded with.</summary>
+    void LoadFields()
+    {
+        Name = loadedName = server.Mirror.Settings.Name;
+        WelcomeText = loadedWelcome = server.Mirror.Settings.WelcomeText;
         LoadLimits();
     }
 
     internal bool HasLimits => loadedLimits is not null;
 
+    /// <summary>Takes the server's limits as loaded; none reported (yet) leaves the card without limits.</summary>
     void LoadLimits()
     {
-        if (server.Mirror.Settings.Limits is not { } limits) return;
-        loadedLimits = limits;
+        loadedLimits = server.Mirror.Settings.Limits;
+        if (loadedLimits is not { } limits) return;
         MaxUsers = limits.MaxUsers;
         LogDays = limits.LogDays;
         LogRotateDaily = limits.LogRotateDaily;
@@ -140,10 +141,7 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
         NewPassword = "";
         RemovePassword = false;
         // the server checks the ranges again; an emptied number field keeps the last known value
-        var limits = loadedLimits is { } loaded
-            ? new ServerLimits((int)(MaxUsers ?? loaded.MaxUsers), (int)(LogDays ?? loaded.LogDays), LogRotateDaily, AutoRestart,
-                AutoRestartTime is { } restartTime ? TimeOnly.FromTimeSpan(restartTime) : loaded.AutoRestartTime)
-            : null;
+        var limits = loadedLimits is { } loaded ? EditedLimits(loaded) : null;
         return server.SendConfirmed(new UpdateServerSettings(Name, WelcomeText, password, limits), answer => answer is ServerSettingsChanged);
     }
 }

@@ -29,7 +29,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     Rig Create(DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null)
     {
         var server = FakeServers.Admin(sent, time, dialogs, reply);
-        var transfer = new AdminTransfer((request, route) => server.SendAsync(request, route: route), server.Routes.RemoveAll, server.ShowNotice, time);
+        var transfer = server.NewAdminTransfer();
         return new Rig(new BackupCardViewModel(server, transfer), server, transfer);
     }
 
@@ -300,6 +300,24 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
 
         Assert.Equal(Newer.FileName, Assert.Single(sent.OfType<DownloadBackup>()).FileName);
         Assert.Equal(Archive, File.ReadAllBytes(target));
+    }
+
+    [Fact]
+    public async Task DownloadBackupAsync_ServerNeverAnswers_FailsAfterThirtySecondsWithTheServersNotice()
+    {
+        var rig = Create();
+        var notices = new List<string>();
+        rig.Server.Notice += notices.Add;
+        rig.Section.Apply(new BackupList("r", [Newer]));
+        var download = rig.Section.DownloadBackupAsync(rig.Section.Backups[0], Path.Combine(dir, "mein-backup.ovsbackup"));
+        Assert.True(rig.Transfer.IsRunning);
+        Assert.Empty(notices);
+
+        time.Advance(TimeSpan.FromSeconds(30));
+        await Bound(download);
+
+        Assert.Equal([Strings.Backup_TransferFailed], notices);
+        Assert.False(rig.Transfer.IsRunning);
     }
 
     [Fact]

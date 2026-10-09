@@ -87,6 +87,10 @@ public sealed partial class ServerViewModel : ObservableObject
     public event Action<string>? Notice;
     /// <summary>Package 75: a notice from the administration page (e.g. a failed backup transfer).</summary>
     internal void ShowNotice(string text) => Notice?.Invoke(text);
+
+    /// <summary>The file transfer of this server's administration, wired to its requests, routes, notices and clock.</summary>
+    internal AdminTransfer NewAdminTransfer() => new((request, route) => SendAsync(request, route: route), Routes.RemoveAll, ShowNotice, time);
+
     public event Action<ServerIcon>? IconReceived;
 
     // ---- Chat (Package 31) ----

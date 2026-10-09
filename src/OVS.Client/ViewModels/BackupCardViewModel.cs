@@ -108,8 +108,14 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     async Task RestoreBackupAsync(BackupViewModel backup)
     {
         if (!CanUploadRestore) return;
-        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(backup.Title)) return;
-        await server.SendAsync(new RestoreBackup(backup.Info.FileName), pending: Restoring); // Package 97: until the disconnect
+        await ConfirmAndRestoreAsync(backup.Info);
+    }
+
+    /// <summary>Asks the red question about the backup; restores it only when answered yes. Package 97: busy until the disconnect.</summary>
+    async Task ConfirmAndRestoreAsync(BackupInfo backup)
+    {
+        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(backup))) return;
+        await server.SendAsync(new RestoreBackup(backup.FileName), pending: Restoring);
     }
 
     // ---- Package 75: download to and upload from this PC, chunk by chunk (A91) ----
@@ -121,7 +127,6 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     internal async Task UploadBackupAsync(string path, bool restore)
     {
         if (!CanUploadRestore || await Transfer.UploadBackupAsync(path, Apply) is not { } uploaded || !restore) return;
-        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
-        await server.SendAsync(new RestoreBackup(uploaded.FileName), pending: Restoring);
+        await ConfirmAndRestoreAsync(uploaded);
     }
 }

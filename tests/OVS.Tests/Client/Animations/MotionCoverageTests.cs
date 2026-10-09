@@ -257,14 +257,12 @@ public sealed class MotionCoverageTests
 
     // ---- what the walk finds on the screen ----
 
-    static readonly Guid Archive = Guid.NewGuid(), Moderators = Guid.NewGuid(), AnnasBan = Guid.NewGuid();
+    static readonly Guid Archive = Guid.NewGuid(), AnnasBan = Guid.NewGuid();
 
     static UserInfo Me(Guid channel) => new(1, "fp1", "ich", channel, false, false, false, Permission.All, [WellKnownGroups.Admin]);
 
     static UserInfo Bert(Guid channel, bool serverMuted = false) =>
         new(3, "fp3", "bert", channel, false, false, serverMuted, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
-
-    static GroupInfo Moderator => new(Moderators, "Moderator", Permission.Speak | Permission.UserKick, true);
 
     static ChannelViewModel Channel(Walk w, string name) => w.Server.Channels.Single(c => c.Name == name);
     static UserViewModel User(Walk w, string nickname) => w.Server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == nickname);
@@ -484,20 +482,20 @@ public sealed class MotionCoverageTests
         yield return new("open the administration", x => _ = x.Vm.OpenAdminAsync());
         yield return new("add a group", x => x.Admin.GroupList.NewGroupCommand.Execute(null));
         yield return new("drop the new group", x => x.Admin.GroupList.DeleteGroupCommand.Execute(null));
-        yield return new("create a group", walk => walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, Moderator])));
+        yield return new("create a group", walk => walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup])));
         yield return new("choose a group", x => x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator"), x => Named<ListBox>(x, "GroupRows"));
         yield return Toggle("toggle a group's right", x => Shown<CheckBox>(x, c => c.DataContext is PermissionToggleViewModel { Permission: Permission.UserMute }));
         yield return Click("save a group", x => Named<Button>(x, "SaveGroupButton"), x =>
         {
             Watch(250); // busy until the server's groups come
-            x.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, Moderator with { Permissions = Moderator.Permissions | Permission.UserMute }]));
+            x.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup with { Permissions = FakeServers.ModeratorGroup.Permissions | Permission.UserMute }]));
         });
         yield return new("reorder groups", x =>
         {
             x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator");
             x.Admin.GroupList.MoveGroupUpCommand.Execute(null);
             Watch(250);
-            x.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup])); // the server confirms the order
+            x.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup])); // the server confirms the order
         });
         yield return new("delete a group", x =>
         {

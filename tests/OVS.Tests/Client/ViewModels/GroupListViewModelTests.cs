@@ -18,7 +18,6 @@ public sealed class GroupListViewModelTests
 {
     static readonly Guid TeamId = Guid.NewGuid();
     static readonly GroupInfo Team = new(TeamId, "Team", Permission.Speak, true);
-    static readonly GroupInfo Moderator = new(Guid.NewGuid(), "Moderator", Permission.Speak | Permission.UserKick, true);
 
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
@@ -194,7 +193,7 @@ public sealed class GroupListViewModelTests
     public void Groups_ActorHoldsEveryRightOfTheGroupButNotAll_OnlyTheHeldRightsToggleTheRowShowsTheGroupsRightsAndItCanBeDeleted()
     {
         var rig = CreateFor(Permission.GroupsManage | Permission.GroupsDelete | Permission.Speak | Permission.UserKick,
-            FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+            FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup);
         var moderator = Row(rig, "Moderator");
 
         Assert.True(moderator.Toggles.Single(toggle => toggle.Permission == Permission.UserKick).IsEnabled);
@@ -220,7 +219,7 @@ public sealed class GroupListViewModelTests
     [InlineData("Moderator")]
     public void SelectedGroup_ProtectedOrStrongerGroupAndTheManageRightOnly_ReadOnlyAndNeitherSavableNorDeletable(string name)
     {
-        var rig = CreateFor(Permission.GroupsManage | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+        var rig = CreateFor(Permission.GroupsManage | Permission.Speak, FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup);
 
         rig.Section.SelectedGroup = Row(rig, name);
 
@@ -232,7 +231,7 @@ public sealed class GroupListViewModelTests
     [Fact]
     public void Commands_ViewRightOnly_NoCommandCanExecuteAndTheSelectedRowIsReadOnlyWithDisabledToggles()
     {
-        var rig = CreateFor(Permission.GroupsView | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+        var rig = CreateFor(Permission.GroupsView | Permission.Speak, FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup);
 
         rig.Section.SelectedGroup = Row(rig, "Gast");
 
@@ -247,7 +246,7 @@ public sealed class GroupListViewModelTests
     [Fact]
     public void Commands_CreateRightOnly_NewGroupAllowedAndSavedGroupNotSavable()
     {
-        var rig = CreateFor(Permission.GroupsView | Permission.GroupsCreate | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+        var rig = CreateFor(Permission.GroupsView | Permission.GroupsCreate | Permission.Speak, FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup);
 
         rig.Section.SelectedGroup = Row(rig, "Gast");
 
@@ -258,7 +257,7 @@ public sealed class GroupListViewModelTests
     [Fact]
     public void Commands_CreateRightOnlyDraftAdded_DraftSavableAndDeletable()
     {
-        var rig = CreateFor(Permission.GroupsView | Permission.GroupsCreate | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+        var rig = CreateFor(Permission.GroupsView | Permission.GroupsCreate | Permission.Speak, FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup);
 
         rig.Section.NewGroupCommand.Execute(null);
 
@@ -269,7 +268,7 @@ public sealed class GroupListViewModelTests
     [Fact]
     public void Commands_ManageRightOnly_SavedGroupSavableAndMovableButNeitherNewNorDeletable()
     {
-        var rig = CreateFor(Permission.GroupsView | Permission.GroupsManage | Permission.Speak, FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+        var rig = CreateFor(Permission.GroupsView | Permission.GroupsManage | Permission.Speak, FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup);
 
         rig.Section.SelectedGroup = Row(rig, "Gast");
 
@@ -283,7 +282,7 @@ public sealed class GroupListViewModelTests
     public void Commands_DeleteRightAndTheModeratorsRights_ModeratorDeletableButNotSavable()
     {
         var rig = CreateFor(Permission.GroupsView | Permission.GroupsDelete | Permission.Speak | Permission.UserKick,
-            FakeServers.GuestGroup, Moderator, FakeServers.AdminGroup);
+            FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup);
 
         rig.Section.SelectedGroup = Row(rig, "Moderator");
 

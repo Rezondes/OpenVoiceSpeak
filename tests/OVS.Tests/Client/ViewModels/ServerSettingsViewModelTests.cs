@@ -322,6 +322,21 @@ public sealed class ServerSettingsViewModelTests
     }
 
     [Fact]
+    public void Reload_LimitEditedAndServerNoLongerReportsLimits_HasNoLimitsAndHasNoChanges()
+    {
+        var rig = Create(ReportedLimits);
+        rig.Card.MaxUsers = 80;
+        ApplyServerSettings(rig, settings => settings with { Limits = null });
+        Assert.True(rig.Card.HasLimits);
+        Assert.True(rig.Card.HasChanges);
+
+        rig.Card.Reload();
+
+        Assert.False(rig.Card.HasLimits);
+        Assert.False(rig.Card.HasChanges);
+    }
+
+    [Fact]
     public void Reload_LimitEdited_ShowsTheServersLimitsAgain()
     {
         var rig = Create(ReportedLimits);

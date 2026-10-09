@@ -24,7 +24,7 @@ public sealed partial class AdminViewModel : ObservableObject
         ServerIcon = new ServerIconViewModel(server);
         ServerSettings = new ServerSettingsViewModel(server);
         Links = new LinkMatrixViewModel(server);
-        Transfer = new AdminTransfer((request, route) => server.SendAsync(request, route: route), server.Routes.RemoveAll, server.ShowNotice, server.Time);
+        Transfer = server.NewAdminTransfer();
         BackupCard = new BackupCardViewModel(server, Transfer);
         Logs = new LogsViewModel(server, Transfer);
         GroupList = new GroupListViewModel(server, ConfirmLeaveAsync);
