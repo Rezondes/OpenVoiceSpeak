@@ -178,11 +178,12 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     static readonly LogFileInfo ServerLog = new("server/2026-01-01_12-00-00.log", LogKind.Server, null, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, 3);
     static readonly Guid Team = Guid.NewGuid();
 
-    /// <summary>Who gets the answers to each request the page sends: the page, its logs tab or its transfer.</summary>
+    /// <summary>Who gets the answers to each request the page sends: the page, its users and bans tabs, its logs tab or its transfer.</summary>
     static readonly Dictionary<string, string> Owners = new()
     {
-        [nameof(ListUsers)] = "page", [nameof(ListBans)] = "page", [nameof(Unban)] = "page", [nameof(AssignGroup)] = "page", [nameof(UnassignGroup)] = "page",
-        [nameof(BanKnownUser)] = "page", [nameof(DeleteKnownUser)] = "page", [nameof(SetKnownUserServerMute)] = "page",
+        [nameof(ListUsers)] = "users and bans", [nameof(ListBans)] = "users and bans", [nameof(Unban)] = "users and bans",
+        [nameof(AssignGroup)] = "users and bans", [nameof(UnassignGroup)] = "users and bans",
+        [nameof(BanKnownUser)] = "users and bans", [nameof(DeleteKnownUser)] = "users and bans", [nameof(SetKnownUserServerMute)] = "users and bans",
         [nameof(ListBackups)] = "page", [nameof(CreateBackup)] = "page", [nameof(DeleteBackup)] = "page",
         [nameof(ListLogs)] = "logs", [nameof(ReadLog)] = "logs", [nameof(SearchLogs)] = "logs",
         [nameof(DownloadBackup)] = "transfer", [nameof(UploadBackupChunk)] = "transfer", [nameof(PrepareLogDownload)] = "transfer",
@@ -266,7 +267,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         File.WriteAllBytes(file, [1, 2, 3]);
 
         await Bound(page.RequestListsAsync());
-        KnownUserViewModel Card(string fingerprint) => page.Users.Single(u => u.Fingerprint == fingerprint);
+        KnownUserViewModel Card(string fingerprint) => page.UsersAndBans.Users.Single(u => u.Fingerprint == fingerprint);
         await Bound(Card("fpX").UnbanCommand.ExecuteAsync(null));
         await Bound(Card("fpX").LiftMuteCommand.ExecuteAsync(null));
         await Bound(Card("fpY").BanCommand.ExecuteAsync(null));
@@ -277,7 +278,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         var admin = Card("fpY").Toggles.Single(t => t.GroupId == WellKnownGroups.Admin);
         admin.IsChecked = true;
         await Bound(admin.ToggleCommand.ExecuteAsync(null));
-        await Bound(page.Bans.Single().UnbanCommand.ExecuteAsync(null));
+        await Bound(page.UsersAndBans.Bans.Single().UnbanCommand.ExecuteAsync(null));
         await Bound(page.NewBackupCommand.ExecuteAsync(null));
         await Bound(page.Backups.Single().DeleteCommand.ExecuteAsync(null));
         await Bound(page.Backups.Single().RestoreCommand.ExecuteAsync(null));
@@ -304,6 +305,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         string OwnerOf(Action<Message>? route) =>
             route is null ? "none"
             : route == (Action<Message>)page.Apply ? "page"
+            : route == (Action<Message>)page.UsersAndBans.Apply ? "users and bans"
             : route == (Action<Message>)page.Logs.Apply ? "logs"
             : route.Method.DeclaringType?.DeclaringType == typeof(AdminTransfer) ? "transfer" // a request's own closure in the transfer
             : "other";
@@ -324,7 +326,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [Yvonne]));
         server.Apply(new LogList(sent.OfType<ListLogs>().Single().RequestId, [ServerLog]));
 
-        Assert.Empty(page.Users);
+        Assert.Empty(page.UsersAndBans.Users);
         Assert.Empty(page.Logs.Files);
         Assert.All(sent, r => Assert.Null(server.Routes.Find(r.RequestId!)));
     }

@@ -161,7 +161,7 @@
 
         <!-- ===== Users (Package 71: everything stored, with search, filters and order) ===== -->
         <TabItem Header="{x:Static l:Strings.Ui_Users}" IsVisible="{Binding ShowUsers}">
-          <DockPanel>
+          <DockPanel DataContext="{Binding UsersAndBans}" x:DataType="vm:UsersAndBansViewModel">
             <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
               <TextBox x:Name="UserSearch" Text="{Binding SearchText}" Watermark="{x:Static l:Strings.Ui_UserSearch}"
                        AutomationProperties.Name="{x:Static l:Strings.Ui_UserSearch}" />
@@ -326,7 +326,7 @@
 
         <!-- ===== Bans (Package 80: active bans and history with every detail, search, filters and order) ===== -->
         <TabItem Header="{x:Static l:Strings.Ui_Bans}" IsVisible="{Binding ShowBans}">
-          <DockPanel>
+          <DockPanel DataContext="{Binding UsersAndBans}" x:DataType="vm:UsersAndBansViewModel">
             <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
               <TextBox x:Name="BanSearch" Text="{Binding BanSearchText}" Watermark="{x:Static l:Strings.Ui_BanSearch}"
                        AutomationProperties.Name="{x:Static l:Strings.Ui_BanSearch}" />

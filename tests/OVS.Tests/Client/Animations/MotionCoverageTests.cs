@@ -243,7 +243,7 @@ public sealed class MotionCoverageTests
         if (vm.AdminPage is { } admin)
         {
             text.AppendLine($"admin tab={AdminTabs(w).SelectedIndex} groups={string.Join(",", admin.Groups.Select(g => $"{g.Name} {(int)g.Permissions}"))} selected={admin.SelectedGroup?.Name} "
-                + $"users={string.Join(",", admin.Users.Select(u => u.Nickname + (u.IsServerMuted ? " muted" : "")))} bans={admin.Bans.Count} backups={admin.Backups.Count} logo={admin.HasIcon}");
+                + $"users={string.Join(",", admin.UsersAndBans.Users.Select(u => u.Nickname + (u.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.Backups.Count} logo={admin.HasIcon}");
             text.AppendLine($"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(r => r.IsSelected).Select(r => r.Name))} "
                 + $"server settings={admin.RemovePassword}/{admin.LogRotateDaily}/{admin.AutoRestart}");
             text.AppendLine($"logs hits={admin.Logs.ShowHits}/{admin.Logs.Hits.Count} open={admin.Logs.IsFileOpen} page={admin.Logs.Page} lines={admin.Logs.Lines.Count}");
@@ -286,7 +286,7 @@ public sealed class MotionCoverageTests
 
     static Button CommandButton(Walk w, System.Windows.Input.ICommand command) => Shown<Button>(w, b => b.Command == command);
 
-    static KnownUserViewModel Anna(Walk w) => w.Admin.Users.Single(u => u.Nickname == "anna");
+    static KnownUserViewModel Anna(Walk w) => w.Admin.UsersAndBans.Users.Single(u => u.Nickname == "anna");
 
     /// <summary>The id of the last request of that type: the server answers under it (answers to other ids reach nobody).</summary>
     static string LastId<T>(Walk w) where T : Request => w.Sent.OfType<T>().Last().RequestId!;
@@ -530,7 +530,7 @@ public sealed class MotionCoverageTests
         yield return new("ban list shows the ban", x => x.Server.Apply(new BanList(LastId<ListBans>(x), [new BanInfo(AnnasBan, "fp2", "anna", null, "Spam", "ich", null)])));
         yield return new("unban a user", x =>
         {
-            x.Admin.Bans.Single().UnbanCommand.Execute(null);
+            x.Admin.UsersAndBans.Bans.Single().UnbanCommand.Execute(null);
             x.Server.Apply(new BanList(LastId<Unban>(x), []));
         });
 

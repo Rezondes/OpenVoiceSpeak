@@ -187,7 +187,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         // the waiting states show 150 ms after their request (Package 97); they must not appear between the frames, so every
         // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
         var admin = vm.AdminPage!;
-        PendingViewModel[] loads = [admin.UsersLoad, admin.BansLoad, admin.BackupsLoad, admin.Logs.FilesLoad];
+        PendingViewModel[] loads = [admin.UsersAndBans.UsersLoad, admin.UsersAndBans.BansLoad, admin.BackupsLoad, admin.Logs.FilesLoad];
         MotionWait.WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
         Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
         LooksLikeBefore("admin");
@@ -288,7 +288,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Contains("Ausgewählte miteinander verlinken", Texts(main));
         Assert.Contains(main.GetVisualDescendants().OfType<CheckBox>(), c => AutomationProperties.GetName(c) == "Link Lobby und Raid");
         // Package 71: the user overview with search, filters and every stored value
-        vm.AdminPage!.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
+        vm.AdminPage!.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
             DateTimeOffset.Now, 4, TimeSpan.FromHours(2), "10.0.0.2", ["anni"], TimeSpan.FromMinutes(3), 7, CanBeModeratedByMe: true)]));
         main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Nutzer").IsSelected = true;
         Dispatcher.UIThread.RunJobs();
@@ -301,7 +301,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         foreach (var text in new[] { "Bannen", "Nutzerdaten löschen" }) // Package 72: the actions of the card
             Assert.Contains(text, Texts(main));
         // Package 80: the ban overview with search, filters and every detail
-        vm.AdminPage!.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
+        vm.AdminPage!.UsersAndBans.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
             "fp2", null, null, null, 2, DateTimeOffset.Now, "10.0.0.4")]));
         main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Bans").IsSelected = true;
         Dispatcher.UIThread.RunJobs();
@@ -1461,10 +1461,10 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             server.Apply(new UserList(Last<ListUsers>().RequestId, [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], ServerMuted: true, CanBeModeratedByMe: true)]));
             Advance(time, 1000);
         }
-        Waits("user card", () => _ = admin.Users.Single().LiftMuteCommand.ExecuteAsync(null),
+        Waits("user card", () => _ = admin.UsersAndBans.Users.Single().LiftMuteCommand.ExecuteAsync(null),
             () => [new UserList(Last<ListUsers>().RequestId, [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])]);
         Tab("Bans");
-        Waits("unban", () => _ = admin.Bans.Single().UnbanCommand.ExecuteAsync(null), () => [new BanList(Last<Unban>().RequestId, [])]);
+        Waits("unban", () => _ = admin.UsersAndBans.Bans.Single().UnbanCommand.ExecuteAsync(null), () => [new BanList(Last<Unban>().RequestId, [])]);
         Tab("Links");
         Waits("link apply", () =>
         {

@@ -6,30 +6,24 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Models;
 using OVS.Client.Services;
-using OVS.Shared.Moderation;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
-using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
-using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.ServerInfo;
-using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Client.ViewModels;
 
-/// <summary>Groups, user assignments, bans and server settings. Every tab only shows with the matching right.</summary>
+/// <summary>
+/// The administration page: it composes the users and bans, links and logs tabs and holds the groups, the backups and the
+/// server settings itself. Every tab only shows with the matching right.
+/// </summary>
 public sealed partial class AdminViewModel : ObservableObject
 {
     readonly ServerViewModel server;
-    IReadOnlyList<KnownUserInfo> knownUsers = [];
-    // Package 87: the lists come in pages, collected until complete
-    readonly ListPages<KnownUserInfo> userPages = new();
-    readonly ListPages<BanInfo> banPages = new();
+    // Package 87: the backup list comes in pages, collected until complete
     readonly ListPages<BackupInfo> backupPages = new();
-    // every refresh of the user and ban list goes through these, so quick actions never exceed the server's list limit
-    readonly ListRefresh userRefresh, banRefresh;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveGroupCommand), nameof(DeleteGroupCommand), nameof(MoveGroupUpCommand), nameof(MoveGroupDownCommand))]
@@ -46,75 +40,16 @@ public sealed partial class AdminViewModel : ObservableObject
     [ObservableProperty] bool logRotateDaily;
     [ObservableProperty] bool autoRestart;
     [ObservableProperty] TimeSpan? autoRestartTime;
-    // Package 71: search, filters and order of the user overview survive every refresh
-    [ObservableProperty] string searchText = "";
-    [ObservableProperty] Choice<UserStatusFilter> selectedStatusFilter;
-    [ObservableProperty] Choice<Guid?>? selectedGroupFilter;
-    [ObservableProperty] Choice<UserSortOrder> selectedSortOrder;
-    [ObservableProperty] string userCountText = "";
-    // Package 80: the same for the ban overview; active bans by default
-    IReadOnlyList<BanInfo> allBans = [];
-    [ObservableProperty] string banSearchText = "";
-    [ObservableProperty] Choice<BanStatusFilter> selectedBanStatusFilter;
-    [ObservableProperty] Choice<BanTypeFilter> selectedBanTypeFilter;
-    [ObservableProperty] Choice<BanSortOrder> selectedBanSortOrder;
-    [ObservableProperty] string banCountText = "";
-    HashSet<string> onlineFingerprints;
-    // Package 92: the rights the user list's rank flags were judged by; the list is asked for again when they change
-    Permission judgedActor;
-    List<GroupInfo> judgedGroups;
-    bool detached;
-
     public AdminViewModel(ServerViewModel server)
     {
         this.server = server;
-        UsersLoad = server.NewPending();
-        BansLoad = server.NewPending();
+        UsersAndBans = new UsersAndBansViewModel(server);
         BackupsLoad = server.NewPending();
         BackupCreate = server.NewPending();
         Restoring = server.NewPending();
         GroupSave = server.NewPending();
         GroupReorder = server.NewPending();
         IconUpload = server.NewPending();
-        userRefresh = new("u", () => !detached && ShowUsers, id => SendRoutedAsync(new ListUsers(), id, UsersLoad), server.Time);
-        banRefresh = new("b", () => !detached && ShowBans, id => SendRoutedAsync(new ListBans(), id, BansLoad), server.Time);
-        // Package 97: a list that never came no longer blocks the next request ("Aktualisieren" retries)
-        UsersLoad.TimedOut += userRefresh.Completed;
-        BansLoad.TimedOut += banRefresh.Completed;
-        StatusFilters =
-        [
-            new(UserStatusFilter.All, Strings.Ui_StatusAll), new(UserStatusFilter.Online, Strings.Ui_StatusOnline),
-            new(UserStatusFilter.Offline, Strings.Ui_StatusOffline), new(UserStatusFilter.Banned, Strings.Ui_StatusBanned),
-        ];
-        SortOrders =
-        [
-            new(UserSortOrder.Name, Strings.Ui_SortName), new(UserSortOrder.LastLogin, Strings.Ui_SortLastLogin),
-            new(UserSortOrder.OnlineTime, Strings.Ui_SortOnlineTime),
-        ];
-        selectedStatusFilter = StatusFilters[0];
-        selectedSortOrder = SortOrders[0];
-        BanStatusFilters =
-        [
-            new(BanStatusFilter.Active, Strings.Ui_BanStatusActive), new(BanStatusFilter.Expired, Strings.Ui_BanStatusExpired),
-            new(BanStatusFilter.Lifted, Strings.Ui_BanStatusLifted), new(BanStatusFilter.All, Strings.Ui_BanStatusAll),
-        ];
-        BanTypeFilters =
-        [
-            new(BanTypeFilter.All, Strings.Ui_BanTypeAll), new(BanTypeFilter.Permanent, Strings.Ui_BanTypePermanent),
-            new(BanTypeFilter.Temporary, Strings.Ui_BanTypeTemporary), new(BanTypeFilter.WithIp, Strings.Ui_BanTypeWithIp),
-        ];
-        BanSortOrders =
-        [
-            new(BanSortOrder.Newest, Strings.Ui_SortNewest), new(BanSortOrder.EndingSoonest, Strings.Ui_SortEndingSoonest),
-            new(BanSortOrder.MostAttempts, Strings.Ui_SortMostAttempts), new(BanSortOrder.Name, Strings.Ui_SortName),
-        ];
-        selectedBanStatusFilter = BanStatusFilters[0];
-        selectedBanTypeFilter = BanTypeFilters[0];
-        selectedBanSortOrder = BanSortOrders[0];
-        userActions = new(Ban: BanUserAsync, Unban: UnbanUserAsync, Delete: DeleteUserAsync, LiftMute: LiftMuteAsync);
-        onlineFingerprints = OnlineFingerprints();
-        judgedActor = Actor;
-        judgedGroups = server.Mirror.Groups;
         server.StateChanged += OnStateChanged;
         server.PropertyChanged += OnServerPropertyChanged;
         serverName = loadedName = server.Mirror.Settings.Name;
@@ -131,15 +66,13 @@ public sealed partial class AdminViewModel : ObservableObject
         ServerPlace = AdminPlace.Create(() => ServerSettingsChanged, null, SendServerSettings, ReloadServerSettings);
         Places = [GroupsPlace, LinksPlace, ServerPlace];
         RebuildGroups();
-        RebuildGroupFilters();
-        RebuildUsers();
     }
 
     Permission Actor => server.SelfPermissions;
     // Package 76: seeing a tab and acting in it are separate rights
     public bool ShowGroups => Actor.Has(Permission.GroupsView);
-    public bool ShowUsers => Actor.Has(Permission.UsersView);
-    public bool ShowBans => Actor.Has(Permission.BansView);
+    public bool ShowUsers => UsersAndBans.ShowUsers;
+    public bool ShowBans => UsersAndBans.ShowBans;
     /// <summary>Package 89: the server tab holds the settings (ServerConfig) and the backups (BackupsManage).</summary>
     public bool ShowServer => ShowServerSettings || ShowBackups;
     public bool ShowServerSettings => Actor.Has(Permission.ServerConfig);
@@ -150,9 +83,9 @@ public sealed partial class AdminViewModel : ObservableObject
     public bool ShowLogs => Actor.Has(Permission.LogsView); // Package 81
     public LinkMatrixViewModel Links { get; }
     public LogsViewModel Logs { get; }
-    /// <summary>Package 97 (A113): the lists' loading states, and the backup actions that wait for the server.</summary>
-    public PendingViewModel UsersLoad { get; }
-    public PendingViewModel BansLoad { get; }
+    /// <summary>The users and bans tabs.</summary>
+    internal UsersAndBansViewModel UsersAndBans { get; }
+    /// <summary>Package 97 (A113): the backups' loading state, and the backup actions that wait for the server.</summary>
     public PendingViewModel BackupsLoad { get; }
     public PendingViewModel BackupCreate { get; }
     public PendingViewModel Restoring { get; }
@@ -162,25 +95,9 @@ public sealed partial class AdminViewModel : ObservableObject
     public PendingViewModel IconUpload { get; }
 
     public ObservableCollection<GroupEditViewModel> Groups { get; } = [];
-    /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
-    public ObservableCollection<KnownUserViewModel> Users { get; } = [];
-    public IReadOnlyList<Choice<UserStatusFilter>> StatusFilters { get; }
-    public ObservableCollection<Choice<Guid?>> GroupFilters { get; } = [];
-    public IReadOnlyList<Choice<UserSortOrder>> SortOrders { get; }
-    /// <summary>Package 80: the bans that pass search and filters, in the chosen order.</summary>
-    public ObservableCollection<BanViewModel> Bans { get; } = [];
-    public IReadOnlyList<Choice<BanStatusFilter>> BanStatusFilters { get; }
-    public IReadOnlyList<Choice<BanTypeFilter>> BanTypeFilters { get; }
-    public IReadOnlyList<Choice<BanSortOrder>> BanSortOrders { get; }
-    /// <summary>No ban stored at all (none ever, or all aged out); otherwise an empty list means nothing matches.</summary>
-    public bool HasNoBans => allBans.Count == 0;
-    public bool HasNoBanMatches => allBans.Count > 0 && !Bans.Live().Any();
     /// <summary>Package 74: the backups on the server, newest first.</summary>
     public ObservableCollection<BackupViewModel> Backups { get; } = [];
     public bool HasNoBackups => !Backups.Live().Any();
-    /// <summary>Package 102: the filter leaves nobody (rows folding away do not count).</summary>
-    public bool HasNoUsersShown => !Users.Live().Any();
-
     /// <summary>The page asks to be closed (close button or Esc).</summary>
     public event Action? CloseRequested;
 
@@ -189,10 +106,9 @@ public sealed partial class AdminViewModel : ObservableObject
 
     public void Detach()
     {
-        detached = true;
-        // ponytail: every request the page sent keeps its route until here (a list refresh at most once a second); drop a
-        // list round's route once a newer round is complete if pages ever stay open for days
+        // ponytail: every request the page sent keeps its route until here; see UsersAndBansViewModel.Detach for the lists
         server.Routes.RemoveAll(Apply); // no answer reaches the closed page
+        UsersAndBans.Detach();
         Logs.Detach();
         server.StateChanged -= OnStateChanged;
         server.PropertyChanged -= OnServerPropertyChanged;
@@ -239,7 +155,7 @@ public sealed partial class AdminViewModel : ObservableObject
 
     public async Task RequestListsAsync()
     {
-        await RefreshUsersAndBansAsync();
+        await UsersAndBans.RefreshAsync();
         if (ShowBackups) await SendRoutedAsync(new ListBackups(), pending: BackupsLoad);
         if (ShowLogs) await Logs.RequestAsync();
     }
@@ -248,15 +164,7 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(HasIcon));
         RebuildGroups();
-        RebuildGroupFilters();
-        // Package 71: online status at once from the live state, the stored data follows with a new list
-        var online = OnlineFingerprints();
-        // Package 92: new own rights or group rights change on whom one may act; the server judges that anew
-        bool rejudge = Actor != judgedActor || server.Mirror.Groups != judgedGroups;
-        if (!online.SetEquals(onlineFingerprints) || rejudge) _ = userRefresh.RequestAsync();
-        onlineFingerprints = online;
-        (judgedActor, judgedGroups) = (Actor, server.Mirror.Groups);
-        RebuildUsers();
+        UsersAndBans.OnStateChanged();
         Links.Rebuild();
         HasPassword = server.Mirror.Settings.HasPassword;
         if (loadedLimits is null) LoadLimits(); // e.g. arriving with the ServerConfig right; later ones never overwrite edits
@@ -288,34 +196,12 @@ public sealed partial class AdminViewModel : ObservableObject
     {
         switch (answer)
         {
-            case Error e:
-                userRefresh.Failed(e.RequestId);
-                banRefresh.Failed(e.RequestId);
-                if (pendingGroupChanges.RemoveAll(p => p.RequestId == e.RequestId) > 0) UpdateOwnGroupChangePending();
-                break;
-            case UserList list:
-                if (userPages.Add(list.RequestId, list.Offset, list.Total, list.Users, (id, o) => _ = SendRoutedAsync(new ListUsers(o), id)) is not { } users) break;
-                userRefresh.Completed();
-                UsersLoad.Done();
-                ConfirmCards(userRefresh.RoundOf(list.RequestId));
-                ConfirmGroupChanges(users, userRefresh.RoundOf(list.RequestId));
-                knownUsers = users;
-                RebuildUsers();
-                break;
             case BackupList list:
                 if (backupPages.Add(list.RequestId, list.Offset, list.Total, list.Backups, (id, o) => _ = SendRoutedAsync(new ListBackups(o), id)) is not { } backups) break;
                 backupInfos = backups;
                 BackupsLoad.Done();
                 BackupCreate.Done(); // the new backup is in the list (Restoring waits for the disconnect)
                 RebuildBackups();
-                break;
-            case BanList list:
-                if (banPages.Add(list.RequestId, list.Offset, list.Total, list.Bans, (id, o) => _ = SendRoutedAsync(new ListBans(o), id)) is not { } bans) break;
-                banRefresh.Completed();
-                BansLoad.Done();
-                foreach (var busy in banBusy.Values) busy.Done(); // Package 98: an unban is answered with the new list
-                allBans = bans;
-                RebuildBans();
                 break;
         }
     }
@@ -449,201 +335,6 @@ public sealed partial class AdminViewModel : ObservableObject
         }
     }
 
-    // ---- Package 71: user overview ----
-
-    partial void OnSearchTextChanged(string value) => RebuildUsers();
-    partial void OnSelectedStatusFilterChanged(Choice<UserStatusFilter> value) => RebuildUsers();
-    partial void OnSelectedGroupFilterChanged(Choice<Guid?>? value) => RebuildUsers();
-    partial void OnSelectedSortOrderChanged(Choice<UserSortOrder> value) => RebuildUsers();
-
-    HashSet<string> OnlineFingerprints() => server.Mirror.Users.Values.Select(u => u.Fingerprint).ToHashSet();
-
-    async Task RefreshUsersAndBansAsync()
-    {
-        var users = userRefresh.RequestAsync();
-        await banRefresh.RequestAsync();
-        await users;
-    }
-
-    /// <summary>Keeps the chosen group when the groups change; a deleted group falls back to "all".</summary>
-    void RebuildGroupFilters()
-    {
-        var wanted = new List<Choice<Guid?>> { new(null, Strings.Ui_AllGroups) };
-        wanted.AddRange(server.Mirror.Groups.Select(g => new Choice<Guid?>(g.Id, g.Name)));
-        if (wanted.SequenceEqual(GroupFilters)) return;
-        var selected = SelectedGroupFilter?.Value;
-        GroupFilters.Clear();
-        foreach (var choice in wanted) GroupFilters.Add(choice);
-        SelectedGroupFilter = GroupFilters.FirstOrDefault(c => c.Value == selected) ?? GroupFilters[0];
-    }
-
-    void RebuildUsers()
-    {
-        var now = server.Time.GetUtcNow();
-        var search = SearchText.Trim();
-        var status = SelectedStatusFilter?.Value ?? UserStatusFilter.All;
-        var group = SelectedGroupFilter?.Value;
-        var admins = knownUsers.Count(u => u.GroupIds.Contains(WellKnownGroups.Admin));
-        var all = knownUsers.Select(user =>
-        {
-            // Package 72, 84 (A102): the server checks the same; never oneself, only strictly weaker users, never the last admin.
-            // Package 92: the rank comes judged with the list, the client knows no rights of others.
-            var weaker = user.CanBeModeratedByMe;
-            var lastAdmin = GroupRules.IsLastAdmin(user.GroupIds, admins);
-            var toggles = server.Mirror.Groups.Select(g => new GroupToggleViewModel(g.Id, g.Name, IsInGroup(user, g.Id),
-                g.AssignableByMe && weaker, // Package 92: judged by the server, group rights only reach GroupsView holders
-                t => ToggleUserGroupAsync(user.Fingerprint, t))).ToList();
-            var bans = (user.Bans ?? []).Where(b => BanStatusRule.Evaluate(b.LiftedAt, b.ExpiresAt, now) == BanStatus.Active).ToList();
-            return new KnownUserViewModel(user, onlineFingerprints.Contains(user.Fingerprint), toggles, bans, userActions, CardBusy(user.Fingerprint),
-                canBan: Actor.Has(Permission.UserBan) && weaker && !lastAdmin && bans.Count == 0,
-                canUnban: Actor.Has(Permission.UserBan) && weaker && bans.Count > 0,
-                canDelete: Actor.Has(Permission.UserDelete) && weaker && !lastAdmin,
-                canLiftMute: Actor.Has(Permission.UserMute) && weaker && user.ServerMuted); // Package 85
-        }).ToList();
-        var visible = all.Where(u => u.Matches(search) && (group is null || u.Info.GroupIds.Contains(group.Value)) && status switch
-        {
-            UserStatusFilter.Online => u.IsOnline,
-            UserStatusFilter.Offline => !u.IsOnline,
-            UserStatusFilter.Banned => u.IsBanned,
-            _ => true,
-        });
-        var byName = StringComparer.CurrentCultureIgnoreCase;
-        visible = (SelectedSortOrder?.Value ?? UserSortOrder.Name) switch
-        {
-            UserSortOrder.LastLogin => visible.OrderByDescending(u => u.Info.LastLogin ?? DateTimeOffset.MinValue).ThenBy(u => u.Nickname, byName),
-            UserSortOrder.OnlineTime => visible.OrderByDescending(u => u.Info.OnlineTime).ThenBy(u => u.Nickname, byName),
-            _ => visible.OrderBy(u => u.Nickname, byName),
-        };
-        var shown = visible.ToList();
-        CollectionSync.Sync(Users, shown, server.Leave);
-        UserCountText = string.Format(Strings.Ui_UserCount, shown.Count, all.Count);
-        OnPropertyChanged(nameof(HasNoUsersShown));
-    }
-
-    // ---- Package 80: ban overview ----
-
-    partial void OnBanSearchTextChanged(string value) => RebuildBans();
-    partial void OnSelectedBanStatusFilterChanged(Choice<BanStatusFilter> value) => RebuildBans();
-    partial void OnSelectedBanTypeFilterChanged(Choice<BanTypeFilter> value) => RebuildBans();
-    partial void OnSelectedBanSortOrderChanged(Choice<BanSortOrder> value) => RebuildBans();
-
-    void RebuildBans()
-    {
-        var now = server.Time.GetUtcNow();
-        var search = BanSearchText.Trim();
-        var status = SelectedBanStatusFilter?.Value ?? BanStatusFilter.All;
-        var type = SelectedBanTypeFilter?.Value ?? BanTypeFilter.All;
-        var all = allBans.Select(ban => new BanViewModel(ban, now, Actor.Has(Permission.UserBan) && MayActOnBanned(ban.Fingerprint), async () =>
-        {
-            await SendRoutedAsync(new Unban(ban.Id), pending: BanBusy(ban.Id)); // answered with the new ban list
-            await userRefresh.RequestAsync(); // Package 72: the user cards follow
-        }, BanBusy(ban.Id))).ToList();
-        var visible = all.Where(b => b.Matches(search) && status switch
-        {
-            BanStatusFilter.Active => b.Status == BanStatus.Active,
-            BanStatusFilter.Expired => b.Status == BanStatus.Expired,
-            BanStatusFilter.Lifted => b.Status == BanStatus.Lifted,
-            _ => true,
-        } && type switch
-        {
-            BanTypeFilter.Permanent => b.Ban.ExpiresAt is null,
-            BanTypeFilter.Temporary => b.Ban.ExpiresAt is not null,
-            BanTypeFilter.WithIp => b.HasIp,
-            _ => true,
-        });
-        var byName = StringComparer.CurrentCultureIgnoreCase;
-        visible = (SelectedBanSortOrder?.Value ?? BanSortOrder.Newest) switch
-        {
-            BanSortOrder.EndingSoonest => visible.OrderBy(b => b.Ban.ExpiresAt ?? DateTimeOffset.MaxValue).ThenBy(b => b.Nickname, byName),
-            BanSortOrder.MostAttempts => visible.OrderByDescending(b => b.Ban.BlockedAttempts).ThenBy(b => b.Nickname, byName),
-            BanSortOrder.Name => visible.OrderBy(b => b.Nickname, byName),
-            _ => visible.OrderByDescending(b => b.Ban.CreatedAt ?? DateTimeOffset.MinValue).ThenBy(b => b.Nickname, byName),
-        };
-        var shown = visible.ToList();
-        CollectionSync.Sync(Bans, shown, server.Leave);
-        BanCountText = string.Format(Strings.Ui_BanCount, shown.Count, all.Count);
-        OnPropertyChanged(nameof(HasNoBans));
-        OnPropertyChanged(nameof(HasNoBanMatches));
-    }
-
-    /// <summary>
-    /// Package 84 (A102), 92: the server's judgement from the user list or the live state; anyone but oneself when the user
-    /// is unknown here (without UsersView the list is missing, then the server has the last word).
-    /// </summary>
-    bool MayActOnBanned(string fingerprint) =>
-        knownUsers.FirstOrDefault(u => u.Fingerprint == fingerprint)?.CanBeModeratedByMe
-        ?? server.Mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == fingerprint)?.CanBeModeratedByMe
-        ?? fingerprint != server.Mirror.Self?.Fingerprint;
-
-    // ---- Package 72: ban, unban and delete from a user card, online or offline ----
-
-    /// <summary>What the user cards call: the cards know no page, only these.</summary>
-    readonly KnownUserActions userActions;
-
-    /// <summary>Package 98: the ban dialog stays open until a user list shows the ban.</summary>
-    Task BanUserAsync(KnownUserViewModel user)
-    {
-        var ipKnown = user.Info.LastIp is not null;
-        return ServerViewModel.Ask<BanChoice>(server.Dialogs.Ban is { } ban ? submit => ban(user.Nickname, ipKnown, submit) : null,
-            choice => CardAction(user.Fingerprint, new BanKnownUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown), bans: true));
-    }
-
-    Task UnbanUserAsync(KnownUserViewModel user)
-    {
-        foreach (var ban in user.Bans) CardAction(user.Fingerprint, new Unban(ban.Id)); // each answered with the new ban list
-        return Task.CompletedTask;
-    }
-
-    /// <summary>Package 85: works offline too; the card follows with the next user list.</summary>
-    Task LiftMuteAsync(KnownUserViewModel user)
-    {
-        CardAction(user.Fingerprint, new SetKnownUserServerMute(user.Fingerprint, false));
-        return Task.CompletedTask;
-    }
-
-    async Task DeleteUserAsync(KnownUserViewModel user)
-    {
-        if (server.Dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
-        CardAction(user.Fingerprint, new DeleteKnownUser(user.Fingerprint), bans: true);
-    }
-
-    // ---- Package 98 (A113): a card's actions spin until a user list asked for after them shows the result ----
-
-    readonly Dictionary<string, PendingViewModel> cardBusy = [];
-    /// <summary>Per card: the user list requests sent before its last action; a list of a later request settles it.</summary>
-    readonly Dictionary<string, int> cardAskedBefore = [];
-    readonly Dictionary<Guid, PendingViewModel> banBusy = [];
-
-    PendingViewModel CardBusy(string fingerprint) => cardBusy.TryGetValue(fingerprint, out var busy) ? busy : cardBusy[fingerprint] = server.NewPending();
-    PendingViewModel BanBusy(Guid banId) => banBusy.TryGetValue(banId, out var busy) ? busy : banBusy[banId] = server.NewPending();
-
-    /// <summary>Sends under the card's mark, then asks for the list (and with bans the ban list) that shows the result.</summary>
-    PendingViewModel CardAction(string fingerprint, Request request, bool bans = false)
-    {
-        var busy = CardBusy(fingerprint);
-        cardAskedBefore[fingerprint] = userRefresh.Sent;
-        _ = SendAsync();
-        return busy;
-
-        async Task SendAsync()
-        {
-            await SendRoutedAsync(request, pending: busy); // an unban's own answer: the new ban list
-            if (bans) await RefreshUsersAndBansAsync();
-            else await userRefresh.RequestAsync();
-        }
-    }
-
-    /// <param name="round">The number of the user list request a complete list answers, 0 when unknown.</param>
-    void ConfirmCards(int round)
-    {
-        foreach (var (fingerprint, asked) in cardAskedBefore.ToList())
-        {
-            if (round <= asked) continue;
-            cardAskedBefore.Remove(fingerprint);
-            if (cardBusy.GetValueOrDefault(fingerprint) is { IsRunning: true } busy) busy.Done();
-        }
-    }
-
     // ---- Package 74: backups ----
 
     IReadOnlyList<BackupInfo> backupInfos = [];
@@ -692,46 +383,6 @@ public sealed partial class AdminViewModel : ObservableObject
         if (!CanUploadRestore || await Transfer.UploadBackupAsync(path, Apply) is not { } uploaded || !restore) return;
         if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(uploaded))) return;
         await server.SendAsync(new RestoreBackup(uploaded.FileName), pending: Restoring);
-    }
-
-    /// <summary>
-    /// Package 73: group changes sent but not yet seen in a user list; the server sends no confirmation. AskedBefore is the
-    /// number of user list requests sent before the change: a list of a later request settles it either way.
-    /// </summary>
-    readonly List<(string RequestId, string Fingerprint, Guid GroupId, bool Assigned, int AskedBefore)> pendingGroupChanges = [];
-
-    /// <summary>A box just ticked keeps its state until a list asked for after the tick arrives; an older list would flip it back.</summary>
-    bool IsInGroup(KnownUserInfo user, Guid groupId) =>
-        pendingGroupChanges.LastOrDefault(p => p.Fingerprint == user.Fingerprint && p.GroupId == groupId) is { RequestId: not null } pending
-            ? pending.Assigned
-            : user.GroupIds.Contains(groupId);
-
-    async Task ToggleUserGroupAsync(string fingerprint, GroupToggleViewModel toggle)
-    {
-        bool own = fingerprint == server.Mirror.Self?.Fingerprint;
-        if (own) server.OwnGroupChangePending = true; // set before sending: the server's update can come at once
-        cardAskedBefore[fingerprint] = userRefresh.Sent; // Package 98: the card spins until a later list shows it
-        var id = await SendRoutedAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId),
-            pending: CardBusy(fingerprint)); // its error drops the change
-        pendingGroupChanges.Add((id, fingerprint, toggle.GroupId, toggle.IsChecked, userRefresh.Sent));
-        UpdateOwnGroupChangePending();
-        await userRefresh.RequestAsync();
-    }
-
-    void UpdateOwnGroupChangePending()
-    {
-        var self = server.Mirror.Self?.Fingerprint;
-        server.OwnGroupChangePending = pendingGroupChanges.Any(p => p.Fingerprint == self);
-    }
-
-    /// <summary>Package 73: a tone once a user list shows a pending change; also works for users who are offline.</summary>
-    /// <param name="round">The number of the user list request this list answers, 0 when unknown.</param>
-    void ConfirmGroupChanges(IReadOnlyList<KnownUserInfo> users, int round)
-    {
-        int done = pendingGroupChanges.RemoveAll(p => users.Any(u => u.Fingerprint == p.Fingerprint && u.GroupIds.Contains(p.GroupId) == p.Assigned));
-        pendingGroupChanges.RemoveAll(p => round > p.AskedBefore); // asked for after the change and still not showing it: the list wins
-        UpdateOwnGroupChangePending();
-        if (done > 0) server.RequestSound(Audio.Sounds.SoundEvent.GroupChangedByMe);
     }
 
     bool CanNewGroup => Actor.Has(Permission.GroupsCreate);
