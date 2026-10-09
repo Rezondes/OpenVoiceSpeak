@@ -636,7 +636,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var main = OpenAdmin(width, out var page);
         SelectTab(page, 0);
-        var list = page.FindControl<ListBox>("GroupList")!;
+        var list = page.FindControl<ListBox>("GroupRows")!;
         var listCard = list.FindAncestorOfType<Border>()!;
         var editor = page.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("groupEditor"));
         var grid = (Grid)listCard.Parent!;

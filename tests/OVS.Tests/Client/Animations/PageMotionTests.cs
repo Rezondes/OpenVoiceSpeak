@@ -169,7 +169,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         MotionWait.Settle(400);
         var admin = main.GetVisualDescendants().OfType<AdminView>().Single();
         var tabs = admin.FindControl<TabControl>("Tabs")!;
-        var groups = admin.FindControl<ListBox>("GroupList")!;
+        var groups = admin.FindControl<ListBox>("GroupRows")!;
         Assert.True(groups.ItemCount >= 2);
         groups.SelectedIndex = 0;
         MotionWait.Settle(400);

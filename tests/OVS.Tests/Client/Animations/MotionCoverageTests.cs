@@ -242,7 +242,7 @@ public sealed class MotionCoverageTests
         }
         if (vm.AdminPage is { } admin)
         {
-            text.AppendLine($"admin tab={AdminTabs(w).SelectedIndex} groups={string.Join(",", admin.Groups.Select(g => $"{g.Name} {(int)g.Permissions}"))} selected={admin.SelectedGroup?.Name} "
+            text.AppendLine($"admin tab={AdminTabs(w).SelectedIndex} groups={string.Join(",", admin.GroupList.Groups.Select(g => $"{g.Name} {(int)g.Permissions}"))} selected={admin.GroupList.SelectedGroup?.Name} "
                 + $"users={string.Join(",", admin.UsersAndBans.Users.Select(u => u.Nickname + (u.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.BackupCard.Backups.Count} logo={admin.HasIcon}");
             text.AppendLine($"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(r => r.IsSelected).Select(r => r.Name))} "
                 + $"server settings={admin.ServerSettings.RemovePassword}/{admin.ServerSettings.LogRotateDaily}/{admin.ServerSettings.AutoRestart}");
@@ -484,10 +484,10 @@ public sealed class MotionCoverageTests
 
         // ---- administration ----
         yield return new("open the administration", x => _ = x.Vm.OpenAdminAsync());
-        yield return new("add a group", x => x.Admin.NewGroupCommand.Execute(null));
-        yield return new("drop the new group", x => x.Admin.DeleteGroupCommand.Execute(null));
+        yield return new("add a group", x => x.Admin.GroupList.NewGroupCommand.Execute(null));
+        yield return new("drop the new group", x => x.Admin.GroupList.DeleteGroupCommand.Execute(null));
         yield return new("create a group", x => x.Server.Apply(new GroupsChanged([Guest, AdminGroup, Moderator])));
-        yield return new("choose a group", x => x.Admin.SelectedGroup = x.Admin.Groups.Single(g => g.Name == "Moderator"), x => Named<ListBox>(x, "GroupList"));
+        yield return new("choose a group", x => x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator"), x => Named<ListBox>(x, "GroupRows"));
         yield return Toggle("toggle a group's right", x => Shown<CheckBox>(x, c => c.DataContext is PermissionToggleViewModel { Permission: Permission.UserMute }));
         yield return Click("save a group", x => Named<Button>(x, "SaveGroupButton"), x =>
         {
@@ -496,15 +496,15 @@ public sealed class MotionCoverageTests
         });
         yield return new("reorder groups", x =>
         {
-            x.Admin.SelectedGroup = x.Admin.Groups.Single(g => g.Name == "Moderator");
-            x.Admin.MoveGroupUpCommand.Execute(null);
+            x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator");
+            x.Admin.GroupList.MoveGroupUpCommand.Execute(null);
             Watch(250);
             x.Server.Apply(new GroupsChanged([Guest, Moderator, AdminGroup])); // the server confirms the order
         });
         yield return new("delete a group", x =>
         {
-            x.Admin.SelectedGroup = x.Admin.Groups.Single(g => g.Name == "Moderator");
-            _ = x.Admin.DeleteGroupCommand.ExecuteAsync(null);
+            x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator");
+            _ = x.Admin.GroupList.DeleteGroupCommand.ExecuteAsync(null);
             x.Server.Apply(new GroupsChanged([Guest, AdminGroup]));
         });
 

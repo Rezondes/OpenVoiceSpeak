@@ -602,12 +602,12 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         await vm.OpenAdminAsync();
         MotionWait.Settle(400);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in: the list stands still
-        var groups = main.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "GroupList");
+        var groups = main.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "GroupRows");
         Assert.True(ItemMotion.GetFlip(groups));
         var admin = vm.AdminPage!;
-        admin.SelectedGroup = admin.Groups.Single(g => g.Name == "Admin");
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(g => g.Name == "Admin");
         var seen = WatchOffsets(groups);
-        await admin.MoveGroupUpCommand.ExecuteAsync(null);
+        await HangGuard.Bound(admin.GroupList.MoveGroupUpCommand.ExecuteAsync(null));
         for (int i = 0; i < 5; i++) Frame();
         Assert.True(Most(seen, item => item is GroupEditViewModel { Name: "Admin" }) > 0, "Admin glides up from below");
         main.Close();

@@ -1448,10 +1448,10 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Tab("Gruppen");
         Waits("group save", () =>
         {
-            admin.SelectedGroup = admin.Groups.Single(g => g.Name == "Gast");
-            _ = admin.SaveGroupCommand.ExecuteAsync(null);
+            admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(g => g.Name == "Gast");
+            _ = admin.GroupList.SaveGroupCommand.ExecuteAsync(null);
         }, () => [new GroupsChanged(server.Mirror.Groups)]);
-        Waits("group order", () => _ = admin.MoveGroupAsync(admin.Groups.Single(g => g.Name == "Admin"), admin.Groups[0], after: false),
+        Waits("group order", () => _ = admin.GroupList.MoveGroupAsync(admin.GroupList.Groups.Single(g => g.Name == "Admin"), admin.GroupList.Groups[0], after: false),
             () => [new GroupsChanged([.. Enumerable.Reverse(server.Mirror.Groups)])]);
         Tab("Nutzer");
         // the group changes asked for the user list again (the rights on others may change): answered first, also the wish

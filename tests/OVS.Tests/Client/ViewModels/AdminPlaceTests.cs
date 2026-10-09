@@ -56,9 +56,9 @@ public sealed class AdminPlaceTests
         var admin = Admin();
         WithTabs(admin, (page, _) =>
         {
-            Assert.Same(admin.GroupsPlace, page.FindControl<TabItem>("GroupsTab")!.Tag);
-            Assert.Same(admin.LinksPlace, page.FindControl<TabItem>("LinksTab")!.Tag);
-            Assert.Same(admin.ServerPlace, page.FindControl<TabItem>("ServerTab")!.Tag);
+            Assert.Same(admin.GroupList.Place, page.FindControl<TabItem>("GroupsTab")!.Tag);
+            Assert.Same(admin.Links.Place, page.FindControl<TabItem>("LinksTab")!.Tag);
+            Assert.Same(admin.ServerSettings.Place, page.FindControl<TabItem>("ServerTab")!.Tag);
         });
     }
 
@@ -66,7 +66,7 @@ public sealed class AdminPlaceTests
     public void Places_SavingOrder_GroupsLinksServer()
     {
         var admin = Admin();
-        Assert.Equal([admin.GroupsPlace, admin.LinksPlace, admin.ServerPlace], admin.Places);
+        Assert.Equal([admin.GroupList.Place, admin.Links.Place, admin.ServerSettings.Place], admin.Places);
     }
 
     [AvaloniaFact]
@@ -74,8 +74,8 @@ public sealed class AdminPlaceTests
     {
         var admin = Admin();
         admin.Links.UnlinkAll();
-        Assert.False(admin.GroupsPlace.HasChanges());
-        Assert.False(admin.ServerPlace.HasChanges());
+        Assert.False(admin.GroupList.Place.HasChanges());
+        Assert.False(admin.ServerSettings.Place.HasChanges());
         Assert.True(admin.HasAnyChanges);
     }
 
@@ -84,7 +84,7 @@ public sealed class AdminPlaceTests
     {
         var sent = new List<Request>();
         var admin = Admin(sent);
-        foreach (var place in admin.Places) Assert.True(await place.SaveAsync());
+        foreach (var place in admin.Places) Assert.True(await HangGuard.Bound(place.SaveAsync()));
         Assert.Empty(sent);
     }
 
@@ -94,15 +94,15 @@ public sealed class AdminPlaceTests
         var sent = new List<Request>();
         var server = FakeServers.Admin(sent, new ManualTimeProvider());
         var admin = new AdminViewModel(server);
-        admin.SelectedGroup = admin.Groups.First(g => g.IsEditable);
-        admin.SelectedGroup.Name = "Umbenannt";
-        await admin.SaveGroupCommand.ExecuteAsync(null); // the save on its way
-        var saving = admin.GroupsPlace.SaveAsync();
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
+        admin.GroupList.SelectedGroup.Name = "Umbenannt";
+        await HangGuard.Bound(admin.GroupList.SaveGroupCommand.ExecuteAsync(null)); // the save on its way
+        var saving = admin.GroupList.Place.SaveAsync();
         Assert.False(saving.IsCompleted);
 
         var update = Assert.Single(sent.OfType<UpdateGroup>());
         server.Apply(new GroupsChanged(server.Mirror.Groups.Select(g => g.Id == update.GroupId ? g with { Name = update.Name } : g).ToList()));
-        Assert.True(await saving);
+        Assert.True(await HangGuard.Bound(saving));
         Assert.Single(sent.OfType<UpdateGroup>());
     }
 
@@ -113,12 +113,12 @@ public sealed class AdminPlaceTests
         var server = FakeServers.Admin(sent, new ManualTimeProvider());
         var admin = new AdminViewModel(server);
         admin.Links.UnlinkAll();
-        await admin.Links.ApplyCommand.ExecuteAsync(null); // the save on its way
-        var saving = admin.LinksPlace.SaveAsync();
+        await HangGuard.Bound(admin.Links.ApplyCommand.ExecuteAsync(null)); // the save on its way
+        var saving = admin.Links.Place.SaveAsync();
         Assert.False(saving.IsCompleted);
 
         server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
-        Assert.True(await saving);
+        Assert.True(await HangGuard.Bound(saving));
         Assert.Single(sent.OfType<SetChannelLinks>());
     }
 
@@ -129,15 +129,15 @@ public sealed class AdminPlaceTests
         var server = FakeServers.Admin(sent, new ManualTimeProvider());
         var admin = new AdminViewModel(server);
         admin.Links.UnlinkAll();
-        var saving = admin.LinksPlace.SaveAsync();
+        var saving = admin.Links.Place.SaveAsync();
         var request = Assert.Single(sent.OfType<SetChannelLinks>());
         Assert.Single(request.Remove);
         Assert.Empty(sent.OfType<UpdateServerSettings>());
         Assert.False(saving.IsCompleted);
 
         server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
-        Assert.True(await saving);
-        Assert.False(admin.LinksPlace.HasChanges());
+        Assert.True(await HangGuard.Bound(saving));
+        Assert.False(admin.Links.Place.HasChanges());
     }
 
     [AvaloniaFact]
@@ -147,14 +147,14 @@ public sealed class AdminPlaceTests
         var server = FakeServers.Admin(sent, new ManualTimeProvider());
         var admin = new AdminViewModel(server);
         admin.ServerSettings.Name = "Neu";
-        var saving = admin.ServerPlace.SaveAsync();
+        var saving = admin.ServerSettings.Place.SaveAsync();
         Assert.Equal("Neu", Assert.Single(sent.OfType<UpdateServerSettings>()).Name);
         Assert.Empty(sent.OfType<SetChannelLinks>());
         Assert.False(saving.IsCompleted);
 
         server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { Name = "Neu" }));
-        Assert.True(await saving);
-        Assert.False(admin.ServerPlace.HasChanges());
+        Assert.True(await HangGuard.Bound(saving));
+        Assert.False(admin.ServerSettings.Place.HasChanges());
     }
 
     [AvaloniaFact]
@@ -163,8 +163,8 @@ public sealed class AdminPlaceTests
         var sent = new List<Request>();
         var admin = Admin(sent);
         admin.ServerSettings.Name = "   ";
-        Assert.True(admin.ServerPlace.HasChanges());
-        Assert.False(await admin.ServerPlace.SaveAsync());
+        Assert.True(admin.ServerSettings.Place.HasChanges());
+        Assert.False(await HangGuard.Bound(admin.ServerSettings.Place.SaveAsync()));
         Assert.Empty(sent);
     }
 
@@ -173,9 +173,9 @@ public sealed class AdminPlaceTests
     {
         var admin = Admin();
         admin.Links.UnlinkAll();
-        Assert.True(admin.LinksPlace.HasChanges());
-        admin.LinksPlace.Discard();
-        Assert.False(admin.LinksPlace.HasChanges());
+        Assert.True(admin.Links.Place.HasChanges());
+        admin.Links.Place.Discard();
+        Assert.False(admin.Links.Place.HasChanges());
         Assert.False(admin.HasAnyChanges);
     }
 }

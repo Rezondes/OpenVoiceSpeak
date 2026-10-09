@@ -61,9 +61,9 @@
     <DockPanel Classes="adminBody">
       <TabControl x:Name="Tabs" anim:PageMotion.Tabs="True">
         <!-- ===== Groups ===== -->
-        <TabItem x:Name="GroupsTab" Tag="{Binding GroupsPlace}" Header="{x:Static l:Strings.Ui_Groups}" IsVisible="{Binding ShowGroups}">
+        <TabItem x:Name="GroupsTab" Tag="{Binding GroupList.Place}" Header="{x:Static l:Strings.Ui_Groups}" IsVisible="{Binding ShowGroups}">
           <!-- Package 78: list beside the editor, under narrow above it (styles in Controls.axaml) -->
-          <Grid Classes="adminGroups" ColumnDefinitions="Auto,*" RowDefinitions="2*,3*">
+          <Grid Classes="adminGroups" ColumnDefinitions="Auto,*" RowDefinitions="2*,3*" DataContext="{Binding GroupList}" x:DataType="vm:GroupListViewModel">
             <Border Classes="card groupList" Padding="6">
               <DockPanel>
                 <!-- Package 98: a moved group waits for the server; refused, it goes back and says why -->
@@ -86,7 +86,7 @@
                     </StackPanel>
                   </Button>
                 </DockPanel>
-                <ListBox anim:ItemMotion.Enter="True" anim:ItemMotion.Flip="True" x:Name="GroupList" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
+                <ListBox anim:ItemMotion.Enter="True" anim:ItemMotion.Flip="True" x:Name="GroupRows" ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}" Background="Transparent">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:GroupEditViewModel">
                       <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
@@ -436,7 +436,7 @@
 
         <!-- ===== Server ===== -->
         <!-- ===== Links (Package 38) ===== -->
-        <TabItem x:Name="LinksTab" Tag="{Binding LinksPlace}" Header="{x:Static l:Strings.Ui_Links}" IsVisible="{Binding ShowLinks}">
+        <TabItem x:Name="LinksTab" Tag="{Binding Links.Place}" Header="{x:Static l:Strings.Ui_Links}" IsVisible="{Binding ShowLinks}">
           <DockPanel DataContext="{Binding Links}" x:DataType="vm:LinkMatrixViewModel">
             <TextBlock DockPanel.Dock="Top" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,12"
                        Text="{x:Static l:Strings.Ui_LinksHelp}" />
@@ -526,7 +526,7 @@
           </DockPanel>
         </TabItem>
 
-        <TabItem x:Name="ServerTab" Tag="{Binding ServerPlace}" Header="{x:Static l:Strings.Ui_Server}" IsVisible="{Binding ShowServer}">
+        <TabItem x:Name="ServerTab" Tag="{Binding ServerSettings.Place}" Header="{x:Static l:Strings.Ui_Server}" IsVisible="{Binding ShowServer}">
           <ScrollViewer>
             <!-- Package 74: both cards share one width. Package 89: settings with ServerConfig, backups with BackupsManage -->
             <StackPanel Spacing="12">

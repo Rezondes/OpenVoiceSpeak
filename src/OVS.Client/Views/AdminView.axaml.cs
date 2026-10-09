@@ -44,24 +44,24 @@ public partial class AdminView : UserControl
             Step(() => Tabs.SelectedItem = left);
             if (await vm.ConfirmLeaveAsync(place)) Step(() => Tabs.SelectedItem = wanted);
         };
-        GroupList.SelectionChanged += async (_, e) =>
+        GroupRows.SelectionChanged += async (_, e) =>
         {
-            if (stepping || Vm is not { IsSelectingInCode: false } vm || e.RemovedItems is not [GroupEditViewModel { HasChanges: true } left]
-                || !vm.Groups.Contains(left))
+            if (stepping || Vm is not { } admin || admin.GroupList is not { IsSelectingInCode: false } groups
+                || e.RemovedItems is not [GroupEditViewModel { HasChanges: true } left] || !groups.Groups.Contains(left))
                 return;
-            var wanted = vm.SelectedGroup;
-            Step(() => vm.SelectedGroup = left);
-            if (!await vm.ConfirmLeaveAsync(vm.GroupsPlace)) return;
+            var wanted = groups.SelectedGroup;
+            Step(() => groups.SelectedGroup = left);
+            if (!await admin.ConfirmLeaveAsync(groups.Place)) return;
             // a save rebuilds the rows: the wanted group again by its id (a draft is only itself)
-            var again = wanted?.Id is { } id ? vm.Groups.Live().FirstOrDefault(g => g.Id == id) : vm.Groups.Contains(wanted!) ? wanted : null;
-            if (again is not null) Step(() => vm.SelectedGroup = again);
+            var again = wanted?.Id is { } id ? groups.Groups.Live().FirstOrDefault(group => group.Id == id) : groups.Groups.Contains(wanted!) ? wanted : null;
+            if (again is not null) Step(() => groups.SelectedGroup = again);
         };
         IconDrop.AddHandler(DragDrop.DragOverEvent, OnIconDragOver);
         IconDrop.AddHandler(DragDrop.DragLeaveEvent, (_, _) => IconDrop.Classes.Remove("dropHover"));
         IconDrop.AddHandler(DragDrop.DropEvent, OnIconDrop);
         // Package 37, 96: drag a group to a new position (needs "Gruppen verwalten", shown only then)
-        _ = new ReorderDrag(GroupList, item => item is GroupEditViewModel { Id: not null },
-            (source, target, after) => Vm?.MoveGroupAsync((GroupEditViewModel)source, (GroupEditViewModel)target, after) ?? Task.CompletedTask);
+        _ = new ReorderDrag(GroupRows, item => item is GroupEditViewModel { Id: not null },
+            (source, target, after) => Vm?.GroupList.MoveGroupAsync((GroupEditViewModel)source, (GroupEditViewModel)target, after) ?? Task.CompletedTask);
     }
 
     AdminViewModel? Vm => DataContext as AdminViewModel;

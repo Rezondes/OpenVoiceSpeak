@@ -3,6 +3,7 @@ using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OVS.Client.Models;
 using OVS.Shared.Protocol.Messages.Links;
 
 namespace OVS.Client.ViewModels;
@@ -25,8 +26,12 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     {
         this.server = server;
         Applying = server.NewPending();
+        Place = AdminPlace.Create(() => HasPending, Applying, SendPending, Discard);
         Rebuild();
     }
+
+    /// <summary>Package 114: the place of the links tab: the marked changes are sent with one request, or thrown away.</summary>
+    internal AdminPlace Place { get; }
 
     /// <summary>Package 98: "Übernehmen" spins until the server's link changes match what was sent.</summary>
     public PendingViewModel Applying { get; }
@@ -107,7 +112,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     }
 
     /// <summary>Package 114: the marked changes to the server; null when there is nothing to send.</summary>
-    internal PendingViewModel? SendPending()
+    PendingViewModel? SendPending()
     {
         var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
         var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();

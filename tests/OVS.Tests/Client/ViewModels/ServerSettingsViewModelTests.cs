@@ -251,4 +251,53 @@ public sealed class ServerSettingsViewModelTests
 
         Assert.Equal(ReportedLimits, ((UpdateServerSettings)Assert.Single(sent)).Limits);
     }
+
+    [Fact]
+    public async Task Place_NothingEdited_NoChangesAndSavingSucceedsWithoutSending()
+    {
+        var rig = Create();
+
+        Assert.False(rig.Card.Place.HasChanges());
+        Assert.True(await HangGuard.Bound(rig.Card.Place.SaveAsync()));
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public async Task Place_NameEdited_HasChangesAndSavingSendsTheSettingsAndWaitsForTheServer()
+    {
+        var rig = Create();
+        rig.Card.Name = "Neu";
+        Assert.True(rig.Card.Place.HasChanges());
+
+        var saving = rig.Card.Place.SaveAsync();
+
+        Assert.Equal("Neu", Assert.IsType<UpdateServerSettings>(Assert.Single(sent)).Name);
+        Assert.False(saving.IsCompleted);
+        ApplyServerSettings(rig, settings => settings with { Name = "Neu" });
+        Assert.True(await HangGuard.Bound(saving));
+        Assert.False(rig.Card.Place.HasChanges());
+    }
+
+    [Fact]
+    public async Task Place_NameBlank_HasChangesButSavingFailsWithoutSending()
+    {
+        var rig = Create();
+        rig.Card.Name = "   ";
+
+        Assert.True(rig.Card.Place.HasChanges());
+        Assert.False(await HangGuard.Bound(rig.Card.Place.SaveAsync()));
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void PlaceDiscard_NameEdited_ServerNameBackAndNoChanges()
+    {
+        var rig = Create();
+        rig.Card.Name = "Neu";
+
+        rig.Card.Place.Discard();
+
+        Assert.Equal("Gilde", rig.Card.Name);
+        Assert.False(rig.Card.Place.HasChanges());
+    }
 }

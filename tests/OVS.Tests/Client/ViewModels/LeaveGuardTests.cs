@@ -43,7 +43,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         return vm;
     }
 
-    static void Rename(AdminViewModel admin, string name) => admin.SelectedGroup!.Name = name;
+    static void Rename(AdminViewModel admin, string name) => admin.GroupList.SelectedGroup!.Name = name;
 
     [AvaloniaFact]
     public void Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert()
@@ -65,24 +65,24 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var admin = vm.AdminPage!;
         Assert.False(admin.HasAnyChanges);
 
-        admin.SelectedGroup = admin.Groups.First(g => g.IsEditable);
-        var name = admin.SelectedGroup.Name;
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
+        var name = admin.GroupList.SelectedGroup.Name;
         Rename(admin, name + "2");
-        Assert.True(admin.GroupsPlace.HasChanges());
+        Assert.True(admin.GroupList.Place.HasChanges());
         Rename(admin, name);
-        Assert.False(admin.GroupsPlace.HasChanges());
-        await admin.NewGroupCommand.ExecuteAsync(null);
-        Assert.True(admin.GroupsPlace.HasChanges()); // a new group is unsaved by itself
-        admin.GroupsPlace.Discard();
-        Assert.False(admin.GroupsPlace.HasChanges());
+        Assert.False(admin.GroupList.Place.HasChanges());
+        await admin.GroupList.NewGroupCommand.ExecuteAsync(null);
+        Assert.True(admin.GroupList.Place.HasChanges()); // a new group is unsaved by itself
+        admin.GroupList.Place.Discard();
+        Assert.False(admin.GroupList.Place.HasChanges());
 
         admin.ServerSettings.Name = "Neu";
-        Assert.True(admin.ServerPlace.HasChanges());
-        admin.ServerPlace.Discard();
-        Assert.False(admin.ServerPlace.HasChanges());
+        Assert.True(admin.ServerSettings.Place.HasChanges());
+        admin.ServerSettings.Place.Discard();
+        Assert.False(admin.ServerSettings.Place.HasChanges());
 
         admin.Links.UnlinkAll();
-        Assert.True(admin.LinksPlace.HasChanges());
+        Assert.True(admin.Links.Place.HasChanges());
         Assert.Equal(0, asked);
     }
 
@@ -150,7 +150,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
 
         // a group the server refuses: the page stays with its error
         var admin = vm.AdminPage!;
-        admin.SelectedGroup = admin.Groups.First(g => g.IsEditable);
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
         Rename(admin, "Umbenannt");
         answers.Enqueue(LeaveChoice.Save);
         var leaving = vm.ClosePageAsync();
@@ -158,7 +158,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         vm.Server!.Apply(new Error(update.RequestId, ReasonCodes.PermissionDenied));
         await leaving;
         Assert.True(vm.IsAdminPage);
-        Assert.True(admin.GroupsPlace.HasChanges());
+        Assert.True(admin.GroupList.Place.HasChanges());
 
         // confirmed by the server's groups: the page goes
         answers.Enqueue(LeaveChoice.Save);
@@ -247,25 +247,25 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         main.Show();
         await vm.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
-        var list = Page(main).FindControl<ListBox>("GroupList")!;
+        var list = Page(main).FindControl<ListBox>("GroupRows")!;
         var admin = vm.AdminPage!;
-        var edited = admin.Groups.First(g => g.IsEditable);
+        var edited = admin.GroupList.Groups.First(g => g.IsEditable);
         list.SelectedItem = edited;
         Dispatcher.UIThread.RunJobs();
         Rename(admin, "Umbenannt");
 
         answers.Enqueue(LeaveChoice.Stay);
-        list.SelectedItem = admin.Groups.First(g => g != edited);
+        list.SelectedItem = admin.GroupList.Groups.First(g => g != edited);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(1, asked);
-        Assert.Same(edited, admin.SelectedGroup);
+        Assert.Same(edited, admin.GroupList.SelectedGroup);
         Assert.Equal("Umbenannt", edited.Name);
 
         answers.Enqueue(LeaveChoice.Discard);
-        var other = admin.Groups.First(g => g != edited);
+        var other = admin.GroupList.Groups.First(g => g != edited);
         list.SelectedItem = other;
         Dispatcher.UIThread.RunJobs();
-        Assert.Same(other, admin.SelectedGroup);
+        Assert.Same(other, admin.GroupList.SelectedGroup);
         Assert.NotEqual("Umbenannt", edited.Name); // back to the server's name
         main.Close();
     }
@@ -279,21 +279,21 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         main.Show();
         await vm.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
-        var list = Page(main).FindControl<ListBox>("GroupList")!;
+        var list = Page(main).FindControl<ListBox>("GroupRows")!;
         var admin = vm.AdminPage!;
-        var edited = admin.Groups.First(g => g.IsEditable);
+        var edited = admin.GroupList.Groups.First(g => g.IsEditable);
         list.SelectedItem = edited;
         Dispatcher.UIThread.RunJobs();
         Rename(admin, "Umbenannt");
 
         answers.Enqueue(LeaveChoice.Save);
-        var other = admin.Groups.First(g => g != edited);
+        var other = admin.GroupList.Groups.First(g => g != edited);
         list.SelectedItem = other;
         Dispatcher.UIThread.RunJobs();
         var update = sent.OfType<UpdateGroup>().Single();
         vm.Server!.Apply(new GroupsChanged(vm.Server.Mirror.Groups.Select(g => g.Id == update.GroupId ? g with { Name = update.Name } : g).ToList()));
         Dispatcher.UIThread.RunJobs();
-        Assert.Equal(other.Id, admin.SelectedGroup!.Id);
+        Assert.Equal(other.Id, admin.GroupList.SelectedGroup!.Id);
         Assert.False(admin.HasAnyChanges);
         main.Close();
     }
@@ -305,12 +305,30 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         await vm.OpenAdminAsync();
         var admin = vm.AdminPage!;
-        admin.SelectedGroup = admin.Groups.First(g => g.IsEditable);
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
         Rename(admin, "Umbenannt");
         var self = vm.Server!.Mirror.Users[vm.Server.Mirror.SelfId];
         vm.Server.Apply(new UserUpdated(self with { SelfMuted = !self.SelfMuted })); // something else changes
-        Assert.Equal("Umbenannt", admin.SelectedGroup!.Name);
-        Assert.True(admin.GroupsPlace.HasChanges());
+        Assert.Equal("Umbenannt", admin.GroupList.SelectedGroup!.Name);
+        Assert.True(admin.GroupList.Place.HasChanges());
+    }
+
+    /// <summary>The page hands its leave question to the groups tab: a new group waits for the answer for the edited group.</summary>
+    [AvaloniaFact]
+    public async Task NewGroup_GroupEditedAndUserStays_AsksOnceAddsNoDraftAndKeepsTheEdit()
+    {
+        var vm = Main();
+        await vm.OpenAdminAsync();
+        var admin = vm.AdminPage!;
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
+        Rename(admin, "Umbenannt");
+        answers.Enqueue(LeaveChoice.Stay);
+
+        await HangGuard.Bound(admin.GroupList.NewGroupCommand.ExecuteAsync(null));
+
+        Assert.Equal(1, asked);
+        Assert.DoesNotContain(admin.GroupList.Groups, g => g.Id is null);
+        Assert.Equal("Umbenannt", admin.GroupList.SelectedGroup!.Name);
     }
 
     /// <summary>Found in review: the server keeps line breaks as LF and a trimmed name; a saved edit counts as saved, and untouched fields follow another admin.</summary>
@@ -327,9 +345,9 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
 
         admin.ServerSettings.Name = "Neu ";
         admin.ServerSettings.WelcomeText = "Zeile 1" + (char)13 + (char)10 + "Zeile 2";
-        Assert.True(admin.ServerPlace.HasChanges());
+        Assert.True(admin.ServerSettings.Place.HasChanges());
         vm.Server.Apply(new ServerSettingsChanged(vm.Server.Mirror.Settings with { Name = "Neu", WelcomeText = "Zeile 1" + (char)10 + "Zeile 2" }));
-        Assert.False(admin.ServerPlace.HasChanges());
+        Assert.False(admin.ServerSettings.Place.HasChanges());
     }
 
     /// <summary>Found in review: sliders turn floats into percent and back, which is not exact; opening is no change.</summary>
@@ -376,7 +394,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Assert.Equal("geheim", admin.ServerSettings.NewPassword);
         Assert.Equal("Mein Name", admin.ServerSettings.Name); // the edit stays
         Assert.Equal("Neu von jemand anderem", admin.ServerSettings.WelcomeText); // the untouched field follows
-        Assert.True(admin.ServerPlace.HasChanges());
+        Assert.True(admin.ServerSettings.Place.HasChanges());
     }
 
     /// <summary>Found in the second review: an edited row built for rights the user no longer has is rebuilt for the new ones.</summary>
@@ -386,14 +404,14 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         await vm.OpenAdminAsync();
         var admin = vm.AdminPage!;
-        admin.SelectedGroup = admin.Groups.First(g => g.IsEditable && g.Id != WellKnownGroups.Admin);
-        var id = admin.SelectedGroup.Id;
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable && g.Id != WellKnownGroups.Admin);
+        var id = admin.GroupList.SelectedGroup.Id;
         Rename(admin, "Umbenannt");
         var self = vm.Server!.Mirror.Users[vm.Server.Mirror.SelfId];
         vm.Server.Apply(new UserUpdated(self with { Permissions = Permission.All & ~Permission.GroupsManage }));
-        var row = admin.Groups.Single(g => g.Id == id);
+        var row = admin.GroupList.Groups.Single(g => g.Id == id);
         Assert.True(row.IsReadOnly);
-        Assert.False(admin.GroupsPlace.HasChanges()); // nothing that could still be saved
+        Assert.False(admin.GroupList.Place.HasChanges()); // nothing that could still be saved
     }
 
     /// <summary>Found in the third review: an edited group follows another admin in what the user did not touch, so a save keeps both.</summary>
@@ -403,16 +421,16 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         await vm.OpenAdminAsync();
         var admin = vm.AdminPage!;
-        var row = admin.Groups.First(g => g.IsEditable && g.Id == WellKnownGroups.Guest);
-        admin.SelectedGroup = row;
+        var row = admin.GroupList.Groups.First(g => g.IsEditable && g.Id == WellKnownGroups.Guest);
+        admin.GroupList.SelectedGroup = row;
         Rename(admin, "Besucher");
         var guest = vm.Server!.Mirror.Groups.Single(g => g.Id == WellKnownGroups.Guest);
         vm.Server.Apply(new GroupsChanged(vm.Server.Mirror.Groups
             .Select(g => g.Id == WellKnownGroups.Guest ? g with { Permissions = g.Permissions | Permission.ChatServer } : g).ToList()));
-        var shown = admin.Groups.Single(g => g.Id == WellKnownGroups.Guest);
+        var shown = admin.GroupList.Groups.Single(g => g.Id == WellKnownGroups.Guest);
         Assert.Equal("Besucher", shown.Name); // the edit stays
         Assert.True(shown.Permissions.Has(Permission.ChatServer)); // the other admin s change is shown too
-        Assert.True(admin.GroupsPlace.HasChanges());
+        Assert.True(admin.GroupList.Place.HasChanges());
         Assert.Equal(guest.Permissions | Permission.ChatServer, shown.Permissions);
     }
 }

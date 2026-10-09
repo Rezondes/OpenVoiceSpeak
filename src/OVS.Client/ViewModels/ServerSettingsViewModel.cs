@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.ServerInfo;
@@ -42,7 +43,11 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
         seenSettings = server.Mirror.Settings;
         hasPassword = server.Mirror.Settings.HasPassword;
         LoadLimits();
+        Place = AdminPlace.Create(() => HasChanges, null, Send, Reload);
     }
+
+    /// <summary>Package 114: the place of the server tab: the settings are sent with one request (nothing else saves them), or loaded again.</summary>
+    internal AdminPlace Place { get; }
 
     /// <summary>Package 76: the settings are shown and changed with ServerConfig. The page raises the change notification for the bound card (<c>AdminViewModel.ShowServerSettings</c>).</summary>
     internal bool ShowServerSettings => server.SelfPermissions.Has(Permission.ServerConfig);

@@ -399,8 +399,8 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         vm.TransmitText = "";
         _ = vm.OpenAdminAsync();
         MotionWait.Settle(300);
-        vm.AdminPage!.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
-        vm.AdminPage.GroupSave.Start();
+        vm.AdminPage!.GroupList.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
+        vm.AdminPage.GroupList.GroupSave.Start();
         MotionWait.Settle(400);
         MotionWait.Eventually(() => Assert.Contains(main.GetVisualDescendants().OfType<BusySpinner>(),
             b => b.Classes.Contains(BusySpinner.TurningClass) && b.FindAncestorOfType<AdminView>() is not null));

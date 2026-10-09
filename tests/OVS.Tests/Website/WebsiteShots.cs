@@ -203,7 +203,7 @@ public sealed class WebsiteShots
         using (scene)
         {
             var admin = scene.Vm.AdminPage!;
-            admin.SelectedGroup = admin.Groups.Single(g => g.Id == OVS.Shared.Permissions.WellKnownGroups.Admin);
+            admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(g => g.Id == OVS.Shared.Permissions.WellKnownGroups.Admin);
             ShotWriter.Settle(500);
             Shows(scene.Window, Strings.Ui_AdminGroupFixed);
             scene.Save(Folder, "admin-groups");

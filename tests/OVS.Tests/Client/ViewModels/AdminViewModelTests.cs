@@ -58,7 +58,7 @@ public class AdminViewModelTests
         bool Assignable(P group) => selfPerms.Has(P.GroupsAssign) && group.IsSubsetOf(selfPerms);
     }
 
-    static GroupEditViewModel Group(AdminViewModel vm, string name) => vm.Groups.Single(g => g.Name == name);
+    static GroupEditViewModel Group(AdminViewModel vm, string name) => vm.GroupList.Groups.Single(g => g.Name == name);
 
     /// <summary>
     /// Waits until that many user lists were asked for, at most 10 s by the clock: a request held back by the one-second
@@ -100,19 +100,19 @@ public class AdminViewModelTests
     public void GroupButtons_DisabledForProtectedAndStrongerGroups()
     {
         var (vm, _, _) = Create(P.GroupsManage | P.Speak);
-        vm.SelectedGroup = Group(vm, "Admin");
-        Assert.False(vm.SaveGroupCommand.CanExecute(null));
-        Assert.False(vm.DeleteGroupCommand.CanExecute(null));
+        vm.GroupList.SelectedGroup = Group(vm, "Admin");
+        Assert.False(vm.GroupList.SaveGroupCommand.CanExecute(null));
+        Assert.False(vm.GroupList.DeleteGroupCommand.CanExecute(null));
 
-        vm.SelectedGroup = Group(vm, "Gast");
-        Assert.True(vm.SaveGroupCommand.CanExecute(null));
-        Assert.False(vm.DeleteGroupCommand.CanExecute(null));
+        vm.GroupList.SelectedGroup = Group(vm, "Gast");
+        Assert.True(vm.GroupList.SaveGroupCommand.CanExecute(null));
+        Assert.False(vm.GroupList.DeleteGroupCommand.CanExecute(null));
 
         // Moderator can kick, the actor cannot: not editable, not deletable
-        vm.SelectedGroup = Group(vm, "Moderator");
-        Assert.True(vm.SelectedGroup.IsReadOnly);
-        Assert.False(vm.SaveGroupCommand.CanExecute(null));
-        Assert.False(vm.DeleteGroupCommand.CanExecute(null));
+        vm.GroupList.SelectedGroup = Group(vm, "Moderator");
+        Assert.True(vm.GroupList.SelectedGroup.IsReadOnly);
+        Assert.False(vm.GroupList.SaveGroupCommand.CanExecute(null));
+        Assert.False(vm.GroupList.DeleteGroupCommand.CanExecute(null));
     }
 
     [Fact]
@@ -145,33 +145,33 @@ public class AdminViewModelTests
     public void GroupButtons_ByRight()
     {
         var (view, _, _) = Create(P.GroupsView | P.Speak);
-        view.SelectedGroup = Group(view, "Gast");
-        Assert.False(view.NewGroupCommand.CanExecute(null));
-        Assert.False(view.SaveGroupCommand.CanExecute(null));
-        Assert.False(view.DeleteGroupCommand.CanExecute(null));
-        Assert.False(view.MoveGroupDownCommand.CanExecute(null));
-        Assert.True(view.SelectedGroup.IsReadOnly);
-        Assert.All(view.SelectedGroup.Toggles, t => Assert.False(t.IsEnabled));
+        view.GroupList.SelectedGroup = Group(view, "Gast");
+        Assert.False(view.GroupList.NewGroupCommand.CanExecute(null));
+        Assert.False(view.GroupList.SaveGroupCommand.CanExecute(null));
+        Assert.False(view.GroupList.DeleteGroupCommand.CanExecute(null));
+        Assert.False(view.GroupList.MoveGroupDownCommand.CanExecute(null));
+        Assert.True(view.GroupList.SelectedGroup.IsReadOnly);
+        Assert.All(view.GroupList.SelectedGroup.Toggles, t => Assert.False(t.IsEnabled));
 
         var (create, _, _) = Create(P.GroupsView | P.GroupsCreate | P.Speak);
-        Assert.True(create.NewGroupCommand.CanExecute(null));
-        create.SelectedGroup = Group(create, "Gast");
-        Assert.False(create.SaveGroupCommand.CanExecute(null));
-        create.NewGroupCommand.Execute(null); // a new group can be saved (created) and dropped again
-        Assert.True(create.SaveGroupCommand.CanExecute(null));
-        Assert.True(create.DeleteGroupCommand.CanExecute(null));
+        Assert.True(create.GroupList.NewGroupCommand.CanExecute(null));
+        create.GroupList.SelectedGroup = Group(create, "Gast");
+        Assert.False(create.GroupList.SaveGroupCommand.CanExecute(null));
+        create.GroupList.NewGroupCommand.Execute(null); // a new group can be saved (created) and dropped again
+        Assert.True(create.GroupList.SaveGroupCommand.CanExecute(null));
+        Assert.True(create.GroupList.DeleteGroupCommand.CanExecute(null));
 
         var (edit, _, _) = Create(P.GroupsView | P.GroupsManage | P.Speak);
-        edit.SelectedGroup = Group(edit, "Gast");
-        Assert.False(edit.NewGroupCommand.CanExecute(null));
-        Assert.True(edit.SaveGroupCommand.CanExecute(null));
-        Assert.True(edit.MoveGroupDownCommand.CanExecute(null));
-        Assert.False(edit.DeleteGroupCommand.CanExecute(null));
+        edit.GroupList.SelectedGroup = Group(edit, "Gast");
+        Assert.False(edit.GroupList.NewGroupCommand.CanExecute(null));
+        Assert.True(edit.GroupList.SaveGroupCommand.CanExecute(null));
+        Assert.True(edit.GroupList.MoveGroupDownCommand.CanExecute(null));
+        Assert.False(edit.GroupList.DeleteGroupCommand.CanExecute(null));
 
         var (delete, _, _) = Create(P.GroupsView | P.GroupsDelete | P.Speak | P.UserKick);
-        delete.SelectedGroup = Group(delete, "Moderator");
-        Assert.True(delete.DeleteGroupCommand.CanExecute(null));
-        Assert.False(delete.SaveGroupCommand.CanExecute(null));
+        delete.GroupList.SelectedGroup = Group(delete, "Moderator");
+        Assert.True(delete.GroupList.DeleteGroupCommand.CanExecute(null));
+        Assert.False(delete.GroupList.SaveGroupCommand.CanExecute(null));
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public class AdminViewModelTests
     public void GroupEditor_ListsNewRights(string culture, string users, string bans, string groups, string create, string delete,
         string userDelete, string manage, string ban, string bypass)
     {
-        var labels = TestCulture.With(culture, () => Create(P.All).Admin.Groups.First().Toggles.ToDictionary(t => t.Permission, t => t.Label));
+        var labels = TestCulture.With(culture, () => Create(P.All).Admin.GroupList.Groups.First().Toggles.ToDictionary(t => t.Permission, t => t.Label));
         var single = Enum.GetValues<P>().Where(p => p != P.None && ((int)p & ((int)p - 1)) == 0).ToList();
         Assert.Equal(single.Order(), labels.Keys.Order());
         Assert.Equal(labels.Count, labels.Values.Distinct().Count());
@@ -662,10 +662,10 @@ public class AdminViewModelTests
     public async Task NewGroup_SaveSendsCreate()
     {
         var (vm, _, sent) = Create(P.All);
-        vm.NewGroupCommand.Execute(null);
-        vm.SelectedGroup!.Name = "Team";
-        vm.SelectedGroup.Toggles.Single(t => t.Permission == P.SpeakLinked).IsChecked = true;
-        await vm.SaveGroupCommand.ExecuteAsync(null);
+        vm.GroupList.NewGroupCommand.Execute(null);
+        vm.GroupList.SelectedGroup!.Name = "Team";
+        vm.GroupList.SelectedGroup.Toggles.Single(t => t.Permission == P.SpeakLinked).IsChecked = true;
+        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
         Assert.Equal(new CreateGroup("Team", P.Speak | P.SpeakLinked), sent[^1] with { RequestId = null });
     }
 
@@ -719,15 +719,15 @@ public class AdminViewModelTests
     public async Task MoveGroupUpDown_SendsFullOrder()
     {
         var (vm, server, sent) = Create(P.All);
-        vm.SelectedGroup = Group(vm, "Gast");
-        Assert.False(vm.MoveGroupUpCommand.CanExecute(null));
-        await vm.MoveGroupDownCommand.ExecuteAsync(null);
+        vm.GroupList.SelectedGroup = Group(vm, "Gast");
+        Assert.False(vm.GroupList.MoveGroupUpCommand.CanExecute(null));
+        await HangGuard.Bound(vm.GroupList.MoveGroupDownCommand.ExecuteAsync(null));
         Assert.Equal(new[] { ModGroup, WellKnownGroups.Guest, WellKnownGroups.Admin }, ((ReorderGroups)sent[^1]).GroupIds);
         server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied)); // Package 98: refused, the server's order is back
 
-        vm.SelectedGroup = Group(vm, "Admin");
-        Assert.False(vm.MoveGroupDownCommand.CanExecute(null));
-        await vm.MoveGroupUpCommand.ExecuteAsync(null);
+        vm.GroupList.SelectedGroup = Group(vm, "Admin");
+        Assert.False(vm.GroupList.MoveGroupDownCommand.CanExecute(null));
+        await HangGuard.Bound(vm.GroupList.MoveGroupUpCommand.ExecuteAsync(null));
         Assert.Equal(new[] { WellKnownGroups.Guest, WellKnownGroups.Admin, ModGroup }, ((ReorderGroups)sent[^1]).GroupIds);
     }
 
@@ -735,13 +735,13 @@ public class AdminViewModelTests
     public async Task DropGroup_SendsOrder_IgnoresUnsaved()
     {
         var (vm, _, sent) = Create(P.All);
-        await vm.MoveGroupAsync(Group(vm, "Admin"), Group(vm, "Gast"), after: false);
+        await HangGuard.Bound(vm.GroupList.MoveGroupAsync(Group(vm, "Admin"), Group(vm, "Gast"), after: false));
         Assert.Equal(new[] { WellKnownGroups.Admin, WellKnownGroups.Guest, ModGroup }, ((ReorderGroups)sent[^1]).GroupIds);
 
-        vm.NewGroupCommand.Execute(null); // not saved yet: cannot be moved, is not in the order
+        vm.GroupList.NewGroupCommand.Execute(null); // not saved yet: cannot be moved, is not in the order
         var count = sent.Count;
-        await vm.MoveGroupAsync(vm.SelectedGroup!, Group(vm, "Gast"), after: false);
-        Assert.False(vm.MoveGroupUpCommand.CanExecute(null));
+        await HangGuard.Bound(vm.GroupList.MoveGroupAsync(vm.GroupList.SelectedGroup!, Group(vm, "Gast"), after: false));
+        Assert.False(vm.GroupList.MoveGroupUpCommand.CanExecute(null));
         Assert.Equal(count, sent.Count);
     }
 
@@ -1272,15 +1272,15 @@ public class AdminViewModelTests
     public async Task SaveGroup_InvalidName_ErrorNothingSent()
     {
         var (vm, _, sent) = Create(P.All);
-        vm.NewGroupCommand.Execute(null);
-        vm.SelectedGroup!.Name = "Team" + (char)0x202E;
-        await vm.SaveGroupCommand.ExecuteAsync(null);
-        Assert.Equal(Strings.Dlg_NameInvalid, vm.GroupError);
+        vm.GroupList.NewGroupCommand.Execute(null);
+        vm.GroupList.SelectedGroup!.Name = "Team" + (char)0x202E;
+        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
+        Assert.Equal(Strings.Dlg_NameInvalid, vm.GroupList.GroupError);
         Assert.DoesNotContain(sent, r => r is CreateGroup);
 
-        vm.SelectedGroup!.Name = "Team";
-        await vm.SaveGroupCommand.ExecuteAsync(null);
-        Assert.Null(vm.GroupError);
+        vm.GroupList.SelectedGroup!.Name = "Team";
+        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
+        Assert.Null(vm.GroupList.GroupError);
         Assert.IsType<CreateGroup>(sent[^1]);
     }
 
@@ -1404,30 +1404,30 @@ public class AdminViewModelTests
     {
         var (vm, server, sent) = Create(P.All);
         var time = (ManualTimeProvider)server.Time;
-        vm.NewGroupCommand.Execute(null);
-        vm.SelectedGroup!.Name = "Team";
-        await vm.SaveGroupCommand.ExecuteAsync(null);
+        vm.GroupList.NewGroupCommand.Execute(null);
+        vm.GroupList.SelectedGroup!.Name = "Team";
+        await HangGuard.Bound(vm.GroupList.SaveGroupCommand.ExecuteAsync(null));
         Assert.IsType<CreateGroup>(sent[^1]);
-        Assert.Contains(vm.Groups, g => g.Id is null && g.Name == "Team"); // stays until the server has it
+        Assert.Contains(vm.GroupList.Groups, g => g.Id is null && g.Name == "Team"); // stays until the server has it
         time.Advance(ShowAfter);
-        Assert.True(vm.GroupSave.IsBusy);
+        Assert.True(vm.GroupList.GroupSave.IsBusy);
         var team = Guid.NewGuid();
         server.Apply(new GroupsChanged([.. server.Mirror.Groups, new GroupInfo(team, "Team", P.Speak, true)]));
-        Assert.False(vm.GroupSave.IsBusy);
-        Assert.DoesNotContain(vm.Groups, g => g.Id is null);
-        Assert.Equal(team, vm.SelectedGroup?.Id);
+        Assert.False(vm.GroupList.GroupSave.IsBusy);
+        Assert.DoesNotContain(vm.GroupList.Groups, g => g.Id is null);
+        Assert.Equal(team, vm.GroupList.SelectedGroup?.Id);
 
         // reorder: the new order at once, back when refused
-        Guid?[] Order() => vm.Groups.Select(g => g.Id).ToArray();
+        Guid?[] Order() => vm.GroupList.Groups.Select(g => g.Id).ToArray();
         var before = Order();
-        await vm.MoveGroupAsync(vm.Groups.Single(g => g.Id == team), vm.Groups[0], after: false);
+        await HangGuard.Bound(vm.GroupList.MoveGroupAsync(vm.GroupList.Groups.Single(g => g.Id == team), vm.GroupList.Groups[0], after: false));
         var reorder = Assert.IsType<ReorderGroups>(sent[^1]);
         Assert.Equal(team, Order()[0]);
         time.Advance(ShowAfter);
-        Assert.True(vm.GroupReorder.IsBusy);
+        Assert.True(vm.GroupList.GroupReorder.IsBusy);
         server.Apply(new Error(reorder.RequestId, ReasonCodes.PermissionDenied));
         Assert.Equal(before, Order());
-        Assert.False(vm.GroupReorder.IsBusy);
+        Assert.False(vm.GroupList.GroupReorder.IsBusy);
     }
 
     /// <summary>Package 102: a lifted ban folds away in the real list, the count is right at once.</summary>
@@ -1454,29 +1454,29 @@ public class AdminViewModelTests
         var (view, server, _) = Create(P.GroupsView | P.GroupsCreate | P.Speak);
         server.Post = a => a();
         server.Leave.Delay = TimeSpan.FromMilliseconds(220);
-        view.NewGroupCommand.Execute(null);
-        var fresh = view.SelectedGroup!;
+        view.GroupList.NewGroupCommand.Execute(null);
+        var fresh = view.GroupList.SelectedGroup!;
         Assert.Null(fresh.Id);
-        view.DeleteGroupCommand.Execute(null);
-        Assert.Null(view.SelectedGroup);
-        Assert.Contains(fresh, view.Groups); // still there, folding away
-        Assert.True(CollectionSync.IsLeaving(view.Groups, fresh));
-        Assert.DoesNotContain(fresh, view.Groups.Live());
+        view.GroupList.DeleteGroupCommand.Execute(null);
+        Assert.Null(view.GroupList.SelectedGroup);
+        Assert.Contains(fresh, view.GroupList.Groups); // still there, folding away
+        Assert.True(CollectionSync.IsLeaving(view.GroupList.Groups, fresh));
+        Assert.DoesNotContain(fresh, view.GroupList.Groups.Live());
 
         server.Apply(new GroupsChanged(server.Mirror.Groups.ToList())); // a rebuild meanwhile does not bring it back
-        Assert.DoesNotContain(fresh, view.Groups.Live());
+        Assert.DoesNotContain(fresh, view.GroupList.Groups.Live());
         ((ManualTimeProvider)server.Time).Advance(TimeSpan.FromMilliseconds(220));
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (view.Groups.Contains(fresh) && watch.ElapsedMilliseconds < 5000) Thread.Sleep(10); // the removal runs on the pool
-        Assert.DoesNotContain(fresh, view.Groups);
-        Assert.Equal(["Gast", "Moderator", "Admin"], view.Groups.Select(g => g.Name));
+        while (view.GroupList.Groups.Contains(fresh) && watch.ElapsedMilliseconds < 5000) Thread.Sleep(10); // the removal runs on the pool
+        Assert.DoesNotContain(fresh, view.GroupList.Groups);
+        Assert.Equal(["Gast", "Moderator", "Admin"], view.GroupList.Groups.Select(g => g.Name));
 
         // no delay (the simplified display): gone at once
         server.Leave.Delay = TimeSpan.Zero;
-        view.NewGroupCommand.Execute(null);
-        var second = view.SelectedGroup!;
-        view.DeleteGroupCommand.Execute(null);
-        Assert.DoesNotContain(second, view.Groups);
-        Assert.Null(view.SelectedGroup);
+        view.GroupList.NewGroupCommand.Execute(null);
+        var second = view.GroupList.SelectedGroup!;
+        view.GroupList.DeleteGroupCommand.Execute(null);
+        Assert.DoesNotContain(second, view.GroupList.Groups);
+        Assert.Null(view.GroupList.SelectedGroup);
     }
 }
