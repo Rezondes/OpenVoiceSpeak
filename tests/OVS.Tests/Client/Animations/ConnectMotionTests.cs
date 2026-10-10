@@ -44,7 +44,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         var main = Open(out var vm);
         var logo = main.GetVisualDescendants().OfType<LogoMark>().First(l => l.Bounds.Width >= 64);
         var bar = main.GetVisualDescendants().OfType<ProgressBar>().First(p => p.Classes.Contains("connect"));
-        vm.IsConnecting = true;
+        vm.Connection.IsConnecting = true;
         // looked at after every frame until it shows: under load a single look can land where the loop is at rest
         bool breathes = false;
         MotionWait.Until(() => breathes |= (logo.RenderTransform?.Value.M11 ?? 1) > 1.001 || logo.Opacity < 0.999);
@@ -58,7 +58,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         var swings = MotionWait.Record(card, OffsetX);
         var fades = MotionWait.Record(status, v => v.Opacity);
         vm.Status = "Verbindung fehlgeschlagen";
-        vm.IsConnecting = false; // failed: no server
+        vm.Connection.IsConnecting = false; // failed: no server
         MotionWait.Until(() => swings.Any(x => Math.Abs(x) > 2) && (OffsetX(card), status.Opacity) == (0d, 1d), atLeast: 450);
         double shook = swings.Select(x => Math.Abs(x)).DefaultIfEmpty(0).Max(), faded = fades.DefaultIfEmpty(1).Min();
         Assert.True(shook > 2, $"the start card shakes ({shook})");
@@ -168,10 +168,10 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     public void Simplified_Instant()
     {
         var main = Open(out var vm, DisplayMode.Simplified);
-        vm.IsConnecting = true;
+        vm.Connection.IsConnecting = true;
         Frame();
         Assert.Equal(1, main.GetVisualDescendants().OfType<LogoMark>().First(l => l.Bounds.Width >= 64).RenderTransform?.Value.M11 ?? 1);
-        vm.IsConnecting = false;
+        vm.Connection.IsConnecting = false;
         MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         Frame();
         Assert.False(Named<Border>(main, "PageGhost").IsVisible);

@@ -76,7 +76,7 @@ Ist der automatische Neustart an (Verwaltung, Server, oder Startwert `OVS_AUTO_R
 Die Uhrzeit gilt in der Zeitzone aus `TZ`. Die Compose-Datei setzt `Europe/Berlin`, ohne `TZ` gilt UTC.
 Beim Neustart liest der Server Konfiguration, Daten und Zertifikat neu ein und beginnt neue Logdateien.
 
-Verbundene Clients bekommen die Meldung "Der Server startet neu" und verbinden sich nach wenigen Sekunden selbst wieder über "Verbinden ...". Ein automatisches Wiederverbinden gibt es nicht.
+Verbundene Clients bekommen die Meldung "Der Server startet neu" und verbinden sich selbst wieder: Nach einem Verbindungsverlust, einem Server-Stopp oder einem Neustart versucht der Client es bis zu fünfmal (nach 1, 2, 4, 8 und 16 Sekunden), die Startseite zeigt den Countdown und "Abbrechen". Bei Erfolg ist der Client wieder im letzten Channel, mit Stummschaltung und Taubschaltung wie vorher. Nach einem Rauswurf, einem Bann, einem falschen Passwort oder dem eigenen Trennen verbindet er sich nicht wieder.
 
 ### Logs
 

@@ -1,4 +1,3 @@
-using System.Net;
 using OVS.Client.Net;
 
 namespace OVS.Client.Services;
@@ -28,9 +27,6 @@ internal sealed class VoiceLink
         this.time = time;
         this.log = log;
     }
-
-    /// <summary>Package 126: tests send UDP through a lossy relay instead of to the server.</summary>
-    internal IPEndPoint? Relay { get; set; }
 
     /// <summary>The current voice client, null while there is none; tests also wait on it.</summary>
     internal VoiceClient? Client { get; private set; }

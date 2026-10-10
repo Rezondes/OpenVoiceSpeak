@@ -206,9 +206,9 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var (server, ui, vm) = await ConnectAsync();
         try
         {
-            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.ConnectionTime)));
+            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Connection.ConnectionTime)));
             Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Server?.Time)));
-            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.VoiceLink.Client?.Time)));
+            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Connection.VoiceLink.Client?.Time)));
         }
         finally
         {
@@ -225,7 +225,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         vm.ConfirmTofu = _ => Task.FromResult(true);
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
+            await vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
             return null;
         });
         return (server, ui, vm);

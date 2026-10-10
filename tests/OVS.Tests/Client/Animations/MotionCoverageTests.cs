@@ -222,7 +222,7 @@ public sealed class MotionCoverageTests
         var vm = w.Vm;
         var main = w.Main;
         var text = new StringBuilder();
-        text.AppendLine($"page={vm.Page} connected={vm.IsConnected} connecting={vm.IsConnecting} status={vm.Status}");
+        text.AppendLine($"page={vm.Page} connected={vm.IsConnected} connecting={vm.Connection.IsConnecting} status={vm.Status}");
         var card = (Border)main.Overlay.Children[1];
         text.AppendLine($"dialog={main.Overlay.IsOpen}/{main.Overlay.IsVisible} card={card.Opacity:F2}/{card.RenderTransform?.Value.M11 ?? 1:F2} drawer={main.Classes.Contains("drawer")}");
         text.AppendLine($"bookmarks={string.Join(",", vm.Bookmarks.Items.Select(tile => tile.Name))}");
@@ -394,10 +394,10 @@ public sealed class MotionCoverageTests
             yield return s;
         yield return new("connect, and it fails", x =>
         {
-            x.Vm.IsConnecting = true;
+            x.Vm.Connection.IsConnecting = true;
             Watch(150);
             x.Vm.Status = "Verbindung fehlgeschlagen";
-            x.Vm.IsConnecting = false;
+            x.Vm.Connection.IsConnecting = false;
         });
         yield return new("add a bookmark", x =>
         {

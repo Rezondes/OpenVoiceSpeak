@@ -104,7 +104,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Assert.True(vm.IsSettingsPage);
 
         // disconnecting keeps the settings page: nothing of it is lost, nothing is asked
-        await vm.DisconnectCommand.ExecuteAsync(null);
+        await vm.Connection.DisconnectCommand.ExecuteAsync(null);
         Assert.Equal(2, asked);
         Assert.Null(vm.Server);
     }
@@ -116,10 +116,25 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         await vm.OpenAdminAsync();
         vm.AdminPage!.ServerSettings.Name = "Neu";
         answers.Enqueue(LeaveChoice.Stay);
-        await vm.DisconnectCommand.ExecuteAsync(null);
+        await vm.Connection.DisconnectCommand.ExecuteAsync(null);
         Assert.Equal(1, asked);
         Assert.NotNull(vm.Server);
         Assert.True(vm.IsAdminPage);
+    }
+
+    [AvaloniaFact]
+    public async Task ConnectAsync_AdminHasChangesAndUserStays_AsksOnceAndKeepsTheShownServer()
+    {
+        var mainViewModel = Main();
+        var shown = mainViewModel.Server;
+        await mainViewModel.OpenAdminAsync();
+        mainViewModel.AdminPage!.ServerSettings.Name = "Neu";
+        answers.Enqueue(LeaveChoice.Stay);
+
+        await mainViewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", 1, "anna", null, SaveBookmark: false));
+
+        Assert.Equal(1, asked);
+        Assert.Same(shown, mainViewModel.Server);
     }
 
     [AvaloniaFact]

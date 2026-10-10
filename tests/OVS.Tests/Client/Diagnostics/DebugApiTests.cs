@@ -149,6 +149,26 @@ public sealed class DebugApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Disconnect_Connected_StateSaysNotConnected()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+
+        var state = await anna.Post("disconnect");
+
+        Assert.False(state.GetProperty("connected").GetBoolean());
+    }
+
+    [Fact]
+    public async Task State_ConnectedAndPinged_CarriesThePingText()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+
+        var state = await anna.Until(reported => reported.GetProperty("pingText").GetString()!.Length > 0);
+
+        Assert.StartsWith("Ping ", state.GetProperty("pingText").GetString());
+    }
+
     /// <summary>Package 110: a name two channels carry is refused, naming both ids; the id still works.</summary>
     [Fact]
     public async Task AmbiguousChannelName_Refused()

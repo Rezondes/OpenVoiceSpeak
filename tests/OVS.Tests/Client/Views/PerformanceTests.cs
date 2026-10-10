@@ -184,7 +184,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
         var vm = MainViewModelSetup.Create(dir, a => a());
         var server = FakeServers.Large();
         MainViewModelSetup.ShowServer(vm, server);
-        var iconTracker = vm.TrackServerIcon(server, "127.0.0.1", 1);
+        var iconTracker = vm.Connection.TrackServerIcon(server, "127.0.0.1", 1);
         int gains = vm.EngineSync.GainTableBuilds, iconChecks = iconTracker.Checks;
 
         server.Apply(new UserUpdated(server.Mirror.Users[5] with { SelfMuted = true }));

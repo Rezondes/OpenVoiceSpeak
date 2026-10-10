@@ -142,7 +142,7 @@ public sealed class DebugApi : IDisposable
                 await ConnectAsync(body);
                 return State();
             case "/disconnect":
-                await vm.DisconnectAsync();
+                await vm.Connection.DisconnectAsync();
                 return State();
             case "/ptt":
                 vm.Keys.Simulate(ptt: body.GetProperty("down").GetBoolean());
@@ -235,7 +235,7 @@ public sealed class DebugApi : IDisposable
         vm.ConfirmTofu = _ => Task.FromResult(trust);
         try
         {
-            await vm.ConnectAsync(new ConnectChoice(
+            await vm.Connection.ConnectAsync(new ConnectChoice(
                 Text(body, "host"),
                 Optional(body, "port")?.GetInt32() ?? ProtocolDefaults.Port,
                 Text(body, "nickname"),
@@ -258,7 +258,7 @@ public sealed class DebugApi : IDisposable
             Connected = s is not null,
             vm.TransmitText,
             vm.VoiceHint,
-            vm.PingText,
+            vm.Connection.PingText,
             Connection = new // Package 133: the figures of the signal icon and the connection details
             {
                 vm.Stats.Rating,

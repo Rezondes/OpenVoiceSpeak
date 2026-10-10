@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using OVS.Client.Dialogs;
 using OVS.Client.Net;
+using OVS.Client.Services;
 
 namespace OVS.Tests.TestSupport;
 
@@ -19,7 +20,7 @@ sealed class ConnectSeam(string profileDir, TimeProvider time)
     readonly Queue<Func<ConnectAttempt, Task<ClientConnection>>> scripted = [];
     Func<ConnectAttempt, Task<ClientConnection>>? fallback;
 
-    public Func<ConnectChoice, CancellationToken, Task<ClientConnection>> Connect => ConnectAsync;
+    public OpenConnection Connect => ConnectAsync;
 
     /// <summary>Every call so far, oldest first.</summary>
     public IReadOnlyList<ConnectAttempt> Attempts

@@ -142,7 +142,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var main = Open(360, null, out var vm);
         vm.Status = string.Format(Strings.Status_Reconnecting, 16);
-        vm.IsReconnecting = true;
+        vm.Connection.IsReconnecting = true;
         Dispatcher.UIThread.RunJobs();
         var status = main.FindControl<TextBlock>("StatusText")!;
         var cancel = main.FindControl<Button>("CancelReconnect")!;
@@ -237,7 +237,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var server = FakeServers.Admin();
         server.IsAdmin = admin; // not admin: "Admin-Token einlösen" joins the header
         var main = Open(360, server, out var vm);
-        vm.PingText = "23 ms";
+        vm.Connection.PingText = "23 ms";
         Dispatcher.UIThread.RunJobs();
 
         var buttons = new List<string> { Strings.Ui_AdminMenu, Strings.Ui_Disconnect };

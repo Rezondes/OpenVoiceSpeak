@@ -187,7 +187,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         PushFrameOf(mainViewModel.Audio.Mixer, 1);
         PushFrameOf(mainViewModel.Audio.Mixer, AudioEngine.SelfTestSpeaker);
 
-        await mainViewModel.DisconnectAsync();
+        await mainViewModel.Connection.DisconnectAsync();
 
         Assert.Equal(0, mainViewModel.Audio.Mixer.SpeakerCount);
     }
@@ -199,7 +199,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
         FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change makes the engine follow
 
-        await mainViewModel.DisconnectAsync();
+        await mainViewModel.Connection.DisconnectAsync();
 
         Assert.Equal(new EngineSwitches(Connected: false, SelfMuted: true, Deafened: false, HasSpeakLinked: false, ChannelMuted: false), ReadEngineSwitches(mainViewModel.Audio));
     }
@@ -215,7 +215,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         clock.Advance(TimeSpan.FromSeconds(4));
         mainViewModel.Audio.Loss.Report(lossy);
 
-        await mainViewModel.DisconnectAsync();
+        await mainViewModel.Connection.DisconnectAsync();
         clock.Advance(TimeSpan.FromSeconds(1));
         mainViewModel.Audio.Loss.Report(lossy);
 

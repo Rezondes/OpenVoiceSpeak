@@ -1,11 +1,6 @@
-using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Net;
-using System.Net.Sockets;
-using System.Security.Authentication;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Audio;
@@ -13,19 +8,12 @@ using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
-using OVS.Client.Exceptions;
 using OVS.Client.Input;
 using OVS.Client.Logging;
 using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.Services;
 using OVS.Client.Settings;
-using OVS.Shared.Exceptions;
-using OVS.Shared.Identity;
-using OVS.Shared.Protocol;
-using OVS.Shared.Protocol.Messages;
-using OVS.Shared.Protocol.Messages.Connection;
-using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Client.ViewModels;
 
@@ -35,13 +23,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly string storageDir;
     readonly Action<Action> post;
     readonly KnownServers known;
-    readonly Func<ConnectChoice, CancellationToken, Task<ClientConnection>> connect;
-    readonly ServerIconCache icons;
     readonly SoundLibrary soundLibrary;
     readonly VoiceHints hints; // Packages 34 and 131: why nobody hears the user, shown as VoiceHint on every tick
-    ClientConnection? connection;
-    /// <summary>Why the last connect attempt was refused, e.g. WrongPassword (Package 40).</summary>
-    string? lastRejection;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConnected))]
@@ -51,14 +34,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] ChatViewModel? chat;
 
     [ObservableProperty] string status = Strings.Status_NotConnected;
-    [ObservableProperty] bool isConnecting;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomePage), nameof(IsSettingsPage), nameof(IsAdminPage))]
     Page page = Page.Home;
     [ObservableProperty] SettingsViewModel? settingsPage;
     [ObservableProperty] AdminViewModel? adminPage;
-    [ObservableProperty] string pingText = "";
     [ObservableProperty] string transmitText = "";
     [ObservableProperty] string voiceHint = "";
 
@@ -75,7 +56,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <param name="connect">How a connection is opened, the real one by default (tests pass their own); see the constructor.</param>
     public static MainViewModel Create(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings,
         string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null,
-        Func<ConnectChoice, CancellationToken, Task<ClientConnection>>? connect = null)
+        OpenConnection? connect = null)
     {
         var keys = new KeyPoller(time, keyState);
         var soundLibrary = new SoundLibrary(storageDir, log.Write); // holds no handle; the engine plays its tones
@@ -112,15 +93,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// </param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
         KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
-        Func<AudioDirection, List<AudioDevice>>? listDevices, Func<ConnectChoice, CancellationToken, Task<ClientConnection>>? connect = null)
+        Func<AudioDirection, List<AudioDevice>>? listDevices, OpenConnection? connect = null)
     {
         this.storageDir = storageDir;
         this.post = post;
-        this.connect = connect ?? OpenConnectionAsync;
         Time = time;
         Log = log;
         known = knownServers;
-        this.icons = icons;
         Settings = settings;
         if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
@@ -146,13 +125,22 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             log: Log.Write,
             readServerState: () => Server is { } connected ? new SelfState(connected.SelfMuted, connected.SelfDeafened) : null,
             writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state) : Task.CompletedTask);
-        VoiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log.Write);
+        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log.Write);
         Stats = new ConnectionStatsViewModel(time,
-            readReachable: () => VoiceLink.Reachable,
-            readFigures: VoiceLink.ReadFigures,
+            readReachable: () => voiceLink.Reachable,
+            readFigures: voiceLink.ReadFigures,
             readReceiveStats: () => audio.Mixer.Stats(),
             readEncoderBitrate: () => audio.EncoderBitrate,
             reportUplink: loss => audio.Loss.Report(loss));
+        Connection = new ConnectionViewModel(time: time, post: post, log: Log.Write, openConnection: connect ?? OpenConnectionAsync, play: sound => audio.Sounds.Play(sound),
+            endLossStreaks: () => audio.Loss.EndStreaks(), voiceLink: voiceLink,
+            engineSync: EngineSync, selfTest: SelfTest, bookmarks: Bookmarks, icons: icons, stats: Stats, dialogs: () => Dialogs, shownServer: () => Server,
+            show: shown => Server = shown, setStatus: text => Status = text, readStatus: () => Status, addNotice: AddNotice,
+            confirmLeave: () => ConfirmLeaveAsync(adminOnly: true),
+            closeAdmin: () =>
+            {
+                if (Page == Page.Admin) CloseAdmin();
+            });
         if (audio.DeviceLifecycle.OpensDevices) Devices.Refresh();
         hints = new VoiceHints(
             state: () => Server is { } connected
@@ -277,55 +265,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Bookmarks.Refresh();
     }
 
-    public async Task ConnectAsync(ConnectChoice choice)
-    {
-        if (Server is not null && !await ConfirmLeaveAsync(adminOnly: true)) return; // Package 114: the administration goes with the server
-        await DisconnectAsync();
-        lastRejection = null;
-        if (choice.SaveBookmark) Bookmarks.Remember(choice, passwordConfirmed: false);
-
-        IsConnecting = true;
-        try
-        {
-            Attach(await OpenAsync(choice), choice);
-            if (choice.SaveBookmark) Bookmarks.Remember(choice, passwordConfirmed: true);
-        }
-        catch (ConnectionRejectedException e)
-        {
-            Refused(e);
-        }
-        catch (TofuRejectedException)
-        {
-            Status = Strings.Status_TofuRejected;
-        }
-        catch (Exception e) when (IsNetworkFailure(e))
-        {
-            Status = string.Format(Strings.Status_Failed, e.Message);
-        }
-        finally
-        {
-            IsConnecting = false;
-        }
-        if (connection is null) Log.Write(Status);
-    }
-
-    static bool IsNetworkFailure(Exception e) =>
-        e is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException;
-
-    void Refused(ConnectionRejectedException e)
-    {
-        lastRejection = e.Code;
-        Status = string.Format(Strings.Status_Refused, ErrorTexts.For(e.Code, e.Detail));
-        Log.Write($"Abgelehnt vom Server: {e.Code}{(string.IsNullOrEmpty(e.Detail) ? "" : $" ({e.Detail})")}");
-    }
-
-    async Task<ClientConnection> OpenAsync(ConnectChoice choice)
-    {
-        Status = string.Format(Strings.Status_Connecting, choice.Host, choice.Port);
-        Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(choice.PasswordOrNull is null ? "" : " mit Passwort")}");
-        return await connect(choice, CancellationToken.None);
-    }
-
     /// <summary>The real connect: the profile's identity, the trusted fingerprints and the certificate question.</summary>
     async Task<ClientConnection> OpenConnectionAsync(ConnectChoice choice, CancellationToken token)
     {
@@ -334,245 +273,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             choice.PasswordOrNull, known, ConfirmTofuLogged, Time, token);
     }
 
-    /// <summary>A connection the server welcomed becomes the current session.</summary>
-    /// <param name="restored">Package 139: a reconnect, which brings back no welcome text.</param>
-    void Attach(ClientConnection conn, ConnectChoice choice, bool restored = false)
-    {
-        var mirror = new StateMirror(conn.Welcome);
-        var vm = new ServerViewModel(mirror, request =>
-        {
-            Log.Write(ProtocolLogText.Describe(request, mirror));
-            return conn.SendAsync(request);
-        }, Time, Dialogs) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
-        vm.Notice += text => AddNotice(text, NoticeKind.Error);
-        TrackServerIcon(vm, choice.Host, choice.Port);
-        vm.PropertyChanged += OnServerPropertyChanged;
-        vm.SoundRequested += Audio.Sounds.Play; // Package 47
-        conn.MessageReceived += m => post(() =>
-        {
-            if (ProtocolLogText.Describe(m, mirror) is { } line) Log.Write(line);
-            vm.Apply(m);
-        });
-        conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
-
-        var udp = new VoiceClient(VoiceLink.Relay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
-            Convert.FromBase64String(conn.Welcome.VoiceKey), Time, conn); // Package 141: falls back to the TLS connection
-        // Package 139 (review): owned from here on, so a failure below is torn down with them (DisconnectAsync)
-        connection = conn;
-        VoiceLink.Start(udp);
-
-        ResetStats();
-        Server = vm;
-        Status = string.Format(Strings.Status_Connected, vm.ServerName);
-        Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
-                  $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
-        Audio.Sounds.Play(SoundEvent.Connected);
-        if (!restored && vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
-        lastChoice = choice with { SaveBookmark = false }; // Package 139: what a reconnect uses, the password in memory only
-    }
-
-    // ---- A click on a bookmark in the sidebar connects (Package 40); the list itself is Bookmarks ----
-
-    /// <summary>One click connects; a missing or wrong password is asked for until it fits or the user gives up.</summary>
-    public async Task ConnectBookmarkAsync(Bookmark bookmark)
-    {
-        var password = bookmark.SavedPassword();
-        bool save = password is not null;
-        while (true)
-        {
-            await ConnectAsync(new ConnectChoice(bookmark.Host, bookmark.Port, bookmark.Nickname, password, SaveBookmark: true, SavePassword: save));
-            if (lastRejection != ReasonCodes.WrongPassword || Dialogs.AskPassword is not { } ask) return;
-            if (await ask(bookmark.Name) is not { } answer) return;
-            (password, save) = (answer.Password, answer.Save);
-        }
-    }
-
     async Task<bool> ConfirmTofuLogged(TofuPrompt prompt)
     {
         bool accepted = await ConfirmTofu(prompt);
         Log.Write($"Serverzertifikat {(prompt.Result == TofuResult.Mismatch ? "GEÄNDERT" : "neu")} für {prompt.Host}:{prompt.Port}, " +
                   $"Fingerprint {prompt.Fingerprint}: {(accepted ? "akzeptiert" : "abgelehnt")}");
         return accepted;
-    }
-
-    /// <summary>Package 114: the "Trennen" button asks first when the administration has unsaved changes.</summary>
-    [RelayCommand]
-    async Task Disconnect()
-    {
-        if (!await ConfirmLeaveAsync(adminOnly: true)) return;
-        await DisconnectAsync();
-    }
-
-    public Task DisconnectAsync()
-    {
-        if (connection is not null) Log.Write("Verbindung getrennt (eigene Aktion)");
-        StopReconnect(); // Package 139: also connecting elsewhere and closing the app
-        lastChoice = null; // its password goes with the session
-        return DisconnectAsync(Strings.Status_NotConnected);
-    }
-
-    /// <param name="status">Set before tearing down, so nobody ever sees "disconnected" with a stale status.</param>
-    /// <param name="sound">Package 139 (A148): no "Getrennt" tone while a reconnect may still bring the session back.</param>
-    async Task DisconnectAsync(string status, bool sound = true)
-    {
-        if (Page == Page.Admin) CloseAdmin(); // administration needs a server
-        var conn = connection;
-        connection = null;
-        if (conn is not null && sound) Audio.Sounds.Play(SoundEvent.Disconnected);
-        if (conn is not null) Status = status;
-        if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
-        await SelfTest.AbandonAsync(); // nothing to restore at a server that is gone
-        Server = null;
-        VoiceLink.Stop();
-        EngineSync.ClearSpeakers();
-        ResetStats();
-        if (conn is not null) await conn.DisposeAsync();
-    }
-
-    void OnDisconnected(ClientConnection conn, string reason, string? detail)
-    {
-        if (conn != connection) return;
-        var text = string.Format(Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
-        if (!string.IsNullOrEmpty(detail)) Log.Write($"Getrennt vom Server: {reason} ({detail})");
-        if (reason is ReasonCodes.ConnectionLost or ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart && lastChoice is { } choice && Server is { } s)
-        {
-            StartReconnect(choice, text, s);
-            return;
-        }
-        lastChoice = null; // no reconnect: its password goes with the session
-        AddNotice(text, NoticeKind.Warning);
-        _ = DisconnectAsync(text);
-    }
-
-    // ---- Package 139 (A148): auto-reconnect ----
-
-    /// <summary>The last connection's choice, its password in memory only; a reconnect uses it.</summary>
-    ConnectChoice? lastChoice;
-    Reconnector? reconnector;
-    /// <summary>The disconnected text shown when the series ends without success.</summary>
-    string lostText = "";
-
-    /// <summary>A series of attempts runs; the start screen shows the countdown and "Abbrechen".</summary>
-    [ObservableProperty] bool isReconnecting;
-
-    /// <summary>
-    /// What comes back after a reconnect: the channel with the password that worked there, the own mute and deafen, and
-    /// whether undeafening unmutes (review: muted, then deafened, stays muted).
-    /// </summary>
-    sealed record Restore(Guid Channel, string ChannelName, string? Password, SelfState State, bool MutedBeforeDeafen);
-
-    void StartReconnect(ConnectChoice choice, string text, ServerViewModel s)
-    {
-        var self = s.Mirror.Self;
-        // the self test mutes and deafens at the server; what counts is the state from before it. A mute that only holds
-        // while push-to-mute is held is no choice to keep: the key may be let go meanwhile (Package 125).
-        var selfState = SelfTest.StateBefore ?? new SelfState(s.SelfMuted && !s.MutedByHold, s.SelfDeafened);
-        var restore = new Restore(self?.ChannelId ?? Guid.Empty, s.CurrentChannel?.Name ?? "", self is null ? null : s.PasswordFor(self.ChannelId),
-            selfState, s.MutedBeforeDeafen);
-        Log.Write($"Verbindung verloren, neue Versuche nach {string.Join(", ", Reconnector.Delays.Select(d => $"{d.TotalSeconds:0}"))} s");
-        lostText = text;
-        _ = DisconnectAsync(text, sound: false);
-        reconnector ??= new Reconnector(Time, post);
-        IsReconnecting = true;
-        reconnector.Start(generation => ReconnectOnceAsync(generation, choice, restore), GiveUp);
-        UpdateReconnectStatus();
-    }
-
-    /// <summary>Review: refusals that say "not now" rather than "no": the next attempt may get in.</summary>
-    static bool IsPassing(string code) => code is ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart or ReasonCodes.RateLimited;
-
-    async Task<bool> ReconnectOnceAsync(int generation, ConnectChoice choice, Restore restore)
-    {
-        ClientConnection? conn = null;
-        try
-        {
-            conn = await OpenAsync(choice);
-            if (reconnector?.IsCurrent(generation) != true)
-            {
-                Log.Write("Wiederverbinden: veralteter Versuch verworfen");
-                await conn.DisposeAsync();
-                return false;
-            }
-            Attach(conn, choice, restored: true);
-            var vm = Server!;
-            if (restore.Channel != Guid.Empty && vm.Mirror.Self?.ChannelId != restore.Channel)
-            {
-                if (vm.Mirror.Channels.ContainsKey(restore.Channel)) _ = vm.RejoinAsync(restore.Channel, restore.Password);
-                else AddNotice(string.Format(Strings.Status_ReconnectChannelGone, restore.ChannelName), NoticeKind.Warning);
-            }
-            // server mute comes from the server (Package 85)
-            if (restore.State.IsQuiet) _ = vm.RestoreSelfStateAsync(restore.State, restore.MutedBeforeDeafen);
-            IsReconnecting = false;
-            AddNotice(Strings.Status_Reconnected);
-            return true;
-        }
-        catch (Exception e) when (reconnector?.IsCurrent(generation) != true)
-        {
-            Log.Write($"Wiederverbinden: veralteter Versuch verworfen ({e.Message})");
-            if (conn is not null) await conn.DisposeAsync();
-            return false;
-        }
-        catch (ConnectionRejectedException e) when (!IsPassing(e.Code))
-        {
-            // the server said no (e.g. a new password): asking again would not change that
-            EndSeries(null);
-            Refused(e);
-            return false;
-        }
-        catch (TofuRejectedException)
-        {
-            EndSeries(Strings.Status_TofuRejected);
-            return false;
-        }
-        catch (Exception e)
-        {
-            // review: also the unexpected, so the series goes on instead of hanging at "Verbinde mit ..."
-            Log.Write($"Wiederverbinden fehlgeschlagen: {e.GetType().Name}: {e.Message}");
-            if (conn is not null && conn == connection) await DisconnectAsync(lostText, sound: false); // Attach got that far
-            else if (conn is not null) await conn.DisposeAsync();
-            return false;
-        }
-    }
-
-    /// <summary>The fifth attempt failed too: the disconnect as it was before Package 139.</summary>
-    void GiveUp()
-    {
-        Log.Write("Wiederverbinden aufgegeben");
-        EndSeries(lostText);
-    }
-
-    /// <summary>"Abbrechen" on the start screen: the series ends at once, an attempt still running is ignored.</summary>
-    [RelayCommand]
-    void CancelReconnect()
-    {
-        if (!IsReconnecting) return;
-        Log.Write("Wiederverbinden abgebrochen");
-        EndSeries(lostText, sound: false);
-    }
-
-    /// <summary>The series ends without a session: the disconnected notice, the status, the tone unless the user chose it.</summary>
-    /// <param name="status">Null when the caller sets it.</param>
-    void EndSeries(string? status, bool sound = true)
-    {
-        StopReconnect();
-        lastChoice = null; // review: the server password stays no longer than needed
-        if (status is not null) Status = status;
-        AddNotice(lostText, NoticeKind.Warning);
-        if (sound) Audio.Sounds.Play(SoundEvent.Disconnected);
-    }
-
-    void StopReconnect()
-    {
-        reconnector?.Stop();
-        IsReconnecting = false;
-    }
-
-    /// <summary>The countdown to the next attempt; while one runs, its "Verbinde mit ..." stays.</summary>
-    void UpdateReconnectStatus()
-    {
-        if (!IsReconnecting || reconnector?.NextAttemptAt is not { } at) return;
-        var left = Math.Max(1, (int)Math.Ceiling((at - Time.GetUtcNow()).TotalSeconds));
-        Status = string.Format(Strings.Status_Reconnecting, left);
     }
 
     /// <summary>Every connection starts a fresh chat (A27), with the earlier notices so none get lost.</summary>
@@ -594,8 +300,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         EngineSync.SyncConnection();
     }
 
-    void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs e) => EngineSync.SyncConnection();
-
     /// <summary>Package 122: the gain table only follows the users who come and go (volumes change in <see cref="OnUserVolumeChanged"/>).</summary>
     void OnServerStateChanged()
     {
@@ -615,22 +319,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         EngineSync.SyncGains();
     }
 
-    /// <summary>The voice client of the current connection and the log of whether UDP gets through (Packages 126 and 135).</summary>
-    internal VoiceLink VoiceLink { get; }
-    /// <summary>The clock of the current connection's ping round trip (tests check it is <see cref="Time"/>).</summary>
-    internal TimeProvider? ConnectionTime => connection?.Time;
+    /// <summary>Package 139: connecting, the reconnect series and the session of the current connection.</summary>
+    internal ConnectionViewModel Connection { get; }
 
     /// <summary>UI timer, every 100 ms.</summary>
     public void Tick()
     {
         Server?.RefreshSpeaking();
-        VoiceLink.LogReachability();
+        Connection.VoiceLink.LogReachability();
         Stats.Refresh();
-        UpdateReconnectStatus(); // Package 139
-        PingText = connection?.LastRoundTrip is { } rtt
-            ? $"Ping {rtt.TotalMilliseconds:0} ms" + (VoiceLink.OverTcp ? Strings.Ping_VoiceOverTcp // Package 141
-                : VoiceLink.Reachable == false ? Strings.Ping_UdpUnreachable : "")
-            : "";
+        Connection.Tick();
         VoiceHint = hints.Evaluate();
     }
 
@@ -638,13 +336,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>The voice connection's figures, behind the signal icon next to the ping.</summary>
     public ConnectionStatsViewModel Stats { get; }
-
-    /// <summary>A new connection, or none: the figures start over, and the loss adapter keeps no streak from before.</summary>
-    void ResetStats()
-    {
-        Stats.Reset();
-        Audio.Loss.EndStreaks(); // Package 135: a reconnect into the same channel keeps no streak from before
-    }
 
     [RelayCommand]
     Task ShowConnectionDetails() => Dialogs.ConnectionDetails?.Invoke(Stats) ?? Task.CompletedTask;
@@ -659,31 +350,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             case KeyAction.ToggleMute: server.ToggleMuteCommand.Execute(null); break;
             case KeyAction.ToggleDeafen: server.ToggleDeafenCommand.Execute(null); break;
         }
-    }
-
-    /// <summary>
-    /// Keeps the logo in step with the server's hash (Package 30): wires the server to its <see cref="ServerIconTracker"/>,
-    /// which shows it from the cache when it matches, otherwise asks for it once and caches it for next time and for the bookmark tile.
-    /// </summary>
-    internal ServerIconTracker TrackServerIcon(ServerViewModel serverViewModel, string host, int port)
-    {
-        var tracker = new ServerIconTracker(
-            cache: icons, host: host, port: port, time: serverViewModel.Time,
-            serverHash: () => serverViewModel.IconHash,
-            shownLogo: () => serverViewModel.IconPng,
-            show: png => serverViewModel.IconPng = png,
-            ask: route =>
-            {
-                serverViewModel.Routes.RemoveAll(route);
-                _ = serverViewModel.SendAsync(new GetServerIcon(), route: route);
-            },
-            isCurrent: () => Server == serverViewModel,
-            post: post,
-            logoCached: Bookmarks.Refresh);
-        serverViewModel.StateChanged += tracker.Sync;
-        serverViewModel.IconReceived += tracker.Receive;
-        tracker.Sync();
-        return tracker;
     }
 
     // ---- Pages ----
@@ -818,7 +484,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await DisconnectAsync();
+        await Connection.DisconnectAsync();
         Audio.Dispose();
         Keys.Dispose();
         Log.Flush(); // Package 124: the lines still queued

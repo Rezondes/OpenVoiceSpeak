@@ -70,8 +70,8 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         var (server, ui, vm) = await StartAsync();
         try
         {
-            await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "", null, false)));
-            await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
+            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "", null, false)));
+            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             await using (await TestClient.ConnectAsync(server, "bert"))
                 await Eventually(null, "bert connected, channel 'Lobby'");
             await Eventually(() => Run(ui, () =>
@@ -79,15 +79,15 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
                 vm.Tick();
                 return Task.CompletedTask;
             }), "bert disconnected", "UDP now reachable");
-            await Run(ui, vm.DisconnectAsync);
+            await Run(ui, vm.Connection.DisconnectAsync);
 
             var log = await Eventually(null,
-                $"Verbinde mit 127.0.0.1:{server.Port} als anna",
+                $"Connecting to 127.0.0.1:{server.Port} as anna",
                 "Serverzertifikat neu für 127.0.0.1",
                 "akzeptiert",
                 "Abgelehnt: Ungültiger Nickname",
-                "Verbunden mit 'Testserver' als anna",
-                "Verbindung getrennt (eigene Aktion)");
+                "Connected to 'Testserver' as anna",
+                "Disconnected (own action)");
             Assert.Matches(@"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} Einstellungen: Modus PushToTalk", log);
         }
         finally
@@ -102,7 +102,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         var (server, ui, vm) = await StartAsync();
         try
         {
-            await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
+            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             await Run(ui, () => vm.Server!.SendAsync(new CreateChannel("Raid", "")));
             await Eventually(null, "Channel 'Raid' created");
             var raid = await ui.InvokeAsync(() => Task.FromResult(vm.Server!.Channels.Single(c => c.Name == "Raid").Id));
@@ -127,7 +127,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         var (server, ui, vm) = await StartAsync(password: "Serverpasswort-4711");
         try
         {
-            await Run(ui, () => vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", "Serverpasswort-4711", false)));
+            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", "Serverpasswort-4711", false)));
             await Run(ui, () => vm.Server!.SendAsync(new RedeemAdminToken("Token-0815-geheim")));
             await Run(ui, () => vm.Server!.SendAsync(new UpdateServerSettings("Testserver", "", "Neues-Passwort-42")));
 

@@ -64,8 +64,8 @@ public partial class MainWindow : Window
 
     async Task ConnectAsync(Bookmark? preselect)
     {
-        if (Vm.IsConnecting) return;
-        if (await ConnectDialog.ShowAsync(Overlay, Vm.Bookmarks.Saved, preselect) is { } choice) await Vm.ConnectAsync(choice);
+        if (Vm.Connection.IsConnecting) return;
+        if (await ConnectDialog.ShowAsync(Overlay, Vm.Bookmarks.Saved, preselect) is { } choice) await Vm.Connection.ConnectAsync(choice);
     }
 
     // ---- Bookmarks in the sidebar (Package 40): a click connects right away ----
@@ -74,7 +74,7 @@ public partial class MainWindow : Window
 
     async void OnBookmarkClick(object? sender, RoutedEventArgs e)
     {
-        if (!Vm.IsConnecting && BookmarkOf(sender) is { } bookmark) await Vm.ConnectBookmarkAsync(bookmark);
+        if (!Vm.Connection.IsConnecting && BookmarkOf(sender) is { } bookmark) await Vm.Connection.ConnectBookmarkAsync(bookmark);
     }
 
     async void OnBookmarkEdit(object? sender, RoutedEventArgs e)
@@ -116,12 +116,14 @@ public partial class MainWindow : Window
         {
             watchedVm.PropertyChanged -= OnVmPropertyChanged;
             watchedVm.PropertyChanging -= OnVmPropertyChanging;
+            watchedVm.Connection.PropertyChanged -= OnConnectionPropertyChanged;
         }
         watchedVm = DataContext as MainViewModel;
         if (watchedVm is not null)
         {
             watchedVm.PropertyChanged += OnVmPropertyChanged;
             watchedVm.PropertyChanging += OnVmPropertyChanging;
+            watchedVm.Connection.PropertyChanged += OnConnectionPropertyChanged;
         }
         OnServerChanged();
         ApplyDisplay();
@@ -162,20 +164,15 @@ public partial class MainWindow : Window
 
     bool wasConnecting;
 
-    /// <summary>
-    /// Package 106: connected, the server's name fades into the header; a connect that failed shakes the start card once
-    /// and lets the reason fade in.
-    /// </summary>
-    void OnConnectionChanged(MainViewModel vm, string property)
+    /// <summary>Package 106: a connect that failed shakes the start card once and lets the reason fade in.</summary>
+    void OnConnectingChanged(MainViewModel vm)
     {
-        if (property == nameof(MainViewModel.Server) && vm.Server is not null) FadeIn(ServerHeader);
-        if (property != nameof(MainViewModel.IsConnecting)) return;
-        if (wasConnecting && !vm.IsConnecting && vm.Server is null)
+        if (wasConnecting && !vm.Connection.IsConnecting && vm.Server is null)
         {
             ShakeMotion.Shake(StartCard);
             FadeIn(StatusText);
         }
-        wasConnecting = vm.IsConnecting;
+        wasConnecting = vm.Connection.IsConnecting;
     }
 
     static void FadeIn(Visual target)
@@ -194,11 +191,17 @@ public partial class MainWindow : Window
         }.Play(target);
     }
 
+    /// <summary>The connecting flag lives on the connection, a second source next to the main view model's <c>Server</c>.</summary>
+    void OnConnectionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(ConnectionViewModel.IsConnecting) && watchedVm is { } mainViewModel) OnConnectingChanged(mainViewModel);
+    }
+
     void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (watchedVm is { } changed && e.PropertyName is { } name) OnConnectionChanged(changed, name);
         if (e.PropertyName == nameof(MainViewModel.Server))
         {
+            if (watchedVm?.Server is not null) FadeIn(ServerHeader); // Package 106: connected, the server's name fades into the header
             OnServerChanged();
             ApplyDisplay();
         }

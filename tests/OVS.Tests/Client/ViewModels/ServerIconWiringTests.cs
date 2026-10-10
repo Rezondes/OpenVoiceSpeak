@@ -12,7 +12,7 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Client.ViewModels;
 
 /// <summary>
-/// Package 30: what <c>MainViewModel.TrackServerIcon</c> hands the logo tracking (the server's hash and logo, the request and
+/// Package 30: what <c>ConnectionViewModel.TrackServerIcon</c> hands the logo tracking (the server's hash and logo, the request and
 /// its route, the current-server test, the posting, the server's clock, the bookmark tiles); the rules themselves are in
 /// <c>ServerIconTrackerTests</c>. The facts here replace the real-server-free half of the former wall-clock test
 /// <c>MainViewModelTests.ServerIcon_RateLimited_RetriedOnceOnlyForTheNewestRequest</c>.
@@ -71,7 +71,7 @@ public sealed class ServerIconWiringTests : IAsyncLifetime
     {
         var server = CreateServerWithLogoHash(hash);
         MainViewModelSetup.ShowServer(mainViewModel, server);
-        mainViewModel.TrackServerIcon(server, Host, Port);
+        mainViewModel.Connection.TrackServerIcon(server, Host, Port);
         return server;
     }
 
@@ -98,7 +98,7 @@ public sealed class ServerIconWiringTests : IAsyncLifetime
         server.IconPng = Logo;
         MainViewModelSetup.ShowServer(mainViewModel, server);
 
-        mainViewModel.TrackServerIcon(server, Host, Port);
+        mainViewModel.Connection.TrackServerIcon(server, Host, Port);
 
         Assert.Equal(0, CountIconRequests());
     }
