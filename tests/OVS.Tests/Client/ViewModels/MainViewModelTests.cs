@@ -121,6 +121,31 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal([true], connectedWhenShown);
     }
 
+    [Fact]
+    public async Task ConnectAsync_AnotherUserTalks_EngineHearsTheirFrame()
+    {
+        await ConnectAsync(saveBookmark: false);
+        await OnUiUntil(() => vm.VoiceLink.Reachable, reachable => reachable == true);
+        await using var bert = await TestClient.ConnectAsync(server, "bert");
+        using var bertVoice = new TestVoice(bert, server.VoiceEndPoint);
+        await bertVoice.HelloAsync();
+
+        await bertVoice.SendAsync(PacketType.Voice, EngineProbe.SilentFrame());
+
+        Assert.Contains(bert.Id, await OnUiUntil(() => vm.Audio.FramesReceived.Keys.ToList(), speakers => speakers.Contains(bert.Id)));
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_Connected_ClearsTheEngineSendAndTheVoiceClient()
+    {
+        await ConnectAsync(saveBookmark: false);
+
+        await OnUi(() => vm.DisconnectAsync());
+
+        Assert.Null(await OnUi(() => vm.Audio.Send));
+        Assert.Null(await OnUi(() => vm.VoiceLink.Client));
+    }
+
     /// <summary>Package 34: in a muted channel the client warns and does not send.</summary>
     [Fact]
     public async Task ChannelMuted_HintAndNoSending()
@@ -672,24 +697,24 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
         await RunOnAsync(time);
-        await OnUi(() => vm.VoiceRelay = relay.EndPoint);
+        await OnUi(() => vm.VoiceLink.Relay = relay.EndPoint);
         await ConnectAsync(saveBookmark: false);
         string Logged()
         {
             vm.Tick();
             return ClientLogText();
         }
-        Assert.Contains("UDP erreichbar", await OnUiUntil(Logged, l => l.Contains("UDP erreichbar")));
+        Assert.Contains("UDP now reachable", await OnUiUntil(Logged, l => l.Contains("UDP now reachable")));
 
         relay.DropAll = true;
         for (int i = 0; i < 40; i++) time.Advance(TimeSpan.FromMilliseconds(500)); // 20 s
-        Assert.Contains("UDP nicht erreichbar", await OnUi(Logged));
+        Assert.Contains("UDP not reachable", await OnUi(Logged));
         relay.DropAll = false;
         for (int i = 0; i < 10; i++) time.Advance(TimeSpan.FromMilliseconds(500));
-        await OnUiUntil(Logged, l => l.Contains("UDP wieder erreichbar"));
+        await OnUiUntil(Logged, l => l.Contains("UDP reachable again"));
 
         var log = await OnUi(Logged); // one more tick adds nothing
-        foreach (var line in new[] { "UDP erreichbar", "UDP nicht erreichbar", "UDP wieder erreichbar" })
+        foreach (var line in new[] { "UDP now reachable", "UDP not reachable", "UDP reachable again" })
             Assert.Single(log.Split(Environment.NewLine), l => l.Contains(line));
     }
 
@@ -700,7 +725,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
         var time = new ManualTimeProvider();
         await RunOnAsync(time);
-        await OnUi(() => vm.VoiceRelay = relay.EndPoint);
+        await OnUi(() => vm.VoiceLink.Relay = relay.EndPoint);
         await ConnectAsync(saveBookmark: false);
         string Logged()
         {
@@ -709,9 +734,26 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }
 
         time.Advance(TimeSpan.FromSeconds(5));
-        Assert.DoesNotContain("UDP nicht erreichbar", await OnUi(Logged));
+        Assert.DoesNotContain("UDP not reachable", await OnUi(Logged));
         time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Contains("UDP nicht erreichbar", await OnUi(Logged));
+        Assert.Contains("UDP not reachable", await OnUi(Logged));
+    }
+
+    [Fact]
+    public async Task Tick_UdpUnansweredForLessThanFiveSeconds_PingTextSaysUdpNotReachable()
+    {
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
+        await RunOnAsync(new ManualTimeProvider());
+        await OnUi(() => vm.VoiceLink.Relay = relay.EndPoint);
+        await ConnectAsync(saveBookmark: false);
+
+        var ping = await OnUiUntil(() =>
+        {
+            vm.Tick();
+            return vm.PingText;
+        }, text => text.Length > 0);
+
+        Assert.EndsWith(Strings.Ping_UdpUnreachable, ping);
     }
 
     /// <summary>Package 141 (AC5): the ping text names voice over TCP while it is in use, and drops it once UDP answers again.</summary>
@@ -721,7 +763,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
         var time = new ManualTimeProvider();
         await RunOnAsync(time);
-        await OnUi(() => vm.VoiceRelay = relay.EndPoint);
+        await OnUi(() => vm.VoiceLink.Relay = relay.EndPoint);
         await ConnectAsync(saveBookmark: false);
         string Ping()
         {
@@ -754,7 +796,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var time = new ManualTimeProvider(); // the voice client's and the refresh's clock
         ConnectionStatsViewModel? shown = null;
         await RunOnAsync(time);
-        await OnUi(() => (vm.VoiceRelay, vm.Dialogs) = (relay.EndPoint, new DialogCallbacks
+        await OnUi(() => (vm.VoiceLink.Relay, vm.Dialogs) = (relay.EndPoint, new DialogCallbacks
         {
             ConnectionDetails = s =>
             {
@@ -812,9 +854,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
             int answers = await OnUi(() =>
             {
                 time.Advance(TimeSpan.FromSeconds(2)); // the ping goes out
-                return vm.Voice!.RoundTripSample.Count;
+                return vm.VoiceLink.Client!.RoundTripSample.Count;
             });
-            await OnUiUntil(() => vm.Voice!.RoundTripSample.Count, c => c > answers);
+            await OnUiUntil(() => vm.VoiceLink.Client!.RoundTripSample.Count, c => c > answers);
             await OnUi(() =>
             {
                 vm.Tick();

@@ -78,7 +78,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             {
                 vm.Tick();
                 return Task.CompletedTask;
-            }), "bert disconnected", "UDP erreichbar");
+            }), "bert disconnected", "UDP now reachable");
             await Run(ui, vm.DisconnectAsync);
 
             var log = await Eventually(null,

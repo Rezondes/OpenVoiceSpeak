@@ -208,7 +208,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         {
             Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.ConnectionTime)));
             Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Server?.Time)));
-            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Voice?.Time)));
+            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.VoiceLink.Client?.Time)));
         }
         finally
         {

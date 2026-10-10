@@ -40,10 +40,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly SoundLibrary soundLibrary;
     readonly VoiceHints hints; // Packages 34 and 131: why nobody hears the user, shown as VoiceHint on every tick
     ClientConnection? connection;
-    VoiceClient? voice;
-    long connectedAt; // a timestamp of Time
-    bool? udpLogged;
-    bool udpWasReachable; // Package 126
     /// <summary>Why the last connect attempt was refused, e.g. WrongPassword (Package 40).</summary>
     string? lastRejection;
 
@@ -150,9 +146,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             log: Log.Write,
             readServerState: () => Server is { } connected ? new SelfState(connected.SelfMuted, connected.SelfDeafened) : null,
             writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state) : Task.CompletedTask);
+        VoiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log.Write);
         Stats = new ConnectionStatsViewModel(time,
-            readReachable: () => voice?.Reachable,
-            readFigures: ReadVoiceFigures,
+            readReachable: () => VoiceLink.Reachable,
+            readFigures: VoiceLink.ReadFigures,
             readReceiveStats: () => audio.Mixer.Stats(),
             readEncoderBitrate: () => audio.EncoderBitrate,
             reportUplink: loss => audio.Loss.Report(loss));
@@ -358,19 +355,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         });
         conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
 
-        var udp = new VoiceClient(VoiceRelay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
+        var udp = new VoiceClient(VoiceLink.Relay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
             Convert.FromBase64String(conn.Welcome.VoiceKey), Time, conn); // Package 141: falls back to the TLS connection
         // Package 139 (review): owned from here on, so a failure below is torn down with them (DisconnectAsync)
         connection = conn;
-        voice = udp;
-        udp.VoiceReceived += Audio.OnVoice;
-        Audio.Send = udp.SendVoice;
-        udp.Start();
+        VoiceLink.Start(udp);
 
         ResetStats();
-        connectedAt = Time.GetTimestamp();
-        udpLogged = null;
-        udpWasReachable = false;
         Server = vm;
         Status = string.Format(Strings.Status_Connected, vm.ServerName);
         Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
@@ -432,9 +423,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
         await SelfTest.AbandonAsync(); // nothing to restore at a server that is gone
         Server = null;
-        Audio.Send = null;
-        voice?.Dispose();
-        voice = null;
+        VoiceLink.Stop();
         EngineSync.ClearSpeakers();
         ResetStats();
         if (conn is not null) await conn.DisposeAsync();
@@ -626,11 +615,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         EngineSync.SyncGains();
     }
 
-    /// <summary>Package 126: tests send UDP through a lossy relay instead of to the server.</summary>
-    internal IPEndPoint? VoiceRelay { get; set; }
-
-    /// <summary>Package 135: tests wait for its ping answers.</summary>
-    internal VoiceClient? Voice => voice;
+    /// <summary>The voice client of the current connection and the log of whether UDP gets through (Packages 126 and 135).</summary>
+    internal VoiceLink VoiceLink { get; }
     /// <summary>The clock of the current connection's ping round trip (tests check it is <see cref="Time"/>).</summary>
     internal TimeProvider? ConnectionTime => connection?.Time;
 
@@ -638,12 +624,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public void Tick()
     {
         Server?.RefreshSpeaking();
-        LogUdpReachability();
+        VoiceLink.LogReachability();
         Stats.Refresh();
         UpdateReconnectStatus(); // Package 139
         PingText = connection?.LastRoundTrip is { } rtt
-            ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.OverTcp == true ? Strings.Ping_VoiceOverTcp // Package 141
-                : voice?.Reachable == false ? Strings.Ping_UdpUnreachable : "")
+            ? $"Ping {rtt.TotalMilliseconds:0} ms" + (VoiceLink.OverTcp ? Strings.Ping_VoiceOverTcp // Package 141
+                : VoiceLink.Reachable == false ? Strings.Ping_UdpUnreachable : "")
             : "";
         VoiceHint = hints.Evaluate();
     }
@@ -652,17 +638,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>The voice connection's figures, behind the signal icon next to the ping.</summary>
     public ConnectionStatsViewModel Stats { get; }
-
-    /// <summary>
-    /// The voice connection's round trip and loss figures. The branch without a voice connection is never reached: the card asks
-    /// only behind its reachable gate, which is null without one.
-    /// </summary>
-    VoiceLinkFigures ReadVoiceFigures()
-    {
-        if (voice is not { } connected) return default;
-        var (roundTrip, count) = connected.RoundTripSample;
-        return new VoiceLinkFigures(roundTrip, count, connected.UplinkLoss, connected.DownlinkLoss);
-    }
 
     /// <summary>A new connection, or none: the figures start over, and the loss adapter keeps no streak from before.</summary>
     void ResetStats()
@@ -673,26 +648,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [RelayCommand]
     Task ShowConnectionDetails() => Dialogs.ConnectionDetails?.Invoke(Stats) ?? Task.CompletedTask;
-
-    /// <summary>
-    /// Logs "reachable" once, or "not reachable" when nothing came back within 5 s (then "reachable" if it recovers).
-    /// Package 126: UDP lost after it worked logs "not reachable" and, when it is back, "reachable again".
-    /// </summary>
-    void LogUdpReachability()
-    {
-        if (voice is not { } v) return;
-        if (v.Reachable)
-        {
-            if (udpLogged == true) return;
-            Log.Write(udpWasReachable ? "UDP wieder erreichbar" : "UDP erreichbar");
-            udpLogged = udpWasReachable = true;
-        }
-        else if (udpLogged == true || (udpLogged is null && Time.GetElapsedTime(connectedAt) > TimeSpan.FromSeconds(5)))
-        {
-            Log.Write("UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)");
-            udpLogged = false;
-        }
-    }
 
     /// <summary>Toggle keys work like the buttons, including the report to the server.</summary>
     void OnKeyAction(KeyAction action)
