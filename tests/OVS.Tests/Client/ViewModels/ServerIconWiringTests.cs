@@ -1,3 +1,4 @@
+using OVS.Client.Net;
 using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -77,6 +78,69 @@ public sealed class ServerIconWiringTests : IAsyncLifetime
 
     /// <summary>The server refuses the newest logo request for asking too often.</summary>
     static void Refuse(ServerViewModel server, string requestId) => server.Apply(new Error(requestId, ReasonCodes.RateLimited));
+
+    static ServerSettingsChanged SettingsWithLogoHash(ServerViewModel server, string hash) => new(server.Mirror.Settings with { IconHash = hash });
+
+    [Fact]
+    public void TrackServerIcon_AnotherServerTracked_TheFirstAsksForNoLogo()
+    {
+        var first = ShowTrackedServer(LogoHash);
+        ShowTrackedServer(LogoHash);
+        int requestsBefore = CountIconRequests();
+
+        first.Apply(SettingsWithLogoHash(first, "def"));
+
+        Assert.Equal(requestsBefore, CountIconRequests());
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_ServerStateChangesAfterwards_AsksForNoLogo()
+    {
+        var server = ShowTrackedServer(null);
+        await mainViewModel.Connection.DisconnectAsync();
+
+        server.Apply(SettingsWithLogoHash(server, LogoHash));
+
+        Assert.Equal(0, CountIconRequests());
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_LogoArrivesAfterwards_IsNeitherCachedNorShown()
+    {
+        var server = ShowTrackedServer(null);
+        await mainViewModel.Connection.DisconnectAsync();
+        server.Apply(SettingsWithLogoHash(server, LogoHash));
+
+        server.Apply(new ServerIcon(null, LogoHash, Convert.ToBase64String(Logo)));
+
+        Assert.Null(server.IconPng);
+        Assert.Null(new ServerIconCache(directory).Load(Host, Port));
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_MalformedLogoArrivesAfterwards_ThrowsNothingAndCachesNothing()
+    {
+        var server = ShowTrackedServer(null);
+        await mainViewModel.Connection.DisconnectAsync();
+        server.Apply(SettingsWithLogoHash(server, "hash"));
+
+        server.Apply(new ServerIcon(null, "hash", "this is not base64"));
+
+        Assert.Null(server.IconPng);
+        Assert.Null(new ServerIconCache(directory).Load(Host, Port));
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_CalledTwice_ThrowsNothingAndTheOldServerStillAsksForNoLogo()
+    {
+        var server = ShowTrackedServer(null);
+        await mainViewModel.Connection.DisconnectAsync();
+        await mainViewModel.Connection.DisconnectAsync();
+
+        server.Apply(SettingsWithLogoHash(server, LogoHash));
+
+        Assert.Equal(0, CountIconRequests());
+    }
 
     [Fact]
     public void Apply_LogoOfTheServersHash_ShowsItOnTheServerAndOnTheBookmarkTile()

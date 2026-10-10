@@ -47,6 +47,9 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     readonly Func<Task<bool>> confirmLeave;
     readonly Action closeAdmin;
     ClientConnection? connection;
+    /// <summary>The server of the current session and its logo tracking (Package 30); both null between sessions.</summary>
+    ServerViewModel? trackedServer;
+    ServerIconTracker? iconTracker;
     /// <summary>Why the last connect attempt was refused, e.g. WrongPassword (Package 40).</summary>
     string? lastRejection;
 
@@ -238,6 +241,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         if (conn is not null && sound) play(SoundEvent.Disconnected);
         if (conn is not null) setStatus(status);
         if (shownServer() is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
+        StopIconTracking();
         await selfTest.AbandonAsync(); // nothing to restore at a server that is gone
         show(null);
         VoiceLink.Stop();
@@ -430,9 +434,22 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             isCurrent: () => shownServer() == serverViewModel,
             post: post,
             logoCached: bookmarks.Refresh);
+        StopIconTracking();
+        (trackedServer, iconTracker) = (serverViewModel, tracker);
         serverViewModel.StateChanged += tracker.Sync;
         serverViewModel.IconReceived += tracker.Receive;
         tracker.Sync();
         return tracker;
+    }
+
+    /// <summary>The session's logo tracking ends with it: the old server's later changes and logos are no business of the next session.</summary>
+    void StopIconTracking()
+    {
+        if (iconTracker is { } tracker && trackedServer is { } server)
+        {
+            server.StateChanged -= tracker.Sync;
+            server.IconReceived -= tracker.Receive;
+        }
+        (trackedServer, iconTracker) = (null, null);
     }
 }

@@ -139,6 +139,25 @@ public sealed class ReconnectTests : IAsyncLifetime
         Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
     }
 
+    [Fact]
+    public async Task Reconnect_AfterALostConnection_TheOldServerAsksForNoLogo()
+    {
+        await ConnectTo(server);
+        var oldServer = (await OnUi(() => vm.Server))!;
+        await ReconnectAsync(server);
+        int requestsBefore = await OnUi(() => CountLogoRequests());
+
+        await OnUi(() =>
+        {
+            oldServer.Apply(new OVS.Shared.Protocol.Messages.ServerInfo.ServerSettingsChanged(oldServer.Mirror.Settings with { IconHash = "hash" }));
+            return 0;
+        });
+
+        Assert.Equal(requestsBefore, await OnUi(() => CountLogoRequests()));
+    }
+
+    int CountLogoRequests() => MainViewModelSetup.ReadLogText(vm, dir).Split("Request server logo").Length - 1;
+
     /// <summary>Review: muted, then deafened, stays muted when undeafening after a reconnect; muted alone stays muted.</summary>
     [Theory]
     [InlineData("muted")]

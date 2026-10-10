@@ -5,8 +5,11 @@ using OVS.Client.Exceptions;
 using OVS.Client.Localization;
 using OVS.Client.Models;
 using OVS.Client.Settings;
+using OVS.Client.ViewModels;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.ViewModels;
@@ -405,16 +408,37 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         await AsyncWait.Until(() => server.State.SessionCount == 0);
     }
 
+    // ---- The server logo tracking ends with the session ----
+
+    Task<int> LogoRequestsAsync() => rig.ReadAsync(() => rig.LogLines.Count(line => line.Contains("Request server logo")));
+
+    Task ApplyAsync(ServerViewModel server, Message message) => rig.InvokeAsync(() => server.Apply(message));
+
+    static Message SettingsWithLogoHash(ServerViewModel server, string hash) => new ServerSettingsChanged(server.Mirror.Settings with { IconHash = hash });
+
+    [Fact]
+    public async Task ConnectAsync_ConnectedAgain_OnlyTheNewServerAsksForALogo()
+    {
+        await using var server = await TestServer.StartAsync();
+        await rig.ConnectAsync(ChoiceFor(server));
+        var oldServer = (await rig.ReadAsync(() => rig.Shown))!;
+        await rig.ConnectAsync(ChoiceFor(server));
+        var newServer = (await rig.ReadAsync(() => rig.Shown))!;
+        int requestsBefore = await LogoRequestsAsync();
+
+        await ApplyAsync(oldServer, SettingsWithLogoHash(oldServer, "old"));
+        Assert.Equal(requestsBefore, await LogoRequestsAsync());
+        await ApplyAsync(newServer, SettingsWithLogoHash(newServer, "new"));
+
+        Assert.Equal(requestsBefore + 1, await LogoRequestsAsync());
+    }
+
     // ---- The reconnect series ----
 
     [Fact]
     public async Task CancelReconnect_NotReconnecting_DoesNothing()
     {
-        await rig.ReadAsync(() =>
-        {
-            rig.Connection.CancelReconnectCommand.Execute(null);
-            return 0;
-        });
+        await rig.InvokeAsync(() => rig.Connection.CancelReconnectCommand.Execute(null));
 
         Assert.DoesNotContain("Reconnect cancelled", await LogAsync());
         Assert.Empty(await rig.ReadAsync(() => rig.Notices.ToList()));
@@ -523,11 +547,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     [Fact]
     public async Task Tick_NothingConnected_PingTextIsEmptyAndTheStatusStays()
     {
-        await rig.ReadAsync(() =>
-        {
-            rig.Connection.Tick();
-            return 0;
-        });
+        await rig.InvokeAsync(rig.Connection.Tick);
 
         Assert.Equal("", await rig.ReadAsync(() => rig.Connection.PingText));
         Assert.Equal(Strings.Status_NotConnected, await StatusAsync());

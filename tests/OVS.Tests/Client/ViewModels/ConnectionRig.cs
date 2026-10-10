@@ -108,6 +108,13 @@ sealed class ConnectionRig : IAsyncDisposable
 
     public Task RunAsync(Func<Task> work) => ui.RunAsync(work);
 
+    /// <summary>Runs a call on the "UI thread" and completes when it has run.</summary>
+    public Task InvokeAsync(Action action) => ui.ReadAsync(() =>
+    {
+        action();
+        return 0;
+    });
+
     public Task ConnectAsync(ConnectChoice choice) => RunAsync(() => Connection.ConnectAsync(choice));
 
     public Task DisconnectAsync() => RunAsync(Connection.DisconnectAsync);
