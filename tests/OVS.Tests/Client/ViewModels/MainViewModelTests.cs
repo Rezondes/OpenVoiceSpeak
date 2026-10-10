@@ -222,15 +222,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             return vm.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
-        Assert.Equal("", await TickHint()); // muted, but not talking
         Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
-        time.Advance(TimeSpan.FromSeconds(5)); // held: stays
-        Assert.Equal(SelfMutedHint, await TickHint());
-        Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, false));
-        time.Advance(TimeSpan.FromMilliseconds(1900));
-        Assert.Equal(SelfMutedHint, await TickHint());
-        time.Advance(TimeSpan.FromMilliseconds(200));
-        Assert.Equal("", await TickHint()); // 2 s after the release
+        await HoldKey(KeyAction.PushToTalk, false);
+        time.Advance(TimeSpan.FromMilliseconds(2100)); // the hold's edges are in VoiceHintsTests; this pins the clock
+        Assert.Equal("", await TickHint());
     }
 
     [Theory]
@@ -283,14 +278,20 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
         await HoldKey(KeyAction.PushToMute, false);
+    }
 
-        // the existing hints come first
+    /// <summary>A self-muted user in a muted channel gets the muted-channel hint: the channel's state is not cut by the own mute (the priority is in <c>VoiceHintsTests</c>).</summary>
+    [Fact]
+    public async Task Tick_ChannelMutedAndSelfMuted_ShowsTheMutedChannelHint()
+    {
         await OnUi(() =>
         {
+            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
             return vm.Server.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
-        Assert.Equal("Stummer Channel: niemand hört dich.", await HoldKey(KeyAction.PushToTalk, true));
+
+        Assert.Equal(Strings.VoiceHint_MutedChannel, await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
     }
 
@@ -411,7 +412,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Bookmark_EditAndDelete_Persist()
+    public async Task Bookmark_Edited_PersistsToTheProfileFolder()
     {
         var original = new Bookmark("Alt", "alt.example.org", 7000, "anna");
         await OnUi(() =>
@@ -423,23 +424,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
         vm.Dialogs = new DialogCallbacks
         {
             EditBookmark = b => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", "pw", SavePassword: true)),
-            Confirm = _ => Task.FromResult(true),
         };
         await ui.InvokeAsync<object?>(async () =>
         {
             await vm.Bookmarks.EditAsync(original);
             return null;
         });
-        var edited = ClientSettings.Load(dir, out _).Bookmarks.Single();
-        Assert.Equal(("Neu", "neu.example.org", 7100, "berta", "pw"), (edited.Name, edited.Host, edited.Port, edited.Nickname, edited.SavedPassword()));
-
-        await ui.InvokeAsync<object?>(async () =>
-        {
-            await vm.Bookmarks.DeleteAsync(vm.Settings.Bookmarks.Single());
-            return null;
-        });
-        Assert.Empty(ClientSettings.Load(dir, out _).Bookmarks);
-        Assert.False(await OnUi(() => vm.Bookmarks.HasAny));
+        Assert.Equal("Neu", ClientSettings.Load(dir, out _).Bookmarks.Single().Name); // wiring only: the list, dialogs and save reach the profile folder; the fields are in BookmarkListTests
     }
 
     /// <summary>Package 43: at start a newer release is offered; "Später" downloads nothing; switched off, nothing is asked.</summary>
@@ -788,17 +779,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() => vm.ShowConnectionDetailsCommand.ExecuteAsync(null));
         Assert.Same(stats, shown);
 
-        // refreshed every 2 s, not on every UI tick
-        Assert.Equal("64 kbps", await OnUi(() =>
-        {
-            vm.Audio.ChannelBitrate = 96;
-            time.Advance(TimeSpan.FromSeconds(1.9));
-            vm.Tick();
-            return stats.BitrateText;
-        }));
+        // refreshed after 2 s on the view model's clock (the interval's edges are in ConnectionStatsViewModelTests)
         Assert.Equal("96 kbps", await OnUi(() =>
         {
-            time.Advance(TimeSpan.FromSeconds(0.1));
+            vm.Audio.ChannelBitrate = 96;
+            time.Advance(ConnectionStatsViewModel.RefreshInterval);
             vm.Tick();
             return stats.BitrateText;
         }));
@@ -1258,26 +1243,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }
         Assert.Equal((false, false), await SeenByServer(false));
 
+        // closing the settings ends it (the rules and the page's button are in SelfTestTests and SelfTestWiringTests); a slider moved meanwhile goes back on "Verwerfen"
         await ui.InvokeAsync<object?>(async () =>
         {
             vm.OpenSettings();
-            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
-            return null;
-        });
-        Assert.True(await OnUi(() => vm.Audio.SelfTest && vm.SettingsPage!.IsSelfTesting));
-        Assert.Equal((true, true), await SeenByServer(true));
-
-        await ui.InvokeAsync<object?>(async () =>
-        {
-            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
-            return null;
-        });
-        Assert.False(await OnUi(() => vm.Audio.SelfTest));
-        Assert.Equal((false, false), await SeenByServer(false));
-
-        // closing the settings ends it too; a slider moved meanwhile goes back on "Verwerfen"
-        await ui.InvokeAsync<object?>(async () =>
-        {
             await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
             vm.SettingsPage.OutputVolumePercent = 50;
             return null;
@@ -1292,16 +1261,6 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal((false, false), await SeenByServer(false));
         Assert.False(await OnUi(() => vm.Audio.SelfTest));
         Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.Volume));
-
-        // disconnecting ends it as well
-        await ui.InvokeAsync<object?>(async () =>
-        {
-            vm.OpenSettings();
-            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
-            await vm.DisconnectAsync();
-            return null;
-        });
-        Assert.False(await OnUi(() => vm.Audio.SelfTest || vm.SettingsPage!.IsSelfTesting));
     }
 
     /// <summary>Package 51: the slider acts on the mixer at once, is kept by fingerprint and follows a new session.</summary>
@@ -1380,23 +1339,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.InRange(await level.Task.WaitAsync(TimeSpan.FromSeconds(10)), -15f, -12f);
     }
 
-    /// <summary>Package 102: a removed bookmark folds away in the sidebar; with no window it goes at once.</summary>
+    /// <summary>Package 102: applying the settings brings the sidebar's tiles up to date (the folding away is in <c>BookmarkListTests</c>).</summary>
     [Fact]
-    public async Task RemovedBookmark_FoldsAway()
+    public async Task ApplySettings_BookmarkAdded_TileAppears()
     {
-        var (shownAfter, liveAfter) = await OnUi(() =>
+        var tiles = await OnUi(() =>
         {
             var settings = vm.Settings;
             settings.Bookmarks.Add(new Bookmark("A", "a.example.org", 7000, "ich"));
-            settings.Bookmarks.Add(new Bookmark("B", "b.example.org", 7000, "ich"));
             vm.ApplySettings(settings);
-            vm.Bookmarks.Leave.Delay = TimeSpan.FromMinutes(1);
-            var less = vm.Settings;
-            less.Bookmarks.RemoveAll(b => b.Name == "B");
-            vm.ApplySettings(less);
-            return (vm.Bookmarks.Items.Count, vm.Bookmarks.Items.Live().Count());
+            return vm.Bookmarks.Items.Select(tile => tile.Name).ToList();
         });
-        Assert.Equal((2, 1), (shownAfter, liveAfter));
+        Assert.Equal(["A"], tiles);
     }
 
     /// <summary>Package 99, 61: the saved look counts from the start (display, background opacity and blur).</summary>

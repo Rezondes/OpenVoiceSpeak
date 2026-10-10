@@ -2859,7 +2859,7 @@ Ohne Verbindung zeigt die Seitenleiste nur "Nicht verbunden", der Hauptbereich u
 
 1. `MainViewModelTests > "Bookmark_Connect_UsesSavedPassword"` (AC2)
 2. `MainViewModelTests > "Bookmark_WrongSavedPassword_AsksAndSavesNew"` und `"Bookmark_AskPassword_Cancel_StaysDisconnected"` (AC3)
-3. `MainViewModelTests > "Bookmark_EditAndDelete_Persist"` (AC4), `BookmarkListTests > "EditAsync_Answered_ReplacesInPlaceSavesLogsAndRefreshesTiles"`, `"EditAsync_PasswordNotKept_StoresNone"`, `"DeleteAsync_Confirmed_RemovesSavesAndLogs"` und `"DeleteAsync_Declined_KeepsIt"` (AC4)
+3. `MainViewModelTests > "Bookmark_Edited_PersistsToTheProfileFolder"` (AC4), `BookmarkListTests > "EditAsync_Answered_ReplacesInPlaceSavesLogsAndRefreshesTiles"`, `"EditAsync_PasswordNotKept_StoresNone"`, `"DeleteAsync_Confirmed_RemovesSavesAndLogs"` und `"DeleteAsync_Declined_KeepsIt"` (AC4)
 4. `UiSmokeTests > "Bookmarks_InSidebar_WhenDisconnected"`: Lesezeichen in der Seitenleiste, keine Kachelliste im Hauptbereich, Kontextmenü mit drei Einträgen, nach dem Verbinden die Channels (AC1, AC4, AC5)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
@@ -3590,7 +3590,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
 5. `MainViewModelTests > "SelfTest_MutesAndDeafens_RestoresPreviousState"` (AC2, AC4, AC5)
    - Gegeben: echter Testserver, verbunden, nicht stumm. Einstellungen öffnen, Selbsttest starten
    - Erwartet: der Server meldet stumm und taub. Nach "Selbsttest beenden" wieder nicht stumm und nicht taub. Zweiter Durchlauf: Start, dann Einstellungen schliessen, ebenso zurück. Dritter: Start, dann trennen, der Test ist aus.
-   - Dieselben Regeln einzeln, ohne Server und Fenster: `SelfTestTests > "SetAsync_OnWithAServer_MutesAndDeafensAtTheServer"`, `"SetAsync_OffAfterOnWithAServer_PutsTheStateFromBeforeBackNotTheOneNow"` `"AbandonAsync_SelfTestRunning_PutsNothingBackAtTheServer"` (AC2, AC5) und `"AbandonAsync_SelfTestRunning_SwitchesTheEngineOff"` (AC5); die Verdrahtung: `SelfTestWiringTests > "ToggleSelfTest_ToggledAgainOnAServerMutedBefore_ServerGetsThatStateBack"`, `"ClosePage_SelfTestRunning_ServerGetsTheStateFromBefore"` und `"DisconnectAsync_SelfTestRunning_SendsNoStateToTheServerThatIsGoing"` (AC5); nach einem Verbindungsabbruch: `MainViewModelTests > "Reconnect_SelfTestRunningOnAMutedUser_BringsBackTheMuteFromBeforeIt"` (AC5)
+   - Dieselben Regeln einzeln, ohne Server und Fenster: `SelfTestTests > "SetAsync_OnWithAServer_MutesAndDeafensAtTheServer"`, `"SetAsync_OffAfterOnWithAServer_PutsTheStateFromBeforeBackNotTheOneNow"` `"AbandonAsync_SelfTestRunning_PutsNothingBackAtTheServer"` (AC2, AC5) und `"AbandonAsync_SelfTestRunning_SwitchesTheEngineOff"` (AC5); die Verdrahtung: `SelfTestWiringTests > "ToggleSelfTest_ToggledAgain_EngineAndPageStop"`, `"ToggleSelfTest_ServerShown_MutesAndDeafensAtTheServer"`, `"DisconnectAsync_SelfTestRunning_EngineStopsPlayingBack"` (AC2, AC5), `"ToggleSelfTest_ToggledAgainOnAServerMutedBefore_ServerGetsThatStateBack"`, `"ClosePage_SelfTestRunning_ServerGetsTheStateFromBefore"` und `"DisconnectAsync_SelfTestRunning_SendsNoStateToTheServerThatIsGoing"` (AC5); nach einem Verbindungsabbruch: `MainViewModelTests > "Reconnect_SelfTestRunningOnAMutedUser_BringsBackTheMuteFromBeforeIt"` (AC5)
 6. `UiSmokeTests > "Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint"` (AC1, AC6)
 7. `LocalizationTests` bleiben grün (AC6)
 8. Manueller Check AC7
