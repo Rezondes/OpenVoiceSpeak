@@ -1,0 +1,386 @@
+using OVS.Client.Collections;
+using OVS.Client.Dialogs;
+using OVS.Client.Services;
+using OVS.Client.Settings;
+using OVS.Tests.TestSupport;
+
+namespace OVS.Tests.Client.Services;
+
+/// <summary>Packages 39, 40 and 102: the saved servers of the sidebar, without a window, a connection or a disk.</summary>
+public sealed class BookmarkListTests
+{
+    readonly ManualTimeProvider time = new();
+    readonly List<string> lines = [];
+    readonly Dictionary<(string Host, int Port), byte[]> icons = [];
+    readonly LeaveTimer leave;
+    readonly BookmarkList list;
+    readonly List<string?> changed = [];
+    List<Bookmark> bookmarks = [];
+    DialogCallbacks dialogs = new();
+    int saves;
+
+    public BookmarkListTests()
+    {
+        leave = new LeaveTimer(time);
+        list = Build();
+        list.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+    }
+
+    BookmarkList Build() => new(() => bookmarks, (host, port) => icons.GetValueOrDefault((host, port)), leave, () => dialogs, () => saves++, lines.Add);
+
+    static Bookmark Gilde(string? password = null) =>
+        new("Gilde", "gilde.example.org", 7000, "anna", password is null ? null : PasswordProtector.Protect(password));
+
+    static Bookmark Club() => new("Club", "club.example.org", 7010, "berta");
+
+    static ConnectChoice Choice(string host = "gilde.example.org", int port = 7000, string nickname = "anna", string? password = null, bool savePassword = false) =>
+        new(host, port, nickname, password, SaveBookmark: true, SavePassword: savePassword);
+
+    // ---- the tiles ----
+
+    [Fact]
+    public void Constructor_SavedBookmarks_TilesInOrderWithTheirIcon()
+    {
+        bookmarks = [Gilde(), Club()];
+        icons[("club.example.org", 7010)] = new byte[] { 1, 2, 3 };
+
+        var shown = Build().Items;
+
+        Assert.Equal(["Gilde", "Club"], shown.Select(tile => tile.Name));
+        Assert.Null(shown[0].Icon);
+        Assert.Equal(new byte[] { 1, 2, 3 }, shown[1].Icon);
+    }
+
+    [Fact]
+    public void HasAny_NoBookmarkThenOne_FollowsTheList()
+    {
+        Assert.False(list.HasAny);
+
+        bookmarks.Add(Gilde());
+
+        Assert.True(list.HasAny);
+    }
+
+    [Fact]
+    public void Saved_Bookmarks_AreTheCurrentList()
+    {
+        bookmarks.Add(Gilde());
+        Assert.Same(bookmarks, list.Saved);
+
+        bookmarks = [Club()];
+
+        Assert.Same(bookmarks, list.Saved);
+    }
+
+    [Fact]
+    public void Refresh_AddedBookmark_TileAppearsAndBindingsAreTold()
+    {
+        bookmarks.Add(Gilde());
+
+        list.Refresh();
+
+        Assert.Equal("Gilde", Assert.Single(list.Items).Name);
+        Assert.Contains(nameof(BookmarkList.Items), changed);
+        Assert.Contains(nameof(BookmarkList.HasAny), changed);
+    }
+
+    [Fact]
+    public void Refresh_ListReplaced_ReadsTheNewOne()
+    {
+        bookmarks = [Club()]; // the old list was empty: only the new one can show a tile
+
+        list.Refresh();
+
+        Assert.Equal(["Club"], list.Items.Select(tile => tile.Name));
+        Assert.True(list.HasAny);
+    }
+
+    [Fact]
+    public void Refresh_IconArrivedLater_TileShowsIt()
+    {
+        bookmarks.Add(Gilde());
+        list.Refresh();
+        Assert.Null(Assert.Single(list.Items).Icon);
+
+        icons[("gilde.example.org", 7000)] = new byte[] { 9 };
+        list.Refresh();
+
+        Assert.Equal(new byte[] { 9 }, Assert.Single(list.Items).Icon);
+    }
+
+    [Fact]
+    public void Refresh_RemovedBookmarkWithoutLeaveDelay_GoesAtOnce()
+    {
+        bookmarks.Add(Gilde());
+        list.Refresh();
+
+        bookmarks.Clear();
+        list.Refresh();
+
+        Assert.Empty(list.Items);
+    }
+
+    [Fact]
+    public async Task Refresh_RemovedBookmarkWithLeaveDelay_StaysLeavingThenFoldsAway()
+    {
+        bookmarks.Add(Gilde());
+        list.Refresh();
+        leave.Delay = TimeSpan.FromSeconds(1);
+
+        bookmarks.Clear();
+        list.Refresh();
+
+        Assert.Single(list.Items);
+        Assert.Empty(list.Items.Live());
+        time.Advance(TimeSpan.FromSeconds(1));
+        await AsyncWait.Until(() => list.Items.Count == 0);
+    }
+
+    // ---- remembering a server that was connected to ----
+
+    [Fact]
+    public void Remember_NewServer_FirstNamedAfterItsAddressAndSaved()
+    {
+        bookmarks.Add(Gilde());
+
+        list.Remember(Choice("neu.example.org", 7100, "berta"), passwordConfirmed: false);
+
+        var first = bookmarks[0];
+        Assert.Equal(("neu.example.org:7100", "neu.example.org", 7100, "berta"), (first.Name, first.Host, first.Port, first.Nickname));
+        Assert.Equal(2, bookmarks.Count);
+        Assert.Equal(1, saves);
+        Assert.Equal(["neu.example.org:7100", "Gilde"], list.Items.Select(tile => tile.Name));
+    }
+
+    [Fact]
+    public void Remember_NewServer_TilesFollowAndBindingsAreTold()
+    {
+        list.Remember(Choice(), passwordConfirmed: false);
+
+        Assert.Equal("gilde.example.org:7000", Assert.Single(list.Items).Address);
+        Assert.Contains(nameof(BookmarkList.Items), changed);
+        Assert.Contains(nameof(BookmarkList.HasAny), changed);
+    }
+
+    [Fact]
+    public void Remember_KnownServer_MovesFirstKeepingItsGivenNameAndTakingTheNewNickname()
+    {
+        bookmarks = [Club(), Gilde()];
+
+        list.Remember(Choice(nickname: "neuer-name"), passwordConfirmed: false);
+
+        Assert.Equal(["Gilde", "Club"], bookmarks.Select(bookmark => bookmark.Name));
+        Assert.Equal("neuer-name", bookmarks[0].Nickname);
+    }
+
+    [Fact]
+    public void Remember_SameHostOtherPort_IsAnotherBookmark()
+    {
+        bookmarks.Add(Gilde());
+
+        list.Remember(Choice(port: 7001), passwordConfirmed: false);
+
+        Assert.Equal([7001, 7000], bookmarks.Select(bookmark => bookmark.Port));
+    }
+
+    [Fact]
+    public void Remember_OtherHostSamePort_IsAnotherBookmark()
+    {
+        bookmarks.Add(Gilde("alt"));
+
+        list.Remember(Choice("club.example.org"), passwordConfirmed: false);
+
+        Assert.Equal(["club.example.org", "gilde.example.org"], bookmarks.Select(bookmark => bookmark.Host));
+        Assert.Equal("club.example.org:7000", bookmarks[0].Name);
+        Assert.Null(bookmarks[0].ProtectedPassword);
+        Assert.Equal("alt", bookmarks[1].SavedPassword());
+    }
+
+    [Fact]
+    public void Remember_PasswordNotYetConfirmed_KeepsWhatTheBookmarkHadAndLogsNothing()
+    {
+        bookmarks.Add(Gilde("alt"));
+
+        list.Remember(Choice(password: "neu", savePassword: true), passwordConfirmed: false);
+
+        Assert.Equal("alt", bookmarks[0].SavedPassword());
+        Assert.Empty(lines);
+    }
+
+    [Fact]
+    public void Remember_PasswordConfirmedAndAsked_StoresItProtectedAndNeverLogsIt()
+    {
+        list.Remember(Choice(password: "geheim-richtig", savePassword: true), passwordConfirmed: true);
+
+        var stored = Assert.Single(bookmarks);
+        Assert.NotEqual("geheim-richtig", stored.ProtectedPassword);
+        Assert.Equal("geheim-richtig", stored.SavedPassword());
+        Assert.Equal("Bookmark saved, password stored encrypted", Assert.Single(lines));
+    }
+
+    [Fact]
+    public void Remember_PasswordConfirmedButNotAsked_DropsTheStoredOne()
+    {
+        bookmarks.Add(Gilde("alt"));
+
+        list.Remember(Choice(password: "alt", savePassword: false), passwordConfirmed: true);
+
+        Assert.Null(bookmarks[0].ProtectedPassword);
+        Assert.Equal("Bookmark saved", Assert.Single(lines));
+    }
+
+    [Fact]
+    public void Remember_PasswordAskedButEmpty_StoresNone()
+    {
+        list.Remember(Choice(password: "", savePassword: true), passwordConfirmed: true);
+
+        Assert.Null(Assert.Single(bookmarks).ProtectedPassword);
+        Assert.Equal("Bookmark saved", Assert.Single(lines));
+    }
+
+    // ---- editing ----
+
+    [Fact]
+    public async Task EditAsync_Answered_ReplacesInPlaceSavesLogsAndRefreshesTiles()
+    {
+        var other = Club();
+        var original = Gilde();
+        bookmarks = [other, original];
+        Bookmark? asked = null;
+        dialogs = new DialogCallbacks
+        {
+            EditBookmark = bookmark =>
+            {
+                asked = bookmark;
+                return Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", "pw-geheim", SavePassword: true));
+            },
+        };
+
+        await HangGuard.Bound(list.EditAsync(original));
+
+        Assert.Same(original, asked);
+        var edited = bookmarks[1];
+        Assert.Equal(("Neu", "neu.example.org", 7100, "berta", "pw-geheim"), (edited.Name, edited.Host, edited.Port, edited.Nickname, edited.SavedPassword()));
+        Assert.Same(other, bookmarks[0]);
+        Assert.Equal(1, saves);
+        Assert.Equal("Bookmark 'Gilde' changed: Neu, neu.example.org:7100, berta, password stored", Assert.Single(lines));
+        Assert.Equal(["Club", "Neu"], list.Items.Select(tile => tile.Name));
+    }
+
+    [Fact]
+    public async Task EditAsync_PasswordNotKept_StoresNone()
+    {
+        var original = Gilde("alt");
+        bookmarks.Add(original);
+        dialogs = new DialogCallbacks
+        {
+            EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Gilde", "gilde.example.org", 7000, "anna", "alt", SavePassword: false)),
+        };
+
+        await HangGuard.Bound(list.EditAsync(original));
+
+        Assert.Null(bookmarks[0].ProtectedPassword);
+        Assert.EndsWith("password not stored", Assert.Single(lines));
+    }
+
+    [Fact]
+    public async Task EditAsync_Cancelled_ChangesNothing()
+    {
+        var original = Gilde();
+        bookmarks.Add(original);
+        dialogs = new DialogCallbacks { EditBookmark = _ => Task.FromResult<BookmarkEdit?>(null) };
+
+        await HangGuard.Bound(list.EditAsync(original));
+
+        Assert.Same(original, Assert.Single(bookmarks));
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task EditAsync_NoDialogWired_ChangesNothingAndLogsNothing()
+    {
+        var original = Gilde();
+        bookmarks.Add(original);
+
+        await HangGuard.Bound(list.EditAsync(original));
+
+        Assert.Same(original, Assert.Single(bookmarks));
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task EditAsync_BookmarkNotInList_ChangesNothing()
+    {
+        dialogs = new DialogCallbacks
+        {
+            EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", null, SavePassword: false)),
+        };
+
+        await HangGuard.Bound(list.EditAsync(Gilde()));
+
+        Assert.Empty(bookmarks);
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    // ---- deleting ----
+
+    [Fact]
+    public async Task DeleteAsync_Confirmed_RemovesSavesAndLogs()
+    {
+        var gilde = Gilde();
+        bookmarks = [gilde, Club()];
+        list.Refresh();
+        string? asked = null;
+        dialogs = new DialogCallbacks
+        {
+            Confirm = question =>
+            {
+                asked = question;
+                return Task.FromResult(true);
+            },
+        };
+
+        await HangGuard.Bound(list.DeleteAsync(gilde));
+
+        Assert.Contains("Gilde", asked);
+        Assert.Equal(["Club"], bookmarks.Select(bookmark => bookmark.Name));
+        Assert.Equal(["Club"], list.Items.Select(tile => tile.Name));
+        Assert.Equal(1, saves);
+        Assert.Equal("Bookmark 'Gilde' deleted", Assert.Single(lines));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_Declined_KeepsIt()
+    {
+        var gilde = Gilde();
+        bookmarks.Add(gilde);
+        dialogs = new DialogCallbacks { Confirm = _ => Task.FromResult(false) };
+
+        await HangGuard.Bound(list.DeleteAsync(gilde));
+
+        Assert.Same(gilde, Assert.Single(bookmarks));
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_NoDialogWired_KeepsItAndLogsNothing()
+    {
+        var gilde = Gilde();
+        bookmarks.Add(gilde);
+
+        await HangGuard.Bound(list.DeleteAsync(gilde));
+
+        Assert.Same(gilde, Assert.Single(bookmarks));
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_BookmarkNotInList_SavesNothing()
+    {
+        dialogs = new DialogCallbacks { Confirm = _ => Task.FromResult(true) };
+
+        await HangGuard.Bound(list.DeleteAsync(Gilde()));
+
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+}

@@ -128,7 +128,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     {
         var main = Open(out var vm);
         var overlay = main.Overlay;
-        _ = ConnectDialog.ShowAsync(overlay, vm.Settings, null); // nothing filled in
+        _ = ConnectDialog.ShowAsync(overlay, vm.Bookmarks.Saved, null); // nothing filled in
         MotionWait.Settle(350);
         MotionWait.Eventually(() => Assert.Equal(1, Card(overlay).Opacity, 2)); // it has popped up: the shake is the only movement
         var swings = MotionWait.Record(Card(overlay), OffsetX); // every swing as it happens: under load one frame can outlast the shake

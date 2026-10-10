@@ -130,9 +130,9 @@
           <ScrollViewer Padding="8,10" IsVisible="{Binding !IsConnected}">
             <StackPanel Spacing="2">
               <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_BookmarksSection}" Margin="10,4,0,6" />
-              <TextBlock Classes="caption" Margin="10,0" TextWrapping="Wrap" IsVisible="{Binding !HasBookmarks}"
+              <TextBlock Classes="caption" Margin="10,0" TextWrapping="Wrap" IsVisible="{Binding !Bookmarks.HasAny}"
                          Text="{x:Static l:Strings.Ui_NoBookmarks}" />
-              <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Bookmarks}">
+              <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Bookmarks.Items}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="m:BookmarkItem">
                     <Button Classes="bookmark" Click="OnBookmarkClick" ToolTip.Tip="{Binding Address}"

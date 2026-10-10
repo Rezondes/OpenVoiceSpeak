@@ -714,7 +714,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     /// <summary>Every dialog of <c>UiSmokeTests.ExercisePagesAndDialogs</c>, plus the password and bookmark dialogs.</summary>
     static Task OpenDialog(string name, OverlayHost o, ClientSettings settings, ServerViewModel server) => name switch
     {
-        "Connect" => ConnectDialog.ShowAsync(o, settings),
+        "Connect" => ConnectDialog.ShowAsync(o, settings.Bookmarks),
         "TofuMismatch" => TofuDialog.ShowAsync(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
         "TofuUnknown" => TofuDialog.ShowAsync(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Unknown)),
         "Ban" => BanDialog.ShowAsync(o, "Mitspieler mit langem Namen"),

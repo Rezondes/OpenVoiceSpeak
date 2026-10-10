@@ -51,7 +51,7 @@ static class DialogCaseTable
             () => [Strings.Dlg_Cancel, Strings.Dlg_Save], Red: false, EnterAccepts: null),
         new("KeyBinding", typeof(KeyBindingDialog), o => Accepted(KeyBindingDialog.ShowAsync(o, null, _ => Task.FromResult<KeyChord?>(null)), binding => binding is not null),
             () => [Strings.Dlg_Cancel, Strings.Dlg_Save], Red: false, EnterAccepts: null),
-        new("Connect", typeof(ConnectDialog), o => Accepted(ConnectDialog.ShowAsync(o, new ClientSettings()), choice => choice is not null),
+        new("Connect", typeof(ConnectDialog), o => Accepted(ConnectDialog.ShowAsync(o, []), choice => choice is not null),
             () => [Strings.Dlg_Cancel, Strings.Dlg_Connect], Red: false, EnterAccepts: null),
         // no channel: nothing to select, so the plain "OK"
         new("ChannelPicker", typeof(ChannelPickerDialog), o => Accepted(ChannelPickerDialog.ShowAsync(o, "Verschieben nach", []), channel => channel is not null),

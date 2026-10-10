@@ -2812,7 +2812,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~LinkCommandTests|FullyQual
 
 1. `SettingsTests > "Password_Protected_RoundTrip_NoPlainTextInFile"` (AC2)
 2. `SettingsTests > "Password_Garbage_TreatedAsNone"` (AC3)
-3. `MainViewModelTests > "Connect_SavePassword_OnlyAfterSuccess"` gegen `TestServer` mit Passwort, einmal falsch, einmal richtig (AC2)
+3. `MainViewModelTests > "Connect_SavePassword_OnlyAfterSuccess"` gegen `TestServer` mit Passwort, einmal falsch, einmal richtig (AC2), `BookmarkListTests > "Remember_PasswordNotYetConfirmed_KeepsWhatTheBookmarkHadAndLogsNothing"`, `"Remember_PasswordConfirmedAndAsked_StoresItProtectedAndNeverLogsIt"` und `"Remember_PasswordConfirmedButNotAsked_DropsTheStoredOne"` (AC2)
 4. `UiSmokeTests`: Checkbox, aktiv nur mit Passwort und Lesezeichen, Vorbelegung (AC1, AC3)
 5. `ClientLogTests`: das Passwort steht nicht im Log (AC4)
 
@@ -2859,7 +2859,7 @@ Ohne Verbindung zeigt die Seitenleiste nur "Nicht verbunden", der Hauptbereich u
 
 1. `MainViewModelTests > "Bookmark_Connect_UsesSavedPassword"` (AC2)
 2. `MainViewModelTests > "Bookmark_WrongSavedPassword_AsksAndSavesNew"` und `"Bookmark_AskPassword_Cancel_StaysDisconnected"` (AC3)
-3. `MainViewModelTests > "Bookmark_EditAndDelete_Persist"` (AC4)
+3. `MainViewModelTests > "Bookmark_EditAndDelete_Persist"` (AC4), `BookmarkListTests > "EditAsync_Answered_ReplacesInPlaceSavesLogsAndRefreshesTiles"`, `"EditAsync_PasswordNotKept_StoresNone"`, `"DeleteAsync_Confirmed_RemovesSavesAndLogs"` und `"DeleteAsync_Declined_KeepsIt"` (AC4)
 4. `UiSmokeTests > "Bookmarks_InSidebar_WhenDisconnected"`: Lesezeichen in der Seitenleiste, keine Kachelliste im Hauptbereich, Kontextmenü mit drei Einträgen, nach dem Verbinden die Channels (AC1, AC4, AC5)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
@@ -6330,7 +6330,7 @@ Test command: `dotnet test tests/OVS.Tests`
 3. `CollectionSyncTests > "NoDelay_RemovedAtOnce"` (AC6)
 4. `CollectionSyncTests > "Moves_IgnoreLeavingItems"`: the order is correct when the desired items and leaving items are mixed.
 5. `ServerViewModelTests > "LeavingUser_NotCountedNotTarget_LeavingChannelSkipped"`, `DebugApiTests > "LeavingUser_NotInState"` (AC5)
-6. `ItemMotionTests > "DeletedChannel_CollapsesThenGone"` (AC2), `"AdminRowRemoved_Leaves_AndComesBackWhole"` (AC3)
+6. `ItemMotionTests > "DeletedChannel_CollapsesThenGone"` (AC2), `"AdminRowRemoved_Leaves_AndComesBackWhole"` (AC3), `BookmarkListTests > "Refresh_RemovedBookmarkWithLeaveDelay_StaysLeavingThenFoldsAway"` (AC3)
 
 Test command: `dotnet test tests/OVS.Tests`
 

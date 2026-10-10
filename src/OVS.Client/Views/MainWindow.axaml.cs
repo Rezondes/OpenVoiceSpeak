@@ -65,7 +65,7 @@ public partial class MainWindow : Window
     async Task ConnectAsync(Bookmark? preselect)
     {
         if (Vm.IsConnecting) return;
-        if (await ConnectDialog.ShowAsync(Overlay, Vm.Settings, preselect) is { } choice) await Vm.ConnectAsync(choice);
+        if (await ConnectDialog.ShowAsync(Overlay, Vm.Bookmarks.Saved, preselect) is { } choice) await Vm.ConnectAsync(choice);
     }
 
     // ---- Bookmarks in the sidebar (Package 40): a click connects right away ----
@@ -79,12 +79,12 @@ public partial class MainWindow : Window
 
     async void OnBookmarkEdit(object? sender, RoutedEventArgs e)
     {
-        if (BookmarkOf(sender) is { } bookmark) await Vm.EditBookmarkAsync(bookmark);
+        if (BookmarkOf(sender) is { } bookmark) await Vm.Bookmarks.EditAsync(bookmark);
     }
 
     async void OnBookmarkDelete(object? sender, RoutedEventArgs e)
     {
-        if (BookmarkOf(sender) is { } bookmark) await Vm.DeleteBookmarkAsync(bookmark);
+        if (BookmarkOf(sender) is { } bookmark) await Vm.Bookmarks.DeleteAsync(bookmark);
     }
 
     /// <summary>Esc closes the drawer, otherwise leaves settings (without saving) or the administration. An open dialog handles Esc itself first.</summary>

@@ -320,11 +320,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             Dispatcher.UIThread.RunJobs();
             Assert.True(shown.IsCompleted, title);
         }
-        Dialog(o => ConnectDialog.ShowAsync(o, vm.Settings), "Mit Server verbinden");
+        Dialog(o => ConnectDialog.ShowAsync(o, vm.Bookmarks.Saved), "Mit Server verbinden");
 
         // Package 39: "Passwort speichern" needs a password and the bookmark; a saved one is filled in
         vm.Settings.Bookmarks.Insert(0, new Bookmark("Gilde", "gilde.example.org", 7000, "ich", PasswordProtector.Protect("pw")));
-        var connecting = ConnectDialog.ShowAsync(main.Overlay, vm.Settings, vm.Settings.Bookmarks[0]);
+        var connecting = ConnectDialog.ShowAsync(main.Overlay, vm.Bookmarks.Saved, vm.Settings.Bookmarks[0]);
         Dispatcher.UIThread.RunJobs();
         var boxes = main.Overlay.GetVisualDescendants().OfType<CheckBox>().ToList();
         var savePassword = boxes.Single(c => c.Content is string text && text.StartsWith("Passwort speichern"));
@@ -1217,7 +1217,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             vm.ClosePage();
             foreach (var open in new Func<OverlayHost, Task>[]
             {
-                o => ConnectDialog.ShowAsync(o, vm.Settings), o => BanDialog.ShowAsync(o, "anna"), o => ConfirmDialog.ShowAsync(o, "?"),
+                o => ConnectDialog.ShowAsync(o, vm.Bookmarks.Saved), o => BanDialog.ShowAsync(o, "anna"), o => ConfirmDialog.ShowAsync(o, "?"),
                 o => ChannelDialogView.ShowAsync(o, new ChannelEdit("Raid", ""), ChannelDialogMode.Edit),
                 o => ChannelDialogView.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
                 o => KeyBindingDialog.ShowAsync(o, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),

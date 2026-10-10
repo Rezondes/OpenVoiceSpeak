@@ -13,7 +13,7 @@ namespace OVS.Client.Dialogs;
 /// <summary>Address, nickname and password of a server, filled in from a bookmark or typed; optionally saved as a bookmark.</summary>
 internal static class ConnectDialog
 {
-    internal static Task<ConnectChoice?> ShowAsync(OverlayHost overlay, ClientSettings settings, Bookmark? preselect = null)
+    internal static Task<ConnectChoice?> ShowAsync(OverlayHost overlay, IReadOnlyList<Bookmark> savedBookmarks, Bookmark? preselect = null)
     {
         var host = new TextBox { Watermark = Strings.Dlg_HostExample };
         var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = ProtocolDefaults.Port, FormatString = "0", Increment = 1, Width = 130 };
@@ -36,23 +36,29 @@ internal static class ConnectDialog
         error.IsVisible = false;
         var bookmarks = new ComboBox
         {
-            ItemsSource = settings.Bookmarks.Select(b => $"{b.Name} ({b.Nickname})").ToList(),
+            ItemsSource = savedBookmarks.Select(bookmark => $"{bookmark.Name} ({bookmark.Nickname})").ToList(),
             PlaceholderText = Strings.Dlg_ChooseBookmark,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         bookmarks.SelectionChanged += (_, _) =>
         {
             if (bookmarks.SelectedIndex < 0) return;
-            var b = settings.Bookmarks[bookmarks.SelectedIndex];
-            host.Text = b.Host;
-            port.Value = b.Port;
-            nickname.Text = b.Nickname;
-            password.Text = b.SavedPassword() ?? "";
+            var chosen = savedBookmarks[bookmarks.SelectedIndex];
+            host.Text = chosen.Host;
+            port.Value = chosen.Port;
+            nickname.Text = chosen.Nickname;
+            password.Text = chosen.SavedPassword() ?? "";
             UpdateSavePassword();
-            savePassword.IsChecked = b.HasSavedPassword;
+            savePassword.IsChecked = chosen.HasSavedPassword;
         };
-        int index = preselect is null ? 0 : settings.Bookmarks.IndexOf(preselect);
-        if (settings.Bookmarks.Count > 0) bookmarks.SelectedIndex = Math.Max(0, index);
+        int index = 0;
+        for (int position = 0; preselect is not null && position < savedBookmarks.Count; position++)
+        {
+            if (!savedBookmarks[position].Equals(preselect)) continue;
+            index = position;
+            break;
+        }
+        if (savedBookmarks.Count > 0) bookmarks.SelectedIndex = Math.Max(0, index);
 
         var address = new DockPanel { Children = { DockAt(CreateField("Port", port), Dock.Right), CreateField(Strings.Dlg_Address, host) } };
         ((Control)address.Children[0]).Margin = new Thickness(12, 0, 0, 0);
@@ -60,7 +66,7 @@ internal static class ConnectDialog
 
         UpdateSavePassword();
         var body = CreateStack(address, CreateField("Nickname", nickname), CreateField(Strings.Dlg_ServerPassword, passwordRow, Strings.Dlg_PasswordOptional), save, savePassword, error);
-        if (settings.Bookmarks.Count > 0) body.Children.Insert(0, CreateField(Strings.Dlg_Bookmark, bookmarks));
+        if (savedBookmarks.Count > 0) body.Children.Insert(0, CreateField(Strings.Dlg_Bookmark, bookmarks));
 
         return DialogFrame.ShowAsync(overlay, Strings.Dlg_ConnectTitle, "PlugConnected", body, () =>
             {

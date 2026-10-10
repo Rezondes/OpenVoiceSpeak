@@ -126,7 +126,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
         Leave = leave;
-        SyncBookmarks();
+        Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, Leave, () => Dialogs, () => Settings.Save(storageDir), Log.Write);
 
         this.listDevices = listDevices;
         if (audio.DeviceLifecycle.OpensDevices) RefreshDevices();
@@ -195,15 +195,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public bool IsHomePage => Page == Page.Home;
     public bool IsSettingsPage => Page == Page.Settings;
     public bool IsAdminPage => Page == Page.Admin;
-    /// <summary>Package 102: kept in step with the settings, so a removed bookmark can fold away.</summary>
-    public ObservableCollection<BookmarkItem> Bookmarks { get; } = [];
+    /// <summary>Package 40: the saved servers, shown as tiles in the sidebar.</summary>
+    internal BookmarkList Bookmarks { get; }
 
     /// <summary>Package 102: how long a removed bookmark stays to fold away (the window sets it).</summary>
     public LeaveTimer Leave { get; }
-
-    void SyncBookmarks() =>
-        CollectionSync.Sync(Bookmarks, Settings.Bookmarks.Select(b => new BookmarkItem(b, icons.Load(b.Host, b.Port))).ToList(), Leave);
-    public bool HasBookmarks => Settings.Bookmarks.Count > 0;
 
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
     public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
@@ -256,14 +252,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(Settings));
         OnPropertyChanged(nameof(TalkHint));
         OnPropertyChanged(nameof(HasNoPttBinding));
-        OnSettingsListsChanged();
-    }
-
-    void OnSettingsListsChanged()
-    {
-        SyncBookmarks();
-        OnPropertyChanged(nameof(Bookmarks));
-        OnPropertyChanged(nameof(HasBookmarks));
+        Bookmarks.Refresh();
     }
 
     public async Task ConnectAsync(ConnectChoice choice)
@@ -271,13 +260,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (Server is not null && !await ConfirmLeaveAsync(adminOnly: true)) return; // Package 114: the administration goes with the server
         await DisconnectAsync();
         lastRejection = null;
-        if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: false);
+        if (choice.SaveBookmark) Bookmarks.Remember(choice, passwordConfirmed: false);
 
         IsConnecting = true;
         try
         {
             Attach(await OpenAsync(choice), choice);
-            if (choice.SaveBookmark) SaveBookmark(choice, passwordConfirmed: true);
+            if (choice.SaveBookmark) Bookmarks.Remember(choice, passwordConfirmed: true);
         }
         catch (ConnectionRejectedException e)
         {
@@ -361,23 +350,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         lastChoice = choice with { SaveBookmark = false }; // Package 139: what a reconnect uses, the password in memory only
     }
 
-    /// <summary>
-    /// Puts the server first in the bookmarks, keeping a name given earlier. The password (Package 39) is only
-    /// written once the server accepted it: before that the bookmark keeps whatever it had.
-    /// </summary>
-    void SaveBookmark(ConnectChoice choice, bool passwordConfirmed)
-    {
-        var old = Settings.Bookmarks.FirstOrDefault(b => b.Host == choice.Host && b.Port == choice.Port);
-        var password = !passwordConfirmed ? old?.ProtectedPassword
-            : choice.SavePassword && !string.IsNullOrEmpty(choice.Password) ? PasswordProtector.Protect(choice.Password)
-            : null;
-        Settings.Bookmarks.RemoveAll(b => b.Host == choice.Host && b.Port == choice.Port);
-        Settings.Bookmarks.Insert(0, new Bookmark(old?.Name ?? $"{choice.Host}:{choice.Port}", choice.Host, choice.Port, choice.Nickname, password));
-        Settings.Save(storageDir);
-        if (passwordConfirmed) Log.Write($"Lesezeichen gespeichert{(password is null ? "" : ", Passwort verschlüsselt gespeichert")}");
-        OnSettingsListsChanged();
-    }
-
     // ---- Updates (Package 43) ----
 
     public UpdateChecker? Updates { get; set; }
@@ -424,7 +396,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         return failure;
     }
 
-    // ---- Bookmarks in the sidebar (Package 40) ----
+    // ---- A click on a bookmark in the sidebar connects (Package 40); the list itself is Bookmarks ----
 
     /// <summary>One click connects; a missing or wrong password is asked for until it fits or the user gives up.</summary>
     public async Task ConnectBookmarkAsync(Bookmark bookmark)
@@ -438,27 +410,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             if (await ask(bookmark.Name) is not { } answer) return;
             (password, save) = (answer.Password, answer.Save);
         }
-    }
-
-    public async Task EditBookmarkAsync(Bookmark bookmark)
-    {
-        if (Dialogs.EditBookmark is not { } edit || await edit(bookmark) is not { } e) return;
-        int index = Settings.Bookmarks.IndexOf(bookmark);
-        if (index < 0) return;
-        var password = e.SavePassword && !string.IsNullOrEmpty(e.Password) ? PasswordProtector.Protect(e.Password) : null;
-        Settings.Bookmarks[index] = new Bookmark(e.Name, e.Host, e.Port, e.Nickname, password);
-        Settings.Save(storageDir);
-        Log.Write($"Lesezeichen '{bookmark.Name}' geändert: {e.Name}, {e.Host}:{e.Port}, {e.Nickname}, Passwort {(password is null ? "nicht gespeichert" : "gespeichert")}");
-        OnSettingsListsChanged();
-    }
-
-    public async Task DeleteBookmarkAsync(Bookmark bookmark)
-    {
-        if (Dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Confirm_DeleteBookmark, bookmark.Name))) return;
-        if (!Settings.Bookmarks.Remove(bookmark)) return;
-        Settings.Save(storageDir);
-        Log.Write($"Lesezeichen '{bookmark.Name}' gelöscht");
-        OnSettingsListsChanged();
     }
 
     async Task<bool> ConfirmTofuLogged(TofuPrompt prompt)
@@ -910,7 +861,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             if (ServerIconFormat.ComputeHash(png) != icon.Hash) return;
             icons.Save(host, port, png);
             vm.IconPng = png;
-            OnSettingsListsChanged(); // the bookmark tile shows it too
+            Bookmarks.Refresh(); // the bookmark tile shows it too
         };
         Sync();
     }

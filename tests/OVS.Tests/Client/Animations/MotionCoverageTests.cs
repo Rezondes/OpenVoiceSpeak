@@ -225,7 +225,7 @@ public sealed class MotionCoverageTests
         text.AppendLine($"page={vm.Page} connected={vm.IsConnected} connecting={vm.IsConnecting} status={vm.Status}");
         var card = (Border)main.Overlay.Children[1];
         text.AppendLine($"dialog={main.Overlay.IsOpen}/{main.Overlay.IsVisible} card={card.Opacity:F2}/{card.RenderTransform?.Value.M11 ?? 1:F2} drawer={main.Classes.Contains("drawer")}");
-        text.AppendLine($"bookmarks={string.Join(",", vm.Bookmarks.Select(b => b.Name))}");
+        text.AppendLine($"bookmarks={string.Join(",", vm.Bookmarks.Items.Select(tile => tile.Name))}");
         if (vm.Server is { } server)
         {
             foreach (var channel in server.Channels)
@@ -385,7 +385,7 @@ public sealed class MotionCoverageTests
     static IEnumerable<Step> Steps(Walk w)
     {
         // ---- home ----
-        foreach (var s in Dialog("connect", x => _ = ConnectDialog.ShowAsync(x.Main.Overlay, x.Vm.Settings))) yield return s;
+        foreach (var s in Dialog("connect", x => _ = ConnectDialog.ShowAsync(x.Main.Overlay, x.Vm.Bookmarks.Saved))) yield return s;
         foreach (var s in Dialog("server password", x => _ = ServerPasswordDialog.ShowAsync(x.Main.Overlay, "Gilde"))) yield return s;
         foreach (var s in Dialog("certificate", x => _ = TofuDialog.ShowAsync(x.Main.Overlay, new TofuPrompt("gilde.example.org", 7000, "AB:CD:EF:01", TofuResult.Unknown))))
             yield return s;
@@ -406,8 +406,8 @@ public sealed class MotionCoverageTests
             x.Vm.ApplySettings(settings);
         });
         foreach (var s in Menu("a bookmark's menu", BookmarkButton)) yield return s;
-        foreach (var s in Dialog("edit bookmark", x => _ = x.Vm.EditBookmarkAsync(x.Vm.Settings.Bookmarks[0]))) yield return s;
-        foreach (var s in Dialog("delete bookmark", x => _ = x.Vm.DeleteBookmarkAsync(x.Vm.Settings.Bookmarks[0]))) yield return s;
+        foreach (var s in Dialog("edit bookmark", x => _ = x.Vm.Bookmarks.EditAsync(x.Vm.Settings.Bookmarks[0]))) yield return s;
+        foreach (var s in Dialog("delete bookmark", x => _ = x.Vm.Bookmarks.DeleteAsync(x.Vm.Settings.Bookmarks[0]))) yield return s;
         yield return new("remove a bookmark", x =>
         {
             var settings = x.Vm.Settings;

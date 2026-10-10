@@ -9,6 +9,7 @@ using OVS.Client.Dialogs;
 using OVS.Client.Input;
 using OVS.Client.Models;
 using OVS.Client.Net;
+using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
@@ -312,7 +313,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         var log = ClientLogText();
         Assert.DoesNotContain("geheim", log);
-        Assert.Contains("Passwort verschlüsselt gespeichert", log);
+        Assert.Contains("password stored encrypted", log);
     }
 
     // ---- Package 40: bookmarks in the sidebar ----
@@ -379,7 +380,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         };
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.EditBookmarkAsync(original);
+            await vm.Bookmarks.EditAsync(original);
             return null;
         });
         var edited = ClientSettings.Load(dir, out _).Bookmarks.Single();
@@ -387,11 +388,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.DeleteBookmarkAsync(vm.Settings.Bookmarks.Single());
+            await vm.Bookmarks.DeleteAsync(vm.Settings.Bookmarks.Single());
             return null;
         });
         Assert.Empty(ClientSettings.Load(dir, out _).Bookmarks);
-        Assert.False(await OnUi(() => vm.HasBookmarks));
+        Assert.False(await OnUi(() => vm.Bookmarks.HasAny));
     }
 
     /// <summary>Package 43: at start a newer release is offered; "Später" downloads nothing; switched off, nothing is asked.</summary>
@@ -583,7 +584,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await Connect(); // second time straight from the cache
         Assert.Equal(png, await OnUi(() => vm.Server!.IconPng));
-        Assert.Equal(png, (await OnUi(() => vm.Bookmarks)).Single().Icon);
+        Assert.Equal(png, (await OnUi(() => vm.Bookmarks.Items)).Single().Icon);
 
         var log = ClientLogText();
         Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Request server logo")));
@@ -947,19 +948,21 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task StartScreen_BookmarksAndConnectingState()
     {
-        Assert.False(await OnUi(() => vm.HasBookmarks));
+        Assert.False(await OnUi(() => vm.Bookmarks.HasAny));
         Assert.Equal($"PTT: {DefaultPushToTalk.Choose(DefaultPushToTalk.CountMouseButtons()).Name}", await OnUi(() => vm.TalkHint)); // Package 59: new profiles get a PTT key
         var changed = new List<string?>();
+        var changedBookmarks = new List<string?>();
         await OnUi(() =>
         {
             vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+            vm.Bookmarks.PropertyChanged += (_, args) => changedBookmarks.Add(args.PropertyName);
             return 0;
         });
 
         await ConnectAsync(saveBookmark: true);
-        Assert.True(await OnUi(() => vm.HasBookmarks));
-        Assert.Equal("anna", (await OnUi(() => vm.Bookmarks)).Single().Nickname);
-        Assert.Contains(nameof(MainViewModel.Bookmarks), changed);
+        Assert.True(await OnUi(() => vm.Bookmarks.HasAny));
+        Assert.Equal("anna", (await OnUi(() => vm.Bookmarks.Items)).Single().Nickname);
+        Assert.Contains(nameof(BookmarkList.Items), changedBookmarks);
         Assert.Contains(nameof(MainViewModel.IsConnecting), changed);
         Assert.False(await OnUi(() => vm.IsConnecting));
     }
@@ -1369,7 +1372,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             var less = vm.Settings;
             less.Bookmarks.RemoveAll(b => b.Name == "B");
             vm.ApplySettings(less);
-            return (vm.Bookmarks.Count, vm.Bookmarks.Live().Count());
+            return (vm.Bookmarks.Items.Count, vm.Bookmarks.Items.Live().Count());
         });
         Assert.Equal((2, 1), (shownAfter, liveAfter));
     }

@@ -86,7 +86,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
 
         await using var vm = WithOwnParts(a => a(), new ClientSettings { Bookmarks = [new Bookmark("Voice", "voice.example.org", 7000, "anna")] });
 
-        Assert.Equal(logo, Assert.Single(vm.Bookmarks).Icon);
+        Assert.Equal(logo, Assert.Single(vm.Bookmarks.Items).Icon);
     }
 
     [Fact]
