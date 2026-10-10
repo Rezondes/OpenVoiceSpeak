@@ -2345,7 +2345,7 @@ Seitenleiste und Lesezeichen zeigen den ersten Buchstaben des Servernamens. Nach
 4. `IconImportTests > "Import_TooBigWrongFormatNotSquareTooSmall_Rejected"`, `"Import_Jpg1024_Becomes256Png"` und `"Import_SmallSquarePng_KeepsItsSize"`, headless mit Avalonia und Skia (AC2)
 5. `UiSmokeTests`: mit Logo zeigt die Seitenleiste ein Bild statt des Buchstabens (AC3), Kachel mit Cache-Datei zeigt es ebenfalls (AC6)
 6. `ProtocolLogTextTests > "Describe_Request_UsesNames_NeverSecrets"` um die neuen Nachrichten erweitert
-7. `MainViewModelTests > "ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile"`: echter Server mit Logo, der erste Verbindungsaufbau lädt es, der zweite nimmt es aus dem Cache, die Kachel zeigt es (AC3, AC6)
+7. `MainViewModelTests > "ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile"`: echter Server mit Logo, der erste Verbindungsaufbau lädt es, der zweite nimmt es aus dem Cache, die Kachel zeigt es (AC3, AC6), `ServerIconTrackerTests > "Receive_LogoOfTheServersHash_ShowsItCachesItAndRefreshesTheTiles"` und `ServerIconWiringTests > "Apply_LogoOfTheServersHash_ShowsItOnTheServerAndOnTheBookmarkTile"` (AC3, AC6), `ServerIconTrackerTests > "Sync_CachedLogoHasTheServersHash_ShowsItWithoutAsking"` (AC6), `ServerIconTrackerTests > "Sync_ServerHasNoLogo_RemovesTheCachedLogoShowsNoneAndAsksNothing"` (AC4); die Regeln (aus dem Cache oder beim Server holen, Wiederholung nach einer Ablehnung, Ankunft prüfen und ablegen) stehen in den übrigen Fakten von `ServerIconTrackerTests`, die Verdrahtung im Hauptmodell in `ServerIconWiringTests`
 
 **Umsetzungsnotizen:**
 - Die Tests der Oberfläche rendern jetzt mit Skia statt der Zeichen-Attrappe, damit Bilder wirklich dekodiert und skaliert werden.
@@ -7265,7 +7265,7 @@ The tests only know `FakeServers.Crowded` (8 channels, 20 users). Wall-clock lim
 
 1. `PerformanceTests > "UserUpdated_UpdatesOnlyThatUser"` (AC1): count `UserViewModel.Update` calls through a test counter on `FakeServers.Large`.
 2. `PerformanceTests > "MuteChange_DoesNotRefitSidebar_RenameDoes"` (AC2)
-3. `PerformanceTests > "StateChanged_GainTableAndIconHashOnlyWhenNeeded"` (AC3)
+3. `PerformanceTests > "StateChanged_GainTableAndIconHashOnlyWhenNeeded"` (AC3), `ServerIconTrackerTests > "Sync_FirstCall_ChecksOnce"`, `"Sync_SameHashAsLastTime_ChecksNothingMore"` and `"Sync_HashChanged_ChecksAgain"` (AC3)
 4. `PerformanceTests > "ManySpeakers_SpeakingUpdatesThrottledAndScoped"`, `PlaybackLoopTests > "Run_VoiceClearedAfterItsReport_RunsOnUntilTheSilenceIsReported"` (AC4): a mixer fed with 20 speakers on a manual clock.
 5. `PerformanceTests > "NoMove_NoPlaceTracking"`, `PlaceTrackerTests > "Change_FlipListInsideAFlipList_OuterListTracksPlaces"`, `EntryTrackerTests > "Add_EnterWithoutFlip_NotesNoPlaces"`, `"Change_EnterListInsideAFlipList_OuterListTracksPlaces"` (AC5)
 6. `MotionStyleTests > "SpeakingRing_NoAnimatedShadow"` (AC6)

@@ -640,9 +640,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>The clock of the current connection's ping round trip (tests check it is <see cref="Time"/>).</summary>
     internal TimeProvider? ConnectionTime => connection?.Time;
 
-    /// <summary>Package 122: how often the speaker gain table was built and the logo checked against its hash (tests count them).</summary>
+    /// <summary>Package 122: how often the speaker gain table was built (tests count them).</summary>
     internal int GainTableBuilds { get; private set; }
-    internal int IconHashes { get; private set; }
 
     /// <summary>UI timer, every 100 ms.</summary>
     public void Tick()
@@ -752,71 +751,29 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    /// <summary>The server answers the same logo once per 10 s; a second more to be clear of the boundary.</summary>
-    static readonly TimeSpan IconRetryDelay = TimeSpan.FromSeconds(11);
-
     /// <summary>
-    /// Keeps the logo in step with the server's hash (Package 30): from the cache when it matches, otherwise
-    /// downloaded once and cached for next time and for the bookmark tile.
+    /// Keeps the logo in step with the server's hash (Package 30): wires the server to its <see cref="ServerIconTracker"/>,
+    /// which shows it from the cache when it matches, otherwise asks for it once and caches it for next time and for the bookmark tile.
     /// </summary>
-    public void TrackServerIcon(ServerViewModel vm, string host, int port)
+    internal ServerIconTracker TrackServerIcon(ServerViewModel serverViewModel, string host, int port)
     {
-        string? requested = null, retried = null, seen = null;
-        bool synced = false;
-        void Sync()
-        {
-            var hash = vm.IconHash;
-            if (synced && hash == seen) return; // Package 122: nothing to do until the server's logo changes
-            (synced, seen) = (true, hash);
-            IconHashes++;
-            if (hash is null)
+        var tracker = new ServerIconTracker(
+            cache: icons, host: host, port: port, time: serverViewModel.Time,
+            serverHash: () => serverViewModel.IconHash,
+            shownLogo: () => serverViewModel.IconPng,
+            show: png => serverViewModel.IconPng = png,
+            ask: route =>
             {
-                vm.IconPng = null;
-                icons.Remove(host, port);
-                return;
-            }
-            if (vm.IconPng is { } shown && ServerIconFormat.ComputeHash(shown) == hash) return;
-            if (icons.Load(host, port) is { } cached && ServerIconFormat.ComputeHash(cached) == hash)
-            {
-                vm.IconPng = cached;
-                return;
-            }
-            if (requested == hash) return;
-            requested = hash;
-            vm.Routes.RemoveAll(OnIconAnswer); // only the newest request's refusal counts
-            _ = vm.SendAsync(new GetServerIcon(), route: OnIconAnswer);
-        }
-        vm.StateChanged += Sync;
-        void OnIconAnswer(Message answer)
-        {
-            // Refused within the server's interval: asked once more afterwards, if that logo is still wanted.
-            if (answer is not Error { Code: ReasonCodes.RateLimited }) return;
-            var hash = requested;
-            if (retried == hash) return;
-            retried = hash;
-            _ = RetryAsync(hash);
-        }
-        async Task RetryAsync(string? hash)
-        {
-            await Task.Delay(IconRetryDelay, vm.Time);
-            post(() =>
-            {
-                if (Server != vm || vm.IconHash != hash) return;
-                requested = null;
-                synced = false;
-                Sync();
-            });
-        }
-        vm.IconReceived += icon =>
-        {
-            if (icon.PngBase64 is null || icon.Hash != vm.IconHash) return;
-            var png = Convert.FromBase64String(icon.PngBase64);
-            if (ServerIconFormat.ComputeHash(png) != icon.Hash) return;
-            icons.Save(host, port, png);
-            vm.IconPng = png;
-            Bookmarks.Refresh(); // the bookmark tile shows it too
-        };
-        Sync();
+                serverViewModel.Routes.RemoveAll(route);
+                _ = serverViewModel.SendAsync(new GetServerIcon(), route: route);
+            },
+            isCurrent: () => Server == serverViewModel,
+            post: post,
+            logoCached: Bookmarks.Refresh);
+        serverViewModel.StateChanged += tracker.Sync;
+        serverViewModel.IconReceived += tracker.Receive;
+        tracker.Sync();
+        return tracker;
     }
 
     // ---- Pages ----

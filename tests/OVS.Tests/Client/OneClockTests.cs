@@ -87,7 +87,7 @@ public sealed class OneClockTests
     [InlineData("await Task.Delay(PingInterval, pingCts.Token);", true)]
     [InlineData("await Task.Delay(wait, lifetime);", true)]
     [InlineData("await Task.Delay(Delay, time);", false)]
-    [InlineData("await Task.Delay(IconRetryDelay, vm.Time);", false)]
+    [InlineData("await Task.Delay(RetryDelay, time);", false)]
     [InlineData("await Task.Delay(PingInterval, time, pingCts.Token);", false)]
     [InlineData("using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));", true)]
     [InlineData("using var timeout = new CancellationTokenSource(PendingViewModel.Timeout, time);", false)]
