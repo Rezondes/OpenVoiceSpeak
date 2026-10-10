@@ -6,6 +6,7 @@ using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
+using OVS.Client.Exceptions;
 using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Client.Models;
@@ -55,8 +56,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     Task<T> OnUi<T>(Func<T> read) => ui.InvokeAsync(() => Task.FromResult(read()));
 
-    /// <summary>Replaces the view model by one on <paramref name="time"/> (same folder, keys and trust; the dialogs set so far carry over).</summary>
-    async Task RunOnAsync(TimeProvider time)
+    /// <summary>
+    /// Replaces the view model by one on <paramref name="time"/> (same folder, keys and trust; the dialogs set so far carry over),
+    /// connecting through <paramref name="connect"/> (none: the real connect).
+    /// </summary>
+    async Task RunOnAsync(TimeProvider time, Func<ConnectChoice, CancellationToken, Task<ClientConnection>>? connect = null)
     {
         var dialogs = vm.Dialogs;
         await ui.InvokeAsync<object?>(async () =>
@@ -64,7 +68,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             await vm.DisposeAsync();
             return null;
         });
-        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, dialogs: dialogs, trustServers: true, time: time)));
+        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, dialogs: dialogs, trustServers: true, time: time, connect: connect)));
     }
 
     /// <summary>
@@ -942,11 +946,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await server.Control.StopAsync();
         // Package 139: a shutdown first starts reconnecting; "Abbrechen" ends it with the disconnected notice
         Assert.True(await OnUiUntil(() => vm.IsReconnecting, r => r));
-        await OnUi(() =>
-        {
-            vm.CancelReconnectCommand.Execute(null);
-            return 0;
-        });
+        await CancelReconnectAsync();
         var bye = await OnUiUntil(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Warning), n => n is not null);
         Assert.StartsWith("Getrennt: ", bye?.Text);
         Assert.Matches(@"^\d{2}:\d{2}:\d{2}  Getrennt: ", bye!.ToString()); // the debug API keeps its "time  text" form
@@ -1724,10 +1724,16 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     const string Reconnected = "Verbindung wiederhergestellt";
 
-    /// <summary>Connects anna on the manual reconnect clock.</summary>
+    ConnectSeam seam = null!;
+
+    /// <summary>Connects anna on the manual reconnect clock, through <see cref="seam"/> (made with the view model).</summary>
     async Task ConnectTo(TestServer to, string? password = null)
     {
-        if (vm.Time != reconnectTime) await RunOnAsync(reconnectTime);
+        if (vm.Time != reconnectTime)
+        {
+            seam = new ConnectSeam(dir, reconnectTime);
+            await RunOnAsync(reconnectTime, seam.Connect);
+        }
         await ui.InvokeAsync<object?>(async () =>
         {
             await vm.ConnectAsync(new ConnectChoice("127.0.0.1", to.Port, "anna", password, SaveBookmark: false));
@@ -1748,6 +1754,20 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         vm.Tick();
         return vm.Status;
+    });
+
+    /// <summary>Ticks and reads the status until <paramref name="done"/> accepts it; returns the last one.</summary>
+    Task<string> TickStatusUntil(Func<string, bool> done) => OnUiUntil(() =>
+    {
+        vm.Tick();
+        return vm.Status;
+    }, done);
+
+    /// <summary>Presses "Abbrechen" of a running series.</summary>
+    Task CancelReconnectAsync() => OnUi(() =>
+    {
+        vm.CancelReconnectCommand.Execute(null);
+        return 0;
     });
 
     /// <summary>The notices added since <paramref name="before"/> of them were there, oldest first.</summary>
@@ -1933,18 +1953,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var first = await TestServer.StartAsync();
         int port = first.Port;
         await ConnectTo(first);
-        int asked = 0;
-        // the server comes back with a new certificate: the first question throws
-        vm.ConfirmTofu = _ => Interlocked.Increment(ref asked) == 1 ? throw new InvalidOperationException("Testfehler") : Task.FromResult(true);
+        seam.FailNext(new InvalidOperationException("Testfehler"));
         await first.DisposeAsync();
         Assert.True(await OnUiUntil(() => vm.IsReconnecting, r => r));
         await using var back = await TestServer.StartAsync(port: port);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.Equal("Verbindung verloren, neuer Versuch in 2 s", await OnUiUntil(() =>
-        {
-            vm.Tick();
-            return vm.Status;
-        }, s => s.EndsWith(" 2 s")));
+        Assert.Equal("Verbindung verloren, neuer Versuch in 2 s", await TickStatusUntil(status => status.EndsWith(" 2 s")));
         reconnectTime.Advance(TimeSpan.FromSeconds(2));
         Assert.True(await OnUiUntil(() => vm.IsConnected && !vm.IsReconnecting, ok => ok));
         Assert.Contains("Testfehler", ClientLogText());
@@ -1960,95 +1974,78 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [InlineData("own")]
     public async Task NoReconnect_ForDeliberateReasons(string reason)
     {
-        TestServer target = server;
         await using var locked = reason == ReasonCodes.WrongPassword ? await TestServer.StartAsync(password: "alt") : null;
-        TestServer? replacement = null;
-        try
+        if (locked is not null)
         {
-            if (locked is not null)
-            {
-                // the server comes back with another password: the attempt is refused and the series ends there
-                await ConnectTo(locked, "alt");
-                int port = locked.Port;
-                await locked.DisposeAsync();
-                Assert.True(await OnUiUntil(() => vm.IsReconnecting, r => r)); // ServerShutdown retries
-                replacement = await TestServer.StartAsync(password: "neu", port: port);
-                reconnectTime.Advance(TimeSpan.FromSeconds(1));
-                Assert.StartsWith("Abgelehnt", await OnUiUntil(() => vm.Status, s => s.StartsWith("Abgelehnt")));
-                Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent)); // review: the series ended, so the tone
-                target = replacement;
-            }
+            // the server comes back with another password: the attempt is refused and the series ends there
+            await ConnectTo(locked, "alt");
+            seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+            await locked.DisposeAsync();
+            Assert.True(await OnUiUntil(() => vm.IsReconnecting, r => r)); // ServerShutdown retries
+            reconnectTime.Advance(TimeSpan.FromSeconds(1));
+            Assert.StartsWith("Abgelehnt", await OnUiUntil(() => vm.Status, s => s.StartsWith("Abgelehnt")));
+            Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent)); // review: the series ended, so the tone
+        }
+        else
+        {
+            await ConnectTo(server);
+            if (reason == "own")
+                await ui.InvokeAsync<object?>(async () =>
+                {
+                    await vm.DisconnectAsync();
+                    return null;
+                });
             else
             {
-                await ConnectTo(server);
-                if (reason == "own")
-                    await ui.InvokeAsync<object?>(async () =>
-                    {
-                        await vm.DisconnectAsync();
-                        return null;
-                    });
-                else
-                {
-                    var id = await OnUi(() => vm.Server!.Mirror.SelfId);
-                    server.State.FindSession(id)!.Outbox.Close(new Disconnected(reason));
-                }
-                Assert.False(await OnUiUntil(() => vm.IsConnected, c => !c));
+                var id = await OnUi(() => vm.Server!.Mirror.SelfId);
+                server.State.FindSession(id)!.Outbox.Close(new Disconnected(reason));
             }
+            Assert.False(await OnUiUntil(() => vm.IsConnected, c => !c));
+        }
 
-            Assert.False(await OnUi(() => vm.IsReconnecting));
-            reconnectTime.Advance(TimeSpan.FromSeconds(60));
-            await Task.Delay(300);
-            Assert.False(await OnUi(() => vm.IsConnected));
-            Assert.False(await OnUi(() => vm.IsReconnecting));
-            Assert.Equal(0, await OnUiUntil(() => target.State.SessionCount, n => n == 0));
-        }
-        finally
-        {
-            if (replacement is not null) await replacement.DisposeAsync();
-        }
+        Assert.False(await OnUi(() => vm.IsReconnecting));
+        int attemptsBefore = seam.Attempts.Count;
+        reconnectTime.Advance(TimeSpan.FromSeconds(60));
+        await OnUi(() => 0); // what the clock posted has run
+        Assert.Equal(attemptsBefore, seam.Attempts.Count);
+        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.False(await OnUi(() => vm.IsReconnecting));
+        if (locked is null) Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
     }
 
-    /// <summary>AC4: "Abbrechen" ends the series at once; connecting elsewhere ends it too and an old attempt's late success is dropped.</summary>
+    /// <summary>"Abbrechen" ends the series at once; connecting elsewhere ends it too and an old attempt's late success is dropped.</summary>
     [Fact]
     public async Task Reconnect_Cancel_AndOtherServer()
     {
         await ConnectTo(server);
         await DropAsync(server);
-        await OnUi(() =>
-        {
-            vm.CancelReconnectCommand.Execute(null);
-            return 0;
-        });
+        await CancelReconnectAsync();
         Assert.False(await OnUi(() => vm.IsReconnecting));
         Assert.StartsWith("Getrennt", await TickStatus());
+        int attemptsBefore = seam.Attempts.Count;
         reconnectTime.Advance(TimeSpan.FromSeconds(60));
-        await Task.Delay(300);
+        await OnUi(() => 0); // what the clock posted has run
+        Assert.Equal(attemptsBefore, seam.Attempts.Count);
         Assert.False(await OnUi(() => vm.IsConnected));
-        Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, n => n == 0));
+        Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
 
-        // an attempt hangs at the certificate question of a server that came back with a new one
+        // an attempt is held while the server is back
         var first = await TestServer.StartAsync();
         int port = first.Port;
         await ConnectTo(first);
-        var held = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        int asked = 0;
-        vm.ConfirmTofu = prompt => prompt.Port == port ? AskHeld() : Task.FromResult(true);
-        Task<bool> AskHeld()
-        {
-            Interlocked.Increment(ref asked);
-            return held.Task;
-        }
+        var oldAttempt = seam.HoldNext();
         await first.DisposeAsync();
         Assert.True(await OnUiUntil(() => vm.IsReconnecting, r => r));
         await using var back = await TestServer.StartAsync(d => d.Settings.Name = "Zurück", port: port);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => Volatile.Read(ref asked), n => n == 1) == 1);
+        var held = await HangGuard.Bound(oldAttempt.Reached);
+        Assert.Equal(seam.Attempts.Count, held.Number);
 
         await ConnectTo(server); // meanwhile the user connects elsewhere
         Assert.False(await OnUi(() => vm.IsReconnecting));
-        held.SetResult(true); // the old attempt ends late
+        oldAttempt.Release(); // the old attempt ends late
         Assert.Contains("veralteter Versuch verworfen", await OnUiUntil(ClientLogText, log => log.Contains("veralteter Versuch verworfen")));
-        Assert.Equal(0, await OnUiUntil(() => back.State.SessionCount, n => n == 0));
+        Assert.Equal(0, await OnUiUntil(() => back.State.SessionCount, count => count == 0));
         var (name, connected) = await OnUi(() => (vm.Server?.ServerName, vm.IsConnected));
         Assert.True(connected);
         Assert.Equal("Testserver", name);
@@ -2064,6 +2061,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var identity = ClientStorage.LoadOrCreateIdentity(dir); // anna is an admin there
         await using var own = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"));
         await ConnectTo(own);
+        seam.FailEvery(ConnectSeam.CreateClosedPortError); // every attempt is refused at once, no real connect to wait for
         await OnUi(() => vm.OpenAdminAsync());
         Assert.True(await OnUi(() => vm.IsAdminPage));
         var before = await OnUi(() => vm.Notices.Count);
@@ -2081,7 +2079,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             reconnectTime.Advance(TimeSpan.FromMilliseconds(600));
             Assert.Equal($"Verbindung verloren, neuer Versuch in {next} s",
-                await OnUiUntil(() => { vm.Tick(); return vm.Status; }, s => s.EndsWith($" {next} s")));
+                await TickStatusUntil(status => status.EndsWith($" {next} s")));
             reconnectTime.Advance(TimeSpan.FromSeconds(next) - TimeSpan.FromMilliseconds(600));
             Assert.Equal("Verbindung verloren, neuer Versuch in 1 s", await TickStatus());
         }
@@ -2093,6 +2091,96 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal("Getrennt: Der Server wurde heruntergefahren.", await TickStatus());
         Assert.Equal(["Getrennt: Der Server wurde heruntergefahren."], await NoticesSince(before));
         Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+    }
+
+    /// <summary>Review: a refusal that says "not now" (shutdown, restart, rate limit) is a failed attempt; the series goes on.</summary>
+    [Theory]
+    [InlineData(ReasonCodes.ServerShutdown)]
+    [InlineData(ReasonCodes.ServerRestart)]
+    [InlineData(ReasonCodes.RateLimited)]
+    public async Task Reconnect_RefusedWithANotNowCode_SchedulesTheNextAttempt(string code)
+    {
+        await ConnectTo(server);
+        seam.FailNext(new ConnectionRejectedException(code, null));
+        await DropAsync(server);
+
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.Equal("Verbindung verloren, neuer Versuch in 2 s", await TickStatusUntil(status => status.EndsWith(" 2 s")));
+        Assert.True(await OnUi(() => vm.IsReconnecting));
+    }
+
+    /// <summary>Review: a certificate the user turns down ends the series at once, with its status, the disconnected notice and the tone.</summary>
+    [Fact]
+    public async Task Reconnect_TofuRejected_EndsTheSeriesWithStatusNoticeAndTone()
+    {
+        await ConnectTo(server);
+        seam.FailNext(new TofuRejectedException());
+        int noticesBefore = await OnUi(() => vm.Notices.Count);
+        await DropAsync(server);
+
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(Strings.Status_TofuRejected, await OnUiUntil(() => vm.Status, status => status == Strings.Status_TofuRejected));
+        Assert.False(await OnUi(() => vm.IsReconnecting));
+        var notices = await NoticesSince(noticesBefore);
+        Assert.StartsWith("Getrennt", Assert.Single(notices));
+        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+    }
+
+    /// <summary>An attempt that gets in after "Abbrechen" is dropped and its connection closed.</summary>
+    [Fact]
+    public async Task Reconnect_AttemptAfterCancel_IsDroppedAndDisposed()
+    {
+        await ConnectTo(server);
+        var oldAttempt = seam.HoldNext();
+        await DropAsync(server);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        var held = await HangGuard.Bound(oldAttempt.Reached);
+        Assert.Equal(seam.Attempts.Count, held.Number);
+        await CancelReconnectAsync();
+
+        oldAttempt.Release();
+
+        Assert.Contains("veralteter Versuch verworfen", await OnUiUntil(ClientLogText, log => log.Contains("veralteter Versuch verworfen")));
+        Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
+        Assert.False(await OnUi(() => vm.IsConnected));
+    }
+
+    /// <summary>An attempt that fails after "Abbrechen" is only logged: the status, the notices and the tones stay as the cancel left them.</summary>
+    [Fact]
+    public async Task Reconnect_AttemptFailingAfterCancel_IsOnlyLogged()
+    {
+        await ConnectTo(server);
+        var oldAttempt = seam.HoldNext(failWith: new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+        await DropAsync(server);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        await HangGuard.Bound(oldAttempt.Reached);
+        await CancelReconnectAsync();
+        var statusAfterCancel = await OnUi(() => vm.Status);
+        int noticesAfterCancel = await OnUi(() => vm.Notices.Count);
+
+        oldAttempt.Release();
+
+        Assert.Contains("veralteter Versuch verworfen (", await OnUiUntil(ClientLogText, log => log.Contains("veralteter Versuch verworfen (")));
+        Assert.Equal(statusAfterCancel, await OnUi(() => vm.Status));
+        Assert.Empty(await NoticesSince(noticesAfterCancel));
+        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+    }
+
+    /// <summary>An attempt asks the seam for the server, nickname and password of the connect, and never for a cancellation.</summary>
+    [Fact]
+    public async Task Reconnect_AfterADrop_ReusesTheChoiceOfTheConnectWithoutCancellation()
+    {
+        await ConnectTo(server, "geheim");
+        var connect = seam.Attempts.Single();
+        await DropAsync(server);
+
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+
+        var attempt = await HangGuard.Bound(seam.WaitForAttemptAsync(connect.Number + 1));
+        Assert.Equal(connect.Choice, attempt.Choice);
+        Assert.Equal(CancellationToken.None, attempt.Token);
     }
 
     /// <summary>AC6: the last channel is gone or no longer lets me in: I stay in the default channel, with one notice about it.</summary>

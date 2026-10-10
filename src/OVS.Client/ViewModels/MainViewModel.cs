@@ -35,6 +35,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly string storageDir;
     readonly Action<Action> post;
     readonly KnownServers known;
+    readonly Func<ConnectChoice, CancellationToken, Task<ClientConnection>> connect;
     readonly ServerIconCache icons;
     readonly SoundLibrary soundLibrary;
     readonly VoiceHints hints; // Packages 34 and 131: why nobody hears the user, shown as VoiceHint on every tick
@@ -75,8 +76,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// runs without them (--no-audio, tests, debug API with test tone).
     /// </param>
     /// <param name="keyState">The state of a virtual key, the keyboard by default (tests pass a fake one).</param>
+    /// <param name="connect">How a connection is opened, the real one by default (tests pass their own); see the constructor.</param>
     public static MainViewModel Create(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings,
-        string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null)
+        string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null,
+        Func<ConnectChoice, CancellationToken, Task<ClientConnection>>? connect = null)
     {
         var keys = new KeyPoller(time, keyState);
         var soundLibrary = new SoundLibrary(storageDir, log.Write); // holds no handle; the engine plays its tones
@@ -86,7 +89,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             audio = new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log.Write), soundLibrary.Samples);
             return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new KnownServers(storageDir),
                 new ServerIconCache(storageDir), soundLibrary, new LeaveTimer(time, () => post), keys, audio,
-                hardware is null ? null : hardware.ListActive);
+                hardware is null ? null : hardware.ListActive, connect);
         }
         catch
         {
@@ -107,12 +110,17 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// </param>
     /// <param name="soundLibrary">The own tones; cleaned up after each save (the engine plays them, <see cref="Create"/> hands it the same library).</param>
     /// <param name="listDevices">The active devices of a direction, for the settings page; null: none, an empty list.</param>
+    /// <param name="connect">
+    /// Opens the connection of every connect and every reconnect attempt (the attempts pass <see cref="CancellationToken.None"/>);
+    /// null: the identity file of <paramref name="storageDir"/> plus <see cref="ClientConnection.ConnectAsync"/>.
+    /// </param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
         KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
-        Func<AudioDirection, List<AudioDevice>>? listDevices)
+        Func<AudioDirection, List<AudioDevice>>? listDevices, Func<ConnectChoice, CancellationToken, Task<ClientConnection>>? connect = null)
     {
         this.storageDir = storageDir;
         this.post = post;
+        this.connect = connect ?? OpenConnectionAsync;
         Time = time;
         Log = log;
         known = knownServers;
@@ -317,10 +325,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     async Task<ClientConnection> OpenAsync(ConnectChoice choice)
     {
         Status = string.Format(Strings.Status_Connecting, choice.Host, choice.Port);
-        Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(string.IsNullOrEmpty(choice.Password) ? "" : " mit Passwort")}");
+        Log.Write($"Verbinde mit {choice.Host}:{choice.Port} als {choice.Nickname}{(choice.PasswordOrNull is null ? "" : " mit Passwort")}");
+        return await connect(choice, CancellationToken.None);
+    }
+
+    /// <summary>The real connect: the profile's identity, the trusted fingerprints and the certificate question.</summary>
+    async Task<ClientConnection> OpenConnectionAsync(ConnectChoice choice, CancellationToken token)
+    {
         using var identity = ClientStorage.LoadOrCreateIdentity(storageDir);
         return await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
-            string.IsNullOrEmpty(choice.Password) ? null : choice.Password, known, ConfirmTofuLogged, Time);
+            choice.PasswordOrNull, known, ConfirmTofuLogged, Time, token);
     }
 
     /// <summary>A connection the server welcomed becomes the current session.</summary>

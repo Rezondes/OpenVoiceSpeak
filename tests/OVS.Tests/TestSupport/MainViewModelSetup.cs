@@ -25,14 +25,16 @@ static class MainViewModelSetup
     /// <paramref name="keyState"/> feeds the key poller; <paramref name="hardware"/> (none by default) the audio engine and the
     /// settings page's device list.
     /// <paramref name="trustServers"/> accepts every server certificate (the TOFU question); <paramref name="dialogs"/> and
-    /// <paramref name="server"/> are set before it is returned.
+    /// <paramref name="server"/> are set before it is returned. <paramref name="connect"/> (none by default: the real connect)
+    /// is the connect seam, see <see cref="ConnectSeam"/>.
     /// </summary>
     public static MainViewModel Create(string dir, Action<Action> post, Func<int, bool>? keyState = null, IAudioHardware? hardware = null,
-        DialogCallbacks? dialogs = null, bool trustServers = false, ServerViewModel? server = null, TimeProvider? time = null)
+        DialogCallbacks? dialogs = null, bool trustServers = false, ServerViewModel? server = null, TimeProvider? time = null,
+        Func<ConnectChoice, CancellationToken, Task<ClientConnection>>? connect = null)
     {
         time ??= TimeProvider.System;
         var settings = ClientSettings.Load(dir, out var settingsWarning);
-        var vm = MainViewModel.Create(dir, post, time, new ClientLog(dir, time), settings, settingsWarning, hardware, keyState);
+        var vm = MainViewModel.Create(dir, post, time, new ClientLog(dir, time), settings, settingsWarning, hardware, keyState, connect);
         if (dialogs is not null) vm.Dialogs = dialogs;
         if (trustServers) vm.ConfirmTofu = _ => Task.FromResult(true);
         if (server is not null) ShowServer(vm, server);
@@ -42,11 +44,12 @@ static class MainViewModelSetup
     /// <summary>
     /// The tests' only direct call of the <see cref="MainViewModel"/> constructor, for the tests that give it parts of their
     /// own. The view model disposes <paramref name="keys"/> and <paramref name="audio"/> with itself.
+    /// <paramref name="connect"/> is the connect seam (none: the real connect).
     /// </summary>
     public static MainViewModel Compose(string dir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
         KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
-        Func<AudioDirection, List<AudioDevice>>? listDevices = null) =>
-        new(dir, post, time, log, settings, settingsWarning, knownServers, icons, soundLibrary, leave, keys, audio, listDevices);
+        Func<AudioDirection, List<AudioDevice>>? listDevices = null, Func<ConnectChoice, CancellationToken, Task<ClientConnection>>? connect = null) =>
+        new(dir, post, time, log, settings, settingsWarning, knownServers, icons, soundLibrary, leave, keys, audio, listDevices, connect);
 
     /// <summary>The text of the client log files in <paramref name="dir"/>, after the lines still queued were written.</summary>
     public static string ReadLogText(MainViewModel vm, string dir)
