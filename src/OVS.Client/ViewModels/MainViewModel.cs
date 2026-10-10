@@ -37,6 +37,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly KnownServers known;
     readonly ServerIconCache icons;
     readonly SoundLibrary soundLibrary;
+    readonly VoiceHints hints; // Packages 34 and 131: why nobody hears the user, shown as VoiceHint on every tick
     ClientConnection? connection;
     VoiceClient? voice;
     long connectedAt; // a timestamp of Time
@@ -127,12 +128,23 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Devices = new DeviceList(post, listDevices, (inputs, outputs) => SettingsPage?.ShowDevices(inputs, outputs));
         EngineSync = new EngineSync(audio,
             connectionState: () => Server is { } connected
-                ? new EngineConnectionState(true, connected.SelfMuted, connected.SelfDeafened, connected.HasSpeakLinked, connected.CurrentChannel?.IsMuted == true,
+                ? new EngineConnectionState(true, connected.SelfMuted, connected.SelfDeafened, connected.HasSpeakLinked, connected.InMutedChannel,
                     connected.CurrentChannel?.Id, connected.CurrentChannel?.Bitrate)
                 : EngineConnectionState.Disconnected,
             mirror: () => Server?.Mirror,
             volumeFor: fingerprint => Settings.VolumeFor(fingerprint));
         if (audio.DeviceLifecycle.OpensDevices) Devices.Refresh();
+        hints = new VoiceHints(
+            state: () => Server is { } connected
+                ? new VoiceHintState(ChannelMuted: connected.InMutedChannel, HasSpeakLinked: connected.HasSpeakLinked,
+                    ServerMuted: connected.Mirror.Self?.ServerMuted == true, SelfDeafened: connected.SelfDeafened, SelfMuted: connected.SelfMuted)
+                : null,
+            linkKeyDown: () => keys.LinkPttDown,
+            muteKeyHeld: () => keys.MuteHeld,
+            talkKeyHeld: () => audio.TalkKeyHeld,
+            inVoiceActivation: () => audio.Mode == TransmitMode.VoiceActivation,
+            voiceDetected: () => audio.VoiceDetected,
+            time: time);
         Keys = keys;
         Audio = audio;
         Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
@@ -610,13 +622,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.OverTcp == true ? Strings.Ping_VoiceOverTcp // Package 141
                 : voice?.Reachable == false ? Strings.Ping_UdpUnreachable : "")
             : "";
-        VoiceHint = Server switch
-        {
-            { CurrentChannel.IsMuted: true } => Strings.VoiceHint_MutedChannel,
-            { HasSpeakLinked: false } when Keys.LinkPttDown => Strings.VoiceHint_NoLinkRight,
-            { } s => MutedTalkHint(s),
-            _ => "",
-        };
+        VoiceHint = hints.Evaluate();
     }
 
     // ---- Package 133 (A142): the signal icon and the connection details ----
@@ -651,29 +657,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [RelayCommand]
     Task ShowConnectionDetails() => Dialogs.ConnectionDetails?.Invoke(Stats) ?? Task.CompletedTask;
-
-    static readonly TimeSpan MutedHintHold = TimeSpan.FromSeconds(2);
-    DateTimeOffset mutedTalkAt = DateTimeOffset.MinValue;
-
-    /// <summary>
-    /// Package 131 (A140): talking into a muted microphone (a talk key held, or voice activation hears voice) shows why
-    /// nobody hears it, until 2 s after. Push-to-mute held is muting on purpose and shows nothing.
-    /// </summary>
-    string MutedTalkHint(ServerViewModel s)
-    {
-        string why = s.Mirror.Self?.ServerMuted == true ? Strings.VoiceHint_ServerMuted
-            : s.SelfDeafened ? Strings.VoiceHint_Deafened
-            : s.SelfMuted && !Keys.MuteHeld ? Strings.VoiceHint_SelfMuted
-            : "";
-        if (why == "")
-        {
-            mutedTalkAt = DateTimeOffset.MinValue; // muting again later must not bring back an old attempt
-            return "";
-        }
-        var now = Time.GetUtcNow();
-        if (Audio.TalkKeyHeld || (Audio.Mode == TransmitMode.VoiceActivation && Audio.VoiceDetected)) mutedTalkAt = now;
-        return now - mutedTalkAt < MutedHintHold ? why : "";
-    }
 
     /// <summary>
     /// Logs "reachable" once, or "not reachable" when nothing came back within 5 s (then "reachable" if it recovers).

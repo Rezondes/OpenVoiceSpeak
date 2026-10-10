@@ -7,11 +7,13 @@ using OVS.Client.Audio.Transmit;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Input;
+using OVS.Client.Localization;
 using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
+using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
@@ -274,6 +276,46 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal("Stummer Channel: niemand hört dich.", await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
     }
+
+    /// <summary>Link push-to-talk without the right to speak into links says so (the rules are in <c>VoiceHintsTests</c>).</summary>
+    [Fact]
+    public async Task Tick_LinkKeyHeldWithoutLinkRight_ShowsTheNoLinkRightHint()
+    {
+        await ShowServerWithoutLinkRight();
+
+        Assert.Equal(Strings.VoiceHint_NoLinkRight, await HoldKey(KeyAction.LinkPushToTalk, true));
+        await HoldKey(KeyAction.LinkPushToTalk, false);
+    }
+
+    [Fact]
+    public async Task Tick_LinkKeyUpWithoutLinkRight_ShowsNothing()
+    {
+        await ShowServerWithoutLinkRight();
+
+        Assert.Equal("", await TickHint());
+    }
+
+    /// <summary>Connected but in no channel (the own user's channel is not in the list), self-muted, talk key held: only the muted-microphone hint fits.</summary>
+    [Fact]
+    public async Task Tick_InNoChannelSelfMutedAndTalkKeyHeld_ShowsTheSelfMutedHint()
+    {
+        await OnUi(() =>
+        {
+            var shown = MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+            shown!.Apply(new UserUpdated(shown.Mirror.Self! with { ChannelId = Guid.Empty }));
+            return shown.SetSelfStateAsync(true, false);
+        });
+
+        Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
+        await HoldKey(KeyAction.PushToTalk, false);
+    }
+
+    Task<ServerViewModel?> ShowServerWithoutLinkRight() => OnUi(() =>
+    {
+        var shown = MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+        FakeServers.SetOwnRightsAndGroups(shown!, Permission.Speak, [WellKnownGroups.Guest]);
+        return shown;
+    });
 
     string ClientLogText()
     {

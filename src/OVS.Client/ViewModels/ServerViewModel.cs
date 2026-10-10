@@ -73,6 +73,8 @@ public sealed partial class ServerViewModel : ObservableObject
 
     public bool CanCreateChannel => SelfPermissions.Has(Permission.ChannelCreate);
     public bool HasSpeakLinked => SelfPermissions.Has(Permission.SpeakLinked);
+    /// <summary>The own channel is muted, so nobody hears anybody there.</summary>
+    public bool InMutedChannel => CurrentChannel?.IsMuted == true;
     /// <summary>Package 76: as soon as any administration tab would show.</summary>
     public bool CanAdminister =>
         (SelfPermissions & (Permission.GroupsView | Permission.UsersView | Permission.BansView | Permission.ServerConfig | Permission.ChannelLink

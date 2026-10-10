@@ -1766,7 +1766,7 @@ Die manuellen Ende-zu-Ende-Checks brauchen sonst zwei Rechner, Headsets und echt
 
 ### Tests (TDD)
 
-`DebugApiTests.cs`: `"MissingHeader_Forbidden"` (AC1), `"Devices_ViewModelWithoutAudio_ListsTheHardwaresDevices"`, `"UnknownChannel_IsBadRequest"`, `"FullFlow_Linking_PttAndLinkPtt"` (AC2 bis AC4), `"DeafenedClient_HearsNothing_UntilUndeafened"` (AC4), `"AdminActions_ThroughApi"` (AC5). AC6 ist durch die zwei getrennten Profile in jedem dieser Tests abgedeckt.
+`DebugApiTests.cs`: `"MissingHeader_Forbidden"` (AC1), `"Devices_ViewModelWithoutAudio_ListsTheHardwaresDevices"`, `"UnknownChannel_IsBadRequest"`, `"FullFlow_Linking_PttAndLinkPtt"` (AC2 bis AC4), `"DeafenedClient_HearsNothing_UntilUndeafened"` (AC4), `"AdminActions_ThroughApi"` (AC5). AC6 ist durch die zwei getrennten Profile in jedem dieser Tests abgedeckt. Der Hinweis ohne `SpeakLinked` (AC4) auch ohne Netz: `MainViewModelTests > "Tick_LinkKeyHeldWithoutLinkRight_ShowsTheNoLinkRightHint"`, `MainViewModelTests > "Tick_LinkKeyUpWithoutLinkRight_ShowsNothing"`, `VoiceHintsTests > "Evaluate_NoLinkRightWithLinkKeyDown_ShowsTheNoLinkRightHint"`, `VoiceHintsTests > "Evaluate_NoLinkRightWithoutLinkKeyDown_ShowsNothing"`, `VoiceHintsTests > "Evaluate_LinkRightWithLinkKeyDown_ShowsNothing"` (AC4).
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~DebugApiTests"`
 
@@ -2566,7 +2566,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQu
 3. `ChannelCommandTests > "Edit_SetsMuted_PersistsLogsBroadcasts"` und `"Edit_Muted_WithoutRight_Denied"` (AC1, AC4)
 4. `VoiceRelayTests > "MutedChannel_NoFramesArrive"` über echtes UDP (AC2)
 5. `SendPathTests > "ChannelMuted_SendsNothing"` (AC5)
-6. `ServerViewModelTests > "ChannelMuted_EditSendsFlag_ViewModelShowsIt"`, `MainViewModelTests > "ChannelMuted_HintAndNoSending"` (AC5), `EngineSyncTests > "SyncConnection_OnlyChannelMutedSet_TurnsOnlyTheEnginesChannelMutedOn"` (AC5)
+6. `ServerViewModelTests > "ChannelMuted_EditSendsFlag_ViewModelShowsIt"`, `MainViewModelTests > "ChannelMuted_HintAndNoSending"` (AC5), `VoiceHintsTests > "Evaluate_ChannelMuted_ShowsTheMutedChannelHint"` (AC5), `EngineSyncTests > "SyncConnection_OnlyChannelMutedSet_TurnsOnlyTheEnginesChannelMutedOn"` (AC5)
 7. `UiSmokeTests`: Dialog zeigt die Checkbox, Channel-Zeile das Symbol, beide Designs (AC1, AC5); `SmokeTests`: Version 4 (AC6)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRoutingTests|FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~VoiceRelayTests|FullyQualifiedName~SendPathTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
@@ -7761,6 +7761,7 @@ Neither OVS nor Fluxer tells users they are talking into a muted microphone, exc
 2. `MainViewModelTests > "TalkWhileDeafenedOrServerMuted_ShowsHint"` (AC2), a theory.
 3. `MainViewModelTests > "VoiceWhileMuted_ShowsHint"` (AC3)
 4. `MainViewModelTests > "NotMuted_NoHint"` (AC4)
+   - the rules without a window: `VoiceHintsTests > "Evaluate_SelfMutedAndTalkKeyHeld_ShowsTheSelfMutedHint"`, `VoiceHintsTests > "Evaluate_TalkEndedJustUnderTwoSecondsAgo_StillShowsTheHint"`, `VoiceHintsTests > "Evaluate_TalkEndedTwoSecondsAgo_ShowsNothing"`, `VoiceHintsTests > "Evaluate_TalkGoesOnForFiveSeconds_KeepsShowingTheHint"`, `VoiceHintsTests > "Evaluate_MutedAgainAfterBeingUnmuted_DoesNotBringBackTheOldAttempt"` (AC1); `VoiceHintsTests > "Evaluate_ServerMutedAndTalkKeyHeld_ShowsTheServerMutedHint"`, `VoiceHintsTests > "Evaluate_DeafenedAndTalkKeyHeld_ShowsTheDeafenedHint"`, `VoiceHintsTests > "Evaluate_ServerMutedAndDeafenedAndSelfMutedAndTalkKeyHeld_ShowsTheServerMutedHint"`, `VoiceHintsTests > "Evaluate_DeafenedAndSelfMutedAndTalkKeyHeld_ShowsTheDeafenedHint"`, `VoiceHintsTests > "Evaluate_ServerMutedWhilePushToMuteIsHeld_ShowsTheServerMutedHint"` (AC2); `VoiceHintsTests > "Evaluate_MutedAndVoiceDetectedInVoiceActivation_ShowsTheSelfMutedHint"`, `VoiceHintsTests > "Evaluate_MutedAndVoiceDetectedInPushToTalk_ShowsNothing"`, `VoiceHintsTests > "Evaluate_MutedInVoiceActivationWithoutVoice_ShowsNothing"` (AC3); `VoiceHintsTests > "Evaluate_NotMutedAndTalkKeyHeld_ShowsNothing"`, `VoiceHintsTests > "Evaluate_SelfMutedWhilePushToMuteIsHeld_ShowsNothing"`, `VoiceHintsTests > "Evaluate_DeafenedWhilePushToMuteIsHeld_ShowsTheDeafenedHint"`, `VoiceHintsTests > "Evaluate_MutedAfterTalkingUnmuted_ShowsNothing"`, `VoiceHintsTests > "Evaluate_ChannelMutedWithEveryOtherReasonToo_ShowsTheMutedChannelHint"`, `VoiceHintsTests > "Evaluate_NoLinkRightWithLinkKeyDownAndSelfMutedTalking_ShowsTheNoLinkRightHint"` (AC4); `MainViewModelTests > "Tick_InNoChannelSelfMutedAndTalkKeyHeld_ShowsTheSelfMutedHint"` (AC4)
 5. `SoundTests > "TalkKeySounds_OffByDefault_PlayWhenOn"` (AC5)
 6. `LocalizationTests` (AC6)
 
