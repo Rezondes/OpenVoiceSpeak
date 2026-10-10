@@ -125,15 +125,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             log: Log.Write,
             readServerState: () => Server is { } connected ? new SelfState(connected.SelfMuted, connected.SelfDeafened) : null,
             writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state) : Task.CompletedTask);
-        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log.Write);
+        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log.Write,
+            reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: () => audio.Loss.EndStreaks());
         Stats = new ConnectionStatsViewModel(time,
             readReachable: () => voiceLink.Reachable,
             readFigures: voiceLink.ReadFigures,
             readReceiveStats: () => audio.Mixer.Stats(),
-            readEncoderBitrate: () => audio.EncoderBitrate,
-            reportUplink: loss => audio.Loss.Report(loss));
+            readEncoderBitrate: () => audio.EncoderBitrate);
         Connection = new ConnectionViewModel(time: time, post: post, log: Log.Write, openConnection: connect ?? OpenConnectionAsync, play: sound => audio.Sounds.Play(sound),
-            endLossStreaks: () => audio.Loss.EndStreaks(), voiceLink: voiceLink,
+            voiceLink: voiceLink,
             engineSync: EngineSync, selfTest: SelfTest, bookmarks: Bookmarks, icons: icons, stats: Stats, dialogs: () => Dialogs, shownServer: () => Server,
             show: shown => Server = shown, setStatus: text => Status = text, readStatus: () => Status, addNotice: AddNotice,
             confirmLeave: () => ConfirmLeaveAsync(adminOnly: true),
@@ -327,6 +327,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Server?.RefreshSpeaking();
         Connection.VoiceLink.LogReachability();
+        Connection.VoiceLink.FeedLoss(); // Package 135: the adapter hears each answer at the next tick
         Stats.Refresh();
         Connection.Tick();
         VoiceHint = hints.Evaluate();

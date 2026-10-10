@@ -32,7 +32,6 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     readonly Action<string> log;
     readonly OpenConnection openConnection;
     readonly Action<SoundEvent> play;
-    readonly Action endLossStreaks;
     readonly EngineSync engineSync;
     readonly SelfTest selfTest;
     readonly BookmarkList bookmarks;
@@ -61,8 +60,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <param name="log">Where the connection's lines are written.</param>
     /// <param name="openConnection">Opens the connection of every connect and every reconnect attempt.</param>
     /// <param name="play">Plays a tone: the connection's own and the ones the server view model asks for.</param>
-    /// <param name="endLossStreaks">Ends the loss adapter's running streaks; a delegate because the adapter can be replaced.</param>
-    /// <param name="voiceLink">The voice client of the current connection and the log of whether UDP gets through.</param>
+    /// <param name="voiceLink">The voice client of the current connection, the log of whether UDP gets through and the loss adapter's feed.</param>
     /// <param name="engineSync">Follows the shown server's state and the user changes.</param>
     /// <param name="selfTest">Abandoned at a disconnect and asked for the state from before at a reconnect.</param>
     /// <param name="bookmarks">Remembers the server that was connected to.</param>
@@ -77,7 +75,6 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <param name="confirmLeave">Asks before a disconnect or a connect elsewhere that would lose changes in the administration; false keeps the connection.</param>
     /// <param name="closeAdmin">Closes the administration when it is open: it needs a server.</param>
     internal ConnectionViewModel(TimeProvider time, Action<Action> post, Action<string> log, OpenConnection openConnection, Action<SoundEvent> play,
-        Action endLossStreaks,
         VoiceLink voiceLink, EngineSync engineSync, SelfTest selfTest, BookmarkList bookmarks, ServerIconCache icons, ConnectionStatsViewModel stats,
         Func<DialogCallbacks> dialogs, Func<ServerViewModel?> shownServer, Action<ServerViewModel?> show, Action<string> setStatus,
         Func<string> readStatus, Action<string, NoticeKind> addNotice, Func<Task<bool>> confirmLeave, Action closeAdmin)
@@ -87,7 +84,6 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         this.log = log;
         this.openConnection = openConnection;
         this.play = play;
-        this.endLossStreaks = endLossStreaks;
         VoiceLink = voiceLink;
         this.engineSync = engineSync;
         this.selfTest = selfTest;
@@ -408,12 +404,8 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             : "";
     }
 
-    /// <summary>A new connection, or none: the figures start over, and the loss adapter keeps no streak from before.</summary>
-    void ResetStats()
-    {
-        stats.Reset();
-        endLossStreaks(); // Package 135: a reconnect into the same channel keeps no streak from before
-    }
+    /// <summary>A new connection, or none: the figures start over.</summary>
+    void ResetStats() => stats.Reset();
 
     /// <summary>
     /// Keeps the logo in step with the server's hash (Package 30): wires the server to its <see cref="ServerIconTracker"/>,

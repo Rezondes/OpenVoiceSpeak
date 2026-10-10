@@ -362,13 +362,17 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     }
 
     [Fact]
-    public async Task DisconnectAsync_EndLossStreaksThrows_Propagates()
+    public async Task DisconnectAsync_EndLossStreaksThrows_PropagatesAfterTheServerIsHiddenAndTheVoiceClientForgotten()
     {
-        rig.OnEndLossStreaks = () => throw new InvalidOperationException("Adapter kaputt");
+        await using var server = await TestServer.StartAsync();
+        await rig.ConnectAsync(ChoiceFor(server));
+        int closedBefore = await rig.ReadAsync(() => rig.AdminClosedCount);
+        rig.OnEndLossStreaks = () => throw new InvalidOperationException("Adapter broken");
         try
         {
             await Assert.ThrowsAsync<InvalidOperationException>(rig.DisconnectAsync);
-            Assert.Equal(1, await rig.ReadAsync(() => rig.AdminClosedCount));
+            Assert.Equal((closedBefore + 1, true, true), (await rig.ReadAsync(() => rig.AdminClosedCount), await rig.ReadAsync(() => rig.Shown) is null,
+                await rig.ReadAsync(() => rig.Connection.VoiceLink.Client) is null));
         }
         finally
         {

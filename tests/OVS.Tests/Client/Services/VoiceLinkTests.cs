@@ -22,13 +22,21 @@ public sealed class VoiceLinkTests : IDisposable
     readonly KeyPoller keys;
     readonly AudioEngine engine;
     readonly List<string> logLines = [];
+    readonly List<LossReport> reportedUplinks = [];
     readonly VoiceLink link;
+    int lossStreaksEnded;
+    Exception? reportFailure;
 
     public VoiceLinkTests()
     {
         keys = new KeyPoller(time);
         engine = new AudioEngine(keys, time, hardware: null);
-        link = new VoiceLink(hear: engine.OnVoice, setSend: send => engine.Send = send, time: time, log: logLines.Add);
+        link = new VoiceLink(hear: engine.OnVoice, setSend: send => engine.Send = send, time: time, log: logLines.Add,
+            reportUplink: loss =>
+            {
+                reportedUplinks.Add(loss);
+                if (reportFailure is { } failure) throw failure;
+            }, endLossStreaks: () => lossStreaksEnded++);
     }
 
     VoiceClient CreateClient() => new(server.EndPoint, FakeVoiceServer.SessionId, server.Key, time);
@@ -46,6 +54,26 @@ public sealed class VoiceLinkTests : IDisposable
         await server.WaitForAsync(PacketType.Hello, hellosSoFar);
         await server.AnswerAsync();
         await AsyncWait.Until(() => link.Reachable == true);
+    }
+
+    /// <summary>Waits for the <paramref name="hellosSoFar"/>th Hello, has the server answer it with <paramref name="uplink"/> and waits until the client counted <paramref name="answersSoFar"/> answers.</summary>
+    async Task AnswerAndWaitUntilCountedAsync(int hellosSoFar, int answersSoFar, LossReport? uplink = null)
+    {
+        await server.WaitForAsync(PacketType.Hello, hellosSoFar);
+        await server.AnswerAsync(uplink);
+        await AsyncWait.Until(() => link.ReadFigures().RoundTripCount == answersSoFar);
+    }
+
+    /// <summary>A first client answered once and fed to the adapter, stopped, and a second client started and said Hello; nothing reported yet counts.</summary>
+    async Task StartNewClientAfterAFedAnswerAsync()
+    {
+        link.Start(CreateClient());
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
+        link.FeedLoss();
+        link.Stop();
+        link.Start(CreateClient());
+        await server.WaitForAsync(PacketType.Hello, 2);
+        reportedUplinks.Clear();
     }
 
     // ---- Start ----
@@ -249,6 +277,168 @@ public sealed class VoiceLinkTests : IDisposable
         link.LogReachability();
 
         Assert.Empty(logLines);
+    }
+
+    // ---- Start and Stop end the loss streaks ----
+
+    [Fact]
+    public void Start_AClient_EndsTheLossStreaksOnce()
+    {
+        link.Start(CreateClient());
+
+        Assert.Equal(1, lossStreaksEnded);
+    }
+
+    [Fact]
+    public void Start_CalledTwice_EndsTheLossStreaksEachTime()
+    {
+        link.Start(CreateClient());
+
+        link.Start(CreateClient());
+
+        Assert.Equal(2, lossStreaksEnded);
+    }
+
+    [Fact]
+    public void Stop_AStartedLink_EndsTheLossStreaksAgain()
+    {
+        link.Start(CreateClient());
+
+        link.Stop();
+
+        Assert.Equal(2, lossStreaksEnded);
+    }
+
+    [Fact]
+    public void Stop_NothingStarted_StillEndsTheLossStreaks()
+    {
+        link.Stop();
+
+        Assert.Equal(1, lossStreaksEnded);
+    }
+
+    // ---- FeedLoss ----
+
+    [Fact]
+    public void FeedLoss_NoClient_ReportsNothing()
+    {
+        link.FeedLoss();
+
+        Assert.Empty(reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_ClientWithoutAnAnswer_ReportsNothing()
+    {
+        link.Start(CreateClient());
+        await server.WaitForAsync(PacketType.Hello);
+
+        link.FeedLoss();
+
+        Assert.Empty(reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_NewAnswerSeenOnTwoTicks_ReportsItsUplinkFigureOnce()
+    {
+        link.Start(CreateClient());
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
+
+        link.FeedLoss();
+        link.FeedLoss();
+
+        Assert.Equal([FakeVoiceServer.UplinkLoss], reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_AnswerArrivesAfterAnEmptyTick_ReportsItAtTheNextTick()
+    {
+        link.Start(CreateClient());
+        await server.WaitForAsync(PacketType.Hello);
+        link.FeedLoss();
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
+        var reportedBeforeTheTick = reportedUplinks.Count;
+
+        link.FeedLoss();
+
+        Assert.Equal((0, 1), (reportedBeforeTheTick, reportedUplinks.Count));
+    }
+
+    [Fact]
+    public async Task FeedLoss_AnotherAnswerWithAnotherFigure_ReportsEachFigureOnce()
+    {
+        var firstFigure = new LossReport(Expected: 100, Missed: 3);
+        var secondFigure = new LossReport(Expected: 100, Missed: 40);
+        link.Start(CreateClient());
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1, firstFigure);
+        link.FeedLoss();
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 2, secondFigure);
+
+        link.FeedLoss();
+        link.FeedLoss();
+
+        Assert.Equal([firstFigure, secondFigure], reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_NewClientAfterAnAnsweredOne_ReportsNothingUntilItsFirstAnswer()
+    {
+        await StartNewClientAfterAFedAnswerAsync();
+
+        link.FeedLoss();
+
+        Assert.Empty(reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_NewClientAfterAnAnsweredOne_ReportsItsFirstAnswer()
+    {
+        await StartNewClientAfterAFedAnswerAsync(); // one answer fed, so the new client's first answer has the same count and only the reset in Start lets it through
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 2, answersSoFar: 1);
+
+        link.FeedLoss();
+
+        Assert.Equal([FakeVoiceServer.UplinkLoss], reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_SecondClientStartedWithoutStopAfterAnAnsweredOne_ReportsItsFirstAnswer()
+    {
+        link.Start(CreateClient());
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
+        link.FeedLoss();
+        link.Start(CreateClient());
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 2, answersSoFar: 1);
+        reportedUplinks.Clear();
+
+        link.FeedLoss();
+
+        Assert.Equal([FakeVoiceServer.UplinkLoss], reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_AfterStopWithAnAnswerNotYetReported_ReportsNothing()
+    {
+        link.Start(CreateClient());
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
+        link.Stop();
+
+        link.FeedLoss();
+
+        Assert.Empty(reportedUplinks);
+    }
+
+    [Fact]
+    public async Task FeedLoss_AdapterThrows_PropagatesAndDoesNotReportTheSameAnswerAgain()
+    {
+        link.Start(CreateClient());
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
+        reportFailure = new InvalidOperationException("Adapter broken");
+
+        var thrown = Assert.Throws<InvalidOperationException>(link.FeedLoss);
+        link.FeedLoss();
+
+        Assert.Equal(("Adapter broken", 1), (thrown.Message, reportedUplinks.Count));
     }
 
     // ---- ReadFigures ----

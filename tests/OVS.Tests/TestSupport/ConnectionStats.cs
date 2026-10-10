@@ -6,5 +6,5 @@ namespace OVS.Tests.TestSupport;
 static class ConnectionStats
 {
     public static ConnectionStatsViewModel CreateBlank() =>
-        new(new ManualTimeProvider(), () => null, () => default, () => default, () => 0, _ => { });
+        new(new ManualTimeProvider(), () => null, () => default, () => default, () => 0);
 }

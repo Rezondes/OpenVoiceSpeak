@@ -73,7 +73,6 @@ public class ConnectionStatsViewModelTests
     static readonly VoiceLinkFigures FirstAnswer = new(TimeSpan.FromMilliseconds(40), RoundTripCount: 1, Uplink: new LossReport(250, 25), Downlink: new LossReport(100, 5));
 
     readonly ManualTimeProvider clock = new();
-    readonly List<LossReport> reportedUplinks = [];
     bool? udpReachable = true;
     VoiceLinkFigures figures = FirstAnswer;
     ReceiveStats mixerCounts = new(0, 0, 0, 0, JitterMs: 3.5, DelayMs: 60);    int encoderBitrate = 64;
@@ -83,7 +82,7 @@ public class ConnectionStatsViewModelTests
     {
         figuresRead++;
         return figures;
-    }, () => mixerCounts, () => encoderBitrate, reportedUplinks.Add);
+    }, () => mixerCounts, () => encoderBitrate);
 
     [Fact]
     public void Refresh_NoVoiceConnection_ShowsNothingAndAsksForNoFigures()
@@ -180,41 +179,30 @@ public class ConnectionStatsViewModelTests
     }
 
     [Fact]
-    public void Refresh_NewAnswer_ReportsItsUplinkFigureToTheLossAdapter()
-    {
-        var stats = CreateStats();
-
-        stats.Refresh();
-
-        Assert.Equal([new LossReport(250, 25)], reportedUplinks);
-    }
-
-    [Fact]
-    public void Refresh_NoNewAnswerSinceTheLast_KeepsTheBaselineAndReportsNothingMore()
+    public void Refresh_NoNewAnswerSinceTheLast_KeepsTheBaseline()
     {
         var stats = CreateStats();
         stats.Refresh();
         clock.Advance(ConnectionStatsViewModel.RefreshInterval);
-        int samplesBefore = stats.Samples, reportsBefore = reportedUplinks.Count;
+        int samplesBefore = stats.Samples;
 
         stats.Refresh();
 
-        Assert.Equal((samplesBefore, reportsBefore), (stats.Samples, reportedUplinks.Count));
+        Assert.Equal(samplesBefore, stats.Samples);
     }
 
     [Fact]
-    public void Refresh_AnotherAnswer_TakesItIntoTheBaselineAndReportsItsUplink()
+    public void Refresh_AnotherAnswer_TakesItIntoTheBaseline()
     {
         var stats = CreateStats();
         stats.Refresh();
         figures = FirstAnswer with { RoundTrip = TimeSpan.FromMilliseconds(55), RoundTripCount = 2 };
         clock.Advance(ConnectionStatsViewModel.RefreshInterval);
-        int samplesBefore = stats.Samples, reportsBefore = reportedUplinks.Count;
+        int samplesBefore = stats.Samples;
 
         stats.Refresh();
 
         Assert.Equal(samplesBefore + 1, stats.Samples);
-        Assert.Equal([figures.Uplink], reportedUplinks.Skip(reportsBefore));
     }
 
     [Fact]
@@ -235,12 +223,11 @@ public class ConnectionStatsViewModelTests
     {
         var stats = CreateStats();
         stats.Refresh();
-        int reportsBefore = reportedUplinks.Count;
 
         stats.Reset();
         stats.Refresh();
 
-        Assert.Equal((1, reportsBefore + 1), (stats.Samples, reportedUplinks.Count));
+        Assert.Equal(1, stats.Samples);
     }
 
     [Fact]

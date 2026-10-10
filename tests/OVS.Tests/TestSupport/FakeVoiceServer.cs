@@ -53,9 +53,9 @@ sealed class FakeVoiceServer : IDisposable
 
     /// <summary>
     /// Answers the client's last packet with a ping that echoes the time the client sent and reports <see cref="UplinkLoss"/>,
-    /// which makes the client count UDP as reachable.
+    /// which makes the client count UDP as reachable. <paramref name="uplink"/> replaces <see cref="UplinkLoss"/> when given.
     /// </summary>
-    public Task AnswerAsync() => SendAsync(PacketType.Ping, new PingPayload(Volatile.Read(ref lastTimeMs), UplinkLoss).Build());
+    public Task AnswerAsync(LossReport? uplink = null) => SendAsync(PacketType.Ping, new PingPayload(Volatile.Read(ref lastTimeMs), uplink ?? UplinkLoss).Build());
 
     /// <summary>Sends frame number <paramref name="frameNumber"/> of voice from <paramref name="speaker"/> to the client.</summary>
     public Task SendVoiceAsync(uint speaker, uint frameNumber, byte[] opusFrame) =>

@@ -35,11 +35,12 @@ sealed class ConnectionRig : IAsyncDisposable
         Seam = new ConnectSeam(dir, Time);
         keys = new KeyPoller(Time, new FakeKeys().IsDown);
         audio = new AudioEngine(keys, Time, hardware: null);
-        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: Time, log: LogLines.Add);
+        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: Time, log: LogLines.Add,
+            reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: EndLossStreaks);
         var engineSync = new EngineSync(audio, () => EngineConnectionState.Disconnected, () => null, _ => 1f);
         var selfTest = new SelfTest(() => false, _ => { }, _ => { }, LogLines.Add, () => null, _ => Task.CompletedTask);
         var bookmarks = new BookmarkList(() => Bookmarks, (_, _) => null, new LeaveTimer(Time, () => PostToUi), () => Dialogs, () => { }, LogLines.Add);
-        Connection = new ConnectionViewModel(time: Time, post: PostToUi, log: LogLines.Add, openConnection: OpenAsync, play: Play, endLossStreaks: EndLossStreaks,
+        Connection = new ConnectionViewModel(time: Time, post: PostToUi, log: LogLines.Add, openConnection: OpenAsync, play: Play,
             voiceLink: voiceLink, engineSync: engineSync, selfTest: selfTest, bookmarks: bookmarks, icons: new ServerIconCache(dir),
             stats: ConnectionStats.CreateBlank(), dialogs: () =>
             {
@@ -64,7 +65,7 @@ sealed class ConnectionRig : IAsyncDisposable
     /// <summary>Called by the connection's play delegate after the tone was noted; may throw.</summary>
     public Action<SoundEvent>? OnPlay { get; set; }
 
-    /// <summary>Called by the connection's end-loss-streaks delegate after the call was counted; may throw.</summary>
+    /// <summary>Called by the voice link's end-loss-streaks delegate (at its start and its stop) after the call was counted; may throw.</summary>
     public Action? OnEndLossStreaks { get; set; }
 
     /// <summary>The answer to "may the administration's unsaved changes go?"; may throw.</summary>

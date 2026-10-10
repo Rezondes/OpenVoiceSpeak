@@ -808,6 +808,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 return 0;
             });
         }
+        // the halving lands in the last loop tick only (StepDownAfter 5 s, 2 s steps), so this pin needs the feed before the card's refresh in Tick
         var (hint, adapted, shownBitrate) = await OnUi(() => (vm.Audio.Loss.LossHint, vm.Audio.EncoderBitrate, stats.BitrateText));
         Assert.True(hint > 10, $"loss hint {hint}");
         Assert.Equal(48, adapted);
@@ -839,6 +840,55 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await OnUi(() => vm.Connection.DisconnectAsync());
         Assert.Equal((0, false, "-"), await OnUi(() => (stats.Bars, stats.Unreachable, stats.RoundTripText)));
+    }
+
+    /// <summary>Step 25g7: the loss adapter hears a new answer at the next tick (100 ms), not at the card's next 2 s refresh.</summary>
+    [Fact]
+    public async Task Tick_AnswerArrivesBetweenTwoRefreshes_LossAdapterHearsItAtTheNextTick()
+    {
+        var serverTime = new ManualTimeProvider(); // moved only while sending, so its uplink window never rolls
+        await server.DisposeAsync();
+        server = await TestServer.StartAsync(time: serverTime);
+        using var relay = new LossyUdpRelay(server.VoiceEndPoint);
+        var time = new ManualTimeProvider();
+        await ConnectThroughRelayAsync(relay, time);
+        await OnUi(() => vm.Audio.Loss = new LossAdapter(time, 64));
+        await OnUiUntil(() =>
+        {
+            time.Advance(TimeSpan.FromSeconds(2));
+            vm.Tick();
+            return vm.Stats.Bars;
+        }, bars => bars == 4); // the answer to the Hello is taken, the card has refreshed
+        relay.DropUpVoicePercent = 20;
+        var frame = new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]);
+        for (int i = 0; i < 10; i++) // the voice burst of the server's rate limit
+        {
+            serverTime.Advance(AudioFormat.FrameDuration);
+            await OnUi(() =>
+            {
+                vm.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
+                return 0;
+            });
+        }
+        await AsyncWait.Until(() => relay.PassedUpVoice == 8);
+        serverTime.Advance(TimeSpan.FromMilliseconds(200)); // tokens for the ping
+        int answers = await OnUi(() =>
+        {
+            time.Advance(TimeSpan.FromSeconds(2)); // the ping goes out
+            vm.Tick(); // the card refreshes here, before the answer is back
+            return vm.Connection.VoiceLink.Client!.RoundTripSample.Count;
+        });
+        await OnUiUntil(() => vm.Connection.VoiceLink.Client!.RoundTripSample.Count, count => count > answers);
+        Assert.Equal(LossAdapter.InitialHint, await OnUi(() => vm.Audio.Loss.LossHint)); // nobody has fed the answer yet
+
+        int hint = await OnUi(() =>
+        {
+            time.Advance(TimeSpan.FromMilliseconds(100)); // far from the next 2 s refresh
+            vm.Tick();
+            return vm.Audio.Loss.LossHint;
+        });
+
+        Assert.True(hint > LossAdapter.InitialHint, $"loss hint {hint}");
     }
 
     [Fact]
