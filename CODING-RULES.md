@@ -210,6 +210,7 @@ Where code that several places need lives. All of these are introduced by the re
 | `TestSupport/FakeServers` | ready client servers (`Admin` and others), the shared `GuestGroup`, `AdminGroup` and `ModeratorGroup`, and `SetOwnRightsAndGroups` (the own user gets exactly these rights and groups) | J5 |
 | `TestSupport/MotionWait` | `Settle(int)` and `WaitFor(Func<bool>, int)`; the transform readers `OffsetX`, `OffsetY` and `Scale` | J5 |
 | `TestSupport/AsyncWait` | `Until(Func<bool>)` | J5 |
+| `TestSupport/TestDispatcher` | a single test UI thread with its own SynchronizationContext: `Post`, `InvokeAsync`, `ReadAsync`, `ReadUntilAsync` (polls on the UI thread, 10 s, returns the last value), `RunAsync`; `ReadUntilAsync` is the UI-thread variant of `AsyncWait.Until`, the two are planned to merge | J1, N23 |
 | `TestSupport/HangGuard` | `Bound(task)`: a test-side guard only, an awaited task that never completes fails the test with a `TimeoutException` after `Limit` (10 s) instead of hanging the run; a passing test never waits for it | J1, N23 |
 | `TestSupport/LinkMatrixActions` | `UnlinkAll` on a `LinkMatrixViewModel`: selects every row and marks every link as removed (a pending change, nothing sent); used by the leave and place tests | J5 |
 | `TestSupport/RepoPaths` | the repository root, `src/OVS.Client` and `SourceFiles` (a folder's files of one pattern without `bin/`, `obj/` and `*.Designer.cs`; used by `SourceLayout`, `OneClockTests` and the XAML text check) | J5 |

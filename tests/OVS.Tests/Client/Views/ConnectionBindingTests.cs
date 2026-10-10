@@ -1,9 +1,12 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Localization;
+using OVS.Client.Services;
+using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
 using OVS.Tests.TestSupport;
@@ -14,9 +17,9 @@ namespace OVS.Tests.Client.Views;
 [Collection(MotionCollection.Name)]
 public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-", quiet: true)
 {
-    MainWindow Open(ServerViewModel? server, out MainViewModel mainViewModel)
+    MainWindow Open(ServerViewModel? server, out MainViewModel mainViewModel, OpenConnection? connect = null)
     {
-        mainViewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        mainViewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action), connect: connect);
         var main = new MainWindow { DataContext = mainViewModel, Width = 1100, Height = 700 };
         main.Show();
         MainViewModelSetup.ShowServer(mainViewModel, server);
@@ -86,5 +89,104 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
         var tip = (StackPanel)ToolTip.GetTip(chip)!;
         Assert.Equal("Ping 23 ms", tip.Children.OfType<TextBlock>().Last().Text);
         main.Close();
+    }
+
+    const string BookmarkName = "Gilde";
+
+    /// <summary>Clicks through <see cref="OverlayRig.Click"/> (the Click event reaches the handlers whether or not the button is enabled); tells whether a handler got it.</summary>
+    static bool Click(Button button)
+    {
+        bool reached = false;
+        button.Click += (_, _) => reached = true;
+        OverlayRig.Click(button);
+        return reached;
+    }
+
+    Button AddBookmarkTile(MainWindow main, MainViewModel mainViewModel)
+    {
+        mainViewModel.Settings.Bookmarks.Add(new Bookmark(BookmarkName, "127.0.0.1", 4711, "anna"));
+        mainViewModel.Bookmarks.Refresh();
+        Dispatcher.UIThread.RunJobs();
+        return main.GetVisualDescendants().OfType<Button>()
+            .Single(button => AutomationProperties.GetName(button) == string.Format(Strings.Ui_ConnectToFmt, BookmarkName));
+    }
+
+    [AvaloniaFact]
+    public void ConnectClick_NotConnecting_OpensTheConnectDialog()
+    {
+        var main = Open(null, out _);
+        try
+        {
+            Assert.True(Click(FindConnectButton(main)));
+
+            Assert.True(main.Overlay.IsOpen);
+            main.Overlay.Close();
+            Dispatcher.UIThread.RunJobs();
+        }
+        finally
+        {
+            main.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ConnectClick_WhileConnecting_OpensNoDialog()
+    {
+        var main = Open(null, out var mainViewModel);
+        try
+        {
+            mainViewModel.Connection.IsConnecting = true;
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(Click(FindConnectButton(main)));
+
+            Assert.False(main.Overlay.IsOpen);
+        }
+        finally
+        {
+            main.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task BookmarkClick_NotConnecting_StartsAnAttempt()
+    {
+        var seam = new ConnectSeam(dir, TimeProvider.System);
+        seam.FailNext(ConnectSeam.CreateClosedPortError());
+        var main = Open(null, out var mainViewModel, seam.Connect);
+        try
+        {
+            var tile = AddBookmarkTile(main, mainViewModel);
+
+            Assert.True(Click(tile));
+
+            var attempt = await HangGuard.Bound(seam.WaitForAttemptAsync(1));
+            Assert.Equal(4711, attempt.Choice.Port);
+        }
+        finally
+        {
+            main.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void BookmarkClick_WhileConnecting_StartsNoAttempt()
+    {
+        var seam = new ConnectSeam(dir, TimeProvider.System);
+        var main = Open(null, out var mainViewModel, seam.Connect);
+        try
+        {
+            var tile = AddBookmarkTile(main, mainViewModel);
+            mainViewModel.Connection.IsConnecting = true;
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(Click(tile));
+
+            Assert.Empty(seam.Attempts);
+        }
+        finally
+        {
+            main.Close();
+        }
     }
 }

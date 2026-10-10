@@ -1,0 +1,554 @@
+using OVS.Client.Audio;
+using OVS.Client.Audio.Sounds;
+using OVS.Client.Dialogs;
+using OVS.Client.Exceptions;
+using OVS.Client.Input;
+using OVS.Client.Localization;
+using OVS.Client.Net;
+using OVS.Client.ViewModels;
+using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Channels;
+using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Tests.TestSupport;
+
+namespace OVS.Tests.Client.ViewModels;
+
+/// <summary>
+/// Package 139 (A148): the automatic reconnect after a lost connection, through the main view model against a real server,
+/// on a manual clock and the connect seam (moved here from <c>MainViewModelTests</c> in 25g5b). The connection's own
+/// facts, without a main view model, are in <see cref="ConnectionViewModelTests"/>.
+/// </summary>
+public sealed class ReconnectTests : IAsyncLifetime
+{
+    readonly TestDispatcher ui = new();
+    readonly string dir = Directory.CreateTempSubdirectory("ovs-reconnect-").FullName;
+    readonly FakeKeys keys = new(); // Package 125: a real key pressed while the tests run does not count
+    readonly ManualTimeProvider reconnectTime = new();
+    TestServer server = null!;
+    ConnectSeam seam = null!;
+    MainViewModel vm = null!;
+
+    static string Retrying(int seconds) => string.Format(Strings.Status_Reconnecting, seconds);
+
+    const string Reconnected = "Verbindung wiederhergestellt";
+    const string OutdatedAttemptLine = "outdated attempt dropped";
+
+    public async Task InitializeAsync()
+    {
+        // the welcome text is there so that "one notice after a reconnect" shows that a reconnect brings no welcome text again
+        server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!");
+        seam = new ConnectSeam(dir, reconnectTime);
+        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true, time: reconnectTime,
+            connect: seam.Connect)));
+    }
+
+    public async Task DisposeAsync()
+    {
+        await ui.RunAsync(() => vm.DisposeAsync().AsTask());
+        ui.Dispose();
+        await server.DisposeAsync();
+        Directory.Delete(dir, true);
+    }
+
+    Task<T> OnUi<T>(Func<T> read) => ui.ReadAsync(read);
+
+    Task<T> OnUiUntil<T>(Func<T> read, Func<T, bool> done) => ui.ReadUntilAsync(read, done);
+
+    string ClientLogText() => MainViewModelSetup.ReadLogText(vm, dir);
+
+    /// <summary>Connects anna on the manual reconnect clock, through <see cref="seam"/>.</summary>
+    async Task ConnectTo(TestServer to, string? password = null)
+    {
+        await ui.RunAsync(() => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", to.Port, "anna", password, SaveBookmark: false)));
+        Assert.True(await OnUi(() => vm.IsConnected));
+    }
+
+    /// <summary>The server drops anna's connection without a word, like a broken network.</summary>
+    async Task DropAsync(TestServer on)
+    {
+        var id = await OnUi(() => vm.Server!.Mirror.SelfId);
+        on.State.FindSession(id)!.Outbox.Abort("Test");
+        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+    }
+
+    Task<string> TickStatus() => OnUi(() =>
+    {
+        vm.Tick();
+        return vm.Status;
+    });
+
+    /// <summary>Ticks and reads the status until <paramref name="done"/> accepts it; returns the last one.</summary>
+    Task<string> TickStatusUntil(Func<string, bool> done) => OnUiUntil(() =>
+    {
+        vm.Tick();
+        return vm.Status;
+    }, done);
+
+    /// <summary>Presses "Abbrechen" of a running series.</summary>
+    Task CancelReconnectAsync() => OnUi(() =>
+    {
+        vm.Connection.CancelReconnectCommand.Execute(null);
+        return 0;
+    });
+
+    /// <summary>The notices added since <paramref name="before"/> of them were there, oldest first.</summary>
+    Task<List<string>> NoticesSince(int before) => OnUi(() => vm.Notices.Take(vm.Notices.Count - before).Reverse().Select(n => n.Text).ToList());
+
+    static Action<OVS.Server.Data.Records.ServerData> SecretChannel(Guid id) => d => d.Channels.Add(new OVS.Server.Data.Records.ChannelRecord
+    {
+        Id = id, Name = "Geheim", Order = 1, StoredPassword = OVS.Server.Security.StoredPassword.Create("pw"),
+    });
+
+    /// <summary>Back into the password channel, deafened as before, with one notice; the server sees the state too.</summary>
+    [Fact]
+    public async Task ConnectionLost_Reconnects_RestoresChannelAndMute()
+    {
+        var secret = Guid.NewGuid();
+        await using var own = await TestServer.StartAsync(SecretChannel(secret));
+        int asked = 0;
+        vm.Dialogs = new DialogCallbacks { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } };
+        await ConnectTo(own);
+        await OnUi(() => vm.Server!.JoinAsync(secret));
+        Assert.Equal(secret, await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret));
+        await OnUi(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null));
+        var before = await OnUi(() => (vm.Server!.Mirror.SelfId, vm.Notices.Count));
+
+        await DropAsync(own);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(await OnUiUntil(() => vm.Server?.Mirror.Self is { SelfDeafened: true } self && self.ChannelId == secret, ok => ok));
+
+        var (session, muted, deafened, reconnecting, status) = await OnUi(() =>
+            (vm.Server!.Mirror.SelfId, vm.Server.SelfMuted, vm.Server.SelfDeafened, vm.Connection.IsReconnecting, vm.Status));
+        Assert.NotEqual(before.SelfId, session); // a new session
+        Assert.True(muted && deafened);
+        Assert.False(reconnecting);
+        Assert.Equal("Verbunden mit Testserver", status);
+        Assert.Equal(1, asked); // the password from before, no dialog
+        Assert.Equal([Reconnected], await NoticesSince(before.Count));
+        Assert.DoesNotContain("pw", ClientLogText());
+    }
+
+    Task OnUiDo(Func<Task> action) => ui.RunAsync(action);
+
+    /// <summary>Drops the connection and lets the first attempt bring a new session.</summary>
+    async Task ReconnectAsync(TestServer on)
+    {
+        var before = await OnUi(() => vm.Server!.Mirror.SelfId);
+        await DropAsync(on);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+    }
+
+    /// <summary>Review: muted, then deafened, stays muted when undeafening after a reconnect; muted alone stays muted.</summary>
+    [Theory]
+    [InlineData("muted")]
+    [InlineData("muted, deafened")]
+    public async Task Reconnect_MutedWithOrWithoutDeafen_StaysMutedWhenUndeafening(string state)
+    {
+        bool deafen = state.Contains("deafened");
+        await ConnectTo(server);
+        await OnUiDo(() => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
+        if (deafen) await OnUiDo(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null));
+
+        await ReconnectAsync(server);
+        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
+        if (deafen) await OnUiDo(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null)); // sound on again
+        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfMuted, vm.Server.SelfDeafened)));
+        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: false }, ok => ok)); // the server too
+    }
+
+    /// <summary>Review: the mute of a held push-to-mute key is not kept; let go during the outage or after it, the microphone is on again.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reconnect_PushToMuteHeld_NotKept(bool heldThrough)
+    {
+        await ConnectTo(server);
+        vm.Keys.Simulate(KeyAction.PushToMute, true);
+        Assert.True(await OnUiUntil(() => vm.Server!.SelfMuted, m => m));
+        var before = await OnUi(() => vm.Server!.Mirror.SelfId);
+        await DropAsync(server);
+        if (!heldThrough)
+        {
+            vm.Keys.Simulate(KeyAction.PushToMute, false);
+            await OnUiUntil(() => vm.Keys.MuteHeld, h => !h);
+        }
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+        if (heldThrough)
+        {
+            Assert.True(await OnUi(() => vm.Server!.SelfMuted)); // still held: muted
+            vm.Keys.Simulate(KeyAction.PushToMute, false);
+        }
+        Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
+        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: false }, ok => ok));
+    }
+
+    /// <summary>The self test mutes and deafens at the server; a reconnect brings back the state from before it, not the test's.</summary>
+    [Fact]
+    public async Task Reconnect_SelfTestRunningOnAMutedUser_BringsBackTheMuteFromBeforeIt()
+    {
+        await ConnectTo(server);
+        await OnUiDo(() => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
+        await OnUiDo(() => vm.SelfTest.SetAsync(true));
+        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: true }, ok => ok));
+
+        await ReconnectAsync(server);
+
+        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfMuted, vm.Server.SelfDeafened)));
+    }
+
+    /// <summary>The self test feeds the mixer without a connection; frames of it during the wait do not count for the new connection.</summary>
+    [Fact]
+    public async Task Reconnect_SelfTestFramesDuringTheWait_StatsCountFromTheNewConnection()
+    {
+        await ConnectTo(server);
+        var before = await OnUi(() => vm.Server!.Mirror.SelfId);
+        await DropAsync(server);
+        var fed = await OnUi(() =>
+        {
+            var frame = EngineProbe.SilentFrame();
+            foreach (uint number in new uint[] { 0, 1, 2, 5, 6, 7, 8, 9 })
+            {
+                vm.Audio.Mixer.Push(AudioEngine.SelfTestSpeaker, number, frame, viaLink: false, arrivalMs: 20.0 * number);
+                vm.Audio.Mixer.Tick();
+            }
+            for (int tick = 0; tick < 20; tick++) vm.Audio.Mixer.Tick();
+            var counts = vm.Audio.Mixer.Stats();
+            return counts.Concealed + counts.Rebuilt + counts.Recovered;
+        });
+        Assert.True(fed > 0);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+
+        var shown = await OnUi(() =>
+        {
+            vm.Tick();
+            return vm.Stats.ConcealedText;
+        });
+
+        Assert.Equal(string.Format(Strings.ConnDetails_ConcealedValue, 0, 0, 0), shown);
+    }
+
+    /// <summary>Re-review: muted by choice (and deafened), push-to-mute held through the reconnect and then let go: still muted.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reconnect_ChosenMute_HeldKeyReleased_StaysMuted(bool deafen)
+    {
+        await ConnectTo(server);
+        await OnUiDo(() => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
+        if (deafen) await OnUiDo(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null));
+        vm.Keys.Simulate(KeyAction.PushToMute, true);
+        await OnUiUntil(() => vm.Keys.MuteHeld, h => h);
+
+        await ReconnectAsync(server);
+        vm.Keys.Simulate(KeyAction.PushToMute, false);
+        await OnUiUntil(() => vm.Keys.MuteHeld, h => !h);
+        await Task.Delay(200); // the release reaches the view model through the UI queue
+        Assert.Equal((true, deafen), await OnUi(() => (vm.Server!.SelfMuted, vm.Server.SelfDeafened)));
+        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
+    }
+
+    /// <summary>A reconnect brings no welcome text again: the server has one and the only notice is the reconnected one.</summary>
+    [Fact]
+    public async Task Reconnect_ServerHasWelcomeText_AddsOnlyTheReconnectedNotice()
+    {
+        await ConnectTo(server);
+        int before = await OnUi(() => vm.Notices.Count);
+
+        await ReconnectAsync(server);
+
+        Assert.Equal([Reconnected], await NoticesSince(before));
+    }
+
+    /// <summary>Review: a server restart reconnects like a shutdown.</summary>
+    [Fact]
+    public async Task Reconnect_ServerRestarts_ConnectsAgainLikeAfterAShutdown()
+    {
+        var own = await TestServer.StartAsync();
+        await ConnectTo(own);
+        await own.Control.StopAsync(restart: true);
+        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        await using var back = await own.RestartAsync(samePort: true);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(await OnUiUntil(() => vm.IsConnected && !vm.Connection.IsReconnecting, ok => ok));
+    }
+
+    /// <summary>Review: an unexpected exception in an attempt counts as a failed attempt; the series goes on.</summary>
+    [Fact]
+    public async Task Reconnect_UnexpectedFailure_CountsAsFailedAttempt()
+    {
+        var first = await TestServer.StartAsync();
+        int port = first.Port;
+        await ConnectTo(first);
+        seam.FailNext(new InvalidOperationException("Testfehler"));
+        await first.DisposeAsync();
+        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        await using var back = await TestServer.StartAsync(port: port);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(Retrying(2), await TickStatusUntil(status => status.EndsWith(" 2 s")));
+        reconnectTime.Advance(TimeSpan.FromSeconds(2));
+        Assert.True(await OnUiUntil(() => vm.IsConnected && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.Contains("Testfehler", ClientLogText());
+    }
+
+    /// <summary>None of these start a series; the session ends as before.</summary>
+    [Theory]
+    [InlineData(ReasonCodes.Kicked)]
+    [InlineData(ReasonCodes.Banned)]
+    [InlineData(ReasonCodes.ReplacedByNewConnection)]
+    [InlineData(ReasonCodes.VersionMismatch)]
+    [InlineData(ReasonCodes.WrongPassword)]
+    [InlineData("own")]
+    public async Task Reconnect_DeliberateEndOfTheSession_StartsNoSeries(string reason)
+    {
+        await using var locked = reason == ReasonCodes.WrongPassword ? await TestServer.StartAsync(password: "alt") : null;
+        if (locked is not null)
+        {
+            // the server comes back with another password: the attempt is refused and the series ends there
+            await ConnectTo(locked, "alt");
+            seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+            await locked.DisposeAsync();
+            Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r)); // ServerShutdown retries
+            reconnectTime.Advance(TimeSpan.FromSeconds(1));
+            Assert.StartsWith("Abgelehnt", await OnUiUntil(() => vm.Status, s => s.StartsWith("Abgelehnt")));
+            Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent)); // review: the series ended, so the tone
+        }
+        else
+        {
+            await ConnectTo(server);
+            if (reason == "own")
+                await ui.RunAsync(vm.Connection.DisconnectAsync);
+            else
+            {
+                var id = await OnUi(() => vm.Server!.Mirror.SelfId);
+                server.State.FindSession(id)!.Outbox.Close(new Disconnected(reason));
+            }
+            Assert.False(await OnUiUntil(() => vm.IsConnected, c => !c));
+        }
+
+        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        int attemptsBefore = seam.Attempts.Count;
+        reconnectTime.Advance(TimeSpan.FromSeconds(60));
+        await OnUi(() => 0); // what the clock posted has run
+        Assert.Equal(attemptsBefore, seam.Attempts.Count);
+        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        if (locked is null) Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
+    }
+
+    /// <summary>"Abbrechen" ends the series at once; connecting elsewhere ends it too and an old attempt's late success is dropped.</summary>
+    [Fact]
+    public async Task Reconnect_CancelledOrConnectedElsewhere_EndsTheSeriesAndDropsTheOldAttempt()
+    {
+        await ConnectTo(server);
+        await DropAsync(server);
+        await CancelReconnectAsync();
+        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        Assert.StartsWith("Getrennt", await TickStatus());
+        int attemptsBefore = seam.Attempts.Count;
+        reconnectTime.Advance(TimeSpan.FromSeconds(60));
+        await OnUi(() => 0); // what the clock posted has run
+        Assert.Equal(attemptsBefore, seam.Attempts.Count);
+        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
+
+        // an attempt is held while the server is back
+        var first = await TestServer.StartAsync();
+        int port = first.Port;
+        await ConnectTo(first);
+        var oldAttempt = seam.HoldNext();
+        await first.DisposeAsync();
+        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        await using var back = await TestServer.StartAsync(d => d.Settings.Name = "Zurück", port: port);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        var held = await HangGuard.Bound(oldAttempt.Reached);
+        Assert.Equal(seam.Attempts.Count, held.Number);
+
+        await ConnectTo(server); // meanwhile the user connects elsewhere
+        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        oldAttempt.Release(); // the old attempt ends late
+        Assert.Contains(OutdatedAttemptLine, await OnUiUntil(ClientLogText, log => log.Contains(OutdatedAttemptLine)));
+        Assert.Equal(0, await OnUiUntil(() => back.State.SessionCount, count => count == 0));
+        var (name, connected) = await OnUi(() => (vm.Server?.ServerName, vm.IsConnected));
+        Assert.True(connected);
+        Assert.Equal("Testserver", name);
+    }
+
+    /// <summary>
+    /// While retrying the status counts down, no "Getrennt" tone plays and the administration
+    /// is closed; after the fifth failure the usual notice and tone come.
+    /// </summary>
+    [Fact]
+    public async Task Reconnect_AttemptsRunning_StatusCountsDownWithoutToneUntilTheFifthFails()
+    {
+        using var identity = ClientStorage.LoadOrCreateIdentity(dir); // anna is an admin there
+        await using var own = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"));
+        await ConnectTo(own);
+        seam.FailEvery(ConnectSeam.CreateClosedPortError); // every attempt is refused at once, no real connect to wait for
+        await OnUi(() => vm.OpenAdminAsync());
+        Assert.True(await OnUi(() => vm.IsAdminPage));
+        var before = await OnUi(() => vm.Notices.Count);
+        Assert.Contains(SoundEvent.Connected, await OnUi(() => vm.Audio.Sounds.Recent)); // the tones are counted at all
+
+        await own.DisposeAsync(); // ServerShutdown, and nobody answers any more
+        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        Assert.True(await OnUi(() => vm.IsHomePage && vm.AdminPage is null));
+        Assert.Equal(Retrying(1), await TickStatus());
+        Assert.Equal("", await OnUi(() => vm.Connection.PingText));
+        reconnectTime.Advance(TimeSpan.FromMilliseconds(400));
+        Assert.Equal(Retrying(1), await TickStatus());
+
+        foreach (int next in new[] { 2, 4, 8, 16 })
+        {
+            reconnectTime.Advance(TimeSpan.FromMilliseconds(600));
+            Assert.Equal(Retrying(next),
+                await TickStatusUntil(status => status.EndsWith($" {next} s")));
+            reconnectTime.Advance(TimeSpan.FromSeconds(next) - TimeSpan.FromMilliseconds(600));
+            Assert.Equal(Retrying(1), await TickStatus());
+        }
+        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+        Assert.Empty(await NoticesSince(before));
+
+        reconnectTime.Advance(TimeSpan.FromMilliseconds(600)); // the fifth attempt fails too
+        Assert.False(await OnUiUntil(() => vm.Connection.IsReconnecting, r => !r));
+        Assert.Equal("Getrennt: Der Server wurde heruntergefahren.", await TickStatus());
+        Assert.Equal(["Getrennt: Der Server wurde heruntergefahren."], await NoticesSince(before));
+        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+    }
+
+    /// <summary>Review: a refusal that says "not now" (shutdown, restart, rate limit) is a failed attempt; the series goes on.</summary>
+    [Theory]
+    [InlineData(ReasonCodes.ServerShutdown)]
+    [InlineData(ReasonCodes.ServerRestart)]
+    [InlineData(ReasonCodes.RateLimited)]
+    public async Task Reconnect_RefusedWithANotNowCode_SchedulesTheNextAttempt(string code)
+    {
+        await ConnectTo(server);
+        seam.FailNext(new ConnectionRejectedException(code, null));
+        await DropAsync(server);
+
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(Retrying(2), await TickStatusUntil(status => status.EndsWith(" 2 s")));
+        Assert.True(await OnUi(() => vm.Connection.IsReconnecting));
+    }
+
+    /// <summary>Review: a certificate the user turns down ends the series at once, with its status, the disconnected notice and the tone.</summary>
+    [Fact]
+    public async Task Reconnect_TofuRejected_EndsTheSeriesWithStatusNoticeAndTone()
+    {
+        await ConnectTo(server);
+        seam.FailNext(new TofuRejectedException());
+        int noticesBefore = await OnUi(() => vm.Notices.Count);
+        await DropAsync(server);
+
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(Strings.Status_TofuRejected, await OnUiUntil(() => vm.Status, status => status == Strings.Status_TofuRejected));
+        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        var notices = await NoticesSince(noticesBefore);
+        Assert.StartsWith("Getrennt", Assert.Single(notices));
+        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+    }
+
+    /// <summary>An attempt that gets in after "Abbrechen" is dropped and its connection closed.</summary>
+    [Fact]
+    public async Task Reconnect_AttemptAfterCancel_IsDroppedAndDisposed()
+    {
+        await ConnectTo(server);
+        var oldAttempt = seam.HoldNext();
+        await DropAsync(server);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        var held = await HangGuard.Bound(oldAttempt.Reached);
+        Assert.Equal(seam.Attempts.Count, held.Number);
+        await CancelReconnectAsync();
+
+        oldAttempt.Release();
+
+        Assert.Contains(OutdatedAttemptLine, await OnUiUntil(ClientLogText, log => log.Contains(OutdatedAttemptLine)));
+        Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
+        Assert.False(await OnUi(() => vm.IsConnected));
+    }
+
+    /// <summary>An attempt that fails after "Abbrechen" is only logged: the status, the notices and the tones stay as the cancel left them.</summary>
+    [Fact]
+    public async Task Reconnect_AttemptFailingAfterCancel_IsOnlyLogged()
+    {
+        await ConnectTo(server);
+        var oldAttempt = seam.HoldNext(failWith: new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+        await DropAsync(server);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        await HangGuard.Bound(oldAttempt.Reached);
+        await CancelReconnectAsync();
+        var statusAfterCancel = await OnUi(() => vm.Status);
+        int noticesAfterCancel = await OnUi(() => vm.Notices.Count);
+
+        oldAttempt.Release();
+
+        Assert.Contains(OutdatedAttemptLine + " (", await OnUiUntil(ClientLogText, log => log.Contains(OutdatedAttemptLine + " (")));
+        Assert.Equal(statusAfterCancel, await OnUi(() => vm.Status));
+        Assert.Empty(await NoticesSince(noticesAfterCancel));
+        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+    }
+
+    /// <summary>An attempt asks the seam for the server, nickname and password of the connect, and never for a cancellation.</summary>
+    [Fact]
+    public async Task Reconnect_AfterADrop_ReusesTheChoiceOfTheConnectWithoutCancellation()
+    {
+        await ConnectTo(server, "geheim");
+        var connect = seam.Attempts.Single();
+        await DropAsync(server);
+
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+
+        var attempt = await HangGuard.Bound(seam.WaitForAttemptAsync(connect.Number + 1));
+        Assert.Equal(connect.Choice, attempt.Choice);
+        Assert.Equal(CancellationToken.None, attempt.Token);
+    }
+
+    /// <summary>The last channel is gone or no longer lets me in: I stay in the default channel, with one notice about it.</summary>
+    [Theory]
+    [InlineData("deleted")]
+    [InlineData("password changed")]
+    public async Task Reconnect_ChannelGone_StaysInDefault(string change)
+    {
+        var secret = Guid.NewGuid();
+        using var adminId = OVS.Shared.Identity.ClientIdentity.Create();
+        await using var own = await TestServer.StartAsync(d =>
+        {
+            SecretChannel(secret)(d);
+            TestServer.Grant(adminId, "Admin")(d);
+        });
+        await using var admin = await TestClient.ConnectAsync(own, "admin", adminId);
+        vm.Dialogs = new DialogCallbacks { AskChannelPassword = _ => Task.FromResult<string?>("pw") };
+        await ConnectTo(own);
+        await OnUi(() => vm.Server!.JoinAsync(secret));
+        await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret);
+        var before = await OnUi(() => vm.Notices.Count);
+
+        await DropAsync(own);
+        if (change == "deleted")
+        {
+            await admin.SendAsync(new DeleteChannel(secret) { RequestId = "x" });
+            await admin.WaitForAsync<ChannelRemoved>(r => r.ChannelId == secret);
+        }
+        else
+        {
+            await admin.SendAsync(new EditChannel(secret, "Geheim", "", 1, Password: "neu") { RequestId = "x" });
+            await admin.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == secret);
+        }
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        var notices = await OnUiUntil(() => vm.Notices.Take(vm.Notices.Count - before).Select(n => n.Text).ToList(), n => n.Count >= 2);
+        await Task.Delay(300); // nothing else follows
+        notices = await NoticesSince(before);
+
+        var (channel, defaultChannel) = await OnUi(() => (vm.Server!.Mirror.Self!.ChannelId, vm.Server.Mirror.DefaultChannelId));
+        Assert.Equal(defaultChannel, channel);
+        Assert.Equal(2, notices.Count);
+        Assert.Contains(Reconnected, notices);
+        Assert.Contains(change == "deleted" ? "Der Channel \"Geheim\" ist nicht mehr da, du bist im Standard-Channel." : "Falsches Channel-Passwort.",
+            notices);
+    }
+}
