@@ -37,7 +37,11 @@ public sealed class FakeAudioHardware : IAudioHardware
 
     /// <summary>A <see cref="Listing"/> with one microphone ("mic-1", "Headset") and one speaker ("out-1", "Speakers").</summary>
     public static List<AudioDevice> ListOneEach(AudioDirection direction) =>
-        direction == AudioDirection.Input ? [new AudioDevice("mic-1", "Headset")] : [new AudioDevice("out-1", "Speakers")];
+        direction == AudioDirection.Input ? [Headset] : [Speakers];
+
+    /// <summary>The devices the tests list: two microphones and two speakers.</summary>
+    public static readonly AudioDevice Headset = new("mic-1", "Headset"), Speakers = new("out-1", "Speakers"),
+        Webcam = new("mic-2", "Webcam"), MonitorOutput = new("out-2", "Monitor");
 
     public event Action? Changed
     {

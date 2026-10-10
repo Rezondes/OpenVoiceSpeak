@@ -185,24 +185,24 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
         var server = FakeServers.Large();
         MainViewModelSetup.ShowServer(vm, server);
         var iconTracker = vm.TrackServerIcon(server, "127.0.0.1", 1);
-        int gains = vm.GainTableBuilds, iconChecks = iconTracker.Checks;
+        int gains = vm.EngineSync.GainTableBuilds, iconChecks = iconTracker.Checks;
 
         server.Apply(new UserUpdated(server.Mirror.Users[5] with { SelfMuted = true }));
         server.Apply(new UserUpdated(server.Mirror.Users[6] with { Nickname = "Neu" }));
         server.Apply(new ChannelUpdated(server.Mirror.Channels[server.Channels[2].Id] with { Name = "Anders" }));
-        Assert.Equal((gains, iconChecks), (vm.GainTableBuilds, iconTracker.Checks));
+        Assert.Equal((gains, iconChecks), (vm.EngineSync.GainTableBuilds, iconTracker.Checks));
 
         server.Apply(new UserJoined(server.Mirror.Users[5] with { SessionId = 600, Fingerprint = "fp600" }));
-        Assert.Equal(gains + 1, vm.GainTableBuilds);
+        Assert.Equal(gains + 1, vm.EngineSync.GainTableBuilds);
         server.Apply(new UserLeft(600));
-        Assert.Equal(gains + 2, vm.GainTableBuilds);
+        Assert.Equal(gains + 2, vm.EngineSync.GainTableBuilds);
         server.Channels.SelectMany(c => c.Users).First(u => u.SessionId == 7).VolumePercent = 50;
-        Assert.Equal(gains + 3, vm.GainTableBuilds);
+        Assert.Equal(gains + 3, vm.EngineSync.GainTableBuilds);
         Assert.Equal(iconChecks, iconTracker.Checks);
 
         server.Apply(new ServerSettingsChanged(server.Mirror.Settings with { IconHash = "abc" }));
         Assert.Equal(iconChecks + 1, iconTracker.Checks);
-        Assert.Equal(gains + 3, vm.GainTableBuilds);
+        Assert.Equal(gains + 3, vm.EngineSync.GainTableBuilds);
         await vm.DisposeAsync();
     }
 

@@ -159,11 +159,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             var time = new ManualTimeProvider();
             vm.Audio.Loss = new LossAdapter(time, 64);
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin()); // in the Lobby at 64
-            for (int i = 0; i < 4; i++) // 6 s above 10 %
-            {
-                vm.Audio.Loss.Report(new LossReport(100, 20));
-                time.Advance(TimeSpan.FromSeconds(2));
-            }
+            EngineProbe.LowerByLoss(vm.Audio.Loss, time); // 6 s above 10 %
             seen.Add(vm.Audio.EncoderBitrate);
             vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1)));
             seen.Add(vm.Audio.EncoderBitrate); // another channel edited: no move
@@ -1409,6 +1405,19 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
         Assert.Equal([(true, false), (false, false)], await OnUi(() => States(sent)));
         Assert.Equal([SoundEvent.MicOff, SoundEvent.MicOn], await OnUi(() => heard.ToList()));
+    }
+
+    /// <summary>The mute button of a connected session reaches the engine at once, as the server's property changes (no state change comes with it).</summary>
+    [Fact]
+    public async Task ToggleMute_Connected_EngineIsMutedAtOnce()
+    {
+        await ConnectAsync(saveBookmark: false);
+
+        Assert.True(await OnUi(() =>
+        {
+            vm.Server!.ToggleMuteCommand.Execute(null);
+            return vm.Audio.SelfMuted;
+        }));
     }
 
     /// <summary>Package 125: already muted or deafened, holding and letting go changes nothing.</summary>

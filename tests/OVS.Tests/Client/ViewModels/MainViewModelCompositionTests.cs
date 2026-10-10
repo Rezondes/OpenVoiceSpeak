@@ -128,46 +128,6 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     }
 
     [Fact]
-    public async Task OpenSettings_GivenHardware_ListsItsDevices()
-    {
-        var hardware = new FakeAudioHardware { Listing = FakeAudioHardware.ListOneEach };
-        await using var vm = WithOwnParts(a => a(), hardware: hardware);
-
-        vm.OpenSettings();
-        await AsyncWait.Until(() => vm.SettingsPage!.Outputs.Count == 2); // the list loads in the background
-
-        Assert.Equal([null, "mic-1"], vm.SettingsPage!.Inputs.Select(o => o.Id).ToList()); // after the default device
-        Assert.Equal([null, "out-1"], vm.SettingsPage.Outputs.Select(o => o.Id).ToList());
-    }
-
-    [Fact]
-    public async Task OpenSettings_ListLoadedAtStart_ShowsItAtOnce()
-    {
-        using var later = new ManualResetEventSlim(); // every list after the first waits for it
-        int calls = 0;
-        var hardware = new FakeAudioHardware
-        {
-            Listing = direction =>
-            {
-                if (Interlocked.Increment(ref calls) > 2) later.Wait(TimeSpan.FromSeconds(10));
-                return FakeAudioHardware.ListOneEach(direction);
-            },
-        };
-        bool loaded = false;
-        await using var vm = WithOwnParts(a =>
-        {
-            a();
-            Volatile.Write(ref loaded, true); // the start's list is the only thing posted
-        }, hardware: hardware);
-        await AsyncWait.Until(() => Volatile.Read(ref loaded));
-
-        vm.OpenSettings(); // its own refresh waits
-
-        Assert.Equal([null, "mic-1"], vm.SettingsPage!.Inputs.Select(o => o.Id).ToList());
-        later.Set();
-    }
-
-    [Fact]
     public async Task ApplySettingsAsync_GivenHardware_RestartsDevicesOffTheCallingThread()
     {
         var hardware = new FakeAudioHardware();
@@ -182,16 +142,6 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         await applying;
 
         Assert.Equal((2, 1), (hardware.Counts.Mics, hardware.Counts.MicsOpen)); // the microphone opened anew
-    }
-
-    [Fact]
-    public async Task ApplySettingsAsync_WithoutHardware_CompletesOnTheCallingThread()
-    {
-        await using var vm = WithOwnParts(a => a());
-
-        var applying = vm.ApplySettingsAsync(new ClientSettings());
-
-        Assert.True(applying.IsCompleted);
     }
 
     [Fact]

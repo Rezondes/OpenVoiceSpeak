@@ -37,7 +37,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     readonly KnownServers known;
     readonly ServerIconCache icons;
     readonly SoundLibrary soundLibrary;
-    readonly Func<AudioDirection, List<AudioDevice>>? listDevices;
     ClientConnection? connection;
     VoiceClient? voice;
     long connectedAt; // a timestamp of Time
@@ -125,8 +124,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log.Write, text => Status = text,
             text => AddNotice(text, NoticeKind.Warning), PendingViewModel.Timeout);
 
-        this.listDevices = listDevices;
-        if (audio.DeviceLifecycle.OpensDevices) RefreshDevices();
+        Devices = new DeviceList(post, listDevices, (inputs, outputs) => SettingsPage?.ShowDevices(inputs, outputs));
+        EngineSync = new EngineSync(audio,
+            connectionState: () => Server is { } connected
+                ? new EngineConnectionState(true, connected.SelfMuted, connected.SelfDeafened, connected.HasSpeakLinked, connected.CurrentChannel?.IsMuted == true,
+                    connected.CurrentChannel?.Id, connected.CurrentChannel?.Bitrate)
+                : EngineConnectionState.Disconnected,
+            mirror: () => Server?.Mirror,
+            volumeFor: fingerprint => Settings.VolumeFor(fingerprint));
+        if (audio.DeviceLifecycle.OpensDevices) Devices.Refresh();
         Keys = keys;
         Audio = audio;
         Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
@@ -162,25 +168,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         ApplySettings(Settings);
     }
 
-    (List<AudioDevice> Inputs, List<AudioDevice> Outputs)? knownDevices;
-    int deviceLoads;
-
-    /// <summary>
-    /// Package 52: reading a device's name takes 30 to 50 ms, with many (virtual) devices together more than half a
-    /// second. So the list is loaded in the background and the settings open with the last one known.
-    /// </summary>
-    void RefreshDevices()
-    {
-        int load = ++deviceLoads;
-        Task.Run(() => (listDevices?.Invoke(AudioDirection.Input) ?? [], listDevices?.Invoke(AudioDirection.Output) ?? []))
-            .ContinueWith(t => post(() =>
-            {
-                if (load != deviceLoads) return; // a newer list is on its way
-                knownDevices = t.Result;
-                SettingsPage?.ShowDevices(t.Result.Item1, t.Result.Item2);
-            }), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
-    }
-
     public ClientSettings Settings { get; private set; }
     public ClientLog Log { get; }
     /// <summary>The client's one clock: the reconnect, the hints and the statistics, and each connection's view model and voice.</summary>
@@ -196,6 +183,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     internal BookmarkList Bookmarks { get; }
     /// <summary>Packages 43 and 62: the update check, the install and the card over the window.</summary>
     internal UpdateFlow Update { get; }
+
+    /// <summary>Keeps the audio engine in step: the connection's state and gains, and the saved settings.</summary>
+    internal EngineSync EngineSync { get; }
+
+    /// <summary>Package 52: the audio devices the settings page offers, loaded in the background.</summary>
+    internal DeviceList Devices { get; }
 
     /// <summary>Package 102: how long a removed bookmark stays to fold away (the window sets it).</summary>
     public LeaveTimer Leave { get; }
@@ -215,20 +208,19 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Package 61: how see-through the backgrounds are right now (saved, or previewed on the settings page).</summary>
     [ObservableProperty] BackgroundAppearance appearance = new(1f, false);
 
-    public void ApplySettings(ClientSettings settings) => Applied(Prepare(settings)());
+    public void ApplySettings(ClientSettings settings) => Applied(EngineSync.Configure(Prepare(settings)));
 
     /// <summary>
-    /// Package 98: the same, with the audio devices restarted off the UI thread (the engine locks itself), so the
-    /// settings page can show "Speichern" busy meanwhile. Without devices nothing takes long and it all happens at once.
+    /// Package 98: the same, with the audio devices restarted off the UI thread (see <see cref="EngineSync.ConfigureAsync"/>), so the
+    /// settings page can show "Speichern" busy meanwhile.
     /// </summary>
     public async Task ApplySettingsAsync(ClientSettings settings)
     {
-        var configure = Prepare(settings);
-        Applied(Audio.DeviceLifecycle.OpensDevices ? await Task.Run(configure) : configure());
+        Applied(await EngineSync.ConfigureAsync(Prepare(settings)));
     }
 
-    /// <summary>Everything but the audio devices; returns their restart.</summary>
-    Func<string?> Prepare(ClientSettings settings)
+    /// <summary>Everything but the audio devices; returns the settings now in use, for the engine.</summary>
+    ClientSettings Prepare(ClientSettings settings)
     {
         Settings = settings.Clamp();
         Appearance = BackgroundAppearance.From(Settings);
@@ -241,8 +233,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                   $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB, " +
                   $"Rauschunterdrückung {(Settings.NoiseSuppression ? "an" : "aus")}, automatische Verstärkung {(Settings.AutoGain ? "an" : "aus")}, " +
                   $"Echounterdrückung {(Settings.EchoCancellation ? "an" : "aus")}, Übertragungsart {Settings.AudioContent}");
-        var applied = Settings;
-        return () => Audio.Configure(applied);
+        return Settings;
     }
 
     void Applied(string? warning)
@@ -340,7 +331,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         udpLogged = null;
         udpWasReachable = false;
         Server = vm;
-        SyncAudioFlags();
+        EngineSync.SyncConnection();
         Status = string.Format(Strings.Status_Connected, vm.ServerName);
         Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
                   $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
@@ -405,7 +396,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.Send = null;
         voice?.Dispose();
         voice = null;
-        SyncAudioFlags();
+        EngineSync.SyncConnection();
         Audio.Mixer.Clear();
         ResetStats();
         if (conn is not null) await conn.DisposeAsync();
@@ -573,52 +564,20 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             newValue.HoldMute(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
         }
         Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
-        SyncAudioFlags();
+        EngineSync.SyncConnection();
     }
 
-    void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs e) => SyncAudioFlags();
+    void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs e) => EngineSync.SyncConnection();
 
     /// <summary>Package 122: the gain table only follows the users who come and go (volumes change in <see cref="OnUserVolumeChanged"/>).</summary>
     void OnServerStateChanged()
     {
-        SyncAudioFlags();
+        EngineSync.SyncConnection();
         if (Server?.LastChange.HasFlag(StateChange.Members) != true) return;
-        SyncGains();
+        EngineSync.SyncGains();
         // Package 124: a speaker's decoder stays over talk pauses, so it goes when they leave
         var users = Server.Mirror.Users;
         Audio.Mixer.RemoveLeft(id => id == AudioEngine.SelfTestSpeaker || users.ContainsKey(id));
-    }
-
-    void SyncAudioFlags()
-    {
-        var s = Server;
-        Audio.Connected = s is not null;
-        Audio.SelfMuted = s?.SelfMuted ?? true;
-        Audio.Deafened = s?.SelfDeafened ?? false;
-        Audio.HasSpeakLinked = s?.HasSpeakLinked ?? false;
-        Audio.ChannelMuted = s?.CurrentChannel?.IsMuted == true;
-        // Package 132: join, move, edit; clamped, so a hand-edited server file cannot hand Opus an invalid bitrate
-        Audio.ChannelBitrate = Math.Clamp(s?.CurrentChannel?.Bitrate ?? ProtocolDefaults.Bitrate, ProtocolLimits.MinBitrate, ProtocolLimits.MaxBitrate);
-        if (s?.CurrentChannel?.Id != bitrateChannel)
-        {
-            bitrateChannel = s?.CurrentChannel?.Id;
-            Audio.Loss.Reset(Audio.ChannelBitrate); // Package 135: a move starts at the channel's bitrate, also at the same one
-        }
-        if (s != gainsFor) SyncGains();
-    }
-
-    Guid? bitrateChannel;
-
-    ServerViewModel? gainsFor;
-
-    /// <summary>Package 51: the volume per person, mapped to the session ids of this connection (they change on reconnect).</summary>
-    void SyncGains()
-    {
-        var s = gainsFor = Server;
-        GainTableBuilds++;
-        Audio.Mixer.SetSpeakerGains(s?.Mirror.Users.Values
-            .Where(u => Settings.VolumeFor(u.Fingerprint) != 1f)
-            .ToDictionary(u => u.SessionId, u => Settings.VolumeFor(u.Fingerprint)) ?? []);
     }
 
     /// <summary>
@@ -629,7 +588,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Settings.SetVolume(fingerprint, volume);
         Settings.Save(storageDir);
-        SyncGains();
+        EngineSync.SyncGains();
     }
 
     /// <summary>Package 126: tests send UDP through a lossy relay instead of to the server.</summary>
@@ -639,9 +598,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     internal VoiceClient? Voice => voice;
     /// <summary>The clock of the current connection's ping round trip (tests check it is <see cref="Time"/>).</summary>
     internal TimeProvider? ConnectionTime => connection?.Time;
-
-    /// <summary>Package 122: how often the speaker gain table was built (tests count them).</summary>
-    internal int GainTableBuilds { get; private set; }
 
     /// <summary>UI timer, every 100 ms.</summary>
     public void Tick()
@@ -790,7 +746,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (Page == Page.Settings) return;
         ClosePage();
-        var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Time, Keys.CaptureNextChordAsync)
+        var vm = new SettingsViewModel(Settings, Devices.Known?.Inputs, Devices.Known?.Outputs, Time, Keys.CaptureNextChordAsync)
         {
             EditKeyBinding = Dialogs.EditKeyBinding,
             CheckNow = Update.CheckAsync,
@@ -811,7 +767,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.LevelMeter = true; // Package 124 (A132): the microphone opens for the level meter
         SettingsPage = vm;
         Page = Page.Settings;
-        RefreshDevices(); // a device may have been plugged in since
+        Devices.Refresh(); // a device may have been plugged in since
     }
 
     void OnInputLevel(float db)

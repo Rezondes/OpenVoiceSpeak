@@ -112,7 +112,7 @@ public sealed class AudioEngine : IDisposable
     /// <summary>
     /// Package 132 (A141): the own channel's kbps, set on join, move and when it is edited; also for link push-to-talk,
     /// whose listeners sit in other channels. The default while in no channel. Package 135: a new value is the loss
-    /// adapter's new ceiling (an edit keeps a lowered bitrate lowered); a move resets it (the main view model).
+    /// adapter's new ceiling (an edit keeps a lowered bitrate lowered); a move resets it (<c>EngineSync.SyncConnection</c>).
     /// </summary>
     public int ChannelBitrate
     {
