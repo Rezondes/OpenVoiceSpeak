@@ -77,7 +77,8 @@ public partial class App : Application
 
             // Package 43: updates from the GitHub releases, restarted with the same command line
             var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-            vm.Updates = new UpdateChecker(http, BuildInfo.Current);
+            var checker = new UpdateChecker(http, BuildInfo.Current);
+            UpdateInstaller? installer = null;
             if (Environment.ProcessPath is { } exe)
             {
                 // Package 63: prepared now, while the exe is still in place. A single-file exe loads assemblies from its
@@ -85,14 +86,15 @@ public partial class App : Application
                 var start = new ProcessStartInfo(exe) { UseShellExecute = false };
                 foreach (var arg in UpdateInstaller.RestartArgs(Environment.GetCommandLineArgs().Skip(1), Environment.ProcessId))
                     start.ArgumentList.Add(arg);
-                vm.Installer = new UpdateInstaller(http, exe, _ =>
+                installer = new UpdateInstaller(http, exe, _ =>
                 {
                     Process.Start(start)?.Dispose();
                     log.Write("Neue Version gestartet");
                     desktop.Shutdown();
                 });
             }
-            window.Opened += async (_, _) => await vm.StartupUpdateCheckAsync();
+            vm.Update.Use(checker, installer);
+            window.Opened += async (_, _) => await vm.Update.CheckAtStartAsync();
             window.Opened += (_, _) => window.RequestAnimationFrame(_ => Splash.Close()); // once the window has drawn itself
 
             desktop.MainWindow = window;

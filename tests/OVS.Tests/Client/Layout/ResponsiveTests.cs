@@ -880,7 +880,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void UpdateCard_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = Open(width, FakeServers.Admin(), out var vm);
-        vm.UpdateInProgress = new OVS.Client.Net.Updates.UpdateProgress("290926.0lh6", OVS.Client.Net.Updates.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
+        vm.Update.Progress = new OVS.Client.Net.Updates.UpdateProgress("290926.0lh6", OVS.Client.Net.Updates.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
         Dispatcher.UIThread.RunJobs();
         var layer = main.FindControl<Panel>("UpdateLayer")!;
         CardInside(main, layer.Children.OfType<Border>().Single(), 420);

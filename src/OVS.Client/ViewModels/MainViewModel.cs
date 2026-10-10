@@ -18,7 +18,6 @@ using OVS.Client.Input;
 using OVS.Client.Logging;
 using OVS.Client.Models;
 using OVS.Client.Net;
-using OVS.Client.Net.Updates;
 using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Shared.Exceptions;
@@ -56,10 +55,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [ObservableProperty] string status = Strings.Status_NotConnected;
     [ObservableProperty] bool isConnecting;
-
-    /// <summary>Package 62: the update being loaded, checked or started; null otherwise.</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsUpdating))] UpdateProgress? updateInProgress;
-    public bool IsUpdating => UpdateInProgress is not null;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomePage), nameof(IsSettingsPage), nameof(IsAdminPage))]
@@ -127,6 +122,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
         Leave = leave;
         Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, Leave, () => Dialogs, () => Settings.Save(storageDir), Log.Write);
+        Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log.Write, text => Status = text,
+            text => AddNotice(text, NoticeKind.Warning), PendingViewModel.Timeout);
 
         this.listDevices = listDevices;
         if (audio.DeviceLifecycle.OpensDevices) RefreshDevices();
@@ -197,6 +194,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public bool IsAdminPage => Page == Page.Admin;
     /// <summary>Package 40: the saved servers, shown as tiles in the sidebar.</summary>
     internal BookmarkList Bookmarks { get; }
+    /// <summary>Packages 43 and 62: the update check, the install and the card over the window.</summary>
+    internal UpdateFlow Update { get; }
 
     /// <summary>Package 102: how long a removed bookmark stays to fold away (the window sets it).</summary>
     public LeaveTimer Leave { get; }
@@ -348,52 +347,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.Sounds.Play(SoundEvent.Connected);
         if (!restored && vm.WelcomeText.Length > 0) AddNotice(vm.WelcomeText, NoticeKind.Welcome);
         lastChoice = choice with { SaveBookmark = false }; // Package 139: what a reconnect uses, the password in memory only
-    }
-
-    // ---- Updates (Package 43) ----
-
-    public UpdateChecker? Updates { get; set; }
-    public UpdateInstaller? Installer { get; set; }
-
-    public Task StartupUpdateCheckAsync() => Settings.CheckForUpdates ? CheckForUpdatesAsync() : Task.CompletedTask;
-
-    /// <returns>What happened, for the line under "Nach Updates suchen".</returns>
-    public async Task<string> CheckForUpdatesAsync()
-    {
-        if (Updates is not { IsEnabled: true } updates) return Strings.Update_LocalBuild;
-        using var timeout = new CancellationTokenSource(PendingViewModel.Timeout); // clock: real time, the HTTP request's bound; Package 98 (A113): 10 s like every other wait
-        var result = await updates.CheckAsync(timeout.Token);
-        if (result.Error is { } error)
-        {
-            Log.Write($"Update-Prüfung fehlgeschlagen: {error}");
-            return string.Format(Strings.Update_CheckFailed, error);
-        }
-        if (result.Offer is not { } offer)
-        {
-            Log.Write("Update-Prüfung: keine neuere Version");
-            return Strings.Update_Latest;
-        }
-        Log.Write($"Update verfügbar: {offer.Version} ({offer.Tag})");
-        if (Dialogs.OfferUpdate is not { } ask || !await ask(offer) || Installer is null) return string.Format(Strings.Update_Available, offer.Version);
-
-        Status = string.Format(Strings.Update_Downloading, offer.Version);
-        Log.Write($"Update auf {offer.Version} wird installiert");
-        UpdateInProgress = new UpdateProgress(offer.Version, UpdatePhase.Downloading);
-        string? failure;
-        try
-        {
-            // Package 62: reported on this (UI) context, the card over the window follows it
-            failure = await Installer.InstallAsync(offer, p => UpdateInProgress = p);
-        }
-        finally
-        {
-            UpdateInProgress = null;
-        }
-        if (failure is null) return Strings.Update_Starting;
-        Log.Write(failure);
-        Status = failure;
-        AddNotice(failure, NoticeKind.Warning);
-        return failure;
     }
 
     // ---- A click on a bookmark in the sidebar connects (Package 40); the list itself is Bookmarks ----
@@ -883,7 +836,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         var vm = new SettingsViewModel(Settings, knownDevices?.Inputs, knownDevices?.Outputs, Time, Keys.CaptureNextChordAsync)
         {
             EditKeyBinding = Dialogs.EditKeyBinding,
-            CheckNow = CheckForUpdatesAsync,
+            CheckNow = Update.CheckAsync,
             ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
             PreviewSound = Audio.Sounds.Preview,
             LivePreview = live => // Package 53, 61, 121

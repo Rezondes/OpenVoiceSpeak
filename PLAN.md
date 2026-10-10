@@ -3008,7 +3008,7 @@ Ab Package 42 kennt der Client Commit und Build-Zeit, und jedes Release heisst `
 
 1. `UpdateTests` mit einem Fake-`HttpMessageHandler`: `"NewerRelease_Offered"`, `"SameCommit_OlderRelease_MissingAsset_NotOffered"`, `"DevBuild_NeverAsks"`, `"HttpErrorOrNoNetwork_NoUpdate_WithReason"` (AC1, AC5)
 2. `UpdateTests` in einem Temp-Ordner: `"HashMismatch_NothingReplaced"`, `"Success_NewInPlace_OldRenamed_Restarted"`, `"CleanupOld_WaitsForLockedFile_ThenDeletes"` (AC3, AC4)
-3. `MainViewModelTests > "StartupCheck_Prompt_LaterDoesNothing"` mit Fake-Checker (AC2)
+3. `MainViewModelTests > "StartupCheck_Prompt_LaterDoesNothing"` mit Fake-Checker, `UpdateFlowTests > "CheckAsync_OfferDeclined_SaysAvailableAndInstallsNothing"`, `"CheckAtStartAsync_SettingOn_Checks"`, `"CheckAtStartAsync_SettingOff_DoesNotCheck"` (AC2), `"CheckAsync_NoLookUp_SaysLocalBuildAndLogsNothing"`, `"Use_LocalBuildChecker_CheckAsyncSaysLocalBuildAndSendsNoRequest"` (AC1), `"CheckAsync_LookUpFails_SaysCheckFailedAndLogsTheReason"` (AC5)
 4. `UiSmokeTests`: Overlay und Button in den Einstellungen (AC2)
 5. Manueller Check AC6
 
@@ -4092,7 +4092,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
 2. `UpdateTests > "Install_WithoutLength_ReportsUnknownTotal"` (AC1)
    - Gegeben: Antwort ohne `Content-Length` (gestreamter Inhalt)
    - Erwartet: Download-Meldungen mit Gesamtgrösse `null`, Installation klappt trotzdem
-3. `MainViewModelTests > "Update_Accepted_ShowsProgress_UntilFailure"` (AC2, AC4)
+3. `MainViewModelTests > "Update_Accepted_ShowsProgress_UntilFailure"`, `UpdateFlowTests > "CheckAsync_OfferAcceptedAndInstalled_ShowsEveryReportThenClearsTheCardAndSaysStarting"`, `"CheckAsync_InstallFails_ReportsTheFailureOnEveryChannelAndClearsTheCard"`, `"CheckAsync_InstallThrows_ClearsTheCardAndLetsTheErrorThrough"`, `"IsUpdating_ProgressSet_IsTrueAndTellsTheBindings"`, `"IsUpdating_ProgressCleared_IsFalseAndTellsTheBindings"` (AC2, AC4)
    - Gegeben: Fake-Checker mit Angebot, Dialog sagt ja, Installer mit Fake-Handler, dessen Prüfsumme nicht passt
    - Erwartet: während des Downloads `UpdateInProgress` nicht null mit Version und Prozent-Text, danach null, und die Rückgabe ist `Update_Damaged`
 4. `UiSmokeTests > "UpdateProgress_CoversWholeWindow_BlocksInput"` (AC2, AC3)

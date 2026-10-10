@@ -480,7 +480,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var layer = main.FindControl<Panel>("UpdateLayer")!;
         Assert.False(layer.IsVisible);
 
-        vm.UpdateInProgress = new UpdateProgress("290926.0lh6", UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
+        vm.Update.Progress = new UpdateProgress("290926.0lh6", UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
         Dispatcher.UIThread.RunJobs();
         var grid = (Control)layer.Parent!;
         Assert.True(layer.IsEffectivelyVisible);
@@ -494,11 +494,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var card = layer.Children.OfType<Border>().Single();
         Assert.Equal(layer.Bounds.Width / 2, card.Bounds.Center.X, 1);
 
-        vm.UpdateInProgress = vm.UpdateInProgress with { Total = null };
+        vm.Update.Progress = vm.Update.Progress with { Total = null };
         Dispatcher.UIThread.RunJobs();
         Assert.True(bar.IsIndeterminate);
 
-        vm.UpdateInProgress = null;
+        vm.Update.Progress = null;
         Dispatcher.UIThread.RunJobs();
         Assert.False(layer.IsVisible);
         Assert.True(chat.IsEffectivelyEnabled);

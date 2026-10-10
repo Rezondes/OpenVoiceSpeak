@@ -416,14 +416,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
         await OnUi(() =>
         {
-            vm.Updates = new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running);
-            vm.Installer = new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "gibt-es-nicht.exe"), _ => offered.Add("neu gestartet"));
+            vm.Update.Use(new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running),
+                new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "gibt-es-nicht.exe"), _ => offered.Add("neu gestartet")));
             vm.Dialogs = new DialogCallbacks { OfferUpdate = offer => { offered.Add(offer.Version); return Task.FromResult(false); } };
             return 0;
         });
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.StartupUpdateCheckAsync();
+            await vm.Update.CheckAtStartAsync();
             return null;
         });
         Assert.Equal(["280926.0b2c"], offered);
@@ -438,7 +438,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.StartupUpdateCheckAsync();
+            await vm.Update.CheckAtStartAsync();
             return null;
         });
         Assert.Single(http.Requests);
@@ -468,22 +468,41 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             File.WriteAllText(Path.Combine(dir, "OVS.Client.exe"), "alt");
-            vm.Updates = new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running);
-            vm.Installer = new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "OVS.Client.exe"), _ => { });
+            vm.Update.Use(new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running),
+                new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "OVS.Client.exe"), _ => { }));
             vm.Dialogs = new DialogCallbacks { OfferUpdate = _ => Task.FromResult(true) };
-            vm.PropertyChanged += (_, e) =>
+            vm.Update.PropertyChanged += (_, args) =>
             {
-                if (e.PropertyName == nameof(MainViewModel.UpdateInProgress)) seen.Add(vm.UpdateInProgress);
+                if (args.PropertyName == nameof(UpdateFlow.Progress)) seen.Add(vm.Update.Progress);
             };
             return 0;
         });
-        var result = await ui.InvokeAsync(() => vm.CheckForUpdatesAsync());
+        var result = await ui.InvokeAsync(() => vm.Update.CheckAsync());
 
         Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, result);
         Assert.Contains(seen, p => p is { Phase: OVS.Client.Net.Updates.UpdatePhase.Downloading, Bytes: 200_000, Total: 200_000 });
         Assert.All(seen.OfType<OVS.Client.Net.Updates.UpdateProgress>(), p => Assert.Equal("280926.0b2c", p.Version));
         Assert.Null(seen[^1]);
-        Assert.False(await OnUi(() => vm.IsUpdating));
+        Assert.False(await OnUi(() => vm.Update.IsUpdating));
+        Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, await OnUi(() => vm.Status));
+        var notice = Assert.Single(await OnUi(() => vm.Notices.ToList())); // the download status is no notice
+        Assert.Equal(NoticeKind.Warning, notice.Kind);
+        Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, notice.Text);
+    }
+
+    /// <summary>Package 43: the settings page's "Nach Updates suchen" asks the update flow; a build that asks nobody says so.</summary>
+    [Fact]
+    public async Task SettingsPage_CheckNowWithoutLookUp_SaysLocalBuild()
+    {
+        await OnUi(() =>
+        {
+            vm.OpenSettings();
+            return 0;
+        });
+
+        var answer = await ui.InvokeAsync(() => vm.SettingsPage!.CheckNow!());
+
+        Assert.Equal(OVS.Client.Localization.Strings.Update_LocalBuild, answer);
     }
 
     [Fact]

@@ -40,7 +40,7 @@
        Package 68: bounded so the header always fits, below 700 px a drawer -->
   <Grid x:Name="Shell" ColumnDefinitions="300,Auto,*">
     <!-- ================= Sidebar: server, channels, own user ================= -->
-    <Border x:Name="Sidebar" Grid.Column="0" IsEnabled="{Binding !IsUpdating}" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
+    <Border x:Name="Sidebar" Grid.Column="0" IsEnabled="{Binding !Update.IsUpdating}" Background="{DynamicResource Ovs.Sidebar}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource Ovs.Border}">
       <DockPanel>
         <!-- Server header -->
         <Border x:Name="ServerHeader" DockPanel.Dock="Top" Padding="14,12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
@@ -351,7 +351,7 @@
     <!-- Package 104: a page sliding in stays inside the main area; the leaving page's picture lies right above the pages,
          below the drawer and the dialogs -->
     <Panel Grid.Column="2" ClipToBounds="True">
-    <Panel x:Name="PageHost" IsEnabled="{Binding !IsUpdating}">
+    <Panel x:Name="PageHost" IsEnabled="{Binding !Update.IsUpdating}">
       <Panel IsVisible="{Binding IsHomePage}">
         <!-- Start screen while not connected -->
         <Panel IsVisible="{Binding !IsConnected}">
@@ -480,18 +480,18 @@
     <ctl:OverlayHost x:Name="OverlayLayer" Grid.ColumnSpan="3" ZIndex="2" />
 
     <!-- Package 62: update progress over everything below the title bar; the content under it is disabled meanwhile -->
-    <Panel x:Name="UpdateLayer" Grid.ColumnSpan="3" ZIndex="2" IsVisible="{Binding IsUpdating}" Background="{DynamicResource Ovs.Scrim}">
+    <Panel x:Name="UpdateLayer" Grid.ColumnSpan="3" ZIndex="2" IsVisible="{Binding Update.IsUpdating}" Background="{DynamicResource Ovs.Scrim}">
       <!-- Package 79: 420 px where there is room, otherwise the window width less 16 px on each side -->
       <Border Classes="dialog" MaxWidth="420" Margin="16" Padding="24,20" VerticalAlignment="Center">
         <StackPanel Spacing="12">
           <DockPanel>
             <PathIcon DockPanel.Dock="Left" Classes="accent" Data="{StaticResource Icon.ArrowSync}" Margin="0,0,10,0" />
-            <TextBlock Classes="h2" Text="{Binding UpdateInProgress.Title, FallbackValue=''}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <TextBlock Classes="h2" Text="{Binding Update.Progress.Title, FallbackValue=''}" VerticalAlignment="Center" TextWrapping="Wrap" />
           </DockPanel>
           <ProgressBar x:Name="UpdateBar" Minimum="0" Maximum="100" Height="8" CornerRadius="4"
-                       Value="{Binding UpdateInProgress.Percent, FallbackValue=0}"
-                       IsIndeterminate="{Binding UpdateInProgress.IsIndeterminate, FallbackValue=True}" />
-          <TextBlock x:Name="UpdateDetail" Classes="caption" Text="{Binding UpdateInProgress.Detail, FallbackValue=''}" TextWrapping="Wrap" />
+                       Value="{Binding Update.Progress.Percent, FallbackValue=0}"
+                       IsIndeterminate="{Binding Update.Progress.IsIndeterminate, FallbackValue=True}" />
+          <TextBlock x:Name="UpdateDetail" Classes="caption" Text="{Binding Update.Progress.Detail, FallbackValue=''}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
     </Panel>
