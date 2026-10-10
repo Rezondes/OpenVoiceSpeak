@@ -65,7 +65,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
 
         Assert.Same(log, vm.Log);
         Assert.Same(settings, vm.Settings);
-        Assert.Same(leave, vm.Leave);
+        Assert.Same(leave, vm.Bookmarks.Leave);
         Assert.Same(keys, vm.Keys);
         Assert.Same(audio, vm.Audio);
         Assert.Same(time, vm.Time);

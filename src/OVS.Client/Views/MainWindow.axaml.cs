@@ -133,7 +133,7 @@ public partial class MainWindow : Window
         if (watchedVm is null) return;
         Motion.Apply(this, watchedVm.Appearance.Display);
         // Package 102: what is gone stays a moment to fold away, only in the animated display
-        watchedVm.Leave.Delay = Motion.ChooseDuration(this, Motion.Normal);
+        watchedVm.Bookmarks.Leave.Delay = Motion.ChooseDuration(this, Motion.Normal);
         if (watchedVm.Server is { } server) server.Leave.Delay = Motion.ChooseDuration(this, Motion.Normal);
     }
 

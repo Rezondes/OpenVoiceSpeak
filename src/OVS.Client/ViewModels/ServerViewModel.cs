@@ -645,12 +645,12 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 53: both at once and without tones, for the self test and to restore the state before it.</summary>
-    public Task SetSelfStateAsync(bool muted, bool deafened)
+    internal Task SetSelfStateAsync(SelfState state)
     {
         mutedByHold = false;
-        if (deafened && !SelfDeafened) mutedBeforeDeafen = SelfMuted;
-        SelfDeafened = deafened;
-        SelfMuted = muted || deafened;
+        if (state.Deafened && !SelfDeafened) mutedBeforeDeafen = SelfMuted;
+        SelfDeafened = state.Deafened;
+        SelfMuted = state.Muted || state.Deafened;
         return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
     }
 
@@ -666,12 +666,12 @@ public sealed partial class ServerViewModel : ObservableObject
     /// Package 139 (review): the own state from the connection before, in one SetSelfState and without tones. A mute of the
     /// key still held now (Package 125) stays, so letting go unmutes as usual.
     /// </summary>
-    internal Task RestoreSelfStateAsync(bool muted, bool deafened, bool mutedBeforeDeafen)
+    internal Task RestoreSelfStateAsync(SelfState state, bool mutedBeforeDeafen)
     {
-        if (muted || deafened) mutedByHold = false; // a chosen mute outlasts the key's release
+        if (state.IsQuiet) mutedByHold = false; // a chosen mute outlasts the key's release
         this.mutedBeforeDeafen = mutedBeforeDeafen;
-        SelfDeafened = deafened;
-        SelfMuted = muted || deafened || mutedByHold;
+        SelfDeafened = state.Deafened;
+        SelfMuted = state.Muted || state.Deafened || mutedByHold;
         return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
     }
 

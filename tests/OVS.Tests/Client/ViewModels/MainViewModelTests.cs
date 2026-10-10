@@ -100,6 +100,23 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.True(File.Exists(Path.Combine(dir, "known_servers.json")));
     }
 
+    [Fact]
+    public async Task ConnectAsync_ServerWelcomes_EngineIsConnectedWhenTheServerIsShown()
+    {
+        var connectedWhenShown = new List<bool>();
+        await ui.InvokeAsync<object?>(async () =>
+        {
+            vm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(MainViewModel.Server)) connectedWhenShown.Add(EngineProbe.ReadEngineSwitches(vm.Audio).Connected);
+            };
+            await vm.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
+            return null;
+        });
+
+        Assert.Equal([true], connectedWhenShown);
+    }
+
     /// <summary>Package 34: in a muted channel the client warns and does not send.</summary>
     [Fact]
     public async Task ChannelMuted_HintAndNoSending()
@@ -203,7 +220,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            return vm.Server!.SetSelfStateAsync(true, false);
+            return vm.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
         Assert.Equal("", await TickHint()); // muted, but not talking
         Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
@@ -224,7 +241,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            if (state == "deafened") return vm.Server!.SetSelfStateAsync(true, true);
+            if (state == "deafened") return vm.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: true));
             vm.Server!.Apply(new UserUpdated(vm.Server.Mirror.Self! with { ServerMuted = true }));
             return Task.CompletedTask;
         });
@@ -239,7 +256,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            return vm.Server!.SetSelfStateAsync(true, false);
+            return vm.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
         vm.Audio.ChooseTarget(true); // the voice gate hears voice, the capture thread asks
         Assert.Equal("", await TickHint()); // push-to-talk mode: voice alone is no attempt to talk
@@ -271,7 +288,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
-            return vm.Server.SetSelfStateAsync(true, false);
+            return vm.Server.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
         Assert.Equal("Stummer Channel: niemand hört dich.", await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
@@ -303,7 +320,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             var shown = MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             shown!.Apply(new UserUpdated(shown.Mirror.Self! with { ChannelId = Guid.Empty }));
-            return shown.SetSelfStateAsync(true, false);
+            return shown.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
 
         Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
@@ -1373,7 +1390,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             settings.Bookmarks.Add(new Bookmark("A", "a.example.org", 7000, "ich"));
             settings.Bookmarks.Add(new Bookmark("B", "b.example.org", 7000, "ich"));
             vm.ApplySettings(settings);
-            vm.Leave.Delay = TimeSpan.FromMinutes(1);
+            vm.Bookmarks.Leave.Delay = TimeSpan.FromMinutes(1);
             var less = vm.Settings;
             less.Bookmarks.RemoveAll(b => b.Name == "B");
             vm.ApplySettings(less);

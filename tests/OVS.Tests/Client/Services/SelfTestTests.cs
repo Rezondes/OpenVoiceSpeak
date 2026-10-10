@@ -204,29 +204,41 @@ public sealed class SelfTestTests
         Assert.Equal((0, 0, 0, 0), (engineSwitches.Count, shownOnPage.Count, logLines.Count, writtenToServer.Count));
     }
 
-    // ---- ForgetStateBefore ----
+    // ---- AbandonAsync ----
 
     [Fact]
-    public async Task ForgetStateBefore_SelfTestRunning_ForgetsTheStateSoEndingPutsNothingBack()
+    public async Task AbandonAsync_SelfTestRunning_PutsNothingBackAtTheServer()
     {
         var selfTest = CreateSelfTest();
         await selfTest.SetAsync(true);
         int writesBefore = writtenToServer.Count;
 
-        selfTest.ForgetStateBefore();
-        await selfTest.SetAsync(false);
+        await selfTest.AbandonAsync();
 
         Assert.Equal(writesBefore, writtenToServer.Count);
     }
 
     [Fact]
-    public async Task ForgetStateBefore_SelfTestRunning_LeavesNoStateBefore()
+    public async Task AbandonAsync_SelfTestRunning_SwitchesTheEngineOff()
     {
         var selfTest = CreateSelfTest();
         await selfTest.SetAsync(true);
+        int switchesBefore = engineSwitches.Count;
 
-        selfTest.ForgetStateBefore();
+        await selfTest.AbandonAsync();
 
-        Assert.Null(selfTest.StateBefore);
+        Assert.Equal([false], engineSwitches.Skip(switchesBefore));
+    }
+
+    [Fact]
+    public async Task AbandonAsync_SelfTestRunning_LogsTheEnd()
+    {
+        var selfTest = CreateSelfTest();
+        await selfTest.SetAsync(true);
+        int linesBefore = logLines.Count;
+
+        await selfTest.AbandonAsync();
+
+        Assert.Equal(["Self test finished"], logLines.Skip(linesBefore));
     }
 }

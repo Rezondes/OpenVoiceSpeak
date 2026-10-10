@@ -17,7 +17,6 @@ internal sealed class BookmarkList : ObservableObject
 {
     readonly Func<List<Bookmark>> bookmarks;
     readonly Func<string, int, byte[]?> loadIcon;
-    readonly LeaveTimer leave;
     readonly Func<DialogCallbacks> dialogs;
     readonly Action save;
     readonly Action<string> log;
@@ -33,12 +32,15 @@ internal sealed class BookmarkList : ObservableObject
     {
         this.bookmarks = bookmarks;
         this.loadIcon = loadIcon;
-        this.leave = leave;
+        Leave = leave;
         this.dialogs = dialogs;
         this.save = save;
         this.log = log;
         Sync();
     }
+
+    /// <summary>Package 102: how long a removed bookmark stays to fold away (the window sets it).</summary>
+    internal LeaveTimer Leave { get; }
 
     /// <summary>Package 102: kept in step with the settings, so a removed bookmark can fold away.</summary>
     internal ObservableCollection<BookmarkItem> Items { get; } = [];
@@ -49,7 +51,7 @@ internal sealed class BookmarkList : ObservableObject
     internal bool HasAny => bookmarks().Count > 0;
 
     void Sync() =>
-        CollectionSync.Sync(Items, bookmarks().Select(bookmark => new BookmarkItem(bookmark, loadIcon(bookmark.Host, bookmark.Port))).ToList(), leave);
+        CollectionSync.Sync(Items, bookmarks().Select(bookmark => new BookmarkItem(bookmark, loadIcon(bookmark.Host, bookmark.Port))).ToList(), Leave);
 
     /// <summary>The settings or an icon changed: the tiles follow and the bindings are told.</summary>
     internal void Refresh()

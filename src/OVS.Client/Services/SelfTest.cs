@@ -54,6 +54,10 @@ internal sealed class SelfTest
         }
     }
 
-    /// <summary>The server is gone: there is nothing to put back there.</summary>
-    internal void ForgetStateBefore() => StateBefore = null;
+    /// <summary>The server is gone: ends the test (when it runs) without putting a state back there.</summary>
+    internal Task AbandonAsync()
+    {
+        StateBefore = null;
+        return SetAsync(false);
+    }
 }

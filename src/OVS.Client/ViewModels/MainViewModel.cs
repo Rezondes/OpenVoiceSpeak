@@ -120,8 +120,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings = settings;
         if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
-        Leave = leave;
-        Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, Leave, () => Dialogs, () => Settings.Save(storageDir), Log.Write);
+        Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, leave, () => Dialogs, () => Settings.Save(storageDir), Log.Write);
         Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log.Write, text => Status = text,
             text => AddNotice(text, NoticeKind.Warning), PendingViewModel.Timeout);
 
@@ -142,7 +141,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             },
             log: Log.Write,
             readServerState: () => Server is { } connected ? new SelfState(connected.SelfMuted, connected.SelfDeafened) : null,
-            writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state.Muted, state.Deafened) : Task.CompletedTask);
+            writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state) : Task.CompletedTask);
         Stats = new ConnectionStatsViewModel(time,
             readReachable: () => voice?.Reachable,
             readFigures: ReadVoiceFigures,
@@ -220,9 +219,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Package 53: the self test of the settings page, which mutes and deafens at the server meanwhile.</summary>
     internal SelfTest SelfTest { get; }
-
-    /// <summary>Package 102: how long a removed bookmark stays to fold away (the window sets it).</summary>
-    public LeaveTimer Leave { get; }
 
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
     public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
@@ -362,7 +358,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         udpLogged = null;
         udpWasReachable = false;
         Server = vm;
-        EngineSync.SyncConnection();
         Status = string.Format(Strings.Status_Connected, vm.ServerName);
         Log.Write($"Verbunden mit '{vm.ServerName}' als {mirror.Self?.Nickname} (Session {mirror.SelfId}), " +
                   $"Channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} Nutzer online");
@@ -421,13 +416,11 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (conn is not null && sound) Audio.Sounds.Play(SoundEvent.Disconnected);
         if (conn is not null) Status = status;
         if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
-        SelfTest.ForgetStateBefore(); // nothing to restore at a server that is gone
-        await SelfTest.SetAsync(false);
+        await SelfTest.AbandonAsync(); // nothing to restore at a server that is gone
         Server = null;
         Audio.Send = null;
         voice?.Dispose();
         voice = null;
-        EngineSync.SyncConnection();
         EngineSync.ClearSpeakers();
         ResetStats();
         if (conn is not null) await conn.DisposeAsync();
@@ -463,16 +456,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// What comes back after a reconnect: the channel with the password that worked there, the own mute and deafen, and
     /// whether undeafening unmutes (review: muted, then deafened, stays muted).
     /// </summary>
-    sealed record Restore(Guid Channel, string ChannelName, string? Password, bool Muted, bool Deafened, bool MutedBeforeDeafen);
+    sealed record Restore(Guid Channel, string ChannelName, string? Password, SelfState State, bool MutedBeforeDeafen);
 
     void StartReconnect(ConnectChoice choice, string text, ServerViewModel s)
     {
         var self = s.Mirror.Self;
         // the self test mutes and deafens at the server; what counts is the state from before it. A mute that only holds
         // while push-to-mute is held is no choice to keep: the key may be let go meanwhile (Package 125).
-        var (muted, deafened) = SelfTest.StateBefore ?? new SelfState(s.SelfMuted && !s.MutedByHold, s.SelfDeafened);
+        var selfState = SelfTest.StateBefore ?? new SelfState(s.SelfMuted && !s.MutedByHold, s.SelfDeafened);
         var restore = new Restore(self?.ChannelId ?? Guid.Empty, s.CurrentChannel?.Name ?? "", self is null ? null : s.PasswordFor(self.ChannelId),
-            muted, deafened, s.MutedBeforeDeafen);
+            selfState, s.MutedBeforeDeafen);
         Log.Write($"Verbindung verloren, neue Versuche nach {string.Join(", ", Reconnector.Delays.Select(d => $"{d.TotalSeconds:0}"))} s");
         lostText = text;
         _ = DisconnectAsync(text, sound: false);
@@ -505,7 +498,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 else AddNotice(string.Format(Strings.Status_ReconnectChannelGone, restore.ChannelName), NoticeKind.Warning);
             }
             // server mute comes from the server (Package 85)
-            if (restore.Muted || restore.Deafened) _ = vm.RestoreSelfStateAsync(restore.Muted, restore.Deafened, restore.MutedBeforeDeafen);
+            if (restore.State.IsQuiet) _ = vm.RestoreSelfStateAsync(restore.State, restore.MutedBeforeDeafen);
             IsReconnecting = false;
             AddNotice(Strings.Status_Reconnected);
             return true;

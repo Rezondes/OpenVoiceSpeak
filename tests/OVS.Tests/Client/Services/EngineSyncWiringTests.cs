@@ -3,6 +3,7 @@ using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Localization;
 using OVS.Client.Models;
+using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
@@ -64,7 +65,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     {
         await using var mainViewModel = CreateMainViewModel();
         var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
-        await server.SetSelfStateAsync(true, false);
+        await server.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
 
         FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change makes the engine follow
 
@@ -76,7 +77,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     {
         await using var mainViewModel = CreateMainViewModel();
         var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
-        await server.SetSelfStateAsync(false, true);
+        await server.SetSelfStateAsync(new SelfState(Muted: false, Deafened: true));
 
         FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change makes the engine follow
 
@@ -189,6 +190,18 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         await mainViewModel.DisconnectAsync();
 
         Assert.Equal(0, mainViewModel.Audio.Mixer.SpeakerCount);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_ServerShownAndEngineFollowedIt_EngineIsNotConnectedMutedWithoutSpeakRight()
+    {
+        await using var mainViewModel = CreateMainViewModel();
+        var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
+        FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change makes the engine follow
+
+        await mainViewModel.DisconnectAsync();
+
+        Assert.Equal(new EngineSwitches(Connected: false, SelfMuted: true, Deafened: false, HasSpeakLinked: false, ChannelMuted: false), ReadEngineSwitches(mainViewModel.Audio));
     }
 
     [Fact]
