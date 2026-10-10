@@ -760,16 +760,204 @@ public sealed class GroupListViewModelTests
     }
 
     [Fact]
-    public async Task Place_OtherGroupEdited_HasChangesButSavingSendsNothingAndFails()
+    public async Task Place_OtherGroupEdited_SavingSendsItAndSucceedsOnceConfirmed()
     {
         var rig = Create();
         ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
         Row(rig, "Team").Name = "Neu";
         rig.Section.SelectedGroup = Row(rig, "Gast");
-
         Assert.True(rig.Section.Place.HasChanges());
-        Assert.False(await Bound(rig.Section.Place.SaveAsync()));
-        Assert.Empty(sent);
+
+        var saving = rig.Section.Place.SaveAsync();
+
+        Assert.Equal(new UpdateGroup(TeamId, "Neu", Permission.Speak), Assert.Single(sent) with { RequestId = null });
+        Assert.False(saving.IsCompleted);
+        ServerGroups(rig, FakeServers.GuestGroup, Team with { Name = "Neu" }, FakeServers.AdminGroup);
+        Assert.True(await Bound(saving));
+        Assert.False(rig.Section.Place.HasChanges());
+    }
+
+    /// <summary>
+    /// The saving of several groups runs one after the other, each step answered by hand. A task whose only waiter is the
+    /// place completes inside the answer (a task with two waiters posts its later continuation through the test context),
+    /// so these facts are not async and read the end of the chain at once.
+    /// </summary>
+    static bool AssertFinished(Task<bool> saving)
+    {
+        Assert.True(saving.IsCompletedSuccessfully);
+        return saving.Result;
+    }
+
+    /// <summary>The server has Gast, Team and Admin; Gast is renamed Neu and Team is renamed Zwei.</summary>
+    static void EditTwoGroups(Rig rig)
+    {
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
+        Row(rig, "Gast").Name = "Neu";
+        Row(rig, "Team").Name = "Zwei";
+    }
+
+    static Task<bool> EditTwoGroupsAndSaveAsync(Rig rig)
+    {
+        EditTwoGroups(rig);
+        return rig.Section.Place.SaveAsync();
+    }
+
+    [Fact]
+    public void Place_TwoGroupsEdited_SendsTheSecondOnlyOnceTheFirstIsConfirmedAndSucceedsAfterBoth()
+    {
+        var rig = Create();
+
+        var saving = EditTwoGroupsAndSaveAsync(rig);
+
+        Assert.Equal(new UpdateGroup(WellKnownGroups.Guest, "Neu", Permission.Speak), Assert.Single(sent) with { RequestId = null });
+        Assert.False(saving.IsCompleted);
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, Team, FakeServers.AdminGroup);
+        Assert.Equal(new UpdateGroup(TeamId, "Zwei", Permission.Speak), sent[^1] with { RequestId = null });
+        Assert.Equal(2, sent.Count);
+        Assert.False(saving.IsCompleted);
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, Team with { Name = "Zwei" }, FakeServers.AdminGroup);
+        Assert.True(AssertFinished(saving));
+        Assert.False(rig.Section.Place.HasChanges());
+    }
+
+    [Fact]
+    public void Place_SecondGroupRefused_FailsSelectsItAndItKeepsItsEdit()
+    {
+        var rig = Create();
+        var saving = EditTwoGroupsAndSaveAsync(rig);
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, Team, FakeServers.AdminGroup);
+
+        rig.Server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied));
+
+        Assert.False(AssertFinished(saving));
+        Assert.True(Row(rig, "Zwei").HasChanges);
+        Assert.Same(Row(rig, "Zwei"), rig.Section.SelectedGroup);
+        Assert.Equal(2, sent.Count);
+    }
+
+    [Fact]
+    public void Place_FirstGroupRefused_FailsAndTheSecondIsNeverSentAndBothKeepTheirEdits()
+    {
+        var rig = Create();
+        var saving = EditTwoGroupsAndSaveAsync(rig);
+
+        rig.Server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied));
+
+        Assert.False(AssertFinished(saving));
+        Assert.Single(sent);
+        Assert.True(Row(rig, "Neu").HasChanges);
+        Assert.True(Row(rig, "Zwei").HasChanges);
+    }
+
+    [Fact]
+    public void Place_FirstGroupGetsNoAnswer_FailsAfterTheTimeoutAndTheSecondIsNeverSent()
+    {
+        var rig = Create();
+        var saving = EditTwoGroupsAndSaveAsync(rig);
+
+        time.Advance(PendingViewModel.Timeout);
+
+        Assert.False(AssertFinished(saving));
+        Assert.Single(sent);
+        Assert.True(Row(rig, "Zwei").HasChanges);
+    }
+
+    [Fact]
+    public void Place_SavedAgainAfterATimeout_OneAnswerConfirmsOnlyTheFirstGroup()
+    {
+        var rig = Create();
+        var timedOut = EditTwoGroupsAndSaveAsync(rig);
+        time.Advance(PendingViewModel.Timeout);
+        Assert.False(AssertFinished(timedOut));
+
+        var again = rig.Section.Place.SaveAsync();
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, Team, FakeServers.AdminGroup);
+
+        Assert.Equal(new UpdateGroup(TeamId, "Zwei", Permission.Speak), sent[^1] with { RequestId = null });
+        Assert.Equal(3, sent.Count);
+        Assert.False(again.IsCompleted);
+    }
+
+    [Fact]
+    public void Place_GroupRebuiltWhileOnItsWayThenRefused_FailsAndSelectsTheRowThatIsInTheList()
+    {
+        var rig = Create();
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
+        Row(rig, "Gast").Name = "Neu";
+        rig.Section.SelectedGroup = Row(rig, "Team");
+        var saving = rig.Section.Place.SaveAsync();
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.GroupsView | Permission.GroupsManage | Permission.Speak, []);
+
+        rig.Server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied));
+
+        Assert.False(AssertFinished(saving));
+        Assert.Contains(rig.Section.SelectedGroup, rig.Section.Groups.Live());
+        Assert.Equal("Neu", rig.Section.SelectedGroup?.Name);
+    }
+
+    [Fact]
+    public void Place_SecondGroupNameBlank_FailsSelectsItWithTheNameErrorAfterTheFirstWasSaved()
+    {
+        var rig = Create();
+        ServerGroups(rig, FakeServers.GuestGroup, Team, FakeServers.AdminGroup);
+        Row(rig, "Gast").Name = "Neu";
+        Row(rig, "Team").Name = "   ";
+
+        var saving = rig.Section.Place.SaveAsync();
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, Team, FakeServers.AdminGroup);
+
+        Assert.False(AssertFinished(saving));
+        Assert.Single(sent);
+        Assert.False(Row(rig, "Neu").HasChanges);
+        Assert.Same(Row(rig, "   "), rig.Section.SelectedGroup);
+        Assert.Equal(Strings.Dlg_NameInvalid, rig.Section.GroupError);
+    }
+
+    [Fact]
+    public void Place_RightsLostWhileTheFirstGroupIsOnItsWay_TheRebuiltSecondGroupIsNotSentStale()
+    {
+        var rig = Create();
+        var saving = EditTwoGroupsAndSaveAsync(rig);
+        FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.GroupsView, [WellKnownGroups.Admin]);
+
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, Team, FakeServers.AdminGroup);
+
+        Assert.Single(sent);
+        Assert.True(AssertFinished(saving));
+        Assert.False(rig.Section.Place.HasChanges());
+    }
+
+    [Fact]
+    public void Place_DraftAndEditedSavedGroup_SendsTheUpdateThenTheCreateAndSucceedsAfterBoth()
+    {
+        var rig = Create();
+        Row(rig, "Gast").Name = "Neu";
+        rig.Section.NewGroupCommand.Execute(null);
+        rig.Section.SelectedGroup!.Name = "Team";
+
+        var saving = rig.Section.Place.SaveAsync();
+
+        Assert.Equal(new UpdateGroup(WellKnownGroups.Guest, "Neu", Permission.Speak), Assert.Single(sent) with { RequestId = null });
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, FakeServers.AdminGroup);
+        Assert.Equal(new CreateGroup("Team", Permission.Speak), sent[^1] with { RequestId = null });
+        Assert.False(saving.IsCompleted);
+        ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, Team, FakeServers.AdminGroup);
+        Assert.True(AssertFinished(saving));
+        Assert.DoesNotContain(rig.Section.Groups.Live(), row => row.Id is null);
+        Assert.False(rig.Section.Place.HasChanges());
+    }
+
+    [Fact]
+    public void SaveGroup_OtherGroupEditedToo_SendsOnlyTheSelectedGroup()
+    {
+        var rig = Create();
+        EditTwoGroups(rig);
+        rig.Section.SelectedGroup = Row(rig, "Zwei");
+
+        rig.Section.SaveGroupCommand.Execute(null);
+
+        Assert.Equal(new UpdateGroup(TeamId, "Zwei", Permission.Speak), Assert.Single(sent) with { RequestId = null });
+        Assert.True(Row(rig, "Neu").HasChanges);
     }
 
     [Fact]

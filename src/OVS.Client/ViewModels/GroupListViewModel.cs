@@ -34,8 +34,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
         this.confirmLeaveAsync = confirmLeaveAsync;
         GroupSave = server.NewPending();
         GroupReorder = server.NewPending();
-        Place = AdminPlace.Create(() => Groups.Live().Any(group => group.HasChanges), GroupSave,
-            () => SelectedGroup is { HasChanges: true } ? SendGroup() : null, Discard);
+        Place = AdminPlace.Create(() => ChangedGroups().Any(), GroupSave, SendChangedGroupsAsync, Discard);
         RebuildGroups();
     }
 
@@ -48,9 +47,10 @@ internal sealed partial class GroupListViewModel : ObservableObject
     internal ObservableCollection<GroupEditViewModel> Groups { get; } = [];
 
     /// <summary>
-    /// Package 114: the place of the tab. It holds changes when any group does, but its save sends only the selected
-    /// group, as before the place existed; the view keeps the edited group selected until the user answers the leave
-    /// question, so no other group holds edits.
+    /// Package 114: the place of the tab. It holds changes when any group (or a draft) does, and its save sends every
+    /// such group, one after the other (the next once the one before is confirmed); it succeeds when all are confirmed
+    /// and fails at the first refusal or invalid name, the later groups are not sent and every unconfirmed group keeps
+    /// its edits. The Save button (<see cref="SaveGroupCommand"/>) still sends only the selected group.
     /// </summary>
     internal AdminPlace Place { get; }
 
@@ -138,27 +138,54 @@ internal sealed partial class GroupListViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSaveGroup))]
     Task SaveGroup()
     {
-        SendGroup();
+        if (SelectedGroup is { } group && SendGroup(group) is { } sent && group.Id is null) _ = ReplaceDraftAsync(group, sent);
         return Task.CompletedTask;
     }
 
-    /// <summary>The selected group to the server; null when there is nothing to send or the name is invalid.</summary>
-    PendingViewModel? SendGroup()
+    /// <summary>The groups (and drafts) that hold edits, in the order of the rows.</summary>
+    IEnumerable<GroupEditViewModel> ChangedGroups() => Groups.Live().Where(row => row.HasChanges);
+
+    /// <summary>
+    /// Every changed group to the server, one after the other: the next is taken from the rows as they are once the one
+    /// before is confirmed (a confirmation rebuilds rows), and a group is tried once. False at the first one that is not
+    /// confirmed (refused, no answer, invalid name, no longer editable); that group is selected, so its error shows on its
+    /// row, and the later groups are not sent.
+    /// </summary>
+    async Task<bool> SendChangedGroupsAsync()
     {
-        if (SelectedGroup is not { IsReadOnly: false } group) return null;
+        var tried = new HashSet<object>();
+        while (ChangedGroups().FirstOrDefault(row => !tried.Contains((object?)row.Id ?? row)) is { } group)
+        {
+            tried.Add((object?)group.Id ?? group);
+            if (SendGroup(group) is not { } sent || await sent.Completion is not null)
+            {
+                SelectGroup(Groups.Live().FirstOrDefault(row => row.Id is not null && row.Id == group.Id) ?? group); // the answer may have rebuilt the row
+                return false;
+            }
+            if (group.Id is null) RemoveDraft(group);
+        }
+        return true;
+    }
+
+    /// <summary>The group to the server; null when it cannot be saved or the name is invalid.</summary>
+    PendingViewModel? SendGroup(GroupEditViewModel group)
+    {
+        if (group.IsReadOnly) return null;
         GroupError = TextRules.NormalizeName(group.Name, ProtocolLimits.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
         if (GroupError is not null || GroupSave.IsRunning) return null;
         // Package 98: busy until the server's groups arrive; a refused group stays for correcting
-        var sent = server.SendConfirmed(group.Id is { } id ? new UpdateGroup(id, group.Name, group.Permissions) : new CreateGroup(group.Name, group.Permissions),
+        return server.SendConfirmed(group.Id is { } id ? new UpdateGroup(id, group.Name, group.Permissions) : new CreateGroup(group.Name, group.Permissions),
             answer => answer is GroupsChanged, GroupSave, notify: false);
-        if (group.Id is null) _ = ReplaceDraftAsync(group, sent);
-        return sent;
     }
 
     /// <summary>The draft stays until the server has the group, then gives way to it.</summary>
     async Task ReplaceDraftAsync(GroupEditViewModel draft, PendingViewModel sent)
     {
-        if (await sent.Completion is not null) return;
+        if (await sent.Completion is null) RemoveDraft(draft);
+    }
+
+    void RemoveDraft(GroupEditViewModel draft)
+    {
         bool selected = SelectedGroup == draft;
         Groups.Remove(draft);
         if (selected) SelectGroup(Groups.Live().LastOrDefault(group => group.Id is not null && group.Name == draft.Name) ?? Groups.Live().FirstOrDefault());

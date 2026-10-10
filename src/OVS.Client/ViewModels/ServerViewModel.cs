@@ -490,6 +490,7 @@ public sealed partial class ServerViewModel : ObservableObject
         pending ??= NewPending();
         if (busy is not null) pending.Show(busy);
         if (notify) pending.TimedOut += () => Notice?.Invoke(Strings.Pending_NoAnswer);
+        confirming.RemoveAll(entry => entry.Pending == pending); // an older entry of a mark that is sent again must not confirm the new run
         confirming.Add((pending, confirms));
         _ = SendAsync(request, pending: pending);
         return pending;
