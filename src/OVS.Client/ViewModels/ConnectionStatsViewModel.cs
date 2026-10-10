@@ -2,22 +2,51 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Localization;
 using OVS.Client.Models;
+using OVS.Client.Services;
 using OVS.Shared.Voice;
 
 namespace OVS.Client.ViewModels;
 
 /// <summary>
-/// Package 133 (A142): the signal icon next to the ping and the "Verbindungsdetails" card. The main view model feeds it
-/// every 2 s on the UI thread; the rating compares the voice round trip with the median of the last 30, like Fluxer, so a
-/// far server is not red for good.
+/// Package 133 (A142): the signal icon next to the ping and the "Verbindungsdetails" card. The main view model calls
+/// <see cref="Refresh"/> on every UI tick; the figures follow every 2 s, the crossing out at once. The rating compares the
+/// voice round trip with the median of the last 30, like Fluxer, so a far server is not red for good. Besides showing,
+/// <see cref="Refresh"/> also paces the loss adapter: it hands it the uplink figure once per new answer (Package 135). What
+/// it measures it reads through delegates, so it knows neither the voice connection nor the engine.
 /// </summary>
 public sealed partial class ConnectionStatsViewModel : ObservableObject
 {
     public const int BaselineSamples = 30;
     const string None = "-";
+    internal static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(2);
 
     readonly Queue<double> samples = new();
+    readonly TimeProvider time;
+    readonly Func<bool?> readReachable;
+    readonly Func<VoiceLinkFigures> readFigures;
+    readonly Func<ReceiveStats> readReceiveStats;
+    readonly Func<int> readEncoderBitrate;
+    readonly Action<LossReport> reportUplink;
     ReceiveStats atStart;
+    DateTimeOffset refreshedAt;
+    int roundTripsSeen; // a round trip enters the baseline once, not again on every refresh while no answer comes
+
+    /// <param name="time">The clock of the 2 s between two refreshes.</param>
+    /// <param name="readReachable">Whether UDP gets an answer; null without a voice connection, when nothing is refreshed.</param>
+    /// <param name="readFigures">The voice connection's figures; asked only when the figures are due.</param>
+    /// <param name="readReceiveStats">The mixer's counts, since the engine started (the card counts from <see cref="Reset"/>).</param>
+    /// <param name="readEncoderBitrate">The bitrate the encoder uses now, in kbps.</param>
+    /// <param name="reportUplink">Package 135: tells the loss adapter the uplink figure of each new answer.</param>
+    internal ConnectionStatsViewModel(TimeProvider time, Func<bool?> readReachable, Func<VoiceLinkFigures> readFigures, Func<ReceiveStats> readReceiveStats,
+        Func<int> readEncoderBitrate, Action<LossReport> reportUplink)
+    {
+        this.time = time;
+        this.readReachable = readReachable;
+        this.readFigures = readFigures;
+        this.readReceiveStats = readReceiveStats;
+        this.readEncoderBitrate = readEncoderBitrate;
+        this.reportUplink = reportUplink;
+    }
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Bars), nameof(Tip))] SignalRating rating;
 
@@ -64,9 +93,24 @@ public sealed partial class ConnectionStatsViewModel : ObservableObject
         _ => SignalRating.Bad,
     };
 
+    /// <summary>The crossing out on every call, the figures every 2 s, like Fluxer's stats; nothing without a voice connection.</summary>
+    public void Refresh()
+    {
+        if (readReachable() is not { } isReachable) return;
+        Unreachable = !isReachable;
+        var now = time.GetUtcNow();
+        if (now - refreshedAt < RefreshInterval) return;
+        refreshedAt = now;
+        var figures = readFigures();
+        bool answered = figures.RoundTripCount != roundTripsSeen;
+        if (answered) reportUplink(figures.Uplink); // Package 135: each answer's figure once, none while they stay away
+        Update(answered ? figures.RoundTrip : null, figures.Uplink, figures.Downlink, readReceiveStats(), readEncoderBitrate());
+        roundTripsSeen = figures.RoundTripCount;
+    }
+
     /// <param name="roundTrip">A new round trip, or null when no answer came since the last update (the figures stay).</param>
     /// <param name="receive">The mixer's counts; those up to the last <see cref="Reset"/> are left out.</param>
-    public void Update(TimeSpan? roundTrip, LossReport uplink, LossReport downlink, ReceiveStats receive, int bitrateKbps)
+    internal void Update(TimeSpan? roundTrip, LossReport uplink, LossReport downlink, ReceiveStats receive, int bitrateKbps)
     {
         if (roundTrip is { } rtt)
         {
@@ -89,11 +133,12 @@ public sealed partial class ConnectionStatsViewModel : ObservableObject
 
     static string Loss(LossReport loss) => $"{loss.Percent:0.#} % ({loss.Missed}/{loss.Expected})";
 
-    /// <summary>A new connection, or none: nothing measured yet.</summary>
-    /// <param name="receive">The mixer's counts now, so the details count from here.</param>
-    public void Reset(ReceiveStats receive)
+    /// <summary>A new connection, or none: nothing measured yet, and the details count from the mixer's counts now.</summary>
+    public void Reset()
     {
-        atStart = receive;
+        atStart = readReceiveStats();
+        refreshedAt = DateTimeOffset.MinValue; // the first refresh shows what there is
+        roundTripsSeen = 0;
         samples.Clear();
         BaselineMs = null;
         Rating = SignalRating.Unknown;

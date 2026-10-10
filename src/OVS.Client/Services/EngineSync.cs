@@ -67,6 +67,22 @@ internal sealed class EngineSync
             .ToDictionary(speaker => speaker.SessionId, speaker => speaker.Volume));
     }
 
+    /// <summary>
+    /// Users came or went: the gain table follows, and Package 124: a speaker's decoder stays over talk pauses, so it goes when
+    /// the speaker left. The self test's own voice is no user and stays. Without a server state it only builds the empty gain
+    /// table: a guard the current caller never reaches (it asks after a member change of a shown server).
+    /// </summary>
+    internal void SyncMembers()
+    {
+        SyncGains();
+        if (gainsFor is not { } current) return;
+        var users = current.Users;
+        audio.Mixer.RemoveLeft(id => id == AudioEngine.SelfTestSpeaker || users.ContainsKey(id));
+    }
+
+    /// <summary>The connection is gone: nobody is heard any more, so every speaker's decoder goes.</summary>
+    internal void ClearSpeakers() => audio.Mixer.Clear();
+
     /// <summary>Applies saved settings to the engine, restarting its devices; returns what to warn about, null when nothing.</summary>
     internal string? Configure(ClientSettings applied) => audio.Configure(applied);
 

@@ -742,7 +742,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     /// <summary>Package 133: connection details with long figures.</summary>
     static ConnectionStatsViewModel Measured()
     {
-        var stats = new ConnectionStatsViewModel();
+        var stats = ConnectionStats.CreateBlank();
         stats.Update(TimeSpan.FromMilliseconds(1234), new OVS.Shared.Voice.LossReport(250, 25), new OVS.Shared.Voice.LossReport(4999, 1234),
             new OVS.Client.Audio.Playback.ReceiveStats(100_000, 1000, 500, 12_345, 123.4, 200), 128);
         return stats;

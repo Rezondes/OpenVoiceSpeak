@@ -37,7 +37,7 @@ static class DialogCaseTable
             () => [Strings.Dlg_Later, Strings.Dlg_InstallNow], Red: false, EnterAccepts: true),
         new("Leave", typeof(LeaveDialog), o => Accepted(LeaveDialog.ShowAsync(o), choice => choice == LeaveChoice.Save),
             () => [Strings.Dlg_SaveAndLeave, Strings.Dlg_LeaveWithoutSaving, Strings.Dlg_KeepEditing], Red: false, EnterAccepts: true),
-        new("ConnectionDetails", typeof(ConnectionDetailsDialog), o => Accepted(ConnectionDetailsDialog.ShowAsync(o, new ConnectionStatsViewModel())),
+        new("ConnectionDetails", typeof(ConnectionDetailsDialog), o => Accepted(ConnectionDetailsDialog.ShowAsync(o, ConnectionStats.CreateBlank())),
             () => [Strings.Ui_Close], Red: false, EnterAccepts: true),
         new("Ban", typeof(BanDialog), o => Accepted(BanDialog.ShowAsync(o, "anna"), choice => choice is not null),
             () => [Strings.Dlg_Cancel, Strings.Dlg_Ban], Red: true, EnterAccepts: null),

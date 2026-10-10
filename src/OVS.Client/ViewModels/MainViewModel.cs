@@ -133,6 +133,22 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 : EngineConnectionState.Disconnected,
             mirror: () => Server?.Mirror,
             volumeFor: fingerprint => Settings.VolumeFor(fingerprint));
+        SelfTest = new SelfTest(
+            readEngineRunning: () => audio.SelfTest,
+            setEngineRunning: on => audio.SelfTest = on,
+            showOnPage: on =>
+            {
+                if (SettingsPage is { } page) page.IsSelfTesting = on;
+            },
+            log: Log.Write,
+            readServerState: () => Server is { } connected ? new SelfState(connected.SelfMuted, connected.SelfDeafened) : null,
+            writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state.Muted, state.Deafened) : Task.CompletedTask);
+        Stats = new ConnectionStatsViewModel(time,
+            readReachable: () => voice?.Reachable,
+            readFigures: ReadVoiceFigures,
+            readReceiveStats: () => audio.Mixer.Stats(),
+            readEncoderBitrate: () => audio.EncoderBitrate,
+            reportUplink: loss => audio.Loss.Report(loss));
         if (audio.DeviceLifecycle.OpensDevices) Devices.Refresh();
         hints = new VoiceHints(
             state: () => Server is { } connected
@@ -201,6 +217,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Package 52: the audio devices the settings page offers, loaded in the background.</summary>
     internal DeviceList Devices { get; }
+
+    /// <summary>Package 53: the self test of the settings page, which mutes and deafens at the server meanwhile.</summary>
+    internal SelfTest SelfTest { get; }
 
     /// <summary>Package 102: how long a removed bookmark stays to fold away (the window sets it).</summary>
     public LeaveTimer Leave { get; }
@@ -402,14 +421,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         if (conn is not null && sound) Audio.Sounds.Play(SoundEvent.Disconnected);
         if (conn is not null) Status = status;
         if (Server is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
-        stateBeforeSelfTest = null; // nothing to restore at a server that is gone
-        await SetSelfTestAsync(false);
+        SelfTest.ForgetStateBefore(); // nothing to restore at a server that is gone
+        await SelfTest.SetAsync(false);
         Server = null;
         Audio.Send = null;
         voice?.Dispose();
         voice = null;
         EngineSync.SyncConnection();
-        Audio.Mixer.Clear();
+        EngineSync.ClearSpeakers();
         ResetStats();
         if (conn is not null) await conn.DisposeAsync();
     }
@@ -451,7 +470,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         var self = s.Mirror.Self;
         // the self test mutes and deafens at the server; what counts is the state from before it. A mute that only holds
         // while push-to-mute is held is no choice to keep: the key may be let go meanwhile (Package 125).
-        var (muted, deafened) = stateBeforeSelfTest ?? (s.SelfMuted && !s.MutedByHold, s.SelfDeafened);
+        var (muted, deafened) = SelfTest.StateBefore ?? new SelfState(s.SelfMuted && !s.MutedByHold, s.SelfDeafened);
         var restore = new Restore(self?.ChannelId ?? Guid.Empty, s.CurrentChannel?.Name ?? "", self is null ? null : s.PasswordFor(self.ChannelId),
             muted, deafened, s.MutedBeforeDeafen);
         Log.Write($"Verbindung verloren, neue Versuche nach {string.Join(", ", Reconnector.Delays.Select(d => $"{d.TotalSeconds:0}"))} s");
@@ -586,10 +605,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         EngineSync.SyncConnection();
         if (Server?.LastChange.HasFlag(StateChange.Members) != true) return;
-        EngineSync.SyncGains();
-        // Package 124: a speaker's decoder stays over talk pauses, so it goes when they leave
-        var users = Server.Mirror.Users;
-        Audio.Mixer.RemoveLeft(id => id == AudioEngine.SelfTestSpeaker || users.ContainsKey(id));
+        EngineSync.SyncMembers();
     }
 
     /// <summary>
@@ -616,7 +632,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Server?.RefreshSpeaking();
         LogUdpReachability();
-        UpdateStats();
+        Stats.Refresh();
         UpdateReconnectStatus(); // Package 139
         PingText = connection?.LastRoundTrip is { } rtt
             ? $"Ping {rtt.TotalMilliseconds:0} ms" + (voice?.OverTcp == true ? Strings.Ping_VoiceOverTcp // Package 141
@@ -628,31 +644,24 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     // ---- Package 133 (A142): the signal icon and the connection details ----
 
     /// <summary>The voice connection's figures, behind the signal icon next to the ping.</summary>
-    public ConnectionStatsViewModel Stats { get; } = new();
-    static readonly TimeSpan StatsInterval = TimeSpan.FromSeconds(2);
-    DateTimeOffset statsAt;
-    int roundTripsSeen; // a round trip enters the baseline once, not again on every refresh while no answer comes
+    public ConnectionStatsViewModel Stats { get; }
 
-    void ResetStats()
+    /// <summary>
+    /// The voice connection's round trip and loss figures. The branch without a voice connection is never reached: the card asks
+    /// only behind its reachable gate, which is null without one.
+    /// </summary>
+    VoiceLinkFigures ReadVoiceFigures()
     {
-        Stats.Reset(Audio.Mixer.Stats());
-        Audio.Loss.EndStreaks(); // Package 135: a reconnect into the same channel keeps no streak from before
-        statsAt = DateTimeOffset.MinValue; // the first tick shows what there is
-        roundTripsSeen = 0;
+        if (voice is not { } connected) return default;
+        var (roundTrip, count) = connected.RoundTripSample;
+        return new VoiceLinkFigures(roundTrip, count, connected.UplinkLoss, connected.DownlinkLoss);
     }
 
-    /// <summary>The crossing out on every tick, the figures every 2 s, like Fluxer's stats.</summary>
-    void UpdateStats()
+    /// <summary>A new connection, or none: the figures start over, and the loss adapter keeps no streak from before.</summary>
+    void ResetStats()
     {
-        if (voice is not { } v) return;
-        Stats.Unreachable = !v.Reachable;
-        var now = Time.GetUtcNow();
-        if (now - statsAt < StatsInterval) return;
-        statsAt = now;
-        var (roundTrip, count) = v.RoundTripSample;
-        if (count != roundTripsSeen) Audio.Loss.Report(v.UplinkLoss); // Package 135: each answer's figure once, none while they stay away
-        Stats.Update(count != roundTripsSeen ? roundTrip : null, v.UplinkLoss, v.DownlinkLoss, Audio.Mixer.Stats(), Audio.EncoderBitrate);
-        roundTripsSeen = count;
+        Stats.Reset();
+        Audio.Loss.EndStreaks(); // Package 135: a reconnect into the same channel keeps no streak from before
     }
 
     [RelayCommand]
@@ -741,7 +750,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 Keys.Bindings = live.KeyBindings;
                 Appearance = BackgroundAppearance.From(live);
             },
-            SetSelfTest = SetSelfTestAsync,
+            SetSelfTest = SelfTest.SetAsync,
         };
         vm.ApplySaved = () => ApplySettingsAsync(vm.ToSettings(Settings)); // Package 98: before the page closes
         vm.CloseRequested += _ => CloseSettings();
@@ -764,31 +773,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         });
     }
 
-    (bool Muted, bool Deafened)? stateBeforeSelfTest;
-
-    /// <summary>
-    /// Package 53: during the self test one is muted and deafened, at the server too (others see "Ton aus"), and
-    /// hears only the own voice. Afterwards the state from before comes back.
-    /// </summary>
-    public async Task SetSelfTestAsync(bool on)
-    {
-        if (on == Audio.SelfTest) return;
-        Audio.SelfTest = on;
-        if (SettingsPage is { } page) page.IsSelfTesting = on;
-        Log.Write(on ? "Selbsttest gestartet" : "Selbsttest beendet");
-        if (on)
-        {
-            stateBeforeSelfTest = Server is { } s ? (s.SelfMuted, s.SelfDeafened) : null;
-            if (Server is { } server) await server.SetSelfStateAsync(true, true);
-        }
-        else
-        {
-            var before = stateBeforeSelfTest;
-            stateBeforeSelfTest = null;
-            if (Server is { } server && before is { } state) await server.SetSelfStateAsync(state.Muted, state.Deafened);
-        }
-    }
-
     /// <summary>
     /// Every way out of the settings ("Verwerfen", Esc, opening the administration) ends the live preview: what is
     /// saved counts again. After "Speichern" that is the new settings.
@@ -798,7 +782,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Audio.ApplyLive(Settings);
         Keys.Bindings = Settings.KeyBindings.ToList();
         Appearance = BackgroundAppearance.From(Settings);
-        _ = SetSelfTestAsync(false);
+        _ = SelfTest.SetAsync(false);
         Audio.InputLevel -= OnInputLevel;
         Audio.LevelMeter = false;
         SettingsPage = null;

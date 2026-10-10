@@ -41,6 +41,17 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     }
 
     [Fact]
+    public async Task Tick_NoVoiceConnection_StatsStayBlank()
+    {
+        await using var vm = MainViewModelSetup.Create(dir, action => action(), time: time);
+        time.Advance(ConnectionStatsViewModel.RefreshInterval);
+
+        vm.Tick();
+
+        Assert.Equal((false, "-"), (vm.Stats.Unreachable, vm.Stats.BitrateText));
+    }
+
+    [Fact]
     public async Task Constructor_GivenParts_ExposesTheSameInstances()
     {
         var settings = new ClientSettings();

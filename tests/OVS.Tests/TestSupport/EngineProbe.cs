@@ -1,4 +1,6 @@
 using OVS.Client.Audio;
+using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Transmit;
 using OVS.Shared.Voice;
 
@@ -10,6 +12,12 @@ static class EngineProbe
     /// <summary>The engine's five switches that follow the connection.</summary>
     public static EngineSwitches ReadEngineSwitches(AudioEngine engine) =>
         new(engine.Connected, engine.SelfMuted, engine.Deafened, engine.HasSpeakLinked, engine.ChannelMuted);
+
+    /// <summary>One encoded frame of silence, as a speaker sends it.</summary>
+    public static byte[] SilentFrame() => new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]);
+
+    /// <summary>Gives <paramref name="sessionId"/> a decoder in <paramref name="mixer"/>, as a received frame does.</summary>
+    public static void PushFrameOf(VoiceMixer mixer, uint sessionId) => mixer.Push(sessionId, 0, SilentFrame(), viaLink: false);
 
     /// <summary>6 s of 20 % loss on <paramref name="clock"/>: a bitrate of 64 kbps halves to 32.</summary>
     public static void LowerByLoss(LossAdapter adapter, ManualTimeProvider clock)

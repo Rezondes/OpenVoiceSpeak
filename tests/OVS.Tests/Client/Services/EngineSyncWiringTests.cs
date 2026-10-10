@@ -1,3 +1,4 @@
+using OVS.Client.Audio;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Localization;
@@ -5,6 +6,8 @@ using OVS.Client.Models;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Permissions;
+using OVS.Shared.Protocol.Messages.Users;
+using OVS.Shared.Voice;
 using OVS.Tests.TestSupport;
 using static OVS.Tests.TestSupport.EngineProbe;
 using static OVS.Tests.TestSupport.FakeAudioHardware;
@@ -137,6 +140,73 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin());
 
         Assert.Equal(2f, mainViewModel.Audio.Mixer.SpeakerGain(2));
+    }
+
+    [Fact]
+    public async Task StateChanged_UserLeft_DropsTheirDecoder()
+    {
+        await using var mainViewModel = CreateMainViewModel();
+        var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
+        PushFrameOf(mainViewModel.Audio.Mixer, 2);
+
+        server.Apply(new UserLeft(2));
+
+        Assert.Null(mainViewModel.Audio.Mixer.BufferOf(2));
+    }
+
+    [Fact]
+    public async Task StateChanged_AnotherUserLeft_KeepsTheDecoderOfThoseStillThere()
+    {
+        await using var mainViewModel = CreateMainViewModel();
+        var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
+        PushFrameOf(mainViewModel.Audio.Mixer, 1);
+
+        server.Apply(new UserLeft(2));
+
+        Assert.NotNull(mainViewModel.Audio.Mixer.BufferOf(1));
+    }
+
+    [Fact]
+    public async Task StateChanged_NobodyCameOrWent_DropsNoDecoder()
+    {
+        await using var mainViewModel = CreateMainViewModel();
+        var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
+        PushFrameOf(mainViewModel.Audio.Mixer, 99);
+
+        FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change that is no member change
+
+        Assert.NotNull(mainViewModel.Audio.Mixer.BufferOf(99));
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_SpeakersPresent_DropsEveryDecoder()
+    {
+        await using var mainViewModel = CreateMainViewModel();
+        MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin());
+        PushFrameOf(mainViewModel.Audio.Mixer, 1);
+        PushFrameOf(mainViewModel.Audio.Mixer, AudioEngine.SelfTestSpeaker);
+
+        await mainViewModel.DisconnectAsync();
+
+        Assert.Equal(0, mainViewModel.Audio.Mixer.SpeakerCount);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_LossStreakRunning_EndsItSoTheNextFigureStartsANewOneAndNoStepDownComes()
+    {
+        var clock = new ManualTimeProvider();
+        await using var mainViewModel = MainViewModelSetup.Create(dir, action => action(), time: clock);
+        var lossy = new LossReport(100, 20);
+        mainViewModel.Audio.Loss = new LossAdapter(clock, 64);
+        mainViewModel.Audio.Loss.Report(lossy);
+        clock.Advance(TimeSpan.FromSeconds(4));
+        mainViewModel.Audio.Loss.Report(lossy);
+
+        await mainViewModel.DisconnectAsync();
+        clock.Advance(TimeSpan.FromSeconds(1));
+        mainViewModel.Audio.Loss.Report(lossy);
+
+        Assert.Equal(64, mainViewModel.Audio.Loss.BitrateKbps);
     }
 
     [Fact]

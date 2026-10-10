@@ -317,15 +317,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         return shown;
     });
 
-    string ClientLogText()
-    {
-        vm.Log.Flush(); // Package 124: written in the background
-        return string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
-        {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            return new StreamReader(stream).ReadToEnd();
-        }));
-    }
+    string ClientLogText() => MainViewModelSetup.ReadLogText(vm, dir);
 
     /// <summary>Package 39: a wrong password is never stored, the right one only when asked for, and never logged.</summary>
     [Fact]
@@ -854,6 +846,31 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await OnUi(() => vm.DisconnectAsync());
         Assert.Equal((0, false, "-"), await OnUi(() => (stats.Bars, stats.Unreachable, stats.RoundTripText)));
+    }
+
+    [Fact]
+    public async Task Tick_MixerHasJitter_StatsShowTheMixersJitter()
+    {
+        await ConnectAsync(saveBookmark: false);
+        double measured = await OnUi(() =>
+        {
+            var frame = EngineProbe.SilentFrame();
+            for (uint number = 0; number < 6; number++)
+            {
+                vm.Audio.Mixer.Push(1, number, frame, viaLink: false, arrivalMs: 20.0 * number + (number == 3 ? 15 : 0));
+                vm.Audio.Mixer.Tick();
+            }
+            return vm.Audio.Mixer.Stats().JitterMs;
+        });
+
+        var shown = await OnUi(() =>
+        {
+            vm.Tick();
+            return vm.Stats.JitterText;
+        });
+
+        Assert.True(measured > 0);
+        Assert.Equal($"{measured:0.0} ms", shown);
     }
 
     /// <summary>Package 32: welcome in "Allgemein", the channel tab talks to the real server both ways.</summary>
@@ -1408,7 +1425,6 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     /// <summary>The mute states sent, without the request ids.</summary>
-    static List<(bool Muted, bool Deafened)> States(List<Request> sent) => sent.OfType<SetSelfState>().Select(r => (r.Muted, r.Deafened)).ToList();
 
     /// <summary>Holds or lets go the push-to-mute key (through the bindings) and waits until the key thread saw it.</summary>
     async Task HoldMuteKey(bool down)
@@ -1440,12 +1456,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await HoldMuteKey(true);
         Assert.True(await OnUiUntil(() => vm.Server!.SelfMuted, m => m));
-        Assert.Equal([(true, false)], await OnUi(() => States(sent)));
+        Assert.Equal([new SelfState(true, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
         Assert.Equal([SoundEvent.MicOff], await OnUi(() => heard.ToList()));
 
         await HoldMuteKey(false);
         Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
-        Assert.Equal([(true, false), (false, false)], await OnUi(() => States(sent)));
+        Assert.Equal([new SelfState(true, false), new SelfState(false, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
         Assert.Equal([SoundEvent.MicOff, SoundEvent.MicOn], await OnUi(() => heard.ToList()));
     }
 
@@ -1482,7 +1498,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await PressDeafenKey();
 
         // only the deafen key: muted and deafened, or (from deafened) back to unmuted as before
-        Assert.Equal([deafened ? (false, false) : (true, true)], await OnUi(() => States(sent)));
+        Assert.Equal([deafened ? new SelfState(false, false) : new SelfState(true, true)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
         Assert.Equal([deafened ? SoundEvent.SoundOn : SoundEvent.SoundOff], await OnUi(() => heard.ToList()));
     }
 
@@ -1501,7 +1517,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await HoldMuteKey(false);
         await PressDeafenKey();
-        Assert.Equal([(true, false), (false, false), (true, true)], await OnUi(() => States(sent)));
+        Assert.Equal([new SelfState(true, false), new SelfState(false, false), new SelfState(true, true)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
     }
 
     /// <summary>Package 125: another hold key (push-to-talk) tapped meanwhile does not count as a new press of push-to-mute.</summary>
@@ -1523,7 +1539,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUiUntil(() => vm.Keys.PttDown, d => !d);
         await HoldMuteKey(false);
         await PressDeafenKey();
-        Assert.Equal([(true, false), (false, false), (true, true)], await OnUi(() => States(sent)));
+        Assert.Equal([new SelfState(true, false), new SelfState(false, false), new SelfState(true, true)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
     }
 
     /// <summary>Package 125: connecting while the key is held mutes at once, and letting go unmutes.</summary>
@@ -1544,7 +1560,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }));
         await HoldMuteKey(false);
         Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
-        Assert.Equal([(true, false), (false, false)], await OnUi(() => States(sent)));
+        Assert.Equal([new SelfState(true, false), new SelfState(false, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
     }
 
     /// <summary>Package 125: not connected, the key only stops sending, which the self test plays back.</summary>
@@ -1560,7 +1576,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 KeyBindings = [new(KeyAction.PushToMute, new KeyChord(MuteKey))],
             });
             vm.Audio.DeviceLifecycle.SetTone(440); // -13.5 dBFS: well above the threshold
-            await vm.SetSelfTestAsync(true);
+            await vm.SelfTest.SetAsync(true);
             return null;
         });
         Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l > -20) > -20);
@@ -1660,9 +1676,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
             });
             Assert.Equal((1, 0, 0, 0, false), await Settled((1, 0, 0, 0, false)));
 
-            await Do(() => main.SetSelfTestAsync(true));
+            await Do(() => main.SelfTest.SetAsync(true));
             Assert.Equal((2, 1, 1, 1, true), await Settled((2, 1, 1, 1, true)));
-            await Do(() => main.SetSelfTestAsync(false));
+            await Do(() => main.SelfTest.SetAsync(false));
             Assert.Equal((2, 0, 1, 0, false), await Settled((2, 0, 1, 0, false)));
 
             await Do(() => main.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
@@ -1858,6 +1874,52 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }
         Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
         Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: false }, ok => ok));
+    }
+
+    /// <summary>The self test mutes and deafens at the server; a reconnect brings back the state from before it, not the test's.</summary>
+    [Fact]
+    public async Task Reconnect_SelfTestRunningOnAMutedUser_BringsBackTheMuteFromBeforeIt()
+    {
+        await ConnectTo(server);
+        await OnUiDo(() => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
+        await OnUiDo(() => vm.SelfTest.SetAsync(true));
+        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: true }, ok => ok));
+
+        await ReconnectAsync(server);
+
+        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfMuted, vm.Server.SelfDeafened)));
+    }
+
+    /// <summary>The self test feeds the mixer without a connection; frames of it during the wait do not count for the new connection.</summary>
+    [Fact]
+    public async Task Reconnect_SelfTestFramesDuringTheWait_StatsCountFromTheNewConnection()
+    {
+        await ConnectTo(server);
+        var before = await OnUi(() => vm.Server!.Mirror.SelfId);
+        await DropAsync(server);
+        var fed = await OnUi(() =>
+        {
+            var frame = EngineProbe.SilentFrame();
+            foreach (uint number in new uint[] { 0, 1, 2, 5, 6, 7, 8, 9 })
+            {
+                vm.Audio.Mixer.Push(AudioEngine.SelfTestSpeaker, number, frame, viaLink: false, arrivalMs: 20.0 * number);
+                vm.Audio.Mixer.Tick();
+            }
+            for (int tick = 0; tick < 20; tick++) vm.Audio.Mixer.Tick();
+            var counts = vm.Audio.Mixer.Stats();
+            return counts.Concealed + counts.Rebuilt + counts.Recovered;
+        });
+        Assert.True(fed > 0);
+        reconnectTime.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.IsReconnecting, ok => ok));
+
+        var shown = await OnUi(() =>
+        {
+            vm.Tick();
+            return vm.Stats.ConcealedText;
+        });
+
+        Assert.Equal(string.Format(Strings.ConnDetails_ConcealedValue, 0, 0, 0), shown);
     }
 
     /// <summary>Re-review: muted by choice (and deafened), push-to-mute held through the reconnect and then let go: still muted.</summary>

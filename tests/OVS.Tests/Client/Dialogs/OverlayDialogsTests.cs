@@ -33,7 +33,7 @@ public sealed class OverlayDialogsTests
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))),
         "AskLeave" => dialogs.AskLeave!(),
         "Ban" => dialogs.Ban!("anna", true, null),
-        "ConnectionDetails" => dialogs.ConnectionDetails!(new ConnectionStatsViewModel()),
+        "ConnectionDetails" => dialogs.ConnectionDetails!(ConnectionStats.CreateBlank()),
         "EditBookmark" => dialogs.EditBookmark!(new Bookmark("Gilde", "h", 7000, "ich")),
         "EditKeyBinding" => dialogs.EditKeyBinding!(null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
         "AskText" => dialogs.AskText!("Titel", "Text:", null),

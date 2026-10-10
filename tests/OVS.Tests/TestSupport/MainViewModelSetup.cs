@@ -8,6 +8,8 @@ using OVS.Client.Net;
 using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
+using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Tests.TestSupport;
 
@@ -45,6 +47,21 @@ static class MainViewModelSetup
         KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
         Func<AudioDirection, List<AudioDevice>>? listDevices = null) =>
         new(dir, post, time, log, settings, settingsWarning, knownServers, icons, soundLibrary, leave, keys, audio, listDevices);
+
+    /// <summary>The text of the client log files in <paramref name="dir"/>, after the lines still queued were written.</summary>
+    public static string ReadLogText(MainViewModel vm, string dir)
+    {
+        vm.Log.Flush();
+        return string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return new StreamReader(stream).ReadToEnd();
+        }));
+    }
+
+    /// <summary>The own states a view model sent to its server, oldest first (the fake server records its requests in <paramref name="sent"/>).</summary>
+    public static List<SelfState> ReadSelfStatesSent(List<Request> sent) =>
+        sent.OfType<SetSelfState>().Select(request => new SelfState(request.Muted, request.Deafened)).ToList();
 
     /// <summary>Shows <paramref name="server"/> as the connected server (null: none); returns it, like an assignment.</summary>
     public static ServerViewModel? ShowServer(MainViewModel vm, ServerViewModel? server) => vm.Server = server;

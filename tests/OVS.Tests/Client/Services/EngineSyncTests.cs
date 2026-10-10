@@ -344,6 +344,80 @@ public sealed class EngineSyncTests : IDisposable
         Assert.Equal(2, sync.GainTableBuilds);
     }
 
+    // ---- SyncMembers and ClearSpeakers ----
+
+    [Fact]
+    public void SyncMembers_SpeakerWhoLeft_LosesTheirDecoder()
+    {
+        var sync = CreateSync();
+        connectedMirror = CreateMirror(8);
+        PushFrameOf(engine.Mixer, 7);
+
+        sync.SyncMembers();
+
+        Assert.Null(engine.Mixer.BufferOf(7));
+    }
+
+    [Fact]
+    public void SyncMembers_SpeakerStillThere_KeepsTheirDecoder()
+    {
+        var sync = CreateSync();
+        connectedMirror = CreateMirror(8);
+        PushFrameOf(engine.Mixer, 8);
+
+        sync.SyncMembers();
+
+        Assert.NotNull(engine.Mixer.BufferOf(8));
+    }
+
+    [Fact]
+    public void SyncMembers_SelfTestVoice_KeepsItsDecoderThoughNoUserHasItsId()
+    {
+        var sync = CreateSync();
+        connectedMirror = CreateMirror(8);
+        PushFrameOf(engine.Mixer, AudioEngine.SelfTestSpeaker);
+
+        sync.SyncMembers();
+
+        Assert.NotNull(engine.Mixer.BufferOf(AudioEngine.SelfTestSpeaker));
+    }
+
+    [Fact]
+    public void SyncMembers_UserWithSavedVolume_BuildsTheGainTableOnceForThem()
+    {
+        var sync = CreateSync();
+        connectedMirror = CreateMirror(7);
+        savedVolumes["fp7"] = 2f;
+
+        sync.SyncMembers();
+
+        Assert.Equal((1, 2f), (sync.GainTableBuilds, engine.Mixer.SpeakerGain(7)));
+    }
+
+    [Fact]
+    public void SyncMembers_NoServer_BuildsATableOnceAndDropsNobody()
+    {
+        var sync = CreateSync();
+        PushFrameOf(engine.Mixer, 7);
+
+        sync.SyncMembers();
+
+        Assert.Equal((1, true), (sync.GainTableBuilds, engine.Mixer.BufferOf(7) is not null));
+    }
+
+    [Fact]
+    public void ClearSpeakers_SpeakersPresent_DropsEveryDecoder()
+    {
+        var sync = CreateSync();
+        connectedMirror = CreateMirror(7, 8);
+        PushFrameOf(engine.Mixer, 7);
+        PushFrameOf(engine.Mixer, 8);
+
+        sync.ClearSpeakers();
+
+        Assert.Equal(0, engine.Mixer.SpeakerCount);
+    }
+
     // ---- Configure ----
 
     [Fact]
