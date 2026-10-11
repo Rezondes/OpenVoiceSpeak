@@ -118,13 +118,11 @@ public sealed class ServerIconWiringTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DisconnectAsync_MalformedLogoArrivesAfterwards_ThrowsNothingAndCachesNothing()
+    public void Apply_MalformedLogoOfTheServersHash_ThrowsNothingShowsNothingAndCachesNothing()
     {
-        var server = ShowTrackedServer(null);
-        await mainViewModel.Connection.DisconnectAsync();
-        server.Apply(SettingsWithLogoHash(server, "hash"));
+        var server = ShowTrackedServer(LogoHash);
 
-        server.Apply(new ServerIcon(null, "hash", "this is not base64"));
+        server.Apply(new ServerIcon(null, LogoHash, "this is not base64"));
 
         Assert.Null(server.IconPng);
         Assert.Null(new ServerIconCache(directory).Load(Host, Port));

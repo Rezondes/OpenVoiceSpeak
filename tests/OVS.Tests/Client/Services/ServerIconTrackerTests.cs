@@ -338,4 +338,60 @@ public sealed class ServerIconTrackerTests : IDisposable
         Assert.Null(cache.Load(Host, Port));
         Assert.Equal(0, tilesRefreshed);
     }
+
+    [Theory]
+    [InlineData("this is not base64")]
+    [InlineData("abc")]
+    [InlineData("====")]
+    [InlineData("QUJD!")]
+    public void Receive_PictureNotBase64_ChangesNothing(string picture)
+    {
+        serverHash = LogoHash;
+
+        tracker.Receive(new ServerIcon(null, LogoHash, picture));
+
+        Assert.Empty(shownLogos);
+        Assert.Null(cache.Load(Host, Port));
+        Assert.Equal(0, tilesRefreshed);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Receive_EmptyPicture_ChangesNothing(string picture)
+    {
+        serverHash = LogoHash;
+
+        tracker.Receive(new ServerIcon(null, LogoHash, picture));
+
+        Assert.Empty(shownLogos);
+        Assert.Null(cache.Load(Host, Port));
+        Assert.Equal(0, tilesRefreshed);
+    }
+
+    [Fact]
+    public void Receive_MalformedThenTheRightLogo_TakesTheRightOne()
+    {
+        serverHash = LogoHash;
+
+        tracker.Receive(new ServerIcon(null, LogoHash, "this is not base64"));
+        tracker.Receive(BuildIconMessage(Logo, LogoHash));
+
+        Assert.Equal(Logo, Assert.Single(shownLogos));
+        Assert.Equal(Logo, cache.Load(Host, Port));
+        Assert.Equal(1, tilesRefreshed);
+    }
+
+    [Fact]
+    public void Receive_PaddedLogo_IsTakenWhole()
+    {
+        byte[] paddedLogo = [1, 2];
+        string paddedHash = ServerIconFormat.ComputeHash(paddedLogo);
+        serverHash = paddedHash;
+
+        tracker.Receive(BuildIconMessage(paddedLogo, paddedHash));
+
+        Assert.Equal(paddedLogo, Assert.Single(shownLogos));
+        Assert.Equal(paddedLogo, cache.Load(Host, Port));
+    }
 }
