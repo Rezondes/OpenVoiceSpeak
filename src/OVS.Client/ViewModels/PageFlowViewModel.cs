@@ -39,8 +39,13 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomePage), nameof(IsSettingsPage), nameof(IsAdminPage))]
     Page page = Page.Home;
-    [ObservableProperty] SettingsViewModel? settingsPage;
-    [ObservableProperty] AdminViewModel? adminPage;
+    /// <summary>The page shown besides home; one at a time.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SettingsPage), nameof(AdminPage))]
+    IPageViewModel? shownPage;
+
+    public SettingsViewModel? SettingsPage => ShownPage as SettingsViewModel;
+    public AdminViewModel? AdminPage => ShownPage as AdminViewModel;
 
     /// <param name="time">The client's one clock, for the settings page.</param>
     /// <param name="post">Brings a level of the meter to the UI thread.</param>
@@ -118,13 +123,12 @@ internal sealed partial class PageFlowViewModel : ObservableObject
                 showAppearance(BackgroundAppearance.From(live));
             },
             SetSelfTest = setSelfTest,
+            EndPreview = EndSettingsPreview,
         };
         newPage.ApplySaved = () => applySaved(newPage.ToSettings(settings())); // Package 98: before the page closes
-        newPage.CloseRequested += _ => CloseSettings();
-        newPage.LeaveRequested += () => _ = ClosePageAsync(); // Package 114: the X asks, "Abbrechen" does not
+        newPage.CloseRequested += _ => Close(newPage); // a late "Speichern" of a page no longer shown leaves the shown page alone
         startLevelMeter(OnInputLevel); // Package 124 (A132): the microphone opens for the level meter
-        SettingsPage = newPage;
-        Page = Page.Settings;
+        Show(newPage, Page.Settings); // Package 114: the X asks, "Abbrechen" does not
         refreshDevices(); // a device may have been plugged in since
     }
 
@@ -143,15 +147,13 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// Every way out of the settings ("Verwerfen", Esc, opening the administration) ends the live preview: what is
     /// saved counts again. After "Speichern" that is the new settings.
     /// </summary>
-    void CloseSettings()
+    void EndSettingsPreview()
     {
         applyLive(settings());
         setKeyBindings(settings().KeyBindings.ToList());
         showAppearance(BackgroundAppearance.From(settings()));
         _ = setSelfTest(false);
         stopLevelMeter(OnInputLevel);
-        SettingsPage = null;
-        if (Page == Page.Settings) Page = Page.Home;
     }
 
     [RelayCommand]
@@ -161,24 +163,32 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         if (!await ConfirmLeaveAsync()) return; // Package 114
         ClosePage();
         var newPage = new AdminViewModel(server);
-        newPage.CloseRequested += () => _ = ClosePageAsync(); // Package 114
-        AdminPage = newPage;
-        Page = Page.Admin;
+        Show(newPage, Page.Admin); // Package 114
         await newPage.RequestListsAsync();
     }
 
-    internal void CloseAdmin()
+    /// <summary>The shared tail of opening a page: its own way out asks first, then the page shows, before its kind.</summary>
+    void Show(IPageViewModel newPage, Page kind)
     {
-        AdminPage?.Detach();
-        AdminPage = null;
-        if (Page == Page.Admin) Page = Page.Home;
+        newPage.LeaveRequested += () => _ = ClosePageAsync();
+        ShownPage = newPage;
+        Page = kind;
+    }
+
+    /// <summary>Lets go of the page, then, while it is still the one shown, clears it before the page kind.</summary>
+    void Close(IPageViewModel page)
+    {
+        page.Detach();
+        if (ShownPage != page) return;
+        ShownPage = null;
+        Page = Page.Home;
     }
 
     // ---- Package 114: unsaved changes ----
 
     /// <summary>Settings or administration hold changes a way out would lose; adminOnly for disconnecting (settings stay).</summary>
     internal bool HasUnsavedChanges(bool adminOnly = false) =>
-        (!adminOnly && SettingsPage?.HasChanges == true) || AdminPage?.HasAnyChanges == true;
+        (!adminOnly || Page == Page.Admin) && ShownPage?.HasChanges == true;
 
     /// <summary>
     /// Asks before a way out that would lose changes: keep editing (false), save and go once the server took it, or go
@@ -190,11 +200,8 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         var choice = dialogs().AskLeave is { } ask ? await ask() : LeaveChoice.Discard;
         if (choice == LeaveChoice.Stay) return false;
         if (choice == LeaveChoice.Discard) return true;
-        if (!adminOnly && SettingsPage is { HasChanges: true } settingsWithChanges && !await settingsWithChanges.SaveAsync()) return false;
-        if (AdminPage is { } admin)
-            foreach (var place in admin.Places.Where(candidate => candidate.HasChanges()))
-                if (!await place.SaveAsync()) return false; // its error shows on the page, which stays
-        return true;
+        if (!HasUnsavedChanges(adminOnly)) return true; // checked again: the page may have changed while asked
+        return await ShownPage!.SaveAsync();
     }
 
     /// <summary>Esc, the X and the administration's close button: ask first, then leave the page.</summary>
@@ -206,7 +213,6 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <summary>Esc: leaves settings without saving, or the administration.</summary>
     internal void ClosePage()
     {
-        if (Page == Page.Settings) CloseSettings();
-        else if (Page == Page.Admin) CloseAdmin();
+        if (ShownPage is { } shown) Close(shown);
     }
 }

@@ -64,7 +64,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         await vm.PageFlow.OpenAdminAsync();
         var admin = vm.PageFlow.AdminPage!;
-        Assert.False(admin.HasAnyChanges);
+        Assert.False(admin.HasChanges);
 
         admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
         var name = admin.GroupList.SelectedGroup.Name;
@@ -219,7 +219,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var links = vm.PageFlow.AdminPage!.Links;
         links.UnlinkAll();
         links.DiscardCommand.Execute(null); // "Verwerfen"
-        Assert.False(vm.PageFlow.AdminPage.HasAnyChanges);
+        Assert.False(vm.PageFlow.AdminPage.HasChanges);
         Assert.Equal(0, asked);
     }
 
@@ -330,7 +330,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         vm.Server!.Apply(new GroupsChanged(vm.Server.Mirror.Groups.Select(g => g.Id == update.GroupId ? g with { Name = update.Name } : g).ToList()));
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(other.Id, admin.GroupList.SelectedGroup!.Id);
-        Assert.False(admin.HasAnyChanges);
+        Assert.False(admin.HasChanges);
         main.Close();
     }
 
@@ -362,7 +362,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var settings = vm.Server!.Mirror.Settings;
         vm.Server.Apply(new ServerSettingsChanged(settings with { Name = "Anderer Name" })); // another admin
         Assert.Equal("Anderer Name", admin.ServerSettings.Name);
-        Assert.False(admin.HasAnyChanges);
+        Assert.False(admin.HasChanges);
 
         admin.ServerSettings.Name = "Neu ";
         admin.ServerSettings.WelcomeText = "Zeile 1" + (char)13 + (char)10 + "Zeile 2";

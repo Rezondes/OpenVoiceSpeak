@@ -41,6 +41,7 @@ sealed class PageFlowRig
             dialogs: () => Dialogs, checkNow: () => Task.FromResult(""), importSound: (_, _) => (null, null), previewSound: (_, _, _) => { },
             applyLive: live =>
             {
+                if (ApplyLiveThrows) throw new InvalidOperationException("Testmeldung");
                 Calls.Add("applyLive");
                 AppliedLive.Add(live);
             },
@@ -92,6 +93,12 @@ sealed class PageFlowRig
     public Queue<LeaveChoice> Answers { get; } = new();
 
     public bool AskThrows { get; set; }
+
+    /// <summary>Runs while the question is open, before the answer comes back.</summary>
+    public Action? WhileAsked { get; set; }
+
+    /// <summary>The engine refuses the settings handed to it live.</summary>
+    public bool ApplyLiveThrows { get; set; }
 
     public int Asked { get; private set; }
 
@@ -157,6 +164,7 @@ sealed class PageFlowRig
     Task<LeaveChoice> AskAsync()
     {
         Asked++;
+        WhileAsked?.Invoke();
         return AskThrows ? throw new InvalidOperationException("Testmeldung") : Task.FromResult(Answers.Dequeue());
     }
 }

@@ -12,7 +12,7 @@ using OVS.Shared;
 
 namespace OVS.Client.ViewModels;
 
-public sealed partial class SettingsViewModel : ObservableObject
+public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
 {
     readonly Func<Task<KeyChord>>? captureChord;
 
@@ -168,6 +168,11 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Starts (true) or ends (false) the self test; the main view model mutes, deafens and restores.</summary>
     public Func<bool, Task>? SetSelfTest { get; set; }
+
+    /// <summary>Ends the live preview when the page closes: what is saved counts again.</summary>
+    public Action? EndPreview { get; set; }
+
+    public void Detach() => EndPreview?.Invoke();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelfTestText))]

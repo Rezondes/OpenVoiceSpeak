@@ -1003,10 +1003,10 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // the settings: saving while the devices restart, the update check
         var restart = new TaskCompletionSource();
         var check = new TaskCompletionSource<string>();
-        vm.PageFlow.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
+        vm.PageFlow.ShownPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
         vm.PageFlow.Page = Page.Settings;
-        _ = vm.PageFlow.SettingsPage.SaveCommand.ExecuteAsync(null);
-        _ = vm.PageFlow.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null);
+        _ = vm.PageFlow.SettingsPage!.SaveCommand.ExecuteAsync(null);
+        _ = vm.PageFlow.SettingsPage!.CheckUpdatesCommand.ExecuteAsync(null);
         time.Advance(PendingViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
         var settings = main.GetVisualDescendants().OfType<SettingsView>().Single();

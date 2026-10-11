@@ -12,7 +12,7 @@ namespace OVS.Client.ViewModels;
 /// the links and logs tabs. Every tab only shows with the matching right. It lists the sections once (<see cref="AdminSection"/>)
 /// and asks them to refresh, follow the server and let go of their routes.
 /// </summary>
-public sealed partial class AdminViewModel : ObservableObject
+public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
 {
     readonly ServerViewModel server;
 
@@ -71,10 +71,10 @@ public sealed partial class AdminViewModel : ObservableObject
     internal ServerIconViewModel ServerIcon { get; }
 
     /// <summary>The page asks to be closed (close button or Esc).</summary>
-    public event Action? CloseRequested;
+    public event Action? LeaveRequested;
 
     [RelayCommand]
-    void Close() => CloseRequested?.Invoke();
+    void Close() => LeaveRequested?.Invoke();
 
     public void Detach()
     {
@@ -108,7 +108,15 @@ public sealed partial class AdminViewModel : ObservableObject
     /// <summary>Every place in saving order (the edited group comes first).</summary>
     internal IReadOnlyList<AdminPlace> Places { get; }
 
-    public bool HasAnyChanges => Places.Any(p => p.HasChanges());
+    public bool HasChanges => Places.Any(p => p.HasChanges());
+
+    /// <summary>Package 114: saves every place with changes in saving order; false at the first one that fails.</summary>
+    public async Task<bool> SaveAsync()
+    {
+        foreach (var place in Places.Where(candidate => candidate.HasChanges()))
+            if (!await place.SaveAsync()) return false; // its error shows on the page, which stays
+        return true;
+    }
 
     /// <summary>Asks before leaving the place (another tab, another group); false = stay.</summary>
     internal async Task<bool> ConfirmLeaveAsync(AdminPlace place)

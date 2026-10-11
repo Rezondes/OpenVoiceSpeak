@@ -67,17 +67,17 @@ public sealed class AdminPlaceTests
     }
 
     [AvaloniaFact]
-    public void HasAnyChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse()
+    public void HasChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse()
     {
         var admin = Admin();
         admin.Links.UnlinkAll();
         Assert.False(admin.GroupList.Place.HasChanges());
         Assert.False(admin.ServerSettings.Place.HasChanges());
-        Assert.True(admin.HasAnyChanges);
+        Assert.True(admin.HasChanges);
 
         admin.Links.Place.Discard();
 
-        Assert.False(admin.HasAnyChanges);
+        Assert.False(admin.HasChanges);
     }
 
     [AvaloniaFact]

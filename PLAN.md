@@ -6976,7 +6976,7 @@ Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Pac
 (as built, from three review rounds: the settings page compares with what it showed when it opened, not with the file, since the sliders do not round-trip exactly; the server tab and an edited group follow the server in the fields the user did not touch, so a save never undoes another admin; edited group rows survive server updates, which used to drop them silently; a device list arriving with the page open no longer crashes the change check)
 
 1. `LeaveGuardTests > "Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert"` (AC1)
-2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"`, `AdminPlaceTests > "HasAnyChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse"` (AC1)
+2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"`, `AdminPlaceTests > "HasChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse"` (AC1)
 3. `LeaveGuardTests > "LeaveWithChanges_Asks_KeepEditingStays"`, `"ConnectAsync_AdminHasChangesAndUserStays_AsksOnceAndKeepsTheShownServer"`, `"SettingsCloseButton_UnsavedChanges_AsksFirst"`, `PageFlowViewModelTests > "AdminPageCloseButton_UnsavedChanges_AsksFirstAndTheAnswerDecides"` (AC1, AC2)
    - Given: a fake `AskLeave` that answers each choice in turn.
    - Expected: correct behaviour for a page change, a disconnect and a window close.

@@ -162,7 +162,7 @@ public partial class MainWindow : Window
     void OnPageFlowPropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs args)
     {
         if (watchedVm is not { } mainViewModel) return;
-        if (args.PropertyName is not (nameof(PageFlowViewModel.Page) or nameof(PageFlowViewModel.SettingsPage) or nameof(PageFlowViewModel.AdminPage))) return;
+        if (args.PropertyName is not (nameof(PageFlowViewModel.Page) or nameof(PageFlowViewModel.ShownPage))) return;
         var pageFlow = mainViewModel.PageFlow;
         var before = pageFlow.Page;
         PageMotion.Leave(PageHost, PageGhost, () => pageFlow.Page == before ? null : PageMotion.Sideways(!pageFlow.IsHomePage));

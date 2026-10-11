@@ -1487,15 +1487,15 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         // ---- the settings: saving while the audio devices restart, the update check ----
         var restart = new TaskCompletionSource();
         var check = new TaskCompletionSource<string>();
-        vm.PageFlow.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
+        vm.PageFlow.ShownPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
         vm.PageFlow.Page = Page.Settings;
         Dispatcher.UIThread.RunJobs();
-        Waits("update check", () => _ = vm.PageFlow.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null), () =>
+        Waits("update check", () => _ = vm.PageFlow.SettingsPage!.CheckUpdatesCommand.ExecuteAsync(null), () =>
         {
             check.SetResult("Aktuell");
             return [];
         });
-        Waits("settings save", () => _ = vm.PageFlow.SettingsPage.SaveCommand.ExecuteAsync(null), () =>
+        Waits("settings save", () => _ = vm.PageFlow.SettingsPage!.SaveCommand.ExecuteAsync(null), () =>
         {
             restart.SetResult();
             return [];

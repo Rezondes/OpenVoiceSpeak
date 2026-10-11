@@ -965,4 +965,23 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.False(vm.Checking.IsBusy);
         Assert.Equal("Aktuell", vm.UpdateStatus);
     }
+
+    [Fact]
+    public void Detach_EndPreviewSet_RunsItOnce()
+    {
+        int ended = 0;
+        var page = new SettingsViewModel(new ClientSettings(), [], [], new ManualTimeProvider()) { EndPreview = () => ended++ };
+
+        page.Detach();
+
+        Assert.Equal(1, ended);
+    }
+
+    [Fact]
+    public void Detach_NoEndPreview_DoesNotThrow()
+    {
+        var page = new SettingsViewModel(new ClientSettings(), [], [], new ManualTimeProvider());
+
+        Assert.Null(Record.Exception(page.Detach));
+    }
 }

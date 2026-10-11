@@ -1107,4 +1107,47 @@ public class AdminViewModelTests
 
         Assert.Empty(raised);
     }
+
+    [Fact]
+    public async Task SaveAsync_NoPlaceChanged_ReturnsTrueAndSendsNothing()
+    {
+        var sent = new List<Request>();
+        var admin = new AdminViewModel(FakeServers.Admin(sent, new ManualTimeProvider()));
+
+        Assert.True(await HangGuard.Bound(admin.SaveAsync()));
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public async Task SaveAsync_SecondPlaceRefused_StopsThereAndReturnsFalse()
+    {
+        var sent = new List<Request>();
+        var admin = new AdminViewModel(FakeServers.Admin(sent, new ManualTimeProvider(),
+            reply: request => request is SetChannelLinks ? new Error(request.RequestId, ReasonCodes.PermissionDenied) : null));
+        admin.Links.UnlinkAll();
+        admin.ServerSettings.Name = "Neu";
+
+        Assert.False(await HangGuard.Bound(admin.SaveAsync()));
+        Assert.Single(sent.OfType<SetChannelLinks>());
+        Assert.DoesNotContain(sent, request => request is UpdateServerSettings);
+    }
+
+    [Fact]
+    public async Task SaveAsync_AllPlacesConfirmed_ReturnsTrue()
+    {
+        var sent = new List<Request>();
+        var admin = new AdminViewModel(FakeServers.Admin(sent, new ManualTimeProvider(), reply: request => request switch
+        {
+            SetChannelLinks => new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid),
+            UpdateServerSettings => new ServerSettingsChanged(new ServerSettingsInfo("Neu", "Hallo", true)),
+            _ => null,
+        }));
+        admin.Links.UnlinkAll();
+        admin.ServerSettings.Name = "Neu";
+
+        Assert.True(await HangGuard.Bound(admin.SaveAsync()));
+        Assert.Single(sent.OfType<SetChannelLinks>());
+        Assert.Single(sent.OfType<UpdateServerSettings>());
+        Assert.False(admin.HasChanges);
+    }
 }
