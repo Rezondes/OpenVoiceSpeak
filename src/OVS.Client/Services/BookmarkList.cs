@@ -72,10 +72,9 @@ internal sealed class BookmarkList : ObservableObject
     internal void Remember(ConnectChoice choice, bool passwordConfirmed)
     {
         var saved = bookmarks();
-        bool IsServer(Bookmark bookmark) => bookmark.Host == choice.Host && bookmark.Port == choice.Port;
-        var old = saved.Find(IsServer);
+        var old = saved.Find(bookmark => IsServer(bookmark, choice.Host, choice.Port));
         var password = !passwordConfirmed ? old?.ProtectedPassword : ProtectIfSaved(choice.SavePassword, choice.Password);
-        saved.RemoveAll(IsServer);
+        saved.RemoveAll(bookmark => IsServer(bookmark, choice.Host, choice.Port));
         saved.Insert(0, new Bookmark(old?.Name ?? $"{choice.Host}:{choice.Port}", choice.Host, choice.Port, choice.Nickname, password));
         save();
         if (passwordConfirmed) log($"Bookmark saved{(password is null ? "" : ", password stored encrypted")}");
@@ -85,15 +84,24 @@ internal sealed class BookmarkList : ObservableObject
     internal async Task EditAsync(Bookmark bookmark)
     {
         if (dialogs().EditBookmark is not { } askEdit || await askEdit(bookmark) is not { } answer) return;
-        var saved = bookmarks();
+        var others = bookmarks().Where(other => !ReferenceEquals(other, bookmark) && IsServer(other, answer.Host, answer.Port)).ToList();
+        if (others.Count > 0 && (dialogs().Confirm is not { } confirm
+            || !await confirm(string.Format(Strings.Confirm_ReplaceBookmark, others[0].Name, $"{answer.Host}:{answer.Port}")))) return;
+        var saved = bookmarks(); // read again: a settings apply may have replaced the list during the question
         int index = saved.IndexOf(bookmark);
         if (index < 0) return;
         var password = ProtectIfSaved(answer.SavePassword, answer.Password);
-        saved[index] = new Bookmark(answer.Name, answer.Host, answer.Port, answer.Nickname, password);
+        var edited = new Bookmark(answer.Name, answer.Host, answer.Port, answer.Nickname, password);
+        saved[index] = edited;
+        saved.RemoveAll(other => !ReferenceEquals(other, edited) && IsServer(other, answer.Host, answer.Port));
         save();
-        log($"Bookmark '{bookmark.Name}' changed: {answer.Name}, {answer.Host}:{answer.Port}, {answer.Nickname}, password {(password is null ? "not stored" : "stored")}");
+        var replaced = others.Count > 0 ? $", replaces '{others[0].Name}'" : "";
+        log($"Bookmark '{bookmark.Name}' changed: {answer.Name}, {answer.Host}:{answer.Port}, {answer.Nickname}, password {(password is null ? "not stored" : "stored")}{replaced}");
         Refresh();
     }
+
+    /// <summary>Host plus port is a bookmark's identity: one bookmark per server (exact host match).</summary>
+    static bool IsServer(Bookmark bookmark, string host, int port) => bookmark.Host == host && bookmark.Port == port;
 
     internal async Task DeleteAsync(Bookmark bookmark)
     {

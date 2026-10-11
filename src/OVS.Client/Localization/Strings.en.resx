@@ -39,6 +39,7 @@
   <data name="Chat_InvalidChars" xml:space="preserve"><value>The message contains control or text direction characters that are not allowed.</value></data>
   <data name="Chat_Offline" xml:space="preserve"><value>{0} is offline.</value></data>
   <data name="Confirm_DeleteBookmark" xml:space="preserve"><value>Delete bookmark "{0}"?</value></data>
+  <data name="Confirm_ReplaceBookmark" xml:space="preserve"><value>A bookmark for {1} exists already: "{0}". Replace it?</value></data>
   <data name="Confirm_DeleteChannel" xml:space="preserve"><value>Delete channel "{0}"? Users in it end up in the default channel.</value></data>
   <data name="Device_Default" xml:space="preserve"><value>Default device</value></data>
   <data name="Device_Loading" xml:space="preserve"><value>Loading devices ...</value></data>

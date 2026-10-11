@@ -1,5 +1,6 @@
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
+using OVS.Client.Localization;
 using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Tests.TestSupport;
@@ -320,6 +321,223 @@ public sealed class BookmarkListTests
 
         Assert.Empty(bookmarks);
         Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task EditAsync_AddressOfAnotherBookmarkAndReplaceConfirmed_LeavesOneBookmarkForThatAddress()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [club, home];
+        dialogs = EditTo("Home", "a", 1, confirm: _ => Task.FromResult(true));
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        var left = Assert.Single(bookmarks);
+        Assert.Equal(("Home", "a", 1), (left.Name, left.Host, left.Port));
+    }
+
+    // ---- editing onto the address of another bookmark (25h1) ----
+
+    static DialogCallbacks EditTo(string name, string host, int port, Func<string, Task<bool>>? confirm, string? password = null, bool savePassword = false) =>
+        new()
+        {
+            EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit(name, host, port, "anna", password, savePassword)),
+            Confirm = confirm,
+        };
+
+    [Fact]
+    public async Task EditAsync_AddressUnchanged_AsksNothing()
+    {
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [home];
+        int asked = 0;
+        dialogs = EditTo("Heim", "b", 2, _ =>
+        {
+            asked++;
+            return Task.FromResult(true);
+        });
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal(0, asked);
+        Assert.Equal("Heim", Assert.Single(bookmarks).Name);
+    }
+
+    [Fact]
+    public async Task EditAsync_SameHostOtherPort_AsksNothingAndKeepsBoth()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "a", 2, "anna");
+        bookmarks = [club, home];
+        int asked = 0;
+        dialogs = EditTo("Home", "a", 3, _ =>
+        {
+            asked++;
+            return Task.FromResult(true);
+        });
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal(0, asked);
+        Assert.Equal([1, 3], bookmarks.Select(bookmark => bookmark.Port));
+    }
+
+    [Fact]
+    public async Task EditAsync_OtherHostSamePort_AsksNothingAndKeepsBoth()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 1, "anna");
+        bookmarks = [club, home];
+        int asked = 0;
+        dialogs = EditTo("Home", "c", 1, _ =>
+        {
+            asked++;
+            return Task.FromResult(true);
+        });
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal(0, asked);
+        Assert.Equal(["a", "c"], bookmarks.Select(bookmark => bookmark.Host));
+    }
+
+    [Fact]
+    public async Task EditAsync_AddressOfAnotherBookmarkAndReplaceDeclined_ChangesNothingSavesNothingLogsNothing()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [club, home];
+        dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(false));
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal([club, home], bookmarks);
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task EditAsync_AddressOfAnotherBookmark_AsksWithItsNameAndAddress()
+    {
+        bookmarks = [new Bookmark("Club", "a", 1, "berta"), new Bookmark("Home", "b", 2, "anna")];
+        string? asked = null;
+        dialogs = EditTo("Home", "a", 1, question =>
+        {
+            asked = question;
+            return Task.FromResult(false);
+        });
+
+        await HangGuard.Bound(list.EditAsync(bookmarks[1]));
+
+        Assert.Equal(string.Format(Strings.Confirm_ReplaceBookmark, "Club", "a:1"), asked);
+    }
+
+    [Fact]
+    public async Task EditAsync_AddressOfAnotherBookmarkWithoutConfirmDialog_ChangesNothing()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [club, home];
+        dialogs = EditTo("Home", "a", 1, confirm: null);
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal([club, home], bookmarks);
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task EditAsync_TwoOthersHaveTheAddress_AsksOnceAndRemovesBoth()
+    {
+        var first = new Bookmark("Eins", "a", 1, "berta");
+        var second = new Bookmark("Zwei", "a", 1, "carla");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [first, home, second];
+        int asked = 0;
+        dialogs = EditTo("Home", "a", 1, _ =>
+        {
+            asked++;
+            return Task.FromResult(true);
+        });
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal(1, asked);
+        Assert.Equal("Home", Assert.Single(bookmarks).Name);
+        Assert.Equal(1, saves);
+    }
+
+    [Fact]
+    public async Task EditAsync_ConfirmThrows_PropagatesAndSavesNothing()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [club, home];
+        dialogs = EditTo("Home", "a", 1, _ => throw new InvalidOperationException("dialog failed"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(list.EditAsync(home)));
+
+        Assert.Equal([club, home], bookmarks);
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task EditAsync_BookmarkRemovedWhileAsked_ChangesNothing()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [club, home];
+        dialogs = EditTo("Home", "a", 1, _ =>
+        {
+            bookmarks = [club]; // a settings apply replaced the list while the question was open
+            return Task.FromResult(true);
+        });
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Same(club, Assert.Single(bookmarks));
+        Assert.Equal((0, 0), (saves, lines.Count));
+    }
+
+    [Fact]
+    public async Task EditAsync_Replaced_TilesHaveOneItemPerAddress()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [club, home];
+        list.Refresh();
+        dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(true));
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal(["Home"], list.Items.Select(tile => tile.Name));
+        Assert.Equal("a:1", Assert.Single(list.Items).Address);
+    }
+
+    [Fact]
+    public async Task EditAsync_Replaced_LogsTheReplacedName()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta");
+        var home = new Bookmark("Home", "b", 2, "anna");
+        bookmarks = [club, home];
+        dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(true));
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal("Bookmark 'Home' changed: Home, a:1, anna, password not stored, replaces 'Club'", Assert.Single(lines));
+    }
+
+    [Fact]
+    public async Task EditAsync_Replaced_KeepsThePasswordOfTheEditedBookmark()
+    {
+        var club = new Bookmark("Club", "a", 1, "berta", PasswordProtector.Protect("von-club"));
+        var home = new Bookmark("Home", "b", 2, "anna", PasswordProtector.Protect("von-home"));
+        bookmarks = [club, home];
+        dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(true), password: "von-home", savePassword: true);
+
+        await HangGuard.Bound(list.EditAsync(home));
+
+        Assert.Equal("von-home", Assert.Single(bookmarks).SavedPassword());
     }
 
     // ---- deleting ----

@@ -39,6 +39,7 @@
   <data name="Chat_InvalidChars" xml:space="preserve"><value>Die Nachricht enthält unerlaubte Steuer- oder Richtungszeichen.</value></data>
   <data name="Chat_Offline" xml:space="preserve"><value>{0} ist offline.</value></data>
   <data name="Confirm_DeleteBookmark" xml:space="preserve"><value>Lesezeichen "{0}" löschen?</value></data>
+  <data name="Confirm_ReplaceBookmark" xml:space="preserve"><value>Für {1} gibt es schon das Lesezeichen "{0}". Ersetzen?</value></data>
   <data name="Confirm_DeleteChannel" xml:space="preserve"><value>Channel "{0}" löschen? Nutzer darin landen im Standard-Channel.</value></data>
   <data name="Device_Default" xml:space="preserve"><value>Standardgerät</value></data>
   <data name="Device_Loading" xml:space="preserve"><value>Geräte werden geladen ...</value></data>
