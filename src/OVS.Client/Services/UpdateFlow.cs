@@ -71,7 +71,7 @@ internal sealed partial class UpdateFlow : ObservableObject
             return Strings.Update_Latest;
         }
         log($"Update available: {offer.Version} ({offer.Tag})");
-        if (!await ask(offer) || Install is not { } install) return string.Format(Strings.Update_Available, offer.Version);
+        if (Install is not { } install || !await ask(offer)) return string.Format(Strings.Update_Available, offer.Version);
 
         setStatus(string.Format(Strings.Update_Downloading, offer.Version));
         log($"Installing update {offer.Version}");

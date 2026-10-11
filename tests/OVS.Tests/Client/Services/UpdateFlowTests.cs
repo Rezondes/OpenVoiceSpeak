@@ -198,7 +198,7 @@ public sealed class UpdateFlowTests
     }
 
     [Fact]
-    public async Task CheckAsync_OfferAcceptedWithoutInstall_AsksOnceSaysAvailableAndShowsNoCard()
+    public async Task CheckAsync_OfferWithoutInstall_AsksNothingSaysAvailableAndShowsNoCard()
     {
         LookUpReturns(new UpdateCheckResult(Offer));
         var asked = 0;
@@ -210,10 +210,93 @@ public sealed class UpdateFlowTests
 
         var answer = await HangGuard.Bound(flow.CheckAsync());
 
-        Assert.Equal(1, asked);
+        Assert.Equal(0, asked);
         Assert.Equal(string.Format(Strings.Update_Available, Offer.Version), answer);
         Assert.Empty(statuses);
         Assert.Empty(shownProgress);
+    }
+
+    [Fact]
+    public async Task CheckAsync_OfferWithoutInstall_LogsOnlyTheAvailableLine()
+    {
+        LookUpReturns(new UpdateCheckResult(Offer));
+        offerDialog = _ => Task.FromResult(true);
+
+        await HangGuard.Bound(flow.CheckAsync());
+
+        Assert.Equal([AvailableLine], logLines);
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public async Task CheckAsync_OfferWithoutInstallAndWithoutDialog_SaysAvailable()
+    {
+        LookUpReturns(new UpdateCheckResult(Offer));
+        offerDialog = null;
+
+        var answer = await HangGuard.Bound(flow.CheckAsync());
+
+        Assert.Equal(string.Format(Strings.Update_Available, Offer.Version), answer);
+        Assert.Equal([AvailableLine], logLines);
+    }
+
+    [Fact]
+    public async Task CheckAsync_InstallClearedBetweenTwoChecks_TheSecondAsksNothing()
+    {
+        LookUpReturns(new UpdateCheckResult(Offer));
+        InstallReturns("disk full");
+        var asked = 0;
+        offerDialog = _ =>
+        {
+            asked++;
+            return Task.FromResult(true);
+        };
+        await HangGuard.Bound(flow.CheckAsync());
+        flow.Install = null;
+
+        var answer = await HangGuard.Bound(flow.CheckAsync());
+
+        Assert.Equal(1, asked);
+        Assert.Equal(1, installs);
+        Assert.Equal(string.Format(Strings.Update_Available, Offer.Version), answer);
+    }
+
+    [Fact]
+    public async Task Use_NoInstaller_CheckAsyncAsksNothing()
+    {
+        var http = new FakeHttp(_ => FakeHttp.Json(Release("deploy-bbbbbbb")));
+        var asked = 0;
+        offerDialog = _ =>
+        {
+            asked++;
+            return Task.FromResult(true);
+        };
+        flow.Use(Checker(http, isCi: true), null);
+
+        var answer = await HangGuard.Bound(flow.CheckAsync());
+
+        Assert.Single(http.Requests);
+        Assert.Equal(0, asked);
+        Assert.Equal(string.Format(Strings.Update_Available, "280926.0b2c"), answer);
+    }
+
+    [Fact]
+    public async Task CheckAtStartAsync_NoInstaller_AsksNothing()
+    {
+        LookUpReturns(new UpdateCheckResult(Offer));
+        checkAtStart = true;
+        var asked = 0;
+        offerDialog = _ =>
+        {
+            asked++;
+            return Task.FromResult(true);
+        };
+
+        await HangGuard.Bound(flow.CheckAtStartAsync());
+
+        Assert.Equal(1, lookUps);
+        Assert.Equal(0, asked);
+        Assert.Equal([AvailableLine], logLines);
     }
 
     // ---- the install ----
