@@ -46,7 +46,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     /// <summary>Opens the settings page, whose level meter opens the microphone, and waits until it is open.</summary>
     static async Task OpenSettingsWithMicrophoneAsync(MainViewModel mainViewModel, FakeAudioHardware hardware)
     {
-        mainViewModel.OpenSettings();
+        mainViewModel.PageFlow.OpenSettings();
         await AsyncWait.Until(() => hardware.Counts.MicsOpen == 1);
     }
 
@@ -285,10 +285,10 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         await using var mainViewModel = CreateMainViewModel(CreateHardwareWhoseLaterListsWait(later, ListOneEach));
         await AsyncWait.Until(() => mainViewModel.Devices.Known is not null); // the list loads in the background
 
-        mainViewModel.OpenSettings(); // its own refresh waits
+        mainViewModel.PageFlow.OpenSettings(); // its own refresh waits
 
-        Assert.Equal<string?>([null, Headset.Id], mainViewModel.SettingsPage!.Inputs.Select(option => option.Id));
-        Assert.Equal<string?>([null, Speakers.Id], mainViewModel.SettingsPage.Outputs.Select(option => option.Id));
+        Assert.Equal<string?>([null, Headset.Id], mainViewModel.PageFlow.SettingsPage!.Inputs.Select(option => option.Id));
+        Assert.Equal<string?>([null, Speakers.Id], mainViewModel.PageFlow.SettingsPage.Outputs.Select(option => option.Id));
         later.Set();
     }
 
@@ -319,13 +319,13 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         using var later = new ManualResetEventSlim();
         var hardware = new FakeAudioHardware { Listing = direction => { later.Wait(HangGuard.Limit); return ListOneEach(direction); } };
         await using var mainViewModel = CreateMainViewModel(hardware);
-        mainViewModel.OpenSettings(); // nothing is known yet
+        mainViewModel.PageFlow.OpenSettings(); // nothing is known yet
 
         later.Set();
-        await AsyncWait.Until(() => mainViewModel.SettingsPage!.Outputs.Count == 2);
+        await AsyncWait.Until(() => mainViewModel.PageFlow.SettingsPage!.Outputs.Count == 2);
 
-        Assert.Equal<string?>([null, Headset.Id], mainViewModel.SettingsPage!.Inputs.Select(option => option.Id));
-        Assert.Equal<string?>([null, Speakers.Id], mainViewModel.SettingsPage.Outputs.Select(option => option.Id));
+        Assert.Equal<string?>([null, Headset.Id], mainViewModel.PageFlow.SettingsPage!.Inputs.Select(option => option.Id));
+        Assert.Equal<string?>([null, Speakers.Id], mainViewModel.PageFlow.SettingsPage.Outputs.Select(option => option.Id));
     }
 
     [Fact]
@@ -335,11 +335,11 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         await using var mainViewModel = CreateMainViewModel(CreateHardwareWhoseLaterListsWait(later,
             direction => direction == AudioDirection.Input ? [Webcam] : [MonitorOutput]));
         await AsyncWait.Until(() => mainViewModel.Devices.Known is not null);
-        mainViewModel.OpenSettings(); // shows the list from the start, its own refresh waits
+        mainViewModel.PageFlow.OpenSettings(); // shows the list from the start, its own refresh waits
 
         later.Set();
-        await AsyncWait.Until(() => mainViewModel.SettingsPage!.Inputs.Any(option => option.Id == Webcam.Id));
+        await AsyncWait.Until(() => mainViewModel.PageFlow.SettingsPage!.Inputs.Any(option => option.Id == Webcam.Id));
 
-        Assert.Equal<string?>([null, Webcam.Id], mainViewModel.SettingsPage!.Inputs.Select(option => option.Id));
+        Assert.Equal<string?>([null, Webcam.Id], mainViewModel.PageFlow.SettingsPage!.Inputs.Select(option => option.Id));
     }
 }

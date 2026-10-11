@@ -38,7 +38,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     MainViewModel Main(bool connected = true)
     {
         var dialogs = Dialogs();
-        var vm = MainViewModelSetup.Create(dir, a => a(), dialogs: dialogs);
+        // posts go through the UI thread, as in the app: the device listing of the pool never runs while a test edits a page
+        var vm = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action), dialogs: dialogs);
         if (connected) MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent, dialogs: dialogs));
         return vm;
     }
@@ -61,8 +62,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     public async Task Admin_HasChanges_GroupDraftServerSettingsLinks()
     {
         var vm = Main();
-        await vm.OpenAdminAsync();
-        var admin = vm.AdminPage!;
+        await vm.PageFlow.OpenAdminAsync();
+        var admin = vm.PageFlow.AdminPage!;
         Assert.False(admin.HasAnyChanges);
 
         admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
@@ -90,18 +91,18 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     public async Task LeaveWithChanges_Asks_KeepEditingStays()
     {
         var vm = Main();
-        vm.OpenSettings();
-        vm.SettingsPage!.VadThresholdDb -= 5;
+        vm.PageFlow.OpenSettings();
+        vm.PageFlow.SettingsPage!.VadThresholdDb -= 5;
 
         answers.Enqueue(LeaveChoice.Stay);
-        await vm.OpenAdminCommand.ExecuteAsync(null); // a page change
+        await vm.PageFlow.OpenAdminCommand.ExecuteAsync(null); // a page change
         Assert.Equal(1, asked);
-        Assert.True(vm.IsSettingsPage);
-        Assert.True(vm.SettingsPage!.HasChanges); // the edit is untouched
+        Assert.True(vm.PageFlow.IsSettingsPage);
+        Assert.True(vm.PageFlow.SettingsPage!.HasChanges); // the edit is untouched
 
         answers.Enqueue(LeaveChoice.Stay);
-        await vm.ClosePageAsync(); // Esc, the X
-        Assert.True(vm.IsSettingsPage);
+        await vm.PageFlow.ClosePageAsync(); // Esc, the X
+        Assert.True(vm.PageFlow.IsSettingsPage);
 
         // disconnecting keeps the settings page: nothing of it is lost, nothing is asked
         await vm.Connection.DisconnectCommand.ExecuteAsync(null);
@@ -110,16 +111,35 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     }
 
     [AvaloniaFact]
+    public void SettingsCloseButton_UnsavedChanges_AsksFirst()
+    {
+        var mainViewModel = Main();
+        mainViewModel.PageFlow.OpenSettings();
+        var settings = mainViewModel.PageFlow.SettingsPage!;
+        settings.VadThresholdDb -= 5;
+
+        answers.Enqueue(LeaveChoice.Stay);
+        settings.LeaveCommand.Execute(null);
+        Assert.Equal(1, asked);
+        Assert.True(mainViewModel.PageFlow.IsSettingsPage);
+
+        answers.Enqueue(LeaveChoice.Discard);
+        settings.LeaveCommand.Execute(null);
+        Assert.Equal(2, asked);
+        Assert.True(mainViewModel.PageFlow.IsHomePage);
+    }
+
+    [AvaloniaFact]
     public async Task Admin_Disconnect_AsksAndStays()
     {
         var vm = Main();
-        await vm.OpenAdminAsync();
-        vm.AdminPage!.ServerSettings.Name = "Neu";
+        await vm.PageFlow.OpenAdminAsync();
+        vm.PageFlow.AdminPage!.ServerSettings.Name = "Neu";
         answers.Enqueue(LeaveChoice.Stay);
         await vm.Connection.DisconnectCommand.ExecuteAsync(null);
         Assert.Equal(1, asked);
         Assert.NotNull(vm.Server);
-        Assert.True(vm.IsAdminPage);
+        Assert.True(vm.PageFlow.IsAdminPage);
     }
 
     [AvaloniaFact]
@@ -127,8 +147,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     {
         var mainViewModel = Main();
         var shown = mainViewModel.Server;
-        await mainViewModel.OpenAdminAsync();
-        mainViewModel.AdminPage!.ServerSettings.Name = "Neu";
+        await mainViewModel.PageFlow.OpenAdminAsync();
+        mainViewModel.PageFlow.AdminPage!.ServerSettings.Name = "Neu";
         answers.Enqueue(LeaveChoice.Stay);
 
         await mainViewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", 1, "anna", null, SaveBookmark: false));
@@ -142,11 +162,12 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     {
         var vm = Main();
         var saved = vm.Settings.VadThresholdDb;
-        vm.OpenSettings();
-        vm.SettingsPage!.VadThresholdDb = saved - 7;
+        vm.PageFlow.OpenSettings();
+        vm.PageFlow.SettingsPage!.VadThresholdDb = saved - 7;
         answers.Enqueue(LeaveChoice.Discard);
-        await vm.OpenAdminCommand.ExecuteAsync(null);
-        Assert.True(vm.IsAdminPage);
+        await vm.PageFlow.OpenAdminCommand.ExecuteAsync(null);
+        Assert.Equal(1, asked);
+        Assert.True(vm.PageFlow.IsAdminPage);
         Assert.Equal(saved, vm.Settings.VadThresholdDb);
     }
 
@@ -156,49 +177,49 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         // settings: saved, then the new page
         var vm = Main();
         var saved = vm.Settings.VadThresholdDb;
-        vm.OpenSettings();
-        vm.SettingsPage!.VadThresholdDb = saved - 7;
+        vm.PageFlow.OpenSettings();
+        vm.PageFlow.SettingsPage!.VadThresholdDb = saved - 7;
         answers.Enqueue(LeaveChoice.Save);
-        await vm.OpenAdminCommand.ExecuteAsync(null);
-        Assert.True(vm.IsAdminPage);
+        await vm.PageFlow.OpenAdminCommand.ExecuteAsync(null);
+        Assert.True(vm.PageFlow.IsAdminPage);
         Assert.Equal(saved - 7, vm.Settings.VadThresholdDb);
 
         // a group the server refuses: the page stays with its error
-        var admin = vm.AdminPage!;
+        var admin = vm.PageFlow.AdminPage!;
         admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
         Rename(admin, "Umbenannt");
         answers.Enqueue(LeaveChoice.Save);
-        var leaving = vm.ClosePageAsync();
+        var leaving = vm.PageFlow.ClosePageAsync();
         var update = sent.OfType<UpdateGroup>().Last();
         vm.Server!.Apply(new Error(update.RequestId, ReasonCodes.PermissionDenied));
         await leaving;
-        Assert.True(vm.IsAdminPage);
+        Assert.True(vm.PageFlow.IsAdminPage);
         Assert.True(admin.GroupList.Place.HasChanges());
 
         // confirmed by the server's groups: the page goes
         answers.Enqueue(LeaveChoice.Save);
-        leaving = vm.ClosePageAsync();
+        leaving = vm.PageFlow.ClosePageAsync();
         update = sent.OfType<UpdateGroup>().Last();
         var groups = vm.Server.Mirror.Groups.Select(g => g.Id == update.GroupId ? g with { Name = update.Name } : g).ToList();
         vm.Server.Apply(new GroupsChanged(groups));
         await leaving;
-        Assert.True(vm.IsHomePage);
+        Assert.True(vm.PageFlow.IsHomePage);
     }
 
     [AvaloniaFact]
     public async Task CancelAndDiscardButtons_DoNotAsk()
     {
         var vm = Main();
-        vm.OpenSettings();
-        vm.SettingsPage!.VadThresholdDb -= 5;
-        vm.SettingsPage.CancelCommand.Execute(null); // "Abbrechen"
-        Assert.True(vm.IsHomePage);
+        vm.PageFlow.OpenSettings();
+        vm.PageFlow.SettingsPage!.VadThresholdDb -= 5;
+        vm.PageFlow.SettingsPage.CancelCommand.Execute(null); // "Abbrechen"
+        Assert.True(vm.PageFlow.IsHomePage);
 
-        await vm.OpenAdminAsync();
-        var links = vm.AdminPage!.Links;
+        await vm.PageFlow.OpenAdminAsync();
+        var links = vm.PageFlow.AdminPage!.Links;
         links.UnlinkAll();
         links.DiscardCommand.Execute(null); // "Verwerfen"
-        Assert.False(vm.AdminPage.HasAnyChanges);
+        Assert.False(vm.PageFlow.AdminPage.HasAnyChanges);
         Assert.Equal(0, asked);
     }
 
@@ -208,8 +229,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        await vm.OpenAdminAsync();
-        vm.AdminPage!.ServerSettings.Name = "Neu";
+        await vm.PageFlow.OpenAdminAsync();
+        vm.PageFlow.AdminPage!.ServerSettings.Name = "Neu";
         answers.Enqueue(LeaveChoice.Stay);
         main.Close();
         Dispatcher.UIThread.RunJobs();
@@ -230,27 +251,27 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        await vm.OpenAdminAsync();
+        await vm.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         var page = Page(main);
         var tabs = page.FindControl<TabControl>("Tabs")!;
         var serverTab = page.FindControl<TabItem>("ServerTab")!;
         tabs.SelectedItem = serverTab;
         Dispatcher.UIThread.RunJobs();
-        vm.AdminPage!.ServerSettings.Name = "Neu";
+        vm.PageFlow.AdminPage!.ServerSettings.Name = "Neu";
 
         answers.Enqueue(LeaveChoice.Stay);
         tabs.SelectedItem = page.FindControl<TabItem>("GroupsTab");
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(1, asked);
         Assert.Same(serverTab, tabs.SelectedItem);
-        Assert.Equal("Neu", vm.AdminPage.ServerSettings.Name);
+        Assert.Equal("Neu", vm.PageFlow.AdminPage.ServerSettings.Name);
 
         answers.Enqueue(LeaveChoice.Discard);
         tabs.SelectedItem = page.FindControl<TabItem>("GroupsTab");
         Dispatcher.UIThread.RunJobs();
         Assert.Same(page.FindControl<TabItem>("GroupsTab"), tabs.SelectedItem);
-        Assert.Equal("Gilde", vm.AdminPage.ServerSettings.Name); // discarded
+        Assert.Equal("Gilde", vm.PageFlow.AdminPage.ServerSettings.Name); // discarded
         main.Close();
     }
 
@@ -260,10 +281,10 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        await vm.OpenAdminAsync();
+        await vm.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         var list = Page(main).FindControl<ListBox>("GroupRows")!;
-        var admin = vm.AdminPage!;
+        var admin = vm.PageFlow.AdminPage!;
         var edited = admin.GroupList.Groups.First(g => g.IsEditable);
         list.SelectedItem = edited;
         Dispatcher.UIThread.RunJobs();
@@ -292,10 +313,10 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main();
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        await vm.OpenAdminAsync();
+        await vm.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         var list = Page(main).FindControl<ListBox>("GroupRows")!;
-        var admin = vm.AdminPage!;
+        var admin = vm.PageFlow.AdminPage!;
         var edited = admin.GroupList.Groups.First(g => g.IsEditable);
         list.SelectedItem = edited;
         Dispatcher.UIThread.RunJobs();
@@ -318,8 +339,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     public async Task NewGroup_GroupEditedAndUserStays_AsksOnceAddsNoDraftAndKeepsTheEdit()
     {
         var vm = Main();
-        await vm.OpenAdminAsync();
-        var admin = vm.AdminPage!;
+        await vm.PageFlow.OpenAdminAsync();
+        var admin = vm.PageFlow.AdminPage!;
         admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(g => g.IsEditable);
         Rename(admin, "Umbenannt");
         answers.Enqueue(LeaveChoice.Stay);
@@ -336,8 +357,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     public async Task ServerTab_SavedEditIsNoChange_UntouchedFollowsServer()
     {
         var vm = Main();
-        await vm.OpenAdminAsync();
-        var admin = vm.AdminPage!;
+        await vm.PageFlow.OpenAdminAsync();
+        var admin = vm.PageFlow.AdminPage!;
         var settings = vm.Server!.Mirror.Settings;
         vm.Server.Apply(new ServerSettingsChanged(settings with { Name = "Anderer Name" })); // another admin
         Assert.Equal("Anderer Name", admin.ServerSettings.Name);
@@ -373,11 +394,11 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         var vm = Main(connected: false);
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        vm.SettingsPage!.ShowDevices([new OVS.Client.Audio.Devices.AudioDevice("a", "Mikrofon")], [new OVS.Client.Audio.Devices.AudioDevice("b", "Lautsprecher")]);
+        vm.PageFlow.SettingsPage!.ShowDevices([new OVS.Client.Audio.Devices.AudioDevice("a", "Mikrofon")], [new OVS.Client.Audio.Devices.AudioDevice("b", "Lautsprecher")]);
         Dispatcher.UIThread.RunJobs();
-        Assert.False(vm.SettingsPage.HasChanges);
+        Assert.False(vm.PageFlow.SettingsPage.HasChanges);
         main.Close();
     }
 
@@ -386,8 +407,8 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     public async Task ServerTab_ArrivingSettings_KeepPasswordAndFollowPerField()
     {
         var vm = Main();
-        await vm.OpenAdminAsync();
-        var admin = vm.AdminPage!;
+        await vm.PageFlow.OpenAdminAsync();
+        var admin = vm.PageFlow.AdminPage!;
         admin.ServerSettings.NewPassword = "geheim";
         admin.ServerSettings.Name = "Mein Name";
         vm.Server!.Apply(new ServerSettingsChanged(vm.Server.Mirror.Settings with { WelcomeText = "Neu von jemand anderem" }));

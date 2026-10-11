@@ -406,14 +406,14 @@ public sealed class ReconnectTests : IAsyncLifetime
         await using var own = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"));
         await ConnectTo(own);
         seam.FailEvery(ConnectSeam.CreateClosedPortError); // every attempt is refused at once, no real connect to wait for
-        await OnUi(() => vm.OpenAdminAsync());
-        Assert.True(await OnUi(() => vm.IsAdminPage));
+        await OnUi(() => vm.PageFlow.OpenAdminAsync());
+        Assert.True(await OnUi(() => vm.PageFlow.IsAdminPage));
         var before = await OnUi(() => vm.Notices.Count);
         Assert.Contains(SoundEvent.Connected, await OnUi(() => vm.Audio.Sounds.Recent)); // the tones are counted at all
 
         await own.DisposeAsync(); // ServerShutdown, and nobody answers any more
         Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
-        Assert.True(await OnUi(() => vm.IsHomePage && vm.AdminPage is null));
+        Assert.True(await OnUi(() => vm.PageFlow.IsHomePage && vm.PageFlow.AdminPage is null));
         Assert.Equal(Retrying(1), await TickStatus());
         Assert.Equal("", await OnUi(() => vm.Connection.PingText));
         reconnectTime.Advance(TimeSpan.FromMilliseconds(400));

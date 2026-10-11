@@ -599,12 +599,12 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-        await vm.OpenAdminAsync();
+        await vm.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in: the list stands still
         var groups = main.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "GroupRows");
         Assert.True(ItemMotion.GetFlip(groups));
-        var admin = vm.AdminPage!;
+        var admin = vm.PageFlow.AdminPage!;
         admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(g => g.Name == "Admin");
         var seen = WatchOffsets(groups);
         await HangGuard.Bound(admin.GroupList.MoveGroupUpCommand.ExecuteAsync(null));

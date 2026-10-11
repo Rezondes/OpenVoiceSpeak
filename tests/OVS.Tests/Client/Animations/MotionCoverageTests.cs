@@ -85,7 +85,7 @@ public sealed class MotionCoverageTests
         public MainViewModel Vm { get; } = vm;
         public ServerViewModel Server { get; set; } = null!;
         public List<Request> Sent { get; } = [];
-        public AdminViewModel Admin => Vm.AdminPage!;
+        public AdminViewModel Admin => Vm.PageFlow.AdminPage!;
         /// <summary>Animations still running from before the walk (other tests' windows): the walk waits for its own only.</summary>
         public int Running { get; } = AnimationCounter.Running;
     }
@@ -222,7 +222,7 @@ public sealed class MotionCoverageTests
         var vm = w.Vm;
         var main = w.Main;
         var text = new StringBuilder();
-        text.AppendLine($"page={vm.Page} connected={vm.IsConnected} connecting={vm.Connection.IsConnecting} status={vm.Status}");
+        text.AppendLine($"page={vm.PageFlow.Page} connected={vm.IsConnected} connecting={vm.Connection.IsConnecting} status={vm.Status}");
         var card = (Border)main.Overlay.Children[1];
         text.AppendLine($"dialog={main.Overlay.IsOpen}/{main.Overlay.IsVisible} card={card.Opacity:F2}/{card.RenderTransform?.Value.M11 ?? 1:F2} drawer={main.Classes.Contains("drawer")}");
         text.AppendLine($"bookmarks={string.Join(",", vm.Bookmarks.Items.Select(tile => tile.Name))}");
@@ -234,13 +234,13 @@ public sealed class MotionCoverageTests
             text.AppendLine($"self muted={server.SelfMuted} deafened={server.SelfDeafened}");
         }
         if (vm.Chat is { } chat) text.AppendLine($"chat tab={chat.Tabs.IndexOf(chat.Selected)} lines={chat.Selected.Entries.Count}");
-        if (vm.SettingsPage is { } page)
+        if (vm.PageFlow.SettingsPage is { } page)
         {
             var settings = page.ToSettings(vm.Settings);
             settings.Display = DisplayMode.Animated; // the one setting the two walks differ in
             text.AppendLine(JsonSerializer.Serialize(settings));
         }
-        if (vm.AdminPage is { } admin)
+        if (vm.PageFlow.AdminPage is { } admin)
         {
             text.AppendLine($"admin tab={AdminTabs(w).SelectedIndex} groups={string.Join(",", admin.GroupList.Groups.Select(g => $"{g.Name} {(int)g.Permissions}"))} selected={admin.GroupList.SelectedGroup?.Name} "
                 + $"users={string.Join(",", admin.UsersAndBans.Users.Select(user => user.Nickname + (user.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.BackupCard.Backups.Count} logo={admin.ServerIcon.HasIcon}");
@@ -416,10 +416,10 @@ public sealed class MotionCoverageTests
         });
 
         // ---- settings ----
-        yield return new("open the settings", x => x.Vm.OpenSettings());
+        yield return new("open the settings", x => x.Vm.PageFlow.OpenSettings());
         foreach (var s in SettingsControls(w)) yield return s;
-        foreach (var s in Dialog("key binding", x => x.Vm.SettingsPage!.AddKeyBindingCommand.Execute(null))) yield return s;
-        yield return new("close the settings", x => x.Vm.ClosePage());
+        foreach (var s in Dialog("key binding", x => x.Vm.PageFlow.SettingsPage!.AddKeyBindingCommand.Execute(null))) yield return s;
+        yield return new("close the settings", x => x.Vm.PageFlow.ClosePage());
 
         // ---- connected: channels ----
         yield return new("connect", x =>
@@ -479,7 +479,7 @@ public sealed class MotionCoverageTests
         yield return new("switch the chat tab back", x => x.Vm.Chat!.Selected = x.Vm.Chat.Tabs[0]);
 
         // ---- administration ----
-        yield return new("open the administration", x => _ = x.Vm.OpenAdminAsync());
+        yield return new("open the administration", x => _ = x.Vm.PageFlow.OpenAdminAsync());
         yield return new("add a group", x => x.Admin.GroupList.NewGroupCommand.Execute(null));
         yield return new("drop the new group", x => x.Admin.GroupList.DeleteGroupCommand.Execute(null));
         yield return new("create a group", walk => walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup])));
@@ -586,7 +586,7 @@ public sealed class MotionCoverageTests
             x.Admin.Logs.NewerCommand.Execute(null);
             x.Server.Apply(new LogPage(LastId<ReadLog>(x), "server-1", 2, 2, 3, ["Zeile 3"]));
         });
-        yield return new("close the administration", x => x.Vm.ClosePage());
+        yield return new("close the administration", x => x.Vm.PageFlow.ClosePage());
 
         // ---- narrow window: the drawer ----
         yield return new("open the drawer", x => x.Main.GetVisualDescendants().OfType<Button>()

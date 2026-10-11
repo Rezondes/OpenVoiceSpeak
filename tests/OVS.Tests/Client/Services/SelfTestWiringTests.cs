@@ -20,7 +20,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     {
         var mainViewModel = CreateMainViewModel();
         MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin(sent));
-        mainViewModel.OpenSettings();
+        mainViewModel.PageFlow.OpenSettings();
         return mainViewModel;
     }
 
@@ -29,7 +29,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     {
         await using var mainViewModel = CreateOnSettingsPage([]);
 
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
         Assert.True(mainViewModel.Audio.SelfTest);
     }
@@ -39,9 +39,9 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     {
         await using var mainViewModel = CreateOnSettingsPage([]);
 
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
-        Assert.True(mainViewModel.SettingsPage.IsSelfTesting);
+        Assert.True(mainViewModel.PageFlow.SettingsPage.IsSelfTesting);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     {
         await using var mainViewModel = CreateOnSettingsPage([]);
 
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
         Assert.Contains("Self test started", MainViewModelSetup.ReadLogText(mainViewModel, dir));
     }
@@ -60,7 +60,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
         var sent = new List<Request>();
         await using var mainViewModel = CreateOnSettingsPage(sent);
 
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
         Assert.Equal([new SelfState(Muted: true, Deafened: true)], MainViewModelSetup.ReadSelfStatesSent(sent));
     }
@@ -69,11 +69,11 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     public async Task ToggleSelfTest_ToggledAgain_EngineAndPageStop()
     {
         await using var mainViewModel = CreateOnSettingsPage([]);
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
-        await mainViewModel.SettingsPage.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage.ToggleSelfTestCommand.ExecuteAsync(null);
 
-        Assert.Equal((false, false), (mainViewModel.Audio.SelfTest, mainViewModel.SettingsPage.IsSelfTesting));
+        Assert.Equal((false, false), (mainViewModel.Audio.SelfTest, mainViewModel.PageFlow.SettingsPage.IsSelfTesting));
     }
 
     [Fact]
@@ -82,10 +82,10 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
         var sent = new List<Request>();
         await using var mainViewModel = CreateOnSettingsPage(sent);
         await mainViewModel.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
         int sentBefore = MainViewModelSetup.ReadSelfStatesSent(sent).Count;
 
-        await mainViewModel.SettingsPage.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage.ToggleSelfTestCommand.ExecuteAsync(null);
 
         Assert.Equal([new SelfState(true, false)], MainViewModelSetup.ReadSelfStatesSent(sent).Skip(sentBefore));
     }
@@ -94,9 +94,9 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     public async Task ClosePage_SelfTestRunning_EngineStopsPlayingBack()
     {
         await using var mainViewModel = CreateOnSettingsPage([]);
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
-        mainViewModel.ClosePage();
+        mainViewModel.PageFlow.ClosePage();
 
         Assert.False(mainViewModel.Audio.SelfTest);
     }
@@ -106,10 +106,10 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     {
         var sent = new List<Request>();
         await using var mainViewModel = CreateOnSettingsPage(sent);
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
         int sentBefore = MainViewModelSetup.ReadSelfStatesSent(sent).Count;
 
-        mainViewModel.ClosePage();
+        mainViewModel.PageFlow.ClosePage();
 
         Assert.Equal([new SelfState(false, false)], MainViewModelSetup.ReadSelfStatesSent(sent).Skip(sentBefore));
     }
@@ -118,7 +118,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     public async Task DisconnectAsync_SelfTestRunning_EngineStopsPlayingBack()
     {
         await using var mainViewModel = CreateOnSettingsPage([]);
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
         await mainViewModel.Connection.DisconnectAsync();
 
@@ -130,7 +130,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     {
         var sent = new List<Request>();
         await using var mainViewModel = CreateOnSettingsPage(sent);
-        await mainViewModel.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+        await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
         int sentBefore = MainViewModelSetup.ReadSelfStatesSent(sent).Count;
 
         await mainViewModel.Connection.DisconnectAsync();

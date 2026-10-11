@@ -129,8 +129,8 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     public async Task OpenSettings_GivenClock_PendingMarksRunOnIt()
     {
         await using var vm = WithOwnParts(a => a());
-        vm.OpenSettings();
-        var saving = vm.SettingsPage!.Saving;
+        vm.PageFlow.OpenSettings();
+        var saving = vm.PageFlow.SettingsPage!.Saving;
 
         saving.Start();
         time.Advance(PendingViewModel.ShowAfter); // only the given clock moves
@@ -143,7 +143,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     {
         var hardware = new FakeAudioHardware();
         await using var vm = WithOwnParts(a => a(), hardware: hardware);
-        vm.OpenSettings(); // the level meter opens the microphone
+        vm.PageFlow.OpenSettings(); // the level meter opens the microphone
         await AsyncWait.Until(() => hardware.Counts.MicsOpen == 1);
 
         hardware.OpenGate.Reset(); // the restart's open waits, so a restart on this thread would not return

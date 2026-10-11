@@ -41,13 +41,13 @@ public partial class MainWindow : Window
     /// <summary>Package 114: closing the window with unsaved changes asks first; "Weiter bearbeiten" keeps it open.</summary>
     async void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        if (closeConfirmed || DataContext is not MainViewModel vm || !vm.HasUnsavedChanges()) return;
+        if (closeConfirmed || DataContext is not MainViewModel vm || !vm.PageFlow.HasUnsavedChanges()) return;
         e.Cancel = true;
         if (closeAsking) return; // closed again while asking: the open question answers it
         closeAsking = true;
         try
         {
-            if (!await vm.ConfirmLeaveAsync()) return;
+            if (!await vm.PageFlow.ConfirmLeaveAsync()) return;
         }
         finally
         {
@@ -92,7 +92,7 @@ public partial class MainWindow : Window
     {
         if (e.Handled || e.Key != Key.Escape || Overlay.IsOpen) return;
         if (drawerOpen) SetDrawer(false);
-        else if (!Vm.IsHomePage) _ = Vm.ClosePageAsync(); // Package 114: asks first when something is not saved
+        else if (!Vm.PageFlow.IsHomePage) _ = Vm.PageFlow.ClosePageAsync(); // Package 114: asks first when something is not saved
         else return;
         e.Handled = true;
     }
@@ -117,6 +117,8 @@ public partial class MainWindow : Window
             watchedVm.PropertyChanged -= OnVmPropertyChanged;
             watchedVm.PropertyChanging -= OnVmPropertyChanging;
             watchedVm.Connection.PropertyChanged -= OnConnectionPropertyChanged;
+            watchedVm.PageFlow.PropertyChanging -= OnPageFlowPropertyChanging;
+            watchedVm.PageFlow.PropertyChanged -= OnPageFlowPropertyChanged;
         }
         watchedVm = DataContext as MainViewModel;
         if (watchedVm is not null)
@@ -124,6 +126,8 @@ public partial class MainWindow : Window
             watchedVm.PropertyChanged += OnVmPropertyChanged;
             watchedVm.PropertyChanging += OnVmPropertyChanging;
             watchedVm.Connection.PropertyChanged += OnConnectionPropertyChanged;
+            watchedVm.PageFlow.PropertyChanging += OnPageFlowPropertyChanging;
+            watchedVm.PageFlow.PropertyChanged += OnPageFlowPropertyChanged;
         }
         OnServerChanged();
         ApplyDisplay();
@@ -139,27 +143,35 @@ public partial class MainWindow : Window
         if (watchedVm.Server is { } server) server.Leave.Delay = Motion.ChooseDuration(this, Motion.Normal);
     }
 
+    void OnVmPropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs args)
+    {
+        if (watchedVm is not { } mainViewModel || args.PropertyName != nameof(MainViewModel.Server)) return;
+        // Package 106: connecting, home fades away while the chat comes up from below; disconnecting, the server folds
+        // down and home comes back. The channel tree does the same in the sidebar.
+        bool wasConnected = mainViewModel.Server is not null;
+        (Vector In, Vector Away)? Way() => (mainViewModel.Server is not null) == wasConnected ? null
+            : mainViewModel.Server is not null ? (new Vector(0, PageMotion.Slide), default) : (default, new Vector(0, PageMotion.Slide));
+        if (mainViewModel.PageFlow.IsHomePage) PageMotion.Leave(PageHost, PageGhost, Way); // settings and administration stay what they are
+        PageMotion.Leave(TreeHost, TreeGhost, Way);
+    }
+
     /// <summary>
     /// Package 104: before the page or its model changes (closing clears the model first), a picture of the page as it
     /// is now covers the page area; the switch plays once the change is complete.
     /// </summary>
-    void OnVmPropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs e)
+    void OnPageFlowPropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs args)
     {
-        if (watchedVm is not { } vm) return;
-        if (e.PropertyName == nameof(MainViewModel.Server))
-        {
-            // Package 106: connecting, home fades away while the chat comes up from below; disconnecting, the server folds
-            // down and home comes back. The channel tree does the same in the sidebar.
-            bool was = vm.Server is not null;
-            (Vector In, Vector Away)? Way() => (vm.Server is not null) == was ? null
-                : vm.Server is not null ? (new Vector(0, PageMotion.Slide), default) : (default, new Vector(0, PageMotion.Slide));
-            if (vm.IsHomePage) PageMotion.Leave(PageHost, PageGhost, Way); // settings and administration stay what they are
-            PageMotion.Leave(TreeHost, TreeGhost, Way);
-            return;
-        }
-        if (e.PropertyName is not (nameof(MainViewModel.Page) or nameof(MainViewModel.SettingsPage) or nameof(MainViewModel.AdminPage))) return;
-        var before = vm.Page;
-        PageMotion.Leave(PageHost, PageGhost, () => vm.Page == before ? null : PageMotion.Sideways(!vm.IsHomePage));
+        if (watchedVm is not { } mainViewModel) return;
+        if (args.PropertyName is not (nameof(PageFlowViewModel.Page) or nameof(PageFlowViewModel.SettingsPage) or nameof(PageFlowViewModel.AdminPage))) return;
+        var pageFlow = mainViewModel.PageFlow;
+        var before = pageFlow.Page;
+        PageMotion.Leave(PageHost, PageGhost, () => pageFlow.Page == before ? null : PageMotion.Sideways(!pageFlow.IsHomePage));
+    }
+
+    /// <summary>Another page than home closes the drawer.</summary>
+    void OnPageFlowPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(PageFlowViewModel.Page) && watchedVm?.PageFlow.IsHomePage == false) SetDrawer(false);
     }
 
     bool wasConnecting;
@@ -207,7 +219,6 @@ public partial class MainWindow : Window
         }
         else if (e.PropertyName == nameof(MainViewModel.Appearance)) ApplyDisplay();
         else if (e.PropertyName is nameof(MainViewModel.TalkHint) or nameof(MainViewModel.HasNoPttBinding)) QueueFitSidebar(); // Package 113
-        else if (e.PropertyName == nameof(MainViewModel.Page) && watchedVm?.IsHomePage == false) SetDrawer(false);
     }
 
     void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

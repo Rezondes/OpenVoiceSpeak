@@ -328,22 +328,22 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     public void LevelMeter_SettingsOpenAtTheLevel()
     {
         var main = Open(out var vm, out _, mode: TransmitMode.VoiceActivation);
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         MotionWait.Settle(500);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in
         var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(p => p.Minimum == -60 && p.Maximum == -10);
         Assert.True(meter.IsEffectivelyVisible);
         Assert.Equal(-60, meter.Value);
-        vm.ClosePage();
+        vm.PageFlow.ClosePage();
         MotionWait.Settle(600); // the hidden meter loses its model
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible);
 
-        vm.OpenSettings(); // the new model's level is -60 as well
+        vm.PageFlow.OpenSettings(); // the new model's level is -60 as well
         double high = -60;
         Watch(400, () => high = Math.Max(high, meter.Value));
         Assert.True(high <= -59.9, $"the meter starts at the level, no sweep from full ({high})");
 
-        vm.SettingsPage!.InputLevelDb = -30;
+        vm.PageFlow.SettingsPage!.InputLevelDb = -30;
         MotionWait.Settle(300);
         LiveMotion.SetLevel(meter, double.NaN); // no level: it keeps what it shows
         MotionWait.Eventually(() => Assert.Equal(-30, meter.Value, 1));
@@ -397,14 +397,14 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Settle(300);
         server.SetSelfTransmitting(null);
         vm.TransmitText = "";
-        _ = vm.OpenAdminAsync();
+        _ = vm.PageFlow.OpenAdminAsync();
         MotionWait.Settle(300);
-        vm.AdminPage!.GroupList.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
-        vm.AdminPage.GroupList.GroupSave.Start();
+        vm.PageFlow.AdminPage!.GroupList.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
+        vm.PageFlow.AdminPage.GroupList.GroupSave.Start();
         MotionWait.Settle(400);
         MotionWait.Eventually(() => Assert.Contains(main.GetVisualDescendants().OfType<BusySpinner>(),
             b => b.Classes.Contains(BusySpinner.TurningClass) && b.FindAncestorOfType<AdminView>() is not null));
-        vm.ClosePage();
+        vm.PageFlow.ClosePage();
         MotionWait.Settle(800);
 
         // nobody speaks, nothing is busy: nothing on the screen changes from frame to frame

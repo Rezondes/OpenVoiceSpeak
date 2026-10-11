@@ -105,9 +105,9 @@ public sealed class WebsiteShots
 
     static void OpenSettings(WebsiteScene scene, string section, bool toBottom = false)
     {
-        scene.Vm.OpenSettings();
+        scene.Vm.PageFlow.OpenSettings();
         ShotWriter.Settle(700);
-        scene.Vm.SettingsPage!.InputLevelDb = -16;
+        scene.Vm.PageFlow.SettingsPage!.InputLevelDb = -16;
         var page = scene.Window.GetVisualDescendants().OfType<SettingsView>().Single();
         var title = page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == section);
         if (toBottom)
@@ -187,7 +187,7 @@ public sealed class WebsiteShots
         var scene = new WebsiteScene(lang, theme, 760);
         var showcase = scene.Connect();
         showcase.AnswerAdministration();
-        _ = scene.Vm.OpenAdminAsync();
+        _ = scene.Vm.PageFlow.OpenAdminAsync();
         ShotWriter.Settle(700);
         var page = scene.Window.GetVisualDescendants().OfType<AdminView>().Single();
         page.FindControl<TabControl>("Tabs")!.SelectedIndex = tab;
@@ -202,7 +202,7 @@ public sealed class WebsiteShots
         var (scene, _) = Admin(lang, theme, 0);
         using (scene)
         {
-            var admin = scene.Vm.AdminPage!;
+            var admin = scene.Vm.PageFlow.AdminPage!;
             admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(g => g.Id == OVS.Shared.Permissions.WellKnownGroups.Admin);
             ShotWriter.Settle(500);
             Shows(scene.Window, Strings.Ui_AdminGroupFixed);
@@ -243,7 +243,7 @@ public sealed class WebsiteShots
         var (scene, _) = Admin(lang, theme, 3);
         using (scene)
         {
-            var links = scene.Vm.AdminPage!.Links;
+            var links = scene.Vm.PageFlow.AdminPage!.Links;
             links.Set(ShowcaseServer.Raid, ShowcaseServer.Training, true);
             links.Set(ShowcaseServer.Lobby, ShowcaseServer.Strategy, true);
             ShotWriter.Settle(500);
@@ -276,7 +276,7 @@ public sealed class WebsiteShots
         var (scene, _) = Admin(lang, theme, 5);
         using (scene)
         {
-            var logs = scene.Vm.AdminPage!.Logs;
+            var logs = scene.Vm.PageFlow.AdminPage!.Logs;
             logs.SearchText = "Mara";
             logs.SearchCommand.Execute(null);
             ShotWriter.Settle(400);
@@ -334,9 +334,9 @@ public sealed class WebsiteShots
         ShotWriter.Settle(800);
         AdminView Page() => scene.Window.GetVisualDescendants().OfType<AdminView>().Single();
         ShotWriter.Record(scene.Window, Clip("clip-pages", scene), 5500, 2300, // the poster shows the administration, not the start the switch clip shares
-            (400, () => _ = scene.Vm.OpenAdminAsync()),
+            (400, () => _ = scene.Vm.PageFlow.OpenAdminAsync()),
             (1700, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 1),
             (2900, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 2),
-            (4300, () => scene.Vm.ClosePage()));
+            (4300, () => scene.Vm.PageFlow.ClosePage()));
     }
 }

@@ -92,7 +92,7 @@
                   <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
-              <Button Classes="icon" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_Settings}" AutomationProperties.Name="{x:Static l:Strings.Ui_Settings}">
+              <Button Classes="icon" Command="{Binding PageFlow.OpenSettingsCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_Settings}" AutomationProperties.Name="{x:Static l:Strings.Ui_Settings}">
                 <PathIcon Classes="spin" Data="{StaticResource Icon.Settings}" />
               </Button>
             </StackPanel>
@@ -111,7 +111,7 @@
               <Panel IsVisible="{Binding TransmitText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
                 <TextBlock x:Name="TalkHintLine" Classes="caption" Text="{Binding TalkHint}" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNoPttBinding}" />
                 <!-- Without a PTT key nobody can talk: the hint leads straight to the settings. -->
-                <Button x:Name="PttHint" Classes="hint" Command="{Binding OpenSettingsCommand}" IsVisible="{Binding HasNoPttBinding}"
+                <Button x:Name="PttHint" Classes="hint" Command="{Binding PageFlow.OpenSettingsCommand}" IsVisible="{Binding HasNoPttBinding}"
                         ToolTip.Tip="{x:Static l:Strings.Ui_AssignKeyHint}">
                   <StackPanel Orientation="Horizontal" Spacing="4">
                     <PathIcon Classes="sm warning" Data="{StaticResource Icon.Warning}" />
@@ -352,7 +352,7 @@
          below the drawer and the dialogs -->
     <Panel Grid.Column="2" ClipToBounds="True">
     <Panel x:Name="PageHost" IsEnabled="{Binding !Update.IsUpdating}">
-      <Panel IsVisible="{Binding IsHomePage}">
+      <Panel IsVisible="{Binding PageFlow.IsHomePage}">
         <!-- Start screen while not connected -->
         <Panel IsVisible="{Binding !IsConnected}">
         <ScrollViewer>
@@ -416,7 +416,7 @@
                     <TextBlock Classes="wideOnly" Text="{Binding Connection.PingText}" />
                   </StackPanel>
                 </Border>
-                <Button Classes="subtle" Command="{Binding OpenAdminCommand}" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}"
+                <Button Classes="subtle" Command="{Binding PageFlow.OpenAdminCommand}" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}"
                         ToolTip.Tip="{x:Static l:Strings.Ui_AdminMenu}" AutomationProperties.Name="{x:Static l:Strings.Ui_AdminMenu}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.ShieldPerson}" />
@@ -463,11 +463,11 @@
           <v:ChatView DataContext="{Binding Chat}" />
         </DockPanel>
       </Panel>
-      <Panel IsVisible="{Binding IsSettingsPage}">
-        <v:SettingsView DataContext="{Binding SettingsPage}" />
+      <Panel IsVisible="{Binding PageFlow.IsSettingsPage}">
+        <v:SettingsView DataContext="{Binding PageFlow.SettingsPage}" />
       </Panel>
-      <Panel IsVisible="{Binding IsAdminPage}">
-        <v:AdminView DataContext="{Binding AdminPage}" />
+      <Panel IsVisible="{Binding PageFlow.IsAdminPage}">
+        <v:AdminView DataContext="{Binding PageFlow.AdminPage}" />
       </Panel>
     </Panel>
     <Border x:Name="PageGhost" IsHitTestVisible="False" IsVisible="False" />

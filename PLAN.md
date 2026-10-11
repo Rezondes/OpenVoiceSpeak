@@ -3260,8 +3260,8 @@ Nach Package 47 gibt es feste Standardtöne und nur globale Einstellungen. Die W
 
 ### Tests (TDD)
 
-1. `SoundImportTests > "Wav_UpToFiveSeconds_Accepted_CopiedAsMono48k"`, `"TooLong_NotAudio_WrongType_Missing_Rejected"` mit selbst erzeugten WAV-Dateien (AC2, AC3)
-2. `SoundImportTests > "CustomSound_MissingFile_FallsBackToDefault_LoggedOnce"` (AC2, AC6)
+1. `SoundImportTests > "Wav_UpToFiveSeconds_Accepted_CopiedAsMono48k"`, `"TooLong_NotAudio_WrongType_Missing_Rejected"` mit selbst erzeugten WAV-Dateien, `MainViewModelTests > "OpenSettings_SoundImported_LandsInTheProfileFolder"` (AC2, AC3)
+2. `SoundImportTests > "CustomSound_MissingFile_FallsBackToDefault_LoggedOnce"`, `MainViewModelTests > "OpenSettings_SoundWithMissingFilePreviewed_EngineFallsBackAndLogsTheMissingFile"` (AC2, AC6)
 3. `SoundPlayerTests > "Volume_PerSoundTimesGlobal_MutedSilent"` und `"Play_MutedSound_NeitherRenderedNorQueuedNorRecorded"` (AC5)
 4. `SettingsTests > "Sounds_PerEvent_RoundTrip_ResetDeletesCopy"` (AC4, AC5)
 5. `UiSmokeTests`: eine Zeile je Sound mit allen Bedienelementen, beide Designs (AC1)
@@ -6977,7 +6977,7 @@ Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Pac
 
 1. `LeaveGuardTests > "Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert"` (AC1)
 2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"`, `AdminPlaceTests > "HasAnyChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse"` (AC1)
-3. `LeaveGuardTests > "LeaveWithChanges_Asks_KeepEditingStays"`, `"ConnectAsync_AdminHasChangesAndUserStays_AsksOnceAndKeepsTheShownServer"` (AC1, AC2)
+3. `LeaveGuardTests > "LeaveWithChanges_Asks_KeepEditingStays"`, `"ConnectAsync_AdminHasChangesAndUserStays_AsksOnceAndKeepsTheShownServer"`, `"SettingsCloseButton_UnsavedChanges_AsksFirst"` (AC1, AC2)
    - Given: a fake `AskLeave` that answers each choice in turn.
    - Expected: correct behaviour for a page change, a disconnect and a window close.
 4. `LeaveGuardTests > "LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"`, `AdminPlaceTests > "SaveAsync_NoChanges_TrueWithoutSending"` and `"Places_SavingOrder_GroupsLinksServer"`, `GroupListViewModelTests > "Place_GroupSaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_OtherGroupEdited_SavingSendsItAndSucceedsOnceConfirmed"`, `"Place_TwoGroupsEdited_SendsTheSecondOnlyOnceTheFirstIsConfirmedAndSucceedsAfterBoth"`, `"Place_SecondGroupRefused_FailsSelectsItAndItKeepsItsEdit"`, `"Place_FirstGroupRefused_FailsAndTheSecondIsNeverSentAndBothKeepTheirEdits"`, `"Place_FirstGroupGetsNoAnswer_FailsAfterTheTimeoutAndTheSecondIsNeverSent"`, `"Place_SavedAgainAfterATimeout_OneAnswerConfirmsOnlyTheFirstGroup"`, `"Place_SecondGroupNameBlank_FailsSelectsItWithTheNameErrorAfterTheFirstWasSaved"`, `"Place_RightsLostWhileTheFirstGroupIsOnItsWay_TheRebuiltSecondGroupIsNotSentStale"`, `"Place_GroupRebuiltWhileOnItsWayThenRefused_FailsAndSelectsTheRowThatIsInTheList"`, `"Place_DraftAndEditedSavedGroup_SendsTheUpdateThenTheCreateAndSucceedsAfterBoth"`, `"SaveGroup_OtherGroupEditedToo_SendsOnlyTheSelectedGroup"`, `LinkMatrixViewModelTests > "Place_SaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_LinkMarked_HasChangesAndSavingSendsItAndWaitsForTheServer"`, `"PlaceDiscard_LinkMarked_LinkBackAndNoChanges"`, `ServerSettingsViewModelTests > "Place_NameEdited_HasChangesAndSavingSendsTheSettingsAndWaitsForTheServer"` and `"Place_NameBlank_HasChangesButSavingFailsWithoutSending"` (AC3, AC4)

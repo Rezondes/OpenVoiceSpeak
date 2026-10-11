@@ -35,11 +35,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     [ObservableProperty] string status = Strings.Status_NotConnected;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsHomePage), nameof(IsSettingsPage), nameof(IsAdminPage))]
-    Page page = Page.Home;
-    [ObservableProperty] SettingsViewModel? settingsPage;
-    [ObservableProperty] AdminViewModel? adminPage;
     [ObservableProperty] string transmitText = "";
     [ObservableProperty] string voiceHint = "";
 
@@ -107,7 +102,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log.Write, text => Status = text,
             text => AddNotice(text, NoticeKind.Warning), PendingViewModel.Timeout);
 
-        Devices = new DeviceList(post, listDevices, (inputs, outputs) => SettingsPage?.ShowDevices(inputs, outputs));
+        // PageFlow is built after SelfTest (it takes SelfTest.SetAsync); the two lambdas that read it run only after that:
+        // the first device listing is asked for below it, the self test runs from the settings page.
+        Devices = new DeviceList(post, listDevices, (inputs, outputs) => PageFlow!.SettingsPage?.ShowDevices(inputs, outputs));
         EngineSync = new EngineSync(audio,
             connectionState: () => Server is { } connected
                 ? new EngineConnectionState(true, connected.SelfMuted, connected.SelfDeafened, connected.HasSpeakLinked, connected.InMutedChannel,
@@ -120,11 +117,27 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             setEngineRunning: on => audio.SelfTest = on,
             showOnPage: on =>
             {
-                if (SettingsPage is { } page) page.IsSelfTesting = on;
+                if (PageFlow!.SettingsPage is { } page) page.IsSelfTesting = on;
             },
             log: Log.Write,
             readServerState: () => Server is { } connected ? new SelfState(connected.SelfMuted, connected.SelfDeafened) : null,
             writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state) : Task.CompletedTask);
+        PageFlow = new PageFlowViewModel(time: time, post: post, settings: () => Settings, knownDevices: () => Devices.Known,
+            refreshDevices: () => Devices.Refresh(), captureChord: keys.CaptureNextChordAsync, setKeyBindings: bindings => keys.Bindings = bindings,
+            dialogs: () => Dialogs, checkNow: Update.CheckAsync, importSound: (path, sound) => SoundImport.Prepare(path, storageDir, sound),
+            previewSound: audio.Sounds.Preview, applyLive: audio.ApplyLive, showAppearance: appearance => Appearance = appearance,
+            setSelfTest: SelfTest.SetAsync, applySaved: ApplySettingsAsync,
+            startLevelMeter: handler =>
+            {
+                audio.InputLevel += handler;
+                audio.LevelMeter = true;
+            },
+            stopLevelMeter: handler =>
+            {
+                audio.InputLevel -= handler;
+                audio.LevelMeter = false;
+            },
+            readThresholdDb: () => audio.InputThresholdDb, shownServer: () => Server);
         var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log.Write,
             reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: () => audio.Loss.EndStreaks());
         Stats = new ConnectionStatsViewModel(time,
@@ -136,10 +149,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             voiceLink: voiceLink,
             engineSync: EngineSync, selfTest: SelfTest, bookmarks: Bookmarks, icons: icons, stats: Stats, dialogs: () => Dialogs, shownServer: () => Server,
             show: shown => Server = shown, setStatus: text => Status = text, readStatus: () => Status, addNotice: AddNotice,
-            confirmLeave: () => ConfirmLeaveAsync(adminOnly: true),
+            confirmLeave: () => PageFlow.ConfirmLeaveAsync(adminOnly: true),
             closeAdmin: () =>
             {
-                if (Page == Page.Admin) CloseAdmin();
+                if (PageFlow.Page == Page.Admin) PageFlow.CloseAdmin();
             });
         if (audio.DeviceLifecycle.OpensDevices) Devices.Refresh();
         hints = new VoiceHints(
@@ -196,9 +209,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public AudioEngine Audio { get; }
     public ObservableCollection<Notice> Notices { get; } = [];
     public bool IsConnected => Server is not null;
-    public bool IsHomePage => Page == Page.Home;
-    public bool IsSettingsPage => Page == Page.Settings;
-    public bool IsAdminPage => Page == Page.Admin;
     /// <summary>Package 40: the saved servers, shown as tiles in the sidebar.</summary>
     internal BookmarkList Bookmarks { get; }
     /// <summary>Packages 43 and 62: the update check, the install and the card over the window.</summary>
@@ -212,6 +222,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Package 53: the self test of the settings page, which mutes and deafens at the server meanwhile.</summary>
     internal SelfTest SelfTest { get; }
+
+    /// <summary>Packages 104 and 114: home, the settings page and the administration, and the question before leaving one.</summary>
+    internal PageFlowViewModel PageFlow { get; }
 
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
     public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
@@ -351,127 +364,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             case KeyAction.ToggleMute: server.ToggleMuteCommand.Execute(null); break;
             case KeyAction.ToggleDeafen: server.ToggleDeafenCommand.Execute(null); break;
         }
-    }
-
-    // ---- Pages ----
-
-    /// <summary>Package 114: the settings button and the hint ask first when the administration has unsaved changes.</summary>
-    [RelayCommand]
-    async Task OpenSettingsAsync()
-    {
-        if (Page == Page.Settings || !await ConfirmLeaveAsync()) return;
-        OpenSettings();
-    }
-
-    public void OpenSettings()
-    {
-        if (Page == Page.Settings) return;
-        ClosePage();
-        var vm = new SettingsViewModel(Settings, Devices.Known?.Inputs, Devices.Known?.Outputs, Time, Keys.CaptureNextChordAsync)
-        {
-            EditKeyBinding = Dialogs.EditKeyBinding,
-            CheckNow = Update.CheckAsync,
-            ImportSound = (path, sound) => SoundImport.Prepare(path, storageDir, sound),
-            PreviewSound = Audio.Sounds.Preview,
-            LivePreview = live => // Package 53, 61, 121
-            {
-                Audio.ApplyLive(live);
-                Keys.Bindings = live.KeyBindings;
-                Appearance = BackgroundAppearance.From(live);
-            },
-            SetSelfTest = SelfTest.SetAsync,
-        };
-        vm.ApplySaved = () => ApplySettingsAsync(vm.ToSettings(Settings)); // Package 98: before the page closes
-        vm.CloseRequested += _ => CloseSettings();
-        vm.LeaveRequested += () => _ = ClosePageAsync(); // Package 114: the X asks, "Abbrechen" does not
-        Audio.InputLevel += OnInputLevel;
-        Audio.LevelMeter = true; // Package 124 (A132): the microphone opens for the level meter
-        SettingsPage = vm;
-        Page = Page.Settings;
-        Devices.Refresh(); // a device may have been plugged in since
-    }
-
-    void OnInputLevel(float db)
-    {
-        float threshold = Audio.InputThresholdDb; // Package 129: read with the level, on the capture thread
-        post(() =>
-        {
-            if (SettingsPage is not { } vm) return;
-            vm.InputLevelDb = db;
-            vm.ThresholdInUseDb = threshold;
-        });
-    }
-
-    /// <summary>
-    /// Every way out of the settings ("Verwerfen", Esc, opening the administration) ends the live preview: what is
-    /// saved counts again. After "Speichern" that is the new settings.
-    /// </summary>
-    void CloseSettings()
-    {
-        Audio.ApplyLive(Settings);
-        Keys.Bindings = Settings.KeyBindings.ToList();
-        Appearance = BackgroundAppearance.From(Settings);
-        _ = SelfTest.SetAsync(false);
-        Audio.InputLevel -= OnInputLevel;
-        Audio.LevelMeter = false;
-        SettingsPage = null;
-        if (Page == Page.Settings) Page = Page.Home;
-    }
-
-    [RelayCommand]
-    public async Task OpenAdminAsync()
-    {
-        if (Server is not { CanAdminister: true } server || Page == Page.Admin) return;
-        if (!await ConfirmLeaveAsync()) return; // Package 114
-        ClosePage();
-        var vm = new AdminViewModel(server);
-        vm.CloseRequested += () => _ = ClosePageAsync(); // Package 114
-        AdminPage = vm;
-        Page = Page.Admin;
-        await vm.RequestListsAsync();
-    }
-
-    void CloseAdmin()
-    {
-        AdminPage?.Detach();
-        AdminPage = null;
-        if (Page == Page.Admin) Page = Page.Home;
-    }
-
-    // ---- Package 114: unsaved changes ----
-
-    /// <summary>Settings or administration hold changes a way out would lose; adminOnly for disconnecting (settings stay).</summary>
-    public bool HasUnsavedChanges(bool adminOnly = false) =>
-        (!adminOnly && SettingsPage?.HasChanges == true) || AdminPage?.HasAnyChanges == true;
-
-    /// <summary>
-    /// Asks before a way out that would lose changes: keep editing (false), save and go once the server took it, or go
-    /// without saving (closing the page throws the edits away, as before). Without the dialog it goes without saving.
-    /// </summary>
-    public async Task<bool> ConfirmLeaveAsync(bool adminOnly = false)
-    {
-        if (!HasUnsavedChanges(adminOnly)) return true;
-        var choice = Dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard;
-        if (choice == LeaveChoice.Stay) return false;
-        if (choice == LeaveChoice.Discard) return true;
-        if (!adminOnly && SettingsPage is { HasChanges: true } settings && !await settings.SaveAsync()) return false;
-        if (AdminPage is { } admin)
-            foreach (var place in admin.Places.Where(p => p.HasChanges()))
-                if (!await place.SaveAsync()) return false; // its error shows on the page, which stays
-        return true;
-    }
-
-    /// <summary>Esc, the X and the administration's close button: ask first, then leave the page.</summary>
-    public async Task ClosePageAsync()
-    {
-        if (!IsHomePage && await ConfirmLeaveAsync()) ClosePage();
-    }
-
-    /// <summary>Esc: leaves settings without saving, or the administration.</summary>
-    public void ClosePage()
-    {
-        if (Page == Page.Settings) CloseSettings();
-        else if (Page == Page.Admin) CloseAdmin();
     }
 
     public void AddNotice(string text, NoticeKind kind = NoticeKind.Info)

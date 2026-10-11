@@ -180,13 +180,13 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         LooksLikeBefore("home");
         MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
         LooksLikeBefore("server");
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         LooksLikeBefore("settings");
-        vm.ClosePage();
-        await vm.OpenAdminAsync();
+        vm.PageFlow.ClosePage();
+        await vm.PageFlow.OpenAdminAsync();
         // the waiting states show 150 ms after their request (Package 97); they must not appear between the frames, so every
         // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
-        var admin = vm.AdminPage!;
+        var admin = vm.PageFlow.AdminPage!;
         PendingViewModel[] loads = [admin.UsersAndBans.UsersLoad, admin.UsersAndBans.BansLoad, admin.BackupCard.BackupsLoad, admin.Logs.FilesLoad];
         MotionWait.WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
         Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
@@ -258,7 +258,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Dispatcher.UIThread.RunJobs();
         Assert.DoesNotContain("@anna", Texts(main));
 
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("DARSTELLUNG", Texts(main));
         Assert.Contains("Wirkt nach einem Neustart des Clients.", Texts(main)); // Package 45: language choice
@@ -275,11 +275,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Contains($"OpenVoiceSpeak {OVS.Shared.BuildInfo.Current.Version}", Texts(main));
         Assert.Contains("Nach Updates suchen", Texts(main)); // Package 43
         Assert.Contains("Tastenaktion hinzufügen", Texts(main));
-        vm.ClosePage();
+        vm.PageFlow.ClosePage();
 
-        _ = vm.OpenAdminAsync();
+        _ = vm.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
-        Assert.True(vm.IsAdminPage);
+        Assert.True(vm.PageFlow.IsAdminPage);
         Assert.Contains("Gruppen", Texts(main));
         Assert.Equal(2, main.GetVisualDescendants().OfType<Button>().Count(b => AutomationProperties.GetName(b) is "Gruppe nach oben" or "Gruppe nach unten"));
         var linksTab = main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Links");
@@ -288,7 +288,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Contains("Ausgewählte miteinander verlinken", Texts(main));
         Assert.Contains(main.GetVisualDescendants().OfType<CheckBox>(), c => AutomationProperties.GetName(c) == "Link Lobby und Raid");
         // Package 71: the user overview with search, filters and every stored value
-        vm.AdminPage!.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
+        vm.PageFlow.AdminPage!.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
             DateTimeOffset.Now, 4, TimeSpan.FromHours(2), "10.0.0.2", ["anni"], TimeSpan.FromMinutes(3), 7, CanBeModeratedByMe: true)]));
         main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Nutzer").IsSelected = true;
         Dispatcher.UIThread.RunJobs();
@@ -301,14 +301,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         foreach (var text in new[] { "Bannen", "Nutzerdaten löschen" }) // Package 72: the actions of the card
             Assert.Contains(text, Texts(main));
         // Package 80: the ban overview with search, filters and every detail
-        vm.AdminPage!.UsersAndBans.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
+        vm.PageFlow.AdminPage!.UsersAndBans.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
             "fp2", null, null, null, 2, DateTimeOffset.Now, "10.0.0.4")]));
         main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Bans").IsSelected = true;
         Dispatcher.UIThread.RunJobs();
         foreach (var text in new[] { "1 von 1 Bans", "troll", "Spam", "aktiv", "10.0.0.3", "Blockierte Versuche", "Erstellt von", "anna", "Aktive Bans" })
             Assert.Contains(text, Texts(main));
         Assert.Single(main.GetVisualDescendants().OfType<TextBox>(), t => AutomationProperties.GetName(t) == "Name, IP, Grund, Moderator suchen");
-        vm.ClosePage();
+        vm.PageFlow.ClosePage();
 
         void Dialog(Func<OverlayHost, Task> open, string title)
         {
@@ -420,11 +420,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.True(second.IsCompleted);
         Assert.True(second.Result);
 
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
-        Assert.True(vm.IsHomePage);
+        Assert.True(vm.PageFlow.IsHomePage);
         main.Close();
     }
 
@@ -660,7 +660,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin(sent));
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 700 };
         main.Show();
-        _ = vm.OpenAdminAsync();
+        _ = vm.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         Point Center(string name)
         {
@@ -686,7 +686,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var vm = MainViewModelSetup.Create(dir, a => a(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
-        _ = vm.OpenAdminAsync();
+        _ = vm.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         main.GetVisualDescendants().OfType<TabItem>().Single(t => t.Header is "Server").IsSelected = true;
         Dispatcher.UIThread.RunJobs();
@@ -745,13 +745,13 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 2400 };
         main.Show();
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(),
             t => t.Text == "Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand." && t.IsEffectivelyVisible);
         var button = main.GetVisualDescendants().OfType<Button>().Single(b => b.Content is "Taste festlegen");
         Assert.True(button.IsEffectivelyVisible);
-        vm.SettingsPage!.VoiceActivation = true;
+        vm.PageFlow.SettingsPage!.VoiceActivation = true;
         Dispatcher.UIThread.RunJobs();
         Assert.False(button.IsEffectivelyVisible);
         main.Close();
@@ -804,7 +804,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 3200 };
         main.Show();
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
         var sections = page.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("section") && t.IsEffectivelyVisible)
@@ -820,7 +820,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var vm = MainViewModelSetup.Create(dir, a => a());
         var main = new MainWindow { DataContext = vm, Width = 1000, Height = 2400 };
         main.Show();
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         Button SelfTest() => main.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) is "Selbsttest starten" or "Selbsttest beenden");
         Assert.Contains(Texts(main), t => t?.Contains("Kopfhörer") == true);
@@ -830,7 +830,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal("Selbsttest beenden", AutomationProperties.GetName(SelfTest()));
         Assert.Contains("Selbsttest beenden", Texts(main));
         Assert.True(vm.Audio.SelfTest);
-        vm.SettingsPage!.CancelCommand.Execute(null);
+        vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();
         Assert.False(vm.Audio.SelfTest);
         main.Close();
@@ -1202,11 +1202,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             Dispatcher.UIThread.RunJobs();
             seen.AddRange(AllUserTexts(main));
-            vm.OpenSettings();
+            vm.PageFlow.OpenSettings();
             Dispatcher.UIThread.RunJobs();
             seen.AddRange(AllUserTexts(main));
-            vm.ClosePage();
-            _ = vm.OpenAdminAsync();
+            vm.PageFlow.ClosePage();
+            _ = vm.PageFlow.OpenAdminAsync();
             Dispatcher.UIThread.RunJobs();
             foreach (var tab in main.GetVisualDescendants().OfType<TabControl>().First().Items.OfType<TabItem>())
             {
@@ -1214,7 +1214,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
                 Dispatcher.UIThread.RunJobs();
                 seen.AddRange(AllUserTexts(main));
             }
-            vm.ClosePage();
+            vm.PageFlow.ClosePage();
             foreach (var open in new Func<OverlayHost, Task>[]
             {
                 o => ConnectDialog.ShowAsync(o, vm.Bookmarks.Saved), o => BanDialog.ShowAsync(o, "anna"), o => ConfirmDialog.ShowAsync(o, "?"),
@@ -1428,7 +1428,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         // ---- the administration ----
         Waits("admin lists", () =>
         {
-            _ = vm.OpenAdminAsync();
+            _ = vm.PageFlow.OpenAdminAsync();
             Dispatcher.UIThread.RunJobs();
             main.GetVisualDescendants().OfType<AdminView>().Single().GetVisualDescendants().OfType<TabItem>().Single(t => t.Header as string == "Nutzer").IsSelected = true;
         }, () =>
@@ -1438,7 +1438,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             new BackupList(Last<ListBackups>().RequestId, []),
             new LogList(Last<ListLogs>().RequestId, []),
         ]);
-        var admin = vm.AdminPage!;
+        var admin = vm.PageFlow.AdminPage!;
         var page = main.GetVisualDescendants().OfType<AdminView>().Single();
         void Tab(string header)
         {
@@ -1482,20 +1482,20 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             admin.Logs.SearchText = "fehler";
             _ = admin.Logs.SearchCommand.ExecuteAsync(null);
         }, () => [new LogSearchResult(Last<SearchLogs>().RequestId, [], false, false)]);
-        vm.ClosePage();
+        vm.PageFlow.ClosePage();
 
         // ---- the settings: saving while the audio devices restart, the update check ----
         var restart = new TaskCompletionSource();
         var check = new TaskCompletionSource<string>();
-        vm.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
-        vm.Page = Page.Settings;
+        vm.PageFlow.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
+        vm.PageFlow.Page = Page.Settings;
         Dispatcher.UIThread.RunJobs();
-        Waits("update check", () => _ = vm.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null), () =>
+        Waits("update check", () => _ = vm.PageFlow.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null), () =>
         {
             check.SetResult("Aktuell");
             return [];
         });
-        Waits("settings save", () => _ = vm.SettingsPage.SaveCommand.ExecuteAsync(null), () =>
+        Waits("settings save", () => _ = vm.PageFlow.SettingsPage.SaveCommand.ExecuteAsync(null), () =>
         {
             restart.SetResult();
             return [];

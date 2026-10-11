@@ -205,7 +205,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
-        Assert.True(vm.IsHomePage);
+        Assert.True(vm.PageFlow.IsHomePage);
 
         OpenDrawer(main);
         var outside = new Point(main.Bounds.Width - 10, main.Bounds.Height / 2);
@@ -215,10 +215,10 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         AssertDrawerClosed(main);
 
         OpenDrawer(main);
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
-        vm.ClosePage();
+        vm.PageFlow.ClosePage();
 
         // wide again: the sidebar is back in its column
         OpenDrawer(main);
@@ -327,9 +327,9 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         settings.Save(dir);
         var main = Open(width, null, out var vm);
         Assert.Equal(display == DisplayMode.Animated, Motion.IsAnimated(main)); // the window took the display from the settings
-        vm.OpenSettings();
+        vm.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        Assert.True(vm.SettingsPage!.ShowPttHint);
+        Assert.True(vm.PageFlow.SettingsPage!.ShowPttHint);
         return main;
     }
 
@@ -431,7 +431,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var server = FakeServers.Crowded();
         var main = Open(width, server, out var vm);
-        _ = vm.OpenAdminAsync();
+        _ = vm.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         var admin = (AdminViewModel)main.GetVisualDescendants().OfType<AdminView>().Single().DataContext!;
         var groups = server.Mirror.Groups.Select(g => g.Id).ToList();
@@ -1003,10 +1003,10 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // the settings: saving while the devices restart, the update check
         var restart = new TaskCompletionSource();
         var check = new TaskCompletionSource<string>();
-        vm.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
-        vm.Page = Page.Settings;
-        _ = vm.SettingsPage.SaveCommand.ExecuteAsync(null);
-        _ = vm.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null);
+        vm.PageFlow.SettingsPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
+        vm.PageFlow.Page = Page.Settings;
+        _ = vm.PageFlow.SettingsPage.SaveCommand.ExecuteAsync(null);
+        _ = vm.PageFlow.SettingsPage.CheckUpdatesCommand.ExecuteAsync(null);
         time.Advance(PendingViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
         var settings = main.GetVisualDescendants().OfType<SettingsView>().Single();

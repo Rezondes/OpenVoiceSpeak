@@ -573,13 +573,54 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            vm.OpenSettings();
+            vm.PageFlow.OpenSettings();
             return 0;
         });
 
-        var answer = await ui.InvokeAsync(() => vm.SettingsPage!.CheckNow!());
+        var answer = await ui.InvokeAsync(() => vm.PageFlow.SettingsPage!.CheckNow!());
 
         Assert.Equal(OVS.Client.Localization.Strings.Update_LocalBuild, answer);
+    }
+
+    [Fact]
+    public async Task OpenSettings_SoundWithMissingFilePreviewed_EngineFallsBackAndLogsTheMissingFile()
+    {
+        const string missingFile = "preview-missing.wav";
+        string missingLine = $"Sound-Datei {missingFile} für {SoundEvent.UserJoined} fehlt";
+        await OnUi(() =>
+        {
+            vm.ApplySettings(new ClientSettings { Sounds = { [SoundEvent.UserJoined] = new SoundSetting(File: missingFile) } });
+            vm.PageFlow.OpenSettings();
+            return 0;
+        });
+        Assert.DoesNotContain(missingLine, ClientLogText());
+
+        await OnUi(() =>
+        {
+            vm.PageFlow.SettingsPage!.SoundRows.Single(row => row.Event == SoundEvent.UserJoined).PlayCommand.Execute(null);
+            return 0;
+        });
+
+        Assert.Contains(missingLine, ClientLogText()); // the engine's sound library looked the row's own file up
+    }
+
+    [Fact]
+    public async Task OpenSettings_SoundImported_LandsInTheProfileFolder()
+    {
+        string source = Path.Combine(dir, "own-tone.wav");
+        using (var writer = new NAudio.Wave.WaveFileWriter(source, NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48000, 1)))
+            writer.WriteSamples(Enumerable.Repeat(0.2f, 4800).ToArray(), 0, 4800);
+
+        string? imported = await OnUi(() =>
+        {
+            vm.PageFlow.OpenSettings();
+            var row = vm.PageFlow.SettingsPage!.SoundRows.Single(candidate => candidate.Event == SoundEvent.UserJoined);
+            row.Import(source);
+            return row.File;
+        });
+
+        Assert.NotNull(imported);
+        Assert.True(File.Exists(Path.Combine(dir, SoundLibrary.Folder, imported)));
     }
 
     [Fact]
@@ -1017,39 +1058,39 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.OpenSettings();
-            Assert.Equal(Page.Settings, vm.Page);
-            vm.SettingsPage!.CancelCommand.Execute(null);
-            Assert.Equal(Page.Home, vm.Page);
-            Assert.Null(vm.SettingsPage);
+            vm.PageFlow.OpenSettings();
+            Assert.Equal(Page.Settings, vm.PageFlow.Page);
+            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
+            Assert.Equal(Page.Home, vm.PageFlow.Page);
+            Assert.Null(vm.PageFlow.SettingsPage);
 
-            await vm.OpenAdminAsync(); // not connected: nothing to administer
-            Assert.Equal(Page.Home, vm.Page);
+            await vm.PageFlow.OpenAdminAsync(); // not connected: nothing to administer
+            Assert.Equal(Page.Home, vm.PageFlow.Page);
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            await vm.OpenAdminAsync();
-            Assert.Equal(Page.Admin, vm.Page);
+            await vm.PageFlow.OpenAdminAsync();
+            Assert.Equal(Page.Admin, vm.PageFlow.Page);
             await vm.Connection.DisconnectAsync(); // the administration needs a server
-            Assert.Equal(Page.Home, vm.Page);
-            Assert.Null(vm.AdminPage);
+            Assert.Equal(Page.Home, vm.PageFlow.Page);
+            Assert.Null(vm.PageFlow.AdminPage);
             return null;
         });
 
         await OnUi(() =>
         {
-            vm.OpenSettings();
+            vm.PageFlow.OpenSettings();
             vm.Audio.DeviceLifecycle.SetTone(440);
             return 0;
         });
-        var level = await OnUiUntil(() => vm.SettingsPage!.InputLevelDb, l => l >= -30);
+        var level = await OnUiUntil(() => vm.PageFlow.SettingsPage!.InputLevelDb, l => l >= -30);
         Assert.InRange(level, -15, -12); // 0.3 amplitude sine: -13.5 dBFS
 
         await OnUi(() =>
         {
-            vm.SettingsPage!.SelectedTheme = SettingsViewModel.Themes.Single(t => t.Value == AppTheme.Dark);
-            vm.SettingsPage.SaveCommand.Execute(null);
+            vm.PageFlow.SettingsPage!.SelectedTheme = SettingsViewModel.Themes.Single(t => t.Value == AppTheme.Dark);
+            vm.PageFlow.SettingsPage.SaveCommand.Execute(null);
             return 0;
         });
-        Assert.Equal(Page.Home, await OnUi(() => vm.Page));
+        Assert.Equal(Page.Home, await OnUi(() => vm.PageFlow.Page));
         Assert.Equal(AppTheme.Dark, ClientSettings.Load(dir, out _).Theme);
     }
 
@@ -1079,8 +1120,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var (page, inputs, hint) = await OnUi(() =>
         {
-            main.OpenSettings();
-            return (main.Page, main.SettingsPage!.Inputs.Select(i => i.Name).ToList(), main.SettingsPage.DeviceHint);
+            main.PageFlow.OpenSettings();
+            return (main.PageFlow.Page, main.PageFlow.SettingsPage!.Inputs.Select(i => i.Name).ToList(), main.PageFlow.SettingsPage.DeviceHint);
         });
         // not blocked by the gate (which holds 10 s): the margin is for a slow runner, the UI round trip alone may take a while
         Assert.True(watch.ElapsedMilliseconds < 5000, $"{watch.ElapsedMilliseconds} ms");
@@ -1089,18 +1130,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Null(hint);
 
         gate.Set();
-        await OnUiUntil(() => main.SettingsPage!.Inputs.Count, n => n == 3);
-        Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], await OnUi(() => main.SettingsPage!.Inputs.Select(i => i.Name).ToList()));
-        Assert.Equal("mic-2", await OnUi(() => main.SettingsPage!.SelectedInput.Id));
-        Assert.Null(await OnUi(() => main.SettingsPage!.DeviceHint));
+        await OnUiUntil(() => main.PageFlow.SettingsPage!.Inputs.Count, n => n == 3);
+        Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], await OnUi(() => main.PageFlow.SettingsPage!.Inputs.Select(i => i.Name).ToList()));
+        Assert.Equal("mic-2", await OnUi(() => main.PageFlow.SettingsPage!.SelectedInput.Id));
+        Assert.Null(await OnUi(() => main.PageFlow.SettingsPage!.DeviceHint));
 
         // second time: the last list is there at once, a fresh one follows
         gate.Reset();
         var again = await OnUi(() =>
         {
-            main.ClosePage();
-            main.OpenSettings();
-            return main.SettingsPage!.Inputs.Select(i => i.Name).ToList();
+            main.PageFlow.ClosePage();
+            main.PageFlow.OpenSettings();
+            return main.PageFlow.SettingsPage!.Inputs.Select(i => i.Name).ToList();
         });
         Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], again);
         gate.Set();
@@ -1118,22 +1159,22 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() => vm.Appearance));
         var live = await OnUi(() =>
         {
-            vm.OpenSettings();
-            vm.SettingsPage!.BackgroundOpacityPercent = 30;
-            vm.SettingsPage.BlurBackground = true;
+            vm.PageFlow.OpenSettings();
+            vm.PageFlow.SettingsPage!.BackgroundOpacityPercent = 30;
+            vm.PageFlow.SettingsPage.BlurBackground = true;
             return vm.Appearance;
         });
         Assert.Equal(new BackgroundAppearance(0.3f, true), live with { Opacity = MathF.Round(live.Opacity, 3) });
         Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() =>
         {
-            vm.SettingsPage!.CancelCommand.Execute(null);
+            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
             return vm.Appearance;
         }));
         var saved = await OnUi(() =>
         {
-            vm.OpenSettings();
-            vm.SettingsPage!.BackgroundOpacityPercent = 60;
-            vm.SettingsPage.SaveCommand.Execute(null);
+            vm.PageFlow.OpenSettings();
+            vm.PageFlow.SettingsPage!.BackgroundOpacityPercent = 60;
+            vm.PageFlow.SettingsPage.SaveCommand.Execute(null);
             return (vm.Appearance.Opacity, vm.Settings.BackgroundOpacity);
         });
         Assert.Equal((0.6f, 0.6f), (MathF.Round(saved.Item1, 3), MathF.Round(saved.Item2, 3)));
@@ -1148,20 +1189,20 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(DisplayMode.Animated, await OnUi(() => vm.Appearance.Display));
         Assert.Equal(DisplayMode.Simplified, await OnUi(() =>
         {
-            vm.OpenSettings();
-            vm.SettingsPage!.SelectedDisplay = simplified;
+            vm.PageFlow.OpenSettings();
+            vm.PageFlow.SettingsPage!.SelectedDisplay = simplified;
             return vm.Appearance.Display;
         }));
         Assert.Equal(DisplayMode.Animated, await OnUi(() =>
         {
-            vm.SettingsPage!.CancelCommand.Execute(null);
+            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
             return vm.Appearance.Display;
         }));
         Assert.Equal(DisplayMode.Simplified, await OnUi(() =>
         {
-            vm.OpenSettings();
-            vm.SettingsPage!.SelectedDisplay = simplified;
-            vm.SettingsPage.SaveCommand.Execute(null);
+            vm.PageFlow.OpenSettings();
+            vm.PageFlow.SettingsPage!.SelectedDisplay = simplified;
+            vm.PageFlow.SettingsPage.SaveCommand.Execute(null);
             return vm.Appearance.Display;
         }));
         Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
@@ -1175,13 +1216,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Task<KeyChord?>? captured = null;
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.OpenSettings();
-            vm.SettingsPage!.EditKeyBinding = (_, capture) =>
+            vm.PageFlow.OpenSettings();
+            vm.PageFlow.SettingsPage!.EditKeyBinding = (_, capture) =>
             {
                 captured = capture(KeyAction.ToggleMute);
                 return Task.FromResult<KeyBinding?>(null);
             };
-            await vm.SettingsPage.AddKeyBindingCommand.ExecuteAsync(null);
+            await vm.PageFlow.SettingsPage.AddKeyBindingCommand.ExecuteAsync(null);
             return null;
         });
         await keys.NextSweep(); // the first sweep of a capture only records what is already down
@@ -1208,10 +1249,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             await ui.InvokeAsync<object?>(async () =>
             {
-                vm.OpenSettings();
-                vm.SettingsPage!.IsPushToTalk = true;
-                vm.SettingsPage.EditKeyBinding = (_, _) => Task.FromResult<KeyBinding?>(key);
-                await vm.SettingsPage.SetPttKeyCommand.ExecuteAsync(null);
+                vm.PageFlow.OpenSettings();
+                vm.PageFlow.SettingsPage!.IsPushToTalk = true;
+                vm.PageFlow.SettingsPage.EditKeyBinding = (_, _) => Task.FromResult<KeyBinding?>(key);
+                await vm.PageFlow.SettingsPage.SetPttKeyCommand.ExecuteAsync(null);
                 return null;
             });
             return await OnUi(() => vm.Keys.Bindings);
@@ -1227,26 +1268,26 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal([key], await SetKeyOnPage());
         Assert.Empty(await OnUi(() =>
         {
-            vm.SettingsPage!.CancelCommand.Execute(null);
+            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
             return vm.Keys.Bindings;
         }));
 
         Assert.Equal([key], await SetKeyOnPage());
         Assert.Empty(await OnUi(() =>
         {
-            vm.SettingsPage!.KeyBindings[0].RemoveCommand.Execute(null);
+            vm.PageFlow.SettingsPage!.KeyBindings[0].RemoveCommand.Execute(null);
             return vm.Keys.Bindings;
         }));
         Assert.Empty(await OnUi(() =>
         {
-            vm.ClosePage(); // what Esc does
+            vm.PageFlow.ClosePage(); // what Esc does
             return vm.Keys.Bindings;
         }));
 
         Assert.Equal([key], await SetKeyOnPage());
         Assert.Equal([key], await OnUi(() =>
         {
-            vm.SettingsPage!.SaveCommand.Execute(null);
+            vm.PageFlow.SettingsPage!.SaveCommand.Execute(null);
             return vm.Keys.Bindings;
         }));
         Assert.Equal([key], ClientSettings.Load(dir, out _).KeyBindings);
@@ -1258,10 +1299,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var after = await OnUi(() =>
         {
-            vm.OpenSettings();
-            vm.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
-            vm.SettingsPage.BlurBackground = true;
-            vm.ClosePage(); // what Esc does
+            vm.PageFlow.OpenSettings();
+            vm.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
+            vm.PageFlow.SettingsPage.BlurBackground = true;
+            vm.PageFlow.ClosePage(); // what Esc does
             return vm.Appearance;
         });
         Assert.Equal(new BackgroundAppearance(1f, false, DisplayMode.Animated), after);
@@ -1283,16 +1324,16 @@ public sealed class MainViewModelTests : IAsyncLifetime
         // closing the settings ends it (the rules and the page's button are in SelfTestTests and SelfTestWiringTests); a slider moved meanwhile goes back on "Verwerfen"
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.OpenSettings();
-            await vm.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
-            vm.SettingsPage.OutputVolumePercent = 50;
+            vm.PageFlow.OpenSettings();
+            await vm.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+            vm.PageFlow.SettingsPage.OutputVolumePercent = 50;
             return null;
         });
         Assert.Equal(0.5f, await OnUi(() => vm.Audio.Mixer.Volume));
         Assert.Equal((true, true), await SeenByServer(true));
         await OnUi(() =>
         {
-            vm.SettingsPage!.CancelCommand.Execute(null);
+            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
             return 0;
         });
         Assert.Equal((false, false), await SeenByServer(false));
@@ -1356,12 +1397,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
-            vm.OpenSettings();
+            vm.PageFlow.OpenSettings();
             vm.Audio.DeviceLifecycle.SetTone(440);
             return 0;
         });
-        Assert.Equal(-28, await OnUiUntil(() => vm.SettingsPage!.ThresholdInUseDb, t => t == -28));
-        Assert.Equal(-28, await OnUi(() => vm.SettingsPage!.MeterThresholdDb));
+        Assert.Equal(-28, await OnUiUntil(() => vm.PageFlow.SettingsPage!.ThresholdInUseDb, t => t == -28));
+        Assert.Equal(-28, await OnUi(() => vm.PageFlow.SettingsPage!.MeterThresholdDb));
     }
 
     [Fact]
@@ -1673,13 +1714,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
             await Do(() =>
             {
-                main.OpenSettings();
+                main.PageFlow.OpenSettings();
                 return Task.CompletedTask;
             });
             Assert.Equal((1, 1, 0, 0, false), await Settled((1, 1, 0, 0, false))); // the level meter
             await Do(() =>
             {
-                main.ClosePage();
+                main.PageFlow.ClosePage();
                 return Task.CompletedTask;
             });
             Assert.Equal((1, 0, 0, 0, false), await Settled((1, 0, 0, 0, false)));
