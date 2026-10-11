@@ -195,7 +195,7 @@ public sealed class UdpVoiceServer : IDisposable
         }
     }
 
-    static readonly int MaxOpusBase64 = Base64Size.Encoded(VoiceHeader.MaxOpusSize);
+    static readonly int MaxOpusBase64 = Base64Text.Encoded(VoiceHeader.MaxOpusSize);
 
     /// <summary>Package 141: one voice frame of a UDP or a TCP sender, under the gate; everything after the way in is shared.</summary>
     async Task VoiceAsync(Session sender, byte requestedTarget, byte[] plain, uint frame, Range current, Range copy)

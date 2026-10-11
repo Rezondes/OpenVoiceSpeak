@@ -116,7 +116,7 @@ public sealed partial class ServerState
             DropUpload(s);
             return;
         }
-        if (!UploadFolder.IsValidId(r.UploadId) || r.DataBase64.Length > Base64Size.Encoded(ProtocolLimits.BackupChunkBytes))
+        if (!UploadFolder.IsValidId(r.UploadId) || r.DataBase64.Length > Base64Text.Encoded(ProtocolLimits.BackupChunkBytes))
         {
             Fail(s, r, ReasonCodes.InvalidValue);
             return;
@@ -132,14 +132,12 @@ public sealed partial class ServerState
             s.Upload = new BackupUpload(r.UploadId, uploads.PreparePath(r.UploadId));
         }
         var upload = s.Upload!;
-        var buffer = new byte[Base64Size.Decoded(r.DataBase64.Length)];
-        if (!Convert.TryFromBase64String(r.DataBase64, buffer, out int written))
+        if (!Base64Text.TryDecode(r.DataBase64, out var bytes))
         {
             DropUpload(s);
             Fail(s, r, ReasonCodes.InvalidValue, "kein Base64");
             return;
         }
-        var bytes = buffer[..written];
         if (!upload.Continues(r.Offset) || bytes.Length > ProtocolLimits.BackupChunkBytes)
         {
             DropUpload(s);

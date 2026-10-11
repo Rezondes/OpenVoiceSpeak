@@ -63,12 +63,7 @@ public sealed record StoredPassword
             || !int.TryParse(count, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out iterations)
             || iterations is < HashIterations or > MaxHashIterations)
             return false;
-        var saltBuffer = new byte[Base64Size.Decoded(saltText.Length)];
-        if (!Convert.TryFromBase64String(saltText, saltBuffer, out int saltWritten)) return false;
-        salt = saltBuffer[..saltWritten];
-        var keyBuffer = new byte[Base64Size.Decoded(keyText.Length)];
-        if (!Convert.TryFromBase64String(keyText, keyBuffer, out int keyWritten)) return false;
-        key = keyBuffer[..keyWritten];
+        if (!Base64Text.TryDecode(saltText, out salt) || !Base64Text.TryDecode(keyText, out key)) return false;
         return salt.Length == SaltBytes && key.Length == KeyBytes;
     }
 

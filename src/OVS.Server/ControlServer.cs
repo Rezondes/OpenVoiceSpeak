@@ -171,12 +171,12 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         var nickname = TextRules.NormalizeName(hello.Nickname, ProtocolLimits.MaxNicknameLength);
         if (nickname is null) return await Reject(ReasonCodes.NicknameInvalid);
         logName = nickname;
-        if (!TryBase64(hello.PublicKey, out var publicKey)) return await Reject(ReasonCodes.ProtocolError);
+        if (!Base64Text.TryDecode(hello.PublicKey, out var publicKey)) return await Reject(ReasonCodes.ProtocolError);
 
         var nonce = RandomNumberGenerator.GetBytes(32);
         await writer.WriteAsync(new Challenge(Convert.ToBase64String(nonce)), ct);
 
-        if (await reader.ReadAsync(ct) is not ClientProof proof || !TryBase64(proof.Signature, out var signature))
+        if (await reader.ReadAsync(ct) is not ClientProof proof || !Base64Text.TryDecode(proof.Signature, out var signature))
             return await Reject(ReasonCodes.ProtocolError);
         if (!ClientIdentity.Verify(publicKey, ClientIdentity.ProofData(nonce, certHash), signature))
             return await Reject(ReasonCodes.BadSignature);
@@ -236,15 +236,5 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         {
             tcp.Close(); // ends the read loop
         }
-    }
-
-    static bool TryBase64(string? text, out byte[] bytes)
-    {
-        bytes = [];
-        if (text is null) return false;
-        var buffer = new byte[Base64Size.Decoded(text.Length)];
-        if (!Convert.TryFromBase64String(text, buffer, out int written)) return false;
-        bytes = buffer[..written];
-        return true;
     }
 }

@@ -236,13 +236,12 @@ public sealed partial class ServerState
         byte[]? png = null;
         if (r.PngBase64 is not null)
         {
-            var buffer = new byte[Base64Size.Decoded(r.PngBase64.Length)];
-            if (!Convert.TryFromBase64String(r.PngBase64, buffer, out int written))
+            if (!Base64Text.TryDecode(r.PngBase64, out var decoded))
             {
                 Fail(s, r, ReasonCodes.InvalidValue, "Das Logo ist kein gültiges Base64.");
                 return;
             }
-            png = buffer[..written];
+            png = decoded;
             if (ServerIconFormat.Validate(png) is { } problem)
             {
                 Fail(s, r, ReasonCodes.InvalidValue, problem);

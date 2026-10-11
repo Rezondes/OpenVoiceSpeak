@@ -66,7 +66,7 @@ internal static class ProtocolLogText
                     _ => $"Private {m.FromNickname} to {DescribeSession(m.ToSessionId ?? 0, mirror)}: {m.Text}",
                 };
             case ServerIcon m:
-                return m.PngBase64 is null ? "Server has no logo" : $"Server logo received ({Base64Size.Decoded(m.PngBase64.Length) / 1024} KB)";
+                return m.PngBase64 is null ? "Server has no logo" : $"Server logo received ({Base64Text.Decoded(m.PngBase64.Length) / 1024} KB)";
             case Error { Detail: { Length: > 0 } detail } e:
                 return $"Error {e.Code} ({e.RequestId}): {detail}"; // A45: the UI shows its own text, the detail only lands here
             case Error:

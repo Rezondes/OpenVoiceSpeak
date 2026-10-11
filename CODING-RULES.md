@@ -66,7 +66,7 @@ Each project has an `Exceptions/` folder (B7 b). A base exception and its subcla
 
 ### OVS.Shared
 
-- `Protocol/` keeps `WireProtocol` (what client and server must agree on: the version and the log page size), `ProtocolLimits` (the bounds both keep: lengths, ranges, transfer sizes) and `ProtocolDefaults` (the start values); together they were `ProtocolInfo` (N18), whose server-only values went to `ServerTuning`. It also keeps `ReasonCodes` (was `Codes`), `TextRules`, `ServerIconFormat`, and later `Base64Size` (§Shared helpers).
+- `Protocol/` keeps `WireProtocol` (what client and server must agree on: the version and the log page size), `ProtocolLimits` (the bounds both keep: lengths, ranges, transfer sizes) and `ProtocolDefaults` (the start values); together they were `ProtocolInfo` (N18), whose server-only values went to `ServerTuning`. It also keeps `ReasonCodes` (was `Codes`), `TextRules`, `ServerIconFormat`, and later `Base64Text` (§Shared helpers).
 - `Protocol/Framing/`: `ProtocolJson`, `FrameReader`, `FrameWriter` (D7).
 - `Protocol/Messages/`: see §Protocol messages.
 - `Voice/` stays flat, one type per file (D8): `PacketType`, `PacketDirection` (was `Direction`), `VoiceHeader`, `VoiceCrypto`, `SeqCounter`, `ReplayWindow`, `LossReport`, `PingPayload`, `LossWindow`, `RelayPayload`.
@@ -186,7 +186,7 @@ Where code that several places need lives. All of these are introduced by the re
 | `OVS.Shared.IO.SafeFile` | `DeleteQuietly` (swallows `IOException` and `UnauthorizedAccessException`), `WriteAtomic` (to `.tmp`, then move; with a `flushToDisk` parameter, each caller keeping whether it flushes), `ReadChunk` (at most `ProtocolLimits.BackupChunkBytes`) | E8, I1, I2 |
 | `OVS.Shared.Logging.LogFileWriter.NameFormat` | the log name format `yyyy-MM-dd_HH-mm-ss` | I4 |
 | `OVS.Shared.Protocol.Framing.ProtocolJson.Indented` | indented JSON options | I5 |
-| `OVS.Shared.Protocol.Base64Size` | `Encoded(bytes)` and `Decoded(chars)`; base64 input is decoded with `Convert.TryFromBase64String` into a buffer of `Decoded` bytes, then sliced to the bytes written | I6, I7 |
+| `OVS.Shared.Protocol.Base64Text` | `Encoded(bytes)`, `Decoded(chars)` and `TryDecode(text, out bytes)`; base64 input is decoded with `Base64Text.TryDecode` (null or malformed gives false and empty bytes), never by repeating the buffer-and-slice recipe; except the voice frames in VoiceClient and UdpVoiceServer, whose fixed MaxOpusSize buffer also caps the frame size; ClientConnection.cs:101 and ConnectionViewModel.cs:183 follow in 25h4b, ChunkedDownload.cs:22 later | I6, I7 |
 | `OVS.Shared.Net.IpAddresses` | `Unmap` (IPv4-mapped IPv6 addresses to IPv4); `ToAddressGroup` (the IPv4 address or the IPv6 /64, was `ServerState.AddressGroup`) | I13, N8 |
 | `OVS.Shared.Permissions.GroupRules` | `IsProtected`, `CanSave`, `CanDelete`, `CanAssign` (on ids and permissions), `IsLastAdmin`; the server's `PermissionRules` passes its `GroupRecord` to them, the client's group editor and user list call them | N1 |
 | `OVS.Shared.Permissions.ChannelAccess` | `IsJoinable` (no separator), `GroupsAllow` (the group lock, admins pass), `NeedsPassword` (bypass only when joining); whether a channel is too full to enter only the server decides | N1 |

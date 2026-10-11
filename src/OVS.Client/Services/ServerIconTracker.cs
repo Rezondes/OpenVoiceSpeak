@@ -112,9 +112,7 @@ internal sealed class ServerIconTracker
     internal void Receive(ServerIcon icon)
     {
         if (icon.PngBase64 is null || icon.Hash != serverHash()) return;
-        var buffer = new byte[Base64Size.Decoded(icon.PngBase64.Length)];
-        if (!Convert.TryFromBase64String(icon.PngBase64, buffer, out int written)) return;
-        var png = buffer[..written];
+        if (!Base64Text.TryDecode(icon.PngBase64, out var png)) return;
         if (!Matches(png, icon.Hash)) return;
         cache.Save(host, port, png);
         show(png);
