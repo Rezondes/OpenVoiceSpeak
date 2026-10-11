@@ -180,7 +180,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
 
         var udp = new VoiceClient(VoiceRelay ?? new IPEndPoint(conn.RemoteAddress, choice.Port), conn.Welcome.SessionId,
-            Convert.FromBase64String(conn.Welcome.VoiceKey), time, conn); // Package 141: falls back to the TLS connection
+            conn.VoiceKey, time, conn); // Package 141: falls back to the TLS connection
         // Package 139 (review): owned from here on, so a failure below is torn down with them (DisconnectAsync)
         connection = conn;
         VoiceLink.Start(udp);

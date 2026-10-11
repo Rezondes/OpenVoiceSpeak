@@ -8,6 +8,7 @@ using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Users;
+using OVS.Shared.Voice;
 using static OVS.Server.Permissions.PermissionRules;
 
 namespace OVS.Server.State;
@@ -112,7 +113,7 @@ public sealed partial class ServerState
             user.Login(nickname, ipText, now);
             saves.PersistSoon(); // Package 87: a connect loop no longer costs an fsync per connection
 
-            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(32), time)
+            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(VoiceCrypto.KeySize), time)
             {
                 ChannelId = data.DefaultChannelId,
                 GroupIds = user.GroupIds.ToList(),

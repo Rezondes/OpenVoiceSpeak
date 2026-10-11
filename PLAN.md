@@ -682,6 +682,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerConfigTests"`
 2. `HandshakeTests.cs > "ServerCertificate_LoadOrCreate_Twice_SameThumbprint"` (AC12)
 3. `HandshakeTests.cs`, jeweils gegen `TestServer` auf Port 0:
    - `"ValidHandshake_ReceivesWelcome"` (AC1)
+   - `ClientNetTests > "ConnectAsync_WelcomeVoiceKeyNotBase64_ThrowsProtocolExceptionAndClosesTheSocket"`, `"ReadVoiceKey_NotBase64_ThrowsProtocolException"`, `"ReadVoiceKey_WrongLength_ThrowsProtocolException"` und `"ReadVoiceKey_ThirtyTwoBytes_ReturnsThemWhole"` (AC1)
    - `"WrongSignature_RejectedBadSignature"` (AC2)
    - `"SignatureBoundToOtherCert_RejectedBadSignature"` (AC3)
    - `"OldProtocolVersion_RejectedVersionMismatch"` (AC4)
@@ -8164,7 +8165,7 @@ A lost connection ends the session (`MainViewModel.cs:463-470`); auto-reconnect 
 5. `ReconnectTests > "Reconnect_CancelledOrConnectedElsewhere_EndsTheSeriesAndDropsTheOldAttempt"` (AC4), `ConnectionViewModelTests > "CancelReconnect_NotReconnecting_DoesNothing"` and `"OnDisconnected_OldConnectionReportsLate_IsIgnored"` (AC4)
 6. `ReconnectTests > "Reconnect_AttemptsRunning_StatusCountsDownWithoutToneUntilTheFifthFails"` (AC5)
 7. `ReconnectTests > "Reconnect_ChannelGone_StaysInDefault"` (AC6)
-8. `ReconnectTests > "Reconnect_RefusedWithANotNowCode_SchedulesTheNextAttempt"` (AC1), `"Reconnect_ServerRestarts_ConnectsAgainLikeAfterAShutdown"` and `"Reconnect_UnexpectedFailure_CountsAsFailedAttempt"` (AC1), `ConnectionViewModelTests > "Reconnect_AttachFailsBeforeOwningTheConnection_ClosesItAndContinues"`, `ConnectionViewModelTests > "Reconnect_AttachFailsAfterOwningTheConnection_TearsItDownAndContinues"` (AC1)
+8. `ReconnectTests > "Reconnect_RefusedWithANotNowCode_SchedulesTheNextAttempt"` (AC1), `"Reconnect_ServerRestarts_ConnectsAgainLikeAfterAShutdown"` and `"Reconnect_UnexpectedFailure_CountsAsFailedAttempt"` (AC1), `ConnectionViewModelTests > "Reconnect_AttachFailsBeforeOwningTheConnection_ClosesItAndContinues"`, `ConnectionViewModelTests > "Reconnect_AttachFailsAfterOwningTheConnection_TearsItDownAndContinues"`, `ConnectionViewModelTests > "Reconnect_AttemptGetsAMalformedVoiceKey_CountsAsAFailedAttemptAndTheNextConnects"` (AC1)
 9. `ReconnectTests > "Reconnect_TofuRejected_EndsTheSeriesWithStatusNoticeAndTone"` (AC3), `ConnectionViewModelTests > "ConnectAsync_CertificateRefused_StatusSaysTofuRejected"` (AC3)
 10. `ReconnectTests > "Reconnect_AttemptAfterCancel_IsDroppedAndDisposed"` (AC4)
 11. `ReconnectTests > "Reconnect_AfterADrop_ReusesTheChoiceOfTheConnectWithoutCancellation"` (AC2)

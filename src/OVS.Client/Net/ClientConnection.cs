@@ -11,6 +11,7 @@ using OVS.Shared.Protocol.Framing;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.VoiceRelay;
+using OVS.Shared.Voice;
 
 namespace OVS.Client.Net;
 
@@ -30,7 +31,7 @@ public sealed class ClientConnection : IAsyncDisposable
     int disconnectRaised;
     Task? receiveLoop, pingLoop, voiceLoop;
 
-    ClientConnection(TcpClient tcp, SslStream ssl, Welcome welcome, TimeProvider time)
+    ClientConnection(TcpClient tcp, SslStream ssl, Welcome welcome, byte[] voiceKey, TimeProvider time)
     {
         this.tcp = tcp;
         this.ssl = ssl;
@@ -38,9 +39,13 @@ public sealed class ClientConnection : IAsyncDisposable
         reader = new FrameReader(ssl);
         writer = new FrameWriter(ssl);
         Welcome = welcome;
+        VoiceKey = voiceKey;
     }
 
     public Welcome Welcome { get; }
+
+    /// <summary>The welcome's voice key, decoded once at the handshake (always <see cref="VoiceCrypto.KeySize"/> bytes).</summary>
+    internal byte[] VoiceKey { get; }
     /// <summary>Server address for UDP. Dual-mode TCP sockets report IPv4 servers as ::ffff:a.b.c.d, which UDP cannot use.</summary>
     public IPAddress RemoteAddress
     {
@@ -98,7 +103,7 @@ public sealed class ClientConnection : IAsyncDisposable
             var reply = await reader.ReadAsync(timeout.Token);
             if (reply is Challenge challenge)
             {
-                var proof = identity.Sign(ClientIdentity.ProofData(Convert.FromBase64String(challenge.Nonce), CertFingerprint.Compute(ssl.RemoteCertificate!)));
+                var proof = identity.Sign(ClientIdentity.ProofData(ReadNonce(challenge), CertFingerprint.Compute(ssl.RemoteCertificate!)));
                 await writer.WriteAsync(new ClientProof(Convert.ToBase64String(proof)), timeout.Token);
                 reply = await reader.ReadAsync(timeout.Token);
             }
@@ -106,7 +111,7 @@ public sealed class ClientConnection : IAsyncDisposable
             switch (reply)
             {
                 case Welcome welcome:
-                    var connection = new ClientConnection(tcp, ssl, welcome, time);
+                    var connection = new ClientConnection(tcp, ssl, welcome, ReadVoiceKey(welcome), time);
                     connection.Start();
                     return connection;
                 case Rejected rejected:
@@ -121,6 +126,16 @@ public sealed class ClientConnection : IAsyncDisposable
             throw;
         }
     }
+
+    /// <summary>The challenge's nonce; any length decodes (the server's proof check decides), text that is not base64 fails the connect.</summary>
+    internal static byte[] ReadNonce(Challenge challenge) =>
+        Base64Text.TryDecode(challenge.Nonce, out var nonce) ? nonce : throw new ProtocolException("Server sent a malformed challenge");
+
+    /// <summary>The welcome's voice key; anything but base64 of exactly <see cref="VoiceCrypto.KeySize"/> bytes fails the connect.</summary>
+    internal static byte[] ReadVoiceKey(Welcome welcome) =>
+        Base64Text.TryDecode(welcome.VoiceKey, out var key) && key.Length == VoiceCrypto.KeySize
+            ? key
+            : throw new ProtocolException("Server sent a malformed voice key");
 
     void Start()
     {

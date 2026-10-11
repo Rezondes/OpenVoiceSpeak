@@ -9,6 +9,7 @@ using OVS.Client.ViewModels;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Tests.TestSupport;
 
@@ -437,7 +438,76 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         Assert.Equal(requestsBefore + 1, await LogoRequestsAsync());
     }
 
+    // ---- 25h4b: a malformed challenge or voice key is a failed connect ----
+
+    static ConnectChoice ChoiceFor(HandshakeStub stub) => new("127.0.0.1", stub.Port, "anna", null, SaveBookmark: false);
+
+    [Fact]
+    public async Task ConnectAsync_ServerSendsAMalformedChallenge_StatusSaysFailedLogsItAndThrowsNothing()
+    {
+        await using var stub = HandshakeStub.Start(dir, new Challenge("this is not base64"));
+
+        await HangGuard.Bound(rig.ConnectAsync(ChoiceFor(stub)));
+
+        var expected = string.Format(Strings.Status_Failed, "Server sent a malformed challenge");
+        Assert.Equal(expected, await StatusAsync());
+        Assert.Contains(expected, await LogAsync());
+        Assert.False(await IsConnectingAsync());
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ServerSendsAMalformedVoiceKey_StatusSaysFailedLogsItAndThrowsNothing()
+    {
+        await using var stub = HandshakeStub.Start(dir, HandshakeStub.WelcomeWith("this is not base64"));
+
+        await HangGuard.Bound(rig.ConnectAsync(ChoiceFor(stub)));
+
+        var expected = string.Format(Strings.Status_Failed, "Server sent a malformed voice key");
+        Assert.Equal(expected, await StatusAsync());
+        Assert.Contains(expected, await LogAsync());
+        Assert.False(await IsConnectingAsync());
+        Assert.Null(await rig.ReadAsync(() => rig.Shown));
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ServerSendsAMalformedVoiceKey_ClosesTheConnection()
+    {
+        await using var stub = HandshakeStub.Start(dir, HandshakeStub.WelcomeWith("this is not base64"));
+
+        await HangGuard.Bound(rig.ConnectAsync(ChoiceFor(stub)));
+
+        await HangGuard.Bound(stub.ClientClosed);
+        Assert.Null(await rig.ReadAsync(() => rig.Connection.ConnectionTime));
+    }
+
     // ---- The reconnect series ----
+
+    [Fact]
+    public async Task Reconnect_AttemptGetsAMalformedVoiceKey_CountsAsAFailedAttemptAndTheNextConnects()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var stub = HandshakeStub.Start(dir, HandshakeStub.WelcomeWith("this is not base64"));
+        await rig.ConnectAsync(ChoiceFor(server));
+        var session = await rig.ReadAsync(() => rig.Shown!.Mirror.SelfId);
+        rig.OpenOverride = (choice, token) =>
+        {
+            rig.OpenOverride = null; // only the next attempt goes to the stub
+            return rig.Seam.Connect(choice with { Port = stub.Port }, token);
+        };
+        server.State.FindSession(session)!.Outbox.Abort("Test");
+        Assert.True(await rig.ReadUntilAsync(() => rig.Connection.IsReconnecting, reconnecting => reconnecting));
+
+        rig.Time.Advance(TimeSpan.FromSeconds(1));
+        await HangGuard.Bound(rig.Seam.WaitForAttemptAsync(2));
+
+        Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Any(line => line.StartsWith("Reconnect failed: ")), logged => logged));
+        await HangGuard.Bound(stub.ClientClosed);
+        Assert.True(await rig.ReadAsync(() => rig.Connection.IsReconnecting));
+
+        rig.Time.Advance(TimeSpan.FromSeconds(2));
+        Assert.True(await rig.ReadUntilAsync(() => rig.Shown is not null && !rig.Connection.IsReconnecting, back => back));
+        Assert.Equal(3, rig.Seam.Attempts.Count);
+    }
 
     [Fact]
     public async Task CancelReconnect_NotReconnecting_DoesNothing()

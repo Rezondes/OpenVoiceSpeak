@@ -2,8 +2,10 @@ using System.Net;
 using System.Security.Cryptography;
 using OVS.Client.Exceptions;
 using OVS.Client.Net;
+using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol;
+using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Shared.Voice;
@@ -88,6 +90,92 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         await using var server = await TestServer.StartAsync(password: "pw");
         var e = await Assert.ThrowsAsync<ConnectionRejectedException>(() => Connect(server, "a"));
         Assert.Equal(ReasonCodes.WrongPassword, e.Code);
+    }
+
+    // ---- 25h4b: server data that is not base64 fails the connect ----
+
+    Task<ClientConnection> ConnectToStubAsync(HandshakeStub stub) =>
+        ClientConnection.ConnectAsync("127.0.0.1", stub.Port, ClientIdentity.Create(), "anna", null, Known(), _ => Task.FromResult(true), TimeProvider.System);
+
+    [Fact]
+    public async Task ConnectAsync_ChallengeNonceNotBase64_ThrowsProtocolExceptionAndClosesTheSocket()
+    {
+        await using var stub = HandshakeStub.Start(dir, new Challenge("this is not base64"));
+
+        var thrown = await Assert.ThrowsAsync<ProtocolException>(() => HangGuard.Bound(ConnectToStubAsync(stub)));
+
+        Assert.Equal("Server sent a malformed challenge", thrown.Message);
+        await HangGuard.Bound(stub.ClientClosed);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WelcomeVoiceKeyNotBase64_ThrowsProtocolExceptionAndClosesTheSocket()
+    {
+        await using var stub = HandshakeStub.Start(dir, HandshakeStub.WelcomeWith("this is not base64"));
+
+        var thrown = await Assert.ThrowsAsync<ProtocolException>(() => HangGuard.Bound(ConnectToStubAsync(stub)));
+
+        Assert.Equal("Server sent a malformed voice key", thrown.Message);
+        await HangGuard.Bound(stub.ClientClosed);
+    }
+
+    static string Base64Of(int bytes) => Convert.ToBase64String(Enumerable.Range(1, bytes).Select(value => (byte)value).ToArray());
+
+    [Theory]
+    [InlineData("this is not base64")]
+    [InlineData("abc")] // a bad length
+    [InlineData("====")]
+    [InlineData("QUJD!")] // a bad character
+    public void ReadVoiceKey_NotBase64_ThrowsProtocolException(string voiceKey)
+    {
+        var thrown = Assert.Throws<ProtocolException>(() => ClientConnection.ReadVoiceKey(HandshakeStub.WelcomeWith(voiceKey)));
+        Assert.Equal("Server sent a malformed voice key", thrown.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(16)] // a valid AES size, but not the server's
+    [InlineData(VoiceCrypto.KeySize - 1)]
+    [InlineData(VoiceCrypto.KeySize + 1)]
+    public void ReadVoiceKey_WrongLength_ThrowsProtocolException(int bytes)
+    {
+        var thrown = Assert.Throws<ProtocolException>(() => ClientConnection.ReadVoiceKey(HandshakeStub.WelcomeWith(Base64Of(bytes))));
+        Assert.Equal("Server sent a malformed voice key", thrown.Message);
+    }
+
+    [Fact]
+    public void ReadVoiceKey_ThirtyTwoBytes_ReturnsThemWhole()
+    {
+        var text = Base64Of(VoiceCrypto.KeySize);
+        Assert.EndsWith("=", text); // padded: the decode buffer is larger than the key
+
+        Assert.Equal(Convert.FromBase64String(text), ClientConnection.ReadVoiceKey(HandshakeStub.WelcomeWith(text)));
+    }
+
+    [Theory]
+    [InlineData("this is not base64")]
+    [InlineData("abc")] // a bad length
+    [InlineData("====")]
+    [InlineData("QUJD!")] // a bad character
+    public void ReadNonce_NotBase64_ThrowsProtocolException(string nonce)
+    {
+        var thrown = Assert.Throws<ProtocolException>(() => ClientConnection.ReadNonce(new Challenge(nonce)));
+        Assert.Equal("Server sent a malformed challenge", thrown.Message);
+    }
+
+    /// <summary>An empty nonce decodes: the server's proof check decides, not the client.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")] // whitespace only is skipped, so it is empty too
+    public void ReadNonce_Empty_ReturnsNoBytes(string nonce) =>
+        Assert.Empty(ClientConnection.ReadNonce(new Challenge(nonce)));
+
+    [Fact]
+    public void ReadNonce_ThirtyTwoBytes_ReturnsThemWhole()
+    {
+        var text = Base64Of(32);
+
+        Assert.Equal(Convert.FromBase64String(text), ClientConnection.ReadNonce(new Challenge(text)));
     }
 
     [Fact]

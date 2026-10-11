@@ -6,6 +6,9 @@ namespace OVS.Shared.Voice;
 /// <summary>AES-GCM with the session's voice key. Not thread-safe; use from one thread.</summary>
 public sealed class VoiceCrypto(byte[] key) : IDisposable
 {
+    /// <summary>The bytes of a session's voice key (AES-256): what the server generates and the client accepts.</summary>
+    public const int KeySize = 32;
+
     readonly AesGcm aes = new(key, VoiceHeader.TagSize);
 
     public byte[] Seal(PacketDirection direction, VoiceHeader header, ReadOnlySpan<byte> plaintext)
