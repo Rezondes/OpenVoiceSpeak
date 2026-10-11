@@ -458,7 +458,7 @@ public sealed class VoiceLinkTests : IDisposable
         await server.SendVoiceAsync(speaker: 9, frameNumber: 0, EngineProbe.SilentFrame());
         await server.SendVoiceAsync(speaker: 9, frameNumber: 2, EngineProbe.SilentFrame());
         await AsyncWait.Until(() => engine.FramesReceived.GetValueOrDefault(9u) == 2);
-        await AnswerHelloAsync(hellosSoFar: 1);
+        await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
 
         var figures = link.ReadFigures();
 
