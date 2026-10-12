@@ -1,0 +1,122 @@
+[
+  {
+    "Key": "RL052|src/OVS.Client/Animations/ItemMotion.cs|ItemMotion",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/Animations/LiveMotion.cs|LiveMotion",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/Animations/PageMotion.cs|PageMotion",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/Audio/Devices/DeviceLifecycle.cs|DeviceLifecycle",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/Audio/Playback/VoiceMixer.cs|VoiceMixer",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/Audio/Processing/EchoCanceller.cs|EchoCanceller",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/Audio/Processing/NoiseSuppressor.cs|NoiseSuppressor",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/Audio/Sounds/SoundQueue.cs|SoundQueue",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Client/ViewModels/ConnectionViewModel.cs|ConnectionViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Server/ServerConfig.cs|ServerConfig",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Server/ServerHost.cs|ServerHost",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|src/OVS.Shared/Voice/LossWindow.cs|LossWindow",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs|ReorderDragTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/Behaviors/UserDragTests.cs|UserDragTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/AnswerRoutingTests.cs|AnswerRoutingTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/BackupCardViewModelTests.cs|BackupCardViewModelTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/GroupListViewModelTests.cs|GroupListViewModelTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/ServerIconViewModelTests.cs|ServerIconViewModelTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/ServerSettingsViewModelTests.cs|ServerSettingsViewModelTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Client/ViewModels/UsersAndBansViewModelTests.cs|UsersAndBansViewModelTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL052|tests/OVS.Tests/Server/Logging/LogExporterTests.cs|LogExporterTests",
+    "Count": 1
+  },
+  {
+    "Key": "RL121|src/OVS.Client/Views/MainWindow.axaml|Text=OpenVoiceSpeak",
+    "Count": 1
+  },
+  {
+    "Key": "RL121|src/OVS.Client/Views/MainWindow.axaml|Title=OpenVoiceSpeak",
+    "Count": 1
+  }
+]

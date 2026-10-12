@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The rule checker of CODING-RULES.md: checks every rule it can check statically on the files rule-lint.json names.
+    CODING-RULES-OVS.md §Rule checker says how to run it.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RuleLint</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The C# parser; used only by this tool and its tests, never by the product. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="RuleLint.Tests" />
+  </ItemGroup>
+</Project>

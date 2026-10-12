@@ -7,4 +7,8 @@
   <Folder Name="/tests/">
     <Project Path="tests/OVS.Tests/OVS.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/rule-lint/RuleLint.csproj" />
+    <Project Path="tools/rule-lint-tests/RuleLint.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -8,7 +8,7 @@ The rules and the decisions behind them were made on 5 October 2026 (§Decisions
 
 ## Scope
 
-- The rules apply to every `.cs` and `.axaml` file in `src/`, `tests/` and `tools/render-icon` (A1 c). They do not apply to `website/`, `Assets/`, `Localization/*.resx`, `Styles/` as resources, or `runtimes/` (their paths are fixed in the csproj, XAML, tools and tests, F6).
+- The rules apply to every `.cs` and `.axaml` file in `src/`, `tests/`, `tools/render-icon` (A1 c) and the rule checker's `tools/rule-lint` and `tools/rule-lint-tests` (12 October 2026). They do not apply to `website/`, `Assets/`, `Localization/*.resx`, `Styles/` as resources, or `runtimes/` (their paths are fixed in the csproj, XAML, tools and tests, F6).
 - Every commit builds with zero warnings and passes the full suite, `SourceLayoutTests` included (a known flaky test, listed in the refactoring plan, may fail once if it passes alone).
 - Moves and renames are behaviour-neutral and never share a commit with a logic change (N4). Behaviour changes where the design principles need it, listed in the commit that makes it (N1). Wire discriminators, `ReasonCodes` values and JSON property names stay (N9), and persisted files stay loadable with equal stored values (N11). Full CLR type names in diagnostic texts may change with a namespace or a name (accepted under A4).
 - A commit that adds or removes a public getter of a persisted record lists it (N11).
@@ -223,6 +223,8 @@ Not shared by the first refactoring, because sharing would change behaviour or c
 
 ## Rule checker
 
+**The one command:** `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s` builds everything with zero warnings, runs the full suite and runs the rule checker `tools/rule-lint` (its `RepositoryTests` fails on every new error). The checker alone, in seconds: `dotnet run --project tools/rule-lint`; it prints each new finding as `path(line,column): error|warning RLnnn: message` and a summary, and exits with 1 on a new error. `tools/rule-lint` reads every file with the C# parser of `Microsoft.CodeAnalysis.CSharp` (a package of the tool and its tests only, never of the product; decided by the user on 12 October 2026), takes the project's roots and exceptions from `rule-lint.json` (the general defaults are in its `LintSettings`) and checks rules 1 to 13 of `CODING-RULES.md` (RL011 one top-level type, RL012 file name, RL041 and RL042 parts, RL051 and RL052 nested types, RL061 to RL063 namespaces, RL071 ignored folder names, RL081 folders named like types, RL091 exception folders, RL101 and RL111 view and view model suffixes, RL121 literal XAML text as a warning, RL131 XAML prefixes). `rule-lint.baseline.json` lists the findings the code had when a rule came in (by rule, file and subject, not by line), so only new ones fail; the refactoring removes the known ones, and `dotnet run --project tools/rule-lint -- --update-baseline` writes the file again once some are fixed (never to hide a new finding). A new check is a class implementing `IRule` in `tools/rule-lint/Rules/`, listed in `Linter.CreateRules` (`LinterTests` fails otherwise), with its tests in `tools/rule-lint-tests/Rules/`.
+
 `tests/OVS.Tests/SourceLayoutTests.cs` with its scanner `tests/OVS.Tests/SourceLayout.cs` (K5: a custom xUnit test, no analyzer package and no new dependency) guards these rules on every test run. It checks every `.cs` and `.axaml` under `src/`, `tests/` and `tools/render-icon` (without `bin/`, `obj/` and `*.Designer.cs`):
 
 - one top-level type per file;
@@ -236,7 +238,7 @@ Not shared by the first refactoring, because sharing would change behaviour or c
 
 These rules have no exceptions beyond the ones listed. Files without a type (the top-level statements of `src/OVS.Server/Program.cs` and `tools/render-icon/Program.cs`) pass. The scanner strips comments, strings and preprocessor lines and counts braces; it is no C# parser, so its own tests pin the forms the code base uses (records with primary constructors, file-scoped namespaces, generic constraints, attributes before types).
 
-Every rule of `CODING-RULES.md` and of this file is checked by the compiler where it can be (N6), by `SourceLayoutTests`, `OneClockTests`, `WireFreezeTests`, `DispatchTests` or `PlanReferenceTests` where the compiler cannot, and otherwise by the review checklists. The one command that runs these checks is the full suite, `dotnet test tests/OVS.Tests/OVS.Tests.csproj --blame-hang-timeout 60s`. A new rule names its check in the same commit; a rule without a check is a wish.
+Every rule of `CODING-RULES.md` and of this file is checked by the compiler where it can be (N6), by `SourceLayoutTests`, `OneClockTests`, `WireFreezeTests`, `DispatchTests` or `PlanReferenceTests` where the compiler cannot, and otherwise by the review checklists. `tools/rule-lint` checks what it can of both files; the one command above runs all of these checks. A new rule names its check in the same commit; a rule without a check is a wish.
 
 ## Review checklist: project red flags
 
