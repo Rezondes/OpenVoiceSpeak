@@ -144,13 +144,18 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         await users;
     }
 
-    /// <summary>The page closed: no more requests, and no answer reaches this section.</summary>
+    /// <summary>
+    /// The page closed: no more requests, and no answer reaches this section. Group changes still waiting for a user list
+    /// are forgotten and the own one unmarked, since a closed page can confirm none of them (Step 27h).
+    /// </summary>
     internal void Detach()
     {
         // ponytail: every list request keeps its route until here (a list refresh at most once a second); drop a list
         // round's route once a newer round is complete if pages ever stay open for days
         detached = true;
         server.Routes.RemoveAll(Apply);
+        pendingGroupChanges.Clear();
+        UpdateOwnGroupChangePending();
     }
 
     /// <summary>The server's state changed: the group filter, the online status and the cards follow.</summary>

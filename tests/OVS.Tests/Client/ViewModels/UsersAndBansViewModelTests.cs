@@ -124,6 +124,42 @@ public sealed class UsersAndBansViewModelTests
         Assert.True(marks[^1].Pending);
     }
 
+    /// <summary>Step 27h (QS1, decided by the user): a closed page can confirm no own group change, so it unmarks.</summary>
+    [Fact]
+    public async Task Detach_OwnGroupChangePending_Unmarks()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me]));
+        await ToggleAsync(section, "ich", "Gast", on: true);
+
+        section.Detach();
+
+        Assert.False(marks[^1].Pending);
+    }
+
+    [Fact]
+    public void Detach_NothingPending_StaysUnmarked()
+    {
+        var (section, _) = Create();
+
+        section.Detach();
+
+        Assert.DoesNotContain(marks, mark => mark.Pending);
+    }
+
+    [Fact]
+    public async Task Detach_ThenAnOlderUserList_DoesNotMarkAgain()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me]));
+        await ToggleAsync(section, "ich", "Gast", on: true);
+        section.Detach();
+
+        section.Apply(new UserList("alt", [Me]));
+
+        Assert.False(marks[^1].Pending);
+    }
+
     [Fact]
     public async Task ToggleUserGroup_MarkThrows_PropagatesAndSendsNothing()
     {

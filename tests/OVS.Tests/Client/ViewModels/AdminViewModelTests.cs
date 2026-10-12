@@ -1174,6 +1174,24 @@ public class AdminViewModelTests
         Assert.DoesNotContain(OVS.Client.Audio.Sounds.SoundEvent.GroupChanged, heard);
     }
 
+    /// <summary>Step 27h: the page closes while an own group change waits; another admin's change of the own groups is heard again.</summary>
+    [Fact]
+    public async Task Detach_OwnGroupChangeWaiting_GroupChangedToneComesBack()
+    {
+        var (admin, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
+        var heard = new List<OVS.Client.Audio.Sounds.SoundEvent>();
+        server.SoundRequested += heard.Add;
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fp1", "ich", [WellKnownGroups.Admin])]));
+        var guest = Assert.Single(admin.UsersAndBans.Users).Toggles.Single(toggle => toggle.Name == "Gast");
+        guest.IsChecked = true;
+        await HangGuard.Bound(guest.ToggleCommand.ExecuteAsync(null));
+
+        admin.Detach();
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [WellKnownGroups.Admin, WellKnownGroups.Guest])));
+
+        Assert.Contains(OVS.Client.Audio.Sounds.SoundEvent.GroupChanged, heard);
+    }
+
     // ---- Step 26a: the page asks through its own record, and hands each section its part ----
 
     static AdminPlace CreateChangedPlace(Action discard) => new(() => true, () => Task.FromResult(false), discard);
