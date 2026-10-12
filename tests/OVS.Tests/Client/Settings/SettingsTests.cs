@@ -984,4 +984,18 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
         Assert.Null(Record.Exception(page.Detach));
     }
+
+    /// <summary>Step 28b: the one rule of migration step 3 and the debug API's /settings (Package 129, A138).</summary>
+    [Theory]
+    [InlineData(ClientSettings.DefaultVadThresholdDb, true)]
+    [InlineData(-55f, false)]
+    [InlineData(float.NaN, false)]
+    public void InferVadAutomatic_Threshold_AutomaticOnlyAtTheDefault(float thresholdDb, bool automatic)
+    {
+        var settings = new ClientSettings { VadThresholdDb = thresholdDb, VadAutomatic = !automatic };
+
+        settings.InferVadAutomatic();
+
+        Assert.Equal(automatic, settings.VadAutomatic);
+    }
 }

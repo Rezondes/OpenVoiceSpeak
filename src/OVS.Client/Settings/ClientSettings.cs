@@ -21,7 +21,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
     [
         s => s.AutoGain = true, // 1 (Package 127, A136): automatic gain on for everyone once
         s => s.ResetVolumesAbove100(), // 2 (Package 128, A137): 200 % now means four times
-        s => s.VadAutomatic = s.VadThresholdDb == DefaultVadThresholdDb, // 3 (Package 129, A138): a tuned threshold stays manual
+        s => s.InferVadAutomatic(), // 3 (Package 129, A138): a tuned threshold stays manual
     ];
 
     public static int CurrentVersion => Migrations.Length;
@@ -59,6 +59,12 @@ public sealed class ClientSettings : IJsonOnDeserializing
     public float VadThresholdDb { get; set; } = DefaultVadThresholdDb; // -60..-10
     /// <summary>Package 129 (A138): the voice gate learns the room's noise and sets its threshold itself.</summary>
     public bool VadAutomatic { get; set; } = true;
+
+    /// <summary>
+    /// Package 129 (A138): settings that do not say whether the voice gate is automatic (a file from before, a debug body
+    /// without the switch) are automatic only with the default threshold; a threshold tuned by hand stays manual.
+    /// </summary>
+    internal void InferVadAutomatic() => VadAutomatic = VadThresholdDb == DefaultVadThresholdDb;
     /// <summary>Package 123 (A131): RNNoise on the sent signal; on also for a file from before without the key.</summary>
     public bool NoiseSuppression { get; set; } = true;
     /// <summary>Package 123 (A131): raises a quiet microphone toward -20 dBFS; Package 127 (A136): on by default.</summary>
