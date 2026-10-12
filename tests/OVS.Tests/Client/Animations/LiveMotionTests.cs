@@ -206,7 +206,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         var micOff = main.GetVisualDescendants().OfType<PathIcon>().Where(LiveMotion.GetTurn).ElementAt(1);
         Assert.False(micOff.IsVisible);
         var turns = MotionWait.Record(micOff, v => Math.Abs(Turned(v)));
-        server.SelfMuted = true;
+        server.SelfState.SelfMuted = true;
         MotionWait.Eventually(() =>
         {
             Assert.True(micOff.IsVisible);
@@ -216,7 +216,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
 
         var deafened = main.GetVisualDescendants().OfType<PathIcon>().Where(LiveMotion.GetTurn).ElementAt(3);
         turns = MotionWait.Record(deafened, v => Math.Abs(Turned(v)));
-        server.SelfDeafened = true;
+        server.SelfState.SelfDeafened = true;
         MotionWait.Eventually(() =>
         {
             Assert.True(deafened.IsVisible);
@@ -455,7 +455,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         bool ghost = false;
         Watch(200, () => ghost |= Ghosts(main).Any());
         server.Apply(new UserUpdated(Anna(serverMuted: true)));
-        server.SelfMuted = true;
+        server.SelfState.SelfMuted = true;
         var micOff = main.GetVisualDescendants().OfType<PathIcon>().Where(LiveMotion.GetTurn).ElementAt(1);
         double faint = 1, turned = 0;
         Watch(200, () =>

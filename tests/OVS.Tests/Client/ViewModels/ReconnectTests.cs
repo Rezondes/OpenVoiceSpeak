@@ -110,7 +110,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         await ConnectTo(own);
         await OnUi(() => vm.Server!.JoinAsync(secret));
         Assert.Equal(secret, await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret));
-        await OnUi(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null));
+        await OnUi(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
         var before = await OnUi(() => (vm.Server!.Mirror.SelfId, vm.Notices.Count));
 
         await DropAsync(own);
@@ -118,7 +118,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         Assert.True(await OnUiUntil(() => vm.Server?.Mirror.Self is { SelfDeafened: true } self && self.ChannelId == secret, ok => ok));
 
         var (session, muted, deafened, reconnecting, status) = await OnUi(() =>
-            (vm.Server!.Mirror.SelfId, vm.Server.SelfMuted, vm.Server.SelfDeafened, vm.Connection.IsReconnecting, vm.Status));
+            (vm.Server!.Mirror.SelfId, vm.Server.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened, vm.Connection.IsReconnecting, vm.Status));
         Assert.NotEqual(before.SelfId, session); // a new session
         Assert.True(muted && deafened);
         Assert.False(reconnecting);
@@ -166,13 +166,13 @@ public sealed class ReconnectTests : IAsyncLifetime
     {
         bool deafen = state.Contains("deafened");
         await ConnectTo(server);
-        await OnUiDo(() => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
-        if (deafen) await OnUiDo(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null));
+        await OnUiDo(() => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
+        if (deafen) await OnUiDo(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
 
         await ReconnectAsync(server);
         Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
-        if (deafen) await OnUiDo(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null)); // sound on again
-        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfMuted, vm.Server.SelfDeafened)));
+        if (deafen) await OnUiDo(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null)); // sound on again
+        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened)));
         Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: false }, ok => ok)); // the server too
     }
 
@@ -184,7 +184,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     {
         await ConnectTo(server);
         vm.Keys.Simulate(KeyAction.PushToMute, true);
-        Assert.True(await OnUiUntil(() => vm.Server!.SelfMuted, m => m));
+        Assert.True(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m));
         var before = await OnUi(() => vm.Server!.Mirror.SelfId);
         await DropAsync(server);
         if (!heldThrough)
@@ -196,10 +196,10 @@ public sealed class ReconnectTests : IAsyncLifetime
         Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
         if (heldThrough)
         {
-            Assert.True(await OnUi(() => vm.Server!.SelfMuted)); // still held: muted
+            Assert.True(await OnUi(() => vm.Server!.SelfState.SelfMuted)); // still held: muted
             vm.Keys.Simulate(KeyAction.PushToMute, false);
         }
-        Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
+        Assert.False(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => !m));
         Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: false }, ok => ok));
     }
 
@@ -208,13 +208,13 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_SelfTestRunningOnAMutedUser_BringsBackTheMuteFromBeforeIt()
     {
         await ConnectTo(server);
-        await OnUiDo(() => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
+        await OnUiDo(() => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
         await OnUiDo(() => vm.SelfTest.SetAsync(true));
         Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: true }, ok => ok));
 
         await ReconnectAsync(server);
 
-        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfMuted, vm.Server.SelfDeafened)));
+        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened)));
     }
 
     /// <summary>The self test feeds the mixer without a connection; frames of it during the wait do not count for the new connection.</summary>
@@ -256,8 +256,8 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_ChosenMute_HeldKeyReleased_StaysMuted(bool deafen)
     {
         await ConnectTo(server);
-        await OnUiDo(() => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
-        if (deafen) await OnUiDo(() => vm.Server!.ToggleDeafenCommand.ExecuteAsync(null));
+        await OnUiDo(() => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
+        if (deafen) await OnUiDo(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
         vm.Keys.Simulate(KeyAction.PushToMute, true);
         await OnUiUntil(() => vm.Keys.MuteHeld, h => h);
 
@@ -265,7 +265,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         vm.Keys.Simulate(KeyAction.PushToMute, false);
         await OnUiUntil(() => vm.Keys.MuteHeld, h => !h);
         await Task.Delay(200); // the release reaches the view model through the UI queue
-        Assert.Equal((true, deafen), await OnUi(() => (vm.Server!.SelfMuted, vm.Server.SelfDeafened)));
+        Assert.Equal((true, deafen), await OnUi(() => (vm.Server!.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened)));
         Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
     }
 

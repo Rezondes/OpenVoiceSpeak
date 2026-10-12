@@ -260,7 +260,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            return vm.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+            return vm.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
         Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
@@ -276,7 +276,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            if (state == "deafened") return vm.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: true));
+            if (state == "deafened") return vm.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: true));
             vm.Server!.Apply(new UserUpdated(vm.Server.Mirror.Self! with { ServerMuted = true }));
             return Task.CompletedTask;
         });
@@ -291,7 +291,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            return vm.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+            return vm.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
         vm.Audio.ChooseTarget(true); // the voice gate hears voice, the capture thread asks
         Assert.Equal("", await TickHint()); // push-to-talk mode: voice alone is no attempt to talk
@@ -314,7 +314,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         // Package 125: push-to-mute is muting on purpose, so no hint
         vm.Keys.Simulate(KeyAction.PushToMute, true);
-        Assert.True(await OnUiUntil(() => vm.Server!.SelfMuted, m => m));
+        Assert.True(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m));
         Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
         await HoldKey(KeyAction.PushToMute, false);
@@ -328,7 +328,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
-            return vm.Server.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+            return vm.Server.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
 
         Assert.Equal(Strings.VoiceHint_MutedChannel, await HoldKey(KeyAction.PushToTalk, true));
@@ -361,7 +361,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             var shown = MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
             shown!.Apply(new UserUpdated(shown.Mirror.Self! with { ChannelId = Guid.Empty }));
-            return shown.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+            return shown.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
 
         Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
@@ -689,12 +689,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await using var bert = await TestClient.ConnectAsync(server, "bert");
         var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
 
-        await PressUntil(KeyAction.ToggleMute, () => vm.Server!.SelfMuted);
+        await PressUntil(KeyAction.ToggleMute, () => vm.Server!.SelfState.SelfMuted);
         var muted = await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfMuted);
         Assert.False(muted.User.SelfDeafened);
-        Assert.True(await OnUi(() => vm.Server!.SelfMuted));
+        Assert.True(await OnUi(() => vm.Server!.SelfState.SelfMuted));
 
-        await PressUntil(KeyAction.ToggleDeafen, () => vm.Server!.SelfDeafened);
+        await PressUntil(KeyAction.ToggleDeafen, () => vm.Server!.SelfState.SelfDeafened);
         await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfDeafened);
     }
 
@@ -1517,9 +1517,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// </summary>
     async Task PressDeafenKey()
     {
-        bool before = await OnUi(() => vm.Server!.SelfDeafened);
+        bool before = await OnUi(() => vm.Server!.SelfState.SelfDeafened);
         keys.Set(true, DeafenKey);
-        Assert.NotEqual(before, await OnUiUntil(() => vm.Server!.SelfDeafened, d => d != before));
+        Assert.NotEqual(before, await OnUiUntil(() => vm.Server!.SelfState.SelfDeafened, d => d != before));
         keys.Set(false, DeafenKey);
     }
 
@@ -1533,12 +1533,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var (sent, heard) = await WithPushToMute();
 
         await HoldMuteKey(true);
-        Assert.True(await OnUiUntil(() => vm.Server!.SelfMuted, m => m));
+        Assert.True(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m));
         Assert.Equal([new SelfState(true, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
         Assert.Equal([SoundEvent.MicOff], await OnUi(() => heard.ToList()));
 
         await HoldMuteKey(false);
-        Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
+        Assert.False(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => !m));
         Assert.Equal([new SelfState(true, false), new SelfState(false, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
         Assert.Equal([SoundEvent.MicOff, SoundEvent.MicOn], await OnUi(() => heard.ToList()));
     }
@@ -1551,7 +1551,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         Assert.True(await OnUi(() =>
         {
-            vm.Server!.ToggleMuteCommand.Execute(null);
+            vm.Server!.SelfState.ToggleMuteCommand.Execute(null);
             return vm.Audio.SelfMuted;
         }));
     }
@@ -1565,7 +1565,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var (sent, heard) = await WithPushToMute();
         await OnUi(() =>
         {
-            (deafened ? vm.Server!.ToggleDeafenCommand : vm.Server!.ToggleMuteCommand).Execute(null);
+            (deafened ? vm.Server!.SelfState.ToggleDeafenCommand : vm.Server!.SelfState.ToggleMuteCommand).Execute(null);
             sent.Clear();
             heard.Clear();
             return 0;
@@ -1586,11 +1586,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var (sent, _) = await WithPushToMute();
         await HoldMuteKey(true);
-        await OnUiUntil(() => vm.Server!.SelfMuted, m => m);
+        await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m);
         Assert.False(await OnUi(() =>
         {
-            vm.Server!.ToggleMuteCommand.Execute(null);
-            return vm.Server.SelfMuted;
+            vm.Server!.SelfState.ToggleMuteCommand.Execute(null);
+            return vm.Server.SelfState.SelfMuted;
         }));
 
         await HoldMuteKey(false);
@@ -1604,10 +1604,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var (sent, _) = await WithPushToMute();
         await HoldMuteKey(true);
-        await OnUiUntil(() => vm.Server!.SelfMuted, m => m);
+        await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m);
         await OnUi(() =>
         {
-            vm.Server!.ToggleMuteCommand.Execute(null);
+            vm.Server!.SelfState.ToggleMuteCommand.Execute(null);
             return 0;
         });
 
@@ -1634,10 +1634,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.True(await OnUi(() =>
         {
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent));
-            return vm.Server!.SelfMuted;
+            return vm.Server!.SelfState.SelfMuted;
         }));
         await HoldMuteKey(false);
-        Assert.False(await OnUiUntil(() => vm.Server!.SelfMuted, m => !m));
+        Assert.False(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => !m));
         Assert.Equal([new SelfState(true, false), new SelfState(false, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
     }
 

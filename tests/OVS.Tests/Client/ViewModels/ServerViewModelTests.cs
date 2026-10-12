@@ -199,16 +199,16 @@ public class ServerViewModelTests
     public async Task Deafen_SendsSelfState_AndRestoresMute()
     {
         var f = Create();
-        await f.Vm.ToggleDeafenCommand.ExecuteAsync(null);
+        await f.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
         Assert.Equal(new SetSelfState(true, true), f.Sent[^1] with { RequestId = null });
-        await f.Vm.ToggleDeafenCommand.ExecuteAsync(null);
+        await f.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
         Assert.Equal(new SetSelfState(false, false), f.Sent[^1] with { RequestId = null });
 
-        await f.Vm.ToggleMuteCommand.ExecuteAsync(null);
-        await f.Vm.ToggleDeafenCommand.ExecuteAsync(null);
-        await f.Vm.ToggleDeafenCommand.ExecuteAsync(null);
-        Assert.True(f.Vm.SelfMuted); // was muted before deafening
-        Assert.False(f.Vm.SelfDeafened);
+        await f.Vm.SelfState.ToggleMuteCommand.ExecuteAsync(null);
+        await f.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
+        await f.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
+        Assert.True(f.Vm.SelfState.SelfMuted); // was muted before deafening
+        Assert.False(f.Vm.SelfState.SelfDeafened);
     }
 
     /// <summary>Package 93: the lock icon names the groups; joining is only offered with one of them or as admin.</summary>
@@ -662,10 +662,10 @@ public class ServerViewModelTests
     {
         var f = Create();
         var heard = Sounds(f.Vm);
-        await f.Vm.ToggleMuteCommand.ExecuteAsync(null);
-        await f.Vm.ToggleMuteCommand.ExecuteAsync(null);
-        await f.Vm.ToggleDeafenCommand.ExecuteAsync(null);
-        await f.Vm.ToggleMuteCommand.ExecuteAsync(null); // unmuting while deafened turns the sound back on
+        await f.Vm.SelfState.ToggleMuteCommand.ExecuteAsync(null);
+        await f.Vm.SelfState.ToggleMuteCommand.ExecuteAsync(null);
+        await f.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
+        await f.Vm.SelfState.ToggleMuteCommand.ExecuteAsync(null); // unmuting while deafened turns the sound back on
         await f.Vm.JoinAsync(Bravo);
         f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak) with { SelfMuted = false }));
         f.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, P.Speak) with { SelfMuted = true })); // the server's echo of the own mute: no second tone

@@ -231,7 +231,7 @@ public sealed class MotionCoverageTests
             foreach (var channel in server.Tree.Channels)
                 text.AppendLine($"{channel.Name}{(channel.IsLinked ? " linked" : "")}{(channel.IsCurrent ? " current" : "")} {channel.SlotText}: "
                     + string.Join(",", channel.Users.Select(u => u.Nickname + (u.ServerMuted ? " muted" : ""))));
-            text.AppendLine($"self muted={server.SelfMuted} deafened={server.SelfDeafened}");
+            text.AppendLine($"self muted={server.SelfState.SelfMuted} deafened={server.SelfState.SelfDeafened}");
         }
         if (vm.Chat is { } chat) text.AppendLine($"chat tab={chat.Tabs.IndexOf(chat.Selected)} lines={chat.Selected.Entries.Count}");
         if (vm.PageFlow.SettingsPage is { } page)
@@ -463,10 +463,10 @@ public sealed class MotionCoverageTests
         yield return new("kick a user", x => x.Server.Apply(new UserLeft(3)));
         foreach (var s in Dialog("ban", x => _ = User(x, "anna").BanCommand.ExecuteAsync(null))) yield return s;
         yield return new("ban a user", x => x.Server.Apply(new UserLeft(2)));
-        yield return new("mute oneself", x => x.Server.ToggleMuteCommand.Execute(null));
-        yield return new("unmute oneself", x => x.Server.ToggleMuteCommand.Execute(null));
-        yield return new("deafen oneself", x => x.Server.ToggleDeafenCommand.Execute(null));
-        yield return new("undeafen oneself", x => x.Server.ToggleDeafenCommand.Execute(null));
+        yield return new("mute oneself", x => x.Server.SelfState.ToggleMuteCommand.Execute(null));
+        yield return new("unmute oneself", x => x.Server.SelfState.ToggleMuteCommand.Execute(null));
+        yield return new("deafen oneself", x => x.Server.SelfState.ToggleDeafenCommand.Execute(null));
+        yield return new("undeafen oneself", x => x.Server.SelfState.ToggleDeafenCommand.Execute(null));
         yield return new(Idle, _ => { }, x => x.Main, Away); // AC2: nothing moves by itself, so a count is not a stray
 
         // ---- chat ----

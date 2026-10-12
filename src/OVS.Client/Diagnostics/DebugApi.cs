@@ -176,10 +176,10 @@ public sealed class DebugApi : IDisposable
                 await server.JoinAsync(Channel(server, Text(body, "channel")).Id);
                 break;
             case "/mute":
-                if (server.SelfMuted != body.GetProperty("value").GetBoolean()) await server.ToggleMuteCommand.ExecuteAsync(null);
+                if (server.SelfState.SelfMuted != body.GetProperty("value").GetBoolean()) await server.SelfState.ToggleMuteCommand.ExecuteAsync(null);
                 break;
             case "/deafen":
-                if (server.SelfDeafened != body.GetProperty("value").GetBoolean()) await server.ToggleDeafenCommand.ExecuteAsync(null);
+                if (server.SelfState.SelfDeafened != body.GetProperty("value").GetBoolean()) await server.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
                 break;
             case "/redeem":
                 await server.SendAsync(new RedeemAdminToken(Text(body, "token")));
@@ -283,8 +283,8 @@ public sealed class DebugApi : IDisposable
                 IconBytes = s.IconPng?.Length,
                 Chat = s.ChatFeed.Recent.TakeLast(50).Select(c => new { c.Target, c.FromNickname, c.ToSessionId, c.Text }).ToList(),
                 SelfId = s.Mirror.SelfId,
-                s.SelfMuted,
-                s.SelfDeafened,
+                s.SelfState.SelfMuted,
+                s.SelfState.SelfDeafened,
                 s.SelfPermissions,
                 s.IsAdmin,
                 s.Mirror.DefaultChannelId,

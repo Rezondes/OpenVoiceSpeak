@@ -65,7 +65,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     {
         await using var mainViewModel = CreateMainViewModel();
         var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
-        await server.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+        await server.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
 
         FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change makes the engine follow
 
@@ -77,7 +77,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     {
         await using var mainViewModel = CreateMainViewModel();
         var server = MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin())!;
-        await server.SetSelfStateAsync(new SelfState(Muted: false, Deafened: true));
+        await server.SelfState.SetSelfStateAsync(new SelfState(Muted: false, Deafened: true));
 
         FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change makes the engine follow
 

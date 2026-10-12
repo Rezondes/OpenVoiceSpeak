@@ -174,6 +174,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         vm.Notice += text => addNotice(text, NoticeKind.Error);
         TrackServerIcon(vm, choice.Host, choice.Port);
         vm.PropertyChanged += OnServerPropertyChanged;
+        vm.SelfState.PropertyChanged += OnServerPropertyChanged; // the own mute and deafen live on the server's child (Step 27f)
         vm.SoundRequested += play; // Package 47
         conn.MessageReceived += m => post(() =>
         {
@@ -239,7 +240,11 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         connection = null;
         if (conn is not null && sound) play(SoundEvent.Disconnected);
         if (conn is not null) setStatus(status);
-        if (shownServer() is { } vm) vm.PropertyChanged -= OnServerPropertyChanged;
+        if (shownServer() is { } vm)
+        {
+            vm.PropertyChanged -= OnServerPropertyChanged;
+            vm.SelfState.PropertyChanged -= OnServerPropertyChanged;
+        }
         StopIconTracking();
         await selfTest.AbandonAsync(); // nothing to restore at a server that is gone
         show(null);
@@ -286,9 +291,9 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         var self = s.Mirror.Self;
         // the self test mutes and deafens at the server; what counts is the state from before it. A mute that only holds
         // while push-to-mute is held is no choice to keep: the key may be let go meanwhile (Package 125).
-        var selfState = selfTest.StateBefore ?? new SelfState(s.SelfMuted && !s.MutedByHold, s.SelfDeafened);
+        var selfState = selfTest.StateBefore ?? new SelfState(s.SelfState.SelfMuted && !s.SelfState.MutedByHold, s.SelfState.SelfDeafened);
         var restore = new Restore(self?.ChannelId ?? Guid.Empty, s.CurrentChannel?.Name ?? "", self is null ? null : s.PasswordFor(self.ChannelId),
-            selfState, s.MutedBeforeDeafen);
+            selfState, s.SelfState.MutedBeforeDeafen);
         log($"Connection lost, new attempts after {string.Join(", ", Reconnector.Delays.Select(d => $"{d.TotalSeconds:0}"))} s");
         lostText = text;
         _ = DisconnectAsync(text, sound: false);
@@ -321,7 +326,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
                 else addNotice(string.Format(Strings.Status_ReconnectChannelGone, restore.ChannelName), NoticeKind.Warning);
             }
             // server mute comes from the server (Package 85)
-            if (restore.State.IsQuiet) _ = vm.RestoreSelfStateAsync(restore.State, restore.MutedBeforeDeafen);
+            if (restore.State.IsQuiet) _ = vm.SelfState.RestoreSelfStateAsync(restore.State, restore.MutedBeforeDeafen);
             IsReconnecting = false;
             addNotice(Strings.Status_Reconnected, NoticeKind.Info);
             return true;

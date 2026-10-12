@@ -76,20 +76,20 @@
                 BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
           <DockPanel>
             <StackPanel x:Name="FooterButtons" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-              <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfMuted, Mode=OneWay, FallbackValue=False}"
-                            Command="{Binding Server.ToggleMuteCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
+              <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfState.SelfMuted, Mode=OneWay, FallbackValue=False}"
+                            Command="{Binding Server.SelfState.ToggleMuteCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
                             ToolTip.Tip="{x:Static l:Strings.Ui_MuteMic}" AutomationProperties.Name="{x:Static l:Strings.Ui_MuteMic}">
                 <Panel>
-                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.Mic}" IsVisible="{Binding !Server.SelfMuted, FallbackValue=True}" />
-                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding Server.SelfMuted, FallbackValue=False}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.Mic}" IsVisible="{Binding !Server.SelfState.SelfMuted, FallbackValue=True}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding Server.SelfState.SelfMuted, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
-              <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfDeafened, Mode=OneWay, FallbackValue=False}"
-                            Command="{Binding Server.ToggleDeafenCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
+              <ToggleButton Classes="icon" IsChecked="{Binding Server.SelfState.SelfDeafened, Mode=OneWay, FallbackValue=False}"
+                            Command="{Binding Server.SelfState.ToggleDeafenCommand, FallbackValue={x:Null}}" IsEnabled="{Binding IsConnected}"
                             ToolTip.Tip="{x:Static l:Strings.Ui_DeafenTip}" AutomationProperties.Name="{x:Static l:Strings.Ui_Deafen}">
                 <Panel>
-                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.Headphones}" IsVisible="{Binding !Server.SelfDeafened, FallbackValue=True}" />
-                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfDeafened, FallbackValue=False}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.Headphones}" IsVisible="{Binding !Server.SelfState.SelfDeafened, FallbackValue=True}" />
+                  <PathIcon anim:LiveMotion.Turn="True" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding Server.SelfState.SelfDeafened, FallbackValue=False}" />
                 </Panel>
               </ToggleButton>
               <Button Classes="icon" Command="{Binding PageFlow.OpenSettingsCommand}" ToolTip.Tip="{x:Static l:Strings.Ui_Settings}" AutomationProperties.Name="{x:Static l:Strings.Ui_Settings}">

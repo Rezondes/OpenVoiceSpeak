@@ -30,13 +30,10 @@ public sealed partial class ServerViewModel : ObservableObject
 {
     readonly Func<Request, Task> send;
     readonly TimeProvider time;
-    bool mutedBeforeDeafen;
     int requestCounter;
 
     [ObservableProperty] string serverName = "";
     [ObservableProperty] string welcomeText = "";
-    [ObservableProperty] bool selfMuted;
-    [ObservableProperty] bool selfDeafened;
     [ObservableProperty] bool isAdmin;
     [ObservableProperty] ChannelViewModel? currentChannel;
     [ObservableProperty] UserViewModel? self;
@@ -56,6 +53,7 @@ public sealed partial class ServerViewModel : ObservableObject
         ChatFeed = new ChatFeed(RequestSound);
         Leave = new LeaveTimer(time, () => Post);
         Tree = new ChannelTreeViewModel(this, RequestSound);
+        SelfState = new SelfStateViewModel(request => SendAsync(request), RequestSound);
         Rebuild();
     }
 
@@ -64,6 +62,9 @@ public sealed partial class ServerViewModel : ObservableObject
     public ServerDialogs Dialogs { get; }
     /// <summary>The sidebar's channel tree: the channel and user rows, their order and their speaking marks.</summary>
     public ChannelTreeViewModel Tree { get; }
+
+    /// <summary>The own mute and deafen, bound with the two buttons.</summary>
+    public SelfStateViewModel SelfState { get; }
 
     /// <summary>Package 102: how long a user or channel that is gone stays to fold away (the window sets it).</summary>
     public LeaveTimer Leave { get; }
@@ -438,87 +439,6 @@ public sealed partial class ServerViewModel : ObservableObject
         var row = Tree.FindUser(sessionId);
         return SendConfirmed(assigned ? new AssignGroup(fingerprint, groupId) : new UnassignGroup(fingerprint, groupId),
             m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.GroupIds.Contains(groupId) == assigned, busy: on => row?.IsBusy = on);
-    }
-
-    /// <summary>Package 53: both at once and without tones, for the self test and to restore the state before it.</summary>
-    internal Task SetSelfStateAsync(SelfState state)
-    {
-        mutedByHold = false;
-        if (state.Deafened && !SelfDeafened) mutedBeforeDeafen = SelfMuted;
-        SelfDeafened = state.Deafened;
-        SelfMuted = state.Muted || state.Deafened;
-        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
-    }
-
-    /// <summary>Package 125: push-to-mute muted, so letting go unmutes. A choice made otherwise meanwhile clears it and sticks.</summary>
-    bool mutedByHold;
-
-    /// <summary>Package 139 (review): a reconnect brings back the own choice, not the mute of a key that may be let go meanwhile.</summary>
-    internal bool MutedByHold => mutedByHold;
-    /// <summary>Package 139 (review): undeafening after a reconnect must not turn on a microphone that was muted before.</summary>
-    internal bool MutedBeforeDeafen => mutedBeforeDeafen;
-
-    /// <summary>
-    /// Package 139 (review): the own state from the connection before, in one SetSelfState and without tones. A mute of the
-    /// key still held now (Package 125) stays, so letting go unmutes as usual.
-    /// </summary>
-    internal Task RestoreSelfStateAsync(SelfState state, bool mutedBeforeDeafen)
-    {
-        if (state.IsQuiet) mutedByHold = false; // a chosen mute outlasts the key's release
-        this.mutedBeforeDeafen = mutedBeforeDeafen;
-        SelfDeafened = state.Deafened;
-        SelfMuted = state.Muted || state.Deafened || mutedByHold;
-        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
-    }
-
-    /// <summary>
-    /// Package 125: holding push-to-mute does what the mute button does (tone, server), letting go undoes exactly that.
-    /// Already muted or deafened, it changes nothing.
-    /// </summary>
-    public Task HoldMute(bool held)
-    {
-        if (held ? SelfMuted : !mutedByHold) return Task.CompletedTask;
-        mutedByHold = held;
-        SelfMuted = held;
-        SoundRequested?.Invoke(held ? SoundEvent.MicOff : SoundEvent.MicOn);
-        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
-    }
-
-    [RelayCommand]
-    Task ToggleMute()
-    {
-        mutedByHold = false;
-        if (SelfDeafened)
-        {
-            SelfDeafened = false;
-            SelfMuted = false;
-            SoundRequested?.Invoke(SoundEvent.SoundOn);
-        }
-        else
-        {
-            SelfMuted = !SelfMuted;
-            SoundRequested?.Invoke(SelfMuted ? SoundEvent.MicOff : SoundEvent.MicOn);
-        }
-        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
-    }
-
-    [RelayCommand]
-    Task ToggleDeafen()
-    {
-        mutedByHold = false;
-        if (SelfDeafened)
-        {
-            SelfDeafened = false;
-            SelfMuted = mutedBeforeDeafen;
-        }
-        else
-        {
-            mutedBeforeDeafen = SelfMuted;
-            SelfDeafened = true;
-            SelfMuted = true;
-        }
-        SoundRequested?.Invoke(SelfDeafened ? SoundEvent.SoundOff : SoundEvent.SoundOn);
-        return SendAsync(new SetSelfState(SelfMuted, SelfDeafened));
     }
 
     [RelayCommand]

@@ -107,7 +107,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Devices = new DeviceList(post, listDevices, (inputs, outputs) => PageFlow!.SettingsPage?.ShowDevices(inputs, outputs));
         EngineSync = new EngineSync(audio,
             connectionState: () => Server is { } connected
-                ? new EngineConnectionState(true, connected.SelfMuted, connected.SelfDeafened, connected.HasSpeakLinked, connected.InMutedChannel,
+                ? new EngineConnectionState(true, connected.SelfState.SelfMuted, connected.SelfState.SelfDeafened, connected.HasSpeakLinked, connected.InMutedChannel,
                     connected.CurrentChannel?.Id, connected.CurrentChannel?.Bitrate)
                 : EngineConnectionState.Disconnected,
             mirror: () => Server?.Mirror,
@@ -120,8 +120,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 if (PageFlow!.SettingsPage is { } page) page.IsSelfTesting = on;
             },
             log: Log.Write,
-            readServerState: () => Server is { } connected ? new SelfState(connected.SelfMuted, connected.SelfDeafened) : null,
-            writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state) : Task.CompletedTask);
+            readServerState: () => Server is { } connected ? new SelfState(connected.SelfState.SelfMuted, connected.SelfState.SelfDeafened) : null,
+            writeServerState: state => Server is { } connected ? connected.SelfState.SetSelfStateAsync(state) : Task.CompletedTask);
         PageFlow = new PageFlowViewModel(time: time, post: post, settings: () => Settings, knownDevices: () => Devices.Known,
             refreshDevices: () => Devices.Refresh(), captureChord: keys.CaptureNextChordAsync, setKeyBindings: bindings => keys.Bindings = bindings,
             dialogs: () => Dialogs.PageFlow, adminDialogs: () => Dialogs.Admin, checkNow: Update.CheckAsync, importSound: (path, sound) => SoundImport.Prepare(path, storageDir, sound),
@@ -160,7 +160,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         hints = new VoiceHints(
             state: () => Server is { } connected
                 ? new VoiceHintState(ChannelMuted: connected.InMutedChannel, HasSpeakLinked: connected.HasSpeakLinked,
-                    ServerMuted: connected.Mirror.Self?.ServerMuted == true, SelfDeafened: connected.SelfDeafened, SelfMuted: connected.SelfMuted)
+                    ServerMuted: connected.Mirror.Self?.ServerMuted == true, SelfDeafened: connected.SelfState.SelfDeafened, SelfMuted: connected.SelfState.SelfMuted)
                 : null,
             linkKeyDown: () => keys.LinkPttDown,
             muteKeyHeld: () => keys.MuteHeld,
@@ -198,7 +198,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             bool held = Keys.MuteHeld;
             if (held == muteHeld) return;
             muteHeld = held;
-            post(() => Server?.HoldMute(held));
+            post(() => Server?.SelfState.HoldMute(held));
         };
         ApplySettings(Settings);
     }
@@ -309,7 +309,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             newValue.StateChanged += OnServerStateChanged; // e.g. the own channel was muted (Package 34)
             newValue.VolumeOf = fingerprint => Settings.VolumeFor(fingerprint);
             newValue.VolumeChanged += OnUserVolumeChanged;
-            newValue.HoldMute(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
+            newValue.SelfState.HoldMute(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
         }
         Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
         EngineSync.SyncConnection();
@@ -363,8 +363,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Log.Write($"Taste: {KeyActionLabels.Localize(action)}");
         switch (action)
         {
-            case KeyAction.ToggleMute: server.ToggleMuteCommand.Execute(null); break;
-            case KeyAction.ToggleDeafen: server.ToggleDeafenCommand.Execute(null); break;
+            case KeyAction.ToggleMute: server.SelfState.ToggleMuteCommand.Execute(null); break;
+            case KeyAction.ToggleDeafen: server.SelfState.ToggleDeafenCommand.Execute(null); break;
         }
     }
 

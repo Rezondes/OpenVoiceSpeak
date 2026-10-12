@@ -81,7 +81,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
     {
         var sent = new List<Request>();
         await using var mainViewModel = CreateOnSettingsPage(sent);
-        await mainViewModel.Server!.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+        await mainViewModel.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
         int sentBefore = MainViewModelSetup.ReadSelfStatesSent(sent).Count;
 

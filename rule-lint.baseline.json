@@ -340,6 +340,18 @@
     "Count": 1
   },
   {
+    "Key": "RL154|src/OVS.Client/ViewModels/SelfStateViewModel.cs|SelfStateViewModel.HoldMute",
+    "Count": 1
+  },
+  {
+    "Key": "RL154|src/OVS.Client/ViewModels/SelfStateViewModel.cs|SelfStateViewModel.ToggleDeafen",
+    "Count": 1
+  },
+  {
+    "Key": "RL154|src/OVS.Client/ViewModels/SelfStateViewModel.cs|SelfStateViewModel.ToggleMute",
+    "Count": 1
+  },
+  {
     "Key": "RL154|src/OVS.Client/ViewModels/ServerSettingsViewModel.cs|ServerSettingsViewModel.Save",
     "Count": 1
   },
@@ -352,23 +364,11 @@
     "Count": 1
   },
   {
-    "Key": "RL154|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.HoldMute",
-    "Count": 1
-  },
-  {
     "Key": "RL154|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.NewChannel",
     "Count": 1
   },
   {
     "Key": "RL154|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.RedeemToken",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ToggleDeafen",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ToggleMute",
     "Count": 1
   },
   {

@@ -107,7 +107,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             await Eventually(null, "Channel 'Raid' created");
             var raid = await ui.InvokeAsync(() => Task.FromResult(vm.Server!.Tree.Channels.Single(c => c.Name == "Raid").Id));
             await Run(ui, () => vm.Server!.JoinAsync(raid));
-            await Run(ui, () => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
+            await Run(ui, () => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
 
             await Eventually(null,
                 "Request r1: Create channel 'Raid'",
