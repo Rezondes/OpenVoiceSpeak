@@ -24,6 +24,7 @@ public static class Linter
     public static IReadOnlyList<IRule> CreateRules(LintSettings settings) =>
     [
         new TypeFileRule(),
+        new InterfaceRule(),
         new PartialTypeRule(settings),
         new NestedTypeRule(),
         new NamespaceRule(),
@@ -40,5 +41,10 @@ public static class Linter
         new PrimaryConstructorRule(),
         new XmlDocRule(),
         new CommentPathRule(),
+        new AsyncRule(),
+        new SleepRule(),
+        new ClockRule(settings),
+        new TestNameRule(),
+        new SizeRule(settings),
     ];
 }

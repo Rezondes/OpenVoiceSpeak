@@ -17218,5 +17218,2949 @@
   {
     "Key": "RL241|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|Styles/Motion.axaml",
     "Count": 2
+  },
+  {
+    "Key": "RL503|src/OVS.Client/Animations/ItemMotion.cs|ItemMotion.Enter",
+    "Count": 1
+  },
+  {
+    "Key": "RL503|src/OVS.Client/Animations/LiveMotion.cs|LiveMotion.PopOut",
+    "Count": 1
+  },
+  {
+    "Key": "RL503|src/OVS.Client/Animations/PageMotion.cs|PageMotion.Play",
+    "Count": 1
+  },
+  {
+    "Key": "RL503|src/OVS.Client/Animations/PopupMotion.cs|PopupMotion.FadeAway",
+    "Count": 1
+  },
+  {
+    "Key": "RL503|src/OVS.Client/Views/ChatView.axaml.cs|ChatView.ShowSent",
+    "Count": 1
+  },
+  {
+    "Key": "RL505|src/OVS.Client/Audio/Capture/CapturePipeline.cs|CapturePipeline.ToneLoop:Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL505|src/OVS.Client/Audio/Playback/PlaybackLoop.cs|PlaybackLoop.Run:Sleep",
+    "Count": 2
+  },
+  {
+    "Key": "RL505|src/OVS.Client/Audio/Playback/PlaybackLoop.cs|PlaybackLoop.TryEnd:Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL505|src/OVS.Client/Input/KeyPoller.cs|KeyPoller.Loop:Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL505|src/OVS.Shared/Logging/LogFileWriter.cs|LogFileWriter.AppendShared:Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.AfterTabSwitch_NewMessageStillSlidesIn",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.NotSent_Shakes",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Notice_SlidesInWithPulse",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Simplified_AsToday",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.SwitchToSimplified_HidesPill",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.UnreadBadge_PopsIn",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Connect_SequenceWithin700ms",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.ConnectedWithDrawerClosed_NoLateBuildUp",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Connecting_PulsesAndFailShakes",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Disconnect_FoldsAwayHomeWithReason",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.ServerSwitch_NoBlankFrame",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Simplified_Instant",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.AdminGroupList_Glides",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.AdminRowAdded_SlidesIn",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.BackAfterTheFoldFinished_IsWhole",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Bookmarks_OnlyTheNewOneSlidesIn",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.DeletedChannel_CollapsesThenGone",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.EmptyListGetsABatch_FadesAsAWhole",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.EntriesBelow_MoveSmoothly",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.FirstFillAndRebuild_NoReplay",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.GroupReorder_Glides",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.HiddenList_EntriesDoNotSlideInWhenShown",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.ManyItems_StaggerCapped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.NewUser_SlidesInAndFlashes",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.OffscreenEnd_NoGhost",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.OwnSwitch_CurrentHighlightSlides",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.RebuiltAdminEntries_KeepTheirKey",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.ServerReorder_RowsGlideFromOldOffset",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Simplified_AppearsAtOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Simplified_Jumps",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Simplified_RemovedAtOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.Busy_ShimmerCrossFadesBack",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.Idle_NoRunningLoops",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.LevelMeter_AttackRelease",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.LevelMeter_SettingsOpenAtTheLevel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.MuteIcons_PopInOut",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.PopOut_OnlyWhereTheIconCanBeSeen",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.Simplified_AsToday",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.SlotCounter_TicksAndPulsesWhenFull",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.EveryAction_AnimatesInAnimatedMode",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.EveryAction_NoNewAnimationInSimplifiedMode",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.JoinLeaveStorm_EndsBounded",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Bookmarks_ListItems_SoundRows_GetTheBar_LogLinesDoNot",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Button_Animated_HasHoverAndPressTransitions_SimplifiedHasNone",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.FocusRing_KeyboardOnly",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.IconButtons_TurnOnHover",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Inputs_HaveStateTransitions",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Row_HoverAccentBarGrows",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.SpeakingRing_NoAnimatedShadow",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Tabs_LiftTheirLabelOnHover",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionTests.cs|MotionTests.Apply_SetsWindowClassAndDurations",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionTests.cs|MotionTests.MainWindow_FollowsTheChosenDisplay",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.ContextMenu_FadesInOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Drawer_SlidesInAndOut",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.PopupClosedForADialog_NoPictureOverIt",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Popups_FadeAndSlide",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Refused_ShakesCard",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Simplified_Instant",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.ListInsideTab_IsNoTabChange",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.PagePicture_NeverComesBack",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.PageSwitch_KeepsState",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.Picture_IsTakenWhileThePageIsStillThere",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.Picture_StaysBelowDrawerAndDialogs",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.RapidSwitch_EndsClean",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.SettingsSections_FadeUpOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.Simplified_Instant",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.SwitchToSimplified_ShowsWaitingSections",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/IdleCostTests.cs|IdleCostTests.SteadyState_AllocatesNothing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.BelowStartDelay_PullReturnsNull",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Copy_NeverReplacesOrDuplicates",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Jitter_Estimated",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.LatePacket_Dropped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Limiter_LoudInput_NoHardClipping_RecoversAfterwards",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Mixer_SumsAndClamps",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Mixer_Volume200_FourTimes_Limited",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.NoDropInsideSpurt",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.OneBytePacket_Concealed",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Overflow_CappedAt10",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.ShortPause_NoJitterSample",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.ShortSpurt_PlaysAfterWaiting",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.SpeakerPause_KeepsDecoder",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.SpurtGap_CountedOnlyWhenClose",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.TalkPause_NotLoss",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.TalkPause_RebuffersAndContinuesAtSameSeq",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.AutoGain_IgnoresNoiseRatedAsNoise",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.AutoGain_RaisesQuiet_CapsLoud_HoldsInSilence",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.EchoCanceller_Loads",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.Filters_AllocateNothingPerFrame",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.MissingNativeLibrary_CaptureRunsWithoutSuppressor",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.NoiseSuppression_VadStaysClosedOnNoise",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VolumeCurveTests.cs|VolumeCurveTests.Combine_CapsAtTwelve",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.CleanUp_RemovesCopiesNobodyUses",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.CustomSound_MissingFile_FallsBackToDefault_LoggedOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.TooLong_NotAudio_WrongType_Missing_Rejected",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.Wav_UpToFiveSeconds_Accepted_CopiedAsMono48k",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs|SoundTests.Queue_MixesIntoBuffer_WithVolume_Overlaps",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/LossAdapterTests.cs|LossAdapterTests.Gap_EndsStreaks",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/LossAdapterTests.cs|LossAdapterTests.LossHint_FromLoss",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Changes_Debounced",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.ChannelChange_ResetsAdaptedBitrate",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.ChannelMuted_SendsNothing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Closed_ChangeOpensNothing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.DefaultChanged_Follows",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.DeviceWatcher_RegistersAndUnregisters",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Encoder_FollowsChannelBitrate",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Encoder_UsesAdaptedValues",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.FrameChunker_IrregularInput_ExactFrames_NoLoss",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.InputGain_SoftClips",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.MusicMode_FiltersOff",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.MusicMode_PttAndVad",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.MusicMode_StereoArrivesSeparated",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PttRelease_KeepsSendingForDelay",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PttRepressWithinDelay_NoGap",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_AllocatesNothing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_KeepsTone",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_LengthAndPassThrough",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_NoAliasing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.SelfTest_PlaysOwnVoice_SendsNothing_OthersSilent",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.SelfTest_PushToTalk_KeyHeld_PlaysBack",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.VadAuto_ManualDuringLearning",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Vad_LevelDb",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Vad_SilenceInactive_LoudActive_Hangover9Frames",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs|ReorderDragTests.DragToEnd_GapAndFrameBelowLastItem",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs|ReorderDragTests.DropBesideFoldingChannel_IsIgnored",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs|ReorderDragTests.DropThenServerOrder_NoSecondMove",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs|ReorderDragTests.Preview_Scale103_Tilt3_ShadowPlus8",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/UserDragTests.cs|UserDragTests.DragUserOntoChannel_HighlightsAndMoves",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/UserDragTests.cs|UserDragTests.DropOutsideOrEsc_SendsNothing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/UserDragTests.cs|UserDragTests.MoveWithoutButton_StartsNoDrag",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/UserDragTests.cs|UserDragTests.OwnRow_DropJoinsChannel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Behaviors/UserDragTests.cs|UserDragTests.UserLeavesMidDrag_DropSendsNothing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.LeavingBelongsToTheList",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.LeavingWithMoves_StayBehindTheirEntry",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.Moves_IgnoreLeavingItems",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.NoDelay_RemovedAtOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.PureReorders_OnlyMove",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.RebuiltRow_TakesTheOldOnesPlace",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.ReturnsWhileLeaving_SameInstanceRevived",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.Revived_TakesItsNewPlace",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/ListPagesTests.cs|ListPagesTests.OverlappingRounds_OnlyTheNewestRoundIsShown",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/ListPagesTests.cs|ListPagesTests.UnrequestedFirstPage_StartsACleanRound",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Controls/LogoTests.cs|LogoTests.Csproj_UsesTheIcon",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Controls/LogoTests.cs|LogoTests.DocsLogo_Equals256Frame",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Controls/LogoTests.cs|LogoTests.IcoFrames_ShowWave",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Controls/LogoTests.cs|LogoTests.IcoMatchesSvgRender",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Controls/LogoTests.cs|LogoTests.Ico_ContainsAllSizes",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Controls/LogoTests.cs|LogoTests.SmallFrames_MatchTool",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Controls/LogoTests.cs|LogoTests.SmallFrames_ShowSeparateCrispBars",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.AdminActions_ThroughApi",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.AmbiguousChannelName_Refused",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.Chat_RoundTrip",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.Keys_SimulateEveryAction",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.LeavingUser_NotInState",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.MissingHeader_Forbidden",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.Sounds_ListedInState",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.UnknownChannel_IsBadRequest",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Input/KeyBindingTests.cs|KeyBindingTests.ChordName_IsReadable",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Input/KeyBindingTests.cs|KeyBindingTests.Resolve_ChordWithMoreModifiersWins",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Input/KeyBindingTests.cs|KeyBindingTests.Resolve_SingleModifierChord",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Input/KeyBindingTests.cs|KeyBindingTests.RightCtrl_NameAndResolves",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Admin_EveryTabFits",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Chat_Narrow_TabsScroll_SendVisible",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Classes_FollowWidth",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Dialogs_FitAt360",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Drag_NotBelowFooter",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.ModeChange_Refits",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.NarrowWindow_MaxStillWins",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Reconnecting_StatusAndCancelFit360",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Sending_WidthStays",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Settings_FitAt360_480_600_1100",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Settings_SoundRow_TwoLinesWhenNarrow_NameVisible",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.SidebarDraggedWide_HeaderButtonsStayVisible",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Simplified_SettingsAndAdminFit",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.StartScreen_FitsAt360",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.StartScreen_SameRules",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.UpdateCard_Fits",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.UserContextMenu_Fits360",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.WaitingStates_Fit",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.WindowShrinks_SidebarGivesWay",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Layout/SidebarWidthTests.cs|SidebarWidthTests.RoundsUp_ToWholePixels",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/FormatsTests.cs|FormatsTests.ClockTime_SameAsBefore",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/FormatsTests.cs|FormatsTests.Duration_SameAsBefore",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/FormatsTests.cs|FormatsTests.Size_SameAsBefore",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/LocalizationTests.cs|LocalizationTests.ErrorTexts_English",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/LocalizationTests.cs|LocalizationTests.Resources_SameKeys_NoneEmpty_SamePlaceholders",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/LocalizationTests.cs|LocalizationTests.ServerDetail_HiddenExceptKickAndBan",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/LocalizationTests.cs|LocalizationTests.Xaml_NoHardcodedText",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Localization/LocalizationTests.cs|LocalizationTests.Xaml_ScanCoversEveryAxaml",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.AudioDebug_WritesToClientLog",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.OwnActions_Logged",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.PasswordAndToken_NeverLogged",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.WriteFailure_DoesNotThrow",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Logging/ProtocolLogTextTests.cs|ProtocolLogTextTests.Describe_Request_UsesNames_NeverSecrets",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.ChangedCert_Mismatch_Refused_NoHelloSent",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.DownlinkLoss_ReportedBothSides",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.FirstHelloLost_StillGetsVoice",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Identity_LoadOrCreate_Twice_SameFingerprint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Reachable_SendsOnlyPings",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.ServerKick_RaisesDisconnectedWithReason",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.TofuPrompt_DefaultButton",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.TwoLostPings_StayReachable",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpBack_SwitchesBack",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpBlocked_VoiceOverTcp",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpOutage_Recovers",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.VoiceRoundTrip_Measured",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Voice_SendFromA_ReceivedByB_Identical",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/StateMirrorTests.cs|StateMirrorTests.Apply_EachDelta",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/StateMirrorTests.cs|StateMirrorTests.Snapshot_IsMirrored",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.CleanupOld_WaitsForProcessExit",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.DevBuild_NeverAsks",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.DownloadFails_ExeUnchanged",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.HashMismatch_NothingReplaced",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.Install_ReportsProgress_ThenVerify_ThenStart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.NewerRelease_Offered",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.Parse_AfterUpdate",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.SameCommit_OlderRelease_MissingAsset_NotOffered",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.Success_NewInPlace_OldRenamed_Restarted",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Services/ReconnectorTests.cs|ReconnectorTests.OutdatedAttempt_Ignored",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Services/ReconnectorTests.cs|ReconnectorTests.Schedule_1_2_4_8_16_ThenGivesUp",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Clamp_OutOfRange",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Corrupt_DefaultsAndBackup",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Display_ChoicesHaveNamesAndHints",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Display_DefaultsToAnimated_MissingKeyIsAnimated_SimplifiedRoundTrips",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.EchoCancellation_DefaultLiveMissingLib",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.ErrorTexts_EveryCodeHasText",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.LevelMeter_MarksThreshold",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Migration_ResetsVolumesAbove100Once",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Migration_TurnsAutoGainOnOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Migration_VadAutoOnlyForDefault",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.MissingDevice_FallbackWithHint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Missing_GivesDefaults",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.OutputVolume_UpTo200_RoundTrip_Clamped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Password_Protected_RoundTrip_NoPlainTextInFile",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.PttHint_OnlyForPushToTalkWithoutKey",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.PttReleaseDelay_DefaultClampLive",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.PushToTalkRadio_IsTheOppositeOfVoiceActivation",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Save_BusyWhileDevicesRestart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.SetPttKey_OpensDialogWithPushToTalk",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Sliders_ApplyLive",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Sounds_PerEvent_RoundTrip_ResetDeletesCopy",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.ToSettings_KeepsSettingsVersion",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.TransmissionMode_DefaultLive",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.UserVolumes_RoundTrip_OnlyNonDefault_Clamped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.VadAuto_LiveAndSliderDisabled",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.VoiceFilters_DefaultsAndRoundTrip",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.VoiceFilters_LivePreviewAndCancel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.Volume_SliderValueStored",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/SplashTests.cs|SplashTests.Shows_ThenCloseEndsIt",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.ActionsMatchServerRule",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanDurations_AsPlanned",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanFilter_StatusType_Sort_Count",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanSearch_MatchesAllTextFields",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanUnbanDeleteButtons_ByStateAndRight",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.CardActions_BusyUntilConfirmed",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Filter_StatusGroup_Sort_Count",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.GroupToggle_NotRevertedByAnOlderList",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.LinkMatrix_ToggleDiscardAndRemoteChange",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.LinkTab_OnlyWithChannelLink",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.RequestLists_OnlyAllowedOnes",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Search_MatchesNicknamePreviousFingerprintIp",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Tabs_VisibleByPermission",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UnbanThenBan_BanListRefreshedOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Unban_OnlyActive_OnlyWithRight_FilterKept",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UserDetails_FromKnownUserInfo",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UserList_FetchesAllPages",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UserTogglesAndUnban_ByRight",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Bitrate_ShownAndEdited",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Create_EmptyDefaults",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Default_SlotsLocked",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Edit_Prefilled",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.GroupLock_DisabledForDefault",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.InvalidNameOrDescription_ErrorShown",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.ChannelTab_ResetsOnSwitch",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Composer_DisabledWithoutRight",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Notices_AppearInGeneral",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Private_PartnerOfflineAndBack",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.ServerError_ShownAtComposer",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Tabs_GeneralAndCurrentChannel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Unread_CountsAndClears",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ConnectionStatsViewModelTests.cs|ConnectionStatsViewModelTests.Counts_SinceReset",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ConnectionStatsViewModelTests.cs|ConnectionStatsViewModelTests.Rating_RelativeToBaseline",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.CancelAndDiscardButtons_DoNotAsk",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.LeaveWithoutSaving_Discards",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.Settings_DeviceListArrives_WithViewBound_NoCrashNoChange",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.FileFilter_TypeAndPeriod",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.FileList_FetchesAllPages",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.LineFilter_HighlightsMatches",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.SearchHit_OpensFileAtLine",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.Search_BusyUntilResult",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.Selection_AllInPeriod_None_SingleVsZip",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Appearance_LivePreview_DiscardRestores_SaveKeeps",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Bitrate_FollowsCurrentChannel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Bookmark_AskPassword_Cancel_StaysDisconnected",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ChannelMuted_HintAndNoSending",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Chat_EndToEnd",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Display_LivePreviewAndCancelRevert",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.LeavingSettingsWithoutSaving_EndsThePreview",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.MuteButtonWhileHeld_Sticks",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.NotMuted_NoHint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.OpenSettings_DoesNotWaitForDeviceList",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Private_EndToEnd",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SavedAppearance_AppliesAtStart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SettingsPage_ShowsThresholdInUse",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SignalIcon_AndDetails",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.StartScreen_BookmarksAndConnectingState",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.TalkWhileDeafenedOrServerMuted_ShowsHint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ToggleActions_SyncWithServer",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ToneInput_ReportsInputLevel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.UdpOutage_LoggedOnceEachWay",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Update_Accepted_ShowsProgress_UntilFailure",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.VoiceWhileMuted_ShowsHint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/PendingViewModelTests.cs|PendingViewModelTests.BusyVisibleWithin150ms_NotForFastActions",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ReconnectTests.cs|ReconnectTests.Reconnect_ChosenMute_HeldKeyReleased_StaysMuted",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.ActionsMatchServerRule",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Ban_SendsDurationAndIpFlag",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Build_SortsChannelsAndGroupsUsers",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.CancelledDialog_SendsNothing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.ChannelMenu_VisibilityByPermission",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.CurrentChannelAndSelf_FollowOwnUser",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.DropOnChannel_SendsOrderWithSourceBeforeOrAfterTarget",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Error_BecomesGermanNotice",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.GroupNames_FollowGroupOrder",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.JoinCommand_SendsJoinChannel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LastAdmin_CannotBeUnticked",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkCandidates_ExcludesSelfAndLinked",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkCommand_UsesPickedChannel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkVoice_NotForOwnChannelOrSelf",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkVoice_SoundOncePerTransmission",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkedChannels_ShowPartners",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LockedChannel_IconTooltipAndJoinAvailability",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.MoveTargets_OtherChannelsWithoutSeparators",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.NewChannel_SendsAllOptions",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.OwnGroupChangedByMe_OnlyOneSound",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.OwnLinkVoice_NotWithoutLinksOrForChannelOnly",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.OwnLinkVoice_OnStartOfOwnLinkTransmission",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.RedeemToken_HiddenForAdmin",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.RefusedMove_ShowsError",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Reorder_RevertsOnError",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SelfTransmitting_ShowsOnOwnEntry",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SlotText_LimitedAndUnlimited",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SoundEvents_FromMessages",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SpeakingViaLink_Flagged",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Speaking_ClearsAfter300ms",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.StatusIcons_MicOffOnlyForAPlainMute",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserBackWhileLeaving_SameEntry",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserGroups_OnlyForWeakerUsersWithAssignRight",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserJoinedAndLeft_UpdateTree",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserMenu_VisibilityByPermissionAndRank",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.ManySpeakers_SpeakingUpdatesThrottledAndScoped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.NoMove_NoPlaceTracking",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.RandomMessages_IncrementalMatchesRebuild",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.StateChanged_GainTableAndIconHashOnlyWhenNeeded",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.UserUpdated_UpdatesOnlyThatUser",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.BackgroundOpacity_OnlyBackgroundsSeeThrough",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_OwnRight_OthersLeft_NoticesFullWidth",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Connect_SidebarFitsLongestChannel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.EveryIconInXaml_Exists",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.EveryWaitingAction_VisibleWithin400ms",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.LogoDropZone_HighlightsOnDragOver",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.MotionStyles_FoundByName",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.MutedChannel_IconReplacesSpeaker",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.NoSecondWindow_EverOpens",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Overlay_EscCancels_EnterConfirms_EscClosesPage",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.SendingDialogs_StayOpenBusyUntilConfirmed",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Settings_SectionOrder",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Simplified_LooksLikeBefore",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserContextMenu_GroupsSubmenu",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserContextMenu_MoveSubmenu",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserDraggedWidth_KeptUntilReconnect",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Windows_LoadAndShowTheirContent",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Create_Failing_LeavesNoTmp_StartRemovesLeftovers",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Download_ChunkedByteIdentical",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Restore_ReplacesState_SafetyBackup_RestartsRun",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Migration_GrantsViewRightsFromOldRights",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Migration_OnlyAdminGetsChannelPasswordBypass",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Migration_ServerConfigGroupsGetBackupsManage",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.NewServer_StartsWithConfigValues",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.OldBans_LoadWithUnknownNewFields",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Save_ThenLoad_RoundTrips_NoTempLeft",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.DuplicateNickname_RejectedNicknameTaken",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.EmptyPassword_StillOpenServer",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.InvalidNickname_Rejected",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.MaxUsersReached_RejectedServerFull",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.NoHandshake_ClosedAfterTimeout",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.NoPing_SessionRemovedAfterIdleTimeout",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.OldProtocolVersion_RejectedVersionMismatch",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Password_Cases",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Ping_KeepsSessionAliveAndIsAnswered",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.RepeatedWrongPasswords_BlockSourceWithGrowingDelay",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.SameIdentityTwice_OldSessionReplaced",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.ServerCertificate_LoadOrCreate_Twice_SameThumbprint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.SignatureBoundToOtherCert_RejectedBadSignature",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Startup_LogsAdminToken",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.ValidHandshake_ReceivesWelcome",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.WrongSignature_RejectedBadSignature",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.AdminActions_LoggedWithActor",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ChatWithFakeLine_OneLineOnly",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ConnectDisconnectRejected_Logged",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ConsoleLine_EscapedLikeFile",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.JoinMoveLeave_LoggedInChannelLogs",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.OldFiles_DeletedAfterRetention",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ReaderLockingTheFile_LineIsNotLost",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.RenamedChannel_SameFolderAfterRestart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.RetentionChangedAtRuntime_NextCleanupUsesIt",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.RetentionZero_KeepsAll",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ServerLine_GoesToConsoleAndFileOfThisStart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.TokenAndPassword_NeverInFiles",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.AdminGroup_NotEditableNotDeletable",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanActOn_Cases",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanActOn_StrictSubsetOnly",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanAssign_Cases",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanSaveGroup_Cases",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.DefaultGroups_HaveDocumentedPermissions",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.Effective_Cases",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.WouldRemoveLastAdmin_Cases",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/RestartScheduleTests.cs|RestartScheduleTests.AutoRestartChanged_ScheduleFollows",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Security/StoredPasswordTests.cs|StoredPasswordTests.IsValid_BothFormats",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Security/StoredPasswordTests.cs|StoredPasswordTests.SameSalt_SameText",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Security/StoredPasswordTests.cs|StoredPasswordTests.StoredHash_StillVerifies",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.EnvDiffersFromStored_HintInLog",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.Load_AutoRestartAndLogRotation_FromFile_EnvWins",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.Load_AutoRestart_OffByDefault_TimeDefaultsTo4am",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.Load_EnvOverridesFile",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.ShuttingDown_HandshakeRejectedWithTheReason",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.CostlyRequests_OwnLimits",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.ListPages_FreeOnlyAsFollowUpOfAFirstPage",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.LongRequestId_Rejected",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.NoOpJoinAndSelfState_NoBroadcast",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.NonReadingClient_DisconnectedAndSlotFreed",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.OverLimitConnection_ClosedBeforeTls",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.PendingHandshakes_Capped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.ServerIcon_CachedAndThrottled",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.VoiceUp_OwnBudget",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.AdminChanges_SurviveRestart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.AdminToken_Redeem_Once_Valid_Twice_Invalid",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.Assign_OfflineUser_Persisted_AndListed",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.DeleteGroup_RemovedFromUsers",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.EachAdminRequest_RequiresItsOwnRight",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.GroupsCreateOnly_CannotEditOrDelete",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.ListUsers_IncludesActiveBans",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.NoAdmin_TokenGenerated_AdminExists_NoToken",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.ProtectedGroups_Errors",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.RedeemedAdmin_And_Password_SurviveRestart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.ServerConfigGranted_LimitsDelivered",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.Unassign_OfflineUser_And_ListShowsNickname",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.UpdateGroup_ChangesOnlineMemberPermissions",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.UpdateSettings_NewPasswordAppliesToNextHandshake",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Bitrate_DefaultRangeRefused",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Delete_MovesUsersToDefaultThenRemoves",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Edit_LimitBelowCount_NobodyRemoved_PersistedInSnapshot",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Edit_Muted_WithoutRight_Denied",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Join_BroadcastsUserUpdated",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Join_Full_ChannelFull_AdminStillEnters",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.Admin_MovesGuestIntoFullGroupAndPasswordLockedChannel",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.BothLocks_BypassSkipsOnlyPassword",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.CreateEdit_GroupLock_Validated_NotOnDefault",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.Join_PasswordRequired_WrongRefused_BypassAndAdminJoin",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.LockChange_NobodyMovedOut",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.OldData_LoadsWithoutLock",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.PasswordChange_NobodyMovedOut",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.Password_SetChangeRemove_HashedNeverSent_NotOnDefault",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.Deliver_ServerChannelPrivate",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.Invalid_EmptyTooLongOfflineSelf",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.RateLimit_SixthInFiveSeconds",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.ServerMuted_CanWrite",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/IdentityFloodTests.cs|IdentityFloodTests.ConnectLoop_SavesDebounced",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/IdentityFloodTests.cs|IdentityFloodTests.OldGuestRecords_Pruned",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LinkCommandTests.cs|LinkCommandTests.DeleteChannel_UnlinksBeforeRemove",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LinkCommandTests.cs|LinkCommandTests.LinkToSeparator_InvalidLink",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LinkCommandTests.cs|LinkCommandTests.LinkedChannels_OnlyDirectNeighbours",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.DownloadSingleFile_ByteIdenticalSnapshot",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.ListLogs_ServerAndChannelFiles_NewestFirst_WithNames",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.Logs_RequireLogsView_UnknownIdRejected_NoPathTraversal",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.LongLine_CutAt2000",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.RefusedSearch_NotLogged",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.SearchLogs_AllFiles_CaseInsensitive_Max500_Truncated",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.Search_DoesNotHoldStateLock",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Bans_SurviveRestart",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.EqualRanks_CannotActOnEachOther",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ExpiredBan_HandshakeSucceeds",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.KickSession_TargetDisconnectedOthersUserLeft",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.LastAdmin_CannotBeBanned",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ModeratorVsAdmin_PermissionDenied",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.SelfTargeting_Denied",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ServerMute_BroadcastsUserUpdated",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ServerMute_NoVoiceBeforeWelcome",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Unban_AllowsReconnect",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Unban_StrongerBannedUser_Denied_NoBanListWithoutBansView",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.BackupValidation_KeepsStoredNamesThatNewInputWouldRefuse",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.ChatTargetOutOfRange_Rejected",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.HandlerException_AnsweredNotDropped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.MultilineTexts_AllowNewlineRejectOtherControls",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.Names_RejectFormatAndBidiChars",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.Names_TrimmedAndOrdinaryUnicodeKept",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.ChannelInfo_CarriesBitrate",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.Disconnect_OthersReceiveUserLeft",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.GroupsView_StillSeesFullGroups",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.NewUser_IsPersistedAsGuest",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.Restart_KeepsCreatedChannels",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.UnknownRequest_IsAnsweredWithError",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.Welcome_ContainsSnapshotAndNewUserInLobbyAsGuest",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.Disconnect_AddsOnlineTimeSpeechChat",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.ListUsers_IncludesLiveSession",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.Login_SetsLastLoginCountIp",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.MutedChannel_SpeechNotCounted",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.NicknameChange_KeepsFiveNewestDistinct",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.Shutdown_PersistsOpenSessions",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.EndToEnd_SameChannel_Received_OtherChannel_Not",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.InvalidPackets_DroppedNoResponse",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.MutedChannel_NoFramesArrive",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.ServerMutedSender_NotRelayed",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_AddsCopyPerLossyRecipient",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_Copies_SameRoute_RecentOnly_Charged",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.TcpAndUdp_Mixed",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Tcp_RoutingLikeUdp",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Tcp_StaleVoiceUp_AfterUdp_Ignored",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.UplinkLoss_ReportedInPing",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.VoiceWithoutFrameNumber_Dropped",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.DeafenedAndSender_Excluded",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.RateLimiter_BurstThenBlocked",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.SenderCannotSpeak_NoRecipients",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.Target1_WithSpeakLinked_OwnPlusDirectLinks_NotTransitive",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.UnboundEndpoint_Excluded",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/BuildInfoTests.cs|BuildInfoTests.FromMetadata_CiValues",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/IO/SafeFileTests.cs|SafeFileTests.ReadChunk_OutsideAndInside",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/IO/SafeFileTests.cs|SafeFileTests.WriteAtomic_ReplacesAndLeavesNoTmp",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Identity/ClientIdentityTests.cs|ClientIdentityTests.SaveLoad_KeepsFingerprint",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Net/IpAddressesTests.cs|IpAddressesTests.Unmap_MappedAndPlain",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Protocol/Base64TextTests.cs|Base64TextTests.Encoded_And_Decoded_MatchConvert",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/ReplayWindowTests.cs|ReplayWindowTests.BigJump_ShiftsWindow",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/ReplayWindowTests.cs|ReplayWindowTests.Duplicate_Rejected",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/ReplayWindowTests.cs|ReplayWindowTests.NewSeq_Accepted",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/ReplayWindowTests.cs|ReplayWindowTests.Older64_Rejected",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/ReplayWindowTests.cs|ReplayWindowTests.UpTo63Behind_AcceptedOnce",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/VoicePacketTests.cs|VoicePacketTests.LossWindow_CountsGapsPerStream",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/VoicePacketTests.cs|VoicePacketTests.PingPayload_RoundTrip",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Shared/Voice/VoicePacketTests.cs|VoicePacketTests.RelayPayload_WithCopy_RoundTrip_SizeLimit",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Repository_FollowsLayoutRules",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_AllowsGenericFileName",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_AllowsMainWindowAndAxamlCodeBehind",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_AllowsRecordsAndAttributes",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_AllowsServerStateParts",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_AllowsTopLevelStatements",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsFileNameMismatch",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsIgnoredFolderName",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsMissingViewModelSuffix",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsMissingViewSuffix",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsNamespaceFolderMismatch",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsNamespaceNamedLikeType",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsNonPrivateNestedType",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_FindsSecondTopLevelType",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/SourceLayoutTests.cs|SourceLayoutTests.Scanner_IgnoresBracesInStringsAndComments",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/TestSupport/LayoutAssertTests.cs|LayoutAssertTests.DetectsClippedButton",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.AdminBans",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.AdminGroups",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.AdminLogs",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.AdminServer",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.AdminUsers",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.ChannelDialogLocks",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.ClipConnect",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.ClipPages",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.ClipSwitch",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.Links",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.MainOnline",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.MainPrivate",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.SettingsAudio",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.SettingsLook",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.Start",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots.UserVolume",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShotsTests.cs|WebsiteShotsTests.SameScene_TwiceIdentical",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShotsTests.cs|WebsiteShotsTests.Scenes_SkippedWithoutEnvironment",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShotsTests.cs|WebsiteShotsTests.ShowcaseServer_EnglishHasNoGermanText",
+    "Count": 1
+  },
+  {
+    "Key": "RL601|tests/OVS.Tests/Website/WebsiteShotsTests.cs|WebsiteShotsTests.ShowcaseServer_NoRealData",
+    "Count": 1
+  },
+  {
+    "Key": "RL602|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.From:DateTimeOffset.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Notice_SlidesInWithPulse:DateTime.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Pending_FadesToSent_WithACheck:DateTimeOffset.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Warning_PulsesToo_AndBadgeCountTicks:DateTime.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.RebuiltAdminEntries_KeepTheirKey:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.ServerLog:DateTimeOffset.Now",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.Steps:DateTimeOffset.Now",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Playback/PlaybackLoopTests.cs|PlaybackLoopTests.Run_SpeakerHoldsTheTargetBuffer_MixesNoMoreFrames:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Playback/PlaybackLoopTests.cs|PlaybackLoopTests.Stop_LoopWaiting_EndsItAndClosesNothing:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Playback_IdleDoesNotMix_WakesOnVoice:Task.Delay",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.MissingNativeLibrary_CaptureRunsWithoutSuppressor:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs|SoundTests.TalkKeySounds_OffByDefault_PlayWhenOn:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs|SoundTests.Until:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.ChannelMuted_SendsNothing:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.LoudestOutput:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PttKey_BelowThreshold_SendsOnlyInPttMode:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PushToMute_Held_SendsNothing:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Until:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.Eventually:Thread.Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.Pass:Thread.Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.FullFlow_Linking_PttAndLinkPtt:Task.Delay",
+    "Count": 5
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|Instance.Until:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|Instance.Until:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Dialogs/OverlayDialogsTests.cs|OverlayDialogsTests.Call:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Chat_Narrow_TabsScroll_SendVisible:DateTimeOffset.Now",
+    "Count": 3
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.OpenAdmin:DateTimeOffset.Now",
+    "Count": 6
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.OpenDialog:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.AudioDebug_WritesToClientLog:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.Eventually:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Deafened_FramesKeptAway_NotDownlinkLoss:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpBack_SwitchesBack:Task.Delay",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.CleanupOld_WaitsForLockedFile_ThenDeletes:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Services/UpdateFlowTests.cs|UpdateFlowTests.Checker:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Services/UpdateFlowTests.cs|UpdateFlowTests.Release:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.EchoCancellation_DefaultLiveMissingLib:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/SplashTests.cs|SplashTests.Shows_ThenCloseEndsIt:Thread.Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.ListUsersSent:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UnsavedGroup_Dropped_FoldsAway:Thread.Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Create:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Notices_AppearInGeneral:DateTime.Now",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Unread_CountsAndClears:DateTime.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|Fixture.Receive:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.AudioEngine_DisposedWhileMicOpening_StaysClosed:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.AudioEngine_LiveSettingsBeforeMicOpen_Applied:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Devices_WhileNeeded_OpenAndCloseAgain:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.PressUntil:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SignalIcon_AndDetails:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.StartupCheck_Prompt_LaterDoesNothing:DateTimeOffset.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Update_Accepted_ShowsProgress_UntilFailure:DateTimeOffset.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ReconnectTests.cs|ReconnectTests.Reconnect_ChannelGone_StaysInDefault:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ReconnectTests.cs|ReconnectTests.Reconnect_ChosenMute_HeldKeyReleased_StaysMuted:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.ChatMessages_SoundPerTarget_NotForOwn:DateTimeOffset.UtcNow",
+    "Count": 5
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SoundEvents_FromMessages:DateTimeOffset.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_FollowsNewLines_UnlessScrolledUp:DateTimeOffset.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_LongMessage_BubbleCappedAndWraps:DateTimeOffset.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_OwnRight_OthersLeft_NoticesFullWidth:DateTime.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_OwnRight_OthersLeft_NoticesFullWidth:DateTimeOffset.Now",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_PrivateTab_OwnRight:DateTimeOffset.Now",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.EveryWaitingAction_VisibleWithin400ms:DateTimeOffset.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.ExercisePagesAndDialogs:DateTimeOffset.Now",
+    "Count": 6
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.ExercisePagesAndDialogs:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.ConnectWhenUpAsync:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.ConnectWhenUpAsync:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Manifest:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.ManifestCap_Quota_ListingCached:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Upload_TooLargeOrAborted_NoFileLeft:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Upload_TooLargeOrAborted_NoFileLeft:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Ping_KeepsSessionAliveAndIsAnswered:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.Eventually:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.Eventually:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ReaderLockingTheFile_LineIsNotLost:Thread.Sleep",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/RestartScheduleTests.cs|RestartScheduleTests.AutoRestartChanged_ScheduleFollows:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/RestartScheduleTests.cs|RestartScheduleTests.AutoRestartChanged_ScheduleFollows:Task.Delay",
+    "Count": 3
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles:DateTime.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.ConnectWhenUpAsync:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.ConnectWhenUpAsync:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.NonReadingClient_DisconnectedAndSlotFreed:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.NonReadingClient_DisconnectedAndSlotFreed:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.PendingHandshakes_Capped:DateTime.UtcNow",
+    "Count": 4
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.PendingHandshakes_Capped:Task.Delay",
+    "Count": 3
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.RequestFlood_RateLimited_ThenDisconnected:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.VoiceUp_OwnBudget:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.RateLimit_SixthInFiveSeconds:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.DownloadSelection_ZipWithFolders_TempRemoved:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.DownloadSelection_ZipWithFolders_TempRemoved:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.DownloadSingleFile_ByteIdenticalSnapshot:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.Nickname_StoredTwice_ReservedForLatestLogin:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.UntilAsync:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.UntilAsync:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.GarbageFlood_DroppedBeforeDecrypt_ControlStaysResponsive:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/AsyncWait.cs|AsyncWait.Until:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/DialogCaseTable.cs|DialogCaseTable.All:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/FakeKeys.cs|FakeKeys.NextSweep:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/LossyUdpRelay.cs|LossyUdpRelay.ForwardAsync:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/TestClient.cs|TestClient.AssertNoMessageAsync:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/TestClient.cs|TestClient.DisposeAsync:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/TestClient.cs|TestClient.WaitClosedAsync:DateTime.UtcNow",
+    "Count": 3
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/TestClient.cs|TestClient.WaitForAsync:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/TestDispatcher.cs|TestDispatcher.ReadUntilAsync:Task.Delay",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/TestSupport/TestVoice.cs|TestVoice.ReceiveVoiceAsync:DateTime.UtcNow",
+    "Count": 2
+  },
+  {
+    "Key": "RL701|src/OVS.Client/ViewModels/ConnectionViewModel.cs|ConnectionViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL701|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL701|src/OVS.Client/ViewModels/SettingsViewModel.cs|SettingsViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL701|src/OVS.Client/ViewModels/UsersAndBansViewModel.cs|UsersAndBansViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL701|src/OVS.Client/Views/MainWindow.axaml.cs|MainWindow",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Animations/ItemMotion.cs|ItemMotion.Enter",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/App.axaml.cs|App.OnFrameworkInitializationCompleted",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Audio/Capture/CapturePipeline.cs|CapturePipeline.Feed",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Audio/Playback/JitterBuffer.cs|JitterBuffer.Pull",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Audio/Playback/JitterBuffer.cs|JitterBuffer.Push",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Audio/Playback/PlaybackLoop.cs|PlaybackLoop.Run",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Audio/Sounds/SoundImport.cs|SoundImport.Prepare",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Collections/CollectionSync.cs|CollectionSync.Sync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Diagnostics/DebugApi.cs|DebugApi.DispatchAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Diagnostics/DebugApi.cs|DebugApi.HandleAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Diagnostics/DebugApi.cs|DebugApi.State",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Dialogs/ConnectDialog.cs|ConnectDialog.ShowAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Dialogs/DialogFrame.cs|DialogFrame.ShowAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Dialogs/KeyBindingDialog.cs|KeyBindingDialog.ShowAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Input/KeyPoller.cs|KeyPoller.Loop",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Logging/ProtocolLogText.cs|ProtocolLogText.Describe",
+    "Count": 2
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Net/ClientConnection.cs|ClientConnection.ConnectAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Net/VoiceClient.cs|VoiceClient.ReceiveLoopAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Services/IconImport.cs|IconImport.Prepare",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Splash.cs|Splash.Run",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/ViewModels/ConnectionViewModel.cs|ConnectionViewModel.ReconnectOnceAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/ViewModels/MainViewModel.cs|MainViewModel.MainViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ApplyMessage",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/ViewModels/UsersAndBansViewModel.cs|UsersAndBansViewModel.RebuildUsers",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/ViewModels/UsersAndBansViewModel.cs|UsersAndBansViewModel.UsersAndBansViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Client/Views/AdminView.axaml.cs|AdminView.AdminView",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/ControlServer.cs|ControlServer.AcceptLoopAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/ControlServer.cs|ControlServer.HandleAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/Logging/LogExporter.cs|LogExporter.Export",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/RestartSchedule.cs|RestartSchedule.WaitAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/ServerConfig.cs|ServerConfig.Load",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/ServerHost.cs|ServerHost.RunOnceAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/State/ServerState.Admin.cs|ServerState.OnUpdateServerSettings",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/State/ServerState.Backup.cs|ServerState.OnRestoreBackup",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/State/ServerState.Backup.cs|ServerState.OnUploadBackupChunk",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/State/ServerState.Chat.cs|ServerState.OnSendChat",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/State/ServerState.Connections.cs|ServerState.Admit",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|src/OVS.Server/Voice/UdpVoiceServer.cs|UdpVoiceServer.HandleAsync",
+    "Count": 1
+  },
+  {
+    "Key": "RL702|tools/render-icon/LogoRenderer.cs|LogoRenderer.RenderPng",
+    "Count": 1
   }
 ]

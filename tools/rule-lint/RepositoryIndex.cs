@@ -5,13 +5,16 @@ namespace RuleLint;
 
 /// <summary>
 /// What the rules need to know about all files at once: the type names of each source root, the code files of each
-/// type, and the first file under each folder (so a rule about a folder reports it once).
+/// type, the first file under each folder (so a rule about a folder reports it once) and how often each interface is
+/// implemented in production or tool code and in tests.
 /// </summary>
 public sealed partial class RepositoryIndex
 {
     readonly Dictionary<string, HashSet<string>> typeNamesByRoot = [];
     readonly Dictionary<string, List<string>> filesByType = [];
     readonly Dictionary<string, string> firstFileUnderFolder = [];
+    readonly Dictionary<string, int> productionImplementations = [];
+    readonly Dictionary<string, int> testImplementations = [];
 
     RepositoryIndex()
     {
@@ -34,6 +37,7 @@ public sealed partial class RepositoryIndex
                 if (!index.filesByType.TryGetValue(key, out var paths)) index.filesByType[key] = paths = [];
                 if (!paths.Contains(file.Path)) paths.Add(file.Path);
             }
+            if (file.IsCode) index.CountImplementations(file);
         }
         return index;
     }
@@ -50,9 +54,39 @@ public sealed partial class RepositoryIndex
     public bool IsFirstUnder(string folder, SourceFile file) =>
         firstFileUnderFolder.TryGetValue(folder, out var first) && first == file.Path;
 
+    /// <summary>How many types of production or tool code name <paramref name="interfaceName"/> in their base list.</summary>
+    public int CountProductionImplementations(string interfaceName) => productionImplementations.GetValueOrDefault(interfaceName);
+
+    /// <summary>How many test types name <paramref name="interfaceName"/> in their base list (fakes).</summary>
+    public int CountTestImplementations(string interfaceName) => testImplementations.GetValueOrDefault(interfaceName);
+
     /// <summary>The <c>x:Class</c> attribute of a XAML file.</summary>
     [GeneratedRegex("x:Class=\"([^\"]+)\"")]
     public static partial Regex BuildXamlClassPattern();
+
+    /// <summary>The simple name of a base type: without namespace and type arguments.</summary>
+    public static string ReadSimpleName(TypeSyntax type) => type switch
+    {
+        QualifiedNameSyntax qualified => ReadSimpleName(qualified.Right),
+        GenericNameSyntax generic => generic.Identifier.ValueText,
+        IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+        AliasQualifiedNameSyntax alias => ReadSimpleName(alias.Name),
+        _ => type.ToString(),
+    };
+
+    void CountImplementations(SourceFile file)
+    {
+        var counts = file.Root!.Kind == RootKind.Test ? testImplementations : productionImplementations;
+        foreach (var type in file.Syntax.DescendantNodes().OfType<TypeDeclarationSyntax>())
+        {
+            if (type is InterfaceDeclarationSyntax || type.BaseList is null) continue;
+            foreach (var baseType in type.BaseList.Types)
+            {
+                var name = ReadSimpleName(baseType.Type);
+                counts[name] = counts.GetValueOrDefault(name) + 1;
+            }
+        }
+    }
 
     void RememberFolders(string path)
     {
