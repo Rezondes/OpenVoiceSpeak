@@ -105,11 +105,8 @@ public sealed partial class ServerViewModel : ObservableObject
     internal void RequestSound(SoundEvent sound) => SoundRequested?.Invoke(sound);
     /// <summary>Package 73: the admin page changes the own groups; the tone for the one acting follows from there.</summary>
     internal bool OwnGroupChangePending { get; set; }
-    /// <summary>The channel the own "Betreten" asked for: arriving there is "entered", anywhere else "moved".</summary>
-    Guid? pendingJoin;
-    /// <summary>Package 94 (A109): channel passwords that worked, in memory for this connection only.</summary>
-    readonly Dictionary<Guid, string> channelPasswords = [];
-    (Guid Channel, string Password)? pendingPassword;
+    /// <summary>Packages 94 and 139: the own join in flight and the channel passwords that worked on this connection.</summary>
+    readonly ChannelJoin join = new();
     public event Action<string>? ChatError;
     /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
     public event Action<UserViewModel>? PrivateChatRequested;
@@ -166,11 +163,7 @@ public sealed partial class ServerViewModel : ObservableObject
         switch (message)
         {
             case Error e:
-                if (e.Code is ReasonCodes.WrongChannelPassword or ReasonCodes.ChannelPasswordRequired && pendingPassword is { } wrong)
-                {
-                    channelPasswords.Remove(wrong.Channel); // Package 94: changed meanwhile, ask again next time
-                    pendingPassword = null;
-                }
+                join.Refused(e.Code); // Package 94: a wrong channel password is asked for again next time
                 var text = ErrorTexts.For(e.Code, e.Detail);
                 if (e.RequestId is { } failed && waiting.Remove(failed, out var pending) && pending.Answers(failed)) pending.Fail(text); // Package 97
                 if (e.RequestId?.StartsWith(ChatRequestPrefix) == true && ChatError is { } chatError) chatError(text);
@@ -300,11 +293,7 @@ public sealed partial class ServerViewModel : ObservableObject
             case UserUpdated u when u.User.SessionId == Mirror.SelfId && self is not null:
                 if (u.User.ChannelId != self.ChannelId)
                 {
-                    if (pendingPassword is { } worked && worked.Channel == u.User.ChannelId) channelPasswords[worked.Channel] = worked.Password;
-                    pendingPassword = null;
-                    bool own = pendingJoin == u.User.ChannelId;
-                    pendingJoin = null;
-                    return own ? SoundEvent.ChannelEntered : SoundEvent.Moved;
+                    return join.Arrived(u.User.ChannelId) ? SoundEvent.ChannelEntered : SoundEvent.Moved;
                 }
                 if (u.User.ServerMuted && !self.ServerMuted) return SoundEvent.ServerMuted;
                 // Package 73: the own groups changed; a change made by myself only gives the tone for the one acting
@@ -516,13 +505,12 @@ public sealed partial class ServerViewModel : ObservableObject
         if (Mirror.Channels.GetValueOrDefault(channelId) is { } channel
             && ChannelAccess.NeedsPassword(channel.HasPassword, Mirror.Self?.GroupIds ?? [], SelfPermissions, moving: false)
             && Mirror.Self?.ChannelId != channelId
-            && !channelPasswords.TryGetValue(channelId, out password))
+            && !join.TryGetPassword(channelId, out password))
         {
             if (Dialogs.AskChannelPassword is not { } ask || await ask(channel.Name) is not { Length: > 0 } entered) return;
             password = entered;
         }
-        pendingJoin = channelId;
-        pendingPassword = password is null ? null : (channelId, password);
+        join.Begin(channelId, password);
         if (Mirror.Self?.ChannelId is not { } before || before == channelId)
         {
             await SendAsync(new JoinChannel(channelId, password));
@@ -538,13 +526,12 @@ public sealed partial class ServerViewModel : ObservableObject
     public bool IsJoining => joining?.IsRunning == true;
 
     /// <summary>Package 139 (A148): the password that let me into a channel on this connection, kept in memory only.</summary>
-    internal string? PasswordFor(Guid channelId) => channelPasswords.GetValueOrDefault(channelId);
+    internal string? PasswordFor(Guid channelId) => join.PasswordFor(channelId);
 
     /// <summary>Package 139: back into the channel from before a reconnect, with its password from then and never a dialog.</summary>
     internal Task RejoinAsync(Guid channelId, string? password)
     {
-        pendingJoin = channelId;
-        pendingPassword = password is null ? null : (channelId, password);
+        join.Begin(channelId, password);
         return SendAsync(new JoinChannel(channelId, password));
     }
 

@@ -254,6 +254,17 @@ public class ServerViewModelTests
     }
 
     [Fact]
+    public async Task JoinAsync_EmptyPasswordEntered_SendsNothing()
+    {
+        var fixture = Create(dialogs: new ServerDialogs { AskChannelPassword = _ => Task.FromResult<string?>("") });
+        fixture.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
+
+        await HangGuard.Bound(fixture.Vm.JoinAsync(Bravo));
+
+        Assert.Empty(fixture.Sent);
+    }
+
+    [Fact]
     public async Task Join_ChannelPasswordDialogThrows_PropagatesAndSendsNothing()
     {
         var fixture = Create(dialogs: new ServerDialogs { AskChannelPassword = _ => throw new InvalidOperationException("Dialog kaputt") });
