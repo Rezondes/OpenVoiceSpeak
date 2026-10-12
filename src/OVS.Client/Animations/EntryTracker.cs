@@ -124,7 +124,7 @@ internal sealed class EntryTracker
             QueueBatchEnd();
             return;
         }
-        if (ItemMotion.GetFly(list)) ItemMotion.Arrive(item!, e.Container);
+        if (ItemMotion.GetFly(list)) ItemFlight.Arrive(item!, e.Container);
         ItemMotion.Enter(e.Container, batch++, ItemMotion.GetFlash(list), ItemMotion.GetFly(list));
         QueueBatchEnd();
     }

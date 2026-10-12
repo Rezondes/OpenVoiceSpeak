@@ -119,7 +119,7 @@ public sealed class UserDrag
         e.Handled = true;
         if (user is null || target is null) return;
         // Package 103: the row already shows where it was dropped, it must not fly there again once the server confirms
-        ItemMotion.Ground(user, drop(user, target));
+        ItemFlight.Ground(user, drop(user, target));
     }
 
     void OnKeyDown(object? sender, KeyEventArgs e)
