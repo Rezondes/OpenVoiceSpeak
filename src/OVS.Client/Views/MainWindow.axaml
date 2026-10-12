@@ -53,11 +53,11 @@
             <!-- Server logo (Package 30), otherwise the first letter of the server name -->
             <Panel DockPanel.Dock="Left">
               <Border Classes="badge" IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}">
-                <TextBlock Text="{Binding Server.ServerName, Converter={x:Static conv:ValueConverters.Initials}, FallbackValue='O'}" />
+                <TextBlock Text="{Binding Server.ServerName, Converter={x:Static conv:AvatarConverters.Initials}, FallbackValue='O'}" />
               </Border>
               <Border Classes="badge" ClipToBounds="True" Background="Transparent"
                       IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
-                <Image Source="{Binding Server.IconPng, Converter={x:Static conv:ValueConverters.PngToBitmap}, FallbackValue={x:Null}}" Stretch="UniformToFill" />
+                <Image Source="{Binding Server.IconPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}, FallbackValue={x:Null}}" Stretch="UniformToFill" />
               </Border>
             </Panel>
             <StackPanel Margin="10,0,4,0" VerticalAlignment="Center" Spacing="2">
@@ -100,8 +100,8 @@
                     Classes.link="{Binding Server.Self.IsSpeakingViaLink, FallbackValue=False}" VerticalAlignment="Center"
                     IsVisible="{Binding IsConnected}">
               <Border Classes="avatar" Width="30" Height="30"
-                      Background="{Binding Server.Self.Nickname, Converter={x:Static conv:ValueConverters.AvatarBrush}, FallbackValue={x:Null}}">
-                <TextBlock Text="{Binding Server.Self.Nickname, Converter={x:Static conv:ValueConverters.Initials}, FallbackValue='?'}" FontSize="13" />
+                      Background="{Binding Server.Self.Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}, FallbackValue={x:Null}}">
+                <TextBlock Text="{Binding Server.Self.Nickname, Converter={x:Static conv:AvatarConverters.Initials}, FallbackValue='?'}" FontSize="13" />
               </Border>
             </Border>
             <StackPanel x:Name="SelfTexts" Margin="8,0,4,0" VerticalAlignment="Center">
@@ -157,11 +157,11 @@
                         <Panel DockPanel.Dock="Left">
                           <Border Classes="badge" Width="28" Height="28" CornerRadius="7"
                                   IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNull}}">
-                            <TextBlock Text="{Binding Name, Converter={x:Static conv:ValueConverters.Initials}}" FontSize="13" />
+                            <TextBlock Text="{Binding Name, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
                           </Border>
                           <Border Classes="badge" Width="28" Height="28" CornerRadius="7" ClipToBounds="True" Background="Transparent"
                                   IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Image Source="{Binding Icon, Converter={x:Static conv:ValueConverters.PngToBitmap}}" Stretch="UniformToFill" />
+                            <Image Source="{Binding Icon, Converter={x:Static conv:AvatarConverters.PngToBitmap}}" Stretch="UniformToFill" />
                           </Border>
                         </Panel>
                         <StackPanel Margin="10,0" VerticalAlignment="Center">
@@ -320,13 +320,13 @@
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Muted}" />
                               </StackPanel>
                               <Border Classes="ring" Classes.speaking="{Binding IsSpeaking}" Classes.link="{Binding IsSpeakingViaLink}">
-                                <Border Classes="avatar" Width="24" Height="24" Background="{Binding Nickname, Converter={x:Static conv:ValueConverters.AvatarBrush}}">
-                                  <TextBlock Text="{Binding Nickname, Converter={x:Static conv:ValueConverters.Initials}}" FontSize="11" />
+                                <Border Classes="avatar" Width="24" Height="24" Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
+                                  <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="11" />
                                 </Border>
                               </Border>
                               <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Nickname}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}"
-                                           FontWeight="{Binding IsSelf, Converter={x:Static conv:ValueConverters.SelfWeight}}" />
+                                           FontWeight="{Binding IsSelf, Converter={x:Static conv:AvatarConverters.SelfWeight}}" />
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsSelf}" VerticalAlignment="Center" />
                               </StackPanel>
                             </DockPanel>
@@ -399,15 +399,15 @@
                     <Button x:Name="SignalButton" Classes="hint" Command="{Binding ShowConnectionDetailsCommand}" VerticalAlignment="Center"
                             ToolTip.Tip="{Binding Stats.Tip}" AutomationProperties.Name="{x:Static l:Strings.ConnDetails_Title}">
                       <Panel Width="15" Height="12"
-                             Classes.bars1="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=1}"
-                             Classes.bars2="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=2}"
-                             Classes.bars3="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=3}"
-                             Classes.bars4="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.Is}, ConverterParameter=4}">
+                             Classes.bars1="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.Is}, ConverterParameter=1}"
+                             Classes.bars2="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.Is}, ConverterParameter=2}"
+                             Classes.bars3="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.Is}, ConverterParameter=3}"
+                             Classes.bars4="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.Is}, ConverterParameter=4}">
                         <StackPanel Orientation="Horizontal" Spacing="1" VerticalAlignment="Bottom">
-                          <Border Classes="signalBar" Height="4" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=1}" />
-                          <Border Classes="signalBar" Height="6" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=2}" />
-                          <Border Classes="signalBar" Height="9" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=3}" />
-                          <Border Classes="signalBar" Height="12" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:ValueConverters.AtLeast}, ConverterParameter=4}" />
+                          <Border Classes="signalBar" Height="4" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.AtLeast}, ConverterParameter=1}" />
+                          <Border Classes="signalBar" Height="6" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.AtLeast}, ConverterParameter=2}" />
+                          <Border Classes="signalBar" Height="9" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.AtLeast}, ConverterParameter=3}" />
+                          <Border Classes="signalBar" Height="12" Classes.on="{Binding Stats.Bars, Converter={x:Static conv:NumberConverters.AtLeast}, ConverterParameter=4}" />
                         </StackPanel>
                         <Line x:Name="SignalCross" StartPoint="0,0" EndPoint="15,12" StrokeThickness="1.5" Stroke="{DynamicResource Ovs.Danger}"
                               IsVisible="{Binding Stats.Unreachable}" />

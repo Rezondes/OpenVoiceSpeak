@@ -5,8 +5,8 @@ using Avalonia.Media.Imaging;
 
 namespace OVS.Client.Converters;
 
-/// <summary>Small view helpers for avatars and badges.</summary>
-public static class ValueConverters
+/// <summary>Small view helpers for avatars and badges: the letter, the colour, the own name's weight and the server logo.</summary>
+public static class AvatarConverters
 {
     /// <summary>White initials stay at least 4.5:1 on every one of these.</summary>
     static readonly IBrush[] AvatarColors =
@@ -26,27 +26,6 @@ public static class ValueConverters
     /// <summary>A server logo (PNG bytes) as image; null stays null so the letter badge shows instead.</summary>
     public static readonly IValueConverter PngToBitmap =
         new FuncValueConverter<byte[]?, Bitmap?>(png => png is null ? null : new Bitmap(new MemoryStream(png)));
-
-    public static readonly IValueConverter IsZero = new FuncValueConverter<int, bool>(n => n == 0);
-
-    /// <summary>Package 133: the signal icon; bar n (the parameter) is lit from n bars on, the colour goes by the number.</summary>
-    public static readonly IValueConverter AtLeast = new FuncValueConverter<int, string, bool>((n, min) => n >= int.Parse(min!));
-    public static readonly IValueConverter Is = new FuncValueConverter<int, string, bool>((n, value) => n == int.Parse(value!));
-
-    // Package 81: what the line filter found, readable on light and dark backgrounds
-    static readonly IBrush MatchBrush = new ImmutableSolidColorBrush(Color.Parse("#66FFC83D"));
-
-    /// <summary>Package 81: a log line as runs, the matches of the line filter highlighted.</summary>
-    public static readonly IValueConverter LogSegments =
-        new FuncValueConverter<IReadOnlyList<OVS.Client.Models.LogSegment>?, Avalonia.Controls.Documents.InlineCollection?>(segments =>
-        {
-            if (segments is null) return null;
-            var inlines = new Avalonia.Controls.Documents.InlineCollection();
-            foreach (var s in segments)
-                inlines.Add(s.IsMatch ? new Avalonia.Controls.Documents.Run(s.Text) { Background = MatchBrush, FontWeight = FontWeight.SemiBold }
-                    : new Avalonia.Controls.Documents.Run(s.Text));
-            return inlines;
-        });
 
     static uint StableHash(string text)
     {

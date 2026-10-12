@@ -1508,10 +1508,10 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [Fact]
     public void Avatar_SameNicknameSameColor_InitialUpperCase()
     {
-        var brush = (ISolidColorBrush)ValueConverters.AvatarBrush.Convert("anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
-        var again = (ISolidColorBrush)ValueConverters.AvatarBrush.Convert("Anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
+        var brush = (ISolidColorBrush)AvatarConverters.AvatarBrush.Convert("anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
+        var again = (ISolidColorBrush)AvatarConverters.AvatarBrush.Convert("Anna", typeof(IBrush), null, System.Globalization.CultureInfo.InvariantCulture)!;
         Assert.Equal(brush.Color, again.Color);
-        Assert.Equal("A", ValueConverters.Initials.Convert(" anna", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
-        Assert.Equal("?", ValueConverters.Initials.Convert("", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal("A", AvatarConverters.Initials.Convert(" anna", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal("?", AvatarConverters.Initials.Convert("", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
     }
 }

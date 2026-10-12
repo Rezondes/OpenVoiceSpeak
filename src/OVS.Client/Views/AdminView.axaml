@@ -200,8 +200,8 @@
                         <DockPanel>
                           <Panel DockPanel.Dock="Left" VerticalAlignment="Top" Width="32" Height="32">
                             <Border Classes="avatar" Width="32" Height="32"
-                                    Background="{Binding Nickname, Converter={x:Static conv:ValueConverters.AvatarBrush}}">
-                              <TextBlock Text="{Binding Nickname, Converter={x:Static conv:ValueConverters.Initials}}" FontSize="13" />
+                                    Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
+                              <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
                             </Border>
                             <Ellipse Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-2"
                                      Fill="{DynamicResource Ovs.Speaking}" Stroke="{DynamicResource Ovs.Surface}" StrokeThickness="2"
@@ -540,7 +540,7 @@
                               DragDrop.AllowDrop="True" ToolTip.Tip="{x:Static l:Strings.Ui_DropImage}">
                         <Panel>
                           <PathIcon Classes="muted" Data="{StaticResource Icon.Add}" IsVisible="{Binding IconPng, Converter={x:Static ObjectConverters.IsNull}}" />
-                          <Image Source="{Binding IconPng, Converter={x:Static conv:ValueConverters.PngToBitmap}}" Stretch="UniformToFill" />
+                          <Image Source="{Binding IconPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}}" Stretch="UniformToFill" />
                           <!-- Package 98: the new logo is on its way until the server's settings carry it -->
                           <Border Name="IconBusy" Background="{DynamicResource Ovs.Scrim}" IsVisible="{Binding IconUpload.IsBusy}">
                             <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
@@ -895,7 +895,7 @@
                           <DataTemplate x:DataType="vm:LogLineViewModel">
                             <DockPanel>
                               <TextBlock DockPanel.Dock="Left" Classes="caption logText" Text="{Binding Number}" Width="52" Margin="0,0,8,0" TextAlignment="Right" />
-                              <TextBlock Classes="logText" Inlines="{Binding Segments, Converter={x:Static conv:ValueConverters.LogSegments}}" TextWrapping="Wrap" />
+                              <TextBlock Classes="logText" Inlines="{Binding Segments, Converter={x:Static conv:LogLineConverters.LogSegments}}" TextWrapping="Wrap" />
                             </DockPanel>
                           </DataTemplate>
                         </ListBox.ItemTemplate>
