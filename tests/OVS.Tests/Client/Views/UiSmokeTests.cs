@@ -187,7 +187,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         // the waiting states show 150 ms after their request (Package 97); they must not appear between the frames, so every
         // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
         var admin = vm.PageFlow.AdminPage!;
-        PendingViewModel[] loads = [admin.UsersAndBans.UsersLoad, admin.UsersAndBans.BansLoad, admin.BackupCard.BackupsLoad, admin.Logs.FilesLoad];
+        PendingActionViewModel[] loads = [admin.UsersAndBans.UsersLoad, admin.UsersAndBans.BansLoad, admin.BackupCard.BackupsLoad, admin.Logs.FilesLoad];
         MotionWait.WaitFor(() => loads.All(p => !p.IsRunning || p.IsBusy), 5000);
         Assert.All(loads, p => Assert.True(!p.IsRunning || p.IsBusy));
         LooksLikeBefore("admin");
@@ -769,14 +769,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             app.Resources.TryGetResource(key, variant, out var value) && value is ISolidColorBrush brush ? brush.Opacity : double.NaN;
         try
         {
-            WindowAppearance.Apply(app, main, new BackgroundAppearance(0.5f, false));
+            BackgroundTransparency.Apply(app, main, new BackgroundAppearance(0.5f, false));
             foreach (var variant in new[] { ThemeVariant.Dark, ThemeVariant.Light })
             {
-                foreach (var key in WindowAppearance.BackgroundKeys) Assert.Equal(0.5, Opacity(key, variant), 3);
+                foreach (var key in BackgroundTransparency.BackgroundKeys) Assert.Equal(0.5, Opacity(key, variant), 3);
                 foreach (var key in new[] { "Ovs.Text", "Ovs.Surface", "Ovs.DialogBg", "Ovs.DialogBar", "Ovs.Accent" }) Assert.Equal(1, Opacity(key, variant));
             }
             Assert.Equal([WindowTransparencyLevel.Transparent], main.TransparencyLevelHint);
-            WindowAppearance.Apply(app, main, new BackgroundAppearance(0.5f, true));
+            BackgroundTransparency.Apply(app, main, new BackgroundAppearance(0.5f, true));
             Assert.Equal(WindowTransparencyLevel.AcrylicBlur, main.TransparencyLevelHint[0]);
 
             _ = ConfirmDialog.ShowAsync(main.Overlay, "?");
@@ -786,13 +786,13 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             main.Overlay.Close();
             Dispatcher.UIThread.RunJobs();
 
-            WindowAppearance.Apply(app, main, new BackgroundAppearance(1f, false));
+            BackgroundTransparency.Apply(app, main, new BackgroundAppearance(1f, false));
             Assert.Empty(main.TransparencyLevelHint); // a normal window again
             Assert.Equal(1, Opacity("Ovs.Bg", ThemeVariant.Dark));
         }
         finally
         {
-            WindowAppearance.Apply(app, main, new BackgroundAppearance(1f, false)); // the resources are shared by all tests
+            BackgroundTransparency.Apply(app, main, new BackgroundAppearance(1f, false)); // the resources are shared by all tests
             main.Close();
         }
     }

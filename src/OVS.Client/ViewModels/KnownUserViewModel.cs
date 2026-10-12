@@ -9,16 +9,16 @@ namespace OVS.Client.ViewModels;
 
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
 /// <param name="busy">Package 98: the card's actions, running until a user list shows their result.</param>
-public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupToggleViewModel> toggles, IReadOnlyList<BanInfo> bans,
-    KnownUserActions actions, PendingViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
+public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupAssignmentViewModel> toggles, IReadOnlyList<BanInfo> bans,
+    KnownUserActions actions, PendingActionViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
 {
     public KnownUserInfo Info { get; } = info;
     public object MotionKey => Info.Fingerprint;
-    public PendingViewModel Busy { get; } = busy;
+    public PendingActionViewModel Busy { get; } = busy;
     public string Fingerprint => Info.Fingerprint;
     public string Nickname => Info.LastNickname;
     public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;
-    public IReadOnlyList<GroupToggleViewModel> Toggles { get; } = toggles;
+    public IReadOnlyList<GroupAssignmentViewModel> Toggles { get; } = toggles;
     public bool IsOnline { get; } = isOnline;
     public string StatusText => IsOnline ? Strings.Ui_StatusOnline : Strings.Ui_StatusOffline;
     public IReadOnlyList<BanInfo> Bans { get; } = bans;

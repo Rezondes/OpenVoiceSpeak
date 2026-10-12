@@ -11,7 +11,7 @@ namespace OVS.Client.Dialogs;
 internal static class BanDialog
 {
     /// <param name="ipKnown">Package 72: an offline user without a stored IP cannot be banned by IP.</param>
-    internal static Task<BanChoice?> ShowAsync(OverlayHost overlay, string nickname, bool ipKnown = true, Func<BanChoice, PendingViewModel>? submit = null)
+    internal static Task<BanChoice?> ShowAsync(OverlayHost overlay, string nickname, bool ipKnown = true, Func<BanChoice, PendingActionViewModel>? submit = null)
     {
         var durations = BanChoice.Durations;
         var reason = new TextBox();

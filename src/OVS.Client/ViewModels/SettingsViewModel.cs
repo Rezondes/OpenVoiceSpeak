@@ -68,8 +68,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         Func<Task<KeyChord>>? captureChord = null)
     {
         this.captureChord = captureChord;
-        Saving = new PendingViewModel(time, PendingViewModel.UiPost());
-        Checking = new PendingViewModel(time, PendingViewModel.UiPost());
+        Saving = new PendingActionViewModel(time, PendingActionViewModel.UiPost());
+        Checking = new PendingActionViewModel(time, PendingActionViewModel.UiPost());
         basis = current;
         (savedInputId, savedOutputId) = (current.InputDeviceId, current.OutputDeviceId);
         (inputs, selectedInput, bool inputFellBack) = DeviceOptions(savedInputId, inputDevices);
@@ -118,8 +118,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     public Func<Task<string>>? CheckNow { get; set; }
 
     /// <summary>Package 98: "Speichern" while the audio devices restart, and the update check.</summary>
-    public PendingViewModel Saving { get; }
-    public PendingViewModel Checking { get; }
+    public PendingActionViewModel Saving { get; }
+    public PendingActionViewModel Checking { get; }
 
     [RelayCommand]
     async Task CheckUpdates()

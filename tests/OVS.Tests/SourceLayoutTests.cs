@@ -102,8 +102,8 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     public void Scanner_AllowsGenericFileName()
     {
         Write("src/OVS.Client/Models/Choice.cs", "namespace OVS.Client.Models;\n\npublic sealed record Choice<T>(T Value, string Label)\n    where T : class, new();\n");
-        Write("src/OVS.Client/Collections/ListPages.cs",
-            "namespace OVS.Client.Collections;\n\npublic sealed class ListPages<T> where T : struct\n{\n    public void Add<TItem>(TItem item) where TItem : class { }\n}\n");
+        Write("src/OVS.Client/Collections/PagedListCollector.cs",
+            "namespace OVS.Client.Collections;\n\npublic sealed class PagedListCollector<T> where T : struct\n{\n    public void Add<TItem>(TItem item) where TItem : class { }\n}\n");
         Assert.Empty(Check());
     }
 

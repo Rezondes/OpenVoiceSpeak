@@ -21,7 +21,7 @@ internal sealed partial class ServerIconViewModel : ObservableObject
     }
 
     /// <summary>Package 98: the server icon, until the server's update shows it.</summary>
-    internal PendingViewModel IconUpload { get; }
+    internal PendingActionViewModel IconUpload { get; }
 
     internal byte[]? IconPng => server.IconPng;
     /// <summary>

@@ -53,7 +53,7 @@
           <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:GroupChoiceViewModel">
+          <DataTemplate x:DataType="vm:AllowedGroupViewModel">
             <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="0,0,12,0" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>

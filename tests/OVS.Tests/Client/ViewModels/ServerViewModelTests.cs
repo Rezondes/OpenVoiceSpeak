@@ -745,7 +745,7 @@ public class ServerViewModelTests
         f.Vm.Notice += notices.Add;
         var bravo = f.Channel(Bravo);
         await bravo.JoinCommand.ExecuteAsync(null);
-        f.Time.Advance(PendingViewModel.ShowAfter - TimeSpan.FromMilliseconds(1));
+        f.Time.Advance(PendingActionViewModel.ShowAfter - TimeSpan.FromMilliseconds(1));
         Assert.False(bravo.IsBusy); // a fast answer never flickers
         f.Time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.True(bravo.IsBusy);
@@ -758,7 +758,7 @@ public class ServerViewModelTests
         // refused: the spinner goes and the reason shows; joining works again
         var alpha = f.Channel(Alpha);
         await alpha.JoinCommand.ExecuteAsync(null);
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(alpha.IsBusy);
         f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.ChannelFull));
         Assert.False(alpha.IsBusy);
@@ -786,7 +786,7 @@ public class ServerViewModelTests
         Assert.Equal([Bravo, Lobby, Alpha], Order()); // at once, no jump back
         f.Vm.Apply(new UserJoined(User(2, "anna", Lobby, P.Speak))); // something else changes meanwhile: the new order stays
         Assert.Equal([Bravo, Lobby, Alpha], Order());
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(f.Channel(Bravo).IsBusy);
         f.Vm.Apply(new Error(refused.RequestId, ReasonCodes.PermissionDenied));
         Assert.Equal([Lobby, Alpha, Bravo], Order());
@@ -794,7 +794,7 @@ public class ServerViewModelTests
 
         // accepted: the server's updates confirm the order
         await f.Vm.Tree.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 0)));
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Lobby, "Lobby", "", 1)));
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Alpha, "alpha", "", 2)));
@@ -814,7 +814,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task SendingDialogs_WaitForTheConfirmation_RowActionsSpin()
     {
-        PendingViewModel? waited = null;
+        PendingActionViewModel? waited = null;
         var dialogs = new ServerDialogs
         {
             EditChannel = (current, _, submit) =>
@@ -838,7 +838,7 @@ public class ServerViewModelTests
         // the mute toggle spins on the user's row until the server's update
         var gast = f.User(2);
         await gast.ToggleServerMuteCommand.ExecuteAsync(null);
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(gast.IsBusy);
         f.Vm.Apply(new UserUpdated(User(2, "gast", Lobby, P.Speak) with { ServerMuted = true }));
         Assert.False(gast.IsBusy);
@@ -846,7 +846,7 @@ public class ServerViewModelTests
         // deleting a channel spins on its row until it is gone
         var channel = f.Channel(created);
         await channel.DeleteCommand.ExecuteAsync(null);
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(channel.IsBusy);
         f.Vm.Apply(new ChannelRemoved(created));
         Assert.False(channel.IsBusy);
@@ -1000,7 +1000,7 @@ public class ServerViewModelTests
         raid.IsChecked = true; // the menu item ticks itself on the click, then runs the command
         await raid.ToggleCommand.ExecuteAsync(null);
         Assert.Equal(new AssignGroup("fp2", Raid), f.Sent[^1] with { RequestId = null });
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(anna.IsBusy);
         f.Vm.Apply(new UserUpdated(Weaker([WellKnownGroups.Guest]) with { SelfMuted = true })); // another change meanwhile
         Assert.True(anna.Groups.Single(t => t.GroupId == Raid).IsChecked); // the tick stays until the server shows the group
@@ -1015,7 +1015,7 @@ public class ServerViewModelTests
         raid.IsChecked = false;
         await raid.ToggleCommand.ExecuteAsync(null);
         Assert.Equal(new UnassignGroup("fp2", Raid), f.Sent[^1] with { RequestId = null });
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(anna.IsBusy);
         f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.PermissionDenied));
         Assert.False(anna.IsBusy);
@@ -1033,7 +1033,7 @@ public class ServerViewModelTests
     {
         var f = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker()]);
         var anna = f.User(2);
-        GroupToggleViewModel Raid_() => anna.Groups.Single(t => t.GroupId == Raid);
+        GroupAssignmentViewModel Raid_() => anna.Groups.Single(t => t.GroupId == Raid);
         var raid = Raid_();
         raid.IsChecked = true;
         await raid.ToggleCommand.ExecuteAsync(null);
@@ -1041,7 +1041,7 @@ public class ServerViewModelTests
         raid.IsChecked = false;
         await raid.ToggleCommand.ExecuteAsync(null);
         Assert.IsType<UnassignGroup>(f.Sent[^1]);
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(anna.IsBusy);
 
         f.Vm.Apply(new UserUpdated(Weaker([WellKnownGroups.Guest, Raid]))); // confirms the first click only
@@ -1090,7 +1090,7 @@ public class ServerViewModelTests
         anna.MoveTargets.Single(t => t.Channel.Id == Bravo).Command.Execute(null);
         Assert.Equal(new MoveUser(2, Bravo), f.Sent[^1] with { RequestId = null });
         Assert.False(picked);
-        f.Time.Advance(PendingViewModel.ShowAfter);
+        f.Time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(anna.IsBusy); // Package 98: the row spins until the server shows the move
         f.Vm.Apply(new UserUpdated(Weaker() with { ChannelId = Bravo }));
         Assert.False(anna.IsBusy);

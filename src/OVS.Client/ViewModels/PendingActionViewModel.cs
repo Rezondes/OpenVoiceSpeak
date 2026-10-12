@@ -10,7 +10,7 @@ namespace OVS.Client.ViewModels;
 /// "Keine Antwort vom Server" and can be started again.
 /// </summary>
 /// <param name="post">Runs the timers' work on the UI thread; inline when null (tests with a manual clock).</param>
-public sealed partial class PendingViewModel(TimeProvider time, Action<Action>? post = null) : ObservableObject
+public sealed partial class PendingActionViewModel(TimeProvider time, Action<Action>? post = null) : ObservableObject
 {
     public static readonly TimeSpan ShowAfter = TimeSpan.FromMilliseconds(150);
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);

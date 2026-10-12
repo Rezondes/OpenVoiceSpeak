@@ -286,7 +286,7 @@
                                 <MenuItem Classes="groups" Header="{x:Static l:Strings.Ui_Groups}" ItemsSource="{Binding Groups}" IsVisible="{Binding HasGroups}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.People}" Classes="sm" /></MenuItem.Icon>
                                   <MenuItem.Styles>
-                                    <Style Selector="MenuItem.groups > MenuItem" x:DataType="vm:GroupToggleViewModel">
+                                    <Style Selector="MenuItem.groups > MenuItem" x:DataType="vm:GroupAssignmentViewModel">
                                       <Setter Property="ToggleType" Value="CheckBox" />
                                       <Setter Property="Header" Value="{Binding Name}" />
                                       <Setter Property="IsChecked" Value="{Binding IsChecked, Mode=TwoWay}" />

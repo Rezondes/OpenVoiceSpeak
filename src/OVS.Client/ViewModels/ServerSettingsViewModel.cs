@@ -129,7 +129,7 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
     }
 
     /// <summary>Package 114: waits for the server's new settings; null when the input breaks the server's rules.</summary>
-    internal PendingViewModel? Send()
+    internal PendingActionViewModel? Send()
     {
         // Package 83: the server's rules, checked before anything is sent or cleared
         Error = TextRules.NormalizeName(Name, ProtocolLimits.MaxNameLength) is null ? Strings.Dlg_NameInvalid

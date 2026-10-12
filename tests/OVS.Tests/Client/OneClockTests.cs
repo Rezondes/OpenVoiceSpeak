@@ -90,7 +90,7 @@ public sealed class OneClockTests
     [InlineData("await Task.Delay(RetryDelay, time);", false)]
     [InlineData("await Task.Delay(PingInterval, time, pingCts.Token);", false)]
     [InlineData("using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));", true)]
-    [InlineData("using var timeout = new CancellationTokenSource(PendingViewModel.Timeout, time);", false)]
+    [InlineData("using var timeout = new CancellationTokenSource(PendingActionViewModel.Timeout, time);", false)]
     [InlineData("var cancel = new CancellationTokenSource();", false)]
     [InlineData("receiveLoop?.Wait(TimeSpan.FromSeconds(1));", true)]
     [InlineData("await ssl.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(1));", true)]

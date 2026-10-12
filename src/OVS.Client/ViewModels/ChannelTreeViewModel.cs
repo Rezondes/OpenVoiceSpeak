@@ -173,7 +173,7 @@ public sealed class ChannelTreeViewModel
         return Task.CompletedTask;
     }
 
-    async Task EndReorderAsync(PendingViewModel sent, List<Guid> ids)
+    async Task EndReorderAsync(PendingActionViewModel sent, List<Guid> ids)
     {
         await sent.Completion;
         if (pendingOrder != ids) return; // a newer order is on its way

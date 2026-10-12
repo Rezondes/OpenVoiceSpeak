@@ -6,7 +6,7 @@ namespace OVS.Client.Audio;
 /// Package 122: which mixer frames report the speakers to the UI, at most every 100 ms (5 frames): with many speakers the
 /// set changes nearly every frame, and each report goes over the users on the UI thread.
 /// </summary>
-internal sealed class SpeakerReports
+internal sealed class SpeakerReportThrottle
 {
     public const int Frames = 5;
 

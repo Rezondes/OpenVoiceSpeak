@@ -459,7 +459,7 @@ public sealed class GroupListViewModelTests
         rig.Section.SelectedGroup!.Name = "Team";
         rig.Section.SaveGroupCommand.Execute(null);
 
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(rig.Section.GroupSave.IsBusy);
         ServerGroups(rig, FakeServers.GuestGroup, FakeServers.AdminGroup, Team);
 
@@ -655,7 +655,7 @@ public sealed class GroupListViewModelTests
     {
         var rig = Create();
         Move(rig, Row(rig, "Admin"), Row(rig, "Gast"), after: false);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(rig.Section.GroupReorder.IsBusy);
 
         rig.Server.Apply(new Error(sent[^1].RequestId, ReasonCodes.PermissionDenied));
@@ -855,7 +855,7 @@ public sealed class GroupListViewModelTests
         var rig = Create();
         var saving = EditTwoGroupsAndSaveAsync(rig);
 
-        time.Advance(PendingViewModel.Timeout);
+        time.Advance(PendingActionViewModel.Timeout);
 
         Assert.False(AssertFinished(saving));
         Assert.Single(sent);
@@ -867,7 +867,7 @@ public sealed class GroupListViewModelTests
     {
         var rig = Create();
         var timedOut = EditTwoGroupsAndSaveAsync(rig);
-        time.Advance(PendingViewModel.Timeout);
+        time.Advance(PendingActionViewModel.Timeout);
         Assert.False(AssertFinished(timedOut));
 
         var again = rig.Section.Place.SaveAsync();

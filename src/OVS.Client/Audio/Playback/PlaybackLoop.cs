@@ -34,7 +34,7 @@ internal sealed class PlaybackLoop
     Thread? playbackThread;
     readonly AutoResetEvent wake = new(false);
     volatile bool stopped; // the playback thread's end
-    readonly SpeakerReports speakerReports = new();
+    readonly SpeakerReportThrottle speakerReports = new();
     readonly float[] farEnd = new float[AudioFormat.FrameSamples]; // Package 142: playback thread only
     long mixes;
 

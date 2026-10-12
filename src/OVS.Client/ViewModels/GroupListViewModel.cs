@@ -41,8 +41,8 @@ internal sealed partial class GroupListViewModel : ObservableObject
     Permission Actor => server.SelfPermissions;
 
     /// <summary>Package 98: group save and order, until the server's update shows them.</summary>
-    internal PendingViewModel GroupSave { get; }
-    internal PendingViewModel GroupReorder { get; }
+    internal PendingActionViewModel GroupSave { get; }
+    internal PendingActionViewModel GroupReorder { get; }
 
     internal ObservableCollection<GroupEditViewModel> Groups { get; } = [];
 
@@ -168,7 +168,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
     }
 
     /// <summary>The group to the server; null when it cannot be saved or the name is invalid.</summary>
-    PendingViewModel? SendGroup(GroupEditViewModel group)
+    PendingActionViewModel? SendGroup(GroupEditViewModel group)
     {
         if (group.IsReadOnly) return null;
         GroupError = TextRules.NormalizeName(group.Name, ProtocolLimits.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
@@ -179,7 +179,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
     }
 
     /// <summary>The draft stays until the server has the group, then gives way to it.</summary>
-    async Task ReplaceDraftAsync(GroupEditViewModel draft, PendingViewModel sent)
+    async Task ReplaceDraftAsync(GroupEditViewModel draft, PendingActionViewModel sent)
     {
         if (await sent.Completion is null) RemoveDraft(draft);
     }
@@ -227,7 +227,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    async Task EndGroupReorderAsync(PendingViewModel sent, List<Guid> ids)
+    async Task EndGroupReorderAsync(PendingActionViewModel sent, List<Guid> ids)
     {
         await sent.Completion;
         if (pendingGroupOrder != ids) return; // a newer order is on its way

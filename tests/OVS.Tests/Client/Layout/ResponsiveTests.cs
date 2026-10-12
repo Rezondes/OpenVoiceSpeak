@@ -972,7 +972,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // rows that spin: joining a channel, a server mute
         _ = server.Tree.Channels.Single(c => c.Name == "Raid").JoinCommand.ExecuteAsync(null);
         _ = server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
@@ -992,7 +992,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         create.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         time.Advance(TimeSpan.FromSeconds(10));
         create.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
         Assert.Contains(main.Overlay.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
         CardInside(main, DialogCard(main), 460);
@@ -1007,7 +1007,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         vm.PageFlow.Page = Page.Settings;
         _ = vm.PageFlow.SettingsPage!.SaveCommand.ExecuteAsync(null);
         _ = vm.PageFlow.SettingsPage!.CheckUpdatesCommand.ExecuteAsync(null);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
         var settings = main.GetVisualDescendants().OfType<SettingsView>().Single();
         Assert.True(settings.FindControl<Control>("UpdateCheckBusy")?.IsEffectivelyVisible);

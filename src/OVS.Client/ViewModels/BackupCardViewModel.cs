@@ -21,7 +21,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     readonly ServerViewModel server;
     readonly BackupCardDialogs dialogs;
     // Package 87: the backup list comes in pages, collected until complete
-    readonly ListPages<BackupInfo> backupPages = new();
+    readonly PagedListCollector<BackupInfo> backupPages = new();
     IReadOnlyList<BackupInfo> backupInfos = [];
     bool backupsForAdmin;
 
@@ -48,9 +48,9 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     internal AdminTransfer Transfer { get; }
 
     /// <summary>Package 97 (A113): the backups' loading state, and the backup actions that wait for the server.</summary>
-    internal PendingViewModel BackupsLoad { get; }
-    internal PendingViewModel BackupCreate { get; }
-    internal PendingViewModel Restoring { get; }
+    internal PendingActionViewModel BackupsLoad { get; }
+    internal PendingActionViewModel BackupCreate { get; }
+    internal PendingActionViewModel Restoring { get; }
 
     /// <summary>Package 74: the backups on the server, newest first.</summary>
     internal ObservableCollection<BackupViewModel> Backups { get; } = [];
@@ -73,7 +73,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     }
 
     /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
-    Task<string> SendRoutedAsync(Request request, string? id = null, PendingViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
+    Task<string> SendRoutedAsync(Request request, string? id = null, PendingActionViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
 
     /// <summary>The server's answers to this section's own requests (sent with this as their route) and its errors for them.</summary>
     internal void Apply(Message answer)

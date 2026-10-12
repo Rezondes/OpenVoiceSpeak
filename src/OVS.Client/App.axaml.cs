@@ -53,10 +53,10 @@ public partial class App : Application
             };
             var window = new MainWindow { DataContext = vm };
             Motion.FollowReduced(window, IsReducedBySystem); // Package 96
-            WindowAppearance.Apply(this, window, vm.Appearance); // Package 61
+            BackgroundTransparency.Apply(this, window, vm.Appearance); // Package 61
             vm.PropertyChanged += (_, e) =>
             {
-                if (e.PropertyName == nameof(MainViewModel.Appearance)) WindowAppearance.Apply(this, window, vm.Appearance);
+                if (e.PropertyName == nameof(MainViewModel.Appearance)) BackgroundTransparency.Apply(this, window, vm.Appearance);
             };
             if (options.ProfileDir != ClientPaths.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
             DebugApi? debugApi = null;

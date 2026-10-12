@@ -224,10 +224,6 @@
     "Count": 1
   },
   {
-    "Key": "RL154|src/OVS.Client/ViewModels/ChatSendingViewModel.cs|ChatSendingViewModel.Retry",
-    "Count": 1
-  },
-  {
     "Key": "RL154|src/OVS.Client/ViewModels/ChatViewModel.cs|ChatViewModel.Send",
     "Count": 1
   },
@@ -237,6 +233,10 @@
   },
   {
     "Key": "RL154|src/OVS.Client/ViewModels/ConnectionViewModel.cs|ConnectionViewModel.Disconnect",
+    "Count": 1
+  },
+  {
+    "Key": "RL154|src/OVS.Client/ViewModels/GroupAssignmentViewModel.cs|GroupAssignmentViewModel.Toggle",
     "Count": 1
   },
   {
@@ -257,10 +257,6 @@
   },
   {
     "Key": "RL154|src/OVS.Client/ViewModels/GroupListViewModel.cs|GroupListViewModel.SaveGroup",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|src/OVS.Client/ViewModels/GroupToggleViewModel.cs|GroupToggleViewModel.Toggle",
     "Count": 1
   },
   {
@@ -333,6 +329,10 @@
   },
   {
     "Key": "RL154|src/OVS.Client/ViewModels/MainViewModel.cs|MainViewModel.ShowConnectionDetails",
+    "Count": 1
+  },
+  {
+    "Key": "RL154|src/OVS.Client/ViewModels/OutgoingChatMessageViewModel.cs|OutgoingChatMessageViewModel.Retry",
     "Count": 1
   },
   {
@@ -1616,10 +1616,6 @@
     "Count": 2
   },
   {
-    "Key": "RL201|src/OVS.Client/ViewModels/ChatSendingViewModel.cs|ChatSendingViewModel.ChatSendingViewModel:e",
-    "Count": 1
-  },
-  {
     "Key": "RL201|src/OVS.Client/ViewModels/ChatViewModel.cs|ChatViewModel.ChatViewModel:n",
     "Count": 1
   },
@@ -1896,7 +1892,11 @@
     "Count": 2
   },
   {
-    "Key": "RL201|src/OVS.Client/ViewModels/PendingViewModel.cs|PendingViewModel.Show:e",
+    "Key": "RL201|src/OVS.Client/ViewModels/OutgoingChatMessageViewModel.cs|OutgoingChatMessageViewModel.OutgoingChatMessageViewModel:e",
+    "Count": 1
+  },
+  {
+    "Key": "RL201|src/OVS.Client/ViewModels/PendingActionViewModel.cs|PendingActionViewModel.Show:e",
     "Count": 1
   },
   {
@@ -7820,11 +7820,11 @@
     "Count": 1
   },
   {
-    "Key": "RL201|tests/OVS.Tests/Client/ViewModels/PendingViewModelTests.cs|PendingViewModelTests.BusyVisibleWithin150ms_NotForFastActions:e",
+    "Key": "RL201|tests/OVS.Tests/Client/ViewModels/PendingActionViewModelTests.cs|PendingActionViewModelTests.BusyVisibleWithin150ms_NotForFastActions:e",
     "Count": 1
   },
   {
-    "Key": "RL201|tests/OVS.Tests/Client/ViewModels/PendingViewModelTests.cs|PendingViewModelTests.Ms:ms",
+    "Key": "RL201|tests/OVS.Tests/Client/ViewModels/PendingActionViewModelTests.cs|PendingActionViewModelTests.Ms:ms",
     "Count": 1
   },
   {
@@ -12656,11 +12656,11 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/Appearance/WindowAppearance.cs|WindowAppearance.Apply",
+    "Key": "RL231|src/OVS.Client/Appearance/BackgroundTransparency.cs|BackgroundTransparency.Apply",
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/Appearance/WindowAppearance.cs|WindowAppearance.BackgroundKeys",
+    "Key": "RL231|src/OVS.Client/Appearance/BackgroundTransparency.cs|BackgroundTransparency.BackgroundKeys",
     "Count": 1
   },
   {
@@ -13076,7 +13076,7 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/Audio/SpeakerReports.cs|SpeakerReports.Frames",
+    "Key": "RL231|src/OVS.Client/Audio/SpeakerReportThrottle.cs|SpeakerReportThrottle.Frames",
     "Count": 1
   },
   {
@@ -14504,6 +14504,14 @@
     "Count": 1
   },
   {
+    "Key": "RL231|src/OVS.Client/ViewModels/AllowedGroupViewModel.cs|AllowedGroupViewModel.Id",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/ViewModels/AllowedGroupViewModel.cs|AllowedGroupViewModel.Name",
+    "Count": 1
+  },
+  {
     "Key": "RL231|src/OVS.Client/ViewModels/BackupCardViewModel.cs|BackupCardViewModel.BackupCardViewModel",
     "Count": 1
   },
@@ -14696,22 +14704,6 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/ChatSendingViewModel.cs|ChatSendingViewModel.ChatSendingViewModel",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/ChatSendingViewModel.cs|ChatSendingViewModel.IsFailed",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/ChatSendingViewModel.cs|ChatSendingViewModel.IsWaiting",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/ChatSendingViewModel.cs|ChatSendingViewModel.Pending",
-    "Count": 1
-  },
-  {
     "Key": "RL231|src/OVS.Client/ViewModels/ChatTabViewModel.cs|ChatTabViewModel.Add",
     "Count": 1
   },
@@ -14824,11 +14816,19 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/GroupChoiceViewModel.cs|GroupChoiceViewModel.Id",
+    "Key": "RL231|src/OVS.Client/ViewModels/GroupAssignmentViewModel.cs|GroupAssignmentViewModel",
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/GroupChoiceViewModel.cs|GroupChoiceViewModel.Name",
+    "Key": "RL231|src/OVS.Client/ViewModels/GroupAssignmentViewModel.cs|GroupAssignmentViewModel.GroupId",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/ViewModels/GroupAssignmentViewModel.cs|GroupAssignmentViewModel.IsEnabled",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/ViewModels/GroupAssignmentViewModel.cs|GroupAssignmentViewModel.Name",
     "Count": 1
   },
   {
@@ -14881,22 +14881,6 @@
   },
   {
     "Key": "RL231|src/OVS.Client/ViewModels/GroupListViewModel.cs|GroupListViewModel.Groups",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/GroupToggleViewModel.cs|GroupToggleViewModel",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/GroupToggleViewModel.cs|GroupToggleViewModel.GroupId",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/GroupToggleViewModel.cs|GroupToggleViewModel.IsEnabled",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/GroupToggleViewModel.cs|GroupToggleViewModel.Name",
     "Count": 1
   },
   {
@@ -15256,6 +15240,22 @@
     "Count": 1
   },
   {
+    "Key": "RL231|src/OVS.Client/ViewModels/OutgoingChatMessageViewModel.cs|OutgoingChatMessageViewModel.IsFailed",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/ViewModels/OutgoingChatMessageViewModel.cs|OutgoingChatMessageViewModel.IsWaiting",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/ViewModels/OutgoingChatMessageViewModel.cs|OutgoingChatMessageViewModel.OutgoingChatMessageViewModel",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/ViewModels/OutgoingChatMessageViewModel.cs|OutgoingChatMessageViewModel.Pending",
+    "Count": 1
+  },
+  {
     "Key": "RL231|src/OVS.Client/ViewModels/PageFlowViewModel.cs|PageFlowViewModel.AdminPage",
     "Count": 1
   },
@@ -15284,19 +15284,19 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/PendingViewModel.cs|PendingViewModel.HasError",
+    "Key": "RL231|src/OVS.Client/ViewModels/PendingActionViewModel.cs|PendingActionViewModel.HasError",
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/PendingViewModel.cs|PendingViewModel.ShowAfter",
+    "Key": "RL231|src/OVS.Client/ViewModels/PendingActionViewModel.cs|PendingActionViewModel.ShowAfter",
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/PendingViewModel.cs|PendingViewModel.Start",
+    "Key": "RL231|src/OVS.Client/ViewModels/PendingActionViewModel.cs|PendingActionViewModel.Start",
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/PendingViewModel.cs|PendingViewModel.Timeout",
+    "Key": "RL231|src/OVS.Client/ViewModels/PendingActionViewModel.cs|PendingActionViewModel.Timeout",
     "Count": 1
   },
   {
@@ -17732,11 +17732,11 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/Collections/ListPagesTests.cs|ListPagesTests.OverlappingRounds_OnlyTheNewestRoundIsShown",
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/PagedListCollectorTests.cs|PagedListCollectorTests.OverlappingRounds_OnlyTheNewestRoundIsShown",
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/Collections/ListPagesTests.cs|ListPagesTests.UnrequestedFirstPage_StartsACleanRound",
+    "Key": "RL601|tests/OVS.Tests/Client/Collections/PagedListCollectorTests.cs|PagedListCollectorTests.UnrequestedFirstPage_StartsACleanRound",
     "Count": 1
   },
   {
@@ -18432,7 +18432,7 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/PendingViewModelTests.cs|PendingViewModelTests.BusyVisibleWithin150ms_NotForFastActions",
+    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/PendingActionViewModelTests.cs|PendingActionViewModelTests.BusyVisibleWithin150ms_NotForFastActions",
     "Count": 1
   },
   {

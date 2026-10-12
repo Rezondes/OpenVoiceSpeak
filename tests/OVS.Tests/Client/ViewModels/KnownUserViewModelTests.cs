@@ -18,7 +18,7 @@ public sealed class KnownUserViewModelTests
 
     /// <summary>A card that allows every action unless <paramref name="allowed"/> is false.</summary>
     static KnownUserViewModel CreateCard(KnownUserActions actions, bool allowed = true) =>
-        new(new KnownUserInfo("fpA", "anna", []), false, [], [], actions, new PendingViewModel(new ManualTimeProvider()),
+        new(new KnownUserInfo("fpA", "anna", []), false, [], [], actions, new PendingActionViewModel(new ManualTimeProvider()),
             canBan: allowed, canUnban: allowed, canDelete: allowed, canLiftMute: allowed);
 
     /// <summary>A card whose delegates record their name and the card they got.</summary>

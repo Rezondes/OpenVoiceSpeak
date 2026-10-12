@@ -40,14 +40,14 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     /// <summary>Package 119 (A128): the context menu's groups with their ticks, empty when I may not change this user's groups.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasGroups))]
-    IReadOnlyList<GroupToggleViewModel> groups = [];
+    IReadOnlyList<GroupAssignmentViewModel> groups = [];
     public bool HasGroups => Groups.Count > 0;
 
     /// <summary>
     /// Package 119: group changes sent from the menu, ticked as asked until the server shows or refuses them. Per group only
     /// the last click counts, an earlier one's answer leaves it be. Touched on the UI thread only.
     /// </summary>
-    readonly Dictionary<Guid, (bool On, PendingViewModel Sent)> pendingGroups = [];
+    readonly Dictionary<Guid, (bool On, PendingActionViewModel Sent)> pendingGroups = [];
 
     /// <summary>Package 51: this person's volume for me, 0 to 200 %.</summary>
     [ObservableProperty]
@@ -117,11 +117,11 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
             : [];
         // compared with the live ticks: a refused click is put back, and an open menu is not rebuilt by unrelated updates
         if (!wanted.SequenceEqual(Groups.Select(t => (t.GroupId, t.Name, t.IsChecked, t.IsEnabled))))
-            Groups = wanted.Select(w => new GroupToggleViewModel(w.Id, w.Name, w.Checked, w.AssignableByMe, ToggleGroup)).ToList();
+            Groups = wanted.Select(w => new GroupAssignmentViewModel(w.Id, w.Name, w.Checked, w.AssignableByMe, ToggleGroup)).ToList();
     }
 
     /// <summary>Package 119: IsChecked already holds the new value; the row spins until the server shows it.</summary>
-    Task ToggleGroup(GroupToggleViewModel toggle)
+    Task ToggleGroup(GroupAssignmentViewModel toggle)
     {
         var sent = owner.SetUserGroup(Fingerprint, SessionId, toggle.GroupId, toggle.IsChecked);
         pendingGroups[toggle.GroupId] = (toggle.IsChecked, sent);
@@ -129,7 +129,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         return Task.CompletedTask;
     }
 
-    async Task EndGroupChangeAsync(Guid groupId, PendingViewModel sent)
+    async Task EndGroupChangeAsync(Guid groupId, PendingActionViewModel sent)
     {
         await sent.Completion;
         if (pendingGroups.GetValueOrDefault(groupId).Sent == sent) pendingGroups.Remove(groupId);

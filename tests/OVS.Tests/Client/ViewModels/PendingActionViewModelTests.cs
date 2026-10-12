@@ -5,7 +5,7 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Client.ViewModels;
 
 /// <summary>Package 97 (A113): the shared waiting mark for every action that waits for the server.</summary>
-public class PendingViewModelTests
+public class PendingActionViewModelTests
 {
     static TimeSpan Ms(int ms) => TimeSpan.FromMilliseconds(ms);
 
@@ -13,7 +13,7 @@ public class PendingViewModelTests
     public void BusyVisibleWithin150ms_NotForFastActions()
     {
         var time = new ManualTimeProvider();
-        var pending = new PendingViewModel(time);
+        var pending = new PendingActionViewModel(time);
 
         // answered after 100 ms: running at once, but the busy UI never shows
         pending.Start("r1");
@@ -36,7 +36,7 @@ public class PendingViewModelTests
         Assert.False(pending.IsBusy);
         time.Advance(Ms(1));
         Assert.True(pending.IsBusy);
-        Assert.Contains(nameof(PendingViewModel.IsBusy), seen);
+        Assert.Contains(nameof(PendingActionViewModel.IsBusy), seen);
         time.Advance(Ms(850));
         Assert.True(pending.IsBusy);
         pending.Done();
@@ -48,7 +48,7 @@ public class PendingViewModelTests
     public void NoAnswer_TimesOutWithError_Retryable()
     {
         var time = new ManualTimeProvider();
-        var pending = new PendingViewModel(time);
+        var pending = new PendingActionViewModel(time);
         int timeouts = 0;
         pending.TimedOut += () => timeouts++;
 

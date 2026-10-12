@@ -31,7 +31,7 @@ internal static class DialogFrame
         var ok = new Button { Content = okText, MinWidth = ButtonMinWidth, HorizontalContentAlignment = HorizontalAlignment.Center };
         var failed = CreateText("", "danger");
         failed.IsVisible = false;
-        PendingViewModel? sending = null;
+        PendingActionViewModel? sending = null;
         var closed = new TaskCompletionSource(); // cancelled meanwhile: nobody waits for the answer any more
         async void Accept()
         {
@@ -51,7 +51,7 @@ internal static class DialogFrame
             sending = submit(answer);
             void OnBusy(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
             {
-                if (e.PropertyName != nameof(PendingViewModel.IsBusy)) return;
+                if (e.PropertyName != nameof(PendingActionViewModel.IsBusy)) return;
                 ok.IsEnabled = !sending.IsBusy;
                 ok.Content = sending.IsBusy
                     ? new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new BusySpinner(), new TextBlock { Text = okText } } }

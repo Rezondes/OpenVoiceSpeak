@@ -133,7 +133,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var saving = vm.PageFlow.SettingsPage!.Saving;
 
         saving.Start();
-        time.Advance(PendingViewModel.ShowAfter); // only the given clock moves
+        time.Advance(PendingActionViewModel.ShowAfter); // only the given clock moves
 
         Assert.True(saving.IsBusy);
     }

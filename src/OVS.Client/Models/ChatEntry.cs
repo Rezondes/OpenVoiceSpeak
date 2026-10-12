@@ -8,7 +8,7 @@ namespace OVS.Client.Models;
 /// "you entered the channel" (neither).
 /// </summary>
 /// <param name="Sending">Package 98: an own message on its way to the server, shown before the server's echo.</param>
-public sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, ChatSendingViewModel? Sending = null)
+public sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, OutgoingChatMessageViewModel? Sending = null)
 {
     public string TimeText => Formats.ClockTime(Time);
     public bool IsMessage => From is not null;

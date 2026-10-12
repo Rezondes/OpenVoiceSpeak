@@ -6048,8 +6048,8 @@ There is no shared busy component. Only connecting (`IsConnecting`, indeterminat
 
 ### Tests (TDD)
 
-1. `PendingViewModelTests > "BusyVisibleWithin150ms_NotForFastActions"` (AC1): with a manual clock, an action answered after 100 ms never shows busy, one answered after 1 s shows busy from 150 ms on
-2. `PendingViewModelTests > "NoAnswer_TimesOutWithError_Retryable"` (AC2)
+1. `PendingActionViewModelTests > "BusyVisibleWithin150ms_NotForFastActions"` (AC1): with a manual clock, an action answered after 100 ms never shows busy, one answered after 1 s shows busy from 150 ms on
+2. `PendingActionViewModelTests > "NoAnswer_TimesOutWithError_Retryable"` (AC2)
 3. `AdminViewModelTests > "Lists_ShowLoadingUntilFirstPage_RefreshKeepsContent"` (AC3)
 4. `LogsViewModelTests > "Search_BusyUntilResult"` (AC4)
 5. `BackupCardViewModelTests > "NewBackup_ClickedTwice_SendsOnceShowsBusyAfterTheDelayAndEndsWithTheNewList"`, `"Restore_ConfirmedThenRefused_StaysBusyThroughTheSafetyBackupAndEndsWithTheErrorText"` (AC5)

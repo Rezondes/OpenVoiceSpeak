@@ -190,8 +190,8 @@ public sealed partial class ChatViewModel : ObservableObject
         Draft = "";
         ComposerError = null;
         // Package 98: shown at once, greyed until the server's echo
-        Task Send(PendingViewModel pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
-        var sending = new ChatSendingViewModel(server.NewPending(), Send);
+        Task Send(PendingActionViewModel pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
+        var sending = new OutgoingChatMessageViewModel(server.NewPending(), Send);
         Add(tab, new ChatEntry(LocalNow(), text, server.Mirror.Self?.Nickname ?? "", IsOwn: true, Sending: sending));
         await Send(sending.Pending);
     }

@@ -12,14 +12,14 @@ internal sealed record AdminPlace(Func<bool> HasChanges, Func<Task<bool>> SaveAs
     /// A place whose save waits for one already on its way first (it may be the one the user means), then sends only
     /// when there is a change and waits for the server's answer; send gives null when the input is invalid.
     /// </summary>
-    internal static AdminPlace Create(Func<bool> hasChanges, PendingViewModel? pendingSave, Func<PendingViewModel?> send, Action discard) =>
+    internal static AdminPlace Create(Func<bool> hasChanges, PendingActionViewModel? pendingSave, Func<PendingActionViewModel?> send, Action discard) =>
         Create(hasChanges, pendingSave, async () => send() is { } sent && await sent.Completion is null, discard);
 
     /// <summary>
     /// A place with several changed parts: like the other overload, but <paramref name="sendAll"/> saves every changed
     /// part and gives true only when all are confirmed.
     /// </summary>
-    internal static AdminPlace Create(Func<bool> hasChanges, PendingViewModel? pendingSave, Func<Task<bool>> sendAll, Action discard) =>
+    internal static AdminPlace Create(Func<bool> hasChanges, PendingActionViewModel? pendingSave, Func<Task<bool>> sendAll, Action discard) =>
         new(hasChanges, async () =>
         {
             if (pendingSave is { IsRunning: true }) await pendingSave.Completion;

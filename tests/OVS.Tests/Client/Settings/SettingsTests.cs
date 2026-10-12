@@ -947,7 +947,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         bool? closed = null;
         vm.CloseRequested += ok => closed = ok;
         var saving = vm.SaveCommand.ExecuteAsync(null);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(vm.Saving.IsBusy);
         Assert.Null(closed);
         restart.SetResult();
@@ -958,7 +958,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var check = new TaskCompletionSource<string>();
         vm.CheckNow = () => check.Task;
         var checking = vm.CheckUpdatesCommand.ExecuteAsync(null);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(vm.Checking.IsBusy);
         check.SetResult("Aktuell");
         await checking;

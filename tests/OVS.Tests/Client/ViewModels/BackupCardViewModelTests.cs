@@ -416,7 +416,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         await Bound(rig.Section.NewBackupCommand.ExecuteAsync(null));
         await Bound(rig.Section.NewBackupCommand.ExecuteAsync(null)); // a second click meanwhile is ignored
         Assert.Single(sent.OfType<CreateBackup>());
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(rig.Section.BackupCreate.IsBusy);
         rig.Section.Apply(new BackupList(null, [Newer, Older]));
 
@@ -431,7 +431,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
 
         await Bound(rig.Section.Backups[0].RestoreCommand.ExecuteAsync(null));
         var restore = Assert.IsType<RestoreBackup>(sent[^1]);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(rig.Section.Restoring.IsBusy);
         rig.Section.Apply(new BackupList(null, [new("vor-wiederherstellung_2026-09-30_12-00-00.ovsbackup", new DateTimeOffset(2026, 9, 30, 12, 0, 0, TimeSpan.Zero), 900, "dev"), Older]));
         Assert.True(rig.Section.Restoring.IsBusy); // the safety backup appears, the disconnect is still to come

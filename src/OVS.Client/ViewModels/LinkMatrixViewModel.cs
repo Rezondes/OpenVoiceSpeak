@@ -34,7 +34,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     internal AdminPlace Place { get; }
 
     /// <summary>Package 98: "Übernehmen" spins until the server's link changes match what was sent.</summary>
-    public PendingViewModel Applying { get; }
+    public PendingActionViewModel Applying { get; }
 
     public ObservableCollection<LinkRowViewModel> Rows { get; } = [];
     public bool HasPending => PendingCount > 0;
@@ -112,7 +112,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     }
 
     /// <summary>Package 114: the marked changes to the server; null when there is nothing to send.</summary>
-    PendingViewModel? SendPending()
+    PendingActionViewModel? SendPending()
     {
         var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
         var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();

@@ -210,7 +210,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     public void ManySpeakers_SpeakingUpdatesThrottledAndScoped()
     {
         // the mixer's output every 20 ms for a second: 20 speakers, one of them flickering in and out every frame
-        var reports = new SpeakerReports();
+        var reports = new SpeakerReportThrottle();
         var twenty = Enumerable.Range(2, 20).Select(i => new ActiveSpeaker((uint)i, false)).ToList();
         int sent = Enumerable.Range(0, 50).Count(frame => reports.Next(frame % 2 == 0 ? twenty : twenty.Skip(1).ToList()) is not null);
         Assert.InRange(sent, 1, 10);

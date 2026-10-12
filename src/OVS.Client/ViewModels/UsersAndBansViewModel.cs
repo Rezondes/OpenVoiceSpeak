@@ -26,8 +26,8 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     readonly Action<bool> markOwnGroupChange;
     IReadOnlyList<KnownUserInfo> knownUsers = [];
     // Package 87: the lists come in pages, collected until complete
-    readonly ListPages<KnownUserInfo> userPages = new();
-    readonly ListPages<BanInfo> banPages = new();
+    readonly PagedListCollector<KnownUserInfo> userPages = new();
+    readonly PagedListCollector<BanInfo> banPages = new();
     // every refresh of the user and ban list goes through these, so quick actions never exceed the server's list limit
     readonly ListRefresh userRefresh, banRefresh;
 
@@ -114,8 +114,8 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     internal bool ShowBans => Actor.Has(Permission.BansView);
 
     /// <summary>Package 97 (A113): the lists' loading states.</summary>
-    internal PendingViewModel UsersLoad { get; }
-    internal PendingViewModel BansLoad { get; }
+    internal PendingActionViewModel UsersLoad { get; }
+    internal PendingActionViewModel BansLoad { get; }
 
     /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
     internal ObservableCollection<KnownUserViewModel> Users { get; } = [];
@@ -173,7 +173,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     }
 
     /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
-    Task<string> SendRoutedAsync(Request request, string? id = null, PendingViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
+    Task<string> SendRoutedAsync(Request request, string? id = null, PendingActionViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
 
     /// <summary>The server's answers to this section's own requests (sent with this as their route) and its errors for them.</summary>
     internal void Apply(Message answer)
@@ -240,7 +240,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
             // Package 92: the rank comes judged with the list, the client knows no rights of others.
             var weaker = user.CanBeModeratedByMe;
             var isLastAdmin = GroupRules.IsLastAdmin(user.GroupIds, adminCount);
-            var toggles = server.Mirror.Groups.Select(group => new GroupToggleViewModel(group.Id, group.Name, IsInGroup(user, group.Id),
+            var toggles = server.Mirror.Groups.Select(group => new GroupAssignmentViewModel(group.Id, group.Name, IsInGroup(user, group.Id),
                 group.AssignableByMe && weaker, // Package 92: judged by the server, group rights only reach GroupsView holders
                 toggle => ToggleUserGroupAsync(user.Fingerprint, toggle))).ToList();
             var activeBans = (user.Bans ?? []).Where(ban => BanStatusRule.Evaluate(ban.LiftedAt, ban.ExpiresAt, now) == BanStatus.Active).ToList();
@@ -359,16 +359,16 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
 
     // ---- Package 98 (A113): a card's actions spin until a user list asked for after them shows the result ----
 
-    readonly Dictionary<string, PendingViewModel> cardBusy = [];
+    readonly Dictionary<string, PendingActionViewModel> cardBusy = [];
     /// <summary>Per card: the user list requests sent before its last action; a list of a later request settles it.</summary>
     readonly Dictionary<string, int> cardAskedBefore = [];
-    readonly Dictionary<Guid, PendingViewModel> banBusy = [];
+    readonly Dictionary<Guid, PendingActionViewModel> banBusy = [];
 
-    PendingViewModel CardBusy(string fingerprint) => cardBusy.TryGetValue(fingerprint, out var busy) ? busy : cardBusy[fingerprint] = server.NewPending();
-    PendingViewModel BanBusy(Guid banId) => banBusy.TryGetValue(banId, out var busy) ? busy : banBusy[banId] = server.NewPending();
+    PendingActionViewModel CardBusy(string fingerprint) => cardBusy.TryGetValue(fingerprint, out var busy) ? busy : cardBusy[fingerprint] = server.NewPending();
+    PendingActionViewModel BanBusy(Guid banId) => banBusy.TryGetValue(banId, out var busy) ? busy : banBusy[banId] = server.NewPending();
 
     /// <summary>Sends under the card's mark, then asks for the list (and with bans the ban list) that shows the result.</summary>
-    PendingViewModel CardAction(string fingerprint, Request request, bool bans = false)
+    PendingActionViewModel CardAction(string fingerprint, Request request, bool bans = false)
     {
         var busy = CardBusy(fingerprint);
         cardAskedBefore[fingerprint] = userRefresh.Sent;
@@ -406,7 +406,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
             ? pending.Assigned
             : user.GroupIds.Contains(groupId);
 
-    async Task ToggleUserGroupAsync(string fingerprint, GroupToggleViewModel toggle)
+    async Task ToggleUserGroupAsync(string fingerprint, GroupAssignmentViewModel toggle)
     {
         bool own = fingerprint == server.Mirror.Self?.Fingerprint;
         if (own) markOwnGroupChange(true); // set before sending: the server's update can come at once

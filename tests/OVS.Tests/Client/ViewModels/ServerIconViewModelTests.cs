@@ -98,7 +98,7 @@ public sealed class ServerIconViewModelTests
         rig.Server.Notice += notices.Add;
         rig.Section.UploadIcon(Png, null);
 
-        time.Advance(PendingViewModel.Timeout + TimeSpan.FromSeconds(1));
+        time.Advance(PendingActionViewModel.Timeout + TimeSpan.FromSeconds(1));
 
         Assert.True(rig.Section.IconUpload.HasError);
         Assert.False(rig.Section.IconUpload.IsRunning);

@@ -33,8 +33,8 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     public decimal MaxSlots => ProtocolLimits.MaxChannelUsers;
 
     /// <summary>Package 93: every group of the server, in its order, ticked when in the channel's lock.</summary>
-    public IReadOnlyList<GroupChoiceViewModel> Groups { get; } =
-        (groups ?? []).Select(g => new GroupChoiceViewModel(g.Id, g.Name, current.AllowedGroupIds?.Contains(g.Id) == true)).ToList();
+    public IReadOnlyList<AllowedGroupViewModel> Groups { get; } =
+        (groups ?? []).Select(g => new AllowedGroupViewModel(g.Id, g.Name, current.AllowedGroupIds?.Contains(g.Id) == true)).ToList();
     public bool CanLockGroups => mode != ChannelDialogMode.EditDefault;
     public string GroupLockHint => CanLockGroups ? Strings.Dlg_GroupLockHint : Strings.Dlg_GroupLockDefault;
 

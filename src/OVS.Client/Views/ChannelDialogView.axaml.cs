@@ -14,7 +14,7 @@ public partial class ChannelDialogView : UserControl
     /// <param name="groups">Package 93: the server's groups for the group lock.</param>
     /// <param name="submit">Package 98: sends the channel; the card waits for the server's confirmation.</param>
     public static Task<ChannelEdit?> ShowAsync(OverlayHost overlay, ChannelEdit current, ChannelDialogMode mode, IReadOnlyList<GroupInfo>? groups = null,
-        Func<ChannelEdit, PendingViewModel>? submit = null)
+        Func<ChannelEdit, PendingActionViewModel>? submit = null)
     {
         var vm = new ChannelDialogViewModel(current, mode, groups);
         return DialogFrame.ShowAsync(overlay, vm.Title, "Speaker", new ChannelDialogView { DataContext = vm }, vm.Result, new(vm.ConfirmText, Submit: submit));

@@ -204,12 +204,12 @@ public partial class ChatView : UserControl
     /// An own message: sent, a check shows in place of the clock and fades; refused, "nicht gesendet" shakes. A waiting
     /// mark ends in two steps (no longer waiting, then maybe an error), so the outcome is read once both are in.
     /// </summary>
-    void WatchSending(ChatEntry entry, ChatSendingViewModel sending)
+    void WatchSending(ChatEntry entry, OutgoingChatMessageViewModel sending)
     {
         bool wasWaiting = sending.IsWaiting, queued = false;
         sending.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName != nameof(ChatSendingViewModel.IsWaiting) && e.PropertyName != nameof(ChatSendingViewModel.IsFailed) || queued) return;
+            if (e.PropertyName != nameof(OutgoingChatMessageViewModel.IsWaiting) && e.PropertyName != nameof(OutgoingChatMessageViewModel.IsFailed) || queued) return;
             queued = true;
             Dispatcher.UIThread.Post(() =>
             {

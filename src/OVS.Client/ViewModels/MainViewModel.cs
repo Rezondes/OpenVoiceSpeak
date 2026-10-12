@@ -100,7 +100,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
         Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, leave, () => Dialogs.BookmarkList, () => Settings.Save(storageDir), Log.Write);
         Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log.Write, text => Status = text,
-            text => AddNotice(text, NoticeKind.Warning), PendingViewModel.Timeout);
+            text => AddNotice(text, NoticeKind.Warning), PendingActionViewModel.Timeout);
 
         // PageFlow is built after SelfTest (it takes SelfTest.SetAsync); the two lambdas that read it run only after that:
         // the first device listing is asked for below it, the self test runs from the settings page.

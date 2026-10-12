@@ -265,7 +265,7 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <param name="id">A fixed id instead of a new one, e.g. the round a later list page belongs to.</param>
     /// <param name="pending">Package 97: marked running under the request's id before sending; the server's error for it ends it.</param>
     /// <param name="route">Gets the answers to the request and the server's error for it, until its owner removes the route.</param>
-    public async Task<string> SendAsync(Request request, string? id = null, PendingViewModel? pending = null, Action<Message>? route = null)
+    public async Task<string> SendAsync(Request request, string? id = null, PendingActionViewModel? pending = null, Action<Message>? route = null)
     {
         id ??= $"{(request is SendChat ? ChatFeed.RequestPrefix : "r")}{++requestCounter}";
         if (route is not null) Routes.Add(id, route); // before sending: the answer can come at once
@@ -295,7 +295,7 @@ public sealed partial class ServerViewModel : ObservableObject
     // ---- Package 97 (A113): waiting states ----
 
     /// <summary>The running marks by request id; the server's error for one of them ends it.</summary>
-    readonly Dictionary<string, PendingViewModel> waiting = [];
+    readonly Dictionary<string, PendingActionViewModel> waiting = [];
 
     /// <summary>
     /// Runs work on the UI thread; the main view model sets its dispatcher. Made on Avalonia's UI thread (headless tests)
@@ -306,17 +306,17 @@ public sealed partial class ServerViewModel : ObservableObject
         : action => action();
 
     /// <summary>A waiting mark on this server's clock, its timers handed to the UI thread.</summary>
-    public PendingViewModel NewPending() => new(time, action => Post(action));
+    public PendingActionViewModel NewPending() => new(time, action => Post(action));
 
     /// <summary>Package 98: marks that end with a message showing the action done (most requests have no answer of their own).</summary>
-    readonly List<(PendingViewModel Pending, Func<Message, bool> Confirms)> confirming = [];
+    readonly List<(PendingActionViewModel Pending, Func<Message, bool> Confirms)> confirming = [];
 
     /// <summary>
     /// Package 98: sends under a waiting mark that ends once a message confirms it, or with the server's error for it or
     /// the timeout. Unless a dialog shows it (notify false), the timeout's error shows as a notice like the server's errors.
     /// </summary>
     /// <param name="busy">Gets IsBusy of the mark, e.g. for the spinner on a row.</param>
-    public PendingViewModel SendConfirmed(Request request, Func<Message, bool> confirms, PendingViewModel? pending = null, Action<bool>? busy = null, bool notify = true)
+    public PendingActionViewModel SendConfirmed(Request request, Func<Message, bool> confirms, PendingActionViewModel? pending = null, Action<bool>? busy = null, bool notify = true)
     {
         pending ??= NewPending();
         if (busy is not null) pending.Show(busy);
@@ -328,10 +328,10 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 98: asks with a dialog that sends itself (see <see cref="Dialogs"/>); a dialog that cannot wait has it sent afterwards.</summary>
-    internal static async Task Ask<T>(Func<Func<T, PendingViewModel>, Task<T?>>? ask, Func<T, PendingViewModel> send) where T : class
+    internal static async Task Ask<T>(Func<Func<T, PendingActionViewModel>, Task<T?>>? ask, Func<T, PendingActionViewModel> send) where T : class
     {
         if (ask is null) return;
-        PendingViewModel? sent = null;
+        PendingActionViewModel? sent = null;
         if (await ask(value => sent = send(value)) is { } result && sent is null) send(result);
     }
 
@@ -362,7 +362,7 @@ public sealed partial class ServerViewModel : ObservableObject
             busy: on => row?.IsBusy = on);
     }
 
-    PendingViewModel? joining;
+    PendingActionViewModel? joining;
     public bool IsJoining => joining?.IsRunning == true;
 
     /// <summary>Package 139 (A148): the password that let me into a channel on this connection, kept in memory only.</summary>
@@ -376,28 +376,28 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 110: names may repeat, so the own channel is the one the server answers this request with.</summary>
-    public PendingViewModel CreateChannel(ChannelEdit e)
+    public PendingActionViewModel CreateChannel(ChannelEdit e)
     {
         var pending = NewPending();
         return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password, e.Kind, e.Bitrate),
             m => m is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
     }
-    public PendingViewModel EditChannel(Guid id, ChannelEdit edit, int order) =>
+    public PendingActionViewModel EditChannel(Guid id, ChannelEdit edit, int order) =>
         SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password, edit.Bitrate),
             m => m is ChannelUpdated u && u.Channel.Id == id, notify: false);
-    public PendingViewModel DeleteChannel(Guid id)
+    public PendingActionViewModel DeleteChannel(Guid id)
     {
         var row = Tree.FindChannel(id); // gone from the tree when confirmed
         return SendConfirmed(new DeleteChannel(id), m => m is ChannelRemoved r && r.ChannelId == id, busy: on => row?.IsBusy = on);
     }
 
 
-    public PendingViewModel Link(Guid a, Guid b) =>
+    public PendingActionViewModel Link(Guid a, Guid b) =>
         SendConfirmed(new LinkChannels(a, b), m => m is ChannelsLinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
-    public PendingViewModel Unlink(Guid a, Guid b) =>
+    public PendingActionViewModel Unlink(Guid a, Guid b) =>
         SendConfirmed(new UnlinkChannels(a, b), m => m is ChannelsUnlinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
     /// <summary>Package 120: without the dialog that waited, the moved user's row spins until the server shows the move.</summary>
-    public PendingViewModel Move(uint sessionId, Guid channelId)
+    public PendingActionViewModel Move(uint sessionId, Guid channelId)
     {
         var row = Tree.FindUser(sessionId);
         return SendConfirmed(new MoveUser(sessionId, channelId), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ChannelId == channelId,
@@ -423,10 +423,10 @@ public sealed partial class ServerViewModel : ObservableObject
         await channel.JoinCommand.ExecuteAsync(null);
         if (joining is { } join) await join.Completion;
     }
-    public PendingViewModel Kick(uint sessionId, string reason) => SendConfirmed(new KickSession(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
-    public PendingViewModel Ban(uint sessionId, BanChoice choice) =>
+    public PendingActionViewModel Kick(uint sessionId, string reason) => SendConfirmed(new KickSession(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+    public PendingActionViewModel Ban(uint sessionId, BanChoice choice) =>
         SendConfirmed(new BanSession(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
-    public PendingViewModel ServerMute(uint sessionId, bool muted)
+    public PendingActionViewModel ServerMute(uint sessionId, bool muted)
     {
         var row = Tree.FindUser(sessionId);
         return SendConfirmed(new SetSessionServerMute(sessionId, muted), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ServerMuted == muted,
@@ -434,7 +434,7 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 119: confirmed by the user's update showing the group; the server answers nothing else.</summary>
-    public PendingViewModel SetUserGroup(string fingerprint, uint sessionId, Guid groupId, bool assigned)
+    public PendingActionViewModel SetUserGroup(string fingerprint, uint sessionId, Guid groupId, bool assigned)
     {
         var row = Tree.FindUser(sessionId);
         return SendConfirmed(assigned ? new AssignGroup(fingerprint, groupId) : new UnassignGroup(fingerprint, groupId),

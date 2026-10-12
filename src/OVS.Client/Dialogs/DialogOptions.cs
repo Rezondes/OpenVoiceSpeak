@@ -11,4 +11,4 @@ namespace OVS.Client.Dialogs;
 /// <param name="ThirdAnswer">Package 114: a third answer between cancel and the default one.</param>
 /// <param name="WithCancel">Package 133: false for a card that only informs.</param>
 internal sealed record DialogOptions<T>(string OkText = "OK", bool OkIsDefault = true, DialogKind Kind = DialogKind.Normal, string? CancelText = null,
-    Func<T, PendingViewModel>? Submit = null, (string Text, T Value)? ThirdAnswer = null, bool WithCancel = true) where T : class;
+    Func<T, PendingActionViewModel>? Submit = null, (string Text, T Value)? ThirdAnswer = null, bool WithCancel = true) where T : class;

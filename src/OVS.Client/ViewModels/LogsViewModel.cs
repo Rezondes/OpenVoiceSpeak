@@ -23,7 +23,7 @@ public sealed partial class LogsViewModel : ObservableObject
     readonly HashSet<string> selected = [];
     bool downloadRight;
     IReadOnlyList<LogFileInfo> allFiles = [];
-    readonly ListPages<LogFileInfo> filePages = new(); // Package 87
+    readonly PagedListCollector<LogFileInfo> filePages = new(); // Package 87
     IReadOnlyList<string> pageLines = [];
     int? targetLine;
 
@@ -62,7 +62,7 @@ public sealed partial class LogsViewModel : ObservableObject
         Searching = server.NewPending();
         Searching.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(PendingViewModel.IsBusy)) SearchCommand.NotifyCanExecuteChanged();
+            if (e.PropertyName == nameof(PendingActionViewModel.IsBusy)) SearchCommand.NotifyCanExecuteChanged();
         };
         downloadRight = ShowDownload;
         RebuildSources();
@@ -86,8 +86,8 @@ public sealed partial class LogsViewModel : ObservableObject
     /// <summary>The page's one transfer, see <see cref="AdminViewModel.Transfer"/>.</summary>
     internal AdminTransfer Transfer { get; }
     /// <summary>Package 97 (A113): the file list's loading state and the running search.</summary>
-    public PendingViewModel FilesLoad { get; }
-    public PendingViewModel Searching { get; }
+    public PendingActionViewModel FilesLoad { get; }
+    public PendingActionViewModel Searching { get; }
 
     /// <summary>Package 81: the logs are shown and asked for with LogsView.</summary>
     internal bool ShowLogs => server.SelfPermissions.Has(Permission.LogsView);
@@ -96,7 +96,7 @@ public sealed partial class LogsViewModel : ObservableObject
     internal Task RefreshAsync() => ShowLogs ? SendRoutedAsync(new ListLogs(), pending: FilesLoad) : Task.CompletedTask;
 
     /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
-    Task<string> SendRoutedAsync(Request request, string? id = null, PendingViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
+    Task<string> SendRoutedAsync(Request request, string? id = null, PendingActionViewModel? pending = null) => server.SendAsync(request, id, pending, Apply);
 
     /// <summary>The administration page closed: no answer reaches the tab any more.</summary>
     internal void Detach() => server.Routes.RemoveAll(Apply);

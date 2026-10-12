@@ -2,14 +2,14 @@ using OVS.Client.Collections;
 
 namespace OVS.Tests.Client.Collections;
 
-public class ListPagesTests
+public class PagedListCollectorTests
 {
     static IReadOnlyList<int> Page(int from, int count) => Enumerable.Range(from, count).ToList();
 
     [Fact]
     public void OverlappingRounds_OnlyTheNewestRoundIsShown()
     {
-        var pages = new ListPages<int>();
+        var pages = new PagedListCollector<int>();
         var asked = new List<(string? Id, int Offset)>();
         void Ask(string? id, int offset) => asked.Add((id, offset));
 
@@ -25,7 +25,7 @@ public class ListPagesTests
     [Fact]
     public void UnrequestedFirstPage_StartsACleanRound()
     {
-        var pages = new ListPages<int>();
+        var pages = new PagedListCollector<int>();
         var asked = new List<(string? Id, int Offset)>();
         void Ask(string? id, int offset) => asked.Add((id, offset));
 
@@ -38,7 +38,7 @@ public class ListPagesTests
     [Fact]
     public void PageOfTheRightRound_AtTheWrongOffset_IsDropped()
     {
-        var pages = new ListPages<int>();
+        var pages = new PagedListCollector<int>();
         Assert.Null(pages.Add("A", 0, 500, Page(0, 200), (_, _) => { }));
         Assert.Null(pages.Add("A", 400, 500, Page(400, 100), (_, _) => { }));
         Assert.Null(pages.Add("A", 200, 500, Page(200, 200), (_, _) => { }));

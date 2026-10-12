@@ -862,7 +862,7 @@ public class AdminViewModelTests
         var notices = new List<string>();
         server.Notice += notices.Add;
         vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
-        GroupToggleViewModel Box(string name) => Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == name);
+        GroupAssignmentViewModel Box(string name) => Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == name);
 
         foreach (var (name, on) in new[] { ("Moderator", true), ("Gast", false), ("Moderator", false), ("Gast", true), ("Moderator", true) })
         {
@@ -889,7 +889,7 @@ public class AdminViewModelTests
         server.Apply(new UserJoined(Online(2, "fpX", "Xaver"))); // a refresh is on its way when the box is ticked
         var older = sent.OfType<ListUsers>().Single().RequestId;
         vm.UsersAndBans.Apply(new UserList("r", [before]));
-        GroupToggleViewModel Mod() => Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == "Moderator");
+        GroupAssignmentViewModel Mod() => Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == "Moderator");
 
         Mod().IsChecked = true;
         await Mod().ToggleCommand.ExecuteAsync(null);
@@ -930,9 +930,9 @@ public class AdminViewModelTests
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.BackupsManage | P.LogsView | P.Speak);
         var time = (ManualTimeProvider)server.Time;
         await vm.RequestListsAsync();
-        PendingViewModel[] loads = [vm.UsersAndBans.UsersLoad, vm.UsersAndBans.BansLoad, vm.BackupCard.BackupsLoad, vm.Logs.FilesLoad];
+        PendingActionViewModel[] loads = [vm.UsersAndBans.UsersLoad, vm.UsersAndBans.BansLoad, vm.BackupCard.BackupsLoad, vm.Logs.FilesLoad];
         Assert.All(loads, l => Assert.True(l.IsRunning && !l.IsBusy)); // nothing shows before 150 ms
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.All(loads, l => Assert.True(l.IsFirstLoad && !l.IsRefreshing));
 
         // the users come in two pages: loading until the list is complete
@@ -949,7 +949,7 @@ public class AdminViewModelTests
         // a refresh: the old cards stay, with a small spinner instead of the loading state
         time.Advance(TimeSpan.FromSeconds(1));
         await vm.RefreshCommand.ExecuteAsync(null);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.All(loads, l => Assert.True(l.IsRefreshing && !l.IsFirstLoad));
         Assert.Equal(2, vm.UsersAndBans.Users.Count);
 
@@ -975,7 +975,7 @@ public class AdminViewModelTests
 
         await Card().LiftMuteCommand.ExecuteAsync(null);
         Assert.Single(sent.OfType<SetKnownUserServerMute>());
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         vm.UsersAndBans.Apply(new UserList("r", [xaver])); // an older list: still waiting
         Assert.True(Card().Busy.IsBusy);
@@ -989,7 +989,7 @@ public class AdminViewModelTests
         box.IsChecked = true;
         await box.ToggleCommand.ExecuteAsync(null);
         var assign = sent.OfType<AssignGroup>().Single();
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new Error(assign.RequestId, ReasonCodes.PermissionDenied));
         Assert.False(Card().Busy.IsBusy);
@@ -998,7 +998,7 @@ public class AdminViewModelTests
         // deleting: busy until the next list, where the card is gone
         time.Advance(TimeSpan.FromSeconds(1));
         await Card().DeleteCommand.ExecuteAsync(null);
-        time.Advance(PendingViewModel.ShowAfter);
+        time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new UserList(sent.OfType<ListUsers>().Last().RequestId, []));
         Assert.Empty(vm.UsersAndBans.Users);

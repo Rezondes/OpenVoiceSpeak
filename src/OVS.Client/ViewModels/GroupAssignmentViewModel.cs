@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace OVS.Client.ViewModels;
 
-public sealed partial class GroupToggleViewModel(Guid groupId, string name, bool isChecked, bool isEnabled, Func<GroupToggleViewModel, Task> onToggle)
+public sealed partial class GroupAssignmentViewModel(Guid groupId, string name, bool isChecked, bool isEnabled, Func<GroupAssignmentViewModel, Task> onToggle)
     : ObservableObject
 {
     [ObservableProperty] bool isChecked = isChecked;

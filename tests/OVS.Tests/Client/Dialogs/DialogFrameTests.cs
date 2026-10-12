@@ -153,7 +153,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            var sending = new PendingViewModel(new ManualTimeProvider());
+            var sending = new PendingActionViewModel(new ManualTimeProvider());
             var sent = new List<string>();
             var shown = Show(overlay, new(Submit: answer =>
             {

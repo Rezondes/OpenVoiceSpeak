@@ -79,9 +79,9 @@ public sealed class DialogButtonsTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            var sending = new PendingViewModel(new ManualTimeProvider());
+            var sending = new PendingActionViewModel(new ManualTimeProvider());
             var sent = new List<object>();
-            PendingViewModel Send(object answer)
+            PendingActionViewModel Send(object answer)
             {
                 sent.Add(answer);
                 sending.Start();
