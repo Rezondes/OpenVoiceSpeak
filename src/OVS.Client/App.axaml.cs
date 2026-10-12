@@ -62,7 +62,7 @@ public partial class App : Application
             DebugApi? debugApi = null;
             if (options.DebugApiPort is { } port)
             {
-                debugApi = new DebugApi(vm, port, work => Dispatcher.UIThread.InvokeAsync(work), hardware.ListActive);
+                debugApi = new DebugApi(vm, vm.Keys, vm.Audio, port, work => Dispatcher.UIThread.InvokeAsync(work), hardware.ListActive);
                 window.Title += $" (Debug-API :{port})";
             }
             var audioDebug = options.AudioDebug

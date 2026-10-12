@@ -50,7 +50,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             i.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
             probe.Stop();
             // the debug API lists the system's devices while the view model runs without any, as with --no-audio
-            i.api = new DebugApi(i.vm, i.Port, work => i.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
+            i.api = new DebugApi(i.vm, i.vm.Keys, i.vm.Audio, i.Port, work => i.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
             i.Http = new HttpClient { BaseAddress = new Uri($"http://localhost:{i.Port}/") };
             i.Http.DefaultRequestHeaders.Add(DebugApi.Header, "1");
             return i;

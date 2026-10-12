@@ -1,3 +1,4 @@
+using OVS.Client.Audio;
 using System.Net;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Collections;
@@ -55,11 +56,19 @@ public sealed class DebugApi : IDisposable
     readonly Func<Func<Task<object?>>, Task<object?>> onUi;
     readonly Func<AudioDirection, List<AudioDevice>> listDevices;
     readonly Task loop;
+    readonly KeyPoller keys;
+    readonly AudioEngine audio;
+    readonly DeviceLifecycle lifecycle;
 
+    /// <param name="keys">The key poller the key routes simulate on and /state reads (from the composition root).</param>
+    /// <param name="audio">The audio engine /state reads and /tone reaches the test tone through (from the composition root).</param>
     /// <param name="onUi">Runs a function on the UI thread; every view model access goes through it.</param>
     /// <param name="listDevices">The system's active devices of a direction, which /devices lists (also when the client runs without them).</param>
-    public DebugApi(MainViewModel vm, int port, Func<Func<Task<object?>>, Task<object?>> onUi, Func<AudioDirection, List<AudioDevice>> listDevices)
+    public DebugApi(MainViewModel vm, KeyPoller keys, AudioEngine audio, int port, Func<Func<Task<object?>>, Task<object?>> onUi, Func<AudioDirection, List<AudioDevice>> listDevices)
     {
+        this.keys = keys;
+        this.audio = audio;
+        lifecycle = audio.DeviceLifecycle; // the /tone route sets the test tone there and reads it back
         this.vm = vm;
         this.onUi = onUi;
         this.listDevices = listDevices;
@@ -145,10 +154,10 @@ public sealed class DebugApi : IDisposable
                 await vm.Connection.DisconnectAsync();
                 return State();
             case "/ptt":
-                vm.Keys.Simulate(ptt: body.GetProperty("down").GetBoolean());
+                keys.Simulate(ptt: body.GetProperty("down").GetBoolean());
                 return new { ok = true };
             case "/linkptt":
-                vm.Keys.Simulate(linkPtt: body.GetProperty("down").GetBoolean());
+                keys.Simulate(linkPtt: body.GetProperty("down").GetBoolean());
                 return new { ok = true };
             case "/key":
                 await SimulateKeyAsync(body);
@@ -157,8 +166,8 @@ public sealed class DebugApi : IDisposable
                 await SetServerIconAsync(body);
                 return new { ok = true };
             case "/tone":
-                vm.Audio.DeviceLifecycle.SetTone(Optional(body, "hz")?.GetDouble());
-                return new { ok = true, toneHz = vm.Audio.DeviceLifecycle.CaptureSource.ToneHz };
+                lifecycle.SetTone(Optional(body, "hz")?.GetDouble());
+                return new { ok = true, toneHz = lifecycle.CaptureSource.ToneHz };
             case "/settings":
                 var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
                 // Package 127: a body without a version keeps the current one (a missing key reads as 0)
@@ -274,7 +283,7 @@ public sealed class DebugApi : IDisposable
                 Bitrate = vm.Stats.BitrateText,
             },
             Notices = vm.Notices.Take(50).Select(n => n.ToString()).ToList(),
-            Sounds = vm.Audio.Sounds.Recent.Select(s => s.ToString()).ToList(), // Package 47
+            Sounds = audio.Sounds.Recent.Select(s => s.ToString()).ToList(), // Package 47
             Server = s is null ? null : new
             {
                 s.ServerName,
@@ -316,13 +325,13 @@ public sealed class DebugApi : IDisposable
             },
             Audio = new
             {
-                vm.Audio.FramesSent,
-                vm.Audio.FramesReceived,
-                vm.Audio.LastOutputLevelDb,
-                vm.Audio.DeviceLifecycle.CaptureSource.ToneHz,
-                Ptt = vm.Keys.PttDown,
-                LinkPtt = vm.Keys.LinkPttDown,
-                PushToMute = vm.Keys.MuteHeld,
+                audio.FramesSent,
+                audio.FramesReceived,
+                audio.LastOutputLevelDb,
+                lifecycle.CaptureSource.ToneHz,
+                Ptt = keys.PttDown,
+                LinkPtt = keys.LinkPttDown,
+                PushToMute = keys.MuteHeld,
             },
             KeyBindings = vm.Settings.KeyBindings.Select(b => new { b.Action, Chord = b.Chord.Name }).ToList(),
         };
@@ -350,12 +359,12 @@ public sealed class DebugApi : IDisposable
             throw new DebugApiException($"Unbekannte Aktion '{name}', erlaubt: {string.Join(", ", KeyActionTraits.All)}");
         if (Optional(body, "down") is { } down)
         {
-            vm.Keys.Simulate(action, down.GetBoolean());
+            keys.Simulate(action, down.GetBoolean());
             return;
         }
-        vm.Keys.Simulate(action, true);
+        keys.Simulate(action, true);
         await Task.Delay(50); // clock: debug, a few polls of the key thread
-        vm.Keys.Simulate(action, false);
+        keys.Simulate(action, false);
         await Task.Delay(30); // clock: debug
     }
 
