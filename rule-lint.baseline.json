@@ -1880,10 +1880,6 @@
     "Count": 1
   },
   {
-    "Key": "RL201|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ApplyMessage:a",
-    "Count": 9
-  },
-  {
     "Key": "RL201|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ApplyMessage:e",
     "Count": 1
   },
@@ -15400,14 +15396,6 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ChatError",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ChatReceived",
-    "Count": 1
-  },
-  {
     "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.DeleteChannel",
     "Count": 1
   },
@@ -15473,10 +15461,6 @@
   },
   {
     "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.OnVolumeChanged",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.RecentChat",
     "Count": 1
   },
   {
@@ -20077,10 +20061,6 @@
   },
   {
     "Key": "RL702|src/OVS.Client/ViewModels/MainViewModel.cs|MainViewModel.MainViewModel",
-    "Count": 1
-  },
-  {
-    "Key": "RL702|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ApplyMessage",
     "Count": 1
   },
   {

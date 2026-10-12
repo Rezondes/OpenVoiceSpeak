@@ -281,7 +281,7 @@ public sealed class DebugApi : IDisposable
                 s.WelcomeText,
                 s.IconHash,
                 IconBytes = s.IconPng?.Length,
-                Chat = s.RecentChat.TakeLast(50).Select(c => new { c.Target, c.FromNickname, c.ToSessionId, c.Text }).ToList(),
+                Chat = s.ChatFeed.Recent.TakeLast(50).Select(c => new { c.Target, c.FromNickname, c.ToSessionId, c.Text }).ToList(),
                 SelfId = s.Mirror.SelfId,
                 s.SelfMuted,
                 s.SelfDeafened,

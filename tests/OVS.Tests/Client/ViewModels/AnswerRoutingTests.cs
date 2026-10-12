@@ -44,6 +44,25 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         Assert.Equal(id, Assert.IsType<BackupList>(Assert.Single(received)).RequestId);
     }
 
+    /// <summary>Step 27c, routes question (3): a send that fails leaves the route to its owner, who removes it (Detach, the next transfer).</summary>
+    [Fact]
+    public async Task SendAsync_SendThrows_RouteStaysUntilItsOwnerRemovesIt()
+    {
+        var server = Server(reply: _ => throw new IOException("Verbindung weg"));
+        var notices = new List<string>();
+        server.Notice += notices.Add;
+        var pending = server.NewPending();
+        Action<Message> route = received.Add;
+
+        var id = await Bound(server.SendAsync(new ListBackups(), pending: pending, route: route));
+
+        Assert.Equal(ErrorTexts.For(ReasonCodes.ConnectionLost), pending.Error);
+        Assert.Equal([ErrorTexts.For(ReasonCodes.ConnectionLost)], notices);
+        Assert.Same(route, server.Routes.Find(id));
+        server.Routes.RemoveAll(route);
+        Assert.Null(server.Routes.Find(id));
+    }
+
     [Fact]
     public async Task Apply_SecondAnswerUnderTheId_ReachesTheRouteToo()
     {

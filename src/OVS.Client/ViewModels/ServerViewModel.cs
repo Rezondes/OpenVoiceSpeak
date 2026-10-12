@@ -59,6 +59,7 @@ public sealed partial class ServerViewModel : ObservableObject
         this.send = send;
         this.time = time;
         Dialogs = dialogs ?? new ServerDialogs();
+        ChatFeed = new ChatFeed(RequestSound);
         Leave = new LeaveTimer(time, () => Post);
         Rebuild();
     }
@@ -95,11 +96,8 @@ public sealed partial class ServerViewModel : ObservableObject
 
     public event Action<ServerIcon>? IconReceived;
 
-    // ---- Chat (Package 31) ----
-    /// <summary>Chat requests get their own id prefix, so their errors can go to the composer instead of the feed.</summary>
-    const string ChatRequestPrefix = "c";
-    readonly Queue<ChatMessage> recentChat = new();
-    public event Action<ChatMessage>? ChatReceived;
+    /// <summary>Package 31: the chat as it comes, its tones, the kept messages and the composer's refusals.</summary>
+    internal ChatFeed ChatFeed { get; }
     /// <summary>Package 47: a moment that deserves a tone. The main view model hands it to the audio engine.</summary>
     public event Action<SoundEvent>? SoundRequested;
     internal void RequestSound(SoundEvent sound) => SoundRequested?.Invoke(sound);
@@ -107,7 +105,7 @@ public sealed partial class ServerViewModel : ObservableObject
     internal bool OwnGroupChangePending { get; set; }
     /// <summary>Packages 94 and 139: the own join in flight and the channel passwords that worked on this connection.</summary>
     readonly ChannelJoin join = new();
-    public event Action<string>? ChatError;
+
     /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
     public event Action<UserViewModel>? PrivateChatRequested;
 
@@ -128,7 +126,7 @@ public sealed partial class ServerViewModel : ObservableObject
     public event Action<string, float>? VolumeChanged;
     internal void OnVolumeChanged(UserViewModel user) => VolumeChanged?.Invoke(user.Fingerprint, (float)(user.VolumePercent / 100));
     internal void RequestPrivateChat(UserViewModel user) => PrivateChatRequested?.Invoke(user);
-    public IReadOnlyCollection<ChatMessage> RecentChat => recentChat;
+
     public bool CanChatServer => SelfPermissions.Has(Permission.ChatServer);
     public bool CanChatChannel => SelfPermissions.Has(Permission.ChatChannel);
     public bool CanChatPrivate => SelfPermissions.Has(Permission.ChatPrivate);
@@ -166,43 +164,23 @@ public sealed partial class ServerViewModel : ObservableObject
                 join.Refused(e.Code); // Package 94: a wrong channel password is asked for again next time
                 var text = ErrorTexts.For(e.Code, e.Detail);
                 if (e.RequestId is { } failed && waiting.Remove(failed, out var pending) && pending.Answers(failed)) pending.Fail(text); // Package 97
-                if (e.RequestId?.StartsWith(ChatRequestPrefix) == true && ChatError is { } chatError) chatError(text);
-                else Notice?.Invoke(text);
+                if (!ChatFeed.TryRefuse(e.RequestId, text)) Notice?.Invoke(text);
                 Routes.Deliver(e.RequestId, message); // Package 73: the sender drops what the server refused
                 return;
             case UserList list:
                 LastUserList = list;
-                Routes.Deliver(list.RequestId, message);
-                return;
+                break;
             case BanList list:
                 LastBanList = list;
-                Routes.Deliver(list.RequestId, message);
-                return;
-            case BackupList a: Routes.Deliver(a.RequestId, a); return; // Package 74
-            case BackupChunk a: Routes.Deliver(a.RequestId, a); return; // Package 75
-            case UploadBackupAck a: Routes.Deliver(a.RequestId, a); return;
-            case BackupUploaded a: Routes.Deliver(a.RequestId, a); return;
-            case LogList a: Routes.Deliver(a.RequestId, a); return; // Package 81
-            case LogPage a: Routes.Deliver(a.RequestId, a); return;
-            case LogSearchResult a: Routes.Deliver(a.RequestId, a); return;
-            case LogDownloadReady a: Routes.Deliver(a.RequestId, a); return; // Package 82
-            case LogChunk a: Routes.Deliver(a.RequestId, a); return;
+                break;
             case ServerIcon icon:
                 IconReceived?.Invoke(icon);
                 return;
             case ChatMessage chat:
-                if (chat.FromSessionId != Mirror.SelfId) // Package 56: a sound per chat, never for the own messages
-                    SoundRequested?.Invoke(chat.Target switch
-                    {
-                        ChatTarget.Private => SoundEvent.PrivateMessage,
-                        ChatTarget.Channel => SoundEvent.ChannelMessage,
-                        _ => SoundEvent.ServerMessage,
-                    });
-                recentChat.Enqueue(chat);
-                while (recentChat.Count > 200) recentChat.Dequeue();
-                ChatReceived?.Invoke(chat);
+                ChatFeed.Receive(chat, Mirror.SelfId);
                 return;
         }
+        if (Routes.DeliverAnswer(message)) return; // Packages 73 to 75, 81 and 82: the answers go to their request's owner
         var sound = SoundFor(message); // compared with the state before the change
         var before = message switch
         {
@@ -427,7 +405,7 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <param name="route">Gets the answers to the request and the server's error for it, until its owner removes the route.</param>
     public async Task<string> SendAsync(Request request, string? id = null, PendingViewModel? pending = null, Action<Message>? route = null)
     {
-        id ??= $"{(request is SendChat ? ChatRequestPrefix : "r")}{++requestCounter}";
+        id ??= $"{(request is SendChat ? ChatFeed.RequestPrefix : "r")}{++requestCounter}";
         if (route is not null) Routes.Add(id, route); // before sending: the answer can come at once
         if (pending is not null)
         {

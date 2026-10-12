@@ -44,8 +44,8 @@ public sealed partial class ChatViewModel : ObservableObject
         selected = General;
         foreach (var n in earlier ?? []) General.Add(new ChatEntry(n.Time, n.Text, Notice: n.Kind), countUnread: false);
 
-        server.ChatReceived += OnChat;
-        server.ChatError += text => ComposerError = text;
+        server.ChatFeed.Received += OnChat;
+        server.ChatFeed.Refused += text => ComposerError = text;
         server.StateChanged += () => OnStateChanged(server.LastChange);
         server.PrivateChatRequested += user => OpenPrivate(user.Fingerprint);
         OnStateChanged(StateChange.All);
