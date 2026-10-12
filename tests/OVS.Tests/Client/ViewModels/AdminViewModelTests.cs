@@ -898,7 +898,7 @@ public class AdminViewModelTests
 
         time.Advance(TimeSpan.FromSeconds(1));
         await ListUsersSent(sent, 2);
-        var newer = sent.OfType<ListUsers>().Last().RequestId;
+        var newer = sent.LastRequestId<ListUsers>();
         Assert.NotEqual(older, newer);
         server.Apply(new UserList(newer, [before])); // asked for after the tick: this one counts, even without the group
         Assert.False(Mod().IsChecked);
@@ -979,7 +979,7 @@ public class AdminViewModelTests
         Assert.True(Card().Busy.IsBusy);
         vm.UsersAndBans.Apply(new UserList("r", [xaver])); // an older list: still waiting
         Assert.True(Card().Busy.IsBusy);
-        var asked = sent.OfType<ListUsers>().Last().RequestId;
+        var asked = sent.LastRequestId<ListUsers>();
         server.Apply(new UserList(asked, [xaver with { ServerMuted = false }]));
         Assert.False(Card().Busy.IsBusy);
 
@@ -1000,7 +1000,7 @@ public class AdminViewModelTests
         await Card().DeleteCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
-        server.Apply(new UserList(sent.OfType<ListUsers>().Last().RequestId, []));
+        server.Apply(new UserList(sent.LastRequestId<ListUsers>(), []));
         Assert.Empty(vm.UsersAndBans.Users);
     }
 

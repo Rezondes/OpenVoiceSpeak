@@ -285,7 +285,6 @@ public sealed class MotionCoverageTests
     static KnownUserViewModel Anna(Walk w) => w.Admin.UsersAndBans.Users.Single(u => u.Nickname == "anna");
 
     /// <summary>The id of the last request of that type: the server answers under it (answers to other ids reach nobody).</summary>
-    static string LastId<T>(Walk w) where T : Request => w.Sent.OfType<T>().Last().RequestId!;
 
     static KnownUserInfo KnownMe => new("fp1", "ich", [WellKnownGroups.Admin]);
     static KnownUserInfo KnownAnna(bool muted) => new("fp2", "anna", [WellKnownGroups.Guest], ServerMuted: muted, CanBeModeratedByMe: true);
@@ -508,26 +507,26 @@ public sealed class MotionCoverageTests
         yield return new("refresh the lists", x =>
         {
             _ = x.Admin.RefreshCommand.ExecuteAsync(null);
-            x.Server.Apply(new UserList(LastId<ListUsers>(x), [KnownMe, KnownAnna(muted: true)]));
-            x.Server.Apply(new LogList(LastId<ListLogs>(x), [ServerLog]));
+            x.Server.Apply(new UserList(x.Sent.LastRequestId<ListUsers>(), [KnownMe, KnownAnna(muted: true)]));
+            x.Server.Apply(new LogList(x.Sent.LastRequestId<ListLogs>(), [ServerLog]));
         });
         foreach (var name in new[] { "StatusFilter", "GroupFilter", "SortOrder" }) yield return Drop($"the user list's {name}", x => Named<ComboBox>(x, name));
         yield return new("lift a stored mute", x =>
         {
             Anna(x).LiftMuteCommand.Execute(null);
             Watch(250); // the card waits for a user list that shows it
-            x.Server.Apply(new UserList(LastId<ListUsers>(x), [KnownMe, KnownAnna(muted: false)]));
+            x.Server.Apply(new UserList(x.Sent.LastRequestId<ListUsers>(), [KnownMe, KnownAnna(muted: false)]));
         });
         foreach (var s in Dialog("delete user", x => _ = Anna(x).DeleteCommand.ExecuteAsync(null))) yield return s;
-        yield return new("delete a user", x => x.Server.Apply(new UserList(LastId<ListUsers>(x), [KnownMe])));
+        yield return new("delete a user", x => x.Server.Apply(new UserList(x.Sent.LastRequestId<ListUsers>(), [KnownMe])));
 
         yield return new("switch to the bans", x => AdminTabs(x).SelectedIndex = 2);
         foreach (var name in new[] { "BanStatusFilter", "BanTypeFilter", "BanSortOrder" }) yield return Drop($"the ban list's {name}", x => Named<ComboBox>(x, name));
-        yield return new("ban list shows the ban", x => x.Server.Apply(new BanList(LastId<ListBans>(x), [new BanInfo(AnnasBan, "fp2", "anna", null, "Spam", "ich", null)])));
+        yield return new("ban list shows the ban", x => x.Server.Apply(new BanList(x.Sent.LastRequestId<ListBans>(), [new BanInfo(AnnasBan, "fp2", "anna", null, "Spam", "ich", null)])));
         yield return new("unban a user", x =>
         {
             x.Admin.UsersAndBans.Bans.Single().UnbanCommand.Execute(null);
-            x.Server.Apply(new BanList(LastId<Unban>(x), []));
+            x.Server.Apply(new BanList(x.Sent.LastRequestId<Unban>(), []));
         });
 
         yield return new("switch to the links", x => AdminTabs(x).SelectedIndex = 3);
@@ -562,29 +561,29 @@ public sealed class MotionCoverageTests
         {
             x.Admin.BackupCard.NewBackupCommand.Execute(null);
             Watch(250); // the button waits for the server
-            x.Server.Apply(new BackupList(LastId<CreateBackup>(x), [new BackupInfo("backup-1.zip", DateTimeOffset.Now, 1024, "1.0")]));
+            x.Server.Apply(new BackupList(x.Sent.LastRequestId<CreateBackup>(), [new BackupInfo("backup-1.zip", DateTimeOffset.Now, 1024, "1.0")]));
         });
         foreach (var s in Dialog("restore backup", x => _ = x.Admin.BackupCard.Backups.Single().RestoreCommand.ExecuteAsync(null))) yield return s;
         foreach (var s in Dialog("backup download warning", x => _ = x.Admin.BackupCard.ConfirmDownloadAsync())) yield return s;
         foreach (var s in Dialog("delete backup", x => _ = x.Admin.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null))) yield return s;
-        yield return new("delete a backup", x => x.Server.Apply(new BackupList(LastId<ListBackups>(x), [])));
+        yield return new("delete a backup", x => x.Server.Apply(new BackupList(x.Sent.LastRequestId<ListBackups>(), [])));
 
         yield return new("switch to the logs", x => AdminTabs(x).SelectedIndex = 5);
         yield return Drop("the log source filter", x => Named<ComboBox>(x, "LogSourceFilter"));
         yield return Click("search the logs", x => Named<Button>(x, "LogSearchButton"), x =>
         {
             Watch(250); // the search waits for the server
-            x.Server.Apply(new LogSearchResult(LastId<SearchLogs>(x), [new LogHit("server-1", 1, "Start")], false, false));
+            x.Server.Apply(new LogSearchResult(x.Sent.LastRequestId<SearchLogs>(), [new LogHit("server-1", 1, "Start")], false, false));
         }, x => x.Admin.Logs.SearchText = "Start");
         yield return new("open a log file", x =>
         {
             x.Admin.Logs.SelectedFile = x.Admin.Logs.Files.Single();
-            x.Server.Apply(new LogPage(LastId<ReadLog>(x), "server-1", 1, 2, 1, ["Start", "Zeile 2"]));
+            x.Server.Apply(new LogPage(x.Sent.LastRequestId<ReadLog>(), "server-1", 1, 2, 1, ["Start", "Zeile 2"]));
         });
         yield return new("turn the log page", x =>
         {
             x.Admin.Logs.NewerCommand.Execute(null);
-            x.Server.Apply(new LogPage(LastId<ReadLog>(x), "server-1", 2, 2, 3, ["Zeile 3"]));
+            x.Server.Apply(new LogPage(x.Sent.LastRequestId<ReadLog>(), "server-1", 2, 2, 3, ["Zeile 3"]));
         });
         yield return new("close the administration", x => x.Vm.PageFlow.ClosePage());
 

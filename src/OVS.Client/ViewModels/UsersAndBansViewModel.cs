@@ -394,15 +394,12 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Package 73: group changes sent but not yet seen in a user list; the server sends no confirmation. AskedBefore is the
-    /// number of user list requests sent before the change: a list of a later request settles it either way.
-    /// </summary>
-    readonly List<(string RequestId, string Fingerprint, Guid GroupId, bool Assigned, int AskedBefore)> pendingGroupChanges = [];
+    /// <summary>Package 73: group changes sent but not yet seen in a user list.</summary>
+    readonly List<PendingGroupChange> pendingGroupChanges = [];
 
     /// <summary>A box just ticked keeps its state until a list asked for after the tick arrives; an older list would flip it back.</summary>
     bool IsInGroup(KnownUserInfo user, Guid groupId) =>
-        pendingGroupChanges.LastOrDefault(change => change.Fingerprint == user.Fingerprint && change.GroupId == groupId) is { RequestId: not null } pending
+        pendingGroupChanges.LastOrDefault(change => change.Fingerprint == user.Fingerprint && change.GroupId == groupId) is { } pending
             ? pending.Assigned
             : user.GroupIds.Contains(groupId);
 
@@ -413,7 +410,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         cardAskedBefore[fingerprint] = userRefresh.Sent; // Package 98: the card spins until a later list shows it
         var id = await SendRoutedAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId),
             pending: CardBusy(fingerprint)); // its error drops the change
-        pendingGroupChanges.Add((id, fingerprint, toggle.GroupId, toggle.IsChecked, userRefresh.Sent));
+        pendingGroupChanges.Add(new PendingGroupChange(id, fingerprint, toggle.GroupId, toggle.IsChecked, userRefresh.Sent));
         UpdateOwnGroupChangePending();
         await userRefresh.RequestAsync();
     }
@@ -429,8 +426,8 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     /// <param name="round">The number of the user list request this list answers, 0 when unknown.</param>
     void ConfirmGroupChanges(IReadOnlyList<KnownUserInfo> users, int round)
     {
-        int confirmedCount = pendingGroupChanges.RemoveAll(change => users.Any(user => user.Fingerprint == change.Fingerprint && user.GroupIds.Contains(change.GroupId) == change.Assigned));
-        pendingGroupChanges.RemoveAll(change => round > change.AskedBefore); // asked for after the change and still not showing it: the list wins
+        int confirmedCount = pendingGroupChanges.RemoveAll(change => change.IsShownIn(users));
+        pendingGroupChanges.RemoveAll(change => change.IsSettledBy(round)); // asked for after the change and still not showing it: the list wins
         UpdateOwnGroupChangePending();
         if (confirmedCount > 0) server.RequestSound(Audio.Sounds.SoundEvent.GroupChangedByMe);
     }

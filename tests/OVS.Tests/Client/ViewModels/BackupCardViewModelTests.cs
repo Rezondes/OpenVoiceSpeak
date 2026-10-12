@@ -33,8 +33,6 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         return new Rig(new BackupCardViewModel(server, transfer, dialogs), server, transfer);
     }
 
-    string IdOf<T>() where T : Request => sent.OfType<T>().Last().RequestId!;
-
     /// <summary>The archive on disk, as the upload picks it from the file picker.</summary>
     string WriteArchiveFile()
     {
@@ -56,7 +54,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create();
 
         await Bound(rig.Section.RefreshAsync());
-        rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer, Older]));
+        rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer, Older]));
 
         Assert.Single(sent.OfType<ListBackups>());
         Assert.Equal([Newer.FileName, Older.FileName], rig.Section.Backups.Select(backup => backup.Info.FileName));
@@ -80,7 +78,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create();
         await Bound(rig.Section.RefreshAsync());
-        var roundId = IdOf<ListBackups>();
+        var roundId = sent.LastRequestId<ListBackups>();
 
         rig.Server.Apply(new BackupList(roundId, [Newer], 0, 2));
         Assert.Empty(rig.Section.Backups);
@@ -99,7 +97,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         await Bound(rig.Section.NewBackupCommand.ExecuteAsync(null));
         rig.Section.Restoring.Start();
 
-        rig.Server.Apply(new BackupList(IdOf<CreateBackup>(), [Newer]));
+        rig.Server.Apply(new BackupList(sent.LastRequestId<CreateBackup>(), [Newer]));
 
         Assert.False(rig.Section.BackupCreate.IsRunning);
         Assert.True(rig.Section.Restoring.IsRunning);
@@ -111,7 +109,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create();
         await Bound(rig.Section.RefreshAsync());
 
-        rig.Section.Apply(new Error(IdOf<ListBackups>(), "denied"));
+        rig.Section.Apply(new Error(sent.LastRequestId<ListBackups>(), "denied"));
 
         Assert.Empty(rig.Section.Backups);
         Assert.True(rig.Section.BackupsLoad.IsRunning);
@@ -122,7 +120,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create();
         await Bound(rig.Section.RefreshAsync());
-        rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer]));
+        rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer]));
         Assert.True(rig.Section.Backups[0].CanRestore);
 
         FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.All, []);
@@ -137,7 +135,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create();
         await Bound(rig.Section.RefreshAsync());
-        rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer]));
+        rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer]));
         var row = rig.Section.Backups[0];
 
         rig.Section.FollowServer();
@@ -152,7 +150,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         await Bound(rig.Section.RefreshAsync());
 
         rig.Section.Detach();
-        rig.Server.Apply(new BackupList(IdOf<ListBackups>(), [Newer]));
+        rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer]));
 
         Assert.Empty(rig.Section.Backups);
         Assert.All(sent, request => Assert.Null(rig.Server.Routes.Find(request.RequestId!)));

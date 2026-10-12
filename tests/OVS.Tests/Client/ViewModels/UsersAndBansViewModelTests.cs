@@ -78,7 +78,7 @@ public sealed class UsersAndBansViewModelTests
         section.Apply(new UserList("r", [Me]));
         await ToggleAsync(section, "ich", "Gast", on: true);
 
-        section.Apply(new Error(IdOf<AssignGroup>(), ReasonCodes.LastAdmin));
+        section.Apply(new Error(sent.LastRequestId<AssignGroup>(), ReasonCodes.LastAdmin));
 
         Assert.False(marks[^1].Pending);
     }
@@ -106,7 +106,7 @@ public sealed class UsersAndBansViewModelTests
         section.Apply(new UserList("r", [Me]));
         await ToggleAsync(section, "ich", "Gast", on: true);
 
-        section.Apply(new UserList(IdOf<ListUsers>(), [Me with { GroupIds = [WellKnownGroups.Admin, WellKnownGroups.Guest] }]));
+        section.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Me with { GroupIds = [WellKnownGroups.Admin, WellKnownGroups.Guest] }]));
 
         Assert.False(marks[^1].Pending);
         Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.GroupChangedByMe], heard);
@@ -207,8 +207,6 @@ public sealed class UsersAndBansViewModelTests
         Assert.Empty(sent);
     }
 
-    string IdOf<T>() where T : Request => sent.OfType<T>().Last().RequestId!;
-
     [Fact]
     public async Task RefreshAsync_BothTabsAllowed_AsksForTheUserListAndTheBanList()
     {
@@ -226,7 +224,7 @@ public sealed class UsersAndBansViewModelTests
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
 
-        server.Apply(new UserList(IdOf<ListUsers>(), [Yvonne]));
+        server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
 
         Assert.Equal("Yvonne", Assert.Single(section.Users).Nickname);
         Assert.True(section.UsersLoad.HasSucceeded);
@@ -239,7 +237,7 @@ public sealed class UsersAndBansViewModelTests
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
 
-        server.Apply(new BanList(IdOf<ListBans>(), [YvonnesBan]));
+        server.Apply(new BanList(sent.LastRequestId<ListBans>(), [YvonnesBan]));
 
         Assert.Equal("Yvonne", Assert.Single(section.Bans).Nickname);
         Assert.True(section.BansLoad.HasSucceeded);
@@ -251,12 +249,12 @@ public sealed class UsersAndBansViewModelTests
     {
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
-        server.Apply(new BanList(IdOf<ListBans>(), [YvonnesBan]));
+        server.Apply(new BanList(sent.LastRequestId<ListBans>(), [YvonnesBan]));
         var row = Assert.Single(section.Bans);
 
         await Bound(row.UnbanCommand.ExecuteAsync(null));
         Assert.True(row.Busy.IsRunning);
-        server.Apply(new BanList(IdOf<Unban>(), []));
+        server.Apply(new BanList(sent.LastRequestId<Unban>(), []));
 
         Assert.False(row.Busy.IsRunning);
     }
@@ -267,7 +265,7 @@ public sealed class UsersAndBansViewModelTests
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
 
-        server.Apply(new Error(IdOf<ListUsers>(), ReasonCodes.PermissionDenied));
+        server.Apply(new Error(sent.LastRequestId<ListUsers>(), ReasonCodes.PermissionDenied));
         time.Advance(TimeSpan.FromSeconds(2));
         await Bound(section.RefreshAsync());
 
@@ -279,7 +277,7 @@ public sealed class UsersAndBansViewModelTests
     {
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
-        server.Apply(new UserList(IdOf<ListUsers>(), [Yvonne]));
+        server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
         server.Apply(new UserLeft(2)); // anna, online until now
         time.Advance(TimeSpan.FromSeconds(2));
 
@@ -293,7 +291,7 @@ public sealed class UsersAndBansViewModelTests
     {
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
-        server.Apply(new UserList(IdOf<ListUsers>(), [Yvonne]));
+        server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
         time.Advance(TimeSpan.FromSeconds(2));
 
         section.FollowServer();
@@ -306,8 +304,8 @@ public sealed class UsersAndBansViewModelTests
     {
         var (section, server) = Create();
         await Bound(section.RefreshAsync());
-        server.Apply(new UserList(IdOf<ListUsers>(), [Yvonne]));
-        server.Apply(new BanList(IdOf<ListBans>(), []));
+        server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
+        server.Apply(new BanList(sent.LastRequestId<ListBans>(), []));
         var askedBefore = sent.Count;
 
         section.Detach();
@@ -326,7 +324,7 @@ public sealed class UsersAndBansViewModelTests
         await Bound(section.RefreshAsync());
 
         section.Detach();
-        server.Apply(new UserList(IdOf<ListUsers>(), [Yvonne]));
+        server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
 
         Assert.Empty(section.Users);
         Assert.All(sent, request => Assert.Null(server.Routes.Find(request.RequestId!)));
