@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace OVS.Tests;
 
 /// <summary>
-/// One test reference in a Tests section of a PLAN.md package (CODING-RULES.md §Tests): a test method with or without
+/// One test reference in a Tests section of a PLAN.md package (CODING-RULES-OVS.md §Tests): a test method with or without
 /// its class, a test class alone, or a website file and a text it contains; with the acceptance criteria named after it
 /// on its line. <see cref="Parse"/> reads them; <see cref="PlanReferenceTests"/> resolves them against the test assembly.
 /// </summary>

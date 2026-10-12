@@ -295,4 +295,4 @@ OVS_SHOTS=/tmp/ovs-shots dotnet test tests/OVS.Tests --filter "FullyQualifiedNam
 cd website && npm run clips -- /tmp/ovs-shots
 ```
 
-Der Umsetzungsplan steht in `PLAN.md`. Wer am Code mitarbeitet, liest zuerst `CODING-RULES.md`: Aufbau, Namen und Entwurfsregeln, die für jede Änderung gelten.
+Der Umsetzungsplan steht in `PLAN.md`. Wer am Code mitarbeitet, liest zuerst `CODING-RULES.md` (die allgemeinen Regeln für C#- und Avalonia-Projekte: Aufbau, Namen und Entwurfsregeln, die für jede Änderung gelten) und `CODING-RULES-OVS.md` (was davon für OpenVoiceSpeak gilt, der Aufbau des Projekts und die Entscheidungen dahinter).

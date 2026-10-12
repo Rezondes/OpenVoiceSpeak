@@ -5,7 +5,7 @@ using Xunit.Abstractions;
 namespace OVS.Tests;
 
 /// <summary>
-/// Every test reference in the Tests sections of PLAN.md resolves (CODING-RULES.md §Tests): a method by reflection on
+/// Every test reference in the Tests sections of PLAN.md resolves (CODING-RULES-OVS.md §Tests): a method by reflection on
 /// this assembly (in its class when one is named), a class alone by its name, a website reference by its file and text.
 /// The parser and the resolver have their own tests on small inline plans and references.
 /// </summary>

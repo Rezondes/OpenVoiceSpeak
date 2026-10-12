@@ -5,7 +5,7 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests;
 
 /// <summary>
-/// The scanner of CODING-RULES.md §Rule checker. It works on text, not on a syntax tree: comments, strings, character
+/// The scanner of CODING-RULES-OVS.md §Rule checker. It works on text, not on a syntax tree: comments, strings, character
 /// literals and preprocessor lines are stripped, braces are counted, and the <c>namespace</c> and type declarations
 /// (top-level and nested, with their modifiers) are read from what stands before each <c>{</c> or <c>;</c>. It is no
 /// C# parser; <see cref="SourceLayoutTests"/> pins the forms the code base uses.
@@ -14,7 +14,7 @@ static class SourceLayout
 {
     static readonly string[] Roots = ["src", "tests", "tools/render-icon"];
 
-    // CODING-RULES.md §General rules, rule 7; "Backup*" is a prefix, the others whole names, all ignoring case like git on Windows.
+    // CODING-RULES.md rule 7; "Backup*" is a prefix, the others whole names, all ignoring case like git on Windows.
     static readonly string[] IgnoredFolders = ["Log", "Logs", "Debug", "Release", "bin", "obj", "x64", "artifacts", "publish", "Generated_Code"];
 
     static readonly Regex Token = new(@"@?[\p{L}_][\p{L}\p{Nd}_]*|=>|==|::|\S");

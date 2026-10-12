@@ -3,7 +3,7 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests;
 
 /// <summary>
-/// The layout rules of CODING-RULES.md §Rule checker on the repository, and the scanner's own tests on small sample
+/// The layout rules of CODING-RULES-OVS.md §Rule checker on the repository, and the scanner's own tests on small sample
 /// trees in a temporary folder: each rule once broken, and the allowed forms the code base uses.
 /// </summary>
 public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet: false)

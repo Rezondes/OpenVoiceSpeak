@@ -4,7 +4,7 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Client;
 
 /// <summary>
-/// One clock (CODING-RULES N14): outside the composition roots (<c>Program.cs</c>, <c>App.axaml.cs</c>) the client reads
+/// One clock (CODING-RULES-OVS.md N14): outside the composition roots (<c>Program.cs</c>, <c>App.axaml.cs</c>) the client reads
 /// time only through the injected <see cref="TimeProvider"/>, except on a line marked with one of the kinds N14 names,
 /// and only the roots read their hand-over statics. Comments never count: the patterns are looked for in a line's code,
 /// the marker in its comment. A scanner of lines, no C# parser; the theories pin the forms it knows.
