@@ -462,7 +462,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
         vm.Dialogs = new DialogCallbacks
         {
-            EditBookmark = b => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", "pw", SavePassword: true)),
+            BookmarkList = new() { EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", "pw", SavePassword: true)) },
         };
         await ui.InvokeAsync<object?>(async () =>
         {
@@ -470,6 +470,35 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return null;
         });
         Assert.Equal("Neu", ClientSettings.Load(dir, out _).Bookmarks.Single().Name); // wiring only: the list, dialogs and save reach the profile folder; the fields are in BookmarkListTests
+    }
+
+    /// <summary>
+    /// The window sets the dialogs after the view model is built: the bookmarks and the page flow ask through the set of
+    /// the moment (the connection's password question and server dialogs: Bookmark_WrongSavedPassword_AsksAndSavesNew and
+    /// ConnectionViewModelTests).
+    /// </summary>
+    [Fact]
+    public async Task Dialogs_SetAfterConstruction_BookmarksAndPageFlowAskThroughTheNewSet()
+    {
+        var asked = new List<string>();
+        Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>> editor = (_, _) => Task.FromResult<KeyBinding?>(null);
+        vm.Dialogs = new DialogCallbacks
+        {
+            BookmarkList = new() { Confirm = question => { asked.Add(question); return Task.FromResult(false); } },
+            PageFlow = new() { EditKeyBinding = editor },
+        };
+        var bookmark = new Bookmark("Alt", "alt.example.org", 7000, "anna");
+
+        var editorOfPage = await ui.InvokeAsync(async () =>
+        {
+            vm.Settings.Bookmarks.Add(bookmark);
+            await vm.Bookmarks.DeleteAsync(bookmark);
+            vm.PageFlow.OpenSettings();
+            return vm.PageFlow.SettingsPage!.EditKeyBinding;
+        });
+
+        Assert.Single(asked);
+        Assert.Same(editor, editorOfPage);
     }
 
     /// <summary>Package 43: at start a newer release is offered; "Später" downloads nothing; switched off, nothing is asked.</summary>

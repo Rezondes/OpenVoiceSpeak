@@ -17,17 +17,17 @@ internal sealed class BookmarkList : ObservableObject
 {
     readonly Func<List<Bookmark>> bookmarks;
     readonly Func<string, int, byte[]?> loadIcon;
-    readonly Func<DialogCallbacks> dialogs;
+    readonly Func<BookmarkListDialogs> dialogs;
     readonly Action save;
     readonly Action<string> log;
 
     /// <param name="bookmarks">The current saved bookmarks: applying settings replaces the list, so it is read each time.</param>
     /// <param name="loadIcon">The icon last seen for a server (host, port); null when there is none.</param>
     /// <param name="leave">How long a removed bookmark stays to fold away.</param>
-    /// <param name="dialogs">The dialogs of the window now (it sets them after the view model is made).</param>
+    /// <param name="dialogs">Its two dialogs as the window has them now (it sets them after the view model is made).</param>
     /// <param name="save">Writes the current settings to disk.</param>
     /// <param name="log">Writes a line to the client log.</param>
-    internal BookmarkList(Func<List<Bookmark>> bookmarks, Func<string, int, byte[]?> loadIcon, LeaveTimer leave, Func<DialogCallbacks> dialogs,
+    internal BookmarkList(Func<List<Bookmark>> bookmarks, Func<string, int, byte[]?> loadIcon, LeaveTimer leave, Func<BookmarkListDialogs> dialogs,
         Action save, Action<string> log)
     {
         this.bookmarks = bookmarks;

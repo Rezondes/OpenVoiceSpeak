@@ -7636,10 +7636,6 @@
     "Count": 1
   },
   {
-    "Key": "RL201|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Bookmark_Edited_PersistsToTheProfileFolder:b",
-    "Count": 1
-  },
-  {
     "Key": "RL201|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Chat_EndToEnd:e",
     "Count": 3
   },
@@ -13333,14 +13329,6 @@
   },
   {
     "Key": "RL231|src/OVS.Client/Dialogs/DeleteUserDialog.cs|DeleteUserDialog.ShowAsync",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/Dialogs/DialogCallbacks.cs|DialogCallbacks.Confirm",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/Dialogs/DialogCallbacks.cs|DialogCallbacks.EditBookmark",
     "Count": 1
   },
   {

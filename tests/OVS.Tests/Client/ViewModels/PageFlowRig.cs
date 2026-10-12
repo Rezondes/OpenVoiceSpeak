@@ -25,7 +25,7 @@ sealed class PageFlowRig
 {
     public PageFlowRig()
     {
-        Dialogs = new DialogCallbacks { AskLeave = AskAsync, EditKeyBinding = Editor };
+        Dialogs = new DialogCallbacks { PageFlow = new() { AskLeave = AskAsync, EditKeyBinding = Editor } };
         Flow = new PageFlowViewModel(time: new ManualTimeProvider(), post: Posted.Enqueue, settings: () => Settings, knownDevices: () => KnownDevices,
             refreshDevices: () =>
             {
@@ -38,7 +38,7 @@ sealed class PageFlowRig
                 Calls.Add("setKeyBindings");
                 AppliedKeyBindings.Add(bindings);
             },
-            dialogs: () => Dialogs, checkNow: () => Task.FromResult(""), importSound: (_, _) => (null, null), previewSound: (_, _, _) => { },
+            dialogs: () => Dialogs.PageFlow, adminDialogs: () => Dialogs.Admin, checkNow: () => Task.FromResult(""), importSound: (_, _) => (null, null), previewSound: (_, _, _) => { },
             applyLive: live =>
             {
                 if (ApplyLiveThrows) throw new InvalidOperationException("Testmeldung");

@@ -22,13 +22,13 @@ public sealed class OverlayDialogsTests
     /// <summary>Each callback path and the <see cref="DialogCaseTable"/> case of the dialog it opens.</summary>
     public static TheoryData<string, string> OpenCases => new()
     {
-        { "Confirm", "Confirm" },
         { "AskPassword", "ServerPassword" },
         { "OfferUpdate", "Update" },
-        { "AskLeave", "Leave" },
         { "ConnectionDetails", "ConnectionDetails" },
-        { "EditBookmark", "Bookmark" },
-        { "EditKeyBinding", "KeyBinding" },
+        { "BookmarkList.EditBookmark", "Bookmark" },
+        { "BookmarkList.Confirm", "Confirm" },
+        { "PageFlow.AskLeave", "Leave" },
+        { "PageFlow.EditKeyBinding", "KeyBinding" },
         { "Server.Confirm", "Confirm" },
         { "Server.Ban", "Ban" },
         { "Server.AskText", "Text" },
@@ -65,6 +65,16 @@ public sealed class OverlayDialogsTests
         Assert.Empty(Walk(dialogs).Where(entry => entry.Value is null).Select(entry => entry.Path));
     }
 
+    [Fact]
+    public void DialogCallbacks_Default_EveryRecordIsEmptyNotNull()
+    {
+        var entries = Walk(new DialogCallbacks()).ToList();
+        Assert.DoesNotContain(entries, entry => entry.Value is Delegate);
+        Assert.All(entries.Where(entry => entry.Path.Split('.')[^1] is "BookmarkList" or "PageFlow" or "Server" or "Admin" or "UsersAndBans" or "BackupCard"),
+            entry => Assert.NotNull(entry.Value));
+        Assert.Equal(6, entries.Count(entry => entry.Value is not null));
+    }
+
     [AvaloniaFact]
     public void Create_EveryCallbackPath_HasAnOpenCase()
     {
@@ -75,14 +85,14 @@ public sealed class OverlayDialogsTests
     /// <summary>Calls the callback at <paramref name="path"/> as a view model would.</summary>
     static Task Call(DialogCallbacks dialogs, string path) => path switch
     {
-        "Confirm" => dialogs.Confirm!("Wirklich?"),
         "AskPassword" => dialogs.AskPassword!("Gilde"),
         "OfferUpdate" => dialogs.OfferUpdate!(new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))),
-        "AskLeave" => dialogs.AskLeave!(),
         "ConnectionDetails" => dialogs.ConnectionDetails!(ConnectionStats.CreateBlank()),
-        "EditBookmark" => dialogs.EditBookmark!(new Bookmark("Gilde", "h", 7000, "ich")),
-        "EditKeyBinding" => dialogs.EditKeyBinding!(null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
+        "BookmarkList.EditBookmark" => dialogs.BookmarkList.EditBookmark!(new Bookmark("Gilde", "h", 7000, "ich")),
+        "BookmarkList.Confirm" => dialogs.BookmarkList.Confirm!("Wirklich?"),
+        "PageFlow.AskLeave" => dialogs.PageFlow.AskLeave!(),
+        "PageFlow.EditKeyBinding" => dialogs.PageFlow.EditKeyBinding!(null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
         "Server.Confirm" => dialogs.Server.Confirm!("Wirklich?"),
         "Server.Ban" => dialogs.Server.Ban!("anna", true, null),
         "Server.AskText" => dialogs.Server.AskText!("Titel", "Text:", null),

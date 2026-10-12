@@ -98,7 +98,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings = settings;
         if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
-        Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, leave, () => Dialogs, () => Settings.Save(storageDir), Log.Write);
+        Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, leave, () => Dialogs.BookmarkList, () => Settings.Save(storageDir), Log.Write);
         Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log.Write, text => Status = text,
             text => AddNotice(text, NoticeKind.Warning), PendingViewModel.Timeout);
 
@@ -124,7 +124,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             writeServerState: state => Server is { } connected ? connected.SetSelfStateAsync(state) : Task.CompletedTask);
         PageFlow = new PageFlowViewModel(time: time, post: post, settings: () => Settings, knownDevices: () => Devices.Known,
             refreshDevices: () => Devices.Refresh(), captureChord: keys.CaptureNextChordAsync, setKeyBindings: bindings => keys.Bindings = bindings,
-            dialogs: () => Dialogs, checkNow: Update.CheckAsync, importSound: (path, sound) => SoundImport.Prepare(path, storageDir, sound),
+            dialogs: () => Dialogs.PageFlow, adminDialogs: () => Dialogs.Admin, checkNow: Update.CheckAsync, importSound: (path, sound) => SoundImport.Prepare(path, storageDir, sound),
             previewSound: audio.Sounds.Preview, applyLive: audio.ApplyLive, showAppearance: appearance => Appearance = appearance,
             setSelfTest: SelfTest.SetAsync, applySaved: ApplySettingsAsync,
             startLevelMeter: handler =>
@@ -147,7 +147,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             readEncoderBitrate: () => audio.EncoderBitrate);
         Connection = new ConnectionViewModel(time: time, post: post, log: Log.Write, openConnection: connect ?? OpenConnectionAsync, play: sound => audio.Sounds.Play(sound),
             voiceLink: voiceLink,
-            engineSync: EngineSync, selfTest: SelfTest, bookmarks: Bookmarks, icons: icons, stats: Stats, dialogs: () => Dialogs, shownServer: () => Server,
+            engineSync: EngineSync, selfTest: SelfTest, bookmarks: Bookmarks, icons: icons, stats: Stats,
+            askPassword: name => Dialogs.AskPassword?.Invoke(name) ?? Task.FromResult<PasswordAnswer?>(null), serverDialogs: () => Dialogs.Server,
+            shownServer: () => Server,
             show: shown => Server = shown, setStatus: text => Status = text, readStatus: () => Status, addNotice: AddNotice,
             confirmLeave: () => PageFlow.ConfirmLeaveAsync(adminOnly: true),
             closeAdmin: () =>

@@ -10,15 +10,27 @@ internal static class OverlayDialogs
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>
     internal static DialogCallbacks Create(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
     {
-        Confirm = text => ConfirmDialog.ShowAsync(overlay, text),
         AskPassword = name => ServerPasswordDialog.ShowAsync(overlay, name),
+        BookmarkList = CreateBookmarkListDialogs(overlay),
+        PageFlow = CreatePageFlowDialogs(overlay),
         Server = CreateServerDialogs(overlay, groups),
         Admin = CreateAdminDialogs(overlay),
-        EditBookmark = bookmark => BookmarkDialog.ShowAsync(overlay, bookmark),
-        EditKeyBinding = (binding, capture) => KeyBindingDialog.ShowAsync(overlay, binding, capture),
         OfferUpdate = offer => UpdateOfferDialog.ShowAsync(overlay, offer),
-        AskLeave = () => LeaveDialog.ShowAsync(overlay), // Package 114
         ConnectionDetails = stats => ConnectionDetailsDialog.ShowAsync(overlay, stats), // Package 133
+    };
+
+    /// <summary>The dialogs of the sidebar's saved servers.</summary>
+    internal static BookmarkListDialogs CreateBookmarkListDialogs(OverlayHost overlay) => new()
+    {
+        EditBookmark = bookmark => BookmarkDialog.ShowAsync(overlay, bookmark),
+        Confirm = text => ConfirmDialog.ShowAsync(overlay, text),
+    };
+
+    /// <summary>The dialogs of the page flow and the settings page's key binding editor.</summary>
+    internal static PageFlowDialogs CreatePageFlowDialogs(OverlayHost overlay) => new()
+    {
+        AskLeave = () => LeaveDialog.ShowAsync(overlay), // Package 114
+        EditKeyBinding = (binding, capture) => KeyBindingDialog.ShowAsync(overlay, binding, capture),
     };
 
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>

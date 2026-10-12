@@ -39,13 +39,15 @@ sealed class ConnectionRig : IAsyncDisposable
             reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: EndLossStreaks);
         var engineSync = new EngineSync(audio, () => EngineConnectionState.Disconnected, () => null, _ => 1f);
         var selfTest = new SelfTest(() => false, _ => { }, _ => { }, LogLines.Add, () => null, _ => Task.CompletedTask);
-        var bookmarks = new BookmarkList(() => Bookmarks, (_, _) => null, new LeaveTimer(Time, () => PostToUi), () => Dialogs, () => { }, LogLines.Add);
+        var bookmarks = new BookmarkList(() => Bookmarks, (_, _) => null, new LeaveTimer(Time, () => PostToUi), () => Dialogs.BookmarkList, () => { }, LogLines.Add);
         Connection = new ConnectionViewModel(time: Time, post: PostToUi, log: LogLines.Add, openConnection: OpenAsync, play: Play,
             voiceLink: voiceLink, engineSync: engineSync, selfTest: selfTest, bookmarks: bookmarks, icons: new ServerIconCache(dir),
-            stats: ConnectionStats.CreateBlank(), dialogs: () =>
+            stats: ConnectionStats.CreateBlank(),
+            askPassword: name => Dialogs.AskPassword?.Invoke(name) ?? Task.FromResult<PasswordAnswer?>(null),
+            serverDialogs: () =>
             {
                 OnDialogs?.Invoke();
-                return Dialogs;
+                return Dialogs.Server;
             }, shownServer: () => Shown, show: shown => Shown = shown,
             setStatus: text => Status = text, readStatus: () => Status, addNotice: AddNotice, confirmLeave: () => ConfirmLeave(),
             closeAdmin: () => AdminClosedCount++);
@@ -73,7 +75,7 @@ sealed class ConnectionRig : IAsyncDisposable
 
     public DialogCallbacks Dialogs { get; set; } = new();
 
-    /// <summary>Called whenever the connection asks for the dialogs (an attach does, before it owns its connection); may throw.</summary>
+    /// <summary>Called whenever the connection asks for the server dialogs (an attach does, before it owns its connection); may throw.</summary>
     public Action? OnDialogs { get; set; }
 
     /// <summary>The saved bookmarks of the settings.</summary>

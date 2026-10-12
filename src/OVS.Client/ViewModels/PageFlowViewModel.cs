@@ -23,7 +23,8 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     readonly Action refreshDevices;
     readonly Func<Task<KeyChord>> captureChord;
     readonly Action<IReadOnlyList<KeyBinding>> setKeyBindings;
-    readonly Func<DialogCallbacks> dialogs;
+    readonly Func<PageFlowDialogs> dialogs;
+    readonly Func<AdminDialogs> adminDialogs;
     readonly Func<Task<string>> checkNow;
     readonly Func<string, SoundEvent, (string? File, string? Error)> importSound;
     readonly Action<SoundEvent, SoundSetting, float> previewSound;
@@ -54,7 +55,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="refreshDevices">Loads the audio devices again; they reach the page when they arrive.</param>
     /// <param name="captureChord">Waits for the next key chord, for a binding on the settings page.</param>
     /// <param name="setKeyBindings">Makes the key poller listen to these bindings.</param>
-    /// <param name="dialogs">The dialogs now: the key binding editor, the question before leaving and what the administration page asks.</param>
+    /// <param name=
     /// <param name="checkNow">The update check of the settings page's button.</param>
     /// <param name="importSound">Copies an own tone into the profile folder.</param>
     /// <param name="previewSound">Plays a tone as the page sets it.</param>
@@ -67,7 +68,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="readThresholdDb">The voice activation threshold in use, read with each level (Package 129).</param>
     /// <param name="shownServer">The server view model now shown; the administration needs one.</param>
     internal PageFlowViewModel(TimeProvider time, Action<Action> post, Func<ClientSettings> settings, Func<DeviceLists?> knownDevices,
-        Action refreshDevices, Func<Task<KeyChord>> captureChord, Action<IReadOnlyList<KeyBinding>> setKeyBindings, Func<DialogCallbacks> dialogs,
+        Action refreshDevices, Func<Task<KeyChord>> captureChord, Action<IReadOnlyList<KeyBinding>> setKeyBindings, Func<PageFlowDialogs> dialogs, Func<AdminDialogs> adminDialogs,
         Func<Task<string>> checkNow, Func<string, SoundEvent, (string? File, string? Error)> importSound,
         Action<SoundEvent, SoundSetting, float> previewSound, Action<ClientSettings> applyLive, Action<BackgroundAppearance> showAppearance,
         Func<bool, Task> setSelfTest, Func<ClientSettings, Task> applySaved, Action<Action<float>> startLevelMeter,
@@ -81,6 +82,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         this.captureChord = captureChord;
         this.setKeyBindings = setKeyBindings;
         this.dialogs = dialogs;
+        this.adminDialogs = adminDialogs;
         this.checkNow = checkNow;
         this.importSound = importSound;
         this.previewSound = previewSound;
@@ -162,7 +164,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         if (shownServer() is not { CanAdminister: true } server || Page == Page.Admin) return;
         if (!await ConfirmLeaveAsync()) return; // Package 114
         ClosePage();
-        var newPage = new AdminViewModel(server, dialogs().Admin);
+        var newPage = new AdminViewModel(server, adminDialogs());
         Show(newPage, Page.Admin); // Package 114
         await newPage.RequestListsAsync();
     }

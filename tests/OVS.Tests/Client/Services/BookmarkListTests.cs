@@ -17,7 +17,7 @@ public sealed class BookmarkListTests
     readonly BookmarkList list;
     readonly List<string?> changed = [];
     List<Bookmark> bookmarks = [];
-    DialogCallbacks dialogs = new();
+    BookmarkListDialogs dialogs = new();
     int saves;
 
     public BookmarkListTests()
@@ -248,7 +248,7 @@ public sealed class BookmarkListTests
         var original = Gilde();
         bookmarks = [other, original];
         Bookmark? asked = null;
-        dialogs = new DialogCallbacks
+        dialogs = new BookmarkListDialogs
         {
             EditBookmark = bookmark =>
             {
@@ -273,7 +273,7 @@ public sealed class BookmarkListTests
     {
         var original = Gilde("alt");
         bookmarks.Add(original);
-        dialogs = new DialogCallbacks
+        dialogs = new BookmarkListDialogs
         {
             EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Gilde", "gilde.example.org", 7000, "anna", "alt", SavePassword: false)),
         };
@@ -289,7 +289,7 @@ public sealed class BookmarkListTests
     {
         var original = Gilde();
         bookmarks.Add(original);
-        dialogs = new DialogCallbacks { EditBookmark = _ => Task.FromResult<BookmarkEdit?>(null) };
+        dialogs = new BookmarkListDialogs { EditBookmark = _ => Task.FromResult<BookmarkEdit?>(null) };
 
         await HangGuard.Bound(list.EditAsync(original));
 
@@ -312,7 +312,7 @@ public sealed class BookmarkListTests
     [Fact]
     public async Task EditAsync_BookmarkNotInList_ChangesNothing()
     {
-        dialogs = new DialogCallbacks
+        dialogs = new BookmarkListDialogs
         {
             EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", null, SavePassword: false)),
         };
@@ -339,7 +339,7 @@ public sealed class BookmarkListTests
 
     // ---- editing onto the address of another bookmark (25h1) ----
 
-    static DialogCallbacks EditTo(string name, string host, int port, Func<string, Task<bool>>? confirm, string? password = null, bool savePassword = false) =>
+    static BookmarkListDialogs EditTo(string name, string host, int port, Func<string, Task<bool>>? confirm, string? password = null, bool savePassword = false) =>
         new()
         {
             EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit(name, host, port, "anna", password, savePassword)),
@@ -549,7 +549,7 @@ public sealed class BookmarkListTests
         bookmarks = [gilde, Club()];
         list.Refresh();
         string? asked = null;
-        dialogs = new DialogCallbacks
+        dialogs = new BookmarkListDialogs
         {
             Confirm = question =>
             {
@@ -572,7 +572,7 @@ public sealed class BookmarkListTests
     {
         var gilde = Gilde();
         bookmarks.Add(gilde);
-        dialogs = new DialogCallbacks { Confirm = _ => Task.FromResult(false) };
+        dialogs = new BookmarkListDialogs { Confirm = _ => Task.FromResult(false) };
 
         await HangGuard.Bound(list.DeleteAsync(gilde));
 
@@ -595,7 +595,7 @@ public sealed class BookmarkListTests
     [Fact]
     public async Task DeleteAsync_BookmarkNotInList_SavesNothing()
     {
-        dialogs = new DialogCallbacks { Confirm = _ => Task.FromResult(true) };
+        dialogs = new BookmarkListDialogs { Confirm = _ => Task.FromResult(true) };
 
         await HangGuard.Bound(list.DeleteAsync(Gilde()));
 

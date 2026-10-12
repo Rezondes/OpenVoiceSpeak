@@ -27,7 +27,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     int asked;
 
     /// <summary>The page flow and the administration page ask the same question.</summary>
-    DialogCallbacks Dialogs() => new() { AskLeave = AskLeaveAsync, Admin = new() { AskLeave = AskLeaveAsync } };
+    DialogCallbacks Dialogs() => new() { PageFlow = new() { AskLeave = AskLeaveAsync }, Admin = new() { AskLeave = AskLeaveAsync } };
 
     Task<LeaveChoice> AskLeaveAsync()
     {

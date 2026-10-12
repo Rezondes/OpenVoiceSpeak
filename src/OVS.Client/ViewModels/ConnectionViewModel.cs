@@ -37,7 +37,8 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     readonly BookmarkList bookmarks;
     readonly ServerIconCache icons;
     readonly ConnectionStatsViewModel stats;
-    readonly Func<DialogCallbacks> dialogs;
+    readonly Func<string, Task<PasswordAnswer?>> askPassword;
+    readonly Func<ServerDialogs> serverDialogs;
     readonly Func<ServerViewModel?> shownServer;
     readonly Action<ServerViewModel?> show;
     readonly Action<string> setStatus;
@@ -66,7 +67,8 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <param name="bookmarks">Remembers the server that was connected to.</param>
     /// <param name="icons">The logo cache the icon tracking fills.</param>
     /// <param name="stats">Starts over with every connection.</param>
-    /// <param name="dialogs">The dialogs now: the password question and what each server view model asks.</param>
+    /// <param name="askPassword">Asks for the password of a bookmark the server refused; null is cancelled (also without a dialog).</param>
+    /// <param name="serverDialogs">What each server view model asks, read at its attach.</param>
     /// <param name="shownServer">The server view model now shown.</param>
     /// <param name="show">Shows a server view model, or none.</param>
     /// <param name="setStatus">Sets the status text of the start card.</param>
@@ -76,7 +78,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <param name="closeAdmin">Closes the administration when it is open: it needs a server.</param>
     internal ConnectionViewModel(TimeProvider time, Action<Action> post, Action<string> log, OpenConnection openConnection, Action<SoundEvent> play,
         VoiceLink voiceLink, EngineSync engineSync, SelfTest selfTest, BookmarkList bookmarks, ServerIconCache icons, ConnectionStatsViewModel stats,
-        Func<DialogCallbacks> dialogs, Func<ServerViewModel?> shownServer, Action<ServerViewModel?> show, Action<string> setStatus,
+        Func<string, Task<PasswordAnswer?>> askPassword, Func<ServerDialogs> serverDialogs, Func<ServerViewModel?> shownServer, Action<ServerViewModel?> show, Action<string> setStatus,
         Func<string> readStatus, Action<string, NoticeKind> addNotice, Func<Task<bool>> confirmLeave, Action closeAdmin)
     {
         this.time = time;
@@ -90,7 +92,8 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         this.bookmarks = bookmarks;
         this.icons = icons;
         this.stats = stats;
-        this.dialogs = dialogs;
+        this.askPassword = askPassword;
+        this.serverDialogs = serverDialogs;
         this.shownServer = shownServer;
         this.show = show;
         this.setStatus = setStatus;
@@ -167,7 +170,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         {
             log(ProtocolLogText.Describe(request, mirror));
             return conn.SendAsync(request);
-        }, time, dialogs().Server) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
+        }, time, serverDialogs()) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
         vm.Notice += text => addNotice(text, NoticeKind.Error);
         TrackServerIcon(vm, choice.Host, choice.Port);
         vm.PropertyChanged += OnServerPropertyChanged;
@@ -205,8 +208,8 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         while (true)
         {
             await ConnectAsync(new ConnectChoice(bookmark.Host, bookmark.Port, bookmark.Nickname, password, SaveBookmark: true, SavePassword: save));
-            if (lastRejection != ReasonCodes.WrongPassword || dialogs().AskPassword is not { } ask) return;
-            if (await ask(bookmark.Name) is not { } answer) return;
+            if (lastRejection != ReasonCodes.WrongPassword) return;
+            if (await askPassword(bookmark.Name) is not { } answer) return;
             (password, save) = (answer.Password, answer.Save);
         }
     }
