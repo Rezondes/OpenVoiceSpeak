@@ -47,7 +47,7 @@ static class MainViewModelSetup
     /// <paramref name="connect"/> is the connect seam (none: the real connect).
     /// </summary>
     public static MainViewModel Compose(string dir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
-        KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
+        TrustedServerFingerprints knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
         Func<AudioDirection, List<AudioDevice>>? listDevices = null, OpenConnection? connect = null) =>
         new(dir, post, time, log, settings, settingsWarning, knownServers, icons, soundLibrary, leave, keys, audio, listDevices, connect);
 

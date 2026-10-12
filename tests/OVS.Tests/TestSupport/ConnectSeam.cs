@@ -108,8 +108,8 @@ sealed class ConnectSeam(string profileDir, TimeProvider time)
 
     async Task<ClientConnection> ConnectForRealAsync(ConnectAttempt attempt)
     {
-        using var identity = ClientStorage.LoadOrCreateIdentity(profileDir);
+        using var identity = IdentityFile.LoadOrCreate(profileDir);
         return await ClientConnection.ConnectAsync(attempt.Choice.Host, attempt.Choice.Port, identity, attempt.Choice.Nickname,
-            attempt.Choice.PasswordOrNull, new KnownServers(profileDir), _ => Task.FromResult(true), time, attempt.Token);
+            attempt.Choice.PasswordOrNull, new TrustedServerFingerprints(profileDir), _ => Task.FromResult(true), time, attempt.Token);
     }
 }

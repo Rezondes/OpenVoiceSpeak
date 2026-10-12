@@ -5,7 +5,7 @@ using OVS.Shared.Protocol.Framing;
 namespace OVS.Client.Net;
 
 /// <summary>Trust on first use: remembers each server's certificate fingerprint per host:port, in the profile folder.</summary>
-public sealed class KnownServers(string profileDir)
+public sealed class TrustedServerFingerprints(string profileDir)
 {
     /// <summary>The pin file in the profile folder.</summary>
     public const string FileName = "known_servers.json";

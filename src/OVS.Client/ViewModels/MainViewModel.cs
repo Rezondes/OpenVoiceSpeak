@@ -22,7 +22,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     readonly string storageDir;
     readonly Action<Action> post;
-    readonly KnownServers known;
+    readonly TrustedServerFingerprints known;
     readonly SoundLibrary soundLibrary;
     readonly VoiceHints hints; // Packages 34 and 131: why nobody hears the user, shown as VoiceHint on every tick
 
@@ -59,7 +59,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         try
         {
             audio = new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log.Write), soundLibrary.Samples);
-            return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new KnownServers(storageDir),
+            return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new TrustedServerFingerprints(storageDir),
                 new ServerIconCache(storageDir), soundLibrary, new LeaveTimer(time, () => post), keys, audio,
                 hardware is null ? null : hardware.ListActive, connect);
         }
@@ -87,7 +87,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// null: the identity file of <paramref name="storageDir"/> plus <see cref="ClientConnection.ConnectAsync"/>.
     /// </param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
-        KnownServers knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
+        TrustedServerFingerprints knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
         Func<AudioDirection, List<AudioDevice>>? listDevices, OpenConnection? connect = null)
     {
         this.storageDir = storageDir;
@@ -283,7 +283,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>The real connect: the profile's identity, the trusted fingerprints and the certificate question.</summary>
     async Task<ClientConnection> OpenConnectionAsync(ConnectChoice choice, CancellationToken token)
     {
-        using var identity = ClientStorage.LoadOrCreateIdentity(storageDir);
+        using var identity = IdentityFile.LoadOrCreate(storageDir);
         return await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
             choice.PasswordOrNull, known, ConfirmTofuLogged, Time, token);
     }

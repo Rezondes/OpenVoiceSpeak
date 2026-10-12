@@ -58,7 +58,7 @@ public partial class App : Application
             {
                 if (e.PropertyName == nameof(MainViewModel.Appearance)) WindowAppearance.Apply(this, window, vm.Appearance);
             };
-            if (options.ProfileDir != ClientStorage.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
+            if (options.ProfileDir != ClientPaths.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
             DebugApi? debugApi = null;
             if (options.DebugApiPort is { } port)
             {

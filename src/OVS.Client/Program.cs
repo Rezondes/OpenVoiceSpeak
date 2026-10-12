@@ -40,7 +40,7 @@ internal static class Program
         });
         Settings = ClientSettings.Load(Options.ProfileDir, out var settingsWarning);
         SettingsWarning = settingsWarning;
-        Language.Apply(Settings.Language); // Package 45: before the first window
+        UiCulture.Apply(Settings.Language); // Package 45: before the first window
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

@@ -35,7 +35,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var log = new ClientLog(Parts, time);
         keys ??= new KeyPoller(time);
         var soundLibrary = new SoundLibrary(Parts, log.Write);
-        return MainViewModelSetup.Compose(Profile, post, time, log, settings ?? new ClientSettings(), settingsWarning, new KnownServers(Parts),
+        return MainViewModelSetup.Compose(Profile, post, time, log, settings ?? new ClientSettings(), settingsWarning, new TrustedServerFingerprints(Parts),
             new ServerIconCache(Parts), soundLibrary, new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log.Write), soundLibrary.Samples),
             hardware is null ? null : hardware.ListActive);
     }
@@ -60,7 +60,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var keys = new KeyPoller(time);
         var audio = new AudioEngine(keys, time, hardware: null, new NativeCaptureFilters(log.Write));
 
-        await using var vm = MainViewModelSetup.Compose(Profile, a => a(), time, log, settings, null, new KnownServers(Parts),
+        await using var vm = MainViewModelSetup.Compose(Profile, a => a(), time, log, settings, null, new TrustedServerFingerprints(Parts),
             new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), leave, keys, audio);
 
         Assert.Same(log, vm.Log);
@@ -191,8 +191,8 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var (server, ui, vm) = await ConnectAsync();
         try
         {
-            Assert.True(File.Exists(Path.Combine(Parts, KnownServers.FileName)));
-            Assert.False(File.Exists(Path.Combine(Profile, KnownServers.FileName)));
+            Assert.True(File.Exists(Path.Combine(Parts, TrustedServerFingerprints.FileName)));
+            Assert.False(File.Exists(Path.Combine(Profile, TrustedServerFingerprints.FileName)));
         }
         finally
         {

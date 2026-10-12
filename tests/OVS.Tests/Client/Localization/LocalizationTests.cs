@@ -35,7 +35,7 @@ public class LocalizationTests
     [InlineData(AppLanguage.German, "en-US", "de")]
     [InlineData(AppLanguage.English, "de-DE", "en")]
     public void Language_SystemGermanOrEnglish_ChoiceWins(AppLanguage choice, string windows, string expected) =>
-        Assert.Equal(expected, Language.Resolve(choice, CultureInfo.GetCultureInfo(windows)).Name);
+        Assert.Equal(expected, UiCulture.Resolve(choice, CultureInfo.GetCultureInfo(windows)).Name);
 
     [Fact]
     public void ErrorTexts_English()

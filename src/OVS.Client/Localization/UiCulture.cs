@@ -6,7 +6,7 @@ namespace OVS.Client.Localization;
 /// Package 45 (A43): the client speaks German or English. "System" follows the Windows display language, anything
 /// but German falls back to English. The choice is applied once at start, a change takes effect after a restart.
 /// </summary>
-public static class Language
+public static class UiCulture
 {
     static readonly CultureInfo German = CultureInfo.GetCultureInfo("de");
     static readonly CultureInfo English = CultureInfo.GetCultureInfo("en");

@@ -13796,11 +13796,11 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/Localization/Language.cs|Language.Resolve",
+    "Key": "RL231|src/OVS.Client/Localization/PermissionLabels.cs|PermissionLabels",
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/Localization/PermissionLabels.cs|PermissionLabels",
+    "Key": "RL231|src/OVS.Client/Localization/UiCulture.cs|UiCulture.Resolve",
     "Count": 1
   },
   {
@@ -14108,22 +14108,6 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/Net/ClientStorage.cs|ClientStorage",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/Net/ClientStorage.cs|ClientStorage.DefaultDirectory",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/Net/KnownServers.cs|KnownServers.Check",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/Net/KnownServers.cs|KnownServers.Trust",
-    "Count": 1
-  },
-  {
     "Key": "RL231|src/OVS.Client/Net/ServerIconCache.cs|ServerIconCache.Load",
     "Count": 1
   },
@@ -14193,6 +14177,14 @@
   },
   {
     "Key": "RL231|src/OVS.Client/Net/TofuResult.cs|TofuResult.Unknown",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/Net/TrustedServerFingerprints.cs|TrustedServerFingerprints.Check",
+    "Count": 1
+  },
+  {
+    "Key": "RL231|src/OVS.Client/Net/TrustedServerFingerprints.cs|TrustedServerFingerprints.Trust",
     "Count": 1
   },
   {

@@ -14,7 +14,7 @@ public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool Us
 
     public static ClientOptions Parse(string[] args)
     {
-        string profile = ClientStorage.DefaultDirectory;
+        string profile = ClientPaths.DefaultDirectory;
         int? debugPort = null, afterUpdate = null;
         bool audio = true, audioDebug = false;
         for (int i = 0; i < args.Length; i++)

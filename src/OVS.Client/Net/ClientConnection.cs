@@ -74,7 +74,7 @@ public sealed class ClientConnection : IAsyncDisposable
     /// the connection alive against the server's idle timeout, which runs in real time.
     /// </param>
     public static async Task<ClientConnection> ConnectAsync(string host, int port, ClientIdentity identity, string nickname,
-        string? password, KnownServers known, Func<TofuPrompt, Task<bool>> confirm, TimeProvider time, CancellationToken ct = default)
+        string? password, TrustedServerFingerprints known, Func<TofuPrompt, Task<bool>> confirm, TimeProvider time, CancellationToken ct = default)
     {
         var tcp = new TcpClient();
         try

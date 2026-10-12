@@ -15,10 +15,10 @@ namespace OVS.Tests.Client.Net;
 
 public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: false)
 {
-    KnownServers Known() => new(dir);
+    TrustedServerFingerprints Known() => new(dir);
 
     Task<ClientConnection> Connect(TestServer server, string nick, ClientIdentity? id = null, Func<TofuPrompt, Task<bool>>? confirm = null,
-        KnownServers? known = null, string? password = null, TimeProvider? time = null) =>
+        TrustedServerFingerprints? known = null, string? password = null, TimeProvider? time = null) =>
         ClientConnection.ConnectAsync("127.0.0.1", server.Port, id ?? ClientIdentity.Create(), nick, password,
             known ?? Known(), confirm ?? (_ => Task.FromResult(true)), time ?? TimeProvider.System);
 
@@ -42,8 +42,8 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     [Fact]
     public void Identity_LoadOrCreate_Twice_SameFingerprint()
     {
-        using var a = ClientStorage.LoadOrCreateIdentity(dir);
-        using var b = ClientStorage.LoadOrCreateIdentity(dir);
+        using var a = IdentityFile.LoadOrCreate(dir);
+        using var b = IdentityFile.LoadOrCreate(dir);
         Assert.Equal(a.Fingerprint, b.Fingerprint);
     }
 

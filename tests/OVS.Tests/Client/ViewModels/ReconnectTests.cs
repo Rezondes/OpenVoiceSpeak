@@ -402,7 +402,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     [Fact]
     public async Task Reconnect_AttemptsRunning_StatusCountsDownWithoutToneUntilTheFifthFails()
     {
-        using var identity = ClientStorage.LoadOrCreateIdentity(dir); // anna is an admin there
+        using var identity = IdentityFile.LoadOrCreate(dir); // anna is an admin there
         await using var own = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"));
         await ConnectTo(own);
         seam.FailEvery(ConnectSeam.CreateClosedPortError); // every attempt is refused at once, no real connect to wait for

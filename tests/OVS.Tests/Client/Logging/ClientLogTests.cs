@@ -44,7 +44,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     /// <summary>Real client (no audio devices) against a real server, with the profile's identity as admin.</summary>
     async Task<(TestServer Server, TestDispatcher Ui, MainViewModel Vm)> StartAsync(string password = "")
     {
-        using var identity = ClientStorage.LoadOrCreateIdentity(dir);
+        using var identity = IdentityFile.LoadOrCreate(dir);
         var server = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"), password: password);
         var ui = new TestDispatcher();
         var vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, trustServers: true)));
