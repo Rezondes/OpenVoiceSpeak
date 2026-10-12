@@ -26,6 +26,13 @@ static class LintCase
     /// <summary>Every finding of every rule in <paramref name="files"/> under <paramref name="settings"/>.</summary>
     public static List<Finding> Run(LintSettings settings, params SourceFile[] files) => Linter.Run(settings, files);
 
-    /// <summary>The rule ids of the findings of one file at <paramref name="path"/> with <paramref name="text"/>.</summary>
-    public static List<string> ListRuleIds(string path, string text) => [.. Run(CreateFile(path, text)).Select(finding => finding.RuleId)];
+    /// <summary>The findings of <paramref name="rule"/> alone in <paramref name="files"/>, file by file.</summary>
+    public static List<Finding> Check(IRule rule, params SourceFile[] files)
+    {
+        var index = RepositoryIndex.Build(files);
+        return [.. files.SelectMany(file => rule.Check(file, index))];
+    }
+
+    /// <summary>The rule ids <paramref name="rule"/> finds in one file at <paramref name="path"/> with <paramref name="text"/>.</summary>
+    public static List<string> ListRuleIds(IRule rule, string path, string text) => [.. Check(rule, CreateFile(path, text)).Select(finding => finding.RuleId)];
 }

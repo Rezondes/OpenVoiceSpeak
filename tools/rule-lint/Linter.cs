@@ -31,5 +31,14 @@ public static class Linter
         new ExceptionFolderRule(),
         new UiSuffixRule(settings),
         new XamlRule(settings),
+        new TypeNameRule(settings),
+        new MethodNameRule(),
+        new EnglishTextRule(),
+        new EmDashRule(),
+        new LocalNameRule(settings),
+        new TupleRule(),
+        new PrimaryConstructorRule(),
+        new XmlDocRule(),
+        new CommentPathRule(),
     ];
 }

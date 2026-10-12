@@ -18,7 +18,7 @@ public sealed class LinterTests
         var findings = LintCase.Run(
             LintCase.CreateFile("src/App/B.cs", "namespace App;\nclass B { }\nclass C { }"),
             LintCase.CreateFile("src/App/A.cs", "namespace Wrong;\nclass A { }\nclass D { }"));
-        Assert.Equal(["src/App/A.cs:1", "src/App/A.cs:3", "src/App/B.cs:3"], findings.Select(finding => finding.Path + ":" + finding.Line));
+        Assert.Equal(["src/App/A.cs:1", "src/App/A.cs:3", "src/App/B.cs:3"], findings.Where(finding => finding.RuleId is "RL011" or "RL061").Select(finding => finding.Path + ":" + finding.Line));
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using RuleLint.Rules;
+
 namespace RuleLint.Tests.Rules;
 
 /// <summary>Rules 12 and 13 in XAML: no literal user text, fixed prefixes.</summary>
@@ -5,8 +7,10 @@ public sealed class XamlRuleTests
 {
     static readonly LintSettings Settings = LintCase.CreateSettings(""", "xamlPrefixes": { "vm": "App.ViewModels" }""");
 
+    static readonly IRule Rule = new XamlRule(Settings);
+
     static List<string> ListRuleIds(string xaml) =>
-        [.. LintCase.Run(Settings, LintCase.CreateFile("src/App/Views/ChatView.axaml", xaml, Settings)).Select(finding => finding.RuleId)];
+        [.. LintCase.Check(Rule, LintCase.CreateFile("src/App/Views/ChatView.axaml", xaml, Settings)).Select(finding => finding.RuleId)];
 
     [Fact]
     public void Check_BoundAndResourceText_FindsNothing() =>
@@ -15,7 +19,7 @@ public sealed class XamlRuleTests
     [Fact]
     public void Check_LiteralText_WarnsOnce()
     {
-        var finding = Assert.Single(LintCase.Run(Settings, LintCase.CreateFile("src/App/Views/ChatView.axaml",
+        var finding = Assert.Single(LintCase.Check(Rule, LintCase.CreateFile("src/App/Views/ChatView.axaml",
             "<UserControl x:Class=\"App.Views.ChatView\">\n  <Button Content=\"Senden\"/>\n</UserControl>", Settings)));
         Assert.Equal(("RL121", Severity.Warning, 2), (finding.RuleId, finding.Severity, finding.Line));
     }
