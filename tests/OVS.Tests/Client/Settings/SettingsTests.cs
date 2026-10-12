@@ -180,7 +180,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal(OVS.Client.Localization.AppLanguage.English, loaded.Language);
         var vm = Vm(loaded);
-        Assert.Equal("English", vm.SelectedLanguage.Name);
+        Assert.Equal("English", vm.SelectedLanguage.Label);
         vm.SelectedLanguage = SettingsViewModel.Languages.First(); // "Wie Windows"
         Assert.Equal(OVS.Client.Localization.AppLanguage.System, vm.ToSettings(loaded).Language);
     }

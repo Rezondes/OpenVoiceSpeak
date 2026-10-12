@@ -13936,10 +13936,6 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/Models/LanguageOption.cs|LanguageOption",
-    "Count": 1
-  },
-  {
     "Key": "RL231|src/OVS.Client/Models/Notice.cs|Notice.IsError",
     "Count": 1
   },
@@ -14021,10 +14017,6 @@
   },
   {
     "Key": "RL231|src/OVS.Client/Models/StateChange.cs|StateChange.None",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/Models/ThemeOption.cs|ThemeOption",
     "Count": 1
   },
   {

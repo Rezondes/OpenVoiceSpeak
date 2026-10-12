@@ -23,9 +23,9 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPushToTalk), nameof(ShowPttHint), nameof(ShowReleaseDelay))]
     bool voiceActivation;
-    [ObservableProperty] ThemeOption selectedTheme;
+    [ObservableProperty] Choice<AppTheme> selectedTheme;
     [ObservableProperty] DisplayOption selectedDisplay;
-    [ObservableProperty] LanguageOption selectedLanguage;
+    [ObservableProperty] Choice<AppLanguage> selectedLanguage;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAboveThreshold), nameof(MeterThresholdDb))]
     double vadThresholdDb;
@@ -138,7 +138,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         ? string.Format(Strings.About_Build, b.ShortCommit, b.BuildTime.ToLocalTime())
         : Strings.About_LocalBuild;
 
-    public static IReadOnlyList<ThemeOption> Themes =>
+    public static IReadOnlyList<Choice<AppTheme>> Themes =>
         [new(AppTheme.System, Strings.Theme_System), new(AppTheme.Light, Strings.Theme_Light), new(AppTheme.Dark, Strings.Theme_Dark)];
 
     /// <summary>Package 99 (A114).</summary>
@@ -149,7 +149,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     ];
 
     /// <summary>Package 45: the language names stay in their own language, so everybody finds theirs.</summary>
-    public static IReadOnlyList<LanguageOption> Languages =>
+    public static IReadOnlyList<Choice<AppLanguage>> Languages =>
         [new(AppLanguage.System, Strings.Language_System), new(AppLanguage.German, "Deutsch"), new(AppLanguage.English, "English")];
 
     /// <summary>The other radio button of the transmit mode.</summary>
