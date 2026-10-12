@@ -6,10 +6,10 @@ public sealed class KeyStateTracker
     KeyActionSet previous;
 
     /// <returns>Toggle actions pressed since the last poll, and whether any hold action changed.</returns>
-    public (KeyActionSet Pressed, bool HoldChanged) Update(KeyActionSet active)
+    public KeyStateChange Update(KeyActionSet active)
     {
         int changed = active.Bits ^ previous.Bits;
         previous = active;
-        return (new KeyActionSet(changed & active.Bits & ~KeyActionTraits.Holds.Bits), (changed & KeyActionTraits.Holds.Bits) != 0);
+        return new KeyStateChange(new KeyActionSet(changed & active.Bits & ~KeyActionTraits.Holds.Bits), (changed & KeyActionTraits.Holds.Bits) != 0);
     }
 }

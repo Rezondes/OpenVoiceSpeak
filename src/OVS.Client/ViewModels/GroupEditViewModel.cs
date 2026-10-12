@@ -28,7 +28,7 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
         IsReadOnly = ReadOnlyReason is not null;
         CanDelete = id is null || GroupRules.CanDelete(actor, id.Value, permissions);
         Toggles = PermissionLabels.All
-            .Select(p => new PermissionToggleViewModel(p.Permission, p.Label, permissions.Has(p.Permission), !IsReadOnly && actor.Has(p.Permission)))
+            .Select(p => new PermissionToggleViewModel(p.Value, p.Label, permissions.Has(p.Value), !IsReadOnly && actor.Has(p.Value)))
             .ToList();
     }
 

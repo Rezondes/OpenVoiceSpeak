@@ -90,11 +90,11 @@ public sealed class VoiceClient : IDisposable
     }
 
     /// <summary>Package 133: the last round trip with the number of answers so far, so each sample is taken once.</summary>
-    public (TimeSpan? Value, int Count) RoundTripSample
+    public RoundTripSample RoundTripSample
     {
         get
         {
-            lock (stateGate) return (roundTrip, roundTrips);
+            lock (stateGate) return new RoundTripSample(roundTrip, roundTrips);
         }
     }
 

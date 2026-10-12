@@ -1,3 +1,4 @@
+using OVS.Client.Net;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
@@ -16,7 +17,7 @@ namespace OVS.Client.ViewModels;
 public sealed partial class LinkMatrixViewModel : ObservableObject
 {
     readonly ServerViewModel server;
-    readonly Dictionary<(Guid, Guid), bool> desired = [];
+    readonly Dictionary<ChannelPair, bool> desired = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPending), nameof(PendingText))]
@@ -45,18 +46,16 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
         var n => string.Format(Strings.Links_Pending, n),
     };
 
-    static (Guid, Guid) Norm(Guid a, Guid b) => a.CompareTo(b) < 0 ? (a, b) : (b, a);
+    bool OnServer(ChannelPair key) => server.Mirror.Links.Contains(key);
 
-    bool OnServer((Guid, Guid) key) => server.Mirror.Links.Contains(key);
+    public bool IsLinked(Guid a, Guid b) => desired.TryGetValue(ChannelPair.Of(a, b), out var linked) ? linked : OnServer(ChannelPair.Of(a, b));
 
-    public bool IsLinked(Guid a, Guid b) => desired.TryGetValue(Norm(a, b), out var linked) ? linked : OnServer(Norm(a, b));
-
-    public bool IsPending(Guid a, Guid b) => desired.ContainsKey(Norm(a, b));
+    public bool IsPending(Guid a, Guid b) => desired.ContainsKey(ChannelPair.Of(a, b));
 
     public void Set(Guid a, Guid b, bool linked)
     {
         if (a == b) return;
-        var key = Norm(a, b);
+        var key = ChannelPair.Of(a, b);
         if (linked == OnServer(key)) desired.Remove(key);
         else desired[key] = linked;
         Refresh();
@@ -68,7 +67,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
         var channels = server.Tree.Channels.Live().Where(c => !c.IsSeparator).ToList(); // Package 111: nothing to link
         var ids = channels.Select(c => c.Id).ToHashSet();
         foreach (var (key, linked) in desired.ToList())
-            if (!ids.Contains(key.Item1) || !ids.Contains(key.Item2) || linked == OnServer(key)) desired.Remove(key);
+            if (!ids.Contains(key.Lower) || !ids.Contains(key.Upper) || linked == OnServer(key)) desired.Remove(key);
 
         var selected = Rows.Live().Where(r => r.IsSelected).Select(r => r.Id).ToHashSet();
         var rows = channels.Select((row, i) => new LinkRowViewModel(i + 1, row.Id, row.Name, selected.Contains(row.Id),
@@ -83,12 +82,12 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
         PendingCount = desired.Count;
     }
 
-    IEnumerable<(Guid A, Guid B)> SelectedPairs()
+    IEnumerable<ChannelPair> SelectedPairs()
     {
         var selected = Rows.Live().Where(r => r.IsSelected).Select(r => r.Id).ToList();
         for (int i = 0; i < selected.Count; i++)
             for (int j = i + 1; j < selected.Count; j++)
-                yield return (selected[i], selected[j]);
+                yield return ChannelPair.Of(selected[i], selected[j]);
     }
 
     /// <summary>Every selected channel with every other: links are not transitive (A5).</summary>
@@ -114,11 +113,11 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     /// <summary>Package 114: the marked changes to the server; null when there is nothing to send.</summary>
     PendingActionViewModel? SendPending()
     {
-        var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
-        var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Item1, d.Key.Item2)).ToList();
+        var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Lower, d.Key.Upper)).ToList();
+        var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Lower, d.Key.Upper)).ToList();
         if (add.Count + remove.Count == 0 || Applying.IsRunning) return null;
         // The server's ChannelsLinked/Unlinked make them real; until then they stay marked.
-        return server.SendConfirmed(new SetChannelLinks(add, remove), _ => add.All(l => OnServer(Norm(l.A, l.B))) && remove.All(l => !OnServer(Norm(l.A, l.B))),
+        return server.SendConfirmed(new SetChannelLinks(add, remove), _ => add.All(l => OnServer(ChannelPair.Of(l.A, l.B))) && remove.All(l => !OnServer(ChannelPair.Of(l.A, l.B))),
             Applying, notify: false);
     }
 

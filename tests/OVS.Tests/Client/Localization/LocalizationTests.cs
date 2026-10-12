@@ -50,11 +50,11 @@ public class LocalizationTests
         Assert.Equal("Upload and restore ...", TestCulture.With("en-US", () => Strings.Ui_UploadAndRestore));
         Assert.Equal("Uploading: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Backup_Uploading, 42)));
         // Package 81: the log viewer
-        Assert.Equal("Logs ansehen", PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsView).Label);
-        Assert.Equal("View logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsView).Label));
+        Assert.Equal("Logs ansehen", PermissionLabels.All.Single(p => p.Value == OVS.Shared.Permissions.Permission.LogsView).Label);
+        Assert.Equal("View logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Value == OVS.Shared.Permissions.Permission.LogsView).Label));
         Assert.Equal("Page 2 of 3", TestCulture.With("en-US", () => string.Format(Strings.Ui_LogPage, 2, 3)));
         // Package 82: the log download
-        Assert.Equal("Download logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Permission == OVS.Shared.Permissions.Permission.LogsDownload).Label));
+        Assert.Equal("Download logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Value == OVS.Shared.Permissions.Permission.LogsDownload).Label));
         Assert.Equal("Die Auswahl ist grösser als 200 MB. Wähle einen kürzeren Zeitraum.", ErrorTexts.For(ReasonCodes.LogsTooLarge));
         Assert.Equal("The selection is larger than 200 MB. Choose a shorter period.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.LogsTooLarge)));
         Assert.Equal("Downloading logs: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Logs_Downloading, 42)));

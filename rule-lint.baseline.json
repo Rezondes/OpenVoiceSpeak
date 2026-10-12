@@ -1412,14 +1412,6 @@
     "Count": 2
   },
   {
-    "Key": "RL201|src/OVS.Client/Net/StateMirror.cs|StateMirror.Norm:a",
-    "Count": 1
-  },
-  {
-    "Key": "RL201|src/OVS.Client/Net/StateMirror.cs|StateMirror.Norm:b",
-    "Count": 1
-  },
-  {
     "Key": "RL201|src/OVS.Client/Net/StateMirror.cs|StateMirror.StateMirror:c",
     "Count": 1
   },
@@ -1717,14 +1709,6 @@
   },
   {
     "Key": "RL201|src/OVS.Client/ViewModels/LinkMatrixViewModel.cs|LinkMatrixViewModel.LinkSelected:b",
-    "Count": 1
-  },
-  {
-    "Key": "RL201|src/OVS.Client/ViewModels/LinkMatrixViewModel.cs|LinkMatrixViewModel.Norm:a",
-    "Count": 1
-  },
-  {
-    "Key": "RL201|src/OVS.Client/ViewModels/LinkMatrixViewModel.cs|LinkMatrixViewModel.Norm:b",
     "Count": 1
   },
   {
@@ -11989,42 +11973,6 @@
   },
   {
     "Key": "RL201|tools/render-icon/LogoRenderer.cs|LogoRenderer.RenderSmall:x",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Audio/Playback/VoiceMixer.cs|VoiceMixer.Tick",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Dialogs/BanChoice.cs|BanChoice.Durations",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Input/KeyStateTracker.cs|KeyStateTracker.Update",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Localization/PermissionLabels.cs|PermissionLabels.All",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Net/StateMirror.cs|StateMirror.Links",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Net/StateMirror.cs|StateMirror.Norm",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Net/VoiceClient.cs|VoiceClient.RoundTripSample",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/ViewModels/LinkMatrixViewModel.cs|LinkMatrixViewModel.Norm",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/ViewModels/LinkMatrixViewModel.cs|LinkMatrixViewModel.SelectedPairs",
     "Count": 1
   },
   {

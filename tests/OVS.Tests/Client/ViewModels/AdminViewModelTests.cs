@@ -77,7 +77,7 @@ public class AdminViewModelTests
     [Fact]
     public void BanDurations_AsPlanned()
     {
-        Assert.Equal([("1 Stunde", (int?)60), ("1 Tag", 1440), ("7 Tage", 10080), ("Dauerhaft", null)], BanChoice.Durations);
+        Assert.Equal([new Choice<int?>(60, "1 Stunde"), new(1440, "1 Tag"), new(10080, "7 Tage"), new(null, "Dauerhaft")], BanChoice.Durations);
     }
 
     /// <summary>Package 76: every tab has its own view right; acting rights alone open nothing.</summary>

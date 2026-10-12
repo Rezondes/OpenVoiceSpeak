@@ -82,7 +82,7 @@ public sealed class VoiceMixer
 
     /// <returns>The frame (Package 142: interleaved stereo) and who is in it, both reused by the next tick (Package 124:
     /// nothing allocated per frame).</returns>
-    public (float[] Frame, List<ActiveSpeaker> Active) Tick()
+    public MixedFrame Tick()
     {
         Array.Clear(mixed);
         active.Clear();
@@ -108,7 +108,7 @@ public sealed class VoiceMixer
             }
         }
         limiter.Process(mixed); // only Tick uses it, and Tick runs on the playback thread alone
-        return (mixed, active);
+        return new MixedFrame(mixed, active);
     }
 
     /// <summary>Package 124: something to play or to conceal; without it the playback loop sleeps.</summary>
