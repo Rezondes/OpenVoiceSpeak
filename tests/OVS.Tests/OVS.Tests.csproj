@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -15,7 +15,7 @@
   <ItemGroup>
     <!-- Package 95: the icon renderer of tools/render-icon, so the tests check the checked-in icon against it -->
     <Compile Include="..\..\tools\render-icon\LogoRenderer.cs" Link="Tools\LogoRenderer.cs" />
-    <Compile Include="..\..\tools\render-icon\SmallArt.cs" Link="Tools\SmallArt.cs" />
+    <Compile Include="..\..\tools\render-icon\SmallIconMetrics.cs" Link="Tools\SmallIconMetrics.cs" />
   </ItemGroup>
 
   <ItemGroup>

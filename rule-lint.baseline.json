@@ -240,26 +240,6 @@
     "Count": 1
   },
   {
-    "Key": "RL154|src/OVS.Client/ViewModels/GroupListViewModel.cs|GroupListViewModel.DeleteGroup",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|src/OVS.Client/ViewModels/GroupListViewModel.cs|GroupListViewModel.MoveGroupDown",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|src/OVS.Client/ViewModels/GroupListViewModel.cs|GroupListViewModel.MoveGroupUp",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|src/OVS.Client/ViewModels/GroupListViewModel.cs|GroupListViewModel.NewGroup",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|src/OVS.Client/ViewModels/GroupListViewModel.cs|GroupListViewModel.SaveGroup",
-    "Count": 1
-  },
-  {
     "Key": "RL154|src/OVS.Client/ViewModels/KeyBindingViewModel.cs|KeyBindingViewModel.Edit",
     "Count": 1
   },
@@ -1553,10 +1533,6 @@
   },
   {
     "Key": "RL201|src/OVS.Client/ViewModels/BanViewModel.cs|BanViewModel.Matches:v",
-    "Count": 1
-  },
-  {
-    "Key": "RL201|src/OVS.Client/ViewModels/BanViewModel.cs|BanViewModel.StatusOf:b",
     "Count": 1
   },
   {

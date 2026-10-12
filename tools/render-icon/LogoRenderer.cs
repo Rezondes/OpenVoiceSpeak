@@ -13,7 +13,7 @@ public static class LogoRenderer
 {
     public static readonly int[] IcoSizes = [16, 20, 24, 32, 48, 64, 256];
 
-    public static readonly Dictionary<int, SmallArt> Small = new()
+    public static readonly Dictionary<int, SmallIconMetrics> Small = new()
     {
         [16] = new(Bar: 1, Gap: 1, Cup: 2, Top: 8, Bottom: 13, Inset: 1, Arc: 1f),
         [20] = new(Bar: 1, Gap: 1, Cup: 3, Top: 10, Bottom: 16, Inset: 1, Arc: 1.25f),
@@ -72,7 +72,7 @@ public static class LogoRenderer
     /// The small artwork of <paramref name="size"/>: the SVG's rounded square, then the headset and three wave bars on the
     /// pixel grid. With 1 px bars the middle bar sits on the pixel left of the centre, so the headset shifts with it.
     /// </summary>
-    static byte[] RenderSmall(string svg, int size, SmallArt a)
+    static byte[] RenderSmall(string svg, int size, SmallIconMetrics a)
     {
         var rect = XDocument.Parse(svg).Root!.Elements().First(e => e.Name.LocalName == "rect");
         var info = new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Premul);

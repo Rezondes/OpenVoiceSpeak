@@ -8,4 +8,4 @@ namespace OVS.Tools;
 /// Top/Bottom: rows of the cups and the middle bar; Inset: how much shorter the outer bars are at each end;
 /// Arc: arc stroke width.
 /// </summary>
-public sealed record SmallArt(int Bar, int Gap, int Cup, int Top, int Bottom, int Inset, float Arc);
+public sealed record SmallIconMetrics(int Bar, int Gap, int Cup, int Top, int Bottom, int Inset, float Arc);

@@ -23,8 +23,8 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
     public string ReasonText => Ban.Reason.Length > 0 ? Ban.Reason : Strings.Ui_BanNoReason;
     public string CreatedBy => Ban.CreatedBy;
 
-    public BanStatus Status { get; } = StatusOf(ban, now);
-    static BanStatus StatusOf(BanInfo b, DateTimeOffset now) => BanStatusRule.Evaluate(b.LiftedAt, b.ExpiresAt, now);
+    public BanStatus Status { get; } = EvaluateStatus(ban, now);
+    static BanStatus EvaluateStatus(BanInfo info, DateTimeOffset now) => BanStatusRule.Evaluate(info.LiftedAt, info.ExpiresAt, now);
     public string StatusText => Status switch
     {
         BanStatus.Lifted => string.Format(Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),
@@ -52,7 +52,7 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
         || new[] { Nickname, Fingerprint, Ban.Ip, Ban.Reason, Ban.CreatedBy, Ban.LiftedBy }.Any(v => v?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
 
     /// <summary>Package 76: the list is readable with BansView, lifting a ban needs UserBan; Package 80: only active ones.</summary>
-    public bool CanUnban { get; } = canUnban && StatusOf(ban, now) == BanStatus.Active;
+    public bool CanUnban { get; } = canUnban && EvaluateStatus(ban, now) == BanStatus.Active;
 
     [RelayCommand(CanExecute = nameof(CanUnban))]
     Task Unban() => unban();

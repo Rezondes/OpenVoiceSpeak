@@ -35,7 +35,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
         GroupSave = server.NewPending();
         GroupReorder = server.NewPending();
         Place = AdminPlace.Create(() => ChangedGroups().Any(), GroupSave, SendChangedGroupsAsync, Discard);
-        RebuildGroups();
+        Rebuild();
     }
 
     Permission Actor => server.SelfPermissions;
@@ -57,13 +57,13 @@ internal sealed partial class GroupListViewModel : ObservableObject
     /// <summary>The server's state changed: the groups are built again, and the rights decide the buttons.</summary>
     internal void FollowServer()
     {
-        RebuildGroups();
+        Rebuild();
         NewGroupCommand.NotifyCanExecuteChanged();
         MoveGroupUpCommand.NotifyCanExecuteChanged();
         MoveGroupDownCommand.NotifyCanExecuteChanged();
     }
 
-    void RebuildGroups()
+    void Rebuild()
     {
         var selected = SelectedGroup?.Id;
         var unsaved = Groups.Live().Where(group => group.Id is null).ToList();
@@ -125,7 +125,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
     bool CanNewGroup => Actor.Has(Permission.GroupsCreate);
 
     [RelayCommand(CanExecute = nameof(CanNewGroup))]
-    async Task NewGroup()
+    async Task NewGroupAsync()
     {
         if (!await confirmLeaveAsync(Place)) return; // Package 114: the edited group comes first
         var group = new GroupEditViewModel(null, Strings.Group_New, Permission.Speak, Actor);
@@ -136,7 +136,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
     bool CanSaveGroup => SelectedGroup is { IsReadOnly: false };
 
     [RelayCommand(CanExecute = nameof(CanSaveGroup))]
-    Task SaveGroup()
+    Task SaveGroupAsync()
     {
         if (SelectedGroup is { } group && SendGroup(group) is { } sent && group.Id is null) _ = ReplaceDraftAsync(group, sent);
         return Task.CompletedTask;
@@ -200,10 +200,10 @@ internal sealed partial class GroupListViewModel : ObservableObject
                              SavedGroups.IndexOf(group) is var position && position >= 0 && position < SavedGroups.Count - 1;
 
     [RelayCommand(CanExecute = nameof(CanMoveGroupUp))]
-    Task MoveGroupUp() => SelectedGroup is { } group ? MoveGroupAsync(group, SavedGroups[SavedGroups.IndexOf(group) - 1], after: false) : Task.CompletedTask;
+    Task MoveGroupUpAsync() => SelectedGroup is { } group ? MoveGroupAsync(group, SavedGroups[SavedGroups.IndexOf(group) - 1], after: false) : Task.CompletedTask;
 
     [RelayCommand(CanExecute = nameof(CanMoveGroupDown))]
-    Task MoveGroupDown() => SelectedGroup is { } group ? MoveGroupAsync(group, SavedGroups[SavedGroups.IndexOf(group) + 1], after: true) : Task.CompletedTask;
+    Task MoveGroupDownAsync() => SelectedGroup is { } group ? MoveGroupAsync(group, SavedGroups[SavedGroups.IndexOf(group) + 1], after: true) : Task.CompletedTask;
 
     /// <summary>The group order sent last, shown until the server confirms or refuses it.</summary>
     List<Guid>? pendingGroupOrder;
@@ -222,7 +222,7 @@ internal sealed partial class GroupListViewModel : ObservableObject
         if (order.SequenceEqual(saved)) return Task.CompletedTask;
         var ids = order.Select(group => group.Id!.Value).ToList();
         pendingGroupOrder = ids;
-        RebuildGroups();
+        Rebuild();
         _ = EndGroupReorderAsync(server.SendConfirmed(new ReorderGroups(ids), answer => answer is GroupsChanged, GroupReorder, notify: false), ids);
         return Task.CompletedTask;
     }
@@ -232,13 +232,13 @@ internal sealed partial class GroupListViewModel : ObservableObject
         await sent.Completion;
         if (pendingGroupOrder != ids) return; // a newer order is on its way
         pendingGroupOrder = null;
-        RebuildGroups();
+        Rebuild();
     }
 
     bool CanDeleteGroup => SelectedGroup is { CanDelete: true };
 
     [RelayCommand(CanExecute = nameof(CanDeleteGroup))]
-    async Task DeleteGroup()
+    async Task DeleteGroupAsync()
     {
         if (SelectedGroup is not { CanDelete: true } group) return;
         if (group.Id is { } id) await server.SendAsync(new DeleteGroup(id));

@@ -143,7 +143,7 @@ The saving (`Persist`, `PersistSoon` with the save timer and retry, close) is su
 
 ### tools/render-icon
 
-Root namespace `OVS.Tools`, one type per file: `LogoRenderer`, `SmallArt`. The test project links both files under `Tools\`.
+Root namespace `OVS.Tools`, one type per file: `LogoRenderer`, `SmallIconMetrics`. The test project links both files under `Tools\`.
 
 ### Tests
 
@@ -164,7 +164,7 @@ Nested types that stay nested (private and used only by their container, B9, B14
 - Client: `MainViewModel.Restore`, `DeviceLifecycle.Endpoint`, `VoiceMixer.Speaker`, `SoundQueue.Playing`, `ItemFlight.Departure`, `LiveMotion.Follower`, `PageMotion.Switching` and `Revealer`, `EchoCanceller.Native`, `NoiseSuppressor.Native`
 - Tests: `ManualTimeProvider.Timer`, `OverlayDialogsTests.CallbackEntry`, `ChatViewModelTests.Fixture`, `ServerViewModelTests.Fixture`, `DebugApiTests.Instance`, `LiveMotionTests.ToleranceComparer`, `MotionCoverageTests.Walk`, `Step` and `Result`, `ReorderDragTests.Tree`, `UserDragTests.Tree`, `SendPathTests.TalkRig` and `MusicRig`, `VoiceFilterTests.PinkNoise`, `BackupTests.Host`, `FakeAudioHardware.FakeOutput`, `TestDispatcher.Context`
 
-Hoisted, because they are not private or are used outside their container: `AdminPlace` (was `AdminViewModel.Place`), `WebsiteScene` (was `WebsiteShots.Scene`), `DeviceRig` (was `SendPathTests.DeviceRig`), `LogExport` (was `LogReader.LogExport`), `DownloadChunk` (was `ChunkedDownload.Chunk`), the Win32 structs of `Splash`, `DialogKind` (was `SimpleDialogs.Kind`) and `SmallArt` (was `LogoRenderer.SmallArt`) (B10, B11).
+Hoisted, because they are not private or are used outside their container: `AdminPlace` (was `AdminViewModel.Place`), `WebsiteScene` (was `WebsiteShots.Scene`), `DeviceRig` (was `SendPathTests.DeviceRig`), `LogExport` (was `LogReader.LogExport`), `DownloadChunk` (was `ChunkedDownload.Chunk`), the Win32 structs of `Splash`, `DialogKind` (was `SimpleDialogs.Kind`) and `SmallIconMetrics` (was `LogoRenderer.SmallArt`, then `SmallArt`) (B10, B11).
 
 ## Shared helpers
 
