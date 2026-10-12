@@ -1992,10 +1992,6 @@
     "Count": 3
   },
   {
-    "Key": "RL201|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.OnSpeakers:a",
-    "Count": 1
-  },
-  {
     "Key": "RL201|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.Rebuild:c",
     "Count": 2
   },
@@ -2014,10 +2010,6 @@
   {
     "Key": "RL201|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.RedeemToken:u",
     "Count": 1
-  },
-  {
-    "Key": "RL201|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.RefreshSpeaking:s",
-    "Count": 3
   },
   {
     "Key": "RL201|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.SendAsync:e",
@@ -15456,15 +15448,7 @@
     "Count": 1
   },
   {
-    "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.OnSpeakers",
-    "Count": 1
-  },
-  {
     "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.OnVolumeChanged",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.RefreshSpeaking",
     "Count": 1
   },
   {
@@ -15485,10 +15469,6 @@
   },
   {
     "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.ServerViewModel",
-    "Count": 1
-  },
-  {
-    "Key": "RL231|src/OVS.Client/ViewModels/ServerViewModel.cs|ServerViewModel.SetSelfTransmitting",
     "Count": 1
   },
   {

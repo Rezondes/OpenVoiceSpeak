@@ -28,14 +28,13 @@ namespace OVS.Client.ViewModels;
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>
 public sealed partial class ServerViewModel : ObservableObject
 {
-    static readonly TimeSpan SpeakingHold = TimeSpan.FromMilliseconds(300);
 
     readonly Func<Request, Task> send;
     readonly TimeProvider time;
     readonly Dictionary<Guid, ChannelViewModel> channelVms = [];
     readonly Dictionary<uint, UserViewModel> userVms = [];
-    readonly Dictionary<uint, (DateTimeOffset At, bool ViaLink)> speaking = [];
-    byte? selfTarget;
+    /// <summary>Packages 57, 60 and 122: who is shown speaking and when a link tone is due.</summary>
+    readonly SpeakingMarks speakingMarks;
     bool mutedBeforeDeafen;
     int requestCounter;
 
@@ -60,6 +59,7 @@ public sealed partial class ServerViewModel : ObservableObject
         this.time = time;
         Dialogs = dialogs ?? new ServerDialogs();
         ChatFeed = new ChatFeed(RequestSound);
+        speakingMarks = new SpeakingMarks(time);
         Leave = new LeaveTimer(time, () => Post);
         Rebuild();
     }
@@ -344,55 +344,32 @@ public sealed partial class ServerViewModel : ObservableObject
 
     // ---- Speaking indicators ----
 
-    /// <summary>Package 57: a pause longer than this starts a new link transmission, with a new tone.</summary>
-    public static readonly TimeSpan LinkPause = TimeSpan.FromMilliseconds(300);
-
-    readonly Dictionary<uint, DateTimeOffset> lastLinkVoice = [];
-
+    /// <summary>The engine heard these speakers: a link tone for someone talking in over a link, then the rows (Package 57).</summary>
     public void OnSpeakers(IEnumerable<ActiveSpeaker> active)
     {
-        var now = time.GetUtcNow();
-        foreach (var a in active)
+        foreach (var speaker in active)
         {
-            speaking[a.SessionId] = (now, a.ViaLink);
-            // Someone from another channel talks in over a link: without a tone it sounds like the own channel.
-            if (!a.ViaLink || a.SessionId == Mirror.SelfId || !Mirror.Users.ContainsKey(a.SessionId)) continue;
-            if (!lastLinkVoice.TryGetValue(a.SessionId, out var last) || now - last > LinkPause) SoundRequested?.Invoke(SoundEvent.LinkVoice);
-            lastLinkVoice[a.SessionId] = now;
+            if (speakingMarks.Hear(speaker, speaker.SessionId != Mirror.SelfId && Mirror.Users.ContainsKey(speaker.SessionId)))
+                SoundRequested?.Invoke(SoundEvent.LinkVoice);
         }
         RefreshSpeaking();
     }
 
-    DateTimeOffset? ownLinkEnded;
-
+    /// <summary>Package 60: the own voice goes to this target (null: silent); its link tone, then the rows.</summary>
     public void SetSelfTransmitting(byte? target)
     {
-        const byte Linked = Shared.Voice.VoiceHeader.TargetLinked;
-        var now = time.GetUtcNow();
-        // Package 60: the own voice starts going over a link; only then do other channels really hear it
-        if (target == Linked && selfTarget != Linked && CurrentChannel is { IsLinked: true }
-            && (ownLinkEnded is not { } ended || now - ended > LinkPause))
-            SoundRequested?.Invoke(SoundEvent.OwnLinkVoice);
-        if (selfTarget == Linked && target != Linked) ownLinkEnded = now;
-        selfTarget = target;
+        if (speakingMarks.SetOwnTarget(target, CurrentChannel is { IsLinked: true })) SoundRequested?.Invoke(SoundEvent.OwnLinkVoice);
         RefreshSpeaking();
     }
 
-    /// <summary>Package 122: the users shown speaking; only they, myself and those reported since can change.</summary>
-    readonly HashSet<uint> shownSpeaking = [];
-
+    /// <summary>Package 122: shows who speaks; a row is touched only when its state changed.</summary>
     public void RefreshSpeaking()
     {
-        var now = time.GetUtcNow();
-        foreach (var gone in speaking.Where(s => now - s.Value.At >= SpeakingHold).Select(s => s.Key).ToList()) speaking.Remove(gone);
-        foreach (var id in shownSpeaking.Union(speaking.Keys).Append(Mirror.SelfId).ToList())
+        foreach (var state in speakingMarks.Refresh(Mirror.SelfId))
         {
-            var (on, viaLink) = id == Mirror.SelfId ? (selfTarget is not null, selfTarget == Shared.Voice.VoiceHeader.TargetLinked)
-                : speaking.TryGetValue(id, out var s) ? (true, s.ViaLink) : (false, false);
-            if (on) shownSpeaking.Add(id);
-            else shownSpeaking.Remove(id);
-            if (!userVms.TryGetValue(id, out var user) || (user.IsSpeaking, user.IsSpeakingViaLink) == (on && !viaLink, on && viaLink)) continue;
-            user.SetSpeaking(on, viaLink);
+            if (!userVms.TryGetValue(state.SessionId, out var user)
+                || (user.IsSpeaking == (state.On && !state.ViaLink) && user.IsSpeakingViaLink == (state.On && state.ViaLink))) continue;
+            user.SetSpeaking(state.On, state.ViaLink);
             SpeakingTouches++;
         }
     }
