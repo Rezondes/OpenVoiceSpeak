@@ -956,7 +956,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
         main.Show();
         ServerViewModel? server = null;
-        server = FakeServers.Admin(time: time, dialogs: OverlayDialogs.Create(main.Overlay, () => server?.Mirror.Groups));
+        server = FakeServers.Admin(time: time, dialogs: OverlayDialogs.Create(main.Overlay, () => server?.Mirror.Groups).Server);
         MainViewModelSetup.ShowServer(vm, server);
         // the connect sequence (at most 700 ms) is over before anything is clicked; the server's clock is a manual one
         MotionWait.WaitFor(() => false, 800);

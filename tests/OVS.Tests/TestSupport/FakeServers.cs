@@ -32,7 +32,7 @@ public static class FakeServers
         server.Apply(new UserUpdated(Me(rights, groups)));
 
     /// <param name="reply">The server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
-    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null)
+    public static ServerViewModel Admin(List<Request>? sent = null, TimeProvider? time = null, ServerDialogs? dialogs = null, Func<Request, Message?>? reply = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "Start", 0), new ChannelInfo(Raid, "Raid", "", 1)],

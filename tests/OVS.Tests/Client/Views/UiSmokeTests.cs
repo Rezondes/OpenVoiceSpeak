@@ -1258,7 +1258,8 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var sent = new List<Request>();
         var time = new ManualTimeProvider();
         ServerViewModel? server = null;
-        server = FakeServers.Admin(sent, time, OverlayDialogs.Create(main.Overlay, () => server?.Mirror.Groups));
+        vm.Dialogs = OverlayDialogs.Create(main.Overlay, () => server?.Mirror.Groups); // as App does: the admin page asks through the page flow
+        server = FakeServers.Admin(sent, time, vm.Dialogs.Server);
         MainViewModelSetup.ShowServer(vm, server);
         Dispatcher.UIThread.RunJobs();
         return (main, vm, server, sent, time);

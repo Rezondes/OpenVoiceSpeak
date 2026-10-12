@@ -29,7 +29,7 @@ public class AdminViewModelTests
     /// <param name="reply">Package 75: the server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
     /// <param name="groupIds">Package 89: the own groups; upload and restore need the Admin group.</param>
     static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false,
-        DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null, IReadOnlyList<Guid>? groupIds = null)
+        AdminDialogs? dialogs = null, Func<Request, Message?>? reply = null, IReadOnlyList<Guid>? groupIds = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword), Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0)], [],
@@ -51,8 +51,8 @@ public class AdminViewModelTests
                 if (reply?.Invoke(r) is { } answer) server!.Apply(answer);
             }
             return Task.CompletedTask;
-        }, new ManualTimeProvider(), dialogs);
-        return (new AdminViewModel(server), server, sent);
+        }, new ManualTimeProvider());
+        return (new AdminViewModel(server, dialogs), server, sent);
 
         // Package 92: the server's judgement (PermissionRules.CanAssign), sent with every group
         bool Assignable(P group) => selfPerms.Has(P.GroupsAssign) && group.IsSubsetOf(selfPerms);
@@ -574,12 +574,15 @@ public class AdminViewModelTests
     {
         var answer = false;
         string? asked = null;
-        var dialogs = new DialogCallbacks
+        var dialogs = new AdminDialogs
         {
-            ConfirmDeleteUser = name =>
+            UsersAndBans = new()
             {
-                asked = name;
-                return Task.FromResult(answer);
+                ConfirmDeleteUser = name =>
+                {
+                    asked = name;
+                    return Task.FromResult(answer);
+                },
             },
         };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserDelete | P.Speak, dialogs: dialogs);
@@ -628,12 +631,15 @@ public class AdminViewModelTests
 
         BanChoice? choice = new("spam", 60, true);
         bool? ipOffered = null;
-        var dialogs = new DialogCallbacks
+        var dialogs = new AdminDialogs
         {
-            Ban = (_, ipKnown, _) =>
+            UsersAndBans = new()
             {
-                ipOffered = ipKnown;
-                return Task.FromResult<BanChoice?>(choice);
+                Ban = (_, ipKnown, _) =>
+                {
+                    ipOffered = ipKnown;
+                    return Task.FromResult<BanChoice?>(choice);
+                },
             },
         };
         var (vm, server, sent) = Create(P.UsersView | P.UserBan | P.UserDelete | P.Speak | P.UserKick, dialogs: dialogs);
@@ -903,7 +909,7 @@ public class AdminViewModelTests
     public async Task UnbanThenBan_BanListRefreshedOnce()
     {
         var ban = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
-        var dialogs = new DialogCallbacks { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) };
+        var dialogs = new AdminDialogs { UsersAndBans = new() { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) } };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.Speak, dialogs: dialogs);
         vm.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
             Known("fpB", "Bert", bans: [ban]) with { CanBeModeratedByMe = true }]));
@@ -959,7 +965,7 @@ public class AdminViewModelTests
     [Fact]
     public async Task CardActions_BusyUntilConfirmed()
     {
-        var dialogs = new DialogCallbacks { Confirm = _ => Task.FromResult(true), ConfirmDeleteUser = _ => Task.FromResult(true) };
+        var dialogs = new AdminDialogs { UsersAndBans = new() { ConfirmDeleteUser = _ => Task.FromResult(true) } };
         var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.UserDelete | P.UserMute | P.GroupsAssign | P.Speak | P.UserKick,
             dialogs: dialogs);
         var time = (ManualTimeProvider)server.Time;
@@ -1149,5 +1155,67 @@ public class AdminViewModelTests
         Assert.Single(sent.OfType<SetChannelLinks>());
         Assert.Single(sent.OfType<UpdateServerSettings>());
         Assert.False(admin.HasChanges);
+    }
+
+    // ---- Step 26a: the page asks through its own record, and hands each section its part ----
+
+    static AdminPlace CreateChangedPlace(Action discard) => new(() => true, () => Task.FromResult(false), discard);
+
+    [Fact]
+    public async Task ConfirmLeaveAsync_NoAdminDialogsAndChanges_DiscardsAndLeaves()
+    {
+        var (admin, _, _) = Create(P.All);
+        var discarded = 0;
+
+        Assert.True(await HangGuard.Bound(admin.ConfirmLeaveAsync(CreateChangedPlace(() => discarded++))));
+        Assert.Equal(1, discarded);
+    }
+
+    [Fact]
+    public async Task ConfirmLeaveAsync_ChangesAndAnAdminRecord_AsksItsQuestionOnce()
+    {
+        var asked = 0;
+        var (admin, _, _) = Create(P.All, dialogs: new AdminDialogs { AskLeave = () => { asked++; return Task.FromResult(LeaveChoice.Stay); } });
+
+        Assert.False(await HangGuard.Bound(admin.ConfirmLeaveAsync(CreateChangedPlace(() => { }))));
+        Assert.Equal(1, asked);
+    }
+
+    [Fact]
+    public async Task ConfirmLeaveAsync_AskLeaveThrows_PropagatesAndDiscardsNothing()
+    {
+        var (admin, _, _) = Create(P.All, dialogs: new AdminDialogs { AskLeave = () => throw new InvalidOperationException("Dialog kaputt") });
+        var discarded = 0;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(admin.ConfirmLeaveAsync(CreateChangedPlace(() => discarded++))));
+        Assert.Equal(0, discarded);
+    }
+
+    [Fact]
+    public async Task Sections_AdminRecord_EachAsksThroughItsOwnPart()
+    {
+        var asked = new List<string>();
+        var (admin, _, sent) = Create(P.All, dialogs: new AdminDialogs
+        {
+            UsersAndBans = new() { ConfirmDeleteUser = name => { asked.Add("delete " + name); return Task.FromResult(false); } },
+            BackupCard = new() { ConfirmBackupDownload = () => { asked.Add("download"); return Task.FromResult(false); } },
+        });
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver")]));
+
+        await HangGuard.Bound(Assert.Single(admin.UsersAndBans.Users).DeleteCommand.ExecuteAsync(null));
+        Assert.False(await HangGuard.Bound(admin.BackupCard.ConfirmDownloadAsync()));
+
+        Assert.Equal(["delete Xaver", "download"], asked);
+        Assert.DoesNotContain(sent, request => request is DeleteKnownUser);
+    }
+
+    [Fact]
+    public void AdminDialogs_Default_SectionRecordsAreEmptyNotNull()
+    {
+        var dialogs = new AdminDialogs();
+
+        Assert.Null(dialogs.AskLeave);
+        Assert.Equal(new UsersAndBansDialogs(), dialogs.UsersAndBans);
+        Assert.Equal(new BackupCardDialogs(), dialogs.BackupCard);
     }
 }

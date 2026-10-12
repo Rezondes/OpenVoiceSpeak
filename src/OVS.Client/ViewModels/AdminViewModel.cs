@@ -15,17 +15,19 @@ namespace OVS.Client.ViewModels;
 public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
 {
     readonly ServerViewModel server;
+    readonly AdminDialogs dialogs;
 
-    public AdminViewModel(ServerViewModel server)
+    public AdminViewModel(ServerViewModel server, AdminDialogs? dialogs = null)
     {
         this.server = server;
-        UsersAndBans = new UsersAndBansViewModel(server);
+        this.dialogs = dialogs ?? new AdminDialogs();
+        UsersAndBans = new UsersAndBansViewModel(server, this.dialogs.UsersAndBans);
         server.StateChanged += OnServerStateChanged;
         ServerIcon = new ServerIconViewModel(server);
         ServerSettings = new ServerSettingsViewModel(server);
         Links = new LinkMatrixViewModel(server);
         Transfer = server.NewAdminTransfer();
-        BackupCard = new BackupCardViewModel(server, Transfer);
+        BackupCard = new BackupCardViewModel(server, Transfer, this.dialogs.BackupCard);
         Logs = new LogsViewModel(server, Transfer);
         GroupList = new GroupListViewModel(server, ConfirmLeaveAsync);
         Places = [GroupList.Place, Links.Place, ServerSettings.Place];
@@ -122,7 +124,7 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     internal async Task<bool> ConfirmLeaveAsync(AdminPlace place)
     {
         if (!place.HasChanges()) return true;
-        switch (server.Dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard)
+        switch (dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard)
         {
             case LeaveChoice.Stay:
                 return false;

@@ -174,7 +174,7 @@ public class ChannelDialogViewModelTests
     {
         ChannelEdit? shown = null;
         var sent = new List<Request>();
-        var server = OVS.Tests.TestSupport.FakeServers.Admin(sent, dialogs: new DialogCallbacks
+        var server = OVS.Tests.TestSupport.FakeServers.Admin(sent, dialogs: new ServerDialogs
         {
             EditChannel = (current, _, _) =>
             {

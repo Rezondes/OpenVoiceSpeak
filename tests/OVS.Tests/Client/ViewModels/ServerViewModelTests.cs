@@ -32,7 +32,7 @@ public class ServerViewModelTests
         public UserViewModel User(uint id) => Vm.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
     }
 
-    static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, DialogCallbacks? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
+    static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, ServerDialogs? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
         params UserInfo[] others)
     {
         var snapshot = Snapshot("Server", "Hallo", Lobby,
@@ -242,13 +242,35 @@ public class ServerViewModelTests
         Assert.True(admin.Channel(Bravo).CanJoin);
     }
 
+    [Fact]
+    public async Task Join_LockedChannelWithoutDialogs_SendsNothing()
+    {
+        var fixture = Create();
+        fixture.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
+
+        await HangGuard.Bound(fixture.Channel(Bravo).JoinCommand.ExecuteAsync(null));
+
+        Assert.Empty(fixture.Sent);
+    }
+
+    [Fact]
+    public async Task Join_ChannelPasswordDialogThrows_PropagatesAndSendsNothing()
+    {
+        var fixture = Create(dialogs: new ServerDialogs { AskChannelPassword = _ => throw new InvalidOperationException("Dialog kaputt") });
+        fixture.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(fixture.Channel(Bravo).JoinCommand.ExecuteAsync(null)));
+
+        Assert.Empty(fixture.Sent);
+    }
+
     /// <summary>Package 94: asked once per connection; a wrong password is forgotten, the bypass right and admins are never asked.</summary>
     [Fact]
     public async Task JoinPasswordChannel_PromptsOnce_RememberedForSession()
     {
         var asked = new List<string>();
         string? answer = null;
-        var dialogs = new DialogCallbacks
+        var dialogs = new ServerDialogs
         {
             AskChannelPassword = name =>
             {
@@ -379,7 +401,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task LinkCommand_UsesPickedChannel()
     {
-        var dialogs = new DialogCallbacks { PickChannel = (_, candidates, _) => Task.FromResult<ChannelViewModel?>(candidates.Single(c => c.Name == "Bravo")) };
+        var dialogs = new ServerDialogs { PickChannel = (_, candidates, _) => Task.FromResult<ChannelViewModel?>(candidates.Single(c => c.Name == "Bravo")) };
         var f = Create(P.All, dialogs: dialogs);
         await f.Channel(Lobby).LinkCommand.ExecuteAsync(null);
         Assert.Equal(new LinkChannels(Lobby, Bravo), f.Sent[^1] with { RequestId = null });
@@ -390,7 +412,7 @@ public class ServerViewModelTests
     public async Task NewChannel_SendsAllOptions()
     {
         (ChannelEdit Current, ChannelDialogMode Mode)? shown = null;
-        var dialogs = new DialogCallbacks
+        var dialogs = new ServerDialogs
         {
             EditChannel = (current, mode, _) =>
             {
@@ -409,7 +431,7 @@ public class ServerViewModelTests
     public async Task ChannelMuted_EditSendsFlag_ViewModelShowsIt()
     {
         ChannelDialogMode? shownMode = null;
-        var dialogs = new DialogCallbacks
+        var dialogs = new ServerDialogs
         {
             EditChannel = (current, mode, _) =>
             {
@@ -685,7 +707,7 @@ public class ServerViewModelTests
     [Fact]
     public async Task Ban_SendsDurationAndIpFlag()
     {
-        var dialogs = new DialogCallbacks { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
+        var dialogs = new ServerDialogs { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
         var f = Create(Moderator, dialogs: dialogs, others: User(2, "gast", Lobby, P.Speak));
         await f.User(2).BanCommand.ExecuteAsync(null);
         Assert.Equal(new BanSession(2, "spam", 60, true), f.Sent[^1] with { RequestId = null });
@@ -782,7 +804,7 @@ public class ServerViewModelTests
     public async Task SendingDialogs_WaitForTheConfirmation_RowActionsSpin()
     {
         PendingViewModel? waited = null;
-        var dialogs = new DialogCallbacks
+        var dialogs = new ServerDialogs
         {
             EditChannel = (current, _, submit) =>
             {
@@ -1037,7 +1059,7 @@ public class ServerViewModelTests
     public void MoveTargets_OtherChannelsWithoutSeparators()
     {
         bool picked = false;
-        var dialogs = new DialogCallbacks
+        var dialogs = new ServerDialogs
         {
             PickChannel = (_, _, _) =>
             {
@@ -1100,7 +1122,7 @@ public class ServerViewModelTests
     public async Task DropUser_OwnRowJoins_InvalidTargetsSendNothing()
     {
         var asked = new List<string>();
-        var f = Create(Moderator, dialogs: new DialogCallbacks { AskChannelPassword = name => { asked.Add(name); return Task.FromResult<string?>("geheim"); } },
+        var f = Create(Moderator, dialogs: new ServerDialogs { AskChannelPassword = name => { asked.Add(name); return Task.FromResult<string?>("geheim"); } },
             others: [Weaker(), User(3, "bert", Lobby, P.Speak)]);
         var separator = Guid.NewGuid();
         f.Vm.Apply(new ChannelAdded(new ChannelInfo(separator, "", "", 5, Kind: ChannelKind.Separator)));

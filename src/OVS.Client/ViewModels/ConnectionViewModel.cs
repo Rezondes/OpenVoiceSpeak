@@ -167,7 +167,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         {
             log(ProtocolLogText.Describe(request, mirror));
             return conn.SendAsync(request);
-        }, time, dialogs()) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
+        }, time, dialogs().Server) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
         vm.Notice += text => addNotice(text, NoticeKind.Error);
         TrackServerIcon(vm, choice.Host, choice.Port);
         vm.PropertyChanged += OnServerPropertyChanged;

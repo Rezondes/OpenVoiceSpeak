@@ -26,11 +26,11 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
 
     sealed record Rig(BackupCardViewModel Section, ServerViewModel Server, AdminTransfer Transfer);
 
-    Rig Create(DialogCallbacks? dialogs = null, Func<Request, Message?>? reply = null)
+    Rig Create(BackupCardDialogs? dialogs = null, Func<Request, Message?>? reply = null)
     {
-        var server = FakeServers.Admin(sent, time, dialogs, reply);
+        var server = FakeServers.Admin(sent, time, reply: reply);
         var transfer = server.NewAdminTransfer();
-        return new Rig(new BackupCardViewModel(server, transfer), server, transfer);
+        return new Rig(new BackupCardViewModel(server, transfer, dialogs), server, transfer);
     }
 
     string IdOf<T>() where T : Request => sent.OfType<T>().Last().RequestId!;
@@ -44,7 +44,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     }
 
     /// <summary>Answers the restore question with the answer and lists the asked titles.</summary>
-    static DialogCallbacks Restores(bool answer, List<string>? asked = null) =>
+    static BackupCardDialogs Restores(bool answer, List<string>? asked = null) =>
         new() { ConfirmRestore = title => { asked?.Add(title); return Task.FromResult(answer); } };
 
     /// <summary>The server stores every uploaded chunk and names the stored backup <see cref="Uploaded"/>.</summary>
@@ -197,7 +197,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     public async Task DeleteAndRestore_AnsweredNo_AskForTheBackupsTitleAndSendNothing()
     {
         var asked = new List<string>();
-        var rig = Create(new DialogCallbacks
+        var rig = Create(new BackupCardDialogs
         {
             Confirm = text => { asked.Add("delete " + text); return Task.FromResult(false); },
             ConfirmRestore = title => { asked.Add("restore " + title); return Task.FromResult(false); },
@@ -215,7 +215,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     [Fact]
     public async Task DeleteAndRestore_AnsweredYes_SendDeleteThenRestoreOfThatBackup()
     {
-        var rig = Create(new DialogCallbacks { Confirm = _ => Task.FromResult(true), ConfirmRestore = Restores(true).ConfirmRestore });
+        var rig = Create(new BackupCardDialogs { Confirm = _ => Task.FromResult(true), ConfirmRestore = Restores(true).ConfirmRestore });
         rig.Section.Apply(new BackupList("r", [Newer, Older]));
 
         await Bound(rig.Section.Backups[1].DeleteCommand.ExecuteAsync(null));
@@ -271,7 +271,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         int warned = 0;
         bool answer = false;
-        var rig = Create(new DialogCallbacks { ConfirmBackupDownload = () => { warned++; return Task.FromResult(answer); } });
+        var rig = Create(new BackupCardDialogs { ConfirmBackupDownload = () => { warned++; return Task.FromResult(answer); } });
 
         Assert.False(await Bound(rig.Section.ConfirmDownloadAsync()));
         answer = true;
@@ -286,6 +286,22 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create();
 
         Assert.False(await Bound(rig.Section.ConfirmDownloadAsync())); // no dialog: cancelled
+    }
+
+    [Fact]
+    public async Task ConfirmDownload_EmptyRecord_IsFalse()
+    {
+        var rig = Create(new BackupCardDialogs());
+
+        Assert.False(await Bound(rig.Section.ConfirmDownloadAsync()));
+    }
+
+    [Fact]
+    public async Task ConfirmDownloadAsync_WarningThrows_Propagates()
+    {
+        var rig = Create(new BackupCardDialogs { ConfirmBackupDownload = () => throw new InvalidOperationException("Dialog kaputt") });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Bound(rig.Section.ConfirmDownloadAsync()));
     }
 
     [Fact]

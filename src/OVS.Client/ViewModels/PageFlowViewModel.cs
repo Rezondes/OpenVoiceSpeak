@@ -54,7 +54,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="refreshDevices">Loads the audio devices again; they reach the page when they arrive.</param>
     /// <param name="captureChord">Waits for the next key chord, for a binding on the settings page.</param>
     /// <param name="setKeyBindings">Makes the key poller listen to these bindings.</param>
-    /// <param name="dialogs">The dialogs now: the key binding editor and the question before leaving.</param>
+    /// <param name="dialogs">The dialogs now: the key binding editor, the question before leaving and what the administration page asks.</param>
     /// <param name="checkNow">The update check of the settings page's button.</param>
     /// <param name="importSound">Copies an own tone into the profile folder.</param>
     /// <param name="previewSound">Plays a tone as the page sets it.</param>
@@ -162,7 +162,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         if (shownServer() is not { CanAdminister: true } server || Page == Page.Admin) return;
         if (!await ConfirmLeaveAsync()) return; // Package 114
         ClosePage();
-        var newPage = new AdminViewModel(server);
+        var newPage = new AdminViewModel(server, dialogs().Admin);
         Show(newPage, Page.Admin); // Package 114
         await newPage.RequestListsAsync();
     }

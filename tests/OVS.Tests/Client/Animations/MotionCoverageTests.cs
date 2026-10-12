@@ -424,7 +424,7 @@ public sealed class MotionCoverageTests
         // ---- connected: channels ----
         yield return new("connect", x =>
         {
-            x.Server = FakeServers.Admin(x.Sent, dialogs: x.Vm.Dialogs);
+            x.Server = FakeServers.Admin(x.Sent, dialogs: x.Vm.Dialogs.Server);
             x.Server.Post = a => Dispatcher.UIThread.Post(a); // as the main view model does: leaving rows go on the UI thread
             MainViewModelSetup.ShowServer(x.Vm, x.Server);
         });

@@ -47,7 +47,7 @@ public sealed class ShowcaseServer
 
     public string T(string de, string en) => English ? en : de;
 
-    public ShowcaseServer(bool english, DialogCallbacks? dialogs = null)
+    public ShowcaseServer(bool english, ServerDialogs? dialogs = null)
     {
         English = english;
         var everyone = Permission.Speak | Permission.ChatServer | Permission.ChatChannel | Permission.ChatPrivate;

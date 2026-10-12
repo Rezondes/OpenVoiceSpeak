@@ -26,21 +26,21 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     readonly Queue<LeaveChoice> answers = new();
     int asked;
 
-    DialogCallbacks Dialogs() => new()
+    /// <summary>The page flow and the administration page ask the same question.</summary>
+    DialogCallbacks Dialogs() => new() { AskLeave = AskLeaveAsync, Admin = new() { AskLeave = AskLeaveAsync } };
+
+    Task<LeaveChoice> AskLeaveAsync()
     {
-        AskLeave = () =>
-        {
-            asked++;
-            return Task.FromResult(answers.Dequeue());
-        },
-    };
+        asked++;
+        return Task.FromResult(answers.Dequeue());
+    }
 
     MainViewModel Main(bool connected = true)
     {
         var dialogs = Dialogs();
         // posts go through the UI thread, as in the app: the device listing of the pool never runs while a test edits a page
         var vm = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action), dialogs: dialogs);
-        if (connected) MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent, dialogs: dialogs));
+        if (connected) MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent));
         return vm;
     }
 

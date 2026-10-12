@@ -106,7 +106,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         var secret = Guid.NewGuid();
         await using var own = await TestServer.StartAsync(SecretChannel(secret));
         int asked = 0;
-        vm.Dialogs = new DialogCallbacks { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } };
+        vm.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } } };
         await ConnectTo(own);
         await OnUi(() => vm.Server!.JoinAsync(secret));
         Assert.Equal(secret, await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret));
@@ -541,7 +541,7 @@ public sealed class ReconnectTests : IAsyncLifetime
             TestServer.Grant(adminId, "Admin")(d);
         });
         await using var admin = await TestClient.ConnectAsync(own, "admin", adminId);
-        vm.Dialogs = new DialogCallbacks { AskChannelPassword = _ => Task.FromResult<string?>("pw") };
+        vm.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => Task.FromResult<string?>("pw") } };
         await ConnectTo(own);
         await OnUi(() => vm.Server!.JoinAsync(secret));
         await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret);

@@ -126,7 +126,7 @@ sealed class PageFlowRig
 
     /// <summary>Shows a server whose own user is an administrator; <paramref name="reply"/> answers a request at once.</summary>
     public ServerViewModel ShowAdminServer(Func<Request, Message?>? reply = null) =>
-        ShownServer = FakeServers.Admin(Sent, new ManualTimeProvider(), Dialogs, reply);
+        ShownServer = FakeServers.Admin(Sent, new ManualTimeProvider(), Dialogs.Server, reply);
 
     /// <summary>Both properties were raised, <paramref name="first"/> before <paramref name="second"/>.</summary>
     public void AssertChangedBefore(string first, string second)

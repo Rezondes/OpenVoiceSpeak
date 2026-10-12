@@ -1,3 +1,4 @@
+using OVS.Client.Dialogs;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
 using OVS.Shared.Permissions;
@@ -21,10 +22,45 @@ public sealed class UsersAndBansViewModelTests
 
     sealed record Rig(UsersAndBansViewModel Section, ServerViewModel Server);
 
-    Rig Create()
+    Rig Create(UsersAndBansDialogs? dialogs = null)
     {
         var server = FakeServers.Admin(sent, time);
-        return new Rig(new UsersAndBansViewModel(server), server);
+        return new Rig(new UsersAndBansViewModel(server, dialogs), server);
+    }
+
+    [Fact]
+    public async Task DeleteUser_NoDialogs_SendsNothing()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Yvonne]));
+
+        await Bound(Assert.Single(section.Users).DeleteCommand.ExecuteAsync(null));
+
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public async Task DeleteUser_ConfirmThrows_PropagatesAndSendsNothing()
+    {
+        var (section, _) = Create(new UsersAndBansDialogs { ConfirmDeleteUser = _ => throw new InvalidOperationException("Dialog kaputt") });
+        section.Apply(new UserList("r", [Yvonne]));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Bound(Assert.Single(section.Users).DeleteCommand.ExecuteAsync(null)));
+
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public async Task Ban_GivenRecord_AsksItsBanDialogWithTheNickname()
+    {
+        var asked = new List<string>();
+        var (section, _) = Create(new UsersAndBansDialogs { Ban = (nickname, _, _) => { asked.Add(nickname); return Task.FromResult<BanChoice?>(null); } });
+        section.Apply(new UserList("r", [Yvonne]));
+
+        await Bound(Assert.Single(section.Users).BanCommand.ExecuteAsync(null));
+
+        Assert.Equal(["Yvonne"], asked);
+        Assert.Empty(sent);
     }
 
     string IdOf<T>() where T : Request => sent.OfType<T>().Last().RequestId!;

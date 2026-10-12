@@ -566,6 +566,19 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     }
 
     [Fact]
+    public async Task Attach_DialogsReplacedAfterTheAttach_TheAttachedServerKeepsTheRecordOfItsAttach()
+    {
+        await using var server = await TestServer.StartAsync();
+        var first = new DialogCallbacks { Server = new() { Confirm = _ => Task.FromResult(true) } };
+        rig.Dialogs = first;
+        await rig.ConnectAsync(ChoiceFor(server));
+
+        rig.Dialogs = new DialogCallbacks { Server = new() { Confirm = _ => Task.FromResult(false) } };
+
+        Assert.Same(first.Server, await rig.ReadAsync(() => rig.Shown!.Dialogs));
+    }
+
+    [Fact]
     public async Task Reconnect_AttachFailsBeforeOwningTheConnection_ClosesItAndContinues()
     {
         await using var server = await TestServer.StartAsync();

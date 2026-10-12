@@ -22,6 +22,7 @@ namespace OVS.Client.ViewModels;
 internal sealed partial class UsersAndBansViewModel : ObservableObject
 {
     readonly ServerViewModel server;
+    readonly UsersAndBansDialogs dialogs;
     IReadOnlyList<KnownUserInfo> knownUsers = [];
     // Package 87: the lists come in pages, collected until complete
     readonly ListPages<KnownUserInfo> userPages = new();
@@ -48,9 +49,10 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     List<GroupInfo> judgedGroups;
     bool detached;
 
-    internal UsersAndBansViewModel(ServerViewModel server)
+    internal UsersAndBansViewModel(ServerViewModel server, UsersAndBansDialogs? dialogs = null)
     {
         this.server = server;
+        this.dialogs = dialogs ?? new UsersAndBansDialogs();
         UsersLoad = server.NewPending();
         BansLoad = server.NewPending();
         userRefresh = new("u", () => !detached && ShowUsers, id => SendRoutedAsync(new ListUsers(), id, UsersLoad), server.Time);
@@ -319,7 +321,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     Task BanUserAsync(KnownUserViewModel user)
     {
         var ipKnown = user.Info.LastIp is not null;
-        return ServerViewModel.Ask<BanChoice>(server.Dialogs.Ban is { } showBanDialog ? submit => showBanDialog(user.Nickname, ipKnown, submit) : null,
+        return ServerViewModel.Ask<BanChoice>(dialogs.Ban is { } showBanDialog ? submit => showBanDialog(user.Nickname, ipKnown, submit) : null,
             choice => CardAction(user.Fingerprint, new BanKnownUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown), bans: true));
     }
 
@@ -338,7 +340,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
 
     async Task DeleteUserAsync(KnownUserViewModel user)
     {
-        if (server.Dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
+        if (dialogs.ConfirmDeleteUser is not { } confirm || !await confirm(user.Nickname)) return;
         CardAction(user.Fingerprint, new DeleteKnownUser(user.Fingerprint), bans: true);
     }
 

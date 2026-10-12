@@ -513,6 +513,21 @@ public sealed class PageFlowViewModelTests
     }
 
     [AvaloniaFact]
+    public async Task OpenAdminAsync_AdminDialogsSetAfterTheFlowWasBuilt_TheAdministrationAsksThroughThem()
+    {
+        var rig = new PageFlowRig();
+        var asked = 0;
+        rig.Dialogs = new DialogCallbacks { Admin = new() { AskLeave = () => { asked++; return Task.FromResult(LeaveChoice.Stay); } } };
+        rig.ShowAdminServer();
+
+        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        var stays = !await HangGuard.Bound(rig.Flow.AdminPage!.ConfirmLeaveAsync(new AdminPlace(() => true, () => Task.FromResult(false), () => { })));
+
+        Assert.True(stays);
+        Assert.Equal((1, 0), (asked, rig.Asked));
+    }
+
+    [AvaloniaFact]
     public async Task ConfirmLeaveAsync_NoAskLeaveDialog_LeavesWithoutSaving()
     {
         var rig = new PageFlowRig { Dialogs = new DialogCallbacks() };

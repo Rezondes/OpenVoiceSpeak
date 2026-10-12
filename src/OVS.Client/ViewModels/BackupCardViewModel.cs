@@ -1,4 +1,5 @@
 using OVS.Client.Collections;
+using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,14 +19,16 @@ namespace OVS.Client.ViewModels;
 internal sealed partial class BackupCardViewModel : ObservableObject
 {
     readonly ServerViewModel server;
+    readonly BackupCardDialogs dialogs;
     // Package 87: the backup list comes in pages, collected until complete
     readonly ListPages<BackupInfo> backupPages = new();
     IReadOnlyList<BackupInfo> backupInfos = [];
     bool backupsForAdmin;
 
-    internal BackupCardViewModel(ServerViewModel server, AdminTransfer transfer)
+    internal BackupCardViewModel(ServerViewModel server, AdminTransfer transfer, BackupCardDialogs? dialogs = null)
     {
         this.server = server;
+        this.dialogs = dialogs ?? new BackupCardDialogs();
         Transfer = transfer;
         BackupsLoad = server.NewPending();
         BackupCreate = server.NewPending();
@@ -92,7 +95,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     }
 
     /// <summary>Package 89 (A101): asked before the file picker; the archive holds the certificate with its private key and all user data.</summary>
-    internal async Task<bool> ConfirmDownloadAsync() => server.Dialogs.ConfirmBackupDownload is { } warn && await warn();
+    internal async Task<bool> ConfirmDownloadAsync() => dialogs.ConfirmBackupDownload is { } warn && await warn();
 
     /// <summary>Answered with the new list; Package 97: busy until then, a second click meanwhile is ignored.</summary>
     [RelayCommand]
@@ -100,7 +103,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
 
     async Task DeleteBackupAsync(BackupViewModel backup)
     {
-        if (server.Dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Backup_ConfirmDelete, backup.Title))) return;
+        if (dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Backup_ConfirmDelete, backup.Title))) return;
         await SendRoutedAsync(new DeleteBackup(backup.Info.FileName)); // answered with the new list
     }
 
@@ -114,7 +117,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     /// <summary>Asks the red question about the backup; restores it only when answered yes. Package 97: busy until the disconnect.</summary>
     async Task ConfirmAndRestoreAsync(BackupInfo backup)
     {
-        if (server.Dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(backup))) return;
+        if (dialogs.ConfirmRestore is not { } confirm || !await confirm(BackupViewModel.TitleOf(backup))) return;
         await server.SendAsync(new RestoreBackup(backup.FileName), pending: Restoring);
     }
 

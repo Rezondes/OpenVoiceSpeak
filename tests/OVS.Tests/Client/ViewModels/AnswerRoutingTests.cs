@@ -30,7 +30,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     readonly List<Request> sent = [];
     readonly List<Message> received = [];
 
-    ServerViewModel Server(Func<Request, Message?>? reply = null, DialogCallbacks? dialogs = null) => FakeServers.Admin(sent, time, dialogs, reply);
+    ServerViewModel Server(Func<Request, Message?>? reply = null) => FakeServers.Admin(sent, time, reply: reply);
 
     // ---- The routes of ServerViewModel ----
 
@@ -257,14 +257,16 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
                 DownloadLogChunk => new LogChunk(r.RequestId, "d1", 0, 3, "AQID", true),
                 _ => null,
             };
-        }, new DialogCallbacks
-        {
-            Confirm = _ => Task.FromResult(true),
-            ConfirmRestore = _ => Task.FromResult(true),
-            ConfirmDeleteUser = _ => Task.FromResult(true),
-            Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("Spam", null, false)),
         });
-        var page = new AdminViewModel(server);
+        var page = new AdminViewModel(server, new AdminDialogs
+        {
+            UsersAndBans = new()
+            {
+                ConfirmDeleteUser = _ => Task.FromResult(true),
+                Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("Spam", null, false)),
+            },
+            BackupCard = new() { Confirm = _ => Task.FromResult(true), ConfirmRestore = _ => Task.FromResult(true) },
+        });
         var file = Path.Combine(dir, "up.ovsbackup");
         File.WriteAllBytes(file, [1, 2, 3]);
 

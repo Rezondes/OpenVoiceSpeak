@@ -53,19 +53,19 @@ public sealed partial class ServerViewModel : ObservableObject
         nameof(CanChatServer), nameof(CanChatChannel), nameof(CanChatPrivate))]
     Permission selfPermissions;
 
-    public ServerViewModel(StateMirror mirror, Func<Request, Task> send, TimeProvider time, DialogCallbacks? dialogs = null)
+    public ServerViewModel(StateMirror mirror, Func<Request, Task> send, TimeProvider time, ServerDialogs? dialogs = null)
     {
         Mirror = mirror;
         this.send = send;
         this.time = time;
-        Dialogs = dialogs ?? new DialogCallbacks();
+        Dialogs = dialogs ?? new ServerDialogs();
         Leave = new LeaveTimer(time, () => Post);
         Rebuild();
     }
 
     public StateMirror Mirror { get; }
     public TimeProvider Time => time;
-    public DialogCallbacks Dialogs { get; }
+    public ServerDialogs Dialogs { get; }
     public ObservableCollection<ChannelViewModel> Channels { get; } = [];
 
     /// <summary>Package 102: how long a user or channel that is gone stays to fold away (the window sets it).</summary>
