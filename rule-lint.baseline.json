@@ -404,10 +404,6 @@
     "Count": 1
   },
   {
-    "Key": "RL154|src/OVS.Client/Views/MainWindow.axaml.cs|MainWindow.SlideDrawer",
-    "Count": 1
-  },
-  {
     "Key": "RL154|src/OVS.Server/ControlServer.cs|ControlServer.HandshakeAsync.Reject",
     "Count": 1
   },
@@ -19925,10 +19921,6 @@
   },
   {
     "Key": "RL701|src/OVS.Client/ViewModels/UsersAndBansViewModel.cs|UsersAndBansViewModel",
-    "Count": 1
-  },
-  {
-    "Key": "RL701|src/OVS.Client/Views/MainWindow.axaml.cs|MainWindow",
     "Count": 1
   },
   {

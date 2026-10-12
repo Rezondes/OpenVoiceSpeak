@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        drawer = new SidebarDrawer(this, Sidebar, DrawerScrim);
         AddHandler(KeyDownEvent, OnKeyDown);
         Closing += OnClosing;
         DataContextChanged += (_, _) => WatchServer();
@@ -35,6 +36,9 @@ public partial class MainWindow : Window
     }
 
     MainViewModel Vm => (MainViewModel)DataContext!;
+
+    /// <summary>The sidebar as a drawer below the compact width (Package 68, 105).</summary>
+    readonly SidebarDrawer drawer;
 
     bool closeConfirmed, closeAsking;
 
@@ -91,7 +95,7 @@ public partial class MainWindow : Window
     void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Handled || e.Key != Key.Escape || Overlay.IsOpen) return;
-        if (drawerOpen) SetDrawer(false);
+        if (drawer.IsOpen) drawer.Set(false);
         else if (!Vm.PageFlow.IsHomePage) _ = Vm.PageFlow.ClosePageAsync(); // Package 114: asks first when something is not saved
         else return;
         e.Handled = true;
@@ -101,7 +105,7 @@ public partial class MainWindow : Window
     {
         if ((sender as Control)?.DataContext is not ChannelViewModel { IsSeparator: false } channel) return; // Package 111: nothing at all
         channel.JoinCommand.Execute(null);
-        SetDrawer(false);
+        drawer.Set(false);
     }
 
     // ---- Package 67 (A81): sidebar as wide as the widest channel row, until the user drags it ----
@@ -171,7 +175,7 @@ public partial class MainWindow : Window
     /// <summary>Another page than home closes the drawer.</summary>
     void OnPageFlowPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(PageFlowViewModel.Page) && watchedVm?.PageFlow.IsHomePage == false) SetDrawer(false);
+        if (args.PropertyName == nameof(PageFlowViewModel.Page) && watchedVm?.PageFlow.IsHomePage == false) drawer.Set(false);
     }
 
     bool wasConnecting;
@@ -182,25 +186,9 @@ public partial class MainWindow : Window
         if (wasConnecting && !vm.Connection.IsConnecting && vm.Server is null)
         {
             ShakeMotion.Shake(StartCard);
-            FadeIn(StatusText);
+            LiveMotion.FadeIn(StatusText);
         }
         wasConnecting = vm.Connection.IsConnecting;
-    }
-
-    static void FadeIn(Visual target)
-    {
-        if (!Motion.IsAnimated(target)) return;
-        _ = new Avalonia.Animation.Animation
-        {
-            Duration = Motion.Normal,
-            Easing = Motion.Ease,
-            FillMode = Avalonia.Animation.FillMode.Backward,
-            Children =
-            {
-                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 0d) } },
-                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(OpacityProperty, 1d) } },
-            },
-        }.Play(target);
     }
 
     /// <summary>The connecting flag lives on the connection, a second source next to the main view model's <c>Server</c>.</summary>
@@ -213,7 +201,7 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(MainViewModel.Server))
         {
-            if (watchedVm?.Server is not null) FadeIn(ServerHeader); // Package 106: connected, the server's name fades into the header
+            if (watchedVm?.Server is not null) LiveMotion.FadeIn(ServerHeader); // Package 106: connected, the server's name fades into the header
             OnServerChanged();
             ApplyDisplay();
         }
@@ -224,7 +212,7 @@ public partial class MainWindow : Window
     void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(ServerViewModel.CurrentChannel)) return;
-        SetDrawer(false);
+        drawer.Set(false);
         // Package 103: the highlight slides from the channel I left to the one I am in now
         var now = watchedServer?.CurrentChannel;
         if (currentChannel is { } was && now is not null && was != now && ChannelRow(was) is { } from && ChannelRow(now) is { } to)
@@ -322,82 +310,13 @@ public partial class MainWindow : Window
     double sidebarWanted = 300, sidebarFitted, sidebarSet = 300;
     /// <summary>Header width without the title, remembered while the header is hidden (settings, administration).</summary>
     double headerNeed;
-    bool drawerOpen;
 
-    void OnDrawerToggle(object? sender, RoutedEventArgs e) => SetDrawer(!drawerOpen);
+    void OnDrawerToggle(object? sender, RoutedEventArgs e) => drawer.Set(!drawer.IsOpen);
 
     void OnDrawerScrimPressed(object? sender, PointerPressedEventArgs e)
     {
-        SetDrawer(false);
+        drawer.Set(false);
         e.Handled = true;
-    }
-
-    void SetDrawer(bool open)
-    {
-        bool was = drawerOpen;
-        drawerOpen = open && Classes.Contains("compact");
-        if (drawerOpen == was || !Motion.IsAnimated(this) || !Classes.Contains("compact"))
-        {
-            drawerCancel?.Cancel();
-            StillDrawer();
-            Classes.Set("drawer", drawerOpen);
-            return;
-        }
-        _ = SlideDrawer(drawerOpen);
-    }
-
-    CancellationTokenSource? drawerCancel;
-
-    /// <summary>
-    /// Package 105: the drawer slides in from the left with its scrim; closing slides it out. Closed counts at once
-    /// (keys, clicks); the sidebar only stays visible until it has slid away.
-    /// </summary>
-    async Task SlideDrawer(bool open)
-    {
-        drawerCancel?.Cancel();
-        var cancel = drawerCancel = new CancellationTokenSource();
-        if (open) Classes.Set("drawer", true);
-        Sidebar.IsHitTestVisible = open;
-        UpdateLayout();
-        double width = Sidebar.Bounds.Width;
-        double from = open ? -width : 0, to = open ? 0 : -width;
-        var slide = new Avalonia.Animation.Animation
-        {
-            Duration = Motion.Normal,
-            Easing = Motion.Ease,
-            FillMode = open ? Avalonia.Animation.FillMode.Backward : Avalonia.Animation.FillMode.Forward,
-            Children =
-            {
-                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, from) } },
-                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, to) } },
-            },
-        }.Play(Sidebar, cancel.Token);
-        var dim = new Avalonia.Animation.Animation
-        {
-            Duration = Motion.Normal,
-            Easing = Motion.Ease,
-            FillMode = open ? Avalonia.Animation.FillMode.Backward : Avalonia.Animation.FillMode.Forward,
-            Children =
-            {
-                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(OpacityProperty, open ? 0d : 1d) } },
-                new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(OpacityProperty, open ? 1d : 0d) } },
-            },
-        }.Play(DrawerScrim, cancel.Token);
-        await Task.WhenAll(slide, dim);
-        if (cancel.IsCancellationRequested) return;
-        if (!open) Classes.Set("drawer", false);
-        StillDrawer();
-    }
-
-    /// <summary>
-    /// The drawer as it rests: a finished slide-out keeps its last values (moved away, faded), so they go once it is
-    /// hidden; the next slide starts from its place.
-    /// </summary>
-    void StillDrawer()
-    {
-        Sidebar.ClearValue(IsHitTestVisibleProperty);
-        Sidebar.ClearValue(RenderTransformProperty);
-        DrawerScrim.ClearValue(OpacityProperty);
     }
 
     /// <summary>
@@ -419,11 +338,11 @@ public partial class MainWindow : Window
         if (column.MinWidth != min) column.MinWidth = min;
         if (column.MaxWidth != max) column.MaxWidth = max;
         if (column.Width.Value != sidebarSet) column.Width = new GridLength(sidebarSet);
-        var drawer = compact ? Math.Min(sidebarWanted, width - Responsive.DrawerGap) : double.NaN;
-        if (!Sidebar.Width.Equals(drawer)) Sidebar.Width = drawer;
+        var drawerWidth = compact ? Math.Min(sidebarWanted, width - Responsive.DrawerGap) : double.NaN;
+        if (!Sidebar.Width.Equals(drawerWidth)) Sidebar.Width = drawerWidth;
 
         Responsive.Apply(this, width, compact ? width : width - SidebarSplitter.Width - sidebarSet);
-        if (!compact && (drawerOpen || Classes.Contains("drawer"))) SetDrawer(false); // also while it still slides away
+        if (!compact && (drawer.IsOpen || Classes.Contains("drawer"))) drawer.Set(false); // also while it still slides away
     }
 
     /// <summary>
