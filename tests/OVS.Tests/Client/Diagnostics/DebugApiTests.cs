@@ -150,6 +150,52 @@ public sealed class DebugApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task UnknownPost_Connected_NamesTheEndpoint()
+    {
+        await anna.Post("connect", ConnectBody("anna"));
+
+        var response = await anna.Http.PostAsJsonAsync("gibtsnicht", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Unbekannter Endpunkt POST /gibtsnicht", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task UnknownPost_NotConnected_SaysNotConnected()
+    {
+        var response = await anna.Http.PostAsJsonAsync("gibtsnicht", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Nicht verbunden", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Get_UnknownPath_IsBadRequest()
+    {
+        var response = await anna.Http.GetAsync("join");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Unbekannter Endpunkt GET /join", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task ServerRoute_NotConnected_SaysNotConnected()
+    {
+        var response = await anna.Http.PostAsJsonAsync("mute", new { value = true });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Nicht verbunden", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Tone_NotConnected_ReportsTheTone()
+    {
+        var reply = await anna.Post("tone", new { hz = 440 });
+
+        Assert.Equal(440, reply.GetProperty("toneHz").GetDouble());
+    }
+
+    [Fact]
     public async Task Disconnect_Connected_StateSaysNotConnected()
     {
         await anna.Post("connect", ConnectBody("anna"));

@@ -59,6 +59,8 @@ public sealed class DebugApi : IDisposable
     readonly KeyPoller keys;
     readonly AudioEngine audio;
     readonly DeviceLifecycle lifecycle;
+    readonly Dictionary<string, Func<JsonElement, Task<object?>>> clientRoutes;
+    readonly Dictionary<string, Func<ServerViewModel, JsonElement, Task>> serverRoutes;
 
     /// <param name="keys">The key poller the key routes simulate on and /state reads (from the composition root).</param>
     /// <param name="audio">The audio engine /state reads and /tone reaches the test tone through (from the composition root).</param>
@@ -69,6 +71,8 @@ public sealed class DebugApi : IDisposable
         this.keys = keys;
         this.audio = audio;
         lifecycle = audio.DeviceLifecycle; // the /tone route sets the test tone there and reads it back
+        clientRoutes = CreateClientRoutes();
+        serverRoutes = CreateServerRoutes();
         this.vm = vm;
         this.onUi = onUi;
         this.listDevices = listDevices;
@@ -144,98 +148,89 @@ public sealed class DebugApi : IDisposable
         if (method == "GET" && path == "/devices")
             return new { Inputs = listDevices(AudioDirection.Input), Outputs = listDevices(AudioDirection.Output) };
         if (method != "POST") throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
-
-        switch (path)
-        {
-            case "/connect":
-                await ConnectAsync(body);
-                return State();
-            case "/disconnect":
-                await vm.Connection.DisconnectAsync();
-                return State();
-            case "/ptt":
-                keys.Simulate(ptt: body.GetProperty("down").GetBoolean());
-                return new { ok = true };
-            case "/linkptt":
-                keys.Simulate(linkPtt: body.GetProperty("down").GetBoolean());
-                return new { ok = true };
-            case "/key":
-                await SimulateKeyAsync(body);
-                return new { ok = true };
-            case "/server-icon":
-                await SetServerIconAsync(body);
-                return new { ok = true };
-            case "/tone":
-                lifecycle.SetTone(Optional(body, "hz")?.GetDouble());
-                return new { ok = true, toneHz = lifecycle.CaptureSource.ToneHz };
-            case "/settings":
-                var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
-                // Package 127: a body without a version keeps the current one (a missing key reads as 0)
-                if (Optional(body, "settingsVersion") is null) settings.SettingsVersion = vm.Settings.SettingsVersion;
-                // Package 129: a body without the switch is read like an old file (A135 step 3): a threshold given by hand stays manual
-                if (Optional(body, "vadAutomatic") is null) settings.InferVadAutomatic();
-                vm.ApplySettings(settings);
-                return vm.Settings;
-        }
-
+        if (clientRoutes.TryGetValue(path, out var clientRoute)) return await clientRoute(body);
         var server = vm.Server ?? throw new DebugApiException("Nicht verbunden");
-        switch (path)
-        {
-            case "/join":
-                await server.JoinAsync(Channel(server, Text(body, "channel")).Id);
-                break;
-            case "/mute":
-                if (server.SelfState.SelfMuted != body.GetProperty("value").GetBoolean()) await server.SelfState.ToggleMuteCommand.ExecuteAsync(null);
-                break;
-            case "/deafen":
-                if (server.SelfState.SelfDeafened != body.GetProperty("value").GetBoolean()) await server.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
-                break;
-            case "/redeem":
-                await server.SendAsync(new RedeemAdminToken(Text(body, "token")));
-                break;
-            case "/create-channel":
-                await server.SendAsync(new CreateChannel(Text(body, "name"), Optional(body, "description")?.GetString() ?? ""));
-                break;
-            case "/delete-channel":
-                await server.SendAsync(new DeleteChannel(Channel(server, Text(body, "channel")).Id));
-                break;
-            case "/link":
-                await server.SendAsync(new LinkChannels(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id));
-                break;
-            case "/unlink":
-                await server.SendAsync(new UnlinkChannels(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id));
-                break;
-            case "/move":
-                await server.SendAsync(new MoveUser(User(server, Text(body, "user")).SessionId, Channel(server, Text(body, "channel")).Id));
-                break;
-            case "/kick":
-                await server.SendAsync(new KickSession(User(server, Text(body, "user")).SessionId, Optional(body, "reason")?.GetString() ?? ""));
-                break;
-            case "/ban":
-                await server.SendAsync(new BanSession(User(server, Text(body, "user")).SessionId,
-                    Optional(body, "reason")?.GetString() ?? "",
-                    Optional(body, "minutes")?.GetInt32(),
-                    Optional(body, "ip")?.GetBoolean() ?? false));
-                break;
-            case "/server-mute":
-                await server.SendAsync(new SetSessionServerMute(User(server, Text(body, "user")).SessionId, body.GetProperty("value").GetBoolean()));
-                break;
-            case "/chat":
-                var target = Enum.TryParse<ChatTarget>(Text(body, "target"), ignoreCase: true, out var t)
-                    ? t : throw new DebugApiException("target ist server, channel oder private");
-                uint? to = target == ChatTarget.Private ? User(server, Text(body, "to")).SessionId : null;
-                await server.SendChatAsync(target, Text(body, "text"), to);
-                break;
-            case "/request":
-                var request = body.Deserialize<Message>(ProtocolJson.Options) as Request
-                              ?? throw new DebugApiException("Body ist keine Protokoll-Anfrage (Feld 'type' prüfen)");
-                await server.SendAsync(request);
-                break;
-            default:
-                throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
-        }
+        if (!serverRoutes.TryGetValue(path, out var serverRoute)) throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
+        await serverRoute(server, body);
         return new { ok = true };
     }
+
+    /// <summary>The POST routes that need no server, path to handler, grouped: connection, keys, audio and settings, server logo.</summary>
+    Dictionary<string, Func<JsonElement, Task<object?>>> CreateClientRoutes() => new()
+    {
+        // connection
+        ["/connect"] = async body => { await ConnectAsync(body); return State(); },
+        ["/disconnect"] = async _ => { await vm.Connection.DisconnectAsync(); return State(); },
+        // keys
+        ["/ptt"] = body => { keys.Simulate(ptt: body.GetProperty("down").GetBoolean()); return Done; },
+        ["/linkptt"] = body => { keys.Simulate(linkPtt: body.GetProperty("down").GetBoolean()); return Done; },
+        ["/key"] = async body => { await SimulateKeyAsync(body); return new { ok = true }; },
+        // audio and settings
+        ["/tone"] = body =>
+        {
+            lifecycle.SetTone(Optional(body, "hz")?.GetDouble());
+            return Task.FromResult<object?>(new { ok = true, toneHz = lifecycle.CaptureSource.ToneHz });
+        },
+        ["/settings"] = body => Task.FromResult<object?>(ApplySettings(body)),
+        // server logo
+        ["/server-icon"] = async body => { await SetServerIconAsync(body); return new { ok = true }; },
+    };
+
+    /// <summary>The answer of a route that has nothing to report.</summary>
+    static readonly Task<object?> Done = Task.FromResult<object?>(new { ok = true });
+
+    ClientSettings ApplySettings(JsonElement body)
+    {
+        var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
+        // Package 127: a body without a version keeps the current one (a missing key reads as 0)
+        if (Optional(body, "settingsVersion") is null) settings.SettingsVersion = vm.Settings.SettingsVersion;
+        // Package 129: a body without the switch is read like an old file (A135 step 3): a threshold given by hand stays manual
+        if (Optional(body, "vadAutomatic") is null) settings.InferVadAutomatic();
+        vm.ApplySettings(settings);
+        return vm.Settings;
+    }
+
+    /// <summary>The POST routes on the connected server, path to handler, grouped: own state, channels, moderation, chat, raw requests.</summary>
+    Dictionary<string, Func<ServerViewModel, JsonElement, Task>> CreateServerRoutes() => new()
+    {
+        // own state
+        ["/join"] = (server, body) => server.JoinAsync(Channel(server, Text(body, "channel")).Id),
+        ["/mute"] = async (server, body) =>
+        {
+            if (server.SelfState.SelfMuted != body.GetProperty("value").GetBoolean()) await server.SelfState.ToggleMuteCommand.ExecuteAsync(null);
+        },
+        ["/deafen"] = async (server, body) =>
+        {
+            if (server.SelfState.SelfDeafened != body.GetProperty("value").GetBoolean()) await server.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
+        },
+        // channels
+        ["/create-channel"] = (server, body) => server.SendAsync(new CreateChannel(Text(body, "name"), Optional(body, "description")?.GetString() ?? "")),
+        ["/delete-channel"] = (server, body) => server.SendAsync(new DeleteChannel(Channel(server, Text(body, "channel")).Id)),
+        ["/link"] = (server, body) => server.SendAsync(new LinkChannels(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id)),
+        ["/unlink"] = (server, body) => server.SendAsync(new UnlinkChannels(Channel(server, Text(body, "a")).Id, Channel(server, Text(body, "b")).Id)),
+        // moderation
+        ["/move"] = (server, body) => server.SendAsync(new MoveUser(User(server, Text(body, "user")).SessionId, Channel(server, Text(body, "channel")).Id)),
+        ["/kick"] = (server, body) => server.SendAsync(new KickSession(User(server, Text(body, "user")).SessionId, Optional(body, "reason")?.GetString() ?? "")),
+        ["/ban"] = (server, body) => server.SendAsync(new BanSession(User(server, Text(body, "user")).SessionId,
+            Optional(body, "reason")?.GetString() ?? "",
+            Optional(body, "minutes")?.GetInt32(),
+            Optional(body, "ip")?.GetBoolean() ?? false)),
+        ["/server-mute"] = (server, body) =>
+            server.SendAsync(new SetSessionServerMute(User(server, Text(body, "user")).SessionId, body.GetProperty("value").GetBoolean())),
+        // chat
+        ["/chat"] = (server, body) =>
+        {
+            var target = Enum.TryParse<ChatTarget>(Text(body, "target"), ignoreCase: true, out var parsed)
+                ? parsed : throw new DebugApiException("target ist server, channel oder private");
+            uint? to = target == ChatTarget.Private ? User(server, Text(body, "to")).SessionId : null;
+            return server.SendChatAsync(target, Text(body, "text"), to);
+        },
+        // raw requests
+        ["/redeem"] = (server, body) => server.SendAsync(new RedeemAdminToken(Text(body, "token"))),
+        ["/request"] = (server, body) => server.SendAsync(body.Deserialize<Message>(ProtocolJson.Options) as Request
+            ?? throw new DebugApiException("Body ist keine Protokoll-Anfrage (Feld 'type' prüfen)")),
+    };
+
 
     async Task ConnectAsync(JsonElement body)
     {
