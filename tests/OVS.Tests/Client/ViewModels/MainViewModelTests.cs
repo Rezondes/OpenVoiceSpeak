@@ -1027,7 +1027,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "bert").MessageCommand.Execute(null);
+            vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "bert").MessageCommand.Execute(null);
             vm.Chat!.Draft = "psst zurück";
             await vm.Chat.SendCommand.ExecuteAsync(null);
             return null;
@@ -1378,7 +1378,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             var before = vm.Settings;
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").VolumePercent = 200;
+            vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").VolumePercent = 200;
             return before;
         });
         Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
@@ -1395,11 +1395,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
         Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));
         Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
-        Assert.Equal(200, await OnUi(() => vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).VolumePercent));
+        Assert.Equal(200, await OnUi(() => vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).VolumePercent));
 
         await OnUi(() =>
         {
-            vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).ResetVolumeCommand.Execute(null);
+            vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).ResetVolumeCommand.Execute(null);
             return 0;
         });
         Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));

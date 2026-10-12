@@ -105,7 +105,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             await Run(ui, () => vm.Server!.SendAsync(new CreateChannel("Raid", "")));
             await Eventually(null, "Channel 'Raid' created");
-            var raid = await ui.InvokeAsync(() => Task.FromResult(vm.Server!.Channels.Single(c => c.Name == "Raid").Id));
+            var raid = await ui.InvokeAsync(() => Task.FromResult(vm.Server!.Tree.Channels.Single(c => c.Name == "Raid").Id));
             await Run(ui, () => vm.Server!.JoinAsync(raid));
             await Run(ui, () => vm.Server!.ToggleMuteCommand.ExecuteAsync(null));
 

@@ -85,7 +85,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
 
     internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> serverGroups)
     {
-        owner.UserUpdates++;
+        owner.Tree.UserUpdates++;
         Nickname = info.Nickname;
         Fingerprint = info.Fingerprint;
         ShowVolume(owner.VolumeOf(info.Fingerprint));

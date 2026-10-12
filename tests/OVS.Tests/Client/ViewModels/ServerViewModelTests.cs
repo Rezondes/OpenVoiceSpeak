@@ -28,8 +28,8 @@ public class ServerViewModelTests
 
     sealed record Fixture(ServerViewModel Vm, List<Request> Sent, ManualTimeProvider Time)
     {
-        public ChannelViewModel Channel(Guid id) => Vm.Channels.Single(c => c.Id == id);
-        public UserViewModel User(uint id) => Vm.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
+        public ChannelViewModel Channel(Guid id) => Vm.Tree.Channels.Single(c => c.Id == id);
+        public UserViewModel User(uint id) => Vm.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
     }
 
     static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, ServerDialogs? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
@@ -53,7 +53,7 @@ public class ServerViewModelTests
     public void Build_SortsChannelsAndGroupsUsers()
     {
         var f = Create(others: [User(2, "zora", Lobby, P.Speak), User(3, "Anna", Lobby, P.Speak), User(4, "bob", Bravo, P.Speak)]);
-        Assert.Equal(["Lobby", "alpha", "Bravo"], f.Vm.Channels.Select(c => c.Name));
+        Assert.Equal(["Lobby", "alpha", "Bravo"], f.Vm.Tree.Channels.Select(c => c.Name));
         Assert.Equal(["Anna", "ich", "zora"], f.Channel(Lobby).Users.Select(u => u.Nickname));
         Assert.Equal(["bob"], f.Channel(Bravo).Users.Select(u => u.Nickname));
         Assert.True(f.Channel(Lobby).IsCurrent);
@@ -143,15 +143,15 @@ public class ServerViewModelTests
     public void Speaking_ClearsAfter300ms()
     {
         var f = Create(others: User(2, "anna", Lobby, P.Speak));
-        f.Vm.OnSpeakers([new ActiveSpeaker(2, false)]);
+        f.Vm.Tree.OnSpeakers([new ActiveSpeaker(2, false)]);
         Assert.True(f.User(2).IsSpeaking);
 
         f.Time.Advance(TimeSpan.FromMilliseconds(200));
-        f.Vm.RefreshSpeaking();
+        f.Vm.Tree.RefreshSpeaking();
         Assert.True(f.User(2).IsSpeaking);
 
         f.Time.Advance(TimeSpan.FromMilliseconds(150));
-        f.Vm.RefreshSpeaking();
+        f.Vm.Tree.RefreshSpeaking();
         Assert.False(f.User(2).IsSpeaking);
     }
 
@@ -159,7 +159,7 @@ public class ServerViewModelTests
     public void SpeakingViaLink_Flagged()
     {
         var f = Create(others: User(2, "anna", Alpha, P.Speak));
-        f.Vm.OnSpeakers([new ActiveSpeaker(2, true)]);
+        f.Vm.Tree.OnSpeakers([new ActiveSpeaker(2, true)]);
         Assert.True(f.User(2).IsSpeakingViaLink);
         Assert.False(f.User(2).IsSpeaking);
     }
@@ -168,9 +168,9 @@ public class ServerViewModelTests
     public void SelfTransmitting_ShowsOnOwnEntry()
     {
         var f = Create();
-        f.Vm.SetSelfTransmitting(VoiceHeader.TargetLinked);
+        f.Vm.Tree.SetSelfTransmitting(VoiceHeader.TargetLinked);
         Assert.True(f.User(1).IsSpeakingViaLink);
-        f.Vm.SetSelfTransmitting(null);
+        f.Vm.Tree.SetSelfTransmitting(null);
         Assert.False(f.User(1).IsSpeakingViaLink);
     }
 
@@ -404,8 +404,8 @@ public class ServerViewModelTests
     {
         var f = Create(P.All);
         f.Vm.Apply(new ChannelsLinked(Lobby, Alpha));
-        Assert.Equal([Bravo], f.Vm.LinkCandidates(f.Channel(Lobby)).Select(c => c.Id));
-        Assert.Equal([Alpha], f.Vm.LinkedChannelVms(f.Channel(Lobby)).Select(c => c.Id));
+        Assert.Equal([Bravo], f.Vm.Tree.LinkCandidates(f.Channel(Lobby)).Select(c => c.Id));
+        Assert.Equal([Alpha], f.Vm.Tree.LinkedChannelVms(f.Channel(Lobby)).Select(c => c.Id));
         Assert.True(f.Channel(Lobby).CanUnlink);
     }
 
@@ -484,16 +484,16 @@ public class ServerViewModelTests
     public async Task DropOnChannel_SendsOrderWithSourceBeforeOrAfterTarget()
     {
         var f = Create(P.ChannelEdit);
-        await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
+        await f.Vm.Tree.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
         Assert.Equal(new[] { Bravo, Lobby, Alpha }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
         f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.PermissionDenied)); // Package 98: refused, the server's order is back
-        await f.Vm.MoveChannelAsync(f.Channel(Lobby), f.Channel(Bravo), after: true);
+        await f.Vm.Tree.MoveChannelAsync(f.Channel(Lobby), f.Channel(Bravo), after: true);
         Assert.Equal(new[] { Alpha, Bravo, Lobby }, ((ReorderChannels)f.Sent[^1]).ChannelIds);
         f.Vm.Apply(new Error(f.Sent[^1].RequestId, ReasonCodes.PermissionDenied));
 
         int before = f.Sent.Count;
-        await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Lobby), after: true); // already there
-        await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Alpha), after: false);
+        await f.Vm.Tree.MoveChannelAsync(f.Channel(Alpha), f.Channel(Lobby), after: true); // already there
+        await f.Vm.Tree.MoveChannelAsync(f.Channel(Alpha), f.Channel(Alpha), after: false);
         Assert.Equal(before, f.Sent.Count);
     }
 
@@ -582,7 +582,7 @@ public class ServerViewModelTests
         {
             for (int t = 0; t < ms; t += 20)
             {
-                f.Vm.OnSpeakers([new ActiveSpeaker(2, ViaLink: true)]);
+                f.Vm.Tree.OnSpeakers([new ActiveSpeaker(2, ViaLink: true)]);
                 f.Time.Advance(TimeSpan.FromMilliseconds(20));
             }
         }
@@ -604,18 +604,18 @@ public class ServerViewModelTests
         f.Vm.Apply(new ChannelsLinked(Lobby, Bravo));
         var heard = Sounds(f.Vm);
         const byte Linked = OVS.Shared.Voice.VoiceHeader.TargetLinked;
-        f.Vm.SetSelfTransmitting(Linked);
-        f.Vm.SetSelfTransmitting(Linked); // still the same transmission
+        f.Vm.Tree.SetSelfTransmitting(Linked);
+        f.Vm.Tree.SetSelfTransmitting(Linked); // still the same transmission
         Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.OwnLinkVoice], heard);
 
-        f.Vm.SetSelfTransmitting(null);
+        f.Vm.Tree.SetSelfTransmitting(null);
         f.Time.Advance(TimeSpan.FromMilliseconds(100)); // let go and pressed again at once
-        f.Vm.SetSelfTransmitting(Linked);
+        f.Vm.Tree.SetSelfTransmitting(Linked);
         Assert.Single(heard);
 
-        f.Vm.SetSelfTransmitting(null);
+        f.Vm.Tree.SetSelfTransmitting(null);
         f.Time.Advance(TimeSpan.FromMilliseconds(400));
-        f.Vm.SetSelfTransmitting(Linked);
+        f.Vm.Tree.SetSelfTransmitting(Linked);
         Assert.Equal(2, heard.Count);
     }
 
@@ -624,11 +624,11 @@ public class ServerViewModelTests
     {
         var f = Create();
         var heard = Sounds(f.Vm);
-        f.Vm.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked); // no link from my channel: nobody else hears it
-        f.Vm.SetSelfTransmitting(null);
+        f.Vm.Tree.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked); // no link from my channel: nobody else hears it
+        f.Vm.Tree.SetSelfTransmitting(null);
         f.Vm.Apply(new ChannelsLinked(Lobby, Bravo));
         f.Time.Advance(TimeSpan.FromSeconds(1));
-        f.Vm.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetChannel); // only the own channel, e.g. without the right
+        f.Vm.Tree.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetChannel); // only the own channel, e.g. without the right
         Assert.Empty(heard);
     }
 
@@ -637,9 +637,9 @@ public class ServerViewModelTests
     {
         var f = Create(others: [User(2, "anna", Lobby, P.Speak)]);
         var heard = Sounds(f.Vm);
-        f.Vm.OnSpeakers([new ActiveSpeaker(2, ViaLink: false)]); // in my channel
-        f.Vm.OnSpeakers([new ActiveSpeaker(1, ViaLink: true)]); // myself
-        f.Vm.OnSpeakers([new ActiveSpeaker(OVS.Client.Audio.AudioEngine.SelfTestSpeaker, ViaLink: true)]); // the self test
+        f.Vm.Tree.OnSpeakers([new ActiveSpeaker(2, ViaLink: false)]); // in my channel
+        f.Vm.Tree.OnSpeakers([new ActiveSpeaker(1, ViaLink: true)]); // myself
+        f.Vm.Tree.OnSpeakers([new ActiveSpeaker(OVS.Client.Audio.AudioEngine.SelfTestSpeaker, ViaLink: true)]); // the self test
         Assert.Empty(heard);
     }
 
@@ -778,10 +778,10 @@ public class ServerViewModelTests
     public async Task Reorder_RevertsOnError()
     {
         var f = Create(P.ChannelEdit);
-        Guid[] Order() => f.Vm.Channels.Select(c => c.Id).ToArray();
+        Guid[] Order() => f.Vm.Tree.Channels.Select(c => c.Id).ToArray();
         Assert.Equal([Lobby, Alpha, Bravo], Order());
 
-        await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
+        await f.Vm.Tree.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
         var refused = Assert.IsType<ReorderChannels>(f.Sent[^1]);
         Assert.Equal([Bravo, Lobby, Alpha], Order()); // at once, no jump back
         f.Vm.Apply(new UserJoined(User(2, "anna", Lobby, P.Speak))); // something else changes meanwhile: the new order stays
@@ -793,7 +793,7 @@ public class ServerViewModelTests
         Assert.False(f.Channel(Bravo).IsBusy);
 
         // accepted: the server's updates confirm the order
-        await f.Vm.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
+        await f.Vm.Tree.MoveChannelAsync(f.Channel(Bravo), f.Channel(Lobby), after: false);
         f.Time.Advance(PendingViewModel.ShowAfter);
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 0)));
         f.Vm.Apply(new ChannelUpdated(new ChannelInfo(Lobby, "Lobby", "", 1)));
@@ -804,7 +804,7 @@ public class ServerViewModelTests
         Assert.Equal([Bravo, Lobby, Alpha], Order());
 
         // no answer: back after 10 s
-        await f.Vm.MoveChannelAsync(f.Channel(Alpha), f.Channel(Bravo), after: false);
+        await f.Vm.Tree.MoveChannelAsync(f.Channel(Alpha), f.Channel(Bravo), after: false);
         Assert.Equal([Alpha, Bravo, Lobby], Order());
         f.Time.Advance(TimeSpan.FromSeconds(10));
         Assert.Equal([Bravo, Lobby, Alpha], Order());
@@ -861,7 +861,7 @@ public class ServerViewModelTests
         var server = FakeServers.Admin(sent, time: clock);
         server.Post = a => a();
         server.Leave.Delay = TimeSpan.FromMinutes(1);
-        var raid = server.Channels.Single(c => c.Name == "Raid");
+        var raid = server.Tree.Channels.Single(c => c.Name == "Raid");
         server.Apply(new UserLeft(2));
         Assert.Contains(raid.Users, u => u.SessionId == 2); // still shown, folding away
         Assert.True(CollectionSync.IsLeaving(raid.Users, raid.Users.Single()));
@@ -870,10 +870,10 @@ public class ServerViewModelTests
         var archiv = Guid.NewGuid();
         server.Apply(new ChannelAdded(new ChannelInfo(archiv, "Archiv", "", 5)));
         server.Apply(new ChannelRemoved(FakeServers.Raid));
-        Assert.Contains(server.Channels, c => c.Name == "Raid");
-        Assert.Equal(["Lobby", "Archiv"], server.Channels.Live().Select(c => c.Name));
-        var lobby = server.Channels.Single(c => c.Name == "Lobby");
-        Assert.DoesNotContain(server.LinkCandidates(lobby), c => c.Name == "Raid");
+        Assert.Contains(server.Tree.Channels, c => c.Name == "Raid");
+        Assert.Equal(["Lobby", "Archiv"], server.Tree.Channels.Live().Select(c => c.Name));
+        var lobby = server.Tree.Channels.Single(c => c.Name == "Lobby");
+        Assert.DoesNotContain(server.Tree.LinkCandidates(lobby), c => c.Name == "Raid");
 
         // Lobby's neighbour below is Archiv, not the folding Raid
         lobby.MoveDownCommand.Execute(null);
@@ -888,7 +888,7 @@ public class ServerViewModelTests
         var server = FakeServers.Admin(time: clock);
         server.Post = a => a();
         server.Leave.Delay = TimeSpan.FromMinutes(1);
-        var raid = server.Channels.Single(c => c.Name == "Raid");
+        var raid = server.Tree.Channels.Single(c => c.Name == "Raid");
         var anna = raid.Users.Single();
         server.Apply(new UserLeft(2));
         server.Apply(new UserJoined(new UserInfo(2, "fp2", "anna", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
@@ -904,12 +904,12 @@ public class ServerViewModelTests
         var server = FakeServers.Admin(sent, time: new ManualTimeProvider());
         server.Post = a => a();
         server.Leave.Delay = TimeSpan.FromMinutes(1);
-        var lobby = server.Channels.Single(c => c.Name == "Lobby");
-        var raid = server.Channels.Single(c => c.Name == "Raid");
+        var lobby = server.Tree.Channels.Single(c => c.Name == "Lobby");
+        var raid = server.Tree.Channels.Single(c => c.Name == "Raid");
         server.Apply(new ChannelRemoved(FakeServers.Raid));
-        await server.MoveChannelAsync(lobby, raid, after: false);
-        await server.MoveChannelAsync(lobby, raid, after: true);
-        await server.MoveChannelAsync(raid, lobby, after: true);
+        await server.Tree.MoveChannelAsync(lobby, raid, after: false);
+        await server.Tree.MoveChannelAsync(lobby, raid, after: true);
+        await server.Tree.MoveChannelAsync(raid, lobby, after: true);
         Assert.Empty(sent.OfType<ReorderChannels>());
     }
 
@@ -930,7 +930,7 @@ public class ServerViewModelTests
 
         await separator.JoinCommand.ExecuteAsync(null); // also the double click
         Assert.Empty(f.Sent.OfType<JoinChannel>());
-        Assert.DoesNotContain(separator, f.Vm.LinkCandidates(f.Channel(Lobby)));
+        Assert.DoesNotContain(separator, f.Vm.Tree.LinkCandidates(f.Channel(Lobby)));
         Assert.NotEmpty(f.User(2).MoveTargets);
         Assert.DoesNotContain(separator, f.User(2).MoveTargets.Select(t => t.Channel)); // Package 120: the submenu
     }

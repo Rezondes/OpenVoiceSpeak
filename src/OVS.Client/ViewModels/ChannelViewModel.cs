@@ -125,14 +125,14 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     }
 
     [RelayCommand]
-    Task MoveUp() => first ? Task.CompletedTask : owner.MoveChannelAsync(this, Neighbour(-1), after: false);
+    Task MoveUp() => first ? Task.CompletedTask : owner.Tree.MoveChannelAsync(this, Neighbour(-1), after: false);
 
     [RelayCommand]
-    Task MoveDown() => last ? Task.CompletedTask : owner.MoveChannelAsync(this, Neighbour(+1), after: true);
+    Task MoveDown() => last ? Task.CompletedTask : owner.Tree.MoveChannelAsync(this, Neighbour(+1), after: true);
 
     ChannelViewModel Neighbour(int step)
     {
-        var live = owner.Channels.Live().ToList();
+        var live = owner.Tree.Channels.Live().ToList();
         return live[live.IndexOf(this) + step];
     }
 
@@ -168,10 +168,10 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [RelayCommand]
     Task Link() =>
         ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
-            ? submit => pick(string.Format(Strings.Dialog_LinkWith, Name), owner.LinkCandidates(this), submit) : null, other => owner.Link(Id, other.Id));
+            ? submit => pick(string.Format(Strings.Dialog_LinkWith, Name), owner.Tree.LinkCandidates(this), submit) : null, other => owner.Link(Id, other.Id));
 
     [RelayCommand]
     Task Unlink() =>
         ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
-            ? submit => pick(string.Format(Strings.Dialog_Unlink, Name), owner.LinkedChannelVms(this), submit) : null, other => owner.Unlink(Id, other.Id));
+            ? submit => pick(string.Format(Strings.Dialog_Unlink, Name), owner.Tree.LinkedChannelVms(this), submit) : null, other => owner.Unlink(Id, other.Id));
 }

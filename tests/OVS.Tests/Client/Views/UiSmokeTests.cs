@@ -377,7 +377,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal(("Channel bearbeiten", "Raid", true, 8m, true), (edit.Title, edit.Name, edit.Muted, edit.Slots, edit.SlotsEnabled));
         Assert.Contains("Speichern", edit.Buttons);
         Assert.False(ChannelDialogShows(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault).SlotsEnabled);
-        Dialog(o => ChannelPickerDialog.ShowAsync(o, "Verschieben nach", vm.Server!.Channels), "Verschieben nach");
+        Dialog(o => ChannelPickerDialog.ShowAsync(o, "Verschieben nach", vm.Server!.Tree.Channels), "Verschieben nach");
         Dialog(o => TextDialog.ShowAsync(o, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
     }
 
@@ -643,7 +643,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.MouseMove(raid + new Point(0, -10));
         main.MouseMove(lobby + new Point(0, -8)); // upper half of the lobby row
         Dispatcher.UIThread.RunJobs();
-        Thickness LobbyMargin() => main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(vm.Server!.Channels.Single(c => c.Name == "Lobby"))!.Margin;
+        Thickness LobbyMargin() => main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(vm.Server!.Tree.Channels.Single(c => c.Name == "Lobby"))!.Margin;
         Assert.True(LobbyMargin().Top > 0); // Package 96: the gap opens above the lobby
         main.MouseUp(lobby + new Point(0, -8), MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
@@ -1106,7 +1106,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
         main.Show();
         MainViewModelSetup.ShowServer(vm, FakeServers.WithChannels("Lobby", "Raid"));
-        vm.Server!.Apply(new ChannelsUnlinked(vm.Server.Channels[0].Id, vm.Server.Channels[1].Id));
+        vm.Server!.Apply(new ChannelsUnlinked(vm.Server.Tree.Channels[0].Id, vm.Server.Tree.Channels[1].Id));
         Dispatcher.UIThread.RunJobs();
         var row = main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromIndex(1)!
             .GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
@@ -1301,7 +1301,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.False(main.Overlay.IsOpen);
 
         // ban: refused, the card stays with the reason and the button works again
-        var anna = server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna");
+        var anna = server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna");
         _ = anna.BanCommand.ExecuteAsync(null);
         Dispatcher.UIThread.RunJobs();
         OverlayRig.Click(OverlayButton(main, "Bannen"));
@@ -1345,8 +1345,8 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var (main, vm, server, sent, time) = OpenWaiting();
         var checkedActions = new List<string>();
         Request Last<T>() where T : Request => sent.OfType<T>().Last();
-        ChannelViewModel Channel(string name) => server.Channels.Single(c => c.Name == name);
-        UserViewModel User(string name) => server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == name);
+        ChannelViewModel Channel(string name) => server.Tree.Channels.Single(c => c.Name == name);
+        UserViewModel User(string name) => server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == name);
         UserInfo Info(string name) => server.Mirror.Users.Values.Single(u => u.Nickname == name);
         bool Clock() => main.GetVisualDescendants().OfType<PathIcon>().Any(i => ToolTip.GetTip(i) as string == OVS.Client.Localization.Strings.Chat_Sending && i.IsEffectivelyVisible);
         bool Busy() => SpinnerIn(main) || Clock();
@@ -1379,7 +1379,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             _ = vm.Chat.SendCommand.ExecuteAsync(null);
         }, () => [new ChatMessage(ChatTarget.Server, 1, "ich", null, null, "Hallo", DateTimeOffset.Now)]);
         Waits("server mute", () => _ = User("anna").ToggleServerMuteCommand.ExecuteAsync(null), () => [new UserUpdated(Info("anna") with { ServerMuted = !Info("anna").ServerMuted })]);
-        Waits("reorder", () => _ = server.MoveChannelAsync(Channel("Raid"), Channel("Lobby"), after: false),
+        Waits("reorder", () => _ = server.Tree.MoveChannelAsync(Channel("Raid"), Channel("Lobby"), after: false),
             () => [new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 0)), new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 1))]);
         var created = Guid.NewGuid();
         Waits("create channel", () =>

@@ -176,7 +176,7 @@
             </StackPanel>
           </ScrollViewer>
           <ScrollViewer Padding="8,10" IsVisible="{Binding IsConnected}">
-            <ItemsControl anim:ItemMotion.Enter="True" anim:ItemMotion.Flash="True" anim:ItemMotion.Flip="True" anim:ItemMotion.BuildUp="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Channels, FallbackValue={x:Null}}">
+            <ItemsControl anim:ItemMotion.Enter="True" anim:ItemMotion.Flash="True" anim:ItemMotion.Flip="True" anim:ItemMotion.BuildUp="True" x:Name="ChannelItems" ItemsSource="{Binding Server.Tree.Channels, FallbackValue={x:Null}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">

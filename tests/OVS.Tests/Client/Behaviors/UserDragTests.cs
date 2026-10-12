@@ -224,7 +224,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
         var server = FakeServers.Admin(sent);
         server.Apply(new UserJoined(new UserInfo(3, "fp3", "bert", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
         var tree = Open(server, sent);
-        Assert.False(server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "bert").CanDrag);
+        Assert.False(server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "bert").CanDrag);
         var end = tree.Drag("bert", "Lobby");
         Assert.Null(tree.Preview);
         Assert.False(tree.Lit("Lobby"));
@@ -234,7 +234,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
         var me = server.Mirror.Users[1];
         server.Apply(new UserUpdated(me with { Permissions = me.Permissions & ~Permission.UserMove }));
         tree = Open(server, sent);
-        Assert.False(server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").CanDrag);
+        Assert.False(server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").CanDrag);
         end = tree.Drag("anna", "Lobby");
         Assert.Null(tree.Preview); // neither a user drag nor a channel drag from a user row
         Release(tree, end);

@@ -369,7 +369,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         });
         var state = await anna.State();
         Assert.Null(User(state, 2));
-        Assert.Single(fake.Channels.Single(c => c.Name == "Raid").Users); // still shown while it folds
+        Assert.Single(fake.Tree.Channels.Single(c => c.Name == "Raid").Users); // still shown while it folds
     }
 
     /// <summary>

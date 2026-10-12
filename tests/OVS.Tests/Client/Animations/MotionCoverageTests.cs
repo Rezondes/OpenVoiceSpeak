@@ -228,7 +228,7 @@ public sealed class MotionCoverageTests
         text.AppendLine($"bookmarks={string.Join(",", vm.Bookmarks.Items.Select(tile => tile.Name))}");
         if (vm.Server is { } server)
         {
-            foreach (var channel in server.Channels)
+            foreach (var channel in server.Tree.Channels)
                 text.AppendLine($"{channel.Name}{(channel.IsLinked ? " linked" : "")}{(channel.IsCurrent ? " current" : "")} {channel.SlotText}: "
                     + string.Join(",", channel.Users.Select(u => u.Nickname + (u.ServerMuted ? " muted" : ""))));
             text.AppendLine($"self muted={server.SelfMuted} deafened={server.SelfDeafened}");
@@ -264,8 +264,8 @@ public sealed class MotionCoverageTests
     static UserInfo Bert(Guid channel, bool serverMuted = false) =>
         new(3, "fp3", "bert", channel, false, false, serverMuted, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
 
-    static ChannelViewModel Channel(Walk w, string name) => w.Server.Channels.Single(c => c.Name == name);
-    static UserViewModel User(Walk w, string nickname) => w.Server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == nickname);
+    static ChannelViewModel Channel(Walk w, string name) => w.Server.Tree.Channels.Single(c => c.Name == name);
+    static UserViewModel User(Walk w, string nickname) => w.Server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == nickname);
 
     static Border Row(Walk w, Func<object?, bool> of) =>
         w.Main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row") && b.ContextMenu is not null && of(b.DataContext));
@@ -654,13 +654,13 @@ public sealed class MotionCoverageTests
         Watch(800);
         Motion.Apply(main, DisplayMode.Animated);
         MotionWait.Connected(main); // under load connecting takes longer: the storm starts on a still tree
-        var before = server.Channels.ToDictionary(c => c.Name, c => string.Join(",", c.Users.Select(u => u.Nickname)));
+        var before = server.Tree.Channels.ToDictionary(c => c.Name, c => string.Join(",", c.Users.Select(u => u.Nickname)));
         var tree = main.FindControl<ItemsControl>("ChannelItems")!;
         int running = AnimationCounter.Running;
         AnimationCounter.ResetStarted();
 
         // 100 changes spread over 800 ms, with frames in between (as many as the machine manages)
-        var channels = server.Channels.Select(c => c.Id).ToList();
+        var channels = server.Tree.Channels.Select(c => c.Id).ToList();
         Message Change(int i) => i < 50
             ? new UserJoined(new UserInfo((uint)(1000 + i), $"fp{1000 + i}", $"Gast{i}", channels[i % channels.Count], false, false, false,
                 Permission.None, [WellKnownGroups.Guest]))
@@ -678,7 +678,7 @@ public sealed class MotionCoverageTests
 
         var bound = Motion.Slow + TimeSpan.FromMilliseconds(8 * ItemMotion.StaggerMs);
         bool Settled() => AnimationCounter.Running <= running
-            && server.Channels.All(c => before[c.Name] == string.Join(",", c.Users.Select(u => u.Nickname)))
+            && server.Tree.Channels.All(c => before[c.Name] == string.Join(",", c.Users.Select(u => u.Nickname)))
             && tree.GetVisualDescendants().OfType<ContentPresenter>().Where(p => p.DataContext is UserViewModel && p.Parent is Panel)
                 .All(p => p.Opacity == 1 && !p.Classes.Contains("entering") && !p.Classes.Contains("leaving"));
         var after = Stopwatch.StartNew();

@@ -27,7 +27,7 @@ public class ChatViewModelTests
         public void Receive(ChatTarget target, uint from, string text, Guid? channel = null, uint? to = null) =>
             Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, to, text, DateTimeOffset.UtcNow));
 
-        public UserViewModel User(uint id) => Server.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
+        public UserViewModel User(uint id) => Server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
         public ChatTabViewModel? Private(string title) => Chat.Tabs.SingleOrDefault(t => t.IsPrivate && t.Title == title);
     }
 

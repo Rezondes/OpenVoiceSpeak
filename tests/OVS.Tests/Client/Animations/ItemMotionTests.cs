@@ -316,7 +316,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     {
         var main = Connected(out var server);
         Assert.Equal(Motion.Normal, server.Leave.Delay); // the window set the animated display's length
-        var raid = server.Channels.Single(c => c.Name == "Raid");
+        var raid = server.Tree.Channels.Single(c => c.Name == "Raid");
         var row = main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(raid)!;
         double height = row.Bounds.Height;
         // how far it folds while it is still in the list, recorded as it happens: the list lets it go after Motion.Normal
@@ -324,18 +324,18 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         double least = height, faintest = 1;
         row.PropertyChanged += (_, _) =>
         {
-            if (!server.Channels.Contains(raid)) return;
+            if (!server.Tree.Channels.Contains(raid)) return;
             least = Math.Min(least, row.Bounds.Height);
             faintest = Math.Min(faintest, row.Opacity);
         };
         server.Apply(new ChannelRemoved(FakeServers.Raid));
         Dispatcher.UIThread.RunJobs(); // the fold starts on the UI thread
-        Assert.Contains(raid, server.Channels); // still there, folding away
+        Assert.Contains(raid, server.Tree.Channels); // still there, folding away
         Assert.Contains("leaving", row.Classes);
         Assert.False(row.IsHitTestVisible);
-        MotionWait.Until(() => !server.Channels.Contains(raid));
+        MotionWait.Until(() => !server.Tree.Channels.Contains(raid));
         Assert.True(least < height && faintest < 1, $"{least} of {height}, {faintest}");
-        Assert.DoesNotContain(raid, server.Channels);
+        Assert.DoesNotContain(raid, server.Tree.Channels);
         main.Close();
     }
 
@@ -383,7 +383,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         ((MainViewModel)main.DataContext!).Appearance = ((MainViewModel)main.DataContext!).Appearance with { Display = DisplayMode.Simplified };
         Assert.Equal(TimeSpan.Zero, server.Leave.Delay);
         server.Apply(new ChannelRemoved(FakeServers.Raid));
-        Assert.DoesNotContain(server.Channels, c => c.Name == "Raid");
+        Assert.DoesNotContain(server.Tree.Channels, c => c.Name == "Raid");
         main.Close();
     }
 
@@ -577,15 +577,15 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         int pictures = 0;
         Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
             pictures += e.NewItems?.OfType<Border>().Count(b => b.Classes.Contains(FlyGhost.GhostClass)) ?? 0;
-        var lobby = server.Channels.First();
-        var far = server.Channels.Last().Users.First(); // in the last channel, scrolled out of view
+        var lobby = server.Tree.Channels.First();
+        var far = server.Tree.Channels.Last().Users.First(); // in the last channel, scrolled out of view
         server.Apply(new UserUpdated(server.Mirror.Users[far.SessionId] with { ChannelId = lobby.Id }));
         MotionWait.Settle(60);
         Assert.Equal(0, pictures);
 
         // and the other way round: from the Lobby into a channel scrolled out of view
-        var mine = server.Channels.First().Users.First(u => !u.IsSelf);
-        server.Apply(new UserUpdated(server.Mirror.Users[mine.SessionId] with { ChannelId = server.Channels.Last().Id }));
+        var mine = server.Tree.Channels.First().Users.First(u => !u.IsSelf);
+        server.Apply(new UserUpdated(server.Mirror.Users[mine.SessionId] with { ChannelId = server.Tree.Channels.Last().Id }));
         MotionWait.Settle(60);
         Assert.Equal(0, pictures);
         main.Close();

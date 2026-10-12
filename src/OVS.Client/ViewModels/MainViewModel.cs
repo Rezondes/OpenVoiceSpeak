@@ -186,9 +186,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 Shared.Voice.VoiceHeader.TargetLinked => Strings.Transmit_Linked,
                 _ => Strings.Transmit_Channel,
             };
-            Server?.SetSelfTransmitting(target);
+            Server?.Tree.SetSelfTransmitting(target);
         });
-        Audio.SpeakersChanged += active => post(() => Server?.OnSpeakers(active));
+        Audio.SpeakersChanged += active => post(() => Server?.Tree.OnSpeakers(active));
         Keys.Pressed += action => post(() => OnKeyAction(action));
         // Package 125: push-to-mute shows and reports the mute like the button. Read on the key thread, so a quick
         // press and release arrive in order; only its own edges count, as Changed also fires for the talk keys.
@@ -340,7 +340,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>UI timer, every 100 ms.</summary>
     public void Tick()
     {
-        Server?.RefreshSpeaking();
+        Server?.Tree.RefreshSpeaking();
         Connection.VoiceLink.LogReachability();
         Connection.VoiceLink.FeedLoss(); // Package 135: the adapter hears each answer at the next tick
         Stats.Refresh();

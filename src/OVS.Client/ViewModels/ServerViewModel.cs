@@ -28,13 +28,8 @@ namespace OVS.Client.ViewModels;
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>
 public sealed partial class ServerViewModel : ObservableObject
 {
-
     readonly Func<Request, Task> send;
     readonly TimeProvider time;
-    readonly Dictionary<Guid, ChannelViewModel> channelVms = [];
-    readonly Dictionary<uint, UserViewModel> userVms = [];
-    /// <summary>Packages 57, 60 and 122: who is shown speaking and when a link tone is due.</summary>
-    readonly SpeakingMarks speakingMarks;
     bool mutedBeforeDeafen;
     int requestCounter;
 
@@ -59,15 +54,16 @@ public sealed partial class ServerViewModel : ObservableObject
         this.time = time;
         Dialogs = dialogs ?? new ServerDialogs();
         ChatFeed = new ChatFeed(RequestSound);
-        speakingMarks = new SpeakingMarks(time);
         Leave = new LeaveTimer(time, () => Post);
+        Tree = new ChannelTreeViewModel(this, RequestSound);
         Rebuild();
     }
 
     public StateMirror Mirror { get; }
     public TimeProvider Time => time;
     public ServerDialogs Dialogs { get; }
-    public ObservableCollection<ChannelViewModel> Channels { get; } = [];
+    /// <summary>The sidebar's channel tree: the channel and user rows, their order and their speaking marks.</summary>
+    public ChannelTreeViewModel Tree { get; }
 
     /// <summary>Package 102: how long a user or channel that is gone stays to fold away (the window sets it).</summary>
     public LeaveTimer Leave { get; }
@@ -118,7 +114,7 @@ public sealed partial class ServerViewModel : ObservableObject
         set
         {
             volumeOf = value;
-            foreach (var user in userVms.Values) user.ShowVolume(value(user.Fingerprint));
+            foreach (var user in Tree.Users) user.ShowVolume(value(user.Fingerprint));
         }
     }
 
@@ -136,10 +132,6 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>Package 122: what the last <see cref="StateChanged"/> was about.</summary>
     public StateChange LastChange { get; private set; } = StateChange.All;
 
-    /// <summary>Package 122: how often a user's view model was updated, so tests can count the work a message does.</summary>
-    internal int UserUpdates { get; set; }
-    /// <summary>Package 122: how often a user's speaking state was set (tests count it).</summary>
-    internal int SpeakingTouches { get; private set; }
 
     public void Apply(Message message)
     {
@@ -217,45 +209,8 @@ public sealed partial class ServerViewModel : ObservableObject
 
     void ShowUser(UserInfo? now, UserInfo? before)
     {
-        var change = StateChange.None;
-        if (now is not null)
-        {
-            if (!userVms.TryGetValue(now.SessionId, out var user)) userVms[now.SessionId] = user = new UserViewModel(this, now.SessionId);
-            user.Update(now, now.SessionId == Mirror.SelfId, SelfPermissions, Mirror.Groups);
-            user.UpdateMoveTargets(Channels.Live().ToList());
-        }
-        if (now is null || before is null) change |= StateChange.Members;
-        if (now?.Nickname != before?.Nickname) change |= StateChange.Names; // also its place in the list
-        if (now?.ChannelId != before?.ChannelId || (change.HasFlag(StateChange.Names) && now?.SessionId == Mirror.SelfId))
-            change |= StateChange.Sidebar; // the counts, or my name below the tree
-        if ((change & (StateChange.Names | StateChange.Sidebar)) != 0)
-            foreach (var id in new[] { before?.ChannelId, now?.ChannelId }.OfType<Guid>().Distinct()) ShowUsers(id);
-        if (now is null) ForgetGoneUsers();
-        RefreshSpeaking(); // a new row shows whether its user talks
-        LastChange = change;
+        LastChange = Tree.ShowUser(now, before);
         StateChanged?.Invoke();
-    }
-
-    /// <summary>Package 122: one channel's list, from the users' view models as they are.</summary>
-    void ShowUsers(Guid channelId)
-    {
-        if (!channelVms.TryGetValue(channelId, out var channel) || Mirror.Channels.GetValueOrDefault(channelId) is not { } info) return;
-        ShowUsers(channel, info, Mirror.Users.Values.Where(u => u.ChannelId == channelId), u => userVms[u.SessionId]);
-    }
-
-    /// <summary>The users inside a channel by name into its list (Package 102: one who left folds away) and its slot counter.</summary>
-    void ShowUsers(ChannelViewModel channel, ChannelInfo info, IEnumerable<UserInfo> inside, Func<UserInfo, UserViewModel> viewModelOf)
-    {
-        var users = inside.OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase).Select(viewModelOf).ToList();
-        CollectionSync.Sync(channel.Users, users, Leave);
-        channel.Slots = new ChannelSlots(users.Count, info.MaxUsers);
-    }
-
-    /// <summary>Package 102: one that is still folding away stays known, so coming back meanwhile is the same entry again.</summary>
-    void ForgetGoneUsers()
-    {
-        var shownUsers = Channels.SelectMany(c => c.Users).ToHashSet();
-        foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).Where(id => !shownUsers.Contains(userVms[id])).ToList()) userVms.Remove(id);
     }
 
     SoundEvent? SoundFor(Message message)
@@ -295,83 +250,12 @@ public sealed partial class ServerViewModel : ObservableObject
         WelcomeText = Mirror.Settings.WelcomeText;
         SelfPermissions = self?.Permissions ?? Permission.None;
         IsAdmin = self?.GroupIds.Contains(WellKnownGroups.Admin) ?? false;
-        var groups = Mirror.Groups;
-
-        // Package 102: one that is still folding away stays known, so coming back meanwhile is the same entry again
-        foreach (var id in channelVms.Keys.Except(Mirror.Channels.Keys).Where(id => !Channels.Contains(channelVms[id])).ToList()) channelVms.Remove(id);
-        ForgetGoneUsers();
-
-        var byChannel = Mirror.Users.Values.ToLookup(u => u.ChannelId); // Package 122: not every user per channel
-        var desired = new List<ChannelViewModel>();
-        foreach (var c in ServerOrder().OrderBy(c => pendingOrder?.IndexOf(c.Id) is >= 0 and var i ? i : int.MaxValue)) // Package 98
-        {
-            if (!channelVms.TryGetValue(c.Id, out var channel)) channelVms[c.Id] = channel = new ChannelViewModel(this, c.Id);
-            var linked = Mirror.LinkedChannels(c.Id).Select(id => Mirror.Channels.GetValueOrDefault(id)?.Name).OfType<string>().Order().ToList();
-            channel.Update(c, linked, c.Id == Mirror.DefaultChannelId, self?.ChannelId == c.Id, SelfPermissions);
-            channel.UpdateLock(c, groups, self?.GroupIds ?? []);
-
-            ShowUsers(channel, c, byChannel[c.Id], u =>
-            {
-                if (!userVms.TryGetValue(u.SessionId, out var user)) userVms[u.SessionId] = user = new UserViewModel(this, u.SessionId);
-                user.Update(u, u.SessionId == Mirror.SelfId, SelfPermissions, groups);
-                return user;
-            });
-            desired.Add(channel);
-        }
-        CollectionSync.Sync(Channels, desired, Leave);
-        for (int i = 0; i < desired.Count; i++) desired[i].SetPosition(first: i == 0, last: i == desired.Count - 1);
-        foreach (var user in userVms.Values) user.UpdateMoveTargets(desired); // Package 120: in the new order of the tree
-        CurrentChannel = self is null ? null : channelVms.GetValueOrDefault(self.ChannelId);
-        Self = userVms.GetValueOrDefault(Mirror.SelfId);
-        RefreshSpeaking();
+        Tree.Rebuild(self);
+        CurrentChannel = self is null ? null : Tree.FindChannel(self.ChannelId);
+        Self = Tree.FindUser(Mirror.SelfId);
+        Tree.RefreshSpeaking();
         LastChange = change;
         StateChanged?.Invoke();
-    }
-
-    IEnumerable<ChannelInfo> ServerOrder() => Mirror.Channels.Values.OrderBy(c => c.Order).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
-
-    public IReadOnlyList<ChannelViewModel> LinkCandidates(ChannelViewModel channel)
-    {
-        var linked = Mirror.LinkedChannels(channel.Id).ToHashSet();
-        return Channels.Live().Where(c => c != channel && !c.IsSeparator && !linked.Contains(c.Id)).ToList(); // Package 111
-    }
-
-    public IReadOnlyList<ChannelViewModel> LinkedChannelVms(ChannelViewModel channel)
-    {
-        var linked = Mirror.LinkedChannels(channel.Id).ToHashSet();
-        return Channels.Live().Where(c => linked.Contains(c.Id)).ToList();
-    }
-
-    // ---- Speaking indicators ----
-
-    /// <summary>The engine heard these speakers: a link tone for someone talking in over a link, then the rows (Package 57).</summary>
-    public void OnSpeakers(IEnumerable<ActiveSpeaker> active)
-    {
-        foreach (var speaker in active)
-        {
-            if (speakingMarks.Hear(speaker, speaker.SessionId != Mirror.SelfId && Mirror.Users.ContainsKey(speaker.SessionId)))
-                SoundRequested?.Invoke(SoundEvent.LinkVoice);
-        }
-        RefreshSpeaking();
-    }
-
-    /// <summary>Package 60: the own voice goes to this target (null: silent); its link tone, then the rows.</summary>
-    public void SetSelfTransmitting(byte? target)
-    {
-        if (speakingMarks.SetOwnTarget(target, CurrentChannel is { IsLinked: true })) SoundRequested?.Invoke(SoundEvent.OwnLinkVoice);
-        RefreshSpeaking();
-    }
-
-    /// <summary>Package 122: shows who speaks; a row is touched only when its state changed.</summary>
-    public void RefreshSpeaking()
-    {
-        foreach (var state in speakingMarks.Refresh(Mirror.SelfId))
-        {
-            if (!userVms.TryGetValue(state.SessionId, out var user)
-                || (user.IsSpeaking == (state.On && !state.ViaLink) && user.IsSpeakingViaLink == (state.On && state.ViaLink))) continue;
-            user.SetSpeaking(state.On, state.ViaLink);
-            SpeakingTouches++;
-        }
     }
 
     // ---- Requests ----
@@ -472,7 +356,7 @@ public sealed partial class ServerViewModel : ObservableObject
             return;
         }
         // Package 98: the row spins until the own channel changes; a second join meanwhile is ignored
-        var row = channelVms.GetValueOrDefault(channelId);
+        var row = Tree.FindChannel(channelId);
         joining = SendConfirmed(new JoinChannel(channelId, password), m => m is UserUpdated u && IsSelf(u.User) && u.User.ChannelId != before,
             busy: on => row?.IsBusy = on);
     }
@@ -502,40 +386,10 @@ public sealed partial class ServerViewModel : ObservableObject
             m => m is ChannelUpdated u && u.Channel.Id == id, notify: false);
     public PendingViewModel DeleteChannel(Guid id)
     {
-        var row = channelVms.GetValueOrDefault(id); // gone from the tree when confirmed
+        var row = Tree.FindChannel(id); // gone from the tree when confirmed
         return SendConfirmed(new DeleteChannel(id), m => m is ChannelRemoved r && r.ChannelId == id, busy: on => row?.IsBusy = on);
     }
 
-    /// <summary>The order sent last, shown until the server confirms or refuses it.</summary>
-    List<Guid>? pendingOrder;
-
-    /// <summary>
-    /// Package 36: puts source right before or after target and sends the complete new order. Package 98: the new order
-    /// shows at once and the moved row spins until the server's updates match it; refused or unanswered, it goes back.
-    /// </summary>
-    public Task MoveChannelAsync(ChannelViewModel source, ChannelViewModel target, bool after)
-    {
-        if (source == target) return Task.CompletedTask;
-        var live = Channels.Live().ToList();
-        if (!live.Contains(source) || !live.Contains(target)) return Task.CompletedTask; // Package 102: folding away
-        var order = live.Where(c => c != source).ToList();
-        order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
-        if (order.SequenceEqual(live)) return Task.CompletedTask;
-        var ids = order.Select(c => c.Id).ToList();
-        pendingOrder = ids;
-        Rebuild();
-        var sent = SendConfirmed(new ReorderChannels(ids), _ => ServerOrder().Select(c => c.Id).SequenceEqual(ids), busy: on => source.IsBusy = on);
-        _ = EndReorderAsync(sent, ids);
-        return Task.CompletedTask;
-    }
-
-    async Task EndReorderAsync(PendingViewModel sent, List<Guid> ids)
-    {
-        await sent.Completion;
-        if (pendingOrder != ids) return; // a newer order is on its way
-        pendingOrder = null;
-        Rebuild(); // done: the server's order is the same; refused or no answer: back to it
-    }
 
     public PendingViewModel Link(Guid a, Guid b) =>
         SendConfirmed(new LinkChannels(a, b), m => m is ChannelsLinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
@@ -544,7 +398,7 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>Package 120: without the dialog that waited, the moved user's row spins until the server shows the move.</summary>
     public PendingViewModel Move(uint sessionId, Guid channelId)
     {
-        var row = userVms.GetValueOrDefault(sessionId);
+        var row = Tree.FindUser(sessionId);
         return SendConfirmed(new MoveUser(sessionId, channelId), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ChannelId == channelId,
             busy: on => row?.IsBusy = on, notify: false);
     }
@@ -559,7 +413,7 @@ public sealed partial class ServerViewModel : ObservableObject
     public async Task DropUser(UserViewModel user, ChannelViewModel channel)
     {
         // gone from the server while dragged (or the row stands for an earlier entry): nobody to move
-        if (!IsDropTarget(user, channel) || !Mirror.Users.ContainsKey(user.SessionId) || userVms.GetValueOrDefault(user.SessionId) != user) return;
+        if (!IsDropTarget(user, channel) || !Mirror.Users.ContainsKey(user.SessionId) || Tree.FindUser(user.SessionId) != user) return;
         if (!user.IsSelf)
         {
             await Move(user.SessionId, channel.Id).Completion;
@@ -573,7 +427,7 @@ public sealed partial class ServerViewModel : ObservableObject
         SendConfirmed(new BanSession(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
     public PendingViewModel ServerMute(uint sessionId, bool muted)
     {
-        var row = userVms.GetValueOrDefault(sessionId);
+        var row = Tree.FindUser(sessionId);
         return SendConfirmed(new SetSessionServerMute(sessionId, muted), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ServerMuted == muted,
             busy: on => row?.IsBusy = on);
     }
@@ -581,7 +435,7 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>Package 119: confirmed by the user's update showing the group; the server answers nothing else.</summary>
     public PendingViewModel SetUserGroup(string fingerprint, uint sessionId, Guid groupId, bool assigned)
     {
-        var row = userVms.GetValueOrDefault(sessionId);
+        var row = Tree.FindUser(sessionId);
         return SendConfirmed(assigned ? new AssignGroup(fingerprint, groupId) : new UnassignGroup(fingerprint, groupId),
             m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.GroupIds.Contains(groupId) == assigned, busy: on => row?.IsBusy = on);
     }

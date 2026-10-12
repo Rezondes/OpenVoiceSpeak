@@ -31,7 +31,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     static List<string> Tree(ServerViewModel server) =>
     [
         $"current {server.CurrentChannel?.Id} self {server.Self?.SessionId} rights {server.SelfPermissions} admin {server.IsAdmin}",
-        .. server.Channels.SelectMany(c => (IEnumerable<string>)
+        .. server.Tree.Channels.SelectMany(c => (IEnumerable<string>)
         [
             $"{c.Id} {c.Name} {c.SlotText} current {c.IsCurrent} default {c.IsDefault} linked {c.IsLinked} {c.LinkedNames} muted {c.IsMuted} "
             + $"create {c.CanCreate} edit {c.CanEdit} delete {c.CanDelete} link {c.CanLink} unlink {c.CanUnlink} up {c.CanMoveUp} down {c.CanMoveDown} "
@@ -49,37 +49,37 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     {
         var server = FakeServers.Large();
         var changed = new List<Guid>();
-        foreach (var channel in server.Channels) channel.Users.CollectionChanged += (_, _) => changed.Add(channel.Id);
+        foreach (var channel in server.Tree.Channels) channel.Users.CollectionChanged += (_, _) => changed.Add(channel.Id);
         UserInfo User(uint id) => server.Mirror.Users[id];
 
-        int before = server.UserUpdates;
+        int before = server.Tree.UserUpdates;
         server.Apply(new UserUpdated(User(7) with { SelfMuted = true }));
-        Assert.Equal(1, server.UserUpdates - before);
-        Assert.NotEqual("", server.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 7).StatusText);
+        Assert.Equal(1, server.Tree.UserUpdates - before);
+        Assert.NotEqual("", server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 7).StatusText);
         Assert.Empty(changed);
 
-        before = server.UserUpdates;
+        before = server.Tree.UserUpdates;
         server.Apply(new UserUpdated(User(8) with { Nickname = "Zora" })); // last in its channel now
-        Assert.Equal(1, server.UserUpdates - before);
-        var eighth = server.Channels.Single(c => c.Id == User(8).ChannelId);
+        Assert.Equal(1, server.Tree.UserUpdates - before);
+        var eighth = server.Tree.Channels.Single(c => c.Id == User(8).ChannelId);
         Assert.Equal("Zora", eighth.Users[^1].Nickname);
         Assert.Equal([eighth.Id], changed.Distinct());
 
         changed.Clear();
-        before = server.UserUpdates;
+        before = server.Tree.UserUpdates;
         var from = User(9).ChannelId;
-        var to = server.Channels[20].Id;
+        var to = server.Tree.Channels[20].Id;
         server.Apply(new UserUpdated(User(9) with { ChannelId = to }));
-        Assert.Equal(1, server.UserUpdates - before);
+        Assert.Equal(1, server.Tree.UserUpdates - before);
         Assert.Equal(new[] { from, to }.Order(), changed.Distinct().Order());
-        Assert.Equal(["9", "11"], new[] { from, to }.Select(id => server.Channels.Single(c => c.Id == id).SlotText));
-        Assert.Contains(server.Channels.Single(c => c.Id == to).Users, u => u.SessionId == 9);
+        Assert.Equal(["9", "11"], new[] { from, to }.Select(id => server.Tree.Channels.Single(c => c.Id == id).SlotText));
+        Assert.Contains(server.Tree.Channels.Single(c => c.Id == to).Users, u => u.SessionId == 9);
 
         changed.Clear();
-        before = server.UserUpdates;
+        before = server.Tree.UserUpdates;
         server.Apply(new UserJoined(User(10) with { SessionId = 500, Fingerprint = "fp500", Nickname = "Neu" }));
         server.Apply(new UserLeft(11));
-        Assert.Equal(1, server.UserUpdates - before); // the new user only
+        Assert.Equal(1, server.Tree.UserUpdates - before); // the new user only
         Assert.Equal(2, changed.Distinct().Count());
 
         // the same tree a full rebuild makes
@@ -93,9 +93,9 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     public void UserJoined_KnownSession_ShownOnce()
     {
         var server = FakeServers.Large();
-        var to = server.Channels[30].Id;
+        var to = server.Tree.Channels[30].Id;
         server.Apply(new UserJoined(server.Mirror.Users[9] with { ChannelId = to }));
-        Assert.Equal([to], server.Channels.Where(c => c.Users.Any(u => u.SessionId == 9)).Select(c => c.Id));
+        Assert.Equal([to], server.Tree.Channels.Where(c => c.Users.Any(u => u.SessionId == 9)).Select(c => c.Id));
         var incremental = Tree(server);
         server.Rebuild();
         Assert.Equal(incremental, Tree(server));
@@ -169,7 +169,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
         MotionWait.Until(() => true, atLeast: 300);
         Assert.Equal(fits, main.SidebarFits);
 
-        var lobby = server.Mirror.Channels[server.Channels[3].Id];
+        var lobby = server.Mirror.Channels[server.Tree.Channels[3].Id];
         foreach (var name in new[] { "Ein langer neuer Name", "Noch ein Name", "Der letzte Name" })
             server.Apply(new ChannelUpdated(lobby with { Name = name }));
         MotionWait.Until(() => main.SidebarFits > fits);
@@ -189,14 +189,14 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
 
         server.Apply(new UserUpdated(server.Mirror.Users[5] with { SelfMuted = true }));
         server.Apply(new UserUpdated(server.Mirror.Users[6] with { Nickname = "Neu" }));
-        server.Apply(new ChannelUpdated(server.Mirror.Channels[server.Channels[2].Id] with { Name = "Anders" }));
+        server.Apply(new ChannelUpdated(server.Mirror.Channels[server.Tree.Channels[2].Id] with { Name = "Anders" }));
         Assert.Equal((gains, iconChecks), (vm.EngineSync.GainTableBuilds, iconTracker.Checks));
 
         server.Apply(new UserJoined(server.Mirror.Users[5] with { SessionId = 600, Fingerprint = "fp600" }));
         Assert.Equal(gains + 1, vm.EngineSync.GainTableBuilds);
         server.Apply(new UserLeft(600));
         Assert.Equal(gains + 2, vm.EngineSync.GainTableBuilds);
-        server.Channels.SelectMany(c => c.Users).First(u => u.SessionId == 7).VolumePercent = 50;
+        server.Tree.Channels.SelectMany(c => c.Users).First(u => u.SessionId == 7).VolumePercent = 50;
         Assert.Equal(gains + 3, vm.EngineSync.GainTableBuilds);
         Assert.Equal(iconChecks, iconTracker.Checks);
 
@@ -220,22 +220,22 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
 
         var time = new ManualTimeProvider();
         var server = FakeServers.Large(time);
-        int touched = server.SpeakingTouches;
-        server.OnSpeakers(twenty);
-        Assert.Equal(20, server.SpeakingTouches - touched);
-        Assert.Equal(20, server.Channels.SelectMany(c => c.Users).Count(u => u.IsSpeaking));
+        int touched = server.Tree.SpeakingTouches;
+        server.Tree.OnSpeakers(twenty);
+        Assert.Equal(20, server.Tree.SpeakingTouches - touched);
+        Assert.Equal(20, server.Tree.Channels.SelectMany(c => c.Users).Count(u => u.IsSpeaking));
 
-        touched = server.SpeakingTouches;
+        touched = server.Tree.SpeakingTouches;
         time.Advance(TimeSpan.FromMilliseconds(100));
-        server.OnSpeakers(twenty); // the same ones go on talking
+        server.Tree.OnSpeakers(twenty); // the same ones go on talking
         time.Advance(TimeSpan.FromMilliseconds(100));
-        server.OnSpeakers(twenty.Skip(1).ToList()); // the first one stopped
-        Assert.Equal(0, server.SpeakingTouches - touched);
+        server.Tree.OnSpeakers(twenty.Skip(1).ToList()); // the first one stopped
+        Assert.Equal(0, server.Tree.SpeakingTouches - touched);
 
         time.Advance(TimeSpan.FromMilliseconds(250)); // past the first one's hold only
-        server.RefreshSpeaking();
-        Assert.Equal(1, server.SpeakingTouches - touched);
-        Assert.Equal(19, server.Channels.SelectMany(c => c.Users).Count(u => u.IsSpeaking));
+        server.Tree.RefreshSpeaking();
+        Assert.Equal(1, server.Tree.SpeakingTouches - touched);
+        Assert.Equal(19, server.Tree.Channels.SelectMany(c => c.Users).Count(u => u.IsSpeaking));
     }
 
     [AvaloniaFact]
@@ -251,12 +251,12 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
         foreach (uint id in new uint[] { 5, 6, 7, 8 })
         {
             server.Apply(new UserUpdated(server.Mirror.Users[id] with { SelfMuted = true }));
-            server.OnSpeakers([new ActiveSpeaker(id, false)]);
+            server.Tree.OnSpeakers([new ActiveSpeaker(id, false)]);
             MotionWait.Until(() => tracked |= lists.Any(ItemMotion.TracksPlaces), atLeast: 100); // icons and rings change, layout passes run
         }
         Assert.False(tracked, "nothing moved, no list tracked places");
 
-        server.Apply(new UserUpdated(server.Mirror.Users[9] with { ChannelId = server.Channels[20].Id }));
+        server.Apply(new UserUpdated(server.Mirror.Users[9] with { ChannelId = server.Tree.Channels[20].Id }));
         Assert.Equal(3, lists.Count(ItemMotion.TracksPlaces)); // the two channels and the tree around them
         main.Close();
     }

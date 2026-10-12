@@ -126,7 +126,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         var ring = OwnRing(main);
         Assert.Equal(0, GlowAlpha(ring));
 
-        server.SetSelfTransmitting(0); // own channel
+        server.Tree.SetSelfTransmitting(0); // own channel
         double low = 2, high = 0;
         // a whole 900 ms loop at least, and on until both ends were seen: under load a frame can land anywhere in it
         WatchUntil(() => high > 1.03 && low < 1.02, () =>
@@ -145,17 +145,17 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
 
         // every step of the fade as it happens: under load one frame can outlast it
         var glows = MotionWait.Record(ring, v => GlowAlpha((Border)v));
-        server.SetSelfTransmitting(null);
+        server.Tree.SetSelfTransmitting(null);
         MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (MotionWait.Scale(ring.Child!), GlowAlpha(ring)))); // the loop stops with the speaking
         Assert.True(glows.Any(a => a is > 0 and < 0x99), "the glow fades out");
 
-        server.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked);
+        server.Tree.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked);
         MotionWait.Eventually(() =>
         {
             Assert.Contains("link", ring.Classes);
             Assert.Equal(Color.Parse("#A78BFA").ToUInt32() & 0xFFFFFF, ring.BoxShadow[0].Color.ToUInt32() & 0xFFFFFF); // in the link colour
         });
-        server.SetSelfTransmitting(null);
+        server.Tree.SetSelfTransmitting(null);
 
         // the push-to-talk indicator pulses while sending
         var transmit = main.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("transmit"));
@@ -392,10 +392,10 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     public void Idle_NoRunningLoops()
     {
         var main = Open(out var vm, out var server);
-        server.SetSelfTransmitting(0); // a loop that ran ends with its state
+        server.Tree.SetSelfTransmitting(0); // a loop that ran ends with its state
         vm.TransmitText = "Sendet";
         MotionWait.Settle(300);
-        server.SetSelfTransmitting(null);
+        server.Tree.SetSelfTransmitting(null);
         vm.TransmitText = "";
         _ = vm.PageFlow.OpenAdminAsync();
         MotionWait.Settle(300);
@@ -438,7 +438,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     {
         var main = Open(out var vm, out var server, DisplayMode.Simplified);
         var ring = OwnRing(main);
-        server.SetSelfTransmitting(0);
+        server.Tree.SetSelfTransmitting(0);
         var transmit = main.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("transmit"));
         vm.TransmitText = "Sendet";
         double high = 1, dim = 1;

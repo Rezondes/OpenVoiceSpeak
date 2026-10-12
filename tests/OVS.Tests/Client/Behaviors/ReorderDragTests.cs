@@ -21,7 +21,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
 {
     sealed record Tree(MainWindow Main, MainViewModel Vm, ItemsControl List, List<Request> Sent)
     {
-        public Control Container(string name) => List.ContainerFromItem(Vm.Server!.Channels.Single(c => c.Name == name))!;
+        public Control Container(string name) => List.ContainerFromItem(Vm.Server!.Tree.Channels.Single(c => c.Name == name))!;
 
         public double Top(string name) => Container(name).TranslatePoint(default, List)!.Value.Y;
 
@@ -89,7 +89,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     {
         // "ich" and two more sit in the second channel, the first has two users: the dragged block is the taller one
         var tree = Open(reduced: true, FakeServers.Crowded());
-        var names = tree.Vm.Server!.Channels.Select(c => c.Name).ToList();
+        var names = tree.Vm.Server!.Tree.Channels.Select(c => c.Name).ToList();
         var height = tree.Container(names[1]).Bounds.Height;
         Assert.NotEqual(height, tree.Container(names[0]).Bounds.Height);
         var lobbyTop = tree.Top(names[0]);
@@ -172,7 +172,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         tree.Vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 1)));
         Dispatcher.UIThread.RunJobs();
         tree.Main.UpdateLayout();
-        Assert.Equal(["Raid", "Lobby"], tree.Vm.Server.Channels.Select(c => c.Name));
+        Assert.Equal(["Raid", "Lobby"], tree.Vm.Server.Tree.Channels.Select(c => c.Name));
         Assert.Equal(gapTop, tree.Top("Raid"));
         Assert.Equal(lobbyTop, tree.Top("Lobby"));
         Assert.Equal(default, tree.Container("Lobby").Margin);

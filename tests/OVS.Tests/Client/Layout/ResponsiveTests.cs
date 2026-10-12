@@ -728,7 +728,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         "ChannelCreate" => ChannelDialogView.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
         "ChannelEdit" => ChannelDialogView.ShowAsync(o, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8,
             AllowedGroupIds: [server.Mirror.Groups[2].Id]), ChannelDialogMode.Edit, server.Mirror.Groups), // Package 93: with its groups
-        "PickChannel" => ChannelPickerDialog.ShowAsync(o, "Verschieben nach", server.Channels),
+        "PickChannel" => ChannelPickerDialog.ShowAsync(o, "Verschieben nach", server.Tree.Channels),
         "AskText" => TextDialog.ShowAsync(o, Strings.Dialog_RedeemToken, "Token:"),
         "Password" => ServerPasswordDialog.ShowAsync(o, "Gilde"),
         "ChannelPassword" => ChannelPasswordDialog.ShowAsync(o, "Raidgruppe am Donnerstagabend"), // Package 94
@@ -970,8 +970,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         }
         server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(vm.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.ReasonCodes.RateLimited));
         // rows that spin: joining a channel, a server mute
-        _ = server.Channels.Single(c => c.Name == "Raid").JoinCommand.ExecuteAsync(null);
-        _ = server.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);
+        _ = server.Tree.Channels.Single(c => c.Name == "Raid").JoinCommand.ExecuteAsync(null);
+        _ = server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);
         time.Advance(PendingViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);

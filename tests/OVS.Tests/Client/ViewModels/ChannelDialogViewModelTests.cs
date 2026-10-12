@@ -184,7 +184,7 @@ public class ChannelDialogViewModelTests
         });
         var raid = OVS.Tests.TestSupport.FakeServers.Raid;
         server.Apply(new ChannelUpdated(new ChannelInfo(raid, "Raid", "", 1, Bitrate: 24)));
-        var channel = server.Channels.Single(c => c.Id == raid);
+        var channel = server.Tree.Channels.Single(c => c.Id == raid);
         Assert.Equal(24, channel.Bitrate);
         await channel.EditCommand.ExecuteAsync(null);
         Assert.Equal(24, shown!.Bitrate);

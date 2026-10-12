@@ -196,7 +196,7 @@ public sealed class ShowcaseServer
     }
 
     /// <summary>Mara speaks in the raid, Finn over the link from strategy.</summary>
-    public void Speak() => Server.OnSpeakers([new ActiveSpeaker(Mara, false), new ActiveSpeaker(Finn, true)]);
+    public void Speak() => Server.Tree.OnSpeakers([new ActiveSpeaker(Mara, false), new ActiveSpeaker(Finn, true)]);
 
     /// <summary>The guild's logo: a northern light over a dark blue round.</summary>
     static byte[] Logo()

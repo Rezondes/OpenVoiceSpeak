@@ -153,7 +153,7 @@ public sealed class WebsiteShots
         var showcase = scene.Connect();
         showcase.FillRaidChat();
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
-        var mara = scene.Vm.Server!.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == ShowcaseServer.Mara);
+        var mara = scene.Vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == ShowcaseServer.Mara);
         mara.VolumePercent = 140;
         var row = scene.Window.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row") && b.DataContext == mara);
         row.ContextMenu!.Placement = PlacementMode.RightEdgeAlignedTop;

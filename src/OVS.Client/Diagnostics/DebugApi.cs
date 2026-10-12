@@ -288,7 +288,7 @@ public sealed class DebugApi : IDisposable
                 s.SelfPermissions,
                 s.IsAdmin,
                 s.Mirror.DefaultChannelId,
-                Channels = s.Channels.Live().Select(c => new
+                Channels = s.Tree.Channels.Live().Select(c => new
                 {
                     c.Id,
                     c.Name,
@@ -372,7 +372,7 @@ public sealed class DebugApi : IDisposable
     /// <summary>By id or name; Package 110: a name several channels carry needs the id.</summary>
     static ChannelViewModel Channel(ServerViewModel server, string key)
     {
-        var live = server.Channels.Live().ToList();
+        var live = server.Tree.Channels.Live().ToList();
         if (live.FirstOrDefault(c => c.Id.ToString() == key) is { } byId) return byId;
         var named = live.Where(c => string.Equals(c.Name, key, StringComparison.OrdinalIgnoreCase)).ToList();
         return named.Count switch
@@ -384,7 +384,7 @@ public sealed class DebugApi : IDisposable
     }
 
     static UserViewModel User(ServerViewModel server, string key) =>
-        server.Channels.Live().SelectMany(c => c.Users.Live())
+        server.Tree.Channels.Live().SelectMany(c => c.Users.Live())
             .FirstOrDefault(u => u.SessionId.ToString() == key || string.Equals(u.Nickname, key, StringComparison.OrdinalIgnoreCase))
         ?? throw new DebugApiException($"Nutzer '{key}' nicht gefunden");
 
