@@ -4,6 +4,7 @@ using OVS.Shared.Protocol;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Tests.TestSupport;
@@ -17,15 +18,122 @@ public sealed class UsersAndBansViewModelTests
     static readonly KnownUserInfo Yvonne = new("fpY", "Yvonne", [WellKnownGroups.Guest], CanBeModeratedByMe: true);
     static readonly BanInfo YvonnesBan = new(Guid.NewGuid(), "fpY", "Yvonne", null, "Spam", "ich", null);
 
+    static readonly KnownUserInfo Me = new("fp1", "ich", [WellKnownGroups.Admin]);
+
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
+    /// <summary>Each own group change mark the section gave, with the number of requests sent at that moment.</summary>
+    readonly List<OwnGroupMark> marks = [];
+    Action<bool>? markOverride;
 
     sealed record Rig(UsersAndBansViewModel Section, ServerViewModel Server);
+
+    sealed record OwnGroupMark(bool Pending, int SentBefore);
 
     Rig Create(UsersAndBansDialogs? dialogs = null)
     {
         var server = FakeServers.Admin(sent, time);
-        return new Rig(new UsersAndBansViewModel(server, dialogs), server);
+        return new Rig(new UsersAndBansViewModel(server, pending =>
+        {
+            markOverride?.Invoke(pending);
+            marks.Add(new OwnGroupMark(pending, sent.Count));
+        }, dialogs), server);
+    }
+
+    /// <summary>Ticks the group <paramref name="groupName"/> on the card of <paramref name="nickname"/> and runs its command.</summary>
+    static Task ToggleAsync(UsersAndBansViewModel section, string nickname, string groupName, bool on)
+    {
+        var toggle = section.Users.Single(user => user.Nickname == nickname).Toggles.Single(group => group.Name == groupName);
+        toggle.IsChecked = on;
+        return Bound(toggle.ToggleCommand.ExecuteAsync(null));
+    }
+
+    [Fact]
+    public async Task ToggleUserGroup_OwnGroup_MarksBeforeTheRequestIsSent()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me]));
+
+        await ToggleAsync(section, "ich", "Gast", on: true);
+
+        Assert.Equal(new OwnGroupMark(true, 0), marks.First(mark => mark.Pending)); // the first list already unmarked (nothing pending)
+        Assert.IsType<AssignGroup>(sent[0]);
+    }
+
+    [Fact]
+    public async Task ToggleUserGroup_OtherUsersGroup_NeverMarksTrue()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Yvonne]));
+
+        await ToggleAsync(section, "Yvonne", "Admin", on: true);
+
+        Assert.DoesNotContain(marks, mark => mark.Pending);
+    }
+
+    [Fact]
+    public async Task Error_ForTheOwnGroupChange_Unmarks()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me]));
+        await ToggleAsync(section, "ich", "Gast", on: true);
+
+        section.Apply(new Error(IdOf<AssignGroup>(), ReasonCodes.LastAdmin));
+
+        Assert.False(marks[^1].Pending);
+    }
+
+    [Fact]
+    public async Task Error_UnknownRequestId_LeavesTheMark()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me]));
+        await ToggleAsync(section, "ich", "Gast", on: true);
+        var before = marks.Count;
+
+        section.Apply(new Error("unbekannt", ReasonCodes.LastAdmin));
+
+        Assert.Equal(before, marks.Count);
+        Assert.True(marks[^1].Pending);
+    }
+
+    [Fact]
+    public async Task UserList_ShowsTheOwnChange_UnmarksAndPlaysTheTone()
+    {
+        var (section, server) = Create();
+        var heard = new List<OVS.Client.Audio.Sounds.SoundEvent>();
+        server.SoundRequested += heard.Add;
+        section.Apply(new UserList("r", [Me]));
+        await ToggleAsync(section, "ich", "Gast", on: true);
+
+        section.Apply(new UserList(IdOf<ListUsers>(), [Me with { GroupIds = [WellKnownGroups.Admin, WellKnownGroups.Guest] }]));
+
+        Assert.False(marks[^1].Pending);
+        Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.GroupChangedByMe], heard);
+    }
+
+    [Fact]
+    public async Task UserList_OlderThanTheChange_KeepsTheMark()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me]));
+        await ToggleAsync(section, "ich", "Gast", on: true);
+
+        section.Apply(new UserList("alt", [Me]));
+
+        Assert.True(marks[^1].Pending);
+    }
+
+    [Fact]
+    public async Task ToggleUserGroup_MarkThrows_PropagatesAndSendsNothing()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me]));
+        markOverride = _ => throw new InvalidOperationException("Markierung kaputt");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ToggleAsync(section, "ich", "Gast", on: true));
+
+        Assert.Empty(sent);
     }
 
     [Fact]

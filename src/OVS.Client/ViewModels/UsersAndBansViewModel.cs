@@ -23,6 +23,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
 {
     readonly ServerViewModel server;
     readonly UsersAndBansDialogs dialogs;
+    readonly Action<bool> markOwnGroupChange;
     IReadOnlyList<KnownUserInfo> knownUsers = [];
     // Package 87: the lists come in pages, collected until complete
     readonly ListPages<KnownUserInfo> userPages = new();
@@ -49,9 +50,16 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     List<GroupInfo> judgedGroups;
     bool detached;
 
-    internal UsersAndBansViewModel(ServerViewModel server, UsersAndBansDialogs? dialogs = null)
+    /// <param name="server">The connected server: its lists, requests, rights and tones.</param>
+    /// <param name="markOwnGroupChange">
+    /// Tells the server whether an own group change of this section is still on its way (true is set before the request
+    /// goes out, as the server's update can come at once), so the server plays no "groups changed" tone for it.
+    /// </param>
+    /// <param name="dialogs">The ban and delete questions; unset means cancelled.</param>
+    internal UsersAndBansViewModel(ServerViewModel server, Action<bool> markOwnGroupChange, UsersAndBansDialogs? dialogs = null)
     {
         this.server = server;
+        this.markOwnGroupChange = markOwnGroupChange;
         this.dialogs = dialogs ?? new UsersAndBansDialogs();
         UsersLoad = server.NewPending();
         BansLoad = server.NewPending();
@@ -396,7 +404,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     async Task ToggleUserGroupAsync(string fingerprint, GroupToggleViewModel toggle)
     {
         bool own = fingerprint == server.Mirror.Self?.Fingerprint;
-        if (own) server.OwnGroupChangePending = true; // set before sending: the server's update can come at once
+        if (own) markOwnGroupChange(true); // set before sending: the server's update can come at once
         cardAskedBefore[fingerprint] = userRefresh.Sent; // Package 98: the card spins until a later list shows it
         var id = await SendRoutedAsync(toggle.IsChecked ? new AssignGroup(fingerprint, toggle.GroupId) : new UnassignGroup(fingerprint, toggle.GroupId),
             pending: CardBusy(fingerprint)); // its error drops the change
@@ -408,7 +416,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     void UpdateOwnGroupChangePending()
     {
         var self = server.Mirror.Self?.Fingerprint;
-        server.OwnGroupChangePending = pendingGroupChanges.Any(change => change.Fingerprint == self);
+        markOwnGroupChange(pendingGroupChanges.Any(change => change.Fingerprint == self));
     }
 
     /// <summary>Package 73: a tone once a user list shows a pending change; also works for users who are offline.</summary>

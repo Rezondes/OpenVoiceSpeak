@@ -1157,6 +1157,23 @@ public class AdminViewModelTests
         Assert.False(admin.HasChanges);
     }
 
+    /// <summary>Step 27a: the page wires the section's own group change mark to the server, so the server's update of the own groups plays no tone.</summary>
+    [Fact]
+    public async Task OwnGroupToggled_ServerUpdateBeforeTheList_NoGroupChangedTone()
+    {
+        var (admin, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
+        var heard = new List<OVS.Client.Audio.Sounds.SoundEvent>();
+        server.SoundRequested += heard.Add;
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fp1", "ich", [WellKnownGroups.Admin])]));
+        var guest = Assert.Single(admin.UsersAndBans.Users).Toggles.Single(toggle => toggle.Name == "Gast");
+        guest.IsChecked = true;
+
+        await HangGuard.Bound(guest.ToggleCommand.ExecuteAsync(null));
+        server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [WellKnownGroups.Admin, WellKnownGroups.Guest])));
+
+        Assert.DoesNotContain(OVS.Client.Audio.Sounds.SoundEvent.GroupChanged, heard);
+    }
+
     // ---- Step 26a: the page asks through its own record, and hands each section its part ----
 
     static AdminPlace CreateChangedPlace(Action discard) => new(() => true, () => Task.FromResult(false), discard);

@@ -21,7 +21,7 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     {
         this.server = server;
         this.dialogs = dialogs ?? new AdminDialogs();
-        UsersAndBans = new UsersAndBansViewModel(server, this.dialogs.UsersAndBans);
+        UsersAndBans = new UsersAndBansViewModel(server, pending => server.OwnGroupChangePending = pending, this.dialogs.UsersAndBans);
         server.StateChanged += OnServerStateChanged;
         ServerIcon = new ServerIconViewModel(server);
         ServerSettings = new ServerSettingsViewModel(server);
