@@ -2072,10 +2072,6 @@
     "Count": 2
   },
   {
-    "Key": "RL201|src/OVS.Client/ViewModels/SettingsViewModel.cs|SettingsViewModel.Resolve:d",
-    "Count": 1
-  },
-  {
     "Key": "RL201|src/OVS.Client/ViewModels/SettingsViewModel.cs|SettingsViewModel.SettingsViewModel:b",
     "Count": 1
   },
@@ -11996,15 +11992,7 @@
     "Count": 1
   },
   {
-    "Key": "RL211|src/OVS.Client/Animations/PageMotion.cs|PageMotion.Sideways",
-    "Count": 1
-  },
-  {
     "Key": "RL211|src/OVS.Client/Audio/Playback/VoiceMixer.cs|VoiceMixer.Tick",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Audio/Sounds/SoundImport.cs|SoundImport.Prepare",
     "Count": 1
   },
   {
@@ -12032,35 +12020,11 @@
     "Count": 1
   },
   {
-    "Key": "RL211|src/OVS.Client/Services/IconImport.cs|IconImport.Prepare",
-    "Count": 1
-  },
-  {
     "Key": "RL211|src/OVS.Client/ViewModels/LinkMatrixViewModel.cs|LinkMatrixViewModel.Norm",
     "Count": 1
   },
   {
     "Key": "RL211|src/OVS.Client/ViewModels/LinkMatrixViewModel.cs|LinkMatrixViewModel.SelectedPairs",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/ViewModels/SettingsViewModel.cs|SettingsViewModel.DeviceOptions",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/ViewModels/SettingsViewModel.cs|SettingsViewModel.Import",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/ViewModels/SettingsViewModel.cs|SettingsViewModel.ImportSound",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/ViewModels/SettingsViewModel.cs|SettingsViewModel.Resolve",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|src/OVS.Client/Views/MainWindow.axaml.cs|MainWindow.OnVmPropertyChanging.Way",
     "Count": 1
   },
   {

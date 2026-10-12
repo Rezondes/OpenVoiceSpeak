@@ -1,3 +1,4 @@
+using OVS.Client.Audio.Sounds;
 using Avalonia.Headless.XUnit;
 using OVS.Client.Dialogs;
 using OVS.Client.Input;
@@ -38,7 +39,7 @@ sealed class PageFlowRig
                 Calls.Add("setKeyBindings");
                 AppliedKeyBindings.Add(bindings);
             },
-            dialogs: () => Dialogs.PageFlow, adminDialogs: () => Dialogs.Admin, checkNow: () => Task.FromResult(""), importSound: (_, _) => (null, null), previewSound: (_, _, _) => { },
+            dialogs: () => Dialogs.PageFlow, adminDialogs: () => Dialogs.Admin, checkNow: () => Task.FromResult(""), importSound: (_, _) => new SoundImportResult(null, null), previewSound: (_, _, _) => { },
             applyLive: live =>
             {
                 if (ApplyLiveThrows) throw new InvalidOperationException("Testmeldung");

@@ -26,7 +26,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     readonly Func<PageFlowDialogs> dialogs;
     readonly Func<AdminDialogs> adminDialogs;
     readonly Func<Task<string>> checkNow;
-    readonly Func<string, SoundEvent, (string? File, string? Error)> importSound;
+    readonly Func<string, SoundEvent, SoundImportResult> importSound;
     readonly Action<SoundEvent, SoundSetting, float> previewSound;
     readonly Action<ClientSettings> applyLive;
     readonly Action<BackgroundAppearance> showAppearance;
@@ -69,7 +69,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="shownServer">The server view model now shown; the administration needs one.</param>
     internal PageFlowViewModel(TimeProvider time, Action<Action> post, Func<ClientSettings> settings, Func<DeviceLists?> knownDevices,
         Action refreshDevices, Func<Task<KeyChord>> captureChord, Action<IReadOnlyList<KeyBinding>> setKeyBindings, Func<PageFlowDialogs> dialogs, Func<AdminDialogs> adminDialogs,
-        Func<Task<string>> checkNow, Func<string, SoundEvent, (string? File, string? Error)> importSound,
+        Func<Task<string>> checkNow, Func<string, SoundEvent, SoundImportResult> importSound,
         Action<SoundEvent, SoundSetting, float> previewSound, Action<ClientSettings> applyLive, Action<BackgroundAppearance> showAppearance,
         Func<bool, Task> setSelfTest, Func<ClientSettings, Task> applySaved, Action<Action<float>> startLevelMeter,
         Action<Action<float>> stopLevelMeter, Func<float> readThresholdDb, Func<ServerViewModel?> shownServer)

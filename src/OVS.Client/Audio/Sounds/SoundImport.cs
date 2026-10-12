@@ -16,18 +16,18 @@ public static class SoundImport
     public const long MaxFileBytes = 10 * 1024 * 1024;
 
     /// <returns>The file name inside the profile's sound folder, or why the file was refused.</returns>
-    public static (string? File, string? Error) Prepare(string source, string profileDir, SoundEvent sound)
+    public static SoundImportResult Prepare(string source, string profileDir, SoundEvent sound)
     {
         var info = new FileInfo(source);
-        if (!info.Exists) return (null, Strings.SoundImport_Missing);
-        if (info.Length > MaxFileBytes) return (null, Strings.SoundImport_TooBig);
-        if (info.Extension.ToLowerInvariant() is not (".wav" or ".mp3")) return (null, Strings.SoundImport_Unreadable);
+        if (!info.Exists) return new SoundImportResult(null, Strings.SoundImport_Missing);
+        if (info.Length > MaxFileBytes) return new SoundImportResult(null, Strings.SoundImport_TooBig);
+        if (info.Extension.ToLowerInvariant() is not (".wav" or ".mp3")) return new SoundImportResult(null, Strings.SoundImport_Unreadable);
 
         float[] samples;
         try
         {
             using var reader = new AudioFileReader(source);
-            if (reader.TotalTime > TimeSpan.FromSeconds(MaxSeconds + 0.05)) return (null, Strings.SoundImport_TooLong);
+            if (reader.TotalTime > TimeSpan.FromSeconds(MaxSeconds + 0.05)) return new SoundImportResult(null, Strings.SoundImport_TooLong);
             int channels = reader.WaveFormat.Channels;
             var all = new List<float>();
             var buffer = new float[reader.WaveFormat.SampleRate * channels];
@@ -49,15 +49,15 @@ public static class SoundImport
         catch (Exception e) when (e is IOException or InvalidDataException or FormatException or COMException
                                    or ArgumentException or NotSupportedException or InvalidOperationException)
         {
-            return (null, Strings.SoundImport_Unreadable);
+            return new SoundImportResult(null, Strings.SoundImport_Unreadable);
         }
-        if (samples.Length == 0) return (null, Strings.SoundImport_Unreadable);
-        if (samples.Length > (MaxSeconds + 0.05) * AudioFormat.SampleRate) return (null, Strings.SoundImport_TooLong);
+        if (samples.Length == 0) return new SoundImportResult(null, Strings.SoundImport_Unreadable);
+        if (samples.Length > (MaxSeconds + 0.05) * AudioFormat.SampleRate) return new SoundImportResult(null, Strings.SoundImport_TooLong);
 
         var dir = Directory.CreateDirectory(Path.Combine(profileDir, SoundLibrary.Folder)).FullName;
         var name = $"{sound}-{Guid.NewGuid():N}.wav";
         using (var writer = new WaveFileWriter(Path.Combine(dir, name), WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1)))
             writer.WriteSamples(samples, 0, samples.Length);
-        return (name, null);
+        return new SoundImportResult(name, null);
     }
 }

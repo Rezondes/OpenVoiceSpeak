@@ -106,13 +106,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
 
     public IReadOnlyList<SoundRowViewModel> SoundRows { get; }
     /// <summary>Copies the chosen file into the profile; returns its name there or why it was refused.</summary>
-    public Func<string, SoundEvent, (string? File, string? Error)>? ImportSound { get; set; }
+    public Func<string, SoundEvent, SoundImportResult>? ImportSound { get; set; }
     /// <summary>Plays a tone the way the row is set up now, even if it is muted: the user asked for it.</summary>
     public Action<SoundEvent, SoundSetting, float>? PreviewSound { get; set; }
 
     internal void Preview(SoundRowViewModel row) => PreviewSound?.Invoke(row.Event, row.ToSetting() with { Muted = false }, (float)(SoundVolumePercent / 100));
 
-    internal (string? File, string? Error) Import(string path, SoundEvent sound) => ImportSound?.Invoke(path, sound) ?? (null, null);
+    internal SoundImportResult Import(string path, SoundEvent sound) => ImportSound?.Invoke(path, sound) ?? new SoundImportResult(null, null);
 
     /// <summary>Package 43: "Nach Updates suchen"; the answer is shown under the button.</summary>
     public Func<Task<string>>? CheckNow { get; set; }
@@ -228,24 +228,19 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     [ObservableProperty] IReadOnlyList<AudioDeviceOption> outputs;
 
     /// <summary>Without a list yet the wanted device waits behind a placeholder, and nothing counts as missing.</summary>
-    static (IReadOnlyList<AudioDeviceOption> Options, AudioDeviceOption Selected, bool FellBack) DeviceOptions(string? wanted, IReadOnlyList<AudioDevice>? devices)
+    static DeviceOptionList DeviceOptions(string? wanted, IReadOnlyList<AudioDevice>? devices)
     {
         List<AudioDeviceOption> options = [new(null, Strings.Device_Default)];
         if (devices is null)
         {
             if (wanted is not null) options.Add(new(wanted, Strings.Device_Loading));
-            return (options, options[^1], false);
+            return new DeviceOptionList(options, options[^1], false);
         }
         options.AddRange(devices.Select(d => new AudioDeviceOption(d.Id, d.Name)));
-        var (id, fellBack) = Resolve(wanted, devices);
-        return (options, options.First(o => o.Id == id), fellBack);
+        // the saved device, or the default device (null) when it is gone, which the hint tells
+        bool fellBack = wanted is not null && devices.All(device => device.Id != wanted);
+        return new DeviceOptionList(options, options.First(o => o.Id == (fellBack ? null : wanted)), fellBack);
     }
-
-    /// <summary>Saved device id, or null (= default device) if it is gone. FellBack tells the UI to show a hint.</summary>
-    static (string? Id, bool FellBack) Resolve(string? wanted, IReadOnlyList<AudioDevice> available) =>
-        wanted is null ? (null, false)
-        : available.Any(d => d.Id == wanted) ? (wanted, false)
-        : (null, true);
 
     /// <summary>The loaded list: a device the user picked meanwhile stays, otherwise the saved one is looked up.</summary>
     public void ShowDevices(IReadOnlyList<AudioDevice> inputDevices, IReadOnlyList<AudioDevice> outputDevices)

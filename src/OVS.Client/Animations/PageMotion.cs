@@ -45,7 +45,7 @@ public static class PageMotion
     /// <param name="layer">An empty border right above <paramref name="host"/> that holds the picture.</param>
     /// <param name="motion">Asked at the end: where the new content comes in from and where the picture goes, or null
     /// when nothing changed after all.</param>
-    public static void Leave(Control host, Border layer, Func<(Vector In, Vector Away)?> motion)
+    public static void Leave(Control host, Border layer, Func<PageSlide?> motion)
     {
         if (!Motion.IsAnimated(host) || host.Bounds.Width <= 0) return;
         var state = switching.GetValue(layer, _ => new Switching());
@@ -64,8 +64,8 @@ public static class PageMotion
     }
 
     /// <summary>Opening a page comes in from the right, going back from the left.</summary>
-    public static (Vector In, Vector Away) Sideways(bool forward) =>
-        forward ? (new Vector(Slide, 0), new Vector(-Slide, 0)) : (new Vector(-Slide, 0), new Vector(Slide, 0));
+    public static PageSlide Sideways(bool forward) =>
+        forward ? new PageSlide(new Vector(Slide, 0), new Vector(-Slide, 0)) : new PageSlide(new Vector(-Slide, 0), new Vector(Slide, 0));
 
     static async void Play(Control host, Border layer, Switching state, Vector from, Vector away)
     {

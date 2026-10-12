@@ -153,8 +153,8 @@ public partial class MainWindow : Window
         // Package 106: connecting, home fades away while the chat comes up from below; disconnecting, the server folds
         // down and home comes back. The channel tree does the same in the sidebar.
         bool wasConnected = mainViewModel.Server is not null;
-        (Vector In, Vector Away)? Way() => (mainViewModel.Server is not null) == wasConnected ? null
-            : mainViewModel.Server is not null ? (new Vector(0, PageMotion.Slide), default) : (default, new Vector(0, PageMotion.Slide));
+        PageSlide? Way() => (mainViewModel.Server is not null) == wasConnected ? null
+            : mainViewModel.Server is not null ? new PageSlide(new Vector(0, PageMotion.Slide), default) : new PageSlide(default, new Vector(0, PageMotion.Slide));
         if (mainViewModel.PageFlow.IsHomePage) PageMotion.Leave(PageHost, PageGhost, Way); // settings and administration stay what they are
         PageMotion.Leave(TreeHost, TreeGhost, Way);
     }
