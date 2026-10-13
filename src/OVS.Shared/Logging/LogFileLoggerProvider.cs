@@ -13,10 +13,10 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
     /// <summary>The server log: logs/server/ and the console.</summary>
     public const string ServerCategory = "server";
 
-    /// <summary>A line only for the console, such as the admin token.</summary>
+    /// <summary>A line only for the console, such as the admin token; matched by its name, so several logger messages can carry it.</summary>
     public static readonly EventId ConsoleOnly = new(1, nameof(ConsoleOnly));
 
-    /// <summary>A line only for the file.</summary>
+    /// <summary>A line only for the file; matched by its name like <see cref="ConsoleOnly"/>.</summary>
     public static readonly EventId FileOnly = new(2, nameof(FileOnly));
 
     /// <summary>The log of one channel, in a folder named by its id, so a rename keeps its history together.</summary>
@@ -44,8 +44,8 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
         {
             if (!IsEnabled(logLevel)) return;
             var line = LogFileWriter.EscapeToOneLine($"{files!.FormatNow()} {formatter(state, exception)}"); // Package 90: the console gets the escaped line too
-            if (console is not null && eventId != FileOnly) console(line);
-            if (eventId != ConsoleOnly) files.Append(folder.Replace('/', Path.DirectorySeparatorChar), "", line);
+            if (console is not null && eventId.Name != FileOnly.Name) console(line);
+            if (eventId.Name != ConsoleOnly.Name) files.Append(folder.Replace('/', Path.DirectorySeparatorChar), "", line);
         }
     }
 }

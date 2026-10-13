@@ -153,8 +153,8 @@ public sealed class ChatTests
         while (seen.Count < 3)
             seen.Add((await weit.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text is "Ankündigung" or "im Raid" or "geheimer Inhalt")).Text);
 
-        Assert.Contains(server.Log, line => line.Contains("Chat von chef: Ankündigung"));
-        Assert.Contains(server.Log, line => line.Contains("gast schreibt privat an weit"));
+        Assert.Contains(server.Log, line => line.Contains("Chat from chef: Ankündigung"));
+        Assert.Contains(server.Log, line => line.Contains("gast writes privately to weit"));
         Assert.DoesNotContain(server.Log, line => line.Contains("geheimer Inhalt"));
         var files = Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories)
             .Select(path =>

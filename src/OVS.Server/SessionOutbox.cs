@@ -47,7 +47,7 @@ public sealed class SessionOutbox
         }
         if (Interlocked.Add(ref queuedBytes, frame.Length) <= ServerTuning.MaxOutboxBytes && outbox.Writer.TryWrite(frame)) return;
         Interlocked.Add(ref queuedBytes, -frame.Length);
-        if (!closing) Abort("Sendepuffer voll");
+        if (!closing) Abort("send buffer full");
     }
 
     /// <summary>

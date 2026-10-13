@@ -1,4 +1,5 @@
 using OVS.Server.Data.Records;
+using OVS.Server.Logging;
 using OVS.Server.Rules;
 using OVS.Server.Security;
 using OVS.Shared.Permissions;
@@ -36,8 +37,8 @@ public sealed partial class ServerState
             Fail(session, request, ReasonCodes.ChannelFull);
             return;
         }
-        ChannelLog(from, $"{session.Nickname} hat den Channel verlassen (wechselt nach {ChannelName(request.ChannelId)})");
-        ChannelLog(request.ChannelId, $"{session.Nickname} hat den Channel betreten (kommt aus {ChannelName(from)})");
+        ChannelLogger(from)?.LeftTo(session.Nickname, ChannelName(request.ChannelId));
+        ChannelLogger(request.ChannelId)?.JoinedFrom(session.Nickname, ChannelName(from));
         session.ChannelId = request.ChannelId;
         BroadcastUser(session);
     }
@@ -68,11 +69,11 @@ public sealed partial class ServerState
         };
         data.Channels.Add(channel);
         saves.Persist();
-        var options = new[] { request.IsMuted ? "stumm" : null, request.MaxUsers > 0 ? $"Nutzerlimit {request.MaxUsers}" : null,
-            allowed is null ? null : $"nur für {GroupNames(allowed)}", channel.StoredPassword is null ? null : "mit Passwort",
-            request.Bitrate != ProtocolDefaults.Bitrate ? $"Qualität {request.Bitrate} kbps" : null }.OfType<string>().ToList();
-        ChannelLog(channel.Id, $"Channel angelegt von {session.Nickname}" + (options.Count > 0 ? $" ({string.Join(", ", options)})" : ""));
-        logs.WriteServerLine($"Channel '{channel.Name}' angelegt von {session.Nickname}");
+        var options = new[] { request.IsMuted ? "muted" : null, request.MaxUsers > 0 ? $"user limit {request.MaxUsers}" : null,
+            allowed is null ? null : $"only for {GroupNames(allowed)}", channel.StoredPassword is null ? null : "with password",
+            request.Bitrate != ProtocolDefaults.Bitrate ? $"quality {request.Bitrate} kbps" : null }.OfType<string>().ToList();
+        ChannelLogger(channel.Id)?.Created(session.Nickname, options.Count > 0 ? $" ({string.Join(", ", options)})" : "");
+        logs.Server.ChannelCreated(channel.Name, session.Nickname);
         var added = new ChannelAdded(Info(channel));
         BroadcastExcept(session, added);
         session.Outbox.Send(added with { RequestId = request.RequestId }); // Package 110: the creator recognises its own channel by the request
@@ -91,7 +92,7 @@ public sealed partial class ServerState
         };
         data.Channels.Add(separator);
         saves.Persist();
-        logs.WriteServerLine($"Trenner angelegt von {session.Nickname}");
+        logs.Server.SeparatorCreated(session.Nickname);
         var added = new ChannelAdded(Info(separator));
         BroadcastExcept(session, added);
         session.Outbox.Send(added with { RequestId = request.RequestId });
@@ -113,14 +114,14 @@ public sealed partial class ServerState
 
         // Package 83: r.Order is ignored, the order only changes through ReorderChannels
         var changes = new List<string>();
-        if (channel.Name != name) changes.Add($"Name '{channel.Name}' -> '{name}'");
-        if (channel.Description != description) changes.Add("Beschreibung geändert");
-        if (channel.IsMuted != request.IsMuted) changes.Add(request.IsMuted ? "stumm geschaltet" : "Stummschaltung aufgehoben");
-        if (channel.MaxUsers != request.MaxUsers) changes.Add(request.MaxUsers == 0 ? "Nutzerlimit aufgehoben" : $"Nutzerlimit {request.MaxUsers}");
-        if (!SameGroups(channel.AllowedGroupIds, allowed)) changes.Add(allowed is null ? "Gruppen-Sperre aufgehoben" : $"nur für {GroupNames(allowed)}");
+        if (channel.Name != name) changes.Add($"name '{channel.Name}' -> '{name}'");
+        if (channel.Description != description) changes.Add("description changed");
+        if (channel.IsMuted != request.IsMuted) changes.Add(request.IsMuted ? "muted" : "unmuted");
+        if (channel.MaxUsers != request.MaxUsers) changes.Add(request.MaxUsers == 0 ? "user limit removed" : $"user limit {request.MaxUsers}");
+        if (!SameGroups(channel.AllowedGroupIds, allowed)) changes.Add(allowed is null ? "group lock removed" : $"only for {GroupNames(allowed)}");
         if (request.Password is not null && (request.Password.Length > 0 || channel.StoredPassword is not null))
-            changes.Add(request.Password.Length == 0 ? "Passwort entfernt" : "Passwort gesetzt"); // never the password itself
-        if (channel.Bitrate != request.Bitrate) changes.Add($"Qualität {request.Bitrate} kbps");
+            changes.Add(request.Password.Length == 0 ? "password removed" : "password set"); // never the password itself
+        if (channel.Bitrate != request.Bitrate) changes.Add($"quality {request.Bitrate} kbps");
 
         channel.Name = name;
         channel.Description = description;
@@ -130,7 +131,7 @@ public sealed partial class ServerState
         if (request.Password is not null) channel.StoredPassword = StoredPassword.Create(request.Password); // Package 94: "" removes it
         channel.Bitrate = request.Bitrate; // Package 132: the senders inside follow the ChannelUpdated
         saves.Persist();
-        if (changes.Count > 0) ChannelLog(channel.Id, $"Channel geändert von {session.Nickname}: {string.Join(", ", changes)}");
+        if (changes.Count > 0) ChannelLogger(channel.Id)?.Changed(session.Nickname, string.Join(", ", changes));
         Broadcast(new ChannelUpdated(Info(channel)));
     }
 
@@ -183,8 +184,8 @@ public sealed partial class ServerState
             return null;
         }
         int count = channelPasswordGuesses.RecordFailure(actor.Id, channel.Id, now);
-        logs.WriteServerLine($"Falsches Channel-Passwort von {actor.Nickname} für '{channel.Name}' ({count}. Versuch)" +
-                    (count >= ServerTuning.ChannelPasswordFailures ? $", gesperrt für {ServerTuning.ChannelPasswordBlock.TotalMinutes:0} Minuten" : ""));
+        if (count >= ServerTuning.ChannelPasswordFailures) logs.Server.WrongChannelPasswordBlocked(actor.Nickname, channel.Name, count, ServerTuning.ChannelPasswordBlock.TotalMinutes);
+        else logs.Server.WrongChannelPassword(actor.Nickname, channel.Name, count);
         return ReasonCodes.WrongChannelPassword;
     }
 
@@ -208,7 +209,7 @@ public sealed partial class ServerState
         }
         if (changed.Count == 0) return;
         saves.Persist();
-        logs.WriteServerLine($"Channels umsortiert von {session.Nickname}: {string.Join(", ", ids.Select(ChannelName))}");
+        logs.Server.ChannelsReordered(session.Nickname, string.Join(", ", ids.Select(ChannelName)));
         foreach (var channel in changed) Broadcast(new ChannelUpdated(Info(channel)));
     }
 
@@ -229,21 +230,22 @@ public sealed partial class ServerState
 
         foreach (var user in sessions.Values.Where(otherSession => otherSession.ChannelId == channel.Id))
         {
-            ChannelLog(channel.Id, $"{user.Nickname} hat den Channel verlassen (Channel gelöscht)");
-            ChannelLog(data.DefaultChannelId, $"{user.Nickname} hat den Channel betreten (Channel {channel.Name} wurde gelöscht)");
+            ChannelLogger(channel.Id)?.LeftDeleted(user.Nickname);
+            ChannelLogger(data.DefaultChannelId)?.JoinedFromDeleted(user.Nickname, channel.Name);
             user.ChannelId = data.DefaultChannelId;
             BroadcastUser(user);
         }
         foreach (var link in data.Links.Where(channelLink => channelLink.Touches(channel.Id)).ToList())
         {
             var other = link.Other(channel.Id);
-            ChannelLog(other, $"Link zu {channel.Name} entfernt (Channel gelöscht)");
-            ChannelLog(channel.Id, $"Link zu {ChannelName(other)} entfernt (Channel gelöscht)");
+            ChannelLogger(other)?.LinkRemovedWithChannel(channel.Name);
+            ChannelLogger(channel.Id)?.LinkRemovedWithChannel(ChannelName(other));
             data.Links.Remove(link);
             Broadcast(new ChannelsUnlinked(link.A, link.B));
         }
-        ChannelLog(channel.Id, $"Channel gelöscht von {session.Nickname}");
-        logs.WriteServerLine(channel.Kind == ChannelKind.Separator ? $"Trenner gelöscht von {session.Nickname}" : $"Channel '{channel.Name}' gelöscht von {session.Nickname}");
+        ChannelLogger(channel.Id)?.Deleted(session.Nickname);
+        if (channel.Kind == ChannelKind.Separator) logs.Server.SeparatorDeleted(session.Nickname);
+        else logs.Server.ChannelDeleted(channel.Name, session.Nickname);
         data.Channels.Remove(channel);
         saves.Persist();
         Broadcast(new ChannelRemoved(channel.Id));
@@ -275,8 +277,8 @@ public sealed partial class ServerState
             return;
         }
         var from = target.ChannelId;
-        ChannelLog(from, $"{target.Nickname} wurde von {session.Nickname} nach {ChannelName(request.ChannelId)} verschoben");
-        ChannelLog(request.ChannelId, $"{target.Nickname} wurde von {session.Nickname} aus {ChannelName(from)} hierher verschoben");
+        ChannelLogger(from)?.MovedOut(target.Nickname, session.Nickname, ChannelName(request.ChannelId));
+        ChannelLogger(request.ChannelId)?.MovedIn(target.Nickname, session.Nickname, ChannelName(from));
         target.ChannelId = request.ChannelId;
         BroadcastUser(target);
     }

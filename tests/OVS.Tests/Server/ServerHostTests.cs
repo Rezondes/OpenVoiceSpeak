@@ -48,7 +48,7 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
         await stop.CancelAsync();
         Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
         Assert.Contains(output, line => line.Contains($"Listening on 127.0.0.1:{port}"));
-        Assert.Contains(output, line => System.Text.RegularExpressions.Regex.IsMatch(line, "Zertifikat-Fingerprint: [0-9a-f]{64}$"));
+        Assert.Contains(output, line => System.Text.RegularExpressions.Regex.IsMatch(line, "Certificate fingerprint: [0-9a-f]{64}$"));
     }
 
     static async Task<TestClient?> TryConnectAsync(int port, string nickname)
@@ -119,12 +119,12 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
 
         var files = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Order().Select(File.ReadAllText).ToList();
         Assert.Equal(2, files.Count);
-        Assert.Contains("Automatischer Neustart täglich um", files[0]);
-        Assert.Contains("Server startet neu, 1 Nutzer getrennt", files[0]);
-        Assert.Contains("Server beendet, startet neu", files[0]);
-        Assert.Contains("OpenVoiceSpeak-Server startet (automatischer Neustart)", files[1]);
-        Assert.Contains("bert verbunden", files[1]);
+        Assert.Contains("Automatic restart daily at", files[0]);
+        Assert.Contains("Server restarting, 1 users disconnected", files[0]);
+        Assert.Contains("Server stopped, restarting", files[0]);
+        Assert.Contains("OpenVoiceSpeak server starting (automatic restart)", files[1]);
+        Assert.Contains("bert connected", files[1]);
         Assert.DoesNotContain("anna", files[1]);
-        Assert.Contains("Server beendet", files[1]);
+        Assert.Contains("Server stopped", files[1]);
     }
 }

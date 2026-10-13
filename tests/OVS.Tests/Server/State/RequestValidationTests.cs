@@ -51,7 +51,7 @@ public sealed class RequestValidationTests
         await admin.SendRawAsync(json.Replace("{lobby}", admin.Welcome.Snapshot.DefaultChannelId.ToString()));
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("x")).Code);
         await AssertStillAnsweredAsync(admin);
-        Assert.DoesNotContain(server.Log, line => line.Contains("Fehler bei Anfrage")); // checked, not caught
+        Assert.DoesNotContain(server.Log, line => line.Contains("Error in request")); // checked, not caught
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public sealed class RequestValidationTests
         await admin.SendAsync(new CreateChannel("Raid", "") { RequestId = "c" });
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("c")).Code);
         await AssertStillAnsweredAsync(admin);
-        Assert.Contains(server.Log, line => line.Contains("Fehler bei Anfrage CreateChannel") && line.Contains("Testfehler"));
+        Assert.Contains(server.Log, line => line.Contains("Error in request CreateChannel") && line.Contains("Testfehler"));
 
         // the lock is free and the state usable
         server.State.BeforeRequest = null;

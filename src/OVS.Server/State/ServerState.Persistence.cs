@@ -1,3 +1,5 @@
+using OVS.Server.Logging;
+
 namespace OVS.Server.State;
 
 public sealed partial class ServerState
@@ -31,7 +33,7 @@ public sealed partial class ServerState
         nextPrune = now + TimeSpan.FromDays(1);
         int removed = data.PruneGuests(now - ServerTuning.PruneGuestsAfter);
         if (removed > 0)
-            logs.WriteServerLine($"{removed} ungenutzte Gast-Einträge entfernt (nur Gast, kein Bann, über {ServerTuning.PruneGuestsAfter.TotalDays:0} Tage nicht angemeldet)");
+            logs.Server.GuestsPruned(removed, ServerTuning.PruneGuestsAfter.TotalDays);
         return removed > 0;
     }
 }

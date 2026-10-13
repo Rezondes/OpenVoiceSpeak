@@ -202,7 +202,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 
         var console = Assert.Single(server.Log, line => line.Contains("gefaelscht"));
         Assert.DoesNotContain(console, char.IsControl);
-        Assert.EndsWith(@"Chat von anna: hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht", console);
+        Assert.EndsWith(@"Chat from anna: hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht", console);
         var file = Assert.Single(ServerLog(server).Split('\n'), line => line.Contains("gefaelscht"));
         Assert.Equal(console, file.TrimEnd('\r'));
     }
@@ -309,7 +309,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await anna.DisposeAsync();
 
         await EventuallyAsync(() => ServerLog(server),
-            "anna verbunden (", "abgelehnt: NicknameTaken", "127.0.0.1", "anna getrennt (vom Client beendet)");
+            "anna connected (", "refused: NicknameTaken", "127.0.0.1", "anna disconnected (ended by the client)");
     }
 
     [Fact]
@@ -336,16 +336,16 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await admin.SendAsync(new Unban(ban.Id));
 
         await EventuallyAsync(() => ServerLog(server),
-            "Gruppe 'Team' angelegt von chef",
-            "Gruppe 'Team' geändert von chef: Name 'Team' -> 'Team 2'",
-            "Gruppe 'Team 2' an gast1 vergeben von chef",
-            "Gruppe 'Team 2' von gast1 entfernt von chef",
-            "Gruppe 'Team 2' gelöscht von chef",
-            "Servereinstellungen geändert von chef: Name 'Testserver' -> 'Neuer Name', Willkommenstext geändert, Passwort gesetzt",
-            "gast1 serverseitig stummgeschaltet von chef",
-            "gast1 wurde von chef gekickt: Spam",
-            "gast2 wurde von chef gebannt für 60 Minuten mit IP: Troll",
-            "Bann von gast2 aufgehoben von chef");
+            "Group 'Team' created by chef",
+            "Group 'Team' changed by chef: name 'Team' -> 'Team 2'",
+            "Group 'Team 2' given to gast1 by chef",
+            "Group 'Team 2' taken from gast1 by chef",
+            "Group 'Team 2' deleted by chef",
+            "Server settings changed by chef: name 'Testserver' -> 'Neuer Name', welcome text changed, password set",
+            "gast1 server-muted by chef",
+            "gast1 was kicked by chef: Spam",
+            "gast2 was banned by chef for 60 minutes with IP: Troll",
+            "Ban of gast2 lifted by chef");
         await g1.DisposeAsync();
         await g2.DisposeAsync();
     }
@@ -368,16 +368,16 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await gast.DisposeAsync();
 
         await EventuallyAsync(() => ChannelLog(server, lobby),
-            "[Lobby] gast hat den Channel betreten (verbunden)",
-            "[Lobby] gast hat den Channel verlassen (wechselt nach Raid)",
-            "[Lobby] gast wurde von chef aus Raid hierher verschoben",
-            "[Lobby] gast hat den Channel verlassen (vom Client beendet)");
+            "[Lobby] gast joined the channel (connected)",
+            "[Lobby] gast left the channel (moving to Raid)",
+            "[Lobby] gast was moved here by chef from Raid",
+            "[Lobby] gast left the channel (ended by the client)");
         await EventuallyAsync(() => ChannelLog(server, raid),
-            "[Raid] Channel angelegt von chef",
-            "[Raid] gast hat den Channel betreten (kommt aus Lobby)",
-            "[Raid] gast wurde von chef nach Lobby verschoben");
-        await EventuallyAsync(() => ServerLog(server), "Channel 'Raid' angelegt von chef");
-        Assert.DoesNotContain("betreten", ServerLog(server)); // channel matters stay in channel logs
+            "[Raid] Channel created by chef",
+            "[Raid] gast joined the channel (coming from Lobby)",
+            "[Raid] gast was moved by chef to Lobby");
+        await EventuallyAsync(() => ServerLog(server), "Channel 'Raid' created by chef");
+        Assert.DoesNotContain("joined", ServerLog(server)); // channel matters stay in channel logs
     }
 
     [Fact]
@@ -398,12 +398,12 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await admin.WaitForAsync<ChannelRemoved>();
 
         await EventuallyAsync(() => ChannelLog(server, lobby),
-            "[Lobby] Link zu Raid gesetzt von chef", "[Lobby] Link zu Raid 2 entfernt (Channel gelöscht)");
+            "[Lobby] Link to Raid set by chef", "[Lobby] Link to Raid 2 removed (channel deleted)");
         await EventuallyAsync(() => ChannelLog(server, raid),
-            "[Raid] Link zu Lobby gesetzt von chef",
-            "[Raid 2] Channel geändert von chef: Name 'Raid' -> 'Raid 2', Beschreibung geändert", // Package 83: the order stays
-            "[Raid 2] Channel gelöscht von chef");
-        await EventuallyAsync(() => ServerLog(server), "Channel 'Raid 2' gelöscht von chef");
+            "[Raid] Link to Lobby set by chef",
+            "[Raid 2] Channel changed by chef: name 'Raid' -> 'Raid 2', description changed", // Package 83: the order stays
+            "[Raid 2] Channel deleted by chef");
+        await EventuallyAsync(() => ServerLog(server), "Channel 'Raid 2' deleted by chef");
     }
 
     [Fact]
@@ -417,7 +417,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await client.SendAsync(new UpdateServerSettings("S", "", "geheim-123"));
         await client.WaitForAsync<ServerSettingsChanged>();
 
-        await EventuallyAsync(() => ServerLog(server), "Admin-Token erzeugt", "anna hat das Admin-Token eingelöst", "Passwort gesetzt");
+        await EventuallyAsync(() => ServerLog(server), "Admin token created", "anna redeemed the admin token", "password set");
         var all = string.Join("\n", Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories).Select(ReadShared));
         Assert.DoesNotContain(token, all);
         Assert.DoesNotContain("geheim-123", all);
@@ -443,6 +443,6 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await again.SendAsync(new JoinChannel(raid));
         await again.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.ChannelId == raid);
 
-        await EventuallyAsync(() => ChannelLog(server, raid), "[Raid] Channel angelegt von chef", "[Raid 2] chef hat den Channel betreten");
+        await EventuallyAsync(() => ChannelLog(server, raid), "[Raid] Channel created by chef", "[Raid 2] chef joined the channel");
     }
 }

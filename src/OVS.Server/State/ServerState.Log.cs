@@ -51,7 +51,7 @@ public sealed partial class ServerState
             return;
         }
         // Package 90: only a search that was queued (and so runs) is logged; without the query, so a search never finds itself
-        if (QueueLogJob(session, request, () => logReader.Search(request.RequestId, request))) logs.WriteServerLine($"Logs durchsucht von {session.Nickname}");
+        if (QueueLogJob(session, request, () => logReader.Search(request.RequestId, request))) logs.Server.LogsSearched(session.Nickname);
     }
 
     // ---- Package 82 (A99): download, a snapshot in logs-export pulled chunk by chunk like a backup ----
@@ -78,7 +78,7 @@ public sealed partial class ServerState
                 SafeFile.DeleteQuietly(export.Path); // the session ended meanwhile
                 return new Error(request.RequestId, ReasonCodes.NotFound);
             }
-            logs.WriteServerLine($"Logs heruntergeladen von {session.Nickname}: {export.FileName} ({ids.Count} Dateien, {export.Size} Bytes)");
+            logs.Server.LogsDownloaded(session.Nickname, export.FileName, ids.Count, export.Size);
             return new LogDownloadReady(request.RequestId, downloadId, export.FileName, export.Size);
         });
     }

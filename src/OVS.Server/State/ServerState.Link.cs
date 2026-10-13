@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Logging;
 using OVS.Server.Data.Records;
+using OVS.Server.Logging;
 using OVS.Server.Rules;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol.Messages;
@@ -15,7 +17,7 @@ public sealed partial class ServerState
         if (data.Links.Contains(link)) return;
         data.Links.Add(link);
         saves.Persist();
-        LogLink(link, $"gesetzt von {session.Nickname}");
+        LogLink(link, session.Nickname, set: true);
         Broadcast(new ChannelsLinked(link.A, link.B));
     }
 
@@ -25,7 +27,7 @@ public sealed partial class ServerState
         var link = ChannelLinkRecord.Of(request.A, request.B);
         if (!data.Links.Remove(link)) return;
         saves.Persist();
-        LogLink(link, $"entfernt von {session.Nickname}");
+        LogLink(link, session.Nickname, set: false);
         Broadcast(new ChannelsUnlinked(link.A, link.B));
     }
 
@@ -50,24 +52,30 @@ public sealed partial class ServerState
         data.Links.AddRange(toAdd);
         data.Links.RemoveAll(toRemove.Contains);
         saves.Persist();
-        logs.WriteServerLine($"Links geändert von {session.Nickname}: {toAdd.Count} gesetzt, {toRemove.Count} entfernt");
+        logs.Server.LinksChanged(session.Nickname, toAdd.Count, toRemove.Count);
         foreach (var link in toAdd)
         {
-            LogLink(link, $"gesetzt von {session.Nickname}");
+            LogLink(link, session.Nickname, set: true);
             Broadcast(new ChannelsLinked(link.A, link.B));
         }
         foreach (var link in toRemove)
         {
-            LogLink(link, $"entfernt von {session.Nickname}");
+            LogLink(link, session.Nickname, set: false);
             Broadcast(new ChannelsUnlinked(link.A, link.B));
         }
     }
 
     /// <summary>A link concerns both channels, so it goes into both channel logs.</summary>
-    void LogLink(ChannelLinkRecord link, string what)
+    void LogLink(ChannelLinkRecord link, string nickname, bool set)
     {
-        ChannelLog(link.A, $"Link zu {ChannelName(link.B)} {what}");
-        ChannelLog(link.B, $"Link zu {ChannelName(link.A)} {what}");
+        LogLink(ChannelLogger(link.A), ChannelName(link.B), nickname, set);
+        LogLink(ChannelLogger(link.B), ChannelName(link.A), nickname, set);
+    }
+
+    static void LogLink(ILogger? log, string otherChannel, string nickname, bool set)
+    {
+        if (set) log?.LinkSet(otherChannel, nickname);
+        else log?.LinkRemoved(otherChannel, nickname);
     }
 
     /// <summary>ChannelLinkRule for two channels looked up by id; false when the request was refused.</summary>

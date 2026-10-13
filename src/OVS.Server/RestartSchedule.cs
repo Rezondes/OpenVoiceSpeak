@@ -33,12 +33,12 @@ public static class RestartSchedule
                 {
                     var next = FindNext(time.GetUtcNow(), at, time.LocalTimeZone);
                     if (logged != (on, at))
-                        logs.WriteServerLine($"Automatischer Neustart täglich um {at:HH:mm:ss}, der nächste am {TimeZoneInfo.ConvertTime(next, time.LocalTimeZone):yyyy-MM-dd HH:mm:ss}");
+                        logs.Server.AutoRestartScheduled(at, TimeZoneInfo.ConvertTime(next, time.LocalTimeZone));
                     wait = next - time.GetUtcNow();
                 }
                 else if (logged is { On: true })
                 {
-                    logs.WriteServerLine("Automatischer Neustart ausgeschaltet");
+                    logs.Server.AutoRestartOff();
                 }
                 logged = (on, at);
 

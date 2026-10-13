@@ -1,4 +1,5 @@
 using OVS.Server.Data.Records;
+using OVS.Server.Logging;
 using OVS.Server.Permissions;
 using OVS.Server.Rules;
 using OVS.Server.Security;
@@ -29,7 +30,7 @@ public sealed partial class ServerState
         if (!adminToken.TryRedeem(request.Token))
         {
             adminTokenGuesses.RecordFailure(source, now);
-            logs.WriteServerLine($"Admin-Token falsch von {session.Nickname} ({session.Ip})");
+            logs.Server.AdminTokenWrong(session.Nickname, session.Ip);
             Fail(session, request, ReasonCodes.InvalidToken);
             return;
         }
@@ -37,7 +38,7 @@ public sealed partial class ServerState
         if (!user.GroupIds.Contains(AdminGroupId)) user.GroupIds.Add(AdminGroupId);
         saves.Persist();
         RecomputePermissions();
-        logs.WriteServerLine($"{session.Nickname} hat das Admin-Token eingelöst");
+        logs.Server.AdminTokenRedeemed(session.Nickname);
     }
 
     void OnCreateGroup(Session session, CreateGroup request)
@@ -52,7 +53,7 @@ public sealed partial class ServerState
         var permissions = request.Permissions & Permission.All;
         data.Groups.Add(new GroupRecord(Guid.NewGuid(), name, permissions));
         saves.Persist();
-        logs.WriteServerLine($"Gruppe '{name}' angelegt von {session.Nickname} ({permissions})");
+        logs.Server.GroupCreated(name, session.Nickname, permissions);
         BroadcastGroups(); // Package 92: per recipient
     }
 
@@ -71,7 +72,7 @@ public sealed partial class ServerState
         data.Groups.Clear();
         data.Groups.AddRange(reordered);
         saves.Persist();
-        logs.WriteServerLine($"Gruppen umsortiert von {session.Nickname}: {string.Join(", ", reordered.Select(groupRecord => groupRecord.Name))}");
+        logs.Server.GroupsReordered(session.Nickname, string.Join(", ", reordered.Select(groupRecord => groupRecord.Name)));
         BroadcastGroups(); // Package 92: per recipient
     }
 
@@ -97,11 +98,11 @@ public sealed partial class ServerState
         }
         var permissions = request.Permissions & Permission.All;
         var changes = new List<string>();
-        if (group.Name != name) changes.Add($"Name '{group.Name}' -> '{name}'");
-        if (group.Permissions != permissions) changes.Add($"Rechte {group.Permissions} -> {permissions}");
+        if (group.Name != name) changes.Add($"name '{group.Name}' -> '{name}'");
+        if (group.Permissions != permissions) changes.Add($"permissions {group.Permissions} -> {permissions}");
         data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = permissions };
         saves.Persist();
-        if (changes.Count > 0) logs.WriteServerLine($"Gruppe '{group.Name}' geändert von {session.Nickname}: {string.Join(", ", changes)}");
+        if (changes.Count > 0) logs.Server.GroupChanged(group.Name, session.Nickname, string.Join(", ", changes));
         RecomputePermissions(groupsChanged: true); // Package 92: the groups per recipient, judged by the new rights
     }
 
@@ -129,9 +130,9 @@ public sealed partial class ServerState
         // Package 93 (A109): gone from every group lock; a lock left empty means admins only, until someone edits it
         var unlocked = data.Channels.Where(channel => channel.AllowedGroupIds?.Remove(group.Id) == true).ToList();
         saves.Persist();
-        logs.WriteServerLine($"Gruppe '{group.Name}' gelöscht von {session.Nickname}");
+        logs.Server.GroupDeleted(group.Name, session.Nickname);
         foreach (var channel in unlocked)
-            ChannelLog(channel.Id, $"Gruppe '{group.Name}' aus der Gruppen-Sperre entfernt (Gruppe gelöscht)");
+            ChannelLogger(channel.Id)?.GroupLockRemoved(group.Name);
         RecomputePermissions(groupsChanged: true); // Package 92: the groups per recipient, judged by the new rights
         foreach (var channel in unlocked) Broadcast(new ChannelUpdated(Info(channel)));
     }
@@ -144,7 +145,7 @@ public sealed partial class ServerState
         if (user.GroupIds.Contains(request.GroupId)) return;
         user.GroupIds.Add(request.GroupId);
         saves.Persist();
-        logs.WriteServerLine($"Gruppe '{group.Name}' an {user.LastNickname} vergeben von {session.Nickname}");
+        logs.Server.GroupAssigned(group.Name, user.LastNickname, session.Nickname);
         RecomputePermissions();
     }
 
@@ -160,7 +161,7 @@ public sealed partial class ServerState
         if (!CanModerate(session, request, RightsOf(user.Fingerprint), user.Fingerprint)) return; // Package 84: only on weaker users
         if (!user.GroupIds.Remove(request.GroupId)) return;
         saves.Persist();
-        logs.WriteServerLine($"Gruppe '{group.Name}' von {user.LastNickname} entfernt von {session.Nickname}");
+        logs.Server.GroupRevoked(group.Name, user.LastNickname, session.Nickname);
         RecomputePermissions();
     }
 
@@ -201,9 +202,9 @@ public sealed partial class ServerState
         if (PasswordTooLong(session, request, request.Password)) return; // Package 83: "" still removes it
         if (request.Limits is { } serverLimits && Refuse(session, request, ServerLimitsRule.Check(serverLimits))) return;
         var changes = new List<string>();
-        if (data.Settings.Name != name) changes.Add($"Name '{data.Settings.Name}' -> '{name}'");
-        if (data.Settings.WelcomeText != welcome) changes.Add("Willkommenstext geändert");
-        if (request.Password is not null) changes.Add(request.Password.Length == 0 ? "Passwort entfernt" : "Passwort gesetzt"); // never the password itself
+        if (data.Settings.Name != name) changes.Add($"name '{data.Settings.Name}' -> '{name}'");
+        if (data.Settings.WelcomeText != welcome) changes.Add("welcome text changed");
+        if (request.Password is not null) changes.Add(request.Password.Length == 0 ? "password removed" : "password set"); // never the password itself
 
         data.Settings.Name = name;
         data.Settings.WelcomeText = welcome;
@@ -211,11 +212,11 @@ public sealed partial class ServerState
         if (request.Limits is { } limits && limits != data.Settings.ToServerLimits())
         {
             var old = data.Settings.ToServerLimits();
-            if (old.MaxUsers != limits.MaxUsers) changes.Add($"maximale Nutzer {old.MaxUsers} -> {limits.MaxUsers}");
-            if (old.LogDays != limits.LogDays) changes.Add($"Logs aufbewahren {old.LogDays} -> {limits.LogDays} Tage");
-            if (old.LogRotateDaily != limits.LogRotateDaily) changes.Add($"tägliche Log-Datei {(limits.LogRotateDaily ? "an" : "aus")}");
+            if (old.MaxUsers != limits.MaxUsers) changes.Add($"max users {old.MaxUsers} -> {limits.MaxUsers}");
+            if (old.LogDays != limits.LogDays) changes.Add($"keep logs {old.LogDays} -> {limits.LogDays} days");
+            if (old.LogRotateDaily != limits.LogRotateDaily) changes.Add($"daily log file {(limits.LogRotateDaily ? "on" : "off")}");
             if (old.AutoRestart != limits.AutoRestart || old.AutoRestartTime != limits.AutoRestartTime)
-                changes.Add(limits.AutoRestart ? $"automatischer Neustart um {limits.AutoRestartTime:HH:mm:ss}" : "automatischer Neustart aus");
+                changes.Add(limits.AutoRestart ? $"automatic restart at {limits.AutoRestartTime:HH:mm:ss}" : "automatic restart off");
             data.Settings.MaxUsers = limits.MaxUsers;
             data.Settings.LogDays = limits.LogDays;
             data.Settings.LogRotateDaily = limits.LogRotateDaily;
@@ -224,7 +225,7 @@ public sealed partial class ServerState
             logs.Update(limits.LogDays, limits.LogRotateDaily);
         }
         saves.Persist();
-        logs.WriteServerLine($"Servereinstellungen geändert von {session.Nickname}: {(changes.Count > 0 ? string.Join(", ", changes) : "keine Änderung")}");
+        logs.Server.ServerSettingsChanged(session.Nickname, changes.Count > 0 ? string.Join(", ", changes) : "no change");
         BroadcastSettings();
         SettingsChanged?.Invoke();
     }
@@ -249,7 +250,8 @@ public sealed partial class ServerState
             }
         }
         icon.Set(png);
-        logs.WriteServerLine(png is null ? $"Server-Logo entfernt von {session.Nickname}" : $"Server-Logo geändert von {session.Nickname} ({png.Length / 1024} KB)");
+        if (png is null) logs.Server.ServerIconRemoved(session.Nickname);
+        else logs.Server.ServerIconChanged(session.Nickname, png.Length / 1024);
         BroadcastSettings();
     }
 

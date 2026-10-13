@@ -45,7 +45,7 @@ public sealed class RestartScheduleTests
             await AsyncWait.UntilAsync(() => lines.Count(line => line.Contains(text)) >= count);
             Assert.Equal(count, lines.Count(line => line.Contains(text)));
         }
-        const string Scheduled = "Automatischer Neustart täglich um";
+        const string Scheduled = "Automatic restart daily at";
 
         async Task SetAsync(bool on, TimeSpan fromNow)
         {
@@ -57,7 +57,7 @@ public sealed class RestartScheduleTests
         await SetAsync(true, TimeSpan.FromMinutes(10));
         await LoggedAsync(Scheduled, 1);
         await SetAsync(false, TimeSpan.FromMinutes(10)); // switched off before the time
-        await LoggedAsync("Automatischer Neustart ausgeschaltet", 1);
+        await LoggedAsync("Automatic restart switched off", 1);
         time.Advance(TimeSpan.FromMinutes(11));
         await AsyncWait.AssertStaysFalseAsync(() => restart.IsCompleted, TimeSpan.FromMilliseconds(200), "switched off: no restart");
         Assert.False(restart.IsCompleted);

@@ -77,7 +77,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         using var manifest = JsonDocument.Parse(entries["manifest.json"]);
         Assert.Equal(ServerData.CurrentVersion, manifest.RootElement.GetProperty("dataVersion").GetInt32());
         Assert.Equal(1, manifest.RootElement.GetProperty("formatVersion").GetInt32());
-        Assert.Contains(server.Log, line => line.Contains($"Backup {info.FileName} angelegt von chef"));
+        Assert.Contains(server.Log, line => line.Contains($"Backup {info.FileName} created by chef"));
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         var after = (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "d")).Backups;
         Assert.Equal(list.Take(2).Select(backup => backup.FileName), after.Select(backup => backup.FileName));
         Assert.False(File.Exists(Path.Combine(server.DataDir, "backups", list[2].FileName)));
-        Assert.Contains(server.Log, line => line.Contains($"Backup {list[2].FileName} gelöscht von chef"));
+        Assert.Contains(server.Log, line => line.Contains($"Backup {list[2].FileName} deleted by chef"));
     }
 
     static void WriteArchive(string path, Dictionary<string, byte[]> entries)
@@ -200,7 +200,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         await other.AssertNoMessageAsync<Disconnected>();
         Assert.Equal(dataBefore, await File.ReadAllBytesAsync(Path.Combine(server.DataDir, DataStore.FileName)));
         Assert.DoesNotContain(Directory.GetFiles(backups), text => Path.GetFileName(text).StartsWith("vor-wiederherstellung_"));
-        Assert.Contains(server.Log, line => line.Contains("Backup zu-neu.ovsbackup ist ungültig"));
+        Assert.Contains(server.Log, line => line.Contains("Backup zu-neu.ovsbackup is invalid"));
 
         await admin.SendAsync(new ListBackups { RequestId = "l" }); // broken ones still show, so they can be deleted
         Assert.Equal(6, (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "l")).Backups.Count);
@@ -348,7 +348,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Equal(answer.Backup, Assert.Single(list.Backups));
         Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(server.DataDir, "backups", answer.Backup.FileName)));
         Assert.Empty(UploadFiles(server.DataDir));
-        Assert.Contains(server.Log, line => line.Contains($"Backup {answer.Backup.FileName} hochgeladen von chef"));
+        Assert.Contains(server.Log, line => line.Contains($"Backup {answer.Backup.FileName} uploaded by chef"));
 
         // a second upload of the same file gets a name of its own
         var again = Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));
@@ -421,7 +421,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         }
         var name = Assert.Single(Directory.GetFiles(Path.Combine(server.DataDir, "backups"), "*.ovsbackup"));
         Assert.Empty(UploadFiles(server.DataDir));
-        Assert.Contains(server.Log, line => line.Contains("Hochgeladenes Backup ist ungültig"));
+        Assert.Contains(server.Log, line => line.Contains("Uploaded backup is invalid"));
 
         // AC5: the right ServerConfig for both directions
         await guest.SendAsync(new DownloadBackup(Path.GetFileName(name), 0) { RequestId = "g1" });
@@ -537,8 +537,8 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             Assert.Contains(DataOf(Entries(Path.Combine(dir, "backups", safety.FileName))["server-data.json"]).Channels, channel => channel.Name == "Neu");
         }
         var log = string.Join("\n", Directory.GetFiles(Path.Combine(dir, "logs", "server")).Select(File.ReadAllText));
-        Assert.Contains($"Backup {backup} wird wiederhergestellt von chef", log);
-        Assert.Contains("Backup eingespielt", log);
+        Assert.Contains($"Backup {backup} being restored by chef", log);
+        Assert.Contains("Backup applied", log);
     }
 
     [Fact]
@@ -575,7 +575,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Contains(channels, channel => channel.Name == "Alt");
         Assert.DoesNotContain(channels, channel => channel.Name == "Neu");
         var log = string.Join("\n", Directory.GetFiles(Path.Combine(dir, "logs", "server")).Select(File.ReadAllText));
-        Assert.Contains("Backup eingespielt", log);
+        Assert.Contains("Backup applied", log);
     }
 
     [Fact]
@@ -636,7 +636,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
 
         await testClient.SendAsync(new CreateBackup { RequestId = "c" });
         var name = Assert.Single((await testClient.WaitForAsync<BackupList>(backupList => backupList.RequestId == "c")).Backups).FileName;
-        Assert.Contains(server.Log, line => line.Contains($"Backup {name} angelegt von sicherung"));
+        Assert.Contains(server.Log, line => line.Contains($"Backup {name} created by sicherung"));
         int count = 0;
         foreach (Request request in new Request[] { new ListBackups(), new CreateBackup(), new DownloadBackup(name, 0), new DeleteBackup(name) })
         {
@@ -750,7 +750,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         // uploaded: refused with the same check, no file left
         Assert.Equal(ReasonCodes.InvalidBackup, Assert.IsType<Error>(await UploadAsync(admin, await File.ReadAllBytesAsync(archive))).Code);
         Assert.Empty(UploadFiles(server.DataDir));
-        Assert.Contains(server.Log, line => line.Contains("Hochgeladenes Backup ist ungültig"));
+        Assert.Contains(server.Log, line => line.Contains("Uploaded backup is invalid"));
 
         // put on the server by hand: the restore is refused and nothing is applied
         File.Copy(archive, Path.Combine(backups, "kaputt.ovsbackup"));
@@ -800,7 +800,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Equal(ReasonCodes.BackupQuotaExceeded, Assert.IsType<Error>(await UploadAsync(admin, bytes)).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.Equal(50, Directory.GetFiles(backups, "*.ovsbackup").Length);
-        Assert.Contains(server.Log, line => line.Contains("Backup-Limit erreicht"));
+        Assert.Contains(server.Log, line => line.Contains("backup limit reached"));
         await admin.SendAsync(new DeleteBackup("alt-00.ovsbackup") { RequestId = "d" });
         Assert.Equal(49, (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "d")).Total);
         Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));

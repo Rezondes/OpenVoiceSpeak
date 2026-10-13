@@ -138,11 +138,11 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             try
             {
                 await ReadLoopAsync(session, reader);
-                reason = "vom Client beendet";
+                reason = "ended by the client";
             }
             catch (OperationCanceledException) when (!stopping.IsCancellationRequested)
             {
-                reason = "Zeitüberschreitung";
+                reason = "timed out";
             }
         }
         catch (Exception exception) when (exception is IOException or OperationCanceledException or ProtocolException
@@ -230,7 +230,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
                 catch (TimeoutException)
                 {
                     _ = write.ContinueWith(task => task.Exception, TaskContinuationOptions.OnlyOnFaulted); // fails once the socket is closed
-                    session.Outbox.Abort("Schreiben zu langsam");
+                    session.Outbox.Abort("writing too slow");
                     return;
                 }
                 session.Outbox.Written(frame);

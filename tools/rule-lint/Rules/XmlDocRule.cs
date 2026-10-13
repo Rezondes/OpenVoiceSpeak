@@ -6,7 +6,8 @@ namespace RuleLint.Rules;
 
 /// <summary>
 /// Rule 23, in production and tool code: every type and every non-private member (a member of an interface or an enum
-/// counts) has an XML doc comment; <c>&lt;inheritdoc/&gt;</c> counts. Members of private nested types are left out.
+/// counts) has an XML doc comment; <c>&lt;inheritdoc/&gt;</c> counts, and so does the message of a <c>[LoggerMessage]</c> method (Step 31: the message is
+/// what the method writes). Members of private nested types are left out.
 /// </summary>
 public sealed class XmlDocRule : IRule
 {
@@ -41,6 +42,7 @@ public sealed class XmlDocRule : IRule
             modifier.IsKind(SyntaxKind.PublicKeyword) || modifier.IsKind(SyntaxKind.InternalKeyword) || modifier.IsKind(SyntaxKind.ProtectedKeyword));
 
     static bool HasDoc(MemberDeclarationSyntax member) =>
+        member.AttributeLists.SelectMany(list => list.Attributes).Any(attribute => attribute.Name.ToString() is "LoggerMessage" or "LoggerMessageAttribute") ||
         member.GetLeadingTrivia().Any(trivia =>
             trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia));
 }

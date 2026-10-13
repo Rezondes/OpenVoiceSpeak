@@ -263,7 +263,7 @@ public sealed class ModerationTests : IAsyncLifetime
         await moderator.ErrorAsync("done");
         Assert.False((await UsersAsync(admin)).Single(knownUser => knownUser.Fingerprint == guestId.Fingerprint).ServerMuted);
         Assert.False(StoredUser(guestId.Fingerprint).ServerMuted);
-        Assert.Contains(server.Log, line => line.Contains("gast serverseitig wieder freigegeben von mod (offline)"));
+        Assert.Contains(server.Log, line => line.Contains("gast server-unmuted by mod (offline)"));
         await using var back = await TestClient.ConnectAsync(server, "gast", guestId);
         Assert.False(back.Welcome.Snapshot.Users.Single(user => user.SessionId == back.Id).ServerMuted);
 
@@ -337,7 +337,7 @@ public sealed class ModerationTests : IAsyncLifetime
 
         var rejected = Assert.IsType<Rejected>(await ReconnectGuestAsync());
         Assert.Equal(ReasonCodes.Banned, rejected.Code);
-        Assert.Contains(server.Log, line => line.Contains("gast wurde von mod gebannt dauerhaft (offline): weg"));
+        Assert.Contains(server.Log, line => line.Contains("gast was banned by mod permanently (offline): weg"));
     }
 
     [Fact]
@@ -398,7 +398,7 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.DoesNotContain(await UsersAsync(admin), knownUser => knownUser.Fingerprint == guestId.Fingerprint);
         Assert.Empty(await BansAsync(admin));
         Assert.DoesNotContain(guestId.Fingerprint, await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
-        Assert.Contains(server.Log, line => line.Contains("Nutzerdaten von gast gelöscht von admin"));
+        Assert.Contains(server.Log, line => line.Contains("User data of gast deleted by admin"));
 
         time.Advance(TimeSpan.FromMinutes(5));
         guest = await TestClient.ConnectAsync(server, "gast", guestId);

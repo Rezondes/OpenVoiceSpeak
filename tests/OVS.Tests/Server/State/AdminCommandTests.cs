@@ -460,7 +460,7 @@ public class AdminCommandTests
         await admin.SendAsync(new ReorderGroups(ids));
         var changed = await guest.WaitForAsync<GroupsChanged>();
         Assert.Equal(ids, changed.Groups.Select(groupInfo => groupInfo.Id));
-        Assert.Contains(server.Log, line => line.Contains("Gruppen umsortiert von admin"));
+        Assert.Contains(server.Log, line => line.Contains("Groups reordered by admin"));
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.Equal(ids, late.Welcome.Snapshot.Groups.Select(groupInfo => groupInfo.Id));

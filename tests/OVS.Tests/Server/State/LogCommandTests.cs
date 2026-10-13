@@ -274,7 +274,7 @@ public sealed class LogCommandTests
         release.Set();
         for (int index = 0; index <= 3; index++) await admin.WaitForAsync<LogSearchResult>(logSearchResult => logSearchResult.RequestId == $"s{index}", 30_000);
 
-        Assert.Equal(4, server.Log.Count(line => line.Contains("Logs durchsucht von chef")));
+        Assert.Equal(4, server.Log.Count(line => line.Contains("Logs searched by chef")));
     }
 
     // ---- Package 82: download ----
@@ -329,7 +329,7 @@ public sealed class LogCommandTests
         Assert.Equal(before, bytes);
         Assert.True(ReadShared(path).Length > before.Length);
         Assert.Empty(Directory.GetFiles(ExportDir(server))); // deleted once the last chunk went out
-        Assert.Contains(server.Log, line => line.Contains($"Logs heruntergeladen von chef: {Path.GetFileName(path)}"));
+        Assert.Contains(server.Log, line => line.Contains($"Logs downloaded by chef: {Path.GetFileName(path)}"));
     }
 
     [Fact]

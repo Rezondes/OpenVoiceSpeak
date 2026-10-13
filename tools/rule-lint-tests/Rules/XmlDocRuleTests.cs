@@ -26,4 +26,10 @@ public sealed class XmlDocRuleTests
     [Fact]
     public void Check_TestCode_FindsNothing() =>
         Assert.Empty(ListSubjects("tests/App.Tests/ShopTests.cs", "namespace App.Tests;\npublic class ShopTests { public void Buy_Empty_Fails() { } }"));
+
+    [Fact]
+    public void Check_LoggerMessageMethod_MessageCountsAsDoc() =>
+        Assert.Equal(["Lines.Plain"], ListSubjects("src/App/Lines.cs",
+            "namespace App;\n/// <summary>x</summary>\nstatic partial class Lines\n{\n    [LoggerMessage(Level = LogLevel.Information, Message = \"Started\")]\n" +
+            "    public static partial void Started(this ILogger logger);\n    public static void Plain() { }\n}"));
 }

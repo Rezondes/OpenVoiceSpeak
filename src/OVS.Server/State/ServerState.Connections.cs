@@ -1,6 +1,8 @@
 using System.Net;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 using OVS.Server.Data.Records;
+using OVS.Server.Logging;
 using OVS.Server.Security;
 using OVS.Shared.Net;
 using OVS.Shared.Protocol;
@@ -81,7 +83,7 @@ public sealed partial class ServerState
             {
                 data.Settings.StoredPassword = StoredPassword.Create(password ?? "");
                 saves.Persist();
-                logs.WriteServerLine("Serverpasswort-Hash auf PBKDF2 umgestellt");
+                logs.Server.PasswordHashUpgraded();
             }
 
             var replaced = sessions.Values.FirstOrDefault(otherSession => otherSession.Fingerprint == fingerprint);
@@ -102,7 +104,7 @@ public sealed partial class ServerState
             if (user is null && !newIdentities.TryCount(source, now, out bool firstRefusal))
             {
                 if (firstRefusal)
-                    logs.WriteServerLine($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({ServerTuning.NewIdentitiesPerHour} pro Stunde)");
+                    logs.Server.NewIdentityRefused(ip, ServerTuning.NewIdentitiesPerHour);
                 return new Admission(null, new Rejected(ReasonCodes.RateLimited));
             }
 
@@ -128,15 +130,15 @@ public sealed partial class ServerState
             session.Outbox.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
                 if (other != session) other.Outbox.Send(new UserJoined(Info(session, other))); // Package 92: per recipient
-            logs.WriteServerLine($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
-            ChannelLog(session.ChannelId, $"{nickname} hat den Channel betreten (verbunden)");
+            logs.Server.Connected(nickname, fingerprint[..12], ip);
+            ChannelLogger(session.ChannelId)?.JoinedOnConnect(nickname);
             return new Admission(session, null);
         }
     }
 
-    /// <param name="reason">Why the connection ended, for the logs (e.g. "Zeitüberschreitung").</param>
+    /// <param name="reason">Why the connection ended, for the logs (e.g. "timed out").</param>
     /// <param name="session">The session to end.</param>
-    public void Remove(Session session, string reason = "vom Client beendet")
+    public void Remove(Session session, string reason = "ended by the client")
     {
         lock (gate) RemoveLocked(session, null, reason);
     }
@@ -153,9 +155,9 @@ public sealed partial class ServerState
             closedWith = final is Disconnected disconnected ? disconnected.Reason : ReasonCodes.ServerShutdown;
             var why = final switch
             {
-                Disconnected { Reason: ReasonCodes.ServerRestart } => "Server startet neu",
-                Disconnected { Reason: ReasonCodes.Restoring } => "Server wird aus einem Backup wiederhergestellt", // Package 74
-                _ => "Server fährt herunter",
+                Disconnected { Reason: ReasonCodes.ServerRestart } => "Server restarting",
+                Disconnected { Reason: ReasonCodes.Restoring } => "Server being restored from a backup", // Package 74
+                _ => "Server shutting down",
             };
             var now = time.GetUtcNow();
             foreach (var session in sessions.Values)
@@ -165,9 +167,9 @@ public sealed partial class ServerState
                 session.LogDownload.End(); // Package 82
                 channelPasswordGuesses.ForgetSession(session.Id);
                 if (!statsCounted) AddSessionStats(session, now);
-                ChannelLog(session.ChannelId, $"{session.Nickname} hat den Channel verlassen ({why})");
+                ChannelLogger(session.ChannelId)?.Left(session.Nickname, why);
             }
-            logs.WriteServerLine($"{why}, {sessions.Count} Nutzer getrennt");
+            logs.Server.AllDisconnected(why, sessions.Count);
             saves.Close(force: sessions.Count > 0); // the running sessions' statistics, or what is still pending
             sessions.Clear();
             voiceSessions.Clear();
@@ -178,10 +180,10 @@ public sealed partial class ServerState
     public void LogRejected(IPAddress ip, string code, string? nickname, string? fingerprint)
     {
         var who = nickname is null ? "" : fingerprint is null ? $" ({nickname})" : $" ({nickname}, {fingerprint[..12]})";
-        logs.WriteServerLine($"Verbindung von {ip} abgelehnt: {code}{who}");
+        logs.Server.ConnectionRefused(ip, code, who);
     }
 
-    void RemoveLocked(Session session, Message? final, string reason = "getrennt")
+    void RemoveLocked(Session session, Message? final, string reason = "disconnected")
     {
         session.Outbox.Close(final);
         DropUpload(session); // Package 75: an abandoned upload leaves no file
@@ -195,15 +197,15 @@ public sealed partial class ServerState
         Broadcast(new UserLeft(session.Id));
         if (final is Disconnected disconnected) reason = disconnected.Reason switch
         {
-            ReasonCodes.Kicked => "gekickt",
-            ReasonCodes.Banned => "gebannt",
-            ReasonCodes.ReplacedByNewConnection => "durch neue Verbindung ersetzt",
-            ReasonCodes.UserDeleted => "Nutzerdaten gelöscht",
-            ReasonCodes.RateLimited => "zu viele Anfragen", // Package 86
+            ReasonCodes.Kicked => "kicked",
+            ReasonCodes.Banned => "banned",
+            ReasonCodes.ReplacedByNewConnection => "replaced by a new connection",
+            ReasonCodes.UserDeleted => "user data deleted",
+            ReasonCodes.RateLimited => "too many requests", // Package 86
             _ => disconnected.Reason,
         };
-        logs.WriteServerLine($"{session.Nickname} getrennt ({reason})");
-        ChannelLog(session.ChannelId, $"{session.Nickname} hat den Channel verlassen ({reason})");
+        logs.Server.Disconnected(session.Nickname, reason);
+        ChannelLogger(session.ChannelId)?.Left(session.Nickname, reason);
     }
 
     /// <summary>Package 70: adds the ended session to the user's totals (A86: saved on disconnect, not while online).</summary>
@@ -218,11 +220,9 @@ public sealed partial class ServerState
         user.ChatMessages += chatMessages;
     }
 
-    /// <summary>Package 111: a separator has no log of its own (nothing happens in it).</summary>
-    void ChannelLog(Guid channelId, string text)
-    {
-        if (FindChannel(channelId) is { Kind: ChannelKind.Voice } channel) logs.WriteChannelLine(channel.Id, channel.Name, text);
-    }
+    /// <summary>The channel's log; null for a separator (Package 111: nothing happens in it) or an unknown channel.</summary>
+    ILogger? ChannelLogger(Guid channelId) =>
+        FindChannel(channelId) is { Kind: ChannelKind.Voice } channel ? logs.Channel(channel.Id, channel.Name) : null;
 
-    string ChannelName(Guid id) => FindChannel(id) is { } channel ? channel.Kind == ChannelKind.Separator ? "(Trenner)" : channel.Name : "?";
+    string ChannelName(Guid id) => FindChannel(id) is { } channel ? channel.Kind == ChannelKind.Separator ? "(separator)" : channel.Name : "?";
 }

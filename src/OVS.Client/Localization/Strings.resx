@@ -282,7 +282,7 @@
   <data name="Display_SimplifiedHint" xml:space="preserve"><value>Der schlichte Stil ohne zusätzliche Animationen.</value></data>
   <data name="Theme_System" xml:space="preserve"><value>Wie Windows</value></data>
   <data name="Tofu_Changed" xml:space="preserve"><value>Das Zertifikat von {0}:{1} hat sich geändert. Das passiert, wenn der Server neu aufgesetzt wurde, kann aber auch ein Angriff sein. Frag im Zweifel den Serverbetreiber nach dem Fingerprint aus dem Serverlog.</value></data>
-  <data name="Tofu_First" xml:space="preserve"><value>Erste Verbindung zu {0}:{1}. Vergleiche den Fingerprint mit der Zeile 'Zertifikat-Fingerprint' im Serverlog.</value></data>
+  <data name="Tofu_First" xml:space="preserve"><value>Erste Verbindung zu {0}:{1}. Vergleiche den Fingerprint mit der Zeile 'Certificate fingerprint' im Serverlog.</value></data>
   <data name="Tofu_Title" xml:space="preserve"><value>Serverzertifikat prüfen</value></data>
   <data name="Tofu_Trust" xml:space="preserve"><value>Vertrauen</value></data>
   <data name="Tofu_TrustAnyway" xml:space="preserve"><value>Trotzdem vertrauen</value></data>

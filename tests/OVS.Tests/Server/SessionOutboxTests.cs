@@ -41,7 +41,7 @@ public sealed class SessionOutboxTests
         for (int index = 0; index < 20; index++) outbox.Send(Big);
 
         Assert.True(outbox.Aborted.IsCancellationRequested);
-        Assert.Equal("Sendepuffer voll", outbox.AbortReason);
+        Assert.Equal("send buffer full", outbox.AbortReason);
         Assert.True(outbox.QueuedBytes <= ServerTuning.MaxOutboxBytes, $"{outbox.QueuedBytes} bytes queued");
     }
 

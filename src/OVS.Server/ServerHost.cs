@@ -1,15 +1,15 @@
-using OVS.Server.Exceptions;
-using OVS.Server.State;
-using OVS.Shared;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OVS.Server.Exceptions;
 using OVS.Server.Logging;
+using OVS.Server.State;
 using OVS.Server.Tls;
 using OVS.Server.Voice;
+using OVS.Shared;
 using OVS.Shared.Identity;
 
 namespace OVS.Server;
@@ -61,8 +61,9 @@ public static class ServerHost
         // Package 69: retention and daily files come from server-data.json, which ServerState reads; keeping
         // everything until then stops a stale start value from deleting files.
         var logs = new ServerLogWriter(config.DataDir, 0, time, console);
-        logs.WriteServerLine(restarted ? "OpenVoiceSpeak-Server startet (automatischer Neustart)" : "OpenVoiceSpeak-Server startet");
-        logs.WriteServerLine($"Version {BuildInfo.Current.Version}"); // Package 42
+        if (restarted) logs.Server.StartingAfterRestart();
+        else logs.Server.Starting();
+        logs.Server.Version(BuildInfo.Current.Version); // Package 42
 
         var endpoint = new IPEndPoint(bindAddress, config.Port);
         var host = BuildRun(config, logs, time, endpoint);
@@ -85,13 +86,13 @@ public static class ServerHost
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CryptographicException or SocketException)
             {
                 // e.g. port already in use, or a damaged cert.pfx
-                logs.WriteServerLine($"Start fehlgeschlagen: {exception.Message}", toConsole: false);
-                error($"Start fehlgeschlagen: {exception.Message}");
+                logs.Server.StartFailed(exception.Message);
+                error($"Start failed: {exception.Message}");
                 return RunEnd.Failed;
             }
 
-            logs.WriteServerLine($"Listening on {endpoint} (TCP und UDP)");
-            logs.WriteServerLine($"Zertifikat-Fingerprint: {CertFingerprint.ComputeHex(host.Services.GetRequiredService<X509Certificate2>())}");
+            logs.Server.Listening(endpoint);
+            logs.Server.CertificateFingerprint(CertFingerprint.ComputeHex(host.Services.GetRequiredService<X509Certificate2>()));
 
             // Package 74: a restore from the administration ends the run like a restart, on the backup's files
             using var runEnd = CancellationTokenSource.CreateLinkedTokenSource(stop);
@@ -102,7 +103,9 @@ public static class ServerHost
             var restore = state.PendingRestore;
             if (restore is not null) restart = !stop.IsCancellationRequested;
 
-            logs.WriteServerLine(restore is not null ? "Wiederherstellung aus einem Backup ..." : restart ? "Automatischer Neustart ..." : "Fahre herunter ...");
+            if (restore is not null) logs.Server.EndingForRestore();
+            else if (restart) logs.Server.EndingForRestart();
+            else logs.Server.ShuttingDown();
             if (afterWait is not null) await afterWait(state);
             host.Services.GetRequiredService<ServerListeners>().Restart = restart;
             await host.StopAsync(CancellationToken.None);
@@ -110,7 +113,7 @@ public static class ServerHost
             if (restore is null && state.PendingRestore is { } late)
             {
                 restore = late;
-                logs.WriteServerLine("Wiederherstellung aus einem Backup beim Beenden angefordert ...");
+                logs.Server.RestoreRequestedWhileEnding();
             }
             await DisposeAsync(host); // the sockets and the certificate go before a restore replaces the files
             if (restore is not null)
@@ -118,14 +121,15 @@ public static class ServerHost
                 try
                 {
                     restore.ApplyTo(config.DataDir);
-                    logs.WriteServerLine($"Backup eingespielt (Datenversion {restore.Manifest.DataVersion}, Serverversion {restore.Manifest.ServerVersion})");
+                    logs.Server.BackupApplied(restore.Manifest.DataVersion, restore.Manifest.ServerVersion);
                 }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 {
-                    logs.WriteServerLine($"Backup einspielen fehlgeschlagen: {exception.Message}");
+                    logs.Server.BackupApplyFailed(exception.Message);
                 }
             }
-            logs.WriteServerLine(restart ? "Server beendet, startet neu" : "Server beendet");
+            if (restart) logs.Server.StoppedForRestart();
+            else logs.Server.Stopped();
             return restart ? RunEnd.Restart : RunEnd.Stopped;
         }
         finally

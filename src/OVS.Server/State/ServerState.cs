@@ -73,7 +73,7 @@ public sealed partial class ServerState
         logReader = stores.LogReader; // Package 81
         logExporter = stores.LogExporter;
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
-        saves = new SaveScheduler(gate, WriteData, time, line => logs.WriteServerLine(line));
+        saves = new SaveScheduler(gate, WriteData, time, logs.Server);
         bool pruned = PruneGuests(time.GetUtcNow());
         if (data.Migrate(config) || pruned) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
@@ -81,8 +81,8 @@ public sealed partial class ServerState
         if (!data.Users.Any(user => user.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
-            logs.WriteServerLine($"Admin-Token: {adminToken.Generate()}  (im Client unter 'Admin-Token einlösen' eingeben)", toFile: false);
-            logs.WriteServerLine("Admin-Token erzeugt, es steht nur in der Konsolenausgabe", toConsole: false);
+            logs.Server.AdminToken(adminToken.Generate());
+            logs.Server.AdminTokenCreated();
         }
     }
 
@@ -112,9 +112,9 @@ public sealed partial class ServerState
         };
         foreach (var (key, given, stored) in values)
             if (config.GivenStartValues.Contains(key) && given != stored)
-                logs.WriteServerLine($"Hinweis: {key}={given} wird ignoriert, es gilt der gespeicherte Wert {stored} (änderbar in der Verwaltung unter Server)");
+                logs.Server.StartValueIgnored(key, given, stored);
 
-        static string OnOff(bool on) => on ? "an" : "aus";
+        static string OnOff(bool on) => on ? "on" : "off";
     }
 
     /// <summary>The sessions online.</summary>
@@ -208,7 +208,7 @@ public sealed partial class ServerState
             catch (Exception exception)
             {
                 // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
-                logs.WriteServerLine($"Fehler bei Anfrage {request.GetType().Name} von {session.Nickname}: {exception.GetType().Name}: {exception.Message}");
+                logs.Server.RequestFailed(request.GetType().Name, session.Nickname, exception.GetType().Name, exception.Message);
                 Fail(session, request, ReasonCodes.InvalidValue);
             }
         }

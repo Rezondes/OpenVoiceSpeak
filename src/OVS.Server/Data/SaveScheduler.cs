@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using OVS.Server.Logging;
+
 namespace OVS.Server.Data;
 
 /// <summary>
@@ -8,8 +11,8 @@ namespace OVS.Server.Data;
 /// <param name="gate">The server state's lock.</param>
 /// <param name="save">Writes the data file; throws when it cannot (a locked file, a full disk).</param>
 /// <param name="time">The clock and the timer factory (a manual one in tests).</param>
-/// <param name="log">A line for the server log.</param>
-public sealed class SaveScheduler(object gate, Action save, TimeProvider time, Action<string> log)
+/// <param name="log">The server log.</param>
+public sealed class SaveScheduler(object gate, Action save, TimeProvider time, ILogger log)
 {
     ITimer? timer;
     bool pending;
@@ -25,7 +28,7 @@ public sealed class SaveScheduler(object gate, Action save, TimeProvider time, A
         if (failed)
         {
             failed = false;
-            log("Serverdaten werden wieder gespeichert");
+            log.SavingAgain();
         }
     }
 
@@ -46,7 +49,7 @@ public sealed class SaveScheduler(object gate, Action save, TimeProvider time, A
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 {
                     // A virus scanner or backup tool holds the file, or the disk is full: keep the changes and try again.
-                    if (!failed) log($"Serverdaten nicht gespeichert, neuer Versuch alle {ServerTuning.SaveDelay.TotalSeconds:0} s: {exception.Message}");
+                    if (!failed) log.SaveFailedRetrying(ServerTuning.SaveDelay.TotalSeconds, exception.Message);
                     failed = true;
                     timer!.Change(ServerTuning.SaveDelay, Timeout.InfiniteTimeSpan);
                 }
@@ -87,7 +90,7 @@ public sealed class SaveScheduler(object gate, Action save, TimeProvider time, A
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                log($"Serverdaten beim Beenden nicht gespeichert: {exception.Message}");
+                log.SaveOnCloseFailed(exception.Message);
             }
         }
     }

@@ -1,3 +1,4 @@
+using OVS.Server.Logging;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Chat;
@@ -56,15 +57,15 @@ public sealed partial class ServerState
         switch (request.Target)
         {
             case ChatTarget.Server:
-                logs.WriteServerLine($"Chat von {session.Nickname}: {text}");
+                logs.Server.ServerChat(session.Nickname, text);
                 Broadcast(message);
                 break;
             case ChatTarget.Channel:
-                ChannelLog(session.ChannelId, $"{session.Nickname}: {text}");
+                ChannelLogger(session.ChannelId)?.Chat(session.Nickname, text);
                 foreach (var member in sessions.Values.Where(otherSession => otherSession.ChannelId == session.ChannelId)) member.Outbox.Send(message);
                 break;
             case ChatTarget.Private:
-                logs.WriteServerLine($"{session.Nickname} schreibt privat an {to!.Nickname}"); // never the content (A29)
+                logs.Server.PrivateChat(session.Nickname, to!.Nickname); // never the content (A29)
                 to.Outbox.Send(message);
                 session.Outbox.Send(message);
                 break;

@@ -17,7 +17,7 @@ public sealed class SaveSchedulerTests
     Exception failure = new IOException("Datei gesperrt");
     bool? lastUnderGate;
 
-    public SaveSchedulerTests() => scheduler = new SaveScheduler(gate, Save, time, log.Add);
+    public SaveSchedulerTests() => scheduler = new SaveScheduler(gate, Save, time, new LineLogger(log));
 
     void Save()
     {
@@ -147,7 +147,7 @@ public sealed class SaveSchedulerTests
         time.Advance(ServerTuning.SaveDelay);
         time.Advance(ServerTuning.SaveDelay);
 
-        Assert.Equal("Serverdaten nicht gespeichert, neuer Versuch alle 2 s: Datei gesperrt", Assert.Single(log));
+        Assert.Equal("Server data not saved, retrying every 2 s: Datei gesperrt", Assert.Single(log));
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public sealed class SaveSchedulerTests
         time.Advance(ServerTuning.SaveDelay);
         time.Advance(ServerTuning.SaveDelay);
 
-        Assert.Equal("Serverdaten nicht gespeichert, neuer Versuch alle 2 s: kein Zugriff", Assert.Single(log));
+        Assert.Equal("Server data not saved, retrying every 2 s: kein Zugriff", Assert.Single(log));
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class SaveSchedulerTests
         failing = false;
         time.Advance(ServerTuning.SaveDelay);
 
-        Assert.Equal("Serverdaten werden wieder gespeichert", log[^1]);
+        Assert.Equal("Server data is being saved again", log[^1]);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public sealed class SaveSchedulerTests
         failing = true;
         time.Advance(ServerTuning.SaveDelay);
 
-        Assert.Equal(2, log.Count(line => line.StartsWith("Serverdaten nicht gespeichert")));
+        Assert.Equal(2, log.Count(line => line.StartsWith("Server data not saved")));
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public sealed class SaveSchedulerTests
         failing = false;
         Locked(scheduler.Persist);
 
-        Assert.Equal("Serverdaten werden wieder gespeichert", log[^1]);
+        Assert.Equal("Server data is being saved again", log[^1]);
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public sealed class SaveSchedulerTests
 
         Locked(() => scheduler.Close(force: true));
 
-        Assert.Equal("Serverdaten beim Beenden nicht gespeichert: Datei gesperrt", Assert.Single(log));
+        Assert.Equal("Server data not saved on shutdown: Datei gesperrt", Assert.Single(log));
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public sealed class SaveSchedulerTests
 
         Locked(() => scheduler.Close(force: true));
 
-        Assert.Equal("Serverdaten beim Beenden nicht gespeichert: kein Zugriff", Assert.Single(log));
+        Assert.Equal("Server data not saved on shutdown: kein Zugriff", Assert.Single(log));
     }
 
     [Fact]

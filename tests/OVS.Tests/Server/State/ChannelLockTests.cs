@@ -341,7 +341,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
         time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(1));
         await JoinAsync(guest, secret.Id, "geheim1");
 
-        Assert.Contains(server.Log, line => line.Contains("Falsches Channel-Passwort") && line.Contains("gast"));
+        Assert.Contains(server.Log, line => line.Contains("Wrong channel password") && line.Contains("gast"));
         Assert.DoesNotContain(server.Log, line => line.Contains("falsch0") || line.Contains("geheim1") || line.Contains("anders1"));
         foreach (var file in Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*", SearchOption.AllDirectories))
         {
