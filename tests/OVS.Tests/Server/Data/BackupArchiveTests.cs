@@ -125,16 +125,16 @@ public sealed class BackupArchiveTests() : TempDirectoryTest("ovs-archive-", qui
 
     public static TheoryData<string, byte[]?, string> Broken => new()
     {
-        { "manifest.json", null, "manifest.json fehlt" },
-        { "manifest.json", ManifestJson(new { formatVersion = 1, dataVersion = 1, createdAt = PersistedFixtures.Date }), "manifest.json ohne Serverversion" },
-        { "manifest.json", ManifestJson(Manifest with { FormatVersion = 0 }), "unbekanntes Format 0" },
-        { "manifest.json", ManifestJson(Manifest with { FormatVersion = 2 }), "unbekanntes Format 2" },
-        { "manifest.json", ManifestJson(Manifest with { DataVersion = ServerData.CurrentVersion + 1 }), $"Datenversion {ServerData.CurrentVersion + 1} ist neuer als {ServerData.CurrentVersion}" },
-        { "manifest.json", new byte[16 * 1024 + 1], "manifest.json ist zu gross" },
-        { DataStore.FileName, null, $"{DataStore.FileName} fehlt" },
-        { DataStore.FileName, "null"u8.ToArray(), $"{DataStore.FileName} ist leer" },
-        { ServerCertificate.FileName, null, $"{ServerCertificate.FileName} fehlt" },
-        { ServerIconStore.FileName, [1, 2, 3], "Logo ungültig" },
+        { "manifest.json", null, "manifest.json is missing" },
+        { "manifest.json", ManifestJson(new { formatVersion = 1, dataVersion = 1, createdAt = PersistedFixtures.Date }), "manifest.json without a server version" },
+        { "manifest.json", ManifestJson(Manifest with { FormatVersion = 0 }), "unknown format 0" },
+        { "manifest.json", ManifestJson(Manifest with { FormatVersion = 2 }), "unknown format 2" },
+        { "manifest.json", ManifestJson(Manifest with { DataVersion = ServerData.CurrentVersion + 1 }), $"data version {ServerData.CurrentVersion + 1} is newer than {ServerData.CurrentVersion}" },
+        { "manifest.json", new byte[16 * 1024 + 1], "manifest.json is too large" },
+        { DataStore.FileName, null, $"{DataStore.FileName} is missing" },
+        { DataStore.FileName, "null"u8.ToArray(), $"{DataStore.FileName} is empty" },
+        { ServerCertificate.FileName, null, $"{ServerCertificate.FileName} is missing" },
+        { ServerIconStore.FileName, [1, 2, 3], "logo invalid" },
     };
 
     [Theory]
@@ -172,7 +172,7 @@ public sealed class BackupArchiveTests() : TempDirectoryTest("ovs-archive-", qui
         data.DataVersion = ServerData.CurrentVersion + 1;
         var path = ArchiveWith(DataStore.FileName, JsonSerializer.SerializeToUtf8Bytes(data, ProtocolJson.Options));
 
-        Assert.Equal($"Datenversion {data.DataVersion} ist neuer als {ServerData.CurrentVersion}", Assert.Throws<InvalidDataException>(() => BackupArchive.Read(path)).Message);
+        Assert.Equal($"data version {data.DataVersion} is newer than {ServerData.CurrentVersion}", Assert.Throws<InvalidDataException>(() => BackupArchive.Read(path)).Message);
     }
 
     [Fact]

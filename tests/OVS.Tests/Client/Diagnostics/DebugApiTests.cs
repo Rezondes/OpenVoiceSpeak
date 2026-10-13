@@ -88,7 +88,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.PostAsJsonAsync("gibtsnicht", new { });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Unbekannter Endpunkt POST /gibtsnicht", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Unknown endpoint POST /gibtsnicht", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.PostAsJsonAsync("gibtsnicht", new { });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Nicht verbunden", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Not connected", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.GetAsync("join");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Unbekannter Endpunkt GET /join", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Unknown endpoint GET /join", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.PostAsJsonAsync("mute", new { value = true });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Nicht verbunden", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Not connected", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]

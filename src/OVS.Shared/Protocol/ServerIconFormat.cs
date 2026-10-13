@@ -22,14 +22,14 @@ public static class ServerIconFormat
     /// <returns>Null when valid, otherwise the reason in words.</returns>
     public static string? Validate(ReadOnlySpan<byte> png)
     {
-        if (png.Length > MaxBytes) return $"Das Logo ist zu gross (höchstens {MaxBytes / 1024} KB).";
+        if (png.Length > MaxBytes) return $"The logo is too large (at most {MaxBytes / 1024} KB).";
         // signature, then the IHDR chunk: length (4), "IHDR" (4), width (4), height (4), big endian
         if (png.Length < 33 || !png[..8].SequenceEqual(Signature) || !png.Slice(12, 4).SequenceEqual("IHDR"u8))
-            return "Das Logo ist kein PNG.";
+            return "The logo is not a PNG.";
         int width = BinaryPrimitives.ReadInt32BigEndian(png.Slice(16, 4));
         int height = BinaryPrimitives.ReadInt32BigEndian(png.Slice(20, 4));
-        if (width != height) return "Das Logo muss quadratisch sein (1:1).";
-        if (width is < MinSize or > MaxSize) return $"Das Logo muss zwischen {MinSize} und {MaxSize} Pixel gross sein.";
+        if (width != height) return "The logo must be square (1:1).";
+        if (width is < MinSize or > MaxSize) return $"The logo must be between {MinSize} and {MaxSize} pixels.";
         return null;
     }
 }

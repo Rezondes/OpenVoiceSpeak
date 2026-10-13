@@ -293,7 +293,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         logs.WriteServerLine("eins");
         logs.WriteChannelLine(Guid.NewGuid(), "Raid", "zwei");
         logs.WriteServerLine("drei");
-        Assert.Single(console, line => line.Contains("Log konnte nicht geschrieben werden"));
+        Assert.Single(console, line => line.Contains("Log could not be written"));
         Assert.Contains(console, line => line.EndsWith("drei")); // the console keeps working
     }
 

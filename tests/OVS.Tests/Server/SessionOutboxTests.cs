@@ -30,7 +30,7 @@ public sealed class SessionOutboxTests
         outbox.SendFrame(null);
 
         Assert.True(outbox.Aborted.IsCancellationRequested);
-        Assert.Equal("Nachricht zu gross", outbox.AbortReason);
+        Assert.Equal("message too large", outbox.AbortReason);
         Assert.True(outbox.Outgoing.Completion.IsCompleted);
     }
 

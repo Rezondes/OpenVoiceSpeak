@@ -57,7 +57,7 @@ public static class IconImport
                 image.Save(output);
             }
             var png = output.ToArray();
-            return ServerIconFormat.Validate(png) is { } problem ? new IconImportResult(null, problem) : new IconImportResult(png, null);
+            return ServerIconFormat.Validate(png) is not null ? new IconImportResult(null, Strings.Icon_Unreadable) : new IconImportResult(png, null);
         }
     }
 }

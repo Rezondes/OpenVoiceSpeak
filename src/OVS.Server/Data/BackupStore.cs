@@ -54,8 +54,8 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     public string? QuotaProblem(long size)
     {
         var all = List();
-        if (all.Count >= maxCount) return $"höchstens {maxCount} Backups";
-        return all.Sum(backup => backup.Size) + size > maxBytes ? $"höchstens {maxBytes / (1024 * 1024)} MB Backups insgesamt" : null;
+        if (all.Count >= maxCount) return $"at most {maxCount} backups";
+        return all.Sum(backup => backup.Size) + size > maxBytes ? $"at most {maxBytes / (1024 * 1024)} MB of backups in total" : null;
     }
 
     /// <summary>A free name of the form prefix + local time, with _2, _3 ... when that second is taken already.</summary>

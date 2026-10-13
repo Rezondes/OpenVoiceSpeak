@@ -56,7 +56,7 @@ public sealed unsafe class EchoCanceller : IDisposable
         if (error is not null) return null;
         var state = native.Create();
         if (state != 0) return new EchoCanceller(native, state);
-        error = "ovs_aec_create gab nichts zurück";
+        error = "ovs_aec_create returned nothing";
         return null;
     }
 

@@ -359,7 +359,7 @@ public class AdminCommandTests
         Assert.Equal((ReasonCodes.InvalidValue, "Keep logs: 0 to 3650 days."), (error.Code, error.Detail));
         await client.SendAsync(new UpdateServerSettings("Neu", "", new string('p', 129), NewLimits) { RequestId = "3" });
         error = await client.ErrorAsync("3");
-        Assert.Equal((ReasonCodes.InvalidValue, "Ein Passwort hat höchstens 128 Zeichen."), (error.Code, error.Detail));
+        Assert.Equal((ReasonCodes.InvalidValue, "A password has at most 128 characters."), (error.Code, error.Detail));
         var store = new DataStore(Path.Combine(server.DataDir, DataStore.FileName));
         var unchanged = store.LoadOrCreate(() => throw new InvalidOperationException()).Settings;
         Assert.Equal(("Testserver", 50, 30), (unchanged.Name, unchanged.MaxUsers, unchanged.LogDays)); // nothing half applied

@@ -22,6 +22,16 @@ static partial class ClientLogLines
     [LoggerMessage(Level = LogLevel.Information, Message = "Client stopped")]
     public static partial void Stopped(this ILogger logger);
 
+    [LoggerMessage(Level = LogLevel.Critical, Message = "Crash: {Exception}")]
+    public static partial void Crashed(this ILogger logger, string exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unobserved error: {Exception}")]
+    public static partial void UnobservedError(this ILogger logger, string exception);
+
+    /// <summary>What the removal of the exe replaced by the last update did (UpdateInstaller.CleanupOldAsync).</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Result}")]
+    public static partial void OldVersionCleanup(this ILogger logger, string result);
+
     // Main window (MainViewModel)
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Transmitting stopped")]

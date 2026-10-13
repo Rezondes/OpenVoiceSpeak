@@ -56,10 +56,10 @@ public sealed class ServerIconTests
     public static TheoryData<string, string, string> Invalid => new()
     {
         // what, expected code, expected detail part
-        { "zu gross", ReasonCodes.InvalidValue, "zu gross" },
-        { "kein png", ReasonCodes.InvalidValue, "kein PNG" },
-        { "nicht quadratisch", ReasonCodes.InvalidValue, "quadratisch" },
-        { "zu klein", ReasonCodes.InvalidValue, "Pixel" },
+        { "zu gross", ReasonCodes.InvalidValue, "too large" },
+        { "kein png", ReasonCodes.InvalidValue, "not a PNG" },
+        { "nicht quadratisch", ReasonCodes.InvalidValue, "square" },
+        { "zu klein", ReasonCodes.InvalidValue, "pixels" },
         { "kein base64", ReasonCodes.InvalidValue, "Base64" },
         { "ohne recht", ReasonCodes.PermissionDenied, "" },
     };

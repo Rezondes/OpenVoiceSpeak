@@ -34,7 +34,7 @@ public sealed partial class ServerState
         var ip = online?.Ip.ToString() ?? user.LastIp;
         if (request.IncludeIp && ip is null)
         {
-            Fail(session, request, ReasonCodes.InvalidValue, "Für diesen Nutzer ist keine IP-Adresse bekannt.");
+            Fail(session, request, ReasonCodes.InvalidValue, "No IP address is known for this user.");
             return;
         }
         AddBan(session, user.Fingerprint, online?.Nickname ?? user.LastNickname, request.IncludeIp ? ip : null, request.Reason, request.DurationMinutes, online);

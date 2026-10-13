@@ -49,7 +49,7 @@ public sealed record ServerConfig(
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
         {
-            throw new ConfigException($"OVS_DATA_DIR '{dataDir}' ist nicht anlegbar oder nicht beschreibbar: {exception.Message}");
+            throw new ConfigException($"OVS_DATA_DIR '{dataDir}' cannot be created or written: {exception.Message}");
         }
 
         var file = ReadFile(Path.Combine(dataDir, FileName));
@@ -65,7 +65,7 @@ public sealed record ServerConfig(
 
         name = name.Trim();
         if (name.Length is < 1 or > ProtocolLimits.MaxNameLength)
-            throw new ConfigException($"OVS_SERVER_NAME muss 1 bis {ProtocolLimits.MaxNameLength} Zeichen lang sein.");
+            throw new ConfigException($"OVS_SERVER_NAME must be 1 to {ProtocolLimits.MaxNameLength} characters long.");
 
         var given = new (string Key, object? FileValue)[]
             {
@@ -91,11 +91,11 @@ public sealed record ServerConfig(
         }
         catch (JsonException exception)
         {
-            throw new ConfigException($"{path} ist kein gültiges JSON: {exception.Message}");
+            throw new ConfigException($"{path} is not valid JSON: {exception.Message}");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new ConfigException($"{path} kann nicht gelesen werden: {exception.Message}");
+            throw new ConfigException($"{path} cannot be read: {exception.Message}");
         }
     }
 
@@ -106,7 +106,7 @@ public sealed record ServerConfig(
         {
             "true" or "1" or "on" or "an" => true,
             "false" or "0" or "off" or "aus" => false,
-            _ => throw new ConfigException($"{name} muss true oder false sein (auch 1/0, an/aus), ist aber '{env}'."),
+            _ => throw new ConfigException($"{name} must be true or false (also 1/0, an/aus), but is '{env}'."),
         };
     }
 
@@ -114,7 +114,7 @@ public sealed record ServerConfig(
     {
         if (value is null) return fallback;
         if (!TimeOnly.TryParseExact(value.Trim(), "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
-            throw new ConfigException($"{name} muss eine Uhrzeit im Format hh:mm:ss sein (z. B. 04:00:00), ist aber '{value}'.");
+            throw new ConfigException($"{name} must be a time of day as hh:mm:ss (such as 04:00:00), but is '{value}'.");
         return time;
     }
 
@@ -124,7 +124,7 @@ public sealed record ServerConfig(
         if (env is not null)
         {
             if (!int.TryParse(env, out value))
-                throw new ConfigException($"{name} ist keine Zahl: '{env}'.");
+                throw new ConfigException($"{name} is not a number: '{env}'.");
         }
         else
         {
@@ -132,7 +132,7 @@ public sealed record ServerConfig(
         }
 
         if (!range.Contains(value))
-            throw new ConfigException($"{name} muss zwischen {range.Min} und {range.Max} liegen, ist aber {value}.");
+            throw new ConfigException($"{name} must be between {range.Min} and {range.Max}, but is {value}.");
         return value;
     }
 

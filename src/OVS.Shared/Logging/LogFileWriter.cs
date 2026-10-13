@@ -122,7 +122,7 @@ public sealed class LogFileWriter
                 foreach (var path in waiting.Keys.ToList())
                     if (TryAppendShared(path, waiting[path].ToString())) waiting.Remove(path);
                 if (waiting.Count > 0 && ++retries < MaxRetries) return;
-                if (waiting.Count > 0) ReportFailure($"{waiting.Count} Datei(en) gesperrt");
+                if (waiting.Count > 0) ReportFailure($"{waiting.Count} file(s) locked");
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -139,7 +139,7 @@ public sealed class LogFileWriter
     {
         if (failureReported) return;
         failureReported = true;
-        onFailure(EscapeToOneLine($"{FormatNow()} Log konnte nicht geschrieben werden: {reason}"));
+        onFailure(EscapeToOneLine($"{FormatNow()} Log could not be written: {reason}"));
     }
 
     /// <summary>

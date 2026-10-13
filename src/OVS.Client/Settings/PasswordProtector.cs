@@ -11,7 +11,7 @@ public static class PasswordProtector
     /// <summary>The password protected with DPAPI for the current Windows user, as base64.</summary>
     public static string Protect(string password)
     {
-        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Passwörter lassen sich nur unter Windows speichern.");
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Passwords can only be stored on Windows.");
         return Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(password), Entropy, DataProtectionScope.CurrentUser));
     }
 

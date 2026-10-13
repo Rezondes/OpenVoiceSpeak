@@ -196,7 +196,7 @@ public sealed partial class ServerState
         var ids = request.ChannelIds ?? [];
         if (ids.Count != data.Channels.Count || !ids.ToHashSet().SetEquals(data.Channels.Select(channel => channel.Id)))
         {
-            Fail(session, request, ReasonCodes.InvalidValue, "Die neue Reihenfolge muss jeden Channel genau einmal enthalten.");
+            Fail(session, request, ReasonCodes.InvalidValue, "The new order must contain every channel exactly once.");
             return;
         }
         var changed = new List<ChannelRecord>();

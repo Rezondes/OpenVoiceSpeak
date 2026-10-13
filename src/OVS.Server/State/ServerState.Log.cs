@@ -34,7 +34,7 @@ public sealed partial class ServerState
         if (!Require(session, request, Permission.LogsView)) return;
         if (request.Page is < 1)
         {
-            Fail(session, request, ReasonCodes.InvalidValue, $"Seite {request.Page}");
+            Fail(session, request, ReasonCodes.InvalidValue, $"Page {request.Page}");
             return;
         }
         QueueLogJob(session, request, () => logReader.Resolve(request.FileId) is { } path
@@ -47,7 +47,7 @@ public sealed partial class ServerState
         if (!Require(session, request, Permission.LogsView)) return;
         if (string.IsNullOrWhiteSpace(request.Query) || request.Query.Length > ProtocolLimits.MaxLogQueryLength)
         {
-            Fail(session, request, ReasonCodes.InvalidValue, "Suchtext leer oder zu lang");
+            Fail(session, request, ReasonCodes.InvalidValue, "Search text empty or too long");
             return;
         }
         // Package 90: only a search that was queued (and so runs) is logged; without the query, so a search never finds itself
@@ -63,7 +63,7 @@ public sealed partial class ServerState
         if (!Require(session, request, DownloadRights)) return;
         if (request.FileIds is not { Count: > 0 } ids || ids.Distinct().Count() != ids.Count)
         {
-            Fail(session, request, ReasonCodes.InvalidValue, "keine oder doppelte Dateien");
+            Fail(session, request, ReasonCodes.InvalidValue, "no files or duplicate files");
             return;
         }
         if (!ThrottleHeavy(session, request)) return; // Package 86

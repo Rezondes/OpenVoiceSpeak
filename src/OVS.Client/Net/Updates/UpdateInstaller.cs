@@ -130,11 +130,11 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
             try
             {
                 File.Delete(exePath + ".old");
-                return "Alte Version entfernt";
+                return "Old version removed";
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                if (index >= attempts) return $"Alte Version konnte nicht entfernt werden: {exception.Message}";
+                if (index >= attempts) return $"Old version could not be removed: {exception.Message}";
                 await Task.Delay(pause ?? TimeSpan.FromMilliseconds(500), time);
             }
         }

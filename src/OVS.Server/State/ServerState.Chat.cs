@@ -25,7 +25,7 @@ public sealed partial class ServerState
         var text = TextRules.NormalizeText(request.Text, ProtocolLimits.MaxChatLength)?.Trim() ?? "";
         if (text.Length == 0)
         {
-            Fail(session, request, ReasonCodes.InvalidValue, $"Eine Nachricht hat 1 bis {ProtocolLimits.MaxChatLength} Zeichen, ohne Steuerzeichen.");
+            Fail(session, request, ReasonCodes.InvalidValue, $"A message has 1 to {ProtocolLimits.MaxChatLength} characters and no control characters.");
             return;
         }
 
@@ -35,12 +35,12 @@ public sealed partial class ServerState
             to = request.ToSessionId is { } id ? sessions.GetValueOrDefault(id) : null;
             if (to is null)
             {
-                Fail(session, request, ReasonCodes.NotFound, "Der Empfänger ist nicht online.");
+                Fail(session, request, ReasonCodes.NotFound, "The recipient is not online.");
                 return;
             }
             if (to == session)
             {
-                Fail(session, request, ReasonCodes.InvalidValue, "Eine private Nachricht an dich selbst geht nicht.");
+                Fail(session, request, ReasonCodes.InvalidValue, "A private message to yourself is not possible.");
                 return;
             }
         }

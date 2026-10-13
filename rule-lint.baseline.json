@@ -1,29 +1,5 @@
 [
   {
-    "Key": "RL161|src/OVS.Client/Diagnostics/DebugApi.cs|DebugApi.CreateServerRoutes",
-    "Count": 1
-  },
-  {
-    "Key": "RL161|src/OVS.Client/Diagnostics/DebugApi.cs|DebugApi.SetServerIconAsync",
-    "Count": 1
-  },
-  {
-    "Key": "RL161|src/OVS.Client/Settings/PasswordProtector.cs|PasswordProtector.Protect",
-    "Count": 1
-  },
-  {
-    "Key": "RL161|src/OVS.Server/Data/BackupArchive.cs|BackupArchive.Read",
-    "Count": 1
-  },
-  {
-    "Key": "RL161|src/OVS.Server/Data/DataStore.cs|DataStore.LoadOrCreate",
-    "Count": 1
-  },
-  {
-    "Key": "RL161|src/OVS.Server/ServerConfig.cs|ServerConfig.ReadFile",
-    "Count": 1
-  },
-  {
     "Key": "RL201|src/OVS.Server/Data/Records/ChannelLinkRecord.cs|ChannelLinkRecord:A",
     "Count": 1
   },

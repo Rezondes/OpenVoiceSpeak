@@ -60,14 +60,14 @@ public static class BackupArchive
     {
         var entry = zip.GetEntry(name);
         if (entry is null) return null;
-        if (entry.Length > max) throw new InvalidDataException($"{name} ist zu gross");
+        if (entry.Length > max) throw new InvalidDataException($"{name} is too large");
         using var stream = entry.Open();
         using var copy = new MemoryStream();
         var buffer = new byte[81920];
         int read;
         while ((read = stream.Read(buffer)) > 0)
         {
-            if (copy.Length + read > max) throw new InvalidDataException($"{name} ist zu gross"); // Length can lie
+            if (copy.Length + read > max) throw new InvalidDataException($"{name} is too large"); // Length can lie
             copy.Write(buffer, 0, read);
         }
         return copy.ToArray();
@@ -80,18 +80,18 @@ public static class BackupArchive
         try
         {
             using var zip = ZipFile.OpenRead(path);
-            var manifest = ReadManifest(zip) ?? throw new InvalidDataException($"{ManifestEntry} fehlt");
-            if (manifest.ServerVersion is null) throw new InvalidDataException($"{ManifestEntry} ohne Serverversion");
-            if (manifest.FormatVersion != FormatVersion) throw new InvalidDataException($"unbekanntes Format {manifest.FormatVersion}");
-            if (manifest.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"Datenversion {manifest.DataVersion} ist neuer als {ServerData.CurrentVersion}");
-            var dataBytes = ReadEntry(zip, DataStore.FileName) ?? throw new InvalidDataException($"{DataStore.FileName} fehlt");
-            var data = JsonSerializer.Deserialize<ServerData>(dataBytes, ProtocolJson.Options) ?? throw new InvalidDataException($"{DataStore.FileName} ist leer");
-            if (data.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"Datenversion {data.DataVersion} ist neuer als {ServerData.CurrentVersion}");
+            var manifest = ReadManifest(zip) ?? throw new InvalidDataException($"{ManifestEntry} is missing");
+            if (manifest.ServerVersion is null) throw new InvalidDataException($"{ManifestEntry} without a server version");
+            if (manifest.FormatVersion != FormatVersion) throw new InvalidDataException($"unknown format {manifest.FormatVersion}");
+            if (manifest.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"data version {manifest.DataVersion} is newer than {ServerData.CurrentVersion}");
+            var dataBytes = ReadEntry(zip, DataStore.FileName) ?? throw new InvalidDataException($"{DataStore.FileName} is missing");
+            var data = JsonSerializer.Deserialize<ServerData>(dataBytes, ProtocolJson.Options) ?? throw new InvalidDataException($"{DataStore.FileName} is empty");
+            if (data.DataVersion > ServerData.CurrentVersion) throw new InvalidDataException($"data version {data.DataVersion} is newer than {ServerData.CurrentVersion}");
             Validate(data);
-            var cert = ReadEntry(zip, ServerCertificate.FileName) ?? throw new InvalidDataException($"{ServerCertificate.FileName} fehlt");
+            var cert = ReadEntry(zip, ServerCertificate.FileName) ?? throw new InvalidDataException($"{ServerCertificate.FileName} is missing");
             using (X509CertificateLoader.LoadPkcs12(cert, null)) { } // readable, or CryptographicException
             var icon = ReadEntry(zip, ServerIconStore.FileName);
-            if (icon is not null && ServerIconFormat.Validate(icon) is { } why) throw new InvalidDataException($"Logo ungültig: {why}");
+            if (icon is not null && ServerIconFormat.Validate(icon) is { } why) throw new InvalidDataException($"logo invalid: {why}");
             return new BackupContent(manifest, dataBytes, cert, icon);
         }
         catch (Exception exception) when (exception is not InvalidDataException) // Package 89: nothing unexpected gets past the check

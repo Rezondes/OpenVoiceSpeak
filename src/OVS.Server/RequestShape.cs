@@ -32,13 +32,13 @@ static class RequestShape
             var info = nullability.Create(propertyInfo);
             var valueType = Nullable.GetUnderlyingType(propertyInfo.PropertyType) ?? propertyInfo.PropertyType;
             if (!propertyInfo.PropertyType.IsValueType && info.ReadState == NullabilityState.NotNull)
-                result.Add(request => propertyInfo.GetValue(request) is null ? $"{propertyInfo.Name} fehlt" : null);
+                result.Add(request => propertyInfo.GetValue(request) is null ? $"{propertyInfo.Name} is missing" : null);
             // Flags enums (Permission) are masked by their handlers; any other value must be a named one
             if (valueType.IsEnum && !valueType.IsDefined(typeof(FlagsAttribute), false))
-                result.Add(request => propertyInfo.GetValue(request) is { } value && !Enum.IsDefined(valueType, value) ? $"{propertyInfo.Name} ungültig" : null);
+                result.Add(request => propertyInfo.GetValue(request) is { } value && !Enum.IsDefined(valueType, value) ? $"{propertyInfo.Name} is invalid" : null);
             if (typeof(IEnumerable).IsAssignableFrom(propertyInfo.PropertyType) && propertyInfo.PropertyType != typeof(string)
                 && info.GenericTypeArguments is [{ ReadState: NullabilityState.NotNull, Type.IsValueType: false }])
-                result.Add(request => propertyInfo.GetValue(request) is IEnumerable items && items.Cast<object?>().Any(item => item is null) ? $"{propertyInfo.Name} enthält einen leeren Eintrag" : null);
+                result.Add(request => propertyInfo.GetValue(request) is IEnumerable items && items.Cast<object?>().Any(item => item is null) ? $"{propertyInfo.Name} contains an empty entry" : null);
         }
         return result.ToArray();
     }

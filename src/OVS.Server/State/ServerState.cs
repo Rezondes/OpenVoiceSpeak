@@ -261,7 +261,7 @@ public sealed partial class ServerState
     static bool PasswordTooLong(Session session, Request request, string? password)
     {
         if (password is not { Length: > ProtocolLimits.MaxPasswordLength }) return false;
-        Fail(session, request, ReasonCodes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolLimits.MaxPasswordLength} Zeichen.");
+        Fail(session, request, ReasonCodes.InvalidValue, $"A password has at most {ProtocolLimits.MaxPasswordLength} characters.");
         return true;
     }
 

@@ -53,7 +53,7 @@ public sealed unsafe class NoiseSuppressor : IDisposable
         if (error is not null) return null;
         var state = native.Create(0); // 0: the built-in model
         if (state != 0) return new NoiseSuppressor(native, state);
-        error = "rnnoise_create gab nichts zurück";
+        error = "rnnoise_create returned nothing";
         return null;
     }
 

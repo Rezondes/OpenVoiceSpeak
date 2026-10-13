@@ -29,14 +29,14 @@ internal static class Program
         // Package 63: a crash used to leave no trace at all; exceptions escaping the UI thread end up here too
         AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
         {
-            Log?.Write($"Absturz: {eventArgs.ExceptionObject}");
+            Log?.Crashed($"{eventArgs.ExceptionObject}");
             Log?.Flush(); // Package 124: the process ends right after
         };
-        TaskScheduler.UnobservedTaskException += (_, eventArgs) => Log?.Write($"Unbeobachteter Fehler: {eventArgs.Exception}");
+        TaskScheduler.UnobservedTaskException += (_, eventArgs) => Log?.UnobservedError(eventArgs.Exception.ToString());
         // Package 43/63: the exe replaced by the last update, in the background so the window does not wait for it
         _ = Task.Run(async () =>
         {
-            if (await UpdateInstaller.CleanupOldAsync(Environment.ProcessPath, Time, Options.AfterUpdatePid) is { } result) Log?.Write(result);
+            if (await UpdateInstaller.CleanupOldAsync(Environment.ProcessPath, Time, Options.AfterUpdatePid) is { } result) Log?.OldVersionCleanup(result);
         });
         Settings = ClientSettings.Load(Options.ProfileDir, out var settingsWarning);
         SettingsWarning = settingsWarning;

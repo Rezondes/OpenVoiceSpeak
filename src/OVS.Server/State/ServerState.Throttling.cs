@@ -24,7 +24,7 @@ public sealed partial class ServerState
                 return false;
         }
         if (id == requestId) return true;
-        session.Outbox.Send(new Error(id, ReasonCodes.InvalidValue, $"RequestId länger als {ServerTuning.MaxRequestIdLength} Zeichen"));
+        session.Outbox.Send(new Error(id, ReasonCodes.InvalidValue, $"RequestId longer than {ServerTuning.MaxRequestIdLength} characters"));
         return false;
     }
 

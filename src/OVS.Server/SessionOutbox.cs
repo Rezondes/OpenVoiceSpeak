@@ -42,7 +42,7 @@ public sealed class SessionOutbox
         if (closing) return;
         if (frame is null)
         {
-            Abort("Nachricht zu gross");
+            Abort("message too large");
             return;
         }
         if (Interlocked.Add(ref queuedBytes, frame.Length) <= ServerTuning.MaxOutboxBytes && outbox.Writer.TryWrite(frame)) return;

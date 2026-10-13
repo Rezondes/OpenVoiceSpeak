@@ -110,7 +110,7 @@ public sealed class DebugApi : IDisposable
             if (context.Request.Headers[Header] is null)
             {
                 status = 403;
-                result = new { error = $"Header {Header} fehlt" };
+                result = new { error = $"Header {Header} is missing" };
             }
             else
             {
@@ -150,10 +150,10 @@ public sealed class DebugApi : IDisposable
         if (method == "GET" && path == "/state") return State();
         if (method == "GET" && path == "/devices")
             return new { Inputs = listDevices(AudioDirection.Input), Outputs = listDevices(AudioDirection.Output) };
-        if (method != "POST") throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
+        if (method != "POST") throw new DebugApiException($"Unknown endpoint {method} {path}");
         if (clientRoutes.TryGetValue(path, out var clientRoute)) return await clientRoute(body);
-        var server = viewModel.Server ?? throw new DebugApiException("Nicht verbunden");
-        if (!serverRoutes.TryGetValue(path, out var serverRoute)) throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
+        var server = viewModel.Server ?? throw new DebugApiException("Not connected");
+        if (!serverRoutes.TryGetValue(path, out var serverRoute)) throw new DebugApiException($"Unknown endpoint {method} {path}");
         await serverRoute(server, body);
         return new { ok = true };
     }
@@ -184,7 +184,7 @@ public sealed class DebugApi : IDisposable
 
     ClientSettings ApplySettings(JsonElement body)
     {
-        var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
+        var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("The settings are missing");
         // Package 127: a body without a version keeps the current one (a missing key reads as 0)
         if (Optional(body, "settingsVersion") is null) settings.SettingsVersion = viewModel.Settings.SettingsVersion;
         // Package 129: a body without the switch is read like an old file (A135 step 3): a threshold given by hand stays manual
@@ -224,14 +224,14 @@ public sealed class DebugApi : IDisposable
         ["/chat"] = (server, body) =>
         {
             var target = Enum.TryParse<ChatTarget>(Text(body, "target"), ignoreCase: true, out var parsed)
-                ? parsed : throw new DebugApiException("target ist server, channel oder private");
+                ? parsed : throw new DebugApiException("target is server, channel or private");
             uint? to = target == ChatTarget.Private ? User(server, Text(body, "to")).SessionId : null;
             return server.SendChatAsync(target, Text(body, "text"), to);
         },
         // raw requests
         ["/redeem"] = (server, body) => server.SendAsync(new RedeemAdminToken(Text(body, "token"))),
         ["/request"] = (server, body) => server.SendAsync(body.Deserialize<Message>(ProtocolJson.Options) as Request
-            ?? throw new DebugApiException("Body ist keine Protokoll-Anfrage (Feld 'type' prüfen)")),
+            ?? throw new DebugApiException("The body is not a protocol request (check the field 'type')")),
     };
 
 
@@ -338,14 +338,14 @@ public sealed class DebugApi : IDisposable
     /// <summary>{path}: checks and scales the image like the admin page; without a path the logo is removed.</summary>
     async Task SetServerIconAsync(JsonElement body)
     {
-        var server = viewModel.Server ?? throw new DebugApiException("Nicht verbunden");
+        var server = viewModel.Server ?? throw new DebugApiException("Not connected");
         if (Optional(body, "path")?.GetString() is not { } path)
         {
             await server.SendAsync(new SetServerIcon(null));
             return;
         }
         var (png, error) = Services.IconImport.Prepare(path);
-        if (png is null) throw new DebugApiException(error ?? "Bild ungültig");
+        if (png is null) throw new DebugApiException(error ?? "Image invalid");
         await server.SendAsync(new SetServerIcon(Convert.ToBase64String(png)));
     }
 
@@ -354,7 +354,7 @@ public sealed class DebugApi : IDisposable
     {
         var name = Text(body, "action");
         if (!Enum.TryParse<KeyAction>(name, ignoreCase: true, out var action))
-            throw new DebugApiException($"Unbekannte Aktion '{name}', erlaubt: {string.Join(", ", KeyActionTraits.All)}");
+            throw new DebugApiException($"Unknown action '{name}', allowed: {string.Join(", ", KeyActionTraits.All)}");
         if (Optional(body, "down") is { } down)
         {
             keys.Simulate(action, down.GetBoolean());
@@ -374,7 +374,7 @@ public sealed class DebugApi : IDisposable
     static string Text(JsonElement body, string name) =>
         Optional(body, name) is { } value
             ? value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText()
-            : throw new DebugApiException($"Feld '{name}' fehlt");
+            : throw new DebugApiException($"Field '{name}' is missing");
 
     /// <summary>By id or name; Package 110: a name several channels carry needs the id.</summary>
     static ChannelViewModel Channel(ServerViewModel server, string key)
@@ -385,15 +385,15 @@ public sealed class DebugApi : IDisposable
         return named.Count switch
         {
             1 => named[0],
-            0 => throw new DebugApiException($"Channel '{key}' nicht gefunden"),
-            _ => throw new DebugApiException($"Channel '{key}' gibt es mehrfach, bitte per Id: {string.Join(", ", named.Select(channel => channel.Id))}"),
+            0 => throw new DebugApiException($"Channel '{key}' not found"),
+            _ => throw new DebugApiException($"Channel '{key}' exists more than once, name it by id: {string.Join(", ", named.Select(channel => channel.Id))}"),
         };
     }
 
     static UserViewModel User(ServerViewModel server, string key) =>
         server.Tree.Channels.Live().SelectMany(channel => channel.Users.Live())
             .FirstOrDefault(user => user.SessionId.ToString() == key || string.Equals(user.Nickname, key, StringComparison.OrdinalIgnoreCase))
-        ?? throw new DebugApiException($"Nutzer '{key}' nicht gefunden");
+        ?? throw new DebugApiException($"User '{key}' not found");
 
     /// <summary>Stops the listener.</summary>
     public void Dispose()

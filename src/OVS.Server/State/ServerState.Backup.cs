@@ -125,7 +125,7 @@ public sealed partial class ServerState
             DropUpload(session); // a new upload replaces an unfinished one
             if (request.Offset != 0)
             {
-                Fail(session, request, ReasonCodes.InvalidValue, "unbekannter Upload");
+                Fail(session, request, ReasonCodes.InvalidValue, "unknown upload");
                 return;
             }
             session.Upload = new BackupUpload(request.UploadId, uploads.PreparePath(request.UploadId));
@@ -134,13 +134,13 @@ public sealed partial class ServerState
         if (!Base64Text.TryDecode(request.DataBase64, out var bytes))
         {
             DropUpload(session);
-            Fail(session, request, ReasonCodes.InvalidValue, "kein Base64");
+            Fail(session, request, ReasonCodes.InvalidValue, "not Base64");
             return;
         }
         if (!upload.Continues(request.Offset) || bytes.Length > ProtocolLimits.BackupChunkBytes)
         {
             DropUpload(session);
-            Fail(session, request, ReasonCodes.InvalidValue, $"Offset {request.Offset}, erwartet {upload.Received}");
+            Fail(session, request, ReasonCodes.InvalidValue, $"Offset {request.Offset}, expected {upload.Received}");
             return;
         }
         if (upload.Overflows(bytes.Length))

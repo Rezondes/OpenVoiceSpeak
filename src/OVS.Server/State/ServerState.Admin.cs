@@ -64,7 +64,7 @@ public sealed partial class ServerState
         var ids = request.GroupIds ?? [];
         if (ids.Count != data.Groups.Count || !ids.ToHashSet().SetEquals(data.Groups.Select(groupRecord => groupRecord.Id)))
         {
-            Fail(session, request, ReasonCodes.InvalidValue, "Die neue Reihenfolge muss jede Gruppe genau einmal enthalten.");
+            Fail(session, request, ReasonCodes.InvalidValue, "The new order must contain every group exactly once.");
             return;
         }
         var reordered = ids.Select(id => data.Groups.Single(groupRecord => groupRecord.Id == id)).ToList();
@@ -196,7 +196,7 @@ public sealed partial class ServerState
         }
         if (TextRules.NormalizeText(request.WelcomeText ?? "", ProtocolLimits.MaxTextLength) is not { } welcome) // Package 83: multi-line, no control or bidi characters
         {
-            Fail(session, request, ReasonCodes.InvalidValue, "Willkommenstext zu lang oder mit unerlaubten Zeichen");
+            Fail(session, request, ReasonCodes.InvalidValue, "Welcome text too long or with forbidden characters.");
             return;
         }
         if (PasswordTooLong(session, request, request.Password)) return; // Package 83: "" still removes it
@@ -239,7 +239,7 @@ public sealed partial class ServerState
         {
             if (!Base64Text.TryDecode(request.PngBase64, out var decoded))
             {
-                Fail(session, request, ReasonCodes.InvalidValue, "Das Logo ist kein gültiges Base64.");
+                Fail(session, request, ReasonCodes.InvalidValue, "The logo is not valid Base64.");
                 return;
             }
             png = decoded;

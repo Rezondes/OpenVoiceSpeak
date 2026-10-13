@@ -82,7 +82,7 @@ public sealed class ClientLog : ILogger
                     }
                     catch (Exception exception) // writing never throws (LogFileWriter catches IO errors); anything else costs a batch, not the log
                     {
-                        System.Diagnostics.Trace.WriteLine($"Log konnte nicht geschrieben werden: {exception.Message}");
+                        System.Diagnostics.Trace.WriteLine($"Log could not be written: {exception.Message}");
                     }
                 }
             }
