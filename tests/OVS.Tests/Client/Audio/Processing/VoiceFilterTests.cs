@@ -43,36 +43,6 @@ public class VoiceFilterTests
         return pipeline;
     }
 
-    /// <summary>
-    /// Pink noise (Paul Kellet's filter over white noise) with the given RMS level per frame: like a fan or room noise,
-    /// with most energy low. RNNoise hardly touches plain white noise (about -2 dB at -35 dBFS, measured), see PLAN.md.
-    /// </summary>
-    sealed class PinkNoise(int seed)
-    {
-        readonly Random random = new(seed);
-        readonly float[] buffer = new float[7];
-
-        public float[] Next(float rmsDb)
-        {
-            var frame = new float[Frame];
-            for (int index = 0; index < frame.Length; index++)
-            {
-                float white = 2 * random.NextSingle() - 1;
-                buffer[0] = 0.99886f * buffer[0] + white * 0.0555179f;
-                buffer[1] = 0.99332f * buffer[1] + white * 0.0750759f;
-                buffer[2] = 0.96900f * buffer[2] + white * 0.1538520f;
-                buffer[3] = 0.86650f * buffer[3] + white * 0.3104856f;
-                buffer[4] = 0.55000f * buffer[4] + white * 0.5329522f;
-                buffer[5] = -0.7616f * buffer[5] - white * 0.0168980f;
-                frame[index] = buffer[0] + buffer[1] + buffer[2] + buffer[3] + buffer[4] + buffer[5] + buffer[6] + white * 0.5362f;
-                buffer[6] = white * 0.115926f;
-            }
-            float scale = MathF.Pow(10, rmsDb / 20) / MathF.Pow(10, VoiceActivityDetector.LevelDb(frame) / 20);
-            for (int index = 0; index < frame.Length; index++) frame[index] *= scale;
-            return frame;
-        }
-    }
-
     /// <summary>The level after the filters and the voice activation, per frame, for 150 frames (3 s) of noise at -35 dBFS.</summary>
     static List<(float Level, bool Voice)> RunNoise(bool noiseSuppression)
     {
@@ -485,5 +455,35 @@ public class VoiceFilterTests
         missing.DeviceLifecycle.SetTone(440);
         Assert.Null(missing.DeviceLifecycle.CaptureSource.Capture!.Canceller);
         Assert.Equal(AudioFormat.StereoFrameSamples, missing.MixForSpeaker().Length); // no canceller: just the mix (Package 142: stereo)
+    }
+
+    /// <summary>
+    /// Pink noise (Paul Kellet's filter over white noise) with the given RMS level per frame: like a fan or room noise,
+    /// with most energy low. RNNoise hardly touches plain white noise (about -2 dB at -35 dBFS, measured), see PLAN.md.
+    /// </summary>
+    sealed class PinkNoise(int seed)
+    {
+        readonly Random random = new(seed);
+        readonly float[] buffer = new float[7];
+
+        public float[] Next(float rmsDb)
+        {
+            var frame = new float[Frame];
+            for (int index = 0; index < frame.Length; index++)
+            {
+                float white = 2 * random.NextSingle() - 1;
+                buffer[0] = 0.99886f * buffer[0] + white * 0.0555179f;
+                buffer[1] = 0.99332f * buffer[1] + white * 0.0750759f;
+                buffer[2] = 0.96900f * buffer[2] + white * 0.1538520f;
+                buffer[3] = 0.86650f * buffer[3] + white * 0.3104856f;
+                buffer[4] = 0.55000f * buffer[4] + white * 0.5329522f;
+                buffer[5] = -0.7616f * buffer[5] - white * 0.0168980f;
+                frame[index] = buffer[0] + buffer[1] + buffer[2] + buffer[3] + buffer[4] + buffer[5] + buffer[6] + white * 0.5362f;
+                buffer[6] = white * 0.115926f;
+            }
+            float scale = MathF.Pow(10, rmsDb / 20) / MathF.Pow(10, VoiceActivityDetector.LevelDb(frame) / 20);
+            for (int index = 0; index < frame.Length; index++) frame[index] *= scale;
+            return frame;
+        }
     }
 }

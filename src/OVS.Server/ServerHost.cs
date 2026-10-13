@@ -19,8 +19,6 @@ namespace OVS.Server;
 /// </summary>
 public static class ServerHost
 {
-    enum RunEnd { Stopped, Restart, Failed }
-
     /// <param name="afterWait">Tests only: runs when a run's wait has ended, before the sessions are closed.</param>
     /// <returns>The process exit code: 0 after a stop request, 1 when a run could not start.</returns>
     public static async Task<int> RunAsync(Func<string, string?> getEnv, IPAddress bindAddress, TimeProvider time,
@@ -119,4 +117,6 @@ public static class ServerHost
         logs.WriteServerLine(restart ? "Server beendet, startet neu" : "Server beendet");
         return restart ? RunEnd.Restart : RunEnd.Stopped;
     }
+
+    enum RunEnd { Stopped, Restart, Failed }
 }

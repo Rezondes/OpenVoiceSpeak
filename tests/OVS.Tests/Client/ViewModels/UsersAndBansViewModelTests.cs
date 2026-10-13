@@ -26,10 +26,6 @@ public sealed class UsersAndBansViewModelTests
     readonly List<OwnGroupMark> marks = [];
     Action<bool>? markOverride;
 
-    sealed record Rig(UsersAndBansViewModel Section, ServerViewModel Server);
-
-    sealed record OwnGroupMark(bool Pending, int SentBefore);
-
     Rig Create(UsersAndBansDialogs? dialogs = null)
     {
         var server = FakeServers.Admin(sent, time);
@@ -329,4 +325,8 @@ public sealed class UsersAndBansViewModelTests
         Assert.Empty(section.Users);
         Assert.All(sent, request => Assert.Null(server.Routes.Find(request.RequestId!)));
     }
+
+    sealed record Rig(UsersAndBansViewModel Section, ServerViewModel Server);
+
+    sealed record OwnGroupMark(bool Pending, int SentBefore);
 }

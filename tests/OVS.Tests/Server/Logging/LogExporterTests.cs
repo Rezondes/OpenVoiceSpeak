@@ -16,12 +16,6 @@ public sealed class LogExporterTests : TempDirectoryTest
     static readonly string RaidLog = $"channels/{Raid}/2025-02-01_00-00-00.log";
     static readonly string GoneLog = $"channels/{Gone}/2025-03-01_00-00-00.log";
 
-    /// <summary>The server's local time is two hours ahead of UTC, so the zip name shows the local date.</summary>
-    sealed class PlusTwoHours : TimeProvider
-    {
-        public override TimeZoneInfo LocalTimeZone { get; } = TimeZoneInfo.CreateCustomTimeZone("plus2", TimeSpan.FromHours(2), "plus2", "plus2");
-    }
-
     readonly LogReader reader;
     readonly LogExporter exporter;
 
@@ -227,5 +221,11 @@ public sealed class LogExporterTests : TempDirectoryTest
         Assert.Throws<IOException>(() => exporter.Export(DownloadId, ids, new Dictionary<Guid, string>()));
 
         Assert.Empty(Directory.GetFiles(ExportDir));
+    }
+
+    /// <summary>The server's local time is two hours ahead of UTC, so the zip name shows the local date.</summary>
+    sealed class PlusTwoHours : TimeProvider
+    {
+        public override TimeZoneInfo LocalTimeZone { get; } = TimeZoneInfo.CreateCustomTimeZone("plus2", TimeSpan.FromHours(2), "plus2", "plus2");
     }
 }

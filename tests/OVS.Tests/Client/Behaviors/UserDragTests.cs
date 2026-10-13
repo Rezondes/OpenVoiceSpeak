@@ -24,36 +24,6 @@ namespace OVS.Tests.Client.Behaviors;
 [Collection(MotionCollection.Name)]
 public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: true)
 {
-    sealed record Tree(MainWindow Main, ServerViewModel Server, List<Request> Sent)
-    {
-        public Border UserRow(string nickname) => Rows.UserRow(Main, nickname);
-
-        public Border ChannelRow(string name) => Rows.ChannelRow(Main, name);
-
-        public Point Center(Control row) => Rows.Center(row, Main);
-
-        /// <summary>A move with the left button still down, as during a real drag.</summary>
-        public const RawInputModifiers Held = RawInputModifiers.LeftMouseButton;
-
-        public OverlayLayer Overlay => OverlayLayer.GetOverlayLayer(Main)!;
-
-        public Border? Preview => Overlay.Children.OfType<Border>().SingleOrDefault(border => border.Classes.Contains("dragPreview"));
-
-        public bool Lit(string channel) => ChannelRow(channel).Classes.Contains(UserDrag.TargetClass);
-
-        /// <summary>Presses on the user's row and moves past the threshold onto the row of <paramref name="channel"/>.</summary>
-        public Point Drag(string nickname, string channel)
-        {
-            var start = Center(UserRow(nickname));
-            var end = Center(ChannelRow(channel));
-            Main.MouseDown(start, MouseButton.Left);
-            Main.MouseMove(start + new Point(0, ReorderDrag.Threshold + 4), Held);
-            Main.MouseMove(end, Held);
-            Dispatcher.UIThread.RunJobs();
-            return end;
-        }
-    }
-
     /// <summary>Animated, as in the app: a drop must hold a flight that would really play. Waits until the tree has built up.</summary>
     Tree Open(ServerViewModel? server = null, List<Request>? sent = null)
     {
@@ -253,5 +223,35 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
         Assert.Equal(new[] { FakeServers.Raid, FakeServers.Lobby }, sent.OfType<ReorderChannels>().Single().ChannelIds);
         Assert.Empty(sent.OfType<MoveUser>());
         tree.Main.Close();
+    }
+
+    sealed record Tree(MainWindow Main, ServerViewModel Server, List<Request> Sent)
+    {
+        public Border UserRow(string nickname) => Rows.UserRow(Main, nickname);
+
+        public Border ChannelRow(string name) => Rows.ChannelRow(Main, name);
+
+        public Point Center(Control row) => Rows.Center(row, Main);
+
+        /// <summary>A move with the left button still down, as during a real drag.</summary>
+        public const RawInputModifiers Held = RawInputModifiers.LeftMouseButton;
+
+        public OverlayLayer Overlay => OverlayLayer.GetOverlayLayer(Main)!;
+
+        public Border? Preview => Overlay.Children.OfType<Border>().SingleOrDefault(border => border.Classes.Contains("dragPreview"));
+
+        public bool Lit(string channel) => ChannelRow(channel).Classes.Contains(UserDrag.TargetClass);
+
+        /// <summary>Presses on the user's row and moves past the threshold onto the row of <paramref name="channel"/>.</summary>
+        public Point Drag(string nickname, string channel)
+        {
+            var start = Center(UserRow(nickname));
+            var end = Center(ChannelRow(channel));
+            Main.MouseDown(start, MouseButton.Left);
+            Main.MouseMove(start + new Point(0, ReorderDrag.Threshold + 4), Held);
+            Main.MouseMove(end, Held);
+            Dispatcher.UIThread.RunJobs();
+            return end;
+        }
     }
 }

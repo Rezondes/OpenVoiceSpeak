@@ -24,8 +24,6 @@ public sealed class GroupListViewModelTests
     readonly List<AdminPlace> asked = [];
     bool leaveConfirmed = true;
 
-    sealed record Rig(GroupListViewModel Section, ServerViewModel Server);
-
     /// <summary>A tab on a server that answers nothing by itself; like the page it hears every state change.</summary>
     Rig Create() => Build(FakeServers.Admin(sent, time));
 
@@ -1023,4 +1021,6 @@ public sealed class GroupListViewModelTests
         Assert.Equal(["Gast", "Admin"], Names(rig));
         Assert.Equal("Admin", rig.Section.SelectedGroup?.Name);
     }
+
+    sealed record Rig(GroupListViewModel Section, ServerViewModel Server);
 }

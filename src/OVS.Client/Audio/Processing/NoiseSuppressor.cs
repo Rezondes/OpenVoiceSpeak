@@ -17,15 +17,6 @@ public sealed unsafe class NoiseSuppressor : IDisposable
     // RNNoise expects samples in the 16-bit range, not -1..1
     const float Scale = 32768f;
 
-    /// <summary>The library's three entry points, or why they are not there.</summary>
-    sealed class Native
-    {
-        public delegate* unmanaged[Cdecl]<nint, nint> Create;
-        public delegate* unmanaged[Cdecl]<nint, float*, float*, float> ProcessFrame;
-        public delegate* unmanaged[Cdecl]<nint, void> Destroy;
-        public string? Error;
-    }
-
     // loaded and resolved once per process (per name: tests name a missing one)
     static readonly ConcurrentDictionary<string, Lazy<Native>> Loaded = new();
 
@@ -111,5 +102,14 @@ public sealed unsafe class NoiseSuppressor : IDisposable
         if (state == 0) return;
         native.Destroy(state);
         state = 0;
+    }
+
+    /// <summary>The library's three entry points, or why they are not there.</summary>
+    sealed class Native
+    {
+        public delegate* unmanaged[Cdecl]<nint, nint> Create;
+        public delegate* unmanaged[Cdecl]<nint, float*, float*, float> ProcessFrame;
+        public delegate* unmanaged[Cdecl]<nint, void> Destroy;
+        public string? Error;
     }
 }

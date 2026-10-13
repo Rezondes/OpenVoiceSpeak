@@ -18,12 +18,6 @@ public sealed class VoiceMixer
 
     readonly SoftLimiter limiter = new();
 
-    sealed class Speaker
-    {
-        public readonly JitterBuffer Buffer = new();
-        public int IdleTicks;
-    }
-
     readonly Dictionary<uint, Speaker> speakers = [];
     readonly object gate = new();
     Dictionary<uint, float> speakerGains = [];
@@ -154,5 +148,11 @@ public sealed class VoiceMixer
             foreach (var speaker in speakers.Values) Retire(speaker.Buffer);
             speakers.Clear();
         }
+    }
+
+    sealed class Speaker
+    {
+        public readonly JitterBuffer Buffer = new();
+        public int IdleTicks;
     }
 }

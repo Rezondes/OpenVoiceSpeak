@@ -252,9 +252,6 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         Assert.All(withRoutedAnswer, name => Assert.True(Owners.ContainsKey(name) || RequestsNotRouted.ContainsKey(name), $"{name} is not decided"));
     }
 
-    /// <summary>A page that went through every action once, on its server, and the route each request went out with.</summary>
-    sealed record DrivenPage(AdminViewModel Page, ServerViewModel Server, List<(Request Request, Action<Message>? Route)> Sent);
-
     /// <summary>Opens a page with every right, drives each of its actions once (see <see cref="DrivenPage"/>) and answers what the server would.</summary>
     async Task<DrivenPage> DriveEveryActionAsync()
     {
@@ -390,4 +387,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
 
         Assert.Equal([Stored.FileName], page.BackupCard.Backups.Select(backup => backup.Info.FileName));
     }
+
+    /// <summary>A page that went through every action once, on its server, and the route each request went out with.</summary>
+    sealed record DrivenPage(AdminViewModel Page, ServerViewModel Server, List<(Request Request, Action<Message>? Route)> Sent);
 }

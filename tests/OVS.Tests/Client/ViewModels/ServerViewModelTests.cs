@@ -26,12 +26,6 @@ public class ServerViewModelTests
     static readonly Guid Lobby = Guid.NewGuid(), Alpha = Guid.NewGuid(), Bravo = Guid.NewGuid();
     const P Moderator = P.Speak | P.SpeakLinked | P.ChannelLink | P.UserMove | P.UserMute | P.UserKick | P.UserBan;
 
-    sealed record Fixture(ServerViewModel Vm, List<Request> Sent, ManualTimeProvider Time)
-    {
-        public ChannelViewModel Channel(Guid id) => Vm.Tree.Channels.Single(channel => channel.Id == id);
-        public UserViewModel User(uint id) => Vm.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == id);
-    }
-
     static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, ServerDialogs? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
         params UserInfo[] others)
     {
@@ -1155,5 +1149,11 @@ public class ServerViewModelTests
         fixture.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, Moderator)));
         await joined;
         Assert.Equal(Bravo, fixture.Vm.CurrentChannel!.Id);
+    }
+
+    sealed record Fixture(ServerViewModel Vm, List<Request> Sent, ManualTimeProvider Time)
+    {
+        public ChannelViewModel Channel(Guid id) => Vm.Tree.Channels.Single(channel => channel.Id == id);
+        public UserViewModel User(uint id) => Vm.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == id);
     }
 }

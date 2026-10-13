@@ -27,10 +27,6 @@ public sealed record ServerConfig(
     /// <summary>Package 69: names of the start values that were set in the environment or the file, for the hint at startup.</summary>
     public IReadOnlySet<string> GivenStartValues { get; init; } = new HashSet<string>();
 
-    sealed record FileValues(
-        int? Port, int? MaxUsers, string? ServerName, string? Password, int? LogDays,
-        bool? AutoRestart, string? AutoRestartTime, bool? LogRotateDaily);
-
     public static ServerConfig Load(Func<string, string?> getEnv)
     {
         var dataDir = Path.GetFullPath(getEnv("OVS_DATA_DIR") is { Length: > 0 } text ? text : "data");
@@ -130,4 +126,8 @@ public sealed record ServerConfig(
             throw new ConfigException($"{name} muss zwischen {range.Min} und {range.Max} liegen, ist aber {value}.");
         return value;
     }
+
+    sealed record FileValues(
+        int? Port, int? MaxUsers, string? ServerName, string? Password, int? LogDays,
+        bool? AutoRestart, string? AutoRestartTime, bool? LogRotateDaily);
 }

@@ -18,13 +18,6 @@ public sealed class LossWindow(TimeProvider time)
     public static readonly TimeSpan FreshAfter = TimeSpan.FromSeconds(1);
     public const uint MaxGap = 50;
 
-    sealed class Stream
-    {
-        public uint Highest;
-        public ulong Seen; // bit i: frame Highest - i arrived, or lies before the stream's start or this window
-        public long LastArrival;
-    }
-
     readonly Dictionary<uint, Stream> streams = [];
     long start = time.GetTimestamp();
     long received, missed;
@@ -87,5 +80,12 @@ public sealed class LossWindow(TimeProvider time)
         received = missed = 0;
         start = now;
         foreach (var stream in streams.Values) stream.Seen = ulong.MaxValue; // a late frame does not take back a gap of the last window
+    }
+
+    sealed class Stream
+    {
+        public uint Highest;
+        public ulong Seen; // bit i: frame Highest - i arrived, or lies before the stream's start or this window
+        public long LastArrival;
     }
 }

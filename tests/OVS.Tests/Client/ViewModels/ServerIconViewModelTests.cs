@@ -14,8 +14,6 @@ public sealed class ServerIconViewModelTests
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
 
-    sealed record Rig(ServerIconViewModel Section, ServerViewModel Server);
-
     Rig Create()
     {
         var server = FakeServers.Admin(sent, time);
@@ -197,4 +195,6 @@ public sealed class ServerIconViewModelTests
 
         Assert.Empty(raised);
     }
+
+    sealed record Rig(ServerIconViewModel Section, ServerViewModel Server);
 }

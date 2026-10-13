@@ -27,14 +27,6 @@ public static class PageMotion
     public const double Slide = 24, TabSlide = 12, RevealRise = 16;
     public const string PageGhostClass = "pageGhost", PipeGhostClass = "pipeGhost";
 
-    // ---- pages ----
-
-    sealed class Switching
-    {
-        public CancellationTokenSource Cancel = new();
-        public bool Pending;
-    }
-
     static readonly ConditionalWeakTable<Border, Switching> switching = [];
 
     /// <summary>
@@ -192,6 +184,14 @@ public static class PageMotion
 
     public static bool GetReveal(ScrollViewer scroll) => scroll.GetValue(RevealProperty);
     public static void SetReveal(ScrollViewer scroll, bool value) => scroll.SetValue(RevealProperty, value);
+
+    // ---- pages ----
+
+    sealed class Switching
+    {
+        public CancellationTokenSource Cancel = new();
+        public bool Pending;
+    }
 
     sealed class Revealer
     {

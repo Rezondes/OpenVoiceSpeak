@@ -17,8 +17,6 @@ public sealed class ServerSettingsViewModelTests
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
 
-    sealed record Rig(ServerSettingsViewModel Card, ServerViewModel Server);
-
     /// <param name="limits">Limits the server has reported before the card is built; none by default.</param>
     Rig Create(ServerLimits? limits = null)
     {
@@ -421,4 +419,6 @@ public sealed class ServerSettingsViewModelTests
         Assert.Equal("Gilde", rig.Card.Name);
         Assert.False(rig.Card.Place.HasChanges());
     }
+
+    sealed record Rig(ServerSettingsViewModel Card, ServerViewModel Server);
 }

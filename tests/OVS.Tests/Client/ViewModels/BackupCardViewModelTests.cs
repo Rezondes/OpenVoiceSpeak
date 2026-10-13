@@ -24,8 +24,6 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     readonly ManualTimeProvider time = new();
     readonly List<Request> sent = [];
 
-    sealed record Rig(BackupCardViewModel Section, ServerViewModel Server, AdminTransfer Transfer);
-
     Rig Create(BackupCardDialogs? dialogs = null, Func<Request, Message?>? reply = null)
     {
         var server = FakeServers.Admin(sent, time, reply: reply);
@@ -438,4 +436,6 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         Assert.False(rig.Section.Restoring.IsBusy);
         Assert.Equal(ErrorTexts.For(ReasonCodes.NotFound), rig.Section.Restoring.Error);
     }
+
+    sealed record Rig(BackupCardViewModel Section, ServerViewModel Server, AdminTransfer Transfer);
 }

@@ -15,16 +15,6 @@ public sealed unsafe class EchoCanceller : IDisposable
 {
     public const string Library = "ovs_aec";
 
-    sealed class Native
-    {
-        public delegate* unmanaged[Cdecl]<nint> Create;
-        public delegate* unmanaged[Cdecl]<nint, int, void> SetDelay;
-        public delegate* unmanaged[Cdecl]<nint, float*, int> Render;
-        public delegate* unmanaged[Cdecl]<nint, float*, int> Capture;
-        public delegate* unmanaged[Cdecl]<nint, void> Destroy;
-        public string? Error;
-    }
-
     static readonly ConcurrentDictionary<string, Lazy<Native>> Loaded = new();
 
     readonly Native native;
@@ -113,5 +103,15 @@ public sealed unsafe class EchoCanceller : IDisposable
             native.Destroy(state);
             state = 0;
         }
+    }
+
+    sealed class Native
+    {
+        public delegate* unmanaged[Cdecl]<nint> Create;
+        public delegate* unmanaged[Cdecl]<nint, int, void> SetDelay;
+        public delegate* unmanaged[Cdecl]<nint, float*, int> Render;
+        public delegate* unmanaged[Cdecl]<nint, float*, int> Capture;
+        public delegate* unmanaged[Cdecl]<nint, void> Destroy;
+        public string? Error;
     }
 }

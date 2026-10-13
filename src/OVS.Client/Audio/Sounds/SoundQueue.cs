@@ -3,13 +3,6 @@ namespace OVS.Client.Audio.Sounds;
 /// <summary>Tones currently playing, mixed on top of the voice in the playback loop. Several may overlap.</summary>
 public sealed class SoundQueue
 {
-    sealed class Playing(float[] samples, float gain)
-    {
-        public readonly float[] Samples = samples;
-        public readonly float Gain = gain;
-        public int Position;
-    }
-
     readonly List<Playing> playing = [];
 
     public int Count
@@ -51,5 +44,12 @@ public sealed class SoundQueue
     public void Clear()
     {
         lock (playing) playing.Clear();
+    }
+
+    sealed class Playing(float[] samples, float gain)
+    {
+        public readonly float[] Samples = samples;
+        public readonly float Gain = gain;
+        public int Position;
     }
 }

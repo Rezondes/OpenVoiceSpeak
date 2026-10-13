@@ -32,75 +32,6 @@ public sealed class DebugApiTests : IAsyncLifetime
         await server.DisposeAsync();
     }
 
-    sealed class Instance : IAsyncDisposable
-    {
-        readonly TestDispatcher ui = new();
-        readonly string dir = Directory.CreateTempSubdirectory("ovs-debug-").FullName;
-        MainViewModel viewModel = null!;
-        DebugApi api = null!;
-        public HttpClient Http { get; private set; } = null!;
-        public int Port { get; private set; }
-
-        public static async Task<Instance> StartAsync()
-        {
-            var instance = new Instance();
-            instance.viewModel = await instance.ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(instance.dir, instance.ui.Post)));
-            var probe = new TcpListener(IPAddress.Loopback, 0);
-            probe.Start();
-            instance.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
-            probe.Stop();
-            // the debug API lists the system's devices while the view model runs without any, as with --no-audio
-            instance.api = new DebugApi(instance.viewModel, instance.viewModel.Keys, instance.viewModel.Audio, instance.Port, work => instance.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
-            instance.Http = new HttpClient { BaseAddress = new Uri($"http://localhost:{instance.Port}/") };
-            instance.Http.DefaultRequestHeaders.Add(DebugApi.Header, "1");
-            return instance;
-        }
-
-        public async Task<JsonElement> Post(string path, object? body = null)
-        {
-            var response = await Http.PostAsJsonAsync(path, body ?? new { });
-            var text = await response.Content.ReadAsStringAsync();
-            Assert.True(response.IsSuccessStatusCode, $"{path}: {text}");
-            return JsonDocument.Parse(text).RootElement;
-        }
-
-        public Task OnUi(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
-        {
-            work(viewModel);
-            return Task.FromResult<object?>(null);
-        });
-
-        public async Task<JsonElement> State() =>
-            JsonDocument.Parse(await Http.GetStringAsync("state")).RootElement;
-
-        public async Task<JsonElement> Until(Func<JsonElement, bool> condition, int timeoutMs = 15000) // returns once it holds
-        {
-            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-            JsonElement state;
-            do
-            {
-                state = await State();
-                if (condition(state)) return state;
-                await Task.Delay(50);
-            } while (DateTime.UtcNow < deadline);
-            Assert.Fail("Bedingung nicht erreicht. Zustand: " + state);
-            return state;
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            api.Dispose();
-            Http.Dispose();
-            await ui.InvokeAsync<object?>(async () =>
-            {
-                await viewModel.DisposeAsync();
-                return null;
-            });
-            ui.Dispose();
-            Directory.Delete(dir, true);
-        }
-    }
-
     static IEnumerable<JsonElement> Channels(JsonElement state) => state.GetProperty("server").GetProperty("channels").EnumerateArray();
 
     static JsonElement Channel(JsonElement state, string name) => Channels(state).Single(element => element.GetProperty("name").GetString() == name);
@@ -519,6 +450,75 @@ public sealed class DebugApiTests : IAsyncLifetime
             var name = path.Length == 0 ? property.Name : $"{path}.{property.Name}";
             names.Add(name);
             FieldNames(property.Value, name, names);
+        }
+    }
+
+    sealed class Instance : IAsyncDisposable
+    {
+        readonly TestDispatcher ui = new();
+        readonly string dir = Directory.CreateTempSubdirectory("ovs-debug-").FullName;
+        MainViewModel viewModel = null!;
+        DebugApi api = null!;
+        public HttpClient Http { get; private set; } = null!;
+        public int Port { get; private set; }
+
+        public static async Task<Instance> StartAsync()
+        {
+            var instance = new Instance();
+            instance.viewModel = await instance.ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(instance.dir, instance.ui.Post)));
+            var probe = new TcpListener(IPAddress.Loopback, 0);
+            probe.Start();
+            instance.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
+            probe.Stop();
+            // the debug API lists the system's devices while the view model runs without any, as with --no-audio
+            instance.api = new DebugApi(instance.viewModel, instance.viewModel.Keys, instance.viewModel.Audio, instance.Port, work => instance.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
+            instance.Http = new HttpClient { BaseAddress = new Uri($"http://localhost:{instance.Port}/") };
+            instance.Http.DefaultRequestHeaders.Add(DebugApi.Header, "1");
+            return instance;
+        }
+
+        public async Task<JsonElement> Post(string path, object? body = null)
+        {
+            var response = await Http.PostAsJsonAsync(path, body ?? new { });
+            var text = await response.Content.ReadAsStringAsync();
+            Assert.True(response.IsSuccessStatusCode, $"{path}: {text}");
+            return JsonDocument.Parse(text).RootElement;
+        }
+
+        public Task OnUi(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
+        {
+            work(viewModel);
+            return Task.FromResult<object?>(null);
+        });
+
+        public async Task<JsonElement> State() =>
+            JsonDocument.Parse(await Http.GetStringAsync("state")).RootElement;
+
+        public async Task<JsonElement> Until(Func<JsonElement, bool> condition, int timeoutMs = 15000) // returns once it holds
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            JsonElement state;
+            do
+            {
+                state = await State();
+                if (condition(state)) return state;
+                await Task.Delay(50);
+            } while (DateTime.UtcNow < deadline);
+            Assert.Fail("Bedingung nicht erreicht. Zustand: " + state);
+            return state;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            api.Dispose();
+            Http.Dispose();
+            await ui.InvokeAsync<object?>(async () =>
+            {
+                await viewModel.DisposeAsync();
+                return null;
+            });
+            ui.Dispose();
+            Directory.Delete(dir, true);
         }
     }
 }

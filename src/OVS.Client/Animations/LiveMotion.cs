@@ -165,14 +165,6 @@ public static class LiveMotion
         _ = pulse.Play(text, cancel);
     }
 
-    sealed class Follower
-    {
-        public double Target;
-        public long Last;
-        public bool Running;
-        public object? Model;
-    }
-
     static readonly ConditionalWeakTable<RangeBase, Follower> followers = new();
 
     /// <summary>
@@ -212,5 +204,13 @@ public static class LiveMotion
             }
             else top.RequestAnimationFrame(Step);
         }
+    }
+
+    sealed class Follower
+    {
+        public double Target;
+        public long Last;
+        public bool Running;
+        public object? Model;
     }
 }

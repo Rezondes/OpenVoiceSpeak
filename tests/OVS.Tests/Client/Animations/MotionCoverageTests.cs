@@ -77,27 +77,6 @@ public sealed class MotionCoverageTests
         }
     }
 
-    // ---- the walk ----
-
-    sealed class Walk(MainWindow main, MainViewModel viewModel)
-    {
-        public MainWindow Main { get; } = main;
-        public MainViewModel Vm { get; } = viewModel;
-        public ServerViewModel Server { get; set; } = null!;
-        public List<Request> Sent { get; } = [];
-        public AdminViewModel Admin => Vm.PageFlow.AdminPage!;
-        /// <summary>Animations still running from before the walk (other tests' windows): the walk waits for its own only.</summary>
-        public int Running { get; } = AnimationCounter.Running;
-    }
-
-    /// <param name="Look">For effects only a style plays: the visual whose transitions are watched.</param>
-    /// <param name="Prepare">Runs first and is not counted (scrolling a control into view).</param>
-    /// <param name="Undo">Runs after the watch, before the end state is taken (a toggle set back).</param>
-    sealed record Step(string Name, Action<Walk> Act, Func<Walk, Visual?>? Look = null, Action<Walk>? Prepare = null, Action<Walk>? Undo = null);
-
-    /// <param name="Movers">What passed through in-between looks (for the messages).</param>
-    sealed record Result(string Name, int Started, bool Moved, string State, string Movers = "");
-
     const string Idle = "nothing (idle)";
 
     /// <summary>The walks of both displays, made once for the tests that need them.</summary>
@@ -708,4 +687,25 @@ public sealed class MotionCoverageTests
         {
         }
     }
+
+    // ---- the walk ----
+
+    sealed class Walk(MainWindow main, MainViewModel viewModel)
+    {
+        public MainWindow Main { get; } = main;
+        public MainViewModel Vm { get; } = viewModel;
+        public ServerViewModel Server { get; set; } = null!;
+        public List<Request> Sent { get; } = [];
+        public AdminViewModel Admin => Vm.PageFlow.AdminPage!;
+        /// <summary>Animations still running from before the walk (other tests' windows): the walk waits for its own only.</summary>
+        public int Running { get; } = AnimationCounter.Running;
+    }
+
+    /// <param name="Look">For effects only a style plays: the visual whose transitions are watched.</param>
+    /// <param name="Prepare">Runs first and is not counted (scrolling a control into view).</param>
+    /// <param name="Undo">Runs after the watch, before the end state is taken (a toggle set back).</param>
+    sealed record Step(string Name, Action<Walk> Act, Func<Walk, Visual?>? Look = null, Action<Walk>? Prepare = null, Action<Walk>? Undo = null);
+
+    /// <param name="Movers">What passed through in-between looks (for the messages).</param>
+    sealed record Result(string Name, int Started, bool Moved, string State, string Movers = "");
 }

@@ -61,43 +61,6 @@ public sealed class DeviceLifecycle
     /// <summary>The capture and where it comes from (the microphone or the test tone); opened and closed as this type decides.</summary>
     public CaptureSource CaptureSource { get; }
 
-    /// <summary>
-    /// Package 137: what one direction opened last and how often it failed in a row, so a device change reopens it only
-    /// when another device would open now or its stream broke, and a device that keeps failing is given up. Under gate,
-    /// except <see cref="StreamError"/>.
-    /// </summary>
-    sealed class Endpoint(TimeProvider time)
-    {
-        long openedAt;
-        int failures; // in a row on Id: opens that threw, stream errors soon after opening
-
-        /// <summary>What the last open resolved to.</summary>
-        public string? Id { get; private set; }
-
-        public bool FellBack; // the user was told the chosen device is missing
-        public Exception? StreamError; // set on device threads, taken when the devices settled
-
-        /// <summary>An open of <paramref name="id"/> begins; another device than last time starts its failure count anew.</summary>
-        public void Opened(string? id)
-        {
-            if (id != Id) failures = 0;
-            Id = id;
-            openedAt = time.GetTimestamp();
-        }
-
-        /// <summary>The open threw.</summary>
-        public void OpenFailed() => failures++;
-
-        /// <summary>The stream broke: soon after opening it counts as the open failing again, later as a new first trouble.</summary>
-        public void StreamBroke() => failures = time.GetElapsedTime(openedAt) < StableAfter ? failures + 1 : 1;
-
-        /// <summary>The device is not tried again until another one would open or the devices are chosen again.</summary>
-        public bool GivenUp => failures >= MaxFailures;
-
-        /// <summary>Saving the settings tries a given-up device again.</summary>
-        public void Reset() => failures = 0;
-    }
-
     /// <summary>Package 137: after this many failures in a row the same device is not tried again until another would open.</summary>
     const int MaxFailures = 3;
 
@@ -395,5 +358,42 @@ public sealed class DeviceLifecycle
         }
         settle?.Dispose();
         lock (gate) running = false;
+    }
+
+    /// <summary>
+    /// Package 137: what one direction opened last and how often it failed in a row, so a device change reopens it only
+    /// when another device would open now or its stream broke, and a device that keeps failing is given up. Under gate,
+    /// except <see cref="StreamError"/>.
+    /// </summary>
+    sealed class Endpoint(TimeProvider time)
+    {
+        long openedAt;
+        int failures; // in a row on Id: opens that threw, stream errors soon after opening
+
+        /// <summary>What the last open resolved to.</summary>
+        public string? Id { get; private set; }
+
+        public bool FellBack; // the user was told the chosen device is missing
+        public Exception? StreamError; // set on device threads, taken when the devices settled
+
+        /// <summary>An open of <paramref name="id"/> begins; another device than last time starts its failure count anew.</summary>
+        public void Opened(string? id)
+        {
+            if (id != Id) failures = 0;
+            Id = id;
+            openedAt = time.GetTimestamp();
+        }
+
+        /// <summary>The open threw.</summary>
+        public void OpenFailed() => failures++;
+
+        /// <summary>The stream broke: soon after opening it counts as the open failing again, later as a new first trouble.</summary>
+        public void StreamBroke() => failures = time.GetElapsedTime(openedAt) < StableAfter ? failures + 1 : 1;
+
+        /// <summary>The device is not tried again until another one would open or the devices are chosen again.</summary>
+        public bool GivenUp => failures >= MaxFailures;
+
+        /// <summary>Saving the settings tries a given-up device again.</summary>
+        public void Reset() => failures = 0;
     }
 }

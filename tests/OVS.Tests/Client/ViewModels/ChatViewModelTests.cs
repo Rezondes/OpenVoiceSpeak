@@ -21,16 +21,6 @@ public class ChatViewModelTests
     static readonly Guid Lobby = Guid.NewGuid(), Bravo = Guid.NewGuid();
     const P Guest = P.Speak | P.ChatChannel | P.ChatPrivate;
 
-    sealed record Fixture(ChatViewModel Chat, ServerViewModel Server, List<Request> Sent)
-    {
-        public SendChat LastChat => Sent.OfType<SendChat>().Last();
-        public void Receive(ChatTarget target, uint from, string text, Guid? channel = null, uint? to = null) =>
-            Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, to, text, DateTimeOffset.UtcNow));
-
-        public UserViewModel User(uint id) => Server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == id);
-        public ChatTabViewModel? Private(string title) => Chat.Tabs.SingleOrDefault(chatTab => chatTab.IsPrivate && chatTab.Title == title);
-    }
-
     static Fixture Create(P selfPerms = Guest, IEnumerable<Notice>? earlier = null)
     {
         var snapshot = Snapshot("Server", "", Lobby,
@@ -344,5 +334,15 @@ public class ChatViewModelTests
         await fixture.Chat.SendCommand.ExecuteAsync(null);
         Assert.Equal("zwei\nZeilen", fixture.LastChat.Text);
         Assert.Null(fixture.Chat.ComposerError);
+    }
+
+    sealed record Fixture(ChatViewModel Chat, ServerViewModel Server, List<Request> Sent)
+    {
+        public SendChat LastChat => Sent.OfType<SendChat>().Last();
+        public void Receive(ChatTarget target, uint from, string text, Guid? channel = null, uint? to = null) =>
+            Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, to, text, DateTimeOffset.UtcNow));
+
+        public UserViewModel User(uint id) => Server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == id);
+        public ChatTabViewModel? Private(string title) => Chat.Tabs.SingleOrDefault(chatTab => chatTab.IsPrivate && chatTab.Title == title);
     }
 }

@@ -108,90 +108,6 @@ public class SendPathTests
         Assert.True(engine.FramesSent > 0);
     }
 
-    /// <summary>
-    /// Package 130 (A139): talk keys through the real bindings on a manual clock, and an engine whose decision takes
-    /// frames fed by hand, one per 20 ms of that clock, so the frames sent can be counted exactly.
-    /// </summary>
-    sealed class TalkRig : IDisposable
-    {
-        public const int Ptt = VirtualKeys.RControl, LinkPtt = VirtualKeys.XButton1, Mute = VirtualKeys.XButton2;
-        public readonly FakeKeys Fake = new();
-        public readonly ManualTimeProvider Time = new();
-        public readonly KeyPoller Keys;
-        public readonly AudioEngine Engine;
-        public readonly List<byte> Sent = [];
-        public readonly List<int> Sizes = []; // Package 132: bytes per encoded frame
-        /// <summary>Package 132: what each fed frame holds; a steady level by default.</summary>
-        public Func<float[]> Signal = () => Constant(0.1f);
-        public readonly CapturePipeline Pipeline = CapturePipeline.FromTone(440); // never started: fed by hand
-
-        public TalkRig(int releaseDelayMs)
-        {
-            Keys = new KeyPoller(Time, Fake.IsDown)
-            {
-                Bindings =
-                [
-                    new KeyBinding(KeyAction.PushToTalk, new KeyChord(Ptt)),
-                    new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(LinkPtt)),
-                    new KeyBinding(KeyAction.PushToMute, new KeyChord(Mute)),
-                ],
-            };
-            Engine = new AudioEngine(Keys, Time, hardware: null) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
-            Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
-            Pipeline.ChooseTarget = Engine.ChooseTarget;
-            Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
-            Pipeline.LossHint = () => Engine.EncoderLossHint; // Package 135
-            Pipeline.FrameEncoded += (opus, target) =>
-            {
-                Sent.Add(target);
-                Sizes.Add(opus.Length);
-            };
-        }
-
-        /// <summary>Holds or lets go of a key and waits until the key thread saw it.</summary>
-        public async Task Key(int vk, bool isDown, KeyAction action)
-        {
-            Fake.Set(isDown, vk);
-            await Until(() => Keys.IsDown(action) == isDown);
-            Assert.Equal(isDown, Keys.IsDown(action));
-        }
-
-        /// <summary>Feeds frames, 20 ms apart on the manual clock; returns how many of them were sent (with the pre-roll).</summary>
-        public int Frames(int count)
-        {
-            int before = Sent.Count;
-            for (int index = 0; index < count; index++)
-            {
-                Pipeline.Feed(Signal(), AudioFormat.SampleRate);
-                Time.Advance(AudioFormat.FrameDuration);
-            }
-            return Sent.Count - before;
-        }
-
-        /// <summary>Package 132: sends 100 frames and returns the kbps of the last 80 (the encoder settles on a new rate first).</summary>
-        public double Kbps()
-        {
-            int before = Sizes.Count;
-            Assert.InRange(Frames(100), 100, 101); // with the pre-roll frame when sending starts
-            return Sizes.Skip(before + 20).Average() * 8 / AudioFormat.FrameDuration.TotalMilliseconds;
-        }
-
-        /// <summary>Feeds one frame at a time and counts them until one is not sent.</summary>
-        public int FramesUntilSilent(int max = 200)
-        {
-            int sent = 0;
-            while (sent < max && Frames(1) == 1) sent++;
-            return sent;
-        }
-
-        public void Dispose()
-        {
-            Pipeline.Dispose();
-            Engine.Dispose();
-            Keys.Dispose();
-        }
-    }
-
     /// <summary>Package 130 (A139): after the talk key is let go, frames go out for the release delay, then stop.</summary>
     [Fact]
     public async Task PttRelease_KeepsSendingForDelay()
@@ -1146,37 +1062,6 @@ public class SendPathTests
     /// <summary>Package 142: an Opus packet's table of contents says whether it is stereo (RFC 6716, 3.1).</summary>
     static bool IsStereo(byte[] packet) => (packet[0] & 0x4) != 0;
 
-    /// <summary>A music mode pipeline fed by hand, always sending, its packets played by a receiver's mixer one per tick.</summary>
-    sealed class MusicRig
-    {
-        public readonly CapturePipeline Pipeline = CapturePipeline.Manual();
-        public readonly VoiceMixer Receiver = new();
-        public readonly List<byte[]> Packets = [];
-        public readonly List<float> Heard = []; // interleaved stereo
-        public int Kbps = 64;
-        uint seq;
-
-        public MusicRig()
-        {
-            Pipeline.Music = true;
-            Pipeline.Bitrate = () => Kbps;
-            Pipeline.ChooseTarget = _ => Ch;
-            Pipeline.FrameEncoded += (opus, _) =>
-            {
-                Packets.Add(opus);
-                Receiver.Push(1, seq, opus, false, 20.0 * seq);
-                seq++;
-            };
-        }
-
-        public void Feed(float[] samples, int channels)
-        {
-            Pipeline.Feed(samples, AudioFormat.SampleRate, channels);
-            var (frame, active) = Receiver.Tick();
-            if (active.Count > 0) Heard.AddRange(frame);
-        }
-    }
-
     /// <summary>
     /// Package 142 (AC1): in a 64 kbps channel a different tone on each side reaches a receiver's mixer with each tone on
     /// its own side, the other tone at least 20 dB below it. At 128 kbps a stereo frame and the copy of the one before it
@@ -1457,5 +1342,120 @@ public class SendPathTests
         int closed = sent;
         vad.Feed(new float[AudioFormat.StereoFrameSamples], AudioFormat.SampleRate, 2);
         Assert.Equal(closed, sent); // silence closes it after the hold
+    }
+
+    /// <summary>
+    /// Package 130 (A139): talk keys through the real bindings on a manual clock, and an engine whose decision takes
+    /// frames fed by hand, one per 20 ms of that clock, so the frames sent can be counted exactly.
+    /// </summary>
+    sealed class TalkRig : IDisposable
+    {
+        public const int Ptt = VirtualKeys.RControl, LinkPtt = VirtualKeys.XButton1, Mute = VirtualKeys.XButton2;
+        public readonly FakeKeys Fake = new();
+        public readonly ManualTimeProvider Time = new();
+        public readonly KeyPoller Keys;
+        public readonly AudioEngine Engine;
+        public readonly List<byte> Sent = [];
+        public readonly List<int> Sizes = []; // Package 132: bytes per encoded frame
+        /// <summary>Package 132: what each fed frame holds; a steady level by default.</summary>
+        public Func<float[]> Signal = () => Constant(0.1f);
+        public readonly CapturePipeline Pipeline = CapturePipeline.FromTone(440); // never started: fed by hand
+
+        public TalkRig(int releaseDelayMs)
+        {
+            Keys = new KeyPoller(Time, Fake.IsDown)
+            {
+                Bindings =
+                [
+                    new KeyBinding(KeyAction.PushToTalk, new KeyChord(Ptt)),
+                    new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(LinkPtt)),
+                    new KeyBinding(KeyAction.PushToMute, new KeyChord(Mute)),
+                ],
+            };
+            Engine = new AudioEngine(Keys, Time, hardware: null) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
+            Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
+            Pipeline.ChooseTarget = Engine.ChooseTarget;
+            Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
+            Pipeline.LossHint = () => Engine.EncoderLossHint; // Package 135
+            Pipeline.FrameEncoded += (opus, target) =>
+            {
+                Sent.Add(target);
+                Sizes.Add(opus.Length);
+            };
+        }
+
+        /// <summary>Holds or lets go of a key and waits until the key thread saw it.</summary>
+        public async Task Key(int vk, bool isDown, KeyAction action)
+        {
+            Fake.Set(isDown, vk);
+            await Until(() => Keys.IsDown(action) == isDown);
+            Assert.Equal(isDown, Keys.IsDown(action));
+        }
+
+        /// <summary>Feeds frames, 20 ms apart on the manual clock; returns how many of them were sent (with the pre-roll).</summary>
+        public int Frames(int count)
+        {
+            int before = Sent.Count;
+            for (int index = 0; index < count; index++)
+            {
+                Pipeline.Feed(Signal(), AudioFormat.SampleRate);
+                Time.Advance(AudioFormat.FrameDuration);
+            }
+            return Sent.Count - before;
+        }
+
+        /// <summary>Package 132: sends 100 frames and returns the kbps of the last 80 (the encoder settles on a new rate first).</summary>
+        public double Kbps()
+        {
+            int before = Sizes.Count;
+            Assert.InRange(Frames(100), 100, 101); // with the pre-roll frame when sending starts
+            return Sizes.Skip(before + 20).Average() * 8 / AudioFormat.FrameDuration.TotalMilliseconds;
+        }
+
+        /// <summary>Feeds one frame at a time and counts them until one is not sent.</summary>
+        public int FramesUntilSilent(int max = 200)
+        {
+            int sent = 0;
+            while (sent < max && Frames(1) == 1) sent++;
+            return sent;
+        }
+
+        public void Dispose()
+        {
+            Pipeline.Dispose();
+            Engine.Dispose();
+            Keys.Dispose();
+        }
+    }
+
+    /// <summary>A music mode pipeline fed by hand, always sending, its packets played by a receiver's mixer one per tick.</summary>
+    sealed class MusicRig
+    {
+        public readonly CapturePipeline Pipeline = CapturePipeline.Manual();
+        public readonly VoiceMixer Receiver = new();
+        public readonly List<byte[]> Packets = [];
+        public readonly List<float> Heard = []; // interleaved stereo
+        public int Kbps = 64;
+        uint seq;
+
+        public MusicRig()
+        {
+            Pipeline.Music = true;
+            Pipeline.Bitrate = () => Kbps;
+            Pipeline.ChooseTarget = _ => Ch;
+            Pipeline.FrameEncoded += (opus, _) =>
+            {
+                Packets.Add(opus);
+                Receiver.Push(1, seq, opus, false, 20.0 * seq);
+                seq++;
+            };
+        }
+
+        public void Feed(float[] samples, int channels)
+        {
+            Pipeline.Feed(samples, AudioFormat.SampleRate, channels);
+            var (frame, active) = Receiver.Tick();
+            if (active.Count > 0) Heard.AddRange(frame);
+        }
     }
 }

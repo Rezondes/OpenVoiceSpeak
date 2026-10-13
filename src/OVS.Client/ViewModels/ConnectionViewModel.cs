@@ -280,12 +280,6 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <summary>A series of attempts runs; the start screen shows the countdown and "Abbrechen".</summary>
     [ObservableProperty] bool isReconnecting;
 
-    /// <summary>
-    /// What comes back after a reconnect: the channel with the password that worked there, the own mute and deafen, and
-    /// whether undeafening unmutes (review: muted, then deafened, stays muted).
-    /// </summary>
-    sealed record Restore(Guid Channel, string ChannelName, string? Password, SelfState State, bool MutedBeforeDeafen);
-
     void StartReconnect(ConnectChoice choice, string text, ServerViewModel server)
     {
         var self = server.Mirror.Self;
@@ -452,4 +446,10 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         }
         (trackedServer, iconTracker) = (null, null);
     }
+
+    /// <summary>
+    /// What comes back after a reconnect: the channel with the password that worked there, the own mute and deafen, and
+    /// whether undeafening unmutes (review: muted, then deafened, stays muted).
+    /// </summary>
+    sealed record Restore(Guid Channel, string ChannelName, string? Password, SelfState State, bool MutedBeforeDeafen);
 }

@@ -19,29 +19,6 @@ namespace OVS.Tests.Client.Behaviors;
 [Collection(MotionCollection.Name)]
 public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: true)
 {
-    sealed record Tree(MainWindow Main, MainViewModel Vm, ItemsControl List, List<Request> Sent)
-    {
-        public Control Container(string name) => List.ContainerFromItem(Vm.Server!.Tree.Channels.Single(channel => channel.Name == name))!;
-
-        public double Top(string name) => Container(name).TranslatePoint(default, List)!.Value.Y;
-
-        public Point Center(string name) => Rows.Center(Rows.ChannelRow(Main, name), Main);
-
-        public Border? Preview => OverlayLayer.GetOverlayLayer(List)?.Children.OfType<Border>().SingleOrDefault(border => border.Classes.Contains("dragPreview"));
-
-        /// <summary>Presses on the row of <paramref name="from"/> and moves to the upper half of the row of <paramref name="to"/>.</summary>
-        public Point DragAbove(string from, string to)
-        {
-            var start = Center(from);
-            var end = Center(to) + new Point(0, -6);
-            Main.MouseDown(start, MouseButton.Left);
-            Main.MouseMove(start + new Point(0, -10));
-            Main.MouseMove(end);
-            Dispatcher.UIThread.RunJobs();
-            return end;
-        }
-    }
-
     /// <param name="reduced">The Windows setting "Show animations in Windows" is off, set on this window.</param>
     Tree Open(bool reduced, ServerViewModel? server = null)
     {
@@ -270,5 +247,28 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         tree.Main.UpdateLayout();
         Assert.All(tree.List.GetRealizedContainers(), control => Assert.Equal(0, control.RenderTransform?.Value.M32 ?? 0));
         tree.Main.Close();
+    }
+
+    sealed record Tree(MainWindow Main, MainViewModel Vm, ItemsControl List, List<Request> Sent)
+    {
+        public Control Container(string name) => List.ContainerFromItem(Vm.Server!.Tree.Channels.Single(channel => channel.Name == name))!;
+
+        public double Top(string name) => Container(name).TranslatePoint(default, List)!.Value.Y;
+
+        public Point Center(string name) => Rows.Center(Rows.ChannelRow(Main, name), Main);
+
+        public Border? Preview => OverlayLayer.GetOverlayLayer(List)?.Children.OfType<Border>().SingleOrDefault(border => border.Classes.Contains("dragPreview"));
+
+        /// <summary>Presses on the row of <paramref name="from"/> and moves to the upper half of the row of <paramref name="to"/>.</summary>
+        public Point DragAbove(string from, string to)
+        {
+            var start = Center(from);
+            var end = Center(to) + new Point(0, -6);
+            Main.MouseDown(start, MouseButton.Left);
+            Main.MouseMove(start + new Point(0, -10));
+            Main.MouseMove(end);
+            Dispatcher.UIThread.RunJobs();
+            return end;
+        }
     }
 }

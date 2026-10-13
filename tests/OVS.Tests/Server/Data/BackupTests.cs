@@ -460,20 +460,6 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         throw new TimeoutException($"{nickname} could not connect");
     }
 
-    sealed class Host(Task<int> run, int port, CancellationTokenSource stop) : IAsyncDisposable
-    {
-        public Task<int> Run => run;
-        public int Port => port;
-        public void Stop() => stop.Cancel();
-
-        public async ValueTask DisposeAsync()
-        {
-            stop.Cancel();
-            Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(30)));
-            stop.Dispose();
-        }
-    }
-
     /// <summary>Starts ServerHost on the data dir; a port that Windows reserves makes the run end with 1, then another is tried.</summary>
     static async Task<(Host Host, TestClient Admin)> StartHostAsync(string dataDir, ClientIdentity admin, Func<ServerState, Task>? afterWait = null)
     {
@@ -863,5 +849,19 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         File.WriteAllText(Path.Combine(store.Folder, "behalten.ovsbackup"), "x");
         await using var server = await TestServer.StartAsync(dataDir: dir);
         Assert.Equal(["behalten.ovsbackup"], Directory.GetFiles(store.Folder).Select(Path.GetFileName));
+    }
+
+    sealed class Host(Task<int> run, int port, CancellationTokenSource stop) : IAsyncDisposable
+    {
+        public Task<int> Run => run;
+        public int Port => port;
+        public void Stop() => stop.Cancel();
+
+        public async ValueTask DisposeAsync()
+        {
+            stop.Cancel();
+            Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(30)));
+            stop.Dispose();
+        }
     }
 }
