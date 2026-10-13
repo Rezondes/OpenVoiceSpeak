@@ -1,0 +1,54 @@
+# Data Prepper pipelines: OTLP over gRPC in (traces on 21890, metrics on 21891, logs on 21892), OpenSearch out.
+# Traces go to the trace analytics indices (raw spans and the service map), metrics and logs to daily indices.
+# Local example: plain gRPC without TLS, OpenSearch without security.
+entry-pipeline:
+  source:
+    otlp_traces:
+      ssl: false
+  sink:
+    - pipeline:
+        name: raw-trace-pipeline
+    - pipeline:
+        name: service-map-pipeline
+
+raw-trace-pipeline:
+  source:
+    pipeline:
+      name: entry-pipeline
+  processor:
+    - otel_traces:
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index_type: trace-analytics-raw
+
+service-map-pipeline:
+  source:
+    pipeline:
+      name: entry-pipeline
+  processor:
+    - service_map:
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index_type: trace-analytics-service-map
+
+metrics-pipeline:
+  source:
+    otlp_metrics:
+      ssl: false
+  processor:
+    - otel_metrics:
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index: ovs-metrics-%{yyyy.MM.dd}
+
+logs-pipeline:
+  source:
+    otlp_logs:
+      ssl: false
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index: ovs-logs-%{yyyy.MM.dd}

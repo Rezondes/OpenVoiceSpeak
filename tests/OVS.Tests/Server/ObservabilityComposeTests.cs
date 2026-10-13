@@ -11,8 +11,8 @@ public sealed partial class ObservabilityComposeTests
 {
     static readonly string Root = Path.Combine(RepoPaths.Root, "deploy", "observability");
 
-    /// <summary>The examples Package 149 promises.</summary>
-    static readonly string[] Promised = ["grafana-lgtm", "aspire-dashboard", "jaeger", "seq"];
+    /// <summary>The examples Packages 149 and 150 promise.</summary>
+    static readonly string[] Promised = ["grafana-lgtm", "aspire-dashboard", "jaeger", "seq", "elastic", "opensearch", "netdata"];
 
     static IEnumerable<string> Folders() => Directory.GetDirectories(Root).Where(folder => File.Exists(Path.Combine(folder, "docker-compose.yml")));
 
@@ -42,11 +42,28 @@ public sealed partial class ObservabilityComposeTests
             var server = services["ovs-server"];
             Assert.Contains("- \"7000:7000/tcp\"", server);
             Assert.Contains("- \"7000:7000/udp\"", server);
-            var endpoint = Assert.Single(server, line => line.StartsWith("OTEL_EXPORTER_OTLP_ENDPOINT:", StringComparison.Ordinal));
-            var host = EndpointHost().Match(endpoint).Groups[1].Value;
-            Assert.True(services.ContainsKey(host) && host != "ovs-server", $"{folder}: {endpoint} names no backend of the file");
-            Assert.Contains(services[host], line => line.StartsWith("- \"", StringComparison.Ordinal)); // the backend's UI port is published
+            Assert.Single(server, line => line.StartsWith("OTEL_EXPORTER_OTLP_ENDPOINT:", StringComparison.Ordinal)); // switches it on
+            // Package 150: the base endpoint and any per-signal one (Data Prepper takes each signal on its own port)
+            foreach (var endpoint in server.Where(line => EndpointVariable().IsMatch(line)))
+            {
+                var host = EndpointHost().Match(endpoint).Groups[1].Value;
+                Assert.True(services.ContainsKey(host) && host != "ovs-server", $"{folder}: {endpoint} names no backend of the file");
+            }
+            Assert.Contains(services, service => service.Key != "ovs-server" && service.Value.Any(line => line.StartsWith("- \"", StringComparison.Ordinal))); // a UI port is published
         }
+    }
+
+    /// <summary>Package 150: every config file a service mounts from its folder is there.</summary>
+    [Fact]
+    public void Compose_MountedConfigFiles_Exist()
+    {
+        foreach (var folder in Folders())
+            foreach (var (name, lines) in Services(folder))
+                foreach (var mount in lines.Where(line => line.StartsWith("- ./", StringComparison.Ordinal)))
+                {
+                    var source = mount[2..].Split(':')[0];
+                    Assert.True(File.Exists(Path.Combine(folder, source)), $"{folder} {name}: {source} is missing");
+                }
     }
 
     [Fact]
@@ -77,6 +94,9 @@ public sealed partial class ObservabilityComposeTests
     [GeneratedRegex(@"""\w+://([a-z0-9-]+)[:/""]")]
     private static partial Regex EndpointHost();
 
-    [GeneratedRegex(@":\d+(\.\d+)+$")]
+    [GeneratedRegex(@":v?\d+(\.\d+)+$")]
     private static partial Regex PinnedTag();
+
+    [GeneratedRegex(@"^OTEL_EXPORTER_OTLP_(TRACES_|METRICS_|LOGS_)?ENDPOINT:")]
+    private static partial Regex EndpointVariable();
 }

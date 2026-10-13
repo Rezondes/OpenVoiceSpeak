@@ -1,0 +1,41 @@
+# OpenVoiceSpeak server with Netdata: its OpenTelemetry plugin takes OTLP over gRPC and shows metrics, logs and traces.
+#   docker compose up -d --build      then Netdata at http://localhost:19999
+#   docker compose down -v            stops it and removes its data
+# ovs-server is built from this checkout; for a release image with telemetry use
+#   image: ghcr.io/rezondes/openvoicespeak-server:<version>   and remove the build line.
+services:
+  ovs-server:
+    build: ../../..
+    image: openvoicespeak/server:local
+    restart: unless-stopped
+    ports:
+      - "7000:7000/tcp"
+      - "7000:7000/udp"
+    environment:
+      OVS_SERVER_NAME: "Mein Server"
+      TZ: "Europe/Berlin"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://netdata:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+    volumes:
+      - ovs-data:/data
+    depends_on:
+      - netdata
+
+  netdata:
+    image: netdata/netdata:v2.12.1
+    restart: unless-stopped
+    ports:
+      - "19999:19999"
+    volumes:
+      # the plugin listens on 127.0.0.1 by default; this file opens it to the other containers
+      - ./otel.yaml:/etc/netdata/otel.yaml:ro
+      - netdata-lib:/var/lib/netdata
+      - netdata-cache:/var/cache/netdata
+      - netdata-logs:/var/log/netdata
+
+volumes:
+  ovs-data:
+  netdata-lib:
+  netdata-cache:
+  netdata-logs:

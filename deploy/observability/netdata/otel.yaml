@@ -1,0 +1,4 @@
+# Netdata's OpenTelemetry plugin: only what differs from its defaults. It listens on 127.0.0.1:4317 by default, which
+# the ovs-server container cannot reach; here it listens on every interface of the container (not published on the host).
+endpoint:
+  path: "0.0.0.0:4317"

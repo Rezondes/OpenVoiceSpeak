@@ -96,7 +96,7 @@ Bei einem unerwarteten Fehler zeigt der Client unter der Meldung eine Fehler-ID 
 
 ### Telemetrie (optional)
 
-Ohne weitere Einstellung exportiert der Server nichts. Setzt du `OTEL_EXPORTER_OTLP_ENDPOINT` (in `docker-compose.yml` als Kommentar vorbereitet), sendet er Traces und Metriken per OTLP an dieses Backend, als Dienst `ovs-server` mit seiner Version; die übrigen Standardvariablen (`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` und die Exportintervalle) gelten wie gewohnt. Ist das Backend nicht erreichbar, läuft der Server unverändert weiter. Der Client sendet nie Telemetrie. Fertige Beispiele mit Grafana LGTM, Aspire Dashboard, Jaeger und Seq liegen unter `deploy/observability/`.
+Ohne weitere Einstellung exportiert der Server nichts. Setzt du `OTEL_EXPORTER_OTLP_ENDPOINT` (in `docker-compose.yml` als Kommentar vorbereitet), sendet er Traces und Metriken per OTLP an dieses Backend, als Dienst `ovs-server` mit seiner Version; die übrigen Standardvariablen (`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` und die Exportintervalle) gelten wie gewohnt. Ist das Backend nicht erreichbar, läuft der Server unverändert weiter. Der Client sendet nie Telemetrie. Fertige Beispiele mit Grafana LGTM, Aspire Dashboard, Jaeger, Seq, Elastic, OpenSearch und Netdata liegen unter `deploy/observability/`.
 
 ### Daten, Backup, Update
 

@@ -1,0 +1,49 @@
+# EDOT Collector as a gateway: OTLP from ovs-server in, Elasticsearch out, with the APM connector and processor so
+# Kibana's APM pages work. Follows Elastic's gateway sample (otel_samples/gateway.yml) without the API key, since this
+# local example runs Elasticsearch without security.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+connectors:
+  elasticapm: {}
+
+processors:
+  batch:
+    send_batch_size: 1000
+    timeout: 1s
+    send_batch_max_size: 1500
+  batch/metrics:
+    send_batch_max_size: 0
+    timeout: 1s
+  elasticapm: {}
+
+exporters:
+  elasticsearch/otel:
+    endpoints:
+      - http://elasticsearch:9200
+    mapping:
+      mode: otel
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch/metrics]
+      exporters: [elasticsearch/otel]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [elasticapm, elasticsearch/otel]
+    traces:
+      receivers: [otlp]
+      processors: [batch, elasticapm]
+      exporters: [elasticapm, elasticsearch/otel]
+    metrics/aggregated-otel-metrics:
+      receivers: [elasticapm]
+      processors: []
+      exporters: [elasticsearch/otel]

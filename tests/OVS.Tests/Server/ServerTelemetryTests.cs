@@ -224,6 +224,36 @@ public sealed class ServerTelemetryTests() : TempDirectoryTest("ovs-otel-", quie
         Assert.Equal(0, providers);
     }
 
+    /// <summary>
+    /// Package 150 (A155): OTEL_EXPORTER_OTLP_{TRACES,METRICS,LOGS}_ENDPOINT send each signal to its own address, used as
+    /// given (Data Prepper takes each signal on its own port); the base endpoint only switches the export on.
+    /// </summary>
+    [Fact]
+    public async Task SignalEndpoints_Set_EachSignalGoesThere()
+    {
+        await using var receiver = new OtlpReceiver();
+        var env = Exporting("http://127.0.0.1:9"); // nothing listens there: only the signal endpoints get data
+        env["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = receiver.Endpoint + "/own-traces";
+        env["OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"] = receiver.Endpoint + "/own-metrics";
+        env["OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"] = receiver.Endpoint + "/own-logs";
+        env["OTEL_BLRP_SCHEDULE_DELAY"] = "50";
+        var span = "probe-" + Guid.NewGuid().ToString("N");
+
+        using (var logs = ExportingLogs(env))
+        {
+            logs.Server.ServerChat("anna", "an den eigenen Endpoint");
+            using var host = Build(logs, env);
+            await host.StartAsync();
+            ServerTelemetry.Source.StartActivity(span)?.Dispose();
+            await AsyncWait.UntilAsync(() => receiver.Count("/own-metrics", "ovs.sessions") > 0);
+            await host.StopAsync();
+        }
+
+        Assert.Equal(1, receiver.Count("/own-traces", span));
+        Assert.True(receiver.Count("/own-logs", "an den eigenen Endpoint") > 0);
+        Assert.DoesNotContain(receiver.Exports, export => export.Path.StartsWith("/v1/", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Dockerfile_AndCompose_DocumentTheVariables()
     {

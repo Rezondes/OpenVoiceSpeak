@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -44,14 +45,12 @@ internal static class ServerTelemetry
 
     /// <summary>
     /// The standard variables the SDK reads. The run's configuration does not read the environment (the server reads it
-    /// through its own getEnv), so these are copied into it.
+    /// through its own getEnv), so these are copied into it. The per-signal endpoint and protocol are applied by
+    /// <see cref="ForSignal"/>, as the SDK's AddOtlpExporter reads only the base ones.
     /// </summary>
     static readonly string[] Variables =
     [
         EndpointVariable, "OTEL_EXPORTER_OTLP_PROTOCOL", "OTEL_EXPORTER_OTLP_HEADERS", "OTEL_EXPORTER_OTLP_TIMEOUT",
-        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "OTEL_EXPORTER_OTLP_TRACES_HEADERS",
-        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL", "OTEL_EXPORTER_OTLP_METRICS_HEADERS",
-        "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", "OTEL_EXPORTER_OTLP_LOGS_PROTOCOL", "OTEL_EXPORTER_OTLP_LOGS_HEADERS",
         "OTEL_SERVICE_NAME", "OTEL_RESOURCE_ATTRIBUTES", "OTEL_METRIC_EXPORT_INTERVAL", "OTEL_METRIC_EXPORT_TIMEOUT",
         "OTEL_BSP_SCHEDULE_DELAY", "OTEL_BSP_EXPORT_TIMEOUT", "OTEL_BLRP_SCHEDULE_DELAY", "OTEL_BLRP_EXPORT_TIMEOUT",
     ];
@@ -78,8 +77,21 @@ internal static class ServerTelemetry
         builder.Configuration.AddInMemoryCollection(Copied(getEnv));
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => Describe(resource, getEnv))
-            .WithTracing(tracing => tracing.AddSource(SourceName).AddOtlpExporter())
-            .WithMetrics(metrics => metrics.AddMeter(SourceName).AddRuntimeInstrumentation().AddOtlpExporter()); // Package 147
+            .WithTracing(tracing => tracing.AddSource(SourceName).AddOtlpExporter(options => ForSignal(options, getEnv, "TRACES")))
+            .WithMetrics(metrics => metrics.AddMeter(SourceName).AddRuntimeInstrumentation() // Package 147
+                .AddOtlpExporter(options => ForSignal(options, getEnv, "METRICS")));
+    }
+
+    /// <summary>
+    /// Package 150 (A155): OTEL_EXPORTER_OTLP_{signal}_ENDPOINT and _PROTOCOL for one signal, the endpoint used as given (no
+    /// path added), as the specification says; without them the base variables apply. ponytail: no per-signal headers,
+    /// add them when a backend needs other credentials per signal.
+    /// </summary>
+    static void ForSignal(OtlpExporterOptions options, Func<string, string?> getEnv, string signal)
+    {
+        if (getEnv($"OTEL_EXPORTER_OTLP_{signal}_ENDPOINT") is { Length: > 0 } endpoint) options.Endpoint = new Uri(endpoint);
+        if (getEnv($"OTEL_EXPORTER_OTLP_{signal}_PROTOCOL") is { Length: > 0 } protocol)
+            options.Protocol = protocol == "grpc" ? OtlpExportProtocol.Grpc : OtlpExportProtocol.HttpProtobuf;
     }
 
     /// <summary>
@@ -95,7 +107,7 @@ internal static class ServerTelemetry
         {
             options.IncludeFormattedMessage = true;
             options.SetResourceBuilder(Describe(ResourceBuilder.CreateDefault(), getEnv));
-            options.AddOtlpExporter();
+            options.AddOtlpExporter(exporter => ForSignal(exporter, getEnv, "LOGS"));
         });
         builder.AddFilter<OpenTelemetryLoggerProvider>((category, _) => category == LogFileLoggerProvider.ServerCategory);
     }

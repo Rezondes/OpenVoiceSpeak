@@ -16,8 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["ObservabilityComposeTests > \"Compose_MountedConfigFiles_Exist\""] =
-            "planned: Package 150 is only planned",
     };
 
     /// <summary>N20: checked criteria no test can check and without a manual marker, each with the reason.</summary>

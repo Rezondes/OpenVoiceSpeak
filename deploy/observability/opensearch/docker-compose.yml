@@ -1,0 +1,70 @@
+# OpenVoiceSpeak server with OpenSearch: OpenSearch, OpenSearch Dashboards and Data Prepper, which takes OTLP over gRPC
+# (one port per signal) and writes traces, metrics and logs to OpenSearch.
+#   docker compose up -d --build      then OpenSearch Dashboards at http://localhost:5601 (Observability, Trace analytics, Discover)
+#   docker compose down -v            stops it and removes its data
+# LOCAL EXAMPLE ONLY: the security plugin is switched off (no password, no TLS). Before you expose it, switch it on with
+# OPENSEARCH_INITIAL_ADMIN_PASSWORD and give Dashboards and Data Prepper credentials. OpenSearch takes about 2 GB of RAM;
+# on Linux the host needs vm.max_map_count of at least 262144 (sudo sysctl -w vm.max_map_count=262144).
+# ovs-server is built from this checkout; for a release image with telemetry use
+#   image: ghcr.io/rezondes/openvoicespeak-server:<version>   and remove the build line.
+services:
+  ovs-server:
+    build: ../../..
+    image: openvoicespeak/server:local
+    restart: unless-stopped
+    ports:
+      - "7000:7000/tcp"
+      - "7000:7000/udp"
+    environment:
+      OVS_SERVER_NAME: "Mein Server"
+      TZ: "Europe/Berlin"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://data-prepper:21890"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://data-prepper:21890"
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://data-prepper:21891"
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: "http://data-prepper:21892"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+    volumes:
+      - ovs-data:/data
+    depends_on:
+      - data-prepper
+
+  opensearch:
+    image: opensearchproject/opensearch:3.9.0
+    restart: unless-stopped
+    environment:
+      discovery.type: "single-node"
+      DISABLE_SECURITY_PLUGIN: "true" # local example, see the note at the top
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      retries: 30
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:3.9.0
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  data-prepper:
+    image: opensearchproject/data-prepper:2.16.0
+    restart: unless-stopped
+    volumes:
+      - ./pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml:ro
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+volumes:
+  ovs-data:
+  opensearch-data:
