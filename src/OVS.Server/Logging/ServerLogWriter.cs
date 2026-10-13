@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using OVS.Shared.Logging;
 
 namespace OVS.Server.Logging;
@@ -6,11 +7,13 @@ namespace OVS.Server.Logging;
 /// Server log (console and logs/server/&lt;start&gt;.log) plus one log per channel (logs/channels/&lt;id&gt;/&lt;start&gt;.log),
 /// a new file per server start and optionally per day, see LogFileWriter.
 /// A failing disk never takes the server down: the first write error is reported on the console.
+/// Step 30d3: the lines go through <see cref="LogFileLoggerProvider"/>; Step 31 turns each call into a logger message.
 /// </summary>
 public sealed class ServerLogWriter
 {
     readonly LogFileWriter files;
-    readonly Action<string> console;
+    readonly LogFileLoggerProvider provider;
+    readonly ILogger server;
 
     /// <param name="keepDays">0 keeps every file.</param>
     /// <param name="newFileEachDay">False keeps the files of this run until the next start.</param>
@@ -20,7 +23,8 @@ public sealed class ServerLogWriter
     public ServerLogWriter(string dataDir, int keepDays, TimeProvider time, Action<string> console, bool newFileEachDay = true)
     {
         files = new LogFileWriter(Path.Combine(dataDir, "logs"), keepDays, time, console, newFileEachDay);
-        this.console = console;
+        provider = new LogFileLoggerProvider(files, console);
+        server = provider.CreateLogger(LogFileLoggerProvider.ServerCategory);
     }
 
     /// <summary>Package 69: retention and daily files come from the administration and change at runtime.</summary>
@@ -31,12 +35,12 @@ public sealed class ServerLogWriter
     /// <param name="toConsole">False for lines that only belong in the file.</param>
     public void WriteServerLine(string text, bool toFile = true, bool toConsole = true)
     {
-        var line = LogFileWriter.EscapeToOneLine($"{files.FormatNow()} {text}"); // Package 90: the console (docker logs) gets the escaped line too
-        if (toConsole) console(line);
-        if (toFile) files.Append("server", "", line);
+        if (!toFile && !toConsole) return;
+        var target = !toConsole ? LogFileLoggerProvider.FileOnly : !toFile ? LogFileLoggerProvider.ConsoleOnly : default;
+        server.Log(LogLevel.Information, target, text, null, (line, _) => line);
     }
 
     /// <summary>The folder is named by id, so renaming a channel keeps its history together.</summary>
     public void WriteChannelLine(Guid channelId, string channelName, string text) =>
-        files.Append(Path.Combine("channels", channelId.ToString()), "", $"{files.FormatNow()} [{channelName}] {text}");
+        provider.CreateLogger(LogFileLoggerProvider.ChannelCategory(channelId)).Log(LogLevel.Information, default, $"[{channelName}] {text}", null, (line, _) => line);
 }
