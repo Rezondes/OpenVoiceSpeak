@@ -35,6 +35,8 @@
 > **Packages 119 to 125:** one package per point of the request, in its order, except that the two key bugs share one cause: key bindings edited on the settings page only reach the key poller on Save. 121 (self test) fixes that, so 125 (push-to-mute) needs 121. 122 (many users) and 124 (idle CPU and RAM) are cut by cost: 122 is what every server message and every speaking user costs in the UI, 124 is what runs while nothing happens. 123 (voice filters) and 124 both change `CapturePipeline`, so 124 comes after 123. 119, 120, 121, 122 and 123 can run in parallel. (Packages 116 to 118, the website, were planned in a separate file; their assumptions are A124 to A127.)
 >
 > **Packages 126 to 142 (voice like Fluxer):** the request "plan every difference between Fluxer and OVS so that OVS voice comes as close to Fluxer as possible" followed an analysis of Fluxer (the `fluxerapp/fluxer` web and desktop app with its LiveKit setup, and `fluxerapp/flutter_client`). Fluxer runs the LiveKit SFU over WebRTC; OVS keeps its own UDP stack (A134), so each package rebuilds one thing Fluxer gets from WebRTC, LiveKit or its own client code. The order follows the dependencies, not the order of the findings: 126 (a lost UDP Hello leaves a session without voice, a bug found on the way) comes first; 127 (louder senders) adds the settings migration that 128 and 129 use; 133 (real connection stats) provides the measurements 134, 135 and 136 need; 139 (auto-reconnect) and 141 (voice over TCP) build on 126; 142 (music mode) comes last. 126, 127, 130, 131, 132, 137 and 138 can start at once. Fluxer features outside voice transmission are not planned (A152).
+>
+> **Packages 143 to 150 (error ID and observability):** the request "find a user's error in the server log, and optionally send the server's telemetry to a backend" was cut at the user's request: 143 (error ID) comes first and works without any backend; 144 puts the server's loggers into the run's container; 145 adds OpenTelemetry, strictly opt-in through `OTEL_EXPORTER_OTLP_ENDPOINT`; 146 (traces), 147 (metrics) and 148 (server log over OTLP) build on it; 149 adds compose examples for Grafana LGTM, the Aspire Dashboard, Jaeger and Seq; 150 (Elastic, OpenSearch, Netdata) is only planned. The client exports nothing (the user's decision, A161). 143 and 144 can start at once; 146 needs 143 and 145; 147, 148 and 149 need 145.
 
 ## Überblick
 
@@ -179,6 +181,14 @@
 | 140 | Echo cancellation | Users on speakers can use voice activation without the others hearing themselves. | 127 |
 | 141 | Voice over TCP | Voice works on networks that block UDP, over the existing TLS connection. | 126 |
 | 142 | Music mode | A sender can switch to a music mode that sends stereo without voice filters. | 132, 140 |
+| 143 | Error ID | Every unexpected server error has an ID that the client shows with a copy button wherever it shows the error, and that the server log holds with the full stack trace. | - |
+| 144 | Server logging in the container | The server's loggers come from one logger factory per run that the run's container holds, so further logger providers can be added, while the log files stay byte for byte as they are. | - |
+| 145 | OpenTelemetry skeleton | With `OTEL_EXPORTER_OTLP_ENDPOINT` set the server exports over OTLP as service `ovs-server` with its build version; without it OpenTelemetry stays off and the server runs exactly as today. | 144 |
+| 146 | Traces | Every request and every handshake is a span with its type, result and the user's fingerprint, and an error's ID from Package 143 is its trace id. | 143, 145 |
+| 147 | Metrics | The server reports sessions, requests, voice traffic, outbox aborts, admission refusals, control traffic and chat volume as metrics, with the channel id as the only chat label. | 145 |
+| 148 | Server log over OTLP | With OpenTelemetry on, the server log lines (category `server`) go to the backend with the trace id of the span they were written in; channel logs and console-only lines never do. | 145 |
+| 149 | Compose examples for observability backends | For Grafana LGTM, the Aspire Dashboard, Jaeger and Seq a compose file under `deploy/observability/<tool>/` starts the OVS server together with that backend by copy and paste, with every backend image pinned. | 145 |
+| 150 | More compose examples (Elastic, OpenSearch, Netdata) | Elastic (Kibana with an EDOT collector and APM), OpenSearch Dashboards (with Data Prepper) and Netdata get compose examples like Package 149's. | 149 |
 
 ## Annahmen
 
@@ -345,6 +355,15 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A150 Voice over TCP (Package 141).** When UDP is still not reachable 5 s after connecting despite the Hello retries (126), or pings go unanswered for 15 s, voice goes over the TLS connection: new messages `VoiceUp(Seq, Target, Opus)` (client to server) and `VoiceDown(SessionId, Seq, Target, Opus)` (server to client), the Opus bytes as base64 in the JSON. The server relays to each recipient on that recipient's path (UDP or TCP), with the same routing and rights. The control channel limits (Package 86) get a separate voice budget (60 per second, burst 10, like UDP). UDP is tried again every 30 s and voice switches back when it answers. The ping text shows ", Sprache über TCP". The protocol version goes up by one.
 - **A151 Music mode (Package 142).** A setting "Übertragungsart": "Sprache" (today) or "Musik". Music turns echo cancellation, noise suppression and automatic gain off, captures in stereo without the downmix (a mono device stays mono), and encodes with Opus `AUDIO` and signal type music, in stereo when the channel's bitrate is at least 64 kbps (Fluxer's rule). In-band FEC is off in music mode, as Opus carries it only in its speech coder and would leave the music coder for it; lost music frames are covered by the redundant copies (Package 136) and the decoder's concealment. A stereo device whose signal comes on one input only (an instrument on a two-input interface) plays on both sides. Push-to-talk and voice activation work as before. Receivers decode and mix in stereo and open the output in stereo; a mono speaker plays on both sides. No protocol change: an Opus packet carries its channel count.
 - **A152 Not planned (Packages 126 to 142).** Fluxer features outside voice transmission or without a use in a single self-hosted server: several voice servers and regions, join confirmation through LiveKit webhooks, end-to-end encryption (Fluxer's room key is known to its own gateway; the OVS server decrypts as well, so nothing would change for users), entrance sounds, soundboard, AFK channel, DM calls, video and screen share, further noise suppression models (DeepFilterNet, GTCRN), native libopus (see Package 124). Speaking indicators stay packet based: OVS only sends while someone speaks, so they already match Fluxer's level-based rings.
+- **A153 Error ID (Package 143).** An unexpected exception in a request handler gets an ID of 32 lowercase hex characters (the W3C trace id format). The server answers `Error(RequestId, InvalidValue, ErrorId)` and logs the ID with the request type, the nickname and the exception with its stack trace on one line; refusals and malformed requests get no ID. From Package 146 on the ID is the trace id of the request's span when one is recorded, otherwise a random one. The client shows "Fehler-ID: <id>" with a "Kopieren" button wherever it shows the error. The admin finds it with the log search (Package 81). The protocol version goes up by one.
+- **A154 Logging in the container (Package 144).** Each run makes one `ILoggerFactory` before its host (so the start lines go through it too), with the file provider and the providers a run adds; the host uses that factory, and it is disposed after the host. The file provider keeps writing only the categories `server` and `channels/<id>`, so the files do not change.
+- **A155 OpenTelemetry opt-in (Package 145).** OpenTelemetry is on only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set and not empty; then traces, metrics and (from 148) logs go over OTLP with the standard variables (`OTEL_EXPORTER_OTLP_PROTOCOL`, `_HEADERS`, the per-signal endpoints, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` and the export intervals), copied from the environment into the run's configuration from a fixed list. `service.name` is `ovs-server`, `service.version` the build version. Packages: `OpenTelemetry`, `OpenTelemetry.Extensions.Hosting`, `OpenTelemetry.Exporter.OpenTelemetryProtocol` (1.19.1), from 147 `OpenTelemetry.Instrumentation.Runtime` (1.19.0). A failing backend never affects the server.
+- **A156 Traces (Package 146).** ActivitySource `OVS.Server`: one span per request (`request <Type>`) and one per handshake, with the request type, the result code and the session's fingerprint; never the nickname or a text. No spans on the voice path.
+- **A157 Metrics (Package 147).** Meter `OVS.Server`, made through the run's `IMeterFactory`: sessions online, requests by type and result, voice packets, bytes and drops, outbox aborts, admission refusals, control frames and bytes per message type and direction, chat messages (counter) and their size in UTF-8 bytes (histogram). Chat metrics carry only the channel id, and only for channel messages; server and private messages are counted without a label (the user's decision). Plus the .NET runtime metrics.
+- **A158 Logs over OTLP (Package 148).** Only the server log (category `server`) is exported, with the trace context of the span it is written in; channel logs never (the user's decision), nor any `ConsoleOnly` line such as the admin token.
+- **A159 Compose examples (Package 149).** `deploy/observability/<tool>/docker-compose.yml` for `grafana-lgtm`, `aspire-dashboard`, `jaeger` and `seq`, each with `ovs-server` and the backend, plus one shared README. Backend images carry a fixed version. `ovs-server` is built from the checkout (`build` at the repository root, image `openvoicespeak/server:local`), since only images after this work export anything; a comment shows how to use a release image with its version tag instead. The default `docker-compose.yml` stays without a backend.
+- **A160 More backends (Package 150, planned only).** Elastic (Elasticsearch, Kibana, the EDOT collector), OpenSearch (with OpenSearch Dashboards and Data Prepper) and Netdata (metrics and logs, no traces); no Graylog (the user's decision).
+- **A161 No client telemetry (Packages 143 to 150).** The client exports nothing; everything a backend needs is on the server, which logs every request (the user's decision).
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -8359,3 +8378,402 @@ Test command: `dotnet test tests/OVS.Tests`
 
 - Stereo for speech (voice mode stays mono, like Fluxer's default)
 - Sending system audio or a second input
+
+---
+
+## Package 143: Error ID
+
+**Goal:** Every unexpected server error has an ID that the client shows with a copy button wherever it shows the error, and that the server log holds with the full stack trace.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages/Connection/Error.cs` (change): `Error(RequestId, Code, Detail = null, ErrorId = null)` (A153)
+- `src/OVS.Shared/Protocol/WireProtocol.cs` (change): `Version` 15 to 16, history ", 16: error id (143)"
+- `src/OVS.Shared/Logging/LogFileLoggerProvider.cs` (change): a line logged with an exception gets the exception's text (type, message, stack trace) after the message, escaped to one line like every line (Package 90)
+- `src/OVS.Server/ErrorIds.cs` (new): `ErrorIds.New()`, 32 lowercase hex characters in the W3C trace id format
+- `src/OVS.Server/Logging/ServerLogLines.cs` (change): `RequestFailed(request, nickname, errorId, exception)`
+- `src/OVS.Server/State/ServerState.cs` (change): the catch in `Handle` (line 215) logs with the ID and the exception and answers `InvalidValue` with the ID
+- `src/OVS.Client/Models/Notice.cs`, `Models/ChatEntry.cs`, `ViewModels/PendingActionViewModel.cs`, `ViewModels/ServerViewModel.cs` and the chat feed's `TryRefuse` (change): the error's ID travels with its text
+- `src/OVS.Client/Views/ErrorIdView.axaml` (new): "Fehler-ID: <id>" and a button "Kopieren", used by `ChatView.axaml` for error entries and by every view that shows a pending action's error
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `CopyText`, set by `MainWindow` to the window's clipboard
+- `src/OVS.Client/Logging/ProtocolLogText.cs` (change): the client log line of an error names the ID
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Server/State/RequestValidationTests.cs`, `Shared/Logging/LogFileLoggerProviderTests.cs`, `Shared/Protocol/WireFreezeTests.cs`, `Server/Logging/LogReaderTests.cs`, `Client/ViewModels/ServerViewModelTests.cs`, `SmokeTests.cs`, `Client/Net/ClientNetTests.cs` (change), `Client/Views/ErrorIdViewTests.cs` (new)
+
+### Context
+
+Today an exception in a request handler is logged as type name and message only (`ServerState.Handle`, `ServerLogLines.RequestFailed`), and the client gets a bare `InvalidValue` without any reference, so a user who reports "it said invalid value" gives the admin nothing to search for. The admin already has the log search of Package 81. An ID in the answer and in the log line connects the two without any backend (the user's decision); from Package 146 on the ID is the request span's trace id, so the same ID also finds the trace (A153).
+
+### Acceptance Criteria
+
+- [ ] AC1: A handler that throws answers `Error(RequestId, InvalidValue, ErrorId: id)` with a 32-character lowercase hex `id`, different for every failure.
+- [ ] AC2: The server log line of that failure holds the ID, the request type, the nickname, the exception type, its message and its stack trace, on one line.
+- [ ] AC3: Errors the server sends on purpose (a refusal, a malformed request) carry no ID; lines logged without an exception are byte-identical to before.
+- [ ] AC4: The log search (Package 81) finds the line by the ID.
+- [ ] AC5: The client shows "Fehler-ID: <id>" with a button "Kopieren" ("Error ID", "Copy") at every place an `Error` is shown today: the notice in the chat, a pending action's error, a refused chat message; the button puts exactly the ID on the clipboard. Without an ID nothing changes.
+- [ ] AC6: The client log line of the error names the ID.
+- [ ] AC7: The protocol version is 16.
+
+### Tests (TDD)
+
+1. `RequestValidationTests > "Handler_Throws_AnsweredWithErrorIdAndLoggedWithStackTrace"` (AC1, AC2)
+   - Given: `BeforeRequest` throws for two `CreateChannel` requests.
+   - Expected: two `InvalidValue` errors with different 32-hex IDs; each ID is in exactly one log line, which also holds "CreateChannel", the nickname, "InvalidOperationException", the message and a stack frame ("at ").
+2. `RequestValidationTests > "Refusal_NoErrorId"` (AC3): a request without the right and a malformed frame are answered without an ID.
+3. `LogFileLoggerProviderTests > "Exception_AppendedOnOneLine_OtherLinesUnchanged"` (AC2, AC3)
+   - Given: one line with an exception whose stack trace spans lines, one without.
+   - Expected: the first is one line with the escaped trace; the second equals the line written before this package.
+4. `LogReaderTests > "Search_ErrorId_FindsTheLine"` (AC4)
+5. `ServerViewModelTests > "Error_WithErrorId_NoticePendingAndChatCarryIt"` (AC5)
+6. `ErrorIdViewTests > "Copy_PutsTheIdOnTheClipboard"` (AC5): the rendered view shows the ID; clicking "Kopieren" calls `CopyText` with the ID only; an entry without an ID shows no view.
+7. `ServerViewModelTests > "Error_WithErrorId_LoggedWithIt"` (AC6)
+8. `SmokeTests`, `ClientNetTests` and `WireFreezeTests` pin version 16 and the field (AC7)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 to 4 (red): the field, the ID, the log line and the exception text in the file logger.
+2. Tests 5 to 7 (red): the client carries and shows the ID.
+3. Test 8: the version.
+
+### Out of Scope
+
+- Traces (Package 146 makes the ID the trace id)
+- IDs for failures that send no `Error` (a dropped voice packet, a broken connection)
+
+---
+
+## Package 144: Server logging in the container
+
+**Goal:** The server's loggers come from one logger factory per run that the run's container holds, so further logger providers can be added, while the log files stay byte for byte as they are.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Server/ServerHost.cs` (change): `RunOnceAsync` builds the run's `ILoggerFactory` (the file provider plus whatever `configureLogging` adds), `BuildRun` registers it as the container's `ILoggerFactory`; the factory is disposed after the host
+- `src/OVS.Server/Logging/ServerLogWriter.cs` (change): takes the factory; `Server` and `Channel` loggers come from it
+- `src/OVS.Shared/Logging/LogFileLoggerProvider.cs` (unchanged behaviour): other categories still write nothing
+- `tests/OVS.Tests/Server/ServerHostTests.cs`, `Server/Logging/ServerLogWriterTests.cs` (change)
+
+### Context
+
+`ServerLogWriter` makes its loggers straight from `LogFileLoggerProvider` (`ServerLogWriter.cs`), outside the Generic Host of the run (`ServerHost.BuildRun`, Step 30d2), so no second provider can ever see a line. Package 148 needs exactly that for OTLP. The lines logged before the host exists (start, version, config errors) must reach the same factory, so the factory is made first and the host uses it (A154).
+
+### Acceptance Criteria
+
+- [ ] AC1: A provider added through `configureLogging` gets every server log line of a run, including the start and version lines, with category `server`, and every channel line with its channel category.
+- [ ] AC2: The files of a run with an extra provider are byte-identical to those of the same run without it.
+- [ ] AC3: Framework categories (the host's own) still reach no file.
+- [ ] AC4: A restart in the same process makes a new factory; the old one is disposed once, after its host.
+
+### Tests (TDD)
+
+1. `ServerHostTests > "Run_ExtraProvider_GetsServerAndChannelLines"` (AC1)
+   - Given: a run with a recording provider, one channel chat line, then a stop.
+   - Expected: the recorder holds the start line, the version line and the chat line under `server` and `channels/<id>`.
+2. `ServerHostTests > "Run_ExtraProvider_FilesByteIdentical"` (AC2): the same run on a fake clock twice, with and without the recorder.
+3. `ServerLogWriterTests > "ForeignCategory_NoFile"` (AC3)
+4. `ServerHostTests > "Restart_NewFactory_OldDisposedOnce"` (AC4)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 3 (red): the factory and the writer.
+2. Tests 2 and 4 (red): byte equality and the restart.
+
+### Out of Scope
+
+- Any provider beyond the file logger (Package 148)
+- Changing a log line's text
+
+---
+
+## Package 145: OpenTelemetry skeleton
+
+**Goal:** With `OTEL_EXPORTER_OTLP_ENDPOINT` set the server exports over OTLP as service `ovs-server` with its build version; without it OpenTelemetry stays off and the server runs exactly as today.
+
+**Dependencies:** Package 144
+
+**Affected files:**
+- `src/OVS.Server/OVS.Server.csproj` (change): `OpenTelemetry`, `OpenTelemetry.Extensions.Hosting`, `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.19.1 (A155)
+- `src/OVS.Server/ServerTelemetry.cs` (new): `IsOn(getEnv)`, the copied `OTEL_*` variables, and `Add(services, getEnv)` with the resource (`service.name` `ovs-server` unless `OTEL_SERVICE_NAME` says otherwise, `service.version` = `BuildInfo.Current.Version`) and OTLP exporters for traces and metrics
+- `src/OVS.Server/ServerHost.cs` (change): `BuildRun` calls it; the variables go into the run's configuration
+- `Dockerfile`, `docker-compose.yml` (change): the `OTEL_*` variables documented as comments
+- `README.md` (change): a short section on the opt-in
+- `tests/OVS.Tests/Server/ServerTelemetryTests.cs` (new), `TestSupport/OtlpReceiver.cs` (new): a minimal OTLP/HTTP receiver on localhost that counts and keeps the posted bodies
+
+### Context
+
+The server has no telemetry beyond its files. The user wants an optional backend (Grafana, Aspire, Jaeger, Seq, later more) without any change for those who do not run one (the user's decision), and no client export (the user's decision, A161). The Generic Host of each run (Step 30d2) is where the OpenTelemetry SDK registers its providers, and disposing the host flushes and ends them, which is what a restart in the same process (`ServerHost.RunAsync`) needs. The host is built with `CreateEmptyApplicationBuilder`, whose configuration does not read the environment, and the server reads variables through the injected `getEnv`, so the standard `OTEL_*` variables are copied into the run's configuration from a fixed list.
+
+### Acceptance Criteria
+
+- [ ] AC1: Without `OTEL_EXPORTER_OTLP_ENDPOINT` (or with it empty) no tracer or meter provider exists and no OpenTelemetry package code runs.
+- [ ] AC2: With it, the resource carries `service.name` `ovs-server` and `service.version` of `BuildInfo.Current`; `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` apply.
+- [ ] AC3: A span of the server's source reaches a receiver at that endpoint (`OTEL_EXPORTER_OTLP_PROTOCOL` `http/protobuf` and `grpc` both work).
+- [ ] AC4: Two runs in one process (a restart) export each span exactly once; after a run's end its providers are disposed and flushed, and the source has no listener left.
+- [ ] AC5: An unreachable endpoint never stops or slows the server: requests are answered as without it.
+- [ ] AC6: `Dockerfile` and `docker-compose.yml` name the variables in comments; the default compose file starts no backend.
+
+### Tests (TDD)
+
+1. `ServerTelemetryTests > "NoEndpoint_NoProviders"` (AC1)
+2. `ServerTelemetryTests > "Endpoint_ResourceNamesServiceAndVersion"` (AC2)
+3. `ServerTelemetryTests > "Span_ReachesTheReceiver"` (AC3): both protocols against `OtlpReceiver`.
+4. `ServerTelemetryTests > "Restart_EachSpanOnce_ProvidersDisposed"` (AC4)
+   - Given: a run that makes one span, a restart, a run that makes another.
+   - Expected: the receiver holds each span once; after the second run's end `HasListeners` of the source is false.
+5. `ServerTelemetryTests > "EndpointDown_RequestsStillAnswered"` (AC5): a closed port, then a request answered within its usual time.
+6. `ServerTelemetryTests > "Dockerfile_AndCompose_DocumentTheVariables"` (AC6)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 2 (red): the packages, the switch and the resource.
+2. Tests 3 to 5 (red): the receiver, the export and the restart.
+3. Test 6: the docs.
+
+### Out of Scope
+
+- What is exported (Packages 146 to 148)
+- Any backend in the default compose file (Package 149 has the examples)
+
+---
+
+## Package 146: Traces
+
+**Goal:** Every request and every handshake is a span with its type, result and the user's fingerprint, and an error's ID from Package 143 is its trace id.
+
+**Dependencies:** Package 143, Package 145
+
+**Affected files:**
+- `src/OVS.Server/ServerTelemetry.cs` (change): `ActivitySource` "OVS.Server" with the build version, added to the tracing setup
+- `src/OVS.Server/State/ServerState.cs` (change): `Handle` starts a span `request <Type>` with `ovs.request.type`, `ovs.session.fingerprint` and `ovs.result.code` (`ok` or the error code); an exception is recorded on the span and sets its status to error
+- `src/OVS.Server/ErrorIds.cs` (change): the current span's trace id when one is recorded, a new random ID otherwise
+- `src/OVS.Server/ControlServer.cs` (change): a span `handshake` around `HandshakeAsync` with the fingerprint once known and the rejection code if any
+- `tests/OVS.Tests/Server/ServerTracingTests.cs` (new)
+
+### Context
+
+With OpenTelemetry on (145) nothing is traced yet. A span per request shows what the server did and how long it took; the handshake is where connection problems show. The voice path stays without spans (60 packets per second per speaker), it gets metrics in 147. The user decided: the fingerprint identifies the user in a span, the nickname never does (A156). `ServerState.Handle` runs under the state lock, so the span also shows lock time.
+
+### Acceptance Criteria
+
+- [ ] AC1: Each handled request makes exactly one span named `request <Type>` with `ovs.request.type`, `ovs.session.fingerprint` and `ovs.result.code` (`ok` when no `Error` was sent, otherwise its code); no tag or event holds the nickname or any request text.
+- [ ] AC2: A handler exception sets the span's status to error and records the exception; the `ErrorId` of the answer and the log line equals the span's trace id.
+- [ ] AC3: A handshake makes one span `handshake` with the fingerprint after a valid proof and `ovs.result.code` (`ok` or the rejection code).
+- [ ] AC4: Voice packets over UDP and TCP make no span.
+- [ ] AC5: Without a listener (OpenTelemetry off) no span object is made and the error ID is random as in 143.
+
+### Tests (TDD)
+
+1. `ServerTracingTests > "Request_OneSpan_TypeCodeFingerprintNoNickname"` (AC1): an allowed and a refused request, spans caught with an `ActivityListener` filtered by the fingerprint.
+2. `ServerTracingTests > "Request_Throws_SpanFailsAndErrorIdIsTraceId"` (AC2)
+3. `ServerTracingTests > "Handshake_OneSpan_WithFingerprintOrRejection"` (AC3): an accepted and a wrong-password handshake.
+4. `ServerTracingTests > "Voice_NoSpans"` (AC4)
+5. `ServerTracingTests > "NoListener_NoSpan_RandomErrorId"` (AC5)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 2 (red): the source and the request span.
+2. Test 3 (red): the handshake span.
+3. Tests 4 and 5.
+
+### Out of Scope
+
+- Spans per voice packet or per outbox write
+- Propagating a trace context from the client (no client telemetry, A161)
+
+---
+
+## Package 147: Metrics
+
+**Goal:** The server reports sessions, requests, voice traffic, outbox aborts, admission refusals, control traffic and chat volume as metrics, with the channel id as the only chat label.
+
+**Dependencies:** Package 145
+
+**Affected files:**
+- `src/OVS.Server/OVS.Server.csproj` (change): `OpenTelemetry.Instrumentation.Runtime` 1.19.0
+- `src/OVS.Server/ServerMetrics.cs` (new): the `Meter` "OVS.Server" made through the container's `IMeterFactory` and its instruments (A157)
+- `src/OVS.Server/ServerTelemetry.cs`, `ServerHost.cs` (change): the meter and the runtime instrumentation in the metrics setup; `ServerMetrics` in the container
+- `src/OVS.Server/State/ServerState.cs`, `ServerState.Chat.cs`, `ServerState.Connections.cs` (change): requests, chat and admission counted
+- `src/OVS.Server/Voice/UdpVoiceServer.cs` (change): voice packets and bytes in and out, drops by reason
+- `src/OVS.Server/SessionOutbox.cs`, `ControlServer.cs` (change): aborts by reason; control frames and bytes per message type and direction
+- `tests/OVS.Tests/Server/ServerMetricsTests.cs` (new)
+
+### Context
+
+Counts that exist today (`UdpVoiceServer.ForeignSourceDrops`, `PreFilterDrops`) are only read by tests. An admin with a backend wants to see load and trouble over time. The user decided: chat contents never leave the server, but the number and size of messages may, labelled by channel id only, never by text or sender. A meter made through `IMeterFactory` belongs to its run's container, so a restart does not double instruments and parallel tests can tell their servers apart.
+
+### Acceptance Criteria
+
+- [ ] AC1: `ovs.sessions` reports the sessions online.
+- [ ] AC2: `ovs.requests` counts each handled request with `ovs.request.type` and `ovs.result.code` (`ok` or the error code).
+- [ ] AC3: `ovs.voice.packets` and `ovs.voice.bytes` count voice in and out (`ovs.direction` `in`/`out`, `ovs.voice.path` `udp`/`tcp`); `ovs.voice.drops` counts dropped packets with `ovs.drop.reason` (`foreign_source`, `pre_filter`, `budget`, `invalid`).
+- [ ] AC4: `ovs.outbox.aborts` counts aborted sessions with `ovs.abort.reason`; `ovs.admission.rejections` counts refused hellos with `ovs.result.code`.
+- [ ] AC5: `ovs.control.frames` and `ovs.control.bytes` count control traffic per `ovs.message.type` and `ovs.direction`.
+- [ ] AC6: `ovs.chat.messages` (counter) and `ovs.chat.message.size` (histogram, UTF-8 bytes) count every delivered chat message; channel messages carry `ovs.channel.id`, server and private messages carry no label at all; no instrument has a text, nickname or fingerprint label.
+- [ ] AC7: With OpenTelemetry on, the runtime metrics are exported too; with it off no meter is listened to and counting allocates nothing per voice packet.
+
+### Tests (TDD)
+
+1. `ServerMetricsTests > "Sessions_JoinAndLeave_Reported"` (AC1)
+2. `ServerMetricsTests > "Requests_CountedByTypeAndCode"` (AC2)
+3. `ServerMetricsTests > "Voice_InOutAndDrops_Counted"` (AC3): a relayed UDP packet, a TCP `VoiceUp`, a packet from a foreign source and one over the budget.
+4. `ServerMetricsTests > "OutboxAbortAndRejection_Counted"` (AC4)
+5. `ServerMetricsTests > "ControlTraffic_FramesAndBytesPerType"` (AC5)
+6. `ServerMetricsTests > "Chat_CountAndSize_OnlyChannelLabel"` (AC6)
+   - Given: a channel message "hallo" and a server message "äöü".
+   - Expected: count 1 with `ovs.channel.id` = the channel, size 5; count 1 without labels, size 6; no tag value equals a text, nickname or fingerprint.
+7. `ServerMetricsTests > "RuntimeMetrics_ExportedWhenOn"`, `"Voice_NoListener_NoAllocation"` (AC7)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 2 (red): the meter and the request counter.
+2. Tests 3 to 5 (red): voice, outbox, admission, control traffic.
+3. Tests 6 and 7 (red): chat and runtime metrics.
+
+### Out of Scope
+
+- Per-user metrics (no fingerprint label)
+- Client metrics (A161)
+
+---
+
+## Package 148: Server log over OTLP
+
+**Goal:** With OpenTelemetry on, the server log lines (category `server`) go to the backend with the trace id of the span they were written in; channel logs and console-only lines never do.
+
+**Dependencies:** Package 145 (and 144 for the logger factory)
+
+**Affected files:**
+- `src/OVS.Server/ServerTelemetry.cs` (change): `AddLogging(ILoggingBuilder, getEnv)` adds the OpenTelemetry logger provider with the OTLP exporter and the same resource, wrapped so it only sees category `server` and never an event named `ConsoleOnly`
+- `src/OVS.Server/ServerHost.cs` (change): the run's logger factory calls it
+- `tests/OVS.Tests/Server/ServerTelemetryTests.cs` (change)
+
+### Context
+
+The backend is meant for the server log; channel logs hold who said what in which channel and stay in their files (the user's decision, A158). The admin token line (`ServerLogLines.AdminToken`, event `ConsoleOnly`) must never leave the console, so the wrapper drops that event as the file logger does. A request's log line written inside its span (146) carries that span's trace id, so the backend links the line, the trace and the error ID of 143.
+
+### Acceptance Criteria
+
+- [ ] AC1: With OpenTelemetry on, every server log line reaches the receiver with its formatted text and level.
+- [ ] AC2: A line written inside a request span carries that span's trace id and span id.
+- [ ] AC3: Channel log lines and `ConsoleOnly` lines (the admin token) never reach it.
+- [ ] AC4: Without the endpoint no logger provider is added (the factory holds only the file provider), and the files stay byte-identical in both cases (Package 144 AC2).
+
+### Tests (TDD)
+
+1. `ServerTelemetryTests > "Log_ServerLine_ReachesTheReceiver"` (AC1)
+2. `ServerTelemetryTests > "Log_InRequestSpan_CarriesTraceId"` (AC2): the line of a failing request holds the trace id that is also its error ID.
+3. `ServerTelemetryTests > "Log_ChannelAndAdminToken_NeverExported"` (AC3)
+4. `ServerTelemetryTests > "Log_Off_OnlyTheFileProvider"` (AC4)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 4 (red): the provider and its switch.
+2. Tests 2 and 3 (red): correlation and the filter.
+
+### Out of Scope
+
+- Channel logs in the backend (the user's decision)
+- Shipping old log files
+
+---
+
+## Package 149: Compose examples for observability backends
+
+**Goal:** For Grafana LGTM, the Aspire Dashboard, Jaeger and Seq a compose file under `deploy/observability/<tool>/` starts the OVS server together with that backend by copy and paste, with every backend image pinned.
+
+**Dependencies:** Package 145 (the examples show what 146 to 148 export once they are in)
+
+**Affected files:**
+- `deploy/observability/grafana-lgtm/docker-compose.yml`, `deploy/observability/aspire-dashboard/docker-compose.yml`, `deploy/observability/jaeger/docker-compose.yml`, `deploy/observability/seq/docker-compose.yml` (new): `ovs-server` plus the backend (A159)
+- `deploy/observability/README.md` (new): one shared README: what each backend shows (traces, metrics, logs), its UI address, the start and stop commands
+- `README.md` (change): a pointer to it
+- `tests/OVS.Tests/Server/ObservabilityComposeTests.cs` (new)
+
+### Context
+
+The user decided: the default `docker-compose.yml` stays as it is, the server without a backend is the normal case. Whoever wants a backend copies one folder and runs `docker compose up -d`. The four tools cover the common choices: Grafana's all-in-one LGTM image (Loki, Grafana, Tempo and Prometheus behind a collector, all three signals), the Aspire Dashboard (all three signals, kept in memory), Jaeger v2 (traces) and Seq (logs and traces). Pinned versions as of writing: `grafana/otel-lgtm:0.36.0`, `mcr.microsoft.com/dotnet/aspire-dashboard:13.6.1`, `jaegertracing/jaeger:2.22.0`, `datalust/seq:2026.1.17182`. A backend that does not take one signal answers its export with an error, which the SDK only reports in its own diagnostics.
+
+### Acceptance Criteria
+
+- [ ] AC1: Each of the four files defines `ovs-server` and the backend, with the OVS ports (7000 TCP and UDP) and the backend's UI port published, and `OTEL_EXPORTER_OTLP_ENDPOINT` (with `OTEL_EXPORTER_OTLP_PROTOCOL` where the backend needs `http/protobuf`) pointing at a service of the same file.
+- [ ] AC2: Every image that is not built from the checkout has a fixed version tag (no tag, `latest` or a floating major tag fails).
+- [ ] AC3: The README names each backend's UI address and what it shows, and how to start and stop it.
+- [ ] AC4 (manuell): Each file starts with `docker compose up -d`, the server log shows its listening line, and the backend's UI shows the server's traces (and, where the backend takes them, metrics and logs) after a client connected and sent a request; recorded in the package notes.
+
+### Tests (TDD)
+
+1. `ObservabilityComposeTests > "Compose_EndpointPointsAtOwnService"` (AC1): the four files, read line by line (no YAML package), each with both services, the ports and an endpoint whose host is a service of the file.
+2. `ObservabilityComposeTests > "Compose_ImagesPinned"` (AC2)
+3. `ObservabilityComposeTests > "Readme_NamesEveryBackend"` (AC3)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 2 (red): the four files.
+2. Test 3: the README.
+3. Manual check AC4 with `docker compose up -d` and `docker compose down -v` per folder.
+
+### Out of Scope
+
+- Elastic, OpenSearch and Netdata (Package 150)
+- Graylog (the user's decision)
+- Production hardening of the backends (TLS, authentication, retention)
+
+---
+
+## Package 150: More compose examples (Elastic, OpenSearch, Netdata)
+
+**Goal:** Elastic (Kibana with an EDOT collector and APM), OpenSearch Dashboards (with Data Prepper) and Netdata get compose examples like Package 149's.
+
+**Dependencies:** Package 149
+
+**Affected files:**
+- `deploy/observability/elastic/docker-compose.yml` (new): Elasticsearch, Kibana, the EDOT collector (Elastic's OpenTelemetry collector) that takes OTLP, and `ovs-server`
+- `deploy/observability/opensearch/docker-compose.yml` (new): OpenSearch, OpenSearch Dashboards, Data Prepper with its OTLP sources for traces, metrics and logs, and `ovs-server`
+- `deploy/observability/netdata/docker-compose.yml` (new): Netdata with its OTLP receiver for metrics and logs, and `ovs-server`
+- the config files each backend needs beside its compose file (collector or pipeline configuration)
+- `deploy/observability/README.md`, `tests/OVS.Tests/Server/ObservabilityComposeTests.cs` (change): the three folders join the README and the checks
+
+### Context
+
+The user decided on three more backends and leaves Graylog out. These need more than one container and config files beside the compose file: Elastic takes OTLP through its collector, OpenSearch through Data Prepper; both need a password and the kernel setting `vm.max_map_count` on Linux hosts. Netdata keeps no traces (A160). Only planned so far; the versions are pinned when it is built.
+
+### Acceptance Criteria
+
+- [ ] AC1: The three files pass the checks of Package 149 (endpoint at a service of the same file, every image pinned); config files they mount exist in their folder.
+- [ ] AC2: The README names each backend's UI address, what it shows, its password and the host settings it needs.
+- [ ] AC3 (manuell): Each starts with `docker compose up -d` and shows the server's data in its UI; recorded in the package notes.
+
+### Tests (TDD)
+
+1. `ObservabilityComposeTests > "Compose_EndpointPointsAtOwnService"`, `"Compose_ImagesPinned"` extended to the three folders (AC1)
+2. `ObservabilityComposeTests > "Compose_MountedConfigFilesExist"` (AC1)
+3. `ObservabilityComposeTests > "Readme_NamesEveryBackend"` extended (AC2)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 2 (red): the three folders with their configs.
+2. Test 3: the README.
+3. Manual check AC3.
+
+### Out of Scope
+
+- Graylog (the user's decision)
+- Production hardening of the backends
