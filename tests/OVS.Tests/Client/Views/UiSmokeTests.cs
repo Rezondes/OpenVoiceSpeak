@@ -93,7 +93,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
+            MotionWait.Pause(); // leaves the CPU to the timing tests running beside
         }
         // one frame after the 300 ms as well: under load a single frame can outlast the loop, and the fades it started
         // would still show their first step

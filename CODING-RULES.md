@@ -51,7 +51,7 @@ General rules for C# projects with an Avalonia UI: how the source is laid out an
 2. Every async method that does IO takes a `CancellationToken` as its last parameter and passes it on.
 3. No `async void` except event handlers.
 4. A lock is held as briefly as possible and never across an `await`. A new synchronisation scheme needs a comment that explains it and a test that proves it.
-5. **No `Thread.Sleep` with a non-zero argument** in production code. The only exceptions: (a) a deliberate block in a test or a throwaway script and (b) `Thread.Sleep(0)` to yield the CPU. A dedicated thread (audio, input, a log writer's retry) that must pause waits on a wait handle that stop and wake can end (`WaitHandle.WaitOne(timeout)` or `ManualResetEventSlim.Wait(timeout)`), so stopping never waits for a sleep to run out and its `Join` needs no timeout that exists only because a sleep cannot be woken; such a blocking wait is marked `// clock: real time`.
+5. **Never `Thread.Sleep`:** not in production code, not in tools, not in tests, also not `Thread.Sleep(0)` or a wait marked as real time. Code that must wait awaits (`Task.Delay(delay, timeProvider, token)`), arms a timer of the injected clock, or (a test on the UI thread) runs the dispatcher. A dedicated thread (audio, input, a log writer's retry) that must pause waits on a wait handle that stop and wake can end (`WaitHandle.WaitOne(timeout)` or `ManualResetEventSlim.Wait(timeout)`), so stopping never waits for a sleep to run out and its `Join` needs no timeout that exists only because a sleep cannot be woken; such a blocking wait is marked `// clock: real time`.
 6. **One injected clock:** every decision that depends on time reads the `TimeProvider` built in the composition roots (`Task.Delay(delay, timeProvider, token)`, `new PeriodicTimer(period, timeProvider)`, `timeProvider.CreateTimer(...)`). Any other use of a clock, timer or timed wait is marked at the end of its line with `// clock: <kind>`; the project file lists the kinds.
 
 | Need | Use |
@@ -99,7 +99,7 @@ Every review of new or changed code answers each point below for that change, na
 **Async (§Async and concurrency)**
 - Async all the way, a `CancellationToken` as the last parameter of every async method that does IO, no `async void` except event handlers?
 - No lock held across an `await`? A new synchronisation scheme is the KISS red flag.
-- No `Thread.Sleep` with a non-zero argument in production code; a dedicated thread waits on a wait handle marked `// clock: real time`?
+- No `Thread.Sleep` anywhere, not even in a test; a dedicated thread waits on a wait handle marked `// clock: real time`?
 
 **DRY (don't repeat yourself)**
 - Does the change copy logic that exists elsewhere (a shared helper or rule class the project file lists)? Use or extend the one place.

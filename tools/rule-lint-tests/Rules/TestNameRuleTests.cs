@@ -23,13 +23,9 @@ public sealed class TestNameRuleTests
     public void Check_TestsInAClassWithoutTestsSuffix_Warns() => Assert.Equal(["RL602"], ListRuleIds("[Fact] void Buy_EmptyCart_Fails() { }", "ShopFacts"));
 
     [Theory]
-    [InlineData("void Wait() { System.Threading.Thread.Sleep(50); }")]
     [InlineData("async System.Threading.Tasks.Task WaitAsync() { await Task.Delay(10); }")]
     [InlineData("void Read() { var now = DateTime.Now; }")]
     public void Check_FixedWaitOrWallClock_Warns(string member) => Assert.Equal(["RL603"], ListRuleIds(member));
-
-    [Fact]
-    public void Check_UiYield_FindsNothing() => Assert.Empty(ListRuleIds("void Poll() { System.Threading.Thread.Sleep(1); }"));
 
     [Fact]
     public void Check_ProductionCode_FindsNothing() =>

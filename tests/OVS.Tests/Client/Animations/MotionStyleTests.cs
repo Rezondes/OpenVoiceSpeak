@@ -271,7 +271,7 @@ public sealed class MotionStyleTests
             Dispatcher.UIThread.RunJobs();
             rings.Add($"{Transform(ring)} {ring.BoxShadow}");
             high = Math.Max(high, Transform(avatar).M11);
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         Assert.True(high > 1.03, $"the avatar breathes ({high})");
         Assert.Single(rings); // the ring with its glow never moved

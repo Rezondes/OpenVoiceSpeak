@@ -6,7 +6,7 @@ namespace RuleLint.Rules;
 /// <summary>
 /// The test rules, in test code: every test name has three parts <c>Subject_Condition_Outcome</c> (an error), a class
 /// with tests ends in <c>Tests</c> (a warning; a feature-named class may keep its name), and no fixed wait or wall clock
-/// (<c>Task.Delay</c>, a <c>Thread.Sleep</c> longer than 1 ms, <c>DateTime.Now</c>) in a test (a warning).
+/// (<c>Task.Delay</c>, <c>DateTime.Now</c>; a <c>Thread.Sleep</c> is RL505) in a test (a warning).
 /// </summary>
 public sealed class TestNameRule : IRule
 {
@@ -33,10 +33,7 @@ public sealed class TestNameRule : IRule
         foreach (var call in file.Syntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
             var text = call.Expression.ToString();
-            var fixedWait = text.EndsWith("Task.Delay", StringComparison.Ordinal)
-                || (text.EndsWith("Thread.Sleep", StringComparison.Ordinal)
-                    && call.ArgumentList.Arguments is not [{ Expression: LiteralExpressionSyntax { Token.ValueText: "0" or "1" } }]);
-            if (!fixedWait) continue;
+            if (!text.EndsWith("Task.Delay", StringComparison.Ordinal)) continue;
             yield return Finding.CreateAt(file, call, "RL603", Severity.Warning,
                 $"{text} in a test; advance a manual clock and drain, or bound the wait (§Tests).", MemberNames.ReadEnclosing(call) + ":" + text);
         }

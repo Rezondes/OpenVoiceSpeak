@@ -100,7 +100,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         {
             var frameStart = watch.Elapsed;
             Frame();
-            Thread.Sleep(1);
+            MotionWait.Pause();
             if (watch.Elapsed - frameStart > gap) gap = watch.Elapsed - frameStart;
         }
         var took = watch.Elapsed;

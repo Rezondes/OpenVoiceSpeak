@@ -41,7 +41,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         {
             Frame();
             look();
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
     }
 

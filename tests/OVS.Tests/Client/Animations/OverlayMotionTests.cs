@@ -390,7 +390,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
                 if (Math.Abs(MotionWait.OffsetY(visual)) > Math.Abs(slid)) slid = MotionWait.OffsetY(visual);
             }
             seen.Add(Math.Round(shown, 3));
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         return seen;
     }

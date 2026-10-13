@@ -430,7 +430,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         {
             last = Canvas.GetTop(ghost);
             Frame();
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         return Canvas.GetTop(ghost);
     }

@@ -73,7 +73,7 @@ public sealed class MotionCoverageTests
         {
             Frame();
             look?.Invoke();
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
     }
 
@@ -161,7 +161,7 @@ public sealed class MotionCoverageTests
         {
             Frame();
             look?.Invoke();
-            Thread.Sleep(1);
+            MotionWait.Pause();
             if (AnimationCounter.Running > walk.Running || Rows(walk).Any(control => control.Classes.Contains("entering") || control.Classes.Contains("leaving")))
             {
                 last = null;
@@ -649,7 +649,7 @@ public sealed class MotionCoverageTests
             while (index < 100 && index * 8 <= storm.ElapsedMilliseconds) server.Apply(Change(index++));
             if (index == 100) break; // the last change: the bound starts here
             Frame();
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         long stormMs = storm.ElapsedMilliseconds;
         Assert.True(AnimationCounter.Started > 50, $"the storm animated ({AnimationCounter.Started})");
@@ -665,7 +665,7 @@ public sealed class MotionCoverageTests
         {
             var frameStart = after.Elapsed;
             Frame();
-            Thread.Sleep(1);
+            MotionWait.Pause();
             if (after.Elapsed - frameStart > gap) gap = after.Elapsed - frameStart;
         }
         var took = after.Elapsed;

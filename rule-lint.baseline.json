@@ -1136,10 +1136,6 @@
     "Count": 1
   },
   {
-    "Key": "RL505|src/OVS.Shared/Logging/LogFileWriter.cs|LogFileWriter.AppendShared:Sleep",
-    "Count": 1
-  },
-  {
     "Key": "RL602|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots",
     "Count": 1
   },
@@ -1321,10 +1317,6 @@
   },
   {
     "Key": "RL603|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.EventuallyAsync:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.WriteServerLine_ReaderLocksTheFile_LineNotLost:Thread.Sleep",
     "Count": 1
   },
   {

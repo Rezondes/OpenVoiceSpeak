@@ -32,24 +32,41 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public async Task WriteServerLine_ReaderLocksTheFile_LineNotLost()
+    public void WriteServerLine_ReaderLocksTheFile_LineNotLost()
     {
         // Regression: File.ReadAllText (and editors) lock the file against writers; the line used to be dropped.
-        var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), _ => { });
+        var clock = new ManualTimeProvider();
+        var logs = new ServerLogWriter(dir, 30, clock, _ => { });
         logs.WriteServerLine("eins");
         var path = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Single();
-        var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        // A dedicated thread, not a timer continuation: the writer retries for only about 100 ms, and on a busy
-        // CI runner the thread pool can be starved for longer than that.
-        var release = Task.Factory.StartNew(() =>
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            Thread.Sleep(40);
-            reader.Dispose();
-        }, TaskCreationOptions.LongRunning);
+            logs.WriteServerLine("zwei");
+            logs.WriteServerLine("drei");
+            clock.Advance(TimeSpan.FromMilliseconds(20)); // still locked: the lines wait
+        }
+        Assert.DoesNotContain("zwei", File.ReadAllText(path));
 
-        logs.WriteServerLine("zwei");
-        await release;
-        Assert.Contains("zwei", File.ReadAllText(path));
+        clock.Advance(TimeSpan.FromMilliseconds(20));
+        var text = File.ReadAllText(path);
+        Assert.True(text.IndexOf("eins", StringComparison.Ordinal) < text.IndexOf("zwei", StringComparison.Ordinal)
+            && text.IndexOf("zwei", StringComparison.Ordinal) < text.IndexOf("drei", StringComparison.Ordinal), text);
+    }
+
+    [Fact]
+    public void WriteServerLine_FileLockedPastTheRetries_ReportedOnce()
+    {
+        var clock = new ManualTimeProvider();
+        var failures = new List<string>();
+        var logs = new ServerLogWriter(dir, 30, clock, failures.Add);
+        logs.WriteServerLine("eins", toConsole: false);
+        var path = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Single();
+        using var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        logs.WriteServerLine("zwei", toConsole: false);
+        for (int tick = 0; tick < 300; tick++) clock.Advance(TimeSpan.FromMilliseconds(20));
+
+        Assert.Single(failures);
     }
 
     static string ServerLog(TestServer server) => Read(Path.Combine(server.DataDir, "logs", "server"));

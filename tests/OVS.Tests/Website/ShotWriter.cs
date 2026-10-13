@@ -49,7 +49,7 @@ public static class ShotWriter
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         while (!Quiet(root) && watch.ElapsedMilliseconds < cap);
         Settle(300); // the transitions are at most 220 ms

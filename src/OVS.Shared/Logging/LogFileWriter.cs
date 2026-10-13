@@ -24,6 +24,15 @@ public sealed class LogFileWriter
     DateOnly fileDay, cleanedUpFor;
     string fileName = "";
     bool failureReported;
+    readonly Dictionary<string, StringBuilder> waiting = []; // text a reader's lock kept out, per file, in order
+    ITimer? retry;
+    int retries;
+
+    /// <summary>How often lines a reader's lock kept out are tried again.</summary>
+    static readonly TimeSpan RetryEvery = TimeSpan.FromMilliseconds(20);
+
+    /// <summary>Tries before waiting lines are given up and the failure reported: 5 s.</summary>
+    const int MaxRetries = 250;
 
     /// <param name="keepDays">0 keeps every file.</param>
     /// <param name="root">The logs folder.</param>
@@ -82,15 +91,55 @@ public sealed class LogFileWriter
                 Directory.CreateDirectory(dir);
                 var text = new StringBuilder();
                 foreach (var line in lines) text.Append(EscapeToOneLine(line)).Append(Environment.NewLine);
-                AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), text.ToString());
+                Write(Path.Combine(dir, $"{prefix}{fileName}.log"), text.ToString());
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                if (failureReported) return;
-                failureReported = true;
-                onFailure(EscapeToOneLine($"{FormatNow()} Log konnte nicht geschrieben werden: {exception.Message}"));
+                ReportFailure(exception.Message);
             }
         }
+    }
+
+    /// <summary>Appends the text, or keeps it behind what already waits for that file until the retry timer gets it in.</summary>
+    void Write(string path, string text)
+    {
+        if (waiting.TryGetValue(path, out var queued))
+        {
+            queued.Append(text);
+            return;
+        }
+        if (TryAppendShared(path, text)) return;
+        waiting[path] = new StringBuilder(text);
+        retry ??= time.CreateTimer(_ => Retry(), null, RetryEvery, RetryEvery);
+    }
+
+    void Retry()
+    {
+        lock (gate)
+        {
+            try
+            {
+                foreach (var path in waiting.Keys.ToList())
+                    if (TryAppendShared(path, waiting[path].ToString())) waiting.Remove(path);
+                if (waiting.Count > 0 && ++retries < MaxRetries) return;
+                if (waiting.Count > 0) ReportFailure($"{waiting.Count} Datei(en) gesperrt");
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                ReportFailure(exception.Message);
+            }
+            waiting.Clear();
+            retry?.Dispose();
+            retry = null;
+            retries = 0;
+        }
+    }
+
+    void ReportFailure(string reason)
+    {
+        if (failureReported) return;
+        failureReported = true;
+        onFailure(EscapeToOneLine($"{FormatNow()} Log konnte nicht geschrieben werden: {reason}"));
     }
 
     /// <summary>
@@ -117,24 +166,20 @@ public sealed class LogFileWriter
     static bool IsBreaking(char character) => char.IsControl(character) || character is '\u2028' or '\u2029';
 
     /// <summary>
-    /// Lets readers keep the file open, and retries briefly while a reader locks it against writing
-    /// (File.ReadAllText and many editors do), instead of losing the line.
+    /// Lets readers keep the file open. False while a reader locks it against writing (File.ReadAllText and many editors
+    /// do), so the text can wait for <see cref="Retry"/> instead of being lost.
     /// </summary>
-    static void AppendShared(string path, string text)
+    static bool TryAppendShared(string path, string text)
     {
-        var bytes = Encoding.UTF8.GetBytes(text);
-        for (int attempt = 1; ; attempt++)
+        try
         {
-            try
-            {
-                using var file = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
-                file.Write(bytes);
-                return;
-            }
-            catch (IOException) when (attempt < 5 && File.Exists(path))
-            {
-                Thread.Sleep(20);
-            }
+            using var file = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            file.Write(Encoding.UTF8.GetBytes(text));
+            return true;
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            return false;
         }
     }
 

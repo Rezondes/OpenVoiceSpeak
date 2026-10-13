@@ -197,7 +197,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
                 Assert.True(picture.Opacity <= last + 0.001, $"the old page's picture fades and stays faded ({picture.Opacity} after {last})");
                 last = picture.Opacity;
             }
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         Assert.False(PageGhostShown(main));
         main.Close();

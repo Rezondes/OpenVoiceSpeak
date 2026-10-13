@@ -40,7 +40,7 @@ Numbered by the rule of `CODING-RULES.md` they add to.
 - **Rule 23** (W5, which supersedes K6): `GenerateDocumentationFile` is a permanent setting in `Directory.Build.props` with CS1591 as a warning under the zero-warnings bullet (switched on by Step 34 of the refactoring).
 - **Rule 24** (A2, N2, N21, N24, L2, L3): the test class `WebsiteShots` keeps its name for the README filter (L4).
 - **Field naming** (W6): fields are written as today (`readonly TcpListener listener`, no `_camelCase` prefix, no mandatory `private`). Until W6 is decided, composition stays by hand (N14) and logging goes through the existing log writers; a DI container or `ILogger<T>` needs a new decision. Check: the review.
-- **Async rule 5** (W7): legacy synchronous code is no exception: where a sleep is found in `src/`, it is refactored. The `Thread.Sleep(1)` yields in the UI poll loops of tests stay under (a) and N23. Check: `OneClockTests`, which fails on a non-zero `Thread.Sleep` in all of `src/` (Client, Server, Shared), not in the tests (extended by Step 30c); its full clock rule stays client-only, the server's clock sites are decided in Step 30a.
+- **Async rule 5** (W7, the user on 13 October 2026: never `Thread.Sleep`): rule-lint RL505 fails on every `Thread.Sleep` in src, tools and tests. The UI poll loops of tests yield with `MotionWait.Pause()`, which runs the dispatcher for about a millisecond; `LogFileWriter` keeps a line a reader locks out and writes it on a timer of its clock. Check: `OneClockTests`, which fails on a non-zero `Thread.Sleep` in all of `src/` (Client, Server, Shared), not in the tests (extended by Step 30c); its full clock rule stays client-only, the server's clock sites are decided in Step 30a.
 - **Async rule 6** (N14): the kinds are `// clock: frame timing`, `// clock: real time` and `// clock: debug` (see N14). The server's last direct clock reads are real time (decided in Step 30a): `ControlServer`'s shutdown wait for real sockets, `ServerCertificate`'s validity dates (clients check them against real clocks) and `BuildInfo`'s stamp of a local build. A `BackgroundService` for scheduled background work needs `Microsoft.Extensions.Hosting`, a new package; decided with W6.
 
 ## Exceptions
@@ -262,7 +262,7 @@ The review answers every point of `CODING-RULES.md` §Review checklist. This sec
 - The domain words are those of the protocol and PLAN.md (Channel, Link, Group, Lock, Separator, Ban, ServerMute, Deafen).
 
 **TDD (N23)**
-- Waiting: clock advance plus drain, `AsyncWait.AssertStaysFalseAsync`, `AsyncWait`, `HangGuard.Bound`; only the `Thread.Sleep(1)` yields of UI poll loops stay.
+- Waiting: clock advance plus drain, `AsyncWait.AssertStaysFalseAsync`, `AsyncWait`, `HangGuard.Bound`; UI poll loops yield with `MotionWait.Pause()`, never a sleep.
 
 **BDD (N19, N22)**
 - Each acceptance criterion of the package has a test that the package's Tests section in PLAN.md references (N19); the test code carries no criterion comments or traits. Each manual check is listed as manual in PLAN.md.
@@ -311,7 +311,7 @@ The IDs N1 to N30 used in this file refer to these decisions of the second refac
 | N20 | delegated (keeps N21) | Acceptance criteria that no test can check and that carry no `(manuell\|manual\|spike ...)` marker right after the ID go into an exemption list in the test file, each with a one-line reason |
 | N21 | user | Test methods may be renamed and split; PLAN.md may change in test name and path references only, never in the text of an acceptance criterion |
 | N22 | user | Every test name has three parts, `Subject_Condition_Outcome`; without a condition the middle part names the state. A reflection test enforces it once all names follow it |
-| N23 | delegated (TDD, KISS) | No src seams only for waiting. Fixed waits become a clock advance plus a drain; the rest goes through `AssertStaysFalseAsync(condition, duration, reason)`; poll loops use `AsyncWait`; the `Thread.Sleep(1)` yields in UI poll loops stay |
+| N23 | delegated (TDD, KISS) | No src seams only for waiting. Fixed waits become a clock advance plus a drain; the rest goes through `AssertStaysFalseAsync(condition, duration, reason)`; poll loops use `AsyncWait`; UI poll loops yield with `MotionWait.Pause()` (no sleep, 13 October 2026) |
 | N24 | delegated (KISS) | A test is split only when its name names two outcomes and its setup is cheap (no TLS server, under 100 ms) |
 | N25 | user | Working mode as in the first refactoring: an implementing agent per step, an independent review within the time budget, and the orchestrating agent commits on `main` after the review in the repository's commit message format without a trailer (the user authorized these commits for the refactoring; implementers never commit). The agent instructions are kept outside the repository with the working plan (K4), with a checklist per kind of step |
 | N26 | user | Nothing is pushed by the refactoring; the user pushes by hand. Every commit message stands alone as a release note line, since every push to `main` is a release |
@@ -445,4 +445,4 @@ The IDs W1 to W7 used in this file refer to these decisions: the general rules o
 | W4 | user | No primary constructors with guard clauses for new classes; existing ones stay until touched |
 | W5 | user | XML docs stay required (rule 21); supersedes K6 |
 | W6 | user, under review (9 October 2026) | Field naming stays (rule 22); a DI container or `ILogger<T>` is under review, a pending assessment, a separate step, if the user decides for it |
-| W7 | user, amended 9 October 2026 | `Thread.Sleep` with a non-zero argument is banned in `src/` (§Async and concurrency, rule 5); Step 30c replaces the remaining sleeps |
+| W7 | user, amended 9 and 13 October 2026 | `Thread.Sleep` is banned everywhere, src, tools and tests, also `Sleep(0)` (§Async and concurrency, rule 5; rule-lint RL505) |

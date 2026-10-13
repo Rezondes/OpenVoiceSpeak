@@ -53,7 +53,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         {
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         Assert.False(Sidebar(main).IsEffectivelyVisible);
     }

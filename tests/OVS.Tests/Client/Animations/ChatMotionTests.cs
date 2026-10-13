@@ -84,7 +84,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
             least = Math.Min(least, control.Opacity);
             if (Math.Abs(MotionWait.OffsetX(control)) > Math.Abs(far)) far = MotionWait.OffsetX(control);
             Frame();
-            Thread.Sleep(1);
+            MotionWait.Pause();
         }
         return (least, far);
     }

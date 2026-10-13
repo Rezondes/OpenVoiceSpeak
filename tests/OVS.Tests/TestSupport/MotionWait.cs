@@ -19,6 +19,17 @@ static class MotionWait
     /// <summary>How long a wait gives up after: far beyond any animation, so only a broken one gets there.</summary>
     const int Cap = 5000;
 
+    /// <summary>
+    /// Runs the UI thread's loop for about a millisecond: it handles what comes meanwhile and leaves the CPU to the
+    /// timing tests running beside, without a sleep.
+    /// </summary>
+    public static void Pause()
+    {
+        var frame = new DispatcherFrame();
+        DispatcherTimer.RunOnce(() => frame.Continue = false, TimeSpan.FromMilliseconds(1));
+        Dispatcher.UIThread.PushFrame(frame);
+    }
+
     public static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -33,7 +44,7 @@ static class MotionWait
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
+            Pause(); // leaves the CPU to the timing tests running beside
         }
     }
 
@@ -48,7 +59,7 @@ static class MotionWait
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
+            Pause();
         }
     }
 
@@ -64,7 +75,7 @@ static class MotionWait
             bool holds = done();
             if (holds && watch.ElapsedMilliseconds >= atLeast || watch.ElapsedMilliseconds >= Cap) return;
             Frame();
-            Thread.Sleep(1); // leaves the CPU to the timing tests running beside
+            Pause(); // leaves the CPU to the timing tests running beside
         }
     }
 
