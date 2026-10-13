@@ -29,6 +29,8 @@ public sealed class CapturePipeline : IDisposable
     WasapiCapture? capture;
     Thread? toneThread;
     volatile bool running = true;
+    // set by Dispose: ends the tone thread's wait for its next frame at once (never disposed: a late wait may still read it)
+    readonly ManualResetEventSlim toneStop = new();
 
     CapturePipeline() { }
 
@@ -142,7 +144,7 @@ public sealed class CapturePipeline : IDisposable
         for (long count = 0; running; count++)
         {
             var wait = AudioFormat.FrameDuration * count - clock.Elapsed;
-            if (wait > TimeSpan.Zero) Thread.Sleep(wait); // clock: real time
+            if (wait > TimeSpan.Zero) toneStop.Wait(wait); // clock: real time, Dispose ends it at once
             for (int index = 0; index < frame.Length; index++, phase += step) frame[index] = 0.3f * (float)Math.Sin(phase);
             Feed(frame, AudioFormat.SampleRate);
         }
@@ -253,12 +255,13 @@ public sealed class CapturePipeline : IDisposable
     {
         IsDisposed = true;
         running = false;
+        toneStop.Set();
         if (capture is not null)
         {
             capture.StopRecording();
             capture.Dispose();
         }
-        if (toneThread is { IsAlive: true }) toneThread.Join(200); // clock: real time, one never started (fed by hand) cannot be joined
+        if (toneThread is { IsAlive: true }) toneThread.Join(200); // clock: real time, bounded for a slow frame (the wait itself ends at once); one never started (fed by hand) cannot be joined
         lock (gate) // a late frame on the capture thread must not reach the freed native state
         {
             Suppressor?.Dispose();

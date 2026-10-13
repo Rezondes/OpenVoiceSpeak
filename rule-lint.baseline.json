@@ -5604,22 +5604,6 @@
     "Count": 1
   },
   {
-    "Key": "RL505|src/OVS.Client/Audio/Capture/CapturePipeline.cs|CapturePipeline.ToneLoop:Sleep",
-    "Count": 1
-  },
-  {
-    "Key": "RL505|src/OVS.Client/Audio/Playback/PlaybackLoop.cs|PlaybackLoop.Run:Sleep",
-    "Count": 2
-  },
-  {
-    "Key": "RL505|src/OVS.Client/Audio/Playback/PlaybackLoop.cs|PlaybackLoop.TryEnd:Sleep",
-    "Count": 1
-  },
-  {
-    "Key": "RL505|src/OVS.Client/Input/KeyPoller.cs|KeyPoller.Loop:Sleep",
-    "Count": 1
-  },
-  {
     "Key": "RL505|src/OVS.Shared/Logging/LogFileWriter.cs|LogFileWriter.AppendShared:Sleep",
     "Count": 1
   },

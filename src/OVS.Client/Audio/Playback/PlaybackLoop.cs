@@ -119,7 +119,7 @@ internal sealed class PlaybackLoop
                 // No speaker: keep mixing on our own clock and throw the audio away.
                 if (clock.Elapsed < AudioFormat.FrameDuration * ticks)
                 {
-                    Thread.Sleep(5); // clock: real time
+                    wake.WaitOne(5); // clock: real time, new work or the stop wakes it at once
                     continue;
                 }
                 ticks++;
@@ -128,7 +128,7 @@ internal sealed class PlaybackLoop
             }
             if (buffer.BufferedDuration >= TargetBuffer)
             {
-                Thread.Sleep(5); // clock: real time
+                wake.WaitOne(5); // clock: real time, new work or the stop wakes it at once
                 continue;
             }
             var frame = MixForSpeaker();
@@ -143,7 +143,7 @@ internal sealed class PlaybackLoop
     bool TryEnd()
     {
         // the end of the last tone: what is still buffered, plus what the device itself holds (DeviceLatency)
-        if (devices.Speaker?.BufferedDuration is { } left) Thread.Sleep(left + DeviceLatency); // clock: real time
+        if (devices.Speaker?.BufferedDuration is { } left) wake.WaitOne(left + DeviceLatency); // clock: real time, new work or the stop ends the wait
         lock (gate)
         lock (threadGate)
         {
@@ -192,6 +192,6 @@ internal sealed class PlaybackLoop
         wake.Set();
         Thread? thread;
         lock (threadGate) thread = playbackThread;
-        thread?.Join(500); // clock: real time
+        thread?.Join(500); // clock: real time, bounded for a device call that blocks (the loop itself wakes at once)
     }
 }

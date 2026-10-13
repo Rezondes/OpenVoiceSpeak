@@ -147,14 +147,14 @@ public sealed class KeyPoller : IDisposable
             if (holdChanged) Changed?.Invoke();
             for (int index = 0; index < KeyActionTraits.All.Count; index++)
                 if (pressed.Contains(KeyActionTraits.All[index])) Pressed?.Invoke(KeyActionTraits.All[index]);
-            Thread.Sleep(10); // clock: real time
+            stopping.Token.WaitHandle.WaitOne(10); // clock: real time, Dispose ends it at once
         }
     }
 
     public void Dispose()
     {
         stopping.Cancel();
-        thread.Join(200); // clock: real time
+        thread.Join(200); // clock: real time, bounded for a key state call that blocks (the wait itself ends at once)
         stopping.Dispose();
     }
 }
