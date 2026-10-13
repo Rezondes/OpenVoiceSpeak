@@ -15,9 +15,7 @@ public class ReceivePathTests
 {
     static readonly VoiceEncoder Encoder = new();
 
-    static float[] Sine(float amplitude = 0.5f, int phaseOffset = 0) =>
-        Enumerable.Range(phaseOffset, AudioFormat.FrameSamples)
-            .Select(index => amplitude * MathF.Sin(2 * MathF.PI * 440 * index / AudioFormat.SampleRate)).ToArray();
+    static float[] Sine(float amplitude = 0.5f, int phaseOffset = 0) => TestTones.SineFrame(phaseOffset, amplitude);
 
     static float Rms(float[] samples) => MathF.Sqrt(samples.Sum(sample => sample * sample) / samples.Length);
 

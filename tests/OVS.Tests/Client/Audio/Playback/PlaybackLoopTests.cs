@@ -49,8 +49,7 @@ public sealed class PlaybackLoopTests : IDisposable
     {
         for (uint number = 0; number < frames; number++)
         {
-            var sine = Enumerable.Range((int)number * AudioFormat.FrameSamples, AudioFormat.FrameSamples)
-                .Select(index => 0.5f * MathF.Sin(2 * MathF.PI * 440 * index / AudioFormat.SampleRate)).ToArray();
+            var sine = TestTones.SineFrame((int)number * AudioFormat.FrameSamples);
             mixer.Push(speaker, number, encoder.Encode(sine), viaLink: false);
         }
     }

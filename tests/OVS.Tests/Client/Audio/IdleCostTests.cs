@@ -3,6 +3,7 @@ using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Input;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Audio;
 
@@ -29,9 +30,7 @@ public class IdleCostTests
         return windows;
     }
 
-    static float[] Sine(int frame) =>
-        Enumerable.Range(frame * AudioFormat.FrameSamples, AudioFormat.FrameSamples)
-            .Select(index => 0.3f * MathF.Sin(2 * MathF.PI * 440 * index / AudioFormat.SampleRate)).ToArray();
+    static float[] Sine(int frame) => TestTones.SineFrame(frame * AudioFormat.FrameSamples, 0.3f);
 
     /// <summary>Package 142: a different tone on each side, interleaved.</summary>
     static float[] StereoSine(int frame)
