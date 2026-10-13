@@ -38,46 +38,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty] string transmitText = "";
     [ObservableProperty] string voiceHint = "";
 
-    /// <summary>
-    /// A main view model on the profile folder <paramref name="storageDir"/> with the parts it runs on: the key poller,
-    /// the audio engine, the trusted fingerprints, the logo cache, the own tones and the leave timer, all on
-    /// <paramref name="time"/>. The composition root (App) builds it through here.
-    /// </summary>
-    /// <param name="hardware">
-    /// The microphones and speakers for the engine and the settings page: the system's in the app, fakes in tests; null
-    /// runs without them (--no-audio, tests, debug API with test tone).
-    /// </param>
-    /// <param name="keyState">The state of a virtual key, the keyboard by default (tests pass a fake one).</param>
-    /// <param name="connect">How a connection is opened, the real one by default (tests pass their own); see the constructor.</param>
-    /// <param name="storageDir">The profile folder.</param>
-    /// <param name="post">Runs work on the UI thread.</param>
-    /// <param name="time">The client's one clock.</param>
-    /// <param name="log">The client's log.</param>
-    /// <param name="settings">The settings as loaded.</param>
-    /// <param name="settingsWarning">Why the settings file could not be read, null when it could.</param>
-    public static MainViewModel Create(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings,
-        string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null,
-        OpenConnection? connect = null)
-    {
-        var keys = new KeyPoller(time, keyState);
-        var soundLibrary = new SoundLibrary(storageDir, log.Write); // holds no handle; the engine plays its tones
-        AudioEngine? audio = null;
-        try
-        {
-            audio = new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log.Write), soundLibrary.Samples);
-            return new MainViewModel(storageDir, post, time, log, settings, settingsWarning, new TrustedServerFingerprints(storageDir),
-                new ServerIconCache(storageDir), soundLibrary, new LeaveTimer(time, () => post), keys, audio,
-                hardware is null ? null : hardware.ListActive, connect);
-        }
-        catch
-        {
-            audio?.Dispose(); // nobody else owns them yet
-            keys.Dispose();
-            throw;
-        }
-    }
-
-    /// <summary>Runs on the given parts and builds none of them (<see cref="Create"/> builds them).</summary>
+    /// <summary>Runs on the given parts and builds none of them (<see cref="ClientServices.CreateMainViewModel"/> builds them).</summary>
     /// <param name="time">The client's one clock: <see cref="Time"/>, handed on to everything built here.</param>
     /// <param name="settings">The settings as loaded from <paramref name="storageDir"/>.</param>
     /// <param name="settingsWarning">Why the settings file could not be read, shown as a warning notice; null when it could.</param>
@@ -86,7 +47,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// Disposed with this view model, after the disconnect. When it opens devices, their list loads at the start and a
     /// device restart runs off the UI thread.
     /// </param>
-    /// <param name="soundLibrary">The own tones; cleaned up after each save (the engine plays them, <see cref="Create"/> hands it the same library).</param>
+    /// <param name="soundLibrary">The own tones; cleaned up after each save (the engine plays them, <see cref="ClientServices.CreateMainViewModel"/> hands it the same library).</param>
     /// <param name="listDevices">The active devices of a direction, for the settings page; null: none, an empty list.</param>
     /// <param name="connect">
     /// Opens the connection of every connect and every reconnect attempt (the attempts pass <see cref="CancellationToken.None"/>);

@@ -82,4 +82,15 @@ public sealed class LogFormatGoldenTests() : TempDirectoryTest("ovs-golden-", qu
         Assert.Equal($"{Stamp} Client startet{Environment.NewLine}{Stamp} zweite Zeile{Environment.NewLine}",
             Text(Path.Combine(dir, "logs", "client-" + FileName)));
     }
+
+    [Fact]
+    public void ClientLine_ThroughILogger_SameBytesAsWrite()
+    {
+        var log = new ClientLog(dir, clock);
+
+        Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(log, "Client startet");
+        log.Flush();
+
+        Assert.Equal($"{Stamp} Client startet{Environment.NewLine}", Text(Path.Combine(dir, "logs", "client-" + FileName)));
+    }
 }

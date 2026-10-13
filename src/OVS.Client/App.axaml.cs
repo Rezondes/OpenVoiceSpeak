@@ -45,9 +45,9 @@ public partial class App : Application
             var settings = Program.Settings ??= ClientSettings.Load(options.ProfileDir, out settingsWarning);
             // The system's microphones and speakers: the view model gets none with --no-audio, the debug API lists them anyway.
             var hardware = new WasapiHardware();
-            // The view model's parts (keys, audio engine, stores, leave timer) are built by MainViewModel.Create on the one
+            // The view model's parts (keys, audio engine, stores, leave timer) are made by the ClientServices container on the one
             // clock; the view model disposes the keys and the audio engine with itself (desktop.Exit below).
-            var viewModel = MainViewModel.Create(options.ProfileDir, action => Dispatcher.UIThread.Post(action), time, log, settings, settingsWarning,
+            var viewModel = ClientServices.CreateMainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), time, log, settings, settingsWarning,
                 options.UseAudioDevices ? hardware : null);
             ApplyTheme(viewModel.Settings.Theme);
             viewModel.PropertyChanged += (_, eventArgs) =>

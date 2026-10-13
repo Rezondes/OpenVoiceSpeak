@@ -1,3 +1,4 @@
+using OVS.Client;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Sounds;
@@ -27,7 +28,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     /// <summary>
     /// A main view model on <see cref="Profile"/>, every part made on <see cref="Parts"/> and <see cref="time"/>; the engine
     /// and the device list on <paramref name="hardware"/>, the engine's tones from the same sound library, as
-    /// <see cref="MainViewModel.Create"/> wires them.
+    /// <see cref="ClientServices.CreateMainViewModel"/> wires them.
     /// </summary>
     MainViewModel WithOwnParts(Action<Action> post, ClientSettings? settings = null, string? settingsWarning = null, KeyPoller? keys = null,
         FakeAudioHardware? hardware = null)
@@ -71,7 +72,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         Assert.Same(time, viewModel.Time);
     }
 
-    /// <summary>Package 123, 140: a filter library that cannot load is told in the client log, the one <see cref="MainViewModel.Create"/> was given.</summary>
+    /// <summary>Package 123, 140: a filter library that cannot load is told in the client log, the one <see cref="ClientServices.CreateMainViewModel"/> was given.</summary>
     [Fact]
     public async Task Create_GivenClientLog_CaptureFiltersLogToIt()
     {
@@ -179,7 +180,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     {
         var hardware = new FakeAudioHardware();
 
-        Assert.ThrowsAny<Exception>(() => MainViewModel.Create(Profile, action => action(), time, new ClientLog(Parts, time), settings: null!, null,
+        Assert.ThrowsAny<Exception>(() => ClientServices.CreateMainViewModel(Profile, action => action(), time, new ClientLog(Parts, time), settings: null!, null,
             hardware: hardware));
 
         Assert.Equal(0, hardware.Subscribers);

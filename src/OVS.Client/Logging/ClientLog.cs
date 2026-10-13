@@ -1,12 +1,14 @@
+using Microsoft.Extensions.Logging;
 using OVS.Shared.Logging;
 
 namespace OVS.Client.Logging;
 
 /// <summary>
 /// The client's one log: &lt;profile&gt;/logs/client-&lt;start&gt;.log, a new file per client start, kept 30 days. Never contains the server password,
-/// the admin token or the identity key. Writing never throws.
+/// the admin token or the identity key. Writing never throws. Step 30d4: it is also the <see cref="ILogger"/> of the client; a
+/// message goes through <see cref="Write"/>, the time stamp and the text as before.
 /// </summary>
-public sealed class ClientLog
+public sealed class ClientLog : ILogger
 {
     /// <summary>Days the client's log files are kept.</summary>
     public const int KeepDays = 30;
@@ -34,6 +36,18 @@ public sealed class ClientLog
             scheduled = true;
         }
         ThreadPool.UnsafeQueueUserWorkItem(_ => Flush(), null);
+    }
+
+    /// <inheritdoc/>
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+    /// <inheritdoc/>
+    public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
+
+    /// <inheritdoc/>
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        if (IsEnabled(logLevel)) Write(formatter(state, exception));
     }
 
     /// <summary>Raised on the thread about to write a batch (tests check it is never the UI thread).</summary>

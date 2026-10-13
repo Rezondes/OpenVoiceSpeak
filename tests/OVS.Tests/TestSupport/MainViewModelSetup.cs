@@ -1,3 +1,4 @@
+using OVS.Client;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Sounds;
@@ -20,7 +21,7 @@ namespace OVS.Tests.TestSupport;
 static class MainViewModelSetup
 {
     /// <summary>
-    /// A main view model on <paramref name="dir"/>, built by <see cref="MainViewModel.Create"/> as the composition root does,
+    /// A main view model on <paramref name="dir"/>, built by <see cref="ClientServices.CreateMainViewModel"/> as the composition root does,
     /// with its log and settings from that folder, on <paramref name="time"/> (the system clock by default).
     /// <paramref name="keyState"/> feeds the key poller; <paramref name="hardware"/> (none by default) the audio engine and the
     /// settings page's device list.
@@ -34,7 +35,7 @@ static class MainViewModelSetup
     {
         time ??= TimeProvider.System;
         var settings = ClientSettings.Load(dir, out var settingsWarning);
-        var viewModel = MainViewModel.Create(dir, post, time, new ClientLog(dir, time), settings, settingsWarning, hardware, keyState, connect);
+        var viewModel = ClientServices.CreateMainViewModel(dir, post, time, new ClientLog(dir, time), settings, settingsWarning, hardware, keyState, connect);
         if (dialogs is not null) viewModel.Dialogs = dialogs;
         if (trustServers) viewModel.ConfirmTofu = _ => Task.FromResult(true);
         if (server is not null) ShowServer(viewModel, server);
