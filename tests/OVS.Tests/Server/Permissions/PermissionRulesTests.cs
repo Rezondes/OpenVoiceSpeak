@@ -1,3 +1,4 @@
+using OVS.Server.Data.Records;
 using OVS.Server.Permissions;
 using OVS.Shared.Permissions;
 using static OVS.Server.Permissions.PermissionRules;
@@ -131,9 +132,9 @@ public class PermissionRulesTests
     [Fact]
     public void WouldRemoveLastAdmin_Cases()
     {
-        (string, IReadOnlyCollection<Guid>) a = ("a", [AdminGroupId]);
-        (string, IReadOnlyCollection<Guid>) b = ("b", [AdminGroupId]);
-        (string, IReadOnlyCollection<Guid>) c = ("c", [GuestGroupId]);
+        var a = new UserRecord { Fingerprint = "a", GroupIds = [AdminGroupId] };
+        var b = new UserRecord { Fingerprint = "b", GroupIds = [AdminGroupId] };
+        var c = new UserRecord { Fingerprint = "c", GroupIds = [GuestGroupId] };
 
         Assert.True(WouldRemoveLastAdmin([a, c], "a", AdminGroupId));
         Assert.False(WouldRemoveLastAdmin([a, b], "a", AdminGroupId));

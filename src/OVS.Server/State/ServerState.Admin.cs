@@ -152,7 +152,7 @@ public sealed partial class ServerState
     {
         if (!Require(s, r, Permission.GroupsAssign)) return;
         if (!FindAssignment(s, r, r.Fingerprint, r.GroupId, out var user, out var group)) return;
-        if (WouldRemoveLastAdmin(UsersAsAdminTuples(), user.Fingerprint, r.GroupId))
+        if (WouldRemoveLastAdmin(data.Users, user.Fingerprint, r.GroupId))
         {
             Fail(s, r, ReasonCodes.LastAdmin);
             return;

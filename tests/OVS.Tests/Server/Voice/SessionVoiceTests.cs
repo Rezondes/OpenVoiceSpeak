@@ -125,7 +125,7 @@ public sealed class SessionVoiceTests : IDisposable
     }
 
     /// <summary>Frames 5 and 7 relayed, then 6 relayed late: returns what frame 8 gets.</summary>
-    (ReadOnlyMemory<byte> Kept, bool Unseen) TrackAfterALateFrame(ReadOnlyMemory<byte> opusOf7)
+    TrackedFrame TrackAfterALateFrame(ReadOnlyMemory<byte> opusOf7)
     {
         voice.TrackFrame(5, Channel, VoiceHeader.TargetChannel, Opus, relayed: true);
         voice.TrackFrame(7, Channel, VoiceHeader.TargetChannel, opusOf7, relayed: true);

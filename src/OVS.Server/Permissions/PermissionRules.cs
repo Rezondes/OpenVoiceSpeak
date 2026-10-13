@@ -1,3 +1,4 @@
+using OVS.Server.Data.Records;
 using OVS.Shared.Permissions;
 
 namespace OVS.Server.Permissions;
@@ -34,7 +35,7 @@ public static class PermissionRules
 
     public static bool CanAssign(Permission actor, GroupRecord group) => GroupRules.CanAssign(actor, group.Id, group.Permissions);
 
-    public static bool WouldRemoveLastAdmin(IEnumerable<(string Fingerprint, IReadOnlyCollection<Guid> GroupIds)> users,
+    public static bool WouldRemoveLastAdmin(IEnumerable<UserRecord> users,
         string fingerprint, Guid groupId)
     {
         if (groupId != AdminGroupId) return false;

@@ -45,12 +45,12 @@ public sealed partial class ServerState
         }
     }
 
-    public (Session? Session, Rejected? Rejection) Admit(string fingerprint, string nickname, IPAddress ip, string? password)
+    public Admission Admit(string fingerprint, string nickname, IPAddress ip, string? password)
     {
         lock (gate)
         {
             // A handshake that finishes during shutdown must not join a server that is going away.
-            if (closedWith is not null) return (null, new Rejected(closedWith));
+            if (closedWith is not null) return new Admission(null, new Rejected(closedWith));
             var now = time.GetUtcNow();
             var ipText = ip.ToString();
             var source = IpAddresses.ToAddressGroup(ip);
@@ -61,18 +61,18 @@ public sealed partial class ServerState
             {
                 ban.CountBlockedAttempt(ipText, now); // Package 80 (A97)
                 saves.PersistAtMostOncePerMinute(ban.Id);
-                return (null, new Rejected(ReasonCodes.Banned, BanText(ban)));
+                return new Admission(null, new Rejected(ReasonCodes.Banned, BanText(ban)));
             }
 
             // A source that guessed wrong too often is turned away before its password is even looked at.
             if (data.Settings.StoredPassword is not null && passwordGuesses.IsBlocked(source, now))
-                return (null, new Rejected(ReasonCodes.TooManyPasswordAttempts));
+                return new Admission(null, new Rejected(ReasonCodes.TooManyPasswordAttempts));
             // Package 91: PBKDF2 with 100,000 iterations, about 10 ms on a desktop CPU, under the lock
             // ponytail: verified under the global lock; move it before the lock if slow hosts make logins stall the server
             if (!data.Settings.CheckPassword(password))
             {
                 passwordGuesses.RecordFailure(source, now);
-                return (null, new Rejected(ReasonCodes.WrongPassword));
+                return new Admission(null, new Rejected(ReasonCodes.WrongPassword));
             }
             if (data.Settings.HasLegacyHash()) // Package 91: the right password turns the old unsalted hash into the new format
             {
@@ -83,7 +83,7 @@ public sealed partial class ServerState
 
             var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
             if (sessions.Count - (replaced is null ? 0 : 1) >= data.Settings.MaxUsers)
-                return (null, new Rejected(ReasonCodes.ServerFull));
+                return new Admission(null, new Rejected(ReasonCodes.ServerFull));
             // Package 83: normalized, and an offline user's last name is taken as well
             // ponytail: one linear pass over all users per login; index the keys if the user list grows into the tens of thousands
             var key = NicknameKey(nickname);
@@ -93,14 +93,14 @@ public sealed partial class ServerState
                 .OrderByDescending(u => u.LastLogin ?? DateTimeOffset.MinValue).ThenBy(u => u.FirstSeen).ThenBy(u => u.Fingerprint, StringComparer.Ordinal)
                 .FirstOrDefault();
             if (sessions.Values.Any(s => s != replaced && NicknameKey(s.Nickname) == key) || owner is not null && owner.Fingerprint != fingerprint)
-                return (null, new Rejected(ReasonCodes.NicknameTaken));
+                return new Admission(null, new Rejected(ReasonCodes.NicknameTaken));
 
             var user = FindUser(fingerprint);
             if (user is null && !newIdentities.TryCount(source, now, out bool firstRefusal))
             {
                 if (firstRefusal)
                     logs.WriteServerLine($"Neue Identität von {ip} abgelehnt: zu viele neue Identitäten ({ServerTuning.NewIdentitiesPerHour} pro Stunde)");
-                return (null, new Rejected(ReasonCodes.RateLimited));
+                return new Admission(null, new Rejected(ReasonCodes.RateLimited));
             }
 
             if (replaced is not null) RemoveLocked(replaced, new Disconnected(ReasonCodes.ReplacedByNewConnection));
@@ -127,7 +127,7 @@ public sealed partial class ServerState
                 if (other != session) other.Outbox.Send(new UserJoined(Info(session, other))); // Package 92: per recipient
             logs.WriteServerLine($"{nickname} verbunden ({fingerprint[..12]}, {ip})");
             ChannelLog(session.ChannelId, $"{nickname} hat den Channel betreten (verbunden)");
-            return (session, null);
+            return new Admission(session, null);
         }
     }
 

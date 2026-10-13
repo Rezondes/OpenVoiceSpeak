@@ -78,11 +78,11 @@ public sealed class SafeFileTests() : TempDirectoryTest("ovs-safefile-", quiet: 
         Assert.Null(SafeFile.ReadChunk(path, -1));
         Assert.Null(SafeFile.ReadChunk(path, content.Length + 1));
 
-        var (first, total) = SafeFile.ReadChunk(path, 0)!.Value;
+        var (first, total) = SafeFile.ReadChunk(path, 0)!;
         Assert.Equal(content.Length, total);
         Assert.Equal(content[..ProtocolLimits.BackupChunkBytes], first);
-        var (rest, _) = SafeFile.ReadChunk(path, ProtocolLimits.BackupChunkBytes)!.Value;
+        var (rest, _) = SafeFile.ReadChunk(path, ProtocolLimits.BackupChunkBytes)!;
         Assert.Equal(content[ProtocolLimits.BackupChunkBytes..], rest);
-        Assert.Empty(SafeFile.ReadChunk(path, content.Length)!.Value.Bytes);
+        Assert.Empty(SafeFile.ReadChunk(path, content.Length)!.Bytes);
     }
 }

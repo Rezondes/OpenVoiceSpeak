@@ -32,16 +32,16 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
     /// for an id not in the listing or more than MaxLogDownloadBytes. IO errors throw and leave no file.
     /// </summary>
     /// <param name="downloadId">Chosen by the server (Guid "N"), never by a client.</param>
-    public (LogExport? Export, string Code) Export(string downloadId, IReadOnlyList<string> ids, IReadOnlyDictionary<Guid, string> channelNames)
+    public LogExportResult Export(string downloadId, IReadOnlyList<string> ids, IReadOnlyDictionary<Guid, string> channelNames)
     {
         var listed = reader.ListWithPaths(channelNames).ToDictionary(e => e.Info.Id);
-        var chosen = new List<(LogFileInfo Info, string Path)>();
+        var chosen = new List<LocatedLogFile>();
         foreach (var id in ids)
         {
-            if (!listed.TryGetValue(id, out var entry)) return (null, ReasonCodes.NotFound);
+            if (!listed.TryGetValue(id, out var entry)) return new LogExportResult(null, ReasonCodes.NotFound);
             chosen.Add(entry);
         }
-        if (chosen.Sum(e => e.Info.Size) > ServerTuning.MaxLogDownloadBytes) return (null, ReasonCodes.LogsTooLarge);
+        if (chosen.Sum(e => e.Info.Size) > ServerTuning.MaxLogDownloadBytes) return new LogExportResult(null, ReasonCodes.LogsTooLarge);
         Directory.CreateDirectory(ExportDir);
         bool single = chosen.Count == 1;
         var path = Path.Combine(ExportDir, downloadId + (single ? ".log" : ".zip"));
@@ -73,11 +73,11 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
         if (size > ServerTuning.MaxLogDownloadBytes)
         {
             SafeFile.DeleteQuietly(path);
-            return (null, ReasonCodes.LogsTooLarge);
+            return new LogExportResult(null, ReasonCodes.LogsTooLarge);
         }
         var name = single ? Path.GetFileName(chosen[0].Path)
             : $"ovs-logs_{Local(chosen.Min(e => e.Info.Start)):yyyy-MM-dd}_{Local(chosen.Max(e => e.Info.LastWrite)):yyyy-MM-dd}.zip";
-        return (new LogExport(name, path, size), "");
+        return new LogExportResult(new LogExport(name, path, size), "");
     }
 
     DateTimeOffset Local(DateTimeOffset at) => TimeZoneInfo.ConvertTime(at, time.LocalTimeZone);

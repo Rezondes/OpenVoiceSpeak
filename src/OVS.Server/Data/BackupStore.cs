@@ -54,13 +54,13 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     }
 
     /// <summary>A free name of the form prefix + local time, with _2, _3 ... when that second is taken already.</summary>
-    (string Name, string Path) NewName(string prefix, DateTimeOffset now)
+    BackupFile NewName(string prefix, DateTimeOffset now)
     {
         Directory.CreateDirectory(Folder);
         var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString(LogFileWriter.NameFormat);
         var name = stamp + Extension;
         for (int i = 2; File.Exists(Path.Combine(Folder, name)); i++) name = $"{stamp}_{i}{Extension}";
-        return (name, Path.Combine(Folder, name));
+        return new BackupFile(name, Path.Combine(Folder, name));
     }
 
     /// <summary>Package 75: checks a finished upload (<see cref="UploadFolder"/>) like a restore would, then gives it a normal backup name. Throws InvalidDataException or BackupQuotaException.</summary>

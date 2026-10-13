@@ -70,7 +70,7 @@ public sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposab
     /// copy. A frame counter starting again within one session (not reachable today: a reconnect makes a new session)
     /// would only turn the copies off, as no frame would be newer than those seen.
     /// </summary>
-    public (ReadOnlyMemory<byte> Kept, bool Unseen) TrackFrame(uint frame, Guid channel, byte target, ReadOnlyMemory<byte> opus, bool relayed)
+    public TrackedFrame TrackFrame(uint frame, Guid channel, byte target, ReadOnlyMemory<byte> opus, bool relayed)
     {
         long now = time.GetTimestamp();
         var last = lastRelayed;
@@ -80,7 +80,7 @@ public sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposab
         bool unseen = close && highestSeen < frame - 1;
         if (frame > highestSeen) highestSeen = frame;
         if (relayed && (last is null || frame > last.Value.Seq)) lastRelayed = (frame, channel, target, opus, now);
-        return (kept, unseen);
+        return new TrackedFrame(kept, unseen);
     }
 
     public void Dispose() => Crypto.Dispose();

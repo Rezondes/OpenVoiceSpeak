@@ -49,7 +49,7 @@ public sealed record ServerConfig(
 
         var file = ReadFile(Path.Combine(dataDir, FileName));
 
-        int port = Int("OVS_PORT", getEnv("OVS_PORT"), file.Port, ProtocolDefaults.Port, (1, 65535));
+        int port = Int("OVS_PORT", getEnv("OVS_PORT"), file.Port, ProtocolDefaults.Port, new ValueRange(1, 65535));
         int maxUsers = Int("OVS_MAX_USERS", getEnv("OVS_MAX_USERS"), file.MaxUsers, ProtocolDefaults.MaxUsers, ServerLimitsRule.MaxUsers);
         int logDays = Int("OVS_LOG_DAYS", getEnv("OVS_LOG_DAYS"), file.LogDays, ProtocolDefaults.LogDays, ServerLimitsRule.LogDays); // 0 = keep forever
         bool autoRestart = Bool("OVS_AUTO_RESTART", getEnv("OVS_AUTO_RESTART"), file.AutoRestart, false);
@@ -113,7 +113,7 @@ public sealed record ServerConfig(
         return time;
     }
 
-    static int Int(string name, string? env, int? fileValue, int fallback, (int Min, int Max) range)
+    static int Int(string name, string? env, int? fileValue, int fallback, ValueRange range)
     {
         int value;
         if (env is not null)
@@ -126,7 +126,7 @@ public sealed record ServerConfig(
             value = fileValue ?? fallback;
         }
 
-        if (value < range.Min || value > range.Max)
+        if (!range.Contains(value))
             throw new ConfigException($"{name} muss zwischen {range.Min} und {range.Max} liegen, ist aber {value}.");
         return value;
     }

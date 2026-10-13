@@ -45,13 +45,13 @@ public static class SafeFile
     }
 
     /// <summary>At most BackupChunkBytes from offset; null when offset is outside the file.</summary>
-    public static (byte[] Bytes, long Total)? ReadChunk(string path, long offset)
+    public static FileChunk? ReadChunk(string path, long offset)
     {
         using var file = File.OpenRead(path);
         if (offset < 0 || offset > file.Length) return null;
         file.Position = offset;
         var bytes = new byte[Math.Min(ProtocolLimits.BackupChunkBytes, file.Length - offset)];
         file.ReadExactly(bytes);
-        return (bytes, file.Length);
+        return new FileChunk(bytes, file.Length);
     }
 }

@@ -89,9 +89,9 @@ public sealed partial class ServerState
     public event Action? SettingsChanged;
 
     /// <summary>Package 69: the daily restart as set in the administration, At in server local time.</summary>
-    public (bool On, TimeOnly At) AutoRestart
+    public AutoRestartSetting AutoRestart
     {
-        get { lock (gate) return (data.Settings.AutoRestart, data.Settings.AutoRestartTime); }
+        get { lock (gate) return new AutoRestartSetting(data.Settings.AutoRestart, data.Settings.AutoRestartTime); }
     }
 
     /// <summary>Package 69: environment and server-config.json only give start values; a differing one is worth a hint.</summary>
@@ -258,10 +258,6 @@ public sealed partial class ServerState
         Fail(session, request, ReasonCodes.InvalidValue, $"Ein Passwort hat höchstens {ProtocolLimits.MaxPasswordLength} Zeichen.");
         return true;
     }
-
-    /// <summary>Every stored user with its groups, as WouldRemoveLastAdmin takes them.</summary>
-    IEnumerable<(string Fingerprint, IReadOnlyCollection<Guid> GroupIds)> UsersAsAdminTuples() =>
-        data.Users.Select(u => (u.Fingerprint, (IReadOnlyCollection<Guid>)u.GroupIds));
 
     /// <summary>Package 83: the compare form of a nickname, compatibility-normalized (NFKC) and case-folded.</summary>
     static string NicknameKey(string nickname)

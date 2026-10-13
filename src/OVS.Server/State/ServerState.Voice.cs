@@ -22,12 +22,12 @@ public sealed partial class ServerState
     }
 
     /// <returns>Package 136: also the sender's channel, read under the lock, as a copy must not cross a move.</returns>
-    public (List<Session> Recipients, byte Target, Guid Channel) VoiceRecipients(Session sender, byte requestedTarget)
+    public VoiceRoute VoiceRecipients(Session sender, byte requestedTarget)
     {
         lock (gate)
         {
-            if (!IsCurrent(sender)) return ([], 0, Guid.Empty);
-            return (VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels, id => FindChannel(id)?.IsMuted == true),
+            if (!IsCurrent(sender)) return new VoiceRoute([], 0, Guid.Empty);
+            return new VoiceRoute(VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels, id => FindChannel(id)?.IsMuted == true),
                 VoiceRouting.EffectiveTarget(sender, requestedTarget), sender.ChannelId);
         }
     }

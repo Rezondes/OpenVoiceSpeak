@@ -31,30 +31,30 @@ public sealed class LogReader(string dataDir, TimeProvider time)
     public List<LogFileInfo> List(IReadOnlyDictionary<Guid, string>? channelNames = null) => ListWithPaths(channelNames).Select(e => e.Info).ToList();
 
     /// <summary>The listing with each file's path, in the same order; LogExporter copies from it.</summary>
-    internal List<(LogFileInfo Info, string Path)> ListWithPaths(IReadOnlyDictionary<Guid, string>? channelNames) =>
+    internal List<LocatedLogFile> ListWithPaths(IReadOnlyDictionary<Guid, string>? channelNames) =>
         Files().Select(f =>
             {
                 var info = new FileInfo(f.Path);
                 var name = f.ChannelId is { } id && channelNames is not null ? channelNames.GetValueOrDefault(id) ?? NameInFile(f.Path) : null;
-                return (new LogFileInfo(f.Id, f.ChannelId is null ? LogKind.Server : LogKind.Channel, f.ChannelId, name,
+                return new LocatedLogFile(new LogFileInfo(f.Id, f.ChannelId is null ? LogKind.Server : LogKind.Channel, f.ChannelId, name,
                     StartOf(info), new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), info.Length), f.Path);
             })
-            .OrderByDescending(e => e.Item1.Start).ThenBy(e => e.Item1.Kind).ThenBy(e => e.Item1.Id, StringComparer.Ordinal).ToList();
+            .OrderByDescending(e => e.Info.Start).ThenBy(e => e.Info.Kind).ThenBy(e => e.Info.Id, StringComparer.Ordinal).ToList();
 
     /// <summary>The file with exactly this id in the listing, null for anything else.</summary>
     public string? Resolve(string? id) => Files().FirstOrDefault(f => f.Id == id).Path;
 
-    IEnumerable<(string Id, string Path, Guid? ChannelId)> Files()
+    IEnumerable<LogFileLocation> Files()
     {
         foreach (var path in LogsIn(Path.Combine(Root, ServerFolder)))
-            yield return ($"{ServerFolder}/{Path.GetFileName(path)}", path, null);
+            yield return new LogFileLocation($"{ServerFolder}/{Path.GetFileName(path)}", path, null);
         var channels = new DirectoryInfo(Path.Combine(Root, ChannelFolder));
         if (!channels.Exists) yield break;
         foreach (var dir in channels.EnumerateDirectories())
         {
             if (dir.Attributes.HasFlag(FileAttributes.ReparsePoint) || !Guid.TryParseExact(dir.Name, "D", out var id) || dir.Name != id.ToString()) continue;
             foreach (var path in LogsIn(dir.FullName))
-                yield return ($"{ChannelFolder}/{dir.Name}/{Path.GetFileName(path)}", path, id);
+                yield return new LogFileLocation($"{ChannelFolder}/{dir.Name}/{Path.GetFileName(path)}", path, id);
         }
     }
 
