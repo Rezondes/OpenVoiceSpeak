@@ -34,7 +34,8 @@ public static class ShotWriter
     /// row enters or flashes (the flash waits on real time).
     /// </summary>
     public static bool Quiet(Visual root) => AnimationCounter.Running == 0 && !root.GetVisualDescendants().OfType<StyledElement>()
-        .Any(styledElement => styledElement.Classes.Contains("entering") || styledElement.Classes.Contains("fresh") || styledElement.Classes.Contains(PageMotion.PageGhostClass));
+        .Any(styledElement => styledElement.Classes.Contains("entering") || styledElement.Classes.Contains("fresh") || styledElement.Classes.Contains(PageMotion.PageGhostClass)
+            || styledElement.Classes.Contains(PopupMotion.GhostClass)); // Step 30: a closing popup's picture, before its fade starts
 
     /// <summary>
     /// Lets the clock run until the window is <see cref="Quiet"/> (at most <paramref name="cap"/> ms), then a little more
