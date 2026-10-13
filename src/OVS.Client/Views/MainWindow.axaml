@@ -10,7 +10,7 @@
         xmlns:conv="using:OVS.Client.Converters"
         x:Class="OVS.Client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Title="OpenVoiceSpeak" Width="1100" Height="700" MinWidth="360" MinHeight="480"
+        Title="{x:Static l:Strings.App_Name}" Width="1100" Height="700" MinWidth="360" MinHeight="480"
         Background="{DynamicResource Ovs.Bg}" Icon="/Assets/ovs.ico"
         ExtendClientAreaToDecorationsHint="True" ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaTitleBarHeightHint="-1">
 
@@ -61,7 +61,7 @@
               </Border>
             </Panel>
             <StackPanel Margin="10,0,4,0" VerticalAlignment="Center" Spacing="2">
-              <TextBlock Classes="h2" Text="{Binding Server.ServerName, FallbackValue='OpenVoiceSpeak'}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="h2" Text="{Binding Server.ServerName, FallbackValue={x:Static l:Strings.App_Name}}" TextTrimming="CharacterEllipsis" />
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Ellipse Classes="dot" Classes.online="{Binding IsConnected}" VerticalAlignment="Center" />
                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Connected}" IsVisible="{Binding IsConnected}" />
@@ -358,7 +358,7 @@
         <ScrollViewer>
           <StackPanel x:Name="StartCard" Classes="startScreen" MaxWidth="460" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
             <ctl:LogoMark Width="80" Height="80" HorizontalAlignment="Center" Classes.connecting="{Binding Connection.IsConnecting}" />
-            <TextBlock Classes="h1" Text="OpenVoiceSpeak" HorizontalAlignment="Center" />
+            <TextBlock Classes="h1" Text="{x:Static l:Strings.App_Name}" HorizontalAlignment="Center" />
             <TextBlock x:Name="StatusText" Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
             <!-- Package 109 (A117): indeterminate only while connecting, so its loop stops with the connecting -->
             <ProgressBar Classes="connect" IsIndeterminate="{Binding Connection.IsConnecting}" IsVisible="{Binding Connection.IsConnecting}" Width="220" />

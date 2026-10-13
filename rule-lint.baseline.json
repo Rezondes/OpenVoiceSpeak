@@ -1,13 +1,5 @@
 [
   {
-    "Key": "RL121|src/OVS.Client/Views/MainWindow.axaml|Text=OpenVoiceSpeak",
-    "Count": 1
-  },
-  {
-    "Key": "RL121|src/OVS.Client/Views/MainWindow.axaml|Title=OpenVoiceSpeak",
-    "Count": 1
-  },
-  {
     "Key": "RL154|src/OVS.Client/Animations/AnimationCounter.cs|AnimationCounter.Count",
     "Count": 1
   },

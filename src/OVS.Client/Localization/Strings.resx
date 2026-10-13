@@ -6,6 +6,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="About_Build" xml:space="preserve"><value>Commit {0}, gebaut am {1:dd.MM.yyyy HH:mm}</value></data>
   <data name="About_LocalBuild" xml:space="preserve"><value>Lokaler Build, keine veröffentlichte Version</value></data>
+  <data name="App_Name" xml:space="preserve"><value>OpenVoiceSpeak</value></data>
   <data name="Audio_DeviceFallback" xml:space="preserve"><value>Ein gespeichertes Audiogerät fehlt, das Standardgerät wird verwendet.</value></data>
   <data name="Audio_MicFailed" xml:space="preserve"><value>Mikrofon konnte nicht geöffnet werden: {0}</value></data>
   <data name="Audio_MicLost" xml:space="preserve"><value>Mikrofon getrennt, Standardgerät wird verwendet.</value></data>
