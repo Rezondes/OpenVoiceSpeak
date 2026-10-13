@@ -4,7 +4,7 @@ using OVS.Shared.Protocol.Messages.ServerInfo;
 namespace OVS.Server.Rules;
 
 /// <summary>Package 69: the ranges of the server limits, for the administration and the start values alike.</summary>
-public static class ServerLimitsRule
+internal static class ServerLimitsRule
 {
     /// <summary>The range of the user limit.</summary>
     public static ValueRange MaxUsers => new(ProtocolLimits.MaxUsersMin, ProtocolLimits.MaxUsersMax);

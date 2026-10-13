@@ -8,7 +8,7 @@ using OVS.Shared.Permissions;
 namespace OVS.Server;
 
 /// <summary>One connected, authenticated client.</summary>
-public sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey, TimeProvider time)
+internal sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey, TimeProvider time)
     : IDisposable
 {
     /// <summary>The session's id, also in its voice packets.</summary>

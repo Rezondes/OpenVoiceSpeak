@@ -18,7 +18,7 @@ namespace OVS.Client.Audio;
 /// mixer runs on its own 20 ms clock, so reception and indicators still work. Package 124 (A132): the devices are only
 /// open while needed, and the playback loop sleeps while there is nothing to play.
 /// </summary>
-public sealed class AudioEngine : IDisposable
+internal sealed class AudioEngine : IDisposable
 {
     /// <summary>
     /// Package 140 (A149): the echo canceller's delay hint, from a mixed frame to its echo in the capture: the playback

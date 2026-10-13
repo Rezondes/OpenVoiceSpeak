@@ -6,7 +6,7 @@ namespace OVS.Client.Input;
 /// Global key bindings via GetAsyncKeyState polling (10 ms). RegisterHotKey cannot report key release.
 /// Works while another program (a game) has the focus.
 /// </summary>
-public sealed class KeyPoller : IDisposable
+internal sealed class KeyPoller : IDisposable
 {
     readonly CancellationTokenSource stopping = new();
     readonly Thread thread;

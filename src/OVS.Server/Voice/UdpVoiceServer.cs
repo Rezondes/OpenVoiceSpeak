@@ -12,7 +12,7 @@ namespace OVS.Server.Voice;
 /// Receives encrypted voice over UDP and re-seals it for every recipient. Invalid packets are dropped silently. Package 141
 /// (A150): voice over the TLS connection takes the same way in and out, each recipient on its own path.
 /// </summary>
-public sealed class UdpVoiceServer : IDisposable
+internal sealed class UdpVoiceServer : IDisposable
 {
     readonly ServerState state;
     readonly TimeProvider time;

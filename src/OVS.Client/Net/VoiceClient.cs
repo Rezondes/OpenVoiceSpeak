@@ -10,7 +10,7 @@ namespace OVS.Client.Net;
 /// control connection given, voice goes over it while UDP does not answer (5 s after the start, or once lost), and back
 /// as soon as a Hello is answered again; TLS already encrypts it there.
 /// </summary>
-public sealed class VoiceClient : IDisposable
+internal sealed class VoiceClient : IDisposable
 {
     static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(2); // Package 133 (A142): 5 s before, now as often as the stats refresh
     // Package 126: Hello is retried until the server answers, fast at first; silence this long counts as lost

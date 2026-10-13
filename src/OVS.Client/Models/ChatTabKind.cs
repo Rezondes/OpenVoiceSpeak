@@ -1,7 +1,7 @@
 namespace OVS.Client.Models;
 
 /// <summary>The kind of a chat tab.</summary>
-public enum ChatTabKind
+internal enum ChatTabKind
 {
     /// <summary>The tab of "Allgemein", to everyone on the server.</summary>
     General,

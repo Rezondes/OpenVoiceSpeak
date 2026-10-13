@@ -48,7 +48,7 @@ namespace OVS.Client.Diagnostics;
 /// POST /request      {type, ...}                any protocol request, e.g. {"type":"createGroup",...}
 /// POST /settings     ClientSettings JSON        applied like the settings dialog
 /// </summary>
-public sealed class DebugApi : IDisposable
+internal sealed class DebugApi : IDisposable
 {
     /// <summary>The header every request must carry.</summary>
     public const string Header = "X-OVS-Debug";

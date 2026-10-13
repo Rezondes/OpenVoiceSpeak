@@ -11,7 +11,7 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Website;
 
 /// <summary>One look of the client: its language, theme, an empty profile and the main window at the website's size.</summary>
-public sealed class WebsiteScene : IDisposable
+internal sealed class WebsiteScene : IDisposable
 {
     readonly CultureInfo before = CultureInfo.CurrentUICulture, formatsBefore = CultureInfo.CurrentCulture;
     readonly ThemeVariant? themeBefore = Application.Current!.RequestedThemeVariant;

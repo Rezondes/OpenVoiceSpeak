@@ -11,7 +11,7 @@ namespace OVS.Client.Appearance;
 /// text, cards, menus and dialogs (own brushes Ovs.DialogBg and Ovs.DialogBar) stay solid. Clicks on see-through
 /// parts still reach the window: Avalonia draws with DirectComposition, not as a layered window (A72).
 /// </summary>
-public static class BackgroundTransparency
+internal static class BackgroundTransparency
 {
     /// <summary>The resource keys of the large backgrounds that turn see-through.</summary>
     public static readonly IReadOnlyList<string> BackgroundKeys = ["Ovs.Bg", "Ovs.Sidebar", "Ovs.SidebarFooter"];

@@ -19,7 +19,7 @@ namespace OVS.Client;
 /// the leave timer) on the one clock and the view model on them. The view model disposes the key poller and the engine
 /// itself; view models made at runtime keep their factories.
 /// </summary>
-public static class ClientServices
+internal static class ClientServices
 {
     /// <summary>A main view model on the profile folder <paramref name="storageDir"/> with its parts made by the container.</summary>
     /// <param name="storageDir">The profile folder.</param>

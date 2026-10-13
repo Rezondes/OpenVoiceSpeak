@@ -4,7 +4,7 @@ namespace OVS.Server.Throttling;
 /// Package 94: wrong channel passwords per session and channel; the ChannelPasswordFailures-th within ChannelPasswordWindow
 /// blocks that channel for ChannelPasswordBlock. A session's counts are forgotten when it ends. Guarded by the ServerState lock.
 /// </summary>
-public sealed class ChannelPasswordGuessLimit
+internal sealed class ChannelPasswordGuessLimit
 {
     /// <summary>Per session, then per channel: the count, the first of the window and the end of a block.</summary>
     readonly Dictionary<uint, Dictionary<Guid, (int Count, DateTimeOffset First, DateTimeOffset BlockedUntil)>> failures = [];

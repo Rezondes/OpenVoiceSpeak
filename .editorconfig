@@ -31,7 +31,6 @@ dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1062.severity = none
 
 # Step 38 pending: rules whose findings are still being fixed; each sub-step removes its lines.
-dotnet_diagnostic.CA1515.severity = none
 dotnet_diagnostic.CA2000.severity = none
 dotnet_diagnostic.CA1863.severity = none
 dotnet_diagnostic.CA1002.severity = none

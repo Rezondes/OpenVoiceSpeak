@@ -1,7 +1,7 @@
 namespace OVS.Client.Input;
 
 /// <summary>What the key actions are: every action, and which of them are hold actions (they last while the key is down).</summary>
-public static class KeyActionTraits
+internal static class KeyActionTraits
 {
     /// <summary>Every action.</summary>
     public static readonly IReadOnlyList<KeyAction> All = Enum.GetValues<KeyAction>();

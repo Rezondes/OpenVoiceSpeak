@@ -11,7 +11,7 @@ namespace OVS.Server.Logging;
 /// from the reader's own listing, so no path from a client is ever opened; the exporter's own ReadHook runs before each copy.
 /// Thread-safe, meant to run off the state lock.
 /// </summary>
-public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider time)
+internal sealed class LogExporter(string dataDir, LogReader reader, TimeProvider time)
 {
     /// <summary>The folder the prepared downloads are written to, inside the data folder.</summary>
     public const string ExportFolder = "logs-export";

@@ -4,7 +4,7 @@ namespace OVS.Client.Audio.Processing;
 /// Package 128 (A137): Fluxer's volume curve. A volume is the slider value (1 = 100 %, 0 to 2); up to 100 % it falls
 /// logarithmically (50 % is about a quarter), above it rises exponentially to four times at 200 %.
 /// </summary>
-public static class VolumeCurve
+internal static class VolumeCurve
 {
     /// <summary>Per-user and output gain together never exceed this (the voice boost and the limiter come after).</summary>
     public const float MaxGain = 12f;

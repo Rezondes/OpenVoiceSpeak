@@ -10,7 +10,7 @@ namespace OVS.Client.Net.Updates;
 /// them. Windows lets a running exe be renamed but not overwritten, so the old one becomes "*.old" and is removed
 /// on the next start. Any failure leaves the running exe as it was.
 /// </summary>
-public sealed class UpdateInstaller(HttpClient http, string exePath, Action<string> restart)
+internal sealed class UpdateInstaller(HttpClient http, string exePath, Action<string> restart)
 {
     string NewPath => exePath + ".new";
     string OldPath => exePath + ".old";

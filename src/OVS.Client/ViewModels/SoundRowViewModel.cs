@@ -7,7 +7,7 @@ using OVS.Client.Settings;
 namespace OVS.Client.ViewModels;
 
 /// <summary>Package 48: one sound in the settings: play, volume, mute, own file, reset.</summary>
-public sealed partial class SoundRowViewModel : ObservableObject
+internal sealed partial class SoundRowViewModel : ObservableObject
 {
     readonly SettingsViewModel owner;
 

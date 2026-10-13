@@ -5,7 +5,7 @@ namespace OVS.Client.Settings;
 /// <param name="Host">The server's host.</param>
 /// <param name="Port">The server's port.</param>
 /// <param name="Nickname">The nickname to connect with.</param>
-public sealed record Bookmark(string Name, string Host, int Port, string Nickname, string? ProtectedPassword = null)
+internal sealed record Bookmark(string Name, string Host, int Port, string Nickname, string? ProtectedPassword = null)
 {
     /// <summary>A password is stored and readable.</summary>
     public bool HasSavedPassword => SavedPassword() is not null;

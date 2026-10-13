@@ -13,7 +13,7 @@ namespace OVS.Client.Audio.Sounds;
 /// <param name="deafened">Whether the user is deafened, read at each sound.</param>
 /// <param name="wakePlayback">Starts the playback loop if needed and wakes it.</param>
 /// <param name="samples">A sound's samples for its setting (the own tones of the profile); null: the default tone, whatever the setting names.</param>
-public sealed class SoundPlayer(SoundQueue queue, Func<ClientSettings> settings, Func<bool> deafened, Action wakePlayback,
+internal sealed class SoundPlayer(SoundQueue queue, Func<ClientSettings> settings, Func<bool> deafened, Action wakePlayback,
     Func<SoundEvent, SoundSetting, float[]>? samples = null)
 {
     readonly Queue<SoundEvent> recent = new();

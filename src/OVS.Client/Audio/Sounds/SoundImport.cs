@@ -10,7 +10,7 @@ namespace OVS.Client.Audio.Sounds;
 /// Package 48 (A47): turns a chosen WAV or MP3 into the client's own format (48 kHz mono) and keeps it in the
 /// profile, so the original may be moved or deleted afterwards.
 /// </summary>
-public static class SoundImport
+internal static class SoundImport
 {
     /// <summary>The longest sound accepted, in seconds.</summary>
     public const int MaxSeconds = 5;

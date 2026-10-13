@@ -13,7 +13,7 @@ using OVS.Shared.Protocol.Messages.Users;
 namespace OVS.Tests.TestSupport;
 
 /// <summary>A ServerViewModel without a network: own user "ich" is admin, "anna" sits in the linked channel.</summary>
-public static class FakeServers
+internal static class FakeServers
 {
     public static readonly Guid Lobby = Guid.NewGuid(), Raid = Guid.NewGuid();
 

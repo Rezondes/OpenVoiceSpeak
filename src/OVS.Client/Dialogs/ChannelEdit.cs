@@ -12,5 +12,5 @@ namespace OVS.Client.Dialogs;
 /// <param name="Description">The channel's description.</param>
 /// <param name="IsMuted">Nobody in it is heard.</param>
 /// <param name="MaxUsers">0 = unlimited.</param>
-public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null,
+internal sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null,
     bool HasPassword = false, string? Password = null, ChannelKind Kind = ChannelKind.Voice, int Bitrate = ProtocolDefaults.Bitrate);

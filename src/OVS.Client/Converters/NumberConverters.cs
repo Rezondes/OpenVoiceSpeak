@@ -4,7 +4,7 @@ using Avalonia.Data.Converters;
 namespace OVS.Client.Converters;
 
 /// <summary>Comparisons of a bound number, for visibility and the signal icon.</summary>
-public static class NumberConverters
+internal static class NumberConverters
 {
     /// <summary>True for 0.</summary>
     public static readonly IValueConverter IsZero = new FuncValueConverter<int, bool>(count => count == 0);

@@ -8,7 +8,7 @@ namespace OVS.Client.ViewModels;
 /// <param name="partner">Private tabs (Package 33): the partner's fingerprint, so the tab survives a reconnect.</param>
 /// <param name="kind">General, channel or private.</param>
 /// <param name="title">The tab's title.</param>
-public sealed partial class ChatTabViewModel(ChatTabKind kind, string title, string? partner = null) : ObservableObject
+internal sealed partial class ChatTabViewModel(ChatTabKind kind, string title, string? partner = null) : ObservableObject
 {
     const int MaxEntries = 500;
 

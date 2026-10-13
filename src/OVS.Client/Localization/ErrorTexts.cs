@@ -4,7 +4,7 @@ using OVS.Shared.Protocol;
 namespace OVS.Client.Localization;
 
 /// <summary>User texts for the protocol's error codes, in the chosen language (Package 45).</summary>
-public static class ErrorTexts
+internal static class ErrorTexts
 {
     /// <summary>
     /// A45: the server's own detail texts are German and meant for operators, so they only go to the client log.

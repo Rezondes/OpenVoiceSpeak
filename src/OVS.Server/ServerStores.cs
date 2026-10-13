@@ -7,7 +7,7 @@ namespace OVS.Server;
 /// The file stores of one run, all in the data folder. <see cref="Open"/> makes them and removes what a crash left behind
 /// before anything reads the folder; <see cref="State.ServerState"/> receives them and creates none.
 /// </summary>
-public sealed class ServerStores
+internal sealed class ServerStores
 {
     ServerStores(string dataDir, TimeProvider time)
     {

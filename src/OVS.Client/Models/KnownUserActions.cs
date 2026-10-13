@@ -6,7 +6,7 @@ namespace OVS.Client.Models;
 /// What a user card of the administration does when its buttons are pressed, made once by the page (Package 72, 85, 98).
 /// Each action gets the card it was pressed on; the card knows no page.
 /// </summary>
-public sealed record KnownUserActions(
+internal sealed record KnownUserActions(
     Func<KnownUserViewModel, Task> Ban,
     Func<KnownUserViewModel, Task> Unban,
     Func<KnownUserViewModel, Task> Delete,

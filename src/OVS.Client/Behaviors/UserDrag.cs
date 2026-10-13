@@ -15,7 +15,7 @@ namespace OVS.Client.Behaviors;
 /// pointer lights up when the user may go there. Releasing on it calls <c>drop(user, channel)</c>, anywhere else nothing
 /// is sent. Lives beside the channel <see cref="ReorderDrag"/>, which ignores presses on user rows.
 /// </summary>
-public sealed class UserDrag
+internal sealed class UserDrag
 {
     /// <summary>The style class of the channel a dragged user would land in.</summary>
     public const string TargetClass = "dropTarget";

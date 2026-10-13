@@ -24,7 +24,7 @@ namespace OVS.Tests.Website;
 /// Package 116 (A126): the made-up server the website's images show, "Gilde Nordlicht", in German or English. No network,
 /// fixed data and times, so the images only change when the client does.
 /// </summary>
-public sealed class ShowcaseServer
+internal sealed class ShowcaseServer
 {
     public static readonly Guid Lobby = new("0b0b0b0b-0000-0000-0000-000000000001"), Raid = new("0b0b0b0b-0000-0000-0000-000000000002"),
         Strategy = new("0b0b0b0b-0000-0000-0000-000000000003"), Training = new("0b0b0b0b-0000-0000-0000-000000000004"),

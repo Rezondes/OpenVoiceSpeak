@@ -6,7 +6,7 @@ namespace RuleLint.Rules;
 /// Rules 12 and 13 in XAML: user-facing text comes from the resources, not from a literal attribute (a warning, since a
 /// symbol or a product name may stand there on purpose), and each namespace uses its fixed prefix.
 /// </summary>
-public sealed partial class XamlRule : IRule
+internal sealed partial class XamlRule : IRule
 {
     readonly LintSettings settings;
 

@@ -4,7 +4,7 @@ namespace RuleLint.Rules;
 /// Rules 10 and 11, for production code: a type in a <c>Views/</c> folder ends in <c>View</c> (except the listed ones),
 /// a type in a <c>ViewModels/</c> folder ends in <c>ViewModel</c>.
 /// </summary>
-public sealed class UiSuffixRule : IRule
+internal sealed class UiSuffixRule : IRule
 {
     readonly LintSettings settings;
 

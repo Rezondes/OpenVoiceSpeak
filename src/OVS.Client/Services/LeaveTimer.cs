@@ -6,7 +6,7 @@ namespace OVS.Client.Services;
 /// </summary>
 /// <param name="post">Runs the removal on the UI thread; inline when null (tests with a manual clock).</param>
 /// <param name="time">The clock the delay runs on.</param>
-public sealed class LeaveTimer(TimeProvider time, Func<Action<Action>?>? post = null)
+internal sealed class LeaveTimer(TimeProvider time, Func<Action<Action>?>? post = null)
 {
     /// <summary>How long a removed entry stays.</summary>
     public TimeSpan Delay { get; set; }

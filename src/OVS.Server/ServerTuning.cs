@@ -4,7 +4,7 @@ namespace OVS.Server;
 /// Tunable limits and timings of the server. The numbers are starting values,
 /// not protocol constants; clients only ever see RateLimited or a disconnect.
 /// </summary>
-public static class ServerTuning
+internal static class ServerTuning
 {
     // ---- Requests per session (Ping is not a request and never counts) ----
     /// <summary>Requests per second a session may send on average.</summary>

@@ -6,7 +6,7 @@ namespace RuleLint.Rules;
 /// Rule 3, as a warning: an interface of production or tool code has several production implementations or a fake in
 /// the tests. Counted by name in base lists, so an implementation through a base class is not seen; the review decides.
 /// </summary>
-public sealed class InterfaceRule : IRule
+internal sealed class InterfaceRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

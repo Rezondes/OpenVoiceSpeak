@@ -12,7 +12,7 @@ using OVS.Shared.Protocol.Messages.Users;
 namespace OVS.Client.ViewModels;
 
 /// <summary>A user in the tree.</summary>
-public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId) : ObservableObject
+internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionId) : ObservableObject
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(VolumeLabel))]

@@ -9,7 +9,7 @@ namespace OVS.Client.Collections;
 /// view can fold it away; leaving belongs to the entry in that one list (a user who switches channels leaves the old
 /// channel's list while entering the new one).
 /// </summary>
-public static class CollectionSync
+internal static class CollectionSync
 {
     /// <summary>Per list: the entries leaving, each with the round it started in (a newer leave outlives an older timer).</summary>
     static readonly ConditionalWeakTable<object, Dictionary<object, int>> leavingSets = [];

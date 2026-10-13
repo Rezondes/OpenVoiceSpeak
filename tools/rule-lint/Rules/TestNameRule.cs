@@ -8,7 +8,7 @@ namespace RuleLint.Rules;
 /// with tests ends in <c>Tests</c> (a warning; a feature-named class may keep its name), and no fixed wait or wall clock
 /// (<c>Task.Delay</c>, <c>DateTime.Now</c>; a <c>Thread.Sleep</c> is RL505) in a test (a warning).
 /// </summary>
-public sealed class TestNameRule : IRule
+internal sealed class TestNameRule : IRule
 {
     static readonly string[] WallClocks = ["DateTime.Now", "DateTime.UtcNow", "DateTimeOffset.Now", "DateTimeOffset.UtcNow"];
 

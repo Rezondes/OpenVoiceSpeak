@@ -7,7 +7,7 @@ namespace RuleLint.Rules;
 /// The single-responsibility red flags of the review checklist, as warnings in production and tool code: a type
 /// declaration over the type limit, a method, constructor or local function body over the method limit.
 /// </summary>
-public sealed class SizeRule : IRule
+internal sealed class SizeRule : IRule
 {
     readonly LintSettings settings;
 

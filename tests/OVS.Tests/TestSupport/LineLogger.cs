@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 namespace OVS.Tests.TestSupport;
 
 /// <summary>An <see cref="ILogger"/> that adds each formatted message to <paramref name="lines"/>.</summary>
-public sealed class LineLogger(List<string> lines) : ILogger
+internal sealed class LineLogger(List<string> lines) : ILogger
 {
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 

@@ -4,7 +4,7 @@ namespace OVS.Tests.Website;
 /// Package 116 (A124): the four looks (de/en, light/dark); skipped without OVS_SHOTS, so the normal test run and CI never
 /// render the website's images.
 /// </summary>
-public sealed class ShotVariantsAttribute : Xunit.Sdk.DataAttribute
+internal sealed class ShotVariantsAttribute : Xunit.Sdk.DataAttribute
 {
     public ShotVariantsAttribute()
     {

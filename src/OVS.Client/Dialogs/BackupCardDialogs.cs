@@ -1,7 +1,7 @@
 namespace OVS.Client.Dialogs;
 
 /// <summary>The dialogs of the backup card. Unset entries mean "cancelled" (used by tests).</summary>
-public sealed record BackupCardDialogs
+internal sealed record BackupCardDialogs
 {
     /// <summary>Package 89 (A101): the warning before a download, the file holds the server's private key and user data.</summary>
     public Func<Task<bool>>? ConfirmBackupDownload { get; init; }

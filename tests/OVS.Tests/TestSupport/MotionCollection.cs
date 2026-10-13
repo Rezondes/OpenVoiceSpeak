@@ -7,7 +7,9 @@ namespace OVS.Tests.TestSupport;
 /// own (<c>Motion.DisplayProperty</c>).
 /// </summary>
 [CollectionDefinition(Name)]
+#pragma warning disable CA1515 // public: xunit finds collection definitions on public classes
 public sealed class MotionCollection
+#pragma warning restore CA1515
 {
     public const string Name = "Motion";
 }

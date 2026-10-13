@@ -1,7 +1,7 @@
 namespace OVS.Client.Audio.Codec;
 
 /// <summary>The format of every voice frame.</summary>
-public static class AudioFormat
+internal static class AudioFormat
 {
     /// <summary>Samples per second.</summary>
     public const int SampleRate = 48_000;

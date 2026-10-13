@@ -12,7 +12,7 @@ namespace OVS.Client.ViewModels;
 /// the links and logs tabs. Every tab only shows with the matching right. It lists the sections once (<see cref="AdminSection"/>)
 /// and asks them to refresh, follow the server and let go of their routes.
 /// </summary>
-public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
+internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
 {
     readonly ServerViewModel server;
     readonly AdminDialogs dialogs;

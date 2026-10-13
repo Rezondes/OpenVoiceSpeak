@@ -74,27 +74,30 @@ public sealed class SettingsRoundTripTests
         Assert.Equal(settings.ToJson(), saved.ToJson());
     }
 
-    public static TheoryData<string, Action<SettingsViewModel>, Func<ClientSettings, bool>> PreviewedChanges => new()
+    static readonly Dictionary<string, PreviewedChange> Changes = new()
     {
-        { "voice activation", page => page.VoiceActivation = true, previewed => previewed.Mode == TransmitMode.VoiceActivation },
-        { "background opacity", page => page.BackgroundOpacityPercent = 50, previewed => previewed.BackgroundOpacity == 0.5f },
-        { "blur", page => page.BlurBackground = true, previewed => previewed.BlurBackground },
-        { "noise suppression", page => page.NoiseSuppression = false, previewed => !previewed.NoiseSuppression },
-        { "auto gain", page => page.AutoGain = false, previewed => !previewed.AutoGain },
-        { "echo cancellation", page => page.EchoCancellation = false, previewed => !previewed.EchoCancellation },
-        { "music", page => page.IsMusic = true, previewed => previewed.AudioContent == AudioContent.Music },
-        { "automatic threshold", page => page.VadAutomatic = false, previewed => !previewed.VadAutomatic },
-        { "display", page => page.SelectedDisplay = SettingsViewModel.Displays.Single(option => option.Value == DisplayMode.Simplified), previewed => previewed.Display == DisplayMode.Simplified },
-        { "input gain", page => page.InputGainPercent = 50, previewed => previewed.InputGain == 0.5f },
-        { "output volume", page => page.OutputVolumePercent = 150, previewed => previewed.OutputVolume == 1.5f },
-        { "release delay", page => page.PttReleaseDelayMs = 120, previewed => previewed.PttReleaseDelayMs == 120 },
-        { "threshold", page => page.VadThresholdDb = -45, previewed => previewed.VadThresholdDb == -45f },
+        ["voice activation"] = new(page => page.VoiceActivation = true, previewed => previewed.Mode == TransmitMode.VoiceActivation),
+        ["background opacity"] = new(page => page.BackgroundOpacityPercent = 50, previewed => previewed.BackgroundOpacity == 0.5f),
+        ["blur"] = new(page => page.BlurBackground = true, previewed => previewed.BlurBackground),
+        ["noise suppression"] = new(page => page.NoiseSuppression = false, previewed => !previewed.NoiseSuppression),
+        ["auto gain"] = new(page => page.AutoGain = false, previewed => !previewed.AutoGain),
+        ["echo cancellation"] = new(page => page.EchoCancellation = false, previewed => !previewed.EchoCancellation),
+        ["music"] = new(page => page.IsMusic = true, previewed => previewed.AudioContent == AudioContent.Music),
+        ["automatic threshold"] = new(page => page.VadAutomatic = false, previewed => !previewed.VadAutomatic),
+        ["display"] = new(page => page.SelectedDisplay = SettingsViewModel.Displays.Single(option => option.Value == DisplayMode.Simplified), previewed => previewed.Display == DisplayMode.Simplified),
+        ["input gain"] = new(page => page.InputGainPercent = 50, previewed => previewed.InputGain == 0.5f),
+        ["output volume"] = new(page => page.OutputVolumePercent = 150, previewed => previewed.OutputVolume == 1.5f),
+        ["release delay"] = new(page => page.PttReleaseDelayMs = 120, previewed => previewed.PttReleaseDelayMs == 120),
+        ["threshold"] = new(page => page.VadThresholdDb = -45, previewed => previewed.VadThresholdDb == -45f),
     };
+
+    public static TheoryData<string> PreviewedChanges => new(Changes.Keys);
 
     [Theory]
     [MemberData(nameof(PreviewedChanges))]
-    public void Change_OnThePage_PreviewsAtOnce(string setting, Action<SettingsViewModel> change, Func<ClientSettings, bool> shows)
+    public void Change_OnThePage_PreviewsAtOnce(string setting)
     {
+        var (change, shows) = Changes[setting];
         var page = Page(new ClientSettings());
         var previews = new List<ClientSettings>();
         page.LivePreview = previews.Add;
@@ -103,4 +106,7 @@ public sealed class SettingsRoundTripTests
 
         Assert.True(previews.Count > 0 && shows(previews[^1]), $"{setting} is not previewed at once");
     }
+
+    /// <summary>A change made on the page, and how the previewed settings show it.</summary>
+    sealed record PreviewedChange(Action<SettingsViewModel> Change, Func<ClientSettings, bool> Shows);
 }

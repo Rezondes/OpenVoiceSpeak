@@ -1,7 +1,7 @@
 namespace OVS.Client.Input;
 
 /// <summary>Which key bindings the keys pressed right now trigger.</summary>
-public static class KeyBindingMatcher
+internal static class KeyBindingMatcher
 {
     /// <summary>
     /// The actions whose chord is fully pressed. Extra modifiers do not hurt (Shift held while running still lets

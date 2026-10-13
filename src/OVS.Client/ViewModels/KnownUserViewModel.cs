@@ -19,7 +19,7 @@ namespace OVS.Client.ViewModels;
 /// <param name="canUnban">The unban button shows.</param>
 /// <param name="canDelete">The delete button shows.</param>
 /// <param name="canLiftMute">The lift mute button shows.</param>
-public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupAssignmentViewModel> toggles, IReadOnlyList<BanInfo> bans,
+internal sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupAssignmentViewModel> toggles, IReadOnlyList<BanInfo> bans,
     KnownUserActions actions, PendingActionViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
 {
     /// <summary>The user as the server lists them.</summary>

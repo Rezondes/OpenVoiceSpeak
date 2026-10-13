@@ -6,7 +6,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 namespace OVS.Server.Data.Records;
 
 /// <summary>A channel as stored.</summary>
-public sealed class ChannelRecord
+internal sealed class ChannelRecord
 {
     /// <summary>The channel's id.</summary>
     public Guid Id { get; set; }

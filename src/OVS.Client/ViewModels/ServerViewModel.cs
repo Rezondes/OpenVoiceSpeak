@@ -26,7 +26,7 @@ using OVS.Shared.Protocol.Messages.Users;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One connected server: channel tree, own state and every request the UI can make.</summary>
-public sealed partial class ServerViewModel : ObservableObject
+internal sealed partial class ServerViewModel : ObservableObject
 {
     readonly Func<Request, Task> send;
     readonly TimeProvider time;

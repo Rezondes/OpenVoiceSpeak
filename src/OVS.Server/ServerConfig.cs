@@ -20,7 +20,7 @@ namespace OVS.Server;
 /// <param name="ServerName">The start value of the server's name.</param>
 /// <param name="Password">The start value of the server password, empty for none.</param>
 /// <param name="LogDays">The start value of the log retention, 0 keeps every file.</param>
-public sealed record ServerConfig(
+internal sealed record ServerConfig(
     int Port, string DataDir, int MaxUsers, string ServerName, string Password, int LogDays = ProtocolDefaults.LogDays,
     TimeOnly? AutoRestartAt = null, bool LogRotateDaily = true)
 {

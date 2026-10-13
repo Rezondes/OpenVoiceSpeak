@@ -8,7 +8,7 @@ namespace OVS.Server.Voice;
 /// One session's voice state, only touched under the voice gate of UdpVoiceServer (its UDP loop, and Package 141's
 /// VoiceUp); <see cref="TcpVoice"/> and <see cref="DownlinkLoss"/> are also read elsewhere and say how.
 /// </summary>
-public sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposable
+internal sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposable
 {
     /// <summary>Seals and opens the session's voice packets.</summary>
     public VoiceCrypto Crypto { get; } = new(voiceKey);

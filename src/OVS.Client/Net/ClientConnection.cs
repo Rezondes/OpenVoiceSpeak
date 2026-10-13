@@ -16,7 +16,7 @@ using OVS.Shared.Voice;
 namespace OVS.Client.Net;
 
 /// <summary>TLS control connection with TOFU pinning and the challenge handshake.</summary>
-public sealed class ClientConnection : IAsyncDisposable
+internal sealed class ClientConnection : IAsyncDisposable
 {
     static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
 

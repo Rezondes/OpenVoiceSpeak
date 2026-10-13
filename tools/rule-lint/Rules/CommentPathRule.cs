@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace RuleLint.Rules;
 
 /// <summary>Rule 24, as a warning: a comment names a type, not the path of its source file.</summary>
-public sealed partial class CommentPathRule : IRule
+internal sealed partial class CommentPathRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

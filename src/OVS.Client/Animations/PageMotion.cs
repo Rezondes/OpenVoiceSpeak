@@ -22,7 +22,7 @@ namespace OVS.Client.Animations;
 /// <item>Long pages: their sections fade up once when they first scroll into view (<see cref="RevealProperty"/>).</item>
 /// </list>
 /// </summary>
-public static class PageMotion
+internal static class PageMotion
 {
     /// <summary>How far a page, a tab's content and a revealed section move, in pixels.</summary>
     public const double Slide = 24, TabSlide = 12, RevealRise = 16;

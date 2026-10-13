@@ -7,7 +7,7 @@ namespace RuleLint;
 /// The project's settings of the rule checker, read from <c>rule-lint.json</c> in the repository root. The defaults are
 /// the general rules of CODING-RULES.md; a project lists its roots and its exceptions (CODING-RULES-&lt;Project&gt;.md).
 /// </summary>
-public sealed class LintSettings
+internal sealed class LintSettings
 {
     /// <summary>The file name the checker looks for in the repository root.</summary>
     public const string FileName = "rule-lint.json";

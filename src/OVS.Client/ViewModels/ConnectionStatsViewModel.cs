@@ -15,7 +15,7 @@ namespace OVS.Client.ViewModels;
 /// reads through delegates, so it knows neither the voice connection nor the engine. The loss adapter's feed (Package 135) is
 /// not its job: <see cref="VoiceLink"/> hands it the uplink figure of each new answer.
 /// </summary>
-public sealed partial class ConnectionStatsViewModel : ObservableObject
+internal sealed partial class ConnectionStatsViewModel : ObservableObject
 {
     /// <summary>The round trips the baseline is taken from.</summary>
     public const int BaselineSamples = 30;

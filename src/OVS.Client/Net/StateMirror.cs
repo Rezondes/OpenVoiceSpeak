@@ -9,7 +9,7 @@ using OVS.Shared.Protocol.Messages.Users;
 namespace OVS.Client.Net;
 
 /// <summary>Client-side copy of the server state, fed with Welcome and every delta. Single-threaded (UI thread).</summary>
-public sealed class StateMirror
+internal sealed class StateMirror
 {
     /// <summary>The state the welcome carries.</summary>
     public StateMirror(Welcome welcome)

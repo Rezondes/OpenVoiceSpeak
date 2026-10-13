@@ -14,7 +14,7 @@ namespace OVS.Tests.Website;
 /// Package 116 (A124, A125): writes what a headless window shows as the website's images (WebP) and clips (PNG frames at
 /// a steady 30 fps, encoded later by website/scripts/encode-clips.mjs).
 /// </summary>
-public static class ShotWriter
+internal static class ShotWriter
 {
     public const int Quality = 82, Fps = 30;
 

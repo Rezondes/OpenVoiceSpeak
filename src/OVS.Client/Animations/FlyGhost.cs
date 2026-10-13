@@ -13,7 +13,7 @@ namespace OVS.Client.Animations;
 /// are in view; across the edge of a scrolled list it would fly in from nowhere. The flight follows its target while
 /// the rows around it still open and fold, so it lands exactly where the target ends up.
 /// </summary>
-public static class FlyGhost
+internal static class FlyGhost
 {
     /// <summary>The highlight ghost's strength, and the share of the flight after which it hands over to the row.</summary>
     const double GhostOpacity = 0.6, HandOver = 0.6;

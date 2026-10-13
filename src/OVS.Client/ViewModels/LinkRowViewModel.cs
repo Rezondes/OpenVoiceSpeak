@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One row of the link matrix.</summary>
-public sealed partial class LinkRowViewModel(int number, Guid id, string name, bool isSelected, IReadOnlyList<LinkCellViewModel> cells) : ObservableObject, IMotionKey
+internal sealed partial class LinkRowViewModel(int number, Guid id, string name, bool isSelected, IReadOnlyList<LinkCellViewModel> cells) : ObservableObject, IMotionKey
 {
     /// <summary>The channel's id: the row keeps its motion when the matrix is rebuilt.</summary>
     public object MotionKey => Id;

@@ -7,7 +7,7 @@ namespace RuleLint;
 /// or name). The baseline matches a finding by rule, path and subject, never by line, so an edit elsewhere in the file
 /// does not turn a known finding into a new one.
 /// </summary>
-public sealed record Finding(string RuleId, Severity Severity, string Path, int Line, int Column, string Message, string Subject)
+internal sealed record Finding(string RuleId, Severity Severity, string Path, int Line, int Column, string Message, string Subject)
 {
     /// <summary>The key the baseline matches this finding by.</summary>
     public string Key => RuleId + "|" + Path + "|" + Subject;

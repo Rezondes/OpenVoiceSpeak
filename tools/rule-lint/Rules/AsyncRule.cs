@@ -9,7 +9,7 @@ namespace RuleLint.Rules;
 /// no <c>.Result</c> or <c>.Wait()</c> on what may be a task (a warning: a wait handle's <c>Wait</c> is allowed), and no
 /// <c>async void</c> except an event handler (its last parameter is some <c>EventArgs</c>).
 /// </summary>
-public sealed class AsyncRule : IRule
+internal sealed class AsyncRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

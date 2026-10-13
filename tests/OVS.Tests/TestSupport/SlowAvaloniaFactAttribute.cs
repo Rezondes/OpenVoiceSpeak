@@ -10,7 +10,7 @@ namespace OVS.Tests.TestSupport;
 /// </summary>
 [XunitTestCaseDiscoverer("Avalonia.Headless.XUnit.AvaloniaUIFactDiscoverer", "Avalonia.Headless.XUnit")]
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class SlowAvaloniaFactAttribute : FactAttribute
+internal sealed class SlowAvaloniaFactAttribute : FactAttribute
 {
     public const string Variable = "OVS_SLOW_TESTS";
 

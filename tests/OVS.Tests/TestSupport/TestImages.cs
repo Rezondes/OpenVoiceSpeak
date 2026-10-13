@@ -3,7 +3,7 @@ using SkiaSharp;
 namespace OVS.Tests.TestSupport;
 
 /// <summary>Real, decodable test images (SkiaSharp comes with Avalonia).</summary>
-public static class TestImages
+internal static class TestImages
 {
     public static byte[] Encode(int width, int height, SKEncodedImageFormat format = SKEncodedImageFormat.Png)
     {

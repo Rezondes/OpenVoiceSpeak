@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint.Rules;
 
 /// <summary>Rule 9: an exception type of production or tool code lives in an <c>Exceptions/</c> folder.</summary>
-public sealed class ExceptionFolderRule : IRule
+internal sealed class ExceptionFolderRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

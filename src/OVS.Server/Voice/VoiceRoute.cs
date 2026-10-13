@@ -7,4 +7,4 @@ namespace OVS.Server.Voice;
 /// <param name="Recipients">The sessions that hear the frame.</param>
 /// <param name="Target">The target the frame is sent to after the permission check.</param>
 /// <param name="Channel">The channel of the sender.</param>
-public readonly record struct VoiceRoute(List<Session> Recipients, byte Target, Guid Channel);
+internal readonly record struct VoiceRoute(List<Session> Recipients, byte Target, Guid Channel);

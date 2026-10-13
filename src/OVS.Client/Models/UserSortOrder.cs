@@ -1,7 +1,7 @@
 namespace OVS.Client.Models;
 
 /// <summary>How the user list is sorted.</summary>
-public enum UserSortOrder
+internal enum UserSortOrder
 {
     /// <summary>By nickname.</summary>
     Name,

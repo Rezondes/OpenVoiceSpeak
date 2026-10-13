@@ -5,7 +5,7 @@ using OVS.Shared.Voice;
 namespace OVS.Tests.TestSupport;
 
 /// <summary>UDP side of a TestClient.</summary>
-public sealed class TestVoice : IDisposable
+internal sealed class TestVoice : IDisposable
 {
     readonly UdpClient udp;
     readonly VoiceCrypto crypto;

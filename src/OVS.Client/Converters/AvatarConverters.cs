@@ -6,7 +6,7 @@ using Avalonia.Media.Imaging;
 namespace OVS.Client.Converters;
 
 /// <summary>Small view helpers for avatars and badges: the letter, the colour, the own name's weight and the server logo.</summary>
-public static class AvatarConverters
+internal static class AvatarConverters
 {
     /// <summary>White initials stay at least 4.5:1 on every one of these.</summary>
     static readonly IBrush[] AvatarColors =

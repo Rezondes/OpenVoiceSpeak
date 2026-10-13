@@ -7,7 +7,7 @@ namespace RuleLint.Rules;
 /// Rule 20: every local, parameter, field, lambda parameter, loop, catch and pattern variable is a readable word: no
 /// one-letter name except the discard <c>_</c>, and none of the banned abbreviations.
 /// </summary>
-public sealed class LocalNameRule : IRule
+internal sealed class LocalNameRule : IRule
 {
     readonly LintSettings settings;
 

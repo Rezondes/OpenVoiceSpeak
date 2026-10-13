@@ -9,7 +9,7 @@ using Avalonia.Reactive;
 namespace OVS.Client.Views;
 
 /// <summary>Title bar of the main window: drag area, window title and the three window buttons.</summary>
-public partial class TitleBarView : UserControl
+internal partial class TitleBarView : UserControl
 {
     Window? window;
     IDisposable? stateWatch, titleWatch;

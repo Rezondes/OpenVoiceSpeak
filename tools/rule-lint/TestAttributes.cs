@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint;
 
 /// <summary>Tells test methods by their attributes (xUnit, NUnit, MSTest, the headless Avalonia ones).</summary>
-public static class TestAttributes
+internal static class TestAttributes
 {
     static readonly string[] Names = ["Fact", "Theory", "AvaloniaFact", "AvaloniaTheory", "Test", "TestCase", "TestMethod", "DataTestMethod"];
 

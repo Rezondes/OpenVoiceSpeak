@@ -4,7 +4,7 @@ using OVS.Client.Localization;
 namespace OVS.Client.Dialogs;
 
 /// <summary>Reason, duration (null = permanent) and whether the IP is banned too.</summary>
-public sealed record BanChoice(string Reason, int? DurationMinutes, bool IncludeIp)
+internal sealed record BanChoice(string Reason, int? DurationMinutes, bool IncludeIp)
 {
     /// <summary>The durations the ban dialog offers.</summary>
     public static IReadOnlyList<Choice<int?>> Durations =>

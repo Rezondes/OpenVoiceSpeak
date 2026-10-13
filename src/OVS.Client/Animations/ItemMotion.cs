@@ -22,7 +22,7 @@ namespace OVS.Client.Animations;
 /// Rebuilt lists keep their entries by <see cref="IMotionKey"/>, so only really new ones play it. Per list, an
 /// <see cref="EntryTracker"/> decides which entries are new and a <see cref="PlaceTracker"/> where moved ones glide from.
 /// </summary>
-public static class ItemMotion
+internal static class ItemMotion
 {
     /// <summary>The delay between the entries of a batch, and after how many entries it stops growing.</summary>
     public const int StaggerMs = 30, StaggerSteps = 8;

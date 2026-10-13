@@ -7,7 +7,7 @@ namespace OVS.Client.Services;
 /// </summary>
 /// <param name="post">Runs the attempts on the UI thread, like everything else that touches the connection.</param>
 /// <param name="time">The clock of the waits.</param>
-public sealed class Reconnector(TimeProvider time, Action<Action> post)
+internal sealed class Reconnector(TimeProvider time, Action<Action> post)
 {
     /// <summary>The waits before the attempts.</summary>
     public static readonly IReadOnlyList<TimeSpan> Delays = [.. new[] { 1, 2, 4, 8, 16 }.Select(seconds => TimeSpan.FromSeconds(seconds))];

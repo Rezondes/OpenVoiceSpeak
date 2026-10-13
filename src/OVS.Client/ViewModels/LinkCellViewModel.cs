@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One cell of the link matrix: the link between its row's and its column's channel.</summary>
-public sealed class LinkCellViewModel(LinkMatrixViewModel matrix, Guid row, Guid column, string tooltip) : ObservableObject
+internal sealed class LinkCellViewModel(LinkMatrixViewModel matrix, Guid row, Guid column, string tooltip) : ObservableObject
 {
     /// <summary>The row's channel.</summary>
     public Guid Row { get; } = row;

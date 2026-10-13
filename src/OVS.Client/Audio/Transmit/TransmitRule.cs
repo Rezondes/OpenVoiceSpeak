@@ -3,7 +3,7 @@ using OVS.Shared.Voice;
 namespace OVS.Client.Audio.Transmit;
 
 /// <summary>Decides whether a frame is sent, and to which target.</summary>
-public static class TransmitRule
+internal static class TransmitRule
 {
     /// <returns>Voice target to send with, or null to stay silent. Voice activation never uses links.</returns>
     /// <remarks>

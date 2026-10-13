@@ -12,7 +12,7 @@ namespace OVS.Server.State;
 /// Package 81 (A98): the log viewer, all with the right LogsView. The lock only covers the check and the channel names;
 /// the files are read on the session's log queue (AC7), so voice and chat keep running during a large search.
 /// </summary>
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     readonly LogReader logReader;
     readonly LogExporter logExporter;

@@ -18,7 +18,7 @@ using OVS.Shared.Protocol.Messages.VoiceRelay;
 namespace OVS.Server;
 
 /// <summary>TLS control channel: accepts connections, runs the handshake, then pumps messages.</summary>
-public sealed class ControlServer(ServerState state, X509Certificate2 certificate, IPEndPoint endpoint) : IAsyncDisposable
+internal sealed class ControlServer(ServerState state, X509Certificate2 certificate, IPEndPoint endpoint) : IAsyncDisposable
 {
     readonly TcpListener listener = new(endpoint);
     readonly byte[] certHash = CertFingerprint.Compute(certificate);

@@ -14,7 +14,7 @@ namespace OVS.Client.Services;
 /// <param name="confirmTofu">Asks the user about an unknown or changed server certificate.</param>
 /// <param name="log">The client's log.</param>
 /// <param name="time">The client's one clock.</param>
-public sealed class ServerConnector(string profileDir, TrustedServerFingerprints known, Func<TofuPrompt, Task<bool>> confirmTofu, ILogger log,
+internal sealed class ServerConnector(string profileDir, TrustedServerFingerprints known, Func<TofuPrompt, Task<bool>> confirmTofu, ILogger log,
     TimeProvider time)
 {
     /// <summary>Opens a connection as <paramref name="choice"/> says; fits <see cref="OpenConnection"/>.</summary>

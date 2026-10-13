@@ -2,7 +2,7 @@ using OVS.Server.Logging;
 
 namespace OVS.Server.State;
 
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     /// <summary>
     /// The save action of <see cref="saves"/>, run under the lock: drops the bans past the log retention (Package 80, A97)

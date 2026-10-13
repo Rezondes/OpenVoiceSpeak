@@ -25,7 +25,7 @@ using RouteEntry = (System.Action<OVS.Server.State.ServerState, OVS.Server.Sessi
 namespace OVS.Server.State;
 
 /// <summary>All live and persisted server state. Every request handler runs under one lock.</summary>
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     const int MaxConnectionsPerIp = 5;
 

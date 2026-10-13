@@ -9,7 +9,7 @@ namespace OVS.Tests.TestSupport;
 /// Package 124: counts the microphones and speakers the engine opens and closes, without hardware. Package 137: knows
 /// which devices are plugged in and which are the defaults, falls back like the real one, and raises device changes.
 /// </summary>
-public sealed class FakeAudioHardware : IAudioHardware
+internal sealed class FakeAudioHardware : IAudioHardware
 {
     readonly List<(string Device, CapturePipeline Capture)> captures = [];
     readonly List<(string Device, FakeOutput Output)> outputs = [];

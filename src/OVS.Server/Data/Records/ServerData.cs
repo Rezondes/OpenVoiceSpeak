@@ -8,7 +8,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 namespace OVS.Server.Data.Records;
 
 /// <summary>Everything the server stores in server-data.json.</summary>
-public sealed class ServerData
+internal sealed class ServerData
 {
     /// <summary>
     /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69),

@@ -20,7 +20,7 @@ namespace OVS.Server;
 /// In-process, so it does not depend on a supervisor such as Docker's restart policy. Step 30d2: each run is one
 /// Generic Host whose container makes the run's parts.
 /// </summary>
-public static class ServerHost
+internal static class ServerHost
 {
     /// <param name="afterWait">Tests only: runs when a run's wait has ended, before the sessions are closed.</param>
     /// <returns>The process exit code: 0 after a stop request, 1 when a run could not start.</returns>

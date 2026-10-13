@@ -4,7 +4,7 @@ using OVS.Client.Localization;
 namespace OVS.Client.Input;
 
 /// <summary>The Windows virtual key codes the client knows by name, which of them are modifiers, and how a key is shown.</summary>
-public static class VirtualKeys
+internal static class VirtualKeys
 {
     /// <summary>The first side mouse button.</summary>
     public const int XButton1 = 0x05;

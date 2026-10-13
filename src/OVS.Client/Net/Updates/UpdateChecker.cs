@@ -11,7 +11,7 @@ namespace OVS.Client.Net.Updates;
 /// a release with another commit that came out after this build and carries both files. Nothing but this read
 /// request leaves the client; no user data is sent.
 /// </summary>
-public sealed class UpdateChecker(HttpClient http, BuildInfo current)
+internal sealed class UpdateChecker(HttpClient http, BuildInfo current)
 {
     /// <summary>Where the newest release is asked for.</summary>
     public const string LatestReleaseUrl = "https://api.github.com/repos/Rezondes/OpenVoiceSpeak/releases/latest";

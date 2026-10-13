@@ -2,7 +2,7 @@ namespace OVS.Client.Input;
 
 /// <summary>The modifier keys of a chord, as flags.</summary>
 [Flags]
-public enum ChordModifiers
+internal enum ChordModifiers
 {
     /// <summary>No modifier.</summary>
     None = 0,

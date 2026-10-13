@@ -4,7 +4,7 @@ using OVS.Client.Models;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One line of the opened page; IsTarget for the line a search hit opened.</summary>
-public sealed class LogLineViewModel : IMotionKey
+internal sealed class LogLineViewModel : IMotionKey
 {
     /// <summary>Package 109: a line stays the same line while the filter changes; another page or file brings new ones.</summary>
     public object MotionKey => (Number, Text);

@@ -9,7 +9,7 @@ namespace OVS.Server.State;
 /// Text chat (Package 31): server-wide, in the own channel, or private between two online users.
 /// Nothing is stored (A27). Server-muted users may still write (A28).
 /// </summary>
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     void OnSendChat(Session session, SendChat request)
     {

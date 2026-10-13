@@ -1,7 +1,7 @@
 namespace OVS.Client.Models;
 
 /// <summary>The kind of a system notice.</summary>
-public enum NoticeKind
+internal enum NoticeKind
 {
     /// <summary>Something happened.</summary>
     Info,

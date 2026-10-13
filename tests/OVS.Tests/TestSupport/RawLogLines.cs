@@ -8,7 +8,7 @@ namespace OVS.Tests.TestSupport;
 /// Free text into the server's log files, for the tests of the files themselves (rotation, escaping, locking, the
 /// golden bytes); the product writes only the logger messages of ServerLogLines and ChannelLogLines.
 /// </summary>
-public static class RawLogLines
+internal static class RawLogLines
 {
     /// <param name="logs">The writer under test.</param>
     /// <param name="text">The line's text after the time stamp.</param>

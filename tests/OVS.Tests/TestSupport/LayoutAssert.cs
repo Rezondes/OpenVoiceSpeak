@@ -10,7 +10,7 @@ namespace OVS.Tests.TestSupport;
 /// Package 68 (A93): layout checks for the responsive tests. Headless rendering lays out like the real window,
 /// so a control that runs off the visible area shows up in its bounds.
 /// </summary>
-public static class LayoutAssert
+internal static class LayoutAssert
 {
     const double Tolerance = 1;
 

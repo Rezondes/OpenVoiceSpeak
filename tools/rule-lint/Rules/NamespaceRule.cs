@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint.Rules;
 
 /// <summary>Rule 6: the namespace is the folder, declared file-scoped, and no file adds a <c>global using</c>.</summary>
-public sealed class NamespaceRule : IRule
+internal sealed class NamespaceRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index) =>

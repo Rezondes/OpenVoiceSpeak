@@ -6,7 +6,7 @@ using OVS.Shared.Protocol.Framing;
 namespace OVS.Server.Data;
 
 /// <summary>Reads and writes server-data.json.</summary>
-public sealed class DataStore(string path)
+internal sealed class DataStore(string path)
 {
     /// <summary>The data file's name inside the data folder.</summary>
     public const string FileName = "server-data.json";

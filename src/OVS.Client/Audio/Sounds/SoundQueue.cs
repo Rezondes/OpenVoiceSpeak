@@ -1,7 +1,7 @@
 namespace OVS.Client.Audio.Sounds;
 
 /// <summary>Tones currently playing, mixed on top of the voice in the playback loop. Several may overlap.</summary>
-public sealed class SoundQueue
+internal sealed class SoundQueue
 {
     readonly List<Playing> playing = [];
 

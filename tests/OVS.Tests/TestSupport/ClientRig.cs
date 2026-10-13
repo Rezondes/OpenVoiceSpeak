@@ -6,4 +6,4 @@ namespace OVS.Tests.TestSupport;
 /// <param name="Server">The running server.</param>
 /// <param name="Ui">The dispatcher the view model runs on.</param>
 /// <param name="ViewModel">The connected client.</param>
-public sealed record ClientRig(TestServer Server, TestDispatcher Ui, MainViewModel ViewModel);
+internal sealed record ClientRig(TestServer Server, TestDispatcher Ui, MainViewModel ViewModel);

@@ -7,7 +7,7 @@ namespace OVS.Client.Layout;
 /// Package 68 (A93): the two width steps as classes on the window, so every page reacts by style
 /// (e.g. <c>Window.narrow TextBlock.wideOnly</c>) instead of code.
 /// </summary>
-public static class Responsive
+internal static class Responsive
 {
     /// <summary>Below this window width the sidebar becomes a drawer.</summary>
     public const double CompactBelow = 700;

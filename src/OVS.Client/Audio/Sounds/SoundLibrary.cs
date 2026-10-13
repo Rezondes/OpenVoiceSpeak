@@ -11,7 +11,7 @@ namespace OVS.Client.Audio.Sounds;
 /// The tones as the user set them up: an own file from the profile, otherwise the default tone. A file that has
 /// gone missing falls back to the default and is logged once (A47).
 /// </summary>
-public sealed class SoundLibrary(string profileDir, ILogger log)
+internal sealed class SoundLibrary(string profileDir, ILogger log)
 {
     /// <summary>The folder of the imported sounds inside the profile.</summary>
     public const string Folder = "sounds";

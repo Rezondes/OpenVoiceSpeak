@@ -1,7 +1,7 @@
 namespace RuleLint.Rules;
 
 /// <summary>Rule 18: no em dash (U+2014) in any text file of the repository, code, docs and resources alike.</summary>
-public sealed class EmDashRule : IRule
+internal sealed class EmDashRule : IRule
 {
     /// <summary>The banned character.</summary>
     public const char EmDash = (char)0x2014;

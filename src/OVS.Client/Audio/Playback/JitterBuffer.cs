@@ -9,7 +9,7 @@ namespace OVS.Client.Audio.Playback;
 /// underrun, never as a gap: after a short concealment we rebuffer and continue at the same seq.
 /// Package 133 (A142): counts what happens to the frames and estimates the jitter; not thread-safe (the mixer locks).
 /// </summary>
-public sealed class JitterBuffer
+internal sealed class JitterBuffer
 {
     /// <summary>The least cushion before playback starts, in frames: 40 ms (Package 134: Cushion).</summary>
     public const int StartDelay = 2;

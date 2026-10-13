@@ -11,7 +11,7 @@ using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Server.State;
 
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     void OnJoinChannel(Session session, JoinChannel request)
     {

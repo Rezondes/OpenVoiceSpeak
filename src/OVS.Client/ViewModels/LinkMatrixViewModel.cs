@@ -15,7 +15,7 @@ namespace OVS.Client.ViewModels;
 /// until "Übernehmen" sends them as one request. Pending means: differs from the server; a change by someone else
 /// that reaches the same state simply ends the pending mark.
 /// </summary>
-public sealed partial class LinkMatrixViewModel : ObservableObject
+internal sealed partial class LinkMatrixViewModel : ObservableObject
 {
     readonly ServerViewModel server;
     readonly Dictionary<ChannelPair, bool> desired = [];

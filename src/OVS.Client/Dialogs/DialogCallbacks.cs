@@ -7,7 +7,7 @@ namespace OVS.Client.Dialogs;
 /// The dialogs of the main view model: its own two, the password question of the connection, and the records of the
 /// parts it builds. Unset entries mean "cancelled" (used by tests); a nested record is never null.
 /// </summary>
-public sealed class DialogCallbacks
+internal sealed class DialogCallbacks
 {
     /// <summary>Package 40: the server wants a password (none stored or the stored one is wrong).</summary>
     public Func<string, Task<PasswordAnswer?>>? AskPassword { get; init; }

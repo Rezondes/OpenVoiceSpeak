@@ -5,7 +5,7 @@ using OVS.Shared.Protocol.Messages.VoiceRelay;
 
 namespace OVS.Server.State;
 
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     // ---- Voice ----
 

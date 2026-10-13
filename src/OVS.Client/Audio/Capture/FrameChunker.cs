@@ -3,7 +3,7 @@ using OVS.Client.Audio.Codec;
 namespace OVS.Client.Audio.Capture;
 
 /// <summary>Turns arbitrary sized capture buffers into exact 960 sample frames (Package 142: 2 x 960 interleaved for stereo).</summary>
-public sealed class FrameChunker(int channels = 1)
+internal sealed class FrameChunker(int channels = 1)
 {
     int filled;
 

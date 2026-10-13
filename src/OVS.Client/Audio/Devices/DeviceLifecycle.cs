@@ -13,7 +13,7 @@ namespace OVS.Client.Audio.Devices;
 /// caller holds it). The engine configures each new capture through the callback it hands in, before the capture
 /// starts, and turns what failed into a notice.
 /// </summary>
-public sealed class DeviceLifecycle
+internal sealed class DeviceLifecycle
 {
     readonly object gate; // the engine's: the devices and settings
     readonly IAudioHardware? hardware;

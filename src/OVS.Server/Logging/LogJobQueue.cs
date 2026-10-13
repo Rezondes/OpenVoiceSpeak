@@ -1,7 +1,7 @@
 namespace OVS.Server.Logging;
 
 /// <summary>Package 81: one session's log pages and searches, one after the other on the thread pool, never under the state lock.</summary>
-public sealed class LogJobQueue
+internal sealed class LogJobQueue
 {
     readonly object gate = new();
     Task jobs = Task.CompletedTask;

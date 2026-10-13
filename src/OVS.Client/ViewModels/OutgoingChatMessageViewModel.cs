@@ -7,7 +7,7 @@ namespace OVS.Client.ViewModels;
 /// Package 98 (A113): an own message shown at once, greyed with a clock until the server's echo; refused or without an
 /// echo within 10 s it is marked "nicht gesendet" and can be sent again.
 /// </summary>
-public sealed partial class OutgoingChatMessageViewModel : ObservableObject
+internal sealed partial class OutgoingChatMessageViewModel : ObservableObject
 {
     readonly Func<PendingActionViewModel, Task> send;
 

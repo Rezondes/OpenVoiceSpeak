@@ -8,7 +8,7 @@ namespace RuleLint.Rules;
 /// Rule 15 for methods: a method that returns a <c>Task</c> or <c>ValueTask</c> ends in <c>Async</c> (not a test method,
 /// an override, an explicit interface member or <c>Main</c>), and a method name does not repeat its type's name (a warning).
 /// </summary>
-public sealed class MethodNameRule : IRule
+internal sealed class MethodNameRule : IRule
 {
     /// <summary>The shortest type name the repetition check looks for (shorter names are common words).</summary>
     const int MinRepeatedNameLength = 4;

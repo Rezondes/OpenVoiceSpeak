@@ -1,7 +1,7 @@
 namespace OVS.Tests.TestSupport;
 
 /// <summary>Time moves only on Advance; timers (Task.Delay with this provider) fire during Advance.</summary>
-public sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
+internal sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
 {
     readonly object gate = new();
     readonly List<Timer> timers = [];

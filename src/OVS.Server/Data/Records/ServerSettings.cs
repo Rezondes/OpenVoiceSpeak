@@ -6,7 +6,7 @@ using OVS.Shared.Protocol.Messages.ServerInfo;
 namespace OVS.Server.Data.Records;
 
 /// <summary>The server settings as stored.</summary>
-public sealed class ServerSettings
+internal sealed class ServerSettings
 {
     /// <summary>The server's name.</summary>
     public string Name { get; set; } = "";

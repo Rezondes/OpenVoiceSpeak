@@ -7,7 +7,7 @@ using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.TestSupport;
 
-public static class UiTestApp
+internal static class UiTestApp
 {
     // Skia instead of the drawing stub: server logos (PNG, JPG) must really decode and scale in the tests.
     public static AppBuilder BuildAvaloniaApp() =>

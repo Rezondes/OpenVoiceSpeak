@@ -4,7 +4,7 @@ using OVS.Shared.Protocol;
 namespace OVS.Server.Data;
 
 /// <summary>The server logo as &lt;DataDir&gt;/server-icon.png, validated by ServerIconFormat. Survives restarts.</summary>
-public sealed class ServerIconStore
+internal sealed class ServerIconStore
 {
     /// <summary>The logo's file name inside the data folder.</summary>
     public const string FileName = "server-icon.png";

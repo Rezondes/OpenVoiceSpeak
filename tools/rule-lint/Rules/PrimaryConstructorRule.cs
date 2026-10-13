@@ -7,7 +7,7 @@ namespace RuleLint.Rules;
 /// Rule 22: a class (not a record) whose primary constructor parameters are guarded (a <c>throw</c> or a
 /// <c>ThrowIf...</c> call in a field or property initializer) uses the classic constructor form.
 /// </summary>
-public sealed class PrimaryConstructorRule : IRule
+internal sealed class PrimaryConstructorRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

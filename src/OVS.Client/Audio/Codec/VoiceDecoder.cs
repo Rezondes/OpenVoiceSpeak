@@ -6,7 +6,7 @@ namespace OVS.Client.Audio.Codec;
 /// Package 142 (A151): always decodes to stereo. An Opus packet carries its channel count, so a mono packet (every voice
 /// mode sender) comes out the same on both sides, and music in stereo needs no change in the protocol.
 /// </summary>
-public sealed class VoiceDecoder
+internal sealed class VoiceDecoder
 {
     readonly IOpusDecoder decoder = OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
     readonly float[] pcm = new float[AudioFormat.StereoFrameSamples];

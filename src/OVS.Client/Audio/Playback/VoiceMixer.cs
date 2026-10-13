@@ -5,7 +5,7 @@ using OVS.Client.Audio.Processing;
 namespace OVS.Client.Audio.Playback;
 
 /// <summary>One jitter buffer per speaker, summed into one 20 ms frame per tick. Thread-safe.</summary>
-public sealed class VoiceMixer
+internal sealed class VoiceMixer
 {
     /// <summary>
     /// Package 124: a speaker keeps the jitter buffer and decoder over talk pauses (they were made anew after 500 ms

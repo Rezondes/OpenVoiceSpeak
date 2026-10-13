@@ -13,7 +13,7 @@ namespace OVS.Server.Logging;
 /// logs/server and logs/channels/&lt;guid&gt; exist for it, never links; a file is found only by the id of its own listing,
 /// so no path from a client is ever opened. Thread-safe, meant to run off the state lock.
 /// </summary>
-public sealed class LogReader(string dataDir, TimeProvider time)
+internal sealed class LogReader(string dataDir, TimeProvider time)
 {
     internal const string ServerFolder = "server";
     internal const string ChannelFolder = "channels";

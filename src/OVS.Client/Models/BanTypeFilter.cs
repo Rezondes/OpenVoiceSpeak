@@ -1,7 +1,7 @@
 namespace OVS.Client.Models;
 
 /// <summary>Which kind of bans the ban list shows.</summary>
-public enum BanTypeFilter
+internal enum BanTypeFilter
 {
     /// <summary>Every kind.</summary>
     All,

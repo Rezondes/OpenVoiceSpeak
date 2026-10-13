@@ -4,7 +4,7 @@ using OVS.Shared.Identity;
 namespace OVS.Client.Net;
 
 /// <summary>The user's key pair in identity.key of the profile directory.</summary>
-public static class IdentityFile
+internal static class IdentityFile
 {
     /// <summary>The user's key pair. Created once, kept forever: it is the user's identity on every server.</summary>
     public static ClientIdentity LoadOrCreate(string directory)

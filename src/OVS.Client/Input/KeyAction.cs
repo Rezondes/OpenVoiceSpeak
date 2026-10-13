@@ -1,7 +1,7 @@
 namespace OVS.Client.Input;
 
 /// <summary>What a key can do. Hold actions last while the key is down, the others fire once per press.</summary>
-public enum KeyAction
+internal enum KeyAction
 {
     /// <summary>Talk while held.</summary>
     PushToTalk,

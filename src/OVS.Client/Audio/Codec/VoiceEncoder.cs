@@ -7,7 +7,7 @@ using OVS.Shared.Voice;
 namespace OVS.Client.Audio.Codec;
 
 /// <summary>Encodes 20 ms frames with Opus at the channel's bitrate.</summary>
-public sealed class VoiceEncoder
+internal sealed class VoiceEncoder
 {
     /// <summary>
     /// Package 124: Opus defaults to its most expensive setting. Measured on a speech-like signal at 32 kbps (PLAN.md,

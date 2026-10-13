@@ -6,7 +6,7 @@ namespace OVS.Server.Data;
 /// Package 75: uploads land in a hidden file in the backups folder until the whole archive is checked. Knows the upload
 /// ids, their paths, and removes what a crash or a lost connection left behind.
 /// </summary>
-public sealed class UploadFolder(string folder)
+internal sealed class UploadFolder(string folder)
 {
     /// <summary>The name prefix of an unfinished upload's file.</summary>
     public const string Prefix = ".upload-";

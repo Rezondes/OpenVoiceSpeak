@@ -6,4 +6,4 @@ namespace OVS.Client.Dialogs;
 /// <param name="Port">The server's port.</param>
 /// <param name="Nickname">The nickname to connect with.</param>
 /// <param name="SavePassword">Store the password.</param>
-public sealed record BookmarkEdit(string Name, string Host, int Port, string Nickname, string? Password, bool SavePassword);
+internal sealed record BookmarkEdit(string Name, string Host, int Port, string Nickname, string? Password, bool SavePassword);

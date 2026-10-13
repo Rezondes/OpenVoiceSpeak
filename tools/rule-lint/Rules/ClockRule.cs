@@ -8,7 +8,7 @@ namespace RuleLint.Rules;
 /// composition roots, a read of the system clock or a timer or delay without the injected <c>TimeProvider</c> needs the
 /// marker <c>// clock: &lt;kind&gt;</c> at the end of its line.
 /// </summary>
-public sealed class ClockRule : IRule
+internal sealed class ClockRule : IRule
 {
     static readonly string[] ClockReads =
     [

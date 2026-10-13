@@ -8,7 +8,7 @@ namespace OVS.Client;
 /// --audio-debug (key and frame rate lines in the client log, see AudioDebugLog),
 /// --after-update &lt;pid&gt; (set by the updater: the replaced version still closing, see UpdateInstaller).
 /// </summary>
-public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices, bool AudioDebug = false, int? AfterUpdatePid = null)
+internal sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices, bool AudioDebug = false, int? AfterUpdatePid = null)
 {
     /// <summary>The argument the updater starts the new version with.</summary>
     public const string AfterUpdateArg = "--after-update";

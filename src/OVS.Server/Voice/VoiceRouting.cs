@@ -4,7 +4,7 @@ using OVS.Shared.Voice;
 namespace OVS.Server.Voice;
 
 /// <summary>Who hears a voice packet.</summary>
-public static class VoiceRouting
+internal static class VoiceRouting
 {
     /// <summary>Link transmission needs SpeakLinked; without it the packet only reaches the own channel.</summary>
     public static byte EffectiveTarget(Session sender, byte requested) =>

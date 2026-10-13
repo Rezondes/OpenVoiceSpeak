@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint;
 
 /// <summary>Reads the types a parsed file declares: classes, structs, records, interfaces, enums and delegates.</summary>
-public static class DeclaredTypes
+internal static class DeclaredTypes
 {
     /// <summary>The top-level types of <paramref name="unit"/>, inside its namespaces or outside any.</summary>
     public static IEnumerable<MemberDeclarationSyntax> ListTopLevel(CompilationUnitSyntax unit) => ListIn(unit.Members);

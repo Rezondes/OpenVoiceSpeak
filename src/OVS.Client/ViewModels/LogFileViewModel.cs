@@ -7,7 +7,7 @@ using OVS.Shared.Protocol.Messages.LogAccess;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One file of the list: server or channel name, start and size; Package 82: a checkbox with LogsDownload.</summary>
-public sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = false, bool isSelected = false, Action<LogFileViewModel>? selectionChanged = null)
+internal sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = false, bool isSelected = false, Action<LogFileViewModel>? selectionChanged = null)
     : ObservableObject, IMotionKey
 {
     /// <summary>The file's id: the same file keeps its motion when the list is rebuilt.</summary>

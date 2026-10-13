@@ -6,4 +6,4 @@ namespace OVS.Tests.Server.Data;
 /// <param name="Server">The running server.</param>
 /// <param name="Admin">A client in the admin group.</param>
 /// <param name="Guest">A client without rights.</param>
-public sealed record ServerIconRig(TestServer Server, TestClient Admin, TestClient Guest);
+internal sealed record ServerIconRig(TestServer Server, TestClient Admin, TestClient Guest);

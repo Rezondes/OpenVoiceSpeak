@@ -6,7 +6,7 @@ using OVS.Client.Animations;
 namespace OVS.Client.Controls;
 
 /// <summary>Package 97 (A113): the small spinner of every waiting state (buttons, rows, list areas).</summary>
-public partial class BusySpinner : UserControl
+internal partial class BusySpinner : UserControl
 {
     /// <summary>Package 108: the class of a button while its spinner shows (Motion.axaml lets it shimmer).</summary>
     public const string BusyClass = "busy";

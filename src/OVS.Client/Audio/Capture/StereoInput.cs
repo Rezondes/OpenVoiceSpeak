@@ -9,7 +9,7 @@ namespace OVS.Client.Audio.Capture;
 /// rises to within 10 dB of the strong one (a second input joining, e.g. a voice microphone next to a guitar). Silence
 /// changes nothing. Capture thread; nothing allocated per chunk.
 /// </summary>
-public sealed class StereoInput
+internal sealed class StereoInput
 {
     /// <summary>A side silent this long while the other carries sound counts as unused.</summary>
     public static readonly TimeSpan OneSidedAfter = TimeSpan.FromSeconds(2.5);

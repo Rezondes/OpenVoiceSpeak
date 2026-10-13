@@ -13,7 +13,7 @@ namespace OVS.Client.Audio.Capture;
 /// keeps the input in a queue and takes <see cref="Block"/> output samples at a time. Latency: about 36 input samples
 /// (half the sinc plus WDL's 4 of look-ahead) plus up to 1 ms in the queue; under 2 ms from 44.1 kHz up, about 5 ms at 8 kHz.
 /// </remarks>
-public sealed class SincResampler
+internal sealed class SincResampler
 {
     // WDL interpolates linearly in its coefficient table; at its default of 32 steps that error alone left a folded
     // 20 kHz tone 45 dB louder (SendPathTests.Resampler_ToneAbove24k_NoAliasing). The table costs 65 KB once.

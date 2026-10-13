@@ -7,7 +7,7 @@ namespace RuleLint;
 /// refactoring removes the old ones. A finding is known when the baseline holds its key (rule, path, subject) at least as
 /// often as the code has it.
 /// </summary>
-public sealed class Baseline
+internal sealed class Baseline
 {
     static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 

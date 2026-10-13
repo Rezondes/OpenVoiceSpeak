@@ -19,7 +19,7 @@ namespace OVS.Client.Animations;
 /// ticks to its new number and pulses once when the channel fills up, the level meter follows with a fast attack and a
 /// slower release. Nothing of it runs in the simplified display, nor while a row is first built.
 /// </summary>
-public static class LiveMotion
+internal static class LiveMotion
 {
     /// <summary>The icon pops in (scale and fade) when it shows, and a copy of it pops out when it hides.</summary>
     public static readonly AttachedProperty<bool> PopProperty = AvaloniaProperty.RegisterAttached<Control, bool>("Pop", typeof(LiveMotion));

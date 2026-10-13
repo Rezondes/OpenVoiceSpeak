@@ -17,7 +17,7 @@ using OVS.Client.ViewModels;
 namespace OVS.Client.Views;
 
 /// <summary>Chat tabs with the composer (Package 32).</summary>
-public partial class ChatView : UserControl
+internal partial class ChatView : UserControl
 {
     /// <summary>Package 107: how far a new message comes from its side; how long a notice's edge glows.</summary>
     public const double Arrive = 16, Lift = 10;

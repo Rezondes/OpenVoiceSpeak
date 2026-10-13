@@ -4,4 +4,4 @@ using OVS.Shared.Voice;
 
 namespace OVS.Tests.TestSupport;
 
-public sealed record OpenedPacket(VoiceHeader Header, byte[] Plain);
+internal sealed record OpenedPacket(VoiceHeader Header, byte[] Plain);

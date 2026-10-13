@@ -18,7 +18,7 @@ using OVS.Client.Settings;
 namespace OVS.Client.ViewModels;
 
 /// <summary>Application shell: settings, audio, and the current connection.</summary>
-public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
+internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     readonly string storageDir;
     readonly Action<Action> post;

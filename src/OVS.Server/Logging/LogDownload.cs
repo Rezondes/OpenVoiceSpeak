@@ -6,7 +6,7 @@ namespace OVS.Server.Logging;
 /// Package 82: one session's prepared log download, a file in logs-export deleted with the session. Its own lock is
 /// taken inside the ServerState lock (<see cref="End"/>) and by log jobs; it never takes another lock.
 /// </summary>
-public sealed class LogDownload
+internal sealed class LogDownload
 {
     readonly object gate = new();
     (string Id, string Path)? current;

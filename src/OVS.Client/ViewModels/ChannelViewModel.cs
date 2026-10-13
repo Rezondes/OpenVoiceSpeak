@@ -14,7 +14,7 @@ using OVS.Shared.Protocol.Messages.Groups;
 namespace OVS.Client.ViewModels;
 
 /// <summary>A channel in the tree, with its users.</summary>
-public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : ObservableObject
+internal sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : ObservableObject
 {
     [ObservableProperty] string name = "";
     [ObservableProperty] string description = "";

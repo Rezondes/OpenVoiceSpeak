@@ -11,7 +11,7 @@ using OVS.Shared.Protocol.Framing;
 namespace OVS.Client.Settings;
 
 /// <summary>The client's settings, stored as settings.json in the profile.</summary>
-public sealed class ClientSettings : IJsonOnDeserializing
+internal sealed class ClientSettings : IJsonOnDeserializing
 {
     /// <summary>The settings file's name inside the profile.</summary>
     public const string FileName = "settings.json";

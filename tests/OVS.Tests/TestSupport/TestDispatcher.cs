@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace OVS.Tests.TestSupport;
 
 /// <summary>A single "UI thread" with its own SynchronizationContext, standing in for Avalonia's dispatcher.</summary>
-public sealed class TestDispatcher : IDisposable
+internal sealed class TestDispatcher : IDisposable
 {
     readonly BlockingCollection<Action> queue = new();
     readonly Thread thread;

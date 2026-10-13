@@ -19,7 +19,7 @@ namespace OVS.Tests.TestSupport;
 /// seeded <see cref="DataStore"/>, sessions admitted and requests handled directly, and what a session was sent read
 /// decoded from its outbox.
 /// </summary>
-public sealed class StateHarness : IDisposable
+internal sealed class StateHarness : IDisposable
 {
     int lastAddress;
 

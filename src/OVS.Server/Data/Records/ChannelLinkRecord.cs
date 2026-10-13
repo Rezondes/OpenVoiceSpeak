@@ -1,7 +1,7 @@
 namespace OVS.Server.Data.Records;
 
 /// <summary>Undirected link, normalized so that A &lt; B.</summary>
-public sealed record ChannelLinkRecord(Guid A, Guid B)
+internal sealed record ChannelLinkRecord(Guid A, Guid B)
 {
     /// <summary>The link between two channels, the smaller id first, so each link has one form.</summary>
     public static ChannelLinkRecord Of(Guid id, Guid otherId) => id.CompareTo(otherId) < 0 ? new(id, otherId) : new(otherId, id);

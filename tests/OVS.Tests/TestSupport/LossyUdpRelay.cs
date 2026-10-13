@@ -9,7 +9,7 @@ namespace OVS.Tests.TestSupport;
 /// packets by type (also the dropped ones), so a test sees what the client sent. Package 133: also delays packets on
 /// its own clock and drops a share of the voice packets each way.
 /// </summary>
-public sealed class LossyUdpRelay : IDisposable
+internal sealed class LossyUdpRelay : IDisposable
 {
     readonly UdpClient front = new(new IPEndPoint(IPAddress.Loopback, 0));
     readonly UdpClient back;

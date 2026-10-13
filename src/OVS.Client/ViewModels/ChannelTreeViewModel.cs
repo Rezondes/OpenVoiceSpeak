@@ -14,7 +14,7 @@ namespace OVS.Client.ViewModels;
 /// The sidebar's channel tree of one server: the channel and user rows, their order (Packages 36 and 98) and their
 /// speaking marks (Packages 57, 60 and 122). The rows still call their requests on the server view model that owns the tree.
 /// </summary>
-public sealed class ChannelTreeViewModel
+internal sealed class ChannelTreeViewModel
 {
     readonly ServerViewModel owner;
     readonly Action<SoundEvent> requestSound;

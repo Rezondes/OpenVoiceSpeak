@@ -6,7 +6,7 @@ namespace OVS.Client.Net;
 /// Server logos in the profile (server-icons/&lt;host&gt;_&lt;port&gt;.png). The client downloads a logo only when the
 /// server's hash differs from the cached file, and the bookmark tiles show the last one seen.
 /// </summary>
-public sealed class ServerIconCache(string profileDir)
+internal sealed class ServerIconCache(string profileDir)
 {
     readonly string dir = Path.Combine(profileDir, "server-icons");
 

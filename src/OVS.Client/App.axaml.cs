@@ -22,7 +22,7 @@ using OVS.Shared;
 namespace OVS.Client;
 
 /// <summary>The application: builds the composition root and the main window.</summary>
-public partial class App : Application
+internal partial class App : Application
 {
     /// <summary>Loads App.axaml.</summary>
     public override void Initialize() => AvaloniaXamlLoader.Load(this);

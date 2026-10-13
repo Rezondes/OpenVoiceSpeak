@@ -2,7 +2,7 @@ using OVS.Shared.Protocol.Messages;
 
 namespace OVS.Server.State;
 
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     void BroadcastExcept(Session except, Message message)
     {

@@ -8,7 +8,7 @@ namespace OVS.Client.Services;
 /// <param name="allowed">False while the list may not be asked for.</param>
 /// <param name="send">Sends the request with the request id.</param>
 /// <param name="time">The clock of the one-second spacing.</param>
-public sealed class ListRefresh(string prefix, Func<bool> allowed, Func<string, Task> send, TimeProvider time)
+internal sealed class ListRefresh(string prefix, Func<bool> allowed, Func<string, Task> send, TimeProvider time)
 {
     static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
     DateTimeOffset last = DateTimeOffset.MinValue;

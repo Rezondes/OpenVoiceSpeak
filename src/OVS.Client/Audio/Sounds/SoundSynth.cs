@@ -6,7 +6,7 @@ namespace OVS.Client.Audio.Sounds;
 /// The default tones, made in code: no files and no licences. Each is a short sequence of soft sine notes
 /// (0 Hz is a pause); rising means "on" or "arrived", falling means "off" or "gone".
 /// </summary>
-public static class SoundSynth
+internal static class SoundSynth
 {
     const float Amplitude = 0.28f;
     const int FadeSamples = AudioFormat.SampleRate / 200; // 5 ms, so no note clicks

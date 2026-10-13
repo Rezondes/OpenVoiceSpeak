@@ -4,7 +4,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 namespace OVS.Server.Rules;
 
 /// <summary>The settings a channel may be created or edited with. Pure, null when allowed.</summary>
-public static class ChannelSettingsRule
+internal static class ChannelSettingsRule
 {
     /// <summary>Voice or separator; any other value is unknown.</summary>
     public static Refusal? CheckKind(ChannelKind kind) =>

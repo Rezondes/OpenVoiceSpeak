@@ -3,7 +3,7 @@ using OVS.Client.ViewModels;
 namespace OVS.Client.Dialogs;
 
 /// <summary>The dialogs the server view model and its channel and user items ask. Unset entries mean "cancelled" (used by tests).</summary>
-public sealed record ServerDialogs
+internal sealed record ServerDialogs
 {
     /// <summary>Package 94: the password of a channel (argument: its name); null = cancelled.</summary>
     public Func<string, Task<string?>>? AskChannelPassword { get; init; }

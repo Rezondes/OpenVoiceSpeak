@@ -5,7 +5,7 @@ using OVS.Client.Input;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One line of the key list (Package 41): action, key, "Ändern" and "Löschen".</summary>
-public sealed partial class KeyBindingViewModel(KeyBinding binding, SettingsViewModel owner) : ObservableObject
+internal sealed partial class KeyBindingViewModel(KeyBinding binding, SettingsViewModel owner) : ObservableObject
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Label), nameof(ChordName))]

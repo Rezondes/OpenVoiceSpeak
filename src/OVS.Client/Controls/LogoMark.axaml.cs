@@ -10,7 +10,7 @@ namespace OVS.Client.Controls;
 /// Assets/ovs.ico (tools/render-icon) closest to its size in device pixels, so the title bar logo has the same crisp
 /// wave bars as the taskbar icon instead of a blurred, scaled-down vector.
 /// </summary>
-public partial class LogoMark : UserControl
+internal partial class LogoMark : UserControl
 {
     const double SmallSize = 32;
 

@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint;
 
 /// <summary>Reads the name of a member declaration, for messages and baseline subjects.</summary>
-public static class MemberNames
+internal static class MemberNames
 {
     /// <summary>The name of <paramref name="member"/>: its identifier, the variables of a field, or its kind.</summary>
     public static string Read(MemberDeclarationSyntax member) => member switch

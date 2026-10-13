@@ -1,7 +1,7 @@
 namespace OVS.Server.Data.Records;
 
 /// <summary>A user as stored, with statistics.</summary>
-public sealed class UserRecord
+internal sealed class UserRecord
 {
     /// <summary>The user's id.</summary>
     public string Fingerprint { get; set; } = "";

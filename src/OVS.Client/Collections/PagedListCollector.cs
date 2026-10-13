@@ -5,7 +5,7 @@ namespace OVS.Client.Collections;
 /// later pages are asked for under that id, so only the next page of the same round is added. Anything else (a page of an
 /// older round, e.g. one still fetching when a new first page came) is dropped. Total 0 means an unpaged list.
 /// </summary>
-public sealed class PagedListCollector<T>
+internal sealed class PagedListCollector<T>
 {
     readonly List<T> items = [];
     string? round; // the request id of the round's first page

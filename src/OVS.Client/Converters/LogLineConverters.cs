@@ -5,7 +5,7 @@ using Avalonia.Media.Immutable;
 namespace OVS.Client.Converters;
 
 /// <summary>Package 81: how a log line of the administration's log viewer shows.</summary>
-public static class LogLineConverters
+internal static class LogLineConverters
 {
     // Package 81: what the line filter found, readable on light and dark backgrounds
     static readonly IBrush MatchBrush = new ImmutableSolidColorBrush(Color.Parse("#66FFC83D"));

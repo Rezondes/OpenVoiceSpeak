@@ -3,7 +3,7 @@ using OVS.Client.Interop;
 namespace OVS.Client.Input;
 
 /// <summary>Package 59: the push-to-talk key a new profile starts with.</summary>
-public static class DefaultPushToTalk
+internal static class DefaultPushToTalk
 {
     const int SmCMouseButtons = 43;
 

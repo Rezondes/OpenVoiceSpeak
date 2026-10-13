@@ -9,7 +9,7 @@ namespace OVS.Client.Audio.Devices;
 /// </summary>
 /// <param name="duration">How much audio the buffer holds; what does not fit is discarded.</param>
 /// <param name="device">Plays <see cref="Source"/> once started.</param>
-public sealed class PlaybackBuffer(TimeSpan duration, IDisposable device) : IDisposable
+internal sealed class PlaybackBuffer(TimeSpan duration, IDisposable device) : IDisposable
 {
     readonly BufferedWaveProvider buffer = new(WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2)) // Package 142: stereo
     {

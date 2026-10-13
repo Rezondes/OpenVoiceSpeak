@@ -14,7 +14,7 @@ namespace OVS.Client.ViewModels;
 /// <param name="ban">The ban.</param>
 /// <param name="canUnban">The unban button shows.</param>
 /// <param name="unban">Lifts the ban.</param>
-public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, PendingActionViewModel busy) : ObservableObject, IMotionKey
+internal sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool canUnban, Func<Task> unban, PendingActionViewModel busy) : ObservableObject, IMotionKey
 {
     /// <summary>The ban's id: the same ban keeps its motion when the list is rebuilt.</summary>
     public object MotionKey => Ban.Id;

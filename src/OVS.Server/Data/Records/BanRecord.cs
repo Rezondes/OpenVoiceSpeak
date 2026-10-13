@@ -3,7 +3,7 @@ using OVS.Shared.Moderation;
 namespace OVS.Server.Data.Records;
 
 /// <summary>A ban as stored, with its history.</summary>
-public sealed class BanRecord
+internal sealed class BanRecord
 {
     /// <summary>The ban's id.</summary>
     public Guid Id { get; set; }

@@ -14,7 +14,7 @@ namespace OVS.Client.Animations;
 /// started from code run through <see cref="PlayAsync"/>, ask <see cref="IsAnimated"/> or take their length from
 /// <see cref="ChooseDuration"/>. Package 96: what Windows' own animation setting turns off asks <see cref="IsReduced"/>.
 /// </summary>
-public static class Motion
+internal static class Motion
 {
     /// <summary>Hover and press.</summary>
     public static readonly TimeSpan Fast = TimeSpan.FromMilliseconds(120);

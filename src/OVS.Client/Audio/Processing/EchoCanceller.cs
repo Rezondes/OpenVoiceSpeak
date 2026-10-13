@@ -11,7 +11,7 @@ namespace OVS.Client.Audio.Processing;
 /// (<see cref="Process"/>) from the capture thread under the pipeline's lock; the library locks the two sides itself.
 /// </summary>
 /// <remarks>No finalizer: the capture pipeline owns it and disposes it under its lock.</remarks>
-public sealed unsafe class EchoCanceller : IDisposable
+internal sealed unsafe class EchoCanceller : IDisposable
 {
     /// <summary>The native library's name.</summary>
     public const string Library = "ovs_aec";

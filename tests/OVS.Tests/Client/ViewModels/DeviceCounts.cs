@@ -6,4 +6,4 @@ namespace OVS.Tests.Client.ViewModels;
 /// <param name="Speakers">Speakers opened so far.</param>
 /// <param name="SpeakersOpen">Speakers open now.</param>
 /// <param name="PlaybackRunning">Whether the playback thread runs.</param>
-public readonly record struct DeviceCounts(int Mics, int MicsOpen, int Speakers, int SpeakersOpen, bool PlaybackRunning);
+internal readonly record struct DeviceCounts(int Mics, int MicsOpen, int Speakers, int SpeakersOpen, bool PlaybackRunning);

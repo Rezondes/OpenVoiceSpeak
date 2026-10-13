@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace RuleLint;
 
 /// <summary>Finds the files the rules look at in a repository on disk.</summary>
-public static class SourceScanner
+internal static class SourceScanner
 {
     /// <summary>How far into a file a generated-code header is looked for.</summary>
     const int HeaderLength = 400;

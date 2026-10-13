@@ -8,7 +8,7 @@ namespace OVS.Client.Diagnostics;
 /// --audio-debug: logs global PTT key changes and the sent frame rate once per second to the client log,
 /// to check key detection with another window focused and the real microphone's frame rate.
 /// </summary>
-public sealed class AudioDebugLog : IDisposable
+internal sealed class AudioDebugLog : IDisposable
 {
     readonly KeyPoller keys;
     readonly AudioEngine audio;

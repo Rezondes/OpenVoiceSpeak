@@ -3,7 +3,7 @@ using OVS.Shared.Protocol;
 namespace OVS.Server.Rules;
 
 /// <summary>The reason and duration of a kick or ban. Pure, null when allowed.</summary>
-public static class ModerationRule
+internal static class ModerationRule
 {
     /// <summary>
     /// The reason goes into the server log and the ban list: bounded, one line, no control or bidi characters

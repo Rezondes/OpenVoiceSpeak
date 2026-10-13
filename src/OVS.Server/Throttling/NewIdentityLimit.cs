@@ -6,7 +6,7 @@ namespace OVS.Server.Throttling;
 /// Package 87: unknown fingerprints admitted per source (the address group of IpAddresses.ToAddressGroup) within
 /// NewIdentityWindow of the first; known ones are never counted. Guarded by the ServerState lock.
 /// </summary>
-public sealed class NewIdentityLimit
+internal sealed class NewIdentityLimit
 {
     /// <summary>Per source: its window, the identities counted in it and whether a refusal was reported.</summary>
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset First, bool RefusalReported)> windows = [];

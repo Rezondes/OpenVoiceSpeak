@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint.Rules;
 
 /// <summary>Rule 4: only the types the project lists are split into parts, as <c>Type.Part.cs</c> in one folder.</summary>
-public sealed class PartialTypeRule : IRule
+internal sealed class PartialTypeRule : IRule
 {
     readonly LintSettings settings;
 

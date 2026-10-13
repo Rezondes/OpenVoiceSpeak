@@ -13,7 +13,7 @@ namespace OVS.Client.ViewModels;
 /// The chat in the main area (Package 32): "Allgemein" with server-wide messages and system notices, the
 /// current channel and private tabs (Package 33). Lives as long as the connection, the server keeps no history (A27).
 /// </summary>
-public sealed partial class ChatViewModel : ObservableObject
+internal sealed partial class ChatViewModel : ObservableObject
 {
     /// <summary>The counter shows from this many characters on.</summary>
     public const int CounterFrom = 1800;

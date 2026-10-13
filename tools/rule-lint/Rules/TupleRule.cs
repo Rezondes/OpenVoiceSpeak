@@ -9,7 +9,7 @@ namespace RuleLint.Rules;
 /// parameter instead of a record; <c>bool TryX(..., out T)</c>, <c>Deconstruct</c>, overrides, explicit interface
 /// members and native imports keep theirs.
 /// </summary>
-public sealed class TupleRule : IRule
+internal sealed class TupleRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

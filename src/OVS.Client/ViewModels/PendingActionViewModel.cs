@@ -11,7 +11,7 @@ namespace OVS.Client.ViewModels;
 /// </summary>
 /// <param name="post">Runs the timers' work on the UI thread; inline when null (tests with a manual clock).</param>
 /// <param name="time">The clock of the 150 ms delay and the timeout.</param>
-public sealed partial class PendingActionViewModel(TimeProvider time, Action<Action>? post = null) : ObservableObject
+internal sealed partial class PendingActionViewModel(TimeProvider time, Action<Action>? post = null) : ObservableObject
 {
     /// <summary>How long the action runs before it shows as busy.</summary>
     public static readonly TimeSpan ShowAfter = TimeSpan.FromMilliseconds(150);

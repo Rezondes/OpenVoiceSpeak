@@ -5,7 +5,7 @@ using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Server.State;
 
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     // ---- Package 86: request limits (call under gate) ----
 

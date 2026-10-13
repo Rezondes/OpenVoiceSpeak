@@ -4,7 +4,7 @@ namespace OVS.Client.Audio.Transmit;
 /// Package 129 (A138): Fluxer's voice gate. It always learns the noise floor (10th percentile of the last 2 s of frame
 /// levels, times 1.5); in automatic mode the threshold is 3 × that floor, after 0.3 s of learning.
 /// </summary>
-public sealed class VoiceActivityDetector
+internal sealed class VoiceActivityDetector
 {
     /// <summary>Frames sent on after the level drops below 0.7 times the threshold: 180 ms (Package 129).</summary>
     public const int HangoverFrames = 9;

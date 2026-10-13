@@ -18,7 +18,7 @@ namespace OVS.Client.ViewModels;
 /// with a line filter, and the search over all files. Files are only ever named by the id from the server's list.
 /// Package 82 (A99): with LogsDownload, files are selected with checkboxes and saved as one .log or a zip.
 /// </summary>
-public sealed partial class LogsViewModel : ObservableObject
+internal sealed partial class LogsViewModel : ObservableObject
 {
     readonly ServerViewModel server;
     readonly HashSet<string> selected = [];

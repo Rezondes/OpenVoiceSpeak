@@ -1,7 +1,7 @@
 namespace OVS.Client.Models;
 
 /// <summary>Which bans the ban list shows.</summary>
-public enum BanStatusFilter
+internal enum BanStatusFilter
 {
     /// <summary>Only active bans.</summary>
     Active,

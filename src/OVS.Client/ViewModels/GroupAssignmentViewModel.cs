@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace OVS.Client.ViewModels;
 
 /// <summary>A group's box on a user card: ticked when the user is in the group.</summary>
-public sealed partial class GroupAssignmentViewModel(Guid groupId, string name, bool isChecked, bool isEnabled, Func<GroupAssignmentViewModel, Task> onToggle)
+internal sealed partial class GroupAssignmentViewModel(Guid groupId, string name, bool isChecked, bool isEnabled, Func<GroupAssignmentViewModel, Task> onToggle)
     : ObservableObject
 {
     [ObservableProperty] bool isChecked = isChecked;

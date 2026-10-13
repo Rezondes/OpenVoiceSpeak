@@ -14,7 +14,7 @@ using OVS.Shared.Identity;
 namespace OVS.Tests.TestSupport;
 
 /// <summary>In-process server on 127.0.0.1 with ephemeral TCP and UDP ports and its own temp data dir.</summary>
-public sealed class TestServer : IAsyncDisposable
+internal sealed class TestServer : IAsyncDisposable
 {
     public required string DataDir { get; init; }
     public required ServerState State { get; init; }

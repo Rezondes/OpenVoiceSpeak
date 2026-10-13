@@ -13,7 +13,7 @@ namespace OVS.Client.Models;
 /// <param name="From">The sender's nickname of a message.</param>
 /// <param name="IsOwn">The own user sent it.</param>
 /// <param name="Notice">The kind of a system notice.</param>
-public sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, OutgoingChatMessageViewModel? Sending = null)
+internal sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, OutgoingChatMessageViewModel? Sending = null)
 {
     /// <summary>The time as shown.</summary>
     public string TimeText => Formats.ClockTime(Time);

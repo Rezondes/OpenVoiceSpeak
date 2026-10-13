@@ -15,7 +15,7 @@ using static OVS.Server.Permissions.PermissionRules;
 
 namespace OVS.Server.State;
 
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     void OnRedeemAdminToken(Session session, RedeemAdminToken request)
     {

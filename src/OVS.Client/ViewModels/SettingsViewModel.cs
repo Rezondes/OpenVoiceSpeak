@@ -13,7 +13,7 @@ using OVS.Shared;
 
 namespace OVS.Client.ViewModels;
 
-public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
+internal sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
 {
     readonly Func<Task<KeyChord>>? captureChord;
 

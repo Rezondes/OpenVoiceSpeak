@@ -6,4 +6,4 @@ namespace OVS.Client.Audio.Playback;
 /// </summary>
 /// <param name="Frame">The mixed frame, interleaved stereo (Package 142).</param>
 /// <param name="Active">The speakers heard in this frame.</param>
-public readonly record struct MixedFrame(float[] Frame, List<ActiveSpeaker> Active);
+internal readonly record struct MixedFrame(float[] Frame, List<ActiveSpeaker> Active);

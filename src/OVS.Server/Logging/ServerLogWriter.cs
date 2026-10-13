@@ -9,7 +9,7 @@ namespace OVS.Server.Logging;
 /// A failing disk never takes the server down: the first write error is reported on the console.
 /// Step 31: the lines are the logger messages of <see cref="ServerLogLines"/> and <see cref="ChannelLogLines"/>.
 /// </summary>
-public sealed class ServerLogWriter
+internal sealed class ServerLogWriter
 {
     readonly LogFileWriter files;
     readonly LogFileLoggerProvider provider;

@@ -7,4 +7,4 @@ namespace OVS.Tests.Client.Audio.Transmit;
 /// <param name="Header">The voice header.</param>
 /// <param name="Plain">The decrypted payload.</param>
 /// <param name="From">Where it came from.</param>
-public sealed record ReceivedPacket(VoiceHeader Header, byte[] Plain, IPEndPoint From);
+internal sealed record ReceivedPacket(VoiceHeader Header, byte[] Plain, IPEndPoint From);

@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint.Rules;
 
 /// <summary>Async rule 5: no <c>Thread.Sleep</c> at all, in production, tool and test code (the user, 13 October 2026).</summary>
-public sealed class SleepRule : IRule
+internal sealed class SleepRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

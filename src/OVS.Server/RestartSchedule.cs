@@ -4,7 +4,7 @@ using OVS.Server.State;
 namespace OVS.Server;
 
 /// <summary>The daily automatic restart: when the next one is due and the wait for it.</summary>
-public static class RestartSchedule
+internal static class RestartSchedule
 {
     /// <summary>
     /// Package 69: waits for the daily restart as set in the administration and follows every change of it at once.

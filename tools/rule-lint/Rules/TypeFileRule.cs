@@ -4,7 +4,7 @@ namespace RuleLint.Rules;
 /// Rules 1 and 2: one top-level type per file, and the file is named after it (a generic type without its parameters,
 /// a code-behind as <c>Type.axaml.cs</c>; a part of a partial type as <c>Type.Part.cs</c>, which <see cref="PartialTypeRule"/> checks).
 /// </summary>
-public sealed class TypeFileRule : IRule
+internal sealed class TypeFileRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index) =>

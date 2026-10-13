@@ -12,7 +12,7 @@ namespace OVS.Server.Data;
 /// <param name="save">Writes the data file; throws when it cannot (a locked file, a full disk).</param>
 /// <param name="time">The clock and the timer factory (a manual one in tests).</param>
 /// <param name="log">The server log.</param>
-public sealed class SaveScheduler(object gate, Action save, TimeProvider time, ILogger log)
+internal sealed class SaveScheduler(object gate, Action save, TimeProvider time, ILogger log)
 {
     ITimer? timer;
     bool pending;

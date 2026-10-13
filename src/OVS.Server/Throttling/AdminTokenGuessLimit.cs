@@ -6,7 +6,7 @@ namespace OVS.Server.Throttling;
 /// Package 86: at most AdminTokenFailures wrong admin tokens per source (the address group of IpAddresses.ToAddressGroup)
 /// within AdminTokenWindow of the first, even across sessions. Guarded by the ServerState lock.
 /// </summary>
-public sealed class AdminTokenGuessLimit
+internal sealed class AdminTokenGuessLimit
 {
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset First)> failures = [];
 

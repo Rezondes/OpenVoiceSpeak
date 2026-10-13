@@ -14,7 +14,7 @@ namespace OVS.Server.State;
 /// Package 74: backups from the administration. Package 89 (A101): list, create, download and delete with BackupsManage;
 /// upload and restore replace everything, so only for members of the Admin group, not for every holder of all rights.
 /// </summary>
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     BackupContent? pendingRestore;
 

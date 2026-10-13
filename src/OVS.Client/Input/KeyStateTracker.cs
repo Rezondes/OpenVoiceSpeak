@@ -1,7 +1,7 @@
 namespace OVS.Client.Input;
 
 /// <summary>Turns the active actions of successive polls into "a hold action changed" and single presses.</summary>
-public sealed class KeyStateTracker
+internal sealed class KeyStateTracker
 {
     KeyActionSet previous;
 

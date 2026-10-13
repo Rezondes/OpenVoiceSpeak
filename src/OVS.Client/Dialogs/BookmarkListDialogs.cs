@@ -3,7 +3,7 @@ using OVS.Client.Settings;
 namespace OVS.Client.Dialogs;
 
 /// <summary>The dialogs the saved servers of the sidebar ask. Unset entries mean "cancelled" (used by tests).</summary>
-public sealed record BookmarkListDialogs
+internal sealed record BookmarkListDialogs
 {
     /// <summary>Package 40: edits a bookmark; null is cancelled.</summary>
     public Func<Bookmark, Task<BookmarkEdit?>>? EditBookmark { get; init; }

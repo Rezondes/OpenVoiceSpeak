@@ -10,7 +10,7 @@ namespace OVS.Client.Services;
 /// Turns a chosen image file into the server logo (A21): at most 3 MB, PNG or JPG, exactly square,
 /// at least 64 px; larger images are scaled down to 256 x 256 PNG. Everything is checked before anything is sent.
 /// </summary>
-public static class IconImport
+internal static class IconImport
 {
     /// <summary>The largest image file accepted.</summary>
     public const long MaxFileBytes = 3 * 1024 * 1024;

@@ -1,7 +1,7 @@
 namespace RuleLint;
 
 /// <summary>How a finding counts: an error fails the run, a warning is only reported.</summary>
-public enum Severity
+internal enum Severity
 {
     /// <summary>Reported, does not fail the run (a heuristic or a review red flag).</summary>
     Warning,

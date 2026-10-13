@@ -11,7 +11,7 @@ namespace OVS.Server.Security;
 /// channel passwords too. Any stored text loads and is written back verbatim; a text that is no hash never matches.
 /// </summary>
 [JsonConverter(typeof(TextConverter))]
-public sealed record StoredPassword
+internal sealed record StoredPassword
 {
     /// <summary>The PBKDF2 rounds of every newly created password; a stored value with fewer is no valid hash.</summary>
     public const int HashIterations = 100_000;

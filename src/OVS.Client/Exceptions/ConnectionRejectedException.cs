@@ -1,7 +1,7 @@
 namespace OVS.Client.Exceptions;
 
 /// <summary>The server rejected the handshake.</summary>
-public sealed class ConnectionRejectedException(string code, string? detail) : Exception($"{code}: {detail}")
+internal sealed class ConnectionRejectedException(string code, string? detail) : Exception($"{code}: {detail}")
 {
     /// <summary>The reason code.</summary>
     public string Code { get; } = code;

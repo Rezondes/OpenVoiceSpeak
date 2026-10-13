@@ -8,7 +8,7 @@ namespace OVS.Client.Logging;
 /// the admin token or the identity key. Writing never throws. Step 30d4: it is also the <see cref="ILogger"/> of the client; a
 /// message goes through <see cref="Write"/>, the time stamp and the text as before.
 /// </summary>
-public sealed class ClientLog : ILogger
+internal sealed class ClientLog : ILogger
 {
     /// <summary>Days the client's log files are kept.</summary>
     public const int KeepDays = 30;

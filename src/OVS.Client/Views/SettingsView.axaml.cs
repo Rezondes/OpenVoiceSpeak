@@ -9,7 +9,7 @@ using OVS.Client.ViewModels;
 namespace OVS.Client.Views;
 
 /// <summary>Settings as a page inside the main window (A20: the client never opens a second window).</summary>
-public partial class SettingsView : UserControl
+internal partial class SettingsView : UserControl
 {
     /// <summary>The settings page.</summary>
     public SettingsView()

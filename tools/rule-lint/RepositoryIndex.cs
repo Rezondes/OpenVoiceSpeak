@@ -8,7 +8,7 @@ namespace RuleLint;
 /// type, the first file under each folder (so a rule about a folder reports it once) and how often each interface is
 /// implemented in production or tool code and in tests.
 /// </summary>
-public sealed partial class RepositoryIndex
+internal sealed partial class RepositoryIndex
 {
     readonly Dictionary<string, HashSet<string>> typeNamesByRoot = [];
     readonly Dictionary<string, List<string>> filesByType = [];

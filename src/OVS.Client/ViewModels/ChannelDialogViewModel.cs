@@ -11,7 +11,7 @@ namespace OVS.Client.ViewModels;
 /// Package 54: one dialog for a channel with every option. Creating opens it empty, editing with the channel's data;
 /// only title and button differ. The default channel stays unlimited and open, so its slots and group lock are locked.
 /// </summary>
-public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelDialogMode mode, IReadOnlyList<GroupInfo>? groups = null) : ObservableObject
+internal sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelDialogMode mode, IReadOnlyList<GroupInfo>? groups = null) : ObservableObject
 {
     [ObservableProperty] string name = current.Name;
     [ObservableProperty] string description = current.Description;

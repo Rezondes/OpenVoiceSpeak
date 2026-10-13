@@ -1,7 +1,7 @@
 namespace OVS.Tests.TestSupport;
 
 /// <summary>Returns at most one byte per read, like a very slow network.</summary>
-public sealed class TrickleStream(byte[] data) : MemoryStream(data)
+internal sealed class TrickleStream(byte[] data) : MemoryStream(data)
 {
     public override int Read(byte[] buffer, int offset, int count) => base.Read(buffer, offset, Math.Min(count, 1));
 

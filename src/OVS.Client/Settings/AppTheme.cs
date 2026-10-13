@@ -1,7 +1,7 @@
 namespace OVS.Client.Settings;
 
 /// <summary>The colour theme.</summary>
-public enum AppTheme
+internal enum AppTheme
 {
     /// <summary>Follows Windows.</summary>
     System,

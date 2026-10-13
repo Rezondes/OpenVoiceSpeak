@@ -12,7 +12,7 @@ namespace OVS.Client.ViewModels;
 /// <param name="info">The backup.</param>
 /// <param name="delete">Deletes it after asking.</param>
 /// <param name="restore">Restores it after asking.</param>
-public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewModel, Task> delete, Func<BackupViewModel, Task> restore, bool canRestore = false)
+internal sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewModel, Task> delete, Func<BackupViewModel, Task> restore, bool canRestore = false)
     : ObservableObject, IMotionKey
 {
     /// <summary>The file name: the same backup keeps its motion when the list is rebuilt.</summary>

@@ -9,7 +9,7 @@ namespace OVS.Client.Audio.Transmit;
 /// bitrate halves (down to 16 kbps), after 10 s below 2 % it doubles again, at most to the channel's. Fed on one thread,
 /// read on the capture thread.
 /// </summary>
-public sealed class LossAdapter(TimeProvider time, int channelKbps)
+internal sealed class LossAdapter(TimeProvider time, int channelKbps)
 {
     /// <summary>The range of the loss Opus is told to expect, in percent, and its start value; 10 was the fixed value before Package 135.</summary>
     public const int MinHint = 5, MaxHint = 30, InitialHint = 10;

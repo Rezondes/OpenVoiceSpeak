@@ -8,7 +8,7 @@ namespace OVS.Client.Audio.Processing;
 /// not pulled up into the pauses. Package 127 (A136): RNNoise's voice probability decides what is speech when it runs,
 /// so a very quiet voice is raised too, up to +30 dB.
 /// </summary>
-public sealed class AutoGain
+internal sealed class AutoGain
 {
     /// <summary>The level speech is brought to, in dB.</summary>
     public const float TargetDb = -20f;

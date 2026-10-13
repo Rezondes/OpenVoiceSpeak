@@ -4,7 +4,7 @@ namespace RuleLint.Rules;
 /// Rules 7 and 8: no folder is named like a pattern the <c>.gitignore</c> ignores, and no folder (a namespace segment) is
 /// named like a type of its project. Each folder is reported once, at the first file under it.
 /// </summary>
-public sealed class FolderNameRule : IRule
+internal sealed class FolderNameRule : IRule
 {
     readonly LintSettings settings;
 

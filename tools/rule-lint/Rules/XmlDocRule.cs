@@ -9,7 +9,7 @@ namespace RuleLint.Rules;
 /// counts) has an XML doc comment; <c>&lt;inheritdoc/&gt;</c> counts, and so does the message of a <c>[LoggerMessage]</c> method (Step 31: the message is
 /// what the method writes). Members of private nested types are left out.
 /// </summary>
-public sealed class XmlDocRule : IRule
+internal sealed class XmlDocRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

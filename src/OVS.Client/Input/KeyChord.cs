@@ -5,7 +5,7 @@ namespace OVS.Client.Input;
 
 /// <param name="Key">Windows virtual key code, mouse buttons included.</param>
 /// <param name="Modifiers">The modifier keys held with it.</param>
-public sealed record KeyChord(int Key, ChordModifiers Modifiers = ChordModifiers.None)
+internal sealed record KeyChord(int Key, ChordModifiers Modifiers = ChordModifiers.None)
 {
     /// <summary>The modifiers in the chord.</summary>
     public int ModifierCount => BitOperations.PopCount((uint)Modifiers);

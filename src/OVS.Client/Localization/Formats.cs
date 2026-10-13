@@ -3,7 +3,7 @@ using System.Globalization;
 namespace OVS.Client.Localization;
 
 /// <summary>The duration, size and clock texts the administration and the chat show, in the chosen language.</summary>
-public static class Formats
+internal static class Formats
 {
     /// <summary>"45 s", "1 min 15 s", "1 h 30 min", "2 T 3 h".</summary>
     public static string Duration(TimeSpan duration) => duration switch

@@ -11,7 +11,7 @@ namespace OVS.Client;
 /// busy cursor over it. The one OS window besides the main window (A20); it fades out once the
 /// main window has drawn its first frame.
 /// </summary>
-public static unsafe class Splash
+internal static unsafe class Splash
 {
     const int Size = 160; // at 96 dpi
     const double FadeSeconds = 0.15;

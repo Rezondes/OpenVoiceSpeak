@@ -8,7 +8,7 @@ namespace RuleLint;
 /// One file the rules look at: its path relative to the repository (forward slashes), its text and the source root it
 /// belongs to. A file outside every source root (a document, a resource, a script) has no root; only the text rules read it.
 /// </summary>
-public sealed class SourceFile
+internal sealed class SourceFile
 {
     CompilationUnitSyntax? syntax;
 

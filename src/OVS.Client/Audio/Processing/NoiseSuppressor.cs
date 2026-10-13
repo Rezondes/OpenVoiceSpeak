@@ -10,7 +10,7 @@ namespace OVS.Client.Audio.Processing;
 /// as null, not as an exception somewhere on the capture thread.
 /// </summary>
 /// <remarks>No finalizer: the capture pipeline owns it and disposes it under its lock, after the last frame.</remarks>
-public sealed unsafe class NoiseSuppressor : IDisposable
+internal sealed unsafe class NoiseSuppressor : IDisposable
 {
     /// <summary>The native library's name.</summary>
     public const string Library = "rnnoise";

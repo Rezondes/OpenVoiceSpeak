@@ -2,7 +2,7 @@ namespace OVS.Client.Models;
 
 /// <summary>Package 122: what a state message changed, so whoever listens only redoes what depends on it.</summary>
 [Flags]
-public enum StateChange
+internal enum StateChange
 {
     /// <summary>Nothing changed.</summary>
     None = 0,

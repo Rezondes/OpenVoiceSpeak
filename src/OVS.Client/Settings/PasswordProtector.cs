@@ -4,7 +4,7 @@ using System.Text;
 namespace OVS.Client.Settings;
 
 /// <summary>Windows DPAPI for the current user (A35): readable only by this Windows account on this PC.</summary>
-public static class PasswordProtector
+internal static class PasswordProtector
 {
     static readonly byte[] Entropy = "OpenVoiceSpeak server password"u8.ToArray();
 

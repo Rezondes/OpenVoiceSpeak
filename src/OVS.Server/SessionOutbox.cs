@@ -11,7 +11,7 @@ namespace OVS.Server;
 /// the write loop reads and calls Written. The queue is a thread-safe channel, the byte count is Interlocked, the
 /// closing flag volatile, and Abort runs under a lock of its own.
 /// </summary>
-public sealed class SessionOutbox
+internal sealed class SessionOutbox
 {
     readonly Channel<byte[]> outbox = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(ServerTuning.MaxOutboxMessages) { SingleReader = true });
     readonly CancellationTokenSource aborted = new();

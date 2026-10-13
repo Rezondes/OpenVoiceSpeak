@@ -4,7 +4,7 @@ using System.Text;
 namespace OVS.Server;
 
 /// <summary>One-time token that turns its redeemer into the first admin. Lives only in memory.</summary>
-public sealed class AdminToken
+internal sealed class AdminToken
 {
     string? token;
 

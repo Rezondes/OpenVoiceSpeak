@@ -16,7 +16,7 @@ namespace OVS.Client.Behaviors;
 /// dimmed in its slot and a gap of its height opens where it will land. Releasing inside the list calls
 /// <c>move(source, target, after)</c>; Esc or releasing outside the list cancels.
 /// </summary>
-public sealed class ReorderDrag
+internal sealed class ReorderDrag
 {
     /// <summary>The distance before a drag starts, the dragged row's scale and tilt, and the opacity of its place.</summary>
     public const double Threshold = 6, Scale = 1.03, Tilt = 3, DimmedOpacity = 0.4;

@@ -5,7 +5,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 namespace OVS.Server.Rules;
 
 /// <summary>Which channels may be linked. Pure, null when allowed.</summary>
-public static class ChannelLinkRule
+internal static class ChannelLinkRule
 {
     /// <summary>Two different existing channels, neither a separator (Package 111: nothing is spoken in one); a null kind is a missing channel.</summary>
     public static Refusal? Check(Guid id, Guid otherId, ChannelKind? kindA, ChannelKind? kindB)

@@ -12,7 +12,7 @@ namespace OVS.Client.ViewModels;
 /// chose, what a held push-to-mute key did, and the mute from before deafening. Every change goes to the server as one
 /// <see cref="SetSelfState"/>.
 /// </summary>
-public sealed partial class SelfStateViewModel : ObservableObject
+internal sealed partial class SelfStateViewModel : ObservableObject
 {
     readonly Func<Request, Task> send;
     readonly Action<SoundEvent> requestSound;

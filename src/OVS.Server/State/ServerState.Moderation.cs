@@ -10,7 +10,7 @@ using OVS.Shared.Protocol.Messages.Moderation;
 
 namespace OVS.Server.State;
 
-public sealed partial class ServerState
+internal sealed partial class ServerState
 {
     void OnKickSession(Session session, KickSession request)
     {

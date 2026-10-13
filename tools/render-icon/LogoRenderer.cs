@@ -9,7 +9,7 @@ namespace OVS.Tools;
 /// the logo uses (one rounded rect, filled or stroked paths). The tests compile this file too, so the checked-in
 /// icon and the tool can not drift apart.
 /// </summary>
-public static class LogoRenderer
+internal static class LogoRenderer
 {
     public static readonly int[] IcoSizes = [16, 20, 24, 32, 48, 64, 256];
 

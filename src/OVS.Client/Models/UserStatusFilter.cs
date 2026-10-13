@@ -1,7 +1,7 @@
 namespace OVS.Client.Models;
 
 /// <summary>Which users the user list shows.</summary>
-public enum UserStatusFilter
+internal enum UserStatusFilter
 {
     /// <summary>Everyone.</summary>
     All,

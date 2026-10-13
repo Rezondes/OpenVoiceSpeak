@@ -7,7 +7,7 @@ using OVS.Shared.Protocol.Messages.Groups;
 namespace OVS.Client.Views;
 
 /// <summary>Package 54: one dialog for creating and editing a channel, shown in the overlay of the main window (A20).</summary>
-public partial class ChannelDialogView : UserControl
+internal partial class ChannelDialogView : UserControl
 {
     /// <summary>The channel dialog's card.</summary>
     public ChannelDialogView() => InitializeComponent();

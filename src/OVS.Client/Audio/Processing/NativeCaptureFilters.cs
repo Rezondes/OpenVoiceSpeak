@@ -9,7 +9,7 @@ namespace OVS.Client.Audio.Processing;
 /// whose library cannot load is off from then on, with one log line, and the voice goes out without it. The engine
 /// attaches them to each new capture while setting it up, under its lock, so one capture at a time asks.
 /// </summary>
-public sealed class NativeCaptureFilters
+internal sealed class NativeCaptureFilters
 {
     readonly string noiseLibrary, echoLibrary;
     bool noiseSuppressorMissing; // logged once, then no further tries

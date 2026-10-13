@@ -3,7 +3,7 @@ using System.Numerics;
 namespace OVS.Client.Input;
 
 /// <summary>Package 124: actions as bits, so a key poll allocates nothing and its result is published in one write.</summary>
-public readonly record struct KeyActionSet(int Bits)
+internal readonly record struct KeyActionSet(int Bits)
 {
     /// <summary>True when the set holds action.</summary>
     public bool Contains(KeyAction action) => (Bits & Bit(action)) != 0;

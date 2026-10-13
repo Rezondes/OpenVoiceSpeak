@@ -6,7 +6,7 @@ namespace OVS.Client.Audio.Devices;
 /// Package 124: the microphones and speakers: what the engine opens and the settings page lists. Tests use a fake that
 /// counts the opens and closes without hardware.
 /// </summary>
-public interface IAudioHardware
+internal interface IAudioHardware
 {
     /// <summary>Package 52: the devices of one direction that are active now, with their names (reading a name is slow).</summary>
     List<AudioDevice> ListActive(AudioDirection direction);

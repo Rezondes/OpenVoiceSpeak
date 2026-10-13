@@ -4,7 +4,7 @@ using OVS.Client.Localization;
 namespace OVS.Client.Net.Updates;
 
 /// <summary>Package 62: what the update card over the window shows. Total is null when GitHub sends no size.</summary>
-public sealed record UpdateProgress(string Version, UpdatePhase Phase, long Bytes = 0, long? Total = null)
+internal sealed record UpdateProgress(string Version, UpdatePhase Phase, long Bytes = 0, long? Total = null)
 {
     const double MB = 1024 * 1024;
 

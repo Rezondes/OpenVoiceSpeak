@@ -5,7 +5,7 @@ using OVS.Shared.Protocol.Messages.LogAccess;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One search hit: file title, line number and the line.</summary>
-public sealed class LogHitViewModel(LogHit hit, string title)
+internal sealed class LogHitViewModel(LogHit hit, string title)
 {
     /// <summary>The hit's file.</summary>
     public string FileId => hit.FileId;

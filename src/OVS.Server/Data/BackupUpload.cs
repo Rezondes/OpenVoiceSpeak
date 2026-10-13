@@ -3,7 +3,7 @@ using OVS.Shared.Protocol;
 namespace OVS.Server.Data;
 
 /// <summary>Package 75: one session's backup upload in progress, its hidden file and the bytes stored; guarded by the ServerState lock.</summary>
-public sealed class BackupUpload(string id, string path)
+internal sealed class BackupUpload(string id, string path)
 {
     /// <summary>The id the client chose for the upload.</summary>
     public string Id { get; } = id;

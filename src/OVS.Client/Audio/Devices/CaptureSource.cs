@@ -9,7 +9,7 @@ namespace OVS.Client.Audio.Devices;
 /// lock, which it is handed (a member marked "under gate" asserts that its caller holds it). When a capture opens, and
 /// when the tone changes, is the <see cref="DeviceLifecycle"/>'s, which builds it.
 /// </summary>
-public sealed class CaptureSource
+internal sealed class CaptureSource
 {
     readonly object gate; // the engine's: the devices and settings
     readonly IAudioHardware? hardware;

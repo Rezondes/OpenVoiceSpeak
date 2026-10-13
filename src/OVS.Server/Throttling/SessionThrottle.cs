@@ -5,7 +5,7 @@ namespace OVS.Server.Throttling;
 /// Requests, list rounds, costly kinds and chat are guarded by the ServerState lock; RefuseVoice runs under the voice gate
 /// of UdpVoiceServer and has fields of its own, so the two never touch the same field.
 /// </summary>
-public sealed class SessionThrottle(TimeProvider time)
+internal sealed class SessionThrottle(TimeProvider time)
 {
     readonly RateLimiter requests = new(time, ServerTuning.RequestsPerSecond, ServerTuning.RequestBurst);
     readonly Dictionary<Type, RateLimiter> costly = [];

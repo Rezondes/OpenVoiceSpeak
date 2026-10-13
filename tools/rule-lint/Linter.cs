@@ -3,7 +3,7 @@ using RuleLint.Rules;
 namespace RuleLint;
 
 /// <summary>Runs every rule over a set of files.</summary>
-public static class Linter
+internal static class Linter
 {
     /// <summary>Every finding of every rule in <paramref name="files"/>, by path, line, column and rule.</summary>
     public static List<Finding> Run(LintSettings settings, IReadOnlyList<SourceFile> files)

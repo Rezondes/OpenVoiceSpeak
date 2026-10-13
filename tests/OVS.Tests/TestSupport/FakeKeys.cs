@@ -4,7 +4,7 @@ namespace OVS.Tests.TestSupport;
 /// Package 125: a key state for <see cref="OVS.Client.Input.KeyPoller"/>, so keys go through the real bindings. Counts
 /// the full sweeps of a key capture (only it asks for the last key code), so a test knows when a poll saw a change.
 /// </summary>
-public sealed class FakeKeys
+internal sealed class FakeKeys
 {
     const int LastScanned = 0xFE;
     readonly HashSet<int> down = [];

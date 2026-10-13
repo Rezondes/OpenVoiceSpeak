@@ -4,7 +4,7 @@ namespace RuleLint.Rules;
 /// Rule 15 for type names, in production and tool code: no bag names, <c>Service</c>, <c>Info</c> and <c>Data</c> only
 /// with a subject, and no type named as the plural of another type of its project.
 /// </summary>
-public sealed class TypeNameRule : IRule
+internal sealed class TypeNameRule : IRule
 {
     readonly LintSettings settings;
 

@@ -7,4 +7,4 @@ namespace OVS.Client.Services;
 /// How a connection is opened for every connect and every reconnect attempt: the real one is the profile's identity plus
 /// <see cref="ClientConnection.ConnectAsync"/>, tests pass their own.
 /// </summary>
-public delegate Task<ClientConnection> OpenConnection(ConnectChoice choice, CancellationToken token);
+internal delegate Task<ClientConnection> OpenConnection(ConnectChoice choice, CancellationToken token);

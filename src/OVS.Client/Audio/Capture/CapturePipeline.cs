@@ -13,7 +13,7 @@ namespace OVS.Client.Audio.Capture;
 /// The device source is Windows only (WASAPI); the tone source works anywhere.
 /// Package 142 (A151): in music mode a stereo device stays stereo (interleaved frames of 2 x 960 samples).
 /// </summary>
-public sealed class CapturePipeline : IDisposable
+internal sealed class CapturePipeline : IDisposable
 {
     readonly FrameChunker chunker = new(), stereoChunker = new(2);
     readonly VoiceEncoder encoder = new();

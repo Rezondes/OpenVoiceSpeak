@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace RuleLint.Rules;
 
 /// <summary>Rule 5: a nested type is private (no access modifier or <c>private</c>) and stands at the end of its container.</summary>
-public sealed class NestedTypeRule : IRule
+internal sealed class NestedTypeRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

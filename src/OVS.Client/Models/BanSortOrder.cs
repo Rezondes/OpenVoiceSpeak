@@ -1,7 +1,7 @@
 namespace OVS.Client.Models;
 
 /// <summary>How the ban list is sorted.</summary>
-public enum BanSortOrder
+internal enum BanSortOrder
 {
     /// <summary>The newest ban first.</summary>
     Newest,

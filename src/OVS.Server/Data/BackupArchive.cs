@@ -12,7 +12,7 @@ namespace OVS.Server.Data;
 /// Package 74: one backup archive, a zip of manifest, server data, certificate (so the fingerprint stays the same) and
 /// logo, never the logs. Entries are only read by their known names, never extracted by their path.
 /// </summary>
-public static class BackupArchive
+internal static class BackupArchive
 {
     /// <summary>The archive format this server writes and reads.</summary>
     public const int FormatVersion = 1;

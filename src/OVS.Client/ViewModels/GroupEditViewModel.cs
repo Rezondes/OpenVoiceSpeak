@@ -6,7 +6,7 @@ using OVS.Shared.Permissions;
 
 namespace OVS.Client.ViewModels;
 
-public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
+internal sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
 {
     /// <summary>A new group not saved yet counts by itself.</summary>
     public object MotionKey => Id ?? (object)this;

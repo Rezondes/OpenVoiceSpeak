@@ -7,7 +7,7 @@ namespace RuleLint.Rules;
 /// Rule 16, as a warning: an exception message in production or tool code with German letters (ä, ö, ü, ß) is likely not
 /// English. Log lines are not recognized (their writers differ per project); the review checks them.
 /// </summary>
-public sealed class EnglishTextRule : IRule
+internal sealed class EnglishTextRule : IRule
 {
     /// <inheritdoc/>
     public IEnumerable<Finding> Check(SourceFile file, RepositoryIndex index)

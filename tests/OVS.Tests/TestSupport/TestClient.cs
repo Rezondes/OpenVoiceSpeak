@@ -12,7 +12,7 @@ using OVS.Shared.Protocol.Messages.Connection;
 namespace OVS.Tests.TestSupport;
 
 /// <summary>Raw protocol client for server tests. Can misbehave on purpose.</summary>
-public sealed class TestClient : IAsyncDisposable
+internal sealed class TestClient : IAsyncDisposable
 {
     readonly TcpClient tcp;
     readonly SslStream ssl;

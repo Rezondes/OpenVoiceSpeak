@@ -1,7 +1,7 @@
 namespace OVS.Client.Net.Updates;
 
 /// <summary>Where an update stands.</summary>
-public enum UpdatePhase
+internal enum UpdatePhase
 {
     /// <summary>The new exe is loading.</summary>
     Downloading,

@@ -4,7 +4,7 @@ using OVS.Shared.Permissions;
 namespace OVS.Client.ViewModels;
 
 /// <summary>One right's box in the group editor.</summary>
-public sealed partial class PermissionToggleViewModel(Permission permission, string label, bool isChecked, bool isEnabled) : ObservableObject
+internal sealed partial class PermissionToggleViewModel(Permission permission, string label, bool isChecked, bool isEnabled) : ObservableObject
 {
     [ObservableProperty] bool isChecked = isChecked;
 

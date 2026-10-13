@@ -5,7 +5,7 @@ namespace OVS.Client.Audio.Playback;
 /// is scaled down as a whole at once; afterwards the gain climbs back by <see cref="ReleasePerFrame"/> per frame,
 /// ramped sample by sample so it never clicks. Below the threshold the signal is left exactly as it is.
 /// </summary>
-public sealed class SoftLimiter
+internal sealed class SoftLimiter
 {
     /// <summary>The level above which the gain goes down.</summary>
     public const float Threshold = 0.95f;

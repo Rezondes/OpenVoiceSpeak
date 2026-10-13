@@ -6,7 +6,7 @@ namespace OVS.Server.Throttling;
 /// Package 91: wrong server passwords per source, the address group of IpAddresses.ToAddressGroup. Guarded by the
 /// ServerState lock.
 /// </summary>
-public sealed class PasswordGuessLimit
+internal sealed class PasswordGuessLimit
 {
     readonly Dictionary<IPAddress, (int Count, DateTimeOffset Last)> failures = [];
     DateTimeOffset nextSweep;

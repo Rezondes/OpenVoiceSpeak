@@ -3,7 +3,7 @@ using OVS.Client.Localization;
 namespace OVS.Client.Models;
 
 /// <summary>A system notice, shown in the chat tab "Allgemein". ToString keeps the "time  text" form for the debug API.</summary>
-public sealed record Notice(DateTime Time, string Text, NoticeKind Kind)
+internal sealed record Notice(DateTime Time, string Text, NoticeKind Kind)
 {
     /// <summary>The time as shown.</summary>
     public string TimeText => Formats.ClockTime(Time);
