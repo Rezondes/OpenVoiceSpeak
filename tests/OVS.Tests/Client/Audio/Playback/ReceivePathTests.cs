@@ -772,7 +772,7 @@ public class ReceivePathTests
         await rig.ConnectAsync();
         Assert.Equal("headset", rig.Hardware.Open.Speaker);
 
-        rig.Hardware.Present.Remove("headset");
+        rig.Hardware.Unplug("headset");
         rig.Hardware.RaiseChanged();
         rig.Time.Advance(DeviceLifecycle.SettleTime - TimeSpan.FromMilliseconds(1));
         Assert.Equal(1, rig.Hardware.Counts.Speakers);
@@ -786,7 +786,7 @@ public class ReceivePathTests
         Assert.Equal("speaker-default", rig.Hardware.Open.Speaker);
         Assert.Single(rig.Notices);
 
-        rig.Hardware.Present.Add("headset", AudioDirection.Output);
+        rig.Hardware.Plug("headset", AudioDirection.Output);
         rig.Change();
         Assert.Equal(("headset", 1), (rig.Hardware.Open.Speaker, rig.Hardware.Counts.SpeakersOpen));
         Assert.Single(rig.Notices);

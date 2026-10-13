@@ -1143,7 +1143,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                     : [new AudioDevice("out-1", "Kopfhörer")];
             },
         };
-        hardware.Present.Add("mic-2", AudioDirection.Input); // the saved microphone is plugged in, as the list says
+        hardware.Plug("mic-2", AudioDirection.Input); // the saved microphone is plugged in, as the list says
         var main = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, hardware: hardware)));
 
         var watch = System.Diagnostics.Stopwatch.StartNew();

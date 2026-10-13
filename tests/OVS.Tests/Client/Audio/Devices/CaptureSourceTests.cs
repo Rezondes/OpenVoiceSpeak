@@ -39,7 +39,7 @@ public sealed class CaptureSourceTests : IDisposable
     [Fact]
     public void Open_NoToneSet_OpensTheChosenMicConfigured()
     {
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
         var opened = new List<string>();
 
         lock (gate) source.Open("headset", opened);

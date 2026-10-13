@@ -19,9 +19,10 @@ public sealed class FakeAudioHardware : IAudioHardware
 
     /// <summary>
     /// Package 137: the devices plugged in, each with its direction; a requested id that is not here, or of the other
-    /// direction, opens the default with a warning.
+    /// direction, opens the default with a warning. Changed only through <see cref="Plug"/> and <see cref="Unplug"/>, under
+    /// its lock: the opens read it on device threads (Step 30).
     /// </summary>
-    public readonly Dictionary<string, AudioDirection> Present = [];
+    readonly Dictionary<string, AudioDirection> present = [];
 
     /// <summary>The defaults; null when none is left (every device unplugged): then an open of the default throws, like the real one.</summary>
     public volatile string? DefaultMic = "mic-default", DefaultSpeaker = "speaker-default";
@@ -73,6 +74,18 @@ public sealed class FakeAudioHardware : IAudioHardware
         handler?.Invoke(direction, new InvalidOperationException("device invalidated"));
     }
 
+    /// <summary>Plugs the device <paramref name="id"/> in as a device of <paramref name="direction"/>.</summary>
+    public void Plug(string id, AudioDirection direction)
+    {
+        lock (present) present.Add(id, direction);
+    }
+
+    /// <summary>Unplugs the device <paramref name="id"/>.</summary>
+    public void Unplug(string id)
+    {
+        lock (present) present.Remove(id);
+    }
+
     public List<AudioDevice> ListActive(AudioDirection direction) => Listing(direction);
 
     public string? FindCurrentDeviceId(string? deviceId, AudioDirection direction) => Resolve(deviceId, direction, []);
@@ -90,10 +103,10 @@ public sealed class FakeAudioHardware : IAudioHardware
     string? Resolve(string? id, AudioDirection direction, List<string> warnings)
     {
         var fallback = direction == AudioDirection.Input ? DefaultMic : DefaultSpeaker;
-        lock (Present)
+        lock (present)
         {
             if (id is null) return fallback;
-            if (Present.TryGetValue(id, out var present) && present == direction) return id;
+            if (present.TryGetValue(id, out var plugged) && plugged == direction) return id;
         }
         warnings.Add(Strings.Audio_DeviceFallback);
         return fallback;

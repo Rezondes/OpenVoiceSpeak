@@ -880,13 +880,13 @@ public class SendPathTests
         await rig.ConnectAsync();
         Assert.Equal("headset", rig.Hardware.Open.Mic);
 
-        rig.Hardware.Present.Remove("headset");
+        rig.Hardware.Unplug("headset");
         rig.Change();
         Assert.Equal(("mic-default", 1), (rig.Hardware.Open.Mic, rig.Hardware.Counts.MicsOpen));
         Assert.Equal([Strings.Audio_MicLost], rig.Notices);
         Assert.True(DeviceLifecycle.SettleTime < TimeSpan.FromSeconds(1));
 
-        rig.Hardware.Present.Add("headset", AudioDirection.Input);
+        rig.Hardware.Plug("headset", AudioDirection.Input);
         rig.Change();
         Assert.Equal(("headset", 1), (rig.Hardware.Open.Mic, rig.Hardware.Counts.MicsOpen));
         Assert.Single(rig.Notices);

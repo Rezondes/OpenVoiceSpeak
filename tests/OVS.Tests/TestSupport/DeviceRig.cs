@@ -20,7 +20,7 @@ internal sealed class DeviceRig : IDisposable
 
     public DeviceRig(ClientSettings settings, params (string Id, AudioDirection Direction)[] present)
     {
-        foreach (var (id, direction) in present) Hardware.Present.Add(id, direction);
+        foreach (var (id, direction) in present) Hardware.Plug(id, direction);
         Keys = new KeyPoller(Time);
         Engine = new AudioEngine(Keys, Time, hardware: Hardware);
         Engine.Warning += text =>

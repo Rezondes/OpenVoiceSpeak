@@ -71,7 +71,7 @@ public sealed class DeviceLifecycleTests : IDisposable
     [Fact]
     public void SyncCaptureAndReport_MicWanted_OpensTheChosenMic()
     {
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
         Choose("headset");
         micWanted = true;
 
@@ -187,7 +187,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         micWanted = true;
         devices.SyncCaptureAndReport();
         devices.OpenSpeakerAndReport();
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
         var atBeforeOpen = (0, 0, 0, 0);
 
         IReadOnlyList<string> warnings;
@@ -324,7 +324,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         micWanted = true;
         devices.SyncCaptureAndReport();
         Assert.Equal([Strings.Audio_DeviceFallback], Assert.Single(reports)); // not plugged in: the default opens
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
 
         hardware.RaiseChanged();
         time.Advance(DeviceLifecycle.SettleTime - TimeSpan.FromMilliseconds(1));
@@ -372,11 +372,11 @@ public sealed class DeviceLifecycleTests : IDisposable
     [Fact]
     public void DeviceChange_UnrelatedWhileOnTheFallback_ReopensNothingAndNoSecondNotice()
     {
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
         Choose("headset");
         micWanted = true;
         devices.SyncCaptureAndReport();
-        hardware.Present.Remove("headset");
+        hardware.Unplug("headset");
         Change(); // on the default now, with the lost notice
 
         Change();
@@ -388,12 +388,12 @@ public sealed class DeviceLifecycleTests : IDisposable
     [Fact]
     public void DeviceChange_ChosenMicRemoved_DefaultOpensWithTheLostNotice()
     {
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
         Choose("headset");
         micWanted = true;
         devices.SyncCaptureAndReport();
 
-        hardware.Present.Remove("headset");
+        hardware.Unplug("headset");
         Change();
 
         Assert.Equal(("mic-default", 1), (hardware.Open.Mic, hardware.Counts.MicsOpen));
@@ -403,16 +403,16 @@ public sealed class DeviceLifecycleTests : IDisposable
     [Fact]
     public void DeviceChange_ChosenMicGoneAgainAfterReturning_LostNoticeAgain()
     {
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
         Choose("headset");
         micWanted = true;
         devices.SyncCaptureAndReport();
-        hardware.Present.Remove("headset");
+        hardware.Unplug("headset");
         Change();
-        hardware.Present.Add("headset", AudioDirection.Input);
+        hardware.Plug("headset", AudioDirection.Input);
         Change();
 
-        hardware.Present.Remove("headset");
+        hardware.Unplug("headset");
         Change();
 
         Assert.Equal([Strings.Audio_MicLost, Strings.Audio_MicLost], Notices);
