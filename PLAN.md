@@ -8722,16 +8722,18 @@ The user decided: the default `docker-compose.yml` stays as it is, the server wi
 
 ### Acceptance Criteria
 
-- [ ] AC1: Each of the four files defines `ovs-server` and the backend, with the OVS ports (7000 TCP and UDP) and the backend's UI port published, and `OTEL_EXPORTER_OTLP_ENDPOINT` (with `OTEL_EXPORTER_OTLP_PROTOCOL` where the backend needs `http/protobuf`) pointing at a service of the same file.
-- [ ] AC2: Every image that is not built from the checkout has a fixed version tag (no tag, `latest` or a floating major tag fails).
-- [ ] AC3: The README names each backend's UI address and what it shows, and how to start and stop it.
-- [ ] AC4 (manuell): Each file starts with `docker compose up -d`, the server log shows its listening line, and the backend's UI shows the server's traces (and, where the backend takes them, metrics and logs) after a client connected and sent a request; recorded in the package notes.
+- [x] AC1: Each of the four files defines `ovs-server` and the backend, with the OVS ports (7000 TCP and UDP) and the backend's UI port published, and `OTEL_EXPORTER_OTLP_ENDPOINT` (with `OTEL_EXPORTER_OTLP_PROTOCOL` where the backend needs `http/protobuf`) pointing at a service of the same file.
+- [x] AC2: Every image that is not built from the checkout has a fixed version tag (no tag, `latest` or a floating major tag fails).
+- [x] AC3: The README names each backend's UI address and what it shows, and how to start and stop it.
+- [x] AC4 (manuell): Each file starts with `docker compose up -d`, the server log shows its listening line, and the backend's UI shows the server's traces (and, where the backend takes them, metrics and logs) after a client connected and sent a request; recorded in the package notes.
 
 ### Tests (TDD)
 
 1. `ObservabilityComposeTests > "Compose_Endpoint_PointsAtOwnService"` (AC1): the four files, read line by line (no YAML package), each with both services, the ports and an endpoint whose host is a service of the file.
 2. `ObservabilityComposeTests > "Compose_EveryImage_Pinned"` (AC2)
 3. `ObservabilityComposeTests > "Readme_EveryBackend_Named"` (AC3)
+
+(as built: four folders, each with a commented `docker-compose.yml`: `ovs-server` built from the checkout (`build: ../../..`, image `openvoicespeak/server:local`, as the user chose; the comment names the release image to use instead) with `OTEL_EXPORTER_OTLP_ENDPOINT` at the backend's service, plus the backend. LGTM, the Aspire Dashboard and Jaeger take OTLP over `grpc` (ports 4317 or 18889 inside the network), Seq over `http/protobuf` at `http://seq:5341/ingest/otlp`; LGTM and Aspire get `OTEL_METRIC_EXPORT_INTERVAL` 10 s so metrics show soon. Published UI ports: Grafana 3000 (admin / admin), Aspire 18888 (anonymous), Jaeger 16686, Seq 5380 (no authentication on first run); the comments say these are local examples. One shared German README beside them, like the main README, and a pointer from the main README. The test reads the files line by line: the promised four folders exist, `ovs-server` publishes 7000 TCP and UDP, its endpoint's host is another service of the same file with a published port, and every image without `build` ends in a numeric version (`:latest`, no tag or a bare major fail). Manual check AC4 (13 October 2026, Docker 29.2.1, Compose 5.1.0): each file run with `docker compose up -d --build` under its own project name and an override that moved the server to port 17000 and another image tag (the user's own server was running on 7000); a TLS connection sending an old protocol version made a handshake span each time. Jaeger: service `ovs-server`, `handshake` spans with `ovs.result.code` `VersionMismatch` (so `grpc` works). Seq: the server log lines (start, version, "Admin token created", listening, the refused connection with its trace id) and the `handshake` span; the token itself not. Aspire Dashboard: resource `ovs-server` with logs, traces and metrics. Grafana LGTM: the trace in Tempo, the log lines in Loki, `ovs_sessions`, `ovs_admission_rejections_total` and the `dotnet_*` runtime metrics in Prometheus. All test containers, volumes and the test image were removed afterwards.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

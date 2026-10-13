@@ -16,12 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["ObservabilityComposeTests > \"Compose_Endpoint_PointsAtOwnService\""] =
-            "planned: Package 149 is not built yet",
-        ["ObservabilityComposeTests > \"Compose_EveryImage_Pinned\""] =
-            "planned: Package 149 is not built yet",
-        ["ObservabilityComposeTests > \"Readme_EveryBackend_Named\""] =
-            "planned: Package 149 is not built yet",
         ["ObservabilityComposeTests > \"Compose_MountedConfigFiles_Exist\""] =
             "planned: Package 150 is only planned",
     };

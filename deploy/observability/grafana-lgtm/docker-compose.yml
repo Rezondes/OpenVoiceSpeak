@@ -1,0 +1,35 @@
+# OpenVoiceSpeak server with Grafana's all-in-one LGTM image (Loki, Grafana, Tempo, Prometheus): traces, metrics and logs.
+#   docker compose up -d --build      then Grafana at http://localhost:3000 (admin / admin)
+#   docker compose down -v            stops it and removes its data
+# ovs-server is built from this checkout; for a release image with telemetry use
+#   image: ghcr.io/rezondes/openvoicespeak-server:<version>   and remove the build line.
+services:
+  ovs-server:
+    build: ../../..
+    image: openvoicespeak/server:local
+    restart: unless-stopped
+    ports:
+      - "7000:7000/tcp"
+      - "7000:7000/udp"
+    environment:
+      OVS_SERVER_NAME: "Mein Server"
+      TZ: "Europe/Berlin"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://lgtm:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+    volumes:
+      - ovs-data:/data
+    depends_on:
+      - lgtm
+
+  lgtm:
+    image: grafana/otel-lgtm:0.36.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - lgtm-data:/data
+
+volumes:
+  ovs-data:
+  lgtm-data:
