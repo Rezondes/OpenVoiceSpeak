@@ -9,6 +9,11 @@ public sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
 
     public ManualTimeProvider() : this(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)) { }
 
+    /// <summary>The time zone of local times; the machine's unless a test pins it (golden log lines).</summary>
+    public TimeZoneInfo Local { get; init; } = TimeZoneInfo.Local;
+
+    public override TimeZoneInfo LocalTimeZone => Local;
+
     public override DateTimeOffset GetUtcNow()
     {
         lock (gate) return now;
