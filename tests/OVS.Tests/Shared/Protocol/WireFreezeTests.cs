@@ -47,7 +47,7 @@ public sealed class WireFreezeTests
         "downloadBackup: fileName, offset, requestId",
         "downloadLogChunk: downloadId, offset, requestId",
         "editChannel: allowedGroupIds, bitrate, channelId, description, isMuted, maxUsers, name, order, password, requestId",
-        "error: code, detail, requestId",
+        "error: code, detail, errorId, requestId",
         "getServerIcon: requestId",
         "groupsChanged: groups",
         "joinChannel: channelId, password, requestId",

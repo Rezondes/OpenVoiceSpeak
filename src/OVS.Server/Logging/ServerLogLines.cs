@@ -83,8 +83,9 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Information, Message = "{Count} unused guest records removed (guest only, no ban, not logged in for over {Days:0} days)")]
     public static partial void GuestsPruned(this ILogger logger, int count, double days);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Error in request {Request} from {Nickname}: {ExceptionType}: {Reason}")]
-    public static partial void RequestFailed(this ILogger logger, string request, string nickname, string exceptionType, string reason);
+    /// <summary>Package 143 (A153): the exception follows the message in the file, with its stack trace.</summary>
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error in request {Request} from {Nickname}, error ID {ErrorId}:")]
+    public static partial void RequestFailed(this ILogger logger, string request, string nickname, string errorId, Exception exception);
 
     // Saving (SaveScheduler)
 

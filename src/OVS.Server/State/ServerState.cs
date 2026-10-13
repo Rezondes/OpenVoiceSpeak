@@ -212,8 +212,9 @@ internal sealed partial class ServerState
             #pragma warning restore CA1031
             {
                 // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
-                logs.Server.RequestFailed(request.GetType().Name, session.Nickname, exception.GetType().Name, exception.Message);
-                Fail(session, request, ReasonCodes.InvalidValue);
+                var errorId = ErrorIds.New(); // Package 143 (A153): the user copies it, the admin searches the log for it
+                logs.Server.RequestFailed(request.GetType().Name, session.Nickname, errorId, exception);
+                session.Outbox.Send(new Error(request.RequestId, ReasonCodes.InvalidValue, ErrorId: errorId));
             }
         }
     }

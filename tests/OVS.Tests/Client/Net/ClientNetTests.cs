@@ -548,7 +548,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     [Fact]
     public async Task Voice_UdpBlocked_GoesOverTcp()
     {
-        Assert.Equal(15, WireProtocol.Version);
+        Assert.True(WireProtocol.Version >= 15); // raised by Package 141, SmokeTests pins the current one
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await ConnectAsync(server, "a");
         await using var otherClientConnection = await ConnectAsync(server, "b");

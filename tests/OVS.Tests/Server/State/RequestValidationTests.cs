@@ -76,6 +76,51 @@ public sealed class RequestValidationTests
         await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Raid");
     }
 
+    /// <summary>Package 143 (A153): an unexpected error has an ID, in the answer and in the one log line with the stack trace.</summary>
+    [Fact]
+    public async Task Handler_Throws_AnsweredWithErrorIdAndLoggedWithStackTrace()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var client = admin;
+        server.State.BeforeRequest = request =>
+        {
+            if (request is CreateChannel) throw new InvalidOperationException("Testfehler");
+        };
+
+        await admin.SendAsync(new CreateChannel("Raid", "") { RequestId = "a" });
+        await admin.SendAsync(new CreateChannel("Raid", "") { RequestId = "b" });
+        var errors = new[] { await admin.ErrorAsync("a"), await admin.ErrorAsync("b") };
+
+        Assert.All(errors, error => Assert.Equal(ReasonCodes.InvalidValue, error.Code));
+        Assert.All(errors, error => Assert.Matches("^[0-9a-f]{32}$", error.ErrorId));
+        Assert.NotEqual(errors[0].ErrorId, errors[1].ErrorId);
+        foreach (var error in errors)
+        {
+            var line = Assert.Single(server.Log, logLine => logLine.Contains(error.ErrorId!, StringComparison.Ordinal));
+            Assert.All(["CreateChannel", "chef", "InvalidOperationException", "Testfehler", " at "], part => Assert.Contains(part, line, StringComparison.Ordinal));
+            Assert.DoesNotContain(Environment.NewLine, line, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Package 143 (A153): errors sent on purpose carry no ID.</summary>
+    [Fact]
+    public async Task Refusal_SentOnPurpose_HasNoErrorId()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var client = admin;
+        await using var guest = await TestClient.ConnectAsync(server, "gast");
+
+        await guest.SendAsync(new CreateChannel("Raid", "") { RequestId = "r" });
+        var refused = await guest.ErrorAsync("r");
+        await admin.SendRawAsync("""{"type":"noSuchRequest","requestId":"m"}""");
+        var malformed = await admin.ErrorAsync("m");
+
+        Assert.Equal((ReasonCodes.PermissionDenied, null), (refused.Code, refused.ErrorId));
+        Assert.Equal((ReasonCodes.InvalidValue, null), (malformed.Code, malformed.ErrorId));
+    }
+
     // A frame that is a JSON object but no valid request reaches the state without a request of its own.
 
     [Theory]

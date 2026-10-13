@@ -43,7 +43,8 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             if (!IsEnabled(logLevel)) return;
-            var line = LogFileWriter.EscapeToOneLine($"{files!.FormatNow()} {formatter(state, exception)}"); // Package 90: the console gets the escaped line too
+            var text = exception is null ? formatter(state, exception) : $"{formatter(state, exception)} {exception}"; // Package 143: with the stack trace
+            var line = LogFileWriter.EscapeToOneLine($"{files!.FormatNow()} {text}"); // Package 90: the console gets the escaped line too
             if (console is not null && eventId.Name != FileOnly.Name) console(line);
             if (eventId.Name != ConsoleOnly.Name) files.Append(folder.Replace('/', Path.DirectorySeparatorChar), "", line);
         }

@@ -67,6 +67,8 @@ internal static class ProtocolLogText
                 };
             case ServerIcon serverIcon:
                 return serverIcon.PngBase64 is null ? "Server has no logo" : $"Server logo received ({Base64Text.Decoded(serverIcon.PngBase64.Length) / 1024} KB)";
+            case Error { ErrorId: { } errorId } error:
+                return $"Error {error.Code} ({error.RequestId}), error ID {errorId}"; // Package 143: the ID the admin searches for
             case Error { Detail: { Length: > 0 } detail } error:
                 return $"Error {error.Code} ({error.RequestId}): {detail}"; // A45: the UI shows its own text, the detail only lands here
             case Error:

@@ -131,6 +131,8 @@
   <data name="Dlg_UpdateQuestion" xml:space="preserve"><value>Version {0} is available. Install now?</value></data>
   <data name="Dlg_UpdateTitle" xml:space="preserve"><value>Update available</value></data>
   <data name="Dlg_YesDelete" xml:space="preserve"><value>Yes, delete</value></data>
+  <data name="ErrorId_Copy" xml:space="preserve"><value>Copy error ID</value></data>
+  <data name="ErrorId_Line" xml:space="preserve"><value>Error ID: {0}</value></data>
   <data name="Error_BackupTooLarge" xml:space="preserve"><value>The backup is larger than 50 MB.</value></data>
   <data name="Error_BadSignature" xml:space="preserve"><value>Signing in with your identity failed.</value></data>
   <data name="Error_Banned" xml:space="preserve"><value>You are banned from this server.</value></data>

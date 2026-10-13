@@ -173,7 +173,7 @@ internal sealed partial class ServerViewModel : ObservableObject
         {
             case Error error:
                 join.Refused(error.Code); // Package 94: a wrong channel password is asked for again next time
-                var text = ErrorTexts.For(error.Code, error.Detail);
+                var text = ErrorTexts.For(error.Code, error.Detail, error.ErrorId); // Package 143: with the ID of an unexpected error
                 if (error.RequestId is { } failed && waiting.Remove(failed, out var pending) && pending.Answers(failed)) pending.Fail(text); // Package 97
                 if (!ChatFeed.TryRefuse(error.RequestId, text)) Notice?.Invoke(text);
                 Routes.Deliver(error.RequestId, message); // Package 73: the sender drops what the server refused

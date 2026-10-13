@@ -22,4 +22,29 @@ public sealed class LogReaderTests() : TempDirectoryTest("ovs-logreader-", quiet
 
         Assert.True(result.TimedOut);
     }
+
+    /// <summary>Package 143 (A153): the admin finds a failed request's line by the error ID the user copied.</summary>
+    [Fact]
+    public void Search_ErrorId_FindsTheLine()
+    {
+        var time = new ManualTimeProvider();
+        var logs = new ServerLogWriter(dir, 0, time, _ => { });
+        var errorId = ErrorIds.New();
+        InvalidOperationException thrown;
+        try
+        {
+            throw new InvalidOperationException("Testfehler");
+        }
+        catch (InvalidOperationException exception)
+        {
+            thrown = exception;
+        }
+        logs.Server.RequestFailed("CreateChannel", "anna", errorId, thrown);
+        logs.Server.ServerChat("anna", "nichts davon");
+
+        var result = new LogReader(dir, time).Search(null, new SearchLogs(errorId));
+
+        var hit = Assert.Single(result.Hits);
+        Assert.Contains("Testfehler", hit.Text, StringComparison.Ordinal);
+    }
 }

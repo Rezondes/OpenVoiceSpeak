@@ -30,6 +30,34 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
         Assert.Equal([$"{Stamp} Server startet"], console);
     }
 
+    /// <summary>Package 143 (A153): a line logged with an exception carries its text and stack trace, still on one line.</summary>
+    [Fact]
+    public void Exception_AppendedOnOneLine_OtherLinesUnchanged()
+    {
+        using var provider = Provider();
+        var server = provider.CreateLogger(LogFileLoggerProvider.ServerCategory);
+        InvalidOperationException thrown;
+        try
+        {
+            throw new InvalidOperationException("kaputt");
+        }
+        catch (InvalidOperationException exception)
+        {
+            thrown = exception;
+        }
+
+        server.Log(LogLevel.Error, default, "Fehler abc", thrown, (text, _) => text);
+        server.Log(LogLevel.Information, default, "Server startet", null, (text, _) => text);
+
+        var lines = Text("server", FileName).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, lines.Length);
+        Assert.StartsWith($"{Stamp} Fehler abc System.InvalidOperationException: kaputt", lines[0], StringComparison.Ordinal);
+        Assert.Contains(@"\n   at ", lines[0], StringComparison.Ordinal); // the trace's line breaks are escaped
+        Assert.Contains(nameof(Exception_AppendedOnOneLine_OtherLinesUnchanged), lines[0], StringComparison.Ordinal);
+        Assert.Equal($"{Stamp} Server startet", lines[1]);
+        Assert.Equal(lines, console);
+    }
+
     [Fact]
     public void Log_ConsoleOnlyOrFileOnlyEvent_GoesOnlyThere()
     {

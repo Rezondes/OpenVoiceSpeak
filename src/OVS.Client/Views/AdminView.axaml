@@ -15,8 +15,10 @@
           <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
           <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_Loading}" TextWrapping="Wrap" TextAlignment="Center" />
         </StackPanel>
-        <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap" TextAlignment="Center"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFirstLoadFailed}" />
+        <StackPanel Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFirstLoadFailed}">
+          <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+          <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Center" />
+        </StackPanel>
       </Panel>
     </DataTemplate>
     <!-- Package 97: a refresh keeps the content, a small spinner (or the error) below the list's count -->
@@ -26,7 +28,10 @@
           <ctl:BusySpinner />
           <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Loading}" VerticalAlignment="Center" />
         </StackPanel>
-        <TextBlock Classes="caption danger" Text="{Binding Error}" TextWrapping="Wrap" IsVisible="{Binding IsRefreshFailed}" />
+        <StackPanel Spacing="4" IsVisible="{Binding IsRefreshFailed}">
+          <TextBlock Classes="caption danger" Text="{Binding Error}" TextWrapping="Wrap" />
+          <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
+        </StackPanel>
       </Panel>
     </DataTemplate>
   </UserControl.Resources>
@@ -67,6 +72,7 @@
             <Border Classes="card groupList" Padding="6">
               <DockPanel>
                 <!-- Package 98: a moved group waits for the server; refused, it goes back and says why -->
+                <ctl:ErrorIdButton DockPanel.Dock="Bottom" Text="{Binding GroupReorder.Error}" HorizontalAlignment="Left" Margin="4,4,4,0" />
                 <TextBlock DockPanel.Dock="Bottom" Classes="caption danger" Text="{Binding GroupReorder.Error}" TextWrapping="Wrap" Margin="4,6,4,0"
                            IsVisible="{Binding GroupReorder.HasError}" />
                 <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
@@ -102,6 +108,7 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Bottom" Classes="danger" Text="{Binding GroupError}" TextWrapping="Wrap" Margin="0,8,0,0"
                            IsVisible="{Binding GroupError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <ctl:ErrorIdButton DockPanel.Dock="Bottom" Text="{Binding GroupSave.Error}" HorizontalAlignment="Left" Margin="0,4,0,0" />
                 <TextBlock DockPanel.Dock="Bottom" Classes="danger" Text="{Binding GroupSave.Error}" TextWrapping="Wrap" Margin="0,8,0,0"
                            IsVisible="{Binding GroupSave.HasError}" />
                 <WrapPanel DockPanel.Dock="Bottom" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0">
@@ -286,6 +293,7 @@
                               <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Busy}" VerticalAlignment="Center" />
                             </StackPanel>
                             <TextBlock Classes="caption danger" Text="{Binding Busy.Error}" TextWrapping="Wrap" IsVisible="{Binding Busy.HasError}" />
+                            <ctl:ErrorIdButton Text="{Binding Busy.Error}" HorizontalAlignment="Left" />
                             <!-- Package 72: works for offline users too; deleting asks first -->
                             <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="0,4,0,0" IsVisible="{Binding HasActions}" IsEnabled="{Binding !Busy.IsBusy}">
                               <Button Command="{Binding BanCommand}" IsVisible="{Binding CanBan}">
@@ -465,6 +473,7 @@
               <TextBlock Classes="caption" Text="{Binding PendingText}" VerticalAlignment="Center" />
               <TextBlock Classes="caption danger" Text="{Binding Applying.Error}" TextWrapping="Wrap" VerticalAlignment="Center"
                          IsVisible="{Binding Applying.HasError}" />
+              <ctl:ErrorIdButton Text="{Binding Applying.Error}" VerticalAlignment="Center" />
             </WrapPanel>
             <!-- Package 78: the whole matrix scrolls up and down, only the cells sideways; the row titles stay put -->
             <Border Classes="card" Padding="8">
@@ -568,6 +577,7 @@
                     <TextBlock Classes="danger" Text="{Binding IconError}" TextWrapping="Wrap"
                                IsVisible="{Binding IconError, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <TextBlock Classes="danger" Text="{Binding IconUpload.Error}" TextWrapping="Wrap" IsVisible="{Binding IconUpload.HasError}" />
+                    <ctl:ErrorIdButton Text="{Binding IconUpload.Error}" HorizontalAlignment="Left" />
                   </StackPanel>
                   <Border Classes="divider" />
 
@@ -624,6 +634,7 @@
                     </StackPanel>
                     <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
                     <Button Classes="accent" Command="{Binding SaveCommand}" HorizontalAlignment="Left">
                       <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
@@ -643,6 +654,7 @@
                   </StackPanel>
                   <StackPanel Spacing="8" IsVisible="{Binding !Restoring.IsBusy}">
                     <TextBlock Classes="danger" Text="{Binding Restoring.Error}" TextWrapping="Wrap" IsVisible="{Binding Restoring.HasError}" />
+                    <ctl:ErrorIdButton Text="{Binding Restoring.Error}" HorizontalAlignment="Left" />
                     <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Backups}" />
                     <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackupsHint}" />
                     <!-- Package 75: upload from this PC, optionally restored right away (after the same red question) -->
@@ -674,6 +686,7 @@
                       <ProgressBar Minimum="0" Maximum="100" Value="{Binding Transfer.Percent}" Height="8" CornerRadius="4" />
                     </StackPanel>
                     <TextBlock Classes="danger" Text="{Binding BackupCreate.Error}" TextWrapping="Wrap" IsVisible="{Binding BackupCreate.HasError}" />
+                    <ctl:ErrorIdButton Text="{Binding BackupCreate.Error}" HorizontalAlignment="Left" />
                     <ContentControl Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding BackupsLoad.HasState}" />
                     <ContentControl Name="BackupsLoadState" Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListLoad}" IsVisible="{Binding BackupsLoad.HasState}" />
                     <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBackups}">
@@ -763,6 +776,7 @@
                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_LogSearching}" VerticalAlignment="Center" />
               </StackPanel>
               <TextBlock Classes="caption danger" Text="{Binding Searching.Error}" TextWrapping="Wrap" IsVisible="{Binding Searching.HasError}" />
+              <ctl:ErrorIdButton Text="{Binding Searching.Error}" HorizontalAlignment="Left" />
               <TextBlock Classes="caption" Text="{Binding FileCountText}" TextWrapping="Wrap" />
               <ContentControl Content="{Binding FilesLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding FilesLoad.HasState}" />
               <!-- Package 82: with LogsDownload, the checked files as one .log or a zip; the progress is the page's transfer -->

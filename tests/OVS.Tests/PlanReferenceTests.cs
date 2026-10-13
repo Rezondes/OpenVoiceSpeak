@@ -16,37 +16,23 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["RequestValidationTests > \"Handler_Throws_AnsweredWithErrorIdAndLoggedWithStackTrace\""] =
-            "planned: Package 143 is not built yet",
-        ["RequestValidationTests > \"Refusal_NoErrorId\""] =
-            "planned: Package 143 is not built yet",
-        ["LogFileLoggerProviderTests > \"Exception_AppendedOnOneLine_OtherLinesUnchanged\""] =
-            "planned: Package 143 is not built yet",
-        ["LogReaderTests > \"Search_ErrorId_FindsTheLine\""] =
-            "planned: Package 143 is not built yet",
-        ["ServerViewModelTests > \"Error_WithErrorId_NoticePendingAndChatCarryIt\""] =
-            "planned: Package 143 is not built yet",
-        ["ErrorIdViewTests > \"Copy_PutsTheIdOnTheClipboard\""] =
-            "planned: Package 143 is not built yet",
-        ["ServerViewModelTests > \"Error_WithErrorId_LoggedWithIt\""] =
-            "planned: Package 143 is not built yet",
         ["ServerHostTests > \"Run_ExtraProvider_GetsServerAndChannelLines\""] =
             "planned: Package 144 is not built yet",
         ["ServerHostTests > \"Run_ExtraProvider_FilesByteIdentical\""] =
             "planned: Package 144 is not built yet",
-        ["ServerLogWriterTests > \"ForeignCategory_NoFile\""] =
+        ["ServerLogWriterTests > \"ForeignCategory_Logged_NoFile\""] =
             "planned: Package 144 is not built yet",
         ["ServerHostTests > \"Restart_NewFactory_OldDisposedOnce\""] =
             "planned: Package 144 is not built yet",
-        ["ServerTelemetryTests > \"NoEndpoint_NoProviders\""] =
+        ["ServerTelemetryTests > \"Start_NoEndpoint_NoProviders\""] =
             "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"Endpoint_ResourceNamesServiceAndVersion\""] =
+        ["ServerTelemetryTests > \"Endpoint_Set_ResourceNamesServiceAndVersion\""] =
             "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"Span_ReachesTheReceiver\""] =
+        ["ServerTelemetryTests > \"Span_EndpointSet_ReachesTheReceiver\""] =
             "planned: Package 145 is not built yet",
         ["ServerTelemetryTests > \"Restart_EachSpanOnce_ProvidersDisposed\""] =
             "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"EndpointDown_RequestsStillAnswered\""] =
+        ["ServerTelemetryTests > \"Endpoint_Down_RequestsStillAnswered\""] =
             "planned: Package 145 is not built yet",
         ["ServerTelemetryTests > \"Dockerfile_AndCompose_DocumentTheVariables\""] =
             "planned: Package 145 is not built yet",
@@ -56,23 +42,23 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
             "planned: Package 146 is not built yet",
         ["ServerTracingTests > \"Handshake_OneSpan_WithFingerprintOrRejection\""] =
             "planned: Package 146 is not built yet",
-        ["ServerTracingTests > \"Voice_NoSpans\""] =
+        ["ServerTracingTests > \"Voice_Relayed_NoSpans\""] =
             "planned: Package 146 is not built yet",
         ["ServerTracingTests > \"NoListener_NoSpan_RandomErrorId\""] =
             "planned: Package 146 is not built yet",
         ["ServerMetricsTests > \"Sessions_JoinAndLeave_Reported\""] =
             "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"Requests_CountedByTypeAndCode\""] =
+        ["ServerMetricsTests > \"Requests_Handled_CountedByTypeAndCode\""] =
             "planned: Package 147 is not built yet",
         ["ServerMetricsTests > \"Voice_InOutAndDrops_Counted\""] =
             "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"OutboxAbortAndRejection_Counted\""] =
+        ["ServerMetricsTests > \"OutboxAbortAndRejection_Happen_Counted\""] =
             "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"ControlTraffic_FramesAndBytesPerType\""] =
+        ["ServerMetricsTests > \"ControlTraffic_SentAndReceived_CountedPerType\""] =
             "planned: Package 147 is not built yet",
         ["ServerMetricsTests > \"Chat_CountAndSize_OnlyChannelLabel\""] =
             "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"RuntimeMetrics_ExportedWhenOn\""] =
+        ["ServerMetricsTests > \"RuntimeMetrics_TelemetryOn_Exported\""] =
             "planned: Package 147 is not built yet",
         ["ServerMetricsTests > \"Voice_NoListener_NoAllocation\""] =
             "planned: Package 147 is not built yet",
@@ -84,13 +70,13 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
             "planned: Package 148 is not built yet",
         ["ServerTelemetryTests > \"Log_Off_OnlyTheFileProvider\""] =
             "planned: Package 148 is not built yet",
-        ["ObservabilityComposeTests > \"Compose_EndpointPointsAtOwnService\""] =
+        ["ObservabilityComposeTests > \"Compose_Endpoint_PointsAtOwnService\""] =
             "planned: Package 149 is not built yet",
-        ["ObservabilityComposeTests > \"Compose_ImagesPinned\""] =
+        ["ObservabilityComposeTests > \"Compose_EveryImage_Pinned\""] =
             "planned: Package 149 is not built yet",
-        ["ObservabilityComposeTests > \"Readme_NamesEveryBackend\""] =
+        ["ObservabilityComposeTests > \"Readme_EveryBackend_Named\""] =
             "planned: Package 149 is not built yet",
-        ["ObservabilityComposeTests > \"Compose_MountedConfigFilesExist\""] =
+        ["ObservabilityComposeTests > \"Compose_MountedConfigFiles_Exist\""] =
             "planned: Package 150 is only planned",
     };
 

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OVS.Client.ViewModels"
              xmlns:l="using:OVS.Client.Localization"
+             xmlns:ctl="using:OVS.Client.Controls"
              x:Class="OVS.Client.Views.ChannelDialogView"
              x:DataType="vm:ChannelDialogViewModel">
   <StackPanel Spacing="12">
@@ -71,5 +72,6 @@
     </StackPanel>
     <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
   </StackPanel>
 </UserControl>

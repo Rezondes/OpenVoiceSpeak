@@ -27,7 +27,9 @@ public sealed class PersistenceTests
 
         harness.Handle(session, new CreateChannel("Raid", "") { RequestId = "c" });
 
-        Assert.Equal(new Error("c", ReasonCodes.InvalidValue), Assert.Single(StateHarness.Drain(session)));
+        var error = Assert.IsType<Error>(Assert.Single(StateHarness.Drain(session)));
+        Assert.Equal(new Error("c", ReasonCodes.InvalidValue, ErrorId: error.ErrorId), error); // Package 143: an unexpected error has an ID
+        Assert.NotNull(error.ErrorId);
         Assert.Empty(StateHarness.Drain(guest));
     }
 

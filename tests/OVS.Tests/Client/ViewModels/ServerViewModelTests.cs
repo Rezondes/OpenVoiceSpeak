@@ -2,6 +2,8 @@ using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
+using OVS.Client.Logging;
+using OVS.Client.Services;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.ViewModels;
@@ -334,6 +336,34 @@ public class ServerViewModelTests
         fixture.Vm.Notice += name => notice = name;
         fixture.Vm.Apply(new Error("r1", ReasonCodes.PermissionDenied));
         Assert.Equal(ErrorTexts.For(ReasonCodes.PermissionDenied), notice);
+    }
+
+    /// <summary>Package 143 (A153): an unexpected error's ID is shown with the error, in the notice and in the chat composer.</summary>
+    [Fact]
+    public void Error_WithErrorId_NoticePendingAndChatCarryIt()
+    {
+        const string id = "0123456789abcdef0123456789abcdef";
+        var fixture = Create();
+        string? notice = null, refused = null;
+        fixture.Vm.Notice += text => notice = text;
+        fixture.Vm.ChatFeed.Refused += text => refused = text;
+
+        fixture.Vm.Apply(new Error("r1", ReasonCodes.InvalidValue, ErrorId: id));
+        fixture.Vm.Apply(new Error(ChatFeed.RequestPrefix + "1", ReasonCodes.InvalidValue, ErrorId: id));
+
+        Assert.Equal(ErrorTexts.For(ReasonCodes.InvalidValue, null, id), notice);
+        Assert.Equal(notice, refused);
+        Assert.Equal(id, ErrorTexts.IdIn(notice));
+        Assert.Null(ErrorTexts.IdIn(ErrorTexts.For(ReasonCodes.InvalidValue)));
+    }
+
+    /// <summary>Package 143 (A153): the client log line of the error names its ID.</summary>
+    [Fact]
+    public void Error_WithErrorId_LoggedWithIt()
+    {
+        const string id = "0123456789abcdef0123456789abcdef";
+        var fixture = Create();
+        Assert.Contains(id, ProtocolLogText.Describe(new Error("r1", ReasonCodes.InvalidValue, ErrorId: id), fixture.Vm.Mirror), StringComparison.Ordinal);
     }
 
     [Theory]

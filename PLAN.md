@@ -8394,12 +8394,12 @@ Test command: `dotnet test tests/OVS.Tests`
 - `src/OVS.Server/ErrorIds.cs` (new): `ErrorIds.New()`, 32 lowercase hex characters in the W3C trace id format
 - `src/OVS.Server/Logging/ServerLogLines.cs` (change): `RequestFailed(request, nickname, errorId, exception)`
 - `src/OVS.Server/State/ServerState.cs` (change): the catch in `Handle` (line 215) logs with the ID and the exception and answers `InvalidValue` with the ID
-- `src/OVS.Client/Models/Notice.cs`, `Models/ChatEntry.cs`, `ViewModels/PendingActionViewModel.cs`, `ViewModels/ServerViewModel.cs` and the chat feed's `TryRefuse` (change): the error's ID travels with its text
-- `src/OVS.Client/Views/ErrorIdView.axaml` (new): "Fehler-ID: <id>" and a button "Kopieren", used by `ChatView.axaml` for error entries and by every view that shows a pending action's error
-- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `CopyText`, set by `MainWindow` to the window's clipboard
+- `src/OVS.Client/Localization/ErrorTexts.cs` (change): `For(code, detail, errorId)` puts the line "Fehler-ID: <id>" under the text; `IdIn(text)` finds it again
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): passes the ID, so the notice, the pending action and the chat composer get it with the text
+- `src/OVS.Client/Controls/ErrorIdButton.cs` (new): the button "Fehler-ID kopieren", visible only for a text with an ID, used in `ChatView.axaml`, `AdminView.axaml` and `ChannelDialogView.axaml` beside each error text
 - `src/OVS.Client/Logging/ProtocolLogText.cs` (change): the client log line of an error names the ID
 - `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
-- `tests/OVS.Tests/Server/State/RequestValidationTests.cs`, `Shared/Logging/LogFileLoggerProviderTests.cs`, `Shared/Protocol/WireFreezeTests.cs`, `Server/Logging/LogReaderTests.cs`, `Client/ViewModels/ServerViewModelTests.cs`, `SmokeTests.cs`, `Client/Net/ClientNetTests.cs` (change), `Client/Views/ErrorIdViewTests.cs` (new)
+- `tests/OVS.Tests/Server/State/RequestValidationTests.cs`, `Shared/Logging/LogFileLoggerProviderTests.cs`, `Shared/Protocol/WireFreezeTests.cs`, `Server/Logging/LogReaderTests.cs`, `Client/ViewModels/ServerViewModelTests.cs`, `SmokeTests.cs`, `Client/Net/ClientNetTests.cs` (change), `Client/Controls/ErrorIdButtonTests.cs` (new)
 
 ### Context
 
@@ -8407,28 +8407,30 @@ Today an exception in a request handler is logged as type name and message only 
 
 ### Acceptance Criteria
 
-- [ ] AC1: A handler that throws answers `Error(RequestId, InvalidValue, ErrorId: id)` with a 32-character lowercase hex `id`, different for every failure.
-- [ ] AC2: The server log line of that failure holds the ID, the request type, the nickname, the exception type, its message and its stack trace, on one line.
-- [ ] AC3: Errors the server sends on purpose (a refusal, a malformed request) carry no ID; lines logged without an exception are byte-identical to before.
-- [ ] AC4: The log search (Package 81) finds the line by the ID.
-- [ ] AC5: The client shows "Fehler-ID: <id>" with a button "Kopieren" ("Error ID", "Copy") at every place an `Error` is shown today: the notice in the chat, a pending action's error, a refused chat message; the button puts exactly the ID on the clipboard. Without an ID nothing changes.
-- [ ] AC6: The client log line of the error names the ID.
-- [ ] AC7: The protocol version is 16.
+- [x] AC1: A handler that throws answers `Error(RequestId, InvalidValue, ErrorId: id)` with a 32-character lowercase hex `id`, different for every failure.
+- [x] AC2: The server log line of that failure holds the ID, the request type, the nickname, the exception type, its message and its stack trace, on one line.
+- [x] AC3: Errors the server sends on purpose (a refusal, a malformed request) carry no ID; lines logged without an exception are byte-identical to before.
+- [x] AC4: The log search (Package 81) finds the line by the ID.
+- [x] AC5: The client shows "Fehler-ID: <id>" with a button "Fehler-ID kopieren" ("Error ID", "Copy error ID") at every place an `Error` is shown today: the notice in the chat, a pending action's error, a refused chat message; the button puts exactly the ID on the clipboard. Without an ID nothing changes.
+- [x] AC6: The client log line of the error names the ID.
+- [x] AC7: The protocol version is 16.
 
 ### Tests (TDD)
 
 1. `RequestValidationTests > "Handler_Throws_AnsweredWithErrorIdAndLoggedWithStackTrace"` (AC1, AC2)
    - Given: `BeforeRequest` throws for two `CreateChannel` requests.
    - Expected: two `InvalidValue` errors with different 32-hex IDs; each ID is in exactly one log line, which also holds "CreateChannel", the nickname, "InvalidOperationException", the message and a stack frame ("at ").
-2. `RequestValidationTests > "Refusal_NoErrorId"` (AC3): a request without the right and a malformed frame are answered without an ID.
+2. `RequestValidationTests > "Refusal_SentOnPurpose_HasNoErrorId"` (AC3): a request without the right and a malformed frame are answered without an ID.
 3. `LogFileLoggerProviderTests > "Exception_AppendedOnOneLine_OtherLinesUnchanged"` (AC2, AC3)
    - Given: one line with an exception whose stack trace spans lines, one without.
    - Expected: the first is one line with the escaped trace; the second equals the line written before this package.
 4. `LogReaderTests > "Search_ErrorId_FindsTheLine"` (AC4)
 5. `ServerViewModelTests > "Error_WithErrorId_NoticePendingAndChatCarryIt"` (AC5)
-6. `ErrorIdViewTests > "Copy_PutsTheIdOnTheClipboard"` (AC5): the rendered view shows the ID; clicking "Kopieren" calls `CopyText` with the ID only; an entry without an ID shows no view.
+6. `ErrorIdButtonTests > "Copy_IdInTheText_PutOnTheClipboard"` (AC5): the button shows for a text with an ID; clicking it puts the ID alone on the window's clipboard; for a text without an ID it stays hidden.
 7. `ServerViewModelTests > "Error_WithErrorId_LoggedWithIt"` (AC6)
 8. `SmokeTests`, `ClientNetTests` and `WireFreezeTests` pin version 16 and the field (AC7)
+
+(as built: the ID is `ActivityTraceId.CreateRandom().ToHexString()` (`ErrorIds.New`). The log line is "Error in request <Type> from <nickname>, error ID <id>:" followed by the exception's `ToString()` (type, message, stack trace); `LogFileLoggerProvider` appends the exception text to any line logged with one and escapes it to one line like every line, so the console gets it too; no other log call passes an exception, so all other lines stay as they were. Deviation from the affected files first planned: the ID does not travel as its own field through `Notice`, `ChatEntry` and `PendingActionViewModel`; `ErrorTexts.For` puts it on a line of its own under the error text ("Fehler-ID: <id>" / "Error ID: <id>"), so every place that shows the text shows the ID, and `ErrorIdButton` ("Fehler-ID kopieren" / "Copy error ID", a plain subtle button) beside each place that shows a server error (the chat notice, the composer banner, the channel dialog and the pending states of the administration) reads it back with `ErrorTexts.IdIn` and puts it on the window's clipboard (`TopLevel.Clipboard`); without an ID the button stays hidden. The client log line is "Error <code> (<request id>), error ID <id>". `ClientNetTests` no longer pins version 15 (Package 141's test now checks it was raised); `SmokeTests` pins 16.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
@@ -8474,7 +8476,7 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
    - Given: a run with a recording provider, one channel chat line, then a stop.
    - Expected: the recorder holds the start line, the version line and the chat line under `server` and `channels/<id>`.
 2. `ServerHostTests > "Run_ExtraProvider_FilesByteIdentical"` (AC2): the same run on a fake clock twice, with and without the recorder.
-3. `ServerLogWriterTests > "ForeignCategory_NoFile"` (AC3)
+3. `ServerLogWriterTests > "ForeignCategory_Logged_NoFile"` (AC3)
 4. `ServerHostTests > "Restart_NewFactory_OldDisposedOnce"` (AC4)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
@@ -8520,13 +8522,13 @@ The server has no telemetry beyond its files. The user wants an optional backend
 
 ### Tests (TDD)
 
-1. `ServerTelemetryTests > "NoEndpoint_NoProviders"` (AC1)
-2. `ServerTelemetryTests > "Endpoint_ResourceNamesServiceAndVersion"` (AC2)
-3. `ServerTelemetryTests > "Span_ReachesTheReceiver"` (AC3): both protocols against `OtlpReceiver`.
+1. `ServerTelemetryTests > "Start_NoEndpoint_NoProviders"` (AC1)
+2. `ServerTelemetryTests > "Endpoint_Set_ResourceNamesServiceAndVersion"` (AC2)
+3. `ServerTelemetryTests > "Span_EndpointSet_ReachesTheReceiver"` (AC3): both protocols against `OtlpReceiver`.
 4. `ServerTelemetryTests > "Restart_EachSpanOnce_ProvidersDisposed"` (AC4)
    - Given: a run that makes one span, a restart, a run that makes another.
    - Expected: the receiver holds each span once; after the second run's end `HasListeners` of the source is false.
-5. `ServerTelemetryTests > "EndpointDown_RequestsStillAnswered"` (AC5): a closed port, then a request answered within its usual time.
+5. `ServerTelemetryTests > "Endpoint_Down_RequestsStillAnswered"` (AC5): a closed port, then a request answered within its usual time.
 6. `ServerTelemetryTests > "Dockerfile_AndCompose_DocumentTheVariables"` (AC6)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
@@ -8574,7 +8576,7 @@ With OpenTelemetry on (145) nothing is traced yet. A span per request shows what
 1. `ServerTracingTests > "Request_OneSpan_TypeCodeFingerprintNoNickname"` (AC1): an allowed and a refused request, spans caught with an `ActivityListener` filtered by the fingerprint.
 2. `ServerTracingTests > "Request_Throws_SpanFailsAndErrorIdIsTraceId"` (AC2)
 3. `ServerTracingTests > "Handshake_OneSpan_WithFingerprintOrRejection"` (AC3): an accepted and a wrong-password handshake.
-4. `ServerTracingTests > "Voice_NoSpans"` (AC4)
+4. `ServerTracingTests > "Voice_Relayed_NoSpans"` (AC4)
 5. `ServerTracingTests > "NoListener_NoSpan_RandomErrorId"` (AC5)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
@@ -8624,14 +8626,14 @@ Counts that exist today (`UdpVoiceServer.ForeignSourceDrops`, `PreFilterDrops`) 
 ### Tests (TDD)
 
 1. `ServerMetricsTests > "Sessions_JoinAndLeave_Reported"` (AC1)
-2. `ServerMetricsTests > "Requests_CountedByTypeAndCode"` (AC2)
+2. `ServerMetricsTests > "Requests_Handled_CountedByTypeAndCode"` (AC2)
 3. `ServerMetricsTests > "Voice_InOutAndDrops_Counted"` (AC3): a relayed UDP packet, a TCP `VoiceUp`, a packet from a foreign source and one over the budget.
-4. `ServerMetricsTests > "OutboxAbortAndRejection_Counted"` (AC4)
-5. `ServerMetricsTests > "ControlTraffic_FramesAndBytesPerType"` (AC5)
+4. `ServerMetricsTests > "OutboxAbortAndRejection_Happen_Counted"` (AC4)
+5. `ServerMetricsTests > "ControlTraffic_SentAndReceived_CountedPerType"` (AC5)
 6. `ServerMetricsTests > "Chat_CountAndSize_OnlyChannelLabel"` (AC6)
    - Given: a channel message "hallo" and a server message "äöü".
    - Expected: count 1 with `ovs.channel.id` = the channel, size 5; count 1 without labels, size 6; no tag value equals a text, nickname or fingerprint.
-7. `ServerMetricsTests > "RuntimeMetrics_ExportedWhenOn"`, `"Voice_NoListener_NoAllocation"` (AC7)
+7. `ServerMetricsTests > "RuntimeMetrics_TelemetryOn_Exported"`, `"Voice_NoListener_NoAllocation"` (AC7)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
@@ -8716,9 +8718,9 @@ The user decided: the default `docker-compose.yml` stays as it is, the server wi
 
 ### Tests (TDD)
 
-1. `ObservabilityComposeTests > "Compose_EndpointPointsAtOwnService"` (AC1): the four files, read line by line (no YAML package), each with both services, the ports and an endpoint whose host is a service of the file.
-2. `ObservabilityComposeTests > "Compose_ImagesPinned"` (AC2)
-3. `ObservabilityComposeTests > "Readme_NamesEveryBackend"` (AC3)
+1. `ObservabilityComposeTests > "Compose_Endpoint_PointsAtOwnService"` (AC1): the four files, read line by line (no YAML package), each with both services, the ports and an endpoint whose host is a service of the file.
+2. `ObservabilityComposeTests > "Compose_EveryImage_Pinned"` (AC2)
+3. `ObservabilityComposeTests > "Readme_EveryBackend_Named"` (AC3)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
@@ -8761,9 +8763,9 @@ The user decided on three more backends and leaves Graylog out. These need more 
 
 ### Tests (TDD)
 
-1. `ObservabilityComposeTests > "Compose_EndpointPointsAtOwnService"`, `"Compose_ImagesPinned"` extended to the three folders (AC1)
-2. `ObservabilityComposeTests > "Compose_MountedConfigFilesExist"` (AC1)
-3. `ObservabilityComposeTests > "Readme_NamesEveryBackend"` extended (AC2)
+1. `ObservabilityComposeTests > "Compose_Endpoint_PointsAtOwnService"`, `"Compose_EveryImage_Pinned"` extended to the three folders (AC1)
+2. `ObservabilityComposeTests > "Compose_MountedConfigFiles_Exist"` (AC1)
+3. `ObservabilityComposeTests > "Readme_EveryBackend_Named"` extended (AC2)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
