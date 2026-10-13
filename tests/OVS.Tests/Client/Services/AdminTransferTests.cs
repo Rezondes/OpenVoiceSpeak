@@ -33,7 +33,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     /// <summary>The server's answer to a request (sent with its id), applied before the send returns: the hardest order. Null: none.</summary>
     Func<Request, Message?> answer = _ => null;
 
-    public AdminTransferTests() : base("ovs-transfer-", quiet: false) => transfer = new AdminTransfer(Send, routes.RemoveAll, notices.Add, time);
+    public AdminTransferTests() : base("ovs-transfer-", quiet: false) => transfer = new AdminTransfer(SendAsync, routes.RemoveAll, notices.Add, time);
 
     static byte[] RandomBytes(int count)
     {
@@ -42,7 +42,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         return bytes;
     }
 
-    Task Send(Request request, Action<Message> route)
+    Task SendAsync(Request request, Action<Message> route)
     {
         var withId = request with { RequestId = $"r{sent.Count + 1}" };
         sent.Add(withId);
@@ -94,7 +94,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
             return Serve(request);
         };
 
-        await Bound(DownloadAsync(logs, target));
+        await BoundAsync(DownloadAsync(logs, target));
 
         Assert.Equal(Content, File.ReadAllBytes(target));
         Assert.Equal([0L, 524_288L, 1_048_576L], sent.Select(ChunkOffset).OfType<long>());
@@ -123,7 +123,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         File.WriteAllText(target, "alt");
         answer = request => ChunkOffset(request) is 0 or null ? Serve(request) : new Error(request.RequestId, ReasonCodes.NotFound); // the server shows its own
 
-        await Bound(DownloadAsync(logs, target));
+        await BoundAsync(DownloadAsync(logs, target));
 
         Assert.Equal([0L, 524_288L], sent.Select(ChunkOffset).OfType<long>());
         Assert.Equal("alt", File.ReadAllText(target));
@@ -147,7 +147,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         Assert.True(transfer.IsRunning);
         Assert.Empty(notices);
         time.Advance(TimeSpan.FromTicks(1));
-        await Bound(download);
+        await BoundAsync(download);
 
         Assert.Equal([logs ? Strings.Logs_TransferFailed : Strings.Backup_TransferFailed], notices);
         Assert.False(transfer.IsRunning);
@@ -168,7 +168,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
             var other => other,
         };
 
-        await Bound(DownloadAsync(logs, target));
+        await BoundAsync(DownloadAsync(logs, target));
 
         Assert.Equal([logs ? Strings.Logs_TransferFailed : Strings.Backup_TransferFailed], notices);
         Assert.Equal("alt", File.ReadAllText(target));
@@ -183,7 +183,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         answer = Serve;
 
-        await Bound(DownloadAsync(logs, Path.Combine(dir, "missing", "target.bin")));
+        await BoundAsync(DownloadAsync(logs, Path.Combine(dir, "missing", "target.bin")));
 
         Assert.Equal([logs ? Strings.Logs_TransferFailed : Strings.Backup_TransferFailed], notices);
         Assert.Empty(sent.Select(ChunkOffset).OfType<long>());
@@ -193,7 +193,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     [Fact]
     public async Task DownloadLogsAsync_NoFiles_SendsNothing()
     {
-        await Bound(transfer.DownloadLogsAsync([], Target()));
+        await BoundAsync(transfer.DownloadLogsAsync([], Target()));
 
         Assert.Empty(sent);
         Assert.Equal("", transfer.ProgressText);
@@ -219,7 +219,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         Assert.True(transfer.IsRunning);
         Assert.Equal(string.Format(Strings.Backup_Downloading, 0), transfer.ProgressText);
         transfer.Cancel();
-        await Bound(running);
+        await BoundAsync(running);
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         var download = transfer.DownloadBackupAsync("b.ovsbackup", target);
 
         transfer.Cancel();
-        await Bound(download);
+        await BoundAsync(download);
 
         Assert.Empty(notices);
         Assert.False(transfer.IsRunning);
@@ -243,7 +243,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         answer = _ => { transfer.Cancel(); return null; }; // the page closes while the request goes out
 
-        await Bound(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
+        await BoundAsync(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
 
         Assert.Empty(Routed());
         Assert.Empty(notices);
@@ -256,7 +256,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         answer = Serve;
 
-        await Bound(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
+        await BoundAsync(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
 
         Assert.Equal(["r3"], Routed());
     }
@@ -265,7 +265,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     public async Task Cancel_AfterADownload_RemovesTheLastRoute()
     {
         answer = Serve;
-        await Bound(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
+        await BoundAsync(transfer.DownloadBackupAsync("b.ovsbackup", Target()));
 
         transfer.Cancel();
 
@@ -291,7 +291,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
             return uploadBackupChunk.IsLast ? new BackupUploaded(request.RequestId, stored) : new UploadBackupAck(request.RequestId, uploadBackupChunk.UploadId, received.Length);
         };
 
-        Assert.Same(stored, await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
+        Assert.Same(stored, await BoundAsync(transfer.UploadBackupAsync(path, followUps.Add)));
 
         var chunks = sent.Cast<UploadBackupChunk>().ToList();
         Assert.Equal(content, received.ToArray());
@@ -314,7 +314,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         File.WriteAllBytes(path, [1, 2, 3]);
         var stored = new BackupInfo("hochgeladen_2026-01-01_12-00-00.ovsbackup", time.GetUtcNow(), 3, "dev.0000");
         answer = request => new BackupUploaded(request.RequestId, stored);
-        Assert.Same(stored, await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
+        Assert.Same(stored, await BoundAsync(transfer.UploadBackupAsync(path, followUps.Add)));
 
         var list = new BackupList("r1", [stored]);
         routes.Deliver("r1", list); // the server sends the new list right after the stored backup
@@ -329,7 +329,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         File.WriteAllBytes(path, new byte[ProtocolLimits.BackupChunkBytes + 1]);
         answer = request => new Error(request.RequestId, ReasonCodes.InvalidBackup); // the server shows its own
 
-        Assert.Null(await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
+        Assert.Null(await BoundAsync(transfer.UploadBackupAsync(path, followUps.Add)));
 
         Assert.Single(sent);
         Assert.Empty(notices);
@@ -345,7 +345,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         using (var file = File.Create(path)) file.SetLength(ProtocolLimits.MaxBackupUploadBytes + over);
         answer = request => new Error(request.RequestId, ReasonCodes.InvalidBackup); // ends an upload after its first chunk
 
-        Assert.Null(await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
+        Assert.Null(await BoundAsync(transfer.UploadBackupAsync(path, followUps.Add)));
 
         Assert.Equal(refused ? 0 : 1, sent.Count);
         string[] expected = refused ? [ErrorTexts.For(ReasonCodes.BackupTooLarge)] : [];
@@ -356,7 +356,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     [Fact]
     public async Task UploadBackupAsync_FileMissing_NullWithNotice()
     {
-        Assert.Null(await Bound(transfer.UploadBackupAsync(Target("missing.ovsbackup"), followUps.Add)));
+        Assert.Null(await BoundAsync(transfer.UploadBackupAsync(Target("missing.ovsbackup"), followUps.Add)));
 
         Assert.Empty(sent);
         Assert.Equal([Strings.Backup_TransferFailed], notices);
@@ -376,7 +376,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
 
         var request = pageSent.OfType<DownloadBackup>().Single();
         server.Apply(new BackupChunk(request.RequestId, "b.ovsbackup", 0, Content.Length, Convert.ToBase64String(Content), true));
-        await Bound(download);
+        await BoundAsync(download);
 
         Assert.Equal(Content, File.ReadAllBytes(target));
         Assert.False(page.Transfer.IsRunning);
@@ -391,7 +391,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         var download = page.Transfer.DownloadBackupAsync("b.ovsbackup", Target());
 
         page.Detach();
-        await Bound(download);
+        await BoundAsync(download);
 
         Assert.False(page.Transfer.IsRunning);
         Assert.Empty(notices);

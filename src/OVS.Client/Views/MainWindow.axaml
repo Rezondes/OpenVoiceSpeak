@@ -431,7 +431,7 @@
                     <TextBlock Classes="wideOnly" Text="{x:Static l:Strings.Ui_RedeemTokenMenu}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
-                <Button Classes="danger" Command="{Binding Connection.DisconnectCommand}"
+                <Button Classes="danger" Command="{Binding Connection.ConfirmDisconnectCommand}"
                         ToolTip.Tip="{x:Static l:Strings.Ui_Disconnect}" AutomationProperties.Name="{x:Static l:Strings.Ui_Disconnect}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource Icon.CallEnd}" />

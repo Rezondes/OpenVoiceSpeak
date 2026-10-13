@@ -51,7 +51,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create();
 
-        await Bound(rig.Section.RefreshAsync());
+        await BoundAsync(rig.Section.RefreshAsync());
         rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer, Older]));
 
         Assert.Single(sent.OfType<ListBackups>());
@@ -65,7 +65,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create();
         FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.Speak, []);
 
-        await Bound(rig.Section.RefreshAsync());
+        await BoundAsync(rig.Section.RefreshAsync());
 
         Assert.False(rig.Section.ShowBackups);
         Assert.Empty(sent);
@@ -75,7 +75,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     public async Task Apply_ListInTwoPages_AsksForTheSecondPageAndShowsBothAfterIt()
     {
         var rig = Create();
-        await Bound(rig.Section.RefreshAsync());
+        await BoundAsync(rig.Section.RefreshAsync());
         var roundId = sent.LastRequestId<ListBackups>();
 
         rig.Server.Apply(new BackupList(roundId, [Newer], 0, 2));
@@ -92,7 +92,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     public async Task Apply_ListAfterANewBackup_EndsTheCreateMarkAndLeavesTheRestoreMark()
     {
         var rig = Create();
-        await Bound(rig.Section.NewBackupCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.NewBackupCommand.ExecuteAsync(null));
         rig.Section.Restoring.Start();
 
         rig.Server.Apply(new BackupList(sent.LastRequestId<CreateBackup>(), [Newer]));
@@ -105,7 +105,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     public async Task Apply_AnswerThatIsNoBackupList_ChangesNothing()
     {
         var rig = Create();
-        await Bound(rig.Section.RefreshAsync());
+        await BoundAsync(rig.Section.RefreshAsync());
 
         rig.Section.Apply(new Error(sent.LastRequestId<ListBackups>(), "denied"));
 
@@ -117,7 +117,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     public async Task FollowServer_AdminGroupLeft_TakesTheRestoreButtonsAway()
     {
         var rig = Create();
-        await Bound(rig.Section.RefreshAsync());
+        await BoundAsync(rig.Section.RefreshAsync());
         rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer]));
         Assert.True(rig.Section.Backups[0].CanRestore);
 
@@ -132,7 +132,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     public async Task FollowServer_NothingChanged_KeepsTheRows()
     {
         var rig = Create();
-        await Bound(rig.Section.RefreshAsync());
+        await BoundAsync(rig.Section.RefreshAsync());
         rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer]));
         var row = rig.Section.Backups[0];
 
@@ -145,7 +145,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     public async Task Detach_ListInFlight_IgnoresItsAnswerAndKeepsNoRoute()
     {
         var rig = Create();
-        await Bound(rig.Section.RefreshAsync());
+        await BoundAsync(rig.Section.RefreshAsync());
 
         rig.Section.Detach();
         rig.Server.Apply(new BackupList(sent.LastRequestId<ListBackups>(), [Newer]));
@@ -184,7 +184,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create();
 
-        await Bound(rig.Section.NewBackupCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.NewBackupCommand.ExecuteAsync(null));
 
         Assert.IsType<CreateBackup>(sent[^1]);
     }
@@ -200,8 +200,8 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         });
         rig.Section.Apply(new BackupList("r", [Newer, Older]));
 
-        await Bound(rig.Section.Backups[1].DeleteCommand.ExecuteAsync(null));
-        await Bound(rig.Section.Backups[1].RestoreCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.Backups[1].DeleteCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.Backups[1].RestoreCommand.ExecuteAsync(null));
 
         Assert.Empty(sent); // said no
         Assert.Equal(2, asked.Count);
@@ -214,8 +214,8 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create(new BackupCardDialogs { Confirm = _ => Task.FromResult(true), ConfirmRestore = Restores(true).ConfirmRestore });
         rig.Section.Apply(new BackupList("r", [Newer, Older]));
 
-        await Bound(rig.Section.Backups[1].DeleteCommand.ExecuteAsync(null));
-        await Bound(rig.Section.Backups[1].RestoreCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.Backups[1].DeleteCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.Backups[1].RestoreCommand.ExecuteAsync(null));
 
         Assert.Equal([new DeleteBackup(Older.FileName), new RestoreBackup(Older.FileName)], sent.Select(request => request with { RequestId = null }));
     }
@@ -227,7 +227,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         FakeServers.SetOwnRightsAndGroups(rig.Server, Permission.BackupsManage | Permission.Speak, []);
 
         rig.Section.Apply(new BackupList("r", [Newer]));
-        await Bound(rig.Section.Backups[0].RestoreCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.Backups[0].RestoreCommand.ExecuteAsync(null));
 
         Assert.False(rig.Section.Backups[0].CanRestore);
         Assert.DoesNotContain(sent, request => request is RestoreBackup);
@@ -239,7 +239,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create(Restores(true));
 
         rig.Section.Apply(new BackupList("r", [Newer]));
-        await Bound(rig.Section.Backups[0].RestoreCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.Backups[0].RestoreCommand.ExecuteAsync(null));
 
         Assert.True(rig.Section.Backups[0].CanRestore);
         Assert.Contains(sent, request => request is RestoreBackup);
@@ -269,9 +269,9 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         bool answer = false;
         var rig = Create(new BackupCardDialogs { ConfirmBackupDownload = () => { warned++; return Task.FromResult(answer); } });
 
-        Assert.False(await Bound(rig.Section.ConfirmDownloadAsync()));
+        Assert.False(await BoundAsync(rig.Section.ConfirmDownloadAsync()));
         answer = true;
-        Assert.True(await Bound(rig.Section.ConfirmDownloadAsync()));
+        Assert.True(await BoundAsync(rig.Section.ConfirmDownloadAsync()));
 
         Assert.Equal(2, warned);
     }
@@ -281,7 +281,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create();
 
-        Assert.False(await Bound(rig.Section.ConfirmDownloadAsync())); // no dialog: cancelled
+        Assert.False(await BoundAsync(rig.Section.ConfirmDownloadAsync())); // no dialog: cancelled
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create(new BackupCardDialogs());
 
-        Assert.False(await Bound(rig.Section.ConfirmDownloadAsync()));
+        Assert.False(await BoundAsync(rig.Section.ConfirmDownloadAsync()));
     }
 
     [Fact]
@@ -297,7 +297,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
     {
         var rig = Create(new BackupCardDialogs { ConfirmBackupDownload = () => throw new InvalidOperationException("Dialog kaputt") });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Bound(rig.Section.ConfirmDownloadAsync()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => BoundAsync(rig.Section.ConfirmDownloadAsync()));
     }
 
     [Fact]
@@ -308,7 +308,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         rig.Section.Apply(new BackupList("r", [Newer]));
         var target = Path.Combine(dir, "mein-backup.ovsbackup");
 
-        await Bound(rig.Section.DownloadBackupAsync(rig.Section.Backups[0], target));
+        await BoundAsync(rig.Section.DownloadBackupAsync(rig.Section.Backups[0], target));
 
         Assert.Equal(Newer.FileName, Assert.Single(sent.OfType<DownloadBackup>()).FileName);
         Assert.Equal(Archive, File.ReadAllBytes(target));
@@ -326,7 +326,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         Assert.Empty(notices);
 
         time.Advance(TimeSpan.FromSeconds(30));
-        await Bound(download);
+        await BoundAsync(download);
 
         Assert.Equal([Strings.Backup_TransferFailed], notices);
         Assert.False(rig.Transfer.IsRunning);
@@ -338,7 +338,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var asked = new List<string>();
         var rig = Create(Restores(true, asked), StoresTheUpload);
 
-        await Bound(rig.Section.UploadBackupAsync(WriteArchiveFile(), restore: false));
+        await BoundAsync(rig.Section.UploadBackupAsync(WriteArchiveFile(), restore: false));
 
         var chunk = Assert.Single(sent.OfType<UploadBackupChunk>());
         Assert.Equal(Archive, Convert.FromBase64String(chunk.DataBase64));
@@ -354,7 +354,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var asked = new List<string>();
         var rig = Create(Restores(answer, asked), StoresTheUpload);
 
-        await Bound(rig.Section.UploadBackupAsync(WriteArchiveFile(), restore: true));
+        await BoundAsync(rig.Section.UploadBackupAsync(WriteArchiveFile(), restore: true));
 
         Assert.Single(sent.OfType<UploadBackupChunk>());
         Assert.Equal(answer ? [new RestoreBackup(Uploaded.FileName)] : [], sent.OfType<RestoreBackup>().Select(request => request with { RequestId = null }));
@@ -368,8 +368,8 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create(reply: StoresTheUpload);
         var file = WriteArchiveFile();
 
-        await Bound(rig.Section.UploadBackupAsync(file, restore: false));
-        await Bound(rig.Section.UploadBackupAsync(file, restore: false));
+        await BoundAsync(rig.Section.UploadBackupAsync(file, restore: false));
+        await BoundAsync(rig.Section.UploadBackupAsync(file, restore: false));
 
         var chunks = sent.OfType<UploadBackupChunk>().ToList();
         Assert.NotEqual(chunks[0].UploadId, chunks[1].UploadId); // a new id per upload
@@ -381,7 +381,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var asked = new List<string>();
         var rig = Create(Restores(true, asked), request => request is UploadBackupChunk ? new Error(request.RequestId, ReasonCodes.InvalidBackup) : null);
 
-        await Bound(rig.Section.UploadBackupAsync(WriteArchiveFile(), restore: true));
+        await BoundAsync(rig.Section.UploadBackupAsync(WriteArchiveFile(), restore: true));
 
         Assert.Empty(asked);
         Assert.DoesNotContain(sent, request => request is RestoreBackup);
@@ -398,7 +398,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var upload = rig.Section.UploadBackupAsync(WriteArchiveFile(), restore: true);
 
         Assert.True(upload.IsCompleted);
-        await Bound(upload); // the temporary folder is deleted only after it
+        await BoundAsync(upload); // the temporary folder is deleted only after it
         Assert.DoesNotContain(sent, request => request is UploadBackupChunk);
         Assert.False(rig.Transfer.IsRunning);
     }
@@ -409,8 +409,8 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create();
         rig.Section.Apply(new BackupList(null, [Older]));
 
-        await Bound(rig.Section.NewBackupCommand.ExecuteAsync(null));
-        await Bound(rig.Section.NewBackupCommand.ExecuteAsync(null)); // a second click meanwhile is ignored
+        await BoundAsync(rig.Section.NewBackupCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.NewBackupCommand.ExecuteAsync(null)); // a second click meanwhile is ignored
         Assert.Single(sent.OfType<CreateBackup>());
         time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(rig.Section.BackupCreate.IsBusy);
@@ -425,7 +425,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         var rig = Create(Restores(true));
         rig.Section.Apply(new BackupList(null, [Older]));
 
-        await Bound(rig.Section.Backups[0].RestoreCommand.ExecuteAsync(null));
+        await BoundAsync(rig.Section.Backups[0].RestoreCommand.ExecuteAsync(null));
         var restore = Assert.IsType<RestoreBackup>(sent[^1]);
         time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(rig.Section.Restoring.IsBusy);

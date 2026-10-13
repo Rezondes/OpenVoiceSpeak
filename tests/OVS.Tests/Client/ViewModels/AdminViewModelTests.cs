@@ -64,7 +64,7 @@ public class AdminViewModelTests
     /// Waits until that many user lists were asked for, at most 10 s by the clock: a request held back by the one-second
     /// limit is sent from the pool once the manual clock passes it, which may come late on a busy runner.
     /// </summary>
-    static async Task ListUsersSent(List<Request> sent, int count)
+    static async Task ListUsersSentAsync(List<Request> sent, int count)
     {
         int Count()
         {
@@ -177,7 +177,7 @@ public class AdminViewModelTests
 
         time.Advance(TimeSpan.FromSeconds(1));
         server.Apply(new GroupsChanged([new GroupInfo(WellKnownGroups.Guest, "Gast", P.None, true)]));
-        await ListUsersSent(sent, 2);
+        await ListUsersSentAsync(sent, 2);
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
     }
 
@@ -218,7 +218,7 @@ public class AdminViewModelTests
     {
         var (admin, _, sent) = Create(perms);
 
-        await HangGuard.Bound(admin.RequestListsAsync());
+        await HangGuard.BoundAsync(admin.RequestListsAsync());
 
         Assert.Equal(asks, sent.Any(request => request is ListBackups));
     }
@@ -555,7 +555,7 @@ public class AdminViewModelTests
         Assert.Empty(admin.UsersAndBans.Users);
         server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [Known("fpA", "Anton"), Known("fpB", "Berta")])); // and one at a time
         time.Advance(TimeSpan.FromSeconds(1));
-        await ListUsersSent(sent, 2);
+        await ListUsersSentAsync(sent, 2);
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
 
         admin.UsersAndBans.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta"), Known("fpC", "Carla")]));
@@ -871,7 +871,7 @@ public class AdminViewModelTests
         }
         Assert.Equal((true, true), (Box("Gast").IsChecked, Box("Moderator").IsChecked));
         clock.Advance(TimeSpan.FromSeconds(1));
-        await ListUsersSent(sent, 2);
+        await ListUsersSentAsync(sent, 2);
 
         Assert.Empty(notices);
         Assert.InRange(sent.OfType<ListUsers>().Count(), 1, 2);
@@ -896,7 +896,7 @@ public class AdminViewModelTests
         Assert.True(Mod().IsChecked);
 
         time.Advance(TimeSpan.FromSeconds(1));
-        await ListUsersSent(sent, 2);
+        await ListUsersSentAsync(sent, 2);
         var newer = sent.LastRequestId<ListUsers>();
         Assert.NotEqual(older, newer);
         server.Apply(new UserList(newer, [before])); // asked for after the tick: this one counts, even without the group
@@ -1059,7 +1059,7 @@ public class AdminViewModelTests
         var time = new ManualTimeProvider();
         var server = FakeServers.Admin(time: time, reply: request => request is ListLogs ? new LogList(request.RequestId, [logFile]) : null);
         var page = new AdminViewModel(server);
-        await HangGuard.Bound(page.RequestListsAsync());
+        await HangGuard.BoundAsync(page.RequestListsAsync());
         Assert.True(page.Logs.Files.Single().CanSelect);
 
         FakeServers.SetOwnRightsAndGroups(server, P.All & ~P.LogsDownload, [WellKnownGroups.Admin]);
@@ -1118,7 +1118,7 @@ public class AdminViewModelTests
         var sent = new List<Request>();
         var admin = new AdminViewModel(FakeServers.Admin(sent, new ManualTimeProvider()));
 
-        Assert.True(await HangGuard.Bound(admin.SaveAsync()));
+        Assert.True(await HangGuard.BoundAsync(admin.SaveAsync()));
         Assert.Empty(sent);
     }
 
@@ -1131,7 +1131,7 @@ public class AdminViewModelTests
         admin.Links.UnlinkAll();
         admin.ServerSettings.Name = "Neu";
 
-        Assert.False(await HangGuard.Bound(admin.SaveAsync()));
+        Assert.False(await HangGuard.BoundAsync(admin.SaveAsync()));
         Assert.Single(sent.OfType<SetChannelLinks>());
         Assert.DoesNotContain(sent, request => request is UpdateServerSettings);
     }
@@ -1149,7 +1149,7 @@ public class AdminViewModelTests
         admin.Links.UnlinkAll();
         admin.ServerSettings.Name = "Neu";
 
-        Assert.True(await HangGuard.Bound(admin.SaveAsync()));
+        Assert.True(await HangGuard.BoundAsync(admin.SaveAsync()));
         Assert.Single(sent.OfType<SetChannelLinks>());
         Assert.Single(sent.OfType<UpdateServerSettings>());
         Assert.False(admin.HasChanges);
@@ -1166,7 +1166,7 @@ public class AdminViewModelTests
         var guest = Assert.Single(admin.UsersAndBans.Users).Toggles.Single(toggle => toggle.Name == "Gast");
         guest.IsChecked = true;
 
-        await HangGuard.Bound(guest.ToggleCommand.ExecuteAsync(null));
+        await HangGuard.BoundAsync(guest.ToggleCommand.ExecuteAsync(null));
         server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [WellKnownGroups.Admin, WellKnownGroups.Guest])));
 
         Assert.DoesNotContain(OVS.Client.Audio.Sounds.SoundEvent.GroupChanged, heard);
@@ -1182,7 +1182,7 @@ public class AdminViewModelTests
         admin.UsersAndBans.Apply(new UserList("r", [Known("fp1", "ich", [WellKnownGroups.Admin])]));
         var guest = Assert.Single(admin.UsersAndBans.Users).Toggles.Single(toggle => toggle.Name == "Gast");
         guest.IsChecked = true;
-        await HangGuard.Bound(guest.ToggleCommand.ExecuteAsync(null));
+        await HangGuard.BoundAsync(guest.ToggleCommand.ExecuteAsync(null));
 
         admin.Detach();
         server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [WellKnownGroups.Admin, WellKnownGroups.Guest])));
@@ -1200,7 +1200,7 @@ public class AdminViewModelTests
         var (admin, _, _) = Create(P.All);
         var discarded = 0;
 
-        Assert.True(await HangGuard.Bound(admin.ConfirmLeaveAsync(CreateChangedPlace(() => discarded++))));
+        Assert.True(await HangGuard.BoundAsync(admin.ConfirmLeaveAsync(CreateChangedPlace(() => discarded++))));
         Assert.Equal(1, discarded);
     }
 
@@ -1210,7 +1210,7 @@ public class AdminViewModelTests
         var asked = 0;
         var (admin, _, _) = Create(P.All, dialogs: new AdminDialogs { AskLeave = () => { asked++; return Task.FromResult(LeaveChoice.Stay); } });
 
-        Assert.False(await HangGuard.Bound(admin.ConfirmLeaveAsync(CreateChangedPlace(() => { }))));
+        Assert.False(await HangGuard.BoundAsync(admin.ConfirmLeaveAsync(CreateChangedPlace(() => { }))));
         Assert.Equal(1, asked);
     }
 
@@ -1220,7 +1220,7 @@ public class AdminViewModelTests
         var (admin, _, _) = Create(P.All, dialogs: new AdminDialogs { AskLeave = () => throw new InvalidOperationException("Dialog kaputt") });
         var discarded = 0;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(admin.ConfirmLeaveAsync(CreateChangedPlace(() => discarded++))));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.BoundAsync(admin.ConfirmLeaveAsync(CreateChangedPlace(() => discarded++))));
         Assert.Equal(0, discarded);
     }
 
@@ -1235,8 +1235,8 @@ public class AdminViewModelTests
         });
         admin.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver")]));
 
-        await HangGuard.Bound(Assert.Single(admin.UsersAndBans.Users).DeleteCommand.ExecuteAsync(null));
-        Assert.False(await HangGuard.Bound(admin.BackupCard.ConfirmDownloadAsync()));
+        await HangGuard.BoundAsync(Assert.Single(admin.UsersAndBans.Users).DeleteCommand.ExecuteAsync(null));
+        Assert.False(await HangGuard.BoundAsync(admin.BackupCard.ConfirmDownloadAsync()));
 
         Assert.Equal(["delete Xaver", "download"], asked);
         Assert.DoesNotContain(sent, request => request is DeleteKnownUser);

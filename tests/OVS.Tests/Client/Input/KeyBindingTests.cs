@@ -103,24 +103,24 @@ public class KeyBindingTests
         const int Shift_ = VirtualKeys.Shift, LShift = 0xA0, Ctrl_ = VirtualKeys.Control, RCtrl = VirtualKeys.RControl;
         var fake = new FakeKeys();
         using var keys = new KeyPoller(TimeProvider.System, fake.IsDown);
-        async Task<KeyChord?> Capture(params (bool Down, int[] Keys)[] steps)
+        async Task<KeyChord?> CaptureAsync(params (bool Down, int[] Keys)[] steps)
         {
             var chord = keys.CaptureNextChordAsync();
-            await fake.NextSweep(); // the first sweep only records what is already down
+            await fake.NextSweepAsync(); // the first sweep only records what is already down
             foreach (var (isDown, vks) in steps)
             {
                 Assert.False(chord.IsCompleted); // not while a modifier is still down
                 fake.Set(isDown, vks);
-                await fake.NextSweep(() => chord.IsCompleted);
+                await fake.NextSweepAsync(() => chord.IsCompleted);
             }
             return chord.IsCompleted ? await chord : null;
         }
 
-        Assert.Equal(new KeyChord(LShift), await Capture((true, [Shift_, LShift]), (false, [Shift_, LShift])));
-        Assert.Equal(new KeyChord(F1, Shift), await Capture((true, [Shift_, LShift]), (true, [F1])));
+        Assert.Equal(new KeyChord(LShift), await CaptureAsync((true, [Shift_, LShift]), (false, [Shift_, LShift])));
+        Assert.Equal(new KeyChord(F1, Shift), await CaptureAsync((true, [Shift_, LShift]), (true, [F1])));
         fake.Set(false, Shift_, LShift, F1);
         // Shift and Ctrl together are no single key; once both are up, Ctrl alone counts again
-        Assert.Equal(new KeyChord(RCtrl), await Capture((true, [Shift_, LShift]), (true, [Ctrl_, RCtrl]), (false, [Ctrl_, RCtrl]),
+        Assert.Equal(new KeyChord(RCtrl), await CaptureAsync((true, [Shift_, LShift]), (true, [Ctrl_, RCtrl]), (false, [Ctrl_, RCtrl]),
             (false, [Shift_, LShift]), (true, [Ctrl_, RCtrl]), (false, [Ctrl_, RCtrl])));
     }
 

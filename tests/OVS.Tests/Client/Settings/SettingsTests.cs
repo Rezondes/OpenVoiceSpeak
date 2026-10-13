@@ -329,7 +329,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Contains("liegen auf derselben Taste", settings.Error);
         bool? closed = null;
         settings.CloseRequested += ok => closed = ok;
-        settings.SaveCommand.Execute(null);
+        settings.SaveAndCloseCommand.Execute(null);
         Assert.Null(closed);
 
         settings.KeyBindings[1].RemoveCommand.Execute(null);
@@ -945,7 +945,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         settings.ApplySaved = () => restart.Task;
         bool? closed = null;
         settings.CloseRequested += ok => closed = ok;
-        var saving = settings.SaveCommand.ExecuteAsync(null);
+        var saving = settings.SaveAndCloseCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(settings.Saving.IsBusy);
         Assert.Null(closed);

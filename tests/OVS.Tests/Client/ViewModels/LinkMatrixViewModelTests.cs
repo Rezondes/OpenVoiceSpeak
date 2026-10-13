@@ -24,7 +24,7 @@ public sealed class LinkMatrixViewModelTests
     public async Task Place_NothingMarked_NoChangesAndSavingSucceedsWithoutSending()
     {
         Assert.False(links.Place.HasChanges());
-        Assert.True(await Bound(links.Place.SaveAsync()));
+        Assert.True(await BoundAsync(links.Place.SaveAsync()));
         Assert.Empty(sent);
     }
 
@@ -39,7 +39,7 @@ public sealed class LinkMatrixViewModelTests
         Assert.Single(Assert.IsType<SetChannelLinks>(Assert.Single(sent)).Remove);
         Assert.False(saving.IsCompleted);
         server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
-        Assert.True(await Bound(saving));
+        Assert.True(await BoundAsync(saving));
         Assert.False(links.Place.HasChanges());
     }
 
@@ -53,7 +53,7 @@ public sealed class LinkMatrixViewModelTests
 
         Assert.False(saving.IsCompleted);
         server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
-        Assert.True(await Bound(saving));
+        Assert.True(await BoundAsync(saving));
         Assert.Single(sent.OfType<SetChannelLinks>());
     }
 

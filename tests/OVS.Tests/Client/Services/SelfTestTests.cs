@@ -100,7 +100,7 @@ public sealed class SelfTestTests
 
         Assert.False(starting.IsCompleted);
         pending.SetResult();
-        await HangGuard.Bound(starting);
+        await HangGuard.BoundAsync(starting);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public sealed class SelfTestTests
 
         Assert.False(ending.IsCompleted);
         pending.SetResult();
-        await HangGuard.Bound(ending);
+        await HangGuard.BoundAsync(ending);
     }
 
     [Fact]

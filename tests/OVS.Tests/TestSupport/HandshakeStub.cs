@@ -37,7 +37,7 @@ sealed class HandshakeStub : IAsyncDisposable
 
     public int Port =>((IPEndPoint)listener.LocalEndpoint).Port;
 
-    /// <summary>Completes once the client closed the socket after the scripted answer; wrap it in <see cref="HangGuard.Bound(Task)"/>.</summary>
+    /// <summary>Completes once the client closed the socket after the scripted answer; wrap it in <see cref="HangGuard.BoundAsync(Task)"/>.</summary>
     public Task ClientClosed => closed.Task;
 
     async Task ServeAsync(string dataDir, Message reply)

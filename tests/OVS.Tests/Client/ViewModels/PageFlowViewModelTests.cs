@@ -79,7 +79,7 @@ public sealed class PageFlowViewModelTests
     {
         var rig = new PageFlowRig();
         var server = rig.ShowAdminServer();
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
         var admin = rig.Flow.AdminPage!;
         rig.Changes.Clear();
 
@@ -124,7 +124,7 @@ public sealed class PageFlowViewModelTests
         var page = rig.OpenEditedSettings();
 
         rig.Flow.OpenSettings();
-        await HangGuard.Bound(rig.Flow.OpenSettingsCommand.ExecuteAsync(null));
+        await HangGuard.BoundAsync(rig.Flow.OpenSettingsCommand.ExecuteAsync(null));
 
         Assert.Equal(0, rig.Asked);
         Assert.Same(page, rig.Flow.SettingsPage);
@@ -155,7 +155,7 @@ public sealed class PageFlowViewModelTests
         var page = rig.OpenEditedSettings();
         rig.Settings = new ClientSettings { VadThresholdDb = -30, UserVolumes = new Dictionary<string, float> { ["anna"] = 0.5f } };
 
-        await HangGuard.Bound(page.ApplySaved!());
+        await HangGuard.BoundAsync(page.ApplySaved!());
 
         var saved = rig.AppliedSaved.Single();
         Assert.Equal(-40f, saved.VadThresholdDb);
@@ -221,7 +221,7 @@ public sealed class PageFlowViewModelTests
 
         rig.Flow.ClosePage();
         rig.Changes.Clear();
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
         rig.AssertChangedBefore(nameof(PageFlowViewModel.AdminPage), nameof(PageFlowViewModel.Page));
     }
 
@@ -235,7 +235,7 @@ public sealed class PageFlowViewModelTests
         rig.Flow.ClosePage();
         rig.AssertChangedBefore(nameof(PageFlowViewModel.SettingsPage), nameof(PageFlowViewModel.Page));
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
         rig.Changes.Clear();
         rig.Flow.ClosePage();
         rig.AssertChangedBefore(nameof(PageFlowViewModel.AdminPage), nameof(PageFlowViewModel.Page));
@@ -247,7 +247,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
 
         rig.Flow.ClosePage();
-        await HangGuard.Bound(rig.Flow.ClosePageAsync());
+        await HangGuard.BoundAsync(rig.Flow.ClosePageAsync());
 
         Assert.Empty(rig.Changes);
         Assert.Empty(rig.Calls);
@@ -259,7 +259,7 @@ public sealed class PageFlowViewModelTests
     {
         var rig = new PageFlowRig { ShownServer = null };
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
 
         Assert.True(rig.Flow.IsHomePage);
         Assert.Null(rig.Flow.AdminPage);
@@ -271,7 +271,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         FakeServers.SetOwnRightsAndGroups(rig.ShowAdminServer(), Permission.Speak, [FakeServers.GuestGroup.Id]);
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
 
         Assert.True(rig.Flow.IsHomePage);
         Assert.Null(rig.Flow.AdminPage);
@@ -285,7 +285,7 @@ public sealed class PageFlowViewModelTests
         var admin = await rig.OpenEditedAdminAsync();
         int requested = rig.Sent.Count;
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
 
         Assert.Equal(0, rig.Asked);
         Assert.Equal(requested, rig.Sent.Count);
@@ -300,7 +300,7 @@ public sealed class PageFlowViewModelTests
         var page = rig.OpenEditedSettings();
         rig.Answers.Enqueue(LeaveChoice.Stay);
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
 
         Assert.Same(page, rig.Flow.SettingsPage);
         Assert.Null(rig.Flow.AdminPage);
@@ -320,7 +320,7 @@ public sealed class PageFlowViewModelTests
         if (administration)
         {
             rig.ShowAdminServer();
-            await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+            await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
             if (edited) rig.Flow.AdminPage!.ServerSettings.Name = "Neu";
         }
         else
@@ -347,7 +347,7 @@ public sealed class PageFlowViewModelTests
     {
         var rig = new PageFlowRig();
 
-        Assert.True(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.Equal(0, rig.Asked);
     }
 
@@ -389,7 +389,7 @@ public sealed class PageFlowViewModelTests
         admin.Links.UnlinkAll();
         rig.Answers.Enqueue(LeaveChoice.Save);
 
-        Assert.False(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.False(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.Single(rig.Sent.OfType<SetChannelLinks>());
         Assert.DoesNotContain(rig.Sent, request => request is UpdateServerSettings);
         Assert.Same(admin, rig.Flow.AdminPage);
@@ -416,7 +416,7 @@ public sealed class PageFlowViewModelTests
         rig.OpenEditedSettings();
         rig.Answers.Enqueue(LeaveChoice.Save);
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
 
         Assert.Equal(["applySaved", "applyLive", "setKeyBindings", "showAppearance", "setSelfTest False", "stopLevelMeter"], rig.Calls);
         Assert.Equal(-40f, rig.AppliedSaved.Single().VadThresholdDb);
@@ -437,7 +437,7 @@ public sealed class PageFlowViewModelTests
             if (args.PropertyName == nameof(PageFlowViewModel.AdminPage) && rig.Flow.AdminPage is not null) callsWhenShown ??= [.. rig.Calls];
         };
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
 
         Assert.Equal(["applyLive", "setKeyBindings", "showAppearance", "setSelfTest False", "stopLevelMeter"], callsWhenShown);
         Assert.Empty(rig.AppliedSaved);
@@ -451,11 +451,11 @@ public sealed class PageFlowViewModelTests
         rig.ShowAdminServer();
         rig.Flow.OpenSettings();
         var page = rig.Flow.SettingsPage!;
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
         var admin = rig.Flow.AdminPage;
         rig.Calls.Clear();
 
-        await HangGuard.Bound(page.SaveCommand.ExecuteAsync(null)); // a late "Speichern" of the page no longer shown
+        await HangGuard.BoundAsync(page.SaveAndCloseCommand.ExecuteAsync(null)); // a late "Speichern" of the page no longer shown
 
         Assert.Equal(["applySaved", "applyLive", "setKeyBindings", "showAppearance", "setSelfTest False", "stopLevelMeter"], rig.Calls);
         Assert.NotNull(admin);
@@ -474,7 +474,7 @@ public sealed class PageFlowViewModelTests
         var page2 = rig.Flow.SettingsPage;
         rig.Calls.Clear();
 
-        await HangGuard.Bound(page1.SaveCommand.ExecuteAsync(null));
+        await HangGuard.BoundAsync(page1.SaveAndCloseCommand.ExecuteAsync(null));
 
         Assert.Equal(["applySaved", "applyLive", "setKeyBindings", "showAppearance", "setSelfTest False", "stopLevelMeter"], rig.Calls);
         Assert.NotNull(page2);
@@ -495,7 +495,7 @@ public sealed class PageFlowViewModelTests
             rig.Flow.SettingsPage!.VadThresholdDb = -40;
         };
 
-        Assert.True(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync(adminOnly: true)));
+        Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync(adminOnly: true)));
         Assert.Equal(1, rig.Asked);
         Assert.Empty(rig.AppliedSaved);
         Assert.DoesNotContain(rig.Sent, request => request is UpdateServerSettings);
@@ -508,7 +508,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         rig.Flow.OpenSettings();
 
-        Assert.True(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.Equal(0, rig.Asked);
     }
 
@@ -520,8 +520,8 @@ public sealed class PageFlowViewModelTests
         rig.Dialogs = new DialogCallbacks { Admin = new() { AskLeave = () => { asked++; return Task.FromResult(LeaveChoice.Stay); } } };
         rig.ShowAdminServer();
 
-        await HangGuard.Bound(rig.Flow.OpenAdminAsync());
-        var stays = !await HangGuard.Bound(rig.Flow.AdminPage!.ConfirmLeaveAsync(new AdminPlace(() => true, () => Task.FromResult(false), () => { })));
+        await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
+        var stays = !await HangGuard.BoundAsync(rig.Flow.AdminPage!.ConfirmLeaveAsync(new AdminPlace(() => true, () => Task.FromResult(false), () => { })));
 
         Assert.True(stays);
         Assert.Equal((1, 0), (asked, rig.Asked));
@@ -533,7 +533,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig { Dialogs = new DialogCallbacks() };
         rig.OpenEditedSettings();
 
-        Assert.True(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.Empty(rig.AppliedSaved);
     }
 
@@ -547,7 +547,7 @@ public sealed class PageFlowViewModelTests
         rig.OpenEditedSettings();
         rig.Answers.Enqueue(choice);
 
-        Assert.Equal(expected, await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.Equal(expected, await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.Equal(1, rig.Asked);
         Assert.Equal(saves, rig.AppliedSaved.Count);
     }
@@ -567,7 +567,7 @@ public sealed class PageFlowViewModelTests
         rig.OpenEditedSettings();
         rig.Answers.Enqueue(LeaveChoice.Save);
 
-        Assert.False(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.False(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.Empty(rig.AppliedSaved);
     }
 
@@ -581,7 +581,7 @@ public sealed class PageFlowViewModelTests
         admin.GroupList.SelectedGroup.Name = "Umbenannt";
         rig.Answers.Enqueue(LeaveChoice.Save);
 
-        Assert.False(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.False(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.Single(rig.Sent.OfType<UpdateGroup>());
         Assert.DoesNotContain(rig.Sent, request => request is UpdateServerSettings);
         Assert.Same(admin, rig.Flow.AdminPage);
@@ -593,7 +593,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         rig.OpenEditedSettings();
 
-        Assert.True(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync(adminOnly: true)));
+        Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync(adminOnly: true)));
         Assert.Equal(0, rig.Asked);
         Assert.Empty(rig.AppliedSaved);
     }
@@ -604,7 +604,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig { AskThrows = true };
         rig.OpenEditedSettings();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.True(rig.Flow.IsSettingsPage);
     }
 
@@ -617,7 +617,7 @@ public sealed class PageFlowViewModelTests
         rig.Answers.Enqueue(LeaveChoice.Save);
         rig.WhileAsked = rig.Flow.ClosePage;
 
-        Assert.True(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync()));
+        Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.DoesNotContain(rig.Sent, request => request is UpdateServerSettings);
         Assert.True(rig.Flow.IsHomePage);
     }
@@ -632,7 +632,7 @@ public sealed class PageFlowViewModelTests
         rig.Answers.Enqueue(LeaveChoice.Save);
         rig.WhileAsked = rig.Flow.OpenSettings;
 
-        Assert.True(await HangGuard.Bound(rig.Flow.ConfirmLeaveAsync(adminOnly: false)));
+        Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync(adminOnly: false)));
         Assert.Empty(rig.AppliedSaved);
         Assert.Equal(sentBefore, rig.Sent.Count);
     }

@@ -62,7 +62,7 @@ public class SendPathTests
         if (expectFrames) await AsyncWait.UntilAsync(() => engine.FramesSent > 0);
         else
         {
-            await CaptureRunning(engine); // otherwise the silence below proves nothing
+            await CaptureRunningAsync(engine); // otherwise the silence below proves nothing
             await AsyncWait.AssertStaysFalseAsync(() => engine.FramesSent > 0, TimeSpan.FromMilliseconds(400), "the tone stays below the threshold");
         }
         keys.Simulate(ptt: false);
@@ -82,7 +82,7 @@ public class SendPathTests
         keys.Simulate(ptt: true);
         await AsyncWait.UntilAsync(() => keys.MuteHeld && keys.IsDown(KeyAction.PushToTalk)); // the key thread saw both (it polls every 10 ms, when it gets a turn)
         engine.DeviceLifecycle.SetTone(440);
-        await CaptureRunning(engine);
+        await CaptureRunningAsync(engine);
         await AsyncWait.AssertStaysFalseAsync(() => engine.FramesSent > 0, TimeSpan.FromMilliseconds(400), "push to mute holds the voice back");
         Assert.Equal(0, engine.FramesSent);
 
@@ -99,7 +99,7 @@ public class SendPathTests
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
         engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
         engine.DeviceLifecycle.SetTone(440);
-        await CaptureRunning(engine);
+        await CaptureRunningAsync(engine);
         await AsyncWait.AssertStaysFalseAsync(() => engine.FramesSent > 0, TimeSpan.FromMilliseconds(400), "a muted channel sends nothing");
         Assert.Equal(0, engine.FramesSent);
 
@@ -113,9 +113,9 @@ public class SendPathTests
     public async Task Ptt_Released_KeepsSendingForDelay()
     {
         using var rig = new TalkRig(300);
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.Equal(2, rig.Frames(1)); // the pre-roll frame and this one
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Assert.True(rig.Keys.PttDown); // the engine, the self test and the "Sendet" text all read this
         Assert.Equal(15, rig.FramesUntilSilent()); // 300 ms
         Assert.False(rig.Keys.PttDown);
@@ -123,9 +123,9 @@ public class SendPathTests
         Assert.All(rig.Sent, value => Assert.Equal(Ch, value));
 
         rig.Engine.ApplyLive(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0 }); // no delay: stops at once
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.Equal(2, rig.Frames(1));
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Assert.Equal(0, rig.Frames(1));
     }
 
@@ -134,13 +134,13 @@ public class SendPathTests
     public async Task Ptt_PressedAgainWithinDelay_NoGap()
     {
         using var rig = new TalkRig(300);
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.Equal(2, rig.Frames(1));
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Assert.Equal(5, rig.Frames(5));
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.Equal(10, rig.Frames(10)); // one frame each, no pre-roll
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Assert.Equal(15, rig.FramesUntilSilent()); // the delay starts again at the second release
     }
 
@@ -149,29 +149,29 @@ public class SendPathTests
     public async Task LinkPttRelease_Delayed_MuteImmediate()
     {
         using var rig = new TalkRig(300);
-        await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
+        await rig.KeyAsync(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
         Assert.Equal(2, rig.Frames(1));
-        await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
+        await rig.KeyAsync(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
         Assert.True(rig.Keys.LinkPttDown);
         Assert.Equal(15, rig.FramesUntilSilent());
         Assert.All(rig.Sent, value => Assert.Equal(Link, value));
 
-        await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
+        await rig.KeyAsync(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
         rig.Frames(1);
-        await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
+        await rig.KeyAsync(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
         Assert.Equal(3, rig.Frames(3));
         rig.Engine.SelfMuted = true; // within the delay
         Assert.Equal(0, rig.Frames(1));
         rig.Engine.SelfMuted = false;
 
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         rig.Frames(1);
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Assert.Equal(3, rig.Frames(3));
-        await rig.Key(TalkRig.Mute, true, KeyAction.PushToMute); // within the delay; the manual clock stood still meanwhile
+        await rig.KeyAsync(TalkRig.Mute, true, KeyAction.PushToMute); // within the delay; the manual clock stood still meanwhile
         Assert.True(rig.Keys.PttDown);
         Assert.Equal(0, rig.Frames(1));
-        await rig.Key(TalkRig.Mute, false, KeyAction.PushToMute); // let go at once too, while the talk key is still delayed
+        await rig.KeyAsync(TalkRig.Mute, false, KeyAction.PushToMute); // let go at once too, while the talk key is still delayed
         Assert.Equal(2, rig.Frames(1)); // sending again: a new start with its pre-roll frame
     }
 
@@ -183,9 +183,9 @@ public class SendPathTests
         rig.Engine.SelfTest = true;
         bool transmitted = false;
         rig.Engine.TransmitChanged += otherByte => transmitted |= otherByte is not null;
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.Equal(2, rig.Frames(1)); // the decision says "to the own ears"
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Assert.Equal(15, rig.FramesUntilSilent());
         Assert.False(transmitted); // nothing counts as sending
         Assert.Equal(0, rig.Engine.FramesSent);
@@ -203,22 +203,22 @@ public class SendPathTests
         rig.Signal = () => VoiceFilterTests.Noise(random, -20);
         Assert.Equal(64, rig.Engine.ChannelBitrate); // not in any channel yet
         rig.Engine.ChannelBitrate = 96;
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.InRange(rig.Kbps(), 96 * 0.85, 96 * 1.15);
 
         rig.Engine.ChannelBitrate = 32; // moved, while still talking
         Assert.InRange(rig.Kbps(), 32 * 0.85, 32 * 1.15);
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         rig.Frames(1);
 
         int linkStart = rig.Sent.Count;
-        await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
+        await rig.KeyAsync(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
         Assert.InRange(rig.Kbps(), 32 * 0.85, 32 * 1.15);
         Assert.All(rig.Sent.Skip(linkStart), value => Assert.Equal(Link, value));
-        await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
+        await rig.KeyAsync(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
 
         rig.Engine.SelfTest = true; // the own ears hear what a 64 kbps channel sends
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.InRange(rig.Kbps(), 64 * 0.85, 64 * 1.15);
         Assert.Equal(0, rig.Engine.FramesSent);
 
@@ -259,7 +259,7 @@ public class SendPathTests
         Assert.Equal(32, rig.Engine.EncoderBitrate);
 
         rig.Engine.Loss.Reset(64); // moved into a 64 kbps channel
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         rig.Frames(1);
         Assert.Equal(64_000, rig.Pipeline.Encoder.Opus.Bitrate);
         ReportLoss(rig, 20, 4);
@@ -278,7 +278,7 @@ public class SendPathTests
     {
         using var rig = new TalkRig(0);
         var opus = rig.Pipeline.Encoder.Opus;
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         rig.Frames(1);
         Assert.Equal(10, opus.PacketLossPercent);
         Assert.Equal(64_000, opus.Bitrate);
@@ -314,7 +314,7 @@ public class SendPathTests
 
     /// <summary>Waits until the condition holds (at most 5 s): the audio and key threads may get their turn late on a busy machine.</summary>
     /// <summary>Waits until the tone thread has fed frames through the gate, so a silence check that follows proves something.</summary>
-    static async Task CaptureRunning(AudioEngine engine)
+    static async Task CaptureRunningAsync(AudioEngine engine)
     {
         int levels = 0;
         void Count(float _) => Interlocked.Increment(ref levels);
@@ -325,7 +325,7 @@ public class SendPathTests
     }
 
     /// <summary>The output gets at least this loud within 5 s (positive checks wait, silence checks keep their fixed window).</summary>
-    static async Task<bool> GetsLouderThan(AudioEngine engine, float db)
+    static async Task<bool> GetsLouderThanAsync(AudioEngine engine, float db)
     {
         await AsyncWait.UntilAsync(() => engine.LastOutputLevelDb > db);
         return engine.LastOutputLevelDb > db;
@@ -634,7 +634,7 @@ public class SendPathTests
         return engine;
     }
 
-    static async Task<float> LoudestOutput(AudioEngine engine, int milliseconds)
+    static async Task<float> LoudestOutputAsync(AudioEngine engine, int milliseconds)
     {
         float loudest = -120;
         for (int elapsed = 0; elapsed < milliseconds; elapsed += 20)
@@ -656,17 +656,17 @@ public class SendPathTests
         engine.Connected = true;
         engine.SelfMuted = true;
         engine.Deafened = true;
-        Assert.True(await LoudestOutput(engine, 300) < -100); // muted and deafened: silence
+        Assert.True(await LoudestOutputAsync(engine, 300) < -100); // muted and deafened: silence
 
         engine.SelfTest = true;
         engine.OnVoice(5, 0, VoiceHeader.TargetChannel, new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]));
-        Assert.True(await GetsLouderThan(engine, -20)); // the tone, boosted: about -7.5 dBFS
+        Assert.True(await GetsLouderThanAsync(engine, -20)); // the tone, boosted: about -7.5 dBFS
         Assert.Equal(0, sent);
         Assert.False(engine.FramesReceived.ContainsKey(5));
 
         engine.SelfTest = false;
         await AsyncWait.UntilAsync(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
-        Assert.True(await LoudestOutput(engine, 300) < -100);
+        Assert.True(await LoudestOutputAsync(engine, 300) < -100);
         Assert.Equal(0, sent);
     }
 
@@ -676,13 +676,13 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: the PTT key is never down
         using var ptt = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
         ptt.SelfTest = true;
-        await CaptureRunning(ptt); // the tone is being gated, so the silence below proves something
-        Assert.True(await LoudestOutput(ptt, 600) < -100);
+        await CaptureRunningAsync(ptt); // the tone is being gated, so the silence below proves something
+        Assert.True(await LoudestOutputAsync(ptt, 600) < -100);
 
         using var loudThreshold = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -10, VadAutomatic = false });
         loudThreshold.SelfTest = true;
-        await CaptureRunning(loudThreshold);
-        Assert.True(await LoudestOutput(loudThreshold, 600) < -100); // -13.5 dBFS stays below -10
+        await CaptureRunningAsync(loudThreshold);
+        Assert.True(await LoudestOutputAsync(loudThreshold, 600) < -100); // -13.5 dBFS stays below -10
     }
 
     /// <summary>
@@ -697,15 +697,15 @@ public class SendPathTests
         keys.Bindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl))];
         using var engine = ToneEngine(keys, new ClientSettings { Mode = PushToTalk });
         engine.SelfTest = true;
-        await CaptureRunning(engine);
-        Assert.True(await LoudestOutput(engine, 300) < -100); // key up: silent
+        await CaptureRunningAsync(engine);
+        Assert.True(await LoudestOutputAsync(engine, 300) < -100); // key up: silent
 
         Volatile.Write(ref held, true);
-        Assert.True(await GetsLouderThan(engine, -20));
+        Assert.True(await GetsLouderThanAsync(engine, -20));
 
         Volatile.Write(ref held, false);
         await AsyncWait.UntilAsync(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
-        Assert.True(await LoudestOutput(engine, 300) < -100);
+        Assert.True(await LoudestOutputAsync(engine, 300) < -100);
     }
 
     /// <summary>Package 53: sliders act at once, without restarting the devices.</summary>
@@ -813,15 +813,15 @@ public class SendPathTests
         using var client = new VoiceClient((IPEndPoint)server.Client.LocalEndPoint!, 5, key, clock);
         client.Start();
 
-        async Task<ReceivedPacket> Receive()
+        async Task<ReceivedPacket> ReceiveAsync()
         {
             using var cancelSource = new CancellationTokenSource(10_000);
             var got = await server.ReceiveAsync(cancelSource.Token);
             Assert.True(serverCrypto.TryOpen(PacketDirection.ClientToServer, got.Buffer, out var header, out var plain));
             return new ReceivedPacket(header, plain, got.RemoteEndPoint);
         }
-        var from = (await Receive()).From; // the Hello
-        async Task Report(LossReport uplink)
+        var from = (await ReceiveAsync()).From; // the Hello
+        async Task ReportAsync(LossReport uplink)
         {
             var answer = serverCrypto.Seal(PacketDirection.ServerToClient, new VoiceHeader(PacketType.Ping, 5, serverSeq.Next(), 0), new PingPayload(0, uplink).Build());
             await server.SendAsync(answer, from);
@@ -829,10 +829,10 @@ public class SendPathTests
             Assert.Equal(uplink, client.UplinkLoss);
         }
         var frames = Enumerable.Range(0, 10).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
-        async Task<byte[]?> Send(int count, byte target = Ch)
+        async Task<byte[]?> SendAsync(int count, byte target = Ch)
         {
             client.SendVoice(frames[count], target);
-            var (header, plain, _) = await Receive();
+            var (header, plain, _) = await ReceiveAsync();
             Assert.Equal(PacketType.Voice, header.Type);
             Assert.True(RelayPayload.TryReadArrays(plain, out var seq, out var opus, out var copy));
             Assert.Equal((uint)count, seq);
@@ -840,23 +840,23 @@ public class SendPathTests
             return copy;
         }
 
-        Assert.Null(await Send(0)); // nothing reported yet
-        await Report(new LossReport(100, 1));
-        Assert.Null(await Send(1)); // 1 %
-        await Report(new LossReport(100, 2));
-        Assert.Equal(frames[1], await Send(2)); // 2 %: the previous frame comes along
-        Assert.Equal(frames[2], await Send(3));
-        await Report(new LossReport(0, 0));
-        Assert.Equal(frames[3], await Send(4)); // nothing expected (a talk pause) is no news: copies stay on
+        Assert.Null(await SendAsync(0)); // nothing reported yet
+        await ReportAsync(new LossReport(100, 1));
+        Assert.Null(await SendAsync(1)); // 1 %
+        await ReportAsync(new LossReport(100, 2));
+        Assert.Equal(frames[1], await SendAsync(2)); // 2 %: the previous frame comes along
+        Assert.Equal(frames[2], await SendAsync(3));
+        await ReportAsync(new LossReport(0, 0));
+        Assert.Equal(frames[3], await SendAsync(4)); // nothing expected (a talk pause) is no news: copies stay on
         // review: a copy travels under the frame's routing, so never across a change of target
-        Assert.Null(await Send(5, Link));
-        Assert.Equal(frames[5], await Send(6, Link));
-        Assert.Null(await Send(7)); // and back
+        Assert.Null(await SendAsync(5, Link));
+        Assert.Equal(frames[5], await SendAsync(6, Link));
+        Assert.Null(await SendAsync(7)); // and back
         // review: the end of the last talk spurt is no copy for the first frame of the next
         clock.Advance(TimeSpan.FromMilliseconds(150));
-        Assert.Null(await Send(8));
-        await Report(new LossReport(100, 1));
-        Assert.Null(await Send(9));
+        Assert.Null(await SendAsync(8));
+        await ReportAsync(new LossReport(100, 1));
+        Assert.Null(await SendAsync(9));
     }
 
     // ---- Package 137: audio device changes ----
@@ -1307,16 +1307,16 @@ public class SendPathTests
 
         Feed(5);
         Assert.Empty(packets); // key up
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Feed(5);
         Assert.Equal(6, packets.Count); // with the pre-roll frame
-        await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Feed(5);
         Assert.Equal(6, packets.Count);
         Assert.All(packets, bytes => Assert.True(IsStereo(bytes)));
 
         rig.Engine.SelfTest = true; // the own ears hear what a 64 kbps channel would send: stereo
-        await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
+        await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Feed(3);
         Assert.Equal(10, packets.Count);
         Assert.All(packets.Skip(6), bytes => Assert.True(IsStereo(bytes)));
@@ -1378,7 +1378,7 @@ public class SendPathTests
         }
 
         /// <summary>Holds or lets go of a key and waits until the key thread saw it.</summary>
-        public async Task Key(int vk, bool isDown, KeyAction action)
+        public async Task KeyAsync(int vk, bool isDown, KeyAction action)
         {
             Fake.Set(isDown, vk);
             await AsyncWait.UntilAsync(() => Keys.IsDown(action) == isDown);

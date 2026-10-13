@@ -56,7 +56,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     static string ChannelLog(TestServer server, Guid id) => Read(Path.Combine(server.DataDir, "logs", "channels", id.ToString()));
 
     /// <summary>Log lines are written under the server lock; clients may see the delta a moment earlier.</summary>
-    static async Task Eventually(Func<string> read, params string[] expected)
+    static async Task EventuallyAsync(Func<string> read, params string[] expected)
     {
         string text = "";
         // Generous: returns as soon as the lines are there, and a save on a slow CI disk can hold the lock for seconds.
@@ -181,7 +181,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await using var server = await TestServer.StartAsync(TestServer.Grant(id, "Admin"));
         await using var anna = await TestClient.ConnectAsync(server, "anna", id);
         await anna.SendAsync(new SendChat(ChatTarget.Server, null, "hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht"));
-        await Eventually(() => ServerLog(server), "gefaelscht");
+        await EventuallyAsync(() => ServerLog(server), "gefaelscht");
 
         var console = Assert.Single(server.Log, line => line.Contains("gefaelscht"));
         Assert.DoesNotContain(console, char.IsControl);
@@ -291,7 +291,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
             Assert.IsType<Rejected>(await dup.HandshakeAsync("ANNA"));
         await anna.DisposeAsync();
 
-        await Eventually(() => ServerLog(server),
+        await EventuallyAsync(() => ServerLog(server),
             "anna verbunden (", "abgelehnt: NicknameTaken", "127.0.0.1", "anna getrennt (vom Client beendet)");
     }
 
@@ -318,7 +318,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var ban = Assert.Single((await admin.WaitForAsync<BanList>(banList => banList.RequestId == "l")).Bans);
         await admin.SendAsync(new Unban(ban.Id));
 
-        await Eventually(() => ServerLog(server),
+        await EventuallyAsync(() => ServerLog(server),
             "Gruppe 'Team' angelegt von chef",
             "Gruppe 'Team' geändert von chef: Name 'Team' -> 'Team 2'",
             "Gruppe 'Team 2' an gast1 vergeben von chef",
@@ -350,16 +350,16 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == gast.Id && userUpdated.User.ChannelId == lobby);
         await gast.DisposeAsync();
 
-        await Eventually(() => ChannelLog(server, lobby),
+        await EventuallyAsync(() => ChannelLog(server, lobby),
             "[Lobby] gast hat den Channel betreten (verbunden)",
             "[Lobby] gast hat den Channel verlassen (wechselt nach Raid)",
             "[Lobby] gast wurde von chef aus Raid hierher verschoben",
             "[Lobby] gast hat den Channel verlassen (vom Client beendet)");
-        await Eventually(() => ChannelLog(server, raid),
+        await EventuallyAsync(() => ChannelLog(server, raid),
             "[Raid] Channel angelegt von chef",
             "[Raid] gast hat den Channel betreten (kommt aus Lobby)",
             "[Raid] gast wurde von chef nach Lobby verschoben");
-        await Eventually(() => ServerLog(server), "Channel 'Raid' angelegt von chef");
+        await EventuallyAsync(() => ServerLog(server), "Channel 'Raid' angelegt von chef");
         Assert.DoesNotContain("betreten", ServerLog(server)); // channel matters stay in channel logs
     }
 
@@ -380,13 +380,13 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await admin.SendAsync(new DeleteChannel(raid));
         await admin.WaitForAsync<ChannelRemoved>();
 
-        await Eventually(() => ChannelLog(server, lobby),
+        await EventuallyAsync(() => ChannelLog(server, lobby),
             "[Lobby] Link zu Raid gesetzt von chef", "[Lobby] Link zu Raid 2 entfernt (Channel gelöscht)");
-        await Eventually(() => ChannelLog(server, raid),
+        await EventuallyAsync(() => ChannelLog(server, raid),
             "[Raid] Link zu Lobby gesetzt von chef",
             "[Raid 2] Channel geändert von chef: Name 'Raid' -> 'Raid 2', Beschreibung geändert", // Package 83: the order stays
             "[Raid 2] Channel gelöscht von chef");
-        await Eventually(() => ServerLog(server), "Channel 'Raid 2' gelöscht von chef");
+        await EventuallyAsync(() => ServerLog(server), "Channel 'Raid 2' gelöscht von chef");
     }
 
     [Fact]
@@ -400,7 +400,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await client.SendAsync(new UpdateServerSettings("S", "", "geheim-123"));
         await client.WaitForAsync<ServerSettingsChanged>();
 
-        await Eventually(() => ServerLog(server), "Admin-Token erzeugt", "anna hat das Admin-Token eingelöst", "Passwort gesetzt");
+        await EventuallyAsync(() => ServerLog(server), "Admin-Token erzeugt", "anna hat das Admin-Token eingelöst", "Passwort gesetzt");
         var all = string.Join("\n", Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories).Select(ReadShared));
         Assert.DoesNotContain(token, all);
         Assert.DoesNotContain("geheim-123", all);
@@ -426,6 +426,6 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await again.SendAsync(new JoinChannel(raid));
         await again.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.ChannelId == raid);
 
-        await Eventually(() => ChannelLog(server, raid), "[Raid] Channel angelegt von chef", "[Raid 2] chef hat den Channel betreten");
+        await EventuallyAsync(() => ChannelLog(server, raid), "[Raid] Channel angelegt von chef", "[Raid 2] chef hat den Channel betreten");
     }
 }

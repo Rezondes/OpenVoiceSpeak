@@ -39,7 +39,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     {
         var server = Server(reply: request => new BackupList(request.RequestId, []));
 
-        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var id = await BoundAsync(server.SendAsync(new ListBackups(), route: received.Add));
 
         Assert.Equal(id, Assert.IsType<BackupList>(Assert.Single(received)).RequestId);
     }
@@ -54,7 +54,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         var pending = server.NewPending();
         Action<Message> route = received.Add;
 
-        var id = await Bound(server.SendAsync(new ListBackups(), pending: pending, route: route));
+        var id = await BoundAsync(server.SendAsync(new ListBackups(), pending: pending, route: route));
 
         Assert.Equal(ErrorTexts.For(ReasonCodes.ConnectionLost), pending.Error);
         Assert.Equal([ErrorTexts.For(ReasonCodes.ConnectionLost)], notices);
@@ -67,7 +67,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     public async Task Apply_SecondAnswerUnderTheId_ReachesTheRouteToo()
     {
         var server = Server();
-        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var id = await BoundAsync(server.SendAsync(new ListBackups(), route: received.Add));
         BackupList first = new(id, [], 0, 2), second = new(id, [], 1, 2);
 
         server.Apply(first);
@@ -80,8 +80,8 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     public async Task Apply_AnswerToAnotherRequest_ReachesNoRoute()
     {
         var server = Server();
-        await Bound(server.SendAsync(new ListBackups(), route: received.Add));
-        var other = await Bound(server.SendAsync(new ListBackups())); // without a route
+        await BoundAsync(server.SendAsync(new ListBackups(), route: received.Add));
+        var other = await BoundAsync(server.SendAsync(new ListBackups())); // without a route
 
         server.Apply(new BackupList(other, []));
         server.Apply(new BackupList(null, []));
@@ -94,9 +94,9 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     {
         var server = Server();
         var kept = new List<Message>();
-        var first = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
-        var second = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
-        var other = await Bound(server.SendAsync(new ListBans(), route: kept.Add));
+        var first = await BoundAsync(server.SendAsync(new ListBackups(), route: received.Add));
+        var second = await BoundAsync(server.SendAsync(new ListBackups(), route: received.Add));
+        var other = await BoundAsync(server.SendAsync(new ListBans(), route: kept.Add));
 
         server.Routes.RemoveAll(received.Add);
         server.Apply(new BackupList(first, []));
@@ -115,7 +115,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         var notices = new List<string>();
         server.Notice += notices.Add;
         var pending = server.NewPending();
-        var id = await Bound(server.SendAsync(new ListBackups(), pending: pending, route: received.Add));
+        var id = await BoundAsync(server.SendAsync(new ListBackups(), pending: pending, route: received.Add));
         var error = new Error(id, ReasonCodes.PermissionDenied);
 
         server.Apply(error);
@@ -167,7 +167,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     {
         var type = AnswerTypes().Single(candidate => candidate.Name == typeName);
         var server = Server();
-        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var id = await BoundAsync(server.SendAsync(new ListBackups(), route: received.Add));
         var answer = type == typeof(Error) ? new Error(id, ReasonCodes.InvalidValue) : (Message)RuntimeHelpers.GetUninitializedObject(type);
         type.GetProperty("RequestId")!.SetValue(answer, id);
 
@@ -181,7 +181,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     public async Task Apply_AnswerListedAsNotRouted_SkipsTheRouteOfItsRequest(string typeName)
     {
         var server = Server();
-        var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
+        var id = await BoundAsync(server.SendAsync(new ListBackups(), route: received.Add));
 
         server.Apply(AnswersNotRouted[typeName].Sample(id));
 
@@ -286,41 +286,41 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         var file = Path.Combine(dir, "up.ovsbackup");
         File.WriteAllBytes(file, [1, 2, 3]);
 
-        await Bound(page.RequestListsAsync());
+        await BoundAsync(page.RequestListsAsync());
         KnownUserViewModel Card(string fingerprint) => page.UsersAndBans.Users.Single(knownUser => knownUser.Fingerprint == fingerprint);
-        await Bound(Card("fpX").UnbanCommand.ExecuteAsync(null));
-        await Bound(Card("fpX").LiftMuteCommand.ExecuteAsync(null));
-        await Bound(Card("fpY").BanCommand.ExecuteAsync(null));
-        await Bound(Card("fpY").DeleteCommand.ExecuteAsync(null));
+        await BoundAsync(Card("fpX").UnbanCommand.ExecuteAsync(null));
+        await BoundAsync(Card("fpX").LiftMuteCommand.ExecuteAsync(null));
+        await BoundAsync(Card("fpY").BanCommand.ExecuteAsync(null));
+        await BoundAsync(Card("fpY").DeleteCommand.ExecuteAsync(null));
         var guest = Card("fpY").Toggles.Single(groupAssignment => groupAssignment.GroupId == WellKnownGroups.Guest);
         guest.IsChecked = false;
-        await Bound(guest.ToggleCommand.ExecuteAsync(null));
+        await BoundAsync(guest.ToggleCommand.ExecuteAsync(null));
         var admin = Card("fpY").Toggles.Single(groupAssignment => groupAssignment.GroupId == WellKnownGroups.Admin);
         admin.IsChecked = true;
-        await Bound(admin.ToggleCommand.ExecuteAsync(null));
-        await Bound(page.UsersAndBans.Bans.Single().UnbanCommand.ExecuteAsync(null));
-        await Bound(page.BackupCard.NewBackupCommand.ExecuteAsync(null));
-        await Bound(page.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null));
-        await Bound(page.BackupCard.Backups.Single().RestoreCommand.ExecuteAsync(null));
-        await Bound(page.BackupCard.DownloadBackupAsync(page.BackupCard.Backups.Single(), Path.Combine(dir, "down.ovsbackup")));
-        await Bound(page.BackupCard.UploadBackupAsync(file, restore: false));
+        await BoundAsync(admin.ToggleCommand.ExecuteAsync(null));
+        await BoundAsync(page.UsersAndBans.Bans.Single().UnbanCommand.ExecuteAsync(null));
+        await BoundAsync(page.BackupCard.NewBackupCommand.ExecuteAsync(null));
+        await BoundAsync(page.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null));
+        await BoundAsync(page.BackupCard.Backups.Single().RestoreCommand.ExecuteAsync(null));
+        await BoundAsync(page.BackupCard.DownloadBackupAsync(page.BackupCard.Backups.Single(), Path.Combine(dir, "down.ovsbackup")));
+        await BoundAsync(page.BackupCard.UploadBackupAsync(file, restore: false));
         page.Logs.Files.Single().IsSelected = true;
-        await Bound(page.Logs.DownloadAsync(Path.Combine(dir, "server.log")));
+        await BoundAsync(page.Logs.DownloadAsync(Path.Combine(dir, "server.log")));
         page.Logs.OpenCommand.Execute(page.Logs.Files.Single());
         page.Logs.SearchText = "Start";
         page.Logs.SearchCommand.Execute(null);
-        await Bound(page.GroupList.NewGroupCommand.ExecuteAsync(null));
-        await Bound(page.GroupList.SaveGroupCommand.ExecuteAsync(null));
+        await BoundAsync(page.GroupList.NewGroupCommand.ExecuteAsync(null));
+        await BoundAsync(page.GroupList.SaveGroupCommand.ExecuteAsync(null));
         GroupEditViewModel TeamRow() => page.GroupList.Groups.Single(groupEdit => groupEdit.Id == Team);
         page.GroupList.SelectedGroup = TeamRow();
-        await Bound(page.GroupList.SaveGroupCommand.ExecuteAsync(null));
-        await Bound(page.GroupList.MoveGroupAsync(TeamRow(), page.GroupList.Groups[0], after: false));
+        await BoundAsync(page.GroupList.SaveGroupCommand.ExecuteAsync(null));
+        await BoundAsync(page.GroupList.MoveGroupAsync(TeamRow(), page.GroupList.Groups[0], after: false));
         page.GroupList.SelectedGroup = TeamRow();
-        await Bound(page.GroupList.DeleteGroupCommand.ExecuteAsync(null));
-        await Bound(page.ServerSettings.SaveCommand.ExecuteAsync(null));
+        await BoundAsync(page.GroupList.DeleteGroupCommand.ExecuteAsync(null));
+        await BoundAsync(page.ServerSettings.SaveCommand.ExecuteAsync(null));
         page.ServerIcon.RemoveIconCommand.Execute(null);
         page.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
-        await Bound(page.Links.ApplyCommand.ExecuteAsync(null));
+        await BoundAsync(page.Links.ApplyCommand.ExecuteAsync(null));
         return new DrivenPage(page, server, routes);
     }
 
@@ -348,7 +348,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     {
         var server = Server();
         var page = new AdminViewModel(server);
-        await Bound(page.RequestListsAsync());
+        await BoundAsync(page.RequestListsAsync());
 
         page.Detach();
         server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [Yvonne]));
@@ -381,7 +381,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         var page = new AdminViewModel(server);
         var file = Path.Combine(dir, "up.ovsbackup");
         File.WriteAllBytes(file, [1, 2, 3]);
-        await Bound(page.BackupCard.UploadBackupAsync(file, restore: false));
+        await BoundAsync(page.BackupCard.UploadBackupAsync(file, restore: false));
 
         server.Apply(new BackupList(sent.OfType<UploadBackupChunk>().Single().RequestId, [Stored]));
 

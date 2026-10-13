@@ -156,7 +156,7 @@ sealed class PageFlowRig
     /// <summary>Opens the administration and edits its server settings, so it holds a change.</summary>
     public async Task<AdminViewModel> OpenEditedAdminAsync()
     {
-        await HangGuard.Bound(Flow.OpenAdminAsync());
+        await HangGuard.BoundAsync(Flow.OpenAdminAsync());
         Flow.AdminPage!.ServerSettings.Name = "Neu";
         Changes.Clear();
         return Flow.AdminPage;

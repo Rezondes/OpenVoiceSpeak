@@ -59,7 +59,7 @@ sealed class ConnectSeam(string profileDir, TimeProvider time)
         }
     }
 
-    /// <summary>Completes with the call of that number (from 1) once it was made; wrap it in <see cref="HangGuard.Bound{T}"/>.</summary>
+    /// <summary>Completes with the call of that number (from 1) once it was made; wrap it in <see cref="HangGuard.BoundAsync{T}"/>.</summary>
     public Task<ConnectAttempt> WaitForAttemptAsync(int number)
     {
         lock (gate) return GetOrAddWaiter(number).Task;

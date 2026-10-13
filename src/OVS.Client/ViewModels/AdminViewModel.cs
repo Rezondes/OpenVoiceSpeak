@@ -140,5 +140,5 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     internal AdminTransfer Transfer { get; }
 
     [RelayCommand]
-    Task Refresh() => RequestListsAsync();
+    Task RefreshAsync() => RequestListsAsync();
 }

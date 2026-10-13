@@ -242,7 +242,7 @@ public class ServerViewModelTests
         var fixture = Create();
         fixture.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
 
-        await HangGuard.Bound(fixture.Channel(Bravo).JoinCommand.ExecuteAsync(null));
+        await HangGuard.BoundAsync(fixture.Channel(Bravo).JoinCommand.ExecuteAsync(null));
 
         Assert.Empty(fixture.Sent);
     }
@@ -253,7 +253,7 @@ public class ServerViewModelTests
         var fixture = Create(dialogs: new ServerDialogs { AskChannelPassword = _ => Task.FromResult<string?>("") });
         fixture.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
 
-        await HangGuard.Bound(fixture.Vm.JoinAsync(Bravo));
+        await HangGuard.BoundAsync(fixture.Vm.JoinAsync(Bravo));
 
         Assert.Empty(fixture.Sent);
     }
@@ -264,7 +264,7 @@ public class ServerViewModelTests
         var fixture = Create(dialogs: new ServerDialogs { AskChannelPassword = _ => throw new InvalidOperationException("Dialog kaputt") });
         fixture.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "", 1, HasPassword: true)));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(fixture.Channel(Bravo).JoinCommand.ExecuteAsync(null)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.BoundAsync(fixture.Channel(Bravo).JoinCommand.ExecuteAsync(null)));
 
         Assert.Empty(fixture.Sent);
     }
@@ -1100,7 +1100,7 @@ public class ServerViewModelTests
         fixture.Vm.Notice += notices.Add;
         var anna = fixture.User(2);
         Assert.True(anna.CanDrag);
-        var done = fixture.Vm.DropUser(anna, fixture.Channel(Bravo));
+        var done = fixture.Vm.DropUserAsync(anna, fixture.Channel(Bravo));
         Assert.Equal(new MoveUser(2, Bravo), fixture.Sent[^1] with { RequestId = null });
         Assert.False(done.IsCompleted); // waits for the server
         fixture.Vm.Apply(new Error(fixture.Sent[^1].RequestId, ReasonCodes.ChannelFull));
@@ -1118,7 +1118,7 @@ public class ServerViewModelTests
         var fixture = Create(Moderator, others: [Weaker()]);
         var anna = fixture.User(2);
         fixture.Vm.Apply(new UserLeft(2));
-        Assert.True(fixture.Vm.DropUser(anna, fixture.Channel(Bravo)).IsCompleted); // nothing to wait for
+        Assert.True(fixture.Vm.DropUserAsync(anna, fixture.Channel(Bravo)).IsCompleted); // nothing to wait for
         Assert.Empty(fixture.Sent);
     }
 
@@ -1138,12 +1138,12 @@ public class ServerViewModelTests
         Assert.False(ServerViewModel.IsDropTarget(anna, fixture.Channel(separator)));
         Assert.False(ServerViewModel.IsDropTarget(bert, fixture.Channel(Bravo)));
         Assert.True(ServerViewModel.IsDropTarget(anna, fixture.Channel(Bravo)));
-        await fixture.Vm.DropUser(anna, fixture.Channel(Lobby));
-        await fixture.Vm.DropUser(bert, fixture.Channel(Bravo));
-        await fixture.Vm.DropUser(me, fixture.Channel(separator));
+        await fixture.Vm.DropUserAsync(anna, fixture.Channel(Lobby));
+        await fixture.Vm.DropUserAsync(bert, fixture.Channel(Bravo));
+        await fixture.Vm.DropUserAsync(me, fixture.Channel(separator));
         Assert.Empty(fixture.Sent);
 
-        var joined = fixture.Vm.DropUser(me, fixture.Channel(Bravo));
+        var joined = fixture.Vm.DropUserAsync(me, fixture.Channel(Bravo));
         Assert.Equal(["Bravo"], asked);
         Assert.Equal(new JoinChannel(Bravo, "geheim"), fixture.Sent[^1] with { RequestId = null });
         fixture.Vm.Apply(new UserUpdated(User(1, "ich", Bravo, Moderator)));

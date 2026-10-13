@@ -43,7 +43,7 @@ public sealed class ChannelTreeViewModelTests
     {
         var lobby = server.Tree.Channels.Single(channel => channel.Name == "Lobby");
 
-        await HangGuard.Bound(server.Tree.MoveChannelAsync(lobby, lobby, after: true));
+        await HangGuard.BoundAsync(server.Tree.MoveChannelAsync(lobby, lobby, after: true));
 
         Assert.Empty(sent.OfType<ReorderChannels>());
     }
@@ -54,7 +54,7 @@ public sealed class ChannelTreeViewModelTests
         var first = server.Tree.Channels[0];
         var second = server.Tree.Channels[1];
 
-        await HangGuard.Bound(server.Tree.MoveChannelAsync(first, second, after: false));
+        await HangGuard.BoundAsync(server.Tree.MoveChannelAsync(first, second, after: false));
 
         Assert.Empty(sent.OfType<ReorderChannels>());
     }

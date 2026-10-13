@@ -105,7 +105,7 @@ public class SoundTests
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
         engine.Configure(new ClientSettings());
         engine.Connected = true;
-        async Task PressAndRelease(KeyAction action, int expected)
+        async Task PressAndReleaseAsync(KeyAction action, int expected)
         {
             keys.Simulate(action, true);
             await AsyncWait.UntilAsync(() => keys.IsDown(action));
@@ -113,16 +113,16 @@ public class SoundTests
             await AsyncWait.UntilAsync(() => engine.Sounds.Recent.Count >= expected && !keys.IsDown(action));
             await AsyncWait.AssertStaysFalseAsync(() => engine.Sounds.Recent.Count > expected, TimeSpan.FromMilliseconds(50), "a few more polls: nothing else plays");
         }
-        await PressAndRelease(KeyAction.PushToTalk, 0);
+        await PressAndReleaseAsync(KeyAction.PushToTalk, 0);
         Assert.Empty(engine.Sounds.Recent); // off by default
 
         engine.Configure(on);
-        await PressAndRelease(KeyAction.PushToTalk, 2);
-        await PressAndRelease(KeyAction.LinkPushToTalk, 4);
+        await PressAndReleaseAsync(KeyAction.PushToTalk, 2);
+        await PressAndReleaseAsync(KeyAction.LinkPushToTalk, 4);
         Assert.Equal([.. talk, .. talk], engine.Sounds.Recent);
 
         engine.Connected = false; // not connected: the keys do nothing, so no tone
-        await PressAndRelease(KeyAction.PushToTalk, 4);
+        await PressAndReleaseAsync(KeyAction.PushToTalk, 4);
         Assert.Equal(4, engine.Sounds.Recent.Count);
     }
 }

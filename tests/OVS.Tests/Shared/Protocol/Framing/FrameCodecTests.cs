@@ -11,7 +11,7 @@ namespace OVS.Tests.Shared.Protocol.Framing;
 
 public class FrameCodecTests
 {
-    static async Task<byte[]> Encode(params Message[] messages)
+    static async Task<byte[]> EncodeAsync(params Message[] messages)
     {
         var milliseconds = new MemoryStream();
         var writer = new FrameWriter(milliseconds);
@@ -31,14 +31,14 @@ public class FrameCodecTests
     [Fact]
     public async Task WriteThenRead_Ping_RoundTrips()
     {
-        var reader = new FrameReader(new MemoryStream(await Encode(new Ping())));
+        var reader = new FrameReader(new MemoryStream(await EncodeAsync(new Ping())));
         Assert.IsType<Ping>(await reader.ReadAsync());
     }
 
     [Fact]
     public async Task WriteThenRead_Error_KeepsFields()
     {
-        var reader = new FrameReader(new MemoryStream(await Encode(new Error("r1", ReasonCodes.NotFound, "x"))));
+        var reader = new FrameReader(new MemoryStream(await EncodeAsync(new Error("r1", ReasonCodes.NotFound, "x"))));
         Assert.Equal(new Error("r1", ReasonCodes.NotFound, "x"), await reader.ReadAsync());
     }
 
@@ -55,14 +55,14 @@ public class FrameCodecTests
     public async Task Read_TrickledBytes_AssemblesFrame()
     {
         var expected = new Error(null, ReasonCodes.InvalidName);
-        var reader = new FrameReader(new TrickleStream(await Encode(expected)));
+        var reader = new FrameReader(new TrickleStream(await EncodeAsync(expected)));
         Assert.Equal(expected, await reader.ReadAsync());
     }
 
     [Fact]
     public async Task Read_EndInsideFrame_ThrowsEndOfStream()
     {
-        var bytes = await Encode(new Ping());
+        var bytes = await EncodeAsync(new Ping());
         var reader = new FrameReader(new MemoryStream(bytes[..^2]));
         await Assert.ThrowsAsync<EndOfStreamException>(() => reader.ReadAsync());
     }
@@ -77,7 +77,7 @@ public class FrameCodecTests
     [Fact]
     public async Task Read_EndBetweenFrames_ReturnsNull()
     {
-        var reader = new FrameReader(new MemoryStream(await Encode(new Ping())));
+        var reader = new FrameReader(new MemoryStream(await EncodeAsync(new Ping())));
         await reader.ReadAsync();
         Assert.Null(await reader.ReadAsync());
     }

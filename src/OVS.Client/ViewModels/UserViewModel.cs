@@ -117,11 +117,11 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
             : [];
         // compared with the live ticks: a refused click is put back, and an open menu is not rebuilt by unrelated updates
         if (!wanted.SequenceEqual(Groups.Select(groupAssignment => (groupAssignment.GroupId, groupAssignment.Name, groupAssignment.IsChecked, groupAssignment.IsEnabled))))
-            Groups = wanted.Select(wantedGroup => new GroupAssignmentViewModel(wantedGroup.Id, wantedGroup.Name, wantedGroup.Checked, wantedGroup.AssignableByMe, ToggleGroup)).ToList();
+            Groups = wanted.Select(wantedGroup => new GroupAssignmentViewModel(wantedGroup.Id, wantedGroup.Name, wantedGroup.Checked, wantedGroup.AssignableByMe, ToggleGroupAsync)).ToList();
     }
 
     /// <summary>Package 119: IsChecked already holds the new value; the row spins until the server shows it.</summary>
-    Task ToggleGroup(GroupAssignmentViewModel toggle)
+    Task ToggleGroupAsync(GroupAssignmentViewModel toggle)
     {
         var sent = owner.SetUserGroup(Fingerprint, SessionId, toggle.GroupId, toggle.IsChecked);
         pendingGroups[toggle.GroupId] = (toggle.IsChecked, sent);
@@ -165,18 +165,18 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     void Message() => owner.RequestPrivateChat(this);
 
     [RelayCommand]
-    Task ToggleServerMute()
+    Task ToggleServerMuteAsync()
     {
         owner.ServerMute(SessionId, !ServerMuted);
         return Task.CompletedTask;
     }
 
     [RelayCommand]
-    Task Kick() =>
-        ServerViewModel.Ask<string>(owner.Dialogs.AskText is { } ask
+    Task KickAsync() =>
+        ServerViewModel.AskAsync<string>(owner.Dialogs.AskText is { } ask
             ? submit => ask(string.Format(Strings.Dialog_Kick, Nickname), Strings.Dialog_KickReason, submit) : null, reason => owner.Kick(SessionId, reason));
 
     [RelayCommand]
-    Task Ban() =>
-        ServerViewModel.Ask<BanChoice>(owner.Dialogs.Ban is { } ban ? submit => ban(Nickname, true, submit) : null, choice => owner.Ban(SessionId, choice));
+    Task BanAsync() =>
+        ServerViewModel.AskAsync<BanChoice>(owner.Dialogs.Ban is { } ban ? submit => ban(Nickname, true, submit) : null, choice => owner.Ban(SessionId, choice));
 }

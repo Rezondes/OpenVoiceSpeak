@@ -1496,7 +1496,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             check.SetResult("Aktuell");
             return [];
         });
-        Waits("settings save", () => _ = viewModel.PageFlow.SettingsPage!.SaveCommand.ExecuteAsync(null), () =>
+        Waits("settings save", () => _ = viewModel.PageFlow.SettingsPage!.SaveAndCloseCommand.ExecuteAsync(null), () =>
         {
             restart.SetResult();
             return [];

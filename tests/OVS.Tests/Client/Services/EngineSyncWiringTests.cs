@@ -272,7 +272,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         await using var mainViewModel = CreateMainViewModel(hardware);
         await OpenSettingsWithMicrophoneAsync(mainViewModel, hardware);
 
-        await HangGuard.Bound(mainViewModel.ApplySettingsAsync(new ClientSettings { InputDeviceId = "gone" }));
+        await HangGuard.BoundAsync(mainViewModel.ApplySettingsAsync(new ClientSettings { InputDeviceId = "gone" }));
 
         var notice = Assert.Single(mainViewModel.Notices);
         Assert.Equal((Strings.Audio_DeviceFallback, NoticeKind.Warning), (notice.Text, notice.Kind));
@@ -302,7 +302,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
             lock (queued) queued.Add(action);
             arrived.TrySetResult();
         }, hardware: new FakeAudioHardware { Listing = ListOneEach });
-        await HangGuard.Bound(arrived.Task); // the start's list is loaded and waits for the UI thread
+        await HangGuard.BoundAsync(arrived.Task); // the start's list is loaded and waits for the UI thread
 
         var knownBeforeTheUiThreadRuns = mainViewModel.Devices.Known;
         Action[] due;

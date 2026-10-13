@@ -14,5 +14,5 @@ public sealed partial class GroupAssignmentViewModel(Guid groupId, string name, 
 
     /// <summary>Bound to the checkbox's Command: IsChecked already holds the new value.</summary>
     [RelayCommand]
-    Task Toggle() => onToggle(this);
+    Task ToggleAsync() => onToggle(this);
 }

@@ -474,7 +474,7 @@ public sealed class EngineSyncTests : IDisposable
 
         Assert.False(configuring.IsCompleted);
         hardware.OpenGate.Set();
-        await HangGuard.Bound(configuring);
+        await HangGuard.BoundAsync(configuring);
     }
 
     [Fact]
@@ -483,7 +483,7 @@ public sealed class EngineSyncTests : IDisposable
         using var withDevices = await OpenEngineWithMicrophoneAsync();
         var sync = CreateSync(withDevices);
 
-        var warning = await HangGuard.Bound(sync.ConfigureAsync(new ClientSettings { InputDeviceId = "gone" }));
+        var warning = await HangGuard.BoundAsync(sync.ConfigureAsync(new ClientSettings { InputDeviceId = "gone" }));
 
         Assert.Equal(Strings.Audio_DeviceFallback, warning);
     }
@@ -494,7 +494,7 @@ public sealed class EngineSyncTests : IDisposable
         using var withDevices = await OpenEngineWithMicrophoneAsync();
         var sync = CreateSync(withDevices);
 
-        await HangGuard.Bound(sync.ConfigureAsync(new ClientSettings { Mode = TransmitMode.VoiceActivation }));
+        await HangGuard.BoundAsync(sync.ConfigureAsync(new ClientSettings { Mode = TransmitMode.VoiceActivation }));
 
         Assert.Equal(TransmitMode.VoiceActivation, withDevices.Mode);
     }

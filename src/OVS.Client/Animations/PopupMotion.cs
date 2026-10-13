@@ -62,7 +62,7 @@ internal static class PopupMotion
             start.Setters.Add(new Setter(Visual.OpacityProperty, 0d));
             end.Setters.Add(new Setter(Visual.OpacityProperty, 1d));
         }
-        _ = new Animation { Duration = Motion.Normal, Easing = Motion.Ease, FillMode = FillMode.Backward, Children = { start, end } }.Play(child);
+        _ = new Animation { Duration = Motion.Normal, Easing = Motion.Ease, FillMode = FillMode.Backward, Children = { start, end } }.PlayAsync(child);
     }
 
     static readonly ConditionalWeakTable<Popup, object> popupPlaces = [];
@@ -91,7 +91,7 @@ internal static class PopupMotion
             Canvas.SetLeft(ghost, at.X);
             Canvas.SetTop(ghost, at.Y);
             overlay.Children.Add(ghost);
-            await FadeOut(ghost);
+            await FadeOutAsync(ghost);
         }
         catch (Exception)
         {
@@ -104,7 +104,7 @@ internal static class PopupMotion
         }
     }
 
-    static Task FadeOut(Image ghost) => new Animation
+    static Task FadeOutAsync(Image ghost) => new Animation
     {
         Duration = Motion.Fast,
         Easing = Motion.Ease,
@@ -114,5 +114,5 @@ internal static class PopupMotion
             new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 1d) } },
             new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 0d) } },
         },
-    }.Play(ghost);
+    }.PlayAsync(ghost);
 }

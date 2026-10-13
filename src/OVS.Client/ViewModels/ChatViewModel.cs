@@ -171,7 +171,7 @@ public sealed partial class ChatViewModel : ObservableObject
     bool CanSend() => CanWrite && !string.IsNullOrWhiteSpace(Draft) && !IsTooLong;
 
     [RelayCommand(CanExecute = nameof(CanSend))]
-    async Task Send()
+    async Task SendAsync()
     {
         // Package 83: the server's text rules, so the draft stays for correcting
         if (TextRules.NormalizeText(Draft, ProtocolLimits.MaxChatLength) is not { } checkedText)
@@ -190,9 +190,9 @@ public sealed partial class ChatViewModel : ObservableObject
         Draft = "";
         ComposerError = null;
         // Package 98: shown at once, greyed until the server's echo
-        Task Send(PendingActionViewModel pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
-        var sending = new OutgoingChatMessageViewModel(server.NewPending(), Send);
+        Task SendAsync(PendingActionViewModel pending) => server.SendAsync(new SendChat(target, tab.PartnerSession, text), pending: pending);
+        var sending = new OutgoingChatMessageViewModel(server.NewPending(), SendAsync);
         Add(tab, new ChatEntry(LocalNow(), text, server.Mirror.Self?.Nickname ?? "", IsOwn: true, Sending: sending));
-        await Send(sending.Pending);
+        await SendAsync(sending.Pending);
     }
 }

@@ -158,32 +158,32 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         // Only validated values go into the log: a raw nickname could carry line breaks.
         string? logName = null, logFingerprint = null;
 
-        async Task<Session?> Reject(string code, string? detail = null)
+        async Task<Session?> RejectAsync(string code, string? detail = null)
         {
             state.LogRejected(ip, code, logName, logFingerprint);
             await writer.WriteAsync(new Rejected(code, detail), cancellation);
             return null;
         }
 
-        if (await reader.ReadAsync(cancellation) is not ClientHello hello) return await Reject(ReasonCodes.ProtocolError);
+        if (await reader.ReadAsync(cancellation) is not ClientHello hello) return await RejectAsync(ReasonCodes.ProtocolError);
         if (hello.ProtocolVersion != WireProtocol.Version)
-            return await Reject(ReasonCodes.VersionMismatch, $"Server spricht Protokollversion {WireProtocol.Version}");
+            return await RejectAsync(ReasonCodes.VersionMismatch, $"Server spricht Protokollversion {WireProtocol.Version}");
         var nickname = TextRules.NormalizeName(hello.Nickname, ProtocolLimits.MaxNicknameLength);
-        if (nickname is null) return await Reject(ReasonCodes.NicknameInvalid);
+        if (nickname is null) return await RejectAsync(ReasonCodes.NicknameInvalid);
         logName = nickname;
-        if (!Base64Text.TryDecode(hello.PublicKey, out var publicKey)) return await Reject(ReasonCodes.ProtocolError);
+        if (!Base64Text.TryDecode(hello.PublicKey, out var publicKey)) return await RejectAsync(ReasonCodes.ProtocolError);
 
         var nonce = RandomNumberGenerator.GetBytes(32);
         await writer.WriteAsync(new Challenge(Convert.ToBase64String(nonce)), cancellation);
 
         if (await reader.ReadAsync(cancellation) is not ClientProof proof || !Base64Text.TryDecode(proof.Signature, out var signature))
-            return await Reject(ReasonCodes.ProtocolError);
+            return await RejectAsync(ReasonCodes.ProtocolError);
         if (!ClientIdentity.Verify(publicKey, ClientIdentity.ProofData(nonce, certHash), signature))
-            return await Reject(ReasonCodes.BadSignature);
+            return await RejectAsync(ReasonCodes.BadSignature);
 
         logFingerprint = ClientIdentity.ComputeFingerprint(publicKey);
         var (session, rejection) = state.Admit(logFingerprint, nickname, ip, hello.Password);
-        return rejection is null ? session : await Reject(rejection.Code, rejection.Detail);
+        return rejection is null ? session : await RejectAsync(rejection.Code, rejection.Detail);
     }
 
     async Task ReadLoopAsync(Session session, FrameReader reader)

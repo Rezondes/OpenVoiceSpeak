@@ -88,15 +88,15 @@ public sealed class ChatTests
         await using var _g = gast;
         await using var _w = weit;
 
-        async Task<string> Code(SendChat request, string id)
+        async Task<string> CodeAsync(SendChat request, string id)
         {
             await gast.SendAsync(request with { RequestId = id });
             return (await gast.ErrorAsync(id)).Code;
         }
-        Assert.Equal(ReasonCodes.InvalidValue, await Code(new SendChat(ChatTarget.Channel, null, "   "), "leer"));
-        Assert.Equal(ReasonCodes.InvalidValue, await Code(new SendChat(ChatTarget.Channel, null, new string('x', ProtocolLimits.MaxChatLength + 1)), "lang"));
-        Assert.Equal(ReasonCodes.NotFound, await Code(new SendChat(ChatTarget.Private, 999, "hallo"), "offline"));
-        Assert.Equal(ReasonCodes.InvalidValue, await Code(new SendChat(ChatTarget.Private, gast.Id, "ich"), "selbst"));
+        Assert.Equal(ReasonCodes.InvalidValue, await CodeAsync(new SendChat(ChatTarget.Channel, null, "   "), "leer"));
+        Assert.Equal(ReasonCodes.InvalidValue, await CodeAsync(new SendChat(ChatTarget.Channel, null, new string('x', ProtocolLimits.MaxChatLength + 1)), "lang"));
+        Assert.Equal(ReasonCodes.NotFound, await CodeAsync(new SendChat(ChatTarget.Private, 999, "hallo"), "offline"));
+        Assert.Equal(ReasonCodes.InvalidValue, await CodeAsync(new SendChat(ChatTarget.Private, gast.Id, "ich"), "selbst"));
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, new string('x', ProtocolLimits.MaxChatLength)));
         await chef.WaitForAsync<ChatMessage>(); // exactly the limit is fine
     }

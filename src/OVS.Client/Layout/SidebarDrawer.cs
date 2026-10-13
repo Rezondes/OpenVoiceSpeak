@@ -68,7 +68,7 @@ internal sealed class SidebarDrawer
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, from) } },
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(TranslateTransform.XProperty, to) } },
             },
-        }.Play(sidebar, slideCancel.Token);
+        }.PlayAsync(sidebar, slideCancel.Token);
         var dim = new Avalonia.Animation.Animation
         {
             Duration = Motion.Normal,
@@ -79,7 +79,7 @@ internal sealed class SidebarDrawer
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(0), Setters = { new Avalonia.Styling.Setter(Visual.OpacityProperty, open ? 0d : 1d) } },
                 new Avalonia.Animation.KeyFrame { Cue = new Avalonia.Animation.Cue(1), Setters = { new Avalonia.Styling.Setter(Visual.OpacityProperty, open ? 1d : 0d) } },
             },
-        }.Play(scrim, slideCancel.Token);
+        }.PlayAsync(scrim, slideCancel.Token);
         await Task.WhenAll(slide, dim);
         if (slideCancel.IsCancellationRequested) return;
         if (!open) window.Classes.Set("drawer", false);

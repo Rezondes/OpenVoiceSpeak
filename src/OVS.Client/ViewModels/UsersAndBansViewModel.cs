@@ -334,7 +334,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     Task BanUserAsync(KnownUserViewModel user)
     {
         var ipKnown = user.Info.LastIp is not null;
-        return ServerViewModel.Ask<BanChoice>(dialogs.Ban is { } showBanDialog ? submit => showBanDialog(user.Nickname, ipKnown, submit) : null,
+        return ServerViewModel.AskAsync<BanChoice>(dialogs.Ban is { } showBanDialog ? submit => showBanDialog(user.Nickname, ipKnown, submit) : null,
             choice => CardAction(user.Fingerprint, new BanKnownUser(user.Fingerprint, choice.Reason, choice.DurationMinutes, choice.IncludeIp && ipKnown), bans: true));
     }
 

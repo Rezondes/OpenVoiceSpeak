@@ -126,7 +126,7 @@ internal sealed class PlaceTracker
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(TranslateTransform.YProperty, from) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.YProperty, 0d) } },
             },
-        }.Play(container, cancel.Token);
+        }.PlayAsync(container, cancel.Token);
     }
 
     /// <summary>A recycled row starts still, whatever its last entry's glide was doing.</summary>

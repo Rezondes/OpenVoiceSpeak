@@ -126,7 +126,7 @@ public sealed class ServerTuningTests
         await using var server = await TestServer.StartAsync(time: time);
         await using var talker = await TestClient.ConnectAsync(server, "redner");
         await using var flood = await TestClient.ConnectAsync(server, "flut");
-        async Task Sync(TestClient client) // everything sent before is handled at the current time
+        async Task SyncAsync(TestClient client) // everything sent before is handled at the current time
         {
             await client.SendAsync(new Ping());
             await client.WaitForAsync<Pong>();
@@ -136,19 +136,19 @@ public sealed class ServerTuningTests
         {
             await talker.SendAsync(new VoiceUp(number, 0, Convert.ToBase64String([1, 2, 3])));
             time.Advance(TimeSpan.FromMilliseconds(20));
-            if (number % 25 == 0) await Sync(talker);
+            if (number % 25 == 0) await SyncAsync(talker);
         }
-        await Sync(talker);
+        await SyncAsync(talker);
 
         for (uint second = 0; second < 12; second++) // the same second of speech arriving as one burst after each stall
         {
             for (uint index = 0; index < 20; index++) await talker.SendAsync(new VoiceUp(1000 + second * 50 + index, 0, Convert.ToBase64String([1, 2, 3])));
-            await Sync(talker);
+            await SyncAsync(talker);
             time.Advance(TimeSpan.FromMilliseconds(500));
-            await Sync(talker);
+            await SyncAsync(talker);
             time.Advance(TimeSpan.FromMilliseconds(500));
         }
-        await Sync(talker);
+        await SyncAsync(talker);
 
         var padded = Convert.ToBase64String(new byte[VoiceHeader.MaxOpusSize + 1]);
         bool closed = false;
@@ -157,7 +157,7 @@ public sealed class ServerTuningTests
             try
             {
                 for (int index = 0; index < 5; index++) await flood.SendAsync(new VoiceUp((uint)index, 0, padded));
-                await Sync(flood);
+                await SyncAsync(flood);
             }
             catch (Exception exception) when (exception is EndOfStreamException or IOException)
             {
@@ -167,7 +167,7 @@ public sealed class ServerTuningTests
             time.Advance(TimeSpan.FromMilliseconds(500));
         }
         Assert.True(closed || await flood.WaitClosedAsync());
-        await Sync(talker); // still connected
+        await SyncAsync(talker); // still connected
     }
 
     /// <summary>Package 141: a listener that does not read loses voice once a second of it waits, never its connection.</summary>
@@ -268,7 +268,7 @@ public sealed class ServerTuningTests
         }, time: time);
         await using var client = await TestClient.ConnectAsync(server, "chef", admin);
         int count = 0;
-        async Task<string> Ask(int offset)
+        async Task<string> AskAsync(int offset)
         {
             var id = $"l{count++}";
             await client.SendAsync(new ListUsers(offset) { RequestId = id });
@@ -283,21 +283,21 @@ public sealed class ServerTuningTests
         // Normal paging through all 450 users, a whole burst of times: never throttled.
         for (int round = 0; round < ServerTuning.ListBurst; round++)
             foreach (var offset in new[] { 0, ServerTuning.ListPageSize, 2 * ServerTuning.ListPageSize })
-                Assert.Equal("ok", await Ask(offset));
+                Assert.Equal("ok", await AskAsync(offset));
 
         // A page served in this round already counts like a first page.
-        Assert.Equal(ReasonCodes.RateLimited, await Ask(ServerTuning.ListPageSize));
+        Assert.Equal(ReasonCodes.RateLimited, await AskAsync(ServerTuning.ListPageSize));
 
         // Without a first page in the last 30 s every later page counts.
         time.Advance(TimeSpan.FromSeconds(31)); // the budget is full again
-        for (int index = 0; index < ServerTuning.ListBurst; index++) Assert.Equal("ok", await Ask(1));
-        Assert.Equal(ReasonCodes.RateLimited, await Ask(1));
+        for (int index = 0; index < ServerTuning.ListBurst; index++) Assert.Equal("ok", await AskAsync(1));
+        Assert.Equal(ReasonCodes.RateLimited, await AskAsync(1));
 
         // Asking for the same later page again within a round counts from the second time on.
         time.Advance(TimeSpan.FromSeconds(10));
-        Assert.Equal("ok", await Ask(0));
-        for (int index = 0; index < ServerTuning.ListBurst; index++) Assert.Equal("ok", await Ask(ServerTuning.ListPageSize));
-        Assert.Equal(ReasonCodes.RateLimited, await Ask(ServerTuning.ListPageSize));
+        Assert.Equal("ok", await AskAsync(0));
+        for (int index = 0; index < ServerTuning.ListBurst; index++) Assert.Equal("ok", await AskAsync(ServerTuning.ListPageSize));
+        Assert.Equal(ReasonCodes.RateLimited, await AskAsync(ServerTuning.ListPageSize));
     }
 
     [Fact]

@@ -64,8 +64,8 @@ public static class PageMotion
         if (layer.Child is not Image image) return;
         var token = state.Cancel.Token;
         // the picture stays faded until it is taken away: back at full strength for one frame, the old page flashed up
-        var outgoing = Run(image, token, FillMode.Forward, (Visual.OpacityProperty, 1d, 0d), (TranslateTransform.XProperty, 0d, away.X), (TranslateTransform.YProperty, 0d, away.Y));
-        var incoming = Run(host, token, FillMode.Backward, (Visual.OpacityProperty, 0d, 1d), (TranslateTransform.XProperty, from.X, 0d), (TranslateTransform.YProperty, from.Y, 0d));
+        var outgoing = RunAsync(image, token, FillMode.Forward, (Visual.OpacityProperty, 1d, 0d), (TranslateTransform.XProperty, 0d, away.X), (TranslateTransform.YProperty, 0d, away.Y));
+        var incoming = RunAsync(host, token, FillMode.Backward, (Visual.OpacityProperty, 0d, 1d), (TranslateTransform.XProperty, from.X, 0d), (TranslateTransform.YProperty, from.Y, 0d));
         await Task.WhenAll(outgoing, incoming);
         if (layer.Child == image) Stop(host, layer);
     }
@@ -81,7 +81,7 @@ public static class PageMotion
         layer.Classes.Set(PageGhostClass, false);
     }
 
-    static Task Run(Animatable target, CancellationToken token, FillMode fill, params (AvaloniaProperty Property, double From, double To)[] values)
+    static Task RunAsync(Animatable target, CancellationToken token, FillMode fill, params (AvaloniaProperty Property, double From, double To)[] values)
     {
         var start = new KeyFrame { Cue = new Cue(0) };
         var end = new KeyFrame { Cue = new Cue(1) };
@@ -90,7 +90,7 @@ public static class PageMotion
             start.Setters.Add(new Setter(property, from));
             end.Setters.Add(new Setter(property, to));
         }
-        return new Animation { Duration = Motion.Slow, Easing = Motion.Ease, FillMode = fill, Children = { start, end } }.Play(target, token);
+        return new Animation { Duration = Motion.Slow, Easing = Motion.Ease, FillMode = fill, Children = { start, end } }.PlayAsync(target, token);
     }
 
     // ---- tabs ----
@@ -143,7 +143,7 @@ public static class PageMotion
             var mark = new Border { Classes = { PipeGhostClass }, CornerRadius = oldPipe.CornerRadius };
             mark.Bind(Border.BackgroundProperty, mark.GetResourceObservable("SystemControlHighlightAccentBrush"));
             newPipe.Opacity = 0;
-            _ = FlyGhost.Fly(overlay, mark, start, () => newPipe.TranslatePoint(default, overlay) is { } at ? new Rect(at, newPipe.Bounds.Size) : null,
+            _ = FlyGhost.FlyAsync(overlay, mark, start, () => newPipe.TranslatePoint(default, overlay) is { } at ? new Rect(at, newPipe.Bounds.Size) : null,
                 progress => { if (progress >= 1) newPipe.ClearValue(Visual.OpacityProperty); }); // in the frame the mark lands
         }
         // the content: from the side the new tab lies on
@@ -163,7 +163,7 @@ public static class PageMotion
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d), new Setter(TranslateTransform.XProperty, side) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d), new Setter(TranslateTransform.XProperty, 0d) } },
             },
-        }.Play(content, cancel.Token);
+        }.PlayAsync(content, cancel.Token);
     }
 
     /// <summary>The tab's rectangle in the overlay when it lies inside what the tab strip shows.</summary>
@@ -241,7 +241,7 @@ public static class PageMotion
                         new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d), new Setter(TranslateTransform.YProperty, RevealRise) } },
                         new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d), new Setter(TranslateTransform.YProperty, 0d) } },
                     },
-                }.Play(section);
+                }.PlayAsync(section);
             }
         }
     }

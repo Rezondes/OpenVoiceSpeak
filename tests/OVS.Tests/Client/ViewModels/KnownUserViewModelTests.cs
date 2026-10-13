@@ -48,7 +48,7 @@ public sealed class KnownUserViewModelTests
         var calls = new List<(string Action, KnownUserViewModel Card)>();
         var card = CreateCardWithRecorder(calls);
 
-        await HangGuard.Bound(SelectCommand(card, action).ExecuteAsync(null));
+        await HangGuard.BoundAsync(SelectCommand(card, action).ExecuteAsync(null));
 
         var call = Assert.Single(calls);
         Assert.Equal(action, call.Action);

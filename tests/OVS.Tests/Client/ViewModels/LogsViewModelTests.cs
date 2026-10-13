@@ -247,7 +247,7 @@ public class LogsViewModelTests
             logs.Files[0].IsSelected = logs.Files[1].IsSelected = true;
             var target = Path.Combine(dir, "logs.zip");
 
-            await HangGuard.Bound(logs.DownloadAsync(target));
+            await HangGuard.BoundAsync(logs.DownloadAsync(target));
 
             Assert.Equal([ServerFile.Id, RaidFile.Id], Assert.Single(sent.OfType<PrepareLogDownload>()).FileIds);
             Assert.Equal(zip, File.ReadAllBytes(target));

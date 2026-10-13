@@ -71,7 +71,7 @@ internal static class ItemFlight
                 if (arrivals.TryGetValue(item, out var container) && FlyGhost.VisibleRect(container, departure.Overlay) is not null)
                 {
                     flown.AddOrUpdate(container, item);
-                    _ = Land(container, departure);
+                    _ = LandAsync(container, departure);
                 }
                 else departure.Picture.Dispose(); // gone for good, or its new place cannot be seen
             }
@@ -84,8 +84,8 @@ internal static class ItemFlight
     /// The picture flies to where the new row is in each frame (it still opens, the old one still folds); the row shows
     /// in the frame the picture lands on it. No flash: the flight already shows where it went.
     /// </summary>
-    static Task Land(Control container, Departure departure) =>
-        FlyGhost.Row(departure.Overlay, departure.Picture, departure.From, () =>
+    static Task LandAsync(Control container, Departure departure) =>
+        FlyGhost.RowAsync(departure.Overlay, departure.Picture, departure.From, () =>
             container.TranslatePoint(default, departure.Overlay) is { } at ? new Point(at.X, at.Y - (container.RenderTransform?.Value.M32 ?? 0)) : null,
             () =>
             {

@@ -66,8 +66,8 @@ public static class LiveMotion
             bool turn = GetTurn(control);
             if (!turn && !GetPop(control) || !Motion.IsAnimated(control) || !control.IsAttachedToVisualTree()) return; // not while a row is built
             bool shown = args.GetNewValue<bool>();
-            if (turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d), (RotateTransform.AngleProperty, TurnFrom, 0d));
-            else if (!turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d),
+            if (turn && shown) RunAsync(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d), (RotateTransform.AngleProperty, TurnFrom, 0d));
+            else if (!turn && shown) RunAsync(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d),
                 (ScaleTransform.ScaleXProperty, PopFrom, 1d), (ScaleTransform.ScaleYProperty, PopFrom, 1d));
             else if (!turn)
             {
@@ -92,13 +92,13 @@ public static class LiveMotion
     /// <summary>Fades a control in, e.g. a busy spinner that shows or the content a busy button gets back.</summary>
     public static void FadeIn(Visual? visual, double from = 0)
     {
-        if (visual is not null && Motion.IsAnimated(visual)) Run(visual, Motion.Normal, Motion.Ease, (Visual.OpacityProperty, from, 1d));
+        if (visual is not null && Motion.IsAnimated(visual)) RunAsync(visual, Motion.Normal, Motion.Ease, (Visual.OpacityProperty, from, 1d));
     }
 
-    static Task Run(Animatable target, TimeSpan duration, Easing easing, params (AvaloniaProperty Property, double From, double To)[] values) =>
-        Run(target, duration, easing, FillMode.Backward, default, values);
+    static Task RunAsync(Animatable target, TimeSpan duration, Easing easing, params (AvaloniaProperty Property, double From, double To)[] values) =>
+        RunAsync(target, duration, easing, FillMode.Backward, default, values);
 
-    static Task Run(Animatable target, TimeSpan duration, Easing easing, FillMode fill, CancellationToken cancel,
+    static Task RunAsync(Animatable target, TimeSpan duration, Easing easing, FillMode fill, CancellationToken cancel,
         params (AvaloniaProperty Property, double From, double To)[] values)
     {
         var start = new KeyFrame { Cue = new Cue(0) };
@@ -108,7 +108,7 @@ public static class LiveMotion
             start.Setters.Add(new Setter(property, from));
             end.Setters.Add(new Setter(property, to));
         }
-        return new Animation { Duration = duration, Easing = easing, FillMode = fill, Children = { start, end } }.Play(target, cancel);
+        return new Animation { Duration = duration, Easing = easing, FillMode = fill, Children = { start, end } }.PlayAsync(target, cancel);
     }
 
     static readonly ConditionalWeakTable<Control, CancellationTokenSource> moving = [];
@@ -148,7 +148,7 @@ public static class LiveMotion
         Canvas.SetTop(ghost, at.Y);
         overlay.Children.Add(ghost);
         // forward: the copy stays faded until it is taken away
-        await Run(ghost, Motion.Normal, Motion.Ease, FillMode.Forward, default, (Visual.OpacityProperty, 1d, 0d),
+        await RunAsync(ghost, Motion.Normal, Motion.Ease, FillMode.Forward, default, (Visual.OpacityProperty, 1d, 0d),
             (ScaleTransform.ScaleXProperty, 1d, PopFrom), (ScaleTransform.ScaleYProperty, 1d, PopFrom));
         overlay.Children.Remove(ghost);
     }
@@ -157,12 +157,12 @@ public static class LiveMotion
     {
         var cancel = Replace(text);
         // a higher number comes up from below, a lower one down from above
-        Run(text, Motion.Normal, Motion.Ease, FillMode.Backward, cancel, (TranslateTransform.YProperty, after.UserCount >= before.UserCount ? TickBy : -TickBy, 0d), (Visual.OpacityProperty, 0d, 1d));
+        RunAsync(text, Motion.Normal, Motion.Ease, FillMode.Backward, cancel, (TranslateTransform.YProperty, after.UserCount >= before.UserCount ? TickBy : -TickBy, 0d), (Visual.OpacityProperty, 0d, 1d));
         if (!after.IsFull || before.IsFull) return;
         var pulse = new Animation { Duration = Motion.Slow, Easing = Motion.Ease };
         foreach (var (cue, scale) in new[] { (0d, 1d), (0.4, FullPulse), (1d, 1d) })
             pulse.Children.Add(new KeyFrame { Cue = new Cue(cue), Setters = { new Setter(ScaleTransform.ScaleXProperty, scale), new Setter(ScaleTransform.ScaleYProperty, scale) } });
-        _ = pulse.Play(text, cancel);
+        _ = pulse.PlayAsync(text, cancel);
     }
 
     static readonly ConditionalWeakTable<RangeBase, Follower> followers = new();

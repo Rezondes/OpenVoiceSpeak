@@ -23,8 +23,8 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
     const string SafetyPrefix = "vor-wiederherstellung_";
 
     [RelayCommand]
-    Task Delete() => delete(this);
+    Task DeleteAsync() => delete(this);
 
     [RelayCommand]
-    Task Restore() => restore(this);
+    Task RestoreAsync() => restore(this);
 }

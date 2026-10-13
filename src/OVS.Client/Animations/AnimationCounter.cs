@@ -1,8 +1,8 @@
 namespace OVS.Client.Animations;
 
 /// <summary>
-/// Package 109: a test hook, every animation started from code passes here (<see cref="Motion.Play"/>,
-/// <see cref="FlyGhost.Fly"/>).
+/// Package 109: a test hook, every animation started from code passes here (<see cref="Motion.PlayAsync"/>,
+/// <see cref="FlyGhost.FlyAsync"/>).
 /// </summary>
 internal static class AnimationCounter
 {
@@ -17,7 +17,7 @@ internal static class AnimationCounter
     internal static void ResetStarted() => Interlocked.Exchange(ref started, 0);
 
     /// <summary>Counts an animation that starts and, once its task ends, no longer counts it as running.</summary>
-    internal static Task Count(Task run)
+    internal static Task CountAsync(Task run)
     {
         Interlocked.Increment(ref started);
         Interlocked.Increment(ref running);

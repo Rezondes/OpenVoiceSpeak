@@ -737,7 +737,7 @@ public sealed class GroupListViewModelTests
         var rig = Create();
 
         Assert.False(rig.Section.Place.HasChanges());
-        Assert.True(await Bound(rig.Section.Place.SaveAsync()));
+        Assert.True(await BoundAsync(rig.Section.Place.SaveAsync()));
         Assert.Empty(sent);
     }
 
@@ -753,7 +753,7 @@ public sealed class GroupListViewModelTests
         Assert.IsType<UpdateGroup>(Assert.Single(sent));
         Assert.False(saving.IsCompleted);
         ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, FakeServers.AdminGroup);
-        Assert.True(await Bound(saving));
+        Assert.True(await BoundAsync(saving));
         Assert.False(rig.Section.Place.HasChanges());
     }
 
@@ -771,7 +771,7 @@ public sealed class GroupListViewModelTests
         Assert.Equal(new UpdateGroup(TeamId, "Neu", Permission.Speak), Assert.Single(sent) with { RequestId = null });
         Assert.False(saving.IsCompleted);
         ServerGroups(rig, FakeServers.GuestGroup, Team with { Name = "Neu" }, FakeServers.AdminGroup);
-        Assert.True(await Bound(saving));
+        Assert.True(await BoundAsync(saving));
         Assert.False(rig.Section.Place.HasChanges());
     }
 
@@ -969,7 +969,7 @@ public sealed class GroupListViewModelTests
 
         Assert.False(saving.IsCompleted);
         ServerGroups(rig, FakeServers.GuestGroup with { Name = "Neu" }, FakeServers.AdminGroup);
-        Assert.True(await Bound(saving));
+        Assert.True(await BoundAsync(saving));
         Assert.Single(sent);
     }
 

@@ -83,7 +83,7 @@ public sealed class OverlayDialogsTests
     }
 
     /// <summary>Calls the callback at <paramref name="path"/> as a view model would.</summary>
-    static Task Call(DialogCallbacks dialogs, string path) => path switch
+    static Task CallAsync(DialogCallbacks dialogs, string path) => path switch
     {
         "AskPassword" => dialogs.AskPassword!("Gilde"),
         "OfferUpdate" => dialogs.OfferUpdate!(new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
@@ -115,7 +115,7 @@ public sealed class OverlayDialogsTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            _ = Call(OverlayDialogs.Create(overlay, () => null), path);
+            _ = CallAsync(OverlayDialogs.Create(overlay, () => null), path);
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(expected.Buttons(), OverlayRig.FindButtons(overlay).Select(OverlayRig.ReadText));
             Assert.Equal(expected.Red, OverlayRig.FindMainButton(overlay).Classes.Contains("danger"));

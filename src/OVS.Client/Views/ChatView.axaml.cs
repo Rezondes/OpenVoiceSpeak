@@ -177,7 +177,7 @@ public partial class ChatView : UserControl
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0d), new Setter(TranslateTransform.XProperty, side), new Setter(TranslateTransform.YProperty, Lift) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1d), new Setter(TranslateTransform.XProperty, 0d), new Setter(TranslateTransform.YProperty, 0d) } },
             },
-        }.Play(args.Container);
+        }.PlayAsync(args.Container);
         if (entry.Notice is NoticeKind.Warning or NoticeKind.Error)
             Dispatcher.UIThread.Post(() => Pulse(args.Container, entry.Notice == NoticeKind.Error ? "Ovs.Danger" : "Ovs.WarningText"), DispatcherPriority.Background);
     }
@@ -197,7 +197,7 @@ public partial class ChatView : UserControl
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Border.BoxShadowProperty, new BoxShadows(new BoxShadow { IsInset = true, OffsetX = 4, Color = color })) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Border.BoxShadowProperty, new BoxShadows(new BoxShadow { IsInset = true, OffsetX = 0, Color = Color.FromArgb(0, color.R, color.G, color.B) })) } },
             },
-        }.Play(card);
+        }.PlayAsync(card);
     }
 
     /// <summary>
@@ -240,7 +240,7 @@ public partial class ChatView : UserControl
                 new KeyFrame { Cue = new Cue(0.4), Setters = { new Setter(OpacityProperty, 1d) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0d) } },
             },
-        }.Play(mark);
+        }.PlayAsync(mark);
         line.Children.Remove(mark);
     }
 
@@ -258,7 +258,7 @@ public partial class ChatView : UserControl
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0d), new Setter(TranslateTransform.YProperty, 20d) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1d), new Setter(TranslateTransform.YProperty, 0d) } },
             },
-        }.Play(NewMessagesPill);
+        }.PlayAsync(NewMessagesPill);
     }
 
     void HidePill() => NewMessagesPill.IsVisible = false;
@@ -322,6 +322,6 @@ public partial class ChatView : UserControl
             Easing = popIn ? Motion.Pop : Motion.Ease,
             FillMode = FillMode.Backward,
             Children = { start, end },
-        }.Play(target);
+        }.PlayAsync(target);
     }
 }

@@ -63,7 +63,7 @@ public sealed class OverlayHost : Panel
             card.Child = content;
             ClearValue(IsHitTestVisibleProperty);
             IsVisible = true;
-            if (Motion.IsAnimated(this)) _ = Play(appear: true);
+            if (Motion.IsAnimated(this)) _ = PlayAsync(appear: true);
             Dispatcher.UIThread.Post(() => focus?.Focus(), DispatcherPriority.Loaded);
             await current.Task;
         }
@@ -75,17 +75,17 @@ public sealed class OverlayHost : Panel
             this.onEnter = null;
             focusBefore?.Focus();
             IsHitTestVisible = false; // the focus went back above: neither keys nor clicks reach the fading card
-            _ = Gone();
+            _ = GoneAsync();
         }
     }
 
     /// <summary>The card goes (played back in the animated display); then the next dialog may come.</summary>
-    async Task Gone()
+    async Task GoneAsync()
     {
         if (Motion.IsAnimated(this))
         {
             var cancel = closing = new CancellationTokenSource();
-            await Play(appear: false, cancel.Token);
+            await PlayAsync(appear: false, cancel.Token);
             closing = null;
         }
         card.Child = null;
@@ -97,7 +97,7 @@ public sealed class OverlayHost : Panel
         turn.Release();
     }
 
-    Task Play(bool appear, CancellationToken cancel = default)
+    Task PlayAsync(bool appear, CancellationToken cancel = default)
     {
         double from = appear ? 0 : 1, to = appear ? 1 : 0;
         double scaleFrom = appear ? PopFrom : 1, scaleTo = appear ? 1 : PopFrom;
@@ -113,7 +113,7 @@ public sealed class OverlayHost : Panel
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, from), new Setter(ScaleTransform.ScaleXProperty, scaleFrom), new Setter(ScaleTransform.ScaleYProperty, scaleFrom) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, to), new Setter(ScaleTransform.ScaleXProperty, scaleTo), new Setter(ScaleTransform.ScaleYProperty, scaleTo) } },
             },
-        }.Play(card, cancel);
+        }.PlayAsync(card, cancel);
         var scrimShown = new Animation
         {
             Duration = Motion.Normal,
@@ -124,7 +124,7 @@ public sealed class OverlayHost : Panel
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, from) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, to) } },
             },
-        }.Play(scrim, cancel);
+        }.PlayAsync(scrim, cancel);
         return Task.WhenAll(cardShown, scrimShown);
     }
 

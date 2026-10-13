@@ -19,6 +19,6 @@ internal static class ShakeMotion
         double[] steps = [0, -Swing, Swing, -Swing, Swing, -Swing / 2, 0];
         for (int index = 0; index < steps.Length; index++)
             shake.Children.Add(new KeyFrame { Cue = new Cue((double)index / (steps.Length - 1)), Setters = { new Setter(TranslateTransform.XProperty, steps[index]) } });
-        _ = shake.Play(target);
+        _ = shake.PlayAsync(target);
     }
 }

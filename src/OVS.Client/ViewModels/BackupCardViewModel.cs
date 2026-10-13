@@ -99,7 +99,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
 
     /// <summary>Answered with the new list; Package 97: busy until then, a second click meanwhile is ignored.</summary>
     [RelayCommand]
-    Task NewBackup() => BackupCreate.IsRunning ? Task.CompletedTask : SendRoutedAsync(new CreateBackup(), pending: BackupCreate);
+    Task NewBackupAsync() => BackupCreate.IsRunning ? Task.CompletedTask : SendRoutedAsync(new CreateBackup(), pending: BackupCreate);
 
     async Task DeleteBackupAsync(BackupViewModel backup)
     {

@@ -123,7 +123,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             readServerState: () => Server is { } connected ? new SelfState(connected.SelfState.SelfMuted, connected.SelfState.SelfDeafened) : null,
             writeServerState: state => Server is { } connected ? connected.SelfState.SetSelfStateAsync(state) : Task.CompletedTask);
         PageFlow = new PageFlowViewModel(time: time, post: post, settings: () => Settings, knownDevices: () => Devices.Known,
-            refreshDevices: () => Devices.Refresh(), captureChord: keys.CaptureNextChordAsync, setKeyBindings: bindings => keys.Bindings = bindings,
+            refreshDevices: () => Devices.RefreshAsync(), captureChord: keys.CaptureNextChordAsync, setKeyBindings: bindings => keys.Bindings = bindings,
             dialogs: () => Dialogs.PageFlow, adminDialogs: () => Dialogs.Admin, checkNow: Update.CheckAsync, importSound: (path, sound) => SoundImport.Prepare(path, storageDir, sound),
             previewSound: audio.Sounds.Preview, applyLive: audio.ApplyLive, showAppearance: appearance => Appearance = appearance,
             setSelfTest: SelfTest.SetAsync, applySaved: ApplySettingsAsync,
@@ -156,7 +156,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             {
                 if (PageFlow.Page == Page.Admin) PageFlow.ClosePage();
             });
-        if (audio.DeviceLifecycle.OpensDevices) Devices.Refresh();
+        if (audio.DeviceLifecycle.OpensDevices) Devices.RefreshAsync();
         hints = new VoiceHints(
             state: () => Server is { } connected
                 ? new VoiceHintState(ChannelMuted: connected.InMutedChannel, HasSpeakLinked: connected.HasSpeakLinked,
@@ -198,7 +198,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             bool held = Keys.MuteHeld;
             if (held == muteHeld) return;
             muteHeld = held;
-            post(() => Server?.SelfState.HoldMute(held));
+            post(() => Server?.SelfState.HoldMuteAsync(held));
         };
         ApplySettings(Settings);
     }
@@ -285,10 +285,10 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         using var identity = IdentityFile.LoadOrCreate(storageDir);
         return await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
-            choice.PasswordOrNull, known, ConfirmTofuLogged, Time, token);
+            choice.PasswordOrNull, known, ConfirmTofuLoggedAsync, Time, token);
     }
 
-    async Task<bool> ConfirmTofuLogged(TofuPrompt prompt)
+    async Task<bool> ConfirmTofuLoggedAsync(TofuPrompt prompt)
     {
         bool accepted = await ConfirmTofu(prompt);
         Log.Write($"Serverzertifikat {(prompt.Result == TofuResult.Mismatch ? "GEÄNDERT" : "neu")} für {prompt.Host}:{prompt.Port}, " +
@@ -309,7 +309,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             newValue.StateChanged += OnServerStateChanged; // e.g. the own channel was muted (Package 34)
             newValue.VolumeOf = fingerprint => Settings.VolumeFor(fingerprint);
             newValue.VolumeChanged += OnUserVolumeChanged;
-            newValue.SelfState.HoldMute(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
+            newValue.SelfState.HoldMuteAsync(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
         }
         Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
         EngineSync.SyncConnection();
@@ -354,7 +354,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     public ConnectionStatsViewModel Stats { get; }
 
     [RelayCommand]
-    Task ShowConnectionDetails() => Dialogs.ConnectionDetails?.Invoke(Stats) ?? Task.CompletedTask;
+    Task ShowConnectionDetailsAsync() => Dialogs.ConnectionDetails?.Invoke(Stats) ?? Task.CompletedTask;
 
     /// <summary>Toggle keys work like the buttons, including the report to the server.</summary>
     void OnKeyAction(KeyAction action)

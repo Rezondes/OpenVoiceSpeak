@@ -63,7 +63,7 @@ public sealed partial class SelfStateViewModel : ObservableObject
     /// Package 125: holding push-to-mute does what the mute button does (tone, server), letting go undoes exactly that.
     /// Already muted or deafened, it changes nothing.
     /// </summary>
-    public Task HoldMute(bool held)
+    public Task HoldMuteAsync(bool held)
     {
         if (held ? SelfMuted : !mutedByHold) return Task.CompletedTask;
         mutedByHold = held;
@@ -73,7 +73,7 @@ public sealed partial class SelfStateViewModel : ObservableObject
     }
 
     [RelayCommand]
-    Task ToggleMute()
+    Task ToggleMuteAsync()
     {
         mutedByHold = false;
         if (SelfDeafened)
@@ -91,7 +91,7 @@ public sealed partial class SelfStateViewModel : ObservableObject
     }
 
     [RelayCommand]
-    Task ToggleDeafen()
+    Task ToggleDeafenAsync()
     {
         mutedByHold = false;
         if (SelfDeafened)

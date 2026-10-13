@@ -328,7 +328,7 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 98: asks with a dialog that sends itself (see <see cref="Dialogs"/>); a dialog that cannot wait has it sent afterwards.</summary>
-    internal static async Task Ask<T>(Func<Func<T, PendingActionViewModel>, Task<T?>>? ask, Func<T, PendingActionViewModel> send) where T : class
+    internal static async Task AskAsync<T>(Func<Func<T, PendingActionViewModel>, Task<T?>>? ask, Func<T, PendingActionViewModel> send) where T : class
     {
         if (ask is null) return;
         PendingActionViewModel? sent = null;
@@ -411,7 +411,7 @@ public sealed partial class ServerViewModel : ObservableObject
     public static bool IsDropTarget(UserViewModel user, ChannelViewModel channel) => user.CanDrag && channel.Id != user.ChannelId && !channel.IsSeparator;
 
     /// <summary>Package 120 (A129): my own row joins the channel (with its password prompt), another user is moved there. Ends with the server's answer.</summary>
-    public async Task DropUser(UserViewModel user, ChannelViewModel channel)
+    public async Task DropUserAsync(UserViewModel user, ChannelViewModel channel)
     {
         // gone from the server while dragged (or the row stands for an earlier entry): nobody to move
         if (!IsDropTarget(user, channel) || !Mirror.Users.ContainsKey(user.SessionId) || Tree.FindUser(user.SessionId) != user) return;
@@ -442,12 +442,12 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    Task NewChannel() =>
-        Ask<ChannelEdit>(Dialogs.EditChannel is { } edit ? submit => edit(new ChannelEdit("", ""), ChannelDialogMode.Create, submit) : null, CreateChannel);
+    Task NewChannelAsync() =>
+        AskAsync<ChannelEdit>(Dialogs.EditChannel is { } edit ? submit => edit(new ChannelEdit("", ""), ChannelDialogMode.Create, submit) : null, CreateChannel);
 
     /// <summary>Package 98: the dialog waits until the own user comes back with the new groups (or the token is refused).</summary>
     [RelayCommand]
-    Task RedeemToken() =>
-        Ask<string>(Dialogs.AskText is { } ask ? submit => ask(Strings.Dialog_RedeemToken, Strings.Dialog_RedeemTokenPrompt, submit) : null,
+    Task RedeemTokenAsync() =>
+        AskAsync<string>(Dialogs.AskText is { } ask ? submit => ask(Strings.Dialog_RedeemToken, Strings.Dialog_RedeemTokenPrompt, submit) : null,
             token => SendConfirmed(new RedeemAdminToken(token.Trim()), message => message is UserUpdated userUpdated && IsSelf(userUpdated.User), notify: false));
 }

@@ -32,7 +32,7 @@ internal sealed class DeviceList
     /// Loads both lists on the pool and shows them on the UI thread, unless a newer load was started meanwhile. Returns the
     /// load's last step, which ends cancelled when the listing failed; callers in the app ignore it, tests await it.
     /// </summary>
-    internal Task Refresh()
+    internal Task RefreshAsync()
     {
         int load = ++loads;
         return Task.Run(() => new ActiveDevices(listDevices(AudioDirection.Input), listDevices(AudioDirection.Output)))

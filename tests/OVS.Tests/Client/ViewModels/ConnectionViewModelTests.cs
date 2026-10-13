@@ -154,13 +154,13 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     {
         var running = rig.Seam.HoldNext(failWith: ConnectSeam.CreateClosedPortError());
         var connecting = rig.ConnectAsync(Offline);
-        await HangGuard.Bound(running.Reached);
+        await HangGuard.BoundAsync(running.Reached);
 
         Assert.True(await IsConnectingAsync());
         Assert.Equal(ConnectingStatus(Offline), await StatusAsync());
 
         running.Release();
-        await HangGuard.Bound(connecting);
+        await HangGuard.BoundAsync(connecting);
         Assert.False(await IsConnectingAsync());
     }
 
@@ -310,7 +310,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
         rig.Seam.FailNext(new TofuRejectedException());
 
-        await HangGuard.Bound(ConnectBookmarkAsync(BookmarkWithSavedPassword("veraltet")));
+        await HangGuard.BoundAsync(ConnectBookmarkAsync(BookmarkWithSavedPassword("veraltet")));
 
         Assert.Equal(2, rig.Seam.Attempts.Count);
         var first = rig.Seam.Attempts[0].Choice;
@@ -382,13 +382,13 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     }
 
     [Fact]
-    public async Task DisconnectCommand_ConfirmLeaveRefuses_KeepsTheConnection()
+    public async Task ConfirmDisconnectCommand_ConfirmLeaveRefuses_KeepsTheConnection()
     {
         await using var server = await TestServer.StartAsync();
         await rig.ConnectAsync(ChoiceFor(server));
         rig.ConfirmLeave = () => Task.FromResult(false);
 
-        await rig.RunAsync(() => rig.Connection.DisconnectCommand.ExecuteAsync(null));
+        await rig.RunAsync(() => rig.Connection.ConfirmDisconnectCommand.ExecuteAsync(null));
 
         Assert.NotNull(await rig.ReadAsync(() => rig.Shown));
         Assert.NotNull(await rig.ReadAsync(() => rig.Connection.ConnectionTime));
@@ -447,7 +447,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     {
         await using var stub = HandshakeStub.Start(dir, new Challenge("this is not base64"));
 
-        await HangGuard.Bound(rig.ConnectAsync(ChoiceFor(stub)));
+        await HangGuard.BoundAsync(rig.ConnectAsync(ChoiceFor(stub)));
 
         var expected = string.Format(Strings.Status_Failed, "Server sent a malformed challenge");
         Assert.Equal(expected, await StatusAsync());
@@ -460,7 +460,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     {
         await using var stub = HandshakeStub.Start(dir, HandshakeStub.WelcomeWith("this is not base64"));
 
-        await HangGuard.Bound(rig.ConnectAsync(ChoiceFor(stub)));
+        await HangGuard.BoundAsync(rig.ConnectAsync(ChoiceFor(stub)));
 
         var expected = string.Format(Strings.Status_Failed, "Server sent a malformed voice key");
         Assert.Equal(expected, await StatusAsync());
@@ -474,9 +474,9 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     {
         await using var stub = HandshakeStub.Start(dir, HandshakeStub.WelcomeWith("this is not base64"));
 
-        await HangGuard.Bound(rig.ConnectAsync(ChoiceFor(stub)));
+        await HangGuard.BoundAsync(rig.ConnectAsync(ChoiceFor(stub)));
 
-        await HangGuard.Bound(stub.ClientClosed);
+        await HangGuard.BoundAsync(stub.ClientClosed);
         Assert.Null(await rig.ReadAsync(() => rig.Connection.ConnectionTime));
     }
 
@@ -498,10 +498,10 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         Assert.True(await rig.ReadUntilAsync(() => rig.Connection.IsReconnecting, reconnecting => reconnecting));
 
         rig.Time.Advance(TimeSpan.FromSeconds(1));
-        await HangGuard.Bound(rig.Seam.WaitForAttemptAsync(2));
+        await HangGuard.BoundAsync(rig.Seam.WaitForAttemptAsync(2));
 
         Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Any(line => line.StartsWith("Reconnect failed: ")), logged => logged));
-        await HangGuard.Bound(stub.ClientClosed);
+        await HangGuard.BoundAsync(stub.ClientClosed);
         Assert.True(await rig.ReadAsync(() => rig.Connection.IsReconnecting));
 
         rig.Time.Advance(TimeSpan.FromSeconds(2));
@@ -531,7 +531,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         var oldSession = await rig.ReadAsync(() => rig.Shown!.Mirror.SelfId);
         rig.HoldPosts();
         server.State.FindSession(oldSession)!.Outbox.Abort("Test");
-        await HangGuard.Bound(reportedByOld.Task);
+        await HangGuard.BoundAsync(reportedByOld.Task);
         await rig.ConnectAsync(ChoiceFor(server)); // the user connected again before the old report was handled
         var shownNow = await rig.ReadAsync(() => rig.Shown);
         var statusNow = await StatusAsync();
@@ -589,7 +589,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         Assert.True(await rig.ReadUntilAsync(() => rig.Connection.IsReconnecting, reconnecting => reconnecting));
 
         rig.Time.Advance(TimeSpan.FromSeconds(1));
-        await HangGuard.Bound(rig.Seam.WaitForAttemptAsync(2));
+        await HangGuard.BoundAsync(rig.Seam.WaitForAttemptAsync(2));
 
         Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Contains("Reconnect failed: InvalidOperationException: Dialoge kaputt"), logged => logged));
         await AsyncWait.UntilAsync(() => server.State.SessionCount == 0); // the connection of the failed attempt was closed
@@ -615,7 +615,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         Assert.True(await rig.ReadUntilAsync(() => rig.Connection.IsReconnecting, reconnecting => reconnecting));
 
         rig.Time.Advance(TimeSpan.FromSeconds(1));
-        await HangGuard.Bound(rig.Seam.WaitForAttemptAsync(2));
+        await HangGuard.BoundAsync(rig.Seam.WaitForAttemptAsync(2));
 
         Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Contains("Reconnect failed: InvalidOperationException: Testfehler"), logged => logged));
         Assert.True(await rig.ReadUntilAsync(() => rig.Shown is null && rig.Connection.ConnectionTime is null && rig.Connection.VoiceLink.Client is null,

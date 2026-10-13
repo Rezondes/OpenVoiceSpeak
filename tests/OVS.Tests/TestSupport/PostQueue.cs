@@ -39,7 +39,7 @@ sealed class PostQueue
         Task wait;
         lock (posted) wait = signal.Task;
         clock.Advance(delay);
-        await HangGuard.Bound(wait);
+        await HangGuard.BoundAsync(wait);
         if (posts > 1) await AsyncWait.UntilAsync(() => { lock (posted) return posted.Count >= posts; });
         Action[] due;
         lock (posted) due = [.. posted];

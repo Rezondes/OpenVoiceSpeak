@@ -607,7 +607,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var admin = viewModel.PageFlow.AdminPage!;
         admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Admin");
         var seen = WatchOffsets(groups);
-        await HangGuard.Bound(admin.GroupList.MoveGroupUpCommand.ExecuteAsync(null));
+        await HangGuard.BoundAsync(admin.GroupList.MoveGroupUpCommand.ExecuteAsync(null));
         for (int index = 0; index < 5; index++) Frame();
         Assert.True(Most(seen, item => item is GroupEditViewModel { Name: "Admin" }) > 0, "Admin glides up from below");
         main.Close();

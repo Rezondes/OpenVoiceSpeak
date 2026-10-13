@@ -105,7 +105,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Assert.True(viewModel.PageFlow.IsSettingsPage);
 
         // disconnecting keeps the settings page: nothing of it is lost, nothing is asked
-        await viewModel.Connection.DisconnectCommand.ExecuteAsync(null);
+        await viewModel.Connection.ConfirmDisconnectCommand.ExecuteAsync(null);
         Assert.Equal(2, asked);
         Assert.Null(viewModel.Server);
     }
@@ -136,7 +136,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         await viewModel.PageFlow.OpenAdminAsync();
         viewModel.PageFlow.AdminPage!.ServerSettings.Name = "Neu";
         answers.Enqueue(LeaveChoice.Stay);
-        await viewModel.Connection.DisconnectCommand.ExecuteAsync(null);
+        await viewModel.Connection.ConfirmDisconnectCommand.ExecuteAsync(null);
         Assert.Equal(1, asked);
         Assert.NotNull(viewModel.Server);
         Assert.True(viewModel.PageFlow.IsAdminPage);
@@ -345,7 +345,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Rename(admin, "Umbenannt");
         answers.Enqueue(LeaveChoice.Stay);
 
-        await HangGuard.Bound(admin.GroupList.NewGroupCommand.ExecuteAsync(null));
+        await HangGuard.BoundAsync(admin.GroupList.NewGroupCommand.ExecuteAsync(null));
 
         Assert.Equal(1, asked);
         Assert.DoesNotContain(admin.GroupList.Groups, groupEdit => groupEdit.Id is null);

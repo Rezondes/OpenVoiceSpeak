@@ -217,7 +217,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
 
     /// <summary>Package 114: the "Trennen" button asks first when the administration has unsaved changes.</summary>
     [RelayCommand]
-    async Task Disconnect()
+    async Task ConfirmDisconnectAsync()
     {
         if (!await confirmLeave()) return;
         await DisconnectAsync();

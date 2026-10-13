@@ -244,7 +244,7 @@ public sealed class RequestValidationTests
         await using var _ = server;
         await using var adminClient = admin;
 
-        async Task Refused(ClientIdentity? id, string name)
+        async Task RefusedAsync(ClientIdentity? id, string name)
         {
             var client = await TestClient.OpenAsync(server.Port, id);
             await using (client)
@@ -252,11 +252,11 @@ public sealed class RequestValidationTests
         }
 
         await using (await TestClient.ConnectAsync(server, "Steven", otherClientIdentity)) { }
-        await Refused(clientIdentity, "Steven");
-        await Refused(null, "Steven");
-        await Refused(never, "Steven"); // without a login it counts as the oldest
+        await RefusedAsync(clientIdentity, "Steven");
+        await RefusedAsync(null, "Steven");
+        await RefusedAsync(never, "Steven"); // without a login it counts as the oldest
 
-        await Refused(neverMax, "Max");
+        await RefusedAsync(neverMax, "Max");
         await using (await TestClient.ConnectAsync(server, "Max", oldMax)) { }
     }
 

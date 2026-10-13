@@ -104,7 +104,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     }
 
     [RelayCommand]
-    Task Apply()
+    Task ApplyAsync()
     {
         SendPending();
         return Task.CompletedTask;

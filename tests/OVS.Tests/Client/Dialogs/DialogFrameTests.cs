@@ -15,7 +15,7 @@ namespace OVS.Tests.Client.Dialogs;
 /// <summary>The one frame of every dialog: what its options make of the buttons, Enter and the send (Package 98, 114, 133).</summary>
 public sealed class DialogFrameTests
 {
-    static Task<string?> Show(OverlayHost overlay, DialogOptions<string>? options = null, Func<string?>? accept = null)
+    static Task<string?> ShowAsync(OverlayHost overlay, DialogOptions<string>? options = null, Func<string?>? accept = null)
     {
         var shown = DialogFrame.ShowAsync(overlay, "Titel", "Delete", new TextBlock { Text = "Inhalt" }, accept ?? (() => "ok"), options);
         Dispatcher.UIThread.RunJobs();
@@ -28,7 +28,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            _ = Show(overlay);
+            _ = ShowAsync(overlay);
             var buttons = OverlayRig.FindButtons(overlay);
             Assert.Equal([Strings.Dlg_Cancel, "OK"], buttons.Select(OverlayRig.ReadText));
             Assert.Contains("accent", buttons[1].Classes);
@@ -45,7 +45,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            _ = Show(overlay, new("Speichern", CancelText: "Später"));
+            _ = ShowAsync(overlay, new("Speichern", CancelText: "Später"));
             Assert.Equal(["Später", "Speichern"], OverlayRig.FindButtons(overlay).Select(OverlayRig.ReadText));
         }
         finally
@@ -60,7 +60,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            _ = Show(overlay, new("Weg", Kind: DialogKind.Danger));
+            _ = ShowAsync(overlay, new("Weg", Kind: DialogKind.Danger));
             var ok = OverlayRig.FindMainButton(overlay);
             Assert.Equal("Weg", OverlayRig.ReadText(ok));
             Assert.Contains("danger", ok.Classes);
@@ -78,7 +78,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            var shown = Show(overlay, new("Schließen", WithCancel: false));
+            var shown = ShowAsync(overlay, new("Schließen", WithCancel: false));
             var buttons = OverlayRig.FindButtons(overlay);
             Assert.Equal(["Schließen"], buttons.Select(OverlayRig.ReadText));
             OverlayRig.Click(buttons[0]);
@@ -96,7 +96,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            var shown = Show(overlay, new("Speichern", CancelText: "Bleiben", ThirdAnswer: ("Verwerfen", "discard")));
+            var shown = ShowAsync(overlay, new("Speichern", CancelText: "Bleiben", ThirdAnswer: ("Verwerfen", "discard")));
             var buttons = OverlayRig.FindButtons(overlay);
             Assert.Equal(["Speichern", "Verwerfen", "Bleiben"], buttons.Select(OverlayRig.ReadText));
             OverlayRig.Click(buttons[1]);
@@ -116,7 +116,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            var shown = Show(overlay, new(OkIsDefault: okIsDefault));
+            var shown = ShowAsync(overlay, new(OkIsDefault: okIsDefault));
             window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
             Dispatcher.UIThread.RunJobs();
             Assert.True(shown.IsCompleted);
@@ -134,7 +134,7 @@ public sealed class DialogFrameTests
         var (window, overlay) = OverlayRig.Open();
         try
         {
-            var shown = Show(overlay, accept: () => null);
+            var shown = ShowAsync(overlay, accept: () => null);
             OverlayRig.Click(OverlayRig.FindMainButton(overlay));
             Assert.False(shown.IsCompleted);
             Assert.True(overlay.IsOpen);
@@ -155,7 +155,7 @@ public sealed class DialogFrameTests
         {
             var sending = new PendingActionViewModel(new ManualTimeProvider());
             var sent = new List<string>();
-            var shown = Show(overlay, new(Submit: answer =>
+            var shown = ShowAsync(overlay, new(Submit: answer =>
             {
                 sent.Add(answer);
                 sending.Start();

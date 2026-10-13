@@ -257,7 +257,7 @@ public sealed class BookmarkListTests
             },
         };
 
-        await HangGuard.Bound(list.EditAsync(original));
+        await HangGuard.BoundAsync(list.EditAsync(original));
 
         Assert.Same(original, asked);
         var edited = bookmarks[1];
@@ -278,7 +278,7 @@ public sealed class BookmarkListTests
             EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Gilde", "gilde.example.org", 7000, "anna", "alt", SavePassword: false)),
         };
 
-        await HangGuard.Bound(list.EditAsync(original));
+        await HangGuard.BoundAsync(list.EditAsync(original));
 
         Assert.Null(bookmarks[0].ProtectedPassword);
         Assert.EndsWith("password not stored", Assert.Single(lines));
@@ -291,7 +291,7 @@ public sealed class BookmarkListTests
         bookmarks.Add(original);
         dialogs = new BookmarkListDialogs { EditBookmark = _ => Task.FromResult<BookmarkEdit?>(null) };
 
-        await HangGuard.Bound(list.EditAsync(original));
+        await HangGuard.BoundAsync(list.EditAsync(original));
 
         Assert.Same(original, Assert.Single(bookmarks));
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -303,7 +303,7 @@ public sealed class BookmarkListTests
         var original = Gilde();
         bookmarks.Add(original);
 
-        await HangGuard.Bound(list.EditAsync(original));
+        await HangGuard.BoundAsync(list.EditAsync(original));
 
         Assert.Same(original, Assert.Single(bookmarks));
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -317,7 +317,7 @@ public sealed class BookmarkListTests
             EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", null, SavePassword: false)),
         };
 
-        await HangGuard.Bound(list.EditAsync(Gilde()));
+        await HangGuard.BoundAsync(list.EditAsync(Gilde()));
 
         Assert.Empty(bookmarks);
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -331,7 +331,7 @@ public sealed class BookmarkListTests
         bookmarks = [club, home];
         dialogs = EditTo("Home", "a", 1, confirm: _ => Task.FromResult(true));
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         var left = Assert.Single(bookmarks);
         Assert.Equal(("Home", "a", 1), (left.Name, left.Host, left.Port));
@@ -358,7 +358,7 @@ public sealed class BookmarkListTests
             return Task.FromResult(true);
         });
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal(0, asked);
         Assert.Equal("Heim", Assert.Single(bookmarks).Name);
@@ -377,7 +377,7 @@ public sealed class BookmarkListTests
             return Task.FromResult(true);
         });
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal(0, asked);
         Assert.Equal([1, 3], bookmarks.Select(bookmark => bookmark.Port));
@@ -396,7 +396,7 @@ public sealed class BookmarkListTests
             return Task.FromResult(true);
         });
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal(0, asked);
         Assert.Equal(["a", "c"], bookmarks.Select(bookmark => bookmark.Host));
@@ -410,7 +410,7 @@ public sealed class BookmarkListTests
         bookmarks = [club, home];
         dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(false));
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal([club, home], bookmarks);
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -427,7 +427,7 @@ public sealed class BookmarkListTests
             return Task.FromResult(false);
         });
 
-        await HangGuard.Bound(list.EditAsync(bookmarks[1]));
+        await HangGuard.BoundAsync(list.EditAsync(bookmarks[1]));
 
         Assert.Equal(string.Format(Strings.Confirm_ReplaceBookmark, "Club", "a:1"), asked);
     }
@@ -440,7 +440,7 @@ public sealed class BookmarkListTests
         bookmarks = [club, home];
         dialogs = EditTo("Home", "a", 1, confirm: null);
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal([club, home], bookmarks);
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -460,7 +460,7 @@ public sealed class BookmarkListTests
             return Task.FromResult(true);
         });
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal(1, asked);
         Assert.Equal("Home", Assert.Single(bookmarks).Name);
@@ -475,7 +475,7 @@ public sealed class BookmarkListTests
         bookmarks = [club, home];
         dialogs = EditTo("Home", "a", 1, _ => throw new InvalidOperationException("dialog failed"));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(list.EditAsync(home)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.BoundAsync(list.EditAsync(home)));
 
         Assert.Equal([club, home], bookmarks);
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -493,7 +493,7 @@ public sealed class BookmarkListTests
             return Task.FromResult(true);
         });
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Same(club, Assert.Single(bookmarks));
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -508,7 +508,7 @@ public sealed class BookmarkListTests
         list.Refresh();
         dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(true));
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal(["Home"], list.Items.Select(tile => tile.Name));
         Assert.Equal("a:1", Assert.Single(list.Items).Address);
@@ -522,7 +522,7 @@ public sealed class BookmarkListTests
         bookmarks = [club, home];
         dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(true));
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal("Bookmark 'Home' changed: Home, a:1, anna, password not stored, replaces 'Club'", Assert.Single(lines));
     }
@@ -535,7 +535,7 @@ public sealed class BookmarkListTests
         bookmarks = [club, home];
         dialogs = EditTo("Home", "a", 1, _ => Task.FromResult(true), password: "von-home", savePassword: true);
 
-        await HangGuard.Bound(list.EditAsync(home));
+        await HangGuard.BoundAsync(list.EditAsync(home));
 
         Assert.Equal("von-home", Assert.Single(bookmarks).SavedPassword());
     }
@@ -558,7 +558,7 @@ public sealed class BookmarkListTests
             },
         };
 
-        await HangGuard.Bound(list.DeleteAsync(gilde));
+        await HangGuard.BoundAsync(list.DeleteAsync(gilde));
 
         Assert.Contains("Gilde", asked);
         Assert.Equal(["Club"], bookmarks.Select(bookmark => bookmark.Name));
@@ -574,7 +574,7 @@ public sealed class BookmarkListTests
         bookmarks.Add(gilde);
         dialogs = new BookmarkListDialogs { Confirm = _ => Task.FromResult(false) };
 
-        await HangGuard.Bound(list.DeleteAsync(gilde));
+        await HangGuard.BoundAsync(list.DeleteAsync(gilde));
 
         Assert.Same(gilde, Assert.Single(bookmarks));
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -586,7 +586,7 @@ public sealed class BookmarkListTests
         var gilde = Gilde();
         bookmarks.Add(gilde);
 
-        await HangGuard.Bound(list.DeleteAsync(gilde));
+        await HangGuard.BoundAsync(list.DeleteAsync(gilde));
 
         Assert.Same(gilde, Assert.Single(bookmarks));
         Assert.Equal((0, 0), (saves, lines.Count));
@@ -597,7 +597,7 @@ public sealed class BookmarkListTests
     {
         dialogs = new BookmarkListDialogs { Confirm = _ => Task.FromResult(true) };
 
-        await HangGuard.Bound(list.DeleteAsync(Gilde()));
+        await HangGuard.BoundAsync(list.DeleteAsync(Gilde()));
 
         Assert.Equal((0, 0), (saves, lines.Count));
     }

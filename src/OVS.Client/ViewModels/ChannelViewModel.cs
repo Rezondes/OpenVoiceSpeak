@@ -125,10 +125,10 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     }
 
     [RelayCommand]
-    Task MoveUp() => first ? Task.CompletedTask : owner.Tree.MoveChannelAsync(this, Neighbour(-1), after: false);
+    Task MoveUpAsync() => first ? Task.CompletedTask : owner.Tree.MoveChannelAsync(this, Neighbour(-1), after: false);
 
     [RelayCommand]
-    Task MoveDown() => last ? Task.CompletedTask : owner.Tree.MoveChannelAsync(this, Neighbour(+1), after: true);
+    Task MoveDownAsync() => last ? Task.CompletedTask : owner.Tree.MoveChannelAsync(this, Neighbour(+1), after: true);
 
     ChannelViewModel Neighbour(int step)
     {
@@ -137,7 +137,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     }
 
     [RelayCommand]
-    Task Join()
+    Task JoinAsync()
     {
         if (IsSeparator) return Task.CompletedTask; // Package 111: a double click on the line does nothing
         if (CanJoin) return owner.JoinAsync(Id);
@@ -146,19 +146,19 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     }
 
     [RelayCommand]
-    Task Create() => owner.NewChannelCommand.ExecuteAsync(null);
+    Task CreateAsync() => owner.NewChannelCommand.ExecuteAsync(null);
 
     [RelayCommand]
-    Task Edit()
+    Task EditAsync()
     {
         var mode = IsDefault ? ChannelDialogMode.EditDefault : ChannelDialogMode.Edit;
         var current = new ChannelEdit(Name, Description, IsMuted, MaxUsers, AllowedGroupIds, HasPassword, Bitrate: Bitrate);
-        return ServerViewModel.Ask<ChannelEdit>(owner.Dialogs.EditChannel is { } edit ? submit => edit(current, mode, submit) : null,
+        return ServerViewModel.AskAsync<ChannelEdit>(owner.Dialogs.EditChannel is { } edit ? submit => edit(current, mode, submit) : null,
             result => owner.EditChannel(Id, result, Order));
     }
 
     [RelayCommand]
-    async Task Delete()
+    async Task DeleteAsync()
     {
         var question = IsSeparator ? Strings.Confirm_DeleteSeparator : string.Format(Strings.Confirm_DeleteChannel, Name);
         if (owner.Dialogs.Confirm is { } confirm && await confirm(question))
@@ -166,12 +166,12 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     }
 
     [RelayCommand]
-    Task Link() =>
-        ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
+    Task LinkAsync() =>
+        ServerViewModel.AskAsync<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
             ? submit => pick(string.Format(Strings.Dialog_LinkWith, Name), owner.Tree.LinkCandidates(this), submit) : null, other => owner.Link(Id, other.Id));
 
     [RelayCommand]
-    Task Unlink() =>
-        ServerViewModel.Ask<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
+    Task UnlinkAsync() =>
+        ServerViewModel.AskAsync<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
             ? submit => pick(string.Format(Strings.Dialog_Unlink, Name), owner.Tree.LinkedChannelVms(this), submit) : null, other => owner.Unlink(Id, other.Id));
 }

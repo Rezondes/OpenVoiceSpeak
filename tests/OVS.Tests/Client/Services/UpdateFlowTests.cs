@@ -79,7 +79,7 @@ public sealed class UpdateFlowTests
         var http = new FakeHttp(_ => FakeHttp.Json(Release("deploy-bbbbbbb")));
         flow.Use(Checker(http, isCi: false), null);
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(Strings.Update_LocalBuild, answer);
         Assert.Empty(http.Requests);
@@ -91,7 +91,7 @@ public sealed class UpdateFlowTests
         var http = new FakeHttp(_ => FakeHttp.Json(Release("deploy-bbbbbbb")));
         flow.Use(Checker(http, isCi: true), null);
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Single(http.Requests);
         Assert.Equal(string.Format(Strings.Update_Available, "280926.0b2c"), answer);
@@ -110,7 +110,7 @@ public sealed class UpdateFlowTests
     [Fact]
     public async Task CheckAsync_NoLookUp_SaysLocalBuildAndLogsNothing()
     {
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(Strings.Update_LocalBuild, answer);
         Assert.Empty(logLines);
@@ -121,7 +121,7 @@ public sealed class UpdateFlowTests
     {
         LookUpReturns(new UpdateCheckResult(null, "no network"));
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(string.Format(Strings.Update_CheckFailed, "no network"), answer);
         Assert.Equal(["Update check failed: no network"], logLines);
@@ -132,7 +132,7 @@ public sealed class UpdateFlowTests
     {
         LookUpReturns(new UpdateCheckResult(null));
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(Strings.Update_Latest, answer);
         Assert.Equal(["Update check: no newer version"], logLines);
@@ -143,7 +143,7 @@ public sealed class UpdateFlowTests
     {
         LookUpReturns(new UpdateCheckResult(null));
 
-        await HangGuard.Bound(flow.CheckAsync());
+        await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.True(lookUpToken.CanBeCanceled);
         Assert.False(lookUpToken.IsCancellationRequested);
@@ -155,7 +155,7 @@ public sealed class UpdateFlowTests
         var expired = Build(TimeSpan.Zero);
         LookUpReturns(new UpdateCheckResult(null), expired);
 
-        await HangGuard.Bound(expired.CheckAsync());
+        await HangGuard.BoundAsync(expired.CheckAsync());
 
         Assert.True(lookUpToken.IsCancellationRequested);
     }
@@ -169,7 +169,7 @@ public sealed class UpdateFlowTests
         InstallReturns(null);
         offerDialog = null;
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(string.Format(Strings.Update_Available, Offer.Version), answer);
         Assert.Equal([AvailableLine], logLines);
@@ -189,7 +189,7 @@ public sealed class UpdateFlowTests
             return Task.FromResult(false);
         };
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal([Offer.Version], asked);
         Assert.Equal(string.Format(Strings.Update_Available, Offer.Version), answer);
@@ -208,7 +208,7 @@ public sealed class UpdateFlowTests
             return Task.FromResult(true);
         };
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(0, asked);
         Assert.Equal(string.Format(Strings.Update_Available, Offer.Version), answer);
@@ -222,7 +222,7 @@ public sealed class UpdateFlowTests
         LookUpReturns(new UpdateCheckResult(Offer));
         offerDialog = _ => Task.FromResult(true);
 
-        await HangGuard.Bound(flow.CheckAsync());
+        await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal([AvailableLine], logLines);
         Assert.Empty(warnings);
@@ -234,7 +234,7 @@ public sealed class UpdateFlowTests
         LookUpReturns(new UpdateCheckResult(Offer));
         offerDialog = null;
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(string.Format(Strings.Update_Available, Offer.Version), answer);
         Assert.Equal([AvailableLine], logLines);
@@ -251,10 +251,10 @@ public sealed class UpdateFlowTests
             asked++;
             return Task.FromResult(true);
         };
-        await HangGuard.Bound(flow.CheckAsync());
+        await HangGuard.BoundAsync(flow.CheckAsync());
         flow.Install = null;
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(1, asked);
         Assert.Equal(1, installs);
@@ -273,7 +273,7 @@ public sealed class UpdateFlowTests
         };
         flow.Use(Checker(http, isCi: true), null);
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Single(http.Requests);
         Assert.Equal(0, asked);
@@ -292,7 +292,7 @@ public sealed class UpdateFlowTests
             return Task.FromResult(true);
         };
 
-        await HangGuard.Bound(flow.CheckAtStartAsync());
+        await HangGuard.BoundAsync(flow.CheckAtStartAsync());
 
         Assert.Equal(1, lookUps);
         Assert.Equal(0, asked);
@@ -314,7 +314,7 @@ public sealed class UpdateFlowTests
             if (args.PropertyName == nameof(UpdateFlow.Progress)) updatingWhileShown.Add(flow.IsUpdating);
         };
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(Strings.Update_Starting, answer);
         Assert.Equal([new UpdateProgress(Offer.Version, UpdatePhase.Downloading), halfway, null], shownProgress);
@@ -331,7 +331,7 @@ public sealed class UpdateFlowTests
         InstallReturns("disk full");
         offerDialog = _ => Task.FromResult(true);
 
-        var answer = await HangGuard.Bound(flow.CheckAsync());
+        var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal("disk full", answer);
         Assert.Equal("disk full", logLines[^1]);
@@ -347,7 +347,7 @@ public sealed class UpdateFlowTests
         flow.Install = (_, _) => throw new InvalidOperationException("boom");
         offerDialog = _ => Task.FromResult(true);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.Bound(flow.CheckAsync()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => HangGuard.BoundAsync(flow.CheckAsync()));
 
         Assert.Equal([new UpdateProgress(Offer.Version, UpdatePhase.Downloading), null], shownProgress);
         Assert.False(flow.IsUpdating);
@@ -361,7 +361,7 @@ public sealed class UpdateFlowTests
         LookUpReturns(new UpdateCheckResult(null));
         checkAtStart = true;
 
-        await HangGuard.Bound(flow.CheckAtStartAsync());
+        await HangGuard.BoundAsync(flow.CheckAtStartAsync());
 
         Assert.Equal(1, lookUps);
     }
@@ -372,7 +372,7 @@ public sealed class UpdateFlowTests
         LookUpReturns(new UpdateCheckResult(null));
         checkAtStart = false;
 
-        await HangGuard.Bound(flow.CheckAtStartAsync());
+        await HangGuard.BoundAsync(flow.CheckAtStartAsync());
 
         Assert.Equal(0, lookUps);
     }

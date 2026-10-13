@@ -377,7 +377,7 @@ public sealed class ServerSettingsViewModelTests
         var rig = Create();
 
         Assert.False(rig.Card.Place.HasChanges());
-        Assert.True(await HangGuard.Bound(rig.Card.Place.SaveAsync()));
+        Assert.True(await HangGuard.BoundAsync(rig.Card.Place.SaveAsync()));
         Assert.Empty(sent);
     }
 
@@ -393,7 +393,7 @@ public sealed class ServerSettingsViewModelTests
         Assert.Equal("Neu", Assert.IsType<UpdateServerSettings>(Assert.Single(sent)).Name);
         Assert.False(saving.IsCompleted);
         ApplyServerSettings(rig, settings => settings with { Name = "Neu" });
-        Assert.True(await HangGuard.Bound(saving));
+        Assert.True(await HangGuard.BoundAsync(saving));
         Assert.False(rig.Card.Place.HasChanges());
     }
 
@@ -404,7 +404,7 @@ public sealed class ServerSettingsViewModelTests
         rig.Card.Name = "   ";
 
         Assert.True(rig.Card.Place.HasChanges());
-        Assert.False(await HangGuard.Bound(rig.Card.Place.SaveAsync()));
+        Assert.False(await HangGuard.BoundAsync(rig.Card.Place.SaveAsync()));
         Assert.Empty(sent);
     }
 

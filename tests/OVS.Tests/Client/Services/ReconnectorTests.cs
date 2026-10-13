@@ -62,14 +62,14 @@ public sealed class ReconnectorTests
     {
         var attempts = new List<(int Generation, TaskCompletionSource<bool> Result)>();
         int gaveUp = 0;
-        Task<bool> Attempt(int generation)
+        Task<bool> AttemptAsync(int generation)
         {
             var result = new TaskCompletionSource<bool>();
             attempts.Add((generation, result));
             return result.Task;
         }
 
-        reconnector.Start(Attempt, () => gaveUp++);
+        reconnector.Start(AttemptAsync, () => gaveUp++);
         Run(1);
         var first = attempts.Single();
         Assert.True(reconnector.IsCurrent(first.Generation));
@@ -84,10 +84,10 @@ public sealed class ReconnectorTests
         Assert.False(reconnector.IsRunning);
 
         // a new series: an attempt of the old one that ends late changes nothing in it
-        reconnector.Start(Attempt, () => gaveUp++);
+        reconnector.Start(AttemptAsync, () => gaveUp++);
         Run(1);
         var old = attempts[1];
-        reconnector.Start(Attempt, () => gaveUp++); // e.g. lost again meanwhile
+        reconnector.Start(AttemptAsync, () => gaveUp++); // e.g. lost again meanwhile
         Assert.False(reconnector.IsCurrent(old.Generation));
         old.Result.SetResult(true); // the old success does not end the new series
         Assert.True(reconnector.IsRunning);

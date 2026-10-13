@@ -59,9 +59,9 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task Settings_WithoutVadAutomatic_ManualUnlessDefault()
     {
-        Assert.False((await anna.Post("settings", new { vadThresholdDb = -50 })).GetProperty("vadAutomatic").GetBoolean());
-        Assert.True((await anna.Post("settings", new { vadThresholdDb = -40 })).GetProperty("vadAutomatic").GetBoolean());
-        Assert.True((await anna.Post("settings", new { vadThresholdDb = -50, vadAutomatic = true })).GetProperty("vadAutomatic").GetBoolean());
+        Assert.False((await anna.PostAsync("settings", new { vadThresholdDb = -50 })).GetProperty("vadAutomatic").GetBoolean());
+        Assert.True((await anna.PostAsync("settings", new { vadThresholdDb = -40 })).GetProperty("vadAutomatic").GetBoolean());
+        Assert.True((await anna.PostAsync("settings", new { vadThresholdDb = -50, vadAutomatic = true })).GetProperty("vadAutomatic").GetBoolean());
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task Join_UnknownChannel_BadRequest()
     {
-        await anna.Post("connect", ConnectBody("anna"));
+        await anna.PostAsync("connect", ConnectBody("anna"));
         var response = await anna.Http.PostAsJsonAsync("join", new { channel = "gibtsnicht" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -83,7 +83,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task UnknownPost_Connected_NamesTheEndpoint()
     {
-        await anna.Post("connect", ConnectBody("anna"));
+        await anna.PostAsync("connect", ConnectBody("anna"));
 
         var response = await anna.Http.PostAsJsonAsync("gibtsnicht", new { });
 
@@ -121,7 +121,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task Tone_NotConnected_ReportsTheTone()
     {
-        var reply = await anna.Post("tone", new { hz = 440 });
+        var reply = await anna.PostAsync("tone", new { hz = 440 });
 
         Assert.Equal(440, reply.GetProperty("toneHz").GetDouble());
     }
@@ -129,9 +129,9 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task Disconnect_Connected_StateSaysNotConnected()
     {
-        await anna.Post("connect", ConnectBody("anna"));
+        await anna.PostAsync("connect", ConnectBody("anna"));
 
-        var state = await anna.Post("disconnect");
+        var state = await anna.PostAsync("disconnect");
 
         Assert.False(state.GetProperty("connected").GetBoolean());
     }
@@ -139,9 +139,9 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task State_ConnectedAndPinged_CarriesThePingText()
     {
-        await anna.Post("connect", ConnectBody("anna"));
+        await anna.PostAsync("connect", ConnectBody("anna"));
 
-        var state = await anna.Until(reported => reported.GetProperty("pingText").GetString()!.Length > 0);
+        var state = await anna.UntilAsync(reported => reported.GetProperty("pingText").GetString()!.Length > 0);
 
         Assert.StartsWith("Ping ", state.GetProperty("pingText").GetString());
     }
@@ -150,116 +150,116 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task ChannelName_Ambiguous_RefusedNamingBothIds()
     {
-        await anna.Post("connect", ConnectBody("anna"));
-        await anna.Post("redeem", new { token = server.State.PendingAdminToken });
-        await anna.Until(element => element.GetProperty("server").GetProperty("isAdmin").GetBoolean());
-        await anna.Post("create-channel", new { name = "Raid" });
-        await anna.Post("create-channel", new { name = "raid" });
-        var state = await anna.Until(element => Channels(element).Count(otherElement => string.Equals(otherElement.GetProperty("name").GetString(), "raid", StringComparison.OrdinalIgnoreCase)) == 2);
+        await anna.PostAsync("connect", ConnectBody("anna"));
+        await anna.PostAsync("redeem", new { token = server.State.PendingAdminToken });
+        await anna.UntilAsync(element => element.GetProperty("server").GetProperty("isAdmin").GetBoolean());
+        await anna.PostAsync("create-channel", new { name = "Raid" });
+        await anna.PostAsync("create-channel", new { name = "raid" });
+        var state = await anna.UntilAsync(element => Channels(element).Count(otherElement => string.Equals(otherElement.GetProperty("name").GetString(), "raid", StringComparison.OrdinalIgnoreCase)) == 2);
         var response = await anna.Http.PostAsJsonAsync("join", new { channel = "Raid" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var text = await response.Content.ReadAsStringAsync();
         var ids = Channels(state).Where(element => string.Equals(element.GetProperty("name").GetString(), "raid", StringComparison.OrdinalIgnoreCase))
             .Select(element => element.GetProperty("id").GetString()!).ToList();
         Assert.All(ids, id => Assert.Contains(id, text));
-        await anna.Post("join", new { channel = ids[0] });
+        await anna.PostAsync("join", new { channel = ids[0] });
         Assert.All(Channels(state), element => Assert.False(element.GetProperty("isSeparator").GetBoolean()));
 
         // Package 111: the state names separators
-        await anna.Post("request", new { type = "createChannel", name = "", description = "", kind = "Separator" });
-        await anna.Until(element => Channels(element).Any(otherElement => otherElement.GetProperty("isSeparator").GetBoolean() && otherElement.GetProperty("name").GetString() == ""));
-        await anna.Until(element => Channels(element).Single(otherElement => otherElement.GetProperty("id").GetString() == ids[0]).GetProperty("isCurrent").GetBoolean());
+        await anna.PostAsync("request", new { type = "createChannel", name = "", description = "", kind = "Separator" });
+        await anna.UntilAsync(element => Channels(element).Any(otherElement => otherElement.GetProperty("isSeparator").GetBoolean() && otherElement.GetProperty("name").GetString() == ""));
+        await anna.UntilAsync(element => Channels(element).Single(otherElement => otherElement.GetProperty("id").GetString() == ids[0]).GetProperty("isCurrent").GetBoolean());
     }
 
     [Fact]
     public async Task FullFlow_Linking_PttAndLinkPtt()
     {
-        var element = await anna.Post("connect", ConnectBody("anna"));
+        var element = await anna.PostAsync("connect", ConnectBody("anna"));
         Assert.True(element.GetProperty("connected").GetBoolean(), element.ToString());
         var annaId = SelfId(element);
-        await bert.Post("connect", ConnectBody("bert"));
+        await bert.PostAsync("connect", ConnectBody("bert"));
 
         // anna becomes admin, creates Raid; bert moves there
-        await anna.Post("redeem", new { token = server.State.PendingAdminToken });
-        await anna.Until(otherElement => otherElement.GetProperty("server").GetProperty("isAdmin").GetBoolean());
-        await anna.Post("create-channel", new { name = "Raid" });
-        await anna.Until(otherElement => Channels(otherElement).Any(value => value.GetProperty("name").GetString() == "Raid"));
-        await bert.Post("join", new { channel = "Raid" });
-        await bert.Until(otherElement => Channel(otherElement, "Raid").GetProperty("isCurrent").GetBoolean());
+        await anna.PostAsync("redeem", new { token = server.State.PendingAdminToken });
+        await anna.UntilAsync(otherElement => otherElement.GetProperty("server").GetProperty("isAdmin").GetBoolean());
+        await anna.PostAsync("create-channel", new { name = "Raid" });
+        await anna.UntilAsync(otherElement => Channels(otherElement).Any(value => value.GetProperty("name").GetString() == "Raid"));
+        await bert.PostAsync("join", new { channel = "Raid" });
+        await bert.UntilAsync(otherElement => Channel(otherElement, "Raid").GetProperty("isCurrent").GetBoolean());
 
         // Normal PTT from the lobby does not reach Raid
-        await anna.Post("tone", new { hz = 440 });
-        await anna.Post("ptt", new { down = true });
-        await anna.Until(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
-        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await bert.State(), annaId) > 0, TimeSpan.FromMilliseconds(300), "bert in another channel hears nothing");
-        Assert.Equal(0, FramesFrom(await bert.State(), annaId));
-        await anna.Post("ptt", new { down = false });
+        await anna.PostAsync("tone", new { hz = 440 });
+        await anna.PostAsync("ptt", new { down = true });
+        await anna.UntilAsync(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
+        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await bert.StateAsync(), annaId) > 0, TimeSpan.FromMilliseconds(300), "bert in another channel hears nothing");
+        Assert.Equal(0, FramesFrom(await bert.StateAsync(), annaId));
+        await anna.PostAsync("ptt", new { down = false });
 
         // Link Lobby and Raid: normal PTT still stays in the lobby ...
-        await anna.Post("link", new { a = "Lobby", b = "Raid" });
-        await bert.Until(otherElement => Channel(otherElement, "Raid").GetProperty("isLinked").GetBoolean());
-        long sentUnlinked = (await anna.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
-        await anna.Post("ptt", new { down = true });
-        await anna.Until(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > sentUnlinked + 10); // she really talks
-        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await bert.State(), annaId) > 0, TimeSpan.FromMilliseconds(300), "plain push to talk stays in the own channel");
-        Assert.Equal(0, FramesFrom(await bert.State(), annaId));
-        await anna.Post("ptt", new { down = false });
+        await anna.PostAsync("link", new { a = "Lobby", b = "Raid" });
+        await bert.UntilAsync(otherElement => Channel(otherElement, "Raid").GetProperty("isLinked").GetBoolean());
+        long sentUnlinked = (await anna.StateAsync()).GetProperty("audio").GetProperty("framesSent").GetInt64();
+        await anna.PostAsync("ptt", new { down = true });
+        await anna.UntilAsync(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > sentUnlinked + 10); // she really talks
+        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await bert.StateAsync(), annaId) > 0, TimeSpan.FromMilliseconds(300), "plain push to talk stays in the own channel");
+        Assert.Equal(0, FramesFrom(await bert.StateAsync(), annaId));
+        await anna.PostAsync("ptt", new { down = false });
 
         // ... but link PTT reaches Raid, marked as link transmission
-        await anna.Post("linkptt", new { down = true });
-        var bertView = await bert.Until(otherElement => FramesFrom(otherElement, annaId) > 10 && User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
-        Assert.Contains("Links", (await anna.State()).GetProperty("transmitText").GetString());
+        await anna.PostAsync("linkptt", new { down = true });
+        var bertView = await bert.UntilAsync(otherElement => FramesFrom(otherElement, annaId) > 10 && User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
+        Assert.Contains("Links", (await anna.StateAsync()).GetProperty("transmitText").GetString());
         // The indicator must stay on while anna keeps talking (it used to go dark for good after 300 ms).
         // Polled, because a starved test machine may drop it for a moment; gone for good still fails. The 700 ms are the
         // point of the check (real time: the indicator used to die after 300 ms), not a wait for something to happen.
         await Task.Delay(700);
-        await bert.Until(otherElement => User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
-        await anna.Post("linkptt", new { down = false });
+        await bert.UntilAsync(otherElement => User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
+        await anna.PostAsync("linkptt", new { down = false });
 
         // bert is a guest without SpeakLinked: his link PTT stays in Raid and he gets a hint
         var bertId = SelfId(bertView);
-        await bert.Post("tone", new { hz = 330 });
-        await bert.Post("linkptt", new { down = true });
-        var bertState = await bert.Until(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
+        await bert.PostAsync("tone", new { hz = 330 });
+        await bert.PostAsync("linkptt", new { down = true });
+        var bertState = await bert.UntilAsync(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
         Assert.Contains("Kein Recht", bertState.GetProperty("voiceHint").GetString());
-        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await anna.State(), bertId) > 0, TimeSpan.FromMilliseconds(300), "without the right nothing goes over the link");
-        Assert.Equal(0, FramesFrom(await anna.State(), bertId));
-        await bert.Post("linkptt", new { down = false });
+        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await anna.StateAsync(), bertId) > 0, TimeSpan.FromMilliseconds(300), "without the right nothing goes over the link");
+        Assert.Equal(0, FramesFrom(await anna.StateAsync(), bertId));
+        await bert.PostAsync("linkptt", new { down = false });
 
         // same channel: bert joins the lobby and anna hears his plain PTT
-        await bert.Post("join", new { channel = "Lobby" });
-        await bert.Until(otherElement => Channel(otherElement, "Lobby").GetProperty("isCurrent").GetBoolean());
-        await bert.Post("ptt", new { down = true });
-        await anna.Until(otherElement => FramesFrom(otherElement, bertId) > 10 && User(otherElement, bertId)?.GetProperty("isSpeaking").GetBoolean() == true);
-        await bert.Until(otherElement => otherElement.GetProperty("transmitText").GetString() != ""); // so the empty text below is the release, not the start
-        await bert.Post("ptt", new { down = false });
+        await bert.PostAsync("join", new { channel = "Lobby" });
+        await bert.UntilAsync(otherElement => Channel(otherElement, "Lobby").GetProperty("isCurrent").GetBoolean());
+        await bert.PostAsync("ptt", new { down = true });
+        await anna.UntilAsync(otherElement => FramesFrom(otherElement, bertId) > 10 && User(otherElement, bertId)?.GetProperty("isSpeaking").GetBoolean() == true);
+        await bert.UntilAsync(otherElement => otherElement.GetProperty("transmitText").GetString() != ""); // so the empty text below is the release, not the start
+        await bert.PostAsync("ptt", new { down = false });
 
         // muted clients send nothing
-        await bert.Post("mute", new { value = true });
+        await bert.PostAsync("mute", new { value = true });
         // The PTT release may still let frames out. Once the transmit text is gone, the capture thread has decided
         // "nothing" for a frame, and every frame before it is counted (one thread, in order): no wall-clock window.
-        var settled = await bert.Until(otherElement => !otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean() && otherElement.GetProperty("transmitText").GetString() == "");
+        var settled = await bert.UntilAsync(otherElement => !otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean() && otherElement.GetProperty("transmitText").GetString() == "");
         long sentBefore = settled.GetProperty("audio").GetProperty("framesSent").GetInt64();
-        await bert.Post("ptt", new { down = true });
-        await bert.Until(otherElement => otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean()); // the key thread saw it, so the silence proves something
-        await AsyncWait.AssertStaysFalseAsync(async () => (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64() != sentBefore,
+        await bert.PostAsync("ptt", new { down = true });
+        await bert.UntilAsync(otherElement => otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean()); // the key thread saw it, so the silence proves something
+        await AsyncWait.AssertStaysFalseAsync(async () => (await bert.StateAsync()).GetProperty("audio").GetProperty("framesSent").GetInt64() != sentBefore,
             TimeSpan.FromMilliseconds(300), "a muted client sends nothing");
-        Assert.Equal(sentBefore, (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64());
+        Assert.Equal(sentBefore, (await bert.StateAsync()).GetProperty("audio").GetProperty("framesSent").GetInt64());
     }
 
     /// <summary>Package 29: every key action can be simulated through the API.</summary>
     [Fact]
     public async Task Keys_EveryAction_Simulated()
     {
-        await anna.Post("connect", ConnectBody("anna"));
-        await anna.Post("key", new { action = "PushToMute", down = true });
-        await anna.Until(element => element.GetProperty("audio").GetProperty("pushToMute").GetBoolean());
-        await anna.Post("key", new { action = "PushToMute", down = false });
+        await anna.PostAsync("connect", ConnectBody("anna"));
+        await anna.PostAsync("key", new { action = "PushToMute", down = true });
+        await anna.UntilAsync(element => element.GetProperty("audio").GetProperty("pushToMute").GetBoolean());
+        await anna.PostAsync("key", new { action = "PushToMute", down = false });
 
-        await anna.Post("key", new { action = "ToggleMute" });
-        await anna.Until(element => element.GetProperty("server").GetProperty("selfMuted").GetBoolean());
-        await anna.Post("key", new { action = "ToggleDeafen" });
-        await anna.Until(element => element.GetProperty("server").GetProperty("selfDeafened").GetBoolean());
+        await anna.PostAsync("key", new { action = "ToggleMute" });
+        await anna.UntilAsync(element => element.GetProperty("server").GetProperty("selfMuted").GetBoolean());
+        await anna.PostAsync("key", new { action = "ToggleDeafen" });
+        await anna.UntilAsync(element => element.GetProperty("server").GetProperty("selfDeafened").GetBoolean());
 
         var response = await anna.Http.PostAsJsonAsync("key", new { action = "Tanzen" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -268,69 +268,69 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task DeafenedClient_HearsNothing_UntilUndeafened()
     {
-        var annaId = SelfId(await anna.Post("connect", ConnectBody("anna")));
-        await bert.Post("connect", ConnectBody("bert"));
-        await bert.Post("deafen", new { value = true });
-        await anna.Until(element => User(element, SelfId(element) + 1)?.GetProperty("statusText").GetString() == "(taub)");
+        var annaId = SelfId(await anna.PostAsync("connect", ConnectBody("anna")));
+        await bert.PostAsync("connect", ConnectBody("bert"));
+        await bert.PostAsync("deafen", new { value = true });
+        await anna.UntilAsync(element => User(element, SelfId(element) + 1)?.GetProperty("statusText").GetString() == "(taub)");
 
-        await anna.Post("tone", new { hz = 440 });
-        await anna.Post("ptt", new { down = true });
-        await anna.Until(element => element.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
-        var muted = await bert.State();
+        await anna.PostAsync("tone", new { hz = 440 });
+        await anna.PostAsync("ptt", new { down = true });
+        await anna.UntilAsync(element => element.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
+        var muted = await bert.StateAsync();
         Assert.Equal(0, FramesFrom(muted, annaId));
         Assert.Equal(-120, muted.GetProperty("audio").GetProperty("lastOutputLevelDb").GetDouble());
 
-        await bert.Post("deafen", new { value = false });
-        await bert.Until(element => FramesFrom(element, annaId) > 10 && element.GetProperty("audio").GetProperty("lastOutputLevelDb").GetDouble() > -60);
+        await bert.PostAsync("deafen", new { value = false });
+        await bert.UntilAsync(element => FramesFrom(element, annaId) > 10 && element.GetProperty("audio").GetProperty("lastOutputLevelDb").GetDouble() > -60);
     }
 
     /// <summary>Package 47: the tones actually played show in /state.</summary>
     [Fact]
     public async Task State_SoundsPlayed_Listed()
     {
-        await anna.Post("connect", ConnectBody("anna"));
-        await bert.Post("connect", ConnectBody("bert"));
+        await anna.PostAsync("connect", ConnectBody("anna"));
+        await bert.PostAsync("connect", ConnectBody("bert"));
         static bool Played(JsonElement element, string sound) => element.GetProperty("sounds").EnumerateArray().Any(otherElement => otherElement.GetString() == sound);
-        await anna.Until(element => Played(element, "Connected") && Played(element, "UserJoined"));
-        await bert.Post("mute", new { value = true });
-        await bert.Until(element => Played(element, "MicOff"));
+        await anna.UntilAsync(element => Played(element, "Connected") && Played(element, "UserJoined"));
+        await bert.PostAsync("mute", new { value = true });
+        await bert.UntilAsync(element => Played(element, "MicOff"));
     }
 
     [Fact]
     public async Task AdminActions_ThroughApi_Applied()
     {
-        await anna.Post("connect", ConnectBody("anna"));
-        await bert.Post("connect", ConnectBody("bert"));
-        await anna.Post("redeem", new { token = server.State.PendingAdminToken });
-        await anna.Until(element => element.GetProperty("server").GetProperty("isAdmin").GetBoolean());
+        await anna.PostAsync("connect", ConnectBody("anna"));
+        await bert.PostAsync("connect", ConnectBody("bert"));
+        await anna.PostAsync("redeem", new { token = server.State.PendingAdminToken });
+        await anna.UntilAsync(element => element.GetProperty("server").GetProperty("isAdmin").GetBoolean());
 
         // raw protocol request: a new group
-        await anna.Post("request", new { type = "createGroup", name = "Team", permissions = "Speak, SpeakLinked" });
-        await anna.Until(element => element.GetProperty("server").GetProperty("groups").EnumerateArray().Any(otherElement => otherElement.GetProperty("name").GetString() == "Team"));
+        await anna.PostAsync("request", new { type = "createGroup", name = "Team", permissions = "Speak, SpeakLinked" });
+        await anna.UntilAsync(element => element.GetProperty("server").GetProperty("groups").EnumerateArray().Any(otherElement => otherElement.GetProperty("name").GetString() == "Team"));
 
         // server mute shows up for everyone, kick disconnects
-        await anna.Post("server-mute", new { user = "bert", value = true });
-        await bert.Until(element => Channels(element).SelectMany(otherElement => otherElement.GetProperty("users").EnumerateArray())
+        await anna.PostAsync("server-mute", new { user = "bert", value = true });
+        await bert.UntilAsync(element => Channels(element).SelectMany(otherElement => otherElement.GetProperty("users").EnumerateArray())
             .Any(otherElement => otherElement.GetProperty("isSelf").GetBoolean() && otherElement.GetProperty("serverMuted").GetBoolean()));
-        await anna.Post("kick", new { user = "bert", reason = "Test" });
-        var kicked = await bert.Until(element => !element.GetProperty("connected").GetBoolean());
+        await anna.PostAsync("kick", new { user = "bert", reason = "Test" });
+        var kicked = await bert.UntilAsync(element => !element.GetProperty("connected").GetBoolean());
         Assert.Contains("gekickt", kicked.GetProperty("status").GetString());
     }
     [Fact]
     public async Task Chat_ThroughApi_RoundTrips()
     {
-        await anna.Post("connect", ConnectBody("anna"));
-        await bert.Post("connect", ConnectBody("bert"));
-        await anna.Until(element => Channels(element).Sum(otherElement => otherElement.GetProperty("users").GetArrayLength()) == 2);
+        await anna.PostAsync("connect", ConnectBody("anna"));
+        await bert.PostAsync("connect", ConnectBody("bert"));
+        await anna.UntilAsync(element => Channels(element).Sum(otherElement => otherElement.GetProperty("users").GetArrayLength()) == 2);
 
         static bool Has(JsonElement element, string from, string text) =>
             element.GetProperty("server").GetProperty("chat").EnumerateArray()
                 .Any(otherElement => otherElement.GetProperty("fromNickname").GetString() == from && otherElement.GetProperty("text").GetString() == text);
-        await anna.Post("chat", new { target = "channel", text = "hallo Lobby" });
-        await bert.Until(element => Has(element, "anna", "hallo Lobby"));
-        await bert.Post("chat", new { target = "private", to = "anna", text = "psst" });
-        await anna.Until(element => Has(element, "bert", "psst"));
-        await bert.Until(element => Has(element, "bert", "psst")); // the sender sees the own whisper
+        await anna.PostAsync("chat", new { target = "channel", text = "hallo Lobby" });
+        await bert.UntilAsync(element => Has(element, "anna", "hallo Lobby"));
+        await bert.PostAsync("chat", new { target = "private", to = "anna", text = "psst" });
+        await anna.UntilAsync(element => Has(element, "bert", "psst"));
+        await bert.UntilAsync(element => Has(element, "bert", "psst")); // the sender sees the own whisper
     }
 
     /// <summary>Package 102: someone folding away in the tree is gone for the debug API already.</summary>
@@ -338,7 +338,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     public async Task State_LeavingUser_NotListed()
     {
         ServerViewModel fake = null!;
-        await anna.OnUi(viewModel =>
+        await anna.OnUiAsync(viewModel =>
         {
             fake = FakeServers.Admin(time: new ManualTimeProvider());
             fake.Post = action => action();
@@ -346,7 +346,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             MainViewModelSetup.ShowServer(viewModel, fake);
             fake.Apply(new OVS.Shared.Protocol.Messages.Users.UserLeft(2));
         });
-        var state = await anna.State();
+        var state = await anna.StateAsync();
         Assert.Null(User(state, 2));
         Assert.Single(fake.Tree.Channels.Single(channel => channel.Name == "Raid").Users); // still shown while it folds
     }
@@ -358,9 +358,9 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task State_Connected_KeepsEveryFieldName()
     {
-        await anna.Post("connect", ConnectBody("anna"));
-        await anna.Post("chat", new { target = "channel", text = "hallo" });
-        var state = await anna.Until(element => element.GetProperty("server").GetProperty("chat").GetArrayLength() == 1);
+        await anna.PostAsync("connect", ConnectBody("anna"));
+        await anna.PostAsync("chat", new { target = "channel", text = "hallo" });
+        var state = await anna.UntilAsync(element => element.GetProperty("server").GetProperty("chat").GetArrayLength() == 1);
 
         var names = new SortedSet<string>(StringComparer.Ordinal);
         FieldNames(state, "", names);
@@ -491,7 +491,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             return instance;
         }
 
-        public async Task<JsonElement> Post(string path, object? body = null)
+        public async Task<JsonElement> PostAsync(string path, object? body = null)
         {
             var response = await Http.PostAsJsonAsync(path, body ?? new { });
             var text = await response.Content.ReadAsStringAsync();
@@ -499,22 +499,22 @@ public sealed class DebugApiTests : IAsyncLifetime
             return JsonDocument.Parse(text).RootElement;
         }
 
-        public Task OnUi(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
+        public Task OnUiAsync(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
         {
             work(viewModel);
             return Task.FromResult<object?>(null);
         });
 
-        public async Task<JsonElement> State() =>
+        public async Task<JsonElement> StateAsync() =>
             JsonDocument.Parse(await Http.GetStringAsync("state")).RootElement;
 
-        public async Task<JsonElement> Until(Func<JsonElement, bool> condition, int timeoutMs = 15000) // returns once it holds
+        public async Task<JsonElement> UntilAsync(Func<JsonElement, bool> condition, int timeoutMs = 15000) // returns once it holds
         {
             var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
             JsonElement state;
             do
             {
-                state = await State();
+                state = await StateAsync();
                 if (condition(state)) return state;
                 await Task.Delay(50);
             } while (DateTime.UtcNow < deadline);

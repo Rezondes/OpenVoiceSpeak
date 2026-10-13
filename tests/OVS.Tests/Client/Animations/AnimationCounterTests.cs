@@ -16,7 +16,7 @@ public sealed class AnimationCounterTests
     {
         var run = new TaskCompletionSource();
         int started = AnimationCounter.Started, running = AnimationCounter.Running;
-        var counted = AnimationCounter.Count(run.Task);
+        var counted = AnimationCounter.CountAsync(run.Task);
         try
         {
             Assert.Same(run.Task, counted);
@@ -36,7 +36,7 @@ public sealed class AnimationCounterTests
     {
         var run = new TaskCompletionSource();
         int started = AnimationCounter.Started, running = AnimationCounter.Running;
-        AnimationCounter.Count(run.Task);
+        AnimationCounter.CountAsync(run.Task);
         switch (ending)
         {
             case TaskStatus.RanToCompletion:
@@ -58,7 +58,7 @@ public sealed class AnimationCounterTests
     public void ResetStarted_OneRunning_StartedZeroRunningKept()
     {
         var run = new TaskCompletionSource();
-        AnimationCounter.Count(run.Task);
+        AnimationCounter.CountAsync(run.Task);
         int running = AnimationCounter.Running;
         AnimationCounter.ResetStarted();
         try

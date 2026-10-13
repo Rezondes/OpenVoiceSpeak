@@ -26,7 +26,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
 
     /// <summary>Looks again until every line is there, at most 15 s by the clock: the network and UI threads may come late on a busy runner.</summary>
     /// <param name="each">Runs before every look, e.g. the UI timer tick.</param>
-    async Task<string> Eventually(Func<Task>? each, params string[] expected)
+    async Task<string> EventuallyAsync(Func<Task>? each, params string[] expected)
     {
         var text = "";
         await AsyncWait.UntilAsync(async () =>
@@ -51,12 +51,12 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
 
     static async Task StopAsync(TestServer server, TestDispatcher ui, MainViewModel viewModel)
     {
-        await Run(ui, () => viewModel.DisposeAsync().AsTask());
+        await RunAsync(ui, () => viewModel.DisposeAsync().AsTask());
         ui.Dispose();
         await server.DisposeAsync();
     }
 
-    static Task Run(TestDispatcher ui, Func<Task> work) => ui.InvokeAsync<object?>(async () =>
+    static Task RunAsync(TestDispatcher ui, Func<Task> work) => ui.InvokeAsync<object?>(async () =>
     {
         await work();
         return null;
@@ -68,18 +68,18 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         var (server, ui, viewModel) = await StartAsync();
         try
         {
-            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "", null, false)));
-            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
+            await RunAsync(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "", null, false)));
+            await RunAsync(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             await using (await TestClient.ConnectAsync(server, "bert"))
-                await Eventually(null, "bert connected, channel 'Lobby'");
-            await Eventually(() => Run(ui, () =>
+                await EventuallyAsync(null, "bert connected, channel 'Lobby'");
+            await EventuallyAsync(() => RunAsync(ui, () =>
             {
                 viewModel.Tick();
                 return Task.CompletedTask;
             }), "bert disconnected", "UDP now reachable");
-            await Run(ui, viewModel.Connection.DisconnectAsync);
+            await RunAsync(ui, viewModel.Connection.DisconnectAsync);
 
-            var log = await Eventually(null,
+            var log = await EventuallyAsync(null,
                 $"Connecting to 127.0.0.1:{server.Port} as anna",
                 "Serverzertifikat neu für 127.0.0.1",
                 "akzeptiert",
@@ -100,14 +100,14 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         var (server, ui, viewModel) = await StartAsync();
         try
         {
-            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
-            await Run(ui, () => viewModel.Server!.SendAsync(new CreateChannel("Raid", "")));
-            await Eventually(null, "Channel 'Raid' created");
+            await RunAsync(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
+            await RunAsync(ui, () => viewModel.Server!.SendAsync(new CreateChannel("Raid", "")));
+            await EventuallyAsync(null, "Channel 'Raid' created");
             var raid = await ui.InvokeAsync(() => Task.FromResult(viewModel.Server!.Tree.Channels.Single(channel => channel.Name == "Raid").Id));
-            await Run(ui, () => viewModel.Server!.JoinAsync(raid));
-            await Run(ui, () => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
+            await RunAsync(ui, () => viewModel.Server!.JoinAsync(raid));
+            await RunAsync(ui, () => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
 
-            await Eventually(null,
+            await EventuallyAsync(null,
                 "Request r1: Create channel 'Raid'",
                 "Request r2: Join channel 'Raid'",
                 "anna moves from 'Lobby' to 'Raid'",
@@ -125,11 +125,11 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         var (server, ui, viewModel) = await StartAsync(password: "Serverpasswort-4711");
         try
         {
-            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", "Serverpasswort-4711", false)));
-            await Run(ui, () => viewModel.Server!.SendAsync(new RedeemAdminToken("Token-0815-geheim")));
-            await Run(ui, () => viewModel.Server!.SendAsync(new UpdateServerSettings("Testserver", "", "Neues-Passwort-42")));
+            await RunAsync(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", "Serverpasswort-4711", false)));
+            await RunAsync(ui, () => viewModel.Server!.SendAsync(new RedeemAdminToken("Token-0815-geheim")));
+            await RunAsync(ui, () => viewModel.Server!.SendAsync(new UpdateServerSettings("Testserver", "", "Neues-Passwort-42")));
 
-            var log = await Eventually(null, "with password", "Redeem admin token", "set password", "Server settings changed");
+            var log = await EventuallyAsync(null, "with password", "Redeem admin token", "set password", "Server settings changed");
             Assert.DoesNotContain("Serverpasswort-4711", log);
             Assert.DoesNotContain("Token-0815-geheim", log);
             Assert.DoesNotContain("Neues-Passwort-42", log);
@@ -194,12 +194,12 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         {
             engine.DeviceLifecycle.SetTone(440);
             keys.Simulate(ptt: true);
-            await Eventually(null, "Audio-Debug: PTT gedrückt");
+            await EventuallyAsync(null, "Audio-Debug: PTT gedrückt");
             // The rate comes from a real one-second timer: on a busy runner a single second may be stretched,
             // so wait (at most 15 s) for a full second of PTT instead of sampling a fixed one.
             await AsyncWait.UntilAsync(() => Rates(LogText()).Any(value => value is >= 45 and <= 55), TimeSpan.FromSeconds(15));
             keys.Simulate(ptt: false);
-            await Eventually(null, "Audio-Debug: PTT losgelassen");
+            await EventuallyAsync(null, "Audio-Debug: PTT losgelassen");
         }
         var log = LogText();
         Assert.Contains("Audio-Debug: PTT gedrückt", log);

@@ -85,7 +85,7 @@ public sealed class AdminPlaceTests
     {
         var sent = new List<Request>();
         var admin = Admin(sent);
-        foreach (var place in admin.Places) Assert.True(await HangGuard.Bound(place.SaveAsync()));
+        foreach (var place in admin.Places) Assert.True(await HangGuard.BoundAsync(place.SaveAsync()));
         Assert.Empty(sent);
     }
 }

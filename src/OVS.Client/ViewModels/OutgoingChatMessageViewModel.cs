@@ -28,5 +28,5 @@ public sealed partial class OutgoingChatMessageViewModel : ObservableObject
     public bool IsFailed => Pending.HasError;
 
     [RelayCommand]
-    Task Retry() => IsWaiting ? Task.CompletedTask : send(Pending);
+    Task RetryAsync() => IsWaiting ? Task.CompletedTask : send(Pending);
 }

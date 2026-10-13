@@ -122,7 +122,7 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    Task Save()
+    Task SaveAsync()
     {
         Send();
         return Task.CompletedTask;

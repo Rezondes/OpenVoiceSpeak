@@ -55,11 +55,11 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
     }
 
     [AvaloniaFact]
-    public void Header_ServerShown_DisconnectButtonIsTheConnectionsDisconnectCommand()
+    public void Header_ServerShown_DisconnectButtonIsTheConnectionsConfirmDisconnectCommand()
     {
         var main = Open(FakeServers.Admin(), out var mainViewModel);
 
-        Assert.Same(mainViewModel.Connection.DisconnectCommand, FindDisconnectButton(main).Command);
+        Assert.Same(mainViewModel.Connection.ConfirmDisconnectCommand, FindDisconnectButton(main).Command);
         main.Close();
     }
 
@@ -160,7 +160,7 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
 
             Assert.True(Click(tile));
 
-            var attempt = await HangGuard.Bound(seam.WaitForAttemptAsync(1));
+            var attempt = await HangGuard.BoundAsync(seam.WaitForAttemptAsync(1));
             Assert.Equal(4711, attempt.Choice.Port);
         }
         finally

@@ -41,7 +41,7 @@ public static class FlyGhost
     /// in each frame (and take its size on the way), then removes it. <paramref name="frame"/> gets each frame's progress
     /// (0 to 1); at 1 it runs in the same frame the ghost goes, so the target can take over without a gap.
     /// </summary>
-    public static Task Fly(OverlayLayer overlay, Control ghost, Rect from, Func<Rect?> to, Action<double>? frame = null)
+    public static Task FlyAsync(OverlayLayer overlay, Control ghost, Rect from, Func<Rect?> to, Action<double>? frame = null)
     {
         ghost.IsHitTestVisible = false;
         ghost.Width = from.Width;
@@ -71,14 +71,14 @@ public static class FlyGhost
             }
         }
         Frame(default);
-        return AnimationCounter.Count(done.Task);
+        return AnimationCounter.CountAsync(done.Task);
     }
 
     /// <summary>A picture of a row flying to its new place; <paramref name="landed"/> runs in the frame it lands, then the picture is let go.</summary>
-    public static async Task Row(OverlayLayer overlay, IImage picture, Rect from, Func<Point?> to, Action landed)
+    public static async Task RowAsync(OverlayLayer overlay, IImage picture, Rect from, Func<Point?> to, Action landed)
     {
         Rect? Target() => to() is { } at ? new Rect(at, from.Size) : null;
-        await Fly(overlay, new Border { Classes = { GhostClass }, Child = new Image { Source = picture } }, from, Target, progress =>
+        await FlyAsync(overlay, new Border { Classes = { GhostClass }, Child = new Image { Source = picture } }, from, Target, progress =>
         {
             if (progress >= 1) landed();
         });
@@ -91,7 +91,7 @@ public static class FlyGhost
     /// the flight the ghost fades while the row's own highlight fades in (its background transition), so the hand-over
     /// shows no gap and no jump.
     /// </summary>
-    public static async Task Highlight(Border fromRow, Border toRow)
+    public static async Task HighlightAsync(Border fromRow, Border toRow)
     {
         if (!Motion.IsAnimated(toRow) || OverlayLayer.GetOverlayLayer(toRow) is not { } overlay
             || VisibleRect(fromRow, overlay) is not { } from || VisibleRect(toRow, overlay) is null)
@@ -100,7 +100,7 @@ public static class FlyGhost
         var ghost = new Border { Classes = { HighlightClass }, CornerRadius = toRow.CornerRadius, Opacity = GhostOpacity };
         ghost.Bind(Border.BackgroundProperty, ghost.GetResourceObservable("Ovs.SurfaceSelected"));
         toRow.Classes.Set(ArrivingClass, true);
-        await Fly(overlay, ghost, from, () => toRow.TranslatePoint(default, overlay) is { } at ? new Rect(at, toRow.Bounds.Size) : null, progress =>
+        await FlyAsync(overlay, ghost, from, () => toRow.TranslatePoint(default, overlay) is { } at ? new Rect(at, toRow.Bounds.Size) : null, progress =>
         {
             if (progress < HandOver) return;
             toRow.Classes.Set(ArrivingClass, false);

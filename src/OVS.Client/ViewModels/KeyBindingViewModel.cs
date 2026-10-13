@@ -15,7 +15,7 @@ public sealed partial class KeyBindingViewModel(KeyBinding binding, SettingsView
     public string ChordName => Binding.Chord.Name;
 
     [RelayCommand]
-    Task Edit() => owner.EditAsync(this);
+    Task EditAsync() => owner.EditAsync(this);
 
     [RelayCommand]
     void Remove() => owner.Remove(this);

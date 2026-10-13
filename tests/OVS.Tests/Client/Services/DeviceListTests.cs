@@ -24,7 +24,7 @@ public sealed class DeviceListTests
     {
         var list = CreateList(direction => direction == AudioDirection.Input ? [Headset, Webcam] : [Speakers, MonitorOutput]);
 
-        _ = list.Refresh();
+        _ = list.RefreshAsync();
         await posts.RunAsync(clock, TimeSpan.Zero);
 
         var (shownInputs, shownOutputs) = Assert.Single(shownLists);
@@ -47,7 +47,7 @@ public sealed class DeviceListTests
     {
         var list = CreateList();
 
-        _ = list.Refresh();
+        _ = list.RefreshAsync();
         await posts.RunAsync(clock, TimeSpan.Zero);
 
         var (shownInputs, shownOutputs) = Assert.Single(shownLists);
@@ -66,7 +66,7 @@ public sealed class DeviceListTests
             return [];
         });
 
-        _ = list.Refresh();
+        _ = list.RefreshAsync();
 
         Assert.False(Volatile.Read(ref listingDone));
         release.Set();
@@ -82,7 +82,7 @@ public sealed class DeviceListTests
             throw new InvalidOperationException("device list unavailable");
         }, (inputs, outputs) => shownLists.Add((inputs, outputs)));
 
-        await HangGuard.Bound(list.Refresh().ContinueWith(_ => { }, TaskScheduler.Default)); // the load ends cancelled when the listing failed
+        await HangGuard.BoundAsync(list.RefreshAsync().ContinueWith(_ => { }, TaskScheduler.Default)); // the load ends cancelled when the listing failed
 
         Assert.Equal(0, Volatile.Read(ref postCalls));
         Assert.Empty(shownLists);
@@ -105,9 +105,9 @@ public sealed class DeviceListTests
             }
             return direction == AudioDirection.Input ? [Webcam] : [MonitorOutput];
         });
-        _ = list.Refresh();
-        await HangGuard.Bound(firstListingStarted.Task);
-        _ = list.Refresh();
+        _ = list.RefreshAsync();
+        await HangGuard.BoundAsync(firstListingStarted.Task);
+        _ = list.RefreshAsync();
         await posts.RunAsync(clock, TimeSpan.Zero); // the newer list is shown
 
         releaseFirstListing.Set();

@@ -159,7 +159,7 @@ public sealed class IdentityFloodTests
         // a save of this much data, or a scan of 2000 log files, can hold the server for seconds on a slow CI disk
         const int slow = 30_000;
 
-        async Task<List<T>> FetchAll<T, TList>(Func<int, Request> ask, Func<TList, (string? Id, int Offset, int Total, IReadOnlyList<T> Items)> read)
+        async Task<List<T>> FetchAllAsync<T, TList>(Func<int, Request> ask, Func<TList, (string? Id, int Offset, int Total, IReadOnlyList<T> Items)> read)
             where TList : Message
         {
             var all = new List<T>();
@@ -175,11 +175,11 @@ public sealed class IdentityFloodTests
             }
         }
 
-        var users = await FetchAll<KnownUserInfo, UserList>(value => new ListUsers(value), userList => (userList.RequestId, userList.Offset, userList.Total, userList.Users));
+        var users = await FetchAllAsync<KnownUserInfo, UserList>(value => new ListUsers(value), userList => (userList.RequestId, userList.Offset, userList.Total, userList.Users));
         Assert.Equal(5001, users.Select(knownUser => knownUser.Fingerprint).Distinct().Count());
-        var bans = await FetchAll<BanInfo, BanList>(value => new ListBans(value), banList => (banList.RequestId, banList.Offset, banList.Total, banList.Bans));
+        var bans = await FetchAllAsync<BanInfo, BanList>(value => new ListBans(value), banList => (banList.RequestId, banList.Offset, banList.Total, banList.Bans));
         Assert.Equal(2000, bans.Count);
-        var logs = await FetchAll<LogFileInfo, LogList>(value => new ListLogs(value), logList => (logList.RequestId, logList.Offset, logList.Total, logList.Files));
+        var logs = await FetchAllAsync<LogFileInfo, LogList>(value => new ListLogs(value), logList => (logList.RequestId, logList.Offset, logList.Total, logList.Files));
         Assert.True(logs.Count >= 2000);
         Assert.Equal(logs.Count, logs.Select(logFile => logFile.Id).Distinct().Count());
 

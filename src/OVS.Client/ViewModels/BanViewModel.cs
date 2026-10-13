@@ -55,5 +55,5 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
     public bool CanUnban { get; } = canUnban && EvaluateStatus(ban, now) == BanStatus.Active;
 
     [RelayCommand(CanExecute = nameof(CanUnban))]
-    Task Unban() => unban();
+    Task UnbanAsync() => unban();
 }

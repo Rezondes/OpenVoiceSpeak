@@ -9,7 +9,7 @@ static class HangGuard
 {
     public static readonly TimeSpan Limit = TimeSpan.FromSeconds(10);
 
-    public static Task Bound(Task task) => task.WaitAsync(Limit);
+    public static Task BoundAsync(Task task) => task.WaitAsync(Limit);
 
-    public static Task<T> Bound<T>(Task<T> task) => task.WaitAsync(Limit);
+    public static Task<T> BoundAsync<T>(Task<T> task) => task.WaitAsync(Limit);
 }

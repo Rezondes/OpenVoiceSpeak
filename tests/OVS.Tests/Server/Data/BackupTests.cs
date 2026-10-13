@@ -548,12 +548,12 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         SeedAdmin(dir, adminId);
         var gap = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var sent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        async Task AfterWait(ServerState _)
+        async Task AfterWaitAsync(ServerState _)
         {
             gap.SetResult();
             await sent.Task;
         }
-        var (host, admin) = await StartHostAsync(dir, adminId, AfterWait);
+        var (host, admin) = await StartHostAsync(dir, adminId, AfterWaitAsync);
         await using (host)
         await using (admin)
         {

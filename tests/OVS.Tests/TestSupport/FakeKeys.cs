@@ -28,7 +28,7 @@ public sealed class FakeKeys
     /// Waits for two more capture sweeps (the second one surely started after the last change), or until
     /// <paramref name="captured"/> holds: a capture that found its chord sweeps no more.
     /// </summary>
-    public async Task NextSweep(Func<bool>? captured = null)
+    public async Task NextSweepAsync(Func<bool>? captured = null)
     {
         int target = Volatile.Read(ref sweeps) + 2;
         await AsyncWait.UntilAsync(() => Volatile.Read(ref sweeps) >= target || captured?.Invoke() == true);

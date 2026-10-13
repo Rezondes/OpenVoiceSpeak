@@ -34,16 +34,16 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     public bool HasActions => CanBan || CanUnban || CanDelete || CanLiftMute;
 
     [RelayCommand(CanExecute = nameof(CanLiftMute))]
-    Task LiftMute() => actions.LiftMute(this);
+    Task LiftMuteAsync() => actions.LiftMute(this);
 
     [RelayCommand(CanExecute = nameof(CanBan))]
-    Task Ban() => actions.Ban(this);
+    Task BanAsync() => actions.Ban(this);
 
     [RelayCommand(CanExecute = nameof(CanUnban))]
-    Task Unban() => actions.Unban(this);
+    Task UnbanAsync() => actions.Unban(this);
 
     [RelayCommand(CanExecute = nameof(CanDelete))]
-    Task Delete() => actions.Delete(this);
+    Task DeleteAsync() => actions.Delete(this);
 
     /// <summary>The longest running ban.</summary>
     public string BanText => Bans.OrderBy(banInfo => banInfo.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""

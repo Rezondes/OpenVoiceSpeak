@@ -90,23 +90,23 @@ public class HandshakeTests
         var clock = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(password: "pw", time: clock);
         int count = 0;
-        async Task<Message> Try(string password)
+        async Task<Message> TryAsync(string password)
         {
             await using var client = await TestClient.OpenAsync(server.Port);
             return await client.HandshakeAsync("user" + ++count, password);
         }
         static string Code(Message message) => Assert.IsType<Rejected>(message).Code;
 
-        for (int index = 0; index < 5; index++) Assert.Equal(ReasonCodes.WrongPassword, Code(await Try("falsch")));
-        Assert.Equal(ReasonCodes.TooManyPasswordAttempts, Code(await Try("pw"))); // blocked: not even the right one
+        for (int index = 0; index < 5; index++) Assert.Equal(ReasonCodes.WrongPassword, Code(await TryAsync("falsch")));
+        Assert.Equal(ReasonCodes.TooManyPasswordAttempts, Code(await TryAsync("pw"))); // blocked: not even the right one
         clock.Advance(TimeSpan.FromMinutes(1));
-        Assert.IsType<Welcome>(await Try("pw"));
+        Assert.IsType<Welcome>(await TryAsync("pw"));
 
-        Assert.Equal(ReasonCodes.WrongPassword, Code(await Try("falsch"))); // 6th: 2 minutes
+        Assert.Equal(ReasonCodes.WrongPassword, Code(await TryAsync("falsch"))); // 6th: 2 minutes
         clock.Advance(TimeSpan.FromMinutes(1));
-        Assert.Equal(ReasonCodes.TooManyPasswordAttempts, Code(await Try("pw")));
+        Assert.Equal(ReasonCodes.TooManyPasswordAttempts, Code(await TryAsync("pw")));
         clock.Advance(TimeSpan.FromMinutes(1));
-        Assert.IsType<Welcome>(await Try("pw"));
+        Assert.IsType<Welcome>(await TryAsync("pw"));
     }
 
     [Fact]

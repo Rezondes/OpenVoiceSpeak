@@ -143,7 +143,7 @@ internal sealed class EntryTracker
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d) } },
             },
-        }.Play(list).ContinueWith(_ => fading = false, TaskScheduler.FromCurrentSynchronizationContext());
+        }.PlayAsync(list).ContinueWith(_ => fading = false, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     /// <summary>Entries prepared in the same round of the dispatcher came together.</summary>

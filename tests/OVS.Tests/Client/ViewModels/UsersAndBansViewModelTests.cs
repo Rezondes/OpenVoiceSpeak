@@ -41,7 +41,7 @@ public sealed class UsersAndBansViewModelTests
     {
         var toggle = section.Users.Single(user => user.Nickname == nickname).Toggles.Single(group => group.Name == groupName);
         toggle.IsChecked = on;
-        return Bound(toggle.ToggleCommand.ExecuteAsync(null));
+        return BoundAsync(toggle.ToggleCommand.ExecuteAsync(null));
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public sealed class UsersAndBansViewModelTests
         var (section, _) = Create();
         section.Apply(new UserList("r", [Yvonne]));
 
-        await Bound(Assert.Single(section.Users).DeleteCommand.ExecuteAsync(null));
+        await BoundAsync(Assert.Single(section.Users).DeleteCommand.ExecuteAsync(null));
 
         Assert.Empty(sent);
     }
@@ -185,7 +185,7 @@ public sealed class UsersAndBansViewModelTests
         var (section, _) = Create(new UsersAndBansDialogs { ConfirmDeleteUser = _ => throw new InvalidOperationException("Dialog kaputt") });
         section.Apply(new UserList("r", [Yvonne]));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Bound(Assert.Single(section.Users).DeleteCommand.ExecuteAsync(null)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => BoundAsync(Assert.Single(section.Users).DeleteCommand.ExecuteAsync(null)));
 
         Assert.Empty(sent);
     }
@@ -197,7 +197,7 @@ public sealed class UsersAndBansViewModelTests
         var (section, _) = Create(new UsersAndBansDialogs { Ban = (nickname, _, _) => { asked.Add(nickname); return Task.FromResult<BanChoice?>(null); } });
         section.Apply(new UserList("r", [Yvonne]));
 
-        await Bound(Assert.Single(section.Users).BanCommand.ExecuteAsync(null));
+        await BoundAsync(Assert.Single(section.Users).BanCommand.ExecuteAsync(null));
 
         Assert.Equal(["Yvonne"], asked);
         Assert.Empty(sent);
@@ -208,7 +208,7 @@ public sealed class UsersAndBansViewModelTests
     {
         var (section, _) = Create();
 
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
 
         Assert.Single(sent.OfType<ListUsers>());
         Assert.Single(sent.OfType<ListBans>());
@@ -218,7 +218,7 @@ public sealed class UsersAndBansViewModelTests
     public async Task Apply_UserListOfItsRequest_ShowsTheCardAndLeavesTheBansLoading()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
 
         server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
 
@@ -231,7 +231,7 @@ public sealed class UsersAndBansViewModelTests
     public async Task Apply_BanListOfItsRequest_ShowsTheBanAndLeavesTheUsersLoading()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
 
         server.Apply(new BanList(sent.LastRequestId<ListBans>(), [YvonnesBan]));
 
@@ -244,11 +244,11 @@ public sealed class UsersAndBansViewModelTests
     public async Task Apply_BanListAfterAnUnban_EndsTheBansBusyMark()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
         server.Apply(new BanList(sent.LastRequestId<ListBans>(), [YvonnesBan]));
         var row = Assert.Single(section.Bans);
 
-        await Bound(row.UnbanCommand.ExecuteAsync(null));
+        await BoundAsync(row.UnbanCommand.ExecuteAsync(null));
         Assert.True(row.Busy.IsRunning);
         server.Apply(new BanList(sent.LastRequestId<Unban>(), []));
 
@@ -259,11 +259,11 @@ public sealed class UsersAndBansViewModelTests
     public async Task Apply_ErrorForTheUserListRequest_ReleasesTheNextRefresh()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
 
         server.Apply(new Error(sent.LastRequestId<ListUsers>(), ReasonCodes.PermissionDenied));
         time.Advance(TimeSpan.FromSeconds(2));
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
 
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
     }
@@ -272,7 +272,7 @@ public sealed class UsersAndBansViewModelTests
     public async Task FollowServer_SomeoneGoesOffline_AsksForTheUserListAgain()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
         server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
         server.Apply(new UserLeft(2)); // anna, online until now
         time.Advance(TimeSpan.FromSeconds(2));
@@ -286,7 +286,7 @@ public sealed class UsersAndBansViewModelTests
     public async Task FollowServer_NothingChanged_AsksForNothing()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
         server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
         time.Advance(TimeSpan.FromSeconds(2));
 
@@ -299,7 +299,7 @@ public sealed class UsersAndBansViewModelTests
     public async Task Detach_ListsAnswered_AsksForNothingMore()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
         server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));
         server.Apply(new BanList(sent.LastRequestId<ListBans>(), []));
         var askedBefore = sent.Count;
@@ -307,7 +307,7 @@ public sealed class UsersAndBansViewModelTests
         section.Detach();
         server.Apply(new UserLeft(2)); // would ask for the user list again
         time.Advance(TimeSpan.FromSeconds(2));
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
         section.FollowServer();
 
         Assert.Equal(askedBefore, sent.Count);
@@ -317,7 +317,7 @@ public sealed class UsersAndBansViewModelTests
     public async Task Detach_WithListsInFlight_IgnoresTheirAnswersAndKeepsNoRoute()
     {
         var (section, server) = Create();
-        await Bound(section.RefreshAsync());
+        await BoundAsync(section.RefreshAsync());
 
         section.Detach();
         server.Apply(new UserList(sent.LastRequestId<ListUsers>(), [Yvonne]));

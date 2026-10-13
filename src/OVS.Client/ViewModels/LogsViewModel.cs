@@ -245,19 +245,19 @@ public sealed partial class LogsViewModel : ObservableObject
     // ---- The opened file ----
 
     [RelayCommand]
-    Task Open(LogFileViewModel? file) => file is null ? Task.CompletedTask : OpenAt(file, null, null);
+    Task OpenAsync(LogFileViewModel? file) => file is null ? Task.CompletedTask : OpenAtAsync(file, null, null);
 
     partial void OnSelectedFileChanged(LogFileViewModel? value)
     {
-        if (value is not null && value.Info.Id != OpenFile?.Info.Id) _ = OpenAt(value, null, null);
+        if (value is not null && value.Info.Id != OpenFile?.Info.Id) _ = OpenAtAsync(value, null, null);
     }
 
     partial void OnSelectedHitChanged(LogHitViewModel? value)
     {
-        if (value is not null) _ = OpenHit(value);
+        if (value is not null) _ = OpenHitAsync(value);
     }
 
-    Task OpenAt(LogFileViewModel file, int? page, int? line)
+    Task OpenAtAsync(LogFileViewModel file, int? page, int? line)
     {
         if (OpenFile?.Info.Id != file.Info.Id)
         {
@@ -271,26 +271,26 @@ public sealed partial class LogsViewModel : ObservableObject
         return SendRoutedAsync(new ReadLog(file.Info.Id, page));
     }
 
-    Task Load(int? page) => OpenFile is { } file ? OpenAt(file, page, null) : Task.CompletedTask;
+    Task LoadAsync(int? page) => OpenFile is { } file ? OpenAtAsync(file, page, null) : Task.CompletedTask;
 
     bool CanOlder => IsFileOpen && Page > 1;
     bool CanNewer => IsFileOpen && Page < PageCount;
 
     [RelayCommand(CanExecute = nameof(CanOlder))]
-    Task Older() => Load(Page - 1);
+    Task OlderAsync() => LoadAsync(Page - 1);
 
     [RelayCommand(CanExecute = nameof(CanNewer))]
-    Task Newer() => Load(Page + 1);
+    Task NewerAsync() => LoadAsync(Page + 1);
 
     [RelayCommand(CanExecute = nameof(CanOlder))]
-    Task First() => Load(1);
+    Task FirstAsync() => LoadAsync(1);
 
     [RelayCommand(CanExecute = nameof(CanNewer))]
-    Task Last() => Load(null);
+    Task LastAsync() => LoadAsync(null);
 
     /// <summary>The same page again; on the last one the last again, so new lines and pages of a running log show.</summary>
     [RelayCommand]
-    Task Reload() => Load(Page >= PageCount ? null : Page);
+    Task ReloadAsync() => LoadAsync(Page >= PageCount ? null : Page);
 
     [RelayCommand]
     void CloseFile()
@@ -328,7 +328,7 @@ public sealed partial class LogsViewModel : ObservableObject
 
     /// <summary>With the type and period of the file filters.</summary>
     [RelayCommand(CanExecute = nameof(CanSearch))]
-    Task Search()
+    Task SearchAsync()
     {
         if (Searching.IsRunning) return Task.CompletedTask;
         var source = SelectedSource?.Value;
@@ -345,13 +345,13 @@ public sealed partial class LogsViewModel : ObservableObject
 
     /// <summary>Opens the hit's file on the page of its line, which shows highlighted.</summary>
     [RelayCommand]
-    Task OpenHit(LogHitViewModel? hit)
+    Task OpenHitAsync(LogHitViewModel? hit)
     {
         if (hit is null) return Task.CompletedTask;
         var file = Files.Live().FirstOrDefault(logFile => logFile.Info.Id == hit.FileId)
                    ?? allFiles.Where(logFile => logFile.Id == hit.FileId).Select(logFile => new LogFileViewModel(logFile)).FirstOrDefault();
         if (file is null) return Task.CompletedTask;
         LineFilter = "";
-        return OpenAt(file, (hit.Line - 1) / WireProtocol.LogPageLines + 1, hit.Line);
+        return OpenAtAsync(file, (hit.Line - 1) / WireProtocol.LogPageLines + 1, hit.Line);
     }
 }

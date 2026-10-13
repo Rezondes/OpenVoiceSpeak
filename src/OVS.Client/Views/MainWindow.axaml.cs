@@ -32,7 +32,7 @@ public partial class MainWindow : Window
         _ = new ReorderDrag(ChannelItems, item => item is ChannelViewModel { CanEdit: true },
             (source, target, after) => Vm.Server?.Tree.MoveChannelAsync((ChannelViewModel)source, (ChannelViewModel)target, after) ?? Task.CompletedTask);
         // Package 120 (A129): drag a user onto a channel to move them there, my own row to join it
-        _ = new UserDrag(ChannelItems, (user, channel) => Vm.Server?.DropUser(user, channel) ?? Task.CompletedTask);
+        _ = new UserDrag(ChannelItems, (user, channel) => Vm.Server?.DropUserAsync(user, channel) ?? Task.CompletedTask);
     }
 
     MainViewModel Vm => (MainViewModel)DataContext!;
@@ -216,7 +216,7 @@ public partial class MainWindow : Window
         // Package 103: the highlight slides from the channel I left to the one I am in now
         var now = watchedServer?.CurrentChannel;
         if (currentChannel is { } was && now is not null && was != now && ChannelRow(was) is { } from && ChannelRow(now) is { } to)
-            _ = FlyGhost.Highlight(from, to);
+            _ = FlyGhost.HighlightAsync(from, to);
         currentChannel = now;
     }
 

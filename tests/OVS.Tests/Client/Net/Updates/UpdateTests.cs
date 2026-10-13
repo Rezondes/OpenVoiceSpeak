@@ -26,13 +26,13 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         },
     };
 
-    static Task<UpdateCheckResult> Check(object release, BuildInfo? running = null) =>
+    static Task<UpdateCheckResult> CheckAsync(object release, BuildInfo? running = null) =>
         new UpdateChecker(new HttpClient(new FakeHttp(_ => FakeHttp.Json(release))), running ?? Running).CheckAsync();
 
     [Fact]
     public async Task Check_NewerRelease_Offered()
     {
-        var offer = (await Check(Release("deploy-bbbbbbb", Built.AddHours(1)))).Offer;
+        var offer = (await CheckAsync(Release("deploy-bbbbbbb", Built.AddHours(1)))).Offer;
         Assert.NotNull(offer);
         Assert.Equal(("280926.0b2c", "deploy-bbbbbbb", "https://example.org/OVS.Client.exe"), (offer.Version, offer.Tag, offer.ExeUrl.ToString()));
         Assert.Contains("Neue Funktion", offer.Notes);
@@ -41,9 +41,9 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     [Fact]
     public async Task Check_SameCommitOlderOrMissingAsset_NotOffered()
     {
-        Assert.Null((await Check(Release("deploy-aaaaaaa", Built.AddHours(1)))).Offer); // this very build
-        Assert.Null((await Check(Release("deploy-bbbbbbb", Built.AddHours(-1)))).Offer); // older than this build
-        Assert.Null((await Check(Release("deploy-bbbbbbb", Built.AddHours(1), withHash: false))).Offer);
+        Assert.Null((await CheckAsync(Release("deploy-aaaaaaa", Built.AddHours(1)))).Offer); // this very build
+        Assert.Null((await CheckAsync(Release("deploy-bbbbbbb", Built.AddHours(-1)))).Offer); // older than this build
+        Assert.Null((await CheckAsync(Release("deploy-bbbbbbb", Built.AddHours(1), withHash: false))).Offer);
     }
 
     [Fact]

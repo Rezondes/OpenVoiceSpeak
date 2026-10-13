@@ -712,7 +712,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     // ---- Package 79: chat, start screen, update card and dialogs at every width ----
 
     /// <summary>Every dialog of <c>UiSmokeTests.ExercisePagesAndDialogs</c>, plus the password and bookmark dialogs.</summary>
-    static Task OpenDialog(string name, OverlayHost overlayHost, ClientSettings settings, ServerViewModel server) => name switch
+    static Task OpenDialogAsync(string name, OverlayHost overlayHost, ClientSettings settings, ServerViewModel server) => name switch
     {
         "Connect" => ConnectDialog.ShowAsync(overlayHost, settings.Bookmarks),
         "TofuMismatch" => TofuDialog.ShowAsync(overlayHost, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
@@ -786,7 +786,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         foreach (var width in new[] { 360.0, 480, 1100 })
         {
             Resize(main, width);
-            var shown = OpenDialog(dialog, main.Overlay, viewModel.Settings, viewModel.Server!);
+            var shown = OpenDialogAsync(dialog, main.Overlay, viewModel.Settings, viewModel.Server!);
             Dispatcher.UIThread.RunJobs();
             Assert.True(main.Overlay.IsOpen);
             CardInside(main, DialogCard(main), 460);
@@ -849,7 +849,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = Open(360, FakeServers.Crowded(), out var viewModel);
         main.Height = 480;
         Dispatcher.UIThread.RunJobs();
-        _ = OpenDialog(dialog, main.Overlay, viewModel.Settings, viewModel.Server!);
+        _ = OpenDialogAsync(dialog, main.Overlay, viewModel.Settings, viewModel.Server!);
         Dispatcher.UIThread.RunJobs();
         var card = DialogCard(main);
         CardInside(main, card, 460);
@@ -1005,7 +1005,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var check = new TaskCompletionSource<string>();
         viewModel.PageFlow.ShownPage = new SettingsViewModel(viewModel.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
         viewModel.PageFlow.Page = Page.Settings;
-        _ = viewModel.PageFlow.SettingsPage!.SaveCommand.ExecuteAsync(null);
+        _ = viewModel.PageFlow.SettingsPage!.SaveAndCloseCommand.ExecuteAsync(null);
         _ = viewModel.PageFlow.SettingsPage!.CheckUpdatesCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();

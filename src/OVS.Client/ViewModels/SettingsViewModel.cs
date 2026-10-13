@@ -122,7 +122,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     public PendingActionViewModel Checking { get; }
 
     [RelayCommand]
-    async Task CheckUpdates()
+    async Task CheckUpdatesAsync()
     {
         if (CheckNow is not { } check || Checking.IsRunning) return;
         Checking.Start();
@@ -181,7 +181,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     public string SelfTestText => IsSelfTesting ? Strings.Ui_SelfTestStop : Strings.Ui_SelfTestStart;
 
     [RelayCommand]
-    Task ToggleSelfTest()
+    Task ToggleSelfTestAsync()
     {
         if (SetSelfTest is { } set) return set(!IsSelfTesting);
         IsSelfTesting = !IsSelfTesting;
@@ -287,7 +287,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
 
     /// <summary>"Taste festlegen": the key dialog with push-to-talk chosen, the user only presses the key.</summary>
     [RelayCommand]
-    async Task SetPttKey()
+    async Task SetPttKeyAsync()
     {
         if (EditKeyBinding is { } edit && await edit(new KeyBinding(KeyAction.PushToTalk, new KeyChord(0)), CaptureAsync) is { } binding)
             KeyBindings.Add(new KeyBindingViewModel(binding, this));
@@ -308,7 +308,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         captureChord is null ? Task.FromResult<KeyChord?>(null) : captureChord().ContinueWith(task => (KeyChord?)task.Result, TaskScheduler.Default);
 
     [RelayCommand]
-    async Task AddKeyBinding()
+    async Task AddKeyBindingAsync()
     {
         if (EditKeyBinding is { } edit && await edit(null, CaptureAsync) is { } binding) KeyBindings.Add(new KeyBindingViewModel(binding, this));
     }
@@ -373,7 +373,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     public Func<Task>? ApplySaved { get; set; }
 
     [RelayCommand]
-    async Task Save()
+    async Task SaveAndCloseAsync()
     {
         if (Saving.IsRunning) return;
         if (await SaveAsync()) CloseRequested?.Invoke(true);

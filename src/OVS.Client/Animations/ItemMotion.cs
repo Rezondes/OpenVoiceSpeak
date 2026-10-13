@@ -178,7 +178,7 @@ public static class ItemMotion
                     },
                 },
             },
-        }.Play(container, cancel.Token);
+        }.PlayAsync(container, cancel.Token);
     }
 
     /// <summary>Came back while leaving, or handed to another entry: the row is whole again.</summary>
@@ -259,7 +259,7 @@ public static class ItemMotion
                     },
                 },
             },
-        }.Play(container, cancel.Token);
+        }.PlayAsync(container, cancel.Token);
         // ended early: EndEntry cleared the mark already, and a recycled row may carry a new entry's mark by now
         if (cancel.IsCancellationRequested) return; // it leaves now (or holds another entry): the fold takes over
         container.Classes.Set("entering", false);
@@ -267,11 +267,11 @@ public static class ItemMotion
         container.ClearValue(Visual.ClipToBoundsProperty);
         if (flying) return; // Land shows it
         container.ClearValue(Visual.OpacityProperty);
-        if (flash) await Flash(container);
+        if (flash) await FlashAsync(container);
     }
 
     /// <summary>The row flashes once in the accent colour (Motion.axaml).</summary>
-    static async Task Flash(Control container)
+    static async Task FlashAsync(Control container)
     {
         container.Classes.Set("fresh", true);
         await Task.Delay(FlashMs); // clock: frame timing

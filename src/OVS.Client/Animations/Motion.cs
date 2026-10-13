@@ -11,7 +11,7 @@ namespace OVS.Client.Animations;
 /// <summary>
 /// Package 99 (A114 to A116): the animated display. Styles react to the class <c>animated</c> on the window
 /// (all of them in <c>Styles/Motion.axaml</c>, like the width classes of <see cref="Responsive"/>); animations
-/// started from code run through <see cref="Play"/>, ask <see cref="IsAnimated"/> or take their length from
+/// started from code run through <see cref="PlayAsync"/>, ask <see cref="IsAnimated"/> or take their length from
 /// <see cref="ChooseDuration"/>. Package 96: what Windows' own animation setting turns off asks <see cref="IsReduced"/>.
 /// </summary>
 public static class Motion
@@ -34,9 +34,9 @@ public static class Motion
     /// A117) got no first frame, e.g. a dialog's card that plays back; in the app Avalonia already schedules a render
     /// for a new animation. Once a frame came, the clock keeps them coming while the animation runs.
     /// </summary>
-    public static Task Play(this Animation animation, Animatable target, CancellationToken cancel = default)
+    public static Task PlayAsync(this Animation animation, Animatable target, CancellationToken cancel = default)
     {
-        var run = AnimationCounter.Count(animation.RunAsync(target, cancel));
+        var run = AnimationCounter.CountAsync(animation.RunAsync(target, cancel));
         // asked after the pending work: the animation joins the clock only then
         if (target is Visual visual && TopLevel.GetTopLevel(visual) is { } top)
             Dispatcher.UIThread.Post(() => top.RequestAnimationFrame(_ => { }), DispatcherPriority.Background);
