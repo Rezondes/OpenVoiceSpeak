@@ -56,6 +56,9 @@ public sealed partial class ServerState
 
     /// <param name="stores">From <see cref="ServerStores.Open"/>, so the crash cleanups have run.</param>
     /// <exception cref="ArgumentException">The stores belong to another data folder than <paramref name="config"/>.</exception>
+    /// <param name="config">The run's settings.</param>
+    /// <param name="time">The clock of the run.</param>
+    /// <param name="logs">The server and channel logs.</param>
     public ServerState(ServerConfig config, TimeProvider time, ServerLogWriter logs, ServerStores stores)
     {
         if (stores.DataDir != config.DataDir)
@@ -83,6 +86,7 @@ public sealed partial class ServerState
         }
     }
 
+    /// <summary>The admin token while nobody redeemed it.</summary>
     public string? PendingAdminToken => adminToken.Current;
 
     /// <summary>Package 69: raised under the lock after the server settings changed; handlers must be quick.</summary>
@@ -113,6 +117,7 @@ public sealed partial class ServerState
         static string OnOff(bool on) => on ? "an" : "aus";
     }
 
+    /// <summary>The sessions online.</summary>
     public int SessionCount
     {
         get { lock (gate) return sessions.Count; }
@@ -179,6 +184,7 @@ public sealed partial class ServerState
     static KeyValuePair<Type, RouteEntry> Route<T>(Action<ServerState, Session, T> handler, bool isTransfer = false) where T : Request =>
         new(typeof(T), ((state, session, request) => handler(state, session, (T)request), isTransfer));
 
+    /// <summary>Handles one message of session.</summary>
     public void Handle(Session session, Message message)
     {
         lock (gate)

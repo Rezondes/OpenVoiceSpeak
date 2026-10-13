@@ -9,8 +9,10 @@ public static class VolumeCurve
     /// <summary>Per-user and output gain together never exceed this (the voice boost and the limiter come after).</summary>
     public const float MaxGain = 12f;
 
+    /// <summary>The gain of a slider value: 1 is unchanged, 2 is four times (+12 dB).</summary>
     public static float Gain(float volume) =>
         volume <= 0f ? 0f : volume <= 1f ? MathF.Pow(10f, (volume - 1f) * 1.2f) : MathF.Pow(4f, volume - 1f);
 
+    /// <summary>The gain of a per-speaker and an output volume together, at most MaxGain.</summary>
     public static float Combine(float user, float output) => Math.Min(Gain(user) * Gain(output), MaxGain);
 }

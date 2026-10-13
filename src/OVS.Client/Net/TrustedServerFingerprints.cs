@@ -13,6 +13,7 @@ public sealed class TrustedServerFingerprints(string profileDir)
     readonly string path = Path.Combine(profileDir, FileName);
     Dictionary<string, string>? pins;
 
+    /// <summary>How fingerprint compares to the one trusted for host and port.</summary>
     public TofuResult Check(string host, int port, string fingerprint)
     {
         var map = Load();
@@ -20,6 +21,7 @@ public sealed class TrustedServerFingerprints(string profileDir)
         return pinned == fingerprint ? TofuResult.Known : TofuResult.Mismatch;
     }
 
+    /// <summary>Trusts fingerprint for host and port from now on.</summary>
     public void Trust(string host, int port, string fingerprint)
     {
         var map = Load();

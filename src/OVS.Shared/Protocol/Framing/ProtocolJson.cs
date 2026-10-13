@@ -10,6 +10,7 @@ namespace OVS.Shared.Protocol.Framing;
 /// </remarks>
 public static class ProtocolJson
 {
+    /// <summary>The JSON settings of every frame: web defaults, enums as strings.</summary>
     public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter() },

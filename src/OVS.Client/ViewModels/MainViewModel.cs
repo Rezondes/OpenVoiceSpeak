@@ -49,6 +49,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// </param>
     /// <param name="keyState">The state of a virtual key, the keyboard by default (tests pass a fake one).</param>
     /// <param name="connect">How a connection is opened, the real one by default (tests pass their own); see the constructor.</param>
+    /// <param name="storageDir">The profile folder.</param>
+    /// <param name="post">Runs work on the UI thread.</param>
+    /// <param name="time">The client's one clock.</param>
+    /// <param name="log">The client's log.</param>
+    /// <param name="settings">The settings as loaded.</param>
+    /// <param name="settingsWarning">Why the settings file could not be read, null when it could.</param>
     public static MainViewModel Create(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings,
         string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null,
         OpenConnection? connect = null)
@@ -86,6 +92,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// Opens the connection of every connect and every reconnect attempt (the attempts pass <see cref="CancellationToken.None"/>);
     /// null: the identity file of <paramref name="storageDir"/> plus <see cref="ClientConnection.ConnectAsync"/>.
     /// </param>
+    /// <param name="storageDir">The profile folder.</param>
+    /// <param name="post">Runs work on the UI thread.</param>
+    /// <param name="log">The client's log.</param>
+    /// <param name="knownServers">The trusted server certificates.</param>
+    /// <param name="icons">The cache of the server logos.</param>
+    /// <param name="leave">How long a removed entry stays in its list.</param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
         TrustedServerFingerprints knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
         Func<AudioDirection, List<AudioDevice>>? listDevices, OpenConnection? connect = null)
@@ -203,13 +215,19 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         ApplySettings(Settings);
     }
 
+    /// <summary>The settings in use.</summary>
     public ClientSettings Settings { get; private set; }
+    /// <summary>The client's log.</summary>
     public ClientLog Log { get; }
     /// <summary>The client's one clock: the reconnect, the hints and the statistics, and each connection's view model and voice.</summary>
     public TimeProvider Time { get; }
+    /// <summary>Polls the bound keys.</summary>
     public KeyPoller Keys { get; }
+    /// <summary>Captures, sends, receives and plays.</summary>
     public AudioEngine Audio { get; }
+    /// <summary>The system notices, before and between connections.</summary>
     public ObservableCollection<Notice> Notices { get; } = [];
+    /// <summary>A server is shown.</summary>
     public bool IsConnected => Server is not null;
     /// <summary>Package 40: the saved servers, shown as tiles in the sidebar.</summary>
     internal BookmarkList Bookmarks { get; }
@@ -237,12 +255,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Push-to-talk without a key: nobody can talk. The hint then opens the settings.</summary>
     public bool HasNoPttBinding => Settings.Mode == TransmitMode.PushToTalk && Settings.ChordFor(KeyAction.PushToTalk) is null;
+    /// <summary>The dialogs the view models ask through.</summary>
     public DialogCallbacks Dialogs { get; set; } = new();
+    /// <summary>Asks the user about an unknown or changed server certificate.</summary>
     public Func<TofuPrompt, Task<bool>> ConfirmTofu { get; set; } = _ => Task.FromResult(false);
 
     /// <summary>Package 61: how see-through the backgrounds are right now (saved, or previewed on the settings page).</summary>
     [ObservableProperty] BackgroundAppearance appearance = new(1f, false);
 
+    /// <summary>Applies settings to the engine and the window.</summary>
     public void ApplySettings(ClientSettings settings) => Applied(EngineSync.Configure(Prepare(settings)));
 
     /// <summary>
@@ -368,6 +389,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
+    /// <summary>Shows a system notice.</summary>
     public void AddNotice(string text, NoticeKind kind = NoticeKind.Info)
     {
         Log.Write("Meldung: " + text);
@@ -377,6 +399,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         while (Notices.Count > 200) Notices.RemoveAt(Notices.Count - 1);
     }
 
+    /// <summary>Disconnects and releases the engine and the key poller.</summary>
     public async ValueTask DisposeAsync()
     {
         await Connection.DisconnectAsync();

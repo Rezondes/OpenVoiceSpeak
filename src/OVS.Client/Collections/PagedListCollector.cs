@@ -13,6 +13,10 @@ public sealed class PagedListCollector<T>
 
     /// <param name="askNext">Called with the round's request id and the offset of the next page while the list is incomplete.</param>
     /// <returns>The whole list once complete, else null.</returns>
+    /// <param name="requestId">The request the page answers.</param>
+    /// <param name="offset">The page's first position.</param>
+    /// <param name="total">The whole list's length.</param>
+    /// <param name="page">The page's entries.</param>
     public IReadOnlyList<T>? Add(string? requestId, int offset, int total, IReadOnlyList<T> page, Action<string?, int> askNext)
     {
         if (offset == 0)

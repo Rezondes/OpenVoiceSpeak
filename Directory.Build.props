@@ -8,6 +8,14 @@
   </PropertyGroup>
 
   <!--
+    Rule 23 (W5): every type and non-private member of the product and the tools has XML docs; a missing one is CS1591,
+    an error under TreatWarningsAsErrors. Test projects are left out, like rule-lint's RL231.
+  -->
+  <PropertyGroup Condition="!$(MSBuildProjectName.EndsWith('.Tests'))">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!--
     Package 42: raw build data, formatted by src/OVS.Shared/BuildInfo.cs. The release workflow sets OVS_BUILD_TIME
     once per run, so exe and server image carry the same version. Local Debug builds leave the time out and stay
     incremental; GitHub Actions sets GITHUB_SHA and GITHUB_ACTIONS by itself.

@@ -8,13 +8,20 @@ namespace OVS.Shared.Voice;
 /// </summary>
 public readonly record struct VoiceHeader(PacketType Type, uint SessionId, uint Seq, byte Target)
 {
+    /// <summary>The header's length in bytes.</summary>
     public const int Size = 10;
+    /// <summary>The GCM tag's length in bytes.</summary>
     public const int TagSize = 16;
+    /// <summary>The largest UDP packet sent, below a common MTU.</summary>
     public const int MaxPacketSize = 1400;
+    /// <summary>The largest Opus frame (RFC 6716).</summary>
     public const int MaxOpusSize = 1275;
+    /// <summary>Target: the own channel.</summary>
     public const byte TargetChannel = 0;
+    /// <summary>Target: the own channel and its linked channels.</summary>
     public const byte TargetLinked = 1;
 
+    /// <summary>False for a packet shorter than the header.</summary>
     public static bool TryRead(ReadOnlySpan<byte> packet, out VoiceHeader header)
     {
         header = default;
@@ -28,6 +35,7 @@ public readonly record struct VoiceHeader(PacketType Type, uint SessionId, uint 
         return true;
     }
 
+    /// <summary>Writes the header's bytes into dest.</summary>
     public void Write(Span<byte> dest)
     {
         dest[0] = (byte)Type;

@@ -11,6 +11,7 @@ namespace OVS.Client.Audio.Sounds;
 /// </summary>
 public sealed class SoundLibrary(string profileDir, Action<string> log)
 {
+    /// <summary>The folder of the imported sounds inside the profile.</summary>
     public const string Folder = "sounds";
 
     readonly Dictionary<string, float[]> cache = [];
@@ -18,6 +19,7 @@ public sealed class SoundLibrary(string profileDir, Action<string> log)
 
     string Dir => Path.Combine(profileDir, Folder);
 
+    /// <summary>The samples sound plays with setting: its own file when set and readable, else the default tone.</summary>
     public float[] Samples(SoundEvent sound, SoundSetting setting)
     {
         if (setting.File is not { Length: > 0 } file) return SoundSynth.Render(sound);

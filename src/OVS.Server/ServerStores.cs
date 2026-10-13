@@ -22,11 +22,17 @@ public sealed class ServerStores
 
     /// <summary>The data folder every store lives in.</summary>
     public string DataDir { get; }
+    /// <summary>server-data.json.</summary>
     public DataStore DataStore { get; }
+    /// <summary>The server logo.</summary>
     public ServerIconStore IconStore { get; }
+    /// <summary>The backups folder.</summary>
     public BackupStore BackupStore { get; }
+    /// <summary>The unfinished uploads inside the backups folder.</summary>
     public UploadFolder UploadFolder { get; }
+    /// <summary>Lists, reads and searches the log files.</summary>
     public LogReader LogReader { get; }
+    /// <summary>Prepares log downloads.</summary>
     public LogExporter LogExporter { get; }
 
     /// <summary>The stores of <paramref name="config"/>'s data folder, after the crash cleanups.</summary>

@@ -12,6 +12,7 @@ namespace OVS.Client.Audio.Processing;
 /// <remarks>No finalizer: the capture pipeline owns it and disposes it under its lock, after the last frame.</remarks>
 public sealed unsafe class NoiseSuppressor : IDisposable
 {
+    /// <summary>The native library's name.</summary>
     public const string Library = "rnnoise";
 
     // RNNoise expects samples in the 16-bit range, not -1..1
@@ -97,6 +98,7 @@ public sealed unsafe class NoiseSuppressor : IDisposable
         return after < before * NoiseCutRatio ? 0f : probability;
     }
 
+    /// <summary>Releases the native state.</summary>
     public void Dispose()
     {
         if (state == 0) return;

@@ -13,6 +13,7 @@ namespace OVS.Client.Audio.Processing;
 /// <remarks>No finalizer: the capture pipeline owns it and disposes it under its lock.</remarks>
 public sealed unsafe class EchoCanceller : IDisposable
 {
+    /// <summary>The native library's name.</summary>
     public const string Library = "ovs_aec";
 
     static readonly ConcurrentDictionary<string, Lazy<Native>> Loaded = new();
@@ -95,6 +96,7 @@ public sealed unsafe class EchoCanceller : IDisposable
         }
     }
 
+    /// <summary>Releases the native state.</summary>
     public void Dispose()
     {
         lock (renderGate)

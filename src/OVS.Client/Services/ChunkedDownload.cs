@@ -8,6 +8,8 @@ static class ChunkedDownload
 {
     /// <param name="next">Asks for the chunk at an offset; null stops (error, timeout, page closed).</param>
     /// <returns>True once the file is in place. IO and base64 errors throw, after removing the temporary file.</returns>
+    /// <param name="target">The file to write.</param>
+    /// <param name="progress">Gets the bytes loaded and the total after each chunk.</param>
     public static async Task<bool> RunAsync(string target, Func<long, Task<DownloadChunk?>> next, Action<long, long> progress)
     {
         var temp = target + ".part";

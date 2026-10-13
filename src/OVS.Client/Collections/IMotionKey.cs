@@ -6,6 +6,7 @@ namespace OVS.Client.Collections;
 /// </summary>
 public interface IMotionKey
 {
+    /// <summary>The same for the same entry when the list is rebuilt, so its motion continues.</summary>
     object MotionKey { get; }
 
     /// <summary>The key an item counts by: its <see cref="MotionKey"/>, or the item itself.</summary>

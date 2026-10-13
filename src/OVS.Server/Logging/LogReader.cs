@@ -17,6 +17,7 @@ public sealed class LogReader(string dataDir, TimeProvider time)
 {
     internal const string ServerFolder = "server";
     internal const string ChannelFolder = "channels";
+    /// <summary>Put at the end of a line cut at MaxLogLineLength.</summary>
     public const string CutMarker = " [...]";
     // JSON bytes the lines of one answer may take; the rest (ids, numbers) stays well below FrameReader.MaxFrameSize
     const int LineBudget = 850 * 1024;

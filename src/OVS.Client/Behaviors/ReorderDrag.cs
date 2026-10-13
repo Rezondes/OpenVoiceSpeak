@@ -18,6 +18,7 @@ namespace OVS.Client.Behaviors;
 /// </summary>
 public sealed class ReorderDrag
 {
+    /// <summary>The distance before a drag starts, the dragged row's scale and tilt, and the opacity of its place.</summary>
     public const double Threshold = 6, Scale = 1.03, Tilt = 3, DimmedOpacity = 0.4;
 
     readonly ItemsControl list;
@@ -32,6 +33,7 @@ public sealed class ReorderDrag
     int slot = -1; // gap before the container with this index; Count means after the last one
     TopLevel? top;
 
+    /// <summary>Lets the rows of list be reordered by dragging; move gets the dragged item, the target and whether it goes after it.</summary>
     public ReorderDrag(ItemsControl list, Func<object, bool> canDrag, Func<object, object, bool, Task> move)
     {
         (this.list, this.canDrag, this.move) = (list, canDrag, move);

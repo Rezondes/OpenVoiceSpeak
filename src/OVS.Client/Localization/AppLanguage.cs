@@ -1,3 +1,12 @@
 namespace OVS.Client.Localization;
 
-public enum AppLanguage { System, German, English }
+/// <summary>The language the user chose.</summary>
+public enum AppLanguage
+{
+    /// <summary>The language of Windows.</summary>
+    System,
+    /// <summary>German.</summary>
+    German,
+    /// <summary>English.</summary>
+    English,
+}

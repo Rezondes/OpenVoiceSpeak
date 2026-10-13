@@ -24,7 +24,9 @@ namespace OVS.Client.Animations;
 /// </summary>
 public static class PageMotion
 {
+    /// <summary>How far a page, a tab's content and a revealed section move, in pixels.</summary>
     public const double Slide = 24, TabSlide = 12, RevealRise = 16;
+    /// <summary>The style classes of the page picture and of the pipe picture.</summary>
     public const string PageGhostClass = "pageGhost", PipeGhostClass = "pipeGhost";
 
     static readonly ConditionalWeakTable<Border, Switching> switching = [];
@@ -37,6 +39,7 @@ public static class PageMotion
     /// <param name="layer">An empty border right above <paramref name="host"/> that holds the picture.</param>
     /// <param name="motion">Asked at the end: where the new content comes in from and where the picture goes, or null
     /// when nothing changed after all.</param>
+    /// <param name="host">The page area.</param>
     public static void Leave(Control host, Border layer, Func<PageSlide?> motion)
     {
         if (!Motion.IsAnimated(host) || host.Bounds.Width <= 0) return;
@@ -103,9 +106,13 @@ public static class PageMotion
     public static readonly AttachedProperty<Control?> ContentProperty =
         AvaloniaProperty.RegisterAttached<SelectingItemsControl, Control?>("Content", typeof(PageMotion));
 
+    /// <summary>Gets whether the tab control's content slides on a tab change.</summary>
     public static bool GetTabs(SelectingItemsControl tabs) => tabs.GetValue(TabsProperty);
+    /// <summary>Sets whether the tab control's content slides on a tab change.</summary>
     public static void SetTabs(SelectingItemsControl tabs, bool value) => tabs.SetValue(TabsProperty, value);
+    /// <summary>Gets the control that shows the selected tab's content.</summary>
     public static Control? GetContent(SelectingItemsControl tabs) => tabs.GetValue(ContentProperty);
+    /// <summary>Sets the control that shows the selected tab's content.</summary>
     public static void SetContent(SelectingItemsControl tabs, Control? value) => tabs.SetValue(ContentProperty, value);
 
     static readonly ConditionalWeakTable<Control, CancellationTokenSource> fading = [];
@@ -182,7 +189,9 @@ public static class PageMotion
     public static readonly AttachedProperty<bool> RevealProperty =
         AvaloniaProperty.RegisterAttached<ScrollViewer, bool>("Reveal", typeof(PageMotion));
 
+    /// <summary>Gets whether the sections fade up as they come into view.</summary>
     public static bool GetReveal(ScrollViewer scroll) => scroll.GetValue(RevealProperty);
+    /// <summary>Sets whether the sections fade up as they come into view.</summary>
     public static void SetReveal(ScrollViewer scroll, bool value) => scroll.SetValue(RevealProperty, value);
 
     // ---- pages ----

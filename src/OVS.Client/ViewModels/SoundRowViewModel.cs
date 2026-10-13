@@ -18,6 +18,7 @@ public sealed partial class SoundRowViewModel : ObservableObject
     string? file;
     [ObservableProperty] string? error;
 
+    /// <summary>The row of sound with its setting.</summary>
     public SoundRowViewModel(SoundEvent sound, SoundSetting setting, SettingsViewModel owner)
     {
         this.owner = owner;
@@ -27,13 +28,18 @@ public sealed partial class SoundRowViewModel : ObservableObject
         file = setting.File;
     }
 
+    /// <summary>The moment the sound plays at.</summary>
     public SoundEvent Event { get; }
+    /// <summary>The moment's name.</summary>
     public string Label => Strings.ResourceManager.GetString("Sound_" + Event, Strings.Culture) ?? Event.ToString();
+    /// <summary>An own file is set.</summary>
     public bool HasOwnFile => File is not null;
+    /// <summary>Own or default sound, as shown.</summary>
     public string SourceText => HasOwnFile ? Strings.Ui_CustomSound : Strings.Ui_DefaultSound;
 
     partial void OnVolumePercentChanged(double value) => VolumePercent = Math.Clamp(value, 0, 100);
 
+    /// <summary>The row as a setting.</summary>
     public SoundSetting ToSetting() => new((float)(VolumePercent / 100), Muted, File);
 
     [RelayCommand]

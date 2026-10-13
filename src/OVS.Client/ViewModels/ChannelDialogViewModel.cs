@@ -21,21 +21,30 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsChannelFields))]
     bool isSeparator;
+    /// <summary>The dialog creates a channel, so voice channel or separator can be chosen.</summary>
     public bool CanChooseKind => mode == ChannelDialogMode.Create;
+    /// <summary>The name, description and options show (not for a separator).</summary>
     public bool ShowsChannelFields => !IsSeparator;
     /// <summary>Package 83: why the entered channel would be refused by the server, null while it is fine.</summary>
     [ObservableProperty] string? error;
 
+    /// <summary>The dialog's title.</summary>
     public string Title => mode == ChannelDialogMode.Create ? Strings.Dialog_CreateChannel : Strings.Dialog_EditChannel;
+    /// <summary>The confirm button's text.</summary>
     public string ConfirmText => mode == ChannelDialogMode.Create ? Strings.Dlg_Create : Strings.Dlg_Save;
+    /// <summary>The user limit can be set (not for the default channel).</summary>
     public bool CanLimitUsers => mode != ChannelDialogMode.EditDefault;
+    /// <summary>The hint under the user limit.</summary>
     public string SlotsHint => CanLimitUsers ? Strings.Dlg_MaxUsersHint : Strings.Dlg_MaxUsersDefault;
+    /// <summary>The highest user limit.</summary>
     public decimal MaxSlots => ProtocolLimits.MaxChannelUsers;
 
     /// <summary>Package 93: every group of the server, in its order, ticked when in the channel's lock.</summary>
     public IReadOnlyList<AllowedGroupViewModel> Groups { get; } =
         (groups ?? []).Select(groupInfo => new AllowedGroupViewModel(groupInfo.Id, groupInfo.Name, current.AllowedGroupIds?.Contains(groupInfo.Id) == true)).ToList();
+    /// <summary>The group lock can be set (not for the default channel).</summary>
     public bool CanLockGroups => mode != ChannelDialogMode.EditDefault;
+    /// <summary>The hint under the group lock.</summary>
     public string GroupLockHint => CanLockGroups ? Strings.Dlg_GroupLockHint : Strings.Dlg_GroupLockDefault;
 
     /// <summary>Package 94: a new password; empty leaves it as it is.</summary>
@@ -45,6 +54,7 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
     bool removePassword;
     /// <summary>Package 94: the channel has a password, so "Passwort entfernen" is offered.</summary>
     public bool HasPassword => current.HasPassword;
+    /// <summary>A password can be typed (not while it is to be removed).</summary>
     public bool CanEnterPassword => CanLockGroups && !RemovePassword;
 
     partial void OnMaxUsersChanged(decimal? value)
@@ -54,7 +64,9 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
 
     /// <summary>Package 132 (A141): "Qualität" in kbps, also for the default channel.</summary>
     [ObservableProperty] decimal? bitrate = current.Bitrate;
+    /// <summary>The lowest bitrate in kbps.</summary>
     public decimal MinBitrate => ProtocolLimits.MinBitrate;
+    /// <summary>The highest bitrate in kbps.</summary>
     public decimal MaxBitrate => ProtocolLimits.MaxBitrate;
 
     partial void OnBitrateChanged(decimal? value)

@@ -9,28 +9,53 @@ namespace OVS.Client.ViewModels;
 
 /// <summary>Package 71: one card of the user overview with everything the server stores about the user (A86).</summary>
 /// <param name="busy">Package 98: the card's actions, running until a user list shows their result.</param>
+/// <param name="info">The user as the server lists them.</param>
+/// <param name="isOnline">The user is connected.</param>
+/// <param name="toggles">The group boxes.</param>
+/// <param name="bans">The active bans.</param>
+/// <param name="actions">What the card's buttons do.</param>
+/// <param name="canBan">The ban button shows.</param>
+/// <param name="canUnban">The unban button shows.</param>
+/// <param name="canDelete">The delete button shows.</param>
+/// <param name="canLiftMute">The lift mute button shows.</param>
 public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupAssignmentViewModel> toggles, IReadOnlyList<BanInfo> bans,
     KnownUserActions actions, PendingActionViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
 {
+    /// <summary>The user as the server lists them.</summary>
     public KnownUserInfo Info { get; } = info;
+    /// <summary>The fingerprint: the same user keeps the motion when the list is rebuilt.</summary>
     public object MotionKey => Info.Fingerprint;
+    /// <summary>The card's actions, running until a user list shows their result.</summary>
     public PendingActionViewModel Busy { get; } = busy;
+    /// <summary>The user's id.</summary>
     public string Fingerprint => Info.Fingerprint;
+    /// <summary>The nickname of the last login.</summary>
     public string Nickname => Info.LastNickname;
+    /// <summary>The fingerprint's first 16 characters.</summary>
     public string ShortFingerprint => Fingerprint.Length > 16 ? Fingerprint[..16] : Fingerprint;
+    /// <summary>The group boxes.</summary>
     public IReadOnlyList<GroupAssignmentViewModel> Toggles { get; } = toggles;
+    /// <summary>The user is connected.</summary>
     public bool IsOnline { get; } = isOnline;
+    /// <summary>Online or offline, as shown.</summary>
     public string StatusText => IsOnline ? Strings.Ui_StatusOnline : Strings.Ui_StatusOffline;
+    /// <summary>The active bans.</summary>
     public IReadOnlyList<BanInfo> Bans { get; } = bans;
+    /// <summary>The user has an active ban.</summary>
     public bool IsBanned => Bans.Count > 0;
 
     // Package 72: only the actions the viewer may take show on the card
+    /// <summary>The ban button shows.</summary>
     public bool CanBan { get; } = canBan;
+    /// <summary>The unban button shows.</summary>
     public bool CanUnban { get; } = canUnban;
+    /// <summary>The delete button shows.</summary>
     public bool CanDelete { get; } = canDelete;
     /// <summary>Package 85: the stored server mute, applied again on every login.</summary>
     public bool IsServerMuted => Info.ServerMuted;
+    /// <summary>The lift mute button shows.</summary>
     public bool CanLiftMute { get; } = canLiftMute;
+    /// <summary>The card has any button.</summary>
     public bool HasActions => CanBan || CanUnban || CanDelete || CanLiftMute;
 
     [RelayCommand(CanExecute = nameof(CanLiftMute))]
@@ -53,13 +78,21 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     /// <summary>Users saved before Package 70 have no statistics yet (LoginCount 0): shown as unknown.</summary>
     bool HasStats => Info.LoginCount > 0;
     static string Unknown => Strings.Ui_Unknown;
+    /// <summary>The first login, local time.</summary>
     public string FirstSeenText => Info.FirstSeen == default ? Unknown : Info.FirstSeen.ToLocalTime().ToString("g");
+    /// <summary>The last login, local time.</summary>
     public string LastLoginText => Info.LastLogin is { } at ? at.ToLocalTime().ToString("g") : Unknown;
+    /// <summary>How often the user logged in.</summary>
     public string LoginCountText => HasStats ? Info.LoginCount.ToString() : Unknown;
+    /// <summary>The time connected.</summary>
     public string OnlineTimeText => HasStats ? Formats.Duration(Info.OnlineTime) : Unknown;
+    /// <summary>The time talked.</summary>
     public string SpeechTimeText => HasStats ? Formats.Duration(Info.SpeechTime) : Unknown;
+    /// <summary>The chat messages written.</summary>
     public string ChatMessagesText => HasStats ? Info.ChatMessages.ToString() : Unknown;
+    /// <summary>The last address.</summary>
     public string LastIpText => Info.LastIp ?? Unknown;
+    /// <summary>The earlier nicknames.</summary>
     public string PreviousNicknamesText => Info.PreviousNicknames is { Count: > 0 } names ? string.Join(", ", names) : HasStats ? Strings.Ui_None : Unknown;
 
     /// <summary>Case-insensitive, in nickname, previous nicknames, fingerprint and IP.</summary>

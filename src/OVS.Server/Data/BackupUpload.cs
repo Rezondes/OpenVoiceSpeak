@@ -5,8 +5,11 @@ namespace OVS.Server.Data;
 /// <summary>Package 75: one session's backup upload in progress, its hidden file and the bytes stored; guarded by the ServerState lock.</summary>
 public sealed class BackupUpload(string id, string path)
 {
+    /// <summary>The id the client chose for the upload.</summary>
     public string Id { get; } = id;
+    /// <summary>The file the chunks are appended to.</summary>
     public string Path { get; } = path;
+    /// <summary>The bytes stored so far.</summary>
     public long Received { get; private set; }
 
     /// <summary>A chunk must start where the bytes received end.</summary>

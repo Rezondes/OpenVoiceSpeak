@@ -24,13 +24,17 @@ namespace OVS.Client.Animations;
 /// </summary>
 public static class ItemMotion
 {
+    /// <summary>The delay between the entries of a batch, and after how many entries it stops growing.</summary>
     public const int StaggerMs = 30, StaggerSteps = 8;
+    /// <summary>How long a new entry's flash lasts.</summary>
     public const int FlashMs = 600;
+    /// <summary>How far an entry rises while it fades in, in pixels.</summary>
     public const double Rise = 6;
 
     /// <summary>Package 102: a leaving entry moves this far to the left while it folds away.</summary>
     public const double Drift = 8;
 
+    /// <summary>Entries added later slide in.</summary>
     public static readonly AttachedProperty<bool> EnterProperty =
         AvaloniaProperty.RegisterAttached<ItemsControl, bool>("Enter", typeof(ItemMotion));
 
@@ -53,16 +57,26 @@ public static class ItemMotion
     public static readonly AttachedProperty<bool> BuildUpProperty =
         AvaloniaProperty.RegisterAttached<ItemsControl, bool>("BuildUp", typeof(ItemMotion));
 
+    /// <summary>Gets whether the list builds up entry by entry when it is first filled.</summary>
     public static bool GetBuildUp(ItemsControl list) => list.GetValue(BuildUpProperty);
+    /// <summary>Sets whether the list builds up entry by entry when it is first filled.</summary>
     public static void SetBuildUp(ItemsControl list, bool value) => list.SetValue(BuildUpProperty, value);
 
+    /// <summary>Gets whether entries added later slide in.</summary>
     public static bool GetEnter(ItemsControl list) => list.GetValue(EnterProperty);
+    /// <summary>Sets whether entries added later slide in.</summary>
     public static void SetEnter(ItemsControl list, bool value) => list.SetValue(EnterProperty, value);
+    /// <summary>Gets whether a new entry flashes.</summary>
     public static bool GetFlash(ItemsControl list) => list.GetValue(FlashProperty);
+    /// <summary>Sets whether a new entry flashes.</summary>
     public static void SetFlash(ItemsControl list, bool value) => list.SetValue(FlashProperty, value);
+    /// <summary>Gets whether the list's entries flip to their new places.</summary>
     public static bool GetFlip(ItemsControl list) => list.GetValue(FlipProperty);
+    /// <summary>Sets whether the list's entries flip to their new places.</summary>
     public static void SetFlip(ItemsControl list, bool value) => list.SetValue(FlipProperty, value);
+    /// <summary>Gets whether entries may fly in from another list.</summary>
     public static bool GetFly(ItemsControl list) => list.GetValue(FlyProperty);
+    /// <summary>Sets whether entries may fly in from another list.</summary>
     public static void SetFly(ItemsControl list, bool value) => list.SetValue(FlyProperty, value);
 
     /// <summary>
@@ -212,6 +226,9 @@ public static class ItemMotion
     /// A list whose entries may fly in from another (Package 103): the entry waits hidden until the pairing has looked
     /// for its departure; if a picture flies to it, it only opens its height and shows when the picture lands.
     /// </param>
+    /// <param name="container">The new entry's container.</param>
+    /// <param name="index">Its position in the batch, for the stagger.</param>
+    /// <param name="flash">True lets it flash once it is in.</param>
     internal static async void Enter(Control container, int index, bool flash, bool fly)
     {
         container.ClipToBounds = true;

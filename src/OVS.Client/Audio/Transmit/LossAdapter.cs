@@ -11,7 +11,8 @@ namespace OVS.Client.Audio.Transmit;
 /// </summary>
 public sealed class LossAdapter(TimeProvider time, int channelKbps)
 {
-    public const int MinHint = 5, MaxHint = 30, InitialHint = 10; // 10: the fixed value before Package 135
+    /// <summary>The range of the loss Opus is told to expect, in percent, and its start value; 10 was the fixed value before Package 135.</summary>
+    public const int MinHint = 5, MaxHint = 30, InitialHint = 10;
     const double LossyAbove = 10, CleanBelow = 2;
     static readonly TimeSpan StepDownAfter = TimeSpan.FromSeconds(5), StepUpAfter = TimeSpan.FromSeconds(10);
     static readonly TimeSpan StaleAfter = TimeSpan.FromSeconds(5); // 2.5 ping intervals without a figure
@@ -26,6 +27,7 @@ public sealed class LossAdapter(TimeProvider time, int channelKbps)
     /// <summary>The kbps to send with, at most the channel's.</summary>
     public int BitrateKbps => bitrate;
 
+    /// <summary>The expected loss for a measured loss: 1.5 times it, rounded, within MinHint and MaxHint.</summary>
     public static int HintFor(double lossPercent) => Math.Clamp((int)Math.Round(1.5 * lossPercent, MidpointRounding.AwayFromZero), MinHint, MaxHint);
 
     /// <summary>A join or a move starts again at the channel's bitrate.</summary>
@@ -48,6 +50,7 @@ public sealed class LossAdapter(TimeProvider time, int channelKbps)
     /// <summary>A new connection: figures from before it are no evidence for the next.</summary>
     public void EndStreaks() => lossySince = cleanSince = lastFigure = null;
 
+    /// <summary>Takes the uplink loss of a server ping.</summary>
     public void Report(LossReport uplink)
     {
         var now = time.GetUtcNow();

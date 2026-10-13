@@ -163,6 +163,8 @@ internal sealed partial class ConnectionViewModel : ObservableObject
 
     /// <summary>A connection the server welcomed becomes the current session.</summary>
     /// <param name="restored">Package 139: a reconnect, which brings back no welcome text.</param>
+    /// <param name="conn">The welcomed connection.</param>
+    /// <param name="choice">Where and as whom it connected.</param>
     void Attach(ClientConnection conn, ConnectChoice choice, bool restored = false)
     {
         var mirror = new StateMirror(conn.Welcome);
@@ -371,6 +373,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
 
     /// <summary>The series ends without a session: the disconnected notice, the status, the tone unless the user chose it.</summary>
     /// <param name="status">Null when the caller sets it.</param>
+    /// <param name="sound">False keeps the disconnect tone quiet.</param>
     void EndSeries(string? status, bool sound = true)
     {
         StopReconnect();

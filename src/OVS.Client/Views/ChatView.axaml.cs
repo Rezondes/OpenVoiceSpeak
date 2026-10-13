@@ -21,6 +21,7 @@ public partial class ChatView : UserControl
 {
     /// <summary>Package 107: how far a new message comes from its side; how long a notice's edge glows.</summary>
     public const double Arrive = 16, Lift = 10;
+    /// <summary>How long an unread pulse and the sent mark last, in ms.</summary>
     public const int PulseMs = 600, SentMarkMs = 700;
 
     /// <summary>True while the list shows its end: new lines then scroll along, otherwise the reader keeps the place.</summary>
@@ -32,6 +33,7 @@ public partial class ChatView : UserControl
     readonly HashSet<ChatEntry> arriving = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<ChatTabViewModel, System.ComponentModel.PropertyChangedEventHandler> tabsWatched = [];
 
+    /// <summary>The chat.</summary>
     public ChatView()
     {
         InitializeComponent();

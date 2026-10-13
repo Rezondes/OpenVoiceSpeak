@@ -10,6 +10,7 @@ using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Client.ViewModels;
 
+/// <summary>A user in the tree.</summary>
 public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId) : ObservableObject
 {
     [ObservableProperty]
@@ -41,6 +42,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasGroups))]
     IReadOnlyList<GroupAssignmentViewModel> groups = [];
+    /// <summary>The user is in any group.</summary>
     public bool HasGroups => Groups.Count > 0;
 
     /// <summary>
@@ -56,10 +58,15 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
 
     bool showingStored;
 
+    /// <summary>The volume can be set (not for the own user).</summary>
     public bool CanAdjustVolume => !IsSelf;
+    /// <summary>The volume differs from 100 % and is not 0.</summary>
     public bool IsVolumeChanged => VolumePercent is > 0 and not 100;
+    /// <summary>The volume is 0: muted for the own user only.</summary>
     public bool IsLocallyMuted => VolumePercent == 0;
+    /// <summary>The volume as shown.</summary>
     public string VolumeText => IsLocallyMuted ? Strings.Ui_LocallyMuted : string.Format(Strings.Ui_UserVolumeFmt, VolumePercent);
+    /// <summary>The volume slider's label.</summary>
     public string VolumeLabel => string.Format(Strings.Ui_UserVolumeOfFmt, Nickname);
 
     /// <summary>Shows the stored volume without reporting it as a change.</summary>
@@ -80,7 +87,9 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [RelayCommand]
     void ResetVolume() => VolumePercent = 100;
 
+    /// <summary>The user's session id.</summary>
     public uint SessionId { get; } = sessionId;
+    /// <summary>The channel the user is in.</summary>
     public Guid ChannelId { get; private set; }
 
     internal void Update(UserInfo info, bool isSelf, Permission actor, IReadOnlyList<GroupInfo> serverGroups)
@@ -147,6 +156,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMoveTargets))]
     IReadOnlyList<MoveTarget> moveTargets = [];
+    /// <summary>There is another channel to move the user to.</summary>
     public bool HasMoveTargets => MoveTargets.Count > 0;
 
     /// <summary>Package 120: my own row (joining) or one I may move can be dragged onto a channel.</summary>

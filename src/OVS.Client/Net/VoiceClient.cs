@@ -46,6 +46,9 @@ public sealed class VoiceClient : IDisposable
 
     /// <param name="time">Package 126: drives the Hello retries and the loss detection (tests pass a manual clock).</param>
     /// <param name="control">Package 141: the connection voice falls back to while UDP does not work.</param>
+    /// <param name="server">The server's UDP address.</param>
+    /// <param name="sessionId">The own session id.</param>
+    /// <param name="key">The session's voice key.</param>
     public VoiceClient(IPEndPoint server, uint sessionId, byte[] key, TimeProvider time, ClientConnection? control = null)
     {
         this.time = time;
@@ -124,6 +127,7 @@ public sealed class VoiceClient : IDisposable
     /// <summary>Package 133: Hello and ping carry the time and the downlink loss. Under stateGate.</summary>
     byte[] PingBody() => new PingPayload(NowMs(), downlink.Report()).Build();
 
+    /// <summary>Starts receiving and the hello and ping timer.</summary>
     public void Start()
     {
         byte[] body;
@@ -208,6 +212,7 @@ public sealed class VoiceClient : IDisposable
         }
     }
 
+    /// <summary>Sends a ping now.</summary>
     public void SendPing()
     {
         byte[] body;
@@ -290,6 +295,7 @@ public sealed class VoiceClient : IDisposable
         VoiceReceived?.Invoke(down.SessionId, down.Seq, down.Target, opus[..length], null);
     }
 
+    /// <summary>Stops and closes the socket.</summary>
     public void Dispose()
     {
         if (control is not null) control.VoiceDownReceived -= OnVoiceDown;

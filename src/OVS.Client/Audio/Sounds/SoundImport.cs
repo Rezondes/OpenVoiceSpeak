@@ -12,7 +12,9 @@ namespace OVS.Client.Audio.Sounds;
 /// </summary>
 public static class SoundImport
 {
+    /// <summary>The longest sound accepted, in seconds.</summary>
     public const int MaxSeconds = 5;
+    /// <summary>The largest file accepted, in bytes.</summary>
     public const long MaxFileBytes = 10 * 1024 * 1024;
 
     /// <returns>The file name inside the profile's sound folder, or why the file was refused.</returns>

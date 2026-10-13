@@ -37,6 +37,7 @@ internal static class DragVisuals
 
     /// <summary>A picture of the control as it looks now (also the flying row of Package 103).</summary>
     /// <param name="scale">For a control no longer shown (a closed popup): the scaling of the window it is drawn in.</param>
+    /// <param name="control">The control to draw.</param>
     internal static RenderTargetBitmap Snapshot(Control control, double? scale = null)
     {
         double scaling = scale ?? TopLevel.GetTopLevel(control)?.RenderScaling ?? 1;

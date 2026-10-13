@@ -11,10 +11,15 @@ namespace OVS.Server;
 public sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey, TimeProvider time)
     : IDisposable
 {
+    /// <summary>The session's id, also in its voice packets.</summary>
     public uint Id { get; } = id;
+    /// <summary>The user's id.</summary>
     public string Fingerprint { get; } = fingerprint;
+    /// <summary>The nickname of this login.</summary>
     public string Nickname { get; } = nickname;
+    /// <summary>The client's address.</summary>
     public IPAddress Ip { get; } = ip;
+    /// <summary>The session's voice key for UDP.</summary>
     public byte[] VoiceKey { get; } = voiceKey;
 
     /// <summary>The frames for the write loop; safe from any thread.</summary>
@@ -33,17 +38,24 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     public LogDownload LogDownload { get; } = new();
 
     // Guarded by the ServerState lock.
+    /// <summary>The channel the user is in; guarded by the ServerState lock.</summary>
     public Guid ChannelId { get; set; }
+    /// <summary>The user muted the own microphone.</summary>
     public bool SelfMuted { get; set; }
+    /// <summary>The user deafened themselves.</summary>
     public bool SelfDeafened { get; set; }
+    /// <summary>A moderator muted the user at the server.</summary>
     public bool ServerMuted { get; set; }
+    /// <summary>The user's rights, from the groups.</summary>
     public Permission Permissions { get; set; }
+    /// <summary>The user's groups.</summary>
     public IReadOnlyList<Guid> GroupIds { get; set; } = [];
     /// <summary>Package 75: the backup upload in progress (one per session).</summary>
     public BackupUpload? Upload { get; set; }
 
     // ---- Package 70: statistics of this session, added to the UserRecord when it ends ----
 
+    /// <summary>When the session started.</summary>
     public DateTimeOffset ConnectedAt { get; } = time.GetUtcNow();
     /// <summary>Guarded by the ServerState lock.</summary>
     public int ChatMessages { get; set; }
@@ -57,5 +69,6 @@ public sealed class Session(uint id, string fingerprint, string nickname, IPAddr
     /// <summary>20 ms per relayed voice packet.</summary>
     public TimeSpan SpeechTime => TimeSpan.FromMilliseconds(20 * Interlocked.Read(ref voiceFrames));
 
-    public void Dispose() => Voice.Dispose(); // the outbox stays usable: log jobs may still send after the end
+    /// <summary>Releases the voice state; The outbox stays usable: log jobs may still send after the end.</summary>
+    public void Dispose() => Voice.Dispose();
 }

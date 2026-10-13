@@ -1,4 +1,10 @@
 namespace OVS.Client.Settings;
 
 /// <summary>Package 99: "Animierte Darstellung" (default) or "Vereinfachte Darstellung" (the plain look from before).</summary>
-public enum DisplayMode { Animated, Simplified }
+public enum DisplayMode
+{
+    /// <summary>With the animations.</summary>
+    Animated,
+    /// <summary>Without the new animations, the look from before.</summary>
+    Simplified,
+}

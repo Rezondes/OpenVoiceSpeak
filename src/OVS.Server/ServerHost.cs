@@ -21,6 +21,12 @@ public static class ServerHost
 {
     /// <param name="afterWait">Tests only: runs when a run's wait has ended, before the sessions are closed.</param>
     /// <returns>The process exit code: 0 after a stop request, 1 when a run could not start.</returns>
+    /// <param name="getEnv">Reads an environment variable.</param>
+    /// <param name="bindAddress">The address to listen on.</param>
+    /// <param name="time">The clock of every run.</param>
+    /// <param name="console">Gets the console lines.</param>
+    /// <param name="error">Gets the lines of a failed start.</param>
+    /// <param name="stop">Ends the server.</param>
     public static async Task<int> RunAsync(Func<string, string?> getEnv, IPAddress bindAddress, TimeProvider time,
         Action<string> console, Action<string> error, CancellationToken stop, Func<ServerState, Task>? afterWait = null)
     {

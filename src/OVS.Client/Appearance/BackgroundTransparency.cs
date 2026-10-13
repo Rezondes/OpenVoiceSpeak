@@ -13,8 +13,10 @@ namespace OVS.Client.Appearance;
 /// </summary>
 public static class BackgroundTransparency
 {
+    /// <summary>The resource keys of the large backgrounds that turn see-through.</summary>
     public static readonly IReadOnlyList<string> BackgroundKeys = ["Ovs.Bg", "Ovs.Sidebar", "Ovs.SidebarFooter"];
 
+    /// <summary>Applies the background opacity and blur to the app's backgrounds and the window.</summary>
     public static void Apply(Application app, Window window, BackgroundAppearance appearance)
     {
         foreach (var variant in new[] { ThemeVariant.Dark, ThemeVariant.Light })

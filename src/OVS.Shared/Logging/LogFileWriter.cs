@@ -26,6 +26,10 @@ public sealed class LogFileWriter
     bool failureReported;
 
     /// <param name="keepDays">0 keeps every file.</param>
+    /// <param name="root">The logs folder.</param>
+    /// <param name="time">The clock of the time stamps and file names.</param>
+    /// <param name="onFailure">Told once when a write fails, with the reason.</param>
+    /// <param name="newFileEachDay">True starts a new file at midnight, false keeps one file per start.</param>
     public LogFileWriter(string root, int keepDays, TimeProvider time, Action<string> onFailure, bool newFileEachDay = true)
     {
         this.root = root;
@@ -48,6 +52,7 @@ public sealed class LogFileWriter
         }
     }
 
+    /// <summary>The time stamp of a line written now, in local time.</summary>
     public string FormatNow() => time.GetLocalNow().ToString("yyyy-MM-dd HH:mm:ss.fff");
 
     void StartFile(DateTimeOffset now)
@@ -58,6 +63,8 @@ public sealed class LogFileWriter
     }
 
     /// <param name="folder">Relative to the root, "" for the root itself.</param>
+    /// <param name="prefix">Put before the file name.</param>
+    /// <param name="line">The text after the time stamp.</param>
     public void Append(string folder, string prefix, string line) => Append(folder, prefix, [line]);
 
     /// <summary>Package 124: several lines with one opening of the file.</summary>

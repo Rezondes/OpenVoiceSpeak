@@ -11,6 +11,7 @@ public sealed class VoiceCrypto(byte[] key) : IDisposable
 
     readonly AesGcm aes = new(key, VoiceHeader.TagSize);
 
+    /// <summary>The packet: header, ciphertext and tag; the header is authenticated, the direction is part of the nonce.</summary>
     public byte[] Seal(PacketDirection direction, VoiceHeader header, ReadOnlySpan<byte> plaintext)
     {
         var packet = new byte[VoiceHeader.Size + plaintext.Length + VoiceHeader.TagSize];
@@ -25,6 +26,7 @@ public sealed class VoiceCrypto(byte[] key) : IDisposable
         return packet;
     }
 
+    /// <summary>False for a packet that is too short, of the other direction or fails authentication.</summary>
     public bool TryOpen(PacketDirection direction, ReadOnlySpan<byte> packet, out VoiceHeader header, out byte[] plaintext)
     {
         plaintext = [];
@@ -52,5 +54,6 @@ public sealed class VoiceCrypto(byte[] key) : IDisposable
         BinaryPrimitives.WriteUInt32BigEndian(nonce[8..], seq);
     }
 
+    /// <summary>Releases the cipher.</summary>
     public void Dispose() => aes.Dispose();
 }

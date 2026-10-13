@@ -18,6 +18,7 @@ public static class FlyGhost
     /// <summary>The highlight ghost's strength, and the share of the flight after which it hands over to the row.</summary>
     const double GhostOpacity = 0.6, HandOver = 0.6;
 
+    /// <summary>The style classes of a flying row picture, of a highlight picture and of the entry it lands on.</summary>
     public const string GhostClass = "flyGhost", HighlightClass = "highlightGhost", ArrivingClass = "arriving";
 
     /// <summary>The control's rectangle in the overlay, or null when it is not to be seen (scrolled away, hidden).</summary>

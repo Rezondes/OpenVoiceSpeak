@@ -5,6 +5,7 @@ public sealed class SeqCounter
 {
     long next;
 
+    /// <summary>The next sequence number; throws once all 2^32 are used.</summary>
     public uint Next()
     {
         long value = Interlocked.Increment(ref next) - 1;
@@ -12,5 +13,6 @@ public sealed class SeqCounter
         return (uint)value;
     }
 
+    /// <summary>Lets a test start near the end of the range.</summary>
     public void SetNextForTest(uint value) => next = value;
 }

@@ -64,6 +64,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     /// <param name="inputDevices">Null while the list is still loading (Package 52): the saved device stays selected.</param>
     /// <param name="time">Package 98: the clock of the waiting states (tests use a manual one).</param>
     /// <param name="captureChord">The next chord the user presses (the key poller's capture); without it the key dialog captures nothing.</param>
+    /// <param name="current">The settings the page starts from.</param>
+    /// <param name="outputDevices">Null while the list is still loading: the saved device stays selected.</param>
     public SettingsViewModel(ClientSettings current, IReadOnlyList<AudioDevice>? inputDevices, IReadOnlyList<AudioDevice>? outputDevices, TimeProvider time,
         Func<Task<KeyChord>>? captureChord = null)
     {
@@ -104,6 +106,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
 
     // ---- Package 48: every sound on its own ----
 
+    /// <summary>One row per sound.</summary>
     public IReadOnlyList<SoundRowViewModel> SoundRows { get; }
     /// <summary>Copies the chosen file into the profile; returns its name there or why it was refused.</summary>
     public Func<string, SoundEvent, SoundImportResult>? ImportSound { get; set; }
@@ -119,6 +122,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
 
     /// <summary>Package 98: "Speichern" while the audio devices restart, and the update check.</summary>
     public PendingActionViewModel Saving { get; }
+    /// <summary>The update check, running until its answer.</summary>
     public PendingActionViewModel Checking { get; }
 
     [RelayCommand]
@@ -133,11 +137,14 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
 
     // ---- About (Package 42) ----
 
+    /// <summary>The name and the version.</summary>
     public string AppVersion => $"OpenVoiceSpeak {BuildInfo.Current.Version}";
+    /// <summary>The build's commit and date, or that it is a local build.</summary>
     public string BuildDetails => BuildInfo.Current is { IsCi: true } build
         ? string.Format(Strings.About_Build, build.ShortCommit, build.BuildTime.ToLocalTime())
         : Strings.About_LocalBuild;
 
+    /// <summary>The colour themes to choose from.</summary>
     public static IReadOnlyList<Choice<AppTheme>> Themes =>
         [new(AppTheme.System, Strings.Theme_System), new(AppTheme.Light, Strings.Theme_Light), new(AppTheme.Dark, Strings.Theme_Dark)];
 
@@ -172,12 +179,14 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     /// <summary>Ends the live preview when the page closes: what is saved counts again.</summary>
     public Action? EndPreview { get; set; }
 
+    /// <summary>Ends the preview when the page goes.</summary>
     public void Detach() => EndPreview?.Invoke();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelfTestText))]
     bool isSelfTesting;
 
+    /// <summary>The self test button's text.</summary>
     public string SelfTestText => IsSelfTesting ? Strings.Ui_SelfTestStop : Strings.Ui_SelfTestStart;
 
     [RelayCommand]
@@ -265,6 +274,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     /// do two different things.
     /// </summary>
     public ObservableCollection<KeyBindingViewModel> KeyBindings { get; }
+    /// <summary>Any key is bound.</summary>
     public bool HasKeyBindings => KeyBindings.Count > 0;
 
     /// <summary>The overlay with action and key; the view sets it (A20: inside the main window).</summary>
@@ -277,6 +287,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
                 : string.Format(Strings.Keys_Duplicate, KeyActionLabels.Localize(actions[0])))
             .FirstOrDefault();
 
+    /// <summary>Two bindings use the same chord.</summary>
     public bool HasKeyConflict => KeyConflict is not null;
 
     /// <summary>Package 59: push-to-talk without a push-to-talk key: nobody would hear you.</summary>
@@ -325,6 +336,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     /// <summary>Would voice activation send right now?</summary>
     public bool IsAboveThreshold => InputLevelDb >= MeterThresholdDb;
 
+    /// <summary>The voice activation threshold is set by hand.</summary>
     public bool IsManualThreshold => !VadAutomatic;
 
     /// <summary>
@@ -339,7 +351,9 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
             if (!VadAutomatic) VadThresholdDb = value;
         }
     }
+    /// <summary>The settings can be saved (no key conflict).</summary>
     public bool CanSave => !HasKeyConflict;
+    /// <summary>What keeps the settings from being saved, null when nothing does.</summary>
     public string? Error => KeyConflict;
 
     partial void OnInputGainPercentChanged(double value)
@@ -367,6 +381,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         Preview();
     }
 
+    /// <summary>Raised when the page should close; true after a save.</summary>
     public event Action<bool>? CloseRequested;
 
     /// <summary>Package 98: applies the settings (the audio devices restart meanwhile); the page closes once it is done.</summary>

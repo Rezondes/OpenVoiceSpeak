@@ -29,11 +29,13 @@ public sealed partial class ServerState
         }
     }
 
+    /// <summary>The open connections from ip.</summary>
     public int ConnectionsFrom(IPAddress ip)
     {
         lock (gate) return connectionsPerIp.GetValueOrDefault(IpAddresses.ToAddressGroup(ip));
     }
 
+    /// <summary>Counts one connection from ip less.</summary>
     public void ReleaseConnection(IPAddress ip)
     {
         ip = IpAddresses.ToAddressGroup(ip);
@@ -45,6 +47,7 @@ public sealed partial class ServerState
         }
     }
 
+    /// <summary>Lets a client in after its proof, or says why not.</summary>
     public Admission Admit(string fingerprint, string nickname, IPAddress ip, string? password)
     {
         lock (gate)
@@ -132,14 +135,17 @@ public sealed partial class ServerState
     }
 
     /// <param name="reason">Why the connection ended, for the logs (e.g. "Zeitüberschreitung").</param>
+    /// <param name="session">The session to end.</param>
     public void Remove(Session session, string reason = "vom Client beendet")
     {
         lock (gate) RemoveLocked(session, null, reason);
     }
 
+    /// <summary>Sends final to every session and ends them; later handshakes are rejected with its reason.</summary>
     public void CloseAll(Message final) => CloseAll(final, statsCounted: false);
 
     /// <param name="statsCounted">The running sessions' statistics are in their records already (restore safety backup).</param>
+    /// <param name="final">The last message every session gets.</param>
     void CloseAll(Message final, bool statsCounted)
     {
         lock (gate)
@@ -168,6 +174,7 @@ public sealed partial class ServerState
         }
     }
 
+    /// <summary>Logs a rejected handshake.</summary>
     public void LogRejected(IPAddress ip, string code, string? nickname, string? fingerprint)
     {
         var who = nickname is null ? "" : fingerprint is null ? $" ({nickname})" : $" ({nickname}, {fingerprint[..12]})";

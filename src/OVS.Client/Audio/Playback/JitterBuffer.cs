@@ -11,9 +11,12 @@ namespace OVS.Client.Audio.Playback;
 /// </summary>
 public sealed class JitterBuffer
 {
-    public const int StartDelay = 2;   // the least cushion before playback starts: 40 ms (Package 134: Cushion)
-    public const int MaxFrames = 10;   // caps the latency at 200 ms
+    /// <summary>The least cushion before playback starts, in frames: 40 ms (Package 134: Cushion).</summary>
+    public const int StartDelay = 2;
+    /// <summary>The most frames held; caps the latency at 200 ms.</summary>
+    public const int MaxFrames = 10;
     const int MaxUnderruns = 2;        // then assume a talk pause and rebuffer
+    /// <summary>One frame's length in ms.</summary>
     public const int FrameMs = 20;
 
     readonly SortedDictionary<uint, byte[]> frames = [];
@@ -29,8 +32,11 @@ public sealed class JitterBuffer
     /// Rebuilt from the next one's FEC), or were made up by the decoder while waiting inside a talk spurt or for a lost one
     /// (Concealed).</summary>
     public int Received { get; private set; }
+    /// <summary>Frames that never arrived.</summary>
     public int Lost { get; private set; }
+    /// <summary>Lost frames played in full from the copy in the next packet (Package 136).</summary>
     public int Rebuilt { get; private set; }
+    /// <summary>Frames the decoder concealed.</summary>
     public int Concealed { get; private set; }
 
     /// <summary>Package 136 (A145): missing frames played in full from the copy in the next packet; neither Lost nor made up.</summary>
@@ -55,7 +61,9 @@ public sealed class JitterBuffer
     /// <summary>Package 133: what the buffer holds back right now.</summary>
     public int DelayMs => frames.Count * FrameMs;
 
+    /// <summary>The last frame came in over a link.</summary>
     public bool ViaLink { get; private set; }
+    /// <summary>Frames waiting.</summary>
     public int Buffered => frames.Count;
 
     /// <summary>Package 124: frames waiting, or playing (concealing a loss counts): the next Pull may return audio.</summary>
@@ -63,6 +71,9 @@ public sealed class JitterBuffer
 
     /// <param name="arrivalMs">Package 133: when the frame arrived in ms, on any clock (the mixer stamps it as it comes).</param>
     /// <param name="copy">Package 136 (A145): the frame before this one, kept only while that one is missing and still to play.</param>
+    /// <param name="seq">The frame number.</param>
+    /// <param name="opus">The Opus frame.</param>
+    /// <param name="viaLink">It came in over a link.</param>
     public void Push(uint seq, byte[] opus, bool viaLink, double arrivalMs, byte[]? copy = null)
     {
         ViaLink = viaLink;

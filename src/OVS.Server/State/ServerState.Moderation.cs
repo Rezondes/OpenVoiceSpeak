@@ -142,6 +142,11 @@ public sealed partial class ServerState
     /// Online the session's rights count, offline those of the stored groups.
     /// </summary>
     /// <param name="lastAdminFirst">Package 84: ban and delete refuse the last member of the Admin group as such (LastAdmin).</param>
+    /// <param name="session">The actor.</param>
+    /// <param name="request">The request, for the error answer.</param>
+    /// <param name="fingerprint">The target.</param>
+    /// <param name="user">The target's record.</param>
+    /// <param name="online">The target's session while online.</param>
     bool FindKnownTarget(Session session, Request request, string fingerprint, out UserRecord user, out Session? online, bool lastAdminFirst = false)
     {
         user = FindUser(fingerprint)!;

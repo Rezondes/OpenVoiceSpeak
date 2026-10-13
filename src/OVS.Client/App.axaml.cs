@@ -20,10 +20,13 @@ using OVS.Shared;
 
 namespace OVS.Client;
 
+/// <summary>The application: builds the composition root and the main window.</summary>
 public partial class App : Application
 {
+    /// <summary>Loads App.axaml.</summary>
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
+    /// <summary>Creates the services and the main window once Avalonia is ready.</summary>
     public override void OnFrameworkInitializationCompleted()
     {
         // Package 105: every popup moves; also in the headless tests, which have no desktop lifetime

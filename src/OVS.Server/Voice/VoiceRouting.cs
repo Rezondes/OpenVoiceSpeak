@@ -3,6 +3,7 @@ using OVS.Shared.Voice;
 
 namespace OVS.Server.Voice;
 
+/// <summary>Who hears a voice packet.</summary>
 public static class VoiceRouting
 {
     /// <summary>Link transmission needs SpeakLinked; without it the packet only reaches the own channel.</summary>
@@ -13,6 +14,10 @@ public static class VoiceRouting
 
     /// <summary>Package 141: a listener on voice over TCP is reached like a bound UDP endpoint.</summary>
     /// <param name="isMuted">Package 34: nobody in a muted channel is heard, not even via link. Link speech into it is.</param>
+    /// <param name="sessions">Everyone online.</param>
+    /// <param name="sender">The one talking.</param>
+    /// <param name="target">TargetChannel or TargetLinked.</param>
+    /// <param name="linkedChannels">The channels linked to a channel.</param>
     public static List<Session> Recipients(IEnumerable<Session> sessions, Session sender, byte target,
         Func<Guid, IReadOnlySet<Guid>> linkedChannels, Func<Guid, bool>? isMuted = null)
     {

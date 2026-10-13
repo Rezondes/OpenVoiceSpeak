@@ -14,11 +14,19 @@ namespace OVS.Server;
 /// </remarks>
 /// <param name="AutoRestartAt">Daily restart time in server local time, null when the automatic restart is off.</param>
 /// <param name="LogRotateDaily">True begins new log files after midnight, false keeps them until the next start.</param>
+/// <param name="Port">The TCP and UDP port.</param>
+/// <param name="DataDir">The folder of the data, the logs, the backups and the certificate.</param>
+/// <param name="MaxUsers">The start value of the user limit.</param>
+/// <param name="ServerName">The start value of the server's name.</param>
+/// <param name="Password">The start value of the server password, empty for none.</param>
+/// <param name="LogDays">The start value of the log retention, 0 keeps every file.</param>
 public sealed record ServerConfig(
     int Port, string DataDir, int MaxUsers, string ServerName, string Password, int LogDays = ProtocolDefaults.LogDays,
     TimeOnly? AutoRestartAt = null, bool LogRotateDaily = true)
 {
+    /// <summary>The config file's name inside the data folder.</summary>
     public const string FileName = "server-config.json";
+    /// <summary>The restart time when none is set: 04:00.</summary>
     public static readonly TimeOnly DefaultRestartTime = new(4, 0, 0);
 
     /// <summary>Package 69: the restart time even while the restart is off, so it can be taken over as start value.</summary>
@@ -27,6 +35,7 @@ public sealed record ServerConfig(
     /// <summary>Package 69: names of the start values that were set in the environment or the file, for the hint at startup.</summary>
     public IReadOnlySet<string> GivenStartValues { get; init; } = new HashSet<string>();
 
+    /// <summary>Reads the environment, then server-config.json, then the defaults; throws ConfigException for an invalid value.</summary>
     public static ServerConfig Load(Func<string, string?> getEnv)
     {
         var dataDir = Path.GetFullPath(getEnv("OVS_DATA_DIR") is { Length: > 0 } text ? text : "data");

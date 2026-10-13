@@ -20,6 +20,7 @@ public static class CollectionSync
 
     static Dictionary<object, int> Leaving(object list) => leavingSets.GetValue(list, _ => new Dictionary<object, int>(ReferenceEqualityComparer.Instance));
 
+    /// <summary>True while item is folding away from list.</summary>
     public static bool IsLeaving(object list, object item) => leavingSets.TryGetValue(list, out var set) && set.ContainsKey(item);
 
     /// <summary>The entries that really are there: commands, counts and targets never see leaving ones.</summary>

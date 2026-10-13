@@ -10,13 +10,16 @@ namespace OVS.Shared;
 /// </summary>
 public sealed record BuildInfo(DateTimeOffset BuildTime, string Commit, bool IsCi)
 {
+    /// <summary>The assembly metadata keys Directory.Build.props stamps: build time, commit and whether CI built it.</summary>
     public const string TimeKey = "OvsBuildTime", CommitKey = "OvsCommit", CiKey = "OvsIsCI";
 
+    /// <summary>The build of the running assembly.</summary>
     public static BuildInfo Current { get; } = FromMetadata(typeof(BuildInfo).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>().ToDictionary(assemblyMetadataAttribute => assemblyMetadataAttribute.Key, assemblyMetadataAttribute => assemblyMetadataAttribute.Value));
 
     /// <summary>"DDMMYY.stamp" for a CI build, "dev.stamp" for anything built locally.</summary>
     public string Version => Format(BuildTime, IsCi);
+    /// <summary>The commit's first 7 characters, or the whole commit when it is shorter.</summary>
     public string ShortCommit => Commit.Length > 7 ? Commit[..7] : Commit;
 
     /// <summary>Seconds since UTC midnight in base36, always 4 characters: 00:00:00 = "0000", 23:59:59 = "1unz".</summary>
@@ -30,6 +33,7 @@ public sealed record BuildInfo(DateTimeOffset BuildTime, string Commit, bool IsC
         return new string(chars);
     }
 
+    /// <summary>"DDMMYY.stamp" for a CI build, "dev.stamp" otherwise.</summary>
     public static string Format(DateTimeOffset buildTime, bool isCi) =>
         isCi ? $"{buildTime.ToUniversalTime():ddMMyy}.{Stamp(buildTime)}" : $"dev.{Stamp(buildTime)}";
 

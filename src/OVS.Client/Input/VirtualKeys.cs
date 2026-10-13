@@ -5,8 +5,11 @@ namespace OVS.Client.Input;
 /// <summary>The Windows virtual key codes the client knows by name, which of them are modifiers, and how a key is shown.</summary>
 public static class VirtualKeys
 {
+    /// <summary>The first side mouse button.</summary>
     public const int XButton1 = 0x05;
+    /// <summary>The second side mouse button.</summary>
     public const int XButton2 = 0x06;
+    /// <summary>The right Ctrl key.</summary>
     public const int RControl = 0xA3;
     internal const int Shift = 0x10, Control = 0x11;
     /// <summary>Win32 VK_MENU, the Alt key.</summary>

@@ -1,3 +1,14 @@
 namespace OVS.Client.Models;
 
-public enum BanSortOrder { Newest, EndingSoonest, MostAttempts, Name }
+/// <summary>How the ban list is sorted.</summary>
+public enum BanSortOrder
+{
+    /// <summary>The newest ban first.</summary>
+    Newest,
+    /// <summary>The ban that ends first first.</summary>
+    EndingSoonest,
+    /// <summary>The ban that turned most people away first.</summary>
+    MostAttempts,
+    /// <summary>By nickname.</summary>
+    Name,
+}

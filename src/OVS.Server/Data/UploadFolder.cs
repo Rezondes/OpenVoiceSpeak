@@ -8,6 +8,7 @@ namespace OVS.Server.Data;
 /// </summary>
 public sealed class UploadFolder(string folder)
 {
+    /// <summary>The name prefix of an unfinished upload's file.</summary>
     public const string Prefix = ".upload-";
 
     /// <summary>32 lowercase hex digits (Guid "N"), so an id can never name a path.</summary>

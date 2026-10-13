@@ -10,10 +10,15 @@ namespace OVS.Server.Voice;
 /// </summary>
 public sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposable
 {
+    /// <summary>Seals and opens the session's voice packets.</summary>
     public VoiceCrypto Crypto { get; } = new(voiceKey);
+    /// <summary>The client's UDP address once its hello arrived.</summary>
     public IPEndPoint? UdpEndpoint { get; set; }
+    /// <summary>Drops repeated packets from the client.</summary>
     public ReplayWindow Replay { get; } = new();
+    /// <summary>The numbers of the packets sent to the client.</summary>
     public SeqCounter OutSeq { get; } = new();
+    /// <summary>The client's voice packet budget.</summary>
     public RateLimiter Limiter { get; } = new(time, ServerTuning.VoicePerSecond, ServerTuning.VoiceBurst);
     volatile bool tcpVoice;
     /// <summary>Package 141: the newest frame number this sender sent over UDP, -1 before the first.</summary>
@@ -83,5 +88,6 @@ public sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposab
         return new TrackedFrame(kept, unseen);
     }
 
+    /// <summary>Releases the cipher.</summary>
     public void Dispose() => Crypto.Dispose();
 }

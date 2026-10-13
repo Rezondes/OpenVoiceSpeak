@@ -42,18 +42,30 @@ public static class LiveMotion
     /// </summary>
     public static readonly AttachedProperty<double> LevelProperty = AvaloniaProperty.RegisterAttached<RangeBase, double>("Level", typeof(LiveMotion), double.NaN);
 
+    /// <summary>Gets whether the icon pops in and out with its visibility.</summary>
     public static bool GetPop(Control control) => control.GetValue(PopProperty);
+    /// <summary>Sets whether the icon pops in and out with its visibility.</summary>
     public static void SetPop(Control control, bool value) => control.SetValue(PopProperty, value);
+    /// <summary>Gets whether the icon turns in as it appears.</summary>
     public static bool GetTurn(Control control) => control.GetValue(TurnProperty);
+    /// <summary>Sets whether the icon turns in as it appears.</summary>
     public static void SetTurn(Control control, bool value) => control.SetValue(TurnProperty, value);
+    /// <summary>Gets the channel slots the counter shows.</summary>
     public static ChannelSlots? GetSlots(TextBlock text) => text.GetValue(SlotsProperty);
+    /// <summary>Sets the channel slots the counter shows; a change ticks it and a full channel pulses.</summary>
     public static void SetSlots(TextBlock text, ChannelSlots? value) => text.SetValue(SlotsProperty, value);
+    /// <summary>Gets whether a new text fades in.</summary>
     public static bool GetFade(TextBlock text) => text.GetValue(FadeProperty);
+    /// <summary>Sets whether a new text fades in.</summary>
     public static void SetFade(TextBlock text, bool value) => text.SetValue(FadeProperty, value);
+    /// <summary>Gets the level the meter moves to.</summary>
     public static double GetLevel(RangeBase meter) => meter.GetValue(LevelProperty);
+    /// <summary>Sets the level the meter moves to, with a fast attack and a slow release.</summary>
     public static void SetLevel(RangeBase meter, double value) => meter.SetValue(LevelProperty, value);
 
+    /// <summary>The style class of the picture a popping icon leaves behind.</summary>
     public const string GhostClass = "popGhost";
+    /// <summary>The pop's starting scale, the turn's starting angle, the counter's tick in pixels and the full pulse's scale.</summary>
     public const double PopFrom = 0.4, TurnFrom = -90, TickBy = 6, FullPulse = 1.3;
 
     /// <summary>About the time the level meter takes to rise to a louder level, and to fall back to a quieter one.</summary>

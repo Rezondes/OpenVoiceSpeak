@@ -27,13 +27,19 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
     SemaphoreSlim? handshakes; // Package 86: created on Start, after MaxPendingHandshakes is set
     Task? acceptLoop;
 
+    /// <summary>How long a client may take from connecting to the end of the handshake.</summary>
     public TimeSpan HandshakeTimeout { get; init; } = TimeSpan.FromSeconds(10);
+    /// <summary>A session that sends nothing (not even a ping) this long is closed.</summary>
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(15);
+    /// <summary>How long writing one frame may take before the client is dropped.</summary>
     public TimeSpan WriteTimeout { get; init; } = ServerTuning.WriteTimeout;
+    /// <summary>Handshakes running at the same time, server-wide.</summary>
     public int MaxPendingHandshakes { get; init; } = ServerTuning.MaxPendingHandshakes;
 
+    /// <summary>The address the listener is bound to (with the real port when 0 was asked for).</summary>
     public IPEndPoint LocalEndPoint => (IPEndPoint)listener.LocalEndpoint;
 
+    /// <summary>Starts listening and accepting.</summary>
     public void Start()
     {
         handshakes = new SemaphoreSlim(MaxPendingHandshakes);
@@ -52,6 +58,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         if (acceptLoop is not null) await acceptLoop;
     }
 
+    /// <summary>Stops and releases the listener.</summary>
     public async ValueTask DisposeAsync()
     {
         await StopAsync();

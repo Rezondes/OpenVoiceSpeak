@@ -5,18 +5,24 @@ using OVS.Shared.Protocol.Messages.ServerInfo;
 
 namespace OVS.Server.Data.Records;
 
+/// <summary>The server settings as stored.</summary>
 public sealed class ServerSettings
 {
+    /// <summary>The server's name.</summary>
     public string Name { get; set; } = "";
+    /// <summary>Shown to everyone on connect.</summary>
     public string WelcomeText { get; set; } = "";
     /// <summary>The server password as stored (persisted under "passwordHash"); null = no password.</summary>
     [JsonPropertyName("passwordHash")]
     public StoredPassword? StoredPassword { get; set; }
     // Package 69: formerly environment variables, now changed in the administration (A85)
+    /// <summary>The server's user limit (Package 69, A85: changed in the administration).</summary>
     public int MaxUsers { get; set; } = ProtocolDefaults.MaxUsers;
     /// <summary>0 keeps every log file.</summary>
     public int LogDays { get; set; } = ProtocolDefaults.LogDays;
+    /// <summary>True starts new log files every day, false one per start.</summary>
     public bool LogRotateDaily { get; set; } = true;
+    /// <summary>True restarts the server every day at AutoRestartTime.</summary>
     public bool AutoRestart { get; set; }
     /// <summary>Server local time.</summary>
     public TimeOnly AutoRestartTime { get; set; } = ServerConfig.DefaultRestartTime;

@@ -8,6 +8,7 @@ namespace OVS.Client.Dialogs;
 internal static class OverlayDialogs
 {
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>
+    /// <param name="overlay">The overlay the dialogs show in.</param>
     internal static DialogCallbacks Create(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
     {
         AskPassword = name => ServerPasswordDialog.ShowAsync(overlay, name),
@@ -34,6 +35,7 @@ internal static class OverlayDialogs
     };
 
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>
+    /// <param name="overlay">The overlay the dialogs show in.</param>
     internal static ServerDialogs CreateServerDialogs(OverlayHost overlay, Func<IReadOnlyList<GroupInfo>?> groups) => new()
     {
         EditChannel = (current, mode, submit) => ChannelDialogView.ShowAsync(overlay, current, mode, groups(), submit),

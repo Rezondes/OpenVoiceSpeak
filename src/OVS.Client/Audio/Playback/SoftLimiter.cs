@@ -7,11 +7,15 @@ namespace OVS.Client.Audio.Playback;
 /// </summary>
 public sealed class SoftLimiter
 {
+    /// <summary>The level above which the gain goes down.</summary>
     public const float Threshold = 0.95f;
-    public const float ReleasePerFrame = 0.05f; // from half gain back to full in 200 ms
+    /// <summary>How fast the gain comes back per frame: From half gain back to full in 200 ms.</summary>
+    public const float ReleasePerFrame = 0.05f;
 
+    /// <summary>The gain applied now.</summary>
     public float Gain { get; private set; } = 1f;
 
+    /// <summary>Lowers the frame where it would go above the threshold.</summary>
     public void Process(Span<float> frame)
     {
         float peak = 0;

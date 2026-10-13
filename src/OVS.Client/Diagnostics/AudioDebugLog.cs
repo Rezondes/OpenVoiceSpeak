@@ -17,6 +17,7 @@ public sealed class AudioDebugLog : IDisposable
     long lastFrames;
     float lastLevel = -120f;
 
+    /// <summary>Logs the keys and the frame rates once a second while the audio debug switch is on.</summary>
     public AudioDebugLog(KeyPoller keys, AudioEngine audio, ClientLog log)
     {
         this.keys = keys;
@@ -43,6 +44,7 @@ public sealed class AudioDebugLog : IDisposable
 
     void Write(string line) => log.Write("Audio-Debug: " + line);
 
+    /// <summary>Stops logging.</summary>
     public void Dispose()
     {
         timer.Dispose();

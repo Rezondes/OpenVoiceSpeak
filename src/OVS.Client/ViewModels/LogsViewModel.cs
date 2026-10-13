@@ -54,6 +54,7 @@ public sealed partial class LogsViewModel : ObservableObject
     [ObservableProperty] string hitsText = "";
 
     /// <param name="transfer">The administration page's transfer; it carries the download and shows its progress.</param>
+    /// <param name="server">The server the logs belong to.</param>
     internal LogsViewModel(ServerViewModel server, AdminTransfer transfer)
     {
         this.server = server;
@@ -69,24 +70,33 @@ public sealed partial class LogsViewModel : ObservableObject
         selectedSource = Sources[0];
     }
 
+    /// <summary>The source filter's choices.</summary>
     public ObservableCollection<Choice<LogSource>> Sources { get; } = [];
     /// <summary>The files that pass the filters, newest first.</summary>
     public ObservableCollection<LogFileViewModel> Files { get; } = [];
+    /// <summary>The server has no log files.</summary>
     public bool HasNoFiles => allFiles.Count == 0;
+    /// <summary>No file matches the filter.</summary>
     public bool HasNoFileMatches => allFiles.Count > 0 && !Files.Live().Any();
 
+    /// <summary>A file is open.</summary>
     public bool IsFileOpen => OpenFile is not null;
+    /// <summary>The open file's title.</summary>
     public string OpenTitle => OpenFile is { } logFile ? $"{logFile.Title}, {logFile.StartText}" : "";
+    /// <summary>The page and the page count.</summary>
     public string PageText => string.Format(Strings.Ui_LogPage, Page, PageCount);
     /// <summary>The lines of the page that pass the line filter.</summary>
     public ObservableCollection<LogLineViewModel> Lines { get; } = [];
+    /// <summary>The open page has lines.</summary>
     public bool HasLines => Lines.Count > 0;
+    /// <summary>The last search's hits.</summary>
     public ObservableCollection<LogHitViewModel> Hits { get; } = [];
 
     /// <summary>The page's one transfer, see <see cref="AdminViewModel.Transfer"/>.</summary>
     internal AdminTransfer Transfer { get; }
     /// <summary>Package 97 (A113): the file list's loading state and the running search.</summary>
     public PendingActionViewModel FilesLoad { get; }
+    /// <summary>The search, running until its result comes.</summary>
     public PendingActionViewModel Searching { get; }
 
     /// <summary>Package 81: the logs are shown and asked for with LogsView.</summary>
@@ -178,9 +188,13 @@ public sealed partial class LogsViewModel : ObservableObject
 
     // ---- Package 82: selection and download ----
 
+    /// <summary>The download shows (LogsDownload).</summary>
     public bool ShowDownload => server.SelfPermissions.Has(Permission.LogsDownload);
+    /// <summary>Files are ticked for a download.</summary>
     public bool CanDownload => ShowDownload && selected.Count > 0;
+    /// <summary>More than one file is ticked: the download is a zip.</summary>
     public bool IsZipDownload => selected.Count > 1;
+    /// <summary>How many files are ticked, as shown.</summary>
     public string SelectionText => string.Format(Strings.Ui_LogSelection, selected.Count);
     /// <summary>The chosen files, newest first like the list.</summary>
     public IReadOnlyList<string> SelectedIds => allFiles.Where(logFile => selected.Contains(logFile.Id)).Select(logFile => logFile.Id).ToList();

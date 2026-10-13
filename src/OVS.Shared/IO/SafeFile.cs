@@ -19,6 +19,8 @@ public static class SafeFile
 
     /// <summary>Writes to path.tmp and then moves it over path, so a reader sees the old or the new file, never half of one.</summary>
     /// <param name="flushToDisk">True writes through to the disk before the move; each caller keeps what it did before.</param>
+    /// <param name="path">The file to replace.</param>
+    /// <param name="content">The new bytes.</param>
     public static void WriteAtomic(string path, byte[] content, bool flushToDisk)
     {
         if (flushToDisk)
@@ -33,6 +35,8 @@ public static class SafeFile
 
     /// <summary>Writes to path.tmp through write and then moves it over path.</summary>
     /// <param name="flushToDisk">True writes through to the disk before the move.</param>
+    /// <param name="path">The file to replace.</param>
+    /// <param name="write">Writes the new content into the stream.</param>
     public static void WriteAtomic(string path, Action<Stream> write, bool flushToDisk)
     {
         var tmp = path + ".tmp";

@@ -1,9 +1,12 @@
 namespace OVS.Shared.Permissions;
 
+/// <summary>Set operations on <see cref="Permission"/> flags.</summary>
 public static class PermissionExtensions
 {
+    /// <summary>True when perms holds every flag of required.</summary>
     public static bool Has(this Permission perms, Permission required) => (perms & required) == required;
 
+    /// <summary>True when subset holds no flag outside superset.</summary>
     public static bool IsSubsetOf(this Permission subset, Permission superset) => (subset & ~superset) == 0;
 
     /// <summary>Package 84 (A102): actions on others only work on users whose rights are a strict subset of the actor's.</summary>

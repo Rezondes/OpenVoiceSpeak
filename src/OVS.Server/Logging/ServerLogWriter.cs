@@ -14,6 +14,9 @@ public sealed class ServerLogWriter
 
     /// <param name="keepDays">0 keeps every file.</param>
     /// <param name="newFileEachDay">False keeps the files of this run until the next start.</param>
+    /// <param name="dataDir">The data folder; the logs go into its logs folder.</param>
+    /// <param name="time">The clock of the time stamps and file names.</param>
+    /// <param name="console">Gets every line meant for the console, and the write failures.</param>
     public ServerLogWriter(string dataDir, int keepDays, TimeProvider time, Action<string> console, bool newFileEachDay = true)
     {
         files = new LogFileWriter(Path.Combine(dataDir, "logs"), keepDays, time, console, newFileEachDay);
@@ -24,6 +27,8 @@ public sealed class ServerLogWriter
     public void Update(int keepDays, bool newFileEachDay) => files.Update(keepDays, newFileEachDay);
 
     /// <param name="toFile">False for secrets such as the admin token, which only belong on the console.</param>
+    /// <param name="text">The line's text after the time stamp.</param>
+    /// <param name="toConsole">False for lines that only belong in the file.</param>
     public void WriteServerLine(string text, bool toFile = true, bool toConsole = true)
     {
         var line = LogFileWriter.EscapeToOneLine($"{files.FormatNow()} {text}"); // Package 90: the console (docker logs) gets the escaped line too

@@ -55,7 +55,8 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="refreshDevices">Loads the audio devices again; they reach the page when they arrive.</param>
     /// <param name="captureChord">Waits for the next key chord, for a binding on the settings page.</param>
     /// <param name="setKeyBindings">Makes the key poller listen to these bindings.</param>
-    /// <param name=
+    /// <param name="dialogs">The dialogs of the settings page and of leaving with unsaved changes, read when needed.</param>
+    /// <param name="adminDialogs">The dialogs of the administration, read when it opens.</param>
     /// <param name="checkNow">The update check of the settings page's button.</param>
     /// <param name="importSound">Copies an own tone into the profile folder.</param>
     /// <param name="previewSound">Plays a tone as the page sets it.</param>

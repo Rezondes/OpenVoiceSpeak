@@ -12,12 +12,16 @@ namespace OVS.Client.Net.Updates;
 /// </summary>
 public sealed class UpdateChecker(HttpClient http, BuildInfo current)
 {
+    /// <summary>Where the newest release is asked for.</summary>
     public const string LatestReleaseUrl = "https://api.github.com/repos/Rezondes/OpenVoiceSpeak/releases/latest";
+    /// <summary>The client's file name in a release.</summary>
     public const string ExeName = "OVS.Client.exe";
     const string TitlePrefix = "OpenVoiceSpeak ";
 
+    /// <summary>Only CI builds look for updates.</summary>
     public bool IsEnabled => current.IsCi;
 
+    /// <summary>Asks GitHub for the newest release and compares it with the running build.</summary>
     public async Task<UpdateCheckResult> CheckAsync(CancellationToken cancel = default)
     {
         if (!IsEnabled) return new UpdateCheckResult(null);

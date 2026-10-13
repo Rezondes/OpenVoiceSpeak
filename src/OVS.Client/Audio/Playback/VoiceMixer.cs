@@ -31,6 +31,7 @@ public sealed class VoiceMixer
         lock (gate) speakerGains = new Dictionary<uint, float>(gains);
     }
 
+    /// <summary>The gain of speakerId as set by the user.</summary>
     public float SpeakerGain(uint speakerId)
     {
         lock (gate) return speakerGains.GetValueOrDefault(speakerId, 1f);
@@ -41,6 +42,10 @@ public sealed class VoiceMixer
 
     /// <param name="arrivalMs">Package 133: when it arrived (tests); by default read in real time, before waiting for the lock.</param>
     /// <param name="copy">Package 136: the frame before it, if it came along.</param>
+    /// <param name="speakerId">The sender's session id.</param>
+    /// <param name="seq">The frame number.</param>
+    /// <param name="opus">The Opus frame.</param>
+    /// <param name="viaLink">It came in over a link.</param>
     public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink, double? arrivalMs = null, byte[]? copy = null)
     {
         double at = arrivalMs ?? ReadArrivalMs();
@@ -136,11 +141,13 @@ public sealed class VoiceMixer
                 }
     }
 
+    /// <summary>The speakers with a buffer.</summary>
     public int SpeakerCount
     {
         get { lock (gate) return speakers.Count; }
     }
 
+    /// <summary>Drops every speaker's buffer.</summary>
     public void Clear()
     {
         lock (gate)

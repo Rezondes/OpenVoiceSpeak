@@ -10,9 +10,12 @@ namespace OVS.Client.ViewModels;
 /// "Keine Antwort vom Server" and can be started again.
 /// </summary>
 /// <param name="post">Runs the timers' work on the UI thread; inline when null (tests with a manual clock).</param>
+/// <param name="time">The clock of the 150 ms delay and the timeout.</param>
 public sealed partial class PendingActionViewModel(TimeProvider time, Action<Action>? post = null) : ObservableObject
 {
+    /// <summary>How long the action runs before it shows as busy.</summary>
     public static readonly TimeSpan ShowAfter = TimeSpan.FromMilliseconds(150);
+    /// <summary>How long the action waits for the server before it fails.</summary>
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
     ITimer? show, timeout;
@@ -26,6 +29,7 @@ public sealed partial class PendingActionViewModel(TimeProvider time, Action<Act
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsFirstLoad), nameof(IsRefreshing), nameof(IsFirstLoadFailed), nameof(IsRefreshFailed))]
     bool hasSucceeded;
 
+    /// <summary>The action failed.</summary>
     public bool HasError => Error is not null;
     /// <summary>Busy or failed: something to show, so the place for it takes no room otherwise.</summary>
     public bool HasState => IsBusy || HasError;
@@ -48,6 +52,7 @@ public sealed partial class PendingActionViewModel(TimeProvider time, Action<Act
     /// <summary>Package 98: how the current run ended: null when done, else the error (refused or timed out).</summary>
     public Task<string?> Completion => completion?.Task ?? Task.FromResult(Error);
 
+    /// <summary>Marks the action running; requestId names the request whose answer ends it.</summary>
     public void Start(string? requestId = null)
     {
         Stop();

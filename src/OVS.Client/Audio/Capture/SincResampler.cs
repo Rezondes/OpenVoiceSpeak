@@ -26,6 +26,7 @@ public sealed class SincResampler
     float[] queue = [], output = [];
     int queued; // floats, so channels per sample frame
 
+    /// <summary>A resampler from fromRate to toRate for channels interleaved channels.</summary>
     public SincResampler(int fromRate, int toRate, int channels = 1)
     {
         this.channels = channels;

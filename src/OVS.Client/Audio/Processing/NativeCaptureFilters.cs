@@ -31,6 +31,7 @@ public sealed class NativeCaptureFilters
     /// page act at once (AC7: a missing library leaves that filter null).
     /// </summary>
     /// <param name="echoDelayMs">Package 140 (A149): the echo canceller's delay hint, from a mixed frame to its echo in the capture.</param>
+    /// <param name="capture">The capture that gets the filters.</param>
     internal void AttachTo(CapturePipeline capture, int echoDelayMs)
     {
         if (!noiseSuppressorMissing)

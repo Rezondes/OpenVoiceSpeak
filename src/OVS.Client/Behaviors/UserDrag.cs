@@ -17,6 +17,7 @@ namespace OVS.Client.Behaviors;
 /// </summary>
 public sealed class UserDrag
 {
+    /// <summary>The style class of the channel a dragged user would land in.</summary>
     public const string TargetClass = "dropTarget";
 
     readonly ItemsControl tree;
@@ -28,6 +29,7 @@ public sealed class UserDrag
     Border? preview, lit;
     TopLevel? top;
 
+    /// <summary>Lets users in tree be dragged onto a channel; drop moves them.</summary>
     public UserDrag(ItemsControl tree, Func<UserViewModel, ChannelViewModel, Task> drop)
     {
         (this.tree, this.drop) = (tree, drop);

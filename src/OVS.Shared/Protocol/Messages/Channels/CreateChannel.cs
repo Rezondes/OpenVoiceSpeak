@@ -5,6 +5,10 @@ namespace OVS.Shared.Protocol.Messages.Channels;
 /// <param name="Password">Package 94: null or empty = none, else 1 to MaxPasswordLength characters.</param>
 /// <param name="Kind">Package 111: a separator comes with an empty name and no options.</param>
 /// <param name="Bitrate">Package 132: kbps, MinBitrate to MaxBitrate; a separator keeps the default (it gets none).</param>
+/// <param name="Name">The channel's name.</param>
+/// <param name="Description">The channel's description.</param>
+/// <param name="IsMuted">Package 34: nobody in it is heard.</param>
+/// <param name="MaxUsers">Package 35: 0 = unlimited.</param>
 public sealed record CreateChannel(string Name, string Description, bool IsMuted = false, int MaxUsers = 0,
     IReadOnlyList<Guid>? AllowedGroupIds = null, string? Password = null, ChannelKind Kind = ChannelKind.Voice,
     int Bitrate = ProtocolDefaults.Bitrate) : Request;

@@ -8,9 +8,11 @@ namespace OVS.Client.Logging;
 /// </summary>
 public sealed class ClientLog
 {
+    /// <summary>Days the client's log files are kept.</summary>
     public const int KeepDays = 30;
     readonly LogFileWriter files;
 
+    /// <summary>A log in the profile's logs folder.</summary>
     public ClientLog(string profileDir, TimeProvider time) =>
         files = new LogFileWriter(Path.Combine(profileDir, "logs"), KeepDays, time, line => System.Diagnostics.Trace.WriteLine(line));
 

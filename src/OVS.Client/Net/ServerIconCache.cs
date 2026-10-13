@@ -13,6 +13,7 @@ public sealed class ServerIconCache(string profileDir)
     string PathFor(string host, int port) =>
         Path.Combine(dir, $"{string.Concat(host.Select(character => char.IsLetterOrDigit(character) || character is '.' or '-' ? character : '_'))}_{port}.png");
 
+    /// <summary>The cached logo of a server, null when none is cached.</summary>
     public byte[]? Load(string host, int port)
     {
         try
@@ -26,12 +27,14 @@ public sealed class ServerIconCache(string profileDir)
         }
     }
 
+    /// <summary>Caches a server's logo.</summary>
     public void Save(string host, int port, byte[] png) => Try(() =>
     {
         Directory.CreateDirectory(dir);
         SafeFile.WriteAtomic(PathFor(host, port), png, flushToDisk: false);
     });
 
+    /// <summary>Removes a server's cached logo.</summary>
     public void Remove(string host, int port) => Try(() =>
     {
         var path = PathFor(host, port);

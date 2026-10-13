@@ -34,6 +34,7 @@ public partial class BusySpinner : UserControl
         foreach (var spinner in shown.Where(visual.IsVisualAncestorOf).ToList()) spinner.Update(fade: true); // updating may change the tree
     });
 
+    /// <summary>A spinner that turns while shown.</summary>
     public BusySpinner() => InitializeComponent();
 
     void Track()
@@ -42,6 +43,7 @@ public partial class BusySpinner : UserControl
         else shown.Remove(this);
     }
 
+    /// <summary>Starts turning.</summary>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs args)
     {
         base.OnAttachedToVisualTree(args);
@@ -49,6 +51,7 @@ public partial class BusySpinner : UserControl
         Update(fade: false); // built or rebuilt (a row, a tab's content): it just shows (A117)
     }
 
+    /// <summary>Stops turning.</summary>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs args)
     {
         base.OnDetachedFromVisualTree(args);

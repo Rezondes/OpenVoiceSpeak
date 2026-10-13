@@ -7,6 +7,7 @@ namespace OVS.Shared.Voice;
 /// </summary>
 public sealed class LossWindow(TimeProvider time)
 {
+    /// <summary>The length of one counting window.</summary>
     public static readonly TimeSpan Length = TimeSpan.FromSeconds(5);
 
     /// <summary>
@@ -16,6 +17,7 @@ public sealed class LossWindow(TimeProvider time)
     /// that goes uncounted.
     /// </summary>
     public static readonly TimeSpan FreshAfter = TimeSpan.FromSeconds(1);
+    /// <summary>The largest jump in frame numbers still counted as missed frames.</summary>
     public const uint MaxGap = 50;
 
     readonly Dictionary<uint, Stream> streams = [];
@@ -23,6 +25,7 @@ public sealed class LossWindow(TimeProvider time)
     long received, missed;
     LossReport? last;
 
+    /// <summary>Counts one received frame of the stream id and the frames missing before it.</summary>
     public void Count(uint id, uint frame)
     {
         Roll();

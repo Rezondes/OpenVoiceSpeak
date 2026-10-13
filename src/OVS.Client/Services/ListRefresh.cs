@@ -5,6 +5,9 @@ namespace OVS.Client.Services;
 /// list limit is never hit. Wishes that come meanwhile are coalesced into one request once the answer is in.
 /// </summary>
 /// <param name="prefix">The request ids are this prefix and a running number, so a round tells which request it answers.</param>
+/// <param name="allowed">False while the list may not be asked for.</param>
+/// <param name="send">Sends the request with the request id.</param>
+/// <param name="time">The clock of the one-second spacing.</param>
 public sealed class ListRefresh(string prefix, Func<bool> allowed, Func<string, Task> send, TimeProvider time)
 {
     static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);

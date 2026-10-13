@@ -5,11 +5,16 @@ using OVS.Shared.Protocol.Messages.Channels;
 
 namespace OVS.Server.Data.Records;
 
+/// <summary>A channel as stored.</summary>
 public sealed class ChannelRecord
 {
+    /// <summary>The channel's id.</summary>
     public Guid Id { get; set; }
+    /// <summary>The channel's name.</summary>
     public string Name { get; set; } = "";
+    /// <summary>The channel's description.</summary>
     public string Description { get; set; } = "";
+    /// <summary>Its place in the channel list.</summary>
     public int Order { get; set; }
     /// <summary>Package 34: nobody in this channel is heard.</summary>
     public bool IsMuted { get; set; }

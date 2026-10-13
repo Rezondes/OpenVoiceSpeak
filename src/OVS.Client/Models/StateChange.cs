@@ -4,6 +4,7 @@ namespace OVS.Client.Models;
 [Flags]
 public enum StateChange
 {
+    /// <summary>Nothing changed.</summary>
     None = 0,
     /// <summary>Someone joined or left.</summary>
     Members = 1,
@@ -13,5 +14,6 @@ public enum StateChange
     Sidebar = 4,
     /// <summary>Rebuilt as a whole: the own rights, channel or groups, links or the settings may have changed too.</summary>
     Tree = 8,
+    /// <summary>Everything may have changed.</summary>
     All = Members | Names | Sidebar | Tree,
 }

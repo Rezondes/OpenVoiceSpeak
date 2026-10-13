@@ -18,6 +18,7 @@ namespace OVS.Client.Views;
 /// <summary>Administration as a page inside the main window (A20).</summary>
 public partial class AdminView : UserControl
 {
+    /// <summary>The administration page.</summary>
     public AdminView()
     {
         InitializeComponent();

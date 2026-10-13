@@ -7,6 +7,7 @@ public sealed class ReplayWindow
     uint highest;
     ulong seen;
 
+    /// <summary>True the first time seq is seen within the window; false for a repeat or anything 64 or more behind the highest.</summary>
     public bool Accept(uint seq)
     {
         if (!any)

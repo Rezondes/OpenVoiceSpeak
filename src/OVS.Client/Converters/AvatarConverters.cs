@@ -13,6 +13,7 @@ public static class AvatarConverters
         new[] { "#1D4ED8", "#7C3AED", "#DB2777", "#B45309", "#047857", "#0E7490", "#BE123C", "#4338CA" }
             .Select(text => (IBrush)new ImmutableSolidColorBrush(Color.Parse(text))).ToArray();
 
+    /// <summary>A name's initials for its avatar.</summary>
     public static readonly IValueConverter Initials =
         new FuncValueConverter<string?, string>(name => string.IsNullOrWhiteSpace(name) ? "?" : char.ToUpperInvariant(name.Trim()[0]).ToString());
 
@@ -20,6 +21,7 @@ public static class AvatarConverters
     public static readonly IValueConverter AvatarBrush =
         new FuncValueConverter<string?, IBrush>(name => AvatarColors[(int)(StableHash(name ?? "") % (uint)AvatarColors.Length)]);
 
+    /// <summary>Bold for the own user's name.</summary>
     public static readonly IValueConverter SelfWeight =
         new FuncValueConverter<bool, FontWeight>(isSelf => isSelf ? FontWeight.SemiBold : FontWeight.Normal);
 

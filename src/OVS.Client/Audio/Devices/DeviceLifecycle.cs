@@ -206,6 +206,7 @@ public sealed class DeviceLifecycle
         }
     }
 
+    /// <summary>Plays a test tone of frequency Hz into the capture, or stops it with null.</summary>
     public void SetTone(double? frequency)
     {
         lock (gate)

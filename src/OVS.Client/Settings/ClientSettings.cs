@@ -9,8 +9,10 @@ using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Client.Settings;
 
+/// <summary>The client's settings, stored as settings.json in the profile.</summary>
 public sealed class ClientSettings : IJsonOnDeserializing
 {
+    /// <summary>The settings file's name inside the profile.</summary>
     public const string FileName = "settings.json";
 
     /// <summary>
@@ -24,6 +26,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
         clientSettings => clientSettings.InferVadAutomatic(), // 3 (Package 129, A138): a tuned threshold stays manual
     ];
 
+    /// <summary>The number of migration steps; a new file starts there.</summary>
     public static int CurrentVersion => Migrations.Length;
 
     /// <summary>Package 127 (A135): the migration steps this file has had; a file without it counts as 0, a new one is current.</summary>
@@ -34,11 +37,17 @@ public sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 114: the settings as they are saved, to tell whether two of them differ.</summary>
     public string ToJson() => JsonSerializer.Serialize(this, ProtocolJson.Indented);
 
+    /// <summary>The saved servers.</summary>
     public List<Bookmark> Bookmarks { get; set; } = [];
+    /// <summary>The microphone's id, null for the system default.</summary>
     public string? InputDeviceId { get; set; }
+    /// <summary>The speaker's id, null for the system default.</summary>
     public string? OutputDeviceId { get; set; }
-    public float InputGain { get; set; } = 1f;       // 0..2
-    public float OutputVolume { get; set; } = 1f;    // 0..2 (Package 55)
+    /// <summary>The microphone gain as a slider value, 0 to 2.</summary>
+    public float InputGain { get; set; } = 1f;
+    /// <summary>The output volume as a slider value, 0 to 2 (Package 55).</summary>
+    public float OutputVolume { get; set; } = 1f;
+    /// <summary>Push-to-talk or voice activation.</summary>
     public TransmitMode Mode { get; set; } = TransmitMode.PushToTalk;
     /// <summary>No bindings by default (Package 29): a new profile starts without any key.</summary>
     public List<KeyBinding> KeyBindings { get; set; } = [];
@@ -54,9 +63,12 @@ public sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 130 (A139): push-to-talk and link push-to-talk keep sending this long after the key is let go (0..2000).</summary>
     public int PttReleaseDelayMs { get; set; } = 20;
 
+    /// <summary>The chord bound to action, null when none is.</summary>
     public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(keyBinding => keyBinding.Action == action)?.Chord;
+    /// <summary>The voice activation threshold a new profile starts with.</summary>
     public const float DefaultVadThresholdDb = -40f;
-    public float VadThresholdDb { get; set; } = DefaultVadThresholdDb; // -60..-10
+    /// <summary>The manual voice activation threshold in dB, -60 to -10.</summary>
+    public float VadThresholdDb { get; set; } = DefaultVadThresholdDb;
     /// <summary>Package 129 (A138): the voice gate learns the room's noise and sets its threshold itself.</summary>
     public bool VadAutomatic { get; set; } = true;
 
@@ -74,6 +86,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 142 (A151): speech by default, also for a file from before without the key.</summary>
     [JsonPropertyName("transmission")] // the key of the settings file: it keeps the name the property had
     public AudioContent AudioContent { get; set; } = AudioContent.Voice;
+    /// <summary>The colour theme.</summary>
     public AppTheme Theme { get; set; } = AppTheme.System;
     /// <summary>Package 45: follows Windows unless set; takes effect at the next start.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.System;
@@ -81,10 +94,12 @@ public sealed class ClientSettings : IJsonOnDeserializing
     public bool CheckForUpdates { get; set; } = true;
     /// <summary>Package 47: "Alle Sounds aus" is SoundsEnabled = false.</summary>
     public bool SoundsEnabled { get; set; } = true;
-    public float SoundVolume { get; set; } = 0.8f;   // 0..1
+    /// <summary>The sounds' volume, 0 to 1.</summary>
+    public float SoundVolume { get; set; } = 0.8f;
     /// <summary>Package 48: only sounds that differ from the default are stored.</summary>
     public Dictionary<SoundEvent, SoundSetting> Sounds { get; set; } = [];
 
+    /// <summary>The setting of sound, the default when none is stored.</summary>
     public SoundSetting SoundFor(SoundEvent sound) => Sounds.GetValueOrDefault(sound) ?? DefaultSound(sound);
 
     /// <summary>Package 131 (A140): the talk key tones are off unless turned on, so nobody's client suddenly beeps.</summary>
@@ -92,10 +107,13 @@ public sealed class ClientSettings : IJsonOnDeserializing
 
     /// <summary>Package 51: the volume per person by fingerprint (so on every server), only what differs from 100 %.</summary>
     public Dictionary<string, float> UserVolumes { get; set; } = [];
+    /// <summary>The highest per-person volume.</summary>
     public const float MaxUserVolume = 2f;
 
+    /// <summary>The volume of the person with fingerprint, 1 by default.</summary>
     public float VolumeFor(string fingerprint) => UserVolumes.GetValueOrDefault(fingerprint, 1f);
 
+    /// <summary>Sets a person's volume; 1 removes the entry.</summary>
     public void SetVolume(string fingerprint, float volume)
     {
         volume = Math.Clamp(volume, 0f, MaxUserVolume);
@@ -111,11 +129,13 @@ public sealed class ClientSettings : IJsonOnDeserializing
 
     /// <summary>Package 61: opacity of the large backgrounds (0 to 1) and whether what shows through is blurred.</summary>
     public float BackgroundOpacity { get; set; } = 1f;
+    /// <summary>What shows through the backgrounds is blurred.</summary>
     public bool BlurBackground { get; set; }
 
     /// <summary>Package 99 (A114): the animated display, or today's plain look. A file from before has no key and loads animated.</summary>
     public DisplayMode Display { get; set; } = DisplayMode.Animated;
 
+    /// <summary>Brings every value into its range and returns these settings.</summary>
     public ClientSettings Clamp()
     {
         BackgroundOpacity = Math.Clamp(BackgroundOpacity, 0f, 1f);
@@ -177,6 +197,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
         return this;
     }
 
+    /// <summary>Writes settings.json into directory atomically.</summary>
     public void Save(string directory)
     {
         Directory.CreateDirectory(directory);

@@ -23,6 +23,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasPending), nameof(PendingText))]
     int pendingCount;
 
+    /// <summary>The link matrix of server's channels.</summary>
     public LinkMatrixViewModel(ServerViewModel server)
     {
         this.server = server;
@@ -37,8 +38,11 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     /// <summary>Package 98: "Übernehmen" spins until the server's link changes match what was sent.</summary>
     public PendingActionViewModel Applying { get; }
 
+    /// <summary>One row per channel.</summary>
     public ObservableCollection<LinkRowViewModel> Rows { get; } = [];
+    /// <summary>Changes wait to be saved.</summary>
     public bool HasPending => PendingCount > 0;
+    /// <summary>How many changes wait, as shown.</summary>
     public string PendingText => PendingCount switch
     {
         0 => Strings.Links_NoPending,
@@ -48,10 +52,13 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
 
     bool OnServer(ChannelPair key) => server.Mirror.Links.Contains(key);
 
+    /// <summary>The two channels are linked, counting the unsaved changes.</summary>
     public bool IsLinked(Guid id, Guid otherId) => desired.TryGetValue(ChannelPair.Of(id, otherId), out var linked) ? linked : OnServer(ChannelPair.Of(id, otherId));
 
+    /// <summary>The link between the two channels has an unsaved change.</summary>
     public bool IsPending(Guid id, Guid otherId) => desired.ContainsKey(ChannelPair.Of(id, otherId));
 
+    /// <summary>Marks the link between the two channels to be set or removed.</summary>
     public void Set(Guid id, Guid otherId, bool linked)
     {
         if (id == otherId) return;

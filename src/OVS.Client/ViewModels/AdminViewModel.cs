@@ -17,6 +17,7 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     readonly ServerViewModel server;
     readonly AdminDialogs dialogs;
 
+    /// <summary>The administration of server, with its dialogs.</summary>
     public AdminViewModel(ServerViewModel server, AdminDialogs? dialogs = null)
     {
         this.server = server;
@@ -50,16 +51,25 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
 
     Permission Actor => server.SelfPermissions;
     // Package 76: seeing a tab and acting in it are separate rights
+    /// <summary>The groups tab shows (GroupsView).</summary>
     public bool ShowGroups => Actor.Has(Permission.GroupsView);
+    /// <summary>The users tab shows.</summary>
     public bool ShowUsers => UsersAndBans.ShowUsers;
+    /// <summary>The bans tab shows.</summary>
     public bool ShowBans => UsersAndBans.ShowBans;
     /// <summary>Package 89: the server tab holds the settings (ServerConfig) and the backups (BackupsManage).</summary>
     public bool ShowServer => ShowServerSettings || ShowBackups;
+    /// <summary>The server tab shows its settings card.</summary>
     public bool ShowServerSettings => ServerSettings.ShowServerSettings;
+    /// <summary>The server tab shows its backups card.</summary>
     public bool ShowBackups => BackupCard.ShowBackups;
+    /// <summary>The links tab shows (ChannelLink).</summary>
     public bool ShowLinks => Actor.Has(Permission.ChannelLink);
-    public bool ShowLogs => Logs.ShowLogs; // Package 81
+    /// <summary>The logs tab shows (Package 81).</summary>
+    public bool ShowLogs => Logs.ShowLogs;
+    /// <summary>The links tab.</summary>
     public LinkMatrixViewModel Links { get; }
+    /// <summary>The logs tab.</summary>
     public LogsViewModel Logs { get; }
     /// <summary>The users and bans tabs.</summary>
     internal UsersAndBansViewModel UsersAndBans { get; }
@@ -78,6 +88,7 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     [RelayCommand]
     void Close() => LeaveRequested?.Invoke();
 
+    /// <summary>Stops following the server; answers that come later are ignored.</summary>
     public void Detach()
     {
         foreach (var section in sections) section.Detach?.Invoke();
@@ -85,6 +96,7 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
         Transfer.Cancel(); // Package 75: a transfer stops and cleans up
     }
 
+    /// <summary>Asks the server for the lists the own rights allow.</summary>
     public async Task RequestListsAsync()
     {
         foreach (var section in sections)
@@ -110,6 +122,7 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     /// <summary>Every place in saving order (the edited group comes first).</summary>
     internal IReadOnlyList<AdminPlace> Places { get; }
 
+    /// <summary>A tab has unsaved changes.</summary>
     public bool HasChanges => Places.Any(adminPlace => adminPlace.HasChanges());
 
     /// <summary>Package 114: saves every place with changes in saving order; false at the first one that fails.</summary>

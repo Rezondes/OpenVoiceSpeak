@@ -28,8 +28,10 @@ public partial class LogoMark : UserControl
             .ToDictionary(entry => entry.Size, entry => new Bitmap(new MemoryStream(bytes, entry.Offset, entry.Length)));
     });
 
+    /// <summary>The logo, drawn from vectors.</summary>
     public LogoMark() => InitializeComponent();
 
+    /// <summary>Redraws for a new size.</summary>
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);

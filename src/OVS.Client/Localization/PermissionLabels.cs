@@ -3,6 +3,7 @@ using OVS.Shared.Permissions;
 
 namespace OVS.Client.Localization;
 
+/// <summary>The rights' names in the UI language.</summary>
 public static class PermissionLabels
 {
     /// <summary>Built on every call, so it follows the language of the calling thread.</summary>

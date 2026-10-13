@@ -10,7 +10,9 @@ namespace OVS.Client.Audio.Processing;
 /// </summary>
 public sealed class AutoGain
 {
+    /// <summary>The level speech is brought to, in dB.</summary>
     public const float TargetDb = -20f;
+    /// <summary>The most gain added, in dB.</summary>
     public const float MaxGainDb = 30f;
     /// <summary>-3 dBFS: the raised voice never peaks above this.</summary>
     public const float PeakLimit = 0.7079f;
@@ -30,6 +32,7 @@ public sealed class AutoGain
 
     float applied = 1f; // linear gain at the end of the last frame, where the next frame's ramp starts
 
+    /// <summary>The gain applied now, in dB.</summary>
     public float GainDb { get; private set; }
 
     /// <summary>Back to 0 dB, so switching it on again never resumes with a gain from back then.</summary>
@@ -40,6 +43,7 @@ public sealed class AutoGain
     }
 
     /// <param name="voiceProbability">RNNoise's rating of the frame, or null without noise suppression.</param>
+    /// <param name="frame">The frame, changed in place.</param>
     public void Process(Span<float> frame, float? voiceProbability = null)
     {
         float level = VoiceActivityDetector.LevelDb(frame);

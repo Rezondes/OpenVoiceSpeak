@@ -5,6 +5,7 @@ namespace OVS.Client.Input;
 /// <summary>The text a key action is shown with, in the UI language.</summary>
 public static class KeyActionLabels
 {
+    /// <summary>The action's name in the UI language.</summary>
     public static string Localize(KeyAction action) => action switch
     {
         KeyAction.PushToTalk => Strings.KeyAction_PushToTalk,

@@ -18,8 +18,10 @@ using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;
 
+/// <summary>The client's one window: every page and dialog shows inside it.</summary>
 public partial class MainWindow : Window
 {
+    /// <summary>The window; its view model is set by App.</summary>
     public MainWindow()
     {
         InitializeComponent();

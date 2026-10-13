@@ -16,6 +16,7 @@ namespace OVS.Client.ViewModels;
 /// </summary>
 public sealed partial class ConnectionStatsViewModel : ObservableObject
 {
+    /// <summary>The round trips the baseline is taken from.</summary>
     public const int BaselineSamples = 30;
     const string None = "-";
     internal static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(2);
@@ -58,11 +59,13 @@ public sealed partial class ConnectionStatsViewModel : ObservableObject
     [ObservableProperty] string concealedText = None;
     [ObservableProperty] string bitrateText = None;
 
+    /// <summary>The connection's usual round trip, null until enough were measured.</summary>
     public double? BaselineMs { get; private set; }
 
     /// <summary>How many round trips the baseline holds (at most <see cref="BaselineSamples"/>).</summary>
     public int Samples => samples.Count;
 
+    /// <summary>The signal icon's bars, 0 to 4.</summary>
     public int Bars => Unreachable ? 0 : Rating switch
     {
         SignalRating.Good => 4,
@@ -72,6 +75,7 @@ public sealed partial class ConnectionStatsViewModel : ObservableObject
         _ => 0,
     };
 
+    /// <summary>The signal icon's tooltip.</summary>
     public string Tip => string.Format(Strings.Signal_Tip, Unreachable ? Strings.Signal_Unreachable : Rating switch
     {
         SignalRating.Good => Strings.Signal_Good,
@@ -106,6 +110,9 @@ public sealed partial class ConnectionStatsViewModel : ObservableObject
 
     /// <param name="roundTrip">A new round trip, or null when no answer came since the last update (the figures stay).</param>
     /// <param name="receive">The mixer's counts; those up to the last <see cref="Reset"/> are left out.</param>
+    /// <param name="uplink">The loss the server sees from the client.</param>
+    /// <param name="downlink">The loss the client sees from the server.</param>
+    /// <param name="bitrateKbps">The encoder's bitrate now.</param>
     internal void Update(TimeSpan? roundTrip, LossReport uplink, LossReport downlink, ReceiveStats receive, int bitrateKbps)
     {
         if (roundTrip is { } rtt)

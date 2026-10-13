@@ -42,6 +42,7 @@ public sealed class ClientConnection : IAsyncDisposable
         VoiceKey = voiceKey;
     }
 
+    /// <summary>The server's welcome: the session id, the voice key and the server's state.</summary>
     public Welcome Welcome { get; }
 
     /// <summary>The welcome's voice key, decoded once at the handshake (always <see cref="VoiceCrypto.KeySize"/> bytes).</summary>
@@ -55,6 +56,7 @@ public sealed class ClientConnection : IAsyncDisposable
             return IpAddresses.Unmap(address);
         }
     }
+    /// <summary>The last ping's round trip, null before the first answer.</summary>
     public TimeSpan? LastRoundTrip { get; private set; }
 
     /// <summary>Raised on the receive thread for every message after Welcome.</summary>
@@ -73,6 +75,14 @@ public sealed class ClientConnection : IAsyncDisposable
     /// The clock of the ping's round trip (tests pass a manual one). The ping itself goes every 5 s of real time: it keeps
     /// the connection alive against the server's idle timeout, which runs in real time.
     /// </param>
+    /// <param name="host">The server's host.</param>
+    /// <param name="port">The server's port.</param>
+    /// <param name="identity">The own key pair.</param>
+    /// <param name="nickname">The nickname to log in with.</param>
+    /// <param name="password">The server password, null for none.</param>
+    /// <param name="known">The trusted certificates.</param>
+    /// <param name="confirm">Asks the user about an unknown or changed certificate.</param>
+    /// <param name="cancellation">Ends the attempt.</param>
     public static async Task<ClientConnection> ConnectAsync(string host, int port, ClientIdentity identity, string nickname,
         string? password, TrustedServerFingerprints known, Func<TofuPrompt, Task<bool>> confirm, TimeProvider time, CancellationToken cancellation = default)
     {
@@ -144,6 +154,7 @@ public sealed class ClientConnection : IAsyncDisposable
         voiceLoop = Task.Run(VoiceLoopAsync); // Package 141
     }
 
+    /// <summary>Sends one message.</summary>
     public Task SendAsync(Message message) => writer.WriteAsync(message, stopping.Token);
 
     // Package 141: at most 10 frames (200 ms) wait for the TLS stream, in order; more is dropped
@@ -244,6 +255,7 @@ public sealed class ClientConnection : IAsyncDisposable
         }
     }
 
+    /// <summary>Closes the connection.</summary>
     public async ValueTask DisposeAsync()
     {
         Interlocked.Exchange(ref disconnectRaised, 1); // a deliberate disconnect is not an event

@@ -14,9 +14,12 @@ public sealed record ServerDialogs
     /// that never calls it (a test fake) has the answer sent after it closed.
     /// </remarks>
     public Func<ChannelEdit, ChannelDialogMode, Func<ChannelEdit, PendingActionViewModel>?, Task<ChannelEdit?>>? EditChannel { get; init; }
+    /// <summary>Picks a channel from a list (title, channels, sending).</summary>
     public Func<string, IReadOnlyList<ChannelViewModel>, Func<ChannelViewModel, PendingActionViewModel>?, Task<ChannelViewModel?>>? PickChannel { get; init; }
+    /// <summary>Asks for a text (title, prompt, sending).</summary>
     public Func<string, string, Func<string, PendingActionViewModel>?, Task<string?>>? AskText { get; init; }
     /// <summary>Nickname, and whether an IP is known to ban as well (Package 72: not for every offline user).</summary>
     public Func<string, bool, Func<BanChoice, PendingActionViewModel>?, Task<BanChoice?>>? Ban { get; init; }
+    /// <summary>Asks a yes or no question.</summary>
     public Func<string, Task<bool>>? Confirm { get; init; }
 }

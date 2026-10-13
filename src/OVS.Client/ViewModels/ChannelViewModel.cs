@@ -12,6 +12,7 @@ using OVS.Shared.Protocol.Messages.Groups;
 
 namespace OVS.Client.ViewModels;
 
+/// <summary>A channel in the tree, with its users.</summary>
 public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : ObservableObject
 {
     [ObservableProperty] string name = "";
@@ -44,6 +45,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [NotifyPropertyChangedFor(nameof(CanEditDetails))]
     [NotifyPropertyChangedFor(nameof(IsVoice))]
     bool isSeparator;
+    /// <summary>A voice channel, not a separator.</summary>
     public bool IsVoice => !IsSeparator;
     /// <summary>"Bearbeiten": name and options, which a separator does not have.</summary>
     public bool CanEditDetails => CanEdit && !IsSeparator;
@@ -64,7 +66,9 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     /// <summary>Package 94: joining needs a password (without the bypass right).</summary>
     public bool HasPassword { get; private set; }
 
+    /// <summary>The channel's id.</summary>
     public Guid Id { get; } = id;
+    /// <summary>The users in the channel, in the tree's order.</summary>
     public ObservableCollection<UserViewModel> Users { get; } = [];
     /// <summary>Package 112: null without description and links, so no empty tooltip opens.</summary>
     public string? Tooltip

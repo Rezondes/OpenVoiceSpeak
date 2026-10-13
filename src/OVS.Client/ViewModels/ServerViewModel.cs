@@ -44,6 +44,7 @@ public sealed partial class ServerViewModel : ObservableObject
         nameof(CanChatServer), nameof(CanChatChannel), nameof(CanChatPrivate))]
     Permission selfPermissions;
 
+    /// <summary>A connected server: the mirror of its state, how requests are sent, the clock and the dialogs.</summary>
     public ServerViewModel(StateMirror mirror, Func<Request, Task> send, TimeProvider time, ServerDialogs? dialogs = null)
     {
         Mirror = mirror;
@@ -57,8 +58,11 @@ public sealed partial class ServerViewModel : ObservableObject
         Rebuild();
     }
 
+    /// <summary>The server's state as the client knows it.</summary>
     public StateMirror Mirror { get; }
+    /// <summary>The clock of the waiting marks and the speaking timeout.</summary>
     public TimeProvider Time => time;
+    /// <summary>The dialogs the server's actions ask through.</summary>
     public ServerDialogs Dialogs { get; }
     /// <summary>The sidebar's channel tree: the channel and user rows, their order and their speaking marks.</summary>
     public ChannelTreeViewModel Tree { get; }
@@ -69,7 +73,9 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>Package 102: how long a user or channel that is gone stays to fold away (the window sets it).</summary>
     public LeaveTimer Leave { get; }
 
+    /// <summary>The own user may create channels.</summary>
     public bool CanCreateChannel => SelfPermissions.Has(Permission.ChannelCreate);
+    /// <summary>The own user may talk over links.</summary>
     public bool HasSpeakLinked => SelfPermissions.Has(Permission.SpeakLinked);
     /// <summary>The own channel is muted, so nobody hears anybody there.</summary>
     public bool InMutedChannel => CurrentChannel?.IsMuted == true;
@@ -77,13 +83,17 @@ public sealed partial class ServerViewModel : ObservableObject
     public bool CanAdminister =>
         (SelfPermissions & (Permission.GroupsView | Permission.UsersView | Permission.BansView | Permission.ServerConfig | Permission.ChannelLink
                             | Permission.LogsView | Permission.BackupsManage)) != 0;
+    /// <summary>The admin token can be redeemed (the own user is no admin yet).</summary>
     public bool CanRedeemToken => !IsAdmin;
 
     partial void OnIsAdminChanged(bool value) => OnPropertyChanged(nameof(CanRedeemToken));
 
+    /// <summary>The last user list page set the server sent.</summary>
     public UserList? LastUserList { get; private set; }
+    /// <summary>The last ban list page set the server sent.</summary>
     public BanList? LastBanList { get; private set; }
 
+    /// <summary>Raised with a notice to show, e.g. a server error.</summary>
     public event Action<string>? Notice;
     /// <summary>Package 75: a notice from the administration page (e.g. a failed backup transfer).</summary>
     internal void ShowNotice(string text) => Notice?.Invoke(text);
@@ -91,6 +101,7 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <summary>The file transfer of this server's administration, wired to its requests, routes, notices and clock.</summary>
     internal AdminTransfer NewAdminTransfer() => new((request, route) => SendAsync(request, route: route), Routes.RemoveAll, ShowNotice, time);
 
+    /// <summary>Raised with the server logo when it arrives.</summary>
     public event Action<ServerIcon>? IconReceived;
 
     /// <summary>Package 31: the chat as it comes, its tones, the kept messages and the composer's refusals.</summary>
@@ -124,16 +135,23 @@ public sealed partial class ServerViewModel : ObservableObject
     internal void OnVolumeChanged(UserViewModel user) => VolumeChanged?.Invoke(user.Fingerprint, (float)(user.VolumePercent / 100));
     internal void RequestPrivateChat(UserViewModel user) => PrivateChatRequested?.Invoke(user);
 
+    /// <summary>The own user may write in "Allgemein".</summary>
     public bool CanChatServer => SelfPermissions.Has(Permission.ChatServer);
+    /// <summary>The own user may write in the own channel.</summary>
     public bool CanChatChannel => SelfPermissions.Has(Permission.ChatChannel);
+    /// <summary>The own user may write private messages.</summary>
     public bool CanChatPrivate => SelfPermissions.Has(Permission.ChatPrivate);
+    /// <summary>Sends a chat message to target (to: the session of a private message).</summary>
     public Task SendChatAsync(ChatTarget target, string text, uint? to = null) => SendAsync(new SendChat(target, to, text));
+    /// <summary>The hash of the server logo, null when it has none.</summary>
     public string? IconHash => Mirror.Settings.IconHash;
+    /// <summary>Raised after a message changed the state; LastChange says what changed.</summary>
     public event Action? StateChanged;
     /// <summary>Package 122: what the last <see cref="StateChanged"/> was about.</summary>
     public StateChange LastChange { get; private set; } = StateChange.All;
 
 
+    /// <summary>Applies one message of the server to the state and the tree.</summary>
     public void Apply(Message message)
     {
         ApplyMessage(message);
@@ -265,6 +283,7 @@ public sealed partial class ServerViewModel : ObservableObject
     /// <param name="id">A fixed id instead of a new one, e.g. the round a later list page belongs to.</param>
     /// <param name="pending">Package 97: marked running under the request's id before sending; the server's error for it ends it.</param>
     /// <param name="route">Gets the answers to the request and the server's error for it, until its owner removes the route.</param>
+    /// <param name="request">The request to send.</param>
     public async Task<string> SendAsync(Request request, string? id = null, PendingActionViewModel? pending = null, Action<Message>? route = null)
     {
         id ??= $"{(request is SendChat ? ChatFeed.RequestPrefix : "r")}{++requestCounter}";
@@ -316,6 +335,10 @@ public sealed partial class ServerViewModel : ObservableObject
     /// the timeout. Unless a dialog shows it (notify false), the timeout's error shows as a notice like the server's errors.
     /// </summary>
     /// <param name="busy">Gets IsBusy of the mark, e.g. for the spinner on a row.</param>
+    /// <param name="request">The request to send.</param>
+    /// <param name="confirms">True for the message that shows the action done.</param>
+    /// <param name="pending">The mark to use, a new one when null.</param>
+    /// <param name="notify">False when a dialog shows the error itself.</param>
     public PendingActionViewModel SendConfirmed(Request request, Func<Message, bool> confirms, PendingActionViewModel? pending = null, Action<bool>? busy = null, bool notify = true)
     {
         pending ??= NewPending();
@@ -363,6 +386,7 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     PendingActionViewModel? joining;
+    /// <summary>A join is on its way.</summary>
     public bool IsJoining => joining?.IsRunning == true;
 
     /// <summary>Package 139 (A148): the password that let me into a channel on this connection, kept in memory only.</summary>
@@ -382,9 +406,11 @@ public sealed partial class ServerViewModel : ObservableObject
         return SendConfirmed(new CreateChannel(channelEdit.Name, channelEdit.Description, channelEdit.IsMuted, channelEdit.MaxUsers, channelEdit.AllowedGroupIds, channelEdit.Password, channelEdit.Kind, channelEdit.Bitrate),
             message => message is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
     }
+    /// <summary>Changes a channel; the mark ends with the channel's update.</summary>
     public PendingActionViewModel EditChannel(Guid id, ChannelEdit edit, int order) =>
         SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password, edit.Bitrate),
             message => message is ChannelUpdated channelUpdated && channelUpdated.Channel.Id == id, notify: false);
+    /// <summary>Deletes a channel; the mark ends once it is gone.</summary>
     public PendingActionViewModel DeleteChannel(Guid id)
     {
         var row = Tree.FindChannel(id); // gone from the tree when confirmed
@@ -392,8 +418,10 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
 
+    /// <summary>Links two channels; the mark ends with the link.</summary>
     public PendingActionViewModel Link(Guid id, Guid otherId) =>
         SendConfirmed(new LinkChannels(id, otherId), message => message is ChannelsLinked linked && ChannelPair.Of(linked.A, linked.B) == ChannelPair.Of(id, otherId), notify: false);
+    /// <summary>Unlinks two channels; the mark ends once the link is gone.</summary>
     public PendingActionViewModel Unlink(Guid id, Guid otherId) =>
         SendConfirmed(new UnlinkChannels(id, otherId), message => message is ChannelsUnlinked unlinked && ChannelPair.Of(unlinked.A, unlinked.B) == ChannelPair.Of(id, otherId), notify: false);
     /// <summary>Package 120: without the dialog that waited, the moved user's row spins until the server shows the move.</summary>
@@ -423,9 +451,12 @@ public sealed partial class ServerViewModel : ObservableObject
         await channel.JoinCommand.ExecuteAsync(null);
         if (joining is { } join) await join.Completion;
     }
+    /// <summary>Kicks a user; the mark ends once they left.</summary>
     public PendingActionViewModel Kick(uint sessionId, string reason) => SendConfirmed(new KickSession(sessionId, reason), message => message is UserLeft userLeft && userLeft.SessionId == sessionId, notify: false);
+    /// <summary>Bans a user; the mark ends once they left.</summary>
     public PendingActionViewModel Ban(uint sessionId, BanChoice choice) =>
         SendConfirmed(new BanSession(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), message => message is UserLeft userLeft && userLeft.SessionId == sessionId, notify: false);
+    /// <summary>Mutes or unmutes a user at the server; the mark ends with their update.</summary>
     public PendingActionViewModel ServerMute(uint sessionId, bool muted)
     {
         var row = Tree.FindUser(sessionId);

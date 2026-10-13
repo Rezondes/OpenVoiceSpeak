@@ -23,6 +23,8 @@ public sealed class UdpVoiceServer : IDisposable
     Task? loop;
 
     /// <param name="time">The clock the state runs on: it counts the seconds of the bad packets' budget.</param>
+    /// <param name="state">The run's state.</param>
+    /// <param name="endpoint">The address to bind.</param>
     public UdpVoiceServer(ServerState state, IPEndPoint endpoint, TimeProvider time)
     {
         this.state = state;
@@ -39,6 +41,7 @@ public sealed class UdpVoiceServer : IDisposable
         }
     }
 
+    /// <summary>The address the socket is bound to.</summary>
     public IPEndPoint LocalEndPoint => (IPEndPoint)socket.LocalEndPoint!;
 
     long foreignSourceDrops, preFilterDrops;
@@ -52,6 +55,7 @@ public sealed class UdpVoiceServer : IDisposable
     /// <summary>Package 88: packets dropped undecrypted because their source sent too many bad ones this second.</summary>
     public long PreFilterDrops => Interlocked.Read(ref preFilterDrops);
 
+    /// <summary>Starts the receive loop.</summary>
     public void Start()
     {
         state.VoiceOverTcp = VoiceUpAsync; // Package 141
@@ -269,6 +273,7 @@ public sealed class UdpVoiceServer : IDisposable
         await socket.SendToAsync(to.Crypto.Seal(PacketDirection.ServerToClient, header, payload), SocketFlags.None, endpoint);
     }
 
+    /// <summary>Stops the loop and closes the socket.</summary>
     public void Dispose()
     {
         if (stopping.IsCancellationRequested) return;

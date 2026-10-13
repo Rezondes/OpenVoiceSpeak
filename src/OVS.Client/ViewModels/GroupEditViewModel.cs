@@ -11,6 +11,7 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
     public object MotionKey => Id ?? (object)this;
     [ObservableProperty] string name;
 
+    /// <summary>A group as edited, with the rights the actor may toggle.</summary>
     public GroupEditViewModel(Guid? id, string name, Permission permissions, Permission actor)
     {
         Id = id;
@@ -32,12 +33,19 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
             .ToList();
     }
 
+    /// <summary>The group's id, null for a group not saved yet.</summary>
     public Guid? Id { get; }
+    /// <summary>The actor may not change the group.</summary>
     public bool IsReadOnly { get; }
+    /// <summary>Why the group cannot be changed.</summary>
     public string? ReadOnlyReason { get; }
+    /// <summary>The group can be changed.</summary>
     public bool IsEditable => !IsReadOnly;
+    /// <summary>The actor may delete the group.</summary>
     public bool CanDelete { get; }
+    /// <summary>One toggle per right.</summary>
     public IReadOnlyList<PermissionToggleViewModel> Toggles { get; }
+    /// <summary>The rights ticked now.</summary>
     public Permission Permissions => Toggles.Where(permissionToggle => permissionToggle.IsChecked).Aggregate(Permission.None, (acc, permissionToggle) => acc | permissionToggle.Permission);
 
     // ---- Package 114: what the server has, to tell an edit ----
@@ -78,5 +86,6 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
         Name = serverName;
         foreach (var permissionToggle in Toggles) permissionToggle.IsChecked = serverPermissions.Has(permissionToggle.Permission);
     }
+    /// <summary>The name, marked when the group is not saved yet.</summary>
     public string DisplayName => Id is null ? string.Format(Strings.Group_Unsaved, Name) : Name;
 }

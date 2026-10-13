@@ -9,6 +9,7 @@ namespace OVS.Shared.Voice;
 /// </summary>
 public static class RelayPayload
 {
+    /// <summary>Frame number and length of the current frame, in bytes.</summary>
     public const int HeaderSize = 6;
     /// <summary>The largest plaintext a voice packet can carry; current frame and copy share it.</summary>
     public const int MaxSize = VoiceHeader.MaxPacketSize - VoiceHeader.Size - VoiceHeader.TagSize;

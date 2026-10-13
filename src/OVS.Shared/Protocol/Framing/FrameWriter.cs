@@ -10,6 +10,7 @@ public sealed class FrameWriter(Stream stream)
 {
     readonly SemaphoreSlim gate = new(1, 1);
 
+    /// <summary>Writes the message as one frame.</summary>
     public Task WriteAsync(Message message, CancellationToken cancellation = default) => WriteFrameAsync(Encode(message), cancellation);
 
     /// <summary>Length header plus JSON; throws a ProtocolException above the frame limit.</summary>

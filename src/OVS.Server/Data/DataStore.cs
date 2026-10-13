@@ -5,10 +5,13 @@ using OVS.Shared.Protocol.Framing;
 
 namespace OVS.Server.Data;
 
+/// <summary>Reads and writes server-data.json.</summary>
 public sealed class DataStore(string path)
 {
+    /// <summary>The data file's name inside the data folder.</summary>
     public const string FileName = "server-data.json";
 
+    /// <summary>The data file's full path.</summary>
     public string Path => path;
 
     /// <summary>Loads the data file. A corrupt file aborts startup and is never overwritten.</summary>
@@ -31,6 +34,7 @@ public sealed class DataStore(string path)
         }
     }
 
+    /// <summary>Writes the data atomically, so a crash leaves the old or the new file.</summary>
     public void Save(ServerData data)
     {
         SafeFile.WriteAtomic(path, stream => JsonSerializer.Serialize(stream, data, ProtocolJson.Indented), flushToDisk: true);

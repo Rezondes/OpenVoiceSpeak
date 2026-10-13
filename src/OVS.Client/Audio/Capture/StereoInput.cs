@@ -11,6 +11,7 @@ namespace OVS.Client.Audio.Capture;
 /// </summary>
 public sealed class StereoInput
 {
+    /// <summary>A side silent this long while the other carries sound counts as unused.</summary>
     public static readonly TimeSpan OneSidedAfter = TimeSpan.FromSeconds(2.5);
     const double SilentBelow = 1e-7; // mean square of the louder side: -70 dBFS, so a quiet instrument is still judged
     const double FastSeconds = 0.1; // the averages that bring stereo back

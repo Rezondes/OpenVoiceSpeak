@@ -53,7 +53,9 @@ public sealed class KeyPoller : IDisposable
     public bool IsDown(KeyAction action) => new KeyActionSet(down).Contains(action);
     /// <summary>The talk keys with the release delay: the engine, the self test and the "Sendet" text read these.</summary>
     public bool PttDown => TalkDown(KeyAction.PushToTalk, ref pttReleased);
+    /// <summary>The link talk key is held (with SpeakLinked it talks into the linked channels).</summary>
     public bool LinkPttDown => TalkDown(KeyAction.LinkPushToTalk, ref linkPttReleased);
+    /// <summary>The push-to-mute key is held.</summary>
     public bool MuteHeld => IsDown(KeyAction.PushToMute);
 
     bool TalkDown(KeyAction action, ref long releasedAt)
@@ -151,6 +153,7 @@ public sealed class KeyPoller : IDisposable
         }
     }
 
+    /// <summary>Stops polling.</summary>
     public void Dispose()
     {
         stopping.Cancel();

@@ -9,6 +9,7 @@ namespace OVS.Shared.Protocol.Framing;
 public sealed class FrameReader(Stream stream)
 {
     // Snapshots, user and ban lists travel in one frame; 1 MiB caps memory per connection.
+    /// <summary>The largest frame accepted; snapshots, user and ban lists travel in one frame, and 1 MiB caps memory per connection.</summary>
     public const int MaxFrameSize = 1024 * 1024;
     readonly byte[] header = new byte[4];
 

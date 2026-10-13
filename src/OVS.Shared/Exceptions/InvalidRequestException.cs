@@ -6,5 +6,6 @@ namespace OVS.Shared.Exceptions;
 /// </summary>
 public sealed class InvalidRequestException(string? requestId, string message) : ProtocolException(message)
 {
+    /// <summary>The request id of the refused frame, when it had one, so the answer reaches its sender's request.</summary>
     public string? RequestId { get; } = requestId;
 }

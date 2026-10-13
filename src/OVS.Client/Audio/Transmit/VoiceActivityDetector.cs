@@ -6,9 +6,12 @@ namespace OVS.Client.Audio.Transmit;
 /// </summary>
 public sealed class VoiceActivityDetector
 {
-    public const int HangoverFrames = 9; // Package 129: keep sending 180 ms after the level drops below 0.7 × the threshold
-    public const int FloorFrames = 100; // 2 s of frame levels
-    public const int LearningFrames = 15; // 0.3 s: before that the manual threshold applies
+    /// <summary>Frames sent on after the level drops below 0.7 times the threshold: 180 ms (Package 129).</summary>
+    public const int HangoverFrames = 9;
+    /// <summary>Frame levels the floor is learned from: 2 s.</summary>
+    public const int FloorFrames = 100;
+    /// <summary>Frames before the learned floor counts: 0.3 s, the manual threshold applies until then.</summary>
+    public const int LearningFrames = 15;
     static readonly float FloorAboveP10Db = 20 * MathF.Log10(3 * 1.5f); // 3 × (1.5 × the 10th percentile), about 13 dB
     static readonly float HysteresisDb = 20 * MathF.Log10(0.7f); // about -3 dB
     // Fluxer's -110 lower bound becomes -60: RNNoise leaves near-silence between words, which would set the threshold
@@ -19,12 +22,17 @@ public sealed class VoiceActivityDetector
     readonly float[] sorted = new float[FloorFrames];
     int count, next, hangover;
 
+    /// <summary>The manual threshold in dB.</summary>
     public float ThresholdDb { get; set; } = -40f;
+    /// <summary>The threshold follows the learned noise floor.</summary>
     public bool Automatic { get; set; }
+    /// <summary>The threshold the last frame was judged by.</summary>
     public float ThresholdInUseDb { get; private set; } = -40f;
+    /// <summary>The last frame's level in dB.</summary>
     public float LastLevelDb { get; private set; } = -120f;
 
     /// <param name="channels">Package 142: 2 for an interleaved stereo frame, whose louder side counts.</param>
+    /// <param name="frame">The frame's samples.</param>
     public bool Process(ReadOnlySpan<float> frame, int channels = 1)
     {
         LastLevelDb = LevelDb(frame, channels);
@@ -56,6 +64,7 @@ public sealed class VoiceActivityDetector
     }
 
     /// <param name="channels">Package 142 (A151): 2 for interleaved stereo: the level of the louder side.</param>
+    /// <param name="frame">The frame's samples.</param>
     public static float LevelDb(ReadOnlySpan<float> frame, int channels = 1)
     {
         if (frame.IsEmpty) return -120f;

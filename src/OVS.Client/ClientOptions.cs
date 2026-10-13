@@ -10,8 +10,10 @@ namespace OVS.Client;
 /// </summary>
 public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool UseAudioDevices, bool AudioDebug = false, int? AfterUpdatePid = null)
 {
+    /// <summary>The argument the updater starts the new version with.</summary>
     public const string AfterUpdateArg = "--after-update";
 
+    /// <summary>Reads the command line.</summary>
     public static ClientOptions Parse(string[] args)
     {
         string profile = ClientPaths.DefaultDirectory;

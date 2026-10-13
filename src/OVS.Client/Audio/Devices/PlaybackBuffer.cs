@@ -20,9 +20,12 @@ public sealed class PlaybackBuffer(TimeSpan duration, IDisposable device) : IDis
     /// <summary>What the device plays.</summary>
     public IWaveProvider Source => buffer;
 
+    /// <summary>The audio waiting to be played.</summary>
     public TimeSpan BufferedDuration => buffer.BufferedDuration;
 
+    /// <summary>Queues samples for playback.</summary>
     public void AddSamples(byte[] samples, int offset, int count) => buffer.AddSamples(samples, offset, count);
 
+    /// <summary>Releases the device.</summary>
     public void Dispose() => device.Dispose();
 }

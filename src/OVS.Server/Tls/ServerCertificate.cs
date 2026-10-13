@@ -4,8 +4,10 @@ using OVS.Shared.IO;
 
 namespace OVS.Server.Tls;
 
+/// <summary>The server's self-signed TLS certificate in the data folder.</summary>
 public static class ServerCertificate
 {
+    /// <summary>The certificate's file name inside the data folder.</summary>
     public const string FileName = "cert.pfx";
 
     /// <summary>Self-signed certificate, created once and kept in the data dir so clients' TOFU pins stay valid.</summary>

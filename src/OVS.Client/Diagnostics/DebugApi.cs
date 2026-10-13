@@ -49,6 +49,7 @@ namespace OVS.Client.Diagnostics;
 /// </summary>
 public sealed class DebugApi : IDisposable
 {
+    /// <summary>The header every request must carry.</summary>
     public const string Header = "X-OVS-Debug";
 
     readonly HttpListener listener = new();
@@ -66,6 +67,8 @@ public sealed class DebugApi : IDisposable
     /// <param name="audio">The audio engine /state reads and /tone reaches the test tone through (from the composition root).</param>
     /// <param name="onUi">Runs a function on the UI thread; every view model access goes through it.</param>
     /// <param name="listDevices">The system's active devices of a direction, which /devices lists (also when the client runs without them).</param>
+    /// <param name="viewModel">The main view model the routes act on.</param>
+    /// <param name="port">The localhost port to listen on.</param>
     public DebugApi(MainViewModel viewModel, KeyPoller keys, AudioEngine audio, int port, Func<Func<Task<object?>>, Task<object?>> onUi, Func<AudioDirection, List<AudioDevice>> listDevices)
     {
         this.keys = keys;
@@ -392,6 +395,7 @@ public sealed class DebugApi : IDisposable
             .FirstOrDefault(user => user.SessionId.ToString() == key || string.Equals(user.Nickname, key, StringComparison.OrdinalIgnoreCase))
         ?? throw new DebugApiException($"Nutzer '{key}' nicht gefunden");
 
+    /// <summary>Stops the listener.</summary>
     public void Dispose()
     {
         listener.Close();

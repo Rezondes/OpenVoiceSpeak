@@ -13,14 +13,19 @@ namespace OVS.Server.Data;
 /// </summary>
 public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount = ServerTuning.MaxBackups, long maxBytes = ServerTuning.MaxBackupBytes)
 {
+    /// <summary>The backups folder inside the data folder.</summary>
     public const string FolderName = "backups";
+    /// <summary>The extension of every backup archive.</summary>
     public const string Extension = ".ovsbackup";
+    /// <summary>The name prefix of the backup made right before a restore.</summary>
     public const string SafetyPrefix = "vor-wiederherstellung_";
-    public const string UploadedPrefix = "hochgeladen_"; // Package 75: an adopted upload
+    /// <summary>The name prefix of an adopted upload (Package 75).</summary>
+    public const string UploadedPrefix = "hochgeladen_";
     const string TmpSuffix = ".tmp";
     /// <summary>Package 89: the last listing and the folder's write time it belongs to; any added, removed or renamed file changes that time.</summary>
     Dictionary<string, (long Length, DateTime Written, BackupInfo Info)>? cache;
 
+    /// <summary>The backups folder's full path.</summary>
     public string Folder => Path.Combine(dataDir, FolderName);
 
     /// <summary>Writes a new archive of the live files. Call under the state lock, so the data file does not change meanwhile.</summary>
@@ -115,6 +120,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         foreach (var file in Directory.GetFiles(Folder, "*" + Extension + TmpSuffix)) SafeFile.DeleteQuietly(file);
     }
 
+    /// <summary>Deletes the backup at path.</summary>
     public void Delete(string path)
     {
         File.Delete(path);

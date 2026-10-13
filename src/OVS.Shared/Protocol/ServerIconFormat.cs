@@ -9,7 +9,9 @@ namespace OVS.Shared.Protocol;
 /// </summary>
 public static class ServerIconFormat
 {
-    public const int MaxBytes = 512 * 1024; // stays well below the 1 MiB frame limit even as base64
+    /// <summary>The largest logo in bytes; Stays well below the 1 MiB frame limit even as base64.</summary>
+    public const int MaxBytes = 512 * 1024;
+    /// <summary>The smallest and largest side length in pixels.</summary>
     public const int MinSize = 64, MaxSize = 512;
 
     static ReadOnlySpan<byte> Signature => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];

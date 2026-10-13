@@ -14,8 +14,10 @@ public partial class TitleBarView : UserControl
     Window? window;
     IDisposable? stateWatch, titleWatch;
 
+    /// <summary>The window's own title bar.</summary>
     public TitleBarView() => InitializeComponent();
 
+    /// <summary>Follows the window's state.</summary>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs args)
     {
         base.OnAttachedToVisualTree(args);
@@ -25,6 +27,7 @@ public partial class TitleBarView : UserControl
         titleWatch = window.GetObservable(Window.TitleProperty).Subscribe(new AnonymousObserver<string?>(text => TitleText.Text = text));
     }
 
+    /// <summary>Stops following the window.</summary>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs args)
     {
         stateWatch?.Dispose();

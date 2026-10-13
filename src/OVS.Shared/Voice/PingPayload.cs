@@ -9,8 +9,10 @@ namespace OVS.Shared.Voice;
 /// </summary>
 public readonly record struct PingPayload(long TimeMs, LossReport Loss)
 {
+    /// <summary>The payload's length in bytes.</summary>
     public const int Size = 16;
 
+    /// <summary>The payload's bytes.</summary>
     public byte[] Build()
     {
         var payload = new byte[Size];
@@ -20,6 +22,7 @@ public readonly record struct PingPayload(long TimeMs, LossReport Loss)
         return payload;
     }
 
+    /// <summary>False when payload is not exactly Size bytes long.</summary>
     public static bool TryParse(ReadOnlySpan<byte> payload, out PingPayload ping)
     {
         ping = default;

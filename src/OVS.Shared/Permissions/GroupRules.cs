@@ -9,6 +9,8 @@ public static class GroupRules
     /// <summary>Needs the create or manage right, never the admin group, and no escalation: the new and the current permissions must be within the actor's.</summary>
     /// <param name="groupId">Null when creating.</param>
     /// <param name="existing">Current permissions when editing, null when creating.</param>
+    /// <param name="actor">The permissions of the one saving.</param>
+    /// <param name="newPermissions">The permissions the group would get.</param>
     public static bool CanSave(Permission actor, Guid? groupId, Permission? existing, Permission newPermissions) =>
         actor.Has(existing is null ? Permission.GroupsCreate : Permission.GroupsManage) // Package 76
         && groupId != WellKnownGroups.Admin

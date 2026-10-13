@@ -6,10 +6,12 @@ namespace OVS.Server.Data;
 /// <summary>The server logo as &lt;DataDir&gt;/server-icon.png, validated by ServerIconFormat. Survives restarts.</summary>
 public sealed class ServerIconStore
 {
+    /// <summary>The logo's file name inside the data folder.</summary>
     public const string FileName = "server-icon.png";
     readonly string path;
     byte[]? png;
 
+    /// <summary>Loads the stored logo of dataDir, if there is one.</summary>
     public ServerIconStore(string dataDir)
     {
         path = Path.Combine(dataDir, FileName);
@@ -22,6 +24,7 @@ public sealed class ServerIconStore
         Base64 = png is null ? null : Convert.ToBase64String(png);
     }
 
+    /// <summary>The hash of the stored logo, null when there is none.</summary>
     public string? Hash { get; private set; }
     /// <summary>Package 86: built once per logo, not per request.</summary>
     public string? Base64 { get; private set; }

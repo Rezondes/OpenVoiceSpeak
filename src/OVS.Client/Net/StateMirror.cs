@@ -11,6 +11,7 @@ namespace OVS.Client.Net;
 /// <summary>Client-side copy of the server state, fed with Welcome and every delta. Single-threaded (UI thread).</summary>
 public sealed class StateMirror
 {
+    /// <summary>The state the welcome carries.</summary>
     public StateMirror(Welcome welcome)
     {
         var serverSnapshot = welcome.Snapshot;
@@ -23,16 +24,25 @@ public sealed class StateMirror
         Users = serverSnapshot.Users.ToDictionary(user => user.SessionId);
     }
 
+    /// <summary>The own session id.</summary>
     public uint SelfId { get; }
+    /// <summary>The channel new users start in.</summary>
     public Guid DefaultChannelId { get; }
+    /// <summary>The server's settings.</summary>
     public ServerSettingsInfo Settings { get; private set; }
+    /// <summary>The channels by id.</summary>
     public Dictionary<Guid, ChannelInfo> Channels { get; }
+    /// <summary>The links between channels.</summary>
     public HashSet<ChannelPair> Links { get; }
+    /// <summary>The groups in their order.</summary>
     public List<GroupInfo> Groups { get; private set; }
+    /// <summary>The users online by session id.</summary>
     public Dictionary<uint, UserInfo> Users { get; }
 
+    /// <summary>The own user.</summary>
     public UserInfo? Self => Users.GetValueOrDefault(SelfId);
 
+    /// <summary>The channels linked to channelId.</summary>
     public IEnumerable<Guid> LinkedChannels(Guid channelId) =>
         Links.Where(channelPair => channelPair.Touches(channelId)).Select(channelPair => channelPair.Other(channelId));
 

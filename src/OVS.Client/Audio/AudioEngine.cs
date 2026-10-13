@@ -48,6 +48,7 @@ public sealed class AudioEngine : IDisposable
     /// shipped libraries, without a log.
     /// </param>
     /// <param name="samples">Package 48: a sound's samples for its setting (the profile's own tones); null: the default tones.</param>
+    /// <param name="keys">The key poller push-to-talk and the self test read.</param>
     public AudioEngine(KeyPoller keys, TimeProvider time, IAudioHardware? hardware, NativeCaptureFilters? filters = null,
         Func<SoundEvent, SoundSetting, float[]>? samples = null)
     {
@@ -89,11 +90,16 @@ public sealed class AudioEngine : IDisposable
         if (connected || selfTest) Sounds.Play(held ? SoundEvent.TalkKeyDown : SoundEvent.TalkKeyUp);
     }
 
+    /// <summary>Decodes, buffers and mixes the voices of the others.</summary>
     public VoiceMixer Mixer { get; } = new();
+    /// <summary>Push-to-talk or voice activation.</summary>
     public TransmitMode Mode { get; set; }
+    /// <summary>The own microphone is muted: nothing is sent.</summary>
     public bool SelfMuted { get => selfMuted; set => selfMuted = value; }
+    /// <summary>The own user may talk over links.</summary>
     public bool HasSpeakLinked { get => hasSpeakLinked; set => hasSpeakLinked = value; }
 
+    /// <summary>A voice link is up; while false nothing is sent and the mixer is cleared.</summary>
     public bool Connected
     {
         get => connected;
@@ -239,6 +245,7 @@ public sealed class AudioEngine : IDisposable
 
     readonly SoundQueue soundQueue = new(); // filled by Sounds, mixed by the playback loop
 
+    /// <summary>The own sound is off: nothing is played and nothing is sent.</summary>
     public bool Deafened
     {
         get => deafened;
@@ -249,7 +256,9 @@ public sealed class AudioEngine : IDisposable
         }
     }
 
+    /// <summary>Voice frames sent since the start.</summary>
     public long FramesSent => Interlocked.Read(ref framesSent);
+    /// <summary>Voice frames received per speaker since the start.</summary>
     public IReadOnlyDictionary<uint, long> FramesReceived => new Dictionary<uint, long>(framesReceived);
 
     /// <summary>The voices' level in the last frame mixed, before the tones.</summary>
@@ -265,7 +274,9 @@ public sealed class AudioEngine : IDisposable
         remove => playbackLoop.SpeakersChanged -= value;
     }
 
+    /// <summary>Raised when sending starts or stops, with the target, null when it stops.</summary>
     public event Action<byte?>? TransmitChanged;
+    /// <summary>Raised with each frame's input level in dB.</summary>
     public event Action<float>? InputLevel;
 
     /// <summary>Package 129 (A138): the voice gate's threshold in use, for the level meter; the manual one without a microphone.</summary>
@@ -368,6 +379,7 @@ public sealed class AudioEngine : IDisposable
     /// <summary>Package 140: a frame for the speaker and the echo canceller's far end, as the playback thread mixes it; tests mix by hand.</summary>
     internal float[] MixForSpeaker() => playbackLoop.MixForSpeaker();
 
+    /// <summary>Stops capture and playback and releases the devices.</summary>
     public void Dispose()
     {
         keys.Changed -= OnKeysChanged;

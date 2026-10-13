@@ -11,9 +11,12 @@ namespace OVS.Client.Services;
 /// </summary>
 public static class IconImport
 {
+    /// <summary>The largest image file accepted.</summary>
     public const long MaxFileBytes = 3 * 1024 * 1024;
+    /// <summary>The side length the logo is scaled to.</summary>
     public const int TargetSize = 256;
 
+    /// <summary>Reads an image and makes the square PNG to upload, or says why not.</summary>
     public static IconImportResult Prepare(string path)
     {
         var file = new FileInfo(path);

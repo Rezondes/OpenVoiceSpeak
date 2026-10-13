@@ -21,12 +21,14 @@ public static class Responsive
     /// <summary>The drawer leaves this much of the window uncovered, so a click beside it closes it.</summary>
     public const double DrawerGap = 48;
 
+    /// <summary>True when the window is narrow enough for the sidebar to become a drawer.</summary>
     public static bool IsCompact(double windowWidth) => windowWidth < CompactBelow;
 
     /// <summary>A82: as wide as possible while the main area still holds the header without its title.</summary>
     public static double SidebarMax(double windowWidth, double splitter, double header) =>
         Math.Max(MinSidebar, windowWidth - splitter - header);
 
+    /// <summary>Sets the window's width classes for its width and the main area's width.</summary>
     public static void Apply(Window window, double windowWidth, double mainWidth)
     {
         window.Classes.Set("compact", IsCompact(windowWidth));
@@ -40,7 +42,9 @@ public static class Responsive
     public static readonly AttachedProperty<double> StackBelowProperty =
         AvaloniaProperty.RegisterAttached<Control, double>("StackBelow", typeof(Responsive));
 
+    /// <summary>Gets the width below which the control stacks its children.</summary>
     public static double GetStackBelow(Control control) => control.GetValue(StackBelowProperty);
+    /// <summary>Sets the width below which the control stacks its children.</summary>
     public static void SetStackBelow(Control control, double value) => control.SetValue(StackBelowProperty, value);
 
     static Responsive() => StackBelowProperty.Changed.AddClassHandler<Control>((control, _) =>

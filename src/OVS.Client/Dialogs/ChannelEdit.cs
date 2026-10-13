@@ -8,5 +8,9 @@ namespace OVS.Client.Dialogs;
 /// <param name="Password">Package 94: out of the dialog, null = unchanged, empty = remove, else the new password.</param>
 /// <param name="Kind">Package 111: out of the create dialog, a voice channel or a separator.</param>
 /// <param name="Bitrate">Package 132: the channel's kbps, in and out of the dialog.</param>
+/// <param name="Name">The channel's name.</param>
+/// <param name="Description">The channel's description.</param>
+/// <param name="IsMuted">Nobody in it is heard.</param>
+/// <param name="MaxUsers">0 = unlimited.</param>
 public sealed record ChannelEdit(string Name, string Description, bool IsMuted = false, int MaxUsers = 0, IReadOnlyList<Guid>? AllowedGroupIds = null,
     bool HasPassword = false, string? Password = null, ChannelKind Kind = ChannelKind.Voice, int Bitrate = ProtocolDefaults.Bitrate);

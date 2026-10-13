@@ -16,6 +16,8 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
 
     /// <returns>Null when the new version was started, otherwise why not.</returns>
     /// <param name="progress">Package 62: called on the caller's context, at most every 1 % or 100 ms while loading.</param>
+    /// <param name="offer">The release to install.</param>
+    /// <param name="cancel">Ends the download.</param>
     public async Task<string?> InstallAsync(UpdateOffer offer, Action<UpdateProgress>? progress = null, CancellationToken cancel = default)
     {
         try
@@ -101,6 +103,11 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
     /// </summary>
     /// <param name="time">The clock of the pauses between the tries (the wait for the old process is real time).</param>
     /// <returns>What happened, for the log; null when there was nothing to remove.</returns>
+    /// <param name="exePath">The running exe, null when unknown.</param>
+    /// <param name="oldPid">The old process, from the after-update argument.</param>
+    /// <param name="attempts">How often the removal is tried.</param>
+    /// <param name="pause">The pause between the tries.</param>
+    /// <param name="waitForExit">The longest wait for the old process, a default when null.</param>
     public static async Task<string?> CleanupOldAsync(string? exePath, TimeProvider time, int? oldPid = null, TimeSpan? waitForExit = null,
         int attempts = 5, TimeSpan? pause = null)
     {

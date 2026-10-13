@@ -13,6 +13,7 @@ using OVS.Shared.Protocol.Messages.VoiceRelay;
 
 namespace OVS.Shared.Protocol.Messages;
 
+/// <summary>Every frame on the control connection; the JSON type name tells the kind.</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 // Connection
 [JsonDerivedType(typeof(Ping), "ping")]

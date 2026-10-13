@@ -13,6 +13,7 @@ namespace OVS.Server.Logging;
 /// </summary>
 public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider time)
 {
+    /// <summary>The folder the prepared downloads are written to, inside the data folder.</summary>
     public const string ExportFolder = "logs-export";
     string ExportDir => Path.Combine(dataDir, ExportFolder);
 
@@ -32,6 +33,8 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
     /// for an id not in the listing or more than MaxLogDownloadBytes. IO errors throw and leave no file.
     /// </summary>
     /// <param name="downloadId">Chosen by the server (Guid "N"), never by a client.</param>
+    /// <param name="ids">The files to export, by LogFileInfo.Id.</param>
+    /// <param name="channelNames">The channels' current names, for the zip's folder names.</param>
     public LogExportResult Export(string downloadId, IReadOnlyList<string> ids, IReadOnlyDictionary<Guid, string> channelNames)
     {
         var listed = reader.ListWithPaths(channelNames).ToDictionary(locatedLogFile => locatedLogFile.Info.Id);

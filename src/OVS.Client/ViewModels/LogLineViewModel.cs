@@ -9,6 +9,7 @@ public sealed class LogLineViewModel : IMotionKey
     /// <summary>Package 109: a line stays the same line while the filter changes; another page or file brings new ones.</summary>
     public object MotionKey => (Number, Text);
 
+    /// <summary>A line with the parts that match filter marked.</summary>
     public LogLineViewModel(int number, string text, string filter, bool isTarget)
     {
         Number = number;
@@ -17,9 +18,13 @@ public sealed class LogLineViewModel : IMotionKey
         Segments = Split(text, filter);
     }
 
+    /// <summary>The line's number in the file.</summary>
     public int Number { get; }
+    /// <summary>The line's text.</summary>
     public string Text { get; }
+    /// <summary>The line a search hit opened the file at.</summary>
     public bool IsTarget { get; }
+    /// <summary>The text in parts, the matches marked.</summary>
     public IReadOnlyList<LogSegment> Segments { get; }
 
     static List<LogSegment> Split(string text, string filter)

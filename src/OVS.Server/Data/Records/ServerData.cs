@@ -7,6 +7,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 
 namespace OVS.Server.Data.Records;
 
+/// <summary>Everything the server stores in server-data.json.</summary>
 public sealed class ServerData
 {
     /// <summary>
@@ -15,14 +16,22 @@ public sealed class ServerData
     /// Admin (94). New servers start at the current version.
     /// </summary>
     public const int CurrentVersion = 6;
+    /// <summary>The version the file was written with; older files are migrated on load.</summary>
     public int DataVersion { get; set; } = 1;
 
+    /// <summary>Name, welcome text, password and limits.</summary>
     public ServerSettings Settings { get; set; } = new();
+    /// <summary>The channel new users start in; it cannot be deleted.</summary>
     public Guid DefaultChannelId { get; set; }
+    /// <summary>The channels.</summary>
     public List<ChannelRecord> Channels { get; set; } = [];
+    /// <summary>The links between channels.</summary>
     public List<ChannelLinkRecord> Links { get; set; } = [];
+    /// <summary>The groups in their order.</summary>
     public List<GroupRecord> Groups { get; set; } = [];
+    /// <summary>Every user the server has seen.</summary>
     public List<UserRecord> Users { get; set; } = [];
+    /// <summary>Every ban, active or not.</summary>
     public List<BanRecord> Bans { get; set; } = [];
 
     /// <summary>
@@ -48,6 +57,7 @@ public sealed class ServerData
         Bans.RemoveAll(ban => ban.EndedAt(now) < cutoff);
     }
 
+    /// <summary>The data of a new server: one default channel, the default groups, the config's start values.</summary>
     public static ServerData CreateDefault(ServerConfig config)
     {
         var lobby = new ChannelRecord { Id = Guid.NewGuid(), Name = "Lobby" };

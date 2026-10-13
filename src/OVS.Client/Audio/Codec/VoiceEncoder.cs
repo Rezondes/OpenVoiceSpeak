@@ -6,6 +6,7 @@ using OVS.Shared.Voice;
 
 namespace OVS.Client.Audio.Codec;
 
+/// <summary>Encodes 20 ms frames with Opus at the channel's bitrate.</summary>
 public sealed class VoiceEncoder
 {
     /// <summary>

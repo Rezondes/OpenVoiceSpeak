@@ -3,6 +3,7 @@ namespace OVS.Client.Layout;
 /// <summary>Package 67 (A81): the sidebar width at which every channel row fits without trimming.</summary>
 public static class SidebarWidth
 {
+    /// <summary>The narrowest sidebar.</summary>
     public const double Minimum = 240;
 
     /// <summary>
@@ -18,6 +19,7 @@ public static class SidebarWidth
     public const double PerIcon = 6 + 14;
 
     /// <param name="footer">Package 113: what the footer (own user, talk hint, buttons) needs, measured by the window.</param>
+    /// <param name="rows">The sidebar's rows as measured.</param>
     public static double For(IEnumerable<SidebarRow> rows, double footer = 0) =>
         Math.Max(Math.Max(Minimum, Math.Ceiling(footer)), Math.Ceiling(rows.Select(sidebarRow => sidebarRow.Name + sidebarRow.Icons * PerIcon + sidebarRow.Count).DefaultIfEmpty(0).Max() + Fixed));
 }

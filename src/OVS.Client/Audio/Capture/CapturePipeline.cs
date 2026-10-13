@@ -38,6 +38,7 @@ public sealed class CapturePipeline : IDisposable
     internal const int MicBufferMs = 20;
 
     /// <param name="failed">Package 137: the device stopped with an error (unplugged, invalidated); any thread, must not block.</param>
+    /// <param name="device">The microphone, null for the default one.</param>
     internal static CapturePipeline FromDevice(MMDevice? device, Action<Exception>? failed = null)
     {
         var pipeline = new CapturePipeline();
@@ -74,15 +75,19 @@ public sealed class CapturePipeline : IDisposable
         return pipeline;
     }
 
+    /// <summary>Decides whether a frame is speech (voice activation).</summary>
     public VoiceActivityDetector Vad { get; } = new();
+    /// <summary>The input gain as a factor.</summary>
     public float Gain { get; set; } = 1f;
 
     /// <summary>Package 123: RNNoise, owned by the pipeline; null when the native library is missing.</summary>
     public NoiseSuppressor? Suppressor { get; set; }
+    /// <summary>Noise suppression is on.</summary>
     public bool NoiseSuppression { get; set; }
 
     /// <summary>Package 140 (A149): WebRTC's echo canceller, owned by the pipeline; null when the native library is missing.</summary>
     public EchoCanceller? Canceller { get; set; }
+    /// <summary>Echo cancellation is on.</summary>
     public bool EchoCancellation { get; set; }
 
     /// <summary>
@@ -97,6 +102,7 @@ public sealed class CapturePipeline : IDisposable
 
     volatile bool music;
 
+    /// <summary>Automatic gain is on.</summary>
     public bool AutoGain
     {
         get => autoGainOn;
@@ -127,9 +133,12 @@ public sealed class CapturePipeline : IDisposable
     /// <summary>Package 135: tests read back what the encoder was set to.</summary>
     internal VoiceEncoder Encoder => encoder;
 
+    /// <summary>Raised with each encoded frame and its target.</summary>
     public event Action<byte[], byte>? FrameEncoded;
+    /// <summary>Raised with each frame's level in dB.</summary>
     public event Action<float>? Level;
 
+    /// <summary>Starts the microphone.</summary>
     public void Start()
     {
         capture?.StartRecording();
@@ -151,6 +160,8 @@ public sealed class CapturePipeline : IDisposable
     }
 
     /// <param name="samples">Mono, or with <paramref name="channels"/> 2 interleaved stereo (Package 142: music mode).</param>
+    /// <param name="sampleRate">The samples' rate in Hz.</param>
+    /// <param name="channels">1 for mono, 2 for stereo.</param>
     public void Feed(ReadOnlySpan<float> samples, int sampleRate, int channels = 1)
     {
         lock (gate)
@@ -251,6 +262,7 @@ public sealed class CapturePipeline : IDisposable
     /// <summary>Package 124: tests count the devices still open.</summary>
     internal bool IsDisposed { get; private set; }
 
+    /// <summary>Stops the microphone and releases it.</summary>
     public void Dispose()
     {
         IsDisposed = true;

@@ -11,6 +11,7 @@ public static class UiCulture
     static readonly CultureInfo German = CultureInfo.GetCultureInfo("de");
     static readonly CultureInfo English = CultureInfo.GetCultureInfo("en");
 
+    /// <summary>The UI culture for the user's choice: Windows' own, German or English.</summary>
     public static CultureInfo Resolve(AppLanguage choice, CultureInfo windows) => choice switch
     {
         AppLanguage.German => German,

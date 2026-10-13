@@ -47,6 +47,7 @@ internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task>
     /// <summary>The server's answer to one request, or null (error, timeout, page closed). The server shows its own errors as a notice.</summary>
     /// <param name="failedText">The notice when no answer comes in time.</param>
     /// <param name="followUp">Gets what the server sends after the answer.</param>
+    /// <param name="request">The request to send.</param>
     async Task<Message?> RequestAsync(Request request, string failedText, Action<Message>? followUp = null)
     {
         RemoveRoute();
@@ -125,6 +126,7 @@ internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task>
     /// <summary>Sends the file in chunks, each after the server's answer.</summary>
     /// <param name="followUp">Gets the backup list the server sends after storing the upload.</param>
     /// <returns>The backup the server stored; null when another transfer runs, the file is too large, the server refused it or the transfer failed.</returns>
+    /// <param name="path">The archive to upload.</param>
     internal async Task<BackupInfo?> UploadBackupAsync(string path, Action<Message> followUp)
     {
         BackupInfo? uploaded = null;

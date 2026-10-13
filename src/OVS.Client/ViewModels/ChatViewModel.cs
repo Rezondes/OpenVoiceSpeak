@@ -14,6 +14,7 @@ namespace OVS.Client.ViewModels;
 /// </summary>
 public sealed partial class ChatViewModel : ObservableObject
 {
+    /// <summary>The counter shows from this many characters on.</summary>
     public const int CounterFrom = 1800;
 
     readonly ServerViewModel server;
@@ -35,6 +36,7 @@ public sealed partial class ChatViewModel : ObservableObject
     [ObservableProperty] string? composerError;
 
     /// <param name="earlier">Notices from before the connection, oldest first, so nothing gets lost.</param>
+    /// <param name="server">The server the chat belongs to.</param>
     public ChatViewModel(ServerViewModel server, IEnumerable<Notice>? earlier = null)
     {
         this.server = server;
@@ -51,10 +53,14 @@ public sealed partial class ChatViewModel : ObservableObject
         OnStateChanged(StateChange.All);
     }
 
+    /// <summary>General, the channel tab and the private tabs.</summary>
     public ObservableCollection<ChatTabViewModel> Tabs { get; }
+    /// <summary>The tab of "Allgemein".</summary>
     public ChatTabViewModel General { get; }
+    /// <summary>The tab of the own channel.</summary>
     public ChatTabViewModel ChannelTab { get; }
 
+    /// <summary>The own rights allow writing in the selected tab.</summary>
     public bool CanWrite => Selected.Kind switch
     {
         ChatTabKind.General => server.CanChatServer,
@@ -62,6 +68,7 @@ public sealed partial class ChatViewModel : ObservableObject
         _ => server.CanChatPrivate && Selected.IsOnline,
     };
 
+    /// <summary>Why the own user cannot write here, null when they can.</summary>
     public string? NoRightHint => CanWrite ? null : Selected.Kind switch
     {
         ChatTabKind.General => Strings.Chat_NoRightServer,
@@ -70,9 +77,13 @@ public sealed partial class ChatViewModel : ObservableObject
         _ => Strings.Chat_NoRightPrivate,
     };
 
+    /// <summary>The input's placeholder.</summary>
     public string Placeholder => CanWrite ? string.Format(Strings.Chat_MessageTo, Selected.Title) : "";
+    /// <summary>The draft is long enough to show the counter.</summary>
     public bool ShowCounter => Draft.Length >= CounterFrom;
+    /// <summary>The draft is over the longest message.</summary>
     public bool IsTooLong => Draft.Length > ProtocolLimits.MaxChatLength;
+    /// <summary>The draft's length and the limit.</summary>
     public string CounterText => $"{Draft.Length} / {ProtocolLimits.MaxChatLength}";
 
     partial void OnSelectedChanged(ChatTabViewModel value)
@@ -81,6 +92,7 @@ public sealed partial class ChatViewModel : ObservableObject
         ComposerError = null;
     }
 
+    /// <summary>Shows a system notice in "Allgemein".</summary>
     public void AddNotice(Notice notice) =>
         Add(General, new ChatEntry(notice.Time, notice.Text, Notice: notice.Kind));
 

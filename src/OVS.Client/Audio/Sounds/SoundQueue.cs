@@ -5,11 +5,13 @@ public sealed class SoundQueue
 {
     readonly List<Playing> playing = [];
 
+    /// <summary>The sounds playing.</summary>
     public int Count
     {
         get { lock (playing) return playing.Count; }
     }
 
+    /// <summary>Starts samples at gain, on top of whatever plays.</summary>
     public void Add(float[] samples, float gain)
     {
         if (gain <= 0 || samples.Length == 0) return;
@@ -41,6 +43,7 @@ public sealed class SoundQueue
         for (int index = 0; index < frame.Length; index++) frame[index] = Math.Clamp(frame[index], -1f, 1f);
     }
 
+    /// <summary>Stops every sound.</summary>
     public void Clear()
     {
         lock (playing) playing.Clear();

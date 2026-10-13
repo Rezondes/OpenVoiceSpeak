@@ -7,6 +7,7 @@ public sealed class RateLimiter(TimeProvider time, double perSecond = 60, double
     double tokens = burst;
     long last = time.GetTimestamp();
 
+    /// <summary>True and takes a token when the bucket has one.</summary>
     public bool TryTake()
     {
         long now = time.GetTimestamp();

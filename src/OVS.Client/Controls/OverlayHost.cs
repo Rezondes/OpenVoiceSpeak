@@ -20,6 +20,7 @@ namespace OVS.Client.Controls;
 /// </summary>
 public sealed class OverlayHost : Panel
 {
+    /// <summary>The scale a dialog card pops in from.</summary>
     public const double PopFrom = 0.94;
 
     readonly SemaphoreSlim turn = new(1, 1);
@@ -30,6 +31,7 @@ public sealed class OverlayHost : Panel
     IInputElement? focusBefore;
     TopLevel? top;
 
+    /// <summary>An empty overlay.</summary>
     public OverlayHost()
     {
         IsVisible = false;
@@ -43,11 +45,13 @@ public sealed class OverlayHost : Panel
         Children.Add(card);
     }
 
+    /// <summary>A dialog is shown.</summary>
     public bool IsOpen => current is not null;
 
     /// <summary>Shows the content until <see cref="Close"/> is called.</summary>
     /// <param name="onEnter">What Enter does, usually the default button.</param>
     /// <param name="focus">Gets the keyboard focus once shown: the first input, otherwise the default button.</param>
+    /// <param name="content">The dialog card.</param>
     public async Task ShowAsync(Control content, Action onEnter, Control? focus = null)
     {
         closing?.Cancel(); // the next dialog is here: the last one finishes going at once, never two cards
@@ -134,6 +138,7 @@ public sealed class OverlayHost : Panel
         if (IsOpen) ShakeMotion.Shake(card);
     }
 
+    /// <summary>Closes the dialog shown.</summary>
     public void Close() => current?.TrySetResult();
 
     void OnKeyDown(object? sender, KeyEventArgs args)

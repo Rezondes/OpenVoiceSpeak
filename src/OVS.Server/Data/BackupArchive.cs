@@ -14,6 +14,7 @@ namespace OVS.Server.Data;
 /// </summary>
 public static class BackupArchive
 {
+    /// <summary>The archive format this server writes and reads.</summary>
     public const int FormatVersion = 1;
     const string ManifestEntry = "manifest.json";
     // ponytail: every entry is read into memory; the real files are a few MB, the cap stops a zip bomb
