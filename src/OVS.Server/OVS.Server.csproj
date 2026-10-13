@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />
+    <!-- Step 30d2 (W6, decided by the user): one Generic Host per run; its container makes the run's parts -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
   </ItemGroup>
 
   <PropertyGroup>
