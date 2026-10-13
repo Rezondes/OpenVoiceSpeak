@@ -38,6 +38,8 @@ internal sealed class Session(uint id, string fingerprint, string nickname, IPAd
     public LogDownload LogDownload { get; } = new();
 
     // Guarded by the ServerState lock.
+    /// <summary>Package 146: the code of the error sent for the request being handled, null while none was.</summary>
+    public string? RequestResult { get; set; }
     /// <summary>The channel the user is in; guarded by the ServerState lock.</summary>
     public Guid ChannelId { get; set; }
     /// <summary>The user muted the own microphone.</summary>

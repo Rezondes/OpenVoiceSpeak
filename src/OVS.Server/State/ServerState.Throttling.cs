@@ -20,11 +20,11 @@ internal sealed partial class ServerState
                 RemoveLocked(session, new Disconnected(ReasonCodes.RateLimited));
                 return false;
             case false:
-                session.Outbox.Send(new Error(id, ReasonCodes.RateLimited));
+                SendError(session, new Error(id, ReasonCodes.RateLimited));
                 return false;
         }
         if (id == requestId) return true;
-        session.Outbox.Send(new Error(id, ReasonCodes.InvalidValue, $"RequestId longer than {ServerTuning.MaxRequestIdLength} characters"));
+        SendError(session, new Error(id, ReasonCodes.InvalidValue, $"RequestId longer than {ServerTuning.MaxRequestIdLength} characters"));
         return false;
     }
 

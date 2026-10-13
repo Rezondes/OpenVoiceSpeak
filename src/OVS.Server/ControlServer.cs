@@ -171,9 +171,11 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
     {
         // Only validated values go into the log: a raw nickname could carry line breaks.
         string? logName = null, logFingerprint = null;
+        using var span = ServerTelemetry.Source.StartActivity("handshake"); // Package 146 (A156): the fingerprint once known, never the nickname
 
         async Task<Session?> RejectAsync(string code, string? detail = null)
         {
+            span?.SetTag(ServerTelemetry.ResultTag, code);
             state.LogRejected(ip, code, logName, logFingerprint);
             await writer.WriteAsync(new Rejected(code, detail), cancellation);
             return null;
@@ -196,8 +198,11 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
             return await RejectAsync(ReasonCodes.BadSignature);
 
         logFingerprint = ClientIdentity.ComputeFingerprint(publicKey);
+        span?.SetTag(ServerTelemetry.FingerprintTag, logFingerprint);
         var (session, rejection) = state.Admit(logFingerprint, nickname, ip, hello.Password);
-        return rejection is null ? session : await RejectAsync(rejection.Code, rejection.Detail);
+        if (rejection is not null) return await RejectAsync(rejection.Code, rejection.Detail);
+        span?.SetTag(ServerTelemetry.ResultTag, ServerTelemetry.ResultOk);
+        return session;
     }
 
     async Task ReadLoopAsync(Session session, FrameReader reader)

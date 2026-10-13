@@ -24,6 +24,18 @@ internal static class ServerTelemetry
     /// <summary>The name of the server's activity source and meter.</summary>
     public const string SourceName = "OVS.Server";
 
+    /// <summary>Package 146 (A156): the tag of a request's type.</summary>
+    public const string RequestTypeTag = "ovs.request.type";
+
+    /// <summary>Package 146: the tag of the session's fingerprint; spans never carry the nickname.</summary>
+    public const string FingerprintTag = "ovs.session.fingerprint";
+
+    /// <summary>Package 146: the tag of the result, <see cref="ResultOk"/> or the error code sent.</summary>
+    public const string ResultTag = "ovs.result.code";
+
+    /// <summary>The result of a request or handshake that sent no error.</summary>
+    public const string ResultOk = "ok";
+
     /// <summary>The server's spans; nobody listens while OpenTelemetry is off, so it makes none.</summary>
     public static readonly ActivitySource Source = new(SourceName, BuildInfo.Current.Version);
 
@@ -40,6 +52,10 @@ internal static class ServerTelemetry
         "OTEL_SERVICE_NAME", "OTEL_RESOURCE_ATTRIBUTES", "OTEL_METRIC_EXPORT_INTERVAL", "OTEL_METRIC_EXPORT_TIMEOUT",
         "OTEL_BSP_SCHEDULE_DELAY", "OTEL_BSP_EXPORT_TIMEOUT", "OTEL_BLRP_SCHEDULE_DELAY", "OTEL_BLRP_EXPORT_TIMEOUT",
     ];
+
+    /// <summary>Package 146: the span of one request, or null (and no name made) while nobody listens.</summary>
+    public static Activity? StartRequest(string type, string fingerprint) =>
+        Source.HasListeners() ? Source.StartActivity("request " + type)?.SetTag(RequestTypeTag, type).SetTag(FingerprintTag, fingerprint) : null;
 
     /// <summary>True when the endpoint variable is set and not empty.</summary>
     public static bool IsOn(Func<string, string?> getEnv) => !string.IsNullOrWhiteSpace(getEnv(EndpointVariable));

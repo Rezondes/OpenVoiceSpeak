@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using OVS.Server.Data;
@@ -193,29 +194,45 @@ internal sealed partial class ServerState
         {
             if (!IsCurrent(session)) return;
             if (message is not Request request) return;
-            var route = Routes.GetValueOrDefault(request.GetType());
-            if (!Admissible(session, request.RequestId, route.IsTransfer)) return;
-            // Package 83: a malformed request is answered before any handler or limit of its own sees it
-            if (RequestShape.Problem(request) is { } problem)
-            {
-                Fail(session, request, ReasonCodes.InvalidValue, problem);
-                return;
-            }
+            session.RequestResult = null;
+            using var span = ServerTelemetry.StartRequest(request.GetType().Name, session.Fingerprint); // Package 146
             try
             {
-                BeforeRequest?.Invoke(request);
-                if (route.Handler is null) Fail(session, request, ReasonCodes.UnknownRequest);
-                else route.Handler(this, session, request);
+                HandleRequest(session, request, span);
             }
-            #pragma warning disable CA1031 // Package 83: an unexpected error in a handler is answered and logged, the server goes on
-            catch (Exception exception)
-            #pragma warning restore CA1031
+            finally
             {
-                // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
-                var errorId = ErrorIds.New(); // Package 143 (A153): the user copies it, the admin searches the log for it
-                logs.Server.RequestFailed(request.GetType().Name, session.Nickname, errorId, exception);
-                session.Outbox.Send(new Error(request.RequestId, ReasonCodes.InvalidValue, ErrorId: errorId));
+                span?.SetTag(ServerTelemetry.ResultTag, session.RequestResult ?? ServerTelemetry.ResultOk);
             }
+        }
+    }
+
+    /// <summary>The request part of Handle, under the lock: budget, shape, handler; an unexpected error is answered with its ID.</summary>
+    void HandleRequest(Session session, Request request, Activity? span)
+    {
+        var route = Routes.GetValueOrDefault(request.GetType());
+        if (!Admissible(session, request.RequestId, route.IsTransfer)) return;
+        // Package 83: a malformed request is answered before any handler or limit of its own sees it
+        if (RequestShape.Problem(request) is { } problem)
+        {
+            Fail(session, request, ReasonCodes.InvalidValue, problem);
+            return;
+        }
+        try
+        {
+            BeforeRequest?.Invoke(request);
+            if (route.Handler is null) Fail(session, request, ReasonCodes.UnknownRequest);
+            else route.Handler(this, session, request);
+        }
+        #pragma warning disable CA1031 // Package 83: an unexpected error in a handler is answered and logged, the server goes on
+        catch (Exception exception)
+        #pragma warning restore CA1031
+        {
+            // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
+            span?.AddException(exception).SetStatus(ActivityStatusCode.Error);
+            var errorId = ErrorIds.New(); // Package 143 (A153): the user copies it, the admin searches the log for it
+            logs.Server.RequestFailed(request.GetType().Name, session.Nickname, errorId, exception);
+            SendError(session, new Error(request.RequestId, ReasonCodes.InvalidValue, ErrorId: errorId));
         }
     }
 
@@ -245,7 +262,14 @@ internal sealed partial class ServerState
     }
 
     static void Fail(Session session, Request request, string code, string? detail = null) =>
-        session.Outbox.Send(new Error(request.RequestId, code, detail));
+        SendError(session, new Error(request.RequestId, code, detail));
+
+    /// <summary>Package 146: sends an error for the request being handled and keeps its code as the request's result.</summary>
+    static void SendError(Session session, Error error)
+    {
+        session.RequestResult = error.Code;
+        session.Outbox.Send(error);
+    }
 
     /// <summary>Fails the request with a rule's refusal; false when the rule allows it.</summary>
     static bool Refuse(Session session, Request request, Refusal? refusal)

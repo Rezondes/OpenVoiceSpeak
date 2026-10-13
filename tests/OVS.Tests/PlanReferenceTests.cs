@@ -16,16 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["ServerTracingTests > \"Request_OneSpan_TypeCodeFingerprintNoNickname\""] =
-            "planned: Package 146 is not built yet",
-        ["ServerTracingTests > \"Request_Throws_SpanFailsAndErrorIdIsTraceId\""] =
-            "planned: Package 146 is not built yet",
-        ["ServerTracingTests > \"Handshake_OneSpan_WithFingerprintOrRejection\""] =
-            "planned: Package 146 is not built yet",
-        ["ServerTracingTests > \"Voice_Relayed_NoSpans\""] =
-            "planned: Package 146 is not built yet",
-        ["ServerTracingTests > \"NoListener_NoSpan_RandomErrorId\""] =
-            "planned: Package 146 is not built yet",
         ["ServerMetricsTests > \"Sessions_JoinAndLeave_Reported\""] =
             "planned: Package 147 is not built yet",
         ["ServerMetricsTests > \"Requests_Handled_CountedByTypeAndCode\""] =

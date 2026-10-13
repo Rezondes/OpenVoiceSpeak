@@ -8569,11 +8569,11 @@ With OpenTelemetry on (145) nothing is traced yet. A span per request shows what
 
 ### Acceptance Criteria
 
-- [ ] AC1: Each handled request makes exactly one span named `request <Type>` with `ovs.request.type`, `ovs.session.fingerprint` and `ovs.result.code` (`ok` when no `Error` was sent, otherwise its code); no tag or event holds the nickname or any request text.
-- [ ] AC2: A handler exception sets the span's status to error and records the exception; the `ErrorId` of the answer and the log line equals the span's trace id.
-- [ ] AC3: A handshake makes one span `handshake` with the fingerprint after a valid proof and `ovs.result.code` (`ok` or the rejection code).
-- [ ] AC4: Voice packets over UDP and TCP make no span.
-- [ ] AC5: Without a listener (OpenTelemetry off) no span object is made and the error ID is random as in 143.
+- [x] AC1: Each handled request makes exactly one span named `request <Type>` with `ovs.request.type`, `ovs.session.fingerprint` and `ovs.result.code` (`ok` when no `Error` was sent, otherwise its code); no tag or event holds the nickname or any request text.
+- [x] AC2: A handler exception sets the span's status to error and records the exception; the `ErrorId` of the answer and the log line equals the span's trace id.
+- [x] AC3: A handshake makes one span `handshake` with the fingerprint after a valid proof and `ovs.result.code` (`ok` or the rejection code).
+- [x] AC4: Voice packets over UDP and TCP make no span.
+- [x] AC5: Without a listener (OpenTelemetry off) no span object is made and the error ID is random as in 143.
 
 ### Tests (TDD)
 
@@ -8582,6 +8582,8 @@ With OpenTelemetry on (145) nothing is traced yet. A span per request shows what
 3. `ServerTracingTests > "Handshake_OneSpan_WithFingerprintOrRejection"` (AC3): an accepted and a wrong-password handshake.
 4. `ServerTracingTests > "Voice_Relayed_NoSpans"` (AC4)
 5. `ServerTracingTests > "NoListener_NoSpan_RandomErrorId"` (AC5)
+
+(as built: `ServerState.Handle` starts the request span through `ServerTelemetry.StartRequest`, which makes no name and no span while the source has no listener; the rest of the old `Handle` moved into `HandleRequest` under the same lock. The result is the code of the error sent for the request: `Fail` and the two errors of the request budget go through `SendError`, which keeps the code in `Session.RequestResult` (reset per request, guarded by the state lock), and `Handle` tags it, `ok` when none was sent. A log search or download is answered later by its job, so its span says `ok` (accepted) whatever the job answers. A handler exception is recorded with `AddException` and the span's status set to error; `ErrorIds.New` takes the trace id of `Activity.Current` when it is recorded, so the error ID, the log line and the trace share it. `HandshakeAsync` has its span with the fingerprint once the proof is valid and `ovs.result.code` from every rejection or `ok`; being an awaited async method, its span is not the parent of the session's request spans. The tests listen with an `ActivityListener` and tell their spans from those of other tests by fingerprint; a guest's `SetSelfState` is the allowed request, its `CreateChannel` the refused one, a wrong server password the rejected handshake.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
