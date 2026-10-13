@@ -74,18 +74,43 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal((false, 1f), (loaded.SoundsEnabled, loaded.SoundVolume));
     }
 
-    /// <summary>Package 48: per sound volume, mute and own file survive a restart; "Zurücksetzen" lets the copy go.</summary>
+    /// <summary>Package 48: per sound volume, mute and own file survive a restart.</summary>
     [Fact]
-    public void Sounds_PerEventSettings_RoundTripAndResetDeletesCopy()
+    public void Sounds_PerEventSettings_SurviveSaveAndLoad()
+    {
+        var settings = Vm(new ClientSettings());
+        Assert.Equal(Enum.GetValues<SoundEvent>().Length, settings.SoundRows.Count);
+        Assert.Equal("Standardton", settings.SoundRows[0].SourceText);
+
+        var loaded = SaveOwnJoinToneAndMutedLeaveTone(settings);
+
+        Assert.Equal((0.5f, false), (loaded.SoundFor(SoundEvent.UserJoined).Volume, loaded.SoundFor(SoundEvent.UserJoined).Muted));
+        Assert.True(loaded.SoundFor(SoundEvent.UserLeft).Muted);
+        Assert.True(File.Exists(Path.Combine(dir, SoundLibrary.Folder, loaded.SoundFor(SoundEvent.UserJoined).File!)));
+    }
+
+    /// <summary>Package 48: "Zurücksetzen" lets the copy of the own file go.</summary>
+    [Fact]
+    public void Sounds_Reset_DeletesTheCopy()
+    {
+        var loaded = SaveOwnJoinToneAndMutedLeaveTone(Vm(new ClientSettings()));
+        var copy = Path.Combine(dir, SoundLibrary.Folder, loaded.SoundFor(SoundEvent.UserJoined).File!);
+
+        var again = Vm(loaded);
+        again.SoundRows.Single(soundRow => soundRow.Event == SoundEvent.UserJoined).ResetCommand.Execute(null);
+        var reset = again.ToSettings(loaded);
+        Assert.Null(reset.SoundFor(SoundEvent.UserJoined).File);
+        new SoundLibrary(dir, NullLogger.Instance).CleanUp(reset); // what saving the settings does
+        Assert.False(File.Exists(copy));
+    }
+
+    /// <summary>Imports an own file for the join tone at 50 %, mutes the leave tone, saves and loads the settings again.</summary>
+    ClientSettings SaveOwnJoinToneAndMutedLeaveTone(SettingsViewModel settings)
     {
         var wav = Path.Combine(dir, "eigener.wav");
         using (var writer = new NAudio.Wave.WaveFileWriter(wav, NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48000, 1)))
             writer.WriteSamples(Enumerable.Repeat(0.2f, 4800).ToArray(), 0, 4800);
-        var settings = Vm(new ClientSettings());
         settings.ImportSound = (path, sound) => SoundImport.Prepare(path, dir, sound);
-        Assert.Equal(Enum.GetValues<SoundEvent>().Length, settings.SoundRows.Count);
-        Assert.Equal("Standardton", settings.SoundRows[0].SourceText);
-
         var joined = settings.SoundRows.Single(soundRow => soundRow.Event == SoundEvent.UserJoined);
         joined.Import(wav);
         joined.VolumePercent = 50;
@@ -94,18 +119,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var saved = settings.ToSettings(new ClientSettings());
         Assert.Equal(2, saved.Sounds.Count); // only what differs from the default
         saved.Save(dir);
-        var loaded = ClientSettings.Load(dir, out _);
-        Assert.Equal((0.5f, false), (loaded.SoundFor(SoundEvent.UserJoined).Volume, loaded.SoundFor(SoundEvent.UserJoined).Muted));
-        Assert.True(loaded.SoundFor(SoundEvent.UserLeft).Muted);
-        var copy = Path.Combine(dir, SoundLibrary.Folder, loaded.SoundFor(SoundEvent.UserJoined).File!);
-        Assert.True(File.Exists(copy));
-
-        var again = Vm(loaded);
-        again.SoundRows.Single(soundRow => soundRow.Event == SoundEvent.UserJoined).ResetCommand.Execute(null);
-        var reset = again.ToSettings(loaded);
-        Assert.Null(reset.SoundFor(SoundEvent.UserJoined).File);
-        new SoundLibrary(dir, NullLogger.Instance).CleanUp(reset); // what saving the settings does
-        Assert.False(File.Exists(copy));
+        return ClientSettings.Load(dir, out _);
     }
 
     /// <summary>Package 51: per person by fingerprint, only what differs from 100 %, bounded to 0 to 200 %.</summary>
@@ -363,7 +377,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 52: the page opens before the device list is there; the hint only comes once it really is missing.</summary>
     [Fact]
-    public void Devices_LoadedLater_HintOnlyIfMissingAndChoiceKept()
+    public void Devices_LoadedLater_HintOnlyForAMissingDevice()
     {
         var settings = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "box" }, null, null, TimeProvider.System);
         Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], settings.Inputs.Select(audioDeviceOption => audioDeviceOption.Name));
@@ -376,13 +390,23 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Null(settings.SelectedInput.Id); // "weg" is really gone
         Assert.Equal("box", settings.SelectedOutput.Id);
         Assert.NotNull(settings.DeviceHint);
+    }
 
+    /// <summary>Package 52: a device the user chose while the list loads is kept, and nothing went missing.</summary>
+    [Fact]
+    public void Devices_ChosenWhileLoading_ChoiceKeptWithoutHint()
+    {
         var chosen = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg" }, null, null, TimeProvider.System);
         chosen.SelectedInput = chosen.Inputs[0]; // the user picks "Standard" while loading
         chosen.ShowDevices([new AudioDevice("da", "Headset")], []);
         Assert.Null(chosen.SelectedInput.Id);
         Assert.Null(chosen.DeviceHint); // nothing went missing: the user chose
+    }
 
+    /// <summary>Package 52: a new device list keeps the selected device.</summary>
+    [Fact]
+    public void Devices_Reloaded_SelectionKept()
+    {
         var reload = Vm(new ClientSettings { InputDeviceId = "da" }, new AudioDevice("da", "Headset"));
         reload.ShowDevices([new AudioDevice("neu", "Webcam"), new AudioDevice("da", "Headset")], []);
         Assert.Equal("da", reload.SelectedInput.Id);
@@ -408,24 +432,30 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(100, settings.BackgroundOpacityPercent);
     }
 
-    /// <summary>Package 99 (A114): animated by default, also for a settings file from before; "Vereinfacht" survives a restart.</summary>
+    /// <summary>Package 99 (A114): animated by default, also for a settings file from before.</summary>
     [Fact]
-    public void Display_NewOrOldFileOrSimplified_AnimatedByDefaultAndRoundTrips()
+    public void Display_NewOrOldFile_Animated()
     {
         Assert.Equal(DisplayMode.Animated, new ClientSettings().Display);
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
         Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
+        Assert.Equal(DisplayMode.Animated, Vm(new ClientSettings()).SelectedDisplay.Value);
+    }
+
+    /// <summary>Package 99 (A114): "Vereinfacht" survives a restart.</summary>
+    [Fact]
+    public void Display_Simplified_SurvivesSaveAndLoad()
+    {
         var settings = Vm(new ClientSettings());
-        Assert.Equal(DisplayMode.Animated, settings.SelectedDisplay.Value);
         settings.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
         settings.ToSettings(new ClientSettings()).Save(dir);
         Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
         Assert.Equal(DisplayMode.Simplified, Vm(ClientSettings.Load(dir, out _)).SelectedDisplay.Value);
     }
 
-    /// <summary>Package 123 (A131): noise suppression on, also for a file from before; Package 127 (A136): automatic gain on too. Both survive a restart.</summary>
+    /// <summary>Package 123 (A131): noise suppression on, also for a file from before; Package 127 (A136): automatic gain on too.</summary>
     [Fact]
-    public void VoiceFilters_NewOrOldFile_OnByDefaultAndRoundTrip()
+    public void VoiceFilters_NewOrOldFile_On()
     {
         Assert.Equal((true, true), (new ClientSettings().NoiseSuppression, new ClientSettings().AutoGain));
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
@@ -433,9 +463,16 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal((true, true), (old.NoiseSuppression, old.AutoGain));
         var settings = Vm(old);
         Assert.Equal((true, true), (settings.NoiseSuppression, settings.AutoGain));
+    }
+
+    /// <summary>Package 123 (A131), 127 (A136): both switched off survive a restart.</summary>
+    [Fact]
+    public void VoiceFilters_SwitchedOff_SurviveSaveAndLoad()
+    {
+        var settings = Vm(new ClientSettings());
         settings.NoiseSuppression = false;
         settings.AutoGain = false;
-        settings.ToSettings(old).Save(dir);
+        settings.ToSettings(new ClientSettings()).Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal((false, false), (loaded.NoiseSuppression, loaded.AutoGain));
         Assert.Equal((false, false), (Vm(loaded).NoiseSuppression, Vm(loaded).AutoGain));

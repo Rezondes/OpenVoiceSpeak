@@ -835,15 +835,20 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     }
 
     [Fact]
-    public async Task Create_Failing_LeavesNoTmpAndStartRemovesLeftovers()
+    public async Task Create_Failing_LeavesNoTmp()
     {
         await File.WriteAllTextAsync(Path.Combine(dir, DataStore.FileName), "{}");
         var store = new BackupStore(dir, new ManualTimeProvider());
         Assert.Throws<FileNotFoundException>(() => store.Create()); // no cert.pfx: writing the archive fails
         Assert.Empty(Directory.GetFiles(store.Folder));
+    }
 
-        // what a crash or an older version left behind goes at the next start
-        File.Delete(Path.Combine(dir, DataStore.FileName));
+    /// <summary>What a crash or an older version left behind in the backup folder goes at the next start.</summary>
+    [Fact]
+    public async Task Start_LeftoversInTheBackupFolder_Removed()
+    {
+        var store = new BackupStore(dir, new ManualTimeProvider());
+        Directory.CreateDirectory(store.Folder);
         await File.WriteAllTextAsync(Path.Combine(store.Folder, "2026-01-01_12-00-00.ovsbackup.tmp"), "x");
         await File.WriteAllTextAsync(Path.Combine(store.Folder, UploadFolder.Prefix + new string('a', 32)), "x");
         await File.WriteAllTextAsync(Path.Combine(store.Folder, "behalten.ovsbackup"), "x");

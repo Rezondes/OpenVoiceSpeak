@@ -179,7 +179,16 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     }
 
     [Fact]
-    public async Task Connect_MirrorShowsSelfInLobby_AndSecondClient()
+    public async Task Connect_Welcome_MirrorShowsSelfInLobby()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var first = await ConnectAsync(server, "anna");
+        var mirror = new StateMirror(first.Welcome);
+        Assert.Equal(mirror.DefaultChannelId, mirror.Self!.ChannelId);
+    }
+
+    [Fact]
+    public async Task Connect_SecondClient_MirrorShowsIt()
     {
         await using var server = await TestServer.StartAsync();
         await using var first = await ConnectAsync(server, "anna");
@@ -191,7 +200,6 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
             if (message is UserJoined) joined.TrySetResult();
         };
 
-        Assert.Equal(mirror.DefaultChannelId, mirror.Self!.ChannelId);
         await using var second = await ConnectAsync(server, "bert");
         await joined.Task.WaitAsync(TimeSpan.FromSeconds(10));
         lock (mirror) Assert.Contains(mirror.Users.Values, user => user.Nickname == "bert");

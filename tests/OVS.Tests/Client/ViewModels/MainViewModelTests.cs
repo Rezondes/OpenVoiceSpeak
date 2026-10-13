@@ -756,11 +756,16 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Connect_ShowsWelcomeText_AndPing()
+    public async Task Connect_WelcomeText_ShownAsNotice()
     {
         await ConnectAsync(saveBookmark: false);
         Assert.Contains(await OnUiAsync(() => viewModel.Notices.ToList()), notice => notice.Kind == NoticeKind.Welcome && notice.Text == "Willkommen auf dem Testserver!");
+    }
 
+    [Fact]
+    public async Task Connect_Ticks_PingShown()
+    {
+        await ConnectAsync(saveBookmark: false);
         var ping = await OnUiUntilAsync(() =>
         {
             viewModel.Tick();
@@ -985,15 +990,21 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal($"{measured:0.0} ms", shown);
     }
 
-    /// <summary>Package 32: welcome in "Allgemein", the channel tab talks to the real server both ways.</summary>
+    /// <summary>Package 32: the tabs "Allgemein" and the channel, the welcome in "Allgemein".</summary>
     [Fact]
-    public async Task Chat_RealServer_WelcomeAndChannelTabBothWays()
+    public async Task Chat_Connected_WelcomeInGeneralTab()
+    {
+        await ConnectAsync(saveBookmark: false);
+        Assert.Equal(["Allgemein", "Lobby"], await OnUiAsync(() => viewModel.Chat!.Tabs.Select(chatTab => chatTab.Title).ToList()));
+        Assert.Contains(await OnUiAsync(() => viewModel.Chat!.General.Entries.ToList()), chatEntry => chatEntry.IsWelcome && chatEntry.Text == "Willkommen auf dem Testserver!");
+    }
+
+    /// <summary>Package 32: the channel tab talks to the real server both ways.</summary>
+    [Fact]
+    public async Task Chat_RealServer_ChannelTabBothWays()
     {
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
-        Assert.Equal(["Allgemein", "Lobby"], await OnUiAsync(() => viewModel.Chat!.Tabs.Select(chatTab => chatTab.Title).ToList()));
-        Assert.Contains(await OnUiAsync(() => viewModel.Chat!.General.Entries.ToList()), chatEntry => chatEntry.IsWelcome && chatEntry.Text == "Willkommen auf dem Testserver!");
-
         await bert.SendAsync(new SendChat(ChatTarget.Channel, null, "hallo anna"));
         var received = await OnUiUntilAsync(() => viewModel.Chat!.ChannelTab.Entries.FirstOrDefault(chatEntry => chatEntry.IsMessage), chatEntry => chatEntry is not null);
         Assert.Equal(("bert", "hallo anna", false), (received?.From, received?.Text, received?.IsOwn));
@@ -1038,7 +1049,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Notices_HaveKinds_ErrorAndDisconnect()
+    public async Task Notices_RefusedRequest_ErrorKind()
     {
         await ConnectAsync(saveBookmark: false);
         await ui.InvokeAsync<object?>(async () =>
@@ -1048,7 +1059,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
         var error = await OnUiUntilAsync(() => viewModel.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Error), notice => notice is not null);
         Assert.Equal("Dafür fehlt dir das Recht.", error?.Text);
+    }
 
+    [Fact]
+    public async Task Notices_Disconnected_WarningKind()
+    {
+        await ConnectAsync(saveBookmark: false);
         await server.Control.StopAsync();
         // Package 139: a shutdown first starts reconnecting; "Abbrechen" ends it with the disconnected notice
         Assert.True(await OnUiUntilAsync(() => viewModel.Connection.IsReconnecting, value => value));

@@ -190,14 +190,19 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public async Task Deafen_SendsSelfState_AndRestoresMute()
+    public async Task Deafen_Toggled_SendsSelfState()
     {
         var fixture = Create();
         await fixture.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
         Assert.Equal(new SetSelfState(true, true), fixture.Sent[^1] with { RequestId = null });
         await fixture.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
         Assert.Equal(new SetSelfState(false, false), fixture.Sent[^1] with { RequestId = null });
+    }
 
+    [Fact]
+    public async Task Undeafen_MutedBefore_StaysMuted()
+    {
+        var fixture = Create();
         await fixture.Vm.SelfState.ToggleMuteCommand.ExecuteAsync(null);
         await fixture.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);
         await fixture.Vm.SelfState.ToggleDeafenCommand.ExecuteAsync(null);

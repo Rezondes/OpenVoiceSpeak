@@ -91,7 +91,7 @@ public sealed class ServerIconTests
     }
 
     [Fact]
-    public async Task Icon_SurvivesRestart_AndCanBeRemoved()
+    public async Task Icon_Set_SurvivesRestart()
     {
         var adminId = ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
@@ -106,9 +106,20 @@ public sealed class ServerIconTests
         await using var _ = server;
         await using var again = await TestClient.ConnectAsync(server, "chef", adminId);
         Assert.Equal(ServerIconFormat.ComputeHash(png), again.Welcome.Snapshot.Settings.IconHash);
+    }
 
-        await again.SendAsync(new SetServerIcon(null));
-        await again.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash is null);
+    [Fact]
+    public async Task Icon_Removed_FileDeleted()
+    {
+        var adminId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
+        await using var admin = await TestClient.ConnectAsync(server, "chef", adminId);
+        await admin.SendAsync(new SetServerIcon(Convert.ToBase64String(Png(128, 128))));
+        await admin.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash is not null);
+
+        await admin.SendAsync(new SetServerIcon(null));
+        await admin.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash is null);
+
         Assert.False(File.Exists(Path.Combine(server.DataDir, ServerIconStore.FileName)));
         Assert.Contains(server.Log, line => line.Contains("Server logo removed by chef"));
     }

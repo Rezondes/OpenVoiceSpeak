@@ -497,7 +497,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task History_RemovedAfterLogRetention_AndOnUserDelete()
+    public async Task History_PastLogRetention_Removed()
     {
         await admin.SendAsync(new UpdateServerSettings("Testserver", "", null, new ServerLimits(50, 1, true, false, new TimeOnly(4, 0))));
         await admin.WaitForAsync<ServerSettingsChanged>();
@@ -517,6 +517,13 @@ public sealed class ModerationTests : IAsyncLifetime
         await admin.SendAsync(new CreateChannel("Speichern2", ""));
         await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Speichern2");
         Assert.Equal("dauer", Assert.Single(StoredBans()).Reason);
+        Assert.Single(await BansAsync(moderator));
+    }
+
+    [Fact]
+    public async Task History_UserDeleted_LiftedBansRemoved()
+    {
+        await moderator.SendAsync(new BanKnownUser(guestId.Fingerprint, "dauer", null, false));
         var active = Assert.Single(await BansAsync(moderator));
 
         await moderator.SendAsync(new Unban(active.Id) { RequestId = "u" });

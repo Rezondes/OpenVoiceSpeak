@@ -241,9 +241,9 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Warning_PulsesToo_AndBadgeCountTicks()
+    public void Warning_Added_EdgeGlows()
     {
-        var (main, viewModel, server, chat) = Open();
+        var (main, viewModel, _, chat) = Open();
         viewModel.Chat!.AddNotice(new Notice(DateTime.Now, "Achtung", NoticeKind.Warning));
         Frame();
         var card = Row(chat, "Achtung").GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("card"));
@@ -251,8 +251,14 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         glow.Add(Glow(card));
         MotionWait.Until(() => glow.Any(value => value > 0));
         Assert.True(glow.Any(value => value > 0), "a warning's edge glows as well");
+        main.Close();
+    }
 
-        viewModel.Chat.Selected = viewModel.Chat.Tabs[1];
+    [AvaloniaFact]
+    public void Badge_CountGoesUp_NumberTicks()
+    {
+        var (main, viewModel, server, chat) = Open();
+        viewModel.Chat!.Selected = viewModel.Chat.Tabs[1];
         MotionWait.Settle(400);
         server.Apply(From("anna", 2, "Eins"));
         MotionWait.Settle(400);
