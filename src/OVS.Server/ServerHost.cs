@@ -92,7 +92,9 @@ internal static class ServerHost
             }
 
             logs.Server.Listening(endpoint);
+            #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
             logs.Server.CertificateFingerprint(CertFingerprint.ComputeHex(host.Services.GetRequiredService<X509Certificate2>()));
+            #pragma warning restore CA1873
 
             // Package 74: a restore from the administration ends the run like a restart, on the backup's files
             using var runEnd = CancellationTokenSource.CreateLinkedTokenSource(stop);

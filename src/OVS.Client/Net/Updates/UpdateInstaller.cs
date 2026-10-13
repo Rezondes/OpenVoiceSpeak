@@ -43,7 +43,7 @@ internal sealed class UpdateInstaller(HttpClient http, string exePath, Action<st
         {
             if (File.Exists(NewPath)) SafeFile.DeleteQuietly(NewPath);
             if (!File.Exists(exePath) && File.Exists(OldPath)) File.Move(OldPath, exePath); // swap half done: undo it
-            return string.Format(CultureInfo.CurrentCulture, Strings.Update_InstallFailed, exception.Message);
+            return TextFormat.Of(Strings.Update_InstallFailed, exception.Message);
         }
         try
         {
@@ -51,7 +51,7 @@ internal sealed class UpdateInstaller(HttpClient http, string exePath, Action<st
         }
         catch (Exception exception) // Package 63: whatever it is, the window stays open and says so instead of vanishing
         {
-            return string.Format(CultureInfo.CurrentCulture, Strings.Update_RestartFailed, exception.Message);
+            return TextFormat.Of(Strings.Update_RestartFailed, exception.Message);
         }
         return null;
     }

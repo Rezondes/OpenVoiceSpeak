@@ -430,7 +430,7 @@ public sealed class BookmarkListTests
 
         await HangGuard.BoundAsync(list.EditAsync(bookmarks[1]));
 
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Confirm_ReplaceBookmark, "Club", "a:1"), asked);
+        Assert.Equal(TextFormat.Of(Strings.Confirm_ReplaceBookmark, "Club", "a:1"), asked);
     }
 
     [Fact]

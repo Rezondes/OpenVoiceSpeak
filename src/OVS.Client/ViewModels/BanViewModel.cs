@@ -43,7 +43,7 @@ internal sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool
     /// <summary>The status as shown.</summary>
     public string StatusText => Status switch
     {
-        BanStatus.Lifted => string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),
+        BanStatus.Lifted => TextFormat.Of(Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),
         BanStatus.Expired => Strings.Ui_BanExpired,
         _ => Strings.Ui_BanActive,
     };
@@ -68,7 +68,7 @@ internal sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool
     public string RemainingText => HasRemaining ? Formats.Duration(Ban.ExpiresAt!.Value - now) : "";
     /// <summary>How often the ban turned someone away, and the last time.</summary>
     public string AttemptsText => Ban.BlockedAttempts == 0 ? Strings.Ui_None
-        : string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanAttemptsFmt, Ban.BlockedAttempts, Local(Ban.LastAttempt), Ban.LastAttemptIp ?? Unknown);
+        : TextFormat.Of(Strings.Ui_BanAttemptsFmt, Ban.BlockedAttempts, Local(Ban.LastAttempt), Ban.LastAttemptIp ?? Unknown);
 
     /// <summary>Case-insensitive, in nickname, fingerprint, IP, reason, creator and lifter.</summary>
     public bool Matches(string search) =>

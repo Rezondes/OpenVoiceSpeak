@@ -37,8 +37,12 @@ internal sealed partial class ServerState
             Fail(session, request, ReasonCodes.ChannelFull);
             return;
         }
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         ChannelLogger(from)?.LeftTo(session.Nickname, ChannelName(request.ChannelId));
+        #pragma warning restore CA1873
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         ChannelLogger(request.ChannelId)?.JoinedFrom(session.Nickname, ChannelName(from));
+        #pragma warning restore CA1873
         session.ChannelId = request.ChannelId;
         BroadcastUser(session);
     }
@@ -131,7 +135,9 @@ internal sealed partial class ServerState
         if (request.Password is not null) channel.StoredPassword = StoredPassword.Create(request.Password); // Package 94: "" removes it
         channel.Bitrate = request.Bitrate; // Package 132: the senders inside follow the ChannelUpdated
         saves.Persist();
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         if (changes.Count > 0) ChannelLogger(channel.Id)?.Changed(session.Nickname, string.Join(", ", changes));
+        #pragma warning restore CA1873
         Broadcast(new ChannelUpdated(Info(channel)));
     }
 
@@ -209,7 +215,9 @@ internal sealed partial class ServerState
         }
         if (changed.Count == 0) return;
         saves.Persist();
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         logs.Server.ChannelsReordered(session.Nickname, string.Join(", ", ids.Select(ChannelName)));
+        #pragma warning restore CA1873
         foreach (var channel in changed) Broadcast(new ChannelUpdated(Info(channel)));
     }
 
@@ -239,7 +247,9 @@ internal sealed partial class ServerState
         {
             var other = link.Other(channel.Id);
             ChannelLogger(other)?.LinkRemovedWithChannel(channel.Name);
+            #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
             ChannelLogger(channel.Id)?.LinkRemovedWithChannel(ChannelName(other));
+            #pragma warning restore CA1873
             data.Links.Remove(link);
             Broadcast(new ChannelsUnlinked(link.A, link.B));
         }
@@ -277,8 +287,12 @@ internal sealed partial class ServerState
             return;
         }
         var from = target.ChannelId;
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         ChannelLogger(from)?.MovedOut(target.Nickname, session.Nickname, ChannelName(request.ChannelId));
+        #pragma warning restore CA1873
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         ChannelLogger(request.ChannelId)?.MovedIn(target.Nickname, session.Nickname, ChannelName(from));
+        #pragma warning restore CA1873
         target.ChannelId = request.ChannelId;
         BroadcastUser(target);
     }

@@ -77,7 +77,7 @@ internal sealed partial class ConnectionStatsViewModel : ObservableObject
     };
 
     /// <summary>The signal icon's tooltip.</summary>
-    public string Tip => string.Format(CultureInfo.CurrentCulture, Strings.Signal_Tip, Unreachable ? Strings.Signal_Unreachable : Rating switch
+    public string Tip => TextFormat.Of(Strings.Signal_Tip, Unreachable ? Strings.Signal_Unreachable : Rating switch
     {
         SignalRating.Good => Strings.Signal_Good,
         SignalRating.Fair => Strings.Signal_Fair,
@@ -125,13 +125,13 @@ internal sealed partial class ConnectionStatsViewModel : ObservableObject
             double baseline = sorted.Count % 2 == 1 ? sorted[sorted.Count / 2] : (sorted[sorted.Count / 2 - 1] + sorted[sorted.Count / 2]) / 2;
             BaselineMs = baseline;
             Rating = Rate(milliseconds, baseline);
-            RoundTripText = string.Format(CultureInfo.CurrentCulture, Strings.ConnDetails_RoundTripValue, milliseconds.ToString("0", CultureInfo.CurrentCulture), baseline.ToString("0", CultureInfo.CurrentCulture));
+            RoundTripText = TextFormat.Of(Strings.ConnDetails_RoundTripValue, milliseconds.ToString("0", CultureInfo.CurrentCulture), baseline.ToString("0", CultureInfo.CurrentCulture));
         }
         UplinkText = Loss(uplink);
         DownlinkText = Loss(downlink);
         JitterText = $"{receive.JitterMs:0.0} ms";
         DelayText = $"{receive.DelayMs} ms";
-        ConcealedText = string.Format(CultureInfo.CurrentCulture, Strings.ConnDetails_ConcealedValue, receive.Concealed - atStart.Concealed, receive.Rebuilt - atStart.Rebuilt, receive.Recovered - atStart.Recovered);
+        ConcealedText = TextFormat.Of(Strings.ConnDetails_ConcealedValue, receive.Concealed - atStart.Concealed, receive.Rebuilt - atStart.Rebuilt, receive.Recovered - atStart.Recovered);
         BitrateText = $"{bitrateKbps} kbps";
     }
 

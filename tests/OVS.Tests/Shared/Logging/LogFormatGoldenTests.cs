@@ -88,7 +88,9 @@ public sealed class LogFormatGoldenTests() : TempDirectoryTest("ovs-golden-", qu
     {
         var log = new ClientLog(dir, clock);
 
+        #pragma warning disable CA1848 // the test writes through the plain ILogger extension on purpose
         Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(log, "Client startet");
+        #pragma warning restore CA1848
         log.Flush();
 
         Assert.Equal($"{Stamp} Client startet{Environment.NewLine}", Text(Path.Combine(dir, "logs", "client-" + FileName)));

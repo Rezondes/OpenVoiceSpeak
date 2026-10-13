@@ -29,7 +29,9 @@ internal static class Program
         // Package 63: a crash used to leave no trace at all; exceptions escaping the UI thread end up here too
         AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
         {
+            #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
             Log?.Crashed($"{eventArgs.ExceptionObject}");
+            #pragma warning restore CA1873
             Log?.Flush(); // Package 124: the process ends right after
         };
         TaskScheduler.UnobservedTaskException += (_, eventArgs) => Log?.UnobservedError(eventArgs.Exception.ToString());

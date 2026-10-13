@@ -128,7 +128,7 @@ internal sealed class ShowcaseServer
         _ => null,
     };
 
-    DateTimeOffset Ago(int days, int hours = 0) => Evening.AddDays(-days).AddHours(-hours);
+    static DateTimeOffset Ago(int days, int hours = 0) => Evening.AddDays(-days).AddHours(-hours);
 
     IReadOnlyList<KnownUserInfo> KnownUsers() =>
     [
@@ -152,7 +152,7 @@ internal sealed class ShowcaseServer
             Ago(17), "fp02", 7 * 24 * 60, LiftedAt: Ago(12), LiftedBy: "Steffi"),
     ];
 
-    IReadOnlyList<BackupInfo> Backups() =>
+    static IReadOnlyList<BackupInfo> Backups() =>
     [
         new("2026-10-01_04-00.zip", Ago(0, 16), 48_212, "011026.0h4v"),
         new("2026-09-30_04-00.zip", Ago(1, 16), 47_980, "300926.0f1a"),

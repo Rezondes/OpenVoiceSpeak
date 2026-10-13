@@ -240,7 +240,9 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Keys.Bindings = Settings.KeyBindings.ToList();
         var keysText = Settings.KeyBindings.Count == 0 ? "none" : string.Join(", ", Settings.KeyBindings.Select(keyBinding => $"{keyBinding.Action} {keyBinding.Chord.Name}"));
         Log.SettingsApplied(Settings.Mode, keysText, Settings.InputDeviceId ?? "default", Settings.OutputDeviceId ?? "default", Settings.InputGain, Settings.OutputVolume,
+            #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
             Settings.VadThresholdDb, OnOff(Settings.NoiseSuppression), OnOff(Settings.AutoGain), OnOff(Settings.EchoCancellation), Settings.AudioContent);
+            #pragma warning restore CA1873
         return Settings;
     }
 

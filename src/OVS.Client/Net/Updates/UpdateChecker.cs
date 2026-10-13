@@ -32,7 +32,7 @@ internal sealed class UpdateChecker(HttpClient http, BuildInfo current)
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("OpenVoiceSpeak", current.Version));
             using var response = await http.SendAsync(request, cancel);
-            if (!response.IsSuccessStatusCode) return new UpdateCheckResult(null, string.Format(CultureInfo.CurrentCulture, Strings.Update_GitHubStatus, (int)response.StatusCode));
+            if (!response.IsSuccessStatusCode) return new UpdateCheckResult(null, TextFormat.Of(Strings.Update_GitHubStatus, (int)response.StatusCode));
             using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancel), cancellationToken: cancel);
             return new UpdateCheckResult(Evaluate(json.RootElement));
         }

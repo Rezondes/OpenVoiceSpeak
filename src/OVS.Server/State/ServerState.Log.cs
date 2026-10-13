@@ -84,7 +84,7 @@ internal sealed partial class ServerState
     }
 
     /// <summary>One chunk per request, read off the lock; the snapshot is deleted after the last one.</summary>
-    void OnDownloadLogChunk(Session session, DownloadLogChunk request)
+    static void OnDownloadLogChunk(Session session, DownloadLogChunk request)
     {
         if (!Require(session, request, DownloadRights)) return;
         QueueLogJob(session, request, () =>
@@ -99,7 +99,7 @@ internal sealed partial class ServerState
 
     /// <summary>Runs the file work after the session's earlier log jobs, off the lock; SessionOutbox.Send is safe from any thread.</summary>
     /// <returns>False when the session's queue was full and the request was answered with RateLimited.</returns>
-    bool QueueLogJob(Session session, Request request, Func<Message> work)
+    static bool QueueLogJob(Session session, Request request, Func<Message> work)
     {
         var queued = session.LogJobs.TryQueue(() =>
         {

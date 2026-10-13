@@ -22,7 +22,9 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
     public void Log_ServerCategory_FileAndConsole()
     {
         using var provider = Provider();
+        #pragma warning disable CA1848 // the test writes through the plain ILogger extension on purpose
         provider.CreateLogger(LogFileLoggerProvider.ServerCategory).LogInformation("Server startet");
+        #pragma warning restore CA1848
 
         Assert.Equal($"{Stamp} Server startet{Environment.NewLine}", Text("server", FileName));
         Assert.Equal([$"{Stamp} Server startet"], console);
@@ -47,7 +49,9 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
         var channel = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
         using var provider = Provider();
+        #pragma warning disable CA1848 // the test writes through the plain ILogger extension on purpose
         provider.CreateLogger(LogFileLoggerProvider.ChannelCategory(channel)).LogInformation("[Raid] anna betritt den Channel");
+        #pragma warning restore CA1848
 
         Assert.Equal($"{Stamp} [Raid] anna betritt den Channel{Environment.NewLine}", Text("channels", channel.ToString(), FileName));
         Assert.Empty(console);
@@ -59,7 +63,9 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
         using var provider = Provider();
         var logger = provider.CreateLogger("Microsoft.Hosting.Lifetime");
 
+        #pragma warning disable CA1848 // the test writes through the plain ILogger extension on purpose
         logger.LogInformation("Application started");
+        #pragma warning restore CA1848
 
         Assert.False(logger.IsEnabled(LogLevel.Information));
         Assert.False(Directory.EnumerateFiles(dir, "*.log", SearchOption.AllDirectories).Any());

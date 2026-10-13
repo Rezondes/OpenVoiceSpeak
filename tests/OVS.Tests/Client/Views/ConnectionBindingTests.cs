@@ -103,13 +103,13 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
         return reached;
     }
 
-    Button AddBookmarkTile(MainWindow main, MainViewModel mainViewModel)
+    static Button AddBookmarkTile(MainWindow main, MainViewModel mainViewModel)
     {
         mainViewModel.Settings.Bookmarks.Add(new Bookmark(BookmarkName, "127.0.0.1", 4711, "anna"));
         mainViewModel.Bookmarks.Refresh();
         Dispatcher.UIThread.RunJobs();
         return main.GetVisualDescendants().OfType<Button>()
-            .Single(button => AutomationProperties.GetName(button) == string.Format(CultureInfo.InvariantCulture, Strings.Ui_ConnectToFmt, BookmarkName));
+            .Single(button => AutomationProperties.GetName(button) == TextFormat.Of(Strings.Ui_ConnectToFmt, BookmarkName));
     }
 
     [AvaloniaFact]

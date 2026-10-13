@@ -263,7 +263,7 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     /// One line per stale entry of <paramref name="exempt"/> (its criterion is covered, marked or gone) and per checked,
     /// unmarked criterion that neither <paramref name="covered"/> nor <paramref name="exempt"/> holds.
     /// </summary>
-    static List<string> FindUncovered(IEnumerable<PlanCriterion> criteria, IReadOnlySet<string> covered, IReadOnlyDictionary<string, string> exempt)
+    static List<string> FindUncovered(IEnumerable<PlanCriterion> criteria, HashSet<string> covered, IReadOnlyDictionary<string, string> exempt)
     {
         var open = criteria.Where(criterion => !criterion.IsManual && !covered.Contains(criterion.Key)).ToList();
         var problems = exempt.Keys.Except(open.Select(criterion => criterion.Key)).Select(key => $"stale exemption (covered, marked or gone): {key}").ToList();

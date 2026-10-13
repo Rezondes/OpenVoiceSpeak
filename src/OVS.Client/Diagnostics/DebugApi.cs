@@ -195,7 +195,7 @@ internal sealed class DebugApi : IDisposable
     }
 
     /// <summary>The POST routes on the connected server, path to handler, grouped: own state, channels, moderation, chat, raw requests.</summary>
-    Dictionary<string, Func<ServerViewModel, JsonElement, Task>> CreateServerRoutes() => new()
+    static Dictionary<string, Func<ServerViewModel, JsonElement, Task>> CreateServerRoutes() => new()
     {
         // own state
         ["/join"] = (server, body) => server.JoinAsync(Channel(server, Text(body, "channel")).Id),

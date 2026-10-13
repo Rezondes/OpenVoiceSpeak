@@ -220,7 +220,9 @@ internal static class PageMotion
             };
         }
 
+#pragma warning disable CA1859 // an empty sequence when the content is no panel
         IEnumerable<Control> Sections() => (scroll.Content as Panel)?.Children ?? (IEnumerable<Control>)[];
+#pragma warning restore CA1859
 
         void Look()
         {

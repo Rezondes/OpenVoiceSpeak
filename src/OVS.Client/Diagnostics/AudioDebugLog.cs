@@ -30,7 +30,9 @@ internal sealed class AudioDebugLog : IDisposable
     }
 
     // Package 130: the keys themselves, without the release delay (Changed fires on the key's edges)
+    #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
     void OnKeys() => log.AudioDebugKeys(DownUp(keys.IsDown(KeyAction.PushToTalk)), DownUp(keys.IsDown(KeyAction.LinkPushToTalk)), DownUp(keys.MuteHeld));
+    #pragma warning restore CA1873
 
     static string DownUp(bool down) => down ? "down" : "up";
 

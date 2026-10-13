@@ -88,5 +88,5 @@ internal sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
         foreach (var permissionToggle in Toggles) permissionToggle.IsChecked = serverPermissions.Has(permissionToggle.Permission);
     }
     /// <summary>The name, marked when the group is not saved yet.</summary>
-    public string DisplayName => Id is null ? string.Format(CultureInfo.CurrentCulture, Strings.Group_Unsaved, Name) : Name;
+    public string DisplayName => Id is null ? TextFormat.Of(Strings.Group_Unsaved, Name) : Name;
 }

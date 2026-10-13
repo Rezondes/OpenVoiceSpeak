@@ -164,7 +164,7 @@ internal sealed class ClientSettings : IJsonOnDeserializing
         catch (JsonException)
         {
             File.Copy(path, path + ".bak", overwrite: true);
-            warning = string.Format(CultureInfo.CurrentCulture, Strings.Settings_Damaged, path);
+            warning = TextFormat.Of(Strings.Settings_Damaged, path);
             return new ClientSettings();
         }
     }

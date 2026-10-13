@@ -59,7 +59,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         await server.DisposeAsync();
     }
 
-    static Task RunAsync(TestDispatcher ui, Func<Task> work) => ui.InvokeAsync<object?>(async () =>
+    static Task<object?> RunAsync(TestDispatcher ui, Func<Task> work) => ui.InvokeAsync<object?>(async () =>
     {
         await work();
         return null;

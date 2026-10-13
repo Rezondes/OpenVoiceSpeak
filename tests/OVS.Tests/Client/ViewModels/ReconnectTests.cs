@@ -31,7 +31,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     ConnectSeam seam = null!;
     MainViewModel viewModel = null!;
 
-    static string Retrying(int seconds) => string.Format(CultureInfo.InvariantCulture, Strings.Status_Reconnecting, seconds);
+    static string Retrying(int seconds) => TextFormat.Of(Strings.Status_Reconnecting, seconds);
 
     const string Reconnected = "Verbindung wiederhergestellt";
     const string OutdatedAttemptLine = "outdated attempt dropped";
@@ -88,7 +88,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     }, done);
 
     /// <summary>Presses "Abbrechen" of a running series.</summary>
-    Task CancelReconnectAsync() => OnUiAsync(() =>
+    Task<int> CancelReconnectAsync() => OnUiAsync(() =>
     {
         viewModel.Connection.CancelReconnectCommand.Execute(null);
         return 0;
@@ -249,7 +249,7 @@ public sealed class ReconnectTests : IAsyncLifetime
             return viewModel.Stats.ConcealedText;
         });
 
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.ConnDetails_ConcealedValue, 0, 0, 0), shown);
+        Assert.Equal(TextFormat.Of(Strings.ConnDetails_ConcealedValue, 0, 0, 0), shown);
     }
 
     /// <summary>Re-review: muted by choice (and deafened), push-to-mute held through the reconnect and then let go: still muted.</summary>

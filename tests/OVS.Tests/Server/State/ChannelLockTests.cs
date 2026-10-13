@@ -76,13 +76,13 @@ public sealed class ChannelLockTests : IAsyncLifetime
         return (await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == name)).Channel;
     }
 
-    async Task JoinAsync(TestClient client, Guid channel, string? password = null)
+    static async Task JoinAsync(TestClient client, Guid channel, string? password = null)
     {
         await client.SendAsync(new JoinChannel(channel, password));
         await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.ChannelId == channel);
     }
 
-    async Task<string> RefusedJoinAsync(TestClient client, Guid channel, string id = "j", string? password = null)
+    static async Task<string> RefusedJoinAsync(TestClient client, Guid channel, string id = "j", string? password = null)
     {
         await client.SendAsync(new JoinChannel(channel, password) { RequestId = id });
         return (await client.ErrorAsync(id)).Code;
@@ -234,7 +234,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
 
     string DataFile => File.ReadAllText(Path.Combine(server.DataDir, DataStore.FileName));
 
-    async Task<string> ErrorOfAsync(TestClient client, Request request)
+    static async Task<string> ErrorOfAsync(TestClient client, Request request)
     {
         var id = Guid.NewGuid().ToString("N")[..8];
         await client.SendAsync(request with { RequestId = id });
@@ -272,8 +272,9 @@ public sealed class ChannelLockTests : IAsyncLifetime
         Assert.DoesNotContain(server.Log, line => line.Contains("geheim1", StringComparison.Ordinal) || line.Contains("neu2", StringComparison.Ordinal));
     }
 
-    static ServerData Stored(string json) =>
-        System.Text.Json.JsonSerializer.Deserialize<ServerData>(json, new System.Text.Json.JsonSerializerOptions(ProtocolJson.Options))!;
+    static readonly System.Text.Json.JsonSerializerOptions StoredOptions = new(ProtocolJson.Options);
+
+    static ServerData Stored(string json) => System.Text.Json.JsonSerializer.Deserialize<ServerData>(json, StoredOptions)!;
 
     [Fact]
     public async Task Join_PasswordLocked_WrongRefusedBypassAndAdminJoin()

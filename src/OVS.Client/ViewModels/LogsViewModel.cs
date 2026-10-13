@@ -85,7 +85,7 @@ internal sealed partial class LogsViewModel : ObservableObject
     /// <summary>The open file's title.</summary>
     public string OpenTitle => OpenFile is { } logFile ? $"{logFile.Title}, {logFile.StartText}" : "";
     /// <summary>The page and the page count.</summary>
-    public string PageText => string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogPage, Page, PageCount);
+    public string PageText => TextFormat.Of(Strings.Ui_LogPage, Page, PageCount);
     /// <summary>The lines of the page that pass the line filter.</summary>
     public ObservableCollection<LogLineViewModel> Lines { get; } = [];
     /// <summary>The open page has lines.</summary>
@@ -136,10 +136,10 @@ internal sealed partial class LogsViewModel : ObservableObject
                 Searching.Done();
                 Hits.Clear();
                 foreach (var hit in result.Hits) Hits.Add(new LogHitViewModel(hit, TitleOf(hit.FileId)));
-                HitsText = result.TimedOut ? string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogHitsTimedOut, result.Hits.Count)
-                    : result.Truncated ? string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogHitsTruncated, ProtocolLimits.MaxLogHits)
+                HitsText = result.TimedOut ? TextFormat.Of(Strings.Ui_LogHitsTimedOut, result.Hits.Count)
+                    : result.Truncated ? TextFormat.Of(Strings.Ui_LogHitsTruncated, ProtocolLimits.MaxLogHits)
                     : result.Hits.Count == 0 ? Strings.Ui_LogNoHits
-                    : string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogHits, result.Hits.Count);
+                    : TextFormat.Of(Strings.Ui_LogHits, result.Hits.Count);
                 ShowHits = true;
                 break;
         }
@@ -182,7 +182,7 @@ internal sealed partial class LogsViewModel : ObservableObject
         var shown = allFiles.Where(Passes).Select(file => new LogFileViewModel(file, ShowDownload, selected.Contains(file.Id), OnSelectionChanged)).ToList();
         CollectionSync.Sync(Files, shown, server.Leave); // Package 102: a file filtered out folds away
         SelectedFile = shown.FirstOrDefault(logFile => logFile.Info.Id == OpenFile?.Info.Id);
-        FileCountText = string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogFileCount, shown.Count, allFiles.Count);
+        FileCountText = TextFormat.Of(Strings.Ui_LogFileCount, shown.Count, allFiles.Count);
         OnPropertyChanged(nameof(HasNoFiles));
         OnPropertyChanged(nameof(HasNoFileMatches));
     }
@@ -196,7 +196,7 @@ internal sealed partial class LogsViewModel : ObservableObject
     /// <summary>More than one file is ticked: the download is a zip.</summary>
     public bool IsZipDownload => selected.Count > 1;
     /// <summary>How many files are ticked, as shown.</summary>
-    public string SelectionText => string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogSelection, selected.Count);
+    public string SelectionText => TextFormat.Of(Strings.Ui_LogSelection, selected.Count);
     /// <summary>The chosen files, newest first like the list.</summary>
     public IReadOnlyList<string> SelectedIds => allFiles.Where(logFile => selected.Contains(logFile.Id)).Select(logFile => logFile.Id).ToList();
 
@@ -272,7 +272,9 @@ internal sealed partial class LogsViewModel : ObservableObject
         if (value is not null) _ = OpenHitAsync(value);
     }
 
+#pragma warning disable CA1859 // its callers only wait for it; LoadAsync hands on a completed task as well
     Task OpenAtAsync(LogFileViewModel file, int? page, int? line)
+#pragma warning restore CA1859
     {
         if (OpenFile?.Info.Id != file.Info.Id)
         {

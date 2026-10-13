@@ -26,6 +26,11 @@ namespace OVS.Tests.Client.Layout;
 [Collection(MotionCollection.Name)]
 public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: true)
 {
+    static readonly string[] ServerSectionControls = ["MaxUsersInput", "LogDaysInput", "LogRotateDailyInput", "AutoRestartInput", "AutoRestartTimeInput"];
+    static readonly string[] BackupControls = ["UploadBackupButton", "UploadRestoreButton", "BackupTransfer"];
+    static readonly string[] LogPageControls = ["LogPager", "LogLineFilter", "LogLines"];
+    static readonly string[] LogSearchControls = ["LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList", "LogDownloadBar", "LogDownloadButton", "LogTransfer", "LogSearchBusy"];
+
     MainWindow Open(double width, ServerViewModel? server)
     {
         // the device list loads in the background (Package 52): its result comes back through the dispatcher, not on a pool thread
@@ -144,7 +149,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var main = Open(360, null);
         var viewModel = (MainViewModel)main.DataContext!;
-        viewModel.Status = string.Format(CultureInfo.InvariantCulture, Strings.Status_Reconnecting, 16);
+        viewModel.Status = TextFormat.Of(Strings.Status_Reconnecting, 16);
         viewModel.Connection.IsReconnecting = true;
         Dispatcher.UIThread.RunJobs();
         var status = main.FindControl<TextBlock>("StatusText")!;
@@ -517,7 +522,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // Package 75: a transfer in progress, so its progress line is checked with the rest of the Server tab
         admin.Transfer.IsRunning = true;
         admin.Transfer.Percent = 42;
-        admin.Transfer.ProgressText = string.Format(CultureInfo.InvariantCulture, Strings.Backup_Uploading, 42);
+        admin.Transfer.ProgressText = TextFormat.Of(Strings.Backup_Uploading, 42);
         // Package 97: the waiting states, checked with the rest: a refresh, a first load, a failed refresh, busy buttons
         admin.UsersAndBans.UsersLoad.IsBusy = true;
         admin.UsersAndBans.BansLoad.HasSucceeded = false;
@@ -554,14 +559,14 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         }
         // Package 69: the new server settings are part of the checked Server tab
         SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Server));
-        foreach (var name in new[] { "MaxUsersInput", "LogDaysInput", "LogRotateDailyInput", "AutoRestartInput", "AutoRestartTimeInput" })
+        foreach (var name in ServerSectionControls)
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         // Package 74: every backup with its restore and delete button, all checked for width above
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Restore && textBlock.IsEffectivelyVisible));
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Delete && textBlock.IsEffectivelyVisible));
         // Package 75: download per backup, both upload buttons and the progress
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Download && textBlock.IsEffectivelyVisible));
-        foreach (var name in new[] { "UploadBackupButton", "UploadRestoreButton", "BackupTransfer" })
+        foreach (var name in BackupControls)
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == admin.Transfer.ProgressText && textBlock.IsEffectivelyVisible);
         // Package 97: "Backup anlegen" busy (checked above), then the whole card while restoring
@@ -580,12 +585,12 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Assert.Contains(page.FindControl<ContentControl>("BansLoadState")!.GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
         // Package 81: the Logs tab with the opened file (checked above), then with the hits of a search instead of the files
         SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Logs));
-        foreach (var name in new[] { "LogPager", "LogLineFilter", "LogLines" })
+        foreach (var name in LogPageControls)
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.NotEmpty(page.FindControl<ListBox>("LogLines")!.GetRealizedContainers());
         admin.Logs.CloseFileCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();
-        foreach (var name in new[] { "LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList", "LogDownloadBar", "LogDownloadButton", "LogTransfer", "LogSearchBusy" })
+        foreach (var name in LogSearchControls)
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.Contains(page.FindControl<ListBox>("LogFileList")!.GetVisualDescendants().OfType<CheckBox>(), checkBox => checkBox.IsEffectivelyVisible && checkBox.IsChecked == true);
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == Strings.Pending_NoAnswer && textBlock.IsEffectivelyVisible); // Package 97

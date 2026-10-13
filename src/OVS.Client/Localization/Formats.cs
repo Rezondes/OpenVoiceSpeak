@@ -11,7 +11,7 @@ internal static class Formats
         { TotalMinutes: < 1 } => $"{duration.Seconds} s",
         { TotalHours: < 1 } => duration.Seconds == 0 ? $"{duration.Minutes} min" : $"{duration.Minutes} min {duration.Seconds} s",
         { TotalDays: < 1 } => duration.Minutes == 0 ? $"{duration.Hours} h" : $"{duration.Hours} h {duration.Minutes} min",
-        _ => string.Format(CultureInfo.CurrentCulture, Strings.Ui_DurationDays, (int)duration.TotalDays, duration.Hours),
+        _ => TextFormat.Of(Strings.Ui_DurationDays, (int)duration.TotalDays, duration.Hours),
     };
 
     /// <summary>A file size: whole KB (at least 1) below one MB, MB with one decimal from there.</summary>

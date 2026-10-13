@@ -72,7 +72,7 @@ sealed class FakeVoiceServer : IDisposable
         await AsyncWait.UntilAsync(() => Volatile.Read(ref fencesSeen) > before);
     }
 
-    Task SendAsync(PacketType type, byte[] payload, uint sessionId = SessionId)
+    Task<int> SendAsync(PacketType type, byte[] payload, uint sessionId = SessionId)
     {
         var target = Volatile.Read(ref clientEndPoint) ?? throw new InvalidOperationException("no client packet yet");
         var packet = crypto.Seal(PacketDirection.ServerToClient, new VoiceHeader(type, sessionId, sequence.Next(), VoiceHeader.TargetChannel), payload);

@@ -181,7 +181,7 @@ internal sealed partial class ServerState
     }
 
     /// <summary>Package 84 (A102): the rank rule of every action on another user; fails the request with PermissionDenied.</summary>
-    bool CanModerate(Session session, Request request, Permission targetRights, string targetFingerprint)
+    static bool CanModerate(Session session, Request request, Permission targetRights, string targetFingerprint)
     {
         if (session.Permissions.CanModerate(session.Fingerprint, targetRights, targetFingerprint)) return true;
         Fail(session, request, ReasonCodes.PermissionDenied);

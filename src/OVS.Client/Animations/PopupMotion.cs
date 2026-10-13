@@ -4,6 +4,7 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -79,7 +80,7 @@ internal static class PopupMotion
             return;
         popupPlaces.Remove(popup);
         Image? ghost = null;
-        IDisposable? picture = null;
+        RenderTargetBitmap? picture = null;
         try
         {
             var bitmap = DragVisuals.Snapshot(child, top.RenderScaling); // now, while it is still laid out

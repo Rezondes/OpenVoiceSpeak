@@ -27,7 +27,7 @@ internal sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMo
     public static string TitleOf(BackupInfo info) => info.CreatedAt.ToLocalTime().ToString("G", CultureInfo.CurrentCulture) +
                                                      (info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");
     /// <summary>Size and server version.</summary>
-    public string Details => string.Format(CultureInfo.CurrentCulture, Strings.Backup_Details, Formats.Size(Info.Size), Info.ServerVersion);
+    public string Details => TextFormat.Of(Strings.Backup_Details, Formats.Size(Info.Size), Info.ServerVersion);
 
     /// <summary>The prefix the server gives the backup it takes before a restore.</summary>
     const string SafetyPrefix = "vor-wiederherstellung_";

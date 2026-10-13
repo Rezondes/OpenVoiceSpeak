@@ -81,7 +81,9 @@ internal sealed partial class ServerState
         if (!data.Users.Any(user => user.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
+            #pragma warning disable CA1873 // the token is made here whatever happens to the line
             logs.Server.AdminToken(adminToken.Generate());
+            #pragma warning restore CA1873
             logs.Server.AdminTokenCreated();
         }
     }
@@ -174,7 +176,7 @@ internal sealed partial class ServerState
         Route<ReadLog>(static (state, session, request) => state.OnReadLog(session, request)),
         Route<SearchLogs>(static (state, session, request) => state.OnSearchLogs(session, request)),
         Route<PrepareLogDownload>(static (state, session, request) => state.OnPrepareLogDownload(session, request)),
-        Route<DownloadLogChunk>(static (state, session, request) => state.OnDownloadLogChunk(session, request), isTransfer: true),
+        Route<DownloadLogChunk>(static (_, session, request) => OnDownloadLogChunk(session, request), isTransfer: true),
     }.ToDictionary();
 
     /// <summary>
@@ -232,7 +234,7 @@ internal sealed partial class ServerState
 
     // ---- Helpers ----
 
-    bool Require(Session session, Request request, Permission permission)
+    static bool Require(Session session, Request request, Permission permission)
     {
         if (session.Permissions.Has(permission)) return true;
         Fail(session, request, ReasonCodes.PermissionDenied);

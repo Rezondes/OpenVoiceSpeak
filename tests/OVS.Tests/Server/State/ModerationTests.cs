@@ -315,13 +315,13 @@ public sealed class ModerationTests : IAsyncLifetime
         guest = moderator; // DisposeAsync skips duplicates
     }
 
-    async Task<List<BanInfo>> BansAsync(TestClient client)
+    static async Task<List<BanInfo>> BansAsync(TestClient client)
     {
         await client.SendAsync(new ListBans { RequestId = "bans" });
         return (await client.WaitForAsync<BanList>(banList => banList.RequestId == "bans")).Bans.ToList();
     }
 
-    async Task<List<KnownUserInfo>> UsersAsync(TestClient client)
+    static async Task<List<KnownUserInfo>> UsersAsync(TestClient client)
     {
         await client.SendAsync(new ListUsers { RequestId = "users" });
         return (await client.WaitForAsync<UserList>(userList => userList.RequestId == "users")).Users.ToList();

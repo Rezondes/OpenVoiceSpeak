@@ -222,7 +222,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         return main;
     }
 
-    static Control UserContainer(MainWindow main, string nickname) =>
+    static ContentPresenter UserContainer(MainWindow main, string nickname) =>
         main.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname);
 
     [AvaloniaFact]
@@ -417,7 +417,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     /// <summary>The row of a user in the list they came into (not the one folding away in the old channel).</summary>
-    static Control Arrived(MainWindow main, string nickname) =>
+    static ContentPresenter Arrived(MainWindow main, string nickname) =>
         main.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname && !contentPresenter.Classes.Contains("leaving"));
 
     /// <summary>Follows a flying ghost until it lands; returns where it was last seen (overlay coordinates).</summary>

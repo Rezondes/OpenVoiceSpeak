@@ -18,8 +18,8 @@ internal static class TofuDialog
         var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(index => prompt.Fingerprint.Substring(index * 8, 8)));
         bool mismatch = prompt.Result == TofuResult.Mismatch;
         var text = mismatch
-            ? string.Format(CultureInfo.CurrentCulture, Strings.Tofu_Changed, prompt.Host, prompt.Port)
-            : string.Format(CultureInfo.CurrentCulture, Strings.Tofu_First, prompt.Host, prompt.Port);
+            ? TextFormat.Of(Strings.Tofu_Changed, prompt.Host, prompt.Port)
+            : TextFormat.Of(Strings.Tofu_First, prompt.Host, prompt.Port);
         var code = new Border
         {
             Padding = new Thickness(12, 10),

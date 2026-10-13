@@ -267,7 +267,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         };
         var shown = visible.ToList();
         CollectionSync.Sync(Users, shown, server.Leave);
-        UserCountText = string.Format(CultureInfo.CurrentCulture, Strings.Ui_UserCount, shown.Count, all.Count);
+        UserCountText = TextFormat.Of(Strings.Ui_UserCount, shown.Count, all.Count);
         OnPropertyChanged(nameof(HasNoUsersShown));
     }
 
@@ -312,7 +312,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         };
         var shown = visible.ToList();
         CollectionSync.Sync(Bans, shown, server.Leave);
-        BanCountText = string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanCount, shown.Count, all.Count);
+        BanCountText = TextFormat.Of(Strings.Ui_BanCount, shown.Count, all.Count);
         OnPropertyChanged(nameof(HasNoBans));
         OnPropertyChanged(nameof(HasNoBanMatches));
     }

@@ -196,7 +196,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(OVS.Client.Localization.AppLanguage.English, loaded.Language);
         var settings = Vm(loaded);
         Assert.Equal("English", settings.SelectedLanguage.Label);
-        settings.SelectedLanguage = SettingsViewModel.Languages.First(); // "Wie Windows"
+        settings.SelectedLanguage = SettingsViewModel.Languages[0]; // "Wie Windows"
         Assert.Equal(OVS.Client.Localization.AppLanguage.System, settings.ToSettings(loaded).Language);
     }
 

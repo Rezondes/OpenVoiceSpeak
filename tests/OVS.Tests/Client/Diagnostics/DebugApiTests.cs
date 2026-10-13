@@ -33,7 +33,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         await server.DisposeAsync();
     }
 
-    static IEnumerable<JsonElement> Channels(JsonElement state) => state.GetProperty("server").GetProperty("channels").EnumerateArray();
+    static JsonElement.ArrayEnumerator Channels(JsonElement state) => state.GetProperty("server").GetProperty("channels").EnumerateArray();
 
     static JsonElement Channel(JsonElement state, string name) => Channels(state).Single(element => element.GetProperty("name").GetString() == name);
 
@@ -168,7 +168,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
         // Package 111: the state names separators
         await anna.PostAsync("request", new { type = "createChannel", name = "", description = "", kind = "Separator" });
-        await anna.UntilAsync(element => Channels(element).Any(otherElement => otherElement.GetProperty("isSeparator").GetBoolean() && otherElement.GetProperty("name").GetString() == ""));
+        await anna.UntilAsync(element => Channels(element).Any(otherElement => otherElement.GetProperty("isSeparator").GetBoolean() && string.IsNullOrEmpty(otherElement.GetProperty("name").GetString())));
         await anna.UntilAsync(element => Channels(element).Single(otherElement => otherElement.GetProperty("id").GetString() == ids[0]).GetProperty("isCurrent").GetBoolean());
     }
 
@@ -232,14 +232,14 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.UntilAsync(otherElement => Channel(otherElement, "Lobby").GetProperty("isCurrent").GetBoolean());
         await bert.PostAsync("ptt", new { down = true });
         await anna.UntilAsync(otherElement => FramesFrom(otherElement, bertId) > 10 && User(otherElement, bertId)?.GetProperty("isSpeaking").GetBoolean() == true);
-        await bert.UntilAsync(otherElement => otherElement.GetProperty("transmitText").GetString() != ""); // so the empty text below is the release, not the start
+        await bert.UntilAsync(otherElement => !string.IsNullOrEmpty(otherElement.GetProperty("transmitText").GetString())); // so the empty text below is the release, not the start
         await bert.PostAsync("ptt", new { down = false });
 
         // muted clients send nothing
         await bert.PostAsync("mute", new { value = true });
         // The PTT release may still let frames out. Once the transmit text is gone, the capture thread has decided
         // "nothing" for a frame, and every frame before it is counted (one thread, in order): no wall-clock window.
-        var settled = await bert.UntilAsync(otherElement => !otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean() && otherElement.GetProperty("transmitText").GetString() == "");
+        var settled = await bert.UntilAsync(otherElement => !otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean() && string.IsNullOrEmpty(otherElement.GetProperty("transmitText").GetString()));
         long sentBefore = settled.GetProperty("audio").GetProperty("framesSent").GetInt64();
         await bert.PostAsync("ptt", new { down = true });
         await bert.UntilAsync(otherElement => otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean()); // the key thread saw it, so the silence proves something
@@ -502,7 +502,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             return JsonDocument.Parse(text).RootElement;
         }
 
-        public Task OnUiAsync(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
+        public Task<object?> OnUiAsync(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
         {
             work(viewModel);
             return Task.FromResult<object?>(null);

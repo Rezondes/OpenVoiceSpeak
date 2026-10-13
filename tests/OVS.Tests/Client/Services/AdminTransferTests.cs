@@ -218,7 +218,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         Assert.Null(await uploaded);
         Assert.Single(sent);
         Assert.True(transfer.IsRunning);
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Backup_Downloading, 0), transfer.ProgressText);
+        Assert.Equal(TextFormat.Of(Strings.Backup_Downloading, 0), transfer.ProgressText);
         transfer.Cancel();
         await BoundAsync(running);
     }
@@ -302,7 +302,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         Assert.Equal([0d, 47.7, 95.3], seen.Select(value => Math.Round(value.Percent, 1)));
         Assert.All(seen, value => Assert.True(value.Running));
         Assert.Equal(100d, transfer.Percent);
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Backup_Uploading, 100), transfer.ProgressText);
+        Assert.Equal(TextFormat.Of(Strings.Backup_Uploading, 100), transfer.ProgressText);
         Assert.False(transfer.IsRunning);
         Assert.Empty(notices);
         Assert.Empty(followUps);

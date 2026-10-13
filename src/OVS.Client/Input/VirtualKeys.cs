@@ -41,6 +41,6 @@ internal static class VirtualKeys
         RControl => Strings.Key_RightCtrl,
         0xA4 => Strings.Key_LeftAlt,
         0xA5 => Strings.Key_RightAlt,
-        _ => string.Format(CultureInfo.CurrentCulture, Strings.Key_Unknown, vk),
+        _ => TextFormat.Of(Strings.Key_Unknown, vk),
     };
 }

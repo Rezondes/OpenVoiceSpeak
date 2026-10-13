@@ -4,7 +4,7 @@ namespace OVS.Tests.Client.Collections;
 
 public class PagedListCollectorTests
 {
-    static IReadOnlyList<int> Page(int from, int count) => Enumerable.Range(from, count).ToList();
+    static List<int> Page(int from, int count) => Enumerable.Range(from, count).ToList();
 
     [Fact]
     public void Collect_OverlappingRounds_OnlyTheNewestShown()

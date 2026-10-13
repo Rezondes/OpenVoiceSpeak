@@ -72,7 +72,9 @@ internal sealed partial class ServerState
         data.Groups.Clear();
         data.Groups.AddRange(reordered);
         saves.Persist();
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         logs.Server.GroupsReordered(session.Nickname, string.Join(", ", reordered.Select(groupRecord => groupRecord.Name)));
+        #pragma warning restore CA1873
         BroadcastGroups(); // Package 92: per recipient
     }
 
@@ -102,7 +104,9 @@ internal sealed partial class ServerState
         if (group.Permissions != permissions) changes.Add($"permissions {group.Permissions} -> {permissions}");
         data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = permissions };
         saves.Persist();
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         if (changes.Count > 0) logs.Server.GroupChanged(group.Name, session.Nickname, string.Join(", ", changes));
+        #pragma warning restore CA1873
         RecomputePermissions(groupsChanged: true); // Package 92: the groups per recipient, judged by the new rights
     }
 

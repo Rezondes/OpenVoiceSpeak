@@ -90,7 +90,7 @@ internal sealed class BookmarkList : ObservableObject
         if (dialogs().EditBookmark is not { } askEdit || await askEdit(bookmark) is not { } answer) return;
         var others = bookmarks().Where(other => !ReferenceEquals(other, bookmark) && IsServer(other, answer.Host, answer.Port)).ToList();
         if (others.Count > 0 && (dialogs().Confirm is not { } confirm
-            || !await confirm(string.Format(CultureInfo.CurrentCulture, Strings.Confirm_ReplaceBookmark, others[0].Name, $"{answer.Host}:{answer.Port}")))) return;
+            || !await confirm(TextFormat.Of(Strings.Confirm_ReplaceBookmark, others[0].Name, $"{answer.Host}:{answer.Port}")))) return;
         var saved = bookmarks(); // read again: a settings apply may have replaced the list during the question
         int index = saved.IndexOf(bookmark);
         if (index < 0) return;
@@ -109,7 +109,7 @@ internal sealed class BookmarkList : ObservableObject
 
     internal async Task DeleteAsync(Bookmark bookmark)
     {
-        if (dialogs().Confirm is not { } confirm || !await confirm(string.Format(CultureInfo.CurrentCulture, Strings.Confirm_DeleteBookmark, bookmark.Name))) return;
+        if (dialogs().Confirm is not { } confirm || !await confirm(TextFormat.Of(Strings.Confirm_DeleteBookmark, bookmark.Name))) return;
         if (!bookmarks().Remove(bookmark)) return;
         save();
         log.BookmarkDeleted(bookmark.Name);

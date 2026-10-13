@@ -41,7 +41,7 @@ internal static unsafe class Splash
         lock (gate)
         {
             closed = true;
-            if (window != 0) PostMessageW(window, WM_CLOSE, 0, 0);
+            if (window != 0) _ = PostMessageW(window, WM_CLOSE, 0, 0);
         }
     }
 
@@ -69,7 +69,7 @@ internal static unsafe class Splash
         var header = new BITMAPINFOHEADER { biSize = (uint)sizeof(BITMAPINFOHEADER), biWidth = px, biHeight = -px, biPlanes = 1, biBitCount = 32 };
         nint bitmap = CreateDIBSection(memory, &header, 0, out _, 0, 0);
         SelectObject(memory, bitmap);
-        DrawIconEx(memory, 0, 0, icon, px, px, 0, 0, DI_NORMAL); // keeps the icon's alpha in the 32 bit picture
+        _ = DrawIconEx(memory, 0, 0, icon, px, px, 0, 0, DI_NORMAL); // keeps the icon's alpha in the 32 bit picture
 
         fixed (char* name = "OvsSplash")
         {
@@ -88,22 +88,22 @@ internal static unsafe class Splash
             var size = new SIZE { cx = px, cy = px };
             var origin = new POINT();
             var blend = new BLENDFUNCTION { SourceConstantAlpha = 255, AlphaFormat = AC_SRC_ALPHA };
-            UpdateLayeredWindow(hwnd, screen, &at, &size, memory, &origin, 0, &blend, ULW_ALPHA);
+            _ = UpdateLayeredWindow(hwnd, screen, &at, &size, memory, &origin, 0, &blend, ULW_ALPHA);
             lock (gate)
             {
                 window = hwnd;
-                if (closed) PostMessageW(hwnd, WM_CLOSE, 0, 0); // closed while it was being made
+                if (closed) _ = PostMessageW(hwnd, WM_CLOSE, 0, 0); // closed while it was being made
             }
-            ShowWindow(hwnd, SW_SHOWNA); // leaves the activation to the main window
+            _ = ShowWindow(hwnd, SW_SHOWNA); // leaves the activation to the main window
             MSG message;
             while (GetMessageW(&message, 0, 0, 0) > 0) DispatchMessageW(&message);
             lock (gate) window = 0;
-            UnregisterClassW(name, type.hInstance);
+            _ = UnregisterClassW(name, type.hInstance);
         }
-        DeleteDC(memory);
-        DeleteObject(bitmap);
-        ReleaseDC(0, screen);
-        DestroyIcon(icon);
+        _ = DeleteDC(memory);
+        _ = DeleteObject(bitmap);
+        _ = ReleaseDC(0, screen);
+        _ = DestroyIcon(icon);
     }
 
     [UnmanagedCallersOnly]
@@ -115,11 +115,11 @@ internal static unsafe class Splash
                 double faded = Stopwatch.GetElapsedTime(fadeStart).TotalSeconds / FadeSeconds; // clock: frame timing
                 if (faded >= 1)
                 {
-                    DestroyWindow(hwnd);
+                    _ = DestroyWindow(hwnd);
                     return 0;
                 }
                 var blend = new BLENDFUNCTION { SourceConstantAlpha = (byte)(255 * (1 - faded)), AlphaFormat = AC_SRC_ALPHA };
-                UpdateLayeredWindow(hwnd, 0, null, null, 0, null, 0, &blend, ULW_ALPHA); // only the strength changes
+                _ = UpdateLayeredWindow(hwnd, 0, null, null, 0, null, 0, &blend, ULW_ALPHA); // only the strength changes
                 return 0;
             case WM_CLOSE:
                 if (fadeStart == 0)

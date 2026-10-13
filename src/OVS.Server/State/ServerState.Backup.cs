@@ -36,7 +36,7 @@ internal sealed partial class ServerState
     }
 
     /// <summary>Package 89: checked on every request, so leaving the group stops an upload at its next chunk.</summary>
-    bool RequireAdminGroup(Session session, Request request)
+    static bool RequireAdminGroup(Session session, Request request)
     {
         if (session.GroupIds.Contains(WellKnownGroups.Admin)) return true;
         Fail(session, request, ReasonCodes.PermissionDenied);
@@ -200,7 +200,7 @@ internal sealed partial class ServerState
     }
 
     /// <summary>Forgets the session's unfinished upload and deletes its file (errors, disconnect, shutdown).</summary>
-    void DropUpload(Session session)
+    static void DropUpload(Session session)
     {
         if (session.Upload is not { } upload) return;
         session.Upload = null;

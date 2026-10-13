@@ -59,7 +59,7 @@ internal sealed class VoiceHints
             : current.SelfDeafened ? Strings.VoiceHint_Deafened
             : current.SelfMuted && !muteKeyHeld() ? Strings.VoiceHint_SelfMuted
             : "";
-        if (why == "")
+        if (why.Length == 0)
         {
             talkedIntoMuteAt = DateTimeOffset.MinValue; // muting again later must not bring back an old attempt
             return "";

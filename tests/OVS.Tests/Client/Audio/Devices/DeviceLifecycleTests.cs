@@ -102,7 +102,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         devices.SyncCaptureAndReport();
 
-        Assert.Equal([string.Format(CultureInfo.InvariantCulture, Strings.Audio_MicFailed, "no microphone")], Assert.Single(reports));
+        Assert.Equal([TextFormat.Of(Strings.Audio_MicFailed, "no microphone")], Assert.Single(reports));
         Assert.Null(devices.CaptureSource.Capture);
         Assert.Empty(configured);
     }
@@ -118,7 +118,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         Assert.Equal((1, 0), (hardware.Counts.Mics, hardware.Counts.MicsOpen));
         Assert.True(Assert.Single(configured).IsDisposed);
         Assert.Null(devices.CaptureSource.Capture);
-        Assert.Equal([string.Format(CultureInfo.InvariantCulture, Strings.Audio_MicFailed, "configure failed")], Assert.Single(reports));
+        Assert.Equal([TextFormat.Of(Strings.Audio_MicFailed, "configure failed")], Assert.Single(reports));
     }
 
     [Fact]
@@ -469,7 +469,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         playbackRunning = true;
         hardware.DefaultSpeaker = null;
         devices.OpenSpeakerAndReport();
-        Assert.Equal([string.Format(CultureInfo.InvariantCulture, Strings.Audio_SpeakerFailed, "no speaker")], Assert.Single(reports));
+        Assert.Equal([TextFormat.Of(Strings.Audio_SpeakerFailed, "no speaker")], Assert.Single(reports));
 
         hardware.DefaultSpeaker = "usb-speaker";
         Change();
@@ -487,7 +487,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         for (int index = 0; index < 4; index++) Change(); // two more tries, then none
 
-        var failed = string.Format(CultureInfo.InvariantCulture, Strings.Audio_SpeakerFailed, "device cannot start");
+        var failed = TextFormat.Of(Strings.Audio_SpeakerFailed, "device cannot start");
         Assert.Equal([failed, failed, failed], Notices);
         Assert.Equal(0, hardware.Counts.Speakers);
     }
@@ -504,7 +504,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         Change();
         time.Advance(TimeSpan.FromSeconds(30));
 
-        var failed = string.Format(CultureInfo.InvariantCulture, Strings.Audio_MicFailed, "device cannot start");
+        var failed = TextFormat.Of(Strings.Audio_MicFailed, "device cannot start");
         Assert.Equal([failed, failed, failed], Notices); // no fourth try
         Assert.Null(devices.CaptureSource.Capture);
     }
@@ -520,7 +520,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         Change();
 
         Assert.Equal(new DeviceCounts(1, 0, 1, 0), hardware.Counts);
-        Assert.Equal([string.Format(CultureInfo.InvariantCulture, Strings.Audio_MicFailed, "no microphone"), string.Format(CultureInfo.InvariantCulture, Strings.Audio_SpeakerFailed, "no speaker")],
+        Assert.Equal([TextFormat.Of(Strings.Audio_MicFailed, "no microphone"), TextFormat.Of(Strings.Audio_SpeakerFailed, "no speaker")],
             Assert.Single(reports));
     }
 

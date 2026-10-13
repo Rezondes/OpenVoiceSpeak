@@ -37,7 +37,9 @@ internal sealed partial class ChannelDialogViewModel(ChannelEdit current, Channe
     /// <summary>The hint under the user limit.</summary>
     public string SlotsHint => CanLimitUsers ? Strings.Dlg_MaxUsersHint : Strings.Dlg_MaxUsersDefault;
     /// <summary>The highest user limit.</summary>
+    #pragma warning disable CA1822 // bound from XAML, which reads instance properties
     public decimal MaxSlots => ProtocolLimits.MaxChannelUsers;
+    #pragma warning restore CA1822
 
     /// <summary>Package 93: every group of the server, in its order, ticked when in the channel's lock.</summary>
     public IReadOnlyList<AllowedGroupViewModel> Groups { get; } =
@@ -65,9 +67,13 @@ internal sealed partial class ChannelDialogViewModel(ChannelEdit current, Channe
     /// <summary>Package 132 (A141): "Qualität" in kbps, also for the default channel.</summary>
     [ObservableProperty] decimal? bitrate = current.Bitrate;
     /// <summary>The lowest bitrate in kbps.</summary>
+    #pragma warning disable CA1822 // bound from XAML, which reads instance properties
     public decimal MinBitrate => ProtocolLimits.MinBitrate;
+    #pragma warning restore CA1822
     /// <summary>The highest bitrate in kbps.</summary>
+    #pragma warning disable CA1822 // bound from XAML, which reads instance properties
     public decimal MaxBitrate => ProtocolLimits.MaxBitrate;
+    #pragma warning restore CA1822
 
     partial void OnBitrateChanged(decimal? value)
     {

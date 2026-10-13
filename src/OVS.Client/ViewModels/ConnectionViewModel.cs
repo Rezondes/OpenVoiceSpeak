@@ -137,13 +137,15 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         }
         catch (Exception exception) when (IsNetworkFailure(exception))
         {
-            setStatus(string.Format(CultureInfo.CurrentCulture, Strings.Status_Failed, exception.Message));
+            setStatus(TextFormat.Of(Strings.Status_Failed, exception.Message));
         }
         finally
         {
             IsConnecting = false;
         }
+        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         if (connection is null) log.ConnectFailed(readStatus());
+        #pragma warning restore CA1873
     }
 
     static bool IsNetworkFailure(Exception exception) =>
@@ -152,13 +154,13 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     void Refused(ConnectionRejectedException exception)
     {
         lastRejection = exception.Code;
-        setStatus(string.Format(CultureInfo.CurrentCulture, Strings.Status_Refused, ErrorTexts.For(exception.Code, exception.Detail)));
+        setStatus(TextFormat.Of(Strings.Status_Refused, ErrorTexts.For(exception.Code, exception.Detail)));
         log.Refused(exception.Code, string.IsNullOrEmpty(exception.Detail) ? "" : $" ({exception.Detail})");
     }
 
     async Task<ClientConnection> OpenAsync(ConnectChoice choice)
     {
-        setStatus(string.Format(CultureInfo.CurrentCulture, Strings.Status_Connecting, choice.Host, choice.Port));
+        setStatus(TextFormat.Of(Strings.Status_Connecting, choice.Host, choice.Port));
         log.Connecting(choice.Host, choice.Port, choice.Nickname, choice.PasswordOrNull is null ? "" : " with password");
         return await openConnection(choice, CancellationToken.None);
     }
@@ -172,7 +174,9 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         var mirror = new StateMirror(conn.Welcome);
         var server = new ServerViewModel(mirror, request =>
         {
+            #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
             log.Protocol(ProtocolLogText.Describe(request, mirror));
+            #pragma warning restore CA1873
             return conn.SendAsync(request);
         }, time, serverDialogs()) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
         server.Notice += text => addNotice(text, NoticeKind.Error);
@@ -195,7 +199,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
 
         ResetStats();
         show(server);
-        setStatus(string.Format(CultureInfo.CurrentCulture, Strings.Status_Connected, server.ServerName));
+        setStatus(TextFormat.Of(Strings.Status_Connected, server.ServerName));
         log.Connected(server.ServerName, mirror.Self?.Nickname, mirror.SelfId, mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name, mirror.Users.Count);
         play(SoundEvent.Connected);
         if (!restored && server.WelcomeText.Length > 0) addNotice(server.WelcomeText, NoticeKind.Welcome);
@@ -260,7 +264,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     void OnDisconnected(ClientConnection conn, string reason, string? detail)
     {
         if (conn != connection) return;
-        var text = string.Format(CultureInfo.CurrentCulture, Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
+        var text = TextFormat.Of(Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
         if (!string.IsNullOrEmpty(detail)) log.DisconnectedByServer(reason, detail);
         if (reason is ReasonCodes.ConnectionLost or ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart && lastChoice is { } choice && shownServer() is { } server)
         {
@@ -320,7 +324,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             if (restore.Channel != Guid.Empty && server.Mirror.Self?.ChannelId != restore.Channel)
             {
                 if (server.Mirror.Channels.ContainsKey(restore.Channel)) _ = server.RejoinAsync(restore.Channel, restore.Password);
-                else addNotice(string.Format(CultureInfo.CurrentCulture, Strings.Status_ReconnectChannelGone, restore.ChannelName), NoticeKind.Warning);
+                else addNotice(TextFormat.Of(Strings.Status_ReconnectChannelGone, restore.ChannelName), NoticeKind.Warning);
             }
             // server mute comes from the server (Package 85)
             if (restore.State.IsQuiet) _ = server.SelfState.RestoreSelfStateAsync(restore.State, restore.MutedBeforeDeafen);
@@ -395,7 +399,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     {
         if (!IsReconnecting || reconnector?.NextAttemptAt is not { } at) return;
         var left = Math.Max(1, (int)Math.Ceiling((at - time.GetUtcNow()).TotalSeconds));
-        setStatus(string.Format(CultureInfo.CurrentCulture, Strings.Status_Reconnecting, left));
+        setStatus(TextFormat.Of(Strings.Status_Reconnecting, left));
     }
 
     void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs args) => engineSync.SyncConnection();

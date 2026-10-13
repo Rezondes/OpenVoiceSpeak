@@ -16,5 +16,5 @@ internal sealed class LogHitViewModel(LogHit hit, string title)
     /// <summary>The file's source as shown.</summary>
     public string Title { get; } = title;
     /// <summary>The line number as shown.</summary>
-    public string LineText => string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogLine, Line);
+    public string LineText => TextFormat.Of(Strings.Ui_LogLine, Line);
 }

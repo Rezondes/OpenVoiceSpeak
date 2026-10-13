@@ -33,7 +33,9 @@ internal static class RestartSchedule
                 {
                     var next = FindNext(time.GetUtcNow(), at, time.LocalTimeZone);
                     if (logged != (on, at))
+                        #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
                         logs.Server.AutoRestartScheduled(at, TimeZoneInfo.ConvertTime(next, time.LocalTimeZone));
+                        #pragma warning restore CA1873
                     wait = next - time.GetUtcNow();
                 }
                 else if (logged is { On: true })

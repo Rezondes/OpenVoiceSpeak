@@ -43,21 +43,21 @@ public class LocalizationTests
         Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(ReasonCodes.PermissionDenied));
         Assert.Equal("You don't have the right to do that.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.PermissionDenied)));
         Assert.Equal("Mouse button 4", TestCulture.With("en-US", () => OVS.Client.Input.VirtualKeys.Localize(OVS.Client.Input.VirtualKeys.XButton1)));
-        Assert.Equal("Enter full channels", TestCulture.With("en-US", () => PermissionLabels.All.Last().Label));
+        Assert.Equal("Enter full channels", TestCulture.With("en-US", () => PermissionLabels.All[^1].Label));
         // Package 75: download and upload of backups
         Assert.Equal("Das Backup ist grösser als 50 MB.", ErrorTexts.For(ReasonCodes.BackupTooLarge));
         Assert.Equal("The backup is larger than 50 MB.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.BackupTooLarge)));
         Assert.Equal("Upload and restore ...", TestCulture.With("en-US", () => Strings.Ui_UploadAndRestore));
-        Assert.Equal("Uploading: 42 %", TestCulture.With("en-US", () => string.Format(CultureInfo.InvariantCulture, Strings.Backup_Uploading, 42)));
+        Assert.Equal("Uploading: 42 %", TestCulture.With("en-US", () => TextFormat.Of(Strings.Backup_Uploading, 42)));
         // Package 81: the log viewer
         Assert.Equal("Logs ansehen", PermissionLabels.All.Single(choice => choice.Value == OVS.Shared.Permissions.Permission.LogsView).Label);
         Assert.Equal("View logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(choice => choice.Value == OVS.Shared.Permissions.Permission.LogsView).Label));
-        Assert.Equal("Page 2 of 3", TestCulture.With("en-US", () => string.Format(CultureInfo.InvariantCulture, Strings.Ui_LogPage, 2, 3)));
+        Assert.Equal("Page 2 of 3", TestCulture.With("en-US", () => TextFormat.Of(Strings.Ui_LogPage, 2, 3)));
         // Package 82: the log download
         Assert.Equal("Download logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(choice => choice.Value == OVS.Shared.Permissions.Permission.LogsDownload).Label));
         Assert.Equal("Die Auswahl ist grösser als 200 MB. Wähle einen kürzeren Zeitraum.", ErrorTexts.For(ReasonCodes.LogsTooLarge));
         Assert.Equal("The selection is larger than 200 MB. Choose a shorter period.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.LogsTooLarge)));
-        Assert.Equal("Downloading logs: 42 %", TestCulture.With("en-US", () => string.Format(CultureInfo.InvariantCulture, Strings.Logs_Downloading, 42)));
+        Assert.Equal("Downloading logs: 42 %", TestCulture.With("en-US", () => TextFormat.Of(Strings.Logs_Downloading, 42)));
         // Package 97: the waiting states
         Assert.Equal("Keine Antwort vom Server. Versuche es noch einmal.", Strings.Pending_NoAnswer);
         Assert.Equal("No answer from the server. Please try again.", TestCulture.With("en-US", () => Strings.Pending_NoAnswer));

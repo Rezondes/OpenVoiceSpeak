@@ -66,7 +66,7 @@ internal sealed partial class UpdateFlow : ObservableObject
         if (result.Error is { } error)
         {
             log.UpdateCheckFailed(error);
-            return string.Format(CultureInfo.CurrentCulture, Strings.Update_CheckFailed, error);
+            return TextFormat.Of(Strings.Update_CheckFailed, error);
         }
         if (result.Offer is not { } offer)
         {
@@ -74,9 +74,9 @@ internal sealed partial class UpdateFlow : ObservableObject
             return Strings.Update_Latest;
         }
         log.UpdateAvailable(offer.Version, offer.Tag);
-        if (Install is not { } install || !await ask(offer)) return string.Format(CultureInfo.CurrentCulture, Strings.Update_Available, offer.Version);
+        if (Install is not { } install || !await ask(offer)) return TextFormat.Of(Strings.Update_Available, offer.Version);
 
-        setStatus(string.Format(CultureInfo.CurrentCulture, Strings.Update_Downloading, offer.Version));
+        setStatus(TextFormat.Of(Strings.Update_Downloading, offer.Version));
         log.UpdateInstalling(offer.Version);
         Progress = new UpdateProgress(offer.Version, UpdatePhase.Downloading);
         string? failure;

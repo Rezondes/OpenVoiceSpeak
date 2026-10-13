@@ -139,10 +139,14 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     // ---- About (Package 42) ----
 
     /// <summary>The name and the version.</summary>
+    #pragma warning disable CA1822 // bound from XAML, which reads instance properties
     public string AppVersion => $"OpenVoiceSpeak {BuildInfo.Current.Version}";
+    #pragma warning restore CA1822
     /// <summary>The build's commit and date, or that it is a local build.</summary>
+    #pragma warning disable CA1822 // bound from XAML, which reads instance properties
     public string BuildDetails => BuildInfo.Current is { IsCi: true } build
-        ? string.Format(CultureInfo.CurrentCulture, Strings.About_Build, build.ShortCommit, build.BuildTime.ToLocalTime())
+    #pragma warning restore CA1822
+        ? TextFormat.Of(Strings.About_Build, build.ShortCommit, build.BuildTime.ToLocalTime())
         : Strings.About_LocalBuild;
 
     /// <summary>The colour themes to choose from.</summary>
@@ -284,8 +288,8 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     string? KeyConflict =>
         KeyBindings.GroupBy(keyBinding => keyBinding.Binding.Chord).Where(grouping => grouping.Count() > 1).Select(grouping => grouping.Select(keyBinding => keyBinding.Binding.Action).Distinct().ToList())
             .Select(actions => actions.Count > 1
-                ? string.Format(CultureInfo.CurrentCulture, Strings.Keys_Conflict, KeyActionLabels.Localize(actions[0]), KeyActionLabels.Localize(actions[1]))
-                : string.Format(CultureInfo.CurrentCulture, Strings.Keys_Duplicate, KeyActionLabels.Localize(actions[0])))
+                ? TextFormat.Of(Strings.Keys_Conflict, KeyActionLabels.Localize(actions[0]), KeyActionLabels.Localize(actions[1]))
+                : TextFormat.Of(Strings.Keys_Duplicate, KeyActionLabels.Localize(actions[0])))
             .FirstOrDefault();
 
     /// <summary>Two bindings use the same chord.</summary>

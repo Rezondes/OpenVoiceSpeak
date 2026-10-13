@@ -95,7 +95,7 @@ public sealed class UpdateFlowTests
         var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Single(http.Requests);
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_Available, "280926.0b2c"), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_Available, "280926.0b2c"), answer);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class UpdateFlowTests
 
         var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_CheckFailed, "no network"), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_CheckFailed, "no network"), answer);
         Assert.Equal(["Update check failed: no network"], logLines);
     }
 
@@ -172,7 +172,7 @@ public sealed class UpdateFlowTests
 
         var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_Available, Offer.Version), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_Available, Offer.Version), answer);
         Assert.Equal([AvailableLine], logLines);
         Assert.Equal(0, installs);
         Assert.Empty(statuses);
@@ -193,7 +193,7 @@ public sealed class UpdateFlowTests
         var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal([Offer.Version], asked);
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_Available, Offer.Version), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_Available, Offer.Version), answer);
         Assert.Equal(0, installs);
         Assert.Empty(statuses);
     }
@@ -212,7 +212,7 @@ public sealed class UpdateFlowTests
         var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal(0, asked);
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_Available, Offer.Version), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_Available, Offer.Version), answer);
         Assert.Empty(statuses);
         Assert.Empty(shownProgress);
     }
@@ -237,7 +237,7 @@ public sealed class UpdateFlowTests
 
         var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_Available, Offer.Version), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_Available, Offer.Version), answer);
         Assert.Equal([AvailableLine], logLines);
     }
 
@@ -259,7 +259,7 @@ public sealed class UpdateFlowTests
 
         Assert.Equal(1, asked);
         Assert.Equal(1, installs);
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_Available, Offer.Version), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_Available, Offer.Version), answer);
     }
 
     [Fact]
@@ -278,7 +278,7 @@ public sealed class UpdateFlowTests
 
         Assert.Single(http.Requests);
         Assert.Equal(0, asked);
-        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Update_Available, "280926.0b2c"), answer);
+        Assert.Equal(TextFormat.Of(Strings.Update_Available, "280926.0b2c"), answer);
     }
 
     [Fact]
@@ -320,7 +320,7 @@ public sealed class UpdateFlowTests
         Assert.Equal(Strings.Update_Starting, answer);
         Assert.Equal([new UpdateProgress(Offer.Version, UpdatePhase.Downloading), halfway, null], shownProgress);
         Assert.Equal([true, true, false], updatingWhileShown);
-        Assert.Equal([string.Format(CultureInfo.InvariantCulture, Strings.Update_Downloading, Offer.Version)], statuses);
+        Assert.Equal([TextFormat.Of(Strings.Update_Downloading, Offer.Version)], statuses);
         Assert.Equal([AvailableLine, $"Installing update {Offer.Version}"], logLines);
         Assert.Empty(warnings);
     }

@@ -254,7 +254,7 @@ internal sealed class DeviceLifecycle
         }
         catch (Exception exception) // a background thread must not take the client down: the user gets a notice instead
         {
-            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_MicFailed, exception.Message));
+            warnings.Add(TextFormat.Of(Strings.Audio_MicFailed, exception.Message));
         }
         if (warnings.Count > 0) report(warnings);
     }
@@ -269,7 +269,7 @@ internal sealed class DeviceLifecycle
         }
         catch (Exception exception) // mixing goes on without a speaker instead of the thread taking the client down
         {
-            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_SpeakerFailed, exception.Message));
+            warnings.Add(TextFormat.Of(Strings.Audio_SpeakerFailed, exception.Message));
         }
         if (warnings.Count > 0) report(warnings);
     }
@@ -298,7 +298,7 @@ internal sealed class DeviceLifecycle
         catch (Exception exception) // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
         {
             CaptureSource.Close();
-            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_MicFailed, exception.Message));
+            warnings.Add(TextFormat.Of(Strings.Audio_MicFailed, exception.Message));
             if (device) micEndpoint.OpenFailed();
         }
         finally
@@ -320,7 +320,7 @@ internal sealed class DeviceLifecycle
         }
         catch (Exception exception) // a device that cannot open throws (IAudioHardware)
         {
-            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_SpeakerFailed, exception.Message));
+            warnings.Add(TextFormat.Of(Strings.Audio_SpeakerFailed, exception.Message));
             speakerEndpoint.OpenFailed();
         }
         finally

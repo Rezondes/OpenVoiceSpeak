@@ -73,8 +73,8 @@ internal sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnli
 
     /// <summary>The longest running ban.</summary>
     public string BanText => Bans.OrderBy(banInfo => banInfo.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""
-        : string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanDetail, ban.ExpiresAt is { } until ? string.Format(CultureInfo.CurrentCulture, Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever)
-          + (ban.Reason.Length > 0 ? ". " + string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanReason, ban.Reason) : "");
+        : TextFormat.Of(Strings.Ui_BanDetail, ban.ExpiresAt is { } until ? TextFormat.Of(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever)
+          + (ban.Reason.Length > 0 ? ". " + TextFormat.Of(Strings.Ui_BanReason, ban.Reason) : "");
 
     /// <summary>Users saved before Package 70 have no statistics yet (LoginCount 0): shown as unknown.</summary>
     bool HasStats => Info.LoginCount > 0;

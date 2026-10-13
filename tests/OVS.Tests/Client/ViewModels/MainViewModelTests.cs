@@ -75,13 +75,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
     Task<T> OnUiUntilAsync<T>(Func<T> read, Func<T, bool> done) => ui.ReadUntilAsync(read, done);
 
     /// <summary>Presses "Abbrechen" of a running reconnect series.</summary>
-    Task CancelReconnectAsync() => OnUiAsync(() =>
+    Task<int> CancelReconnectAsync() => OnUiAsync(() =>
     {
         viewModel.Connection.CancelReconnectCommand.Execute(null);
         return 0;
     });
 
-    Task ConnectAsync(bool saveBookmark) =>
+    Task<object?> ConnectAsync(bool saveBookmark) =>
         ui.InvokeAsync<object?>(async () =>
         {
             await viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, saveBookmark));
@@ -408,10 +408,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     // ---- Package 40: bookmarks in the sidebar ----
 
-    async Task<TestServer> LockedServerAsync() => await TestServer.StartAsync(password: "richtig");
+    static async Task<TestServer> LockedServerAsync() => await TestServer.StartAsync(password: "richtig");
 
     /// <summary>Like a click in the sidebar: the bookmark is one of the saved ones.</summary>
-    Task ConnectBookmarkAsync(Bookmark bookmark) => ui.InvokeAsync<object?>(async () =>
+    Task<object?> ConnectBookmarkAsync(Bookmark bookmark) => ui.InvokeAsync<object?>(async () =>
     {
         viewModel.Settings.Bookmarks.Add(bookmark);
         await viewModel.Connection.ConnectBookmarkAsync(bookmark);
