@@ -8028,14 +8028,6 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.Eventually:Thread.Sleep",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Collections/CollectionSyncTests.cs|CollectionSyncTests.Pass:Thread.Sleep",
-    "Count": 1
-  },
-  {
     "Key": "RL603|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.FullFlow_Linking_PttAndLinkPtt:Task.Delay",
     "Count": 5
   },
