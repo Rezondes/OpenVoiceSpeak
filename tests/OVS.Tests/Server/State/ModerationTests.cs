@@ -50,7 +50,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task KickSession_TargetDisconnectedOthersUserLeft()
+    public async Task KickSession_Target_DisconnectedAndOthersSeeUserLeft()
     {
         var gId = guest.Id;
         await moderator.SendAsync(new KickSession(gId, "Spam"));
@@ -96,7 +96,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ExpiredBan_HandshakeSucceeds()
+    public async Task Handshake_BanExpired_Succeeds()
     {
         await moderator.SendAsync(new BanSession(guest.Id, "kurz", 10, false));
         await guest.WaitForAsync<Disconnected>();
@@ -105,7 +105,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Unban_AllowsReconnect()
+    public async Task Unban_BannedUser_CanReconnect()
     {
         await moderator.SendAsync(new BanSession(guest.Id, "x", null, false));
         await guest.WaitForAsync<Disconnected>();
@@ -128,7 +128,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ServerMute_BroadcastsUserUpdated()
+    public async Task ServerMute_Set_BroadcastsUserUpdated()
     {
         await moderator.SendAsync(new SetSessionServerMute(guest.Id, true));
         Assert.True((await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id)).User.ServerMuted);
@@ -138,7 +138,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [InlineData("kick")]
     [InlineData("ban")]
     [InlineData("mute")]
-    public async Task ModeratorVsAdmin_PermissionDenied(string action)
+    public async Task Moderate_ModeratorOnAdmin_PermissionDenied(string action)
     {
         Request request = action switch
         {
@@ -216,7 +216,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ServerMute_NoVoiceBeforeWelcome()
+    public async Task ServerMute_BeforeWelcome_NoVoice()
     {
         await moderator.SendAsync(new SetSessionServerMute(guest.Id, true));
         await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id && userUpdated.User.ServerMuted);
@@ -291,7 +291,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Bans_SurviveRestart()
+    public async Task Bans_Restart_Survive()
     {
         await moderator.SendAsync(new BanSession(guest.Id, "x", null, false));
         await guest.WaitForAsync<Disconnected>();
@@ -468,7 +468,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive()
+    public async Task Unban_ActiveOrExpired_KeepsHistoryAdmitIgnoresIt()
     {
         await moderator.SendAsync(new BanSession(guest.Id, "weg", null, false));
         await guest.WaitForAsync<Disconnected>();
@@ -570,7 +570,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task EqualRanks_CannotActOnEachOther()
+    public async Task Moderate_EqualRanks_Refused()
     {
         await using var m2 = await ConnectInGroupAsync("mod2", GroupId("Moderator"));
         var lobby = admin.Welcome.Snapshot.DefaultChannelId;
@@ -611,7 +611,7 @@ public sealed class ModerationTests : IAsyncLifetime
     [InlineData("assign")]
     [InlineData("unassign")]
     [InlineData("delete")]
-    public async Task SelfTargeting_Denied(string action)
+    public async Task Moderate_Self_Denied(string action)
     {
         var lobby = admin.Welcome.Snapshot.DefaultChannelId;
         if (action == "unmute")
@@ -643,7 +643,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task LastAdmin_CannotBeBanned()
+    public async Task Ban_LastAdmin_Refused()
     {
         await admin.SendAsync(new BanSession(admin.Id, "x", null, false) { RequestId = "self" });
         Assert.Equal(ReasonCodes.LastAdmin, (await admin.ErrorAsync("self")).Code);
@@ -662,7 +662,7 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Unban_StrongerBannedUser_Denied_NoBanListWithoutBansView()
+    public async Task Unban_StrongerBannedUser_DeniedWithoutBanList()
     {
         await moderator.SendAsync(new BanSession(guest.Id, "x", null, false));
         await guest.WaitForAsync<Disconnected>();

@@ -95,7 +95,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CreateEdit_GroupLock_Validated_NotOnDefault()
+    public async Task GroupLock_CreateOrEdit_ValidatedAndNotOnDefault()
     {
         var raid = await CreateAsync("Raid", ModGroup, RaidGroup, RaidGroup);
         Assert.Equal(new[] { ModGroup, RaidGroup }.Order(), raid.AllowedGroupIds!.Order());
@@ -122,7 +122,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
 
     /// <summary>Package 93: a data file from before the lock loads without a new data version, every channel open.</summary>
     [Fact]
-    public void OldData_LoadsWithoutLock()
+    public void Load_OldData_NoLock()
     {
         var dir = Path.Combine(Path.GetTempPath(), "ovs-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -198,7 +198,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task LockChange_NobodyMovedOut()
+    public async Task LockChange_UsersInside_NobodyMovedOut()
     {
         var open = await CreateAsync("Offen");
         await JoinAsync(guest, open.Id);
@@ -242,7 +242,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Password_SetChangeRemove_HashedNeverSent_NotOnDefault()
+    public async Task ChannelPassword_SetChangeRemove_HashedNeverSentNotOnDefault()
     {
         var secret = await CreateWithPasswordAsync("Geheim", "geheim1");
         Assert.True(secret.HasPassword);
@@ -276,7 +276,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
         System.Text.Json.JsonSerializer.Deserialize<ServerData>(json, new System.Text.Json.JsonSerializerOptions(ProtocolJson.Options))!;
 
     [Fact]
-    public async Task Join_PasswordRequired_WrongRefused_BypassAndAdminJoin()
+    public async Task Join_PasswordLocked_WrongRefusedBypassAndAdminJoin()
     {
         var secret = await CreateWithPasswordAsync("Geheim", "geheim1");
         await using var client = await TestClient.ConnectAsync(server, "umgeher", bypassId);
@@ -289,7 +289,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task BothLocks_BypassSkipsOnlyPassword()
+    public async Task Join_BothLocks_BypassSkipsOnlyPassword()
     {
         var both = await CreateWithPasswordAsync("Beide", "geheim1", 0, RaidGroup);
         await using var client = await TestClient.ConnectAsync(server, "umgeher", bypassId);
@@ -316,7 +316,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
 
     /// <summary>Package 94 (A110): admins move anyone anywhere, past group lock, password and user limit at once.</summary>
     [Fact]
-    public async Task Admin_MovesGuestIntoFullGroupAndPasswordLockedChannel()
+    public async Task Move_AdminMovesGuest_IntoFullGroupAndPasswordLockedChannel()
     {
         var full = await CreateWithPasswordAsync("Voll", "geheim1", 1, RaidGroup);
         await JoinAsync(raider, full.Id, "geheim1");
@@ -353,7 +353,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task PasswordChange_NobodyMovedOut()
+    public async Task PasswordChange_UsersInside_NobodyMovedOut()
     {
         var open = await CreateAsync("Offen");
         await JoinAsync(guest, open.Id);

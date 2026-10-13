@@ -32,7 +32,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public async Task ReaderLockingTheFile_LineIsNotLost()
+    public async Task WriteServerLine_ReaderLocksTheFile_LineNotLost()
     {
         // Regression: File.ReadAllText (and editors) lock the file against writers; the line used to be dropped.
         var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), _ => { });
@@ -74,7 +74,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     // ---- ServerLogWriter itself ----
 
     [Fact]
-    public void ServerLine_GoesToConsoleAndFileOfThisStart()
+    public void WriteServerLine_Line_GoesToConsoleAndFileOfThisStart()
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
@@ -159,7 +159,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 
     /// <summary>Package 90: the console (docker logs) gets the same escaped line as the file, ANSI escape sequences included.</summary>
     [Fact]
-    public void ConsoleLine_EscapedLikeFile()
+    public void WriteServerLine_ControlCharacters_ConsoleEscapedLikeFile()
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
@@ -175,7 +175,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 
     /// <summary>Package 90: a chat message cannot forge a timestamped line on the console or in the file.</summary>
     [Fact]
-    public async Task ChatWithFakeLine_OneLineOnly()
+    public async Task ChannelLog_ChatWithFakeLine_StaysOneLine()
     {
         var id = ClientIdentity.Create(); // server-wide chat needs a right a guest lacks
         await using var server = await TestServer.StartAsync(TestServer.Grant(id, "Admin"));
@@ -197,7 +197,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public void OldFiles_DeletedAfterRetention()
+    public void CleanUp_OldFiles_DeletedAfterRetention()
     {
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
@@ -239,7 +239,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 
     /// <summary>Package 69: retention and daily files change while the server runs.</summary>
     [Fact]
-    public void RetentionChangedAtRuntime_NextCleanupUsesIt()
+    public void Update_RetentionChangedAtRuntime_NextCleanupUsesIt()
     {
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
@@ -258,7 +258,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public void RetentionZero_KeepsAll()
+    public void CleanUp_RetentionZero_KeepsAll()
     {
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
@@ -283,7 +283,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     // ---- what the server logs ----
 
     [Fact]
-    public async Task ConnectDisconnectRejected_Logged()
+    public async Task ServerLog_ConnectDisconnectRejected_Logged()
     {
         await using var server = await TestServer.StartAsync();
         var anna = await TestClient.ConnectAsync(server, "anna");
@@ -296,7 +296,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public async Task AdminActions_LoggedWithActor()
+    public async Task ServerLog_AdminActions_LoggedWithActor()
     {
         var adminId = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
@@ -334,7 +334,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public async Task JoinMoveLeave_LoggedInChannelLogs()
+    public async Task ChannelLog_JoinMoveLeave_Logged()
     {
         var adminId = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
@@ -390,7 +390,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public async Task TokenAndPassword_NeverInFiles()
+    public async Task Logs_TokenAndPassword_NeverInFiles()
     {
         await using var server = await TestServer.StartAsync();
         var token = server.State.PendingAdminToken!;
@@ -408,7 +408,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     }
 
     [Fact]
-    public async Task RenamedChannel_SameFolderAfterRestart()
+    public async Task ChannelLog_RenamedChannel_SameFolderAfterRestart()
     {
         var adminId = ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));

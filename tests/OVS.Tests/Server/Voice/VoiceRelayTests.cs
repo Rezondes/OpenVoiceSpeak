@@ -60,7 +60,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task EndToEnd_SameChannel_Received_OtherChannel_Not()
+    public async Task Voice_SameOrOtherChannel_ReceivedOnlyInSame()
     {
         await va.HelloAsync();
         await vb.HelloAsync();
@@ -97,7 +97,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task InvalidPackets_DroppedNoResponse()
+    public async Task VoicePacket_Invalid_DroppedWithoutResponse()
     {
         await va.HelloAsync();
         await vb.HelloAsync();
@@ -140,7 +140,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task VoiceWithoutFrameNumber_Dropped()
+    public async Task Voice_WithoutFrameNumber_Dropped()
     {
         await va.HelloAsync();
         await vb.HelloAsync();
@@ -151,7 +151,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
 
     /// <summary>Package 34: a muted lobby relays nothing, not even the admin's link speech; link speech into a muted channel arrives.</summary>
     [Fact]
-    public async Task MutedChannel_NoFramesArrive()
+    public async Task Voice_MutedChannel_NoFramesArrive()
     {
         var lobby = first.Welcome.Snapshot.DefaultChannelId;
         await first.SendAsync(new LinkChannels(lobby, other));
@@ -174,7 +174,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ServerMutedSender_NotRelayed()
+    public async Task Voice_ServerMutedSender_NotRelayed()
     {
         await va.HelloAsync();
         await vb.HelloAsync();
@@ -190,7 +190,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     /// the echoed time and that uplink loss; the downlink loss the client reports stays on its session.
     /// </summary>
     [Fact]
-    public async Task UplinkLoss_ReportedInPing()
+    public async Task Ping_UplinkLoss_Reported()
     {
         var time = new ManualTimeProvider(); // 20 ms per frame, as the sender's clock would run
         await using var own = await TestServer.StartAsync(time: time);
@@ -240,7 +240,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     /// the way in reaches them from the sender's copy. On a manual clock, 20 ms per frame.
     /// </summary>
     [Fact]
-    public async Task Server_AddsCopyPerLossyRecipient()
+    public async Task Relay_LossyRecipient_GetsCopy()
     {
         var time = new ManualTimeProvider();
         await using var own = await TestServer.StartAsync(time: time);
@@ -327,7 +327,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     /// the channel Other is linked, with c (lossy) and d.
     /// </summary>
     [Fact]
-    public async Task Server_Copies_SameRoute_RecentOnly_Charged()
+    public async Task Relay_Copies_SameRouteRecentOnlyAndCharged()
     {
         var time = new ManualTimeProvider();
         await using var own = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"), time: time);
@@ -469,7 +469,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
 
     /// <summary>Package 141 (AC3): rights and routing over TCP are those of UDP (same channel, link, server mute, deafened).</summary>
     [Fact]
-    public async Task Tcp_RoutingLikeUdp()
+    public async Task VoiceOverTcp_Routing_LikeUdp()
     {
         foreach (var client in new[] { first, second, third }) await SwitchToTcpAsync(server, client);
 
@@ -503,7 +503,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     /// arrives twice. On a manual clock, 20 ms per frame.
     /// </summary>
     [Fact]
-    public async Task TcpAndUdp_Mixed()
+    public async Task Voice_TcpAndUdpMixed_Relayed()
     {
         var time = new ManualTimeProvider();
         await using var own = await TestServer.StartAsync(time: time);
@@ -566,7 +566,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     /// neither relayed nor moves the session to TCP again. A newer one (also the empty switch with the next number) does.
     /// </summary>
     [Fact]
-    public async Task Tcp_StaleVoiceUp_AfterUdp_Ignored()
+    public async Task VoiceUp_StaleAfterUdp_Ignored()
     {
         await va.HelloAsync();
         await vb.HelloAsync();

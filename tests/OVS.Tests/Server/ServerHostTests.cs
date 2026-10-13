@@ -11,7 +11,7 @@ namespace OVS.Tests.Server;
 public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: true)
 {
     [Fact]
-    public async Task ShuttingDown_HandshakeRejectedWithTheReason()
+    public async Task Handshake_WhileShuttingDown_RejectedWithTheReason()
     {
         // Regression: a client connecting right after the restart notice was admitted into the run that was going away.
         await using var server = await TestServer.StartAsync();
@@ -48,7 +48,7 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
     }
 
     [Fact]
-    public async Task AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles()
+    public async Task AutoRestart_RunEnds_ClientsToldAndNewRunServesWithOwnLogs()
     {
         var output = new ConcurrentQueue<string>();
         using var stop = new CancellationTokenSource();

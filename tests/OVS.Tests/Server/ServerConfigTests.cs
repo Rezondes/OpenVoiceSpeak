@@ -56,7 +56,7 @@ public sealed class ServerConfigTests : IDisposable
     }
 
     [Fact]
-    public void Load_EnvOverridesFile()
+    public void Load_EnvAndFile_EnvWins()
     {
         WriteFile("""{"port":7100}""");
         var config = ServerConfig.Load(Env(("OVS_PORT", "7200"), ("OVS_PASSWORD", "geheim")));
@@ -93,7 +93,7 @@ public sealed class ServerConfigTests : IDisposable
     }
 
     [Fact]
-    public void Load_AutoRestart_OffByDefault_TimeDefaultsTo4am()
+    public void Load_NoAutoRestartSet_OffWithTimeAt4am()
     {
         Assert.Null(ServerConfig.Load(Env(("OVS_AUTO_RESTART_TIME", "03:30:00"))).AutoRestartAt);
         Assert.Equal(new TimeOnly(4, 0, 0), ServerConfig.Load(Env(("OVS_AUTO_RESTART", "an"))).AutoRestartAt);
@@ -103,7 +103,7 @@ public sealed class ServerConfigTests : IDisposable
     }
 
     [Fact]
-    public void Load_AutoRestartAndLogRotation_FromFile_EnvWins()
+    public void Load_AutoRestartAndLogRotationInFileAndEnv_EnvWins()
     {
         WriteFile("""{"autoRestart":true,"autoRestartTime":"05:15:00","logRotateDaily":false}""");
         var config = ServerConfig.Load(Env());
@@ -167,7 +167,7 @@ public sealed class ServerConfigTests : IDisposable
 
     /// <summary>Package 69: after the first start the values live in server-data.json; a differing variable is only noted.</summary>
     [Fact]
-    public void EnvDiffersFromStored_HintInLog()
+    public void Start_EnvDiffersFromStored_HintInLog()
     {
         var lines = new List<string>();
         var logs = new ServerLogWriter(dir, 0, TimeProvider.System, lines.Add);

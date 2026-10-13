@@ -54,7 +54,7 @@ public sealed class LogCommandTests
     static void WriteLines(string path, IEnumerable<string> lines) => File.WriteAllLines(path, lines);
 
     [Fact]
-    public async Task ListLogs_ServerAndChannelFiles_NewestFirst_WithNames()
+    public async Task ListLogs_ServerAndChannelFiles_NewestFirstWithNames()
     {
         var time = new ManualTimeProvider(new DateTimeOffset(2026, 3, 1, 10, 0, 0, TimeSpan.Zero));
         var (server, admin) = await StartWithAdminAsync(time);
@@ -118,7 +118,7 @@ public sealed class LogCommandTests
     }
 
     [Fact]
-    public async Task SearchLogs_AllFiles_CaseInsensitive_Max500_Truncated()
+    public async Task SearchLogs_AllFiles_CaseInsensitiveCappedAt500()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -162,7 +162,7 @@ public sealed class LogCommandTests
     }
 
     [Fact]
-    public async Task Logs_RequireLogsView_UnknownIdRejected_NoPathTraversal()
+    public async Task ReadLog_WithoutRightUnknownOrTraversal_Rejected()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -195,7 +195,7 @@ public sealed class LogCommandTests
     }
 
     [Fact]
-    public async Task LongLine_CutAt2000()
+    public async Task ReadLog_LongLine_CutAt2000()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -225,7 +225,7 @@ public sealed class LogCommandTests
     }
 
     [Fact]
-    public async Task Search_DoesNotHoldStateLock()
+    public async Task SearchLogs_Running_StateLockFree()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -252,7 +252,7 @@ public sealed class LogCommandTests
 
     /// <summary>Package 90: only a search that is actually run leaves a log line, a refused one (RateLimited) does not.</summary>
     [Fact]
-    public async Task RefusedSearch_NotLogged()
+    public async Task SearchLogs_Refused_NotLogged()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -312,7 +312,7 @@ public sealed class LogCommandTests
     }
 
     [Fact]
-    public async Task DownloadSingleFile_ByteIdenticalSnapshot()
+    public async Task DownloadLog_SingleFile_ByteIdenticalSnapshot()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;

@@ -31,7 +31,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
     }
 
     [Fact]
-    public void Save_ThenLoad_RoundTrips_NoTempLeft()
+    public void Save_ThenLoad_RoundTripsWithNoTempLeft()
     {
         var store = new DataStore(FilePath);
         var data = store.LoadOrCreate(() => ServerData.CreateDefault(Config));
@@ -184,7 +184,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
 
     /// <summary>Package 80: bans saved before the history keep working; the new values start empty ("unknown" in the client).</summary>
     [Fact]
-    public void OldBans_LoadWithUnknownNewFields()
+    public void Load_OldBansWithUnknownNewFields_Loads()
     {
         var store = new DataStore(FilePath);
         var data = ServerData.CreateDefault(Config);
@@ -209,7 +209,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
 
     /// <summary>Package 76 (AC6): an update to data version 4 keeps every possibility by granting the new view rights once.</summary>
     [Fact]
-    public void Migration_GrantsViewRightsFromOldRights()
+    public void Migration_OldRights_GrantViewRights()
     {
         var store = new DataStore(FilePath);
         var data = ServerData.CreateDefault(Config);
@@ -242,7 +242,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
 
     /// <summary>Package 89 (A101): an update to data version 5 gives BackupsManage once to every group that has ServerConfig.</summary>
     [Fact]
-    public void Migration_ServerConfigGroupsGetBackupsManage()
+    public void Migration_ServerConfigGroups_GetBackupsManage()
     {
         var store = new DataStore(FilePath);
         var data = ServerData.CreateDefault(Config);
@@ -277,7 +277,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
     /// included, so the update to data version 6 takes it away from every other group once.
     /// </summary>
     [Fact]
-    public void Migration_OnlyAdminGetsChannelPasswordBypass()
+    public void Migration_ChannelPasswordBypass_OnlyAdminGetsIt()
     {
         var store = new DataStore(FilePath);
         var data = ServerData.CreateDefault(Config);
@@ -299,7 +299,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
     }
 
     [Fact]
-    public void NewServer_StartsWithConfigValues()
+    public void NewServer_Start_UsesConfigValues()
     {
         var config = Config with { MaxUsers = 12, LogDays = 0, AutoRestartAt = new TimeOnly(5, 0) };
         var data = ServerData.CreateDefault(config);

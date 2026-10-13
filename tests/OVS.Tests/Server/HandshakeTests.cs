@@ -14,7 +14,7 @@ namespace OVS.Tests.Server;
 public class HandshakeTests
 {
     [Fact]
-    public async Task ServerCertificate_LoadOrCreate_Twice_SameThumbprint()
+    public async Task ServerCertificate_LoadOrCreateTwice_SameThumbprint()
     {
         var dir = Path.Combine(Path.GetTempPath(), "ovs-cert-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -33,7 +33,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task ValidHandshake_ReceivesWelcome()
+    public async Task Handshake_Valid_ReceivesWelcome()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.ConnectAsync(server, "anna");
@@ -42,7 +42,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task WrongSignature_RejectedBadSignature()
+    public async Task Handshake_WrongSignature_RejectedBadSignature()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
@@ -52,7 +52,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task SignatureBoundToOtherCert_RejectedBadSignature()
+    public async Task Handshake_SignatureForOtherCert_RejectedBadSignature()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
@@ -61,7 +61,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task OldProtocolVersion_RejectedVersionMismatch()
+    public async Task Handshake_OldProtocolVersion_RejectedVersionMismatch()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
@@ -75,7 +75,7 @@ public class HandshakeTests
     [InlineData("pw", null, false)]
     [InlineData("", "egal", true)]
     [InlineData("", null, true)]
-    public async Task Password_Cases(string serverPassword, string? given, bool accepted)
+    public async Task Handshake_ServerAndGivenPassword_AcceptedOnlyWhenTheyMatch(string serverPassword, string? given, bool accepted)
     {
         await using var server = await TestServer.StartAsync(password: serverPassword);
         await using var client = await TestClient.OpenAsync(server.Port);
@@ -85,7 +85,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task RepeatedWrongPasswords_BlockSourceWithGrowingDelay()
+    public async Task Handshake_RepeatedWrongPasswords_BlockSourceWithGrowingDelay()
     {
         var clock = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(password: "pw", time: clock);
@@ -110,7 +110,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task MaxUsersReached_RejectedServerFull()
+    public async Task Handshake_MaxUsersReached_RejectedServerFull()
     {
         await using var server = await TestServer.StartAsync(maxUsers: 1);
         await using var first = await TestClient.ConnectAsync(server);
@@ -123,7 +123,7 @@ public class HandshakeTests
     [InlineData("   ")]
     [InlineData("123456789012345678901234567890123")]
     [InlineData("a\u0007b")]
-    public async Task InvalidNickname_Rejected(string nickname)
+    public async Task Handshake_InvalidNickname_Rejected(string nickname)
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.OpenAsync(server.Port);
@@ -131,7 +131,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task DuplicateNickname_RejectedNicknameTaken()
+    public async Task Handshake_DuplicateNickname_RejectedNicknameTaken()
     {
         await using var server = await TestServer.StartAsync();
         await using var first = await TestClient.ConnectAsync(server, "Anna");
@@ -140,7 +140,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task SameIdentityTwice_OldSessionReplaced()
+    public async Task Handshake_SameIdentityTwice_OldSessionReplaced()
     {
         await using var server = await TestServer.StartAsync();
         await using var old = await TestClient.ConnectAsync(server, "anna");
@@ -154,7 +154,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task NoHandshake_ClosedAfterTimeout()
+    public async Task Connection_NoHandshake_ClosedAfterTimeout()
     {
         await using var server = await TestServer.StartAsync(handshakeTimeout: TimeSpan.FromMilliseconds(200));
         await using var client = await TestClient.OpenAsync(server.Port);
@@ -162,7 +162,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task NoPing_SessionRemovedAfterIdleTimeout()
+    public async Task Session_NoPing_RemovedAfterIdleTimeout()
     {
         await using var server = await TestServer.StartAsync(idleTimeout: TimeSpan.FromMilliseconds(300));
         await using var client = await TestClient.ConnectAsync(server);
@@ -171,7 +171,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task Ping_KeepsSessionAliveAndIsAnswered()
+    public async Task Session_Pings_KeptAliveAndAnswered()
     {
         // The idle timeout runs on real time: a wide margin between pings (a ping round trip can take
         // hundreds of ms on a loaded CI runner), and enough rounds to outlast the timeout several times.
@@ -187,7 +187,7 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task Startup_LogsAdminToken()
+    public async Task Startup_NoAdmin_LogsAdminToken()
     {
         await using var server = await TestServer.StartAsync();
         Assert.Contains(server.Log, line => line.Contains("Admin-Token: " + server.State.PendingAdminToken));
@@ -233,7 +233,7 @@ public class HandshakeTests
 
     /// <summary>Package 91: no password stays no password, stored as none and open to everyone.</summary>
     [Fact]
-    public async Task EmptyPassword_StillOpenServer()
+    public async Task Handshake_EmptyPasswordSet_ServerStaysOpen()
     {
         await using var server = await TestServer.StartAsync(password: "");
         Assert.Null(OnDisk(server).Settings.StoredPassword);

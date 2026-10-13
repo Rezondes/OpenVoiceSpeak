@@ -18,7 +18,7 @@ namespace OVS.Tests.Server.State;
 public class AdminCommandTests
 {
     [Fact]
-    public void AdminToken_Redeem_Once_Valid_Twice_Invalid()
+    public void AdminToken_RedeemedTwice_OnlyFirstValid()
     {
         var token = new AdminToken();
         var value = token.Generate();
@@ -29,7 +29,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task NoAdmin_TokenGenerated_AdminExists_NoToken()
+    public async Task AdminToken_AdminExistsOrNot_GeneratedOnlyWithout()
     {
         await using (var fresh = await TestServer.StartAsync())
             Assert.NotNull(fresh.State.PendingAdminToken);
@@ -81,7 +81,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task UpdateGroup_ChangesOnlineMemberPermissions()
+    public async Task UpdateGroup_OnlineMember_PermissionsChange()
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
@@ -143,7 +143,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task Unassign_OfflineUser_And_ListShowsNickname()
+    public async Task Unassign_OfflineUser_ListShowsNickname()
     {
         var admin = ClientIdentity.Create();
         var modGroup = Guid.Empty;
@@ -163,7 +163,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task RedeemedAdmin_And_Password_SurviveRestart()
+    public async Task RedeemedAdminAndPassword_Restart_Survive()
     {
         var server = await TestServer.StartAsync();
         var id = ClientIdentity.Create();
@@ -188,7 +188,7 @@ public class AdminCommandTests
     [InlineData("updateAdmin")]
     [InlineData("deleteAdmin")]
     [InlineData("deleteGuest")]
-    public async Task ProtectedGroups_Errors(string action)
+    public async Task ProtectedGroups_Changed_Refused(string action)
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
@@ -205,7 +205,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task DeleteGroup_RemovedFromUsers()
+    public async Task DeleteGroup_AssignedUsers_LoseIt()
     {
         var admin = ClientIdentity.Create();
         var mod = ClientIdentity.Create();
@@ -226,7 +226,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task Assign_OfflineUser_Persisted_AndListed()
+    public async Task Assign_OfflineUser_PersistedAndListed()
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(serverData =>
@@ -302,7 +302,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task UpdateSettings_NewPasswordAppliesToNextHandshake()
+    public async Task UpdateSettings_NewPassword_AppliesToNextHandshake()
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
@@ -393,7 +393,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task ServerConfigGranted_LimitsDelivered()
+    public async Task Settings_ServerConfigGranted_LimitsDelivered()
     {
         var admin = ClientIdentity.Create();
         var guest = ClientIdentity.Create();
@@ -414,7 +414,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task AdminChanges_SurviveRestart()
+    public async Task AdminChanges_Restart_Survive()
     {
         var admin = ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
@@ -487,7 +487,7 @@ public class AdminCommandTests
 
     /// <summary>Package 71: the overview shows a user's active bans, also to someone who may not see the ban list.</summary>
     [Fact]
-    public async Task ListUsers_IncludesActiveBans()
+    public async Task ListUsers_ActiveBans_Included()
     {
         var viewer = ClientIdentity.Create();
         var guest = ClientIdentity.Create();
@@ -533,7 +533,7 @@ public class AdminCommandTests
 
     [Theory]
     [MemberData(nameof(RightPerRequest))]
-    public async Task EachAdminRequest_RequiresItsOwnRight(string action, Permission right)
+    public async Task AdminRequests_WithoutTheirRight_Refused(string action, Permission right)
     {
         Assert.Equal(ReasonCodes.PermissionDenied, await ErrorOfAsync(action, Permission.All & ~right));
         Assert.NotEqual(ReasonCodes.PermissionDenied, await ErrorOfAsync(action, Permission.All));
@@ -581,7 +581,7 @@ public class AdminCommandTests
     }
 
     [Fact]
-    public async Task GroupsCreateOnly_CannotEditOrDelete()
+    public async Task GroupsCreateOnly_EditOrDelete_Refused()
     {
         var creator = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(serverData =>

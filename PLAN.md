@@ -587,7 +587,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~OVS.Tests.Protocol"`
 2. `"Load_FileValues_AreUsed"` (AC2)
    - Gegeben: temporäres Verzeichnis mit `{"port":7100,"maxUsers":10}`
    - Erwartet: Port 7100, MaxUsers 10
-3. `"Load_EnvOverridesFile"` (AC3)
+3. `"Load_EnvAndFile_EnvWins"` (AC3)
    - Gegeben: Datei mit Port 7100, Umgebung mit `OVS_PORT=7200`
    - Erwartet: 7200
 4. `[Theory] "Load_InvalidValue_ThrowsNamingVariable"` mit den Werten aus AC4 (AC4)
@@ -679,20 +679,20 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerConfigTests"`
    - `"SaveLoad_KeepsFingerprint"`
    - `"Verify_OwnSignature_True"`
    - `"Verify_TamperedData_False"`
-2. `HandshakeTests.cs > "ServerCertificate_LoadOrCreate_Twice_SameThumbprint"` (AC12)
+2. `HandshakeTests.cs > "ServerCertificate_LoadOrCreateTwice_SameThumbprint"` (AC12)
 3. `HandshakeTests.cs`, jeweils gegen `TestServer` auf Port 0:
-   - `"ValidHandshake_ReceivesWelcome"` (AC1)
+   - `"Handshake_Valid_ReceivesWelcome"` (AC1)
    - `ClientNetTests > "ConnectAsync_WelcomeVoiceKeyNotBase64_ThrowsProtocolExceptionAndClosesTheSocket"`, `"ReadVoiceKey_NotBase64_ThrowsProtocolException"`, `"ReadVoiceKey_WrongLength_ThrowsProtocolException"` und `"ReadVoiceKey_ThirtyTwoBytes_ReturnsThemWhole"` (AC1)
-   - `"WrongSignature_RejectedBadSignature"` (AC2)
-   - `"SignatureBoundToOtherCert_RejectedBadSignature"` (AC3)
-   - `"OldProtocolVersion_RejectedVersionMismatch"` (AC4)
-   - `[Theory] "Password_Cases"`: gesetzt und richtig / gesetzt und falsch / gesetzt und fehlend / nicht gesetzt (AC5)
-   - `"MaxUsersReached_RejectedServerFull"` mit MaxUsers = 1 (AC6)
-   - `[Theory] "InvalidNickname_Rejected"` mit `""`, `"   "`, 33 Zeichen, `"a\u0007b"` sowie `"DuplicateNickname_RejectedNicknameTaken"` (AC7)
-   - `"SameIdentityTwice_OldSessionReplaced"` (AC8)
-   - `"NoHandshake_ClosedAfterTimeout"` mit Timeout 200 ms (AC9)
-   - `"NoPing_SessionRemovedAfterIdleTimeout"` mit Timeout 300 ms (AC10)
-   - `ServerTuningTests > "OverLimitConnection_ClosedBeforeTls"` (AC11)
+   - `"Handshake_WrongSignature_RejectedBadSignature"` (AC2)
+   - `"Handshake_SignatureForOtherCert_RejectedBadSignature"` (AC3)
+   - `"Handshake_OldProtocolVersion_RejectedVersionMismatch"` (AC4)
+   - `[Theory] "Handshake_ServerAndGivenPassword_AcceptedOnlyWhenTheyMatch"`: gesetzt und richtig / gesetzt und falsch / gesetzt und fehlend / nicht gesetzt (AC5)
+   - `"Handshake_MaxUsersReached_RejectedServerFull"` mit MaxUsers = 1 (AC6)
+   - `[Theory] "Handshake_InvalidNickname_Rejected"` mit `""`, `"   "`, 33 Zeichen, `"a\u0007b"` sowie `"Handshake_DuplicateNickname_RejectedNicknameTaken"` (AC7)
+   - `"Handshake_SameIdentityTwice_OldSessionReplaced"` (AC8)
+   - `"Connection_NoHandshake_ClosedAfterTimeout"` mit Timeout 200 ms (AC9)
+   - `"Session_NoPing_RemovedAfterIdleTimeout"` mit Timeout 300 ms (AC10)
+   - `ServerTuningTests > "Connection_OverLimit_ClosedBeforeTls"` (AC11)
      (Hinweis zur Referenz: Seit f598a4e wird eine Verbindung über dem Limit pro IP schon vor TLS geschlossen, statt `Rejected(TooManyConnections)` zu bekommen; der Test prüft das Schliessen.)
 4. Manueller Check zu AC14: `dotnet run --project src/OVS.Server` und die Logausgabe ansehen.
 
@@ -821,14 +821,14 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ShutdownTests"`, danach `d
 
 ### Tests (TDD)
 
-1. `PermissionRulesTests.cs > [Theory] "Effective_Cases"` (AC1)
+1. `PermissionRulesTests.cs > [Theory] "Effective_GroupSets_UnionOfRightsAdminAlwaysAll"` (AC1)
    - Fälle: keine Gruppe, Gast, Gast + Moderator, unbekannte ID, Admin
-2. `"DefaultGroups_HaveDocumentedPermissions"` (AC2)
-3. `[Theory] "CanSaveGroup_Cases"` (AC3, AC4). Tabelle aus Akteur-Rechten, alten Rechten, neuen Rechten und erwartetem Ergebnis. Enthält den Eskalationsfall: Akteur hat `GroupsManage` ohne `UserBan` und versucht, einer Gruppe `UserBan` zu geben -> falsch.
-4. `"AdminGroup_NotEditableNotDeletable"`, `"GuestGroup_NotDeletable_OtherGroupDeletable"` (AC5)
-5. `[Theory] "CanAssign_Cases"` (AC6)
-6. `[Theory] "CanActOn_Cases"` (AC7)
-7. `[Theory] "WouldRemoveLastAdmin_Cases"` (AC8)
+2. `"DefaultGroups_Created_HaveDocumentedPermissions"` (AC2)
+3. `[Theory] "CanSave_ActorAndGroupRights_OnlyWithinTheActorsOwn"` (AC3, AC4). Tabelle aus Akteur-Rechten, alten Rechten, neuen Rechten und erwartetem Ergebnis. Enthält den Eskalationsfall: Akteur hat `GroupsManage` ohne `UserBan` und versucht, einer Gruppe `UserBan` zu geben -> falsch.
+4. `"AdminGroup_EditOrDelete_Refused"`, `"GuestGroup_NotDeletable_OtherGroupDeletable"` (AC5)
+5. `[Theory] "CanAssign_ActorRights_NeedGroupsAssignAndTheGroupsRights"` (AC6)
+6. `[Theory] "CanActOn_ModeratorOnSpeakerOrAll_OnlyTheWeaker"` (AC7)
+7. `[Theory] "WouldRemoveLastAdmin_UsersAndGroup_OnlyForTheLastAdmin"` (AC8)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~PermissionRulesTests"`
 
@@ -897,19 +897,19 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~PermissionRulesTests"`
 
 1. `DataStoreTests.cs`:
    - `"Load_MissingFile_CreatesDefaults"` (AC1)
-   - `"Save_ThenLoad_RoundTrips_NoTempLeft"` (AC2)
+   - `"Save_ThenLoad_RoundTripsWithNoTempLeft"` (AC2)
    - `"Load_CorruptFile_ThrowsAndLeavesFileUntouched"` (AC3)
 2. `StateSyncTests.cs`:
-   - `"Welcome_ContainsSnapshotAndNewUserInLobbyAsGuest"` (AC4)
-   - `"Disconnect_OthersReceiveUserLeft"` (AC11)
+   - `"Welcome_NewUser_SnapshotWithUserInLobbyAsGuest"` (AC4)
+   - `"Disconnect_User_OthersReceiveUserLeft"` (AC11)
    - `"SetSelfState_BroadcastsUserUpdated_DeafImpliesMute"` (AC12)
-   - `"Restart_KeepsCreatedChannels"` (AC13)
+   - `"Restart_CreatedChannels_Kept"` (AC13)
 3. `ChannelCommandTests.cs`. Zwei Clients: A mit vorbelegter Admin-Gruppe, B als Gast.
-   - `"Join_BroadcastsUserUpdated"` (AC5)
+   - `"Join_OtherChannel_BroadcastsUserUpdated"` (AC5)
    - `"Create_AsAdmin_BroadcastsAndPersists"`, `[Theory] "Create_InvalidName_Error"` (AC6)
      (Hinweis zur Referenz: Seit de0bc0a dürfen mehrere Channels denselben Namen tragen, `NameTaken` entfällt; der Teil "eindeutig" ist durch keinen Test mehr gedeckt.)
    - `"Edit_AsAdmin_BroadcastsChannelUpdated"` (AC7)
-   - `"Delete_MovesUsersToDefaultThenRemoves"`, `"Delete_DefaultChannel_Error"` (AC8)
+   - `"Delete_OccupiedChannel_UsersMovedToDefaultFirst"`, `"Delete_DefaultChannel_Error"` (AC8)
    - `"Move_ModeratorMovesGuest_Ok"`, `"Move_ModeratorMovesAdmin_PermissionDenied"`, `"Move_UnknownSession_NotFound"` (AC9)
    - `[Theory] "GuestCommands_PermissionDenied_NoBroadcast"` für Create, Edit, Delete und Move (AC10)
 
@@ -975,18 +975,18 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~DataStoreTests|FullyQualif
 ### Tests (TDD)
 
 1. `AdminCommandTests.cs`:
-   - `"NoAdmin_TokenGenerated_AdminExists_NoToken"` (AC1)
-   - `"AdminToken_Redeem_Once_Valid_Twice_Invalid"` (AC2, AC3)
+   - `"AdminToken_AdminExistsOrNot_GeneratedOnlyWithout"` (AC1)
+   - `"AdminToken_RedeemedTwice_OnlyFirstValid"` (AC2, AC3)
 2. `AdminCommandTests.cs`:
    - `"Redeem_BroadcastsNewPermissions_ThenTokenInvalid"` (AC2)
-   - `"CreateGroup_AsAdmin_BroadcastsGroupsChanged"`, `"UpdateGroup_ChangesOnlineMemberPermissions"` (AC4)
+   - `"CreateGroup_AsAdmin_BroadcastsGroupsChanged"`, `"UpdateGroup_OnlineMember_PermissionsChange"` (AC4)
    - `"CreateGroup_GrantingUnownedPermission_PermissionDenied"` (AC4, Eskalation)
-   - `[Theory] "ProtectedGroups_Errors"` (AC5)
-   - `"DeleteGroup_RemovedFromUsers"` (AC6)
-   - `"Assign_OfflineUser_Persisted_AndListed"`, `"Unassign_LastAdmin_Error"` (AC7)
-   - `"ListUsers_WithoutGroupsAssign_PermissionDenied"`, `"Assign_OfflineUser_Persisted_AndListed"`, `"Unassign_OfflineUser_And_ListShowsNickname"` (AC8)
-   - `"UpdateSettings_NewPasswordAppliesToNextHandshake"`, `[Theory] "UpdateSettings_InvalidValues_Error"` (AC9)
-   - `"AdminChanges_SurviveRestart"` (AC10)
+   - `[Theory] "ProtectedGroups_Changed_Refused"` (AC5)
+   - `"DeleteGroup_AssignedUsers_LoseIt"` (AC6)
+   - `"Assign_OfflineUser_PersistedAndListed"`, `"Unassign_LastAdmin_Error"` (AC7)
+   - `"ListUsers_WithoutGroupsAssign_PermissionDenied"`, `"Assign_OfflineUser_PersistedAndListed"`, `"Unassign_OfflineUser_ListShowsNickname"` (AC8)
+   - `"UpdateSettings_NewPassword_AppliesToNextHandshake"`, `[Theory] "UpdateSettings_InvalidValues_Error"` (AC9)
+   - `"AdminChanges_Restart_Survive"` (AC10)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminTokenTests|FullyQualifiedName~AdminCommandTests"`
 
@@ -1043,14 +1043,14 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminTokenTests|FullyQuali
 ### Tests (TDD)
 
 1. `ModerationTests.cs`:
-   - `"KickSession_TargetDisconnectedOthersUserLeft"` (AC1)
+   - `"KickSession_Target_DisconnectedAndOthersSeeUserLeft"` (AC1)
    - `"BanSession_PersistsAndDisconnects_ReconnectRejected"` (AC2)
    - `"BanSession_PersistsAndDisconnects_ReconnectRejected"`, `"IpBan_OtherIdentitySameIp_Rejected"` (AC3)
-   - `"ExpiredBan_HandshakeSucceeds"` (AC4)
-   - `"Unban_AllowsReconnect"`, `"ListBans_AsGuest_PermissionDenied"` (AC5)
-   - `"ServerMute_BroadcastsUserUpdated"` (AC6)
-   - `[Theory] "ModeratorVsAdmin_PermissionDenied"` für Kick, Ban und Mute (AC7)
-   - `"Bans_SurviveRestart"` (AC8)
+   - `"Handshake_BanExpired_Succeeds"` (AC4)
+   - `"Unban_BannedUser_CanReconnect"`, `"ListBans_AsGuest_PermissionDenied"` (AC5)
+   - `"ServerMute_Set_BroadcastsUserUpdated"` (AC6)
+   - `[Theory] "Moderate_ModeratorOnAdmin_PermissionDenied"` für Kick, Ban und Mute (AC7)
+   - `"Bans_Restart_Survive"` (AC8)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ModerationTests"`
 
@@ -1104,8 +1104,8 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ModerationTests"`
    - `"Link_SameChannel_InvalidLink"`, `"Link_UnknownChannel_NotFound"` (AC2)
    - `"Link_ExistingReversed_NoOp"` (AC3)
    - `"Unlink_Broadcasts_MissingIsNoOp"` (AC4)
-   - `"DeleteChannel_UnlinksBeforeRemove"`: die Reihenfolge der empfangenen Nachrichten wird geprüft (AC5)
-   - `"LinkedChannels_OnlyDirectNeighbours"` (AC6)
+   - `"DeleteChannel_Linked_UnlinkedBeforeRemove"`: die Reihenfolge der empfangenen Nachrichten wird geprüft (AC5)
+   - `"LinkedChannels_Chain_OnlyDirectNeighbours"` (AC6)
    - `"Snapshot_ContainsLinks_AfterRestart"` (AC7)
    - `"Link_AsGuest_PermissionDenied"` (AC8)
 
@@ -1251,14 +1251,14 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~OVS.Tests.Voice"`
 
 1. `VoiceRoutingTests.cs`, rein und ohne Netzwerk. Aufbau: Channels L, A, B, C mit den Links A-B und B-C.
    - `"Target0_LinkedChannel_OnlyOwnChannel"` (AC1)
-   - `"Target1_WithSpeakLinked_OwnPlusDirectLinks_NotTransitive"`: Sender in A erreicht A und B, nicht C (AC2)
+   - `"Route_LinkTargetWithSpeakLinked_OwnAndDirectLinksNotTransitive"`: Sender in A erreicht A und B, nicht C (AC2)
    - `"Target1_WithoutSpeakLinked_OwnChannelOnly"` (AC3)
-   - `[Theory] "SenderCannotSpeak_NoRecipients"` für fehlendes Speak, ServerMuted und SelfMuted (AC4)
-   - `"DeafenedAndSender_Excluded"`, `"UnboundEndpoint_Excluded"` (AC5)
+   - `[Theory] "Route_SenderCannotSpeak_NoRecipients"` für fehlendes Speak, ServerMuted und SelfMuted (AC4)
+   - `"Route_DeafenedAndSender_Excluded"`, `"Route_UnboundEndpoint_Excluded"` (AC5)
 2. `VoiceRoutingTests.cs > "RateLimiter_Over60PerSecond_Dropped"` mit `ManualTimeProvider` (AC8)
 3. `VoiceRelayTests.cs`, gegen `TestServer` mit echten UDP-Sockets:
-   - `"EndToEnd_SameChannel_Received_OtherChannel_Not"` (AC6)
-   - `[Theory] "InvalidPackets_DroppedNoResponse"` für manipulierten Tag, unbekannte Session und Replay (AC7)
+   - `"Voice_SameOrOtherChannel_ReceivedOnlyInSame"` (AC6)
+   - `[Theory] "VoicePacket_Invalid_DroppedWithoutResponse"` für manipulierten Tag, unbekannte Session und Replay (AC7)
    - `"Endpoint_BoundOnlyAfterHello_UpdatesOnRebind"` (AC9)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRouting|FullyQualifiedName~RateLimiter|FullyQualifiedName~VoiceRelay"`
@@ -1836,13 +1836,13 @@ Bisher schreibt der Server nur wenige Zeilen auf die Konsole (`docker compose lo
 ### Tests (TDD)
 
 `ServerLogWriterTests.cs`, mit `ManualTimeProvider` und temporärem Datenverzeichnis:
-1. `"ServerLine_GoesToConsoleAndFileOfThisStart"`, `"EachStart_OwnFile_SharedByServerAndChannelLogs"`, `"DayChange_StartsNewFile_NamedAfterThatMoment"` (AC1)
-2. `"ConnectDisconnectRejected_Logged"`, `"AdminActions_LoggedWithActor"` für Gruppen, Zuweisung, Einstellungen, Kick, Ban, Unban und Server-Mute (AC2)
-3. `"JoinMoveLeave_LoggedInChannelLogs"` (Beitritt, Verschieben im alten und neuen Channel, Trennen), `"Link_LoggedInBothChannels_EditDeleteLogged"` (AC3)
-4. `"TokenAndPassword_NeverInFiles"` (AC4)
-5. `"OldFiles_DeletedAfterRetention"`, `"RetentionZero_KeepsAll"` und in `ServerConfigTests` `"Load_InvalidLogDays_Throws"` (AC5)
-6. `ServerLogWriterTests > "WriteFailure_DoesNotThrow_ReportsOnce"`, dazu `"ReaderLockingTheFile_LineIsNotLost"`: Ein Leser, der die Datei sperrt, kostet keine Zeile (AC6)
-7. `"RenamedChannel_SameFolderAfterRestart"` (AC7)
+1. `"WriteServerLine_Line_GoesToConsoleAndFileOfThisStart"`, `"EachStart_OwnFile_SharedByServerAndChannelLogs"`, `"DayChange_StartsNewFile_NamedAfterThatMoment"` (AC1)
+2. `"ServerLog_ConnectDisconnectRejected_Logged"`, `"ServerLog_AdminActions_LoggedWithActor"` für Gruppen, Zuweisung, Einstellungen, Kick, Ban, Unban und Server-Mute (AC2)
+3. `"ChannelLog_JoinMoveLeave_Logged"` (Beitritt, Verschieben im alten und neuen Channel, Trennen), `"Link_LoggedInBothChannels_EditDeleteLogged"` (AC3)
+4. `"Logs_TokenAndPassword_NeverInFiles"` (AC4)
+5. `"CleanUp_OldFiles_DeletedAfterRetention"`, `"CleanUp_RetentionZero_KeepsAll"` und in `ServerConfigTests` `"Load_InvalidLogDays_Throws"` (AC5)
+6. `ServerLogWriterTests > "WriteFailure_DoesNotThrow_ReportsOnce"`, dazu `"WriteServerLine_ReaderLocksTheFile_LineNotLost"`: Ein Leser, der die Datei sperrt, kostet keine Zeile (AC6)
+7. `"ChannelLog_RenamedChannel_SameFolderAfterRestart"` (AC7)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerLogWriterTests"`
 
@@ -1959,10 +1959,10 @@ Bisher läuft ein Serverprozess, bis er gestoppt wird, und nach Mitternacht begi
 ### Tests (TDD)
 
 1. `RestartScheduleTests > "FindNext_TodayOrTomorrow_InLocalTime"` für vor, nach, genau zur Uhrzeit und knapp davor (AC1)
-2. `ServerHostTests > "AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles"`: echter Lauf mit Neustart in 5 s, Client bekommt `ServerRestart`, ein neuer Client kommt in den neuen Lauf, zwei Logdateien (AC1, AC2, AC3)
-3. `ServerConfigTests > "Load_AutoRestart_OffByDefault_TimeDefaultsTo4am"`, `"Load_AutoRestartAndLogRotation_FromFile_EnvWins"`, `"Load_LogRotateDaily_OnByDefault"`, `"Load_InvalidRestartOrRotation_Throws"` (AC1, AC4)
+2. `ServerHostTests > "AutoRestart_RunEnds_ClientsToldAndNewRunServesWithOwnLogs"`: echter Lauf mit Neustart in 5 s, Client bekommt `ServerRestart`, ein neuer Client kommt in den neuen Lauf, zwei Logdateien (AC1, AC2, AC3)
+3. `ServerConfigTests > "Load_NoAutoRestartSet_OffWithTimeAt4am"`, `"Load_AutoRestartAndLogRotationInFileAndEnv_EnvWins"`, `"Load_LogRotateDaily_OnByDefault"`, `"Load_InvalidRestartOrRotation_Throws"` (AC1, AC4)
 4. `ServerLogWriterTests > "RotateDailyOff_FileLastsUntilRestart_OldFilesStillDeleted"` (AC5)
-5. `ServerHostTests > "ShuttingDown_HandshakeRejectedWithTheReason"`, Regression aus Test 2, der vereinzelt einen Client im alten Lauf fand (AC6)
+5. `ServerHostTests > "Handshake_WhileShuttingDown_RejectedWithTheReason"`, Regression aus Test 2, der vereinzelt einen Client im alten Lauf fand (AC6)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerHostTests|FullyQualifiedName~ServerConfigTests|FullyQualifiedName~ServerLogWriterTests"`
 
@@ -2405,10 +2405,10 @@ Es gibt heute keinen Text-Chat. Die Rechte belegen die Bits 0 bis 12, die neuen 
 
 ### Tests (TDD)
 
-1. `ChatTests > "Deliver_ServerChannelPrivate"` mit drei `TestClient`s in zwei Channels (AC1)
+1. `ChatTests > "SendChat_ServerChannelPrivate_Delivered"` mit drei `TestClient`s in zwei Channels (AC1)
 2. `ChatTests > "NoRight_PermissionDenied_NobodyGetsIt"` als Theory je Ziel (AC2)
-3. `ChatTests > "Invalid_EmptyTooLongOfflineSelf"` (AC3), `"RateLimit_SixthInFiveSeconds"` mit `ManualTimeProvider` (AC4), `"ServerMuted_CanWrite"` (AC5)
-4. `PermissionRulesTests > "DefaultGroups_HaveDocumentedPermissions"` (um die Chat-Rechte erweitert) und `DataStoreTests > "LoadVersion1_GuestGetsChatRights_Once"` (AC6)
+3. `ChatTests > "SendChat_EmptyTooLongOfflineOrSelf_Refused"` (AC3), `"SendChat_SixthInFiveSeconds_RateLimited"` mit `ManualTimeProvider` (AC4), `"SendChat_ServerMuted_StillDelivered"` (AC5)
+4. `PermissionRulesTests > "DefaultGroups_Created_HaveDocumentedPermissions"` (um die Chat-Rechte erweitert) und `DataStoreTests > "LoadVersion1_GuestGetsChatRights_Once"` (AC6)
 5. `ChatTests > "Logs_ServerAndChannel_PrivateWithoutContent"` (AC7, beim Chat statt in `ServerLogWriterTests`, weil es drei verbundene Clients braucht)
 6. `DebugApiTests > "Chat_RoundTrip"` zwischen zwei echten Clients (AC8), `ProtocolLogTextTests` für `ChatMessage` und `SendChat`
 
@@ -2564,8 +2564,8 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQu
    - Gegeben: Sender (Admin) in stummem Channel A, Empfänger in A und im verlinkten B, Ziel einmal Channel, einmal Linked
    - Erwartet: leere Empfängerliste in beiden Fällen
 2. `VoiceRoutingTests > "Recipients_LinkIntoMutedChannel_Heard"` (AC3): Sender in B (nicht stumm) mit Link-PTT erreicht Empfänger in A.
-3. `ChannelCommandTests > "Edit_SetsMuted_PersistsLogsBroadcasts"` und `"Edit_Muted_WithoutRight_Denied"` (AC1, AC4)
-4. `VoiceRelayTests > "MutedChannel_NoFramesArrive"` über echtes UDP (AC2)
+3. `ChannelCommandTests > "Edit_SetsMuted_PersistsLogsBroadcasts"` und `"EditMuted_WithoutRight_Denied"` (AC1, AC4)
+4. `VoiceRelayTests > "Voice_MutedChannel_NoFramesArrive"` über echtes UDP (AC2)
 5. `SendPathTests > "ChannelMuted_SendsNothing"` (AC5)
 6. `ServerViewModelTests > "ChannelMuted_EditSendsFlag_ViewModelShowsIt"`, `MainViewModelTests > "ChannelMuted_HintAndNoSending"` (AC5), `VoiceHintsTests > "Evaluate_ChannelMuted_ShowsTheMutedChannelHint"` (AC5), `EngineSyncTests > "SyncConnection_OnlyChannelMutedSet_TurnsOnlyTheEnginesChannelMutedOn"` (AC5)
 7. `UiSmokeTests`: Dialog zeigt die Checkbox, Channel-Zeile das Symbol, beide Designs (AC1, AC5); `SmokeTests`: Version 4 (AC6)
@@ -2614,10 +2614,10 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRoutingTests|FullyQua
 
 ### Tests (TDD)
 
-1. `ChannelCommandTests > "Join_Full_ChannelFull_AdminStillEnters"` (AC2)
+1. `ChannelCommandTests > "Join_FullChannel_RefusedButAdminEnters"` (AC2)
 2. `ChannelCommandTests > "Move_IntoFull_NeedsRightOfMover"` (AC3)
 3. `ChannelCommandTests > "Edit_DefaultChannelLimit_Invalid"`, `"Edit_LimitOutOfRange_Invalid"` (AC1)
-4. `ChannelCommandTests > "Edit_LimitBelowCount_NobodyRemoved_PersistedInSnapshot"` (AC4, AC6)
+4. `ChannelCommandTests > "Edit_LimitBelowCount_NobodyRemovedAndPersisted"` (AC4, AC6)
 5. `PermissionRulesTests`: `All` enthält `ChannelJoinFull` (AC5)
 6. `ServerViewModelTests > "SlotText_LimitedAndUnlimited"`, `"SlotText_UserJoins_ChangeRaised"`, `"MaxUsers_LimitChanges_ChangeRaised"`, `ChannelSlotsTests > "ToString_LimitedOrUnlimited_CountOfLimitOrCountAlone"` (AC5)
 7. `UiSmokeTests`: Feld im Dialog, "3/5" im Baum; `SmokeTests`: Version 5
@@ -3659,7 +3659,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
 2. `ChannelCommandTests > "Create_InvalidSlots_Rejected"` (AC5)
    - Gegeben: `MaxUsers = -1` und `1000`
    - Erwartet: `InvalidValue`, kein Channel angelegt
-3. `SmokeTests` Version auf 9, `HandshakeTests > "OldProtocolVersion_RejectedVersionMismatch"` bleibt grün (AC6)
+3. `SmokeTests` Version auf 9, `HandshakeTests > "Handshake_OldProtocolVersion_RejectedVersionMismatch"` bleibt grün (AC6)
 4. `ChannelDialogViewModelTests > "Create_EmptyDefaults"`, `"Edit_Prefilled"`, `"Default_SlotsLocked"`, `"NameRequired_SlotsBounded_Trimmed"` (AC2 bis AC4)
 5. `ServerViewModelTests > "NewChannel_SendsAllOptions"` (AC1, AC5)
    - Gegeben: Dialog-Fake liefert Name, Beschreibung, stumm, 3 Plätze
@@ -4481,17 +4481,17 @@ Testbefehl: `dotnet test`
 1. `DataStoreTests > "V2_Migrates_SettingsFromConfig"` (AC4)
    - Gegeben: `server-data.json` der Version 2, Config mit MaxUsers 20, LogDays 7, AutoRestart 03:30
    - Erwartet: Version 3, die Werte stehen in `Settings`. Zweiter Start mit MaxUsers 99 in der Config ändert nichts.
-2. `ServerConfigTests > "EnvDiffersFromStored_HintInLog"` (AC4)
+2. `ServerConfigTests > "Start_EnvDiffersFromStored_HintInLog"` (AC4)
 3. `AdminCommandTests > "UpdateSettings_Limits_ValidatedAndBroadcast"` (AC2)
    - Gegeben: Admin schickt MaxUsers 0, dann LogDays 5000, dann gültige Werte
    - Erwartet: zweimal `InvalidValue` ohne Änderung, dann `ServerSettingsChanged` mit den neuen Werten, Datei aktualisiert
 4. `AdminCommandTests > "MaxUsersLowered_NextJoinRejected_NobodyKicked"` (AC3)
    - Gegeben: 3 Nutzer verbunden, Limit auf 2
    - Erwartet: alle 3 bleiben, ein vierter bekommt `ServerFull`
-5. `RestartScheduleTests > "AutoRestartChanged_ScheduleFollows"` (AC3)
+5. `RestartScheduleTests > "Schedule_AutoRestartChanged_Follows"` (AC3)
    - Gegeben: `ManualTimeProvider`, Neustart aus, dann per Einstellung an für in 10 Minuten
    - Erwartet: nach 10 Minuten Zeitvorschub startet ein neuer Lauf. Ausschalten davor verhindert ihn.
-6. `ServerLogWriterTests > "RetentionChangedAtRuntime_NextCleanupUsesIt"` (AC3)
+6. `ServerLogWriterTests > "Update_RetentionChangedAtRuntime_NextCleanupUsesIt"` (AC3)
 7. `ServerSettingsViewModelTests > "Save_EveryLimitEdited_SendsTheEditedLimitsWithNameAndWelcomeTextAndNoPassword"` (AC1), bestehende `ServerSettingsViewModelTests > [Theory] "Save_PasswordFieldsSet_SendsTheTypedPasswordTheEmptyOneToRemoveItOrNone"` bleibt grün
 8. `UiSmokeTests`: neue Felder im Server-Tab, `LocalizationTests` (AC6)
 
@@ -4542,14 +4542,14 @@ Testbefehl: `dotnet test`
 
 ### Tests (TDD)
 
-1. `UserStatsTests > "Login_SetsLastLoginCountIp"` (AC1): zweimal verbinden mit `ManualTimeProvider`, Werte in `ServerData` prüfen
-2. `UserStatsTests > "NicknameChange_KeepsFiveNewestDistinct"` (AC1)
-3. `UserStatsTests > "Disconnect_AddsOnlineTimeSpeechChat"` (AC2, AC3)
+1. `UserStatsTests > "Login_User_SetsLastLoginCountAndIp"` (AC1): zweimal verbinden mit `ManualTimeProvider`, Werte in `ServerData` prüfen
+2. `UserStatsTests > "NicknameChange_Many_KeepsFiveNewestDistinct"` (AC1)
+3. `UserStatsTests > "Disconnect_Session_AddsOnlineSpeechAndChat"` (AC2, AC3)
    - Gegeben: Login, 90 s Zeitvorschub, 50 Sprachpakete über UDP, 3 Chatnachrichten, Trennen
    - Erwartet: Online-Zeit 90 s, Sprechzeit 1 s, Nachrichten 3, gespeichert
-4. `UserStatsTests > "MutedChannel_SpeechNotCounted"` (AC3)
-5. `UserStatsTests > "ListUsers_IncludesLiveSession"` (AC4)
-6. `UserStatsTests > "Shutdown_PersistsOpenSessions"` (AC2)
+4. `UserStatsTests > "Speech_MutedChannel_NotCounted"` (AC3)
+5. `UserStatsTests > "ListUsers_OnlineUser_IncludesLiveSession"` (AC4)
+6. `UserStatsTests > "Shutdown_OpenSessions_Persisted"` (AC2)
 7. `DataStoreTests > "OldUsers_KeepFirstSeen_NewFieldsEmpty"` (AC5)
 
 Testbefehl: `dotnet test`
@@ -4759,7 +4759,7 @@ Backups gehen heute nur per `docker run ... tar` über das Volume (README). Im D
 
 1. `BackupTests > "Create_ContainsDataCertIcon_NoLogs"` (AC1)
 2. `BackupTests > "List_NewestFirst_Delete"` (AC2)
-3. `BackupTests > "Restore_ReplacesState_SafetyBackup_RestartsRun"` (AC3, AC4)
+3. `BackupTests > "Restore_ValidBackup_ReplacesStateKeepsSafetyBackupAndRestarts"` (AC3, AC4)
    - Gegeben: Backup mit Channel "Alt", danach Channel "Neu" angelegt, zwei Clients verbunden
    - Erwartet: beide getrennt mit `Restoring`, neuer Lauf hat "Alt" statt "Neu", Sicherheits-Backup enthält "Neu", Fingerabdruck wie im Backup
 4. `BackupTests > "Restore_Invalid_NothingChanged"` (AC3): kaputtes Zip, fehlendes Manifest, zu neue Datenversion
@@ -4811,7 +4811,7 @@ Steuernachrichten sind höchstens 1 MiB gross (`FrameReader.MaxFrameSize`). Base
 
 ### Tests (TDD)
 
-1. `BackupTests > "Download_ChunkedByteIdentical"` (AC1, AC3, AC4): Backup mit 1,5 MB Logo-Platzhalter, Stücke zusammensetzen, Hash vergleichen
+1. `BackupTests > "Download_InChunks_ByteIdentical"` (AC1, AC3, AC4): Backup mit 1,5 MB Logo-Platzhalter, Stücke zusammensetzen, Hash vergleichen
 2. `BackupTests > "Upload_ValidatedStored_Listed"` (AC2)
 3. `BackupTests > "Upload_TooLargeOrAborted_NoFileLeft"` (AC3)
 4. `BackupTests > "Upload_InvalidArchive_Rejected"` (AC2)
@@ -4901,13 +4901,13 @@ Sehen und Handeln hängen also am selben Recht. Die Standardgruppe Moderator hat
 ### Tests (TDD)
 
 1. `PermissionRulesTests > "DefaultGroups_OnlyAdminSeesUsers_ModeratorSeesBans"` (AC5)
-2. `DataStoreTests > "Migration_GrantsViewRightsFromOldRights"` (AC6)
+2. `DataStoreTests > "Migration_OldRights_GrantViewRights"` (AC6)
    - Gegeben: gespeicherte Gruppen der alten Version mit `GroupsManage`, mit `GroupsAssign`, mit `UserBan` und eine ohne alles davon
    - Erwartet: genau die Zusatzrechte aus AC6, die letzte Gruppe unverändert, `UserDelete` bei keiner
-3. `AdminCommandTests > "EachAdminRequest_RequiresItsOwnRight"` (AC3, Theory über alle Anfragen aus AC3)
+3. `AdminCommandTests > "AdminRequests_WithoutTheirRight_Refused"` (AC3, Theory über alle Anfragen aus AC3)
    - Gegeben: Nutzer in einer Gruppe mit allen Rechten ausser dem geprüften
    - Erwartet: `PermissionDenied`. Mit dem Recht: kein Rechtefehler
-4. `AdminCommandTests > "GroupsCreateOnly_CannotEditOrDelete"` (AC3)
+4. `AdminCommandTests > "GroupsCreateOnly_EditOrDelete_Refused"` (AC3)
 5. `AdminViewModelTests > "Tabs_VisibleByPermission"` erweitert (AC2)
    - Gegeben: je nur `UsersView`, `BansView`, `GroupsView`, dann `GroupsAssign` allein
    - Erwartet: jeweils genau der passende Tab. Mit `GroupsAssign` allein keiner, und der Verwaltungs-Button ist ausgeblendet.
@@ -5146,14 +5146,14 @@ Testbefehl: `dotnet test`
 1. `ModerationTests > "BanSession_Created_StoresCreatedAtCreatorDuration"` (AC1)
    - Given: moderator bans a guest online for 60 minutes with IP, `ManualTimeProvider`
    - Expected: `CreatedAt` = now, `CreatedByFingerprint` = moderator, `DurationMinutes` = 60, IP flag true, in `BanList` too
-2. `ModerationTests > "Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive"` (AC2)
+2. `ModerationTests > "Unban_ActiveOrExpired_KeepsHistoryAdmitIgnoresIt"` (AC2)
    - Given: one ban lifted, one expired by advancing the clock
    - Expected: both still in `BanList` with status lifted (by/at) and expired, the guest can join again
 3. `ModerationTests > "History_RemovedAfterLogRetention_AndOnUserDelete"` (AC2)
 4. `ModerationTests > "BlockedAttempts_Counted_SavedAtMostPerMinute"` (AC3)
    - Given: a banned guest tries 3 times within 10 seconds, then again after 2 minutes
    - Expected: counter 4, last attempt time and IP set, the data file written at most twice for these attempts
-5. `DataStoreTests > "OldBans_LoadWithUnknownNewFields"` (AC1)
+5. `DataStoreTests > "Load_OldBansWithUnknownNewFields_Loads"` (AC1)
 6. `AdminViewModelTests > "BanCards_ShowAllDetails_UnknownForMissing"` (AC4)
 7. `AdminViewModelTests > "BanSearch_MatchesAllTextFields"` (AC5)
 8. `AdminViewModelTests > "BanFilter_StatusType_Sort_Count"` (AC6)
@@ -5219,14 +5219,14 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Tests (TDD)
 
-1. `LogCommandTests > "ListLogs_ServerAndChannelFiles_NewestFirst_WithNames"` (AC2)
+1. `LogCommandTests > "ListLogs_ServerAndChannelFiles_NewestFirstWithNames"` (AC2)
    - Given: server started with two channels and some chat, then a restart (so two server files)
    - Expected: both server files and the channel files, channel names resolved, sizes greater than 0
 2. `LogCommandTests > "ReadLog_PagesOf1000_LastPageFirst"` (AC3): a file with 2500 lines, pages 3, 2, 1
-3. `LogCommandTests > "SearchLogs_AllFiles_CaseInsensitive_Max500_Truncated"` (AC5, AC6)
-4. `LogCommandTests > "Logs_RequireLogsView_UnknownIdRejected_NoPathTraversal"` (AC1, AC6)
-5. `LogCommandTests > "LongLine_CutAt2000"` (AC6)
-6. `LogCommandTests > "Search_DoesNotHoldStateLock"` (AC7): a chat message is delivered while a long search runs (search on a large generated file, with a test hook that pauses the reader)
+3. `LogCommandTests > "SearchLogs_AllFiles_CaseInsensitiveCappedAt500"` (AC5, AC6)
+4. `LogCommandTests > "ReadLog_WithoutRightUnknownOrTraversal_Rejected"` (AC1, AC6)
+5. `LogCommandTests > "ReadLog_LongLine_CutAt2000"` (AC6)
+6. `LogCommandTests > "SearchLogs_Running_StateLockFree"` (AC7): a chat message is delivered while a long search runs (search on a large generated file, with a test hook that pauses the reader)
 7. `LogsViewModelTests > "FileFilter_TypeAndPeriod"` (AC2)
 8. `LogsViewModelTests > "OpenFile_PageNavigation_Refresh"` (AC3)
 9. `LogsViewModelTests > "LineFilter_HighlightsMatches"` (AC4)
@@ -5285,7 +5285,7 @@ After Package 81 the client knows the log files by id. Backups (Package 75) alre
 
 ### Tests (TDD)
 
-1. `LogCommandTests > "DownloadSingleFile_ByteIdenticalSnapshot"` (AC2, AC3): content equals the file at request time, lines logged afterwards are not included
+1. `LogCommandTests > "DownloadLog_SingleFile_ByteIdenticalSnapshot"` (AC2, AC3): content equals the file at request time, lines logged afterwards are not included
 2. `LogCommandTests > "DownloadSelection_ZipWithFolders_TempRemoved"` (AC2, AC3)
 3. `LogCommandTests > "Download_RequiresLogsDownload_TooLargeRejected"` (AC1, AC4)
 4. `LogCommandTests > "Download_ChunkedPullBased_ChatStillFlows"` (AC4, AC5)
@@ -5345,12 +5345,12 @@ Audit findings (both passes agree):
 ### Tests (TDD)
 
 1. `RequestValidationTests > "NullFields_Rejected_ConnectionStays"` (AC1): Theory over CreateChannel/EditChannel with null Description, UploadBackupChunk with null data, SetChannelLinks with a null element, SendChat with null text; expected `InvalidValue` and a following Ping still answered
-2. `RequestValidationTests > "HandlerException_AnsweredNotDropped"` (AC2): a test hook throws inside a handler
-3. `RequestValidationTests > "Names_RejectFormatAndBidiChars"` (AC3): Theory "Admin​", "‮evil", "a b" for nickname, channel, group, server name
+2. `RequestValidationTests > "Handle_HandlerThrows_AnsweredNotDropped"` (AC2): a test hook throws inside a handler
+3. `RequestValidationTests > "Names_FormatOrBidiChars_Rejected"` (AC3): Theory "Admin​", "‮evil", "a b" for nickname, channel, group, server name
 4. `RequestValidationTests > "Nickname_OfflineUserNameTaken_NormalizedCompare"` (AC3)
-5. `RequestValidationTests > "MultilineTexts_AllowNewlineRejectOtherControls"` (AC4)
+5. `RequestValidationTests > "MultilineTexts_Newline_AllowedOtherControlsRejected"` (AC4)
 6. `RequestValidationTests > "ChannelOrder_NoOverflow_PasswordLength"` (AC5)
-7. `RequestValidationTests > "ChatTargetOutOfRange_Rejected"` (AC6)
+7. `RequestValidationTests > "SendChat_TargetOutOfRange_Rejected"` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5395,12 +5395,12 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Tests (TDD)
 
-1. `PermissionRulesTests > "CanActOn_StrictSubsetOnly"` (AC1)
-2. `ModerationTests > "EqualRanks_CannotActOnEachOther"` (AC1): two moderators, kick/ban/mute/move
-3. `ModerationTests > "SelfTargeting_Denied"` (AC2): Theory over every action, including a server-muted moderator unmuting themselves
-4. `ModerationTests > "LastAdmin_CannotBeBanned"` (AC3): online and offline ban
+1. `PermissionRulesTests > "CanActOn_TargetRights_OnlyAStrictSubset"` (AC1)
+2. `ModerationTests > "Moderate_EqualRanks_Refused"` (AC1): two moderators, kick/ban/mute/move
+3. `ModerationTests > "Moderate_Self_Denied"` (AC2): Theory over every action, including a server-muted moderator unmuting themselves
+4. `ModerationTests > "Ban_LastAdmin_Refused"` (AC3): online and offline ban
 5. `AdminCommandTests > "Unassign_FromStrongerUser_Denied"` (AC4)
-6. `ModerationTests > "Unban_StrongerBannedUser_Denied_NoBanListWithoutBansView"` (AC5)
+6. `ModerationTests > "Unban_StrongerBannedUser_DeniedWithoutBanList"` (AC5)
 7. `AdminViewModelTests`/`ServerViewModelTests > "ActionsMatchServerRule"` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -5445,7 +5445,7 @@ Test command: `dotnet test tests/OVS.Tests`
 ### Tests (TDD)
 
 1. `ModerationTests > "ServerMute_Persists_AcrossReconnect"` (AC1, AC2)
-2. `ModerationTests > "ServerMute_NoVoiceBeforeWelcome"` (AC2): voice packets right after Hello are not relayed
+2. `ModerationTests > "ServerMute_BeforeWelcome_NoVoice"` (AC2): voice packets right after Hello are not relayed
 3. `AdminViewModelTests > "UserCard_ShowsServerMute_LiftOffline"` (AC3)
 4. `ModerationTests > "DeleteKnownUser_MutedUser_RemovesMute"` (AC4)
 
@@ -5497,12 +5497,12 @@ Audit findings:
 ### Tests (TDD)
 
 1. `ServerTuningTests > "RequestFlood_RateLimited_ThenDisconnected"` (AC1)
-2. `ServerTuningTests > "ServerIcon_CachedAndThrottled"` (AC2)
+2. `ServerTuningTests > "ServerIcon_Requested_CachedAndThrottled"` (AC2)
 3. `ServerTuningTests > "AdminTokenGuessing_Throttled_Logged"` (AC2)
-4. `ServerTuningTests > "NoOpJoinAndSelfState_NoBroadcast"` (AC3)
-5. `ServerTuningTests > "NonReadingClient_DisconnectedAndSlotFreed"` (AC4): a raw TLS client that never reads, flooding icon requests; the server stays under the byte cap and the slot is free within the timeout
-6. `ServerTuningTests > "LongRequestId_Rejected"` (AC5)
-7. `ServerTuningTests > "OverLimitConnection_ClosedBeforeTls"` (AC6)
+4. `ServerTuningTests > "JoinAndSelfState_NoChange_NoBroadcast"` (AC3)
+5. `ServerTuningTests > "Client_NotReading_DisconnectedAndSlotFreed"` (AC4): a raw TLS client that never reads, flooding icon requests; the server stays under the byte cap and the slot is free within the timeout
+6. `ServerTuningTests > "Request_LongRequestId_Rejected"` (AC5)
+7. `ServerTuningTests > "Connection_OverLimit_ClosedBeforeTls"` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5548,8 +5548,8 @@ Every successful login with a new fingerprint creates a permanent `UserRecord` a
 ### Tests (TDD)
 
 1. `IdentityFloodTests > "NewIdentities_ThrottledPerIp_KnownNotThrottled"` (AC1)
-2. `IdentityFloodTests > "ConnectLoop_SavesDebounced"` (AC2)
-3. `IdentityFloodTests > "OldGuestRecords_Pruned"` (AC3)
+2. `IdentityFloodTests > "ConnectLoop_NewIdentities_SavedDebounced"` (AC2)
+3. `IdentityFloodTests > "GuestRecords_Old_Pruned"` (AC3)
 4. `IdentityFloodTests > "LargeLists_Paged_UnderFrameLimit"` (AC4, AC5)
 5. `AdminViewModelTests > "UserList_FetchesAllPages"` (AC4)
 
@@ -5642,7 +5642,7 @@ All backup requests need `ServerConfig` (BackupCommands.cs). A holder of that ri
 ### Tests (TDD)
 
 1. `BackupTests > "BackupsManage_Required_ServerConfigAloneNotEnough"` (AC1)
-2. `DataStoreTests > "Migration_ServerConfigGroupsGetBackupsManage"` (AC1)
+2. `DataStoreTests > "Migration_ServerConfigGroups_GetBackupsManage"` (AC1)
 3. `BackupTests > "UploadAndRestore_OnlyAdminGroup_CheckedPerChunk"` (AC2)
 4. `BackupTests > "Restore_InvalidContent_RejectedServerStillStarts"` (AC3): Theory null users, null settings, null channels, invalid names, dangling group ids, no admin
 5. `BackupTests > "ManifestCap_Quota_ListingCached"` (AC4)
@@ -5688,9 +5688,9 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Tests (TDD)
 
-1. `ServerLogWriterTests > "ConsoleLine_EscapedLikeFile"` (AC1)
-2. `ServerLogWriterTests > "ChatWithFakeLine_OneLineOnly"` (AC2)
-3. `LogCommandTests > "RefusedSearch_NotLogged"` (AC3)
+1. `ServerLogWriterTests > "WriteServerLine_ControlCharacters_ConsoleEscapedLikeFile"` (AC1)
+2. `ServerLogWriterTests > "ChannelLog_ChatWithFakeLine_StaysOneLine"` (AC2)
+3. `LogCommandTests > "SearchLogs_Refused_NotLogged"` (AC3)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5731,7 +5731,7 @@ Test command: `dotnet test tests/OVS.Tests`
 
 1. `DataStoreTests > "StoredPassword_Pbkdf2_SaltedUnique"` (AC1): the same password twice gives different stored values that both verify
 2. `HandshakeTests > "OldSha256Hash_LoginWorks_UpgradedAfter"` (AC2)
-3. `HandshakeTests > "EmptyPassword_StillOpenServer"` (AC3)
+3. `HandshakeTests > "Handshake_EmptyPasswordSet_ServerStaysOpen"` (AC3)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5775,7 +5775,7 @@ Every client receives all groups with their permission bitmasks in the Welcome a
 1. `StateSyncTests > "Welcome_WithoutGroupsView_NoPermissionBits"` (AC1, AC2)
 2. `StateSyncTests > "Flags_PerRecipient_RecomputedOnRightsChange"` (AC3)
 3. existing `ServerViewModelTests` and `AdminViewModelTests` adapted to flags stay green (AC4)
-4. `StateSyncTests > "GroupsView_StillSeesFullGroups"` (AC1)
+4. `StateSyncTests > "Groups_ViewOnlyRight_SeesFullGroups"` (AC1)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5826,12 +5826,12 @@ Test command: `dotnet test tests/OVS.Tests`
 
 ### Tests (TDD)
 
-1. `ChannelLockTests > "CreateEdit_GroupLock_Validated_NotOnDefault"` (AC1)
+1. `ChannelLockTests > "GroupLock_CreateOrEdit_ValidatedAndNotOnDefault"` (AC1)
 2. `ChannelLockTests > "Join_RequiresOneListedGroup_AdminAlways"` (AC2)
    - Given: channel locked to Moderator and Raid; users with Guest only, with Raid, with Moderator; an admin
    - Expected: Guest gets `ChannelLocked`, the others join
 3. `ChannelLockTests > "Move_OnlyIfMoverQualifies_TargetNotChecked"` (AC3)
-4. `ChannelLockTests > "LockChange_NobodyMovedOut"` (AC4)
+4. `ChannelLockTests > "LockChange_UsersInside_NobodyMovedOut"` (AC4)
 5. `ChannelLockTests > "GroupDeleted_RemovedFromLocks_EmptyMeansAdminsOnly"` (AC5)
 6. `ServerViewModelTests > "LockedChannel_IconTooltipAndJoinAvailability"` (AC6, AC7)
 7. `SidebarWidthTests` extended with the lock icon (AC6)
@@ -5889,15 +5889,15 @@ After Package 93 channels can be group-locked. The server password is stored as 
 
 ### Tests (TDD)
 
-1. `ChannelLockTests > "Password_SetChangeRemove_HashedNeverSent_NotOnDefault"` (AC1)
-2. `ChannelLockTests > "Join_PasswordRequired_WrongRefused_BypassAndAdminJoin"` (AC2)
-3. `ChannelLockTests > "BothLocks_BypassSkipsOnlyPassword"` (AC3)
+1. `ChannelLockTests > "ChannelPassword_SetChangeRemove_HashedNeverSentNotOnDefault"` (AC1)
+2. `ChannelLockTests > "Join_PasswordLocked_WrongRefusedBypassAndAdminJoin"` (AC2)
+3. `ChannelLockTests > "Join_BothLocks_BypassSkipsOnlyPassword"` (AC3)
 4. `ChannelLockTests > "Move_IntoPasswordChannel_RefusedExceptAdmin"` (AC4)
-4a. `ChannelLockTests > "Admin_MovesGuestIntoFullGroupAndPasswordLockedChannel"` (AC10)
+4a. `ChannelLockTests > "Move_AdminMovesGuest_IntoFullGroupAndPasswordLockedChannel"` (AC10)
    - Given: a channel locked to a group the guest lacks, with a password and a user limit that is reached; an admin who is not in the lock's groups
    - Expected: the admin moves the guest in; a moderator with `UserMove` and `ChannelJoinFull` is refused for the same move
 5. `ChannelLockTests > "WrongPasswords_Throttled_NotLogged"` (AC5)
-6. `ChannelLockTests > "PasswordChange_NobodyMovedOut"` (AC6)
+6. `ChannelLockTests > "PasswordChange_UsersInside_NobodyMovedOut"` (AC6)
 7. `PermissionRulesTests`, `DataStoreTests` (only Admin gets the new bit), `GroupListViewModelTests > [Theory] "Toggles_FirstRowInTheCulture_OneUniqueLabelPerSingleRightWithTheNewRightsNamed"` (AC7)
 8. `ServerViewModelTests > "JoinPasswordChannel_PromptsOnce_RememberedForSession"` (AC8)
 9. `ResponsiveTests.Dialogs_FitAt360` with the prompt, `LocalizationTests`, `SettingsTests > "ErrorTexts_EveryCodeHasText"` (AC9)
@@ -6816,7 +6816,7 @@ There is one kind of channel today:
 
 1. `ChannelCommandTests > "CreateSeparator_EmptyNameNoOptions_BroadcastsKind"` (AC1)
 2. `ChannelCommandTests > "Separator_JoinMoveEdit_Refused"` (AC3, AC4)
-3. `LinkCommandTests > "LinkToSeparator_InvalidLink"` (AC4)
+3. `LinkCommandTests > "Link_ToSeparator_InvalidLink"` (AC4)
 4. `DataStoreTests > "OldFile_ChannelsLoadAsVoice_SeparatorRoundTrips"` and `BackupTests > [Theory] "Restore_InvalidContent_RejectedServerStillStarts"` (AC5)
 5. `ChannelDialogViewModelTests > "Create_Separator_HidesFieldsAndSendsKind"` (AC1)
 6. `ServerViewModelTests > "Separator_NoJoinNoEditNoLink_NotAMoveTarget"` (AC3, AC4)
@@ -7815,11 +7815,11 @@ Every sender encodes at a fixed 32 kbps (`OpusCodec.cs`, `VoiceEncoder`). Fluxer
 
 ### Tests (TDD)
 
-1. `ChannelCommandTests > "Bitrate_DefaultRangeRefused"` (AC1)
+1. `ChannelCommandTests > "Bitrate_CreateAndEdit_DefaultRangeOrRefused"` (AC1)
 2. `DataStoreTests > "Channel_WithoutBitrate_Loads64"` (AC2)
 3. `ChannelDialogViewModelTests > "Bitrate_ShownAndEdited"` (AC3)
 4. `SendPathTests > "Encoder_FollowsChannelBitrate"` (AC4, AC5), `EngineSyncTests > "SyncConnection_ChannelBitrate_SetsTheEnginesChannelBitrate"`, `"SyncConnection_NoChannelBitrate_SetsTheDefaultBitrate"`, `"SyncConnection_BitrateAboveTheMaximum_SetsTheMaximum"` and `"SyncConnection_BitrateBelowTheMinimum_SetsTheMinimum"`, `MainViewModelTests > "Bitrate_FollowsCurrentChannel"` (AC4)
-5. `StateSyncTests > "ChannelInfo_CarriesBitrate"` (AC3, AC6)
+5. `StateSyncTests > "ChannelInfo_Snapshot_CarriesBitrate"` (AC3, AC6)
 
 (as built: `ProtocolInfo` has `DefaultBitrate = 64`, `MinBitrate = 16`, `MaxBitrate = 128` and version 12. `ChannelInfo`, `CreateChannel` and `EditChannel` end with `int Bitrate = ProtocolInfo.DefaultBitrate`, so every existing construction keeps compiling and means 64; `RequestShape` needs nothing (an int is never null). `ChannelRecord.Bitrate` defaults to 64, so a data file without it loads every channel at 64 without a new data version; `ServerState.Info` sends 0 for a separator, whatever its record holds, and a new separator is stored with 0. `ValidateBitrate` refuses anything outside 16 to 128 with `InvalidValue` ("Qualität: 16 bis 128 kbps.") on create and on edit, also for the default channel, which has its own bitrate like any channel; a separator request with a bitrate other than the default is refused like one with other options. The channel log names it ("Qualität 96 kbps" on create when not 64, and on edit when it changed), and so does the client log line of an edit. `BackupStore.Validate` refuses a voice channel outside the range ("Channel-Name oder -Qualität ungültig") and ignores a separator's value, since separators stored before the package load as 64. On the client, `ChannelViewModel.Bitrate` follows `ChannelInfo`, `ChannelEdit` carries it into and out of the dialog, and `ServerViewModel.CreateChannel`/`EditChannel` send it. `MainViewModel.SyncAudioFlags` (run on every state change, so on join, move and an edit of the own channel) sets `AudioEngine.ChannelBitrate` to the current channel's, 64 while in none. `VoiceEncoder` starts at 64 kbps instead of the fixed 32 and has `BitrateKbps`; `CapturePipeline.Bitrate` (a `Func<int>` like `DecideTarget`) is asked for every frame sent and the encoder takes a change right before encoding, on the capture thread under the pipeline's lock, so no encode races a change. The engine wires it to `EncoderBitrate`: the channel's, or 64 in the self test. Link push-to-talk uses it unchanged, since it is the sender's own channel. The channel dialog has "Qualität (kbps, 16 bis 128)" / "Quality (kbps, 16 to 128)" with a one-line hint, a number field (step 8) below the user limit, clamped like it; an emptied field keeps the channel's value. The debug API's `/state` lists each channel's bitrate. Tests: AC1 `ChannelCommandTests.Bitrate_DefaultRangeRefused` (64 by default, 16 and 128 on create, 96 on edit in the snapshot of a later client and in the channel log, 15, 129 and 0 refused, a separator has 0 and one asking for 96 is refused), AC2 `DataStoreTests.Channel_WithoutBitrate_Loads64` (a stored 96 round-trips, the field removed loads 64, the backup check refuses 200), AC2, AC3 and AC6 `StateSyncTests.ChannelInfo_CarriesBitrate` (version 12, another client and its `StateMirror` get 96, still 96 after a server restart), AC3 `ChannelDialogViewModelTests.Bitrate_ShownAndEdited` (64 for a new channel, the channel's own when editing, also the default channel's, clamped to 16 and 128, a separator sends none) and `Bitrate_FromChannelIntoDialog_SentWithEdit` (the channel's 24 goes into the dialog, the edited 128 into `EditChannel` and `CreateChannel`), `UiSmokeTests` (the rendered dialog shows the value), AC4 and AC5 `SendPathTests.Encoder_FollowsChannelBitrate` (uniform noise at -20 dBFS through the `TalkRig`, the average of 80 frames within 15 % of 96 kbps, after the change to 32 while talking of 32, the same with link push-to-talk and its link target, 64 in the self test with nothing sent, and a real capture asks the engine), `MainViewModelTests.Bitrate_FollowsCurrentChannel` (64 in the Lobby, unchanged by an edit of another channel, 96 after moving into it, 24 after it is edited, 64 after disconnecting). `SendPathTests.Encoder_ComplexitySet_DtxOff` now expects a new encoder at 64 000 and `SmokeTests` version 12. The new tests failed to build before the fields, `ChannelBitrate` and the dialog's `Bitrate` existed.)
 
@@ -7875,7 +7875,7 @@ OVS shows only the control connection's TCP ping (`ClientConnection.cs:142`, `Ma
 
 1. `VoicePacketTests > "PingPayload_RoundTrip"` (AC7)
 2. `ClientNetTests > "VoiceRoundTrip_Measured"` (AC1): a delaying relay in `TestSupport` (from 126).
-3. `VoiceRelayTests > "UplinkLoss_ReportedInPing"` and `ClientNetTests > "DownlinkLoss_ReportedBothSides"` (AC2)
+3. `VoiceRelayTests > "Ping_UplinkLoss_Reported"` and `ClientNetTests > "DownlinkLoss_ReportedBothSides"` (AC2)
 4. `ReceivePathTests > "Jitter_Estimated"` (AC3) and `"TalkPause_NotLoss"` (AC6)
 5. `ConnectionStatsViewModelTests > "Rating_RelativeToBaseline"` (AC4)
 6. `MainViewModelTests > "SignalIcon_AndDetails"`, `DialogButtonsTests > [Theory] "ShowAsync_EachDialog_ItsButtonsInOrderAndRedOnlyWhenRisky"` (AC5); the 2 s refresh and the crossing out one by one: `ConnectionStatsViewModelTests > "Refresh_FirstCall_ShowsTheRoundTripBothLossFiguresAndTheMixerAndEncoderFigures"`, `"Refresh_UdpUnreachable_CrossesTheIconOut"`, `"Refresh_JustBeforeTheInterval_KeepsTheFiguresAndAsksForNoNewOnes"`, `"Refresh_AfterTheInterval_ReadsAndShowsTheNewFigures"` and `"Refresh_UdpReachableAgainWithinTheInterval_ClearsTheCrossingAtOnce"`; the card stays blank without a voice connection and the mixer's figures reach it: `MainViewModelCompositionTests > "Tick_NoVoiceConnection_StatsStayBlank"`, `MainViewModelTests > "Tick_MixerHasJitter_StatsShowTheMixersJitter"` and `ReconnectTests > "Reconnect_SelfTestFramesDuringTheWait_StatsCountFromTheNewConnection"` (AC5); the answers are taken once: `ConnectionStatsViewModelTests > "Refresh_NoNewAnswerSinceTheLast_KeepsTheBaseline"` and `"Reset_AfterAnAnswer_CountsTheSameAnswerCountAsNewAgain"` (AC4); the figures the card reads from the voice connection: `VoiceLinkTests > "ReadFigures_ServerAnswered_ReturnsTheRoundTripAndTheLossSeen"` (AC5)
@@ -8020,7 +8020,7 @@ Opus FEC rebuilds a lost frame only as a coarse copy, and only from the next pac
 2. `ReceivePathTests > "LostFrame_PlayedFromCopy_FewerConcealed"` (AC4)
 3. `ReceivePathTests > "Copy_NeverReplacesOrDuplicates"` (AC5)
 4. `SendPathTests > "Sender_AddsCopyOnlyOnLoss"` (AC2)
-5. `VoiceRelayTests > "Server_AddsCopyPerLossyRecipient"` (AC3)
+5. `VoiceRelayTests > "Relay_LossyRecipient_GetsCopy"` (AC3)
 
 (as built: `ProtocolInfo.Version` is 14. `RelayPayload` (`VoicePacket.cs`) is the voice plaintext in both directions, `[frameSeq 4 BE][length of current 2 BE][current opus][previous opus, optional]`; `TryRead` takes it apart into ranges without copying (the server's side) and refuses a payload shorter than 6 bytes or longer than `MaxSize` (1374, what a 1400 byte packet leaves after header and tag), an empty current frame, a current frame or copy above `VoiceHeader.MaxOpusSize` and a length field beyond the payload; `TryParse` (the client's side) returns the frame and the copy or null. `Build` throws for an empty or oversize current frame and leaves out a copy that would not fit the packet. `RelayPayload.CopyFromLossPercent` (2) is the threshold for both legs. Sender: `VoiceClient.SendVoice` keeps the encoder's array of the last frame (no copy, nothing extra allocated) and appends it while `sendCopies` is set, which each ping answer with frames expected sets from the uplink figure (at least 2 %); an answer with nothing expected (a talk pause) keeps the decision. This needed no change in `CapturePipeline` (the plan listed it): `VoiceClient` serializes sends under its own lock and knows the uplink figure itself. Server: `Session.DownlinkLoss`'s setter also stores the time and, for a figure with frames expected, whether it is at least 2 %; `WantsCopies` is that decision while the last report is at most 10 s old (`CopiesStaleAfter`, five ping intervals), so a listener whose pings stopped, or who never reported, gets single frames. `Session.LastFrame` keeps the sender's newest frame as a slice of its decrypted plaintext (only advanced by a higher frame number). `UdpVoiceServer.RelayAsync` builds at most three payloads per packet and seals each once per recipient as before: with the copy (the sender's own, else the kept frame when it is exactly the one before; the plaintext itself when the sender sent a copy), single (the plaintext itself when the sender sent none), and, beyond the plan, the sender's copy as a frame of its own when the server never got that frame (a loss on the uplink): listeners without copies get it before the frame, those with copies get it inside it, so the sender's copy helps every listener. `Uplink` still counts only the frame itself (a copy is no frame received, so the loss figure and with it the sender's decision stay put), and `CountVoiceFrame` is unchanged. Client: the copy travels as a fifth argument of `VoiceClient.VoiceReceived` through `AudioEngine.OnVoice` and `Mixer.Push` (optional `copy` parameters) into `JitterBuffer.Push`, which keeps it in a small dictionary under `frameSeq - 1` only while that frame is missing and still to play (not before playback reaches it, never for one played already); a frame that arrives itself removes its copy, and `Pull` takes the frame itself before a copy, so a copy never replaces a frame that arrived, and frames behind `next` are dropped as before, so nothing plays twice. Copies playback has moved past are dropped at a spurt start and after an overflow, without allocating. A lost frame plays from its copy before FEC and concealment, and the FEC rebuild also reads the next frame from a copy. A frame played from a copy counts in a new counter `Recovered` (neither `Lost` nor `Rebuilt`, as it plays in full); `ReceiveStats` got `Recovered` as an optional last field and the details card's concealed line reads "{0} ({1} per FEC ersetzt, {2} aus Kopien gespielt)" / "{0} ({1} rebuilt by FEC, {2} played from copies)". The AC4 measure is `Concealed + Rebuilt` (every frame the decoder had to make up, as a coarse FEC rebuild is not full quality either), not `Concealed` alone; `Concealed` alone barely changes, since a single loss was already rebuilt by FEC and only two losses in a row leave a gap. Tests: AC1 and AC6 `VoicePacketTests.RelayPayload_WithCopy_RoundTrip_SizeLimit` (version 14, with and without copy through both parse methods, the largest frame alone and a copy left out by `Build`, a payload of exactly `MaxSize` sealed, each malformed form refused) and `SmokeTests` (version 14); AC2 `SendPathTests.Sender_AddsCopyOnlyOnLoss` (a `VoiceClient` against a stand-in UDP server on loopback that answers pings by hand, the client on a manual clock so its own timer never pings: no copy before a figure and at 1 %, the previous frame at 2 %, kept over an empty figure, gone at 1 %); AC3 `VoiceRelayTests.Server_AddsCopyPerLossyRecipient` (server on a manual clock, 20 ms per frame: y reports 10 %, z 1 %, w nothing; y gets the kept frame, then the sender's copy, z and w single frames throughout; a frame lost on the uplink reaches z and w on its own from the sender's copy and y inside the next packet; the uplink window still counts it missed; an empty report from y keeps its copies; 11 s later y's report is stale and it gets a single frame); AC4 `ReceivePathTests.LostFrame_PlayedFromCopy_FewerConcealed` (500 frames of one stream, 10 % lost with a fixed seed, one push and pull per tick: without copies every loss is `Lost`, with copies `Lost + Recovered` is the number lost and frames made up drop from 46 to 6, 87 %; a mixer sums `Recovered`); AC5 `ReceivePathTests.Copy_NeverReplacesOrDuplicates` (the pulled audio equals a reference decoder fed the frames that arrived and the one copy for the frame that never did, a late frame after its copy played and a copy for a played frame change nothing, a duplicate plays once and is counted once; after review also a lost onset played from its copy, in a fresh buffer and after a rebuffer). The tests failed to build before the four-out `TryParse`, `Recovered` and the `copy` parameters existed; with the server's `WantsCopies` forced off, the client's copy decision never set, or the copies ignored, AC2, AC3 and AC4 fail. `ClientNetTests` only got the fifth lambda argument. After review: (1) a copy travels under the routing of the frame that carries it, so it must have had the same: `VoiceClient` keeps the target and send time with its last frame and appends it only to the same target, and `Session.TrackFrame(frame, target, opus, relayed)` replaces `LastFrame`: it keeps the newest frame that had recipients (not one sent while muted or into a muted channel) with its effective target and arrival time, and the highest frame number that arrived at all. The frame before goes along (kept, or the sender's copy) only when the last relayed frame had the same target and arrived at most `RelayPayload.CopyMaxAge` ago, and only when it is exactly that frame or never arrived (`Unseen`); otherwise a sender's copy is stripped, so a frame that arrived but was not relayed (muted, another target) never travels later. (2) The recovered extra packet takes a token of the sender's rate limit (`Limiter.TryTake()`, once per packet), and only a frame newer than anything that arrived is recovered. (3) Frame numbers go on across talk pauses, so the frame before a spurt's first is the end of the last spurt: `CopyMaxAge` is 100 ms (five frames; the review suggested about 60 ms, 100 leaves room for jitter around a frame lost on the way in, as its neighbours are 40 ms apart), on the client since the last send and on the server since the last relayed frame. (4) `JitterBuffer.Pull` starts a spurt at a copy of exactly the first frame's predecessor when that is not played yet, so a lost onset plays in full (counted `Recovered`; a gap before it still counts `Lost`). (5) A recovered frame arriving late itself is not relayed again (`Session.RecoveredFrame`), and `JitterBuffer.Push` ignores a frame already buffered, so a duplicate is neither stored again nor counted in `Received` (a late frame after its slot played still counts, as in Package 133). Tests: `SendPathTests.Sender_AddsCopyOnlyOnLoss` also checks no copy across a change to and from the link target and none after 150 ms without sending; `VoiceRelayTests.Server_AddsCopyPerLossyRecipient` now proves staleness with a kept frame that would otherwise go along; new `VoiceRelayTests.Server_Copies_SameRoute_RecentOnly_Charged` (manual clock; x speaks in the lobby with y lossy and z, the linked channel Other has c lossy and d): a lobby-only frame lost on the way in and carried by a linked frame reaches no one, alone or as copy, while the next linked frame carries its copy; a frame sent while self-muted is never relayed later; the end of a spurt 2 s before is no copy; a recovered frame arriving late is not relayed again; a sender skipping every other number with copies gets 10 packets out of its burst of 10, not 19 (each packet awaited, and the server's handling of the late frame and of the muted frame confirmed by a ping before going on, since a packet handled after the clock moved would take a refilled token). `ReceivePathTests.Copy_NeverReplacesOrDuplicates` covers (4) and (5). Each fix was checked red by taking it out (target and age on both sides, the token, the late duplicate, the strip, the onset, the duplicate count). Second review: "same route" also means the same channel, as a move while talking changes the listeners with the same target byte: `ServerState.VoiceRecipients` also returns the sender's channel (read under its lock), `TrackFrame` keeps it with the last relayed frame and requires it for both the kept copy and the recovery; `Server_Copies_SameRoute_RecentOnly_Charged` moves x to Other between frame 13 (lobby) and 14 (with 13 as copy: none for c, nothing extra for d) and back before frame 16 (with the lost 15 as copy: no copy for y, no packet of its own for z), red without the channel check. A frame counter starting again within one session (not reachable, a reconnect makes a new session) would only turn copies off (noted in `TrackFrame`). Not checked by hand: how it sounds on a really lossy line.)
 
@@ -8274,8 +8274,8 @@ Voice is UDP only; a TCP fallback was out of scope until now and the user asked 
 ### Tests (TDD)
 
 1. `VoiceRoutingTests` and `VoiceRelayTests` extended with a TCP variant (AC3)
-2. `VoiceRelayTests > "TcpAndUdp_Mixed"` (AC2)
-3. `ServerTuningTests > "VoiceUp_OwnBudget"` (AC4)
+2. `VoiceRelayTests > "Voice_TcpAndUdpMixed_Relayed"` (AC2)
+3. `ServerTuningTests > "VoiceUp_OverTcp_HasOwnBudget"` (AC4)
 4. `ClientNetTests > "UdpBlocked_VoiceOverTcp"` (AC1, AC6)
 5. `ClientNetTests > "UdpBack_SwitchesBack"` (AC5), `ConnectionViewModelTests > "Tick_VoiceOverTcpInUse_PingTextNamesItUntilUdpAnswersAgain"` (AC5)
 

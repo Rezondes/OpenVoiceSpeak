@@ -27,7 +27,7 @@ public sealed class RestartScheduleTests
 
     /// <summary>Package 69: switching the restart on, off or to another time in the administration takes effect at once.</summary>
     [Fact]
-    public async Task AutoRestartChanged_ScheduleFollows()
+    public async Task Schedule_AutoRestartChanged_Follows()
     {
         var time = new ManualTimeProvider();
         var admin = ClientIdentity.Create();

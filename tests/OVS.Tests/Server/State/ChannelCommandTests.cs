@@ -42,7 +42,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Join_BroadcastsUserUpdated()
+    public async Task Join_OtherChannel_BroadcastsUserUpdated()
     {
         var raid = await CreateAsync("Raid");
         await guest.SendAsync(new JoinChannel(raid.Id));
@@ -125,7 +125,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
 
     /// <summary>Package 132 (A141): 64 kbps without a value, 16 to 128 kept on create and edit, anything else refused; separators have none.</summary>
     [Fact]
-    public async Task Bitrate_DefaultRangeRefused()
+    public async Task Bitrate_CreateAndEdit_DefaultRangeOrRefused()
     {
         Assert.Equal(64, (await CreateAsync("Standard")).Bitrate);
         await admin.SendAsync(new CreateChannel("Leise", "", Bitrate: 16));
@@ -224,7 +224,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Join_Full_ChannelFull_AdminStillEnters()
+    public async Task Join_FullChannel_RefusedButAdminEnters()
     {
         var raid = await LimitedAsync("Raid", 1);
         await JoinAsync(moderator, raid.Id);
@@ -263,7 +263,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Edit_LimitBelowCount_NobodyRemoved_PersistedInSnapshot()
+    public async Task Edit_LimitBelowCount_NobodyRemovedAndPersisted()
     {
         var raid = await CreateAsync("Raid");
         await JoinAsync(guest, raid.Id);
@@ -313,7 +313,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Edit_Muted_WithoutRight_Denied()
+    public async Task EditMuted_WithoutRight_Denied()
     {
         await guest.SendAsync(new EditChannel(Lobby, "Lobby", "", 0, IsMuted: true) { RequestId = "e" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("e")).Code);
@@ -328,7 +328,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Delete_MovesUsersToDefaultThenRemoves()
+    public async Task Delete_OccupiedChannel_UsersMovedToDefaultFirst()
     {
         var raid = await CreateAsync("Raid");
         await guest.SendAsync(new JoinChannel(raid.Id));

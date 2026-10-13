@@ -49,7 +49,7 @@ public sealed class UserStatsTests
     }
 
     [Fact]
-    public async Task Login_SetsLastLoginCountIp()
+    public async Task Login_User_SetsLastLoginCountAndIp()
     {
         var time = new ManualTimeProvider();
         var anna = ClientIdentity.Create();
@@ -67,7 +67,7 @@ public sealed class UserStatsTests
     }
 
     [Fact]
-    public async Task NicknameChange_KeepsFiveNewestDistinct()
+    public async Task NicknameChange_Many_KeepsFiveNewestDistinct()
     {
         var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync();
@@ -80,7 +80,7 @@ public sealed class UserStatsTests
     }
 
     [Fact]
-    public async Task Disconnect_AddsOnlineTimeSpeechChat()
+    public async Task Disconnect_Session_AddsOnlineSpeechAndChat()
     {
         var time = new ManualTimeProvider();
         var anna = ClientIdentity.Create();
@@ -110,7 +110,7 @@ public sealed class UserStatsTests
     }
 
     [Fact]
-    public async Task MutedChannel_SpeechNotCounted()
+    public async Task Speech_MutedChannel_NotCounted()
     {
         var admin = ClientIdentity.Create();
         var anna = ClientIdentity.Create();
@@ -133,7 +133,7 @@ public sealed class UserStatsTests
     }
 
     [Fact]
-    public async Task ListUsers_IncludesLiveSession()
+    public async Task ListUsers_OnlineUser_IncludesLiveSession()
     {
         var time = new ManualTimeProvider();
         var admin = ClientIdentity.Create();
@@ -175,7 +175,7 @@ public sealed class UserStatsTests
     }
 
     [Fact]
-    public async Task Shutdown_PersistsOpenSessions()
+    public async Task Shutdown_OpenSessions_Persisted()
     {
         var time = new ManualTimeProvider();
         var anna = ClientIdentity.Create();

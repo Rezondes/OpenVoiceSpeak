@@ -33,7 +33,7 @@ public sealed class ChatTests
     }
 
     [Fact]
-    public async Task Deliver_ServerChannelPrivate()
+    public async Task SendChat_ServerChannelPrivate_Delivered()
     {
         var (server, chef, gast, weit, _) = await StartAsync();
         await using var _s = server;
@@ -80,7 +80,7 @@ public sealed class ChatTests
     }
 
     [Fact]
-    public async Task Invalid_EmptyTooLongOfflineSelf()
+    public async Task SendChat_EmptyTooLongOfflineOrSelf_Refused()
     {
         var (server, chef, gast, weit, _) = await StartAsync();
         await using var _s = server;
@@ -102,7 +102,7 @@ public sealed class ChatTests
     }
 
     [Fact]
-    public async Task RateLimit_SixthInFiveSeconds()
+    public async Task SendChat_SixthInFiveSeconds_RateLimited()
     {
         var time = new ManualTimeProvider(DateTimeOffset.UtcNow);
         var (server, chef, gast, weit, _) = await StartAsync(time);
@@ -121,7 +121,7 @@ public sealed class ChatTests
     }
 
     [Fact]
-    public async Task ServerMuted_CanWrite()
+    public async Task SendChat_ServerMuted_StillDelivered()
     {
         var (server, chef, gast, weit, _) = await StartAsync();
         await using var _s = server;

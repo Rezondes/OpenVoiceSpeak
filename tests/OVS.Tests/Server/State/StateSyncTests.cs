@@ -11,7 +11,7 @@ namespace OVS.Tests.Server.State;
 public class StateSyncTests
 {
     [Fact]
-    public async Task Welcome_ContainsSnapshotAndNewUserInLobbyAsGuest()
+    public async Task Welcome_NewUser_SnapshotWithUserInLobbyAsGuest()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.ConnectAsync(server, "anna");
@@ -33,7 +33,7 @@ public class StateSyncTests
     }
 
     [Fact]
-    public async Task NewUser_IsPersistedAsGuest()
+    public async Task NewUser_Connects_PersistedAsGuest()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.ConnectAsync(server, "anna");
@@ -45,7 +45,7 @@ public class StateSyncTests
     }
 
     [Fact]
-    public async Task Disconnect_OthersReceiveUserLeft()
+    public async Task Disconnect_User_OthersReceiveUserLeft()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.ConnectAsync(server);
@@ -70,7 +70,7 @@ public class StateSyncTests
     }
 
     [Fact]
-    public async Task Restart_KeepsCreatedChannels()
+    public async Task Restart_CreatedChannels_Kept()
     {
         var admin = OVS.Shared.Identity.ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
@@ -88,7 +88,7 @@ public class StateSyncTests
 
     /// <summary>Package 132 (A141): every client learns a channel's bitrate, it outlasts a restart; protocol version 12.</summary>
     [Fact]
-    public async Task ChannelInfo_CarriesBitrate()
+    public async Task ChannelInfo_Snapshot_CarriesBitrate()
     {
         Assert.True(WireProtocol.Version >= 12); // 12 brought the bitrate; Package 133 raised it to 13 (SmokeTests pins the current one)
         var admin = OVS.Shared.Identity.ClientIdentity.Create();
@@ -110,7 +110,7 @@ public class StateSyncTests
     }
 
     [Fact]
-    public async Task UnknownRequest_IsAnsweredWithError()
+    public async Task Request_Unknown_AnsweredWithError()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.ConnectAsync(server);
@@ -160,7 +160,7 @@ public class StateSyncTests
 
     /// <summary>Package 92 (AC1): GroupsView keeps the full groups; GroupsAssign alone learns which groups it may hand out.</summary>
     [Fact]
-    public async Task GroupsView_StillSeesFullGroups()
+    public async Task Groups_ViewOnlyRight_SeesFullGroups()
     {
         var adminId = OVS.Shared.Identity.ClientIdentity.Create();
         var assignerId = OVS.Shared.Identity.ClientIdentity.Create();

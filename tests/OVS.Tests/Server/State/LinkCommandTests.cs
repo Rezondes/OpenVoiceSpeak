@@ -67,7 +67,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
 
     /// <summary>Package 111: nothing is spoken in a separator, so it has no links, alone or in the link matrix.</summary>
     [Fact]
-    public async Task LinkToSeparator_InvalidLink()
+    public async Task Link_ToSeparator_InvalidLink()
     {
         await admin.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
         var separator = (await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Kind == ChannelKind.Separator)).Channel.Id;
@@ -118,7 +118,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeleteChannel_UnlinksBeforeRemove()
+    public async Task DeleteChannel_Linked_UnlinkedBeforeRemove()
     {
         await moderator.SendAsync(new LinkChannels(channelX, channelY));
         await moderator.SendAsync(new LinkChannels(channelX, lobby));
@@ -134,7 +134,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task LinkedChannels_OnlyDirectNeighbours()
+    public async Task LinkedChannels_Chain_OnlyDirectNeighbours()
     {
         // lobby - x - y
         await moderator.SendAsync(new LinkChannels(lobby, channelX));

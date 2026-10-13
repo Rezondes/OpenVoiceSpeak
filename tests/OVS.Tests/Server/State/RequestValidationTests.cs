@@ -55,7 +55,7 @@ public sealed class RequestValidationTests
     }
 
     [Fact]
-    public async Task HandlerException_AnsweredNotDropped()
+    public async Task Handle_HandlerThrows_AnsweredNotDropped()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -165,7 +165,7 @@ public sealed class RequestValidationTests
     [InlineData("a\u2029b")] // paragraph separator
     [InlineData("a\u0085b")] // C1 control
     [InlineData("a\u2066b")] // bidi isolate
-    public async Task Names_RejectFormatAndBidiChars(string name)
+    public async Task Names_FormatOrBidiChars_Rejected(string name)
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -184,7 +184,7 @@ public sealed class RequestValidationTests
     }
 
     [Fact]
-    public void Names_TrimmedAndOrdinaryUnicodeKept()
+    public void Names_SpacesAndOrdinaryUnicode_TrimmedAndKept()
     {
         Assert.Equal("Raid", TextRules.NormalizeName("  Raid \u2028", 64));
         Assert.Equal("J\u00FCrgen \u00E9\u00E8", TextRules.NormalizeName("J\u00FCrgen \u00E9\u00E8", 32));
@@ -261,7 +261,7 @@ public sealed class RequestValidationTests
     }
 
     [Fact]
-    public async Task MultilineTexts_AllowNewlineRejectOtherControls()
+    public async Task MultilineTexts_Newline_AllowedOtherControlsRejected()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -322,7 +322,7 @@ public sealed class RequestValidationTests
     }
 
     [Fact]
-    public async Task ChatTargetOutOfRange_Rejected()
+    public async Task SendChat_TargetOutOfRange_Rejected()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -341,7 +341,7 @@ public sealed class RequestValidationTests
 
     /// <summary>Package 83: a restore keeps the looser rule of stored names, so older backups stay usable.</summary>
     [Fact]
-    public void BackupValidation_KeepsStoredNamesThatNewInputWouldRefuse()
+    public void BackupValidation_StoredNamesNewInputWouldRefuse_Kept()
     {
         var data = ServerData.CreateDefault(new ServerConfig(0, "unused", 10, "Testserver", ""));
         data.Users.Add(new UserRecord { Fingerprint = "f", LastNickname = "Alt\u200B", GroupIds = [WellKnownGroups.Admin] });

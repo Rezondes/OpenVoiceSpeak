@@ -67,7 +67,7 @@ public class VoiceRoutingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Target1_WithSpeakLinked_OwnPlusDirectLinks_NotTransitive(bool tcp)
+    public void Route_LinkTargetWithSpeakLinked_OwnAndDirectLinksNotTransitive(bool tcp)
     {
         var sender = S(1, ChannelA, tcp: tcp);
         Assert.Equal([2u, 3u], Route(sender, VoiceHeader.TargetLinked, S(2, ChannelA, tcp: tcp), S(3, ChannelB, tcp: !tcp), S(4, ChannelC, tcp: tcp), S(5, Lobby, tcp: tcp)));
@@ -90,7 +90,7 @@ public class VoiceRoutingTests
     [InlineData("noSpeak", true)]
     [InlineData("serverMuted", true)]
     [InlineData("selfMuted", true)]
-    public void SenderCannotSpeak_NoRecipients(string reason, bool tcp)
+    public void Route_SenderCannotSpeak_NoRecipients(string reason, bool tcp)
     {
         var sender = S(1, ChannelA, reason == "noSpeak" ? Permission.SpeakLinked : Talk, tcp: tcp);
         sender.ServerMuted = reason == "serverMuted";
@@ -101,7 +101,7 @@ public class VoiceRoutingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void DeafenedAndSender_Excluded(bool tcp)
+    public void Route_DeafenedAndSender_Excluded(bool tcp)
     {
         var sender = S(1, ChannelA, tcp: tcp);
         var deaf = S(2, ChannelA, tcp: tcp);
@@ -111,7 +111,7 @@ public class VoiceRoutingTests
 
     /// <summary>Package 141: a session neither bound on UDP nor on voice over TCP gets nothing.</summary>
     [Fact]
-    public void UnboundEndpoint_Excluded()
+    public void Route_UnboundEndpoint_Excluded()
     {
         Assert.Empty(Route(S(1, ChannelA), VoiceHeader.TargetChannel, S(2, ChannelA, bound: false)));
         Assert.Equal([3u], Route(S(1, ChannelA), VoiceHeader.TargetChannel, S(2, ChannelA, bound: false), S(3, ChannelA, tcp: true)));
@@ -133,7 +133,7 @@ public class VoiceRoutingTests
     }
 
     [Fact]
-    public void RateLimiter_BurstThenBlocked()
+    public void RateLimiter_Burst_ThenBlocked()
     {
         var limiter = new RateLimiter(new ManualTimeProvider());
         Assert.Equal(10, Enumerable.Range(0, 20).Count(_ => limiter.TryTake()));

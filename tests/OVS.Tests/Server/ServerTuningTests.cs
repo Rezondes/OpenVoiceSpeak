@@ -89,7 +89,7 @@ public sealed class ServerTuningTests
     /// without an error or a disconnect, and it takes nothing from the request budget.
     /// </summary>
     [Fact]
-    public async Task VoiceUp_OwnBudget()
+    public async Task VoiceUp_OverTcp_HasOwnBudget()
     {
         var time = new ManualTimeProvider(); // nothing refills unless the test moves the clock
         await using var server = await TestServer.StartAsync(time: time);
@@ -184,7 +184,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task ServerIcon_CachedAndThrottled()
+    public async Task ServerIcon_Requested_CachedAndThrottled()
     {
         var dir = NewDataDirWithIcon();
         var store = new ServerIconStore(dir);
@@ -230,7 +230,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task CostlyRequests_OwnLimits()
+    public async Task CostlyRequests_Repeated_HaveOwnLimits()
     {
         var admin = ClientIdentity.Create();
         var time = new ManualTimeProvider();
@@ -257,7 +257,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task ListPages_FreeOnlyAsFollowUpOfAFirstPage()
+    public async Task ListPages_FollowUpOfAFirstPage_OnlyThenFree()
     {
         var admin = ClientIdentity.Create();
         var time = new ManualTimeProvider();
@@ -328,7 +328,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task NoOpJoinAndSelfState_NoBroadcast()
+    public async Task JoinAndSelfState_NoChange_NoBroadcast()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.ConnectAsync(server, "ruhig");
@@ -346,7 +346,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task LongRequestId_Rejected()
+    public async Task Request_LongRequestId_Rejected()
     {
         await using var server = await TestServer.StartAsync();
         await using var client = await TestClient.ConnectAsync(server);
@@ -374,7 +374,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task NonReadingClient_DisconnectedAndSlotFreed()
+    public async Task Client_NotReading_DisconnectedAndSlotFreed()
     {
         var time = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(dataDir: NewDataDirWithIcon(), time: time,
@@ -403,7 +403,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task OverLimitConnection_ClosedBeforeTls()
+    public async Task Connection_OverLimit_ClosedBeforeTls()
     {
         await using var server = await TestServer.StartAsync();
         var open = new List<TestClient>();
@@ -415,7 +415,7 @@ public sealed class ServerTuningTests
     }
 
     [Fact]
-    public async Task PendingHandshakes_Capped()
+    public async Task Handshakes_ManyPending_Capped()
     {
         await using var server = await TestServer.StartAsync(maxPendingHandshakes: 1);
         using var stalled = new TcpClient();

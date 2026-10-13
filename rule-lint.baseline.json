@@ -476,7 +476,7 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.RepeatedWrongPasswords_BlockSourceWithGrowingDelay.Try",
+    "Key": "RL154|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Handshake_RepeatedWrongPasswords_BlockSourceWithGrowingDelay.Try",
     "Count": 1
   },
   {
@@ -484,7 +484,7 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.ListPages_FreeOnlyAsFollowUpOfAFirstPage.Ask",
+    "Key": "RL154|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.ListPages_FollowUpOfAFirstPage_OnlyThenFree.Ask",
     "Count": 1
   },
   {
@@ -492,7 +492,7 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.Invalid_EmptyTooLongOfflineSelf.Code",
+    "Key": "RL154|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.SendChat_EmptyTooLongOfflineOrSelf_Refused.Code",
     "Count": 1
   },
   {
@@ -508,43 +508,43 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_AddsCopyPerLossyRecipient.Heard",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Ping_UplinkLoss_Reported.Frame",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_AddsCopyPerLossyRecipient.HeardSingle",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Ping_UplinkLoss_Reported.Ping",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_AddsCopyPerLossyRecipient.Report",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Relay_Copies_SameRouteRecentOnlyAndCharged.Heard",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_AddsCopyPerLossyRecipient.Send",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Relay_Copies_SameRouteRecentOnlyAndCharged.Move",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_Copies_SameRoute_RecentOnly_Charged.Heard",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Relay_Copies_SameRouteRecentOnlyAndCharged.Send",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_Copies_SameRoute_RecentOnly_Charged.Move",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Relay_LossyRecipient_GetsCopy.Heard",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_Copies_SameRoute_RecentOnly_Charged.Send",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Relay_LossyRecipient_GetsCopy.HeardSingle",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.TcpAndUdp_Mixed.Send",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Relay_LossyRecipient_GetsCopy.Report",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.UplinkLoss_ReportedInPing.Frame",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Relay_LossyRecipient_GetsCopy.Send",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.UplinkLoss_ReportedInPing.Ping",
+    "Key": "RL154|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Voice_TcpAndUdpMixed_Relayed.Send",
     "Count": 1
   },
   {
@@ -7100,626 +7100,6 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Create_Failing_LeavesNoTmp_StartRemovesLeftovers",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Download_ChunkedByteIdentical",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.Restore_ReplacesState_SafetyBackup_RestartsRun",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Migration_GrantsViewRightsFromOldRights",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Migration_OnlyAdminGetsChannelPasswordBypass",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Migration_ServerConfigGroupsGetBackupsManage",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.NewServer_StartsWithConfigValues",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.OldBans_LoadWithUnknownNewFields",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Data/DataStoreTests.cs|DataStoreTests.Save_ThenLoad_RoundTrips_NoTempLeft",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.DuplicateNickname_RejectedNicknameTaken",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.EmptyPassword_StillOpenServer",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.InvalidNickname_Rejected",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.MaxUsersReached_RejectedServerFull",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.NoHandshake_ClosedAfterTimeout",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.NoPing_SessionRemovedAfterIdleTimeout",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.OldProtocolVersion_RejectedVersionMismatch",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Password_Cases",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Ping_KeepsSessionAliveAndIsAnswered",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.RepeatedWrongPasswords_BlockSourceWithGrowingDelay",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.SameIdentityTwice_OldSessionReplaced",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.ServerCertificate_LoadOrCreate_Twice_SameThumbprint",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.SignatureBoundToOtherCert_RejectedBadSignature",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Startup_LogsAdminToken",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.ValidHandshake_ReceivesWelcome",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.WrongSignature_RejectedBadSignature",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.AdminActions_LoggedWithActor",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ChatWithFakeLine_OneLineOnly",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ConnectDisconnectRejected_Logged",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ConsoleLine_EscapedLikeFile",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.JoinMoveLeave_LoggedInChannelLogs",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.OldFiles_DeletedAfterRetention",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ReaderLockingTheFile_LineIsNotLost",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.RenamedChannel_SameFolderAfterRestart",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.RetentionChangedAtRuntime_NextCleanupUsesIt",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.RetentionZero_KeepsAll",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ServerLine_GoesToConsoleAndFileOfThisStart",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.TokenAndPassword_NeverInFiles",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.AdminGroup_NotEditableNotDeletable",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanActOn_Cases",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanActOn_StrictSubsetOnly",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanAssign_Cases",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.CanSaveGroup_Cases",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.DefaultGroups_HaveDocumentedPermissions",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.Effective_Cases",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs|PermissionRulesTests.WouldRemoveLastAdmin_Cases",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/RestartScheduleTests.cs|RestartScheduleTests.AutoRestartChanged_ScheduleFollows",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Security/StoredPasswordTests.cs|StoredPasswordTests.IsValid_BothFormats",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Security/StoredPasswordTests.cs|StoredPasswordTests.SameSalt_SameText",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Security/StoredPasswordTests.cs|StoredPasswordTests.StoredHash_StillVerifies",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.EnvDiffersFromStored_HintInLog",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.Load_AutoRestartAndLogRotation_FromFile_EnvWins",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.Load_AutoRestart_OffByDefault_TimeDefaultsTo4am",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerConfigTests.cs|ServerConfigTests.Load_EnvOverridesFile",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.ShuttingDown_HandshakeRejectedWithTheReason",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.CostlyRequests_OwnLimits",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.ListPages_FreeOnlyAsFollowUpOfAFirstPage",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.LongRequestId_Rejected",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.NoOpJoinAndSelfState_NoBroadcast",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.NonReadingClient_DisconnectedAndSlotFreed",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.OverLimitConnection_ClosedBeforeTls",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.PendingHandshakes_Capped",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.ServerIcon_CachedAndThrottled",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.VoiceUp_OwnBudget",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.AdminChanges_SurviveRestart",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.AdminToken_Redeem_Once_Valid_Twice_Invalid",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.Assign_OfflineUser_Persisted_AndListed",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.DeleteGroup_RemovedFromUsers",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.EachAdminRequest_RequiresItsOwnRight",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.GroupsCreateOnly_CannotEditOrDelete",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.ListUsers_IncludesActiveBans",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.NoAdmin_TokenGenerated_AdminExists_NoToken",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.ProtectedGroups_Errors",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.RedeemedAdmin_And_Password_SurviveRestart",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.ServerConfigGranted_LimitsDelivered",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.Unassign_OfflineUser_And_ListShowsNickname",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.UpdateGroup_ChangesOnlineMemberPermissions",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/AdminCommandTests.cs|AdminCommandTests.UpdateSettings_NewPasswordAppliesToNextHandshake",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Bitrate_DefaultRangeRefused",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Delete_MovesUsersToDefaultThenRemoves",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Edit_LimitBelowCount_NobodyRemoved_PersistedInSnapshot",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Edit_Muted_WithoutRight_Denied",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Join_BroadcastsUserUpdated",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelCommandTests.cs|ChannelCommandTests.Join_Full_ChannelFull_AdminStillEnters",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.Admin_MovesGuestIntoFullGroupAndPasswordLockedChannel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.BothLocks_BypassSkipsOnlyPassword",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.CreateEdit_GroupLock_Validated_NotOnDefault",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.Join_PasswordRequired_WrongRefused_BypassAndAdminJoin",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.LockChange_NobodyMovedOut",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.OldData_LoadsWithoutLock",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.PasswordChange_NobodyMovedOut",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChannelLockTests.cs|ChannelLockTests.Password_SetChangeRemove_HashedNeverSent_NotOnDefault",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.Deliver_ServerChannelPrivate",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.Invalid_EmptyTooLongOfflineSelf",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.RateLimit_SixthInFiveSeconds",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.ServerMuted_CanWrite",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/IdentityFloodTests.cs|IdentityFloodTests.ConnectLoop_SavesDebounced",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/IdentityFloodTests.cs|IdentityFloodTests.OldGuestRecords_Pruned",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LinkCommandTests.cs|LinkCommandTests.DeleteChannel_UnlinksBeforeRemove",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LinkCommandTests.cs|LinkCommandTests.LinkToSeparator_InvalidLink",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LinkCommandTests.cs|LinkCommandTests.LinkedChannels_OnlyDirectNeighbours",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.DownloadSingleFile_ByteIdenticalSnapshot",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.ListLogs_ServerAndChannelFiles_NewestFirst_WithNames",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.Logs_RequireLogsView_UnknownIdRejected_NoPathTraversal",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.LongLine_CutAt2000",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.RefusedSearch_NotLogged",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.SearchLogs_AllFiles_CaseInsensitive_Max500_Truncated",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/LogCommandTests.cs|LogCommandTests.Search_DoesNotHoldStateLock",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Bans_SurviveRestart",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.EqualRanks_CannotActOnEachOther",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ExpiredBan_HandshakeSucceeds",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.KickSession_TargetDisconnectedOthersUserLeft",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.LastAdmin_CannotBeBanned",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ModeratorVsAdmin_PermissionDenied",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.SelfTargeting_Denied",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ServerMute_BroadcastsUserUpdated",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.ServerMute_NoVoiceBeforeWelcome",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Unban_AllowsReconnect",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Unban_KeepsHistory_ExpiredToo_AdmitIgnoresInactive",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/ModerationTests.cs|ModerationTests.Unban_StrongerBannedUser_Denied_NoBanListWithoutBansView",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.BackupValidation_KeepsStoredNamesThatNewInputWouldRefuse",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.ChatTargetOutOfRange_Rejected",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.HandlerException_AnsweredNotDropped",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.MultilineTexts_AllowNewlineRejectOtherControls",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.Names_RejectFormatAndBidiChars",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/RequestValidationTests.cs|RequestValidationTests.Names_TrimmedAndOrdinaryUnicodeKept",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.ChannelInfo_CarriesBitrate",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.Disconnect_OthersReceiveUserLeft",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.GroupsView_StillSeesFullGroups",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.NewUser_IsPersistedAsGuest",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.Restart_KeepsCreatedChannels",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.UnknownRequest_IsAnsweredWithError",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/StateSyncTests.cs|StateSyncTests.Welcome_ContainsSnapshotAndNewUserInLobbyAsGuest",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.Disconnect_AddsOnlineTimeSpeechChat",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.ListUsers_IncludesLiveSession",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.Login_SetsLastLoginCountIp",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.MutedChannel_SpeechNotCounted",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.NicknameChange_KeepsFiveNewestDistinct",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/State/UserStatsTests.cs|UserStatsTests.Shutdown_PersistsOpenSessions",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.EndToEnd_SameChannel_Received_OtherChannel_Not",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.InvalidPackets_DroppedNoResponse",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.MutedChannel_NoFramesArrive",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.ServerMutedSender_NotRelayed",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_AddsCopyPerLossyRecipient",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Server_Copies_SameRoute_RecentOnly_Charged",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.TcpAndUdp_Mixed",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Tcp_RoutingLikeUdp",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.Tcp_StaleVoiceUp_AfterUdp_Ignored",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.UplinkLoss_ReportedInPing",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs|VoiceRelayTests.VoiceWithoutFrameNumber_Dropped",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.DeafenedAndSender_Excluded",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.RateLimiter_BurstThenBlocked",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.SenderCannotSpeak_NoRecipients",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.Target1_WithSpeakLinked_OwnPlusDirectLinks_NotTransitive",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs|VoiceRoutingTests.UnboundEndpoint_Excluded",
-    "Count": 1
-  },
-  {
     "Key": "RL601|tests/OVS.Tests/Shared/BuildInfoTests.cs|BuildInfoTests.FromMetadata_CiValues",
     "Count": 1
   },
@@ -8092,7 +7472,7 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Ping_KeepsSessionAliveAndIsAnswered:Task.Delay",
+    "Key": "RL603|tests/OVS.Tests/Server/HandshakeTests.cs|HandshakeTests.Session_Pings_KeptAliveAndAnswered:Task.Delay",
     "Count": 1
   },
   {
@@ -8104,11 +7484,11 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.ReaderLockingTheFile_LineIsNotLost:Thread.Sleep",
+    "Key": "RL603|tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs|ServerLogWriterTests.WriteServerLine_ReaderLocksTheFile_LineNotLost:Thread.Sleep",
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.AutoRestart_TellsClients_NewRunServes_WithOwnLogFiles:DateTime.Now",
+    "Key": "RL603|tests/OVS.Tests/Server/ServerHostTests.cs|ServerHostTests.AutoRestart_RunEnds_ClientsToldAndNewRunServesWithOwnLogs:DateTime.Now",
     "Count": 1
   },
   {
@@ -8120,15 +7500,15 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.PendingHandshakes_Capped:DateTime.UtcNow",
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.Handshakes_ManyPending_Capped:DateTime.UtcNow",
     "Count": 2
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.PendingHandshakes_Capped:Task.Delay",
+    "Key": "RL603|tests/OVS.Tests/Server/ServerTuningTests.cs|ServerTuningTests.Handshakes_ManyPending_Capped:Task.Delay",
     "Count": 2
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.RateLimit_SixthInFiveSeconds:DateTimeOffset.UtcNow",
+    "Key": "RL603|tests/OVS.Tests/Server/State/ChatTests.cs|ChatTests.SendChat_SixthInFiveSeconds_RateLimited:DateTimeOffset.UtcNow",
     "Count": 1
   },
   {

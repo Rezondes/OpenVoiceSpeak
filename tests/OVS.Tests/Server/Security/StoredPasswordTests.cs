@@ -22,7 +22,7 @@ public class StoredPasswordTests
     }
 
     [Fact]
-    public void StoredHash_StillVerifies()
+    public void Verify_StoredHash_StillVerifies()
     {
         Assert.True(StoredPassword.FromStored(Stored).Matches("Sommer2026"));
         Assert.False(StoredPassword.FromStored(Stored).Matches("sommer2026"));
@@ -38,7 +38,7 @@ public class StoredPasswordTests
     }
 
     [Fact]
-    public void SameSalt_SameText()
+    public void Hash_SameSalt_SameText()
     {
         Assert.Equal(100_000, StoredPassword.HashIterations);
         Assert.Equal(Stored, Expected("Sommer2026", Convert.FromBase64String(Stored.Split('$')[2])));
@@ -52,7 +52,7 @@ public class StoredPasswordTests
     }
 
     [Fact]
-    public void IsValid_BothFormats()
+    public void IsValid_BothFormats_Accepted()
     {
         Assert.True(StoredPassword.FromStored(Stored).IsValid());
         Assert.True(StoredPassword.FromStored(Legacy).IsValid());

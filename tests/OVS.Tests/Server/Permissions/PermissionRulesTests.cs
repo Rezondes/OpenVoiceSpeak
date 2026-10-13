@@ -14,7 +14,7 @@ public class PermissionRulesTests
     static GroupRecord Admin => Groups.Single(groupRecord => groupRecord.Name == "Admin");
 
     [Fact]
-    public void Effective_Cases()
+    public void Effective_GroupSets_UnionOfRightsAdminAlwaysAll()
     {
         Assert.Equal(P.None, Effective([], Groups));
         Assert.Equal(GuestPermissions, Effective([Guest.Id], Groups));
@@ -26,7 +26,7 @@ public class PermissionRulesTests
     }
 
     [Fact]
-    public void DefaultGroups_HaveDocumentedPermissions()
+    public void DefaultGroups_Created_HaveDocumentedPermissions()
     {
         // Package 31 (A28): guests chat in the channel and privately, moderators also server-wide.
         Assert.Equal(P.Speak | P.ChatChannel | P.ChatPrivate, Guest.Permissions);
@@ -53,11 +53,11 @@ public class PermissionRulesTests
 
     [Theory]
     [MemberData(nameof(SaveCases))]
-    public void CanSaveGroup_Cases(P actor, P? existing, P newPerms, bool expected) =>
+    public void CanSave_ActorAndGroupRights_OnlyWithinTheActorsOwn(P actor, P? existing, P newPerms, bool expected) =>
         Assert.Equal(expected, GroupRules.CanSave(actor, existing is null ? null : Guid.NewGuid(), existing, newPerms));
 
     [Fact]
-    public void AdminGroup_NotEditableNotDeletable()
+    public void AdminGroup_EditOrDelete_Refused()
     {
         Assert.False(GroupRules.CanSave(P.All, AdminGroupId, P.All, P.All));
         Assert.False(CanDeleteGroup(P.All, Admin));
@@ -96,7 +96,7 @@ public class PermissionRulesTests
     }
 
     [Fact]
-    public void CanAssign_Cases()
+    public void CanAssign_ActorRights_NeedGroupsAssignAndTheGroupsRights()
     {
         Assert.True(CanAssign(P.All, Admin));
         Assert.True(CanAssign(P.GroupsAssign | ModeratorPermissions, Moderator));
@@ -106,14 +106,14 @@ public class PermissionRulesTests
     }
 
     [Fact]
-    public void CanActOn_Cases()
+    public void CanActOn_ModeratorOnSpeakerOrAll_OnlyTheWeaker()
     {
         Assert.True(ModeratorPermissions.CanActOn(P.Speak));
         Assert.False(ModeratorPermissions.CanActOn(P.All));
     }
 
     [Fact]
-    public void CanActOn_StrictSubsetOnly()
+    public void CanActOn_TargetRights_OnlyAStrictSubset()
     {
         // Package 84 (A102): equal rights, two admins included, cannot act on each other
         Assert.False(P.All.CanActOn(P.All));
@@ -130,7 +130,7 @@ public class PermissionRulesTests
     }
 
     [Fact]
-    public void WouldRemoveLastAdmin_Cases()
+    public void WouldRemoveLastAdmin_UsersAndGroup_OnlyForTheLastAdmin()
     {
         var user = new UserRecord { Fingerprint = "a", GroupIds = [AdminGroupId] };
         var userRecord = new UserRecord { Fingerprint = "b", GroupIds = [AdminGroupId] };

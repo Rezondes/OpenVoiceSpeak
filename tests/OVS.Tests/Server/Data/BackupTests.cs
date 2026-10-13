@@ -262,7 +262,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             : [];
 
     [Fact]
-    public async Task Download_ChunkedByteIdentical()
+    public async Task Download_InChunks_ByteIdentical()
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
@@ -492,7 +492,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     }
 
     [Fact]
-    public async Task Restore_ReplacesState_SafetyBackup_RestartsRun()
+    public async Task Restore_ValidBackup_ReplacesStateKeepsSafetyBackupAndRestarts()
     {
         var adminId = ClientIdentity.Create();
         SeedAdmin(dir, adminId);
@@ -835,7 +835,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     }
 
     [Fact]
-    public async Task Create_Failing_LeavesNoTmp_StartRemovesLeftovers()
+    public async Task Create_Failing_LeavesNoTmpAndStartRemovesLeftovers()
     {
         File.WriteAllText(Path.Combine(dir, DataStore.FileName), "{}");
         var store = new BackupStore(dir, new ManualTimeProvider());

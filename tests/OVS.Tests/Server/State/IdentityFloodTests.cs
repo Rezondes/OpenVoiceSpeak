@@ -53,7 +53,7 @@ public sealed class IdentityFloodTests
     }
 
     [Fact]
-    public async Task ConnectLoop_SavesDebounced()
+    public async Task ConnectLoop_NewIdentities_SavedDebounced()
     {
         var time = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(serverData =>
@@ -79,7 +79,7 @@ public sealed class IdentityFloodTests
     }
 
     [Fact]
-    public async Task OldGuestRecords_Pruned()
+    public async Task GuestRecords_Old_Pruned()
     {
         var time = new ManualTimeProvider();
         var now = time.GetUtcNow();
