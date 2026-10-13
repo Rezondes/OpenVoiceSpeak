@@ -965,7 +965,7 @@ public class ServerViewModelTests
 
     static UserInfo Weaker(IReadOnlyList<Guid>? groups = null) => User(2, "anna", Lobby, P.Speak, groups: groups) with { CanBeModeratedByMe = true };
 
-    static List<(Guid, string, bool, bool)> Ticks(UserViewModel user) => user.Groups.Select(groupAssignment => (groupAssignment.GroupId, groupAssignment.Name, groupAssignment.IsChecked, groupAssignment.IsEnabled)).ToList();
+    static List<GroupTick> Ticks(UserViewModel user) => user.Groups.Select(groupAssignment => new GroupTick(groupAssignment.GroupId, groupAssignment.Name, groupAssignment.IsChecked, groupAssignment.IsEnabled)).ToList();
 
     /// <summary>Package 119 (AC1, AC2): the submenu only for weaker users and only with GroupsAssign; a group I may not give is greyed out.</summary>
     [Fact]
@@ -974,7 +974,7 @@ public class ServerViewModelTests
         var fixture = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker(), User(3, "bert", Lobby, P.Speak)]);
         Assert.Empty(fixture.User(1).Groups); // myself
         Assert.Empty(fixture.User(3).Groups); // stronger or equal: the server does not let me act on him
-        Assert.Equal([(WellKnownGroups.Guest, "Gast", true, true), (WellKnownGroups.Admin, "Admin", false, false), (Raid, "Raid", false, true)],
+        Assert.Equal([new GroupTick(WellKnownGroups.Guest, "Gast", true, true), new GroupTick(WellKnownGroups.Admin, "Admin", false, false), new GroupTick(Raid, "Raid", false, true)],
             Ticks(fixture.User(2)));
 
         var without = Create(Moderator, groups: AssignGroups, others: [Weaker()]);
@@ -1156,4 +1156,6 @@ public class ServerViewModelTests
         public ChannelViewModel Channel(Guid id) => Vm.Tree.Channels.Single(channel => channel.Id == id);
         public UserViewModel User(uint id) => Vm.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == id);
     }
+
+    sealed record GroupTick(Guid GroupId, string Name, bool IsChecked, bool IsEnabled);
 }

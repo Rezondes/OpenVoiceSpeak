@@ -261,7 +261,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
         main.Close();
     }
 
-    (MainWindow Main, ServerViewModel Server) OpenLarge()
+    LargeServerScene OpenLarge()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
@@ -271,6 +271,8 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
         MainViewModelSetup.ShowServer(viewModel, server);
         MotionWait.Until(() => true, atLeast: 800);
         MotionWait.Connected(main);
-        return (main, server);
+        return new(main, server);
     }
+
+    sealed record LargeServerScene(MainWindow Main, ServerViewModel Server);
 }

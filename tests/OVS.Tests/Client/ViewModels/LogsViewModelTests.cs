@@ -26,7 +26,7 @@ public class LogsViewModelTests
     static readonly LogFileInfo OldServerFile = new("server/2026-01-01_12-00-00.log", LogKind.Server, null, null, Day(1), Day(2, 18), 5_000_000);
 
     /// <summary>A server that answers ReadLog with 3 pages of numbered lines ("Zeile n", every 7th line "FEHLER"), and SearchLogs with the given result.</summary>
-    static (LogsViewModel Logs, List<Request> Sent) Create(LogSearchResult? searchResult = null, Permission perms = Permission.LogsView,
+    static LogsRig Create(LogSearchResult? searchResult = null, Permission perms = Permission.LogsView,
         Func<Request, Message?>? reply = null, ManualTimeProvider? time = null)
     {
         var snapshot = Snapshots.Snapshot("Server", "", Lobby,
@@ -49,7 +49,7 @@ public class LogsViewModelTests
         }, time ?? new ManualTimeProvider());
         var admin = new AdminViewModel(server);
         _ = admin.RequestListsAsync(); // completes at once: the fake server answers synchronously
-        return (admin.Logs, sent);
+        return new(admin.Logs, sent);
     }
 
     static LogPage Page(ReadLog read)
@@ -291,4 +291,6 @@ public class LogsViewModelTests
         Assert.True(logs.SearchCommand.CanExecute(null));
         Assert.True(logs.ShowHits);
     }
+
+    sealed record LogsRig(LogsViewModel Logs, List<Request> Sent);
 }

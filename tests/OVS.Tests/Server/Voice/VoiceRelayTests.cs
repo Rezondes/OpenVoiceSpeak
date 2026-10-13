@@ -42,7 +42,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     /// Sends voice until the receiver hears it: a busy runner can drop a datagram even on loopback. Only for
     /// tests about where voice goes, not about how often (and not before a silence check on the same receiver).
     /// </summary>
-    static async Task<(VoiceHeader Header, byte[] Plain)?> SendUntilHeardAsync(TestVoice from, TestVoice to, byte target = VoiceHeader.TargetChannel)
+    static async Task<OpenedPacket?> SendUntilHeardAsync(TestVoice from, TestVoice to, byte target = VoiceHeader.TargetChannel)
     {
         for (int index = 0; index < 5; index++)
         {
@@ -70,9 +70,9 @@ public sealed class VoiceRelayTests : IAsyncLifetime
 
         var got = await vb.ReceiveVoiceAsync();
         Assert.NotNull(got);
-        Assert.Equal(first.Id, got.Value.Header.SessionId);
-        Assert.Equal(VoiceHeader.TargetChannel, got.Value.Header.Target);
-        Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var speakerSeq, out var opus, out _));
+        Assert.Equal(first.Id, got.Header.SessionId);
+        Assert.Equal(VoiceHeader.TargetChannel, got.Header.Target);
+        Assert.True(RelayPayload.TryReadArrays(got.Plain, out var speakerSeq, out var opus, out _));
         Assert.Equal(0u, speakerSeq);
         Assert.Equal(Opus, opus);
 
@@ -93,7 +93,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
 
         var got = await SendUntilHeardAsync(va, vc, VoiceHeader.TargetLinked);
         Assert.NotNull(got);
-        Assert.Equal(VoiceHeader.TargetLinked, got.Value.Header.Target);
+        Assert.Equal(VoiceHeader.TargetLinked, got.Header.Target);
     }
 
     [Fact]
@@ -211,8 +211,8 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         {
             await vx.SendAsync(PacketType.Ping, ping.Build());
             var answer = await vx.ReceiveAsync();
-            Assert.Equal(PacketType.Ping, answer!.Value.Header.Type);
-            Assert.True(PingPayload.TryParse(answer.Value.Plain, out var back));
+            Assert.Equal(PacketType.Ping, answer!.Header.Type);
+            Assert.True(PingPayload.TryParse(answer.Plain, out var back));
             return back;
         }
 
@@ -231,7 +231,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
 
         // an empty ping (an older test client) is still answered, empty
         await vx.SendAsync(PacketType.Ping, []);
-        Assert.Empty((await vx.ReceiveAsync())!.Value.Plain);
+        Assert.Empty((await vx.ReceiveAsync())!.Plain);
     }
 
     /// <summary>
@@ -272,7 +272,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         {
             var got = await voice.ReceiveVoiceAsync();
             Assert.NotNull(got);
-            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var sequence, out var bytes, out var relayedCopy));
+            Assert.True(RelayPayload.TryReadArrays(got.Plain, out var sequence, out var bytes, out var relayedCopy));
             Assert.Equal(seq, sequence);
             Assert.Equal(opus, bytes);
             Assert.Equal(copy, relayedCopy);
@@ -367,7 +367,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         {
             var got = await voice.ReceiveVoiceAsync();
             Assert.NotNull(got);
-            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var sequence, out var bytes, out var relayedCopy));
+            Assert.True(RelayPayload.TryReadArrays(got.Plain, out var sequence, out var bytes, out var relayedCopy));
             Assert.Equal(seq, sequence);
             Assert.Equal(opus, bytes);
             Assert.Equal(copy, relayedCopy);
@@ -529,8 +529,8 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await SendTcpAsync(testClient, 7, back);
         var got = await vx.ReceiveVoiceAsync();
         Assert.NotNull(got);
-        Assert.Equal(testClient.Id, got.Value.Header.SessionId);
-        Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var seq, out var opus, out var none));
+        Assert.Equal(testClient.Id, got.Header.SessionId);
+        Assert.True(RelayPayload.TryReadArrays(got.Plain, out var seq, out var opus, out var none));
         Assert.Equal(7u, seq);
         Assert.Equal(back, opus);
         Assert.Null(none);
@@ -543,7 +543,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.NotNull(await vy.ReceiveAsync());
         Assert.False(own.State.FindSession(testClient.Id)!.Voice.TcpVoice);
         await SendAsync(4);
-        Assert.True(RelayPayload.TryReadArrays((await vy.ReceiveVoiceAsync())!.Value.Plain, out seq, out _, out _));
+        Assert.True(RelayPayload.TryReadArrays((await vy.ReceiveVoiceAsync())!.Plain, out seq, out _, out _));
         Assert.Equal(4u, seq);
         await testClient.AssertNoMessageAsync<VoiceDown>();
     }

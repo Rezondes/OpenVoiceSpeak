@@ -16,11 +16,11 @@ namespace OVS.Tests.Server.State;
 /// <summary>Package 83: every request is checked for null, range and allowed characters and answered, never dropped.</summary>
 public sealed class RequestValidationTests
 {
-    static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync(Action<ServerData>? seed = null)
+    static async Task<AdminRig> StartWithAdminAsync(Action<ServerData>? seed = null)
     {
         var admin = ClientIdentity.Create();
         var server = await TestServer.StartAsync(serverData => { TestServer.Grant(admin, "Admin")(serverData); seed?.Invoke(serverData); });
-        return (server, await TestClient.ConnectAsync(server, "chef", admin));
+        return new(server, await TestClient.ConnectAsync(server, "chef", admin));
     }
 
     static async Task AssertStillAnsweredAsync(TestClient client)

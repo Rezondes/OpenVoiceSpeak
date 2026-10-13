@@ -70,7 +70,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     static readonly UpdateOffer Offer = new("280926.0b2c", "deploy-bbbbbbb", "", Built.AddHours(1),
         new Uri("https://example.org/OVS.Client.exe"), new Uri("https://example.org/OVS.Client.exe.sha256"));
 
-    (UpdateInstaller Installer, string Exe, List<string> Restarted) Installer(byte[] served, string hash, bool exeFails = false)
+    InstallerRig Installer(byte[] served, string hash, bool exeFails = false)
     {
         var exe = Path.Combine(dir, "OVS.Client.exe");
         File.WriteAllText(exe, "alt");
@@ -78,7 +78,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256")
             ? FakeHttp.Bytes(Encoding.ASCII.GetBytes($"{hash}  OVS.Client.exe\n"))
             : exeFails ? new HttpResponseMessage(HttpStatusCode.InternalServerError) : FakeHttp.Bytes(served));
-        return (new UpdateInstaller(new HttpClient(http), exe, restarted.Add), exe, restarted);
+        return new(new UpdateInstaller(new HttpClient(http), exe, restarted.Add), exe, restarted);
     }
 
     static string Sha(byte[] data) => Convert.ToHexStringLower(SHA256.HashData(data));
@@ -250,4 +250,6 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         Assert.True(old.HasExited); // deleted only after the old process was gone
         Assert.False(File.Exists(exe + ".old"));
     }
+
+    sealed record InstallerRig(UpdateInstaller Installer, string Exe, List<string> Restarted);
 }

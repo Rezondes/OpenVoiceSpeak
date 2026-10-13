@@ -352,7 +352,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))), "Update verfügbar");
         Dialog(overlayHost => KeyBindingDialog.ShowAsync(overlayHost, null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)), "Tastenaktion hinzufügen");
         // Package 54: one dialog for creating and editing, with every option both times
-        (string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled) ChannelDialogShows(ChannelEdit current, ChannelDialogMode mode)
+        ChannelDialogLook ChannelDialogShows(ChannelEdit current, ChannelDialogMode mode)
         {
             var shown = ChannelDialogView.ShowAsync(main.Overlay, current, mode);
             Dispatcher.UIThread.RunJobs();
@@ -368,7 +368,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             main.Overlay.Close();
             Dispatcher.UIThread.RunJobs();
             Assert.True(shown.IsCompleted);
-            return (title, buttons, name, muted, slots.Value, slots.IsEnabled);
+            return new(title, buttons, name, muted, slots.Value, slots.IsEnabled);
         }
         var create = ChannelDialogShows(new ChannelEdit("", ""), ChannelDialogMode.Create);
         Assert.Equal(("Channel anlegen", "", false, 0m, true), (create.Title, create.Name ?? "", create.Muted, create.Slots, create.SlotsEnabled));
@@ -848,7 +848,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
         Border Row(string nick) => main.GetVisualDescendants().OfType<Border>()
             .Single(border => border.ContextMenu is not null && border.DataContext is UserViewModel user && user.Nickname == nick);
-        (Slider? Slider, List<string?> Headers) Menu(string nick)
+        UserMenuLook Menu(string nick)
         {
             var menu = Row(nick).ContextMenu!;
             menu.Open(Row(nick));
@@ -858,7 +858,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             var headers = visible.Select(menuItem => menuItem.Header as string).ToList();
             menu.Close();
             Dispatcher.UIThread.RunJobs();
-            return (slider, headers);
+            return new(slider, headers);
         }
 
         var (slider, headers) = Menu("anna");
@@ -908,14 +908,14 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             Dispatcher.UIThread.RunJobs();
             return groups;
         }
-        List<(string?, bool, bool)> Ticks(MenuItem groups) => groups.GetLogicalChildren().OfType<MenuItem>()
-            .Select(menuItem => (menuItem.Header as string, menuItem.IsChecked, menuItem.IsEffectivelyEnabled)).ToList();
+        List<MenuTick> Ticks(MenuItem groups) => groups.GetLogicalChildren().OfType<MenuItem>()
+            .Select(menuItem => new MenuTick(menuItem.Header as string, menuItem.IsChecked, menuItem.IsEffectivelyEnabled)).ToList();
 
         Assert.Null(Submenu("ich", out var own)); // never on myself
         own.Close();
         var groups = Submenu("anna", out var menu)!;
         Assert.NotNull(groups);
-        Assert.Equal([("Gast", true, true), ("Admin", false, true)], Ticks(groups));
+        Assert.Equal([new MenuTick("Gast", true, true), new MenuTick("Admin", false, true)], Ticks(groups));
         Assert.All(groups.GetLogicalChildren().OfType<MenuItem>(), menuItem => Assert.Equal(MenuItemToggleType.CheckBox, menuItem.ToggleType));
 
         // a click ticks and sends at once (a real click: the menu item ticks itself before it runs the command)
@@ -934,7 +934,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         server.Apply(new UserUpdated(server.Mirror.Users[2] with { GroupIds = [WellKnownGroups.Admin] }));
         Dispatcher.UIThread.RunJobs();
         groups = Submenu("anna", out menu)!;
-        Assert.Equal([("Gast", false, true), ("Admin", true, true)], Ticks(groups));
+        Assert.Equal([new MenuTick("Gast", false, true), new MenuTick("Admin", true, true)], Ticks(groups));
         menu.Close();
         main.Close();
     }
@@ -1275,7 +1275,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     /// The main window with the admin fake server on a manual clock, its dialogs the real ones of the overlay. The
     /// server is made on the UI thread, so the waiting marks' timers come back through the dispatcher.
     /// </summary>
-    (MainWindow Main, MainViewModel Vm, ServerViewModel Server, List<Request> Sent, ManualTimeProvider Time) OpenWaiting(double width = 1000)
+    WaitingScene OpenWaiting(double width = 1000)
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel, Width = width, Height = 700 };
@@ -1287,7 +1287,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         server = FakeServers.Admin(sent, time, viewModel.Dialogs.Server);
         MainViewModelSetup.ShowServer(viewModel, server);
         Dispatcher.UIThread.RunJobs();
-        return (main, viewModel, server, sent, time);
+        return new(main, viewModel, server, sent, time);
     }
 
     static void Advance(ManualTimeProvider time, int milliseconds)
@@ -1539,4 +1539,12 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal("A", AvatarConverters.Initials.Convert(" anna", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
         Assert.Equal("?", AvatarConverters.Initials.Convert("", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
     }
+
+    sealed record ChannelDialogLook(string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled);
+
+    sealed record WaitingScene(MainWindow Main, MainViewModel Vm, ServerViewModel Server, List<Request> Sent, ManualTimeProvider Time);
+
+    sealed record MenuTick(string? Header, bool IsChecked, bool IsEnabled);
+
+    sealed record UserMenuLook(Slider? Slider, List<string?> Headers);
 }

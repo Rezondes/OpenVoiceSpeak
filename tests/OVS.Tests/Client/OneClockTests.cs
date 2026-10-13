@@ -185,7 +185,7 @@ public sealed class OneClockTests
     }
 
     /// <summary>A line's code and its comment, which starts at the first <c>//</c> outside a string or character literal.</summary>
-    static (string Code, string Comment) Split(string line)
+    static CodeLine Split(string line)
     {
         bool inString = false;
         for (int index = 0; index < line.Length; index++)
@@ -198,8 +198,10 @@ public sealed class OneClockTests
             }
             else if (character == '"') inString = true;
             else if (character == '\'' && index + 1 < line.Length) index += line[index + 1] == '\\' ? 3 : 2; // to the closing quote of 'x' or '\x'
-            else if (character == '/' && index + 1 < line.Length && line[index + 1] == '/') return (line[..index], line[index..]);
+            else if (character == '/' && index + 1 < line.Length && line[index + 1] == '/') return new(line[..index], line[index..]);
         }
-        return (line, "");
+        return new(line, "");
     }
+
+    sealed record CodeLine(string Code, string Comment);
 }

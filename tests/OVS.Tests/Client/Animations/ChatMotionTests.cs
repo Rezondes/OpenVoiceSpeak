@@ -31,7 +31,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         Dispatcher.UIThread.RunJobs();
     }
 
-    (MainWindow Main, MainViewModel Vm, ServerViewModel Server, ChatView Chat) Open(DisplayMode display = DisplayMode.Animated, double height = 700)
+    ChatScene Open(DisplayMode display = DisplayMode.Animated, double height = 700)
     {
         new ClientSettings { Display = display }.Save(dir);
         var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
@@ -42,7 +42,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         MotionWait.Settle(700);
         Motion.Apply(main, display);
         MotionWait.Connected(main); // under load connecting takes longer: no test acts while it still moves
-        return (main, viewModel, server, main.GetVisualDescendants().OfType<ChatView>().Single());
+        return new(main, viewModel, server, main.GetVisualDescendants().OfType<ChatView>().Single());
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
 
 
     /// <summary>The smallest opacity and the offset furthest from 0 seen while it arrives.</summary>
-    static (double Opacity, double X) Arrival(Func<Control> row)
+    static ArrivalLook Arrival(Func<Control> row)
     {
         double least = 1, far = 0;
         var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -86,7 +86,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
             Frame();
             MotionWait.Pause();
         }
-        return (least, far);
+        return new(least, far);
     }
 
     [AvaloniaFact]
@@ -316,4 +316,8 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         Assert.True(swing > 2, $"\"nicht gesendet\" shakes ({swing})");
         main.Close();
     }
+
+    sealed record ArrivalLook(double Opacity, double X);
+
+    sealed record ChatScene(MainWindow Main, MainViewModel Vm, ServerViewModel Server, ChatView Chat);
 }

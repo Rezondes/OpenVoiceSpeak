@@ -95,7 +95,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     static UserInfo Anna(bool serverMuted) =>
         new(2, "fp2", "anna", FakeServers.Raid, true, true, serverMuted, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
 
-    static (Window Window, Button Button, BusySpinner Spinner, PathIcon Icon) BusyButton(bool animated)
+    static BusyButtonScene BusyButton(bool animated)
     {
         var icon = new PathIcon { Width = 14, Height = 14, Data = Geometry.Parse("M0,0 L10,10") };
         var spinner = new BusySpinner { IsVisible = false };
@@ -104,10 +104,10 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         window.Show();
         Motion.Apply(window, animated ? DisplayMode.Animated : DisplayMode.Simplified);
         MotionWait.Settle(100);
-        return (window, button, spinner, icon);
+        return new(window, button, spinner, icon);
     }
 
-    static (Window Window, ProgressBar Meter) Meter(bool animated)
+    static MeterScene Meter(bool animated)
     {
         var meter = new ProgressBar { Minimum = -60, Maximum = -10, Height = 8 };
         var window = new Window { Width = 400, Height = 200, Content = new StackPanel { Margin = new Thickness(20), Children = { meter } } };
@@ -116,7 +116,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         LiveMotion.SetLevel(meter, -60);
         MotionWait.Settle(100);
         MotionWait.Until(() => meter.Value == -60); // from where the meter starts down to the bottom
-        return (window, meter);
+        return new(window, meter);
     }
 
     [AvaloniaFact]
@@ -501,4 +501,8 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         public bool Equals((double, double) first, (double, double) second) => Math.Abs(first.Item1 - second.Item1) < 0.001 && Math.Abs(first.Item2 - second.Item2) < 0.001;
         public int GetHashCode((double, double) obj) => 0;
     }
+
+    sealed record BusyButtonScene(Window Window, Button Button, BusySpinner Spinner, PathIcon Icon);
+
+    sealed record MeterScene(Window Window, ProgressBar Meter);
 }

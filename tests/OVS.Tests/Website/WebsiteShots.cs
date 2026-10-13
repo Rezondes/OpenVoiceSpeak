@@ -182,7 +182,7 @@ public sealed class WebsiteShots
     }
 
     /// <summary>The administration on one of its tabs (0 groups, 1 users, 2 bans, 3 links, 4 server, 5 logs).</summary>
-    static (WebsiteScene Scene, ShowcaseServer Showcase) Admin(string lang, string theme, int tab)
+    static AdminScene Admin(string lang, string theme, int tab)
     {
         var scene = new WebsiteScene(lang, theme, 760);
         var showcase = scene.Connect();
@@ -192,7 +192,7 @@ public sealed class WebsiteShots
         var page = scene.Window.GetVisualDescendants().OfType<AdminView>().Single();
         page.FindControl<TabControl>("Tabs")!.SelectedIndex = tab;
         ShotWriter.Settle(600);
-        return (scene, showcase);
+        return new(scene, showcase);
     }
 
     [AvaloniaTheory]
@@ -339,4 +339,6 @@ public sealed class WebsiteShots
             (2900, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 2),
             (4300, () => scene.Vm.PageFlow.CloseWithoutAsking()));
     }
+
+    sealed record AdminScene(WebsiteScene Scene, ShowcaseServer Showcase);
 }

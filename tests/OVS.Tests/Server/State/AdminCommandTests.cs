@@ -434,7 +434,7 @@ public class AdminCommandTests
 
     // ---- Package 37: group order ----
 
-    static async Task<(TestServer Server, TestClient Admin, TestClient Mod, TestClient Guest)> GroupServerAsync()
+    static async Task<GroupServerRig> GroupServerAsync()
     {
         var adminId = ClientIdentity.Create();
         var modId = ClientIdentity.Create();
@@ -443,7 +443,7 @@ public class AdminCommandTests
             TestServer.Grant(adminId, "Admin")(serverData);
             TestServer.Grant(modId, "Moderator")(serverData);
         });
-        return (server, await TestClient.ConnectAsync(server, "admin", adminId), await TestClient.ConnectAsync(server, "mod", modId),
+        return new(server, await TestClient.ConnectAsync(server, "admin", adminId), await TestClient.ConnectAsync(server, "mod", modId),
             await TestClient.ConnectAsync(server, "gast"));
     }
 
@@ -602,4 +602,6 @@ public class AdminCommandTests
         await client.SendAsync(new ReorderGroups([.. ids.Append(created.Id).Reverse()]) { RequestId = "o" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("o")).Code);
     }
+
+    sealed record GroupServerRig(TestServer Server, TestClient Admin, TestClient Mod, TestClient Guest);
 }

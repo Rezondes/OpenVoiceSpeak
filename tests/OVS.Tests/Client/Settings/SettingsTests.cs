@@ -848,7 +848,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [AvaloniaFact]
     public void SelfTest_SpaceAsPttKey_DoesNotToggleButton()
     {
-        static (Window Window, SettingsViewModel Vm) Focused(ClientSettings clientSettings)
+        static FocusedSettings Focused(ClientSettings clientSettings)
         {
             var settings = Vm(clientSettings);
             var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
@@ -857,7 +857,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
             var button = window.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Command == settings.ToggleSelfTestCommand);
             settings.IsSelfTesting = true;
             Assert.True(button.Focus());
-            return (window, settings);
+            return new(window, settings);
         }
         static void Press(Window window, Key key, PhysicalKey physical)
         {
@@ -997,4 +997,6 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
         Assert.Equal(automatic, settings.VadAutomatic);
     }
+
+    sealed record FocusedSettings(Window Window, SettingsViewModel Vm);
 }

@@ -359,7 +359,7 @@ public class ReceivePathTests
     {
         // what is sent from 500 to 600 ms into each second comes at 600 ms
         static double Stalls(int index) => index % 50 is >= 25 and < 30 ? 100 - 20 * (index % 50 - 25) : 0;
-        (double End, int Gaps) Run(JitterBuffer jb, double start, uint first)
+        SpurtResult Run(JitterBuffer jb, double start, uint first)
         {
             int gaps = 0;
             bool begun = false;
@@ -368,7 +368,7 @@ public class ReceivePathTests
                 begun |= pcm != null;
                 if (begun && pcm == null && tick < 500) gaps++; // silence before the spurt's end
             });
-            return (end, gaps);
+            return new(end, gaps);
         }
         var jb = new JitterBuffer();
         var (now, fixedTwo) = Run(jb, 0, 0);
@@ -454,7 +454,7 @@ public class ReceivePathTests
     }
 
     /// <summary>The first frames a mixer plays for one speaker, next to the same frames decoded directly.</summary>
-    static (float[] Mixed, float[] Reference) MixedAndDirect(float amplitude, float volume, int frames = 4)
+    static MixedSignals MixedAndDirect(float amplitude, float volume, int frames = 4)
     {
         var encoder = new VoiceEncoder();
         var packets = Enumerable.Range(0, 8).Select(count => encoder.Encode(Sine(amplitude, count * AudioFormat.FrameSamples))).ToList();
@@ -468,7 +468,7 @@ public class ReceivePathTests
         }
         var decoder = new VoiceDecoder();
         var reference = packets.Take(frames).SelectMany(bytes => decoder.Decode(bytes)).ToArray();
-        return ([.. mixed], reference);
+        return new([.. mixed], reference);
     }
 
     static double Db(float[] samples, float[] reference) => 20 * Math.Log10(Rms(samples) / Rms(reference));
@@ -507,7 +507,7 @@ public class ReceivePathTests
     [Fact]
     public void Mixer_SpeakerGain_OnlyThatSpeaker()
     {
-        (float[] A, float[] B) Run(Action<VoiceMixer> setup, uint[] speakersA, uint[] speakersB)
+        MixPair Run(Action<VoiceMixer> setup, uint[] speakersA, uint[] speakersB)
         {
             VoiceMixer voiceMixer = new(), otherVoiceMixer = new();
             setup(voiceMixer);
@@ -525,7 +525,7 @@ public class ReceivePathTests
                 outA.AddRange(voiceMixer.Tick().Frame);
                 outB.AddRange(otherVoiceMixer.Tick().Frame);
             }
-            return ([.. outA], [.. outB]);
+            return new([.. outA], [.. outB]);
         }
 
         Assert.Equal(1f, new VoiceMixer().SpeakerGain(1)); // no entry: 100 %
@@ -831,4 +831,10 @@ public class ReceivePathTests
         sounds.MixInto(next); // 20 ms of the tone per frame, not 40
         Assert.Equal(tone[AudioFormat.FrameSamples + 5], next[10]);
     }
+
+    sealed record SpurtResult(double End, int Gaps);
+
+    sealed record MixedSignals(float[] Mixed, float[] Reference);
+
+    sealed record MixPair(float[] First, float[] Second);
 }

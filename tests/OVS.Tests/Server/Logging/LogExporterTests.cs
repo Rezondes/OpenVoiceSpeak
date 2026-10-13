@@ -45,13 +45,13 @@ public sealed class LogExporterTests : TempDirectoryTest
         WriteLog(GoneLog, "2025-03-01 00:00:00.000 [Weg] zwei\n", new DateTime(2025, 3, 2, 23, 0, 0, DateTimeKind.Utc));
     }
 
-    static List<(string Name, string Text)> Entries(string zipPath)
+    static List<ZipEntry> Entries(string zipPath)
     {
         using var zip = ZipFile.OpenRead(zipPath);
-        return zip.Entries.Select(zipArchiveEntry =>
+        return zip.Entries.Select<ZipArchiveEntry, ZipEntry>(zipArchiveEntry =>
         {
             using var text = new StreamReader(zipArchiveEntry.Open(), Encoding.UTF8);
-            return (zipArchiveEntry.FullName, text.ReadToEnd());
+            return new(zipArchiveEntry.FullName, text.ReadToEnd());
         }).ToList();
     }
 
@@ -134,9 +134,9 @@ public sealed class LogExporterTests : TempDirectoryTest
         Assert.Equal(new FileInfo(export.Path).Length, export.Size);
         Assert.Equal(
         [
-            ($"channels/Raid_{Raid}/2025-02-01_00-00-00.log", "2025-02-01 00:00:00.000 [Raid alt] eins\n"),
-            ("server/2025-01-01_00-00-00.log", "server alt\n"),
-            ($"channels/Neu_{Gone}/2025-03-01_00-00-00.log", "2025-03-01 00:00:00.000 [Weg] zwei\n"),
+            new ZipEntry($"channels/Raid_{Raid}/2025-02-01_00-00-00.log", "2025-02-01 00:00:00.000 [Raid alt] eins\n"),
+            new ZipEntry("server/2025-01-01_00-00-00.log", "server alt\n"),
+            new ZipEntry($"channels/Neu_{Gone}/2025-03-01_00-00-00.log", "2025-03-01 00:00:00.000 [Weg] zwei\n"),
         ], Entries(export.Path));
     }
 
@@ -228,4 +228,6 @@ public sealed class LogExporterTests : TempDirectoryTest
     {
         public override TimeZoneInfo LocalTimeZone { get; } = TimeZoneInfo.CreateCustomTimeZone("plus2", TimeSpan.FromHours(2), "plus2", "plus2");
     }
+
+    sealed record ZipEntry(string Name, string Text);
 }

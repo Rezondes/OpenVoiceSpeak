@@ -79,7 +79,7 @@ public sealed class CaptureSourceTests : IDisposable
 
         Assert.Same(Assert.Single(configured), source.Capture);
         await AsyncWait.UntilAsync(() => Volatile.Read(ref levels) > 0); // started: its thread delivers frames
-        Assert.Equal((0, 0, 0, 0), hardware.Counts);
+        Assert.Equal(new DeviceCounts(0, 0, 0, 0), hardware.Counts);
     }
 
     [Fact]

@@ -24,7 +24,7 @@ public sealed class LogJobQueueTests : IDisposable
     }
 
     /// <summary>Queues a job that signals once it runs and then waits for its release.</summary>
-    (ManualResetEventSlim Running, ManualResetEventSlim Release) QueueBlockingJob()
+    BlockingJob QueueBlockingJob()
     {
         var (running, release) = (NewEvent(), NewEvent());
         Assert.True(queue.TryQueue(() =>
@@ -32,7 +32,7 @@ public sealed class LogJobQueueTests : IDisposable
             running.Set();
             release.Wait(Timeout);
         }));
-        return (running, release);
+        return new(running, release);
     }
 
     /// <summary>Behind exactly one queued job, queues jobs until the budget is used; returns the signal of the last one.</summary>
@@ -120,4 +120,6 @@ public sealed class LogJobQueueTests : IDisposable
         FillBehindOneJob();
         Assert.False(queue.TryQueue(() => { }));
     }
+
+    sealed record BlockingJob(ManualResetEventSlim Running, ManualResetEventSlim Release);
 }

@@ -15,7 +15,7 @@ namespace OVS.Tests.Server.State;
 public sealed class ChatTests
 {
     /// <summary>chef (admin) and gast in the lobby, weit (guest) in Raid.</summary>
-    static async Task<(TestServer Server, TestClient Chef, TestClient Gast, TestClient Weit, Guid Raid)> StartAsync(TimeProvider? time = null)
+    static async Task<ChatServerRig> StartAsync(TimeProvider? time = null)
     {
         var chefId = ClientIdentity.Create();
         var raid = Guid.NewGuid();
@@ -29,7 +29,7 @@ public sealed class ChatTests
         var weit = await TestClient.ConnectAsync(server, "weit");
         await weit.SendAsync(new JoinChannel(raid));
         await chef.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == weit.Id && userUpdated.User.ChannelId == raid);
-        return (server, chef, gast, weit, raid);
+        return new(server, chef, gast, weit, raid);
     }
 
     [Fact]
@@ -165,4 +165,6 @@ public sealed class ChatTests
         Assert.Contains(files, value => value.Path.Contains(raid.ToString()) && value.Text.Contains("[Raid] weit: im Raid"));
         Assert.DoesNotContain(files, value => value.Text.Contains("geheimer Inhalt"));
     }
+
+    sealed record ChatServerRig(TestServer Server, TestClient Chef, TestClient Gast, TestClient Weit, Guid Raid);
 }

@@ -11,14 +11,14 @@ namespace OVS.Tests.Client.Animations;
 [Collection(MotionCollection.Name)]
 public sealed class ShakeMotionTests
 {
-    static (Window Window, Border Card) Show(DisplayMode display)
+    static CardScene Show(DisplayMode display)
     {
         var card = new Border { Width = 120, Height = 60 };
         var window = new Window { Width = 400, Height = 300, Content = card };
         window.Show();
         Motion.Apply(window, display);
         Dispatcher.UIThread.RunJobs();
-        return (window, card);
+        return new(window, card);
     }
 
     [AvaloniaFact]
@@ -56,4 +56,6 @@ public sealed class ShakeMotionTests
             window.Close();
         }
     }
+
+    sealed record CardScene(Window Window, Border Card);
 }

@@ -143,13 +143,13 @@ public sealed class FakeAudioHardware : IAudioHardware
     public TimeSpan SpeakerBuffer { get; set; } = AudioFormat.FrameDuration;
 
     /// <summary>Opened so far and open now, for microphones and speakers.</summary>
-    public (int Mics, int MicsOpen, int Speakers, int SpeakersOpen) Counts
+    public DeviceCounts Counts
     {
         get
         {
             lock (captures)
             lock (outputs)
-                return (captures.Count, captures.Count(capture => !capture.Capture.IsDisposed), outputs.Count, outputs.Count(output => !output.Output.Disposed));
+                return new(captures.Count, captures.Count(capture => !capture.Capture.IsDisposed), outputs.Count, outputs.Count(output => !output.Output.Disposed));
         }
     }
 
@@ -159,13 +159,13 @@ public sealed class FakeAudioHardware : IAudioHardware
     }
 
     /// <summary>Package 137: the devices open now (each at most one), or null.</summary>
-    public (string? Mic, string? Speaker) Open
+    public OpenDevices Open
     {
         get
         {
             lock (captures)
             lock (outputs)
-                return (captures.SingleOrDefault(capture => !capture.Capture.IsDisposed).Device, outputs.SingleOrDefault(output => !output.Output.Disposed).Device);
+                return new(captures.SingleOrDefault(capture => !capture.Capture.IsDisposed).Device, outputs.SingleOrDefault(output => !output.Output.Disposed).Device);
         }
     }
 

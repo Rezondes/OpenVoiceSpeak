@@ -128,7 +128,7 @@ static class SourceLayout
     /// The namespaces (full names, also file-scoped ones) and the types a source file declares, each type with whether
     /// it is top-level (in a namespace or the file) or nested (in a type), and its access modifiers ("" when none).
     /// </summary>
-    static (List<string> Namespaces, List<(string Name, bool TopLevel, string Access)> Types) Read(string text)
+    static SourceDeclarations Read(string text)
     {
         var namespaces = new List<string>();
         var types = new List<(string Name, bool TopLevel, string Access)>();
@@ -182,13 +182,13 @@ static class SourceLayout
         }
         // A misread string, comment or #if branch shifts the braces; fail loudly instead of passing a file unread.
         if (open.Count != 0) throw new InvalidDataException("scanner could not read the file: unbalanced braces");
-        return (namespaces, types);
+        return new(namespaces, types);
     }
 
     // The type a declaration header declares, or null: a type keyword before the first "(", "=", "=>", ":" or "where"
     // (so neither a constraint "where T : class" nor an initializer counts), outside attribute brackets, followed by a
     // name ("record" may be followed by "class" or "struct"; a delegate's name stands before its parameter list).
-    static (string Name, string Access)? Declaration(List<string> header)
+    static TypeHeader? Declaration(List<string> header)
     {
         var modifiers = new List<string>();
         for (var index = 0; index < header.Count; index++)
@@ -211,7 +211,7 @@ static class SourceLayout
                 var name = token == "delegate" ? DelegateName(header, next) : next < header.Count ? header[next] : null;
                 if (name is null || !Identifier.IsMatch(name)) return null;
                 var access = modifiers.Where(text => text is "public" or "private" or "protected" or "internal" or "file");
-                return (name.TrimStart('@'), string.Join(' ', access));
+                return new(name.TrimStart('@'), string.Join(' ', access));
             }
             modifiers.Add(token);
         }
@@ -367,4 +367,8 @@ static class SourceLayout
             else index++;
         }
     }
+
+    sealed record TypeHeader(string Name, string Access);
+
+    sealed record SourceDeclarations(List<string> Namespaces, List<(string Name, bool TopLevel, string Access)> Types);
 }

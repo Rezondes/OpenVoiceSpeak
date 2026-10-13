@@ -31,7 +31,7 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
     /// a bullet below a header does not change it), if any. A test named right after "ersetzt" or "replaces" is the
     /// history of a replaced test and no reference.
     /// </summary>
-    public static (List<PlanReference> References, List<(int Line, string Span)> Ignored) Parse(string plan)
+    public static PlanParse Parse(string plan)
     {
         var references = new List<PlanReference>();
         var ignored = new List<(int, string)>();
@@ -71,17 +71,17 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
             }
             if (line.Length > 0 && !char.IsWhiteSpace(line[0])) context = lineContext;
         }
-        return (references, ignored);
+        return new(references, ignored);
     }
 
     /// <summary>What one backtick span references, or null when it is no reference.</summary>
-    static (string? Class, string? Method, string? File, string? Text)? Read(string span, ref string? context)
+    static SpanTarget? Read(string span, ref string? context)
     {
-        if (Website.Match(span) is { Success: true } web) return (null, null, web.Groups["file"].Value, web.Groups["text"].Value);
-        if (ClassAndQuotedMethod.Match(span) is { Success: true } flat) return (context = flat.Groups["class"].Value, flat.Groups["method"].Value, null, null);
-        if (ClassAlone.Match(span) is { Success: true } alone) return (context = alone.Groups["class"].Value, null, null, null);
-        if (Dotted.Match(span) is { Success: true } dotted) return (context = dotted.Groups["class"].Value, dotted.Groups["method"].Value, null, null);
-        if (QuotedMethodAlone.Match(span) is { Success: true } bare) return (context, bare.Groups["method"].Value, null, null);
+        if (Website.Match(span) is { Success: true } web) return new(null, null, web.Groups["file"].Value, web.Groups["text"].Value);
+        if (ClassAndQuotedMethod.Match(span) is { Success: true } flat) return new(context = flat.Groups["class"].Value, flat.Groups["method"].Value, null, null);
+        if (ClassAlone.Match(span) is { Success: true } alone) return new(context = alone.Groups["class"].Value, null, null, null);
+        if (Dotted.Match(span) is { Success: true } dotted) return new(context = dotted.Groups["class"].Value, dotted.Groups["method"].Value, null, null);
+        if (QuotedMethodAlone.Match(span) is { Success: true } bare) return new(context, bare.Groups["method"].Value, null, null);
         return null;
     }
 
@@ -106,4 +106,6 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
         File is not null ? $"{File} > \"{Text}\"" : Method is null ? Class! : Class is null ? $"\"{Method}\"" : $"{Class} > \"{Method}\"";
 
     public override string ToString() => $"PLAN.md:{Line} (Package {Package}): {Target}";
+
+    sealed record SpanTarget(string? Class, string? Method, string? File, string? Text);
 }

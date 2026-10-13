@@ -151,7 +151,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         devices.OpenSpeakerAndReport();
 
-        Assert.Equal((0, 0, 0, 0), hardware.Counts);
+        Assert.Equal(new DeviceCounts(0, 0, 0, 0), hardware.Counts);
         Assert.Empty(reports);
     }
 
@@ -175,7 +175,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         lock (gate) devices.Close();
 
-        Assert.Equal((1, 0, 1, 0), hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 0, 1, 0), hardware.Counts);
         Assert.Null(devices.CaptureSource.Capture);
         Assert.Null(devices.Speaker);
         Assert.Equal(1, capturesClosed);
@@ -188,7 +188,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         devices.SyncCaptureAndReport();
         devices.OpenSpeakerAndReport();
         hardware.Plug("headset", AudioDirection.Input);
-        var atBeforeOpen = (0, 0, 0, 0);
+        var atBeforeOpen = new DeviceCounts(0, 0, 0, 0);
 
         IReadOnlyList<string> warnings;
         lock (gate)
@@ -197,9 +197,9 @@ public sealed class DeviceLifecycleTests : IDisposable
             warnings = devices.Restart(() => atBeforeOpen = hardware.Counts);
         }
 
-        Assert.Equal((1, 0, 1, 0), atBeforeOpen); // both closed, nothing opened yet
-        Assert.Equal(("headset", "speaker-default"), hardware.Open);
-        Assert.Equal((2, 1, 2, 1), hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 0, 1, 0), atBeforeOpen); // both closed, nothing opened yet
+        Assert.Equal(new OpenDevices("headset", "speaker-default"), hardware.Open);
+        Assert.Equal(new DeviceCounts(2, 1, 2, 1), hardware.Counts);
         Assert.Empty(warnings);
     }
 
@@ -211,7 +211,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         lock (gate) devices.Restart(() => { });
 
-        Assert.Equal((2, 1, 0, 0), hardware.Counts);
+        Assert.Equal(new DeviceCounts(2, 1, 0, 0), hardware.Counts);
     }
 
     [Fact]
@@ -276,7 +276,7 @@ public sealed class DeviceLifecycleTests : IDisposable
             devices.SetTone(440);
 
             await AsyncWait.UntilAsync(() => Volatile.Read(ref levels) > 0); // started: its thread delivers frames
-            Assert.Equal((0, 0, 0, 0), hardware.Counts);
+            Assert.Equal(new DeviceCounts(0, 0, 0, 0), hardware.Counts);
         }
         finally
         {
@@ -365,7 +365,7 @@ public sealed class DeviceLifecycleTests : IDisposable
 
         Change();
 
-        Assert.Equal((1, 1, 1, 1), hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 1, 1, 1), hardware.Counts);
         Assert.Equal(0, capturesClosed);
     }
 
@@ -518,7 +518,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         hardware.DefaultMic = hardware.DefaultSpeaker = null; // everything unplugged
         Change();
 
-        Assert.Equal((1, 0, 1, 0), hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 0, 1, 0), hardware.Counts);
         Assert.Equal([string.Format(Strings.Audio_MicFailed, "no microphone"), string.Format(Strings.Audio_SpeakerFailed, "no speaker")],
             Assert.Single(reports));
     }
@@ -536,6 +536,6 @@ public sealed class DeviceLifecycleTests : IDisposable
         devices.SyncCaptureAndReport();
 
         Assert.Equal((0, 0), (hardware.Subscribers, hardware.FailedSubscribers));
-        Assert.Equal((0, 0, 0, 0), hardware.Counts);
+        Assert.Equal(new DeviceCounts(0, 0, 0, 0), hardware.Counts);
     }
 }

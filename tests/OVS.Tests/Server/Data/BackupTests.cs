@@ -461,7 +461,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     }
 
     /// <summary>Starts ServerHost on the data dir; a port that Windows reserves makes the run end with 1, then another is tried.</summary>
-    static async Task<(Host Host, TestClient Admin)> StartHostAsync(string dataDir, ClientIdentity admin, Func<ServerState, Task>? afterWait = null)
+    static async Task<RunningHost> StartHostAsync(string dataDir, ClientIdentity admin, Func<ServerState, Task>? afterWait = null)
     {
         for (int attempt = 0; ; attempt++)
         {
@@ -473,7 +473,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             try
             {
                 var client = await ConnectWhenUpAsync(port, "chef", admin, run);
-                return (new Host(run, port, stop), client);
+                return new(new Host(run, port, stop), client);
             }
             catch (TimeoutException) when (attempt < 20 && run.IsCompleted)
             {
@@ -864,4 +864,6 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             stop.Dispose();
         }
     }
+
+    sealed record RunningHost(Host Host, TestClient Admin);
 }

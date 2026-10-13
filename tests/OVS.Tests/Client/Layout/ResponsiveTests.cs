@@ -384,17 +384,17 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         return 0;
     });
 
-    static (TextBlock Name, Slider Slider) FirstSoundRow(MainWindow main)
+    static SoundRowParts FirstSoundRow(MainWindow main)
     {
         var row = main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("soundRow"));
-        return (row.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("label")),
+        return new(row.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("label")),
             row.GetVisualDescendants().OfType<Slider>().Single());
     }
 
-    static (double Top, double Bottom) Vertical(Control control, Visual root)
+    static VerticalExtent Vertical(Control control, Visual root)
     {
         var top = control.TranslatePoint(default, root)!.Value.Y;
-        return (top, top + control.Bounds.Height);
+        return new(top, top + control.Bounds.Height);
     }
 
     [AvaloniaTheory]
@@ -1151,4 +1151,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Untrimmed(Footer(main, "SelfName"));
         main.Close();
     }
+
+    sealed record SoundRowParts(TextBlock Name, Slider Slider);
+
+    sealed record VerticalExtent(double Top, double Bottom);
 }

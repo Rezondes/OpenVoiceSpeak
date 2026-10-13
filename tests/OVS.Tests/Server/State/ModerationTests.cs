@@ -234,7 +234,7 @@ public sealed class ModerationTests : IAsyncLifetime
         await moderator.SendAsync(new SetSessionServerMute(guest.Id, false));
         await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id && !userUpdated.User.ServerMuted);
         // resent until heard: a busy runner can drop a datagram even on loopback, and this part is about the mute being lifted
-        (OVS.Shared.Voice.VoiceHeader Header, byte[] Plain)? heard = null;
+        OpenedPacket? heard = null;
         for (int index = 0; index < 5 && heard is null; index++)
         {
             await vg.SendAsync(OVS.Shared.Voice.PacketType.Voice, new byte[80], OVS.Shared.Voice.VoiceHeader.TargetChannel);

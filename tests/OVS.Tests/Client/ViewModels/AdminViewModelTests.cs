@@ -28,7 +28,7 @@ public class AdminViewModelTests
 
     /// <param name="reply">Package 75: the server's answer to a request, applied at once (before SendAsync returns, the hardest order).</param>
     /// <param name="groupIds">Package 89: the own groups; upload and restore need the Admin group.</param>
-    static (AdminViewModel Admin, ServerViewModel Server, List<Request> Sent) Create(P selfPerms, bool hasPassword = false,
+    static AdminPageRig Create(P selfPerms, bool hasPassword = false,
         AdminDialogs? dialogs = null, Func<Request, Message?>? reply = null, IReadOnlyList<Guid>? groupIds = null)
     {
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Server", "Hallo", hasPassword), Lobby,
@@ -52,7 +52,7 @@ public class AdminViewModelTests
             }
             return Task.CompletedTask;
         }, new ManualTimeProvider());
-        return (new AdminViewModel(server, dialogs), server, sent);
+        return new(new AdminViewModel(server, dialogs), server, sent);
 
         // Package 92: the server's judgement (PermissionRules.CanAssign), sent with every group
         bool Assignable(P group) => selfPerms.Has(P.GroupsAssign) && group.IsSubsetOf(selfPerms);
@@ -614,10 +614,10 @@ public class AdminViewModelTests
             Known("fp1", "ich", [ModGroup]),
             new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest], CanBeModeratedByMe: true),
         ];
-        static (bool Ban, bool Unban, bool Delete) Buttons(AdminViewModel admin, string nick)
+        static BanButtonsShown Buttons(AdminViewModel admin, string nick)
         {
             var knownUser = admin.UsersAndBans.Users.Single(knownUserViewModel => knownUserViewModel.Nickname == nick);
-            return (knownUser.CanBan, knownUser.CanUnban, knownUser.CanDelete);
+            return new(knownUser.CanBan, knownUser.CanUnban, knownUser.CanDelete);
         }
 
         var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
@@ -626,7 +626,7 @@ public class AdminViewModelTests
 
         var (banOnly, banServer, _) = Create(P.UsersView | P.UserBan | P.Speak | P.UserKick);
         banOnly.UsersAndBans.Apply(new UserList("r", users));
-        Assert.Equal((true, false, false), Buttons(banOnly, "Xaver"));
+        Assert.Equal(new BanButtonsShown(true, false, false), Buttons(banOnly, "Xaver"));
 
         BanChoice? choice = new("spam", 60, true);
         bool? ipOffered = null;
@@ -643,11 +643,11 @@ public class AdminViewModelTests
         };
         var (viewModel, server, sent) = Create(P.UsersView | P.UserBan | P.UserDelete | P.Speak | P.UserKick, dialogs: dialogs);
         viewModel.UsersAndBans.Apply(new UserList("r", users));
-        Assert.Equal((true, false, true), Buttons(viewModel, "Xaver"));
-        Assert.Equal((false, true, true), Buttons(viewModel, "Bert"));   // banned: unban instead of ban
-        Assert.Equal((true, false, true), Buttons(viewModel, "Mod"));    // Speak and UserKick are a subset (judged by the server)
-        Assert.Equal((false, false, false), Buttons(viewModel, "Anna")); // stronger (Admin)
-        Assert.Equal((false, false, false), Buttons(viewModel, "ich"));  // never oneself
+        Assert.Equal(new BanButtonsShown(true, false, true), Buttons(viewModel, "Xaver"));
+        Assert.Equal(new BanButtonsShown(false, true, true), Buttons(viewModel, "Bert"));   // banned: unban instead of ban
+        Assert.Equal(new BanButtonsShown(true, false, true), Buttons(viewModel, "Mod"));    // Speak and UserKick are a subset (judged by the server)
+        Assert.Equal(new BanButtonsShown(false, false, false), Buttons(viewModel, "Anna")); // stronger (Admin)
+        Assert.Equal(new BanButtonsShown(false, false, false), Buttons(viewModel, "ich"));  // never oneself
 
         await viewModel.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
         Assert.True(ipOffered);
@@ -732,7 +732,7 @@ public class AdminViewModelTests
 
     // ---- Package 38: link matrix ----
 
-    static (LinkMatrixViewModel Matrix, ServerViewModel Server, List<Request> Sent, Guid[] Channels) Matrix(int channelCount, P perms = P.All)
+    static MatrixRig Matrix(int channelCount, P perms = P.All)
     {
         var ids = Enumerable.Range(0, channelCount).Select(_ => Guid.NewGuid()).ToArray();
         var snapshot = Snapshots.Snapshot("Server", "", ids[0],
@@ -746,7 +746,7 @@ public class AdminViewModelTests
             return Task.CompletedTask;
         }, new ManualTimeProvider());
         var admin = new AdminViewModel(server);
-        return (admin.Links, server, sent, ids);
+        return new(admin.Links, server, sent, ids);
     }
 
     [Fact]
@@ -1251,4 +1251,10 @@ public class AdminViewModelTests
         Assert.Equal(new UsersAndBansDialogs(), dialogs.UsersAndBans);
         Assert.Equal(new BackupCardDialogs(), dialogs.BackupCard);
     }
+
+    sealed record BanButtonsShown(bool Ban, bool Unban, bool Delete);
+
+    sealed record AdminPageRig(AdminViewModel Admin, ServerViewModel Server, List<Request> Sent);
+
+    sealed record MatrixRig(LinkMatrixViewModel Matrix, ServerViewModel Server, List<Request> Sent, Guid[] Channels);
 }

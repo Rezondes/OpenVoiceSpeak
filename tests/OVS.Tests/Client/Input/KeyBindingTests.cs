@@ -82,15 +82,15 @@ public class KeyBindingTests
     {
         KeyBinding[] bindings = [Bind(KeyAction.PushToMute, VirtualKeys.XButton1), Bind(KeyAction.PushToMute, VirtualKeys.XButton2)];
         var tracker = new KeyStateTracker();
-        (bool Active, bool Changed) Poll(params int[] down)
+        PollResult Poll(params int[] down)
         {
             var active = KeyBindingMatcher.Resolve(bindings, down.Contains, None);
-            return (active.Contains(KeyAction.PushToMute), tracker.Update(active).HoldChanged);
+            return new(active.Contains(KeyAction.PushToMute), tracker.Update(active).HoldChanged);
         }
-        Assert.Equal((true, true), Poll(VirtualKeys.XButton1));
-        Assert.Equal((true, false), Poll(VirtualKeys.XButton1, VirtualKeys.XButton2));
-        Assert.Equal((true, false), Poll(VirtualKeys.XButton2)); // the first let go, the second still holds
-        Assert.Equal((false, true), Poll());
+        Assert.Equal(new PollResult(true, true), Poll(VirtualKeys.XButton1));
+        Assert.Equal(new PollResult(true, false), Poll(VirtualKeys.XButton1, VirtualKeys.XButton2));
+        Assert.Equal(new PollResult(true, false), Poll(VirtualKeys.XButton2)); // the first let go, the second still holds
+        Assert.Equal(new PollResult(false, true), Poll());
     }
 
     /// <summary>
@@ -142,4 +142,6 @@ public class KeyBindingTests
         Assert.Equal("Strg+Umschalt+M", new KeyChord(KeyM, Ctrl | Shift).Name);
         Assert.Equal("Maustaste 4", new KeyChord(VirtualKeys.XButton1).Name);
     }
+
+    sealed record PollResult(bool Active, bool Changed);
 }

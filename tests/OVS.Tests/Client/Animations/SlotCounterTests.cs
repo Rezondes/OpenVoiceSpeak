@@ -13,14 +13,14 @@ namespace OVS.Tests.Client.Animations;
 public sealed class SlotCounterTests
 {
     /// <summary>A slot counter alone in a window of <paramref name="display"/>, with no numbers yet.</summary>
-    static (Window Window, TextBlock Counter) Counter(DisplayMode display)
+    static CounterScene Counter(DisplayMode display)
     {
         var counter = new TextBlock();
         var window = new Window { Width = 200, Height = 100, Content = counter };
         window.Show();
         Motion.Apply(window, display);
         Dispatcher.UIThread.RunJobs();
-        return (window, counter);
+        return new(window, counter);
     }
 
     static bool AtRest(TextBlock counter) => (MotionWait.OffsetY(counter), MotionWait.Scale(counter), counter.Opacity) == (0d, 1d, 1d);
@@ -113,4 +113,6 @@ public sealed class SlotCounterTests
         LiveMotion.SetSlots(counter, new ChannelSlots(3, 3));
         Assert.Equal(started, AnimationCounter.Started);
     }
+
+    sealed record CounterScene(Window Window, TextBlock Counter);
 }

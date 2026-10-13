@@ -17,7 +17,7 @@ namespace OVS.Tests.Client.Animations;
 [Collection(MotionCollection.Name)]
 public sealed class PopupMotionTests
 {
-    static (Window Window, Popup Popup, Border Content) Show(DisplayMode display)
+    static PopupScene Show(DisplayMode display)
     {
         var anchor = new Button { Content = "Anker", VerticalAlignment = VerticalAlignment.Bottom };
         var content = new Border { Width = 120, Height = 40, Background = Brushes.Gray };
@@ -26,7 +26,7 @@ public sealed class PopupMotionTests
         window.Show();
         Motion.Apply(window, display);
         Dispatcher.UIThread.RunJobs();
-        return (window, popup, content);
+        return new(window, popup, content);
     }
 
     /// <summary>Closes in the simplified display, which puts no fading picture up: nothing runs into the next test.</summary>
@@ -105,4 +105,6 @@ public sealed class PopupMotionTests
             Close(window, popup);
         }
     }
+
+    sealed record PopupScene(Window Window, Popup Popup, Border Content);
 }

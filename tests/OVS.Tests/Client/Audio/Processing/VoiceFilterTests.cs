@@ -45,13 +45,13 @@ public class VoiceFilterTests
     }
 
     /// <summary>The level after the filters and the voice activation, per frame, for 150 frames (3 s) of noise at -35 dBFS.</summary>
-    static List<(float Level, bool Voice)> RunNoise(bool noiseSuppression)
+    static List<FrameRating> RunNoise(bool noiseSuppression)
     {
         using var pipeline = Pipeline(noiseSuppression);
-        var seen = new List<(float, bool)>();
+        var seen = new List<FrameRating>();
         pipeline.ChooseTarget = voice =>
         {
-            seen.Add((pipeline.Vad.LastLevelDb, voice));
+            seen.Add(new(pipeline.Vad.LastLevelDb, voice));
             return null;
         };
         var noise = new PinkNoise(123);
@@ -494,4 +494,6 @@ public class VoiceFilterTests
             return frame;
         }
     }
+
+    sealed record FrameRating(float Level, bool Voice);
 }

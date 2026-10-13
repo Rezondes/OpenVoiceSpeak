@@ -40,7 +40,7 @@ internal sealed class DeviceRig : IDisposable
     {
         Engine.Connected = true;
         await AsyncWait.UntilAsync(() => Hardware.Counts is { MicsOpen: 1, SpeakersOpen: 1 });
-        Assert.Equal((1, 1, 1, 1), Hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 1, 1, 1), Hardware.Counts);
     }
 
     /// <summary>A device change, and the quiet time after it runs out.</summary>

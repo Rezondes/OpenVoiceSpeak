@@ -43,7 +43,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
         return (await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == name)).Channel.Id;
     }
 
-    static (Guid, Guid) Norm(Guid id, Guid otherId) => id.CompareTo(otherId) < 0 ? (id, otherId) : (otherId, id);
+    static OrderedPair Norm(Guid id, Guid otherId) => id.CompareTo(otherId) < 0 ? new(id, otherId) : new(otherId, id);
 
     /// <summary>
     /// Sends a request that surely fails and checks nothing unexpected arrives before its answer. The server answers
@@ -61,7 +61,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
     {
         await moderator.SendAsync(new LinkChannels(channelX, channelY));
         var linked = await guest.WaitForAsync<ChannelsLinked>();
-        Assert.Equal(Norm(channelX, channelY), (linked.A, linked.B));
+        Assert.Equal(Norm(channelX, channelY), new OrderedPair(linked.A, linked.B));
         Assert.Equal(channelY, Assert.Single(server.State.LinkedChannels(channelX)));
     }
 
@@ -109,7 +109,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
         await moderator.SendAsync(new LinkChannels(channelX, channelY));
         await guest.WaitForAsync<ChannelsLinked>();
         await moderator.SendAsync(new UnlinkChannels(channelY, channelX));
-        Assert.Equal(Norm(channelX, channelY), await guest.WaitForAsync<ChannelsUnlinked>() is var channelsUnlinked ? (channelsUnlinked.A, channelsUnlinked.B) : default);
+        Assert.Equal(Norm(channelX, channelY), await guest.WaitForAsync<ChannelsUnlinked>() is var channelsUnlinked ? new OrderedPair(channelsUnlinked.A, channelsUnlinked.B) : null);
         await moderator.WaitForAsync<ChannelsUnlinked>(); // m's own copy of the real unlink, so the probe only sees what the no-op sends
 
         await moderator.SendAsync(new UnlinkChannels(channelY, channelX));
@@ -159,7 +159,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
         moderator = await TestClient.ConnectAsync(server, "mod", modId);
         guest = await TestClient.ConnectAsync(server, "gast", guest.Identity); // Package 83: the stored name belongs to this identity
         var link = Assert.Single(guest.Welcome.Snapshot.Links);
-        Assert.Equal(Norm(channelX, channelY), (link.A, link.B));
+        Assert.Equal(Norm(channelX, channelY), new OrderedPair(link.A, link.B));
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
 
         await moderator.SendAsync(new SetChannelLinks([new LinkInfo(channelX, channelY), new LinkInfo(channelY, lobby)], [new LinkInfo(channelX, lobby)]));
         var linked = new[] { await guest.WaitForAsync<ChannelsLinked>(), await guest.WaitForAsync<ChannelsLinked>() };
-        Assert.Equal(new[] { Norm(channelX, channelY), Norm(channelY, lobby) }.Order(), linked.Select(channelsLinked => Norm(channelsLinked.A, channelsLinked.B)).Order());
+        Assert.Equal(new HashSet<OrderedPair> { Norm(channelX, channelY), Norm(channelY, lobby) }, linked.Select(channelsLinked => Norm(channelsLinked.A, channelsLinked.B)).ToHashSet());
         var unlinked = await guest.WaitForAsync<ChannelsUnlinked>();
         Assert.Equal(Norm(lobby, channelX), Norm(unlinked.A, unlinked.B));
         Assert.Contains(server.Log, line => line.Contains("Links geändert von mod: 2 gesetzt, 1 entfernt"));
@@ -209,4 +209,6 @@ public sealed class LinkCommandTests : IAsyncLifetime
         await guest.SendAsync(new SetChannelLinks([new LinkInfo(channelX, channelY)], []) { RequestId = "r" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("r")).Code);
     }
+
+    sealed record OrderedPair(Guid Low, Guid High);
 }

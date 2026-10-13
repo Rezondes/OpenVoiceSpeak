@@ -46,11 +46,11 @@ public sealed class TestVoice : IDisposable
         await SendAsync(PacketType.Hello, []);
         var reply = await ReceiveAsync();
         Assert.NotNull(reply);
-        Assert.Equal(PacketType.Ping, reply.Value.Header.Type);
+        Assert.Equal(PacketType.Ping, reply.Header.Type);
     }
 
     /// <summary>The default wait is generous for a slow CI runner (it returns as soon as a packet arrives); silence checks pass a short one.</summary>
-    public async Task<(VoiceHeader Header, byte[] Plain)?> ReceiveAsync(int timeoutMs = 10000)
+    public async Task<OpenedPacket?> ReceiveAsync(int timeoutMs = 10000)
     {
         using var cancelSource = new CancellationTokenSource(timeoutMs);
         while (true)
@@ -68,11 +68,11 @@ public sealed class TestVoice : IDisposable
             {
                 continue;
             }
-            if (crypto.TryOpen(PacketDirection.ServerToClient, result.Buffer, out var header, out var plain)) return (header, plain);
+            if (crypto.TryOpen(PacketDirection.ServerToClient, result.Buffer, out var header, out var plain)) return new(header, plain);
         }
     }
 
-    public async Task<(VoiceHeader Header, byte[] Plain)?> ReceiveVoiceAsync(int timeoutMs = 10000)
+    public async Task<OpenedPacket?> ReceiveVoiceAsync(int timeoutMs = 10000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (true)
@@ -81,7 +81,7 @@ public sealed class TestVoice : IDisposable
             if (left <= 0) return null;
             var valueTuple = await ReceiveAsync(left);
             if (valueTuple is null) return null;
-            if (valueTuple.Value.Header.Type == PacketType.Voice) return valueTuple;
+            if (valueTuple.Header.Type == PacketType.Voice) return valueTuple;
         }
     }
 

@@ -31,10 +31,10 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         return new Tree(main, viewModel, main.FindControl<ItemsControl>("ChannelItems")!, sent);
     }
 
-    static (ScaleTransform? Scale, RotateTransform? Rotate) Transforms(Visual preview)
+    static PreviewTransforms Transforms(Visual preview)
     {
         var group = Assert.IsType<TransformGroup>(preview.RenderTransform);
-        return (group.Children.OfType<ScaleTransform>().SingleOrDefault(), group.Children.OfType<RotateTransform>().SingleOrDefault());
+        return new(group.Children.OfType<ScaleTransform>().SingleOrDefault(), group.Children.OfType<RotateTransform>().SingleOrDefault());
     }
 
     [AvaloniaFact]
@@ -271,4 +271,6 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
             return end;
         }
     }
+
+    sealed record PreviewTransforms(ScaleTransform? Scale, RotateTransform? Rotate);
 }

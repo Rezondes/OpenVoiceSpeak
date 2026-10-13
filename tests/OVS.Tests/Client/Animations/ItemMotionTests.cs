@@ -34,7 +34,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         Dispatcher.UIThread.RunJobs();
     }
 
-    static (Window Window, ItemsControl List) Host(ObservableCollection<KeyedRow> rows, bool animated = true, bool flip = false)
+    static ListHost Host(ObservableCollection<KeyedRow> rows, bool animated = true, bool flip = false)
     {
         var list = new ItemsControl
         {
@@ -47,16 +47,16 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         window.Show();
         Motion.Apply(window, animated ? DisplayMode.Animated : DisplayMode.Simplified);
         MotionWait.Settle(300); // the first fill is over
-        return (window, list);
+        return new(window, list);
     }
 
     /// <summary>
     /// Every vertical offset any row of the list takes from now on, with the item it showed: not only what a frame
     /// happens to see, under load one frame can outlast the whole glide.
     /// </summary>
-    static List<(object? Item, double Y)> WatchOffsets(ItemsControl items)
+    static List<RowOffset> WatchOffsets(ItemsControl items)
     {
-        var seen = new List<(object? Item, double Y)>();
+        var seen = new List<RowOffset>();
         void Watch(Control row)
         {
             void Track(AvaloniaObject transform)
@@ -64,10 +64,10 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
                 // the animator keeps the offset in a TranslateTransform, on its own or inside a TransformGroup
                 if (transform is Avalonia.Media.TransformGroup group)
                     foreach (var child in group.Children) Track(child);
-                if (transform is Avalonia.Media.TranslateTransform translate) seen.Add((row.DataContext, translate.Y)); // set before it came
+                if (transform is Avalonia.Media.TranslateTransform translate) seen.Add(new(row.DataContext, translate.Y)); // set before it came
                 transform.PropertyChanged += (_, args) =>
                 {
-                    if (args.Property == Avalonia.Media.TranslateTransform.YProperty && args.NewValue is double offsetY) seen.Add((row.DataContext, offsetY));
+                    if (args.Property == Avalonia.Media.TranslateTransform.YProperty && args.NewValue is double offsetY) seen.Add(new(row.DataContext, offsetY));
                 };
             }
             if (row.RenderTransform is AvaloniaObject now) Track(now);
@@ -81,10 +81,10 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         return seen;
     }
 
-    static double Most(List<(object? Item, double Y)> seen, Func<object?, bool> item) =>
+    static double Most(List<RowOffset> seen, Func<object?, bool> item) =>
         seen.Where(value => item(value.Item)).Select(value => value.Y).DefaultIfEmpty(0).Max();
 
-    static double Least(List<(object? Item, double Y)> seen, Func<object?, bool> item) =>
+    static double Least(List<RowOffset> seen, Func<object?, bool> item) =>
         seen.Where(value => item(value.Item)).Select(value => value.Y).DefaultIfEmpty(0).Min();
 
     [AvaloniaFact]
@@ -646,4 +646,8 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
             Assert.Equal(0, MotionWait.OffsetX(control));
         });
     }
+
+    sealed record ListHost(Window Window, ItemsControl List);
+
+    sealed record RowOffset(object? Item, double Y);
 }

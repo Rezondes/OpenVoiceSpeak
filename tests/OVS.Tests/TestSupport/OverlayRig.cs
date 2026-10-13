@@ -13,14 +13,14 @@ namespace OVS.Tests.TestSupport;
 static class OverlayRig
 {
     /// <summary>Shows the window; the caller closes it in <c>finally</c>.</summary>
-    public static (Window Window, OverlayHost Overlay) Open()
+    public static OverlayScene Open()
     {
         var overlay = new OverlayHost();
         var window = new Window { Width = 600, Height = 500, Content = overlay };
         window.Show();
         Motion.Apply(window, DisplayMode.Simplified);
         Dispatcher.UIThread.RunJobs();
-        return (window, overlay);
+        return new(window, overlay);
     }
 
     /// <summary>The answer buttons of the open card's bar, in the order they are laid out.</summary>

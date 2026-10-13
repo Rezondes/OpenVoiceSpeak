@@ -895,20 +895,20 @@ public class SendPathTests
     {
         using var rig = new DeviceRig(new ClientSettings());
         await rig.ConnectAsync();
-        Assert.Equal(("mic-default", "speaker-default"), rig.Hardware.Open);
+        Assert.Equal(new OpenDevices("mic-default", "speaker-default"), rig.Hardware.Open);
 
         rig.Change();
-        Assert.Equal((1, 1, 1, 1), rig.Hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 1, 1, 1), rig.Hardware.Counts);
 
         rig.Hardware.DefaultMic = "usb-mic";
         rig.Change();
-        Assert.Equal(("usb-mic", "speaker-default"), rig.Hardware.Open);
-        Assert.Equal((2, 1, 1, 1), rig.Hardware.Counts); // only the microphone
+        Assert.Equal(new OpenDevices("usb-mic", "speaker-default"), rig.Hardware.Open);
+        Assert.Equal(new DeviceCounts(2, 1, 1, 1), rig.Hardware.Counts); // only the microphone
 
         rig.Hardware.DefaultSpeaker = "usb-speaker";
         rig.Change();
-        Assert.Equal(("usb-mic", "usb-speaker"), rig.Hardware.Open);
-        Assert.Equal((2, 1, 2, 1), rig.Hardware.Counts); // only the speaker
+        Assert.Equal(new OpenDevices("usb-mic", "usb-speaker"), rig.Hardware.Open);
+        Assert.Equal(new DeviceCounts(2, 1, 2, 1), rig.Hardware.Counts); // only the speaker
         Assert.Empty(rig.Notices); // nothing chosen went missing
     }
 
@@ -925,19 +925,19 @@ public class SendPathTests
 
         rig.Hardware.RaiseFailed(AudioDirection.Output);
         rig.Time.Advance(DeviceLifecycle.SettleTime);
-        Assert.Equal((1, 1, 2, 1), rig.Hardware.Counts); // only the speaker, on the same device
+        Assert.Equal(new DeviceCounts(1, 1, 2, 1), rig.Hardware.Counts); // only the speaker, on the same device
         Assert.Equal("speaker-default", rig.Hardware.Open.Speaker);
 
         rig.Hardware.RaiseFailed(AudioDirection.Input);
         rig.Time.Advance(DeviceLifecycle.SettleTime);
         rig.Hardware.RaiseFailed(AudioDirection.Input);
         rig.Time.Advance(DeviceLifecycle.SettleTime);
-        Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
+        Assert.Equal(new DeviceCounts(3, 1, 2, 1), rig.Hardware.Counts);
         Assert.Empty(rig.Notices);
 
         rig.Hardware.RaiseFailed(AudioDirection.Input); // the third failure in a row: given up
         rig.Time.Advance(DeviceLifecycle.SettleTime);
-        Assert.Equal((3, 1, 2, 1), rig.Hardware.Counts);
+        Assert.Equal(new DeviceCounts(3, 1, 2, 1), rig.Hardware.Counts);
         Assert.Equal([string.Format(Strings.Audio_MicFailed, "device invalidated")], rig.Notices);
     }
 
@@ -956,10 +956,10 @@ public class SendPathTests
         rig.Hardware.RaiseChanged();
         rig.Hardware.RaiseChanged();
         rig.Time.Advance(DeviceLifecycle.SettleTime - TimeSpan.FromMilliseconds(1));
-        Assert.Equal((1, 1, 1, 1), rig.Hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 1, 1, 1), rig.Hardware.Counts);
 
         rig.Time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal((2, 1, 2, 1), rig.Hardware.Counts);
+        Assert.Equal(new DeviceCounts(2, 1, 2, 1), rig.Hardware.Counts);
     }
 
     /// <summary>Every device unplugged: microphone and speaker fail to open, the user gets a notice for each, nothing crashes.</summary>
@@ -972,7 +972,7 @@ public class SendPathTests
         rig.Engine.Connected = true;
         await AsyncWait.UntilAsync(() => rig.Notices.Count == 2);
 
-        Assert.Equal((0, 0, 0, 0), rig.Hardware.Counts);
+        Assert.Equal(new DeviceCounts(0, 0, 0, 0), rig.Hardware.Counts);
         Assert.Equivalent(new[] { string.Format(Strings.Audio_MicFailed, "no microphone"), string.Format(Strings.Audio_SpeakerFailed, "no speaker") },
             rig.Notices, strict: true);
         Assert.Null(rig.Engine.DeviceLifecycle.CaptureSource.Capture);
@@ -990,14 +990,14 @@ public class SendPathTests
         {
             Assert.Equal(1, rig.Hardware.Subscribers);
             rig.Change();
-            Assert.Equal((0, 0, 0, 0), rig.Hardware.Counts);
+            Assert.Equal(new DeviceCounts(0, 0, 0, 0), rig.Hardware.Counts);
 
             await rig.ConnectAsync();
             rig.Engine.Connected = false;
             await AsyncWait.UntilAsync(() => rig.Hardware.Counts.MicsOpen == 0 && !rig.Engine.PlaybackRunning);
-            Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
+            Assert.Equal(new DeviceCounts(1, 0, 1, 0), rig.Hardware.Counts);
             rig.Change();
-            Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
+            Assert.Equal(new DeviceCounts(1, 0, 1, 0), rig.Hardware.Counts);
 
             rig.Hardware.RaiseChanged(); // pending when the engine goes away
         }
@@ -1007,7 +1007,7 @@ public class SendPathTests
         }
         Assert.Equal(0, rig.Hardware.Subscribers);
         rig.Time.Advance(TimeSpan.FromSeconds(5));
-        Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
+        Assert.Equal(new DeviceCounts(1, 0, 1, 0), rig.Hardware.Counts);
     }
 
     /// <summary>

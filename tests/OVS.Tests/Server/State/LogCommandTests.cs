@@ -20,11 +20,11 @@ namespace OVS.Tests.Server.State;
 /// <summary>Package 81: the server and channel logs listed, read page by page and searched from the administration.</summary>
 public sealed class LogCommandTests
 {
-    static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync(TimeProvider? time = null, string? dataDir = null)
+    static async Task<AdminRig> StartWithAdminAsync(TimeProvider? time = null, string? dataDir = null)
     {
         var admin = ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time, dataDir: dataDir);
-        return (server, await TestClient.ConnectAsync(server, "chef", admin));
+        return new(server, await TestClient.ConnectAsync(server, "chef", admin));
     }
 
     static async Task<IReadOnlyList<LogFileInfo>> ListAsync(TestClient client)

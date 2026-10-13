@@ -48,10 +48,10 @@ public static class LayoutAssert
     /// Left and right edge in window coordinates; a ScrollViewer counts with its viewport (without the scroll bar).
     /// Package 104: from the layout, not from where a running animation draws it (a page sliding in).
     /// </summary>
-    static (double Left, double Right)? Horizontal(Visual visual, Visual top)
+    static HorizontalExtent? Horizontal(Visual visual, Visual top)
     {
         var width = visual is ScrollViewer { Viewport.Width: > 0 } scrollViewer ? scrollViewer.Viewport.Width : visual.Bounds.Width;
-        return X(visual, top) is { } left ? (left, left + width) : null;
+        return X(visual, top) is { } left ? new(left, left + width) : null;
     }
 
     /// <summary>Package 105: the top edge from the layout, relative to an ancestor (null when it is none).</summary>
@@ -83,4 +83,6 @@ public static class LayoutAssert
         };
         return $"'{control.Name ?? Avalonia.Automation.AutomationProperties.GetName(control)}' \"{text}\"";
     }
+
+    sealed record HorizontalExtent(double Left, double Right);
 }

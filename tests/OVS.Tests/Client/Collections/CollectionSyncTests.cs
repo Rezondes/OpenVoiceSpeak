@@ -14,10 +14,10 @@ public class CollectionSyncTests
     /// </summary>
     readonly PostQueue posts = new();
 
-    (ObservableCollection<string> List, LeaveTimer Leave, ManualTimeProvider Clock) Setup(params string[] items)
+    SyncRig Setup(params string[] items)
     {
         var clock = new ManualTimeProvider();
-        return (new ObservableCollection<string>(items), new LeaveTimer(clock, () => posts.Post) { Delay = TimeSpan.FromMilliseconds(220) }, clock);
+        return new(new ObservableCollection<string>(items), new LeaveTimer(clock, () => posts.Post) { Delay = TimeSpan.FromMilliseconds(220) }, clock);
     }
 
     [Fact]
@@ -163,4 +163,6 @@ public class CollectionSyncTests
         await posts.RunAsync(clock, TimeSpan.FromMilliseconds(300));
         Assert.Equal(["c", "b", "a"], list); // the old removal does not take it away
     }
+
+    sealed record SyncRig(ObservableCollection<string> List, LeaveTimer Leave, ManualTimeProvider Clock);
 }
