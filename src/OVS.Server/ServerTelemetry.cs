@@ -69,6 +69,6 @@ internal static class ServerTelemetry
             .ConfigureResource(resource => resource.AddService(getEnv("OTEL_SERVICE_NAME") is { Length: > 0 } name ? name : ServiceName,
                 serviceVersion: BuildInfo.Current.Version))
             .WithTracing(tracing => tracing.AddSource(SourceName).AddOtlpExporter())
-            .WithMetrics(metrics => metrics.AddOtlpExporter());
+            .WithMetrics(metrics => metrics.AddMeter(SourceName).AddRuntimeInstrumentation().AddOtlpExporter()); // Package 147
     }
 }

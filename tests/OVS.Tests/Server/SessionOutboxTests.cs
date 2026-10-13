@@ -27,7 +27,7 @@ public sealed class SessionOutboxTests
     public void SendFrame_NullFrame_AbortsAsTooLarge()
     {
         var outbox = new SessionOutbox();
-        outbox.SendFrame(null);
+        outbox.SendFrame(null, "Huge");
 
         Assert.True(outbox.Aborted.IsCancellationRequested);
         Assert.Equal("message too large", outbox.AbortReason);

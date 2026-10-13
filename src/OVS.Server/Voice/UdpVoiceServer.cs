@@ -105,6 +105,7 @@ internal sealed class UdpVoiceServer : IDisposable
         if (!VoiceHeader.TryRead(packet.Span, out var header))
         {
             CountBad(source);
+            state.Metrics.VoiceDropped(ServerMetrics.Invalid); // Package 147
             return;
         }
         var sender = state.FindSession(header.SessionId);
@@ -113,11 +114,13 @@ internal sealed class UdpVoiceServer : IDisposable
         if (!from.Equals(sender?.Voice.UdpEndpoint) && OverBudget(source))
         {
             Interlocked.Increment(ref preFilterDrops);
+            state.Metrics.VoiceDropped(ServerMetrics.PreFilter);
             return;
         }
         if (sender is null)
         {
             CountBad(source);
+            state.Metrics.VoiceDropped(ServerMetrics.Invalid);
             return;
         }
         // Package 88: voice goes only to the address of the own control connection (no reflection to a spoofed victim)
@@ -125,14 +128,21 @@ internal sealed class UdpVoiceServer : IDisposable
         {
             Interlocked.Increment(ref foreignSourceDrops);
             CountBad(source);
+            state.Metrics.VoiceDropped(ServerMetrics.ForeignSource);
             return;
         }
         if (!sender.Voice.Crypto.TryOpen(PacketDirection.ClientToServer, packet.Span, out header, out var plain))
         {
             CountBad(source);
+            state.Metrics.VoiceDropped(ServerMetrics.Invalid);
             return;
         }
-        if (!sender.Voice.Replay.Accept(header.Seq) || !sender.Voice.Limiter.TryTake()) return;
+        if (!sender.Voice.Replay.Accept(header.Seq)) return; // a repeat: not counted
+        if (!sender.Voice.Limiter.TryTake())
+        {
+            state.Metrics.VoiceDropped(ServerMetrics.Budget);
+            return;
+        }
 
         if (header.Type == PacketType.Hello || sender.Voice.UdpEndpoint is not null) sender.Voice.UdpEndpoint = from;
         // Package 141: a ping or voice means the client uses UDP again; a Hello is only its probe, so voice stays on TCP
@@ -153,6 +163,7 @@ internal sealed class UdpVoiceServer : IDisposable
                 break;
             // Voice plaintext has the same format in both directions (RelayPayload), so it is relayed as is where it fits.
             case PacketType.Voice when RelayPayload.TryReadRanges(plain, out var frame, out var current, out var copy):
+                state.Metrics.Voice(incoming: true, tcp: false, packet.Length); // Package 147
                 if (frame > sender.Voice.LastUdpFrame) sender.Voice.LastUdpFrame = frame; // Package 141: VoiceUp older than this is stale
                 await VoiceAsync(sender, header.Target, plain, frame, current, copy);
                 break;
@@ -180,15 +191,21 @@ internal sealed class UdpVoiceServer : IDisposable
         {
             if (!valid)
             {
+                state.Metrics.VoiceDropped(ServerMetrics.Invalid);
                 if (sender.Throttle.RefuseVoice()) state.DisconnectFlood(sender);
                 return;
             }
             // the empty switch relays nothing and costs no more than a Ping, so it takes no token: repeated with every
             // Hello (review), it must not eat the budget the client's UDP Hellos and voice need
-            if (length > 0 && !sender.Voice.Limiter.TryTake()) return;
+            if (length > 0 && !sender.Voice.Limiter.TryTake())
+            {
+                state.Metrics.VoiceDropped(ServerMetrics.Budget);
+                return;
+            }
             if (up.Seq <= sender.Voice.LastUdpFrame) return;
             sender.Voice.TcpVoice = true;
             if (length == 0) return; // only the switch: a listener on TCP
+            state.Metrics.Voice(incoming: true, tcp: true, length); // Package 147: the Opus bytes
             var plain = RelayPayload.Build(up.Seq, opus.AsSpan(0, length));
             await VoiceAsync(sender, up.Target, plain, up.Seq, RelayPayload.HeaderSize..plain.Length, plain.Length..);
         }
@@ -272,7 +289,9 @@ internal sealed class UdpVoiceServer : IDisposable
     async Task SendAsync(SessionVoice to, VoiceHeader header, byte[] payload)
     {
         if (to.UdpEndpoint is not { } endpoint) return;
-        await socket.SendToAsync(to.Crypto.Seal(PacketDirection.ServerToClient, header, payload), SocketFlags.None, endpoint);
+        var sealedPacket = to.Crypto.Seal(PacketDirection.ServerToClient, header, payload);
+        if (header.Type == PacketType.Voice) state.Metrics.Voice(incoming: false, tcp: false, sealedPacket.Length); // Package 147
+        await socket.SendToAsync(sealedPacket, SocketFlags.None, endpoint);
     }
 
     /// <summary>Stops the loop and closes the socket.</summary>

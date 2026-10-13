@@ -17,8 +17,12 @@ internal sealed class SessionOutbox
 {
     readonly Channel<byte[]> outbox = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(ServerTuning.MaxOutboxMessages) { SingleReader = true });
     readonly CancellationTokenSource aborted = new();
+    readonly ServerMetrics? metrics;
     long queuedBytes;
     volatile bool closing; // after Close or Abort: later messages are dropped quietly
+
+    /// <param name="metrics">Package 147: counts the frames queued and an abort.</param>
+    public SessionOutbox(ServerMetrics? metrics = null) => this.metrics = metrics;
 
     /// <summary>Frames for the write loop; call Written after each one.</summary>
     public ChannelReader<byte[]> Outgoing => outbox.Reader;
@@ -36,10 +40,13 @@ internal sealed class SessionOutbox
     public void Written(byte[] frame) => Interlocked.Add(ref queuedBytes, -frame.Length);
 
     /// <summary>Never blocks, safe from any thread. A client that falls too far behind is aborted.</summary>
-    public void Send(Message message) => SendFrame(Encode(message));
+    public void Send(Message message) => SendFrame(Encode(message), message.GetType().Name);
 
-    /// <summary>Package 86: Broadcast encodes once for everyone. Null (too large for a frame) aborts like an overflow.</summary>
-    public void SendFrame(byte[]? frame)
+    /// <summary>
+    /// Package 86: Broadcast encodes once for everyone. Null (too large for a frame) aborts like an overflow. Package 147:
+    /// <paramref name="type"/> names the message for the control traffic count.
+    /// </summary>
+    public void SendFrame(byte[]? frame, string type)
     {
         if (closing) return;
         if (frame is null)
@@ -47,7 +54,11 @@ internal sealed class SessionOutbox
             Abort("message too large");
             return;
         }
-        if (Interlocked.Add(ref queuedBytes, frame.Length) <= ServerTuning.MaxOutboxBytes && outbox.Writer.TryWrite(frame)) return;
+        if (Interlocked.Add(ref queuedBytes, frame.Length) <= ServerTuning.MaxOutboxBytes && outbox.Writer.TryWrite(frame))
+        {
+            metrics?.Control(type, incoming: false, frame.Length);
+            return;
+        }
         Interlocked.Add(ref queuedBytes, -frame.Length);
         if (!closing) Abort("send buffer full");
     }
@@ -61,7 +72,8 @@ internal sealed class SessionOutbox
     {
         if (closing || frame is null || outbox.Reader.Count >= ServerTuning.MaxQueuedVoice || QueuedBytes + frame.Length > ServerTuning.MaxOutboxBytes / 2) return;
         Interlocked.Add(ref queuedBytes, frame.Length);
-        if (!outbox.Writer.TryWrite(frame)) Interlocked.Add(ref queuedBytes, -frame.Length);
+        if (outbox.Writer.TryWrite(frame)) metrics?.Voice(incoming: false, tcp: true, frame.Length);
+        else Interlocked.Add(ref queuedBytes, -frame.Length);
     }
 
     /// <summary>The frame of a message, null when it exceeds the frame limit.</summary>
@@ -84,6 +96,7 @@ internal sealed class SessionOutbox
         {
             if (aborted.IsCancellationRequested) return;
             AbortReason = reason;
+            metrics?.OutboxAborted(reason);
             closing = true;
             outbox.Writer.TryComplete();
             aborted.Cancel();

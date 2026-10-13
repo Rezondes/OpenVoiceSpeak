@@ -16,22 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["ServerMetricsTests > \"Sessions_JoinAndLeave_Reported\""] =
-            "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"Requests_Handled_CountedByTypeAndCode\""] =
-            "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"Voice_InOutAndDrops_Counted\""] =
-            "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"OutboxAbortAndRejection_Happen_Counted\""] =
-            "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"ControlTraffic_SentAndReceived_CountedPerType\""] =
-            "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"Chat_CountAndSize_OnlyChannelLabel\""] =
-            "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"RuntimeMetrics_TelemetryOn_Exported\""] =
-            "planned: Package 147 is not built yet",
-        ["ServerMetricsTests > \"Voice_NoListener_NoAllocation\""] =
-            "planned: Package 147 is not built yet",
         ["ServerTelemetryTests > \"Log_ServerLine_ReachesTheReceiver\""] =
             "planned: Package 148 is not built yet",
         ["ServerTelemetryTests > \"Log_InRequestSpan_CarriesTraceId\""] =

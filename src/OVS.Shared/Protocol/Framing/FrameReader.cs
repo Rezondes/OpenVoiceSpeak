@@ -13,6 +13,9 @@ public sealed class FrameReader(Stream stream)
     public const int MaxFrameSize = 1024 * 1024;
     readonly byte[] header = new byte[4];
 
+    /// <summary>Package 147: the bytes of the last frame read, its length prefix included.</summary>
+    public int LastFrameSize { get; private set; }
+
     /// <returns>The next message, or null when the stream ended cleanly between frames.</returns>
     public async Task<Message?> ReadAsync(CancellationToken cancellation = default)
     {
@@ -31,6 +34,7 @@ public sealed class FrameReader(Stream stream)
         uint length = BinaryPrimitives.ReadUInt32BigEndian(header);
         if (length == 0 || length > MaxFrameSize)
             throw new ProtocolException($"Invalid frame length {length}");
+        LastFrameSize = header.Length + (int)length;
 
         var payload = new byte[length];
         await stream.ReadExactlyAsync(payload, cancellation);

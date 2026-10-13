@@ -1,3 +1,4 @@
+using System.Text;
 using OVS.Server.Logging;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
@@ -54,6 +55,7 @@ internal sealed partial class ServerState
 
         var message = new ChatMessage(request.Target, session.Id, session.Nickname, request.Target == ChatTarget.Channel ? session.ChannelId : null,
             to?.Id, text, time.GetUtcNow());
+        Metrics.Chat(request.Target == ChatTarget.Channel ? session.ChannelId : null, Encoding.UTF8.GetByteCount(text)); // Package 147 (A157): never the text
         switch (request.Target)
         {
             case ChatTarget.Server:

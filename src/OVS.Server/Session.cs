@@ -8,7 +8,7 @@ using OVS.Shared.Permissions;
 namespace OVS.Server;
 
 /// <summary>One connected, authenticated client.</summary>
-internal sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey, TimeProvider time)
+internal sealed class Session(uint id, string fingerprint, string nickname, IPAddress ip, byte[] voiceKey, TimeProvider time, ServerMetrics? metrics = null)
     : IDisposable
 {
     /// <summary>The session's id, also in its voice packets.</summary>
@@ -23,7 +23,7 @@ internal sealed class Session(uint id, string fingerprint, string nickname, IPAd
     public byte[] VoiceKey { get; } = voiceKey;
 
     /// <summary>The frames for the write loop; safe from any thread.</summary>
-    public SessionOutbox Outbox { get; } = new();
+    public SessionOutbox Outbox { get; } = new(metrics);
 
     /// <summary>The request, list, costly and chat budgets (under the ServerState lock) and the voice flood rule (under the voice gate).</summary>
     public SessionThrottle Throttle { get; } = new(time);

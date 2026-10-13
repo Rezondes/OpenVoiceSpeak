@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using OVS.Server;
 using OVS.Shared.Identity;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Connection;
@@ -606,11 +607,44 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Equal(before + 1, server.Voice.ForeignSourceDrops);
     }
 
+    /// <summary>Package 147 (A157): voice in and out on both paths, and drops by reason, on the run's meter.</summary>
+    [Fact]
+    public async Task Voice_InOutAndDrops_Counted()
+    {
+        using var metrics = new MetricRecorder(server.State.Metrics.Meter);
+        double Sum(string name, params (string, string)[] tags) => metrics.Sum(name, tags);
+        await va.HelloAsync();
+        await vb.HelloAsync();
+
+        Assert.NotNull(await SendUntilHeardAsync(va, vb)); // UDP in and out
+        Assert.True(Sum("ovs.voice.packets", (ServerMetrics.DirectionTag, "in"), (ServerMetrics.VoicePathTag, "udp")) >= 1);
+        Assert.True(Sum("ovs.voice.packets", (ServerMetrics.DirectionTag, "out"), (ServerMetrics.VoicePathTag, "udp")) >= 1);
+        Assert.True(Sum("ovs.voice.bytes", (ServerMetrics.DirectionTag, "in"), (ServerMetrics.VoicePathTag, "udp")) > Opus.Length);
+
+        await SendTcpAsync(second, 1, []); // b listens on TCP from now on
+        await AsyncWait.UntilAsync(() => server.State.FindSession(second.Id)!.Voice.TcpVoice);
+        await SendTcpAsync(first, 1000, Opus);
+        await AsyncWait.UntilAsync(() => Sum("ovs.voice.packets", (ServerMetrics.DirectionTag, "out"), (ServerMetrics.VoicePathTag, "tcp")) >= 1);
+        Assert.Equal(Opus.Length, Sum("ovs.voice.bytes", (ServerMetrics.DirectionTag, "in"), (ServerMetrics.VoicePathTag, "tcp")));
+
+        using var spoofed = new TestVoice(second, server.VoiceEndPoint, vb.Seq, IPAddress.Parse("127.0.0.2"));
+        await spoofed.SendAsync(PacketType.Hello, []);
+        using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
+        using var garbage = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        await garbage.SendAsync(stranger.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, third.Id, 0, 0), []), server.VoiceEndPoint);
+        for (int index = 0; index < 3 * ServerTuning.VoiceBurst; index++) await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetChannel);
+
+        await AsyncWait.UntilAsync(() => Sum("ovs.voice.drops", (ServerMetrics.DropReasonTag, ServerMetrics.ForeignSource)) == 1
+            && Sum("ovs.voice.drops", (ServerMetrics.DropReasonTag, ServerMetrics.Invalid)) >= 1
+            && Sum("ovs.voice.drops", (ServerMetrics.DropReasonTag, ServerMetrics.Budget)) >= 1);
+    }
+
     /// <summary>Package 88: a source sending undecryptable packets is cut off before decryption; bound clients and the control channel go on.</summary>
     [Fact]
     public async Task GarbageFlood_DroppedBeforeDecrypt_ControlStaysResponsive()
     {
         await va.HelloAsync();
+        using var metrics = new MetricRecorder(server.State.Metrics.Meter); // Package 147: the cut-off packets are counted
         // c's live session id, sealed with a wrong key, from c's own address: passes every check up to decryption
         using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
         using var flood = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
@@ -619,6 +653,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         while (server.Voice.PreFilterDrops == 0 && DateTime.UtcNow < deadline)
             for (int index = 0; index < 100; index++) await flood.SendAsync(garbage, server.VoiceEndPoint);
         Assert.True(server.Voice.PreFilterDrops > 0);
+        Assert.True(metrics.Sum("ovs.voice.drops", (ServerMetrics.DropReasonTag, ServerMetrics.PreFilter)) > 0);
 
         await va.SendAsync(PacketType.Ping, []); // the bound endpoint of a is not held up by the flood from its address
         Assert.NotNull(await va.ReceiveAsync());

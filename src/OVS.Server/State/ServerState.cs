@@ -60,7 +60,8 @@ internal sealed partial class ServerState
     /// <param name="config">The run's settings.</param>
     /// <param name="time">The clock of the run.</param>
     /// <param name="logs">The server and channel logs.</param>
-    public ServerState(ServerConfig config, TimeProvider time, ServerLogWriter logs, ServerStores stores)
+    /// <param name="metrics">Package 147: the run's meter.</param>
+    public ServerState(ServerConfig config, TimeProvider time, ServerLogWriter logs, ServerStores stores, ServerMetrics metrics)
     {
         if (stores.DataDir != config.DataDir)
             throw new ArgumentException($"The stores are in {stores.DataDir}, the config names {config.DataDir}", nameof(stores));
@@ -73,6 +74,8 @@ internal sealed partial class ServerState
         uploads = stores.UploadFolder;
         logReader = stores.LogReader; // Package 81
         logExporter = stores.LogExporter;
+        Metrics = metrics;
+        metrics.ObserveSessions(() => sessions.Count); // ponytail: read without the lock, an int read is atomic and the gauge only samples
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         saves = new SaveScheduler(gate, WriteData, time, logs.Server);
         bool pruned = PruneGuests(time.GetUtcNow());
@@ -202,7 +205,9 @@ internal sealed partial class ServerState
             }
             finally
             {
-                span?.SetTag(ServerTelemetry.ResultTag, session.RequestResult ?? ServerTelemetry.ResultOk);
+                var result = session.RequestResult ?? ServerTelemetry.ResultOk;
+                span?.SetTag(ServerTelemetry.ResultTag, result);
+                Metrics.Request(request.GetType().Name, result); // Package 147
             }
         }
     }
@@ -248,6 +253,9 @@ internal sealed partial class ServerState
             session.Outbox.Send(new Error(requestId, ReasonCodes.InvalidValue, problem));
         }
     }
+
+    /// <summary>Package 147: the run's meter, also counted by the voice and control servers.</summary>
+    internal ServerMetrics Metrics { get; }
 
     /// <summary>False once the session was removed or replaced by a newer connection (call under gate).</summary>
     bool IsCurrent(Session session) => sessions.TryGetValue(session.Id, out var current) && current == session;
@@ -362,8 +370,8 @@ internal sealed partial class ServerState
         foreach (var to in sessions.Values)
         {
             if (to == user) to.Outbox.Send(new UserUpdated(Info(user, to)));
-            else if (Moderates(to, user)) to.Outbox.SendFrame(moderator ??= SessionOutbox.Encode(new UserUpdated(Info(user, to))));
-            else to.Outbox.SendFrame(other ??= SessionOutbox.Encode(new UserUpdated(Info(user, to))));
+            else if (Moderates(to, user)) to.Outbox.SendFrame(moderator ??= SessionOutbox.Encode(new UserUpdated(Info(user, to))), nameof(UserUpdated));
+            else to.Outbox.SendFrame(other ??= SessionOutbox.Encode(new UserUpdated(Info(user, to))), nameof(UserUpdated));
         }
     }
 

@@ -222,6 +222,7 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
                 continue;
             }
             if (message is null) return;
+            state.Metrics.Control(message.GetType().Name, incoming: true, reader.LastFrameSize); // Package 147
             if (message is Ping) session.Outbox.Send(new Pong());
             else if (message is VoiceUp up) await (state.VoiceOverTcp?.Invoke(session, up) ?? Task.CompletedTask); // Package 141: no request
             else state.Handle(session, message);

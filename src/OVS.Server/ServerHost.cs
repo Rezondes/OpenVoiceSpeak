@@ -159,6 +159,7 @@ internal static class ServerHost
         services.AddSingleton(logs);
         services.AddSingleton(logs.Factory); // Package 144: the container's loggers are the run's
         services.AddSingleton(_ => ServerStores.Open(config, time));
+        services.AddSingleton<ServerMetrics>(); // Package 147: the run's meter, disposed with its container
         services.AddSingleton<ServerState>();
         services.AddSingleton(_ => ServerCertificate.LoadOrCreate(config.DataDir));
         services.AddSingleton(provider => new ControlServer(provider.GetRequiredService<ServerState>(), provider.GetRequiredService<X509Certificate2>(), endpoint));

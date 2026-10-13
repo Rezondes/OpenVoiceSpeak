@@ -359,7 +359,7 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A154 Logging in the container (Package 144).** Each run makes one `ILoggerFactory` before its host (so the start lines go through it too), with the file provider and the providers a run adds; the host uses that factory, and it is disposed after the host. The file provider keeps writing only the categories `server` and `channels/<id>`, so the files do not change.
 - **A155 OpenTelemetry opt-in (Package 145).** OpenTelemetry is on only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set and not empty; then traces, metrics and (from 148) logs go over OTLP with the standard variables (`OTEL_EXPORTER_OTLP_PROTOCOL`, `_HEADERS`, the per-signal endpoints, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` and the export intervals), copied from the environment into the run's configuration from a fixed list. `service.name` is `ovs-server`, `service.version` the build version. Packages: `OpenTelemetry`, `OpenTelemetry.Extensions.Hosting`, `OpenTelemetry.Exporter.OpenTelemetryProtocol` (1.19.1), from 147 `OpenTelemetry.Instrumentation.Runtime` (1.19.0). A failing backend never affects the server.
 - **A156 Traces (Package 146).** ActivitySource `OVS.Server`: one span per request (`request <Type>`) and one per handshake, with the request type, the result code and the session's fingerprint; never the nickname or a text. No spans on the voice path.
-- **A157 Metrics (Package 147).** Meter `OVS.Server`, made through the run's `IMeterFactory`: sessions online, requests by type and result, voice packets, bytes and drops, outbox aborts, admission refusals, control frames and bytes per message type and direction, chat messages (counter) and their size in UTF-8 bytes (histogram). Chat metrics carry only the channel id, and only for channel messages; server and private messages are counted without a label (the user's decision). Plus the .NET runtime metrics.
+- **A157 Metrics (Package 147).** Meter `OVS.Server`, one per run (a singleton of the run's container): sessions online, requests by type and result, voice packets, bytes and drops, outbox aborts, admission refusals, control frames and bytes per message type and direction, chat messages (counter) and their size in UTF-8 bytes (histogram). Chat metrics carry only the channel id, and only for channel messages; server and private messages are counted without a label (the user's decision). Plus the .NET runtime metrics.
 - **A158 Logs over OTLP (Package 148).** Only the server log (category `server`) is exported, with the trace context of the span it is written in; channel logs never (the user's decision), nor any `ConsoleOnly` line such as the admin token.
 - **A159 Compose examples (Package 149).** `deploy/observability/<tool>/docker-compose.yml` for `grafana-lgtm`, `aspire-dashboard`, `jaeger` and `seq`, each with `ovs-server` and the backend, plus one shared README. Backend images carry a fixed version. `ovs-server` is built from the checkout (`build` at the repository root, image `openvoicespeak/server:local`), since only images after this work export anything; a comment shows how to use a release image with its version tag instead. The default `docker-compose.yml` stays without a backend.
 - **A160 More backends (Package 150, planned only).** Elastic (Elasticsearch, Kibana, the EDOT collector), OpenSearch (with OpenSearch Dashboards and Data Prepper) and Netdata (metrics and logs, no traces); no Graylog (the user's decision).
@@ -8608,7 +8608,7 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 
 **Affected files:**
 - `src/OVS.Server/OVS.Server.csproj` (change): `OpenTelemetry.Instrumentation.Runtime` 1.19.0
-- `src/OVS.Server/ServerMetrics.cs` (new): the `Meter` "OVS.Server" made through the container's `IMeterFactory` and its instruments (A157)
+- `src/OVS.Server/ServerMetrics.cs` (new): the `Meter` "OVS.Server" of the run and its instruments (A157)
 - `src/OVS.Server/ServerTelemetry.cs`, `ServerHost.cs` (change): the meter and the runtime instrumentation in the metrics setup; `ServerMetrics` in the container
 - `src/OVS.Server/State/ServerState.cs`, `ServerState.Chat.cs`, `ServerState.Connections.cs` (change): requests, chat and admission counted
 - `src/OVS.Server/Voice/UdpVoiceServer.cs` (change): voice packets and bytes in and out, drops by reason
@@ -8617,29 +8617,31 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 
 ### Context
 
-Counts that exist today (`UdpVoiceServer.ForeignSourceDrops`, `PreFilterDrops`) are only read by tests. An admin with a backend wants to see load and trouble over time. The user decided: chat contents never leave the server, but the number and size of messages may, labelled by channel id only, never by text or sender. A meter made through `IMeterFactory` belongs to its run's container, so a restart does not double instruments and parallel tests can tell their servers apart.
+Counts that exist today (`UdpVoiceServer.ForeignSourceDrops`, `PreFilterDrops`) are only read by tests. An admin with a backend wants to see load and trouble over time. The user decided: chat contents never leave the server, but the number and size of messages may, labelled by channel id only, never by text or sender. A meter that belongs to its run's container does not double its instruments on a restart, and parallel tests can tell their servers apart.
 
 ### Acceptance Criteria
 
-- [ ] AC1: `ovs.sessions` reports the sessions online.
-- [ ] AC2: `ovs.requests` counts each handled request with `ovs.request.type` and `ovs.result.code` (`ok` or the error code).
-- [ ] AC3: `ovs.voice.packets` and `ovs.voice.bytes` count voice in and out (`ovs.direction` `in`/`out`, `ovs.voice.path` `udp`/`tcp`); `ovs.voice.drops` counts dropped packets with `ovs.drop.reason` (`foreign_source`, `pre_filter`, `budget`, `invalid`).
-- [ ] AC4: `ovs.outbox.aborts` counts aborted sessions with `ovs.abort.reason`; `ovs.admission.rejections` counts refused hellos with `ovs.result.code`.
-- [ ] AC5: `ovs.control.frames` and `ovs.control.bytes` count control traffic per `ovs.message.type` and `ovs.direction`.
-- [ ] AC6: `ovs.chat.messages` (counter) and `ovs.chat.message.size` (histogram, UTF-8 bytes) count every delivered chat message; channel messages carry `ovs.channel.id`, server and private messages carry no label at all; no instrument has a text, nickname or fingerprint label.
-- [ ] AC7: With OpenTelemetry on, the runtime metrics are exported too; with it off no meter is listened to and counting allocates nothing per voice packet.
+- [x] AC1: `ovs.sessions` reports the sessions online.
+- [x] AC2: `ovs.requests` counts each handled request with `ovs.request.type` and `ovs.result.code` (`ok` or the error code).
+- [x] AC3: `ovs.voice.packets` and `ovs.voice.bytes` count voice in and out (`ovs.direction` `in`/`out`, `ovs.voice.path` `udp`/`tcp`); `ovs.voice.drops` counts dropped packets with `ovs.drop.reason` (`foreign_source`, `pre_filter`, `budget`, `invalid`).
+- [x] AC4: `ovs.outbox.aborts` counts aborted sessions with `ovs.abort.reason`; `ovs.admission.rejections` counts refused hellos with `ovs.result.code`.
+- [x] AC5: `ovs.control.frames` and `ovs.control.bytes` count control traffic per `ovs.message.type` and `ovs.direction`.
+- [x] AC6: `ovs.chat.messages` (counter) and `ovs.chat.message.size` (histogram, UTF-8 bytes) count every delivered chat message; channel messages carry `ovs.channel.id`, server and private messages carry no label at all; no instrument has a text, nickname or fingerprint label.
+- [x] AC7: With OpenTelemetry on, the runtime metrics are exported too; with it off no meter is listened to and counting allocates nothing per voice packet.
 
 ### Tests (TDD)
 
 1. `ServerMetricsTests > "Sessions_JoinAndLeave_Reported"` (AC1)
 2. `ServerMetricsTests > "Requests_Handled_CountedByTypeAndCode"` (AC2)
-3. `ServerMetricsTests > "Voice_InOutAndDrops_Counted"` (AC3): a relayed UDP packet, a TCP `VoiceUp`, a packet from a foreign source and one over the budget.
+3. `VoiceRelayTests > "Voice_InOutAndDrops_Counted"` (AC3): a relayed UDP packet, a TCP `VoiceUp`, a packet from a foreign source and one over the budget.
 4. `ServerMetricsTests > "OutboxAbortAndRejection_Happen_Counted"` (AC4)
 5. `ServerMetricsTests > "ControlTraffic_SentAndReceived_CountedPerType"` (AC5)
 6. `ServerMetricsTests > "Chat_CountAndSize_OnlyChannelLabel"` (AC6)
    - Given: a channel message "hallo" and a server message "äöü".
    - Expected: count 1 with `ovs.channel.id` = the channel, size 5; count 1 without labels, size 6; no tag value equals a text, nickname or fingerprint.
 7. `ServerMetricsTests > "RuntimeMetrics_TelemetryOn_Exported"`, `"Voice_NoListener_NoAllocation"` (AC7)
+
+(as built: deviation from the plan: `ServerMetrics` makes its `Meter` itself (`new Meter("OVS.Server", version)`) instead of through `IMeterFactory`; it is a singleton of the run's container, so it is still one meter per run and disposed with it, and tests that build a `ServerState` without a host pass `new ServerMetrics()`. The tests listen to exactly their run's meter instance (`MetricRecorder`), so parallel servers do not mix; the SDK subscribes by name (`AddMeter("OVS.Server")`) and gets every run's meter of the process. Instruments: `ovs.sessions` (an observable gauge reading the session count without the lock: an int read, only sampled), `ovs.requests` (type and result, counted in `Handle` from the same result as the span of 146), `ovs.voice.packets` and `ovs.voice.bytes` (`ovs.direction`, `ovs.voice.path`; UDP counts the packet bytes as received or sealed, TCP the Opus bytes in and the `VoiceDown` frame out), `ovs.voice.drops` (`foreign_source`, `pre_filter`, `budget`, `invalid`: a packet without a valid header, of no session, not decryptable, or an invalid `VoiceUp`; a replayed sequence number is not counted), `ovs.outbox.aborts` (counted in `SessionOutbox.Abort` with its first reason), `ovs.admission.rejections` (in `LogRejected`, so every refused hello and every connection over the limits), `ovs.control.frames` and `ovs.control.bytes` (`ovs.message.type` is the C# type name; in: `FrameReader.LastFrameSize` per message read, out: each frame queued, so `SendFrame` takes the type name now), `ovs.chat.messages` and `ovs.chat.message.size` (UTF-8 bytes of the text after normalising; `ovs.channel.id` only on channel messages, server and private messages without any tag). `OpenTelemetry.Instrumentation.Runtime` 1.19.0 adds the runtime metrics (on .NET 10 the `dotnet.*` instruments). With nobody listening every count returns before building its tags (`Voice_NoListener_NoAllocation`: 0 bytes for 3000 counts). The voice test sits beside the relay tests (`VoiceRelayTests > Voice_InOutAndDrops_Counted`, `GarbageFlood_DroppedBeforeDecrypt_ControlStaysResponsive` also checks `pre_filter`), since it needs their two bound voice clients.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

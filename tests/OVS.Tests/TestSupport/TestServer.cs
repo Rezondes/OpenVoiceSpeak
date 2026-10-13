@@ -56,7 +56,7 @@ internal sealed class TestServer : IAsyncDisposable
         {
             // A fresh state per attempt: stopping a failed attempt closes its state, which then rejects everyone.
             var stores = ServerStores.Open(config, time);
-            var state = new ServerState(config, time, logs, stores);
+            var state = new ServerState(config, time, logs, stores, new ServerMetrics());
             // Package 139: a fixed port stands for the same server coming back, so a client's reconnect finds it
             var endpoint = new IPEndPoint(IPAddress.Loopback, port ?? Random.Shared.Next(20_000, 45_000));
             var control = new ControlServer(state, certificate, endpoint)

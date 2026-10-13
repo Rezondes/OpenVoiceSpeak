@@ -118,7 +118,7 @@ internal sealed partial class ServerState
             user.Login(nickname, ipText, now);
             saves.PersistSoon(); // Package 87: a connect loop no longer costs an fsync per connection
 
-            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(VoiceCrypto.KeySize), time)
+            var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(VoiceCrypto.KeySize), time, Metrics)
             {
                 ChannelId = data.DefaultChannelId,
                 GroupIds = user.GroupIds.ToList(),
@@ -181,6 +181,7 @@ internal sealed partial class ServerState
     {
         var who = nickname is null ? "" : fingerprint is null ? $" ({nickname})" : $" ({nickname}, {fingerprint[..12]})";
         logs.Server.ConnectionRefused(ip, code, who);
+        Metrics.Rejected(code); // Package 147
     }
 
     void RemoveLocked(Session session, Message? final, string reason = "disconnected")
