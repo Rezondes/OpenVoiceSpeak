@@ -13,6 +13,9 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
     /// <summary>The server log: logs/server/ and the console.</summary>
     public const string ServerCategory = "server";
 
+    /// <summary>Package 148: lines only for the console, such as the admin token; no other logger provider gets this category.</summary>
+    public const string ConsoleCategory = "console";
+
     /// <summary>A line only for the console, such as the admin token; matched by its name, so several logger messages can carry it.</summary>
     public static readonly EventId ConsoleOnly = new(1, nameof(ConsoleOnly));
 
@@ -25,6 +28,7 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
     /// <inheritdoc/>
     public ILogger CreateLogger(string categoryName) =>
         categoryName == ServerCategory ? new FileLogger(files, ServerCategory, console)
+        : categoryName == ConsoleCategory ? new FileLogger(files, null, console)
         : categoryName.StartsWith("channels/", StringComparison.Ordinal) ? new FileLogger(files, categoryName, null)
         : new FileLogger(null, "", null);
 
@@ -33,8 +37,11 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
     {
     }
 
-    /// <summary>Writes into one folder of the logs, and to the console when it has one; without files it writes nothing.</summary>
-    sealed class FileLogger(LogFileWriter? files, string folder, Action<string>? console) : ILogger
+    /// <summary>
+    /// Writes into one folder of the logs (none: the console only), and to the console when it has one; without files it
+    /// writes nothing.
+    /// </summary>
+    sealed class FileLogger(LogFileWriter? files, string? folder, Action<string>? console) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -46,7 +53,7 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
             var text = exception is null ? formatter(state, exception) : $"{formatter(state, exception)} {exception}"; // Package 143: with the stack trace
             var line = LogFileWriter.EscapeToOneLine($"{files!.FormatNow()} {text}"); // Package 90: the console gets the escaped line too
             if (console is not null && eventId.Name != FileOnly.Name) console(line);
-            if (eventId.Name != ConsoleOnly.Name) files.Append(folder.Replace('/', Path.DirectorySeparatorChar), "", line);
+            if (folder is not null && eventId.Name != ConsoleOnly.Name) files.Append(folder.Replace('/', Path.DirectorySeparatorChar), "", line);
         }
     }
 }

@@ -125,6 +125,105 @@ public sealed class ServerTelemetryTests() : TempDirectoryTest("ovs-otel-", quie
         await host.StopAsync();
     }
 
+    const string LogExports = "/v1/logs";
+
+    /// <summary>A writer whose logger factory exports to <paramref name="env"/>'s endpoint as a run's does.</summary>
+    ServerLogWriter ExportingLogs(Dictionary<string, string> env, Action<string>? console = null) =>
+        new(dir, 0, TimeProvider.System, console ?? (_ => { }), configureLogging: builder => ServerTelemetry.AddLogging(builder, env.GetValueOrDefault));
+
+    /// <summary>Package 148 (A158): a run's server log lines reach the backend, from the first line on.</summary>
+    [Fact]
+    public async Task Log_ServerLine_ReachesTheReceiver()
+    {
+        await using var receiver = new OtlpReceiver();
+        var env = Exporting(receiver.Endpoint);
+        env["OTEL_BLRP_SCHEDULE_DELAY"] = "50";
+        using var stop = new CancellationTokenSource();
+        Task<int> run;
+        for (int attempt = 0; ; attempt++)
+        {
+            int port = Random.Shared.Next(20_000, 45_000);
+            env["OVS_DATA_DIR"] = dir;
+            env["OVS_PORT"] = port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            run = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, _ => { }, _ => { }, stop.Token);
+            await AsyncWait.UntilAsync(() => run.IsCompleted || receiver.Count(LogExports, "Listening on") > 0, TimeSpan.FromSeconds(30));
+            if (!run.IsCompleted) break;
+            Assert.True(attempt < 20, "no free port");
+        }
+        await stop.CancelAsync();
+        Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(30)));
+
+        Assert.True(receiver.Count(LogExports, "OpenVoiceSpeak server starting") > 0); // the body, and the template as an attribute
+        Assert.True(receiver.Count(LogExports, "Server stopped") > 0);
+        Assert.True(receiver.Count(LogExports, ServerTelemetry.ServiceName) > 0); // the resource names the service
+        Assert.True(receiver.Count(LogExports, "Admin token created") > 0); // a fresh data folder: the token itself stays on the console
+        Assert.Equal(0, receiver.Count(LogExports, "Redeem admin token"));
+    }
+
+    /// <summary>Package 148 (A158): a line written inside a request span carries its trace and span id.</summary>
+    [Fact]
+    public async Task Log_InRequestSpan_CarriesTraceId()
+    {
+        await using var receiver = new OtlpReceiver();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == ServerTelemetry.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(listener);
+        ActivityTraceId traceId;
+        ActivitySpanId spanId;
+        using (var logs = ExportingLogs(Exporting(receiver.Endpoint)))
+        using (var span = ServerTelemetry.StartRequest("CreateChannel", "fp")!)
+        {
+            (traceId, spanId) = (span.TraceId, span.SpanId);
+            logs.Server.RequestFailed("CreateChannel", "anna", ErrorIds.New(), new InvalidOperationException("Testfehler"));
+        }
+
+        Assert.True(receiver.Count(LogExports, "Testfehler") > 0);
+        var body = receiver.Exports.Where(export => export.Path == LogExports).SelectMany(export => export.Body).ToArray();
+        var traceBytes = new byte[16];
+        var spanBytes = new byte[8];
+        traceId.CopyTo(traceBytes);
+        spanId.CopyTo(spanBytes);
+        Assert.True(body.AsSpan().IndexOf(traceBytes) >= 0 && body.AsSpan().IndexOf(spanBytes) >= 0, "trace context on the record");
+        Assert.True(receiver.Count(LogExports, traceId.ToHexString()) > 0); // the error ID in the text is the same trace id
+    }
+
+    /// <summary>Package 148 (A158): channel lines and the admin token never leave the server.</summary>
+    [Fact]
+    public async Task Log_ChannelAndAdminToken_NeverExported()
+    {
+        await using var receiver = new OtlpReceiver();
+        var console = new List<string>();
+        using (var logs = ExportingLogs(Exporting(receiver.Endpoint), console.Add))
+        {
+            logs.Console.AdminToken("geheimes-token-123");
+            logs.Channel(Guid.NewGuid(), "Raid").Chat("anna", "im Channel gesagt");
+            logs.Server.ServerChat("anna", "allgemein gesagt");
+        }
+
+        Assert.True(receiver.Count(LogExports, "allgemein gesagt") > 0);
+        Assert.Equal(0, receiver.Count(LogExports, "im Channel gesagt"));
+        Assert.Equal(0, receiver.Count(LogExports, "geheimes-token-123"));
+        Assert.Contains(console, line => line.Contains("geheimes-token-123", StringComparison.Ordinal)); // still on the console
+    }
+
+    /// <summary>Package 148 (A158): without the endpoint the logger factory holds the file provider alone.</summary>
+    [Fact]
+    public void Log_Off_OnlyTheFileProvider()
+    {
+        var providers = -1;
+        using (Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+        {
+            ServerTelemetry.AddLogging(builder, _ => null);
+            providers = builder.Services.Count(service => service.ServiceType == typeof(Microsoft.Extensions.Logging.ILoggerProvider));
+        }))
+        {
+        }
+        Assert.Equal(0, providers);
+    }
+
     [Fact]
     public void Dockerfile_AndCompose_DocumentTheVariables()
     {

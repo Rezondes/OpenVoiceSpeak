@@ -16,14 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["ServerTelemetryTests > \"Log_ServerLine_ReachesTheReceiver\""] =
-            "planned: Package 148 is not built yet",
-        ["ServerTelemetryTests > \"Log_InRequestSpan_CarriesTraceId\""] =
-            "planned: Package 148 is not built yet",
-        ["ServerTelemetryTests > \"Log_ChannelAndAdminToken_NeverExported\""] =
-            "planned: Package 148 is not built yet",
-        ["ServerTelemetryTests > \"Log_Off_OnlyTheFileProvider\""] =
-            "planned: Package 148 is not built yet",
         ["ObservabilityComposeTests > \"Compose_Endpoint_PointsAtOwnService\""] =
             "planned: Package 149 is not built yet",
         ["ObservabilityComposeTests > \"Compose_EveryImage_Pinned\""] =

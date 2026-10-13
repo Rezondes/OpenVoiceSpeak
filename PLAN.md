@@ -8665,7 +8665,8 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 **Dependencies:** Package 145 (and 144 for the logger factory)
 
 **Affected files:**
-- `src/OVS.Server/ServerTelemetry.cs` (change): `AddLogging(ILoggingBuilder, getEnv)` adds the OpenTelemetry logger provider with the OTLP exporter and the same resource, wrapped so it only sees category `server` and never an event named `ConsoleOnly`
+- `src/OVS.Server/ServerTelemetry.cs` (change): `AddLogging(ILoggingBuilder, getEnv)` adds the OpenTelemetry logger provider with the OTLP exporter and the same resource, filtered to the category `server`
+- `src/OVS.Shared/Logging/LogFileLoggerProvider.cs`, `src/OVS.Server/Logging/ServerLogWriter.cs`, `src/OVS.Server/State/ServerState.cs` (change): the category `console` for the admin token
 - `src/OVS.Server/ServerHost.cs` (change): the run's logger factory calls it
 - `tests/OVS.Tests/Server/ServerTelemetryTests.cs` (change)
 
@@ -8675,10 +8676,10 @@ The backend is meant for the server log; channel logs hold who said what in whic
 
 ### Acceptance Criteria
 
-- [ ] AC1: With OpenTelemetry on, every server log line reaches the receiver with its formatted text and level.
-- [ ] AC2: A line written inside a request span carries that span's trace id and span id.
-- [ ] AC3: Channel log lines and `ConsoleOnly` lines (the admin token) never reach it.
-- [ ] AC4: Without the endpoint no logger provider is added (the factory holds only the file provider), and the files stay byte-identical in both cases (Package 144 AC2).
+- [x] AC1: With OpenTelemetry on, every server log line reaches the receiver with its formatted text and level.
+- [x] AC2: A line written inside a request span carries that span's trace id and span id.
+- [x] AC3: Channel log lines and `ConsoleOnly` lines (the admin token) never reach it.
+- [x] AC4: Without the endpoint no logger provider is added (the factory holds only the file provider), and the files stay byte-identical in both cases (Package 144 AC2).
 
 ### Tests (TDD)
 
@@ -8686,6 +8687,8 @@ The backend is meant for the server log; channel logs hold who said what in whic
 2. `ServerTelemetryTests > "Log_InRequestSpan_CarriesTraceId"` (AC2): the line of a failing request holds the trace id that is also its error ID.
 3. `ServerTelemetryTests > "Log_ChannelAndAdminToken_NeverExported"` (AC3)
 4. `ServerTelemetryTests > "Log_Off_OnlyTheFileProvider"` (AC4)
+
+(as built: `ServerTelemetry.AddLogging` is called by `RunOnceAsync` in the run's `configureLogging` (Package 144), before any test hook, so the start lines go out as well. With the endpoint it puts the copied variables into the logger factory's own services as its `IConfiguration` (the factory has no host configuration), adds the OpenTelemetry logger provider with the formatted message, the same resource (`Describe`, shared with traces and metrics) and the OTLP exporter, and a filter that lets only the category `server` through, so channel categories and framework lines never reach it. Deviation from the plan: a logger filter sees the category but not the event, so instead of a wrapper that drops the `ConsoleOnly` event the admin token now goes through its own category: `ServerLogWriter.Console` (`LogFileLoggerProvider.ConsoleCategory`, "console") writes the console alone and never a file, and only `server` is exported; the line keeps its `ConsoleOnly` event. A line written inside a request span carries its trace and span id (the SDK takes `Activity.Current`); the record also carries the message's template and parameters as attributes, so a text shows up twice in the export. Disposing the writer after the host flushes the provider. The receiver tests look for texts and the raw trace and span id bytes in the protobuf bodies; the end-to-end run checks the start and stop lines, the service name and that the admin token itself stays out while "Admin token created" goes along.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

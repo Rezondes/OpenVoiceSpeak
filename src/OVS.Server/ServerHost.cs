@@ -64,7 +64,11 @@ internal static class ServerHost
         }
         // Package 69: retention and daily files come from server-data.json, which ServerState reads; keeping
         // everything until then stops a stale start value from deleting files.
-        using var logs = new ServerLogWriter(config.DataDir, 0, time, console, configureLogging: configureLogging); // disposed after the host
+        using var logs = new ServerLogWriter(config.DataDir, 0, time, console, configureLogging: builder => // disposed after the host
+        {
+            ServerTelemetry.AddLogging(builder, getEnv); // Package 148: the server log over OTLP when on
+            configureLogging?.Invoke(builder);
+        });
         if (restarted) logs.Server.StartingAfterRestart();
         else logs.Server.Starting();
         logs.Server.Version(BuildInfo.Current.Version); // Package 42

@@ -71,6 +71,17 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
         Assert.Equal([$"{Stamp} Admin-Token: geheim"], console);
     }
 
+    /// <summary>Package 148: the console category writes the console alone, never a file.</summary>
+    [Fact]
+    public void Log_ConsoleCategory_OnlyTheConsole()
+    {
+        using var provider = Provider();
+        provider.CreateLogger(LogFileLoggerProvider.ConsoleCategory).Log(LogLevel.Information, default, "Admin-Token: geheim", null, (text, _) => text);
+
+        Assert.Equal([$"{Stamp} Admin-Token: geheim"], console);
+        Assert.False(Directory.Exists(Path.Combine(dir, "server")) && Directory.EnumerateFiles(Path.Combine(dir, "server")).Any(path => File.ReadAllText(path).Length > 0));
+    }
+
     [Fact]
     public void Log_ChannelCategory_OwnFolderNoConsole()
     {

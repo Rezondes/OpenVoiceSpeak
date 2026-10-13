@@ -86,7 +86,7 @@ internal sealed partial class ServerState
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
             #pragma warning disable CA1873 // the token is made here whatever happens to the line
-            logs.Server.AdminToken(adminToken.Generate());
+            logs.Console.AdminToken(adminToken.Generate()); // Package 148: the console category, which no backend gets
             #pragma warning restore CA1873
             logs.Server.AdminTokenCreated();
         }

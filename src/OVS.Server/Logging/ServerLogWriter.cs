@@ -32,6 +32,7 @@ internal sealed class ServerLogWriter : IDisposable
             configureLogging?.Invoke(builder);
         });
         Server = Factory.CreateLogger(LogFileLoggerProvider.ServerCategory);
+        Console = Factory.CreateLogger(LogFileLoggerProvider.ConsoleCategory);
     }
 
     /// <summary>Package 144: the run's logger factory, also the one of its container.</summary>
@@ -39,6 +40,9 @@ internal sealed class ServerLogWriter : IDisposable
 
     /// <summary>The server log: logs/server/ and the console.</summary>
     public ILogger Server { get; }
+
+    /// <summary>Package 148: the console alone, for secrets such as the admin token; never a file, never the backend.</summary>
+    public ILogger Console { get; }
 
     /// <summary>Disposes the factory and its providers, which flushes what they still hold.</summary>
     public void Dispose() => Factory.Dispose();

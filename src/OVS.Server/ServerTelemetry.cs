@@ -2,10 +2,13 @@ using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OVS.Shared;
+using OVS.Shared.Logging;
 
 namespace OVS.Server;
 
@@ -60,15 +63,40 @@ internal static class ServerTelemetry
     /// <summary>True when the endpoint variable is set and not empty.</summary>
     public static bool IsOn(Func<string, string?> getEnv) => !string.IsNullOrWhiteSpace(getEnv(EndpointVariable));
 
+    /// <summary>The copied standard variables, for a configuration the SDK reads.</summary>
+    static IEnumerable<KeyValuePair<string, string?>> Copied(Func<string, string?> getEnv) =>
+        Variables.Where(name => getEnv(name) is not null).Select(name => KeyValuePair.Create(name, getEnv(name)));
+
+    /// <summary>The service in the backend: OTEL_SERVICE_NAME or <see cref="ServiceName"/>, with the build version.</summary>
+    static ResourceBuilder Describe(ResourceBuilder resource, Func<string, string?> getEnv) =>
+        resource.AddService(getEnv("OTEL_SERVICE_NAME") is { Length: > 0 } name ? name : ServiceName, serviceVersion: BuildInfo.Current.Version);
+
     /// <summary>Registers the SDK in a run's host when <see cref="IsOn"/>; otherwise leaves the host as it is.</summary>
     public static void Add(HostApplicationBuilder builder, Func<string, string?> getEnv)
     {
         if (!IsOn(getEnv)) return;
-        builder.Configuration.AddInMemoryCollection(Variables.Where(name => getEnv(name) is not null).Select(name => KeyValuePair.Create(name, getEnv(name))));
+        builder.Configuration.AddInMemoryCollection(Copied(getEnv));
         builder.Services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService(getEnv("OTEL_SERVICE_NAME") is { Length: > 0 } name ? name : ServiceName,
-                serviceVersion: BuildInfo.Current.Version))
+            .ConfigureResource(resource => Describe(resource, getEnv))
             .WithTracing(tracing => tracing.AddSource(SourceName).AddOtlpExporter())
             .WithMetrics(metrics => metrics.AddMeter(SourceName).AddRuntimeInstrumentation().AddOtlpExporter()); // Package 147
+    }
+
+    /// <summary>
+    /// Package 148 (A158): when <see cref="IsOn"/>, the run's logger factory also exports the server log (category
+    /// <see cref="LogFileLoggerProvider.ServerCategory"/> alone) over OTLP, with the trace context of the span a line is
+    /// written in; channel logs, the console-only category and framework lines never leave the server.
+    /// </summary>
+    public static void AddLogging(ILoggingBuilder builder, Func<string, string?> getEnv)
+    {
+        if (!IsOn(getEnv)) return;
+        builder.Services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(Copied(getEnv)).Build());
+        builder.AddOpenTelemetry(options =>
+        {
+            options.IncludeFormattedMessage = true;
+            options.SetResourceBuilder(Describe(ResourceBuilder.CreateDefault(), getEnv));
+            options.AddOtlpExporter();
+        });
+        builder.AddFilter<OpenTelemetryLoggerProvider>((category, _) => category == LogFileLoggerProvider.ServerCategory);
     }
 }
