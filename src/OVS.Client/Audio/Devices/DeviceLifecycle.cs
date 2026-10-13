@@ -174,9 +174,9 @@ public sealed class DeviceLifecycle
             }
             reopen(warnings);
         }
-        catch (Exception e) // a background thread must not take the client down: the user gets a notice instead
+        catch (Exception exception) // a background thread must not take the client down: the user gets a notice instead
         {
-            warnings.Add(string.Format(failedText, e.Message));
+            warnings.Add(string.Format(failedText, exception.Message));
         }
     }
 
@@ -287,9 +287,9 @@ public sealed class DeviceLifecycle
         {
             lock (gate) SyncCapture(warnings);
         }
-        catch (Exception e) // a background thread must not take the client down: the user gets a notice instead
+        catch (Exception exception) // a background thread must not take the client down: the user gets a notice instead
         {
-            warnings.Add(string.Format(Strings.Audio_MicFailed, e.Message));
+            warnings.Add(string.Format(Strings.Audio_MicFailed, exception.Message));
         }
         if (warnings.Count > 0) report(warnings);
     }
@@ -302,9 +302,9 @@ public sealed class DeviceLifecycle
         {
             lock (gate) OpenSpeaker(warnings);
         }
-        catch (Exception e) // mixing goes on without a speaker instead of the thread taking the client down
+        catch (Exception exception) // mixing goes on without a speaker instead of the thread taking the client down
         {
-            warnings.Add(string.Format(Strings.Audio_SpeakerFailed, e.Message));
+            warnings.Add(string.Format(Strings.Audio_SpeakerFailed, exception.Message));
         }
         if (warnings.Count > 0) report(warnings);
     }
@@ -330,10 +330,10 @@ public sealed class DeviceLifecycle
             if (device) RecordOpen(micEndpoint, inputId, AudioDirection.Input);
             CaptureSource.Open(inputId, opened);
         }
-        catch (Exception e) // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
+        catch (Exception exception) // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
         {
             CaptureSource.Close();
-            warnings.Add(string.Format(Strings.Audio_MicFailed, e.Message));
+            warnings.Add(string.Format(Strings.Audio_MicFailed, exception.Message));
             if (device) micEndpoint.OpenFailed();
         }
         finally
@@ -353,9 +353,9 @@ public sealed class DeviceLifecycle
             RecordOpen(speakerEndpoint, outputId, AudioDirection.Output);
             speaker = hardware.OpenOutput(outputId, opened);
         }
-        catch (Exception e) // a device that cannot open throws (IAudioHardware)
+        catch (Exception exception) // a device that cannot open throws (IAudioHardware)
         {
-            warnings.Add(string.Format(Strings.Audio_SpeakerFailed, e.Message));
+            warnings.Add(string.Format(Strings.Audio_SpeakerFailed, exception.Message));
             speakerEndpoint.OpenFailed();
         }
         finally

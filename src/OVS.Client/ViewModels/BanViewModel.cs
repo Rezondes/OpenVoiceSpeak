@@ -49,7 +49,7 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
     /// <summary>Case-insensitive, in nickname, fingerprint, IP, reason, creator and lifter.</summary>
     public bool Matches(string search) =>
         search.Length == 0
-        || new[] { Nickname, Fingerprint, Ban.Ip, Ban.Reason, Ban.CreatedBy, Ban.LiftedBy }.Any(v => v?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
+        || new[] { Nickname, Fingerprint, Ban.Ip, Ban.Reason, Ban.CreatedBy, Ban.LiftedBy }.Any(text => text?.Contains(search, StringComparison.OrdinalIgnoreCase) == true);
 
     /// <summary>Package 76: the list is readable with BansView, lifting a ban needs UserBan; Package 80: only active ones.</summary>
     public bool CanUnban { get; } = canUnban && EvaluateStatus(ban, now) == BanStatus.Active;

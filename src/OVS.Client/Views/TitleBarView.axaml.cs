@@ -16,20 +16,20 @@ public partial class TitleBarView : UserControl
 
     public TitleBarView() => InitializeComponent();
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs args)
     {
-        base.OnAttachedToVisualTree(e);
+        base.OnAttachedToVisualTree(args);
         window = TopLevel.GetTopLevel(this) as Window;
         if (window is null) return;
         stateWatch = window.GetObservable(Window.WindowStateProperty).Subscribe(new AnonymousObserver<WindowState>(OnStateChanged));
-        titleWatch = window.GetObservable(Window.TitleProperty).Subscribe(new AnonymousObserver<string?>(t => TitleText.Text = t));
+        titleWatch = window.GetObservable(Window.TitleProperty).Subscribe(new AnonymousObserver<string?>(text => TitleText.Text = text));
     }
 
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs args)
     {
         stateWatch?.Dispose();
         titleWatch?.Dispose();
-        base.OnDetachedFromVisualTree(e);
+        base.OnDetachedFromVisualTree(args);
     }
 
     void OnStateChanged(WindowState state)
@@ -42,14 +42,14 @@ public partial class TitleBarView : UserControl
         AutomationProperties.SetName(MaximizeButton, label);
     }
 
-    void OnMinimize(object? sender, RoutedEventArgs e)
+    void OnMinimize(object? sender, RoutedEventArgs args)
     {
         if (window is not null) window.WindowState = WindowState.Minimized;
     }
 
-    void OnMaximize(object? sender, RoutedEventArgs e) => ToggleMaximized();
+    void OnMaximize(object? sender, RoutedEventArgs args) => ToggleMaximized();
 
-    void OnClose(object? sender, RoutedEventArgs e) => window?.Close();
+    void OnClose(object? sender, RoutedEventArgs args) => window?.Close();
 
     void ToggleMaximized()
     {
@@ -58,10 +58,10 @@ public partial class TitleBarView : UserControl
     }
 
     /// <summary>The native move loop keeps Aero Snap working (drag to a screen edge).</summary>
-    void OnDragAreaPressed(object? sender, PointerPressedEventArgs e)
+    void OnDragAreaPressed(object? sender, PointerPressedEventArgs args)
     {
-        if (window is null || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        if (e.ClickCount == 2) ToggleMaximized();
-        else window.BeginMoveDrag(e);
+        if (window is null || !args.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (args.ClickCount == 2) ToggleMaximized();
+        else window.BeginMoveDrag(args);
     }
 }

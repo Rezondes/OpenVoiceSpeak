@@ -36,19 +36,19 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
             File.Move(NewPath, exePath);
             progress?.Invoke(new UpdateProgress(offer.Version, UpdatePhase.Starting));
         }
-        catch (Exception e) when (e is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException)
+        catch (Exception exception) when (exception is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException)
         {
             if (File.Exists(NewPath)) SafeFile.DeleteQuietly(NewPath);
             if (!File.Exists(exePath) && File.Exists(OldPath)) File.Move(OldPath, exePath); // swap half done: undo it
-            return string.Format(Strings.Update_InstallFailed, e.Message);
+            return string.Format(Strings.Update_InstallFailed, exception.Message);
         }
         try
         {
             restart(exePath);
         }
-        catch (Exception e) // Package 63: whatever it is, the window stays open and says so instead of vanishing
+        catch (Exception exception) // Package 63: whatever it is, the window stays open and says so instead of vanishing
         {
-            return string.Format(Strings.Update_RestartFailed, e.Message);
+            return string.Format(Strings.Update_RestartFailed, exception.Message);
         }
         return null;
     }
@@ -60,11 +60,11 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
     public static List<string> RestartArgs(IEnumerable<string> current, int pid)
     {
         var args = new List<string>();
-        using var e = current.GetEnumerator();
-        while (e.MoveNext())
+        using var enumerator = current.GetEnumerator();
+        while (enumerator.MoveNext())
         {
-            if (e.Current == ClientOptions.AfterUpdateArg) e.MoveNext();
-            else args.Add(e.Current);
+            if (enumerator.Current == ClientOptions.AfterUpdateArg) enumerator.MoveNext();
+            else args.Add(enumerator.Current);
         }
         args.AddRange([ClientOptions.AfterUpdateArg, pid.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
         return args;
@@ -113,21 +113,21 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
                 using var timeout = new CancellationTokenSource(waitForExit ?? TimeSpan.FromSeconds(10)); // clock: real time
                 await old.WaitForExitAsync(timeout.Token);
             }
-            catch (Exception e) when (e is ArgumentException or InvalidOperationException or OperationCanceledException)
+            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OperationCanceledException)
             {
                 // already gone, or still there after the wait: try anyway
             }
         }
-        for (int i = 1; ; i++)
+        for (int index = 1; ; index++)
         {
             try
             {
                 File.Delete(exePath + ".old");
                 return "Alte Version entfernt";
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                if (i >= attempts) return $"Alte Version konnte nicht entfernt werden: {e.Message}";
+                if (index >= attempts) return $"Alte Version konnte nicht entfernt werden: {exception.Message}";
                 await Task.Delay(pause ?? TimeSpan.FromMilliseconds(500), time);
             }
         }

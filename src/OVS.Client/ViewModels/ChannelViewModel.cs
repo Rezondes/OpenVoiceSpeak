@@ -108,7 +108,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
             null => null,
             [] => Strings.Ui_LockedAdmins,
             var ids => string.Format(Strings.Ui_LockedGroupsFmt,
-                string.Join(", ", groups.Where(g => ids.Contains(g.Id)).Select(g => g.Name))), // in the server's group order
+                string.Join(", ", groups.Where(groupInfo => ids.Contains(groupInfo.Id)).Select(groupInfo => groupInfo.Name))), // in the server's group order
         };
         LockText = string.Join("\n", new[] { groupText, info.HasPassword ? Strings.Ui_LockedPassword : null }.OfType<string>());
         CanJoin = ChannelAccess.IsJoinable(info.Kind) && ChannelAccess.GroupsAllow(info.AllowedGroupIds, ownGroups);

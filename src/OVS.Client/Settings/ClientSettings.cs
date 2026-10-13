@@ -19,9 +19,9 @@ public sealed class ClientSettings : IJsonOnDeserializing
     /// </summary>
     static readonly Action<ClientSettings>[] Migrations =
     [
-        s => s.AutoGain = true, // 1 (Package 127, A136): automatic gain on for everyone once
-        s => s.ResetVolumesAbove100(), // 2 (Package 128, A137): 200 % now means four times
-        s => s.InferVadAutomatic(), // 3 (Package 129, A138): a tuned threshold stays manual
+        clientSettings => clientSettings.AutoGain = true, // 1 (Package 127, A136): automatic gain on for everyone once
+        clientSettings => clientSettings.ResetVolumesAbove100(), // 2 (Package 128, A137): 200 % now means four times
+        clientSettings => clientSettings.InferVadAutomatic(), // 3 (Package 129, A138): a tuned threshold stays manual
     ];
 
     public static int CurrentVersion => Migrations.Length;
@@ -54,7 +54,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 130 (A139): push-to-talk and link push-to-talk keep sending this long after the key is let go (0..2000).</summary>
     public int PttReleaseDelayMs { get; set; } = 20;
 
-    public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(b => b.Action == action)?.Chord;
+    public KeyChord? ChordFor(KeyAction action) => KeyBindings.FirstOrDefault(keyBinding => keyBinding.Action == action)?.Chord;
     public const float DefaultVadThresholdDb = -40f;
     public float VadThresholdDb { get; set; } = DefaultVadThresholdDb; // -60..-10
     /// <summary>Package 129 (A138): the voice gate learns the room's noise and sets its threshold itself.</summary>
@@ -170,7 +170,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
         {
             Save(directory);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // not saved: the steps run again at the next start, with the same result
         }

@@ -24,7 +24,7 @@ public sealed class AudioDebugLog : IDisposable
         this.log = log;
         keys.Changed += OnKeys;
         audio.InputLevel += OnLevel;
-        Write($"gestartet, Tasten: {(keys.Bindings.Count == 0 ? "keine" : string.Join(", ", keys.Bindings.Select(b => $"{KeyActionLabels.Localize(b.Action)} = {b.Chord.Name}")))}");
+        Write($"gestartet, Tasten: {(keys.Bindings.Count == 0 ? "keine" : string.Join(", ", keys.Bindings.Select(keyBinding => $"{KeyActionLabels.Localize(keyBinding.Action)} = {keyBinding.Chord.Name}")))}");
         timer = new Timer(_ => OnSecond(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)); // clock: debug
     }
 

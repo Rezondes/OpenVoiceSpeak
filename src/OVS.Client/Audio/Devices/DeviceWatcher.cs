@@ -31,7 +31,7 @@ sealed class DeviceWatcher : IMMNotificationClient, IDisposable
             Marshal.ThrowExceptionForHR(enumerator.RegisterEndpointNotificationCallback(watcher));
             return watcher;
         }
-        catch (Exception e) when (e is COMException or PlatformNotSupportedException)
+        catch (Exception exception) when (exception is COMException or PlatformNotSupportedException)
         {
             enumerator?.Dispose();
             return null;

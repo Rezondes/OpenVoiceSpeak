@@ -360,7 +360,7 @@ public sealed class AudioEngine : IDisposable
     public void OnVoice(uint speaker, uint seq, byte target, byte[] opus, byte[]? copy = null)
     {
         if (deafened) return;
-        framesReceived.AddOrUpdate(speaker, 1, (_, n) => n + 1);
+        framesReceived.AddOrUpdate(speaker, 1, (_, count) => count + 1);
         Mixer.Push(speaker, seq, opus, target == VoiceHeader.TargetLinked, copy: copy);
         playbackLoop.Kick();
     }

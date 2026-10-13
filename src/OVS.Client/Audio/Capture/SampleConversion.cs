@@ -23,14 +23,14 @@ internal static class SampleConversion
         var result = interleaved[..(interleaved.Length / channels)];
         if (FindDominantChannel(interleaved, channels) is { } only)
         {
-            for (int i = 0; i < result.Length; i++) result[i] = interleaved[i * channels + only];
+            for (int index = 0; index < result.Length; index++) result[index] = interleaved[index * channels + only];
             return result;
         }
-        for (int i = 0; i < result.Length; i++)
+        for (int index = 0; index < result.Length; index++)
         {
             float sum = 0;
-            for (int c = 0; c < channels; c++) sum += interleaved[i * channels + c];
-            result[i] = sum / channels;
+            for (int c = 0; c < channels; c++) sum += interleaved[index * channels + c];
+            result[index] = sum / channels;
         }
         return result;
     }
@@ -49,15 +49,15 @@ internal static class SampleConversion
         if (channels > 2)
         {
             // in place like ReadMono: frame i is written only after everything before sample i * channels was read
-            for (int i = 0; i < result.Length / 2; i++)
+            for (int index = 0; index < result.Length / 2; index++)
             {
-                float left = interleaved[i * channels], right = interleaved[i * channels + 1];
-                result[2 * i] = left;
-                result[2 * i + 1] = right;
+                float left = interleaved[index * channels], right = interleaved[index * channels + 1];
+                result[2 * index] = left;
+                result[2 * index + 1] = right;
             }
         }
         if (sides?.OnlySide(result, format.SampleRate) is { } only)
-            for (int i = 0; i < result.Length / 2; i++) result[2 * i + 1 - only] = result[2 * i + only];
+            for (int index = 0; index < result.Length / 2; index++) result[2 * index + 1 - only] = result[2 * index + only];
         return result;
     }
 
@@ -68,7 +68,7 @@ internal static class SampleConversion
     /// </summary>
     public static void Downmix(ReadOnlySpan<float> stereo, Span<float> mono)
     {
-        for (int i = 0; i < mono.Length; i++) mono[i] = 0.5f * (stereo[2 * i] + stereo[2 * i + 1]);
+        for (int index = 0; index < mono.Length; index++) mono[index] = 0.5f * (stereo[2 * index] + stereo[2 * index + 1]);
     }
 
     /// <summary>The capture buffer's samples as floats, still interleaved, in <paramref name="samples"/> (grown when needed).</summary>
@@ -86,7 +86,7 @@ internal static class SampleConversion
         else
         {
             var shorts = MemoryMarshal.Cast<byte, short>(buffer.AsSpan(0, bytes));
-            for (int i = 0; i < shorts.Length; i++) interleaved[i] = shorts[i] / 32768f;
+            for (int index = 0; index < shorts.Length; index++) interleaved[index] = shorts[index] / 32768f;
         }
         return interleaved;
     }
@@ -98,7 +98,7 @@ internal static class SampleConversion
     static int? FindDominantChannel(ReadOnlySpan<float> interleaved, int channels)
     {
         Span<double> energy = channels <= 32 ? stackalloc double[channels] : new double[channels];
-        for (int i = 0; i < interleaved.Length; i++) energy[i % channels] += interleaved[i] * interleaved[i];
+        for (int index = 0; index < interleaved.Length; index++) energy[index % channels] += interleaved[index] * interleaved[index];
         int loudest = 0;
         double total = 0;
         for (int c = 0; c < channels; c++)

@@ -56,13 +56,13 @@ public static class SoundSynth
         {
             if (Cache.TryGetValue(sound, out var done)) return done;
             var samples = new List<float>();
-            foreach (var (hz, ms) in Patterns[sound])
+            foreach (var (hz, milliseconds) in Patterns[sound])
             {
-                int count = AudioFormat.SampleRate * ms / 1000;
-                for (int i = 0; i < count; i++)
+                int count = AudioFormat.SampleRate * milliseconds / 1000;
+                for (int index = 0; index < count; index++)
                 {
-                    float envelope = Math.Min(1f, Math.Min(i, count - 1 - i) / (float)FadeSamples);
-                    samples.Add(hz == 0 ? 0 : Amplitude * Level(sound) * envelope * MathF.Sin(2 * MathF.PI * hz * i / AudioFormat.SampleRate));
+                    float envelope = Math.Min(1f, Math.Min(index, count - 1 - index) / (float)FadeSamples);
+                    samples.Add(hz == 0 ? 0 : Amplitude * Level(sound) * envelope * MathF.Sin(2 * MathF.PI * hz * index / AudioFormat.SampleRate));
                 }
             }
             return Cache[sound] = [.. samples];

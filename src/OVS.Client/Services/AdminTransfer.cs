@@ -91,7 +91,7 @@ internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task>
         {
             await body();
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException || (catchFormat && e is FormatException))
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException || (catchFormat && exception is FormatException))
         {
             showNotice(failedText);
         }
@@ -104,8 +104,8 @@ internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task>
     /// <summary>Writes to a temporary file next to target and moves it into place only once the last chunk arrived.</summary>
     internal Task DownloadBackupAsync(string fileName, string target) =>
         RunAsync(Strings.Backup_Downloading, Strings.Backup_TransferFailed, catchFormat: true, () => ChunkedDownload.RunAsync(target,
-            async offset => await RequestAsync(new DownloadBackup(fileName, offset), Strings.Backup_TransferFailed) is BackupChunk c
-                ? new(c.Offset, c.TotalSize, c.DataBase64, c.IsLast) : null,
+            async offset => await RequestAsync(new DownloadBackup(fileName, offset), Strings.Backup_TransferFailed) is BackupChunk backupChunk
+                ? new(backupChunk.Offset, backupChunk.TotalSize, backupChunk.DataBase64, backupChunk.IsLast) : null,
             (done, total) => ShowProgress(Strings.Backup_Downloading, done, total)));
 
     /// <summary>
@@ -117,8 +117,8 @@ internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task>
         {
             if (await RequestAsync(new PrepareLogDownload(fileIds), Strings.Logs_TransferFailed) is not LogDownloadReady ready) return;
             await ChunkedDownload.RunAsync(target,
-                async offset => await RequestAsync(new DownloadLogChunk(ready.DownloadId, offset), Strings.Logs_TransferFailed) is LogChunk c
-                    ? new(c.Offset, c.TotalSize, c.DataBase64, c.IsLast) : null,
+                async offset => await RequestAsync(new DownloadLogChunk(ready.DownloadId, offset), Strings.Logs_TransferFailed) is LogChunk logChunk
+                    ? new(logChunk.Offset, logChunk.TotalSize, logChunk.DataBase64, logChunk.IsLast) : null,
                 (done, total) => ShowProgress(Strings.Logs_Downloading, done, total));
         });
 
@@ -146,7 +146,7 @@ internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task>
                 var answer = await RequestAsync(chunk, Strings.Backup_TransferFailed, followUp);
                 offset += read;
                 ShowProgress(Strings.Backup_Uploading, offset, file.Length);
-                if (answer is BackupUploaded u) uploaded = u.Backup;
+                if (answer is BackupUploaded backupUploaded) uploaded = backupUploaded.Backup;
                 if (last || answer is not UploadBackupAck) break;
             }
         });

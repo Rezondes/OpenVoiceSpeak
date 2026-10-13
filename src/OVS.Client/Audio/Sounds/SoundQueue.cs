@@ -34,18 +34,18 @@ public sealed class SoundQueue
             if (playing.Count == 0) return;
             foreach (var tone in playing)
             {
-                int n = Math.Min(frame.Length / 2, tone.Samples.Length - tone.Position);
-                for (int i = 0; i < n; i++)
+                int count = Math.Min(frame.Length / 2, tone.Samples.Length - tone.Position);
+                for (int index = 0; index < count; index++)
                 {
-                    float s = tone.Samples[tone.Position + i] * tone.Gain;
-                    frame[2 * i] += s;
-                    frame[2 * i + 1] += s;
+                    float s = tone.Samples[tone.Position + index] * tone.Gain;
+                    frame[2 * index] += s;
+                    frame[2 * index + 1] += s;
                 }
-                tone.Position += n;
+                tone.Position += count;
             }
-            playing.RemoveAll(t => t.Position >= t.Samples.Length);
+            playing.RemoveAll(playing => playing.Position >= playing.Samples.Length);
         }
-        for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i], -1f, 1f);
+        for (int index = 0; index < frame.Length; index++) frame[index] = Math.Clamp(frame[index], -1f, 1f);
     }
 
     public void Clear()

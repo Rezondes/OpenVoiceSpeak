@@ -20,12 +20,12 @@ public sealed class SoftLimiter
         if (allowed <= Gain)
         {
             Gain = allowed; // attack at once, the frame's peak lands exactly on the threshold
-            if (Gain < 1f) for (int i = 0; i < frame.Length; i++) frame[i] *= Gain;
+            if (Gain < 1f) for (int index = 0; index < frame.Length; index++) frame[index] *= Gain;
             return;
         }
         float start = Gain, end = Math.Min(allowed, Gain + ReleasePerFrame);
         Gain = end;
         if (start >= 1f) return;
-        for (int i = 0; i < frame.Length; i++) frame[i] *= start + (end - start) * (i + 1) / frame.Length;
+        for (int index = 0; index < frame.Length; index++) frame[index] *= start + (end - start) * (index + 1) / frame.Length;
     }
 }

@@ -47,9 +47,9 @@ public sealed unsafe class NoiseSuppressor : IDisposable
                 Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "rnnoise_destroy"),
             };
         }
-        catch (Exception e) // whatever keeps it from loading (missing, wrong architecture, missing runtime) turns it off
+        catch (Exception exception) // whatever keeps it from loading (missing, wrong architecture, missing runtime) turns it off
         {
-            return new Native { Error = e.Message };
+            return new Native { Error = exception.Message };
         }
     }
 
@@ -87,10 +87,10 @@ public sealed unsafe class NoiseSuppressor : IDisposable
         if (state == 0 || frame.Length < AudioFormat.HalfFrameSamples) return null; // disposed or too short: passes unchanged
         float probability = 1f;
         double before = 0, after = 0;
-        for (int i = 0; i < frame.Length; i++)
+        for (int index = 0; index < frame.Length; index++)
         {
-            before += frame[i] * frame[i];
-            frame[i] *= Scale;
+            before += frame[index] * frame[index];
+            frame[index] *= Scale;
         }
         fixed (float* samples = frame)
         {
@@ -98,10 +98,10 @@ public sealed unsafe class NoiseSuppressor : IDisposable
             for (int offset = 0; offset + AudioFormat.HalfFrameSamples <= frame.Length; offset += AudioFormat.HalfFrameSamples)
                 probability = Math.Min(probability, native.ProcessFrame(state, samples + offset, samples + offset));
         }
-        for (int i = 0; i < frame.Length; i++)
+        for (int index = 0; index < frame.Length; index++)
         {
-            frame[i] = Math.Clamp(frame[i] / Scale, -1f, 1f);
-            after += frame[i] * frame[i];
+            frame[index] = Math.Clamp(frame[index] / Scale, -1f, 1f);
+            after += frame[index] * frame[index];
         }
         return after < before * NoiseCutRatio ? 0f : probability;
     }

@@ -125,17 +125,17 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             Attach(await OpenAsync(choice), choice);
             if (choice.SaveBookmark) bookmarks.Remember(choice, passwordConfirmed: true);
         }
-        catch (ConnectionRejectedException e)
+        catch (ConnectionRejectedException exception)
         {
-            Refused(e);
+            Refused(exception);
         }
         catch (TofuRejectedException)
         {
             setStatus(Strings.Status_TofuRejected);
         }
-        catch (Exception e) when (IsNetworkFailure(e))
+        catch (Exception exception) when (IsNetworkFailure(exception))
         {
-            setStatus(string.Format(Strings.Status_Failed, e.Message));
+            setStatus(string.Format(Strings.Status_Failed, exception.Message));
         }
         finally
         {
@@ -144,14 +144,14 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         if (connection is null) log(readStatus());
     }
 
-    static bool IsNetworkFailure(Exception e) =>
-        e is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException;
+    static bool IsNetworkFailure(Exception exception) =>
+        exception is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException;
 
-    void Refused(ConnectionRejectedException e)
+    void Refused(ConnectionRejectedException exception)
     {
-        lastRejection = e.Code;
-        setStatus(string.Format(Strings.Status_Refused, ErrorTexts.For(e.Code, e.Detail)));
-        log($"Refused by the server: {e.Code}{(string.IsNullOrEmpty(e.Detail) ? "" : $" ({e.Detail})")}");
+        lastRejection = exception.Code;
+        setStatus(string.Format(Strings.Status_Refused, ErrorTexts.For(exception.Code, exception.Detail)));
+        log($"Refused by the server: {exception.Code}{(string.IsNullOrEmpty(exception.Detail) ? "" : $" ({exception.Detail})")}");
     }
 
     async Task<ClientConnection> OpenAsync(ConnectChoice choice)
@@ -166,20 +166,20 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     void Attach(ClientConnection conn, ConnectChoice choice, bool restored = false)
     {
         var mirror = new StateMirror(conn.Welcome);
-        var vm = new ServerViewModel(mirror, request =>
+        var server = new ServerViewModel(mirror, request =>
         {
             log(ProtocolLogText.Describe(request, mirror));
             return conn.SendAsync(request);
         }, time, serverDialogs()) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
-        vm.Notice += text => addNotice(text, NoticeKind.Error);
-        TrackServerIcon(vm, choice.Host, choice.Port);
-        vm.PropertyChanged += OnServerPropertyChanged;
-        vm.SelfState.PropertyChanged += OnServerPropertyChanged; // the own mute and deafen live on the server's child (Step 27f)
-        vm.SoundRequested += play; // Package 47
-        conn.MessageReceived += m => post(() =>
+        server.Notice += text => addNotice(text, NoticeKind.Error);
+        TrackServerIcon(server, choice.Host, choice.Port);
+        server.PropertyChanged += OnServerPropertyChanged;
+        server.SelfState.PropertyChanged += OnServerPropertyChanged; // the own mute and deafen live on the server's child (Step 27f)
+        server.SoundRequested += play; // Package 47
+        conn.MessageReceived += message => post(() =>
         {
-            if (ProtocolLogText.Describe(m, mirror) is { } line) log(line);
-            vm.Apply(m);
+            if (ProtocolLogText.Describe(message, mirror) is { } line) log(line);
+            server.Apply(message);
         });
         conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
 
@@ -190,12 +190,12 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         VoiceLink.Start(udp);
 
         ResetStats();
-        show(vm);
-        setStatus(string.Format(Strings.Status_Connected, vm.ServerName));
-        log($"Connected to '{vm.ServerName}' as {mirror.Self?.Nickname} (session {mirror.SelfId}), " +
+        show(server);
+        setStatus(string.Format(Strings.Status_Connected, server.ServerName));
+        log($"Connected to '{server.ServerName}' as {mirror.Self?.Nickname} (session {mirror.SelfId}), " +
             $"channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} users online");
         play(SoundEvent.Connected);
-        if (!restored && vm.WelcomeText.Length > 0) addNotice(vm.WelcomeText, NoticeKind.Welcome);
+        if (!restored && server.WelcomeText.Length > 0) addNotice(server.WelcomeText, NoticeKind.Welcome);
         lastChoice = choice with { SaveBookmark = false }; // Package 139: what a reconnect uses, the password in memory only
     }
 
@@ -240,10 +240,10 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         connection = null;
         if (conn is not null && sound) play(SoundEvent.Disconnected);
         if (conn is not null) setStatus(status);
-        if (shownServer() is { } vm)
+        if (shownServer() is { } server)
         {
-            vm.PropertyChanged -= OnServerPropertyChanged;
-            vm.SelfState.PropertyChanged -= OnServerPropertyChanged;
+            server.PropertyChanged -= OnServerPropertyChanged;
+            server.SelfState.PropertyChanged -= OnServerPropertyChanged;
         }
         StopIconTracking();
         await selfTest.AbandonAsync(); // nothing to restore at a server that is gone
@@ -259,9 +259,9 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         if (conn != connection) return;
         var text = string.Format(Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
         if (!string.IsNullOrEmpty(detail)) log($"Disconnected by the server: {reason} ({detail})");
-        if (reason is ReasonCodes.ConnectionLost or ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart && lastChoice is { } choice && shownServer() is { } s)
+        if (reason is ReasonCodes.ConnectionLost or ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart && lastChoice is { } choice && shownServer() is { } server)
         {
-            StartReconnect(choice, text, s);
+            StartReconnect(choice, text, server);
             return;
         }
         lastChoice = null; // no reconnect: its password goes with the session
@@ -286,15 +286,15 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// </summary>
     sealed record Restore(Guid Channel, string ChannelName, string? Password, SelfState State, bool MutedBeforeDeafen);
 
-    void StartReconnect(ConnectChoice choice, string text, ServerViewModel s)
+    void StartReconnect(ConnectChoice choice, string text, ServerViewModel server)
     {
-        var self = s.Mirror.Self;
+        var self = server.Mirror.Self;
         // the self test mutes and deafens at the server; what counts is the state from before it. A mute that only holds
         // while push-to-mute is held is no choice to keep: the key may be let go meanwhile (Package 125).
-        var selfState = selfTest.StateBefore ?? new SelfState(s.SelfState.SelfMuted && !s.SelfState.MutedByHold, s.SelfState.SelfDeafened);
-        var restore = new Restore(self?.ChannelId ?? Guid.Empty, s.CurrentChannel?.Name ?? "", self is null ? null : s.PasswordFor(self.ChannelId),
-            selfState, s.SelfState.MutedBeforeDeafen);
-        log($"Connection lost, new attempts after {string.Join(", ", Reconnector.Delays.Select(d => $"{d.TotalSeconds:0}"))} s");
+        var selfState = selfTest.StateBefore ?? new SelfState(server.SelfState.SelfMuted && !server.SelfState.MutedByHold, server.SelfState.SelfDeafened);
+        var restore = new Restore(self?.ChannelId ?? Guid.Empty, server.CurrentChannel?.Name ?? "", self is null ? null : server.PasswordFor(self.ChannelId),
+            selfState, server.SelfState.MutedBeforeDeafen);
+        log($"Connection lost, new attempts after {string.Join(", ", Reconnector.Delays.Select(duration => $"{duration.TotalSeconds:0}"))} s");
         lostText = text;
         _ = DisconnectAsync(text, sound: false);
         reconnector ??= new Reconnector(time, post);
@@ -319,29 +319,29 @@ internal sealed partial class ConnectionViewModel : ObservableObject
                 return false;
             }
             Attach(conn, choice, restored: true);
-            var vm = shownServer()!;
-            if (restore.Channel != Guid.Empty && vm.Mirror.Self?.ChannelId != restore.Channel)
+            var server = shownServer()!;
+            if (restore.Channel != Guid.Empty && server.Mirror.Self?.ChannelId != restore.Channel)
             {
-                if (vm.Mirror.Channels.ContainsKey(restore.Channel)) _ = vm.RejoinAsync(restore.Channel, restore.Password);
+                if (server.Mirror.Channels.ContainsKey(restore.Channel)) _ = server.RejoinAsync(restore.Channel, restore.Password);
                 else addNotice(string.Format(Strings.Status_ReconnectChannelGone, restore.ChannelName), NoticeKind.Warning);
             }
             // server mute comes from the server (Package 85)
-            if (restore.State.IsQuiet) _ = vm.SelfState.RestoreSelfStateAsync(restore.State, restore.MutedBeforeDeafen);
+            if (restore.State.IsQuiet) _ = server.SelfState.RestoreSelfStateAsync(restore.State, restore.MutedBeforeDeafen);
             IsReconnecting = false;
             addNotice(Strings.Status_Reconnected, NoticeKind.Info);
             return true;
         }
-        catch (Exception e) when (reconnector?.IsCurrent(generation) != true)
+        catch (Exception exception) when (reconnector?.IsCurrent(generation) != true)
         {
-            log($"Reconnect: outdated attempt dropped ({e.Message})");
+            log($"Reconnect: outdated attempt dropped ({exception.Message})");
             if (conn is not null) await conn.DisposeAsync();
             return false;
         }
-        catch (ConnectionRejectedException e) when (!IsPassing(e.Code))
+        catch (ConnectionRejectedException exception) when (!IsPassing(exception.Code))
         {
             // the server said no (e.g. a new password): asking again would not change that
             EndSeries(null);
-            Refused(e);
+            Refused(exception);
             return false;
         }
         catch (TofuRejectedException)
@@ -349,10 +349,10 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             EndSeries(Strings.Status_TofuRejected);
             return false;
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
             // review: also the unexpected, so the series goes on instead of hanging at "Verbinde mit ..."
-            log($"Reconnect failed: {e.GetType().Name}: {e.Message}");
+            log($"Reconnect failed: {exception.GetType().Name}: {exception.Message}");
             if (conn is not null && conn == connection) await DisconnectAsync(lostText, sound: false); // Attach got that far
             else if (conn is not null) await conn.DisposeAsync();
             return false;
@@ -400,7 +400,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         setStatus(string.Format(Strings.Status_Reconnecting, left));
     }
 
-    void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs e) => engineSync.SyncConnection();
+    void OnServerPropertyChanged(object? sender, PropertyChangedEventArgs args) => engineSync.SyncConnection();
 
     /// <summary>The countdown of the reconnect series and the ping text, on every tick of the main view model.</summary>
     internal void Tick()

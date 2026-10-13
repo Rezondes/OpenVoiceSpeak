@@ -11,14 +11,14 @@ public static class KeyBindingMatcher
     public static KeyActionSet Resolve(IReadOnlyList<KeyBinding> bindings, Func<int, bool> isDown, ChordModifiers held)
     {
         var active = new KeyActionSet();
-        for (int i = 0; i < bindings.Count; i++)
+        for (int index = 0; index < bindings.Count; index++)
         {
-            var binding = bindings[i];
+            var binding = bindings[index];
             if (!Matches(binding, isDown, held)) continue;
             bool outranked = false;
-            for (int j = 0; j < bindings.Count && !outranked; j++)
+            for (int otherIndex = 0; otherIndex < bindings.Count && !outranked; otherIndex++)
             {
-                var other = bindings[j];
+                var other = bindings[otherIndex];
                 outranked = other.Chord.Key == binding.Chord.Key && other.Chord.ModifierCount > binding.Chord.ModifierCount && Matches(other, isDown, held);
             }
             if (!outranked) active = active.With(binding.Action);

@@ -32,7 +32,7 @@ public sealed class SoundLibrary(string profileDir, Action<string> log)
                 int read = reader.Read(samples, 0, samples.Length);
                 return cache[file] = samples[..read];
             }
-            catch (Exception e) when (e is IOException or InvalidDataException or FormatException or COMException
+            catch (Exception exception) when (exception is IOException or InvalidDataException or FormatException or COMException
                                        or ArgumentException or UnauthorizedAccessException)
             {
                 if (reported.Add(file)) log($"Sound-Datei {file} für {sound} fehlt oder ist unlesbar, der Standardton spielt");
@@ -45,7 +45,7 @@ public sealed class SoundLibrary(string profileDir, Action<string> log)
     public void CleanUp(ClientSettings settings)
     {
         if (!Directory.Exists(Dir)) return;
-        var keep = settings.Sounds.Values.Select(s => s.File).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var keep = settings.Sounds.Values.Select(soundSetting => soundSetting.File).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var path in Directory.GetFiles(Dir))
         {
             if (keep.Contains(Path.GetFileName(path))) continue;

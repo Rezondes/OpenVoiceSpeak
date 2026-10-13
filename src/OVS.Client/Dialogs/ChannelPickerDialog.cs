@@ -14,7 +14,7 @@ internal static class ChannelPickerDialog
         Func<ChannelViewModel, PendingActionViewModel>? submit = null)
     {
         if (channels.Count == 0) return DialogFrame.ShowAsync<ChannelViewModel>(overlay, title, "Speaker", CreateText(Strings.Dlg_NoChannel, "muted"), () => null);
-        var list = new ListBox { ItemsSource = channels.Select(c => c.Name).ToList(), MaxHeight = 320, SelectedIndex = 0, CornerRadius = new CornerRadius(8) };
+        var list = new ListBox { ItemsSource = channels.Select(channel => channel.Name).ToList(), MaxHeight = 320, SelectedIndex = 0, CornerRadius = new CornerRadius(8) };
         return DialogFrame.ShowAsync(overlay, title, "Speaker", list, () => list.SelectedIndex >= 0 ? channels[list.SelectedIndex] : null,
             new(Strings.Dlg_Select, Submit: submit));
     }

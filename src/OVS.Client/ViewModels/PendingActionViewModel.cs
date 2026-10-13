@@ -89,9 +89,9 @@ public sealed partial class PendingActionViewModel(TimeProvider time, Action<Act
     }
 
     /// <summary>Package 98: the flag of a row (a channel, a user) follows IsBusy.</summary>
-    public void Show(Action<bool> busy) => PropertyChanged += (_, e) =>
+    public void Show(Action<bool> busy) => PropertyChanged += (_, args) =>
     {
-        if (e.PropertyName == nameof(IsBusy)) busy(IsBusy);
+        if (args.PropertyName == nameof(IsBusy)) busy(IsBusy);
     };
 
     /// <summary>Package 98: on Avalonia's UI thread, work goes back there; elsewhere (view model tests) it runs inline.</summary>

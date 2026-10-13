@@ -24,19 +24,19 @@ internal sealed class EntryTracker
     {
         this.list = list;
         list.ContainerPrepared += OnPrepared;
-        list.ContainerClearing += (_, e) => ItemMotion.Reset(e.Container);
+        list.ContainerClearing += (_, args) => ItemMotion.Reset(args.Container);
         ItemMotion.Show(list.ItemsSource, list, true);
         list.Items.CollectionChanged += (_, _) =>
         {
             ItemMotion.TrackPlacesAround(list); // Package 122: the list grows or shrinks, the lists around it move
             QueueSettle();
         };
-        list.PropertyChanged += (_, e) =>
+        list.PropertyChanged += (_, args) =>
         {
-            if (e.Property != ItemsControl.ItemsSourceProperty) return;
-            ItemMotion.Show(e.OldValue, list, false);
-            ItemMotion.Show(e.NewValue, list, true);
-            if (e.OldValue is null) // a list that appears (connecting) is a first fill again
+            if (args.Property != ItemsControl.ItemsSourceProperty) return;
+            ItemMotion.Show(args.OldValue, list, false);
+            ItemMotion.Show(args.NewValue, list, true);
+            if (args.OldValue is null) // a list that appears (connecting) is a first fill again
             {
                 filled = false;
                 fading = false;
@@ -59,7 +59,7 @@ internal sealed class EntryTracker
     {
         var source = list.ItemsSource;
         var since = System.Diagnostics.Stopwatch.StartNew(); // clock: frame timing
-        void OnLayout(object? sender, EventArgs e)
+        void OnLayout(object? sender, EventArgs args)
         {
             // gone, switched to the simplified display, or not shown soon (the drawer is closed): it just shows later
             if (list.ItemsSource != source || !Motion.IsAnimated(window) || since.ElapsedMilliseconds > 500)
@@ -93,12 +93,12 @@ internal sealed class EntryTracker
         }, DispatcherPriority.Background);
     }
 
-    void OnPrepared(object? sender, ContainerPreparedEventArgs e)
+    void OnPrepared(object? sender, ContainerPreparedEventArgs args)
     {
-        var item = list.ItemFromContainer(e.Container) ?? e.Container.DataContext;
+        var item = list.ItemFromContainer(args.Container) ?? args.Container.DataContext;
         if (item is not null && list.ItemsSource is { } source && CollectionSync.IsLeaving(source, item))
         {
-            ItemMotion.Leave(e.Container); // shown in the middle of folding away (a scrolled list): folded at once
+            ItemMotion.Leave(args.Container); // shown in the middle of folding away (a scrolled list): folded at once
             return;
         }
         var key = IMotionKey.KeyOf(item);
@@ -124,8 +124,8 @@ internal sealed class EntryTracker
             QueueBatchEnd();
             return;
         }
-        if (ItemMotion.GetFly(list)) ItemFlight.Arrive(item!, e.Container);
-        ItemMotion.Enter(e.Container, batch++, ItemMotion.GetFlash(list), ItemMotion.GetFly(list));
+        if (ItemMotion.GetFly(list)) ItemFlight.Arrive(item!, args.Container);
+        ItemMotion.Enter(args.Container, batch++, ItemMotion.GetFlash(list), ItemMotion.GetFly(list));
         QueueBatchEnd();
     }
 

@@ -83,25 +83,25 @@ public sealed class ChannelTreeViewModel
         foreach (var id in channelVms.Keys.Except(Mirror.Channels.Keys).Where(id => !Channels.Contains(channelVms[id])).ToList()) channelVms.Remove(id);
         ForgetGoneUsers();
 
-        var byChannel = Mirror.Users.Values.ToLookup(u => u.ChannelId); // Package 122: not every user per channel
+        var byChannel = Mirror.Users.Values.ToLookup(user => user.ChannelId); // Package 122: not every user per channel
         var desired = new List<ChannelViewModel>();
-        foreach (var c in ServerOrder().OrderBy(c => pendingOrder?.IndexOf(c.Id) is >= 0 and var i ? i : int.MaxValue)) // Package 98
+        foreach (var channelInfo in ServerOrder().OrderBy(channel => pendingOrder?.IndexOf(channel.Id) is >= 0 and var index ? index : int.MaxValue)) // Package 98
         {
-            if (!channelVms.TryGetValue(c.Id, out var channel)) channelVms[c.Id] = channel = new ChannelViewModel(owner, c.Id);
-            var linked = Mirror.LinkedChannels(c.Id).Select(id => Mirror.Channels.GetValueOrDefault(id)?.Name).OfType<string>().Order().ToList();
-            channel.Update(c, linked, c.Id == Mirror.DefaultChannelId, self?.ChannelId == c.Id, owner.SelfPermissions);
-            channel.UpdateLock(c, groups, self?.GroupIds ?? []);
+            if (!channelVms.TryGetValue(channelInfo.Id, out var channel)) channelVms[channelInfo.Id] = channel = new ChannelViewModel(owner, channelInfo.Id);
+            var linked = Mirror.LinkedChannels(channelInfo.Id).Select(id => Mirror.Channels.GetValueOrDefault(id)?.Name).OfType<string>().Order().ToList();
+            channel.Update(channelInfo, linked, channelInfo.Id == Mirror.DefaultChannelId, self?.ChannelId == channelInfo.Id, owner.SelfPermissions);
+            channel.UpdateLock(channelInfo, groups, self?.GroupIds ?? []);
 
-            ShowUsers(channel, c, byChannel[c.Id], u =>
+            ShowUsers(channel, channelInfo, byChannel[channelInfo.Id], userInfo =>
             {
-                if (!userVms.TryGetValue(u.SessionId, out var user)) userVms[u.SessionId] = user = new UserViewModel(owner, u.SessionId);
-                user.Update(u, u.SessionId == Mirror.SelfId, owner.SelfPermissions, groups);
+                if (!userVms.TryGetValue(userInfo.SessionId, out var user)) userVms[userInfo.SessionId] = user = new UserViewModel(owner, userInfo.SessionId);
+                user.Update(userInfo, userInfo.SessionId == Mirror.SelfId, owner.SelfPermissions, groups);
                 return user;
             });
             desired.Add(channel);
         }
         CollectionSync.Sync(Channels, desired, owner.Leave);
-        for (int i = 0; i < desired.Count; i++) desired[i].SetPosition(first: i == 0, last: i == desired.Count - 1);
+        for (int index = 0; index < desired.Count; index++) desired[index].SetPosition(first: index == 0, last: index == desired.Count - 1);
         foreach (var user in userVms.Values) user.UpdateMoveTargets(desired); // Package 120: in the new order of the tree
     }
 
@@ -109,14 +109,14 @@ public sealed class ChannelTreeViewModel
     public IReadOnlyList<ChannelViewModel> LinkCandidates(ChannelViewModel channel)
     {
         var linked = Mirror.LinkedChannels(channel.Id).ToHashSet();
-        return Channels.Live().Where(c => c != channel && !c.IsSeparator && !linked.Contains(c.Id)).ToList(); // Package 111
+        return Channels.Live().Where(channelViewModel => channelViewModel != channel && !channelViewModel.IsSeparator && !linked.Contains(channelViewModel.Id)).ToList(); // Package 111
     }
 
     /// <summary>The channels <paramref name="channel"/> is linked with.</summary>
     public IReadOnlyList<ChannelViewModel> LinkedChannelVms(ChannelViewModel channel)
     {
         var linked = Mirror.LinkedChannels(channel.Id).ToHashSet();
-        return Channels.Live().Where(c => linked.Contains(c.Id)).ToList();
+        return Channels.Live().Where(channelViewModel => linked.Contains(channelViewModel.Id)).ToList();
     }
 
     // ---- Speaking indicators ----
@@ -162,13 +162,13 @@ public sealed class ChannelTreeViewModel
         if (source == target) return Task.CompletedTask;
         var live = Channels.Live().ToList();
         if (!live.Contains(source) || !live.Contains(target)) return Task.CompletedTask; // Package 102: folding away
-        var order = live.Where(c => c != source).ToList();
+        var order = live.Where(channel => channel != source).ToList();
         order.Insert(order.IndexOf(target) + (after ? 1 : 0), source);
         if (order.SequenceEqual(live)) return Task.CompletedTask;
-        var ids = order.Select(c => c.Id).ToList();
+        var ids = order.Select(channel => channel.Id).ToList();
         pendingOrder = ids;
         owner.Rebuild();
-        var sent = owner.SendConfirmed(new ReorderChannels(ids), _ => ServerOrder().Select(c => c.Id).SequenceEqual(ids), busy: on => source.IsBusy = on);
+        var sent = owner.SendConfirmed(new ReorderChannels(ids), _ => ServerOrder().Select(channel => channel.Id).SequenceEqual(ids), busy: on => source.IsBusy = on);
         _ = EndReorderAsync(sent, ids);
         return Task.CompletedTask;
     }
@@ -181,19 +181,19 @@ public sealed class ChannelTreeViewModel
         owner.Rebuild(); // done: the server's order is the same; refused or no answer: back to it
     }
 
-    IEnumerable<ChannelInfo> ServerOrder() => Mirror.Channels.Values.OrderBy(c => c.Order).ThenBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
+    IEnumerable<ChannelInfo> ServerOrder() => Mirror.Channels.Values.OrderBy(channel => channel.Order).ThenBy(channel => channel.Name, StringComparer.CurrentCultureIgnoreCase);
 
     /// <summary>Package 122: one channel's list, from the users' view models as they are.</summary>
     void ShowUsers(Guid channelId)
     {
         if (!channelVms.TryGetValue(channelId, out var channel) || Mirror.Channels.GetValueOrDefault(channelId) is not { } info) return;
-        ShowUsers(channel, info, Mirror.Users.Values.Where(u => u.ChannelId == channelId), u => userVms[u.SessionId]);
+        ShowUsers(channel, info, Mirror.Users.Values.Where(user => user.ChannelId == channelId), user => userVms[user.SessionId]);
     }
 
     /// <summary>The users inside a channel by name into its list (Package 102: one who left folds away) and its slot counter.</summary>
     void ShowUsers(ChannelViewModel channel, ChannelInfo info, IEnumerable<UserInfo> inside, Func<UserInfo, UserViewModel> viewModelOf)
     {
-        var users = inside.OrderBy(u => u.Nickname, StringComparer.CurrentCultureIgnoreCase).Select(viewModelOf).ToList();
+        var users = inside.OrderBy(user => user.Nickname, StringComparer.CurrentCultureIgnoreCase).Select(viewModelOf).ToList();
         CollectionSync.Sync(channel.Users, users, owner.Leave);
         channel.Slots = new ChannelSlots(users.Count, info.MaxUsers);
     }
@@ -201,7 +201,7 @@ public sealed class ChannelTreeViewModel
     /// <summary>Package 102: one that is still folding away stays known, so coming back meanwhile is the same entry again.</summary>
     void ForgetGoneUsers()
     {
-        var shownUsers = Channels.SelectMany(c => c.Users).ToHashSet();
+        var shownUsers = Channels.SelectMany(channel => channel.Users).ToHashSet();
         foreach (var id in userVms.Keys.Except(Mirror.Users.Keys).Where(id => !shownUsers.Contains(userVms[id])).ToList()) userVms.Remove(id);
     }
 }

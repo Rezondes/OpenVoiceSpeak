@@ -43,16 +43,16 @@ public sealed class CapturePipeline : IDisposable
         var capture = new WasapiCapture(device ?? WasapiCapture.GetDefaultCaptureDevice(), useEventSync: true, audioBufferMillisecondsLength: MicBufferMs);
         float[] samples = []; // reused: only the capture thread touches it
         var sides = new StereoInput(); // Package 142: one per opened device
-        capture.DataAvailable += (_, e) =>
+        capture.DataAvailable += (_, args) =>
         {
             var format = capture.WaveFormat;
             if (pipeline.Music && format.Channels >= 2) // Package 142: without the downmix; a mono device stays mono
-                pipeline.Feed(SampleConversion.ReadStereo(e.Buffer, e.BytesRecorded, format, ref samples, sides), format.SampleRate, 2);
-            else pipeline.Feed(SampleConversion.ReadMono(e.Buffer, e.BytesRecorded, format, ref samples), format.SampleRate);
+                pipeline.Feed(SampleConversion.ReadStereo(args.Buffer, args.BytesRecorded, format, ref samples, sides), format.SampleRate, 2);
+            else pipeline.Feed(SampleConversion.ReadMono(args.Buffer, args.BytesRecorded, format, ref samples), format.SampleRate);
         };
-        capture.RecordingStopped += (_, e) =>
+        capture.RecordingStopped += (_, args) =>
         {
-            if (e.Exception is { } error) failed?.Invoke(error); // a stop of our own (Dispose) carries none
+            if (args.Exception is { } error) failed?.Invoke(error); // a stop of our own (Dispose) carries none
         };
         pipeline.capture = capture;
         return pipeline;
@@ -139,11 +139,11 @@ public sealed class CapturePipeline : IDisposable
         var clock = Stopwatch.StartNew(); // clock: real time
         var frame = new float[AudioFormat.FrameSamples];
         double phase = 0, step = 2 * Math.PI * frequency / AudioFormat.SampleRate;
-        for (long n = 0; running; n++)
+        for (long count = 0; running; count++)
         {
-            var wait = AudioFormat.FrameDuration * n - clock.Elapsed;
+            var wait = AudioFormat.FrameDuration * count - clock.Elapsed;
             if (wait > TimeSpan.Zero) Thread.Sleep(wait); // clock: real time
-            for (int i = 0; i < frame.Length; i++, phase += step) frame[i] = 0.3f * (float)Math.Sin(phase);
+            for (int index = 0; index < frame.Length; index++, phase += step) frame[index] = 0.3f * (float)Math.Sin(phase);
             Feed(frame, AudioFormat.SampleRate);
         }
     }
@@ -220,7 +220,7 @@ public sealed class CapturePipeline : IDisposable
     byte[] Encode(VoiceEncoder opus, float[] frame, int channels)
     {
         if (channels == opus.Channels) return opus.Encode(frame.AsSpan(0, AudioFormat.FrameSamples * channels));
-        for (int i = 0; i < AudioFormat.FrameSamples; i++) doubled[2 * i] = doubled[2 * i + 1] = frame[i];
+        for (int index = 0; index < AudioFormat.FrameSamples; index++) doubled[2 * index] = doubled[2 * index + 1] = frame[index];
         return opus.Encode(doubled);
     }
 
@@ -233,16 +233,16 @@ public sealed class CapturePipeline : IDisposable
     {
         if (gain <= 1f)
         {
-            for (int i = 0; i < frame.Length; i++) frame[i] = Math.Clamp(frame[i] * gain, -1f, 1f);
+            for (int index = 0; index < frame.Length; index++) frame[index] = Math.Clamp(frame[index] * gain, -1f, 1f);
             return;
         }
         const float knee = Processing.AutoGain.PeakLimit, room = 1f - knee;
-        for (int i = 0; i < frame.Length; i++)
+        for (int index = 0; index < frame.Length; index++)
         {
-            float s = frame[i] * gain;
+            float s = frame[index] * gain;
             float magnitude = Math.Abs(s);
             // above the knee: the same slope at the knee, then flattening toward 1 (reached only by rounding)
-            frame[i] = magnitude <= knee ? s : MathF.CopySign(knee + room * MathF.Tanh((magnitude - knee) / room), s);
+            frame[index] = magnitude <= knee ? s : MathF.CopySign(knee + room * MathF.Tanh((magnitude - knee) / room), s);
         }
     }
 

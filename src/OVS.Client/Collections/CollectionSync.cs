@@ -63,40 +63,40 @@ public static class CollectionSync
         else
         {
             // Package 122: gone at once, so they do not move down step by step to the end first
-            for (int i = target.Count - 1; i >= 0; i--)
-                if (!keys.Contains(IMotionKey.KeyOf(target[i]))) target.RemoveAt(i);
+            for (int index = target.Count - 1; index >= 0; index--)
+                if (!keys.Contains(IMotionKey.KeyOf(target[index]))) target.RemoveAt(index);
         }
 
         // Package 122: what is shown, so no entry is searched for in the whole list (quadratic with long lists)
         var present = new HashSet<T>(target);
         var presentKeys = target.Select(IMotionKey.KeyOf).ToHashSet();
-        for (int i = 0; i < final.Count; i++)
+        for (int index = 0; index < final.Count; index++)
         {
-            var want = final[i];
-            if (i < target.Count && Equals(target[i], want)) continue;
+            var want = final[index];
+            if (index < target.Count && Equals(target[index], want)) continue;
             var key = IMotionKey.KeyOf(want);
             if (!present.Contains(want) && !presentKeys.Contains(key))
             {
-                target.Insert(i, want);
+                target.Insert(index, want);
                 present.Add(want);
                 presentKeys.Add(key);
                 continue;
             }
             // shown further down, or a rebuilt row with the same key
             int at = -1;
-            for (int j = i; j < target.Count && at < 0; j++)
-                if (Equals(target[j], want) || Equals(IMotionKey.KeyOf(target[j]), key)) at = j;
+            for (int otherIndex = index; otherIndex < target.Count && at < 0; otherIndex++)
+                if (Equals(target[otherIndex], want) || Equals(IMotionKey.KeyOf(target[otherIndex]), key)) at = otherIndex;
             if (at < 0)
             {
-                target.Insert(i, want); // only a key equal to an entry placed already: as before, a new entry
+                target.Insert(index, want); // only a key equal to an entry placed already: as before, a new entry
                 present.Add(want);
                 continue;
             }
-            if (at != i) target.Move(at, i);
-            if (!Equals(target[i], want))
+            if (at != index) target.Move(at, index);
+            if (!Equals(target[index], want))
             {
-                present.Remove(target[i]);
-                target[i] = want; // a rebuilt row: the new object in the old one's place
+                present.Remove(target[index]);
+                target[index] = want; // a rebuilt row: the new object in the old one's place
                 present.Add(want);
             }
         }

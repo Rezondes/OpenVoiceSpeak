@@ -45,7 +45,7 @@ sealed class WasapiHardware : IAudioHardware
         try
         {
             using var enumerator = new MMDeviceEnumerator();
-            return enumerator.EnumerateAudioEndPoints(ToDataFlow(direction), DeviceState.Active).Select(d => new AudioDevice(d.ID, d.FriendlyName)).ToList();
+            return enumerator.EnumerateAudioEndPoints(ToDataFlow(direction), DeviceState.Active).Select(mmDevice => new AudioDevice(mmDevice.ID, mmDevice.FriendlyName)).ToList();
         }
         catch (COMException)
         {
@@ -75,7 +75,7 @@ sealed class WasapiHardware : IAudioHardware
     }
 
     public CapturePipeline OpenInput(string? deviceId, List<string> warnings) =>
-        CapturePipeline.FromDevice(Open(deviceId, AudioDirection.Input, warnings), e => Failed?.Invoke(AudioDirection.Input, e));
+        CapturePipeline.FromDevice(Open(deviceId, AudioDirection.Input, warnings), exception => Failed?.Invoke(AudioDirection.Input, exception));
 
     /// <summary>The speaker's own buffer in WASAPI (its latency); part of the echo canceller's delay hint.</summary>
     internal const int SpeakerBufferMs = 30;
@@ -86,9 +86,9 @@ sealed class WasapiHardware : IAudioHardware
         var output = device is null
             ? new WasapiOut(AudioClientShareMode.Shared, SpeakerBufferMs)
             : new WasapiOut(device, AudioClientShareMode.Shared, true, SpeakerBufferMs);
-        output.PlaybackStopped += (_, e) =>
+        output.PlaybackStopped += (_, args) =>
         {
-            if (e.Exception is { } error) Failed?.Invoke(AudioDirection.Output, error); // Package 137: a stop of our own carries none
+            if (args.Exception is { } error) Failed?.Invoke(AudioDirection.Output, error); // Package 137: a stop of our own carries none
         };
         try
         {
@@ -133,7 +133,7 @@ sealed class WasapiHardware : IAudioHardware
             device = enumerator.GetDevice(id);
             if (device.State == DeviceState.Active && device.DataFlow == flow) return device;
         }
-        catch (Exception e) when (e is COMException or ArgumentException)
+        catch (Exception exception) when (exception is COMException or ArgumentException)
         {
             // unknown id: unplugged or removed
         }

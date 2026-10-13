@@ -17,8 +17,8 @@ internal static class ShakeMotion
         if (!Motion.IsAnimated(target)) return;
         var shake = new Animation { Duration = TimeSpan.FromMilliseconds(360), Easing = Motion.Ease };
         double[] steps = [0, -Swing, Swing, -Swing, Swing, -Swing / 2, 0];
-        for (int i = 0; i < steps.Length; i++)
-            shake.Children.Add(new KeyFrame { Cue = new Cue((double)i / (steps.Length - 1)), Setters = { new Setter(TranslateTransform.XProperty, steps[i]) } });
+        for (int index = 0; index < steps.Length; index++)
+            shake.Children.Add(new KeyFrame { Cue = new Cue((double)index / (steps.Length - 1)), Setters = { new Setter(TranslateTransform.XProperty, steps[index]) } });
         _ = shake.Play(target);
     }
 }

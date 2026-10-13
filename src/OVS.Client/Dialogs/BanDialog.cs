@@ -15,7 +15,7 @@ internal static class BanDialog
     {
         var durations = BanChoice.Durations;
         var reason = new TextBox();
-        var duration = new ComboBox { ItemsSource = durations.Select(d => d.Label).ToList(), SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var duration = new ComboBox { ItemsSource = durations.Select(choice => choice.Label).ToList(), SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
         var includeIp = new CheckBox { Content = Strings.Dlg_BanIp, IsEnabled = ipKnown };
         var body = CreateStack(CreateField(Strings.Dlg_Reason, reason), CreateField(Strings.Dlg_Duration, duration), includeIp);
         if (!ipKnown) body.Children.Add(CreateText(Strings.Dlg_BanIpUnknown, "caption"));

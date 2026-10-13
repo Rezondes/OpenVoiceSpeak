@@ -58,7 +58,7 @@ public sealed class ListRefresh(string prefix, Func<bool> allowed, Func<string, 
 
     /// <summary>The number of the request a round with this id answers, 0 for a round asked for some other way.</summary>
     public int RoundOf(string? requestId) =>
-        requestId is not null && requestId.StartsWith(prefix, StringComparison.Ordinal) && int.TryParse(requestId.AsSpan(prefix.Length), out var n) ? n : 0;
+        requestId is not null && requestId.StartsWith(prefix, StringComparison.Ordinal) && int.TryParse(requestId.AsSpan(prefix.Length), out var count) ? count : 0;
 
     void Release()
     {

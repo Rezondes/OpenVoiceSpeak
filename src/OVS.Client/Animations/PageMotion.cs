@@ -120,23 +120,23 @@ public static class PageMotion
 
     static PageMotion()
     {
-        TabsProperty.Changed.AddClassHandler<SelectingItemsControl>((tabs, e) =>
+        TabsProperty.Changed.AddClassHandler<SelectingItemsControl>((tabs, args) =>
         {
-            if (e.GetNewValue<bool>()) tabs.SelectionChanged += OnTabChanged;
+            if (args.GetNewValue<bool>()) tabs.SelectionChanged += OnTabChanged;
         });
-        RevealProperty.Changed.AddClassHandler<ScrollViewer>((scroll, e) =>
+        RevealProperty.Changed.AddClassHandler<ScrollViewer>((scroll, args) =>
         {
-            if (e.GetNewValue<bool>()) _ = new Revealer(scroll);
+            if (args.GetNewValue<bool>()) _ = new Revealer(scroll);
         });
     }
 
-    static Border? Pipe(Control? tab) => tab?.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Name == "PART_SelectedPipe");
+    static Border? Pipe(Control? tab) => tab?.GetVisualDescendants().OfType<Border>().FirstOrDefault(border => border.Name == "PART_SelectedPipe");
 
-    static void OnTabChanged(object? sender, SelectionChangedEventArgs e)
+    static void OnTabChanged(object? sender, SelectionChangedEventArgs args)
     {
         // SelectionChanged bubbles: a list inside a tab (the groups in the administration) is not a tab change
-        if (sender is not SelectingItemsControl tabs || !Motion.IsAnimated(tabs) || e.Source != tabs || e.RemovedItems.Count == 0 || e.AddedItems.Count == 0
-            || e.RemovedItems[0] is not { } removed || !tabs.IsEffectivelyVisible)
+        if (sender is not SelectingItemsControl tabs || !Motion.IsAnimated(tabs) || args.Source != tabs || args.RemovedItems.Count == 0 || args.AddedItems.Count == 0
+            || args.RemovedItems[0] is not { } removed || !tabs.IsEffectivelyVisible)
             return;
         int from = tabs.Items.IndexOf(removed), to = tabs.SelectedIndex;
         // the mark: from the old tab's place to the new tab, which shows its own only once it has arrived
@@ -155,7 +155,7 @@ public static class PageMotion
                 t => { if (t >= 1) newPipe.ClearValue(Visual.OpacityProperty); }); // in the frame the mark lands
         }
         // the content: from the side the new tab lies on
-        var content = GetContent(tabs) ?? tabs.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "PART_SelectedContentHost");
+        var content = GetContent(tabs) ?? tabs.GetVisualDescendants().OfType<Control>().FirstOrDefault(control => control.Name == "PART_SelectedContentHost");
         if (content is null) return;
         if (fading.TryGetValue(content, out var running)) running.Cancel();
         var cancel = new CancellationTokenSource();
@@ -203,9 +203,9 @@ public static class PageMotion
             this.scroll = scroll;
             scroll.ScrollChanged += (_, _) => Look();
             scroll.LayoutUpdated += (_, _) => Look();
-            scroll.PropertyChanged += (_, e) =>
+            scroll.PropertyChanged += (_, args) =>
             {
-                if (e.Property == Motion.DisplayProperty) Look();
+                if (args.Property == Motion.DisplayProperty) Look();
             };
         }
 

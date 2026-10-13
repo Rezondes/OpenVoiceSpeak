@@ -16,7 +16,7 @@ public partial class ChannelDialogView : UserControl
     public static Task<ChannelEdit?> ShowAsync(OverlayHost overlay, ChannelEdit current, ChannelDialogMode mode, IReadOnlyList<GroupInfo>? groups = null,
         Func<ChannelEdit, PendingActionViewModel>? submit = null)
     {
-        var vm = new ChannelDialogViewModel(current, mode, groups);
-        return DialogFrame.ShowAsync(overlay, vm.Title, "Speaker", new ChannelDialogView { DataContext = vm }, vm.Result, new(vm.ConfirmText, Submit: submit));
+        var channelDialog = new ChannelDialogViewModel(current, mode, groups);
+        return DialogFrame.ShowAsync(overlay, channelDialog.Title, "Speaker", new ChannelDialogView { DataContext = channelDialog }, channelDialog.Result, new(channelDialog.ConfirmText, Submit: submit));
     }
 }

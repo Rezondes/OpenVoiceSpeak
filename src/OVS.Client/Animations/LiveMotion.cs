@@ -61,11 +61,11 @@ public static class LiveMotion
 
     static LiveMotion()
     {
-        Visual.IsVisibleProperty.Changed.AddClassHandler<Control>((control, e) =>
+        Visual.IsVisibleProperty.Changed.AddClassHandler<Control>((control, args) =>
         {
             bool turn = GetTurn(control);
             if (!turn && !GetPop(control) || !Motion.IsAnimated(control) || !control.IsAttachedToVisualTree()) return; // not while a row is built
-            bool shown = e.GetNewValue<bool>();
+            bool shown = args.GetNewValue<bool>();
             if (turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d), (RotateTransform.AngleProperty, TurnFrom, 0d));
             else if (!turn && shown) Run(control, Motion.Normal, Motion.Pop, FillMode.Backward, Replace(control), (Visual.OpacityProperty, 0d, 1d),
                 (ScaleTransform.ScaleXProperty, PopFrom, 1d), (ScaleTransform.ScaleYProperty, PopFrom, 1d));
@@ -75,18 +75,18 @@ public static class LiveMotion
                 PopOut(control);
             }
         });
-        SlotsProperty.Changed.AddClassHandler<TextBlock>((text, e) =>
+        SlotsProperty.Changed.AddClassHandler<TextBlock>((text, args) =>
         {
             if (Motion.IsAnimated(text) && text.IsAttachedToVisualTree()
-                && e.GetOldValue<ChannelSlots?>() is { } before && e.GetNewValue<ChannelSlots?>() is { } after)
+                && args.GetOldValue<ChannelSlots?>() is { } before && args.GetNewValue<ChannelSlots?>() is { } after)
                 Tick(text, before, after);
         });
-        TextBlock.TextProperty.Changed.AddClassHandler<TextBlock>((text, e) =>
+        TextBlock.TextProperty.Changed.AddClassHandler<TextBlock>((text, args) =>
         {
-            if (GetFade(text) && Motion.IsAnimated(text) && text.IsAttachedToVisualTree() && e.GetOldValue<string?>() is not null)
+            if (GetFade(text) && Motion.IsAnimated(text) && text.IsAttachedToVisualTree() && args.GetOldValue<string?>() is not null)
                 FadeIn(text);
         });
-        LevelProperty.Changed.AddClassHandler<RangeBase>((meter, e) => Follow(meter, e.GetNewValue<double>()));
+        LevelProperty.Changed.AddClassHandler<RangeBase>((meter, args) => Follow(meter, args.GetNewValue<double>()));
     }
 
     /// <summary>Fades a control in, e.g. a busy spinner that shows or the content a busy button gets back.</summary>
@@ -199,12 +199,12 @@ public static class LiveMotion
 
         void Step(TimeSpan _)
         {
-            double ms = Stopwatch.GetElapsedTime(follower.Last).TotalMilliseconds; // clock: frame timing
+            double milliseconds = Stopwatch.GetElapsedTime(follower.Last).TotalMilliseconds; // clock: frame timing
             follower.Last = Stopwatch.GetTimestamp(); // clock: frame timing
             double target = Math.Clamp(follower.Target, meter.Minimum, meter.Maximum), gap = target - meter.Value;
             double tau = (gap > 0 ? Attack : Release).TotalMilliseconds / 4;
             if (!Motion.IsAnimated(top) || Math.Abs(gap) < (meter.Maximum - meter.Minimum) / 100) meter.Value = target; // the last per cent at once
-            else meter.Value += gap * (1 - Math.Exp(-ms / tau));
+            else meter.Value += gap * (1 - Math.Exp(-milliseconds / tau));
             if (meter.Value == target)
             {
                 meter.Value = follower.Target; // the level itself, as in the simplified display

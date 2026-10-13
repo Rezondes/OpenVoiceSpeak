@@ -16,9 +16,9 @@ public static class LogLineConverters
         {
             if (segments is null) return null;
             var inlines = new Avalonia.Controls.Documents.InlineCollection();
-            foreach (var s in segments)
-                inlines.Add(s.IsMatch ? new Avalonia.Controls.Documents.Run(s.Text) { Background = MatchBrush, FontWeight = FontWeight.SemiBold }
-                    : new Avalonia.Controls.Documents.Run(s.Text));
+            foreach (var logSegment in segments)
+                inlines.Add(logSegment.IsMatch ? new Avalonia.Controls.Documents.Run(logSegment.Text) { Background = MatchBrush, FontWeight = FontWeight.SemiBold }
+                    : new Avalonia.Controls.Documents.Run(logSegment.Text));
             return inlines;
         });
 }

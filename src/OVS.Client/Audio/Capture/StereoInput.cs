@@ -23,10 +23,10 @@ public sealed class StereoInput
     public int? OnlySide(ReadOnlySpan<float> stereo, int sampleRate)
     {
         double l = 0, r = 0;
-        for (int i = 0; i + 1 < stereo.Length; i += 2)
+        for (int index = 0; index + 1 < stereo.Length; index += 2)
         {
-            l += stereo[i] * stereo[i];
-            r += stereo[i + 1] * stereo[i + 1];
+            l += stereo[index] * stereo[index];
+            r += stereo[index + 1] * stereo[index + 1];
         }
         int frames = stereo.Length / 2;
         if (frames == 0 || Math.Max(l, r) / frames < SilentBelow) return only; // silence says nothing

@@ -110,7 +110,7 @@ public sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     /// <summary>Every place in saving order (the edited group comes first).</summary>
     internal IReadOnlyList<AdminPlace> Places { get; }
 
-    public bool HasChanges => Places.Any(p => p.HasChanges());
+    public bool HasChanges => Places.Any(adminPlace => adminPlace.HasChanges());
 
     /// <summary>Package 114: saves every place with changes in saving order; false at the first one that fails.</summary>
     public async Task<bool> SaveAsync()

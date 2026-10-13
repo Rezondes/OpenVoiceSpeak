@@ -66,14 +66,14 @@ public sealed class DebugApi : IDisposable
     /// <param name="audio">The audio engine /state reads and /tone reaches the test tone through (from the composition root).</param>
     /// <param name="onUi">Runs a function on the UI thread; every view model access goes through it.</param>
     /// <param name="listDevices">The system's active devices of a direction, which /devices lists (also when the client runs without them).</param>
-    public DebugApi(MainViewModel vm, KeyPoller keys, AudioEngine audio, int port, Func<Func<Task<object?>>, Task<object?>> onUi, Func<AudioDirection, List<AudioDevice>> listDevices)
+    public DebugApi(MainViewModel viewModel, KeyPoller keys, AudioEngine audio, int port, Func<Func<Task<object?>>, Task<object?>> onUi, Func<AudioDirection, List<AudioDevice>> listDevices)
     {
         this.keys = keys;
         this.audio = audio;
         lifecycle = audio.DeviceLifecycle; // the /tone route sets the test tone there and reads it back
         clientRoutes = CreateClientRoutes();
         serverRoutes = CreateServerRoutes();
-        this.vm = vm;
+        this.vm = viewModel;
         this.onUi = onUi;
         this.listDevices = listDevices;
         listener.Prefixes.Add($"http://localhost:{port}/");
@@ -90,7 +90,7 @@ public sealed class DebugApi : IDisposable
             {
                 context = await listener.GetContextAsync();
             }
-            catch (Exception e) when (e is HttpListenerException or ObjectDisposedException or InvalidOperationException)
+            catch (Exception exception) when (exception is HttpListenerException or ObjectDisposedException or InvalidOperationException)
             {
                 return;
             }
@@ -119,15 +119,15 @@ public sealed class DebugApi : IDisposable
                 result = await onUi(() => DispatchAsync(method, path, body));
             }
         }
-        catch (Exception e) when (e is DebugApiException or JsonException or KeyNotFoundException or FormatException or InvalidOperationException)
+        catch (Exception exception) when (exception is DebugApiException or JsonException or KeyNotFoundException or FormatException or InvalidOperationException)
         {
             status = 400;
-            result = new { error = e.Message };
+            result = new { error = exception.Message };
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
             status = 500;
-            result = new { error = e.ToString() };
+            result = new { error = exception.ToString() };
         }
 
         try
@@ -137,7 +137,7 @@ public sealed class DebugApi : IDisposable
             await JsonSerializer.SerializeAsync(context.Response.OutputStream, result, ProtocolJson.Options);
             context.Response.Close();
         }
-        catch (Exception e) when (e is HttpListenerException or ObjectDisposedException)
+        catch (Exception exception) when (exception is HttpListenerException or ObjectDisposedException)
         {
         }
     }
@@ -255,11 +255,11 @@ public sealed class DebugApi : IDisposable
     object State()
     {
         vm.Tick();
-        var s = vm.Server;
+        var server = vm.Server;
         return new
         {
             vm.Status,
-            Connected = s is not null,
+            Connected = server is not null,
             vm.TransmitText,
             vm.VoiceHint,
             vm.Connection.PingText,
@@ -277,46 +277,46 @@ public sealed class DebugApi : IDisposable
                 Concealed = vm.Stats.ConcealedText,
                 Bitrate = vm.Stats.BitrateText,
             },
-            Notices = vm.Notices.Take(50).Select(n => n.ToString()).ToList(),
-            Sounds = audio.Sounds.Recent.Select(s => s.ToString()).ToList(), // Package 47
-            Server = s is null ? null : new
+            Notices = vm.Notices.Take(50).Select(notice => notice.ToString()).ToList(),
+            Sounds = audio.Sounds.Recent.Select(soundEvent => soundEvent.ToString()).ToList(), // Package 47
+            Server = server is null ? null : new
             {
-                s.ServerName,
-                s.WelcomeText,
-                s.IconHash,
-                IconBytes = s.IconPng?.Length,
-                Chat = s.ChatFeed.Recent.TakeLast(50).Select(c => new { c.Target, c.FromNickname, c.ToSessionId, c.Text }).ToList(),
-                SelfId = s.Mirror.SelfId,
-                s.SelfState.SelfMuted,
-                s.SelfState.SelfDeafened,
-                s.SelfPermissions,
-                s.IsAdmin,
-                s.Mirror.DefaultChannelId,
-                Channels = s.Tree.Channels.Live().Select(c => new
+                server.ServerName,
+                server.WelcomeText,
+                server.IconHash,
+                IconBytes = server.IconPng?.Length,
+                Chat = server.ChatFeed.Recent.TakeLast(50).Select(chatMessage => new { chatMessage.Target, chatMessage.FromNickname, chatMessage.ToSessionId, chatMessage.Text }).ToList(),
+                SelfId = server.Mirror.SelfId,
+                server.SelfState.SelfMuted,
+                server.SelfState.SelfDeafened,
+                server.SelfPermissions,
+                server.IsAdmin,
+                server.Mirror.DefaultChannelId,
+                Channels = server.Tree.Channels.Live().Select(channel => new
                 {
-                    c.Id,
-                    c.Name,
-                    c.IsSeparator,
-                    c.Bitrate, // Package 132
-                    c.Description,
-                    c.IsCurrent,
-                    c.IsLinked,
-                    c.LinkedNames,
-                    Users = c.Users.Live().Select(u => new
+                    channel.Id,
+                    channel.Name,
+                    channel.IsSeparator,
+                    channel.Bitrate, // Package 132
+                    channel.Description,
+                    channel.IsCurrent,
+                    channel.IsLinked,
+                    channel.LinkedNames,
+                    Users = channel.Users.Live().Select(user => new
                     {
-                        u.SessionId,
-                        u.Nickname,
-                        u.IsSelf,
-                        u.IsSpeaking,
-                        u.IsSpeakingViaLink,
-                        u.StatusText,
-                        u.ServerMuted,
-                        u.GroupNames,
+                        user.SessionId,
+                        user.Nickname,
+                        user.IsSelf,
+                        user.IsSpeaking,
+                        user.IsSpeakingViaLink,
+                        user.StatusText,
+                        user.ServerMuted,
+                        user.GroupNames,
                     }).ToList(),
                 }).ToList(),
-                s.Mirror.Groups,
-                LastUserList = s.LastUserList?.Users,
-                LastBanList = s.LastBanList?.Bans,
+                server.Mirror.Groups,
+                LastUserList = server.LastUserList?.Users,
+                LastBanList = server.LastBanList?.Bans,
             },
             Audio = new
             {
@@ -328,7 +328,7 @@ public sealed class DebugApi : IDisposable
                 LinkPtt = keys.LinkPttDown,
                 PushToMute = keys.MuteHeld,
             },
-            KeyBindings = vm.Settings.KeyBindings.Select(b => new { b.Action, Chord = b.Chord.Name }).ToList(),
+            KeyBindings = vm.Settings.KeyBindings.Select(keyBinding => new { keyBinding.Action, Chord = keyBinding.Chord.Name }).ToList(),
         };
     }
 
@@ -377,19 +377,19 @@ public sealed class DebugApi : IDisposable
     static ChannelViewModel Channel(ServerViewModel server, string key)
     {
         var live = server.Tree.Channels.Live().ToList();
-        if (live.FirstOrDefault(c => c.Id.ToString() == key) is { } byId) return byId;
-        var named = live.Where(c => string.Equals(c.Name, key, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (live.FirstOrDefault(channel => channel.Id.ToString() == key) is { } byId) return byId;
+        var named = live.Where(channel => string.Equals(channel.Name, key, StringComparison.OrdinalIgnoreCase)).ToList();
         return named.Count switch
         {
             1 => named[0],
             0 => throw new DebugApiException($"Channel '{key}' nicht gefunden"),
-            _ => throw new DebugApiException($"Channel '{key}' gibt es mehrfach, bitte per Id: {string.Join(", ", named.Select(c => c.Id))}"),
+            _ => throw new DebugApiException($"Channel '{key}' gibt es mehrfach, bitte per Id: {string.Join(", ", named.Select(channel => channel.Id))}"),
         };
     }
 
     static UserViewModel User(ServerViewModel server, string key) =>
-        server.Tree.Channels.Live().SelectMany(c => c.Users.Live())
-            .FirstOrDefault(u => u.SessionId.ToString() == key || string.Equals(u.Nickname, key, StringComparison.OrdinalIgnoreCase))
+        server.Tree.Channels.Live().SelectMany(channel => channel.Users.Live())
+            .FirstOrDefault(user => user.SessionId.ToString() == key || string.Equals(user.Nickname, key, StringComparison.OrdinalIgnoreCase))
         ?? throw new DebugApiException($"Nutzer '{key}' nicht gefunden");
 
     public void Dispose()

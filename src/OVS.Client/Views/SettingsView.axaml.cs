@@ -23,19 +23,19 @@ public partial class SettingsView : UserControl
     /// must not stop the test. Unbound they keep working on the button. A binding with modifiers counts only while they
     /// are held, like the poller resolves it.
     /// </summary>
-    void OnSelfTestKey(object? sender, KeyEventArgs e)
+    void OnSelfTestKey(object? sender, KeyEventArgs args)
     {
-        int vk = e.Key switch { Key.Space => 0x20, Key.Enter => 0x0D, _ => 0 };
-        var held = (e.KeyModifiers.HasFlag(KeyModifiers.Control) ? ChordModifiers.Ctrl : 0)
-            | (e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? ChordModifiers.Shift : 0)
-            | (e.KeyModifiers.HasFlag(KeyModifiers.Alt) ? ChordModifiers.Alt : 0);
-        if (vk != 0 && DataContext is SettingsViewModel vm
-            && vm.KeyBindings.Any(b => b.Binding.Chord.Key == vk && (b.Binding.Chord.Modifiers & held) == b.Binding.Chord.Modifiers))
-            e.Handled = true;
+        int vk = args.Key switch { Key.Space => 0x20, Key.Enter => 0x0D, _ => 0 };
+        var held = (args.KeyModifiers.HasFlag(KeyModifiers.Control) ? ChordModifiers.Ctrl : 0)
+            | (args.KeyModifiers.HasFlag(KeyModifiers.Shift) ? ChordModifiers.Shift : 0)
+            | (args.KeyModifiers.HasFlag(KeyModifiers.Alt) ? ChordModifiers.Alt : 0);
+        if (vk != 0 && DataContext is SettingsViewModel settings
+            && settings.KeyBindings.Any(keyBinding => keyBinding.Binding.Chord.Key == vk && (keyBinding.Binding.Chord.Modifiers & held) == keyBinding.Binding.Chord.Modifiers))
+            args.Handled = true;
     }
 
     /// <summary>Package 48: the Windows file dialog is, like for the server logo, the agreed exception to A20.</summary>
-    async void OnPickSound(object? sender, RoutedEventArgs e)
+    async void OnPickSound(object? sender, RoutedEventArgs args)
     {
         if ((sender as Control)?.DataContext is not SoundRowViewModel row || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions

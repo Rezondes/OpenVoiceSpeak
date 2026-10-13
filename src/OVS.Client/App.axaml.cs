@@ -44,35 +44,35 @@ public partial class App : Application
             var hardware = new WasapiHardware();
             // The view model's parts (keys, audio engine, stores, leave timer) are built by MainViewModel.Create on the one
             // clock; the view model disposes the keys and the audio engine with itself (desktop.Exit below).
-            var vm = MainViewModel.Create(options.ProfileDir, action => Dispatcher.UIThread.Post(action), time, log, settings, settingsWarning,
+            var viewModel = MainViewModel.Create(options.ProfileDir, action => Dispatcher.UIThread.Post(action), time, log, settings, settingsWarning,
                 options.UseAudioDevices ? hardware : null);
-            ApplyTheme(vm.Settings.Theme);
-            vm.PropertyChanged += (_, e) =>
+            ApplyTheme(viewModel.Settings.Theme);
+            viewModel.PropertyChanged += (_, eventArgs) =>
             {
-                if (e.PropertyName == nameof(MainViewModel.Settings)) ApplyTheme(vm.Settings.Theme);
+                if (eventArgs.PropertyName == nameof(MainViewModel.Settings)) ApplyTheme(viewModel.Settings.Theme);
             };
-            var window = new MainWindow { DataContext = vm };
+            var window = new MainWindow { DataContext = viewModel };
             Motion.FollowReduced(window, IsReducedBySystem); // Package 96
-            BackgroundTransparency.Apply(this, window, vm.Appearance); // Package 61
-            vm.PropertyChanged += (_, e) =>
+            BackgroundTransparency.Apply(this, window, viewModel.Appearance); // Package 61
+            viewModel.PropertyChanged += (_, eventArgs) =>
             {
-                if (e.PropertyName == nameof(MainViewModel.Appearance)) BackgroundTransparency.Apply(this, window, vm.Appearance);
+                if (eventArgs.PropertyName == nameof(MainViewModel.Appearance)) BackgroundTransparency.Apply(this, window, viewModel.Appearance);
             };
             if (options.ProfileDir != ClientPaths.DefaultDirectory) window.Title += $" [{Path.GetFileName(options.ProfileDir)}]";
             DebugApi? debugApi = null;
             if (options.DebugApiPort is { } port)
             {
-                debugApi = new DebugApi(vm, vm.Keys, vm.Audio, port, work => Dispatcher.UIThread.InvokeAsync(work), hardware.ListActive);
+                debugApi = new DebugApi(viewModel, viewModel.Keys, viewModel.Audio, port, work => Dispatcher.UIThread.InvokeAsync(work), hardware.ListActive);
                 window.Title += $" (Debug-API :{port})";
             }
             var audioDebug = options.AudioDebug
-                ? new AudioDebugLog(vm.Keys, vm.Audio, log)
+                ? new AudioDebugLog(viewModel.Keys, viewModel.Audio, log)
                 : null;
             var overlay = window.Overlay; // every dialog lives inside the main window (A20)
-            vm.Dialogs = OverlayDialogs.Create(overlay, () => vm.Server?.Mirror.Groups);
-            vm.ConfirmTofu = prompt => TofuDialog.ShowAsync(overlay, prompt);
+            viewModel.Dialogs = OverlayDialogs.Create(overlay, () => viewModel.Server?.Mirror.Groups);
+            viewModel.ConfirmTofu = prompt => TofuDialog.ShowAsync(overlay, prompt);
 
-            var timer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, (_, _) => vm.Tick());
+            var timer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, (_, _) => viewModel.Tick());
             timer.Start();
 
             // Package 43: updates from the GitHub releases, restarted with the same command line
@@ -93,8 +93,8 @@ public partial class App : Application
                     desktop.Shutdown();
                 });
             }
-            vm.Update.Use(checker, installer);
-            window.Opened += async (_, _) => await vm.Update.CheckAtStartAsync();
+            viewModel.Update.Use(checker, installer);
+            window.Opened += async (_, _) => await viewModel.Update.CheckAtStartAsync();
             window.Opened += (_, _) => window.RequestAnimationFrame(_ => Splash.Close()); // once the window has drawn itself
 
             desktop.MainWindow = window;
@@ -104,7 +104,7 @@ public partial class App : Application
                 debugApi?.Dispose();
                 audioDebug?.Dispose();
                 // Off the UI thread: the disposal awaits background loops.
-                Task.Run(() => vm.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
+                Task.Run(() => viewModel.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
                 log.Write("Client beendet");
                 log.Flush(); // Package 124: written in the background, so the last lines are written now
             };

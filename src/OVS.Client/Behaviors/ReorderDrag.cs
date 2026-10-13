@@ -43,34 +43,34 @@ public sealed class ReorderDrag
     }
 
     /// <summary>Realized containers in item order; a row folding away (Package 102) is no place to drop at.</summary>
-    List<Control> Containers() => list.GetRealizedContainers().Where(c => !c.Classes.Contains("leaving")).OrderBy(list.IndexFromContainer).ToList();
+    List<Control> Containers() => list.GetRealizedContainers().Where(control => !control.Classes.Contains("leaving")).OrderBy(list.IndexFromContainer).ToList();
 
-    void OnPressed(object? sender, PointerPressedEventArgs e)
+    void OnPressed(object? sender, PointerPressedEventArgs args)
     {
-        if (dragging || !e.GetCurrentPoint(list).Properties.IsLeftButtonPressed) return;
+        if (dragging || !args.GetCurrentPoint(list).Properties.IsLeftButtonPressed) return;
         // Only the item's own content is a handle, not nested items such as the users inside a channel block.
-        var container = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(c => list.IndexFromContainer(c) >= 0);
+        var container = (args.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(control => list.IndexFromContainer(control) >= 0);
         var item = container is null ? null : list.ItemFromContainer(container);
-        if (item is null || container!.Classes.Contains("leaving") || (e.Source as StyledElement)?.DataContext != item || !canDrag(item)) return;
+        if (item is null || container!.Classes.Contains("leaving") || (args.Source as StyledElement)?.DataContext != item || !canDrag(item)) return;
         source = container;
-        start = e.GetPosition(list);
-        grab = e.GetPosition(container);
+        start = args.GetPosition(list);
+        grab = args.GetPosition(container);
     }
 
-    void OnMoved(object? sender, PointerEventArgs e)
+    void OnMoved(object? sender, PointerEventArgs args)
     {
         if (source is null) return;
-        var position = e.GetPosition(list);
+        var position = args.GetPosition(list);
         if (!dragging)
         {
             if (Math.Abs(position.Y - start.Y) < Threshold && Math.Abs(position.X - start.X) < Threshold) return;
-            if (!Begin(e)) return;
+            if (!Begin(args)) return;
         }
-        if (preview is not null) DragVisuals.Follow(preview, e, grab);
+        if (preview is not null) DragVisuals.Follow(preview, args, grab);
         ShowGap(SlotAt(position.Y));
     }
 
-    bool Begin(PointerEventArgs e)
+    bool Begin(PointerEventArgs args)
     {
         if (source is null || OverlayLayer.GetOverlayLayer(list) is not { } overlay) return false;
         dragging = true;
@@ -90,7 +90,7 @@ public sealed class ReorderDrag
         source.Opacity = DimmedOpacity;
         foreach (var container in Containers())
             container.Transitions = reduced ? null : [new ThicknessTransition { Property = Avalonia.Layout.Layoutable.MarginProperty, Duration = TimeSpan.FromMilliseconds(120) }];
-        e.Pointer.Capture(list);
+        args.Pointer.Capture(list);
         top = TopLevel.GetTopLevel(list);
         top?.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         return true;
@@ -125,9 +125,9 @@ public sealed class ReorderDrag
         double height = source?.Bounds.Height ?? 0;
         slot = newSlot;
         // the gap opens above the target item, or below the last one when dropping at the end
-        for (int i = 0; i < containers.Count; i++)
-            containers[i].Margin = i == slot ? new Thickness(0, height, 0, 0)
-                : i == containers.Count - 1 && slot == containers.Count ? new Thickness(0, 0, 0, height)
+        for (int index = 0; index < containers.Count; index++)
+            containers[index].Margin = index == slot ? new Thickness(0, height, 0, 0)
+                : index == containers.Count - 1 && slot == containers.Count ? new Thickness(0, 0, 0, height)
                 : default;
         PlacePlaceholder(containers, height);
     }
@@ -142,20 +142,20 @@ public sealed class ReorderDrag
             return;
         }
         var panelTop = list.ItemsPanelRoot?.TranslatePoint(default, list) ?? default;
-        double y = panelTop.Y + containers.Take(slot).Sum(c => c.Bounds.Height);
+        double y = panelTop.Y + containers.Take(slot).Sum(control => control.Bounds.Height);
         if (list.TranslatePoint(new Point(panelTop.X, y), overlay) is not { } at) return;
         Canvas.SetLeft(placeholder, at.X);
         Canvas.SetTop(placeholder, at.Y);
         placeholder.IsVisible = true;
     }
 
-    async void OnReleased(object? sender, PointerReleasedEventArgs e)
+    async void OnReleased(object? sender, PointerReleasedEventArgs args)
     {
         var (wasDragging, dropped, containers, gap) = (dragging, source, Containers(), slot);
-        bool inside = new Rect(list.Bounds.Size).Contains(e.GetPosition(list));
+        bool inside = new Rect(list.Bounds.Size).Contains(args.GetPosition(list));
         End();
         if (!wasDragging) return;
-        e.Handled = true;
+        args.Handled = true;
         if (!inside || gap < 0 || dropped is null || list.ItemFromContainer(dropped) is not { } item) return;
         bool after = gap == containers.Count;
         var target = list.ItemFromContainer(containers[after ? gap - 1 : gap]);
@@ -164,10 +164,10 @@ public sealed class ReorderDrag
         await move(item, target, after);
     }
 
-    void OnKeyDown(object? sender, KeyEventArgs e)
+    void OnKeyDown(object? sender, KeyEventArgs args)
     {
-        if (e.Key != Key.Escape || !dragging) return;
-        e.Handled = true;
+        if (args.Key != Key.Escape || !dragging) return;
+        args.Handled = true;
         End();
     }
 

@@ -43,15 +43,15 @@ public partial class MainWindow : Window
     bool closeConfirmed, closeAsking;
 
     /// <summary>Package 114: closing the window with unsaved changes asks first; "Weiter bearbeiten" keeps it open.</summary>
-    async void OnClosing(object? sender, WindowClosingEventArgs e)
+    async void OnClosing(object? sender, WindowClosingEventArgs args)
     {
-        if (closeConfirmed || DataContext is not MainViewModel vm || !vm.PageFlow.HasUnsavedChanges()) return;
-        e.Cancel = true;
+        if (closeConfirmed || DataContext is not MainViewModel viewModel || !viewModel.PageFlow.HasUnsavedChanges()) return;
+        args.Cancel = true;
         if (closeAsking) return; // closed again while asking: the open question answers it
         closeAsking = true;
         try
         {
-            if (!await vm.PageFlow.ConfirmLeaveAsync()) return;
+            if (!await viewModel.PageFlow.ConfirmLeaveAsync()) return;
         }
         finally
         {
@@ -64,7 +64,7 @@ public partial class MainWindow : Window
     /// <summary>The modal layer for all dialogs (A20: no second window).</summary>
     public OverlayHost Overlay => OverlayLayer;
 
-    async void OnConnectClick(object? sender, RoutedEventArgs e) => await ConnectAsync(null);
+    async void OnConnectClick(object? sender, RoutedEventArgs args) => await ConnectAsync(null);
 
     async Task ConnectAsync(Bookmark? preselect)
     {
@@ -76,32 +76,32 @@ public partial class MainWindow : Window
 
     static Bookmark? BookmarkOf(object? sender) => ((sender as Control)?.DataContext as BookmarkItem)?.Bookmark;
 
-    async void OnBookmarkClick(object? sender, RoutedEventArgs e)
+    async void OnBookmarkClick(object? sender, RoutedEventArgs args)
     {
         if (!Vm.Connection.IsConnecting && BookmarkOf(sender) is { } bookmark) await Vm.Connection.ConnectBookmarkAsync(bookmark);
     }
 
-    async void OnBookmarkEdit(object? sender, RoutedEventArgs e)
+    async void OnBookmarkEdit(object? sender, RoutedEventArgs args)
     {
         if (BookmarkOf(sender) is { } bookmark) await Vm.Bookmarks.EditAsync(bookmark);
     }
 
-    async void OnBookmarkDelete(object? sender, RoutedEventArgs e)
+    async void OnBookmarkDelete(object? sender, RoutedEventArgs args)
     {
         if (BookmarkOf(sender) is { } bookmark) await Vm.Bookmarks.DeleteAsync(bookmark);
     }
 
     /// <summary>Esc closes the drawer, otherwise leaves settings (without saving) or the administration. An open dialog handles Esc itself first.</summary>
-    void OnKeyDown(object? sender, KeyEventArgs e)
+    void OnKeyDown(object? sender, KeyEventArgs args)
     {
-        if (e.Handled || e.Key != Key.Escape || Overlay.IsOpen) return;
+        if (args.Handled || args.Key != Key.Escape || Overlay.IsOpen) return;
         if (drawer.IsOpen) drawer.Set(false);
         else if (!Vm.PageFlow.IsHomePage) _ = Vm.PageFlow.ClosePageAsync(); // Package 114: asks first when something is not saved
         else return;
-        e.Handled = true;
+        args.Handled = true;
     }
 
-    void OnChannelDoubleTapped(object? sender, TappedEventArgs e)
+    void OnChannelDoubleTapped(object? sender, TappedEventArgs args)
     {
         if ((sender as Control)?.DataContext is not ChannelViewModel { IsSeparator: false } channel) return; // Package 111: nothing at all
         channel.JoinCommand.Execute(null);
@@ -181,14 +181,14 @@ public partial class MainWindow : Window
     bool wasConnecting;
 
     /// <summary>Package 106: a connect that failed shakes the start card once and lets the reason fade in.</summary>
-    void OnConnectingChanged(MainViewModel vm)
+    void OnConnectingChanged(MainViewModel viewModel)
     {
-        if (wasConnecting && !vm.Connection.IsConnecting && vm.Server is null)
+        if (wasConnecting && !viewModel.Connection.IsConnecting && viewModel.Server is null)
         {
             ShakeMotion.Shake(StartCard);
             LiveMotion.FadeIn(StatusText);
         }
-        wasConnecting = vm.Connection.IsConnecting;
+        wasConnecting = viewModel.Connection.IsConnecting;
     }
 
     /// <summary>The connecting flag lives on the connection, a second source next to the main view model's <c>Server</c>.</summary>
@@ -197,21 +197,21 @@ public partial class MainWindow : Window
         if (args.PropertyName == nameof(ConnectionViewModel.IsConnecting) && watchedVm is { } mainViewModel) OnConnectingChanged(mainViewModel);
     }
 
-    void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
-        if (e.PropertyName == nameof(MainViewModel.Server))
+        if (args.PropertyName == nameof(MainViewModel.Server))
         {
             if (watchedVm?.Server is not null) LiveMotion.FadeIn(ServerHeader); // Package 106: connected, the server's name fades into the header
             OnServerChanged();
             ApplyDisplay();
         }
-        else if (e.PropertyName == nameof(MainViewModel.Appearance)) ApplyDisplay();
-        else if (e.PropertyName is nameof(MainViewModel.TalkHint) or nameof(MainViewModel.HasNoPttBinding)) QueueFitSidebar(); // Package 113
+        else if (args.PropertyName == nameof(MainViewModel.Appearance)) ApplyDisplay();
+        else if (args.PropertyName is nameof(MainViewModel.TalkHint) or nameof(MainViewModel.HasNoPttBinding)) QueueFitSidebar(); // Package 113
     }
 
-    void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    void OnServerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
-        if (e.PropertyName != nameof(ServerViewModel.CurrentChannel)) return;
+        if (args.PropertyName != nameof(ServerViewModel.CurrentChannel)) return;
         drawer.Set(false);
         // Package 103: the highlight slides from the channel I left to the one I am in now
         var now = watchedServer?.CurrentChannel;
@@ -223,7 +223,7 @@ public partial class MainWindow : Window
     ChannelViewModel? currentChannel;
 
     Border? ChannelRow(ChannelViewModel channel) =>
-        ChannelItems.ContainerFromItem(channel)?.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("row"));
+        ChannelItems.ContainerFromItem(channel)?.GetVisualDescendants().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("row"));
 
     /// <summary>Every connect starts with the fitted width again.</summary>
     void OnServerChanged()
@@ -263,7 +263,7 @@ public partial class MainWindow : Window
         }, DispatcherPriority.Background);
     }
 
-    void OnSidebarDragCompleted(object? sender, VectorEventArgs e) => sidebarDragged = true;
+    void OnSidebarDragCompleted(object? sender, VectorEventArgs args) => sidebarDragged = true;
 
     /// <summary>Package 122: how often the sidebar measured its rows (tests count it).</summary>
     internal int SidebarFits { get; private set; }
@@ -272,12 +272,12 @@ public partial class MainWindow : Window
     {
         if (sidebarDragged || watchedServer is null || !IsVisible) return;
         SidebarFits++;
-        var rows = ChannelItems.GetRealizedContainers().Where(c => c.DataContext is not ChannelViewModel { IsSeparator: true }).Select(c =>
+        var rows = ChannelItems.GetRealizedContainers().Where(control => control.DataContext is not ChannelViewModel { IsSeparator: true }).Select(control =>
         {
-            var texts = c.GetVisualDescendants().OfType<TextBlock>().ToList();
-            var name = texts.FirstOrDefault(t => t.Classes.Contains("channelName"));
-            var count = texts.FirstOrDefault(t => t.Classes.Contains("channelCount"));
-            var channel = c.DataContext as ChannelViewModel;
+            var texts = control.GetVisualDescendants().OfType<TextBlock>().ToList();
+            var name = texts.FirstOrDefault(textBlock => textBlock.Classes.Contains("channelName"));
+            var count = texts.FirstOrDefault(textBlock => textBlock.Classes.Contains("channelCount"));
+            var channel = control.DataContext as ChannelViewModel;
             int icons = new[] { channel?.IsDefault, channel?.IsLinked, channel?.IsLocked }.Count(on => on == true); // Package 93: the lock too
             return new SidebarRow(TextWidth(name), icons, TextWidth(count));
         }).ToList();
@@ -311,12 +311,12 @@ public partial class MainWindow : Window
     /// <summary>Header width without the title, remembered while the header is hidden (settings, administration).</summary>
     double headerNeed;
 
-    void OnDrawerToggle(object? sender, RoutedEventArgs e) => drawer.Set(!drawer.IsOpen);
+    void OnDrawerToggle(object? sender, RoutedEventArgs args) => drawer.Set(!drawer.IsOpen);
 
-    void OnDrawerScrimPressed(object? sender, PointerPressedEventArgs e)
+    void OnDrawerScrimPressed(object? sender, PointerPressedEventArgs args)
     {
         drawer.Set(false);
-        e.Handled = true;
+        args.Handled = true;
     }
 
     /// <summary>
@@ -351,11 +351,11 @@ public partial class MainWindow : Window
     /// </summary>
     double HeaderNeed()
     {
-        var actions = HeaderActions.Children.Where(c => c.IsVisible).ToList();
-        var hiddenTexts = actions.SelectMany(a => a.GetLogicalDescendants().OfType<TextBlock>())
-            .Where(t => !t.IsVisible && t.Classes.Contains("wideOnly"))
-            .Sum(t => TextWidth(t) + ((t.Parent as StackPanel)?.Spacing ?? 0));
+        var actions = HeaderActions.Children.Where(control => control.IsVisible).ToList();
+        var hiddenTexts = actions.SelectMany(control => control.GetLogicalDescendants().OfType<TextBlock>())
+            .Where(textBlock => !textBlock.IsVisible && textBlock.Classes.Contains("wideOnly"))
+            .Sum(textBlock => TextWidth(textBlock) + ((textBlock.Parent as StackPanel)?.Spacing ?? 0));
         return ChannelHeader.Padding.Left + ChannelHeader.Padding.Right + VoiceIcon.DesiredSize.Width
-            + actions.Sum(c => c.DesiredSize.Width) + hiddenTexts + HeaderActions.Spacing * Math.Max(0, actions.Count - 1);
+            + actions.Sum(control => control.DesiredSize.Width) + hiddenTexts + HeaderActions.Spacing * Math.Max(0, actions.Count - 1);
     }
 }

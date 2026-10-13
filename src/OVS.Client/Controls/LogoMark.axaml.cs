@@ -23,7 +23,7 @@ public partial class LogoMark : UserControl
         var bytes = memory.ToArray();
         int count = BitConverter.ToUInt16(bytes, 4);
         return Enumerable.Range(0, count)
-            .Select(i => (Size: (int)bytes[6 + i * 16], Length: BitConverter.ToInt32(bytes, 6 + i * 16 + 8), Offset: BitConverter.ToInt32(bytes, 6 + i * 16 + 12)))
+            .Select(index => (Size: (int)bytes[6 + index * 16], Length: BitConverter.ToInt32(bytes, 6 + index * 16 + 8), Offset: BitConverter.ToInt32(bytes, 6 + index * 16 + 12)))
             .Where(f => f.Size is > 0 and <= (int)SmallSize)
             .ToDictionary(f => f.Size, f => new Bitmap(new MemoryStream(bytes, f.Offset, f.Length)));
     });
@@ -39,6 +39,6 @@ public partial class LogoMark : UserControl
         Large.IsVisible = !small;
         if (!small) return;
         double pixels = Bounds.Width * (TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
-        Small.Source = Frames.Value.MinBy(f => Math.Abs(f.Key - pixels)).Value;
+        Small.Source = Frames.Value.MinBy(pair => Math.Abs(pair.Key - pixels)).Value;
     }
 }

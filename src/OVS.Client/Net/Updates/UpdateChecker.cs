@@ -31,9 +31,9 @@ public sealed class UpdateChecker(HttpClient http, BuildInfo current)
             using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancel), cancellationToken: cancel);
             return new UpdateCheckResult(Evaluate(json.RootElement));
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException or KeyNotFoundException)
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException or KeyNotFoundException)
         {
-            return new UpdateCheckResult(null, e.Message);
+            return new UpdateCheckResult(null, exception.Message);
         }
     }
 
@@ -44,7 +44,7 @@ public sealed class UpdateChecker(HttpClient http, BuildInfo current)
         var published = release.GetProperty("published_at").GetDateTimeOffset();
         if (published <= current.BuildTime) return null;
         var assets = release.GetProperty("assets").EnumerateArray()
-            .ToDictionary(a => a.GetProperty("name").GetString() ?? "", a => a.GetProperty("browser_download_url").GetString() ?? "");
+            .ToDictionary(jsonElement => jsonElement.GetProperty("name").GetString() ?? "", jsonElement => jsonElement.GetProperty("browser_download_url").GetString() ?? "");
         if (!assets.TryGetValue(ExeName, out var exe) || !assets.TryGetValue(ExeName + ".sha256", out var hash)) return null;
         var title = release.TryGetProperty("name", out var name) ? name.GetString() ?? tag : tag;
         var notes = release.TryGetProperty("body", out var body) ? body.GetString() ?? "" : "";

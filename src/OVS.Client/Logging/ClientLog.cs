@@ -64,9 +64,9 @@ public sealed class ClientLog
                         Writing?.Invoke();
                         files.Append("", "client-", lines);
                     }
-                    catch (Exception e) // writing never throws (LogFileWriter catches IO errors); anything else costs a batch, not the log
+                    catch (Exception exception) // writing never throws (LogFileWriter catches IO errors); anything else costs a batch, not the log
                     {
-                        System.Diagnostics.Trace.WriteLine($"Log konnte nicht geschrieben werden: {e.Message}");
+                        System.Diagnostics.Trace.WriteLine($"Log konnte nicht geschrieben werden: {exception.Message}");
                     }
                 }
             }

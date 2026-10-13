@@ -136,19 +136,19 @@ public sealed class OverlayHost : Panel
 
     public void Close() => current?.TrySetResult();
 
-    void OnKeyDown(object? sender, KeyEventArgs e)
+    void OnKeyDown(object? sender, KeyEventArgs args)
     {
-        if (!IsOpen || e.Source is ComboBox { IsDropDownOpen: true }) return;
-        if (e.Key == Key.Escape)
+        if (!IsOpen || args.Source is ComboBox { IsDropDownOpen: true }) return;
+        if (args.Key == Key.Escape)
         {
             Close();
-            e.Handled = true;
+            args.Handled = true;
         }
         // Enter in a multi-line box is a line break, and a focused button presses itself.
-        else if (e.Key == Key.Enter && e.Source is not (TextBox { AcceptsReturn: true } or Button))
+        else if (args.Key == Key.Enter && args.Source is not (TextBox { AcceptsReturn: true } or Button))
         {
             onEnter?.Invoke();
-            e.Handled = true;
+            args.Handled = true;
         }
     }
 }

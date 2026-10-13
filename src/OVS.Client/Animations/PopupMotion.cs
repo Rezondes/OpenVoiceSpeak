@@ -38,11 +38,11 @@ internal static class PopupMotion
         Popup.IsOpenProperty.Changed.AddClassHandler<Popup>(OnIsOpenChanged);
     }
 
-    static void OnIsOpenChanged(Popup popup, AvaloniaPropertyChangedEventArgs e)
+    static void OnIsOpenChanged(Popup popup, AvaloniaPropertyChangedEventArgs args)
     {
         // the display of the window it opens in, asked through its anchor like the closing picture below
         if (!Motion.IsAnimated(popup.PlacementTarget ?? popup) || popup.Child is not { } child) return;
-        if (!e.GetNewValue<bool>())
+        if (!args.GetNewValue<bool>())
         {
             FadeAway(popup, child);
             return;

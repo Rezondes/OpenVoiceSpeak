@@ -14,7 +14,7 @@ internal static class TofuDialog
 {
     internal static async Task<bool> ShowAsync(OverlayHost overlay, TofuPrompt prompt)
     {
-        var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(i => prompt.Fingerprint.Substring(i * 8, 8)));
+        var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(index => prompt.Fingerprint.Substring(index * 8, 8)));
         bool mismatch = prompt.Result == TofuResult.Mismatch;
         var text = mismatch
             ? string.Format(Strings.Tofu_Changed, prompt.Host, prompt.Port)

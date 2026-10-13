@@ -11,7 +11,7 @@ public sealed class ServerIconCache(string profileDir)
     readonly string dir = Path.Combine(profileDir, "server-icons");
 
     string PathFor(string host, int port) =>
-        Path.Combine(dir, $"{string.Concat(host.Select(c => char.IsLetterOrDigit(c) || c is '.' or '-' ? c : '_'))}_{port}.png");
+        Path.Combine(dir, $"{string.Concat(host.Select(character => char.IsLetterOrDigit(character) || character is '.' or '-' ? character : '_'))}_{port}.png");
 
     public byte[]? Load(string host, int port)
     {
@@ -20,7 +20,7 @@ public sealed class ServerIconCache(string profileDir)
             var path = PathFor(host, port);
             return File.Exists(path) ? File.ReadAllBytes(path) : null;
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return null; // only a cache: then the logo is downloaded again
         }
@@ -45,7 +45,7 @@ public sealed class ServerIconCache(string profileDir)
         {
             action();
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
         }
     }

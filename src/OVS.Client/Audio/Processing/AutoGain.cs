@@ -60,6 +60,6 @@ public sealed class AutoGain
 
         // a ramp across the frame instead of a step at its start, which would click
         float step = (end - start) / frame.Length;
-        for (int i = 0; i < frame.Length; i++) frame[i] *= start + step * i;
+        for (int index = 0; index < frame.Length; index++) frame[index] *= start + step * index;
     }
 }

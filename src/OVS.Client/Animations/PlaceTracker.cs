@@ -31,11 +31,11 @@ internal sealed class PlaceTracker
     internal PlaceTracker(ItemsControl list)
     {
         this.list = list;
-        list.ContainerClearing += (_, e) => EndGlide(e.Container);
+        list.ContainerClearing += (_, args) => EndGlide(args.Container);
         list.Items.CollectionChanged += OnItemsChanged;
-        list.PropertyChanged += (_, e) =>
+        list.PropertyChanged += (_, args) =>
         {
-            if (e.Property == ItemsControl.ItemsSourceProperty) Track();
+            if (args.Property == ItemsControl.ItemsSourceProperty) Track();
         };
         Track();
     }
@@ -47,9 +47,9 @@ internal sealed class PlaceTracker
         Dispatcher.UIThread.Post(() => held = false, DispatcherPriority.Background);
     }
 
-    void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
-        if (e.Action == NotifyCollectionChangedAction.Move && ItemMotion.GetFlip(list) && Motion.IsAnimated(list) && !held) moved = true;
+        if (args.Action == NotifyCollectionChangedAction.Move && ItemMotion.GetFlip(list) && Motion.IsAnimated(list) && !held) moved = true;
         ItemMotion.TrackPlacesAround(list);
     }
 
@@ -91,7 +91,7 @@ internal sealed class PlaceTracker
         list.LayoutUpdated -= OnLayoutUpdated;
     }
 
-    void OnLayoutUpdated(object? sender, EventArgs e)
+    void OnLayoutUpdated(object? sender, EventArgs args)
     {
         layoutPasses++;
         var now = new Dictionary<object, double>();

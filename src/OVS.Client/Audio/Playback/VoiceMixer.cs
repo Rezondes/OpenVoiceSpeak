@@ -63,8 +63,8 @@ public sealed class VoiceMixer
     ReceiveStats retired; // Package 133: the counts of the speakers removed so far
 
     /// <summary>Under gate.</summary>
-    void Retire(JitterBuffer b) =>
-        retired = retired.Add(ReceiveStats.Of(b)) with { JitterMs = 0, DelayMs = 0 }; // a gone speaker's jitter is not shown
+    void Retire(JitterBuffer jitterBuffer) =>
+        retired = retired.Add(ReceiveStats.Of(jitterBuffer)) with { JitterMs = 0, DelayMs = 0 }; // a gone speaker's jitter is not shown
 
     /// <summary>
     /// Package 133 (A142): for the connection details, every 2 s on the UI thread. The jitter is the worst one of the speakers
@@ -104,7 +104,7 @@ public sealed class VoiceMixer
                 speaker.IdleTicks = 0;
                 active.Add(new ActiveSpeaker(id, speaker.Buffer.ViaLink));
                 float own = VolumeCurve.Combine(speakerGains.GetValueOrDefault(id, 1f), output) * DefaultVoiceBoost; // Package 128
-                for (int i = 0; i < mixed.Length; i++) mixed[i] += pcm[i] * own;
+                for (int index = 0; index < mixed.Length; index++) mixed[index] += pcm[index] * own;
             }
         }
         limiter.Process(mixed); // only Tick uses it, and Tick runs on the playback thread alone

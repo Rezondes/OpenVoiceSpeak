@@ -51,9 +51,9 @@ public sealed unsafe class EchoCanceller : IDisposable
                 Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_aec_destroy"),
             };
         }
-        catch (Exception e) // missing, wrong architecture, a missing export: echo cancellation is off
+        catch (Exception exception) // missing, wrong architecture, a missing export: echo cancellation is off
         {
-            return new Native { Error = e.Message };
+            return new Native { Error = exception.Message };
         }
     }
 

@@ -225,7 +225,7 @@ public sealed class VoiceClient : IDisposable
                 udp.Send(packet, packet.Length);
             }
         }
-        catch (Exception e) when (e is SocketException or ObjectDisposedException)
+        catch (Exception exception) when (exception is SocketException or ObjectDisposedException)
         {
         }
     }
@@ -239,7 +239,7 @@ public sealed class VoiceClient : IDisposable
             {
                 result = await udp.ReceiveAsync(cts.Token);
             }
-            catch (Exception e) when (e is OperationCanceledException or ObjectDisposedException)
+            catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException)
             {
                 return;
             }

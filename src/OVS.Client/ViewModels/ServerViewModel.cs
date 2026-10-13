@@ -153,12 +153,12 @@ public sealed partial class ServerViewModel : ObservableObject
     {
         switch (message)
         {
-            case Error e:
-                join.Refused(e.Code); // Package 94: a wrong channel password is asked for again next time
-                var text = ErrorTexts.For(e.Code, e.Detail);
-                if (e.RequestId is { } failed && waiting.Remove(failed, out var pending) && pending.Answers(failed)) pending.Fail(text); // Package 97
-                if (!ChatFeed.TryRefuse(e.RequestId, text)) Notice?.Invoke(text);
-                Routes.Deliver(e.RequestId, message); // Package 73: the sender drops what the server refused
+            case Error error:
+                join.Refused(error.Code); // Package 94: a wrong channel password is asked for again next time
+                var text = ErrorTexts.For(error.Code, error.Detail);
+                if (error.RequestId is { } failed && waiting.Remove(failed, out var pending) && pending.Answers(failed)) pending.Fail(text); // Package 97
+                if (!ChatFeed.TryRefuse(error.RequestId, text)) Notice?.Invoke(text);
+                Routes.Deliver(error.RequestId, message); // Package 73: the sender drops what the server refused
                 return;
             case UserList list:
                 LastUserList = list;
@@ -177,13 +177,13 @@ public sealed partial class ServerViewModel : ObservableObject
         var sound = SoundFor(message); // compared with the state before the change
         var before = message switch
         {
-            UserUpdated u => Mirror.Users.GetValueOrDefault(u.User.SessionId),
-            UserJoined j => Mirror.Users.GetValueOrDefault(j.User.SessionId), // a session already there is moved, not shown twice
-            UserLeft l => Mirror.Users.GetValueOrDefault(l.SessionId),
+            UserUpdated userUpdated => Mirror.Users.GetValueOrDefault(userUpdated.User.SessionId),
+            UserJoined userJoined => Mirror.Users.GetValueOrDefault(userJoined.User.SessionId), // a session already there is moved, not shown twice
+            UserLeft userLeft => Mirror.Users.GetValueOrDefault(userLeft.SessionId),
             _ => null,
         };
         if (Mirror.Apply(message)) Show(message, before);
-        if (sound is { } s) SoundRequested?.Invoke(s);
+        if (sound is { } soundEvent) SoundRequested?.Invoke(soundEvent);
     }
 
     /// <summary>
@@ -194,15 +194,15 @@ public sealed partial class ServerViewModel : ObservableObject
     {
         switch (message)
         {
-            case UserJoined j when j.User.SessionId != Mirror.SelfId:
-                ShowUser(j.User, before);
+            case UserJoined userJoined when userJoined.User.SessionId != Mirror.SelfId:
+                ShowUser(userJoined.User, before);
                 return;
             case UserLeft when before is not null && before.SessionId != Mirror.SelfId:
                 ShowUser(null, before);
                 return;
-            case UserUpdated u when before is not null && (u.User.SessionId != Mirror.SelfId
-                || (u.User.ChannelId == before.ChannelId && u.User.Permissions == before.Permissions && u.User.GroupIds.SequenceEqual(before.GroupIds))):
-                ShowUser(u.User, before);
+            case UserUpdated userUpdated when before is not null && (userUpdated.User.SessionId != Mirror.SelfId
+                || (userUpdated.User.ChannelId == before.ChannelId && userUpdated.User.Permissions == before.Permissions && userUpdated.User.GroupIds.SequenceEqual(before.GroupIds))):
+                ShowUser(userUpdated.User, before);
                 return;
         }
         Rebuild(message is UserJoined or UserLeft ? StateChange.All : StateChange.Names | StateChange.Sidebar | StateChange.Tree);
@@ -220,21 +220,21 @@ public sealed partial class ServerViewModel : ObservableObject
         var mine = self?.ChannelId;
         switch (message)
         {
-            case UserJoined j when j.User.SessionId != Mirror.SelfId && j.User.ChannelId == mine:
+            case UserJoined userJoined when userJoined.User.SessionId != Mirror.SelfId && userJoined.User.ChannelId == mine:
                 return SoundEvent.UserJoined;
-            case UserLeft l when l.SessionId != Mirror.SelfId && Mirror.Users.TryGetValue(l.SessionId, out var gone) && gone.ChannelId == mine:
+            case UserLeft userLeft when userLeft.SessionId != Mirror.SelfId && Mirror.Users.TryGetValue(userLeft.SessionId, out var gone) && gone.ChannelId == mine:
                 return SoundEvent.UserLeft;
-            case UserUpdated u when u.User.SessionId == Mirror.SelfId && self is not null:
-                if (u.User.ChannelId != self.ChannelId)
+            case UserUpdated userUpdated when userUpdated.User.SessionId == Mirror.SelfId && self is not null:
+                if (userUpdated.User.ChannelId != self.ChannelId)
                 {
-                    return join.Arrived(u.User.ChannelId) ? SoundEvent.ChannelEntered : SoundEvent.Moved;
+                    return join.Arrived(userUpdated.User.ChannelId) ? SoundEvent.ChannelEntered : SoundEvent.Moved;
                 }
-                if (u.User.ServerMuted && !self.ServerMuted) return SoundEvent.ServerMuted;
+                if (userUpdated.User.ServerMuted && !self.ServerMuted) return SoundEvent.ServerMuted;
                 // Package 73: the own groups changed; a change made by myself only gives the tone for the one acting
-                return !OwnGroupChangePending && !u.User.GroupIds.ToHashSet().SetEquals(self.GroupIds) ? SoundEvent.GroupChanged : null;
-            case UserUpdated u when Mirror.Users.TryGetValue(u.User.SessionId, out var before):
-                if (before.ChannelId != mine && u.User.ChannelId == mine) return SoundEvent.UserJoined;
-                if (before.ChannelId == mine && u.User.ChannelId != mine) return SoundEvent.UserLeft;
+                return !OwnGroupChangePending && !userUpdated.User.GroupIds.ToHashSet().SetEquals(self.GroupIds) ? SoundEvent.GroupChanged : null;
+            case UserUpdated userUpdated when Mirror.Users.TryGetValue(userUpdated.User.SessionId, out var before):
+                if (before.ChannelId != mine && userUpdated.User.ChannelId == mine) return SoundEvent.UserJoined;
+                if (before.ChannelId == mine && userUpdated.User.ChannelId != mine) return SoundEvent.UserLeft;
                 return null;
             default:
                 return null;
@@ -271,7 +271,7 @@ public sealed partial class ServerViewModel : ObservableObject
         if (route is not null) Routes.Add(id, route); // before sending: the answer can come at once
         if (pending is not null)
         {
-            foreach (var over in waiting.Where(w => !w.Value.Answers(w.Key)).Select(w => w.Key).ToList()) waiting.Remove(over);
+            foreach (var over in waiting.Where(pair => !pair.Value.Answers(pair.Key)).Select(pair => pair.Key).ToList()) waiting.Remove(over);
             pending.Start(id); // before sending: the answer can come at once
             waiting[id] = pending;
         }
@@ -280,7 +280,7 @@ public sealed partial class ServerViewModel : ObservableObject
             await send(request with { RequestId = id });
         }
         // InvalidOperationException: a request raced a disconnect that had already shut TLS down.
-        catch (Exception e) when (e is IOException or ObjectDisposedException or OperationCanceledException or InvalidOperationException)
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException or OperationCanceledException or InvalidOperationException)
         {
             var text = ErrorTexts.For(ReasonCodes.ConnectionLost);
             if (pending?.Answers(id) == true) pending.Fail(text);
@@ -358,7 +358,7 @@ public sealed partial class ServerViewModel : ObservableObject
         }
         // Package 98: the row spins until the own channel changes; a second join meanwhile is ignored
         var row = Tree.FindChannel(channelId);
-        joining = SendConfirmed(new JoinChannel(channelId, password), m => m is UserUpdated u && IsSelf(u.User) && u.User.ChannelId != before,
+        joining = SendConfirmed(new JoinChannel(channelId, password), message => message is UserUpdated userUpdated && IsSelf(userUpdated.User) && userUpdated.User.ChannelId != before,
             busy: on => row?.IsBusy = on);
     }
 
@@ -376,31 +376,31 @@ public sealed partial class ServerViewModel : ObservableObject
     }
 
     /// <summary>Package 110: names may repeat, so the own channel is the one the server answers this request with.</summary>
-    public PendingActionViewModel CreateChannel(ChannelEdit e)
+    public PendingActionViewModel CreateChannel(ChannelEdit channelEdit)
     {
         var pending = NewPending();
-        return SendConfirmed(new CreateChannel(e.Name, e.Description, e.IsMuted, e.MaxUsers, e.AllowedGroupIds, e.Password, e.Kind, e.Bitrate),
-            m => m is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
+        return SendConfirmed(new CreateChannel(channelEdit.Name, channelEdit.Description, channelEdit.IsMuted, channelEdit.MaxUsers, channelEdit.AllowedGroupIds, channelEdit.Password, channelEdit.Kind, channelEdit.Bitrate),
+            message => message is ChannelAdded { RequestId: { } id } && pending.Answers(id), pending, notify: false);
     }
     public PendingActionViewModel EditChannel(Guid id, ChannelEdit edit, int order) =>
         SendConfirmed(new EditChannel(id, edit.Name, edit.Description, order, edit.IsMuted, edit.MaxUsers, edit.AllowedGroupIds, edit.Password, edit.Bitrate),
-            m => m is ChannelUpdated u && u.Channel.Id == id, notify: false);
+            message => message is ChannelUpdated channelUpdated && channelUpdated.Channel.Id == id, notify: false);
     public PendingActionViewModel DeleteChannel(Guid id)
     {
         var row = Tree.FindChannel(id); // gone from the tree when confirmed
-        return SendConfirmed(new DeleteChannel(id), m => m is ChannelRemoved r && r.ChannelId == id, busy: on => row?.IsBusy = on);
+        return SendConfirmed(new DeleteChannel(id), message => message is ChannelRemoved channelRemoved && channelRemoved.ChannelId == id, busy: on => row?.IsBusy = on);
     }
 
 
-    public PendingActionViewModel Link(Guid a, Guid b) =>
-        SendConfirmed(new LinkChannels(a, b), m => m is ChannelsLinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
-    public PendingActionViewModel Unlink(Guid a, Guid b) =>
-        SendConfirmed(new UnlinkChannels(a, b), m => m is ChannelsUnlinked l && (l.A, l.B) is var p && (p == (a, b) || p == (b, a)), notify: false);
+    public PendingActionViewModel Link(Guid id, Guid otherId) =>
+        SendConfirmed(new LinkChannels(id, otherId), message => message is ChannelsLinked channelsLinked && (channelsLinked.A, channelsLinked.B) is var p && (p == (id, otherId) || p == (otherId, id)), notify: false);
+    public PendingActionViewModel Unlink(Guid id, Guid otherId) =>
+        SendConfirmed(new UnlinkChannels(id, otherId), message => message is ChannelsUnlinked channelsUnlinked && (channelsUnlinked.A, channelsUnlinked.B) is var p && (p == (id, otherId) || p == (otherId, id)), notify: false);
     /// <summary>Package 120: without the dialog that waited, the moved user's row spins until the server shows the move.</summary>
     public PendingActionViewModel Move(uint sessionId, Guid channelId)
     {
         var row = Tree.FindUser(sessionId);
-        return SendConfirmed(new MoveUser(sessionId, channelId), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ChannelId == channelId,
+        return SendConfirmed(new MoveUser(sessionId, channelId), message => message is UserUpdated userUpdated && userUpdated.User.SessionId == sessionId && userUpdated.User.ChannelId == channelId,
             busy: on => row?.IsBusy = on, notify: false);
     }
 
@@ -423,13 +423,13 @@ public sealed partial class ServerViewModel : ObservableObject
         await channel.JoinCommand.ExecuteAsync(null);
         if (joining is { } join) await join.Completion;
     }
-    public PendingActionViewModel Kick(uint sessionId, string reason) => SendConfirmed(new KickSession(sessionId, reason), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+    public PendingActionViewModel Kick(uint sessionId, string reason) => SendConfirmed(new KickSession(sessionId, reason), message => message is UserLeft userLeft && userLeft.SessionId == sessionId, notify: false);
     public PendingActionViewModel Ban(uint sessionId, BanChoice choice) =>
-        SendConfirmed(new BanSession(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), m => m is UserLeft l && l.SessionId == sessionId, notify: false);
+        SendConfirmed(new BanSession(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), message => message is UserLeft userLeft && userLeft.SessionId == sessionId, notify: false);
     public PendingActionViewModel ServerMute(uint sessionId, bool muted)
     {
         var row = Tree.FindUser(sessionId);
-        return SendConfirmed(new SetSessionServerMute(sessionId, muted), m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.ServerMuted == muted,
+        return SendConfirmed(new SetSessionServerMute(sessionId, muted), message => message is UserUpdated userUpdated && userUpdated.User.SessionId == sessionId && userUpdated.User.ServerMuted == muted,
             busy: on => row?.IsBusy = on);
     }
 
@@ -438,7 +438,7 @@ public sealed partial class ServerViewModel : ObservableObject
     {
         var row = Tree.FindUser(sessionId);
         return SendConfirmed(assigned ? new AssignGroup(fingerprint, groupId) : new UnassignGroup(fingerprint, groupId),
-            m => m is UserUpdated u && u.User.SessionId == sessionId && u.User.GroupIds.Contains(groupId) == assigned, busy: on => row?.IsBusy = on);
+            message => message is UserUpdated userUpdated && userUpdated.User.SessionId == sessionId && userUpdated.User.GroupIds.Contains(groupId) == assigned, busy: on => row?.IsBusy = on);
     }
 
     [RelayCommand]
@@ -449,5 +449,5 @@ public sealed partial class ServerViewModel : ObservableObject
     [RelayCommand]
     Task RedeemToken() =>
         Ask<string>(Dialogs.AskText is { } ask ? submit => ask(Strings.Dialog_RedeemToken, Strings.Dialog_RedeemTokenPrompt, submit) : null,
-            token => SendConfirmed(new RedeemAdminToken(token.Trim()), m => m is UserUpdated u && IsSelf(u.User), notify: false));
+            token => SendConfirmed(new RedeemAdminToken(token.Trim()), message => message is UserUpdated userUpdated && IsSelf(userUpdated.User), notify: false));
 }

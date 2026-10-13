@@ -43,19 +43,19 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     {
         0 => Strings.Links_NoPending,
         1 => Strings.Links_OnePending,
-        var n => string.Format(Strings.Links_Pending, n),
+        var count => string.Format(Strings.Links_Pending, count),
     };
 
     bool OnServer(ChannelPair key) => server.Mirror.Links.Contains(key);
 
-    public bool IsLinked(Guid a, Guid b) => desired.TryGetValue(ChannelPair.Of(a, b), out var linked) ? linked : OnServer(ChannelPair.Of(a, b));
+    public bool IsLinked(Guid id, Guid otherId) => desired.TryGetValue(ChannelPair.Of(id, otherId), out var linked) ? linked : OnServer(ChannelPair.Of(id, otherId));
 
-    public bool IsPending(Guid a, Guid b) => desired.ContainsKey(ChannelPair.Of(a, b));
+    public bool IsPending(Guid id, Guid otherId) => desired.ContainsKey(ChannelPair.Of(id, otherId));
 
-    public void Set(Guid a, Guid b, bool linked)
+    public void Set(Guid id, Guid otherId, bool linked)
     {
-        if (a == b) return;
-        var key = ChannelPair.Of(a, b);
+        if (id == otherId) return;
+        var key = ChannelPair.Of(id, otherId);
         if (linked == OnServer(key)) desired.Remove(key);
         else desired[key] = linked;
         Refresh();
@@ -64,13 +64,13 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     /// <summary>After any server change: new channels, names and links; own pending changes stay.</summary>
     internal void Rebuild()
     {
-        var channels = server.Tree.Channels.Live().Where(c => !c.IsSeparator).ToList(); // Package 111: nothing to link
-        var ids = channels.Select(c => c.Id).ToHashSet();
+        var channels = server.Tree.Channels.Live().Where(channel => !channel.IsSeparator).ToList(); // Package 111: nothing to link
+        var ids = channels.Select(channel => channel.Id).ToHashSet();
         foreach (var (key, linked) in desired.ToList())
             if (!ids.Contains(key.Lower) || !ids.Contains(key.Upper) || linked == OnServer(key)) desired.Remove(key);
 
-        var selected = Rows.Live().Where(r => r.IsSelected).Select(r => r.Id).ToHashSet();
-        var rows = channels.Select((row, i) => new LinkRowViewModel(i + 1, row.Id, row.Name, selected.Contains(row.Id),
+        var selected = Rows.Live().Where(linkRow => linkRow.IsSelected).Select(linkRow => linkRow.Id).ToHashSet();
+        var rows = channels.Select((row, index) => new LinkRowViewModel(index + 1, row.Id, row.Name, selected.Contains(row.Id),
             channels.Select(col => new LinkCellViewModel(this, row.Id, col.Id, string.Format(Strings.Links_Pair, row.Name, col.Name))).ToList())).ToList();
         CollectionSync.Sync(Rows, rows); // rows and columns go together: a folding row would leave its column standing
         PendingCount = desired.Count;
@@ -78,29 +78,29 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
 
     void Refresh()
     {
-        foreach (var cell in Rows.SelectMany(r => r.Cells)) cell.Refresh();
+        foreach (var cell in Rows.SelectMany(linkRow => linkRow.Cells)) cell.Refresh();
         PendingCount = desired.Count;
     }
 
     IEnumerable<ChannelPair> SelectedPairs()
     {
-        var selected = Rows.Live().Where(r => r.IsSelected).Select(r => r.Id).ToList();
-        for (int i = 0; i < selected.Count; i++)
-            for (int j = i + 1; j < selected.Count; j++)
-                yield return ChannelPair.Of(selected[i], selected[j]);
+        var selected = Rows.Live().Where(linkRow => linkRow.IsSelected).Select(linkRow => linkRow.Id).ToList();
+        for (int index = 0; index < selected.Count; index++)
+            for (int otherIndex = index + 1; otherIndex < selected.Count; otherIndex++)
+                yield return ChannelPair.Of(selected[index], selected[otherIndex]);
     }
 
     /// <summary>Every selected channel with every other: links are not transitive (A5).</summary>
     [RelayCommand]
     void LinkSelected()
     {
-        foreach (var (a, b) in SelectedPairs()) Set(a, b, true);
+        foreach (var (id, otherId) in SelectedPairs()) Set(id, otherId, true);
     }
 
     [RelayCommand]
     void UnlinkSelected()
     {
-        foreach (var (a, b) in SelectedPairs()) Set(a, b, false);
+        foreach (var (id, otherId) in SelectedPairs()) Set(id, otherId, false);
     }
 
     [RelayCommand]
@@ -113,11 +113,11 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     /// <summary>Package 114: the marked changes to the server; null when there is nothing to send.</summary>
     PendingActionViewModel? SendPending()
     {
-        var add = desired.Where(d => d.Value).Select(d => new LinkInfo(d.Key.Lower, d.Key.Upper)).ToList();
-        var remove = desired.Where(d => !d.Value).Select(d => new LinkInfo(d.Key.Lower, d.Key.Upper)).ToList();
+        var add = desired.Where(pair => pair.Value).Select(pair => new LinkInfo(pair.Key.Lower, pair.Key.Upper)).ToList();
+        var remove = desired.Where(pair => !pair.Value).Select(pair => new LinkInfo(pair.Key.Lower, pair.Key.Upper)).ToList();
         if (add.Count + remove.Count == 0 || Applying.IsRunning) return null;
         // The server's ChannelsLinked/Unlinked make them real; until then they stay marked.
-        return server.SendConfirmed(new SetChannelLinks(add, remove), _ => add.All(l => OnServer(ChannelPair.Of(l.A, l.B))) && remove.All(l => !OnServer(ChannelPair.Of(l.A, l.B))),
+        return server.SendConfirmed(new SetChannelLinks(add, remove), _ => add.All(link => OnServer(ChannelPair.Of(link.A, link.B))) && remove.All(link => !OnServer(ChannelPair.Of(link.A, link.B))),
             Applying, notify: false);
     }
 

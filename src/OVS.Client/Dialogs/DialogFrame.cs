@@ -49,9 +49,9 @@ internal static class DialogFrame
             }
             failed.IsVisible = false;
             sending = submit(answer);
-            void OnBusy(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+            void OnBusy(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
             {
-                if (e.PropertyName != nameof(PendingActionViewModel.IsBusy)) return;
+                if (args.PropertyName != nameof(PendingActionViewModel.IsBusy)) return;
                 ok.IsEnabled = !sending.IsBusy;
                 ok.Content = sending.IsBusy
                     ? new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new BusySpinner(), new TextBlock { Text = okText } } }
@@ -100,12 +100,12 @@ internal static class DialogFrame
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, ItemSpacing = 8, LineSpacing = 8 },
         };
-        foreach (var b in new[] { ok, cancel, third }) b?.Classes.Add(AnswerClass);
+        foreach (var button in new[] { ok, cancel, third }) button?.Classes.Add(AnswerClass);
         if (third is null) ((WrapPanel)buttonBar.Child).Children.AddRange(withCancel ? [cancel, ok] : [ok]); // Package 133: a card that only informs
         else
         {
             // three answers do not fit one row of the card: one below the other, the default one first
-            foreach (var b in new[] { ok, third, cancel }) b.HorizontalAlignment = HorizontalAlignment.Stretch;
+            foreach (var button in new[] { ok, third, cancel }) button.HorizontalAlignment = HorizontalAlignment.Stretch;
             buttonBar.Child = new StackPanel { Spacing = 8, Children = { ok, third, cancel } };
         }
         buttonBar.Bind(Border.BackgroundProperty, buttonBar.GetResourceObservable("Ovs.DialogBar"));
@@ -135,7 +135,7 @@ internal static class DialogFrame
         };
         // what Enter does: DialogOptions.OkIsDefault
         var firstInput = body.GetLogicalDescendants().Prepend(body).OfType<InputElement>()
-            .FirstOrDefault(c => c is TextBox or ComboBox or ListBox or NumericUpDown);
+            .FirstOrDefault(inputElement => inputElement is TextBox or ComboBox or ListBox or NumericUpDown);
         await host.ShowAsync(frame, okIsDefault ? Accept : host.Close, (Control?)firstInput ?? (okIsDefault ? ok : cancel));
         closed.SetResult();
         return result;

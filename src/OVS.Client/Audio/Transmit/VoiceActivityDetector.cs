@@ -63,7 +63,7 @@ public sealed class VoiceActivityDetector
         for (int c = 0; c < channels; c++)
         {
             double sum = 0;
-            for (int i = c; i < frame.Length; i += channels) sum += frame[i] * frame[i];
+            for (int index = c; index < frame.Length; index += channels) sum += frame[index] * frame[index];
             loudest = Math.Max(loudest, sum);
         }
         double rms = Math.Sqrt(loudest / (frame.Length / channels));

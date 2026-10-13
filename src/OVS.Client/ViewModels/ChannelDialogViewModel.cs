@@ -34,7 +34,7 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
 
     /// <summary>Package 93: every group of the server, in its order, ticked when in the channel's lock.</summary>
     public IReadOnlyList<AllowedGroupViewModel> Groups { get; } =
-        (groups ?? []).Select(g => new AllowedGroupViewModel(g.Id, g.Name, current.AllowedGroupIds?.Contains(g.Id) == true)).ToList();
+        (groups ?? []).Select(groupInfo => new AllowedGroupViewModel(groupInfo.Id, groupInfo.Name, current.AllowedGroupIds?.Contains(groupInfo.Id) == true)).ToList();
     public bool CanLockGroups => mode != ChannelDialogMode.EditDefault;
     public string GroupLockHint => CanLockGroups ? Strings.Dlg_GroupLockHint : Strings.Dlg_GroupLockDefault;
 
@@ -79,7 +79,7 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
             : TextRules.NormalizeText(Description ?? "", ProtocolLimits.MaxTextLength) is null ? Strings.Dlg_TextInvalid
             : (Password ?? "").Length > ProtocolLimits.MaxPasswordLength ? Strings.Dlg_PasswordTooLong
             : null;
-        var ticked = Groups.Where(g => g.IsChecked).Select(g => g.Id).ToList();
+        var ticked = Groups.Where(allowedGroup => allowedGroup.IsChecked).Select(allowedGroup => allowedGroup.Id).ToList();
         bool changed = CanLockGroups && !ticked.ToHashSet().SetEquals(current.AllowedGroupIds ?? []);
         string? password = !CanLockGroups ? null : RemovePassword ? "" : Password is { Length: > 0 } entered ? entered : null;
         return string.IsNullOrWhiteSpace(Name) || Error is not null ? null

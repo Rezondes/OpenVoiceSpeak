@@ -21,7 +21,7 @@ public static class PasswordProtector
         {
             return Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(protectedPassword), Entropy, DataProtectionScope.CurrentUser));
         }
-        catch (Exception e) when (e is CryptographicException or FormatException)
+        catch (Exception exception) when (exception is CryptographicException or FormatException)
         {
             return null;
         }

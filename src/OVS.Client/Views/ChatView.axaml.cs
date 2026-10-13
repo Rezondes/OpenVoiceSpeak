@@ -41,9 +41,9 @@ public partial class ChatView : UserControl
         History.ContainerPrepared += OnEntryShown;
         DataContextChanged += (_, _) => Watch();
         // the pill belongs to the animated display only
-        PropertyChanged += (_, e) =>
+        PropertyChanged += (_, args) =>
         {
-            if (e.Property == Motion.DisplayProperty && !Motion.IsAnimated(this)) HidePill();
+            if (args.Property == Motion.DisplayProperty && !Motion.IsAnimated(this)) HidePill();
         };
     }
 
@@ -67,31 +67,31 @@ public partial class ChatView : UserControl
         ScrollToEnd();
     }
 
-    void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
-        if (e.PropertyName != nameof(ChatViewModel.Selected)) return;
+        if (args.PropertyName != nameof(ChatViewModel.Selected)) return;
         ShowTab(watched?.Selected);
         ScrollToEnd(); // another tab starts at its newest line
         // Package 79: a tab scrolled out of the strip comes into view when chosen
         Dispatcher.UIThread.Post(() => (watched?.Selected is { } tab ? Tabs.ContainerFromItem(tab) : null)?.BringIntoView(), DispatcherPriority.Background);
     }
 
-    void OnComposerKeyDown(object? sender, KeyEventArgs e)
+    void OnComposerKeyDown(object? sender, KeyEventArgs args)
     {
-        if (e.Key != Key.Enter || e.KeyModifiers.HasFlag(KeyModifiers.Shift)) return;
-        e.Handled = true;
+        if (args.Key != Key.Enter || args.KeyModifiers.HasFlag(KeyModifiers.Shift)) return;
+        args.Handled = true;
         if (watched?.SendCommand.CanExecute(null) == true) watched.SendCommand.Execute(null);
     }
 
-    void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+    void OnScrollChanged(object? sender, ScrollChangedEventArgs args)
     {
-        if (e.ExtentDelta.Y != 0 || e.ViewportDelta.Y != 0)
+        if (args.ExtentDelta.Y != 0 || args.ViewportDelta.Y != 0)
         {
             if (atEnd) Follow(); // content or window changed: follow if the reader was at the end
             return;
         }
         // Only the reader's own scrolling decides whether we follow; it also stops a glide on its way down.
-        if (e.OffsetDelta.Y == 0) return;
+        if (args.OffsetDelta.Y == 0) return;
         if (gliding)
         {
             if (Math.Abs(Scroller.Offset.Y - glidSet) < 1) return;
@@ -149,11 +149,11 @@ public partial class ChatView : UserControl
         if (shownTab is not null) shownTab.Entries.CollectionChanged += OnEntriesChanged;
     }
 
-    void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
-        if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems is null) return;
+        if (args.Action != NotifyCollectionChangedAction.Add || args.NewItems is null) return;
         if (!Dispatcher.UIThread.CheckAccess()) return; // the list is only changed on the UI thread in the app
-        foreach (ChatEntry entry in e.NewItems)
+        foreach (ChatEntry entry in args.NewItems)
         {
             if (entry.Sending is { } sending) WatchSending(entry, sending);
             if (!Motion.IsAnimated(this)) continue;
@@ -163,9 +163,9 @@ public partial class ChatView : UserControl
     }
 
     /// <summary>A new line slides in: one's own from the composer (right, below), anyone else's from the left.</summary>
-    void OnEntryShown(object? sender, ContainerPreparedEventArgs e)
+    void OnEntryShown(object? sender, ContainerPreparedEventArgs args)
     {
-        if (e.Container.DataContext is not ChatEntry entry || !arriving.Remove(entry) || !Motion.IsAnimated(this)) return;
+        if (args.Container.DataContext is not ChatEntry entry || !arriving.Remove(entry) || !Motion.IsAnimated(this)) return;
         double side = entry.IsOwn ? Arrive : -Arrive;
         _ = new Animation
         {
@@ -177,16 +177,16 @@ public partial class ChatView : UserControl
                 new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0d), new Setter(TranslateTransform.XProperty, side), new Setter(TranslateTransform.YProperty, Lift) } },
                 new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1d), new Setter(TranslateTransform.XProperty, 0d), new Setter(TranslateTransform.YProperty, 0d) } },
             },
-        }.Play(e.Container);
+        }.Play(args.Container);
         if (entry.Notice is NoticeKind.Warning or NoticeKind.Error)
-            Dispatcher.UIThread.Post(() => Pulse(e.Container, entry.Notice == NoticeKind.Error ? "Ovs.Danger" : "Ovs.WarningText"), DispatcherPriority.Background);
+            Dispatcher.UIThread.Post(() => Pulse(args.Container, entry.Notice == NoticeKind.Error ? "Ovs.Danger" : "Ovs.WarningText"), DispatcherPriority.Background);
     }
 
     /// <summary>A warning or an error glows once on its left edge.</summary>
     static void Pulse(Control container, string colour)
     {
-        if (container.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("card")) is not { } card
-            || !card.TryFindResource(colour, card.ActualThemeVariant, out var brush) || brush is not ISolidColorBrush { Color: var c })
+        if (container.GetVisualDescendants().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("card")) is not { } card
+            || !card.TryFindResource(colour, card.ActualThemeVariant, out var brush) || brush is not ISolidColorBrush { Color: var color })
             return;
         _ = new Animation
         {
@@ -194,8 +194,8 @@ public partial class ChatView : UserControl
             Easing = Motion.Ease,
             Children =
             {
-                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Border.BoxShadowProperty, new BoxShadows(new BoxShadow { IsInset = true, OffsetX = 4, Color = c })) } },
-                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Border.BoxShadowProperty, new BoxShadows(new BoxShadow { IsInset = true, OffsetX = 0, Color = Color.FromArgb(0, c.R, c.G, c.B) })) } },
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Border.BoxShadowProperty, new BoxShadows(new BoxShadow { IsInset = true, OffsetX = 4, Color = color })) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Border.BoxShadowProperty, new BoxShadows(new BoxShadow { IsInset = true, OffsetX = 0, Color = Color.FromArgb(0, color.R, color.G, color.B) })) } },
             },
         }.Play(card);
     }
@@ -207,9 +207,9 @@ public partial class ChatView : UserControl
     void WatchSending(ChatEntry entry, OutgoingChatMessageViewModel sending)
     {
         bool wasWaiting = sending.IsWaiting, queued = false;
-        sending.PropertyChanged += (_, e) =>
+        sending.PropertyChanged += (_, args) =>
         {
-            if (e.PropertyName != nameof(OutgoingChatMessageViewModel.IsWaiting) && e.PropertyName != nameof(OutgoingChatMessageViewModel.IsFailed) || queued) return;
+            if (args.PropertyName != nameof(OutgoingChatMessageViewModel.IsWaiting) && args.PropertyName != nameof(OutgoingChatMessageViewModel.IsFailed) || queued) return;
             queued = true;
             Dispatcher.UIThread.Post(() =>
             {
@@ -218,14 +218,14 @@ public partial class ChatView : UserControl
                 wasWaiting = sending.IsWaiting;
                 if (!ended || !Motion.IsAnimated(this) || History.ContainerFromItem(entry) is not { } container) return;
                 if (!sending.IsFailed) ShowSent(container);
-                else if (container.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault(w => w.Name == "NotSent") is { } notSent) ShakeMotion.Shake(notSent);
+                else if (container.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault(wrapPanel => wrapPanel.Name == "NotSent") is { } notSent) ShakeMotion.Shake(notSent);
             }, DispatcherPriority.Background);
         };
     }
 
     static async void ShowSent(Control container)
     {
-        if (container.GetVisualDescendants().OfType<PathIcon>().FirstOrDefault(i => i.Width == 12 && i.Parent is StackPanel { Orientation: Orientation.Horizontal })?.Parent
+        if (container.GetVisualDescendants().OfType<PathIcon>().FirstOrDefault(pathIcon => pathIcon.Width == 12 && pathIcon.Parent is StackPanel { Orientation: Orientation.Horizontal })?.Parent
             is not StackPanel line || Application.Current?.TryFindResource("Icon.Checkmark", out var check) != true || check is not Geometry geometry)
             return;
         var mark = new PathIcon { Data = geometry, Width = 12, Height = 12, Classes = { "sm", "sentMark" } };
@@ -263,7 +263,7 @@ public partial class ChatView : UserControl
 
     void HidePill() => NewMessagesPill.IsVisible = false;
 
-    void OnNewMessagesPillClick(object? sender, RoutedEventArgs e)
+    void OnNewMessagesPillClick(object? sender, RoutedEventArgs args)
     {
         HidePill();
         atEnd = true;
@@ -272,20 +272,20 @@ public partial class ChatView : UserControl
 
     // ---- the unread badge pops in and its count ticks ----
 
-    void OnTabsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    void OnTabsChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
-        foreach (ChatTabViewModel tab in e.OldItems ?? Array.Empty<ChatTabViewModel>())
+        foreach (ChatTabViewModel tab in args.OldItems ?? Array.Empty<ChatTabViewModel>())
             if (tabsWatched.Remove(tab, out var handler)) tab.PropertyChanged -= handler; // a closed private tab
-        foreach (ChatTabViewModel tab in e.NewItems ?? Array.Empty<ChatTabViewModel>()) WatchTab(tab);
+        foreach (ChatTabViewModel tab in args.NewItems ?? Array.Empty<ChatTabViewModel>()) WatchTab(tab);
     }
 
     void WatchTab(ChatTabViewModel tab)
     {
         if (tabsWatched.ContainsKey(tab)) return;
         int before = tab.Unread;
-        System.ComponentModel.PropertyChangedEventHandler handler = (_, e) =>
+        System.ComponentModel.PropertyChangedEventHandler handler = (_, args) =>
         {
-            if (e.PropertyName != nameof(ChatTabViewModel.Unread)) return;
+            if (args.PropertyName != nameof(ChatTabViewModel.Unread)) return;
             int now = tab.Unread; // read here, shown on the UI thread
             bool popIn = before == 0;
             if (now > before) Dispatcher.UIThread.Post(() => // the display is a property of the window: asked there as well
@@ -300,7 +300,7 @@ public partial class ChatView : UserControl
 
     void Badge(ChatTabViewModel tab, bool popIn)
     {
-        if (Tabs.ContainerFromItem(tab)?.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("count")) is not { } badge) return;
+        if (Tabs.ContainerFromItem(tab)?.GetVisualDescendants().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("count")) is not { } badge) return;
         Animatable target = popIn ? badge : (Animatable?)badge.Child ?? badge;
         var start = new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0d) } };
         var end = new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 1d) } };

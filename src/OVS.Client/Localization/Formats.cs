@@ -4,12 +4,12 @@ namespace OVS.Client.Localization;
 public static class Formats
 {
     /// <summary>"45 s", "1 min 15 s", "1 h 30 min", "2 T 3 h".</summary>
-    public static string Duration(TimeSpan t) => t switch
+    public static string Duration(TimeSpan duration) => duration switch
     {
-        { TotalMinutes: < 1 } => $"{t.Seconds} s",
-        { TotalHours: < 1 } => t.Seconds == 0 ? $"{t.Minutes} min" : $"{t.Minutes} min {t.Seconds} s",
-        { TotalDays: < 1 } => t.Minutes == 0 ? $"{t.Hours} h" : $"{t.Hours} h {t.Minutes} min",
-        _ => string.Format(Strings.Ui_DurationDays, (int)t.TotalDays, t.Hours),
+        { TotalMinutes: < 1 } => $"{duration.Seconds} s",
+        { TotalHours: < 1 } => duration.Seconds == 0 ? $"{duration.Minutes} min" : $"{duration.Minutes} min {duration.Seconds} s",
+        { TotalDays: < 1 } => duration.Minutes == 0 ? $"{duration.Hours} h" : $"{duration.Hours} h {duration.Minutes} min",
+        _ => string.Format(Strings.Ui_DurationDays, (int)duration.TotalDays, duration.Hours),
     };
 
     /// <summary>A file size: whole KB (at least 1) below one MB, MB with one decimal from there.</summary>

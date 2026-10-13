@@ -74,12 +74,12 @@ public sealed class ClientConnection : IAsyncDisposable
     /// the connection alive against the server's idle timeout, which runs in real time.
     /// </param>
     public static async Task<ClientConnection> ConnectAsync(string host, int port, ClientIdentity identity, string nickname,
-        string? password, TrustedServerFingerprints known, Func<TofuPrompt, Task<bool>> confirm, TimeProvider time, CancellationToken ct = default)
+        string? password, TrustedServerFingerprints known, Func<TofuPrompt, Task<bool>> confirm, TimeProvider time, CancellationToken cancellation = default)
     {
         var tcp = new TcpClient();
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
             timeout.CancelAfter(TimeSpan.FromSeconds(10)); // clock: real time
             await tcp.ConnectAsync(host, port, timeout.Token);
 
@@ -167,7 +167,7 @@ public sealed class ClientConnection : IAsyncDisposable
         {
             await foreach (var up in voiceOut.Reader.ReadAllAsync(pingCts.Token)) await writer.WriteAsync(up, pingCts.Token);
         }
-        catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
+        catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
         {
             // the connection is going; its end is reported by the receive loop
         }
@@ -183,8 +183,8 @@ public sealed class ClientConnection : IAsyncDisposable
             {
                 switch (message)
                 {
-                    case Disconnected d:
-                        (reason, detail) = (d.Reason, d.Detail);
+                    case Disconnected disconnected:
+                        (reason, detail) = (disconnected.Reason, disconnected.Detail);
                         break;
                     case Pong:
                         LastRoundTrip = time.GetElapsedTime(Interlocked.Read(ref pingSentAt));
@@ -198,7 +198,7 @@ public sealed class ClientConnection : IAsyncDisposable
                 }
             }
         }
-        catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException or ProtocolException)
+        catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException or ProtocolException)
         {
         }
         finally
@@ -218,7 +218,7 @@ public sealed class ClientConnection : IAsyncDisposable
                 await Task.Delay(PingInterval, pingCts.Token); // clock: real time, keepalive against the server's real-time idle timeout
             }
         }
-        catch (Exception e) when (e is IOException or OperationCanceledException or ObjectDisposedException)
+        catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
         {
         }
     }
@@ -237,7 +237,7 @@ public sealed class ClientConnection : IAsyncDisposable
         {
             await ssl.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(1)); // clock: real time
         }
-        catch (Exception e) when (e is IOException or ObjectDisposedException or NotSupportedException
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException or NotSupportedException
                                       or InvalidOperationException or TimeoutException)
         {
             // already broken or busy: the socket close below still ends the connection

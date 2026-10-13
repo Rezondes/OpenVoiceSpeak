@@ -28,7 +28,7 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
         IsReadOnly = ReadOnlyReason is not null;
         CanDelete = id is null || GroupRules.CanDelete(actor, id.Value, permissions);
         Toggles = PermissionLabels.All
-            .Select(p => new PermissionToggleViewModel(p.Value, p.Label, permissions.Has(p.Value), !IsReadOnly && actor.Has(p.Value)))
+            .Select(choice => new PermissionToggleViewModel(choice.Value, choice.Label, permissions.Has(choice.Value), !IsReadOnly && actor.Has(choice.Value)))
             .ToList();
     }
 
@@ -38,7 +38,7 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
     public bool IsEditable => !IsReadOnly;
     public bool CanDelete { get; }
     public IReadOnlyList<PermissionToggleViewModel> Toggles { get; }
-    public Permission Permissions => Toggles.Where(t => t.IsChecked).Aggregate(Permission.None, (acc, t) => acc | t.Permission);
+    public Permission Permissions => Toggles.Where(permissionToggle => permissionToggle.IsChecked).Aggregate(Permission.None, (acc, permissionToggle) => acc | permissionToggle.Permission);
 
     // ---- Package 114: what the server has, to tell an edit ----
     string serverName = "";
@@ -57,9 +57,9 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
     {
         if (IsReadOnly) return this;
         if (old.Name != old.serverName) Name = old.Name;
-        foreach (var t in Toggles.Where(t => t.IsEnabled))
-            if (old.Toggles.FirstOrDefault(o => o.Permission == t.Permission) is { } edited && edited.IsChecked != old.serverPermissions.Has(t.Permission))
-                t.IsChecked = edited.IsChecked;
+        foreach (var permissionToggle in Toggles.Where(permissionToggleViewModel => permissionToggleViewModel.IsEnabled))
+            if (old.Toggles.FirstOrDefault(permissionToggleViewModel => permissionToggleViewModel.Permission == permissionToggle.Permission) is { } edited && edited.IsChecked != old.serverPermissions.Has(permissionToggle.Permission))
+                permissionToggle.IsChecked = edited.IsChecked;
         return this;
     }
 
@@ -67,8 +67,8 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
     internal void Follow(string name, Permission permissions)
     {
         if (Name == serverName) Name = name;
-        foreach (var t in Toggles)
-            if (t.IsChecked == serverPermissions.Has(t.Permission)) t.IsChecked = permissions.Has(t.Permission);
+        foreach (var permissionToggle in Toggles)
+            if (permissionToggle.IsChecked == serverPermissions.Has(permissionToggle.Permission)) permissionToggle.IsChecked = permissions.Has(permissionToggle.Permission);
         SetServer(name, permissions);
     }
 
@@ -76,7 +76,7 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
     internal void Revert()
     {
         Name = serverName;
-        foreach (var t in Toggles) t.IsChecked = serverPermissions.Has(t.Permission);
+        foreach (var permissionToggle in Toggles) permissionToggle.IsChecked = serverPermissions.Has(permissionToggle.Permission);
     }
     public string DisplayName => Id is null ? string.Format(Strings.Group_Unsaved, Name) : Name;
 }

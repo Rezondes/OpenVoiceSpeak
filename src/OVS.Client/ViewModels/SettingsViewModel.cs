@@ -88,16 +88,16 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         echoCancellation = current.EchoCancellation;
         isMusic = current.AudioContent == AudioContent.Music;
         pttReleaseDelayMs = current.PttReleaseDelayMs;
-        KeyBindings = new(current.KeyBindings.Select(b => new KeyBindingViewModel(b, this)));
+        KeyBindings = new(current.KeyBindings.Select(keyBinding => new KeyBindingViewModel(keyBinding, this)));
         KeyBindings.CollectionChanged += (_, _) => OnKeysChanged();
-        selectedTheme = Themes.First(t => t.Value == current.Theme);
-        selectedDisplay = Displays.First(d => d.Value == current.Display);
-        selectedLanguage = Languages.First(l => l.Value == current.Language);
+        selectedTheme = Themes.First(choice => choice.Value == current.Theme);
+        selectedDisplay = Displays.First(displayOption => displayOption.Value == current.Display);
+        selectedLanguage = Languages.First(choice => choice.Value == current.Language);
         checkForUpdates = current.CheckForUpdates;
         allSoundsOff = !current.SoundsEnabled;
         backgroundOpacityPercent = current.BackgroundOpacity * 100f;
         blurBackground = current.BlurBackground;
-        SoundRows = Enum.GetValues<SoundEvent>().Select(e => new SoundRowViewModel(e, current.SoundFor(e), this)).ToList();
+        SoundRows = Enum.GetValues<SoundEvent>().Select(soundEvent => new SoundRowViewModel(soundEvent, current.SoundFor(soundEvent), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
         untouched = ToSettings(basis).ToJson(); // Package 114: what the page shows before anyone touched it
     }
@@ -134,8 +134,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     // ---- About (Package 42) ----
 
     public string AppVersion => $"OpenVoiceSpeak {BuildInfo.Current.Version}";
-    public string BuildDetails => BuildInfo.Current is { IsCi: true } b
-        ? string.Format(Strings.About_Build, b.ShortCommit, b.BuildTime.ToLocalTime())
+    public string BuildDetails => BuildInfo.Current is { IsCi: true } build
+        ? string.Format(Strings.About_Build, build.ShortCommit, build.BuildTime.ToLocalTime())
         : Strings.About_LocalBuild;
 
     public static IReadOnlyList<Choice<AppTheme>> Themes =>
@@ -236,10 +236,10 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
             if (wanted is not null) options.Add(new(wanted, Strings.Device_Loading));
             return new DeviceOptionList(options, options[^1], false);
         }
-        options.AddRange(devices.Select(d => new AudioDeviceOption(d.Id, d.Name)));
+        options.AddRange(devices.Select(audioDevice => new AudioDeviceOption(audioDevice.Id, audioDevice.Name)));
         // the saved device, or the default device (null) when it is gone, which the hint tells
         bool fellBack = wanted is not null && devices.All(device => device.Id != wanted);
-        return new DeviceOptionList(options, options.First(o => o.Id == (fellBack ? null : wanted)), fellBack);
+        return new DeviceOptionList(options, options.First(audioDeviceOption => audioDeviceOption.Id == (fellBack ? null : wanted)), fellBack);
     }
 
     /// <summary>The loaded list: a device the user picked meanwhile stays, otherwise the saved one is looked up.</summary>
@@ -271,7 +271,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; set; }
 
     string? KeyConflict =>
-        KeyBindings.GroupBy(b => b.Binding.Chord).Where(g => g.Count() > 1).Select(g => g.Select(b => b.Binding.Action).Distinct().ToList())
+        KeyBindings.GroupBy(keyBinding => keyBinding.Binding.Chord).Where(grouping => grouping.Count() > 1).Select(grouping => grouping.Select(keyBinding => keyBinding.Binding.Action).Distinct().ToList())
             .Select(actions => actions.Count > 1
                 ? string.Format(Strings.Keys_Conflict, KeyActionLabels.Localize(actions[0]), KeyActionLabels.Localize(actions[1]))
                 : string.Format(Strings.Keys_Duplicate, KeyActionLabels.Localize(actions[0])))
@@ -280,10 +280,10 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     public bool HasKeyConflict => KeyConflict is not null;
 
     /// <summary>Package 59: push-to-talk without a push-to-talk key: nobody would hear you.</summary>
-    public bool ShowPttHint => !VoiceActivation && KeyBindings.All(b => b.Binding.Action != KeyAction.PushToTalk);
+    public bool ShowPttHint => !VoiceActivation && KeyBindings.All(keyBinding => keyBinding.Binding.Action != KeyAction.PushToTalk);
 
     /// <summary>Package 130 (A139): the release delay acts on push-to-talk and on link push-to-talk, also with voice activation.</summary>
-    public bool ShowReleaseDelay => !VoiceActivation || KeyBindings.Any(b => b.Binding.Action == KeyAction.LinkPushToTalk);
+    public bool ShowReleaseDelay => !VoiceActivation || KeyBindings.Any(keyBinding => keyBinding.Binding.Action == KeyAction.LinkPushToTalk);
 
     /// <summary>"Taste festlegen": the key dialog with push-to-talk chosen, the user only presses the key.</summary>
     [RelayCommand]
@@ -305,7 +305,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     }
 
     Task<KeyChord?> CaptureAsync(KeyAction action) =>
-        captureChord is null ? Task.FromResult<KeyChord?>(null) : captureChord().ContinueWith(t => (KeyChord?)t.Result, TaskScheduler.Default);
+        captureChord is null ? Task.FromResult<KeyChord?>(null) : captureChord().ContinueWith(task => (KeyChord?)task.Result, TaskScheduler.Default);
 
     [RelayCommand]
     async Task AddKeyBinding()
@@ -421,7 +421,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         InputGain = (float)(InputGainPercent / 100),
         OutputVolume = (float)(OutputVolumePercent / 100),
         Mode = VoiceActivation ? TransmitMode.VoiceActivation : TransmitMode.PushToTalk,
-        KeyBindings = KeyBindings.Select(b => b.Binding).ToList(),
+        KeyBindings = KeyBindings.Select(keyBinding => keyBinding.Binding).ToList(),
         PttReleaseDelayMs = (int)Math.Round(PttReleaseDelayMs),
         VadThresholdDb = (float)VadThresholdDb,
         VadAutomatic = VadAutomatic,
@@ -437,6 +437,6 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         BackgroundOpacity = (float)(BackgroundOpacityPercent / 100),
         BlurBackground = BlurBackground,
         Display = SelectedDisplay.Value,
-        Sounds = SoundRows.Select(r => (r.Event, Setting: r.ToSetting())).Where(r => !r.Setting.IsDefaultFor(r.Event)).ToDictionary(r => r.Event, r => r.Setting),
+        Sounds = SoundRows.Select(soundRow => (soundRow.Event, Setting: soundRow.ToSetting())).Where(r => !r.Setting.IsDefaultFor(r.Event)).ToDictionary(r => r.Event, r => r.Setting),
     }.Clamp();
 }

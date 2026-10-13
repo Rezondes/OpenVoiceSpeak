@@ -32,7 +32,7 @@ public static class IconImport
             using var stream = file.OpenRead();
             image = new Bitmap(stream);
         }
-        catch (Exception e) when (e is not OutOfMemoryException)
+        catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             return new IconImportResult(null, Strings.Icon_Unreadable);
         }

@@ -17,16 +17,16 @@ public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool Us
         string profile = ClientPaths.DefaultDirectory;
         int? debugPort = null, afterUpdate = null;
         bool audio = true, audioDebug = false;
-        for (int i = 0; i < args.Length; i++)
+        for (int index = 0; index < args.Length; index++)
         {
-            switch (args[i])
+            switch (args[index])
             {
-                case "--profile" when i + 1 < args.Length:
-                    profile = Path.GetFullPath(args[++i]);
+                case "--profile" when index + 1 < args.Length:
+                    profile = Path.GetFullPath(args[++index]);
                     break;
-                case "--debug-api" when i + 1 < args.Length && int.TryParse(args[i + 1], out var port):
+                case "--debug-api" when index + 1 < args.Length && int.TryParse(args[index + 1], out var port):
                     debugPort = port;
-                    i++;
+                    index++;
                     break;
                 case "--no-audio":
                     audio = false;
@@ -34,9 +34,9 @@ public sealed record ClientOptions(string ProfileDir, int? DebugApiPort, bool Us
                 case "--audio-debug":
                     audioDebug = true;
                     break;
-                case AfterUpdateArg when i + 1 < args.Length && int.TryParse(args[i + 1], out var pid):
+                case AfterUpdateArg when index + 1 < args.Length && int.TryParse(args[index + 1], out var pid):
                     afterUpdate = pid;
-                    i++;
+                    index++;
                     break;
             }
         }

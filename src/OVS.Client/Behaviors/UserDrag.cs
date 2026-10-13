@@ -39,43 +39,43 @@ public sealed class UserDrag
 
     UserViewModel? User => source?.DataContext as UserViewModel;
 
-    void OnPressed(object? sender, PointerPressedEventArgs e)
+    void OnPressed(object? sender, PointerPressedEventArgs args)
     {
-        if (dragging || !e.GetCurrentPoint(tree).Properties.IsLeftButtonPressed) return;
-        var row = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("row"));
+        if (dragging || !args.GetCurrentPoint(tree).Properties.IsLeftButtonPressed) return;
+        var row = (args.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("row"));
         if (row?.DataContext is not UserViewModel { CanDrag: true }) return; // a channel row, or a user I may not move
         source = row;
-        start = e.GetPosition(tree);
-        grab = e.GetPosition(row);
+        start = args.GetPosition(tree);
+        grab = args.GetPosition(row);
     }
 
-    void OnMoved(object? sender, PointerEventArgs e)
+    void OnMoved(object? sender, PointerEventArgs args)
     {
         if (source is null) return;
         // let go outside the window, or the row is gone (the user left, a sync made a new one): the drag is over
-        if (!e.GetCurrentPoint(tree).Properties.IsLeftButtonPressed || source.GetVisualRoot() is null)
+        if (!args.GetCurrentPoint(tree).Properties.IsLeftButtonPressed || source.GetVisualRoot() is null)
         {
             End();
             return;
         }
         if (!dragging)
         {
-            var position = e.GetPosition(tree);
+            var position = args.GetPosition(tree);
             if (Math.Abs(position.Y - start.Y) < ReorderDrag.Threshold && Math.Abs(position.X - start.X) < ReorderDrag.Threshold) return;
-            if (!Begin(e)) return;
+            if (!Begin(args)) return;
         }
-        DragVisuals.Follow(preview!, e, grab);
-        Light(TargetAt(e));
+        DragVisuals.Follow(preview!, args, grab);
+        Light(TargetAt(args));
     }
 
-    bool Begin(PointerEventArgs e)
+    bool Begin(PointerEventArgs args)
     {
         if (source is null || OverlayLayer.GetOverlayLayer(tree) is not { } overlay) return false;
         dragging = true;
         preview = DragVisuals.Lift(source);
         overlay.Children.Add(preview);
         source.Opacity = ReorderDrag.DimmedOpacity;
-        e.Pointer.Capture(tree);
+        args.Pointer.Capture(tree);
         top = TopLevel.GetTopLevel(tree);
         top?.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         return true;
@@ -85,12 +85,12 @@ public sealed class UserDrag
     /// The channel whose block (its row and its users) is under the pointer, if the user may go there. Only where the tree
     /// can be seen: the scrolled-away part of the list is no target.
     /// </summary>
-    ChannelViewModel? TargetAt(PointerEventArgs e)
+    ChannelViewModel? TargetAt(PointerEventArgs args)
     {
         if (User is not { } user) return null;
         var viewer = tree.FindAncestorOfType<ScrollViewer>();
-        if (viewer is not null && !new Rect(viewer.Bounds.Size).Contains(e.GetPosition(viewer))) return null;
-        var at = e.GetPosition(tree);
+        if (viewer is not null && !new Rect(viewer.Bounds.Size).Contains(args.GetPosition(viewer))) return null;
+        var at = args.GetPosition(tree);
         foreach (var container in tree.GetRealizedContainers())
         {
             if (container.Classes.Contains("leaving") || container.TranslatePoint(default, tree) is not { } topLeft) continue; // Package 102: folding away
@@ -104,28 +104,28 @@ public sealed class UserDrag
     void Light(ChannelViewModel? channel)
     {
         var row = channel is null ? null : tree.ContainerFromItem(channel)?.GetVisualDescendants().OfType<Border>()
-            .FirstOrDefault(b => b.Classes.Contains("row") && b.DataContext == channel);
+            .FirstOrDefault(border => border.Classes.Contains("row") && border.DataContext == channel);
         if (row == lit) return;
         lit?.Classes.Set(TargetClass, false);
         row?.Classes.Set(TargetClass, true);
         lit = row;
     }
 
-    void OnReleased(object? sender, PointerReleasedEventArgs e)
+    void OnReleased(object? sender, PointerReleasedEventArgs args)
     {
-        var (wasDragging, user, target) = (dragging, User, dragging ? TargetAt(e) : null);
+        var (wasDragging, user, target) = (dragging, User, dragging ? TargetAt(args) : null);
         End();
         if (!wasDragging) return;
-        e.Handled = true;
+        args.Handled = true;
         if (user is null || target is null) return;
         // Package 103: the row already shows where it was dropped, it must not fly there again once the server confirms
         ItemFlight.Ground(user, drop(user, target));
     }
 
-    void OnKeyDown(object? sender, KeyEventArgs e)
+    void OnKeyDown(object? sender, KeyEventArgs args)
     {
-        if (e.Key != Key.Escape || !dragging) return;
-        e.Handled = true;
+        if (args.Key != Key.Escape || !dragging) return;
+        args.Handled = true;
         End();
     }
 

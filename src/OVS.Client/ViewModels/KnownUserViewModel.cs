@@ -46,7 +46,7 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     Task Delete() => actions.Delete(this);
 
     /// <summary>The longest running ban.</summary>
-    public string BanText => Bans.OrderBy(b => b.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""
+    public string BanText => Bans.OrderBy(banInfo => banInfo.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""
         : string.Format(Strings.Ui_BanDetail, ban.ExpiresAt is { } until ? string.Format(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever)
           + (ban.Reason.Length > 0 ? ". " + string.Format(Strings.Ui_BanReason, ban.Reason) : "");
 
@@ -65,5 +65,5 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
     /// <summary>Case-insensitive, in nickname, previous nicknames, fingerprint and IP.</summary>
     public bool Matches(string search) =>
         search.Length == 0
-        || new[] { Nickname, Fingerprint, Info.LastIp ?? "" }.Concat(Info.PreviousNicknames ?? []).Any(v => v.Contains(search, StringComparison.OrdinalIgnoreCase));
+        || new[] { Nickname, Fingerprint, Info.LastIp ?? "" }.Concat(Info.PreviousNicknames ?? []).Any(text => text.Contains(search, StringComparison.OrdinalIgnoreCase));
 }

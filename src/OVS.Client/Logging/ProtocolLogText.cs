@@ -25,50 +25,50 @@ internal static class ProtocolLogText
         {
             case ChannelAdded { Channel.Kind: ChannelKind.Separator }:
                 return "Separator created";
-            case ChannelAdded m:
-                return $"Channel '{m.Channel.Name}' created";
+            case ChannelAdded channelAdded:
+                return $"Channel '{channelAdded.Channel.Name}' created";
             case ChannelUpdated { Channel.Kind: ChannelKind.Separator }:
                 return "Separator moved";
-            case ChannelUpdated m:
-                var before = mirror.Channels.GetValueOrDefault(m.Channel.Id);
-                if (before is not null && before.IsMuted != m.Channel.IsMuted)
-                    return $"Channel '{m.Channel.Name}' {(m.Channel.IsMuted ? "is muted now" : "is no longer muted")}";
-                return before is null || before.Name == m.Channel.Name
-                    ? $"Channel '{m.Channel.Name}' changed"
-                    : $"Channel '{before.Name}' renamed to '{m.Channel.Name}'";
-            case ChannelRemoved m when IsSeparator(m.ChannelId, mirror):
+            case ChannelUpdated channelUpdated:
+                var before = mirror.Channels.GetValueOrDefault(channelUpdated.Channel.Id);
+                if (before is not null && before.IsMuted != channelUpdated.Channel.IsMuted)
+                    return $"Channel '{channelUpdated.Channel.Name}' {(channelUpdated.Channel.IsMuted ? "is muted now" : "is no longer muted")}";
+                return before is null || before.Name == channelUpdated.Channel.Name
+                    ? $"Channel '{channelUpdated.Channel.Name}' changed"
+                    : $"Channel '{before.Name}' renamed to '{channelUpdated.Channel.Name}'";
+            case ChannelRemoved channelRemoved when IsSeparator(channelRemoved.ChannelId, mirror):
                 return "Separator deleted";
-            case ChannelRemoved m:
-                return $"Channel {DescribeChannel(m.ChannelId, mirror)} deleted";
-            case UserJoined m:
-                return $"{m.User.Nickname} connected, channel {DescribeChannel(m.User.ChannelId, mirror)}";
-            case UserUpdated m:
-                return DescribeUserUpdate(mirror.Users.GetValueOrDefault(m.User.SessionId), m.User, mirror);
-            case UserLeft m:
-                return $"{DescribeSession(m.SessionId, mirror)} disconnected";
-            case ChannelsLinked m:
-                return $"Channels {DescribeChannel(m.A, mirror)} and {DescribeChannel(m.B, mirror)} linked";
-            case ChannelsUnlinked m:
-                return $"Link between {DescribeChannel(m.A, mirror)} and {DescribeChannel(m.B, mirror)} removed";
-            case GroupsChanged m:
-                return $"Groups changed: {string.Join(", ", m.Groups.Select(g => g.Name))}";
-            case ServerSettingsChanged m:
-                return $"Server settings changed: name '{m.Settings.Name}', {(m.Settings.HasPassword ? "with" : "without")} password";
-            case UserList m:
-                return $"User list received ({m.Users.Count} entries)";
-            case BanList m:
-                return $"Ban list received ({m.Bans.Count} entries)";
-            case ChatMessage m:
-                return m.Target switch
+            case ChannelRemoved channelRemoved:
+                return $"Channel {DescribeChannel(channelRemoved.ChannelId, mirror)} deleted";
+            case UserJoined userJoined:
+                return $"{userJoined.User.Nickname} connected, channel {DescribeChannel(userJoined.User.ChannelId, mirror)}";
+            case UserUpdated userUpdated:
+                return DescribeUserUpdate(mirror.Users.GetValueOrDefault(userUpdated.User.SessionId), userUpdated.User, mirror);
+            case UserLeft userLeft:
+                return $"{DescribeSession(userLeft.SessionId, mirror)} disconnected";
+            case ChannelsLinked channelsLinked:
+                return $"Channels {DescribeChannel(channelsLinked.A, mirror)} and {DescribeChannel(channelsLinked.B, mirror)} linked";
+            case ChannelsUnlinked channelsUnlinked:
+                return $"Link between {DescribeChannel(channelsUnlinked.A, mirror)} and {DescribeChannel(channelsUnlinked.B, mirror)} removed";
+            case GroupsChanged groupsChanged:
+                return $"Groups changed: {string.Join(", ", groupsChanged.Groups.Select(groupInfo => groupInfo.Name))}";
+            case ServerSettingsChanged serverSettingsChanged:
+                return $"Server settings changed: name '{serverSettingsChanged.Settings.Name}', {(serverSettingsChanged.Settings.HasPassword ? "with" : "without")} password";
+            case UserList userList:
+                return $"User list received ({userList.Users.Count} entries)";
+            case BanList banList:
+                return $"Ban list received ({banList.Bans.Count} entries)";
+            case ChatMessage chatMessage:
+                return chatMessage.Target switch
                 {
-                    ChatTarget.Server => $"Chat (General) {m.FromNickname}: {m.Text}",
-                    ChatTarget.Channel => $"Chat in {DescribeChannel(m.ChannelId ?? Guid.Empty, mirror)} {m.FromNickname}: {m.Text}",
-                    _ => $"Private {m.FromNickname} to {DescribeSession(m.ToSessionId ?? 0, mirror)}: {m.Text}",
+                    ChatTarget.Server => $"Chat (General) {chatMessage.FromNickname}: {chatMessage.Text}",
+                    ChatTarget.Channel => $"Chat in {DescribeChannel(chatMessage.ChannelId ?? Guid.Empty, mirror)} {chatMessage.FromNickname}: {chatMessage.Text}",
+                    _ => $"Private {chatMessage.FromNickname} to {DescribeSession(chatMessage.ToSessionId ?? 0, mirror)}: {chatMessage.Text}",
                 };
-            case ServerIcon m:
-                return m.PngBase64 is null ? "Server has no logo" : $"Server logo received ({Base64Text.Decoded(m.PngBase64.Length) / 1024} KB)";
-            case Error { Detail: { Length: > 0 } detail } e:
-                return $"Error {e.Code} ({e.RequestId}): {detail}"; // A45: the UI shows its own text, the detail only lands here
+            case ServerIcon serverIcon:
+                return serverIcon.PngBase64 is null ? "Server has no logo" : $"Server logo received ({Base64Text.Decoded(serverIcon.PngBase64.Length) / 1024} KB)";
+            case Error { Detail: { Length: > 0 } detail } error:
+                return $"Error {error.Code} ({error.RequestId}): {detail}"; // A45: the UI shows its own text, the detail only lands here
             case Error:
                 return null;
             default:
@@ -98,47 +98,47 @@ internal static class ProtocolLogText
 
         var text = request switch
         {
-            JoinChannel r => $"Join channel {DescribeChannel(r.ChannelId, mirror)}",
+            JoinChannel joinChannel => $"Join channel {DescribeChannel(joinChannel.ChannelId, mirror)}",
             CreateChannel { Kind: ChannelKind.Separator } => "Create separator",
-            CreateChannel r => $"Create channel '{r.Name}'",
-            EditChannel r => $"Edit channel {DescribeChannel(r.ChannelId, mirror)}: name '{r.Name}', order {r.Order}, muted {YesNo(r.IsMuted)}, max. users {r.MaxUsers}, bitrate {r.Bitrate} kbps",
-            DeleteChannel r => IsSeparator(r.ChannelId, mirror) ? "Delete separator" : $"Delete channel {DescribeChannel(r.ChannelId, mirror)}",
-            SetChannelLinks r => $"Change links: set {r.Add.Count}, remove {r.Remove.Count}",
-            ReorderChannels r => $"Reorder channels: {string.Join(", ", r.ChannelIds.Select(id => DescribeChannel(id, mirror)))}",
-            ReorderGroups r => $"Reorder groups: {string.Join(", ", r.GroupIds.Select(id => DescribeGroup(id, mirror)))}",
-            MoveUser r => $"Move {DescribeSession(r.SessionId, mirror)} to {DescribeChannel(r.ChannelId, mirror)}",
-            SetSelfState r => $"Own state: muted {YesNo(r.Muted)}, deafened {YesNo(r.Deafened)}",
-            LinkChannels r => $"Link channels {DescribeChannel(r.A, mirror)} and {DescribeChannel(r.B, mirror)}",
-            UnlinkChannels r => $"Remove link between {DescribeChannel(r.A, mirror)} and {DescribeChannel(r.B, mirror)}",
-            CreateGroup r => $"Create group '{r.Name}' ({r.Permissions})",
-            UpdateGroup r => $"Change group {DescribeGroup(r.GroupId, mirror)}: name '{r.Name}', permissions {r.Permissions}",
-            DeleteGroup r => $"Delete group {DescribeGroup(r.GroupId, mirror)}",
-            AssignGroup r => $"Assign group {DescribeGroup(r.GroupId, mirror)} to {DescribePerson(r.Fingerprint, mirror)}",
-            UnassignGroup r => $"Remove group {DescribeGroup(r.GroupId, mirror)} from {DescribePerson(r.Fingerprint, mirror)}",
+            CreateChannel createChannel => $"Create channel '{createChannel.Name}'",
+            EditChannel editChannel => $"Edit channel {DescribeChannel(editChannel.ChannelId, mirror)}: name '{editChannel.Name}', order {editChannel.Order}, muted {YesNo(editChannel.IsMuted)}, max. users {editChannel.MaxUsers}, bitrate {editChannel.Bitrate} kbps",
+            DeleteChannel deleteChannel => IsSeparator(deleteChannel.ChannelId, mirror) ? "Delete separator" : $"Delete channel {DescribeChannel(deleteChannel.ChannelId, mirror)}",
+            SetChannelLinks setChannelLinks => $"Change links: set {setChannelLinks.Add.Count}, remove {setChannelLinks.Remove.Count}",
+            ReorderChannels reorderChannels => $"Reorder channels: {string.Join(", ", reorderChannels.ChannelIds.Select(id => DescribeChannel(id, mirror)))}",
+            ReorderGroups reorderGroups => $"Reorder groups: {string.Join(", ", reorderGroups.GroupIds.Select(id => DescribeGroup(id, mirror)))}",
+            MoveUser moveUser => $"Move {DescribeSession(moveUser.SessionId, mirror)} to {DescribeChannel(moveUser.ChannelId, mirror)}",
+            SetSelfState setSelfState => $"Own state: muted {YesNo(setSelfState.Muted)}, deafened {YesNo(setSelfState.Deafened)}",
+            LinkChannels linkChannels => $"Link channels {DescribeChannel(linkChannels.A, mirror)} and {DescribeChannel(linkChannels.B, mirror)}",
+            UnlinkChannels unlinkChannels => $"Remove link between {DescribeChannel(unlinkChannels.A, mirror)} and {DescribeChannel(unlinkChannels.B, mirror)}",
+            CreateGroup createGroup => $"Create group '{createGroup.Name}' ({createGroup.Permissions})",
+            UpdateGroup updateGroup => $"Change group {DescribeGroup(updateGroup.GroupId, mirror)}: name '{updateGroup.Name}', permissions {updateGroup.Permissions}",
+            DeleteGroup deleteGroup => $"Delete group {DescribeGroup(deleteGroup.GroupId, mirror)}",
+            AssignGroup assignGroup => $"Assign group {DescribeGroup(assignGroup.GroupId, mirror)} to {DescribePerson(assignGroup.Fingerprint, mirror)}",
+            UnassignGroup unassignGroup => $"Remove group {DescribeGroup(unassignGroup.GroupId, mirror)} from {DescribePerson(unassignGroup.Fingerprint, mirror)}",
             ListUsers => "Request user list",
             ListBans => "Request ban list",
             RedeemAdminToken => "Redeem admin token",
-            SetServerIcon r => r.PngBase64 is null ? "Remove server logo" : "Set server logo",
+            SetServerIcon setServerIcon => setServerIcon.PngBase64 is null ? "Remove server logo" : "Set server logo",
             GetServerIcon => "Request server logo",
-            SendChat r => r.Target switch
+            SendChat sendChat => sendChat.Target switch
             {
                 ChatTarget.Server => "Chat to everyone",
                 ChatTarget.Channel => "Chat in the channel",
-                _ => $"Private message to {DescribeSession(r.ToSessionId ?? 0, mirror)}",
+                _ => $"Private message to {DescribeSession(sendChat.ToSessionId ?? 0, mirror)}",
             },
-            UpdateServerSettings r => $"Change server settings: name '{r.Name}'" + r.Password switch
+            UpdateServerSettings updateServerSettings => $"Change server settings: name '{updateServerSettings.Name}'" + updateServerSettings.Password switch
             {
                 null => "",
                 "" => ", remove password",
                 _ => ", set password",
             },
-            KickSession r => $"Kick {DescribeSession(r.SessionId, mirror)}: {r.Reason}",
-            BanSession r => $"Ban {DescribeSession(r.SessionId, mirror)} ({BanTerms(r.DurationMinutes, r.IncludeIp)}): {r.Reason}",
-            BanKnownUser r => $"Ban {DescribePerson(r.Fingerprint, mirror)} ({BanTerms(r.DurationMinutes, r.IncludeIp)}): {r.Reason}",
-            DeleteKnownUser r => $"Delete the user data of {DescribePerson(r.Fingerprint, mirror)}",
-            Unban r => $"Lift ban {r.BanId}",
-            SetSessionServerMute r => $"{ServerMute(r.Muted)} {DescribeSession(r.SessionId, mirror)}",
-            SetKnownUserServerMute r => $"{ServerMute(r.Muted)} user {ShortenFingerprint(r.Fingerprint)}",
+            KickSession kickSession => $"Kick {DescribeSession(kickSession.SessionId, mirror)}: {kickSession.Reason}",
+            BanSession banSession => $"Ban {DescribeSession(banSession.SessionId, mirror)} ({BanTerms(banSession.DurationMinutes, banSession.IncludeIp)}): {banSession.Reason}",
+            BanKnownUser banKnownUser => $"Ban {DescribePerson(banKnownUser.Fingerprint, mirror)} ({BanTerms(banKnownUser.DurationMinutes, banKnownUser.IncludeIp)}): {banKnownUser.Reason}",
+            DeleteKnownUser deleteKnownUser => $"Delete the user data of {DescribePerson(deleteKnownUser.Fingerprint, mirror)}",
+            Unban unban => $"Lift ban {unban.BanId}",
+            SetSessionServerMute setSessionServerMute => $"{ServerMute(setSessionServerMute.Muted)} {DescribeSession(setSessionServerMute.SessionId, mirror)}",
+            SetKnownUserServerMute setKnownUserServerMute => $"{ServerMute(setKnownUserServerMute.Muted)} user {ShortenFingerprint(setKnownUserServerMute.Fingerprint)}",
             _ => request.GetType().Name,
         };
         return $"Request {request.RequestId}: {text}";
@@ -154,11 +154,11 @@ internal static class ProtocolLogText
     static string DescribeSession(uint id, StateMirror mirror) => mirror.Users.GetValueOrDefault(id)?.Nickname ?? $"#{id}";
 
     /// <summary>The group's quoted name, or its quoted id if unknown.</summary>
-    static string DescribeGroup(Guid id, StateMirror mirror) => $"'{mirror.Groups.FirstOrDefault(g => g.Id == id)?.Name ?? id.ToString()}'";
+    static string DescribeGroup(Guid id, StateMirror mirror) => $"'{mirror.Groups.FirstOrDefault(groupInfo => groupInfo.Id == id)?.Name ?? id.ToString()}'";
 
     /// <summary>The nickname of the online user with this fingerprint, else the shortened fingerprint.</summary>
     static string DescribePerson(string fingerprint, StateMirror mirror) =>
-        mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == fingerprint)?.Nickname ?? ShortenFingerprint(fingerprint);
+        mirror.Users.Values.FirstOrDefault(user => user.Fingerprint == fingerprint)?.Nickname ?? ShortenFingerprint(fingerprint);
 
     static string ShortenFingerprint(string fingerprint) => fingerprint[..Math.Min(12, fingerprint.Length)];
 }

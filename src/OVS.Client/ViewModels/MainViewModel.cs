@@ -231,7 +231,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>How to talk right now, shown under the own name while not sending.</summary>
     public string TalkHint => Settings.Mode == TransmitMode.VoiceActivation
         ? Strings.TalkHint_VoiceActivation
-        : Settings.KeyBindings.Where(b => b.Action == KeyAction.PushToTalk).Select(b => b.Chord.Name).ToList() is { Count: > 0 } ptt
+        : Settings.KeyBindings.Where(keyBinding => keyBinding.Action == KeyAction.PushToTalk).Select(keyBinding => keyBinding.Chord.Name).ToList() is { Count: > 0 } ptt
             ? $"PTT: {string.Join(", ", ptt)}"
             : Strings.TalkHint_NoPttKey;
 
@@ -262,7 +262,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings.Save(storageDir);
         soundLibrary.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();
-        var keysText = Settings.KeyBindings.Count == 0 ? "keine" : string.Join(", ", Settings.KeyBindings.Select(b => $"{b.Action} {b.Chord.Name}"));
+        var keysText = Settings.KeyBindings.Count == 0 ? "keine" : string.Join(", ", Settings.KeyBindings.Select(keyBinding => $"{keyBinding.Action} {keyBinding.Chord.Name}"));
         Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
                   $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
                   $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB, " +

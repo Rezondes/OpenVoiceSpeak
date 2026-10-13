@@ -96,13 +96,13 @@ public static class ItemMotion
 
     static ItemMotion()
     {
-        EnterProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
+        EnterProperty.Changed.AddClassHandler<ItemsControl>((list, args) =>
         {
-            if (e.GetNewValue<bool>()) entryTrackers.GetValue(list, l => new EntryTracker(l));
+            if (args.GetNewValue<bool>()) entryTrackers.GetValue(list, itemsControl => new EntryTracker(itemsControl));
         });
-        FlipProperty.Changed.AddClassHandler<ItemsControl>((list, e) =>
+        FlipProperty.Changed.AddClassHandler<ItemsControl>((list, args) =>
         {
-            if (e.GetNewValue<bool>()) placeTrackers.GetValue(list, l => new PlaceTracker(l));
+            if (args.GetNewValue<bool>()) placeTrackers.GetValue(list, itemsControl => new PlaceTracker(itemsControl));
         });
         CollectionSync.LeavingChanged += OnLeavingChanged;
     }
@@ -115,7 +115,7 @@ public static class ItemMotion
     {
         if (source is null) return;
         var lists = showing.GetValue(source, _ => []);
-        lists.RemoveAll(w => !w.TryGetTarget(out var l) || l == list);
+        lists.RemoveAll(weakReference => !weakReference.TryGetTarget(out var itemsControl) || itemsControl == list);
         if (on) lists.Add(new WeakReference<ItemsControl>(list));
     }
 

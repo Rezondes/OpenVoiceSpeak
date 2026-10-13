@@ -11,7 +11,7 @@ public static class AvatarConverters
     /// <summary>White initials stay at least 4.5:1 on every one of these.</summary>
     static readonly IBrush[] AvatarColors =
         new[] { "#1D4ED8", "#7C3AED", "#DB2777", "#B45309", "#047857", "#0E7490", "#BE123C", "#4338CA" }
-            .Select(c => (IBrush)new ImmutableSolidColorBrush(Color.Parse(c))).ToArray();
+            .Select(text => (IBrush)new ImmutableSolidColorBrush(Color.Parse(text))).ToArray();
 
     public static readonly IValueConverter Initials =
         new FuncValueConverter<string?, string>(name => string.IsNullOrWhiteSpace(name) ? "?" : char.ToUpperInvariant(name.Trim()[0]).ToString());
@@ -30,7 +30,7 @@ public static class AvatarConverters
     static uint StableHash(string text)
     {
         uint hash = 2166136261;
-        foreach (var c in text.ToLowerInvariant()) hash = (hash ^ c) * 16777619;
+        foreach (var character in text.ToLowerInvariant()) hash = (hash ^ character) * 16777619;
         return hash;
     }
 }

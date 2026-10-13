@@ -59,7 +59,7 @@ internal sealed class AnswerRoutes
     /// <summary>Removes every route to handler (delegates are equal by target and method): no further answer reaches it.</summary>
     internal void RemoveAll(Action<Message> handler)
     {
-        foreach (var id in handlers.Where(h => h.Value == handler).Select(h => h.Key).ToList()) handlers.Remove(id);
+        foreach (var id in handlers.Where(pair => pair.Value == handler).Select(pair => pair.Key).ToList()) handlers.Remove(id);
     }
 
     /// <summary>The handler the answers to the request go to, null when they go nowhere.</summary>

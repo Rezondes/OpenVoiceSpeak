@@ -95,7 +95,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         IsDeafened = info.SelfDeafened;
         // Deafened implies muted and a server mute has its own icon, so the plain mic-off icon only shows for a mute on its own.
         IsSelfMutedOnly = info.SelfMuted && !info.SelfDeafened && !info.ServerMuted;
-        GroupNames = string.Join(", ", serverGroups.Where(g => info.GroupIds.Contains(g.Id)).Select(g => g.Name)); // in the server's group order (Package 37)
+        GroupNames = string.Join(", ", serverGroups.Where(groupInfo => info.GroupIds.Contains(groupInfo.Id)).Select(groupInfo => groupInfo.Name)); // in the server's group order (Package 37)
         StatusText = info switch
         {
             { ServerMuted: true } => Strings.UserStatus_ServerMuted,
@@ -113,10 +113,10 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         CanMessage = actor.Has(Permission.ChatPrivate) && !isSelf;
         // Package 119 (A128): the administration's rule; the rank also keeps the last admin's Admin group, an admin is never weaker
         var wanted = actor.Has(Permission.GroupsAssign) && rank
-            ? serverGroups.Select(g => (g.Id, g.Name, Checked: pendingGroups.TryGetValue(g.Id, out var p) ? p.On : info.GroupIds.Contains(g.Id), g.AssignableByMe)).ToList()
+            ? serverGroups.Select(groupInfo => (groupInfo.Id, groupInfo.Name, Checked: pendingGroups.TryGetValue(groupInfo.Id, out var p) ? p.On : info.GroupIds.Contains(groupInfo.Id), groupInfo.AssignableByMe)).ToList()
             : [];
         // compared with the live ticks: a refused click is put back, and an open menu is not rebuilt by unrelated updates
-        if (!wanted.SequenceEqual(Groups.Select(t => (t.GroupId, t.Name, t.IsChecked, t.IsEnabled))))
+        if (!wanted.SequenceEqual(Groups.Select(groupAssignment => (groupAssignment.GroupId, groupAssignment.Name, groupAssignment.IsChecked, groupAssignment.IsEnabled))))
             Groups = wanted.Select(w => new GroupAssignmentViewModel(w.Id, w.Name, w.Checked, w.AssignableByMe, ToggleGroup)).ToList();
     }
 
@@ -155,10 +155,10 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     /// <summary>The channels in tree order, without the user's own (a silent no-op on the server) and separators (Package 111).</summary>
     internal void UpdateMoveTargets(IReadOnlyList<ChannelViewModel> channels)
     {
-        var wanted = CanMove ? channels.Where(c => c.Id != ChannelId && !c.IsSeparator).ToList() : [];
+        var wanted = CanMove ? channels.Where(channel => channel.Id != ChannelId && !channel.IsSeparator).ToList() : [];
         // only on a change, so an open menu is not rebuilt by unrelated updates
-        if (!wanted.SequenceEqual(MoveTargets.Select(t => t.Channel)))
-            MoveTargets = wanted.Select(c => new MoveTarget(c, new RelayCommand(() => owner.Move(SessionId, c.Id)))).ToList();
+        if (!wanted.SequenceEqual(MoveTargets.Select(moveTarget => moveTarget.Channel)))
+            MoveTargets = wanted.Select(channel => new MoveTarget(channel, new RelayCommand(() => owner.Move(SessionId, channel.Id)))).ToList();
     }
 
     [RelayCommand]

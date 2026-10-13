@@ -5,8 +5,8 @@ namespace OVS.Client.Audio.Playback;
 public readonly record struct ReceiveStats(int Received, int Lost, int Rebuilt, int Concealed, double JitterMs, int DelayMs, int Recovered = 0)
 {
     /// <summary>The counts of one jitter buffer.</summary>
-    public static ReceiveStats Of(JitterBuffer b) =>
-        new(b.Received, b.Lost, b.Rebuilt, b.Concealed, b.JitterMs, b.DelayMs, b.Recovered);
+    public static ReceiveStats Of(JitterBuffer jitterBuffer) =>
+        new(jitterBuffer.Received, jitterBuffer.Lost, jitterBuffer.Rebuilt, jitterBuffer.Concealed, jitterBuffer.JitterMs, jitterBuffer.DelayMs, jitterBuffer.Recovered);
 
     /// <summary>The counts added, the worst jitter and delay of the two.</summary>
     public ReceiveStats Add(ReceiveStats other) =>

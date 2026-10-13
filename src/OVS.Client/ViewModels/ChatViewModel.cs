@@ -42,7 +42,7 @@ public sealed partial class ChatViewModel : ObservableObject
         ChannelTab = new ChatTabViewModel(ChatTabKind.Channel, "");
         Tabs = [General, ChannelTab];
         selected = General;
-        foreach (var n in earlier ?? []) General.Add(new ChatEntry(n.Time, n.Text, Notice: n.Kind), countUnread: false);
+        foreach (var notice in earlier ?? []) General.Add(new ChatEntry(notice.Time, notice.Text, Notice: notice.Kind), countUnread: false);
 
         server.ChatFeed.Received += OnChat;
         server.ChatFeed.Refused += text => ComposerError = text;
@@ -89,22 +89,22 @@ public sealed partial class ChatViewModel : ObservableObject
     /// <summary>The time of the connection's clock as the chat shows it: local, like a received message's.</summary>
     DateTime LocalNow() => DateTime.SpecifyKind(server.Time.GetLocalNow().DateTime, DateTimeKind.Local);
 
-    void OnChat(ChatMessage m)
+    void OnChat(ChatMessage chatMessage)
     {
-        var entry = new ChatEntry(m.SentAt.LocalDateTime, m.Text, m.FromNickname, m.FromSessionId == server.Mirror.SelfId);
-        var tab = m.Target switch
+        var entry = new ChatEntry(chatMessage.SentAt.LocalDateTime, chatMessage.Text, chatMessage.FromNickname, chatMessage.FromSessionId == server.Mirror.SelfId);
+        var tab = chatMessage.Target switch
         {
             ChatTarget.Server => General,
-            ChatTarget.Channel when m.ChannelId == channelId => ChannelTab, // a message from the channel just left is dropped
+            ChatTarget.Channel when chatMessage.ChannelId == channelId => ChannelTab, // a message from the channel just left is dropped
             // The server sends a message before its sender can leave, so the partner is always known here.
             // An incoming message opens the tab in the background.
-            ChatTarget.Private when (entry.IsOwn ? m.ToSessionId : m.FromSessionId) is { } id && server.Mirror.Users.GetValueOrDefault(id) is { } partner
+            ChatTarget.Private when (entry.IsOwn ? chatMessage.ToSessionId : chatMessage.FromSessionId) is { } id && server.Mirror.Users.GetValueOrDefault(id) is { } partner
                 => PrivateTab(partner.Fingerprint),
             _ => null,
         };
         if (tab is null) return;
         // Package 98: the echo of an own message already shown: it turns normal instead of showing twice
-        if (entry.IsOwn && tab.Entries.FirstOrDefault(e => e.Sending is { } s && (s.IsWaiting || s.IsFailed) && e.Text == m.Text) is { Sending: { } sent })
+        if (entry.IsOwn && tab.Entries.FirstOrDefault(chatEntry => chatEntry.Sending is { } outgoingChatMessage && (outgoingChatMessage.IsWaiting || outgoingChatMessage.IsFailed) && chatEntry.Text == chatMessage.Text) is { Sending: { } sent })
         {
             sent.Pending.Done();
             return;
@@ -135,7 +135,7 @@ public sealed partial class ChatViewModel : ObservableObject
     /// <summary>The title follows the nickname, the input follows whether the partner is online.</summary>
     void SyncPartner(ChatTabViewModel tab)
     {
-        var user = server.Mirror.Users.Values.FirstOrDefault(u => u.Fingerprint == tab.Partner);
+        var user = server.Mirror.Users.Values.FirstOrDefault(userInfo => userInfo.Fingerprint == tab.Partner);
         if (user is not null) tab.Title = "@" + user.Nickname;
         tab.PartnerSession = user?.SessionId;
         bool online = user is not null;

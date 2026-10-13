@@ -15,9 +15,9 @@ public sealed partial class OutgoingChatMessageViewModel : ObservableObject
     {
         Pending = pending;
         this.send = send;
-        pending.PropertyChanged += (_, e) =>
+        pending.PropertyChanged += (_, args) =>
         {
-            if (e.PropertyName is not (nameof(Pending.IsRunning) or nameof(Pending.Error))) return;
+            if (args.PropertyName is not (nameof(Pending.IsRunning) or nameof(Pending.Error))) return;
             OnPropertyChanged(nameof(IsWaiting));
             OnPropertyChanged(nameof(IsFailed));
         };

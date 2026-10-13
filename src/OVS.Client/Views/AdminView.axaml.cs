@@ -28,26 +28,26 @@ public partial class AdminView : UserControl
         // Hidden tabs stay selectable; start on the first one the user may see.
         // Posted: the tabs' IsVisible bindings follow the new DataContext first.
         DataContextChanged += (_, _) => Dispatcher.UIThread.Post(() =>
-            Tabs.SelectedItem = Tabs.Items.OfType<TabItem>().FirstOrDefault(t => t.IsVisible));
+            Tabs.SelectedItem = Tabs.Items.OfType<TabItem>().FirstOrDefault(tabItem => tabItem.IsVisible));
         // Package 78: a tab scrolled out of the header strip comes into view when chosen
-        Tabs.SelectionChanged += (_, e) =>
+        Tabs.SelectionChanged += (_, args) =>
         {
-            if (e.Source == Tabs) Tabs.ContainerFromIndex(Tabs.SelectedIndex)?.BringIntoView();
+            if (args.Source == Tabs) Tabs.ContainerFromIndex(Tabs.SelectedIndex)?.BringIntoView();
         };
         // Package 114: leaving a tab or a group with unsaved changes asks first; "Weiter bearbeiten" goes back
-        Tabs.SelectionChanged += async (_, e) =>
+        Tabs.SelectionChanged += async (_, args) =>
         {
-            if (e.Source != Tabs || stepping || Vm is not { } vm || e.RemovedItems is not [TabItem { Tag: AdminPlace place } left]
+            if (args.Source != Tabs || stepping || Vm is not { } admin || args.RemovedItems is not [TabItem { Tag: AdminPlace place } left]
                 || !place.HasChanges())
                 return;
             var wanted = Tabs.SelectedItem;
             Step(() => Tabs.SelectedItem = left);
-            if (await vm.ConfirmLeaveAsync(place)) Step(() => Tabs.SelectedItem = wanted);
+            if (await admin.ConfirmLeaveAsync(place)) Step(() => Tabs.SelectedItem = wanted);
         };
-        GroupRows.SelectionChanged += async (_, e) =>
+        GroupRows.SelectionChanged += async (_, args) =>
         {
             if (stepping || Vm is not { } admin || admin.GroupList is not { IsSelectingInCode: false } groups
-                || e.RemovedItems is not [GroupEditViewModel { HasChanges: true } left] || !groups.Groups.Contains(left))
+                || args.RemovedItems is not [GroupEditViewModel { HasChanges: true } left] || !groups.Groups.Contains(left))
                 return;
             var wanted = groups.SelectedGroup;
             Step(() => groups.SelectedGroup = left);
@@ -83,7 +83,7 @@ public partial class AdminView : UserControl
     }
 
     /// <summary>The Windows file dialog is the one agreed exception to "no second window" (A20).</summary>
-    async void OnPickIcon(object? sender, RoutedEventArgs e)
+    async void OnPickIcon(object? sender, RoutedEventArgs args)
     {
         if (TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -99,7 +99,7 @@ public partial class AdminView : UserControl
 
     static FilePickerFileType BackupFiles => new(Strings.Backup_FileFilter) { Patterns = ["*.ovsbackup"] };
 
-    async void OnDownloadBackup(object? sender, RoutedEventArgs e)
+    async void OnDownloadBackup(object? sender, RoutedEventArgs args)
     {
         if ((sender as Control)?.DataContext is not BackupViewModel backup || Vm is not { } page
             || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
@@ -114,7 +114,7 @@ public partial class AdminView : UserControl
         if (file?.TryGetLocalPath() is { } path) await page.BackupCard.DownloadBackupAsync(backup, path);
     }
 
-    async void OnUploadBackup(object? sender, RoutedEventArgs e)
+    async void OnUploadBackup(object? sender, RoutedEventArgs args)
     {
         if (Vm is not { } page || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -129,7 +129,7 @@ public partial class AdminView : UserControl
 
     // ---- Package 82: the checked log files as one .log or a zip, through the same save dialog ----
 
-    async void OnDownloadLogs(object? sender, RoutedEventArgs e)
+    async void OnDownloadLogs(object? sender, RoutedEventArgs args)
     {
         if (Vm?.Logs is not { CanDownload: true } logs || TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage) return;
         var zip = logs.IsZipDownload;
@@ -144,17 +144,17 @@ public partial class AdminView : UserControl
     }
 
     /// <summary>Package 96: the drop zone lights up while a file is over it; the OS draws the drag preview itself.</summary>
-    void OnIconDragOver(object? sender, DragEventArgs e)
+    void OnIconDragOver(object? sender, DragEventArgs args)
     {
-        bool file = e.DataTransfer.Contains(DataFormat.File);
-        e.DragEffects = file ? DragDropEffects.Copy : DragDropEffects.None;
+        bool file = args.DataTransfer.Contains(DataFormat.File);
+        args.DragEffects = file ? DragDropEffects.Copy : DragDropEffects.None;
         IconDrop.Classes.Set("dropHover", file);
     }
 
-    void OnIconDrop(object? sender, DragEventArgs e)
+    void OnIconDrop(object? sender, DragEventArgs args)
     {
         IconDrop.Classes.Remove("dropHover");
-        if (e.DataTransfer.TryGetFile()?.TryGetLocalPath() is { } path) UploadIcon(path);
+        if (args.DataTransfer.TryGetFile()?.TryGetLocalPath() is { } path) UploadIcon(path);
     }
 
     void UploadIcon(string path)

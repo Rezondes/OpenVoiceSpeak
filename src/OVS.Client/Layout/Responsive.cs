@@ -49,9 +49,9 @@ public static class Responsive
         control.SizeChanged += OnStackSizeChanged;
     });
 
-    static void OnStackSizeChanged(object? sender, SizeChangedEventArgs e)
+    static void OnStackSizeChanged(object? sender, SizeChangedEventArgs args)
     {
         var control = (Control)sender!;
-        control.Classes.Set("stacked", e.NewSize.Width < GetStackBelow(control));
+        control.Classes.Set("stacked", args.NewSize.Width < GetStackBelow(control));
     }
 }

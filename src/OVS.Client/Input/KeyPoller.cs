@@ -145,8 +145,8 @@ public sealed class KeyPoller : IDisposable
             if (released.Contains(KeyAction.LinkPushToTalk)) Interlocked.Exchange(ref linkPttReleased, time.GetTimestamp());
             down = active.Bits;
             if (holdChanged) Changed?.Invoke();
-            for (int i = 0; i < KeyActionTraits.All.Count; i++)
-                if (pressed.Contains(KeyActionTraits.All[i])) Pressed?.Invoke(KeyActionTraits.All[i]);
+            for (int index = 0; index < KeyActionTraits.All.Count; index++)
+                if (pressed.Contains(KeyActionTraits.All[index])) Pressed?.Invoke(KeyActionTraits.All[index]);
             Thread.Sleep(10); // clock: real time
         }
     }

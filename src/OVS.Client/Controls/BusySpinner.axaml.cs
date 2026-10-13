@@ -42,16 +42,16 @@ public partial class BusySpinner : UserControl
         else shown.Remove(this);
     }
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs args)
     {
-        base.OnAttachedToVisualTree(e);
+        base.OnAttachedToVisualTree(args);
         Track();
         Update(fade: false); // built or rebuilt (a row, a tab's content): it just shows (A117)
     }
 
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs args)
     {
-        base.OnDetachedFromVisualTree(e);
+        base.OnDetachedFromVisualTree(args);
         shown.Remove(this);
     }
 
@@ -61,7 +61,7 @@ public partial class BusySpinner : UserControl
     /// </param>
     void Update(bool fade)
     {
-        bool turning = this.GetSelfAndVisualAncestors().All(v => v.IsVisible);
+        bool turning = this.GetSelfAndVisualAncestors().All(visual => visual.IsVisible);
         if (fade && turning && !Classes.Contains(TurningClass)) LiveMotion.FadeIn(this);
         Classes.Set(TurningClass, turning);
         this.FindAncestorOfType<Button>()?.Classes.Set(BusyClass, turning);

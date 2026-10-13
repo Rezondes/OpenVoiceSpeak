@@ -25,7 +25,7 @@ internal static unsafe partial class NativeMethods
     [LibraryImport("user32.dll")] internal static partial nint CreateWindowExW(uint exStyle, char* type, char* title, uint style, int x, int y, int w, int h, nint parent, nint menu, nint instance, nint param);
     [LibraryImport("user32.dll")] internal static partial int UpdateLayeredWindow(nint hwnd, nint dst, POINT* at, SIZE* size, nint src, POINT* origin, uint key, BLENDFUNCTION* blend, uint flags);
     [LibraryImport("user32.dll")] internal static partial int ShowWindow(nint hwnd, int command);
-    [LibraryImport("user32.dll")] internal static partial nuint SetTimer(nint hwnd, nuint id, uint ms, nint callback);
+    [LibraryImport("user32.dll")] internal static partial nuint SetTimer(nint hwnd, nuint id, uint milliseconds, nint callback);
     [LibraryImport("user32.dll")] internal static partial int GetMessageW(MSG* message, nint hwnd, uint min, uint max);
     [LibraryImport("user32.dll")] internal static partial nint DispatchMessageW(MSG* message);
     [LibraryImport("user32.dll")] internal static partial int PostMessageW(nint hwnd, uint message, nint wParam, nint lParam);

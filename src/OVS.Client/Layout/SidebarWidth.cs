@@ -19,5 +19,5 @@ public static class SidebarWidth
 
     /// <param name="footer">Package 113: what the footer (own user, talk hint, buttons) needs, measured by the window.</param>
     public static double For(IEnumerable<SidebarRow> rows, double footer = 0) =>
-        Math.Max(Math.Max(Minimum, Math.Ceiling(footer)), Math.Ceiling(rows.Select(r => r.Name + r.Icons * PerIcon + r.Count).DefaultIfEmpty(0).Max() + Fixed));
+        Math.Max(Math.Max(Minimum, Math.Ceiling(footer)), Math.Ceiling(rows.Select(sidebarRow => sidebarRow.Name + sidebarRow.Icons * PerIcon + sidebarRow.Count).DefaultIfEmpty(0).Max() + Fixed));
 }

@@ -60,9 +60,9 @@ public sealed partial class LogsViewModel : ObservableObject
         Transfer = transfer;
         FilesLoad = server.NewPending();
         Searching = server.NewPending();
-        Searching.PropertyChanged += (_, e) =>
+        Searching.PropertyChanged += (_, args) =>
         {
-            if (e.PropertyName == nameof(PendingActionViewModel.IsBusy)) SearchCommand.NotifyCanExecuteChanged();
+            if (args.PropertyName == nameof(PendingActionViewModel.IsBusy)) SearchCommand.NotifyCanExecuteChanged();
         };
         downloadRight = ShowDownload;
         RebuildSources();
@@ -76,7 +76,7 @@ public sealed partial class LogsViewModel : ObservableObject
     public bool HasNoFileMatches => allFiles.Count > 0 && !Files.Live().Any();
 
     public bool IsFileOpen => OpenFile is not null;
-    public string OpenTitle => OpenFile is { } f ? $"{f.Title}, {f.StartText}" : "";
+    public string OpenTitle => OpenFile is { } logFile ? $"{logFile.Title}, {logFile.StartText}" : "";
     public string PageText => string.Format(Strings.Ui_LogPage, Page, PageCount);
     /// <summary>The lines of the page that pass the line filter.</summary>
     public ObservableCollection<LogLineViewModel> Lines { get; } = [];
@@ -110,15 +110,15 @@ public sealed partial class LogsViewModel : ObservableObject
                 if (filePages.Add(list.RequestId, list.Offset, list.Total, list.Files, (id, o) => _ = SendRoutedAsync(new ListLogs(o), id)) is not { } files) break;
                 allFiles = files;
                 FilesLoad.Done();
-                selected.IntersectWith(allFiles.Select(f => f.Id)); // files gone meanwhile (retention) drop out
+                selected.IntersectWith(allFiles.Select(logFile => logFile.Id)); // files gone meanwhile (retention) drop out
                 RebuildSources();
                 RebuildFiles();
                 break;
-            case LogPage p when p.FileId == OpenFile?.Info.Id: // an answer for a file closed meanwhile is dropped
-                pageLines = p.Lines;
-                Page = p.Page;
-                PageCount = p.PageCount;
-                firstLine = p.FirstLine;
+            case LogPage logPage when logPage.FileId == OpenFile?.Info.Id: // an answer for a file closed meanwhile is dropped
+                pageLines = logPage.Lines;
+                Page = logPage.Page;
+                PageCount = logPage.PageCount;
+                firstLine = logPage.FirstLine;
                 RebuildLines();
                 break;
             case LogSearchResult result:
@@ -142,35 +142,35 @@ public sealed partial class LogsViewModel : ObservableObject
     partial void OnFromDateChanged(DateTime? value) => RebuildFiles();
     partial void OnToDateChanged(DateTime? value) => RebuildFiles();
 
-    DateTimeOffset? From => FromDate is { } d ? new DateTimeOffset(d.Date) : null;
-    DateTimeOffset? To => ToDate is { } d ? new DateTimeOffset(d.Date.AddDays(1).AddTicks(-1)) : null;
+    DateTimeOffset? From => FromDate is { } time ? new DateTimeOffset(time.Date) : null;
+    DateTimeOffset? To => ToDate is { } time ? new DateTimeOffset(time.Date.AddDays(1).AddTicks(-1)) : null;
 
     /// <summary>All, server, then every channel of the listing by name; the choice survives a new list.</summary>
     void RebuildSources()
     {
         var wanted = new List<Choice<LogSource>> { new(new(null, null), Strings.Ui_LogSourceAll), new(new(LogKind.Server, null), Strings.Ui_LogSourceServer) };
-        wanted.AddRange(allFiles.Where(f => f.ChannelId is not null)
-            .GroupBy(f => f.ChannelId).Select(g => new Choice<LogSource>(new(LogKind.Channel, g.Key), g.First().ChannelName ?? Strings.Ui_LogDeletedChannel))
+        wanted.AddRange(allFiles.Where(logFile => logFile.ChannelId is not null)
+            .GroupBy(logFile => logFile.ChannelId).Select(grouping => new Choice<LogSource>(new(LogKind.Channel, grouping.Key), grouping.First().ChannelName ?? Strings.Ui_LogDeletedChannel))
             .OrderBy(c => c.Label, StringComparer.CurrentCultureIgnoreCase));
         if (wanted.SequenceEqual(Sources)) return;
         var selected = SelectedSource?.Value;
         Sources.Clear();
         foreach (var choice in wanted) Sources.Add(choice);
-        SelectedSource = Sources.FirstOrDefault(c => c.Value == selected) ?? Sources[0];
+        SelectedSource = Sources.FirstOrDefault(choice => choice.Value == selected) ?? Sources[0];
     }
 
-    bool Passes(LogFileInfo f)
+    bool Passes(LogFileInfo logFile)
     {
         var source = SelectedSource?.Value;
-        return (source?.Kind is null || f.Kind == source.Kind) && (source?.ChannelId is null || f.ChannelId == source.ChannelId)
-               && (To is null || f.Start <= To) && (From is null || f.LastWrite >= From);
+        return (source?.Kind is null || logFile.Kind == source.Kind) && (source?.ChannelId is null || logFile.ChannelId == source.ChannelId)
+               && (To is null || logFile.Start <= To) && (From is null || logFile.LastWrite >= From);
     }
 
     void RebuildFiles()
     {
         var shown = allFiles.Where(Passes).Select(file => new LogFileViewModel(file, ShowDownload, selected.Contains(file.Id), OnSelectionChanged)).ToList();
         CollectionSync.Sync(Files, shown, server.Leave); // Package 102: a file filtered out folds away
-        SelectedFile = shown.FirstOrDefault(f => f.Info.Id == OpenFile?.Info.Id);
+        SelectedFile = shown.FirstOrDefault(logFile => logFile.Info.Id == OpenFile?.Info.Id);
         FileCountText = string.Format(Strings.Ui_LogFileCount, shown.Count, allFiles.Count);
         OnPropertyChanged(nameof(HasNoFiles));
         OnPropertyChanged(nameof(HasNoFileMatches));
@@ -183,17 +183,17 @@ public sealed partial class LogsViewModel : ObservableObject
     public bool IsZipDownload => selected.Count > 1;
     public string SelectionText => string.Format(Strings.Ui_LogSelection, selected.Count);
     /// <summary>The chosen files, newest first like the list.</summary>
-    public IReadOnlyList<string> SelectedIds => allFiles.Where(f => selected.Contains(f.Id)).Select(f => f.Id).ToList();
+    public IReadOnlyList<string> SelectedIds => allFiles.Where(logFile => selected.Contains(logFile.Id)).Select(logFile => logFile.Id).ToList();
 
     /// <summary>The file's own name for one file, else ovs-logs_&lt;from&gt;_&lt;to&gt;.zip like the server names it.</summary>
     public string DownloadName
     {
         get
         {
-            var files = allFiles.Where(f => selected.Contains(f.Id)).ToList();
+            var files = allFiles.Where(logFile => selected.Contains(logFile.Id)).ToList();
             if (files.Count == 1) return files[0].Id[(files[0].Id.LastIndexOf('/') + 1)..];
             if (files.Count == 0) return "";
-            return $"ovs-logs_{files.Min(f => f.Start).ToLocalTime():yyyy-MM-dd}_{files.Max(f => f.LastWrite).ToLocalTime():yyyy-MM-dd}.zip";
+            return $"ovs-logs_{files.Min(logFile => logFile.Start).ToLocalTime():yyyy-MM-dd}_{files.Max(logFile => logFile.LastWrite).ToLocalTime():yyyy-MM-dd}.zip";
         }
     }
 
@@ -240,7 +240,7 @@ public sealed partial class LogsViewModel : ObservableObject
     /// <summary>Saves the selection to target (chosen in the save dialog).</summary>
     public Task DownloadAsync(string target) => Transfer.DownloadLogsAsync(SelectedIds, target);
 
-    string TitleOf(string fileId) => allFiles.FirstOrDefault(f => f.Id == fileId) is { } f ? LogFileViewModel.TitleOf(f) : fileId;
+    string TitleOf(string fileId) => allFiles.FirstOrDefault(logFile => logFile.Id == fileId) is { } logFileInfo ? LogFileViewModel.TitleOf(logFileInfo) : fileId;
 
     // ---- The opened file ----
 
@@ -266,7 +266,7 @@ public sealed partial class LogsViewModel : ObservableObject
             Lines.Clear();
             Page = PageCount = 0;
         }
-        SelectedFile = Files.Live().FirstOrDefault(f => f.Info.Id == file.Info.Id);
+        SelectedFile = Files.Live().FirstOrDefault(logFile => logFile.Info.Id == file.Info.Id);
         targetLine = line;
         return SendRoutedAsync(new ReadLog(file.Info.Id, page));
     }
@@ -309,10 +309,10 @@ public sealed partial class LogsViewModel : ObservableObject
         var filter = LineFilter.Trim();
         Lines.Clear();
         LogLineViewModel? target = null;
-        for (int i = 0; i < pageLines.Count; i++)
+        for (int index = 0; index < pageLines.Count; index++)
         {
-            if (filter.Length > 0 && !pageLines[i].Contains(filter, StringComparison.OrdinalIgnoreCase)) continue;
-            var line = new LogLineViewModel(firstLine + i, pageLines[i], filter, firstLine + i == targetLine);
+            if (filter.Length > 0 && !pageLines[index].Contains(filter, StringComparison.OrdinalIgnoreCase)) continue;
+            var line = new LogLineViewModel(firstLine + index, pageLines[index], filter, firstLine + index == targetLine);
             if (line.IsTarget) target = line;
             Lines.Add(line);
         }
@@ -348,8 +348,8 @@ public sealed partial class LogsViewModel : ObservableObject
     Task OpenHit(LogHitViewModel? hit)
     {
         if (hit is null) return Task.CompletedTask;
-        var file = Files.Live().FirstOrDefault(f => f.Info.Id == hit.FileId)
-                   ?? allFiles.Where(f => f.Id == hit.FileId).Select(f => new LogFileViewModel(f)).FirstOrDefault();
+        var file = Files.Live().FirstOrDefault(logFile => logFile.Info.Id == hit.FileId)
+                   ?? allFiles.Where(logFile => logFile.Id == hit.FileId).Select(logFile => new LogFileViewModel(logFile)).FirstOrDefault();
         if (file is null) return Task.CompletedTask;
         LineFilter = "";
         return OpenAt(file, (hit.Line - 1) / WireProtocol.LogPageLines + 1, hit.Line);

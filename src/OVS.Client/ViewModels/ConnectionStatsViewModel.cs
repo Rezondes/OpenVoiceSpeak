@@ -110,14 +110,14 @@ public sealed partial class ConnectionStatsViewModel : ObservableObject
     {
         if (roundTrip is { } rtt)
         {
-            double ms = rtt.TotalMilliseconds;
-            samples.Enqueue(ms);
+            double milliseconds = rtt.TotalMilliseconds;
+            samples.Enqueue(milliseconds);
             while (samples.Count > BaselineSamples) samples.Dequeue();
             var sorted = samples.Order().ToList();
             double baseline = sorted.Count % 2 == 1 ? sorted[sorted.Count / 2] : (sorted[sorted.Count / 2 - 1] + sorted[sorted.Count / 2]) / 2;
             BaselineMs = baseline;
-            Rating = Rate(ms, baseline);
-            RoundTripText = string.Format(Strings.ConnDetails_RoundTripValue, ms.ToString("0"), baseline.ToString("0"));
+            Rating = Rate(milliseconds, baseline);
+            RoundTripText = string.Format(Strings.ConnDetails_RoundTripValue, milliseconds.ToString("0"), baseline.ToString("0"));
         }
         UplinkText = Loss(uplink);
         DownlinkText = Loss(downlink);

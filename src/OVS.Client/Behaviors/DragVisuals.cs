@@ -27,10 +27,10 @@ internal static class DragVisuals
     }
 
     /// <summary>Keeps the point where the item was grabbed under the pointer.</summary>
-    internal static void Follow(Border preview, PointerEventArgs e, Point grab)
+    internal static void Follow(Border preview, PointerEventArgs args, Point grab)
     {
         if (preview.Parent is not Visual overlay) return;
-        var at = e.GetPosition(overlay) - grab;
+        var at = args.GetPosition(overlay) - grab;
         Canvas.SetLeft(preview, at.X);
         Canvas.SetTop(preview, at.Y);
     }
