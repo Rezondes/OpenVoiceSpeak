@@ -32,7 +32,7 @@ Numbered by the rule of `CODING-RULES.md` they add to.
 - **Rule 14** (N14): the composition roots and what they build are described under §Target layout, Client, Root.
 - **Rule 15** (N2): wire records such as `ChannelInfo` keep their names; the server has no `*Service` classes at all (N7). One concept may have a code name that differs from its wire name (N9).
 - **Rule 16** (N5): the remaining German log and exception texts are converted by the refactoring (Step 31).
-- **Rule 17** (N6): not yet introduced; until then the review checks these names (§Review checklist).
+- **Rule 17** (N6): `.editorconfig` holds the `I` prefix of interfaces and PascalCase types and members as errors (IDE1006), `EnforceCodeStyleInBuild` is on in `Directory.Build.props` (Step 34). The `Async` suffix stays with rule-lint RL154: a naming rule on `async` would also hit `async void` event handlers and `async` test methods, which RL154 exempts.
 - **Rule 19** (N9, N11, N18): a wire or persisted name differs from the code name only where N9 or N18 allow it (N11 for persisted files) and `WireFreezeTests` pins it. Check: the review (Naming).
 - **Rule 20** (W2): applies to all code, old and new. The existing short names are renamed by the refactoring (Step 29). Check: the review (Naming) and the closing grep of Step 29.
 - **Rule 21** (W3): applies to all code; example: `LogExportResult` with the export and its code instead of `(LogExport? Export, string Code)`. The existing tuples are replaced by the refactoring (Step 29). Check: the review (Naming).

@@ -1,0 +1,19 @@
+root = true
+
+# Rule 17 (N6): the compiler enforces the names it can; rule-lint checks the rest (RL151 to RL155). The Async suffix is
+# RL154 for now: a naming rule on async also hits async void event handlers and async test methods, which RL154 exempts.
+[*.cs]
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_style.i_prefix.capitalization = pascal_case
+dotnet_naming_style.i_prefix.required_prefix = I
+dotnet_naming_rule.interfaces_start_with_i.symbols = interfaces
+dotnet_naming_rule.interfaces_start_with_i.style = i_prefix
+dotnet_naming_rule.interfaces_start_with_i.severity = error
+
+dotnet_naming_symbols.types_and_members.applicable_kinds = class, struct, interface, enum, delegate, method, local_function, property, event
+dotnet_naming_style.pascal.capitalization = pascal_case
+dotnet_naming_rule.types_and_members_are_pascal.symbols = types_and_members
+dotnet_naming_rule.types_and_members_are_pascal.style = pascal
+dotnet_naming_rule.types_and_members_are_pascal.severity = error
+
+dotnet_diagnostic.IDE1006.severity = error
