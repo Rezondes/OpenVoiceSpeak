@@ -19,3 +19,54 @@ b2f2c701b7c577e5536f38374e3974e9ba0ef976
 47dd4628ef7acd41b75d1dbc8893e2c7dd559011
 # refactor(tests): mirror the source layout in the tests, one type per file
 086fe715cc5b1b7fe55291dfb487edfa09bb2295
+
+# Rename and move commits of the second refactoring (REFACTOR-PLAN-2, Steps 14, 15, 16, 18c, 21a, 29, 32a-f, 34b, 38c): names and
+# places only, no behaviour change.
+# refactor(server): rename Limits, ServerLogs and the record types, extract RestartSchedule
+6b383b37e46c736522ab6c226cbc43cf945d6f30
+# refactor(shared): rename the Shared helpers and split ProtocolInfo by purpose
+1148ef9d965cf59924d50f8b73923a39cf9bc173
+# refactor(shared): rename the moderation records after their target and add a message registry test
+a068364aada37916aa83beb3de749cb8b0ef5f72
+# refactor(client): rename the audio types and the transmit decision to say what they hold
+08f92a86d878ff25e967b5d5e3d654e37dbed735
+# refactor(client): name the identity, the paths and the trusted fingerprints
+8463c87b7163506c3501f60191d867b6050c7abd
+# refactor(client): give seven client types the names of what they hold
+6d6fec6f5627a6d367dc92d9a9475e2a0cdd22da
+# refactor(client): split the value converters by what they show
+eb3e6c4d689a8a2a9c62dd1972a56017659bdb81
+# refactor: name the group list commands, the ban status and the small icon metrics
+a2de7842df7f3b03c1bdc805cb1f5d5d59af73e1
+# refactor(client): name one-letter and abbreviated locals by what they hold
+5471df8861311f670e23801a4534b427a71c73d6
+# refactor(client): name the last one-letter and abbreviated client names
+d18877e3638900c508157de89afb59066ced9d40
+# refactor(server): name one-letter and abbreviated server and Shared names
+fbbc7795c5404664bdf886a98d565029c5d18a14
+# test: name one-letter and abbreviated test names by what they hold
+2bd8c38103bf2b72e2cc708a7f73f03260265b1e
+# test: name the last one-letter test and tool names
+7007ced2c35db43754c82836ea2ccd0738c22261
+# refactor: move nested types to the end of their containers
+0d2658bcd7179d714508d76516df8497c2bd19d5
+# refactor(client): name the loaded device lists ActiveDevices
+71a438037142b7ff4b8b3799fb9b5a118569e897
+# refactor(client): split Motion into PopupMotion, ShakeMotion and AnimationCounter
+ab19d250892ab6b4101b4deeee2f513a201b3c9e
+# test: give the server tests three-part names
+fc2028c92799019d77b69365f035c3db60686fb3
+# test: give the Shared, layout, TestSupport and website tests three-part names
+962dd5bd0c1fdfa07ea123c6ac731311049fbd69
+# test: give the client view model tests three-part names
+28201cd1f6929e5486d0e5da9f2b01f0735157bb
+# test: give the client animation and view tests three-part names
+62474ff914d1a4ae42e056eaff0b0a4cf77ae77e
+# test: give the client audio and network tests three-part names
+2f79132e86aa4f28d7359f1ee998a87fe4c9007f
+# test: give the remaining client tests three-part names
+9e11958632e3b5b8e962bee0f6c3e2e4ff799277
+# refactor: give every task-returning method the Async suffix
+7907949a8204e09fbe7565e75587b24f349bc2b8
+# refactor: make the types of the two apps and the tools internal
+3f10f54501c50a758049cdc66e178c7230ad7322

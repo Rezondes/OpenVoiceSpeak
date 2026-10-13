@@ -9,7 +9,7 @@ ARG OVS_BUILD_TIME=""
 ARG GITHUB_SHA=""
 ARG GITHUB_ACTIONS=""
 WORKDIR /src
-COPY nuget.config Directory.Build.props ./
+COPY nuget.config Directory.Build.props .editorconfig ./
 COPY src/OVS.Shared/OVS.Shared.csproj src/OVS.Shared/
 COPY src/OVS.Server/OVS.Server.csproj src/OVS.Server/
 RUN dotnet restore src/OVS.Server/OVS.Server.csproj -a $TARGETARCH -p:SelfContained=true
