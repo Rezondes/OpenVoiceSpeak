@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
 using NAudio.Wave;
+using OVS.Client.Logging;
 using OVS.Client.Settings;
 using OVS.Shared.IO;
 
@@ -9,7 +11,7 @@ namespace OVS.Client.Audio.Sounds;
 /// The tones as the user set them up: an own file from the profile, otherwise the default tone. A file that has
 /// gone missing falls back to the default and is logged once (A47).
 /// </summary>
-public sealed class SoundLibrary(string profileDir, Action<string> log)
+public sealed class SoundLibrary(string profileDir, ILogger log)
 {
     /// <summary>The folder of the imported sounds inside the profile.</summary>
     public const string Folder = "sounds";
@@ -37,7 +39,7 @@ public sealed class SoundLibrary(string profileDir, Action<string> log)
             catch (Exception exception) when (exception is IOException or InvalidDataException or FormatException or COMException
                                        or ArgumentException or UnauthorizedAccessException)
             {
-                if (reported.Add(file)) log($"Sound-Datei {file} für {sound} fehlt oder ist unlesbar, der Standardton spielt");
+                if (reported.Add(file)) log.SoundFileUnreadable(file, sound);
                 return SoundSynth.Render(sound);
             }
         }

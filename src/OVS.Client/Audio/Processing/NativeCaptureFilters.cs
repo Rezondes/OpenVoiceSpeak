@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Logging;
 using OVS.Client.Audio.Capture;
+using OVS.Client.Logging;
 
 namespace OVS.Client.Audio.Processing;
 
@@ -16,7 +18,7 @@ public sealed class NativeCaptureFilters
     /// <param name="log">A line for the client log when a filter's native library cannot load.</param>
     /// <param name="noiseLibrary">The native RNNoise library; tests name a missing one.</param>
     /// <param name="echoLibrary">The native echo canceller; tests name a missing one.</param>
-    internal NativeCaptureFilters(Action<string>? log, string noiseLibrary = NoiseSuppressor.Library, string echoLibrary = EchoCanceller.Library)
+    internal NativeCaptureFilters(ILogger? log, string noiseLibrary = NoiseSuppressor.Library, string echoLibrary = EchoCanceller.Library)
     {
         Log = log;
         this.noiseLibrary = noiseLibrary;
@@ -24,7 +26,7 @@ public sealed class NativeCaptureFilters
     }
 
     /// <summary>Where a library that cannot load is told; tests check that the composition root hands in the client log.</summary>
-    internal Action<string>? Log { get; }
+    internal ILogger? Log { get; }
 
     /// <summary>
     /// Gives a new capture its filters before it starts, created even while switched off, so the switches on the settings
@@ -51,7 +53,7 @@ public sealed class NativeCaptureFilters
     /// <returns>True: the filter is off from now on.</returns>
     bool LogOff(string feature, string library, string? error)
     {
-        Log?.Invoke($"{feature} off: {library} cannot be loaded ({error})");
+        Log?.FilterOff(feature, library, error);
         return true;
     }
 }

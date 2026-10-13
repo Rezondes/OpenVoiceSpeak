@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Logging;
 using OVS.Client.Localization;
+using OVS.Client.Logging;
 using OVS.Client.Net.Updates;
 
 namespace OVS.Client.Services;
@@ -12,7 +14,7 @@ internal sealed partial class UpdateFlow : ObservableObject
 {
     readonly Func<bool> checkAtStart;
     readonly Func<UpdateOffer, Task<bool>> ask;
-    readonly Action<string> log;
+    readonly ILogger log;
     readonly Action<string> setStatus;
     readonly Action<string> warn;
     readonly TimeSpan lookUpTimeout;
@@ -23,7 +25,7 @@ internal sealed partial class UpdateFlow : ObservableObject
     /// <param name="setStatus">Shows a line as the status of the window.</param>
     /// <param name="warn">Shows a line as a warning notice.</param>
     /// <param name="lookUpTimeout">How long the lookup may take before its token is cancelled.</param>
-    internal UpdateFlow(Func<bool> checkAtStart, Func<UpdateOffer, Task<bool>> ask, Action<string> log, Action<string> setStatus,
+    internal UpdateFlow(Func<bool> checkAtStart, Func<UpdateOffer, Task<bool>> ask, ILogger log, Action<string> setStatus,
         Action<string> warn, TimeSpan lookUpTimeout)
     {
         this.checkAtStart = checkAtStart;
@@ -62,19 +64,19 @@ internal sealed partial class UpdateFlow : ObservableObject
         var result = await lookUp(timeout.Token);
         if (result.Error is { } error)
         {
-            log($"Update check failed: {error}");
+            log.UpdateCheckFailed(error);
             return string.Format(Strings.Update_CheckFailed, error);
         }
         if (result.Offer is not { } offer)
         {
-            log("Update check: no newer version");
+            log.UpdateNone();
             return Strings.Update_Latest;
         }
-        log($"Update available: {offer.Version} ({offer.Tag})");
+        log.UpdateAvailable(offer.Version, offer.Tag);
         if (Install is not { } install || !await ask(offer)) return string.Format(Strings.Update_Available, offer.Version);
 
         setStatus(string.Format(Strings.Update_Downloading, offer.Version));
-        log($"Installing update {offer.Version}");
+        log.UpdateInstalling(offer.Version);
         Progress = new UpdateProgress(offer.Version, UpdatePhase.Downloading);
         string? failure;
         try
@@ -87,7 +89,7 @@ internal sealed partial class UpdateFlow : ObservableObject
             Progress = null;
         }
         if (failure is null) return Strings.Update_Starting;
-        log(failure);
+        log.UpdateFailed(failure);
         setStatus(failure);
         warn(failure);
         return failure;

@@ -71,8 +71,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings = settings;
         if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
-        Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, leave, () => Dialogs.BookmarkList, () => Settings.Save(storageDir), Log.Write);
-        Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log.Write, text => Status = text,
+        Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, leave, () => Dialogs.BookmarkList, () => Settings.Save(storageDir), Log);
+        Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log, text => Status = text,
             text => AddNotice(text, NoticeKind.Warning), PendingActionViewModel.Timeout);
 
         // PageFlow is built after SelfTest (it takes SelfTest.SetAsync); the two lambdas that read it run only after that:
@@ -92,7 +92,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             {
                 if (PageFlow!.SettingsPage is { } page) page.IsSelfTesting = on;
             },
-            log: Log.Write,
+            log: Log,
             readServerState: () => Server is { } connected ? new SelfState(connected.SelfState.SelfMuted, connected.SelfState.SelfDeafened) : null,
             writeServerState: state => Server is { } connected ? connected.SelfState.SetSelfStateAsync(state) : Task.CompletedTask);
         PageFlow = new PageFlowViewModel(time: time, post: post, settings: () => Settings, knownDevices: () => Devices.Known,
@@ -111,14 +111,14 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 audio.LevelMeter = false;
             },
             readThresholdDb: () => audio.InputThresholdDb, shownServer: () => Server);
-        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log.Write,
+        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log,
             reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: () => audio.Loss.EndStreaks());
         Stats = new ConnectionStatsViewModel(time,
             readReachable: () => voiceLink.Reachable,
             readFigures: voiceLink.ReadFigures,
             readReceiveStats: () => audio.Mixer.Stats(),
             readEncoderBitrate: () => audio.EncoderBitrate);
-        Connection = new ConnectionViewModel(time: time, post: post, log: Log.Write, openConnection: connect ?? OpenConnectionAsync, play: sound => audio.Sounds.Play(sound),
+        Connection = new ConnectionViewModel(time: time, post: post, log: Log, openConnection: connect ?? OpenConnectionAsync, play: sound => audio.Sounds.Play(sound),
             voiceLink: voiceLink,
             engineSync: EngineSync, selfTest: SelfTest, bookmarks: Bookmarks, icons: icons, stats: Stats,
             askPassword: name => Dialogs.AskPassword?.Invoke(name) ?? Task.FromResult<PasswordAnswer?>(null), serverDialogs: () => Dialogs.Server,
@@ -147,12 +147,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         this.soundLibrary = soundLibrary;
         Audio.TransmitChanged += target => post(() =>
         {
-            Log.Write(target switch
-            {
-                null => "Senden beendet",
-                Shared.Voice.VoiceHeader.TargetLinked => "Senden beginnt: eigener Channel und Links",
-                _ => "Senden beginnt: eigener Channel",
-            });
+            if (target is null) Log.TransmitStopped();
+            else if (target == Shared.Voice.VoiceHeader.TargetLinked) Log.TransmitToChannelAndLinks();
+            else Log.TransmitToChannel();
             TransmitText = target switch
             {
                 null => "",
@@ -244,14 +241,13 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings.Save(storageDir);
         soundLibrary.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();
-        var keysText = Settings.KeyBindings.Count == 0 ? "keine" : string.Join(", ", Settings.KeyBindings.Select(keyBinding => $"{keyBinding.Action} {keyBinding.Chord.Name}"));
-        Log.Write($"Einstellungen: Modus {Settings.Mode}, Tasten {keysText}, " +
-                  $"Eingang {Settings.InputDeviceId ?? "Standard"}, Ausgang {Settings.OutputDeviceId ?? "Standard"}, " +
-                  $"Verstärkung {Settings.InputGain:0.00}, Lautstärke {Settings.OutputVolume:0.00}, VAD-Schwelle {Settings.VadThresholdDb:0} dB, " +
-                  $"Rauschunterdrückung {(Settings.NoiseSuppression ? "an" : "aus")}, automatische Verstärkung {(Settings.AutoGain ? "an" : "aus")}, " +
-                  $"Echounterdrückung {(Settings.EchoCancellation ? "an" : "aus")}, Übertragungsart {Settings.AudioContent}");
+        var keysText = Settings.KeyBindings.Count == 0 ? "none" : string.Join(", ", Settings.KeyBindings.Select(keyBinding => $"{keyBinding.Action} {keyBinding.Chord.Name}"));
+        Log.SettingsApplied(Settings.Mode, keysText, Settings.InputDeviceId ?? "default", Settings.OutputDeviceId ?? "default", Settings.InputGain, Settings.OutputVolume,
+            Settings.VadThresholdDb, OnOff(Settings.NoiseSuppression), OnOff(Settings.AutoGain), OnOff(Settings.EchoCancellation), Settings.AudioContent);
         return Settings;
     }
+
+    static string OnOff(bool on) => on ? "on" : "off";
 
     void Applied(string? warning)
     {
@@ -273,8 +269,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     async Task<bool> ConfirmTofuLoggedAsync(TofuPrompt prompt)
     {
         bool accepted = await ConfirmTofu(prompt);
-        Log.Write($"Serverzertifikat {(prompt.Result == TofuResult.Mismatch ? "GEÄNDERT" : "neu")} für {prompt.Host}:{prompt.Port}, " +
-                  $"Fingerprint {prompt.Fingerprint}: {(accepted ? "akzeptiert" : "abgelehnt")}");
+        Log.ServerCertificate(prompt.Result == TofuResult.Mismatch ? "CHANGED" : "new", prompt.Host, prompt.Port, prompt.Fingerprint, accepted ? "accepted" : "refused");
         return accepted;
     }
 
@@ -342,7 +337,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     void OnKeyAction(KeyAction action)
     {
         if (Server is not { } server) return;
-        Log.Write($"Taste: {KeyActionLabels.Localize(action)}");
+        Log.KeyPressed(action);
         switch (action)
         {
             case KeyAction.ToggleMute: server.SelfState.ToggleMuteCommand.Execute(null); break;
@@ -353,7 +348,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Shows a system notice.</summary>
     public void AddNotice(string text, NoticeKind kind = NoticeKind.Info)
     {
-        Log.Write("Meldung: " + text);
+        Log.Notice(text);
         var notice = new Notice(DateTime.SpecifyKind(Time.GetLocalNow().DateTime, DateTimeKind.Local), text, kind);
         Notices.Insert(0, notice);
         Chat?.AddNotice(notice);

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Shared.Voice;
 
@@ -13,7 +15,7 @@ internal sealed class VoiceLink
     readonly Action<uint, uint, byte, byte[], byte[]?> hear;
     readonly Action<Action<byte[], byte>?> setSend;
     readonly TimeProvider time;
-    readonly Action<string> log;
+    readonly ILogger log;
     readonly Action<LossReport> reportUplink;
     readonly Action endLossStreaks;
     long connectedAt; // a timestamp of time
@@ -27,7 +29,7 @@ internal sealed class VoiceLink
     /// <param name="log">Where the reachability lines are written.</param>
     /// <param name="reportUplink">Package 135: tells the loss adapter the uplink figure of each new answer.</param>
     /// <param name="endLossStreaks">Ends the loss adapter's running streaks; a delegate because the adapter can be replaced.</param>
-    internal VoiceLink(Action<uint, uint, byte, byte[], byte[]?> hear, Action<Action<byte[], byte>?> setSend, TimeProvider time, Action<string> log,
+    internal VoiceLink(Action<uint, uint, byte, byte[], byte[]?> hear, Action<Action<byte[], byte>?> setSend, TimeProvider time, ILogger log,
         Action<LossReport> reportUplink, Action endLossStreaks)
     {
         this.reportUplink = reportUplink;
@@ -87,12 +89,13 @@ internal sealed class VoiceLink
         if (client.Reachable)
         {
             if (udpLogged == true) return;
-            log(udpWasReachable ? "UDP reachable again" : "UDP now reachable");
+            if (udpWasReachable) log.UdpReachableAgain();
+            else log.UdpNowReachable();
             udpLogged = udpWasReachable = true;
         }
         else if (udpLogged == true || (udpLogged is null && time.GetElapsedTime(connectedAt) > TimeSpan.FromSeconds(5)))
         {
-            log("UDP not reachable: voice does not arrive (firewall or NAT?)");
+            log.UdpNotReachable();
             udpLogged = false;
         }
     }

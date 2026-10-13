@@ -26,7 +26,7 @@ public sealed class SelfTestTests
             engineSwitches.Add(on);
         },
         showOnPage: shownOnPage.Add,
-        log: logLines.Add,
+        log: new LineLogger(logLines),
         readServerState: () => serverState,
         writeServerState: state =>
         {

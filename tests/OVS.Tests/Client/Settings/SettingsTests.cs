@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.Logging.Abstractions;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Audio.Processing;
@@ -103,7 +104,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         again.SoundRows.Single(soundRow => soundRow.Event == SoundEvent.UserJoined).ResetCommand.Execute(null);
         var reset = again.ToSettings(loaded);
         Assert.Null(reset.SoundFor(SoundEvent.UserJoined).File);
-        new SoundLibrary(dir, _ => { }).CleanUp(reset); // what saving the settings does
+        new SoundLibrary(dir, NullLogger.Instance).CleanUp(reset); // what saving the settings does
         Assert.False(File.Exists(copy));
     }
 

@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Dialogs;
 using OVS.Client.Exceptions;
@@ -29,7 +30,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
 {
     readonly TimeProvider time;
     readonly Action<Action> post;
-    readonly Action<string> log;
+    readonly ILogger log;
     readonly OpenConnection openConnection;
     readonly Action<SoundEvent> play;
     readonly EngineSync engineSync;
@@ -76,7 +77,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <param name="addNotice">Adds a notice to the list and the chat.</param>
     /// <param name="confirmLeave">Asks before a disconnect or a connect elsewhere that would lose changes in the administration; false keeps the connection.</param>
     /// <param name="closeAdmin">Closes the administration when it is open: it needs a server.</param>
-    internal ConnectionViewModel(TimeProvider time, Action<Action> post, Action<string> log, OpenConnection openConnection, Action<SoundEvent> play,
+    internal ConnectionViewModel(TimeProvider time, Action<Action> post, ILogger log, OpenConnection openConnection, Action<SoundEvent> play,
         VoiceLink voiceLink, EngineSync engineSync, SelfTest selfTest, BookmarkList bookmarks, ServerIconCache icons, ConnectionStatsViewModel stats,
         Func<string, Task<PasswordAnswer?>> askPassword, Func<ServerDialogs> serverDialogs, Func<ServerViewModel?> shownServer, Action<ServerViewModel?> show, Action<string> setStatus,
         Func<string> readStatus, Action<string, NoticeKind> addNotice, Func<Task<bool>> confirmLeave, Action closeAdmin)
@@ -141,7 +142,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         {
             IsConnecting = false;
         }
-        if (connection is null) log(readStatus());
+        if (connection is null) log.ConnectFailed(readStatus());
     }
 
     static bool IsNetworkFailure(Exception exception) =>
@@ -151,13 +152,13 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     {
         lastRejection = exception.Code;
         setStatus(string.Format(Strings.Status_Refused, ErrorTexts.For(exception.Code, exception.Detail)));
-        log($"Refused by the server: {exception.Code}{(string.IsNullOrEmpty(exception.Detail) ? "" : $" ({exception.Detail})")}");
+        log.Refused(exception.Code, string.IsNullOrEmpty(exception.Detail) ? "" : $" ({exception.Detail})");
     }
 
     async Task<ClientConnection> OpenAsync(ConnectChoice choice)
     {
         setStatus(string.Format(Strings.Status_Connecting, choice.Host, choice.Port));
-        log($"Connecting to {choice.Host}:{choice.Port} as {choice.Nickname}{(choice.PasswordOrNull is null ? "" : " with password")}");
+        log.Connecting(choice.Host, choice.Port, choice.Nickname, choice.PasswordOrNull is null ? "" : " with password");
         return await openConnection(choice, CancellationToken.None);
     }
 
@@ -170,7 +171,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         var mirror = new StateMirror(conn.Welcome);
         var server = new ServerViewModel(mirror, request =>
         {
-            log(ProtocolLogText.Describe(request, mirror));
+            log.Protocol(ProtocolLogText.Describe(request, mirror));
             return conn.SendAsync(request);
         }, time, serverDialogs()) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
         server.Notice += text => addNotice(text, NoticeKind.Error);
@@ -180,7 +181,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         server.SoundRequested += play; // Package 47
         conn.MessageReceived += message => post(() =>
         {
-            if (ProtocolLogText.Describe(message, mirror) is { } line) log(line);
+            if (ProtocolLogText.Describe(message, mirror) is { } line) log.Protocol(line);
             server.Apply(message);
         });
         conn.Disconnected += (reason, detail) => post(() => OnDisconnected(conn, reason, detail));
@@ -194,8 +195,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         ResetStats();
         show(server);
         setStatus(string.Format(Strings.Status_Connected, server.ServerName));
-        log($"Connected to '{server.ServerName}' as {mirror.Self?.Nickname} (session {mirror.SelfId}), " +
-            $"channel '{mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name}', {mirror.Users.Count} users online");
+        log.Connected(server.ServerName, mirror.Self?.Nickname, mirror.SelfId, mirror.Channels.GetValueOrDefault(mirror.Self?.ChannelId ?? Guid.Empty)?.Name, mirror.Users.Count);
         play(SoundEvent.Connected);
         if (!restored && server.WelcomeText.Length > 0) addNotice(server.WelcomeText, NoticeKind.Welcome);
         lastChoice = choice with { SaveBookmark = false }; // Package 139: what a reconnect uses, the password in memory only
@@ -227,7 +227,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
 
     public Task DisconnectAsync()
     {
-        if (connection is not null) log("Disconnected (own action)");
+        if (connection is not null) log.DisconnectedOwnAction();
         StopReconnect(); // Package 139: also connecting elsewhere and closing the app
         lastChoice = null; // its password goes with the session
         return DisconnectAsync(Strings.Status_NotConnected);
@@ -260,7 +260,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     {
         if (conn != connection) return;
         var text = string.Format(Strings.Status_Disconnected, ErrorTexts.For(reason, detail));
-        if (!string.IsNullOrEmpty(detail)) log($"Disconnected by the server: {reason} ({detail})");
+        if (!string.IsNullOrEmpty(detail)) log.DisconnectedByServer(reason, detail);
         if (reason is ReasonCodes.ConnectionLost or ReasonCodes.ServerShutdown or ReasonCodes.ServerRestart && lastChoice is { } choice && shownServer() is { } server)
         {
             StartReconnect(choice, text, server);
@@ -290,7 +290,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         var selfState = selfTest.StateBefore ?? new SelfState(server.SelfState.SelfMuted && !server.SelfState.MutedByHold, server.SelfState.SelfDeafened);
         var restore = new Restore(self?.ChannelId ?? Guid.Empty, server.CurrentChannel?.Name ?? "", self is null ? null : server.PasswordFor(self.ChannelId),
             selfState, server.SelfState.MutedBeforeDeafen);
-        log($"Connection lost, new attempts after {string.Join(", ", Reconnector.Delays.Select(duration => $"{duration.TotalSeconds:0}"))} s");
+        log.ConnectionLost(string.Join(", ", Reconnector.Delays.Select(duration => $"{duration.TotalSeconds:0}")));
         lostText = text;
         _ = DisconnectAsync(text, sound: false);
         reconnector ??= new Reconnector(time, post);
@@ -310,7 +310,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             conn = await OpenAsync(choice);
             if (reconnector?.IsCurrent(generation) != true)
             {
-                log("Reconnect: outdated attempt dropped");
+                log.ReconnectOutdated();
                 await conn.DisposeAsync();
                 return false;
             }
@@ -329,7 +329,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         }
         catch (Exception exception) when (reconnector?.IsCurrent(generation) != true)
         {
-            log($"Reconnect: outdated attempt dropped ({exception.Message})");
+            log.ReconnectOutdatedFailed(exception.Message);
             if (conn is not null) await conn.DisposeAsync();
             return false;
         }
@@ -348,7 +348,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         catch (Exception exception)
         {
             // review: also the unexpected, so the series goes on instead of hanging at "Verbinde mit ..."
-            log($"Reconnect failed: {exception.GetType().Name}: {exception.Message}");
+            log.ReconnectFailed(exception.GetType().Name, exception.Message);
             if (conn is not null && conn == connection) await DisconnectAsync(lostText, sound: false); // Attach got that far
             else if (conn is not null) await conn.DisposeAsync();
             return false;
@@ -358,7 +358,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <summary>The fifth attempt failed too: the disconnect as it was before Package 139.</summary>
     void GiveUp()
     {
-        log("Reconnect given up");
+        log.ReconnectGivenUp();
         EndSeries(lostText);
     }
 
@@ -367,7 +367,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     void CancelReconnect()
     {
         if (!IsReconnecting) return;
-        log("Reconnect cancelled");
+        log.ReconnectCancelled();
         EndSeries(lostText, sound: false);
     }
 

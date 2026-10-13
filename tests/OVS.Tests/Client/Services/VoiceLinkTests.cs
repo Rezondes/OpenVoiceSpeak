@@ -31,7 +31,7 @@ public sealed class VoiceLinkTests : IDisposable
     {
         keys = new KeyPoller(time);
         engine = new AudioEngine(keys, time, hardware: null);
-        link = new VoiceLink(hear: engine.OnVoice, setSend: send => engine.Send = send, time: time, log: logLines.Add,
+        link = new VoiceLink(hear: engine.OnVoice, setSend: send => engine.Send = send, time: time, log: new LineLogger(logLines),
             reportUplink: loss =>
             {
                 reportedUplinks.Add(loss);

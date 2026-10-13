@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using NAudio.Wave;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
@@ -36,7 +37,7 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
         Assert.True(File.Exists(copy));
         using (var reader = new WaveFileReader(copy))
             Assert.Equal((48000, 1), (reader.WaveFormat.SampleRate, reader.WaveFormat.Channels));
-        var samples = new SoundLibrary(Profile, _ => { }).Samples(SoundEvent.UserJoined, new SoundSetting(File: file));
+        var samples = new SoundLibrary(Profile, NullLogger.Instance).Samples(SoundEvent.UserJoined, new SoundSetting(File: file));
         Assert.InRange(samples.Length, 47_990, 48_010);
         Assert.True(VoiceActivityDetector.LevelDb(samples) > -20);
     }
@@ -59,12 +60,12 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
     public void CustomSound_MissingFile_DefaultPlayedAndLoggedOnce()
     {
         var logged = new List<string>();
-        var library = new SoundLibrary(Profile, logged.Add);
+        var library = new SoundLibrary(Profile, new LineLogger(logged));
         var setting = new SoundSetting(File: "UserJoined-weg.wav");
         Assert.Same(SoundSynth.Render(SoundEvent.UserJoined), library.Samples(SoundEvent.UserJoined, setting));
         library.Samples(SoundEvent.UserJoined, setting);
         Assert.Single(logged);
-        Assert.Contains("Standardton", logged[0]);
+        Assert.Contains("default tone", logged[0]);
     }
 
     [Fact]
@@ -73,7 +74,7 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
         var (keep, _) = SoundImport.Prepare(Wav("a.wav", 0.3), Profile, SoundEvent.MicOn);
         var (drop, _) = SoundImport.Prepare(Wav("b.wav", 0.3), Profile, SoundEvent.MicOff);
         var settings = new ClientSettings { Sounds = { [SoundEvent.MicOn] = new SoundSetting(File: keep) } };
-        new SoundLibrary(Profile, _ => { }).CleanUp(settings);
+        new SoundLibrary(Profile, NullLogger.Instance).CleanUp(settings);
         Assert.Equal([keep], Directory.GetFiles(Path.Combine(Profile, SoundLibrary.Folder)).Select(Path.GetFileName));
         Assert.NotEqual(keep, drop);
     }

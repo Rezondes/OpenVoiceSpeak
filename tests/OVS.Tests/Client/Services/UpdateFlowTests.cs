@@ -37,7 +37,7 @@ public sealed class UpdateFlowTests
     }
 
     UpdateFlow Build(TimeSpan lookUpTimeout) =>
-        new(() => checkAtStart, offer => offerDialog?.Invoke(offer) ?? Task.FromResult(false), logLines.Add, statuses.Add, warnings.Add, lookUpTimeout);
+        new(() => checkAtStart, offer => offerDialog?.Invoke(offer) ?? Task.FromResult(false), new LineLogger(logLines), statuses.Add, warnings.Add, lookUpTimeout);
 
     void LookUpReturns(UpdateCheckResult result, UpdateFlow? target = null) =>
         (target ?? flow).LookUp = token =>
@@ -334,7 +334,7 @@ public sealed class UpdateFlowTests
         var answer = await HangGuard.BoundAsync(flow.CheckAsync());
 
         Assert.Equal("disk full", answer);
-        Assert.Equal("disk full", logLines[^1]);
+        Assert.Equal("Update failed: disk full", logLines[^1]);
         Assert.Equal("disk full", statuses[^1]);
         Assert.Equal(["disk full"], warnings);
         Assert.Null(shownProgress[^1]);

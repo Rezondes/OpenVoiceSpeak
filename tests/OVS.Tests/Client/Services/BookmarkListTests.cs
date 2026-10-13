@@ -27,7 +27,7 @@ public sealed class BookmarkListTests
         list.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
     }
 
-    BookmarkList Build() => new(() => bookmarks, (host, port) => icons.GetValueOrDefault((host, port)), leave, () => dialogs, () => saves++, lines.Add);
+    BookmarkList Build() => new(() => bookmarks, (host, port) => icons.GetValueOrDefault((host, port)), leave, () => dialogs, () => saves++, new LineLogger(lines));
 
     static Bookmark Gilde(string? password = null) =>
         new("Gilde", "gilde.example.org", 7000, "anna", password is null ? null : PasswordProtector.Protect(password));

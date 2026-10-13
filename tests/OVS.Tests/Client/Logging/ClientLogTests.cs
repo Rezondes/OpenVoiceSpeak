@@ -81,12 +81,12 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
 
             var log = await EventuallyAsync(null,
                 $"Connecting to 127.0.0.1:{server.Port} as anna",
-                "Serverzertifikat neu für 127.0.0.1",
-                "akzeptiert",
+                "Server certificate new for 127.0.0.1",
+                "accepted",
                 "Abgelehnt: Ungültiger Nickname",
                 "Connected to 'Testserver' as anna",
                 "Disconnected (own action)");
-            Assert.Matches(@"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} Einstellungen: Modus PushToTalk", log);
+            Assert.Matches(@"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} Settings: mode PushToTalk", log);
         }
         finally
         {
@@ -194,16 +194,16 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         {
             engine.DeviceLifecycle.SetTone(440);
             keys.Simulate(ptt: true);
-            await EventuallyAsync(null, "Audio-Debug: PTT gedrückt");
+            await EventuallyAsync(null, "Audio debug: PTT down");
             // The rate comes from a real one-second timer: on a busy runner a single second may be stretched,
             // so wait (at most 15 s) for a full second of PTT instead of sampling a fixed one.
             await AsyncWait.UntilAsync(() => Rates(LogText()).Any(value => value is >= 45 and <= 55), TimeSpan.FromSeconds(15));
             keys.Simulate(ptt: false);
-            await EventuallyAsync(null, "Audio-Debug: PTT losgelassen");
+            await EventuallyAsync(null, "Audio debug: PTT up");
         }
         var log = LogText();
-        Assert.Contains("Audio-Debug: PTT gedrückt", log);
-        Assert.Contains("Audio-Debug: PTT losgelassen", log);
+        Assert.Contains("Audio debug: PTT down", log);
+        Assert.Contains("Audio debug: PTT up", log);
         // one full second of PTT at 20 ms per frame
         Assert.Contains(Rates(log), value => value is >= 45 and <= 55);
         Assert.Empty(Directory.GetFiles(dir, "audio-debug.log", SearchOption.AllDirectories));
@@ -211,5 +211,5 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
 
     /// <summary>Only complete numbers count: the log may be read while a line is being written.</summary>
     static List<int> Rates(string log) =>
-        System.Text.RegularExpressions.Regex.Matches(log, @"Frames gesendet: (\d+)/s").Select(match => int.Parse(match.Groups[1].Value)).ToList();
+        System.Text.RegularExpressions.Regex.Matches(log, @"frames sent: (\d+)/s").Select(match => int.Parse(match.Groups[1].Value)).ToList();
 }

@@ -25,24 +25,23 @@ public sealed class AudioDebugLog : IDisposable
         this.log = log;
         keys.Changed += OnKeys;
         audio.InputLevel += OnLevel;
-        Write($"gestartet, Tasten: {(keys.Bindings.Count == 0 ? "keine" : string.Join(", ", keys.Bindings.Select(keyBinding => $"{KeyActionLabels.Localize(keyBinding.Action)} = {keyBinding.Chord.Name}")))}");
+        log.AudioDebugStarted(keys.Bindings.Count == 0 ? "none" : string.Join(", ", keys.Bindings.Select(keyBinding => $"{keyBinding.Action} = {keyBinding.Chord.Name}")));
         timer = new Timer(_ => OnSecond(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)); // clock: debug
     }
 
     // Package 130: the keys themselves, without the release delay (Changed fires on the key's edges)
-    void OnKeys() => Write($"PTT {(keys.IsDown(KeyAction.PushToTalk) ? "gedrückt" : "losgelassen")}, Link-PTT {(keys.IsDown(KeyAction.LinkPushToTalk) ? "gedrückt" : "losgelassen")}, " +
-                           $"Push-to-Mute {(keys.MuteHeld ? "gedrückt" : "losgelassen")}");
+    void OnKeys() => log.AudioDebugKeys(DownUp(keys.IsDown(KeyAction.PushToTalk)), DownUp(keys.IsDown(KeyAction.LinkPushToTalk)), DownUp(keys.MuteHeld));
+
+    static string DownUp(bool down) => down ? "down" : "up";
 
     void OnLevel(float db) => lastLevel = db;
 
     void OnSecond()
     {
         long frames = audio.FramesSent;
-        Write($"Frames gesendet: {frames - lastFrames}/s, Pegel {lastLevel:0} dBFS");
+        log.AudioDebugSecond(frames - lastFrames, lastLevel);
         lastFrames = frames;
     }
-
-    void Write(string line) => log.Write("Audio-Debug: " + line);
 
     /// <summary>Stops logging.</summary>
     public void Dispose()

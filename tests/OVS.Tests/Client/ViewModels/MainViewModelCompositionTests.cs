@@ -35,9 +35,9 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     {
         var log = new ClientLog(Parts, time);
         keys ??= new KeyPoller(time);
-        var soundLibrary = new SoundLibrary(Parts, log.Write);
+        var soundLibrary = new SoundLibrary(Parts, log);
         return MainViewModelSetup.Compose(Profile, post, time, log, settings ?? new ClientSettings(), settingsWarning, new TrustedServerFingerprints(Parts),
-            new ServerIconCache(Parts), soundLibrary, new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log.Write), soundLibrary.Samples),
+            new ServerIconCache(Parts), soundLibrary, new LeaveTimer(time), keys, new AudioEngine(keys, time, hardware, new NativeCaptureFilters(log), soundLibrary.Samples),
             hardware is null ? null : hardware.ListActive);
     }
 
@@ -59,10 +59,10 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var log = new ClientLog(Parts, time);
         var leave = new LeaveTimer(time);
         var keys = new KeyPoller(time);
-        var audio = new AudioEngine(keys, time, hardware: null, new NativeCaptureFilters(log.Write));
+        var audio = new AudioEngine(keys, time, hardware: null, new NativeCaptureFilters(log));
 
         await using var viewModel = MainViewModelSetup.Compose(Profile, action => action(), time, log, settings, null, new TrustedServerFingerprints(Parts),
-            new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), leave, keys, audio);
+            new ServerIconCache(Parts), new SoundLibrary(Parts, log), leave, keys, audio);
 
         Assert.Same(log, viewModel.Log);
         Assert.Same(settings, viewModel.Settings);
@@ -78,7 +78,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     {
         await using var viewModel = MainViewModelSetup.Create(Profile, action => action(), time: time);
 
-        Assert.Equal(new Action<string>(viewModel.Log.Write), viewModel.Audio.Filters.Log);
+        Assert.Same(viewModel.Log, viewModel.Audio.Filters.Log);
     }
 
     [Fact]

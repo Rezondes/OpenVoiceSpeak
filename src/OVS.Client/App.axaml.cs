@@ -38,8 +38,7 @@ public partial class App : Application
             // The fallback only for a start that did not go through Main (such as the previewer):
             var log = Program.Log ??= new ClientLog(options.ProfileDir, time);
             var args = string.Join(' ', Environment.GetCommandLineArgs().Skip(1));
-            log.Write($"OpenVoiceSpeak-Client {BuildInfo.Current.Version} startet, Profil {options.ProfileDir}, " +
-                      $"Optionen: {(args.Length > 0 ? args : "keine")}");
+            log.Starting(BuildInfo.Current.Version, options.ProfileDir, args.Length > 0 ? args : "none");
             var settingsWarning = Program.SettingsWarning;
             // The fallback only for a start that did not go through Main (such as the previewer):
             var settings = Program.Settings ??= ClientSettings.Load(options.ProfileDir, out settingsWarning);
@@ -92,7 +91,7 @@ public partial class App : Application
                 installer = new UpdateInstaller(http, exe, _ =>
                 {
                     Process.Start(start)?.Dispose();
-                    log.Write("Neue Version gestartet");
+                    log.NewVersionStarted();
                     desktop.Shutdown();
                 });
             }
@@ -108,7 +107,7 @@ public partial class App : Application
                 audioDebug?.Dispose();
                 // Off the UI thread: the disposal awaits background loops.
                 Task.Run(() => viewModel.DisposeAsync().AsTask()).Wait(TimeSpan.FromSeconds(2));
-                log.Write("Client beendet");
+                log.Stopped();
                 log.Flush(); // Package 124: written in the background, so the last lines are written now
             };
         }

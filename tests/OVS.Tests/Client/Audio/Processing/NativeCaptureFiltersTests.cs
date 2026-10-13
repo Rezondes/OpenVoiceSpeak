@@ -1,6 +1,7 @@
 using System.Reflection;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Processing;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Audio.Processing;
 
@@ -34,7 +35,7 @@ public sealed class NativeCaptureFiltersTests
     {
         using var capture = CapturePipeline.Manual();
 
-        new NativeCaptureFilters(log.Add).AttachTo(capture, EchoDelay);
+        new NativeCaptureFilters(new LineLogger(log)).AttachTo(capture, EchoDelay);
 
         var properties = FilterProperties();
         Assert.Contains(properties, property => property.Name == nameof(CapturePipeline.Suppressor));
@@ -48,7 +49,7 @@ public sealed class NativeCaptureFiltersTests
     {
         using var capture = CapturePipeline.Manual();
 
-        new NativeCaptureFilters(log.Add).AttachTo(capture, EchoDelay);
+        new NativeCaptureFilters(new LineLogger(log)).AttachTo(capture, EchoDelay);
 
         Assert.Equal(EchoDelay, capture.Canceller!.DelayMs);
     }
@@ -56,7 +57,7 @@ public sealed class NativeCaptureFiltersTests
     [Fact]
     public void AttachTo_LibrariesMissing_NoFiltersAndOneLogLineEach()
     {
-        var filters = new NativeCaptureFilters(log.Add, NoNoiseLibrary, NoEchoLibrary);
+        var filters = new NativeCaptureFilters(new LineLogger(log), NoNoiseLibrary, NoEchoLibrary);
         using var first = CapturePipeline.Manual();
         using var second = CapturePipeline.Manual();
 
@@ -73,7 +74,7 @@ public sealed class NativeCaptureFiltersTests
     [Fact]
     public void AttachTo_OnlyNoiseLibraryMissing_CancellerStillAttached()
     {
-        var filters = new NativeCaptureFilters(log.Add, noiseLibrary: NoNoiseLibrary);
+        var filters = new NativeCaptureFilters(new LineLogger(log), noiseLibrary: NoNoiseLibrary);
         using var first = CapturePipeline.Manual();
         using var second = CapturePipeline.Manual();
 
@@ -88,7 +89,7 @@ public sealed class NativeCaptureFiltersTests
     [Fact]
     public void AttachTo_OnlyEchoLibraryMissing_SuppressorStillAttached()
     {
-        var filters = new NativeCaptureFilters(log.Add, echoLibrary: NoEchoLibrary);
+        var filters = new NativeCaptureFilters(new LineLogger(log), echoLibrary: NoEchoLibrary);
         using var first = CapturePipeline.Manual();
         using var second = CapturePipeline.Manual();
 

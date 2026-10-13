@@ -35,12 +35,12 @@ sealed class ConnectionRig : IAsyncDisposable
         Seam = new ConnectSeam(dir, Time);
         keys = new KeyPoller(Time, new FakeKeys().IsDown);
         audio = new AudioEngine(keys, Time, hardware: null);
-        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: Time, log: LogLines.Add,
+        var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: Time, log: new LineLogger(LogLines),
             reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: EndLossStreaks);
         var engineSync = new EngineSync(audio, () => EngineConnectionState.Disconnected, () => null, _ => 1f);
-        var selfTest = new SelfTest(() => false, _ => { }, _ => { }, LogLines.Add, () => null, _ => Task.CompletedTask);
-        var bookmarks = new BookmarkList(() => Bookmarks, (_, _) => null, new LeaveTimer(Time, () => PostToUi), () => Dialogs.BookmarkList, () => { }, LogLines.Add);
-        Connection = new ConnectionViewModel(time: Time, post: PostToUi, log: LogLines.Add, openConnection: OpenAsync, play: Play,
+        var selfTest = new SelfTest(() => false, _ => { }, _ => { }, new LineLogger(LogLines), () => null, _ => Task.CompletedTask);
+        var bookmarks = new BookmarkList(() => Bookmarks, (_, _) => null, new LeaveTimer(Time, () => PostToUi), () => Dialogs.BookmarkList, () => { }, new LineLogger(LogLines));
+        Connection = new ConnectionViewModel(time: Time, post: PostToUi, log: new LineLogger(LogLines), openConnection: OpenAsync, play: Play,
             voiceLink: voiceLink, engineSync: engineSync, selfTest: selfTest, bookmarks: bookmarks, icons: new ServerIconCache(dir),
             stats: ConnectionStats.CreateBlank(),
             askPassword: name => Dialogs.AskPassword?.Invoke(name) ?? Task.FromResult<PasswordAnswer?>(null),

@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using OVS.Client.Logging;
+
 namespace OVS.Client.Services;
 
 /// <summary>
@@ -10,7 +13,7 @@ internal sealed class SelfTest
     readonly Func<bool> readEngineRunning;
     readonly Action<bool> setEngineRunning;
     readonly Action<bool> showOnPage;
-    readonly Action<string> log;
+    readonly ILogger log;
     readonly Func<SelfState?> readServerState;
     readonly Func<SelfState, Task> writeServerState;
 
@@ -20,7 +23,7 @@ internal sealed class SelfTest
     /// <param name="log">Where the start and the end are written.</param>
     /// <param name="readServerState">The own mute and deafen at the connected server; null without a server.</param>
     /// <param name="writeServerState">Sets the own mute and deafen at the connected server; completes at once without a server.</param>
-    internal SelfTest(Func<bool> readEngineRunning, Action<bool> setEngineRunning, Action<bool> showOnPage, Action<string> log,
+    internal SelfTest(Func<bool> readEngineRunning, Action<bool> setEngineRunning, Action<bool> showOnPage, ILogger log,
         Func<SelfState?> readServerState, Func<SelfState, Task> writeServerState)
     {
         this.readEngineRunning = readEngineRunning;
@@ -40,7 +43,8 @@ internal sealed class SelfTest
         if (on == readEngineRunning()) return;
         setEngineRunning(on);
         showOnPage(on);
-        log(on ? "Self test started" : "Self test finished");
+        if (on) log.SelfTestStarted();
+        else log.SelfTestFinished();
         if (on)
         {
             StateBefore = readServerState();

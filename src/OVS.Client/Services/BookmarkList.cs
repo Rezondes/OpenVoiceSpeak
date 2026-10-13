@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Logging;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
+using OVS.Client.Logging;
 using OVS.Client.Models;
 using OVS.Client.Settings;
 
@@ -19,7 +21,7 @@ internal sealed class BookmarkList : ObservableObject
     readonly Func<string, int, byte[]?> loadIcon;
     readonly Func<BookmarkListDialogs> dialogs;
     readonly Action save;
-    readonly Action<string> log;
+    readonly ILogger log;
 
     /// <param name="bookmarks">The current saved bookmarks: applying settings replaces the list, so it is read each time.</param>
     /// <param name="loadIcon">The icon last seen for a server (host, port); null when there is none.</param>
@@ -28,7 +30,7 @@ internal sealed class BookmarkList : ObservableObject
     /// <param name="save">Writes the current settings to disk.</param>
     /// <param name="log">Writes a line to the client log.</param>
     internal BookmarkList(Func<List<Bookmark>> bookmarks, Func<string, int, byte[]?> loadIcon, LeaveTimer leave, Func<BookmarkListDialogs> dialogs,
-        Action save, Action<string> log)
+        Action save, ILogger log)
     {
         this.bookmarks = bookmarks;
         this.loadIcon = loadIcon;
@@ -77,7 +79,8 @@ internal sealed class BookmarkList : ObservableObject
         saved.RemoveAll(bookmark => IsServer(bookmark, choice.Host, choice.Port));
         saved.Insert(0, new Bookmark(old?.Name ?? $"{choice.Host}:{choice.Port}", choice.Host, choice.Port, choice.Nickname, password));
         save();
-        if (passwordConfirmed) log($"Bookmark saved{(password is null ? "" : ", password stored encrypted")}");
+        if (passwordConfirmed && password is null) log.BookmarkSaved();
+        else if (passwordConfirmed) log.BookmarkSavedWithPassword();
         Refresh();
     }
 
@@ -96,7 +99,7 @@ internal sealed class BookmarkList : ObservableObject
         saved.RemoveAll(other => !ReferenceEquals(other, edited) && IsServer(other, answer.Host, answer.Port));
         save();
         var replaced = others.Count > 0 ? $", replaces '{others[0].Name}'" : "";
-        log($"Bookmark '{bookmark.Name}' changed: {answer.Name}, {answer.Host}:{answer.Port}, {answer.Nickname}, password {(password is null ? "not stored" : "stored")}{replaced}");
+        log.BookmarkChanged(bookmark.Name, answer.Name, answer.Host, answer.Port, answer.Nickname, password is null ? "not stored" : "stored", replaced);
         Refresh();
     }
 
@@ -108,7 +111,7 @@ internal sealed class BookmarkList : ObservableObject
         if (dialogs().Confirm is not { } confirm || !await confirm(string.Format(Strings.Confirm_DeleteBookmark, bookmark.Name))) return;
         if (!bookmarks().Remove(bookmark)) return;
         save();
-        log($"Bookmark '{bookmark.Name}' deleted");
+        log.BookmarkDeleted(bookmark.Name);
         Refresh();
     }
 }

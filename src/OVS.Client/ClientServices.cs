@@ -42,9 +42,9 @@ public static class ClientServices
         services.AddSingleton(log);
         services.AddSingleton<ILogger>(log);
         services.AddSingleton(_ => new KeyPoller(time, keyState));
-        services.AddSingleton(_ => new SoundLibrary(storageDir, log.Write)); // holds no handle; the engine plays its tones
+        services.AddSingleton(_ => new SoundLibrary(storageDir, log)); // holds no handle; the engine plays its tones
         services.AddSingleton(provider => new AudioEngine(provider.GetRequiredService<KeyPoller>(), time, hardware,
-            new NativeCaptureFilters(log.Write), provider.GetRequiredService<SoundLibrary>().Samples));
+            new NativeCaptureFilters(log), provider.GetRequiredService<SoundLibrary>().Samples));
         services.AddSingleton(_ => new TrustedServerFingerprints(storageDir));
         services.AddSingleton(_ => new ServerIconCache(storageDir));
         services.AddSingleton(_ => new LeaveTimer(time, () => post));

@@ -615,7 +615,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task OpenSettings_SoundWithMissingFilePreviewed_EngineFallsBackAndLogsTheMissingFile()
     {
         const string missingFile = "preview-missing.wav";
-        string missingLine = $"Sound-Datei {missingFile} für {SoundEvent.UserJoined} fehlt";
+        string missingLine = $"Sound file {missingFile} for {SoundEvent.UserJoined} missing";
         await OnUiAsync(() =>
         {
             viewModel.ApplySettings(new ClientSettings { Sounds = { [SoundEvent.UserJoined] = new SoundSetting(File: missingFile) } });
