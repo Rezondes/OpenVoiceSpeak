@@ -80,7 +80,7 @@ public sealed class ServerTuningTests
         }
         Assert.True(closed || await client.WaitClosedAsync());
         // The goodbye can reach the client a moment before the server writes its log line.
-        for (int index = 0; index < 200 && !server.Log.Any(line => line.Contains("flut getrennt (zu viele Anfragen)")); index++) await Task.Delay(50);
+        await AsyncWait.UntilAsync(() => server.Log.Any(line => line.Contains("flut getrennt (zu viele Anfragen)")));
         Assert.Contains(server.Log, line => line.Contains("flut getrennt (zu viele Anfragen)"));
     }
 
@@ -96,7 +96,7 @@ public sealed class ServerTuningTests
         await using var talker = await TestClient.ConnectAsync(server, "viel");
         await using var listener = await TestClient.ConnectAsync(server, "ohr");
         await listener.SendAsync(new VoiceUp(0, 0, ""));
-        for (int index = 0; index < 500 && !server.State.FindSession(listener.Id)!.Voice.TcpVoice; index++) await Task.Delay(20);
+        await AsyncWait.UntilAsync(() => server.State.FindSession(listener.Id)!.Voice.TcpVoice);
 
         for (uint number = 0; number < 30; number++) await talker.SendAsync(new VoiceUp(number, 0, Convert.ToBase64String([1, 2, 3])));
         for (uint number = 0; number < ServerTuning.VoiceBurst; number++) Assert.Equal(number, (await listener.WaitForAsync<VoiceDown>()).Seq);
@@ -395,9 +395,8 @@ public sealed class ServerTuningTests
         {
         }
 
-        var deadline = DateTime.UtcNow.AddSeconds(30); // returns early; a loaded CI runner can take long to notice
-        while ((server.State.SessionCount > 0 || server.State.ConnectionsFrom(IPAddress.Loopback) > 0) && DateTime.UtcNow < deadline)
-            await Task.Delay(50);
+        // returns early; a loaded CI runner can take long to notice
+        await AsyncWait.UntilAsync(() => server.State.SessionCount == 0 && server.State.ConnectionsFrom(IPAddress.Loopback) == 0, TimeSpan.FromSeconds(30));
         Assert.Equal(0, server.State.SessionCount);
         Assert.Equal(0, server.State.ConnectionsFrom(IPAddress.Loopback));
         Assert.Contains(server.Log, line => line.Contains("taub getrennt (Sendepuffer voll)") || line.Contains("taub getrennt (Schreiben zu langsam)"));
@@ -422,16 +421,15 @@ public sealed class ServerTuningTests
         using var stalled = new TcpClient();
         await stalled.ConnectAsync(IPAddress.Loopback, server.Port); // no TLS: holds the only handshake slot
         // Wait until the accept loop has taken it (it counts the connection right before the slot), not a fixed time.
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (server.State.ConnectionsFrom(IPAddress.Loopback) == 0 && DateTime.UtcNow < deadline) await Task.Delay(20);
+        await AsyncWait.UntilAsync(() => server.State.ConnectionsFrom(IPAddress.Loopback) > 0);
         Assert.Equal(1, server.State.ConnectionsFrom(IPAddress.Loopback));
-        await Task.Delay(100);
+        await Task.Delay(100); // real time: the slot is taken right after the count, and no state shows it
 
         await Assert.ThrowsAnyAsync<Exception>(() => TestClient.OpenAsync(server.Port));
 
         stalled.Close();
         TestClient? late = null;
-        deadline = DateTime.UtcNow.AddSeconds(30);
+        var deadline = DateTime.UtcNow.AddSeconds(30); // connect retries: a loaded CI runner can take long to free the slot
         while (late is null && DateTime.UtcNow < deadline)
         {
             try

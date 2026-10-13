@@ -191,7 +191,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         while (true)
         {
             using var idle = CancellationTokenSource.CreateLinkedTokenSource(stopping.Token);
-            idle.CancelAfter(IdleTimeout);
+            idle.CancelAfter(IdleTimeout); // clock: real time, the bound of a read on a real socket
             Message? message;
             try
             {

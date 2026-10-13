@@ -181,7 +181,7 @@ public class HandshakeTests
         {
             await client.SendAsync(new Ping());
             await client.WaitForAsync<Pong>();
-            await Task.Delay(500);
+            await Task.Delay(500); // real time: the idle bound is a real-time read timeout, and the pauses stay below it
         }
         Assert.Equal(1, server.State.SessionCount);
     }

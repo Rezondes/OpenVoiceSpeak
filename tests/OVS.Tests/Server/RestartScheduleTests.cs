@@ -42,8 +42,7 @@ public sealed class RestartScheduleTests
         // time.Advance after it hits the new timer instead of racing the loop on a slow runner.
         async Task LoggedAsync(string text, int count)
         {
-            var deadline = DateTime.UtcNow.AddSeconds(10);
-            while (lines.Count(line => line.Contains(text)) < count && DateTime.UtcNow < deadline) await Task.Delay(20);
+            await AsyncWait.UntilAsync(() => lines.Count(line => line.Contains(text)) >= count);
             Assert.Equal(count, lines.Count(line => line.Contains(text)));
         }
         const string Scheduled = "Automatischer Neustart täglich um";
@@ -60,13 +59,13 @@ public sealed class RestartScheduleTests
         await SetAsync(false, TimeSpan.FromMinutes(10)); // switched off before the time
         await LoggedAsync("Automatischer Neustart ausgeschaltet", 1);
         time.Advance(TimeSpan.FromMinutes(11));
-        await Task.Delay(200);
+        await AsyncWait.AssertStaysFalseAsync(() => restart.IsCompleted, TimeSpan.FromMilliseconds(200), "switched off: no restart");
         Assert.False(restart.IsCompleted);
 
         await SetAsync(true, TimeSpan.FromMinutes(10));
         await LoggedAsync(Scheduled, 2);
         time.Advance(TimeSpan.FromMinutes(9));
-        await Task.Delay(200);
+        await AsyncWait.AssertStaysFalseAsync(() => restart.IsCompleted, TimeSpan.FromMilliseconds(200), "not before its time");
         Assert.False(restart.IsCompleted);
         time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(2));
         Assert.True(await restart.WaitAsync(TimeSpan.FromSeconds(30)));

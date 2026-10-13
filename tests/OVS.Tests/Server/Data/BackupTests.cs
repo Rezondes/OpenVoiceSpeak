@@ -391,7 +391,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Single(UploadFiles(server.DataDir));
         await admin.DisposeAsync();
         // the server notices the closed connection on its own time: poll with a generous cap
-        for (var deadline = DateTime.UtcNow.AddSeconds(30); UploadFiles(server.DataDir).Length > 0 && DateTime.UtcNow < deadline;) await Task.Delay(50);
+        await AsyncWait.UntilAsync(() => UploadFiles(server.DataDir).Length == 0, TimeSpan.FromSeconds(30));
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.Empty(Directory.GetFiles(backups, "*.ovsbackup"));
 

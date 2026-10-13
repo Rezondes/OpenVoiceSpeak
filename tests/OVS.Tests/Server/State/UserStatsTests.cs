@@ -25,7 +25,7 @@ public sealed class UserStatsTests
     static async Task UntilAsync(Func<bool> condition)
     {
         // generous: returns as soon as it holds, and a loaded CI runner can take seconds to notice a closed connection
-        for (var deadline = DateTime.UtcNow.AddSeconds(30); !condition() && DateTime.UtcNow < deadline;) await Task.Delay(20);
+        await AsyncWait.UntilAsync(condition, TimeSpan.FromSeconds(30));
         Assert.True(condition());
     }
 

@@ -324,7 +324,7 @@ public sealed class LogCommandTests
         var ready = await PrepareAsync(admin, live.Id);
         Assert.Equal(Path.GetFileName(path), ready.FileName);
         await using (await TestClient.ConnectAsync(server, "spaeter")) { } // lines written after the request
-        await Task.Delay(100);
+        await AsyncWait.UntilAsync(() => ReadShared(path).Length > before.Length);
         var bytes = await PullAsync(admin, ready);
         Assert.Equal(before, bytes);
         Assert.True(ReadShared(path).Length > before.Length);
@@ -379,8 +379,7 @@ public sealed class LogCommandTests
         Assert.Single(Directory.GetFiles(ExportDir(server)));
         await admin.DisposeAsync();
         // the server notices the closed connection on its own time: poll with a generous cap
-        for (var deadline = DateTime.UtcNow.AddSeconds(30); Directory.GetFiles(ExportDir(server)).Length > 0 && DateTime.UtcNow < deadline;)
-            await Task.Delay(20);
+        await AsyncWait.UntilAsync(() => Directory.GetFiles(ExportDir(server)).Length == 0, TimeSpan.FromSeconds(30));
         Assert.Empty(Directory.GetFiles(ExportDir(server)));
 
         // what a crash left behind is removed at the next start
