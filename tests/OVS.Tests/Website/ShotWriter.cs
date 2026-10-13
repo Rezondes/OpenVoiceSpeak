@@ -91,7 +91,7 @@ public static class ShotWriter
         Directory.CreateDirectory(folder);
         foreach (var old in Directory.GetFiles(folder)) File.Delete(old);
         var taken = new List<(long At, byte[] Png)>();
-        var due = new Queue<(int At, Action Do)>(steps.OrderBy(s => s.At));
+        var due = new Queue<(int At, Action Do)>(steps.OrderBy(step => step.At));
         var watch = Stopwatch.StartNew();
         while (watch.ElapsedMilliseconds <= milliseconds)
         {
@@ -105,10 +105,10 @@ public static class ShotWriter
         for (int index = 0; index < slots; index++)
         {
             long at = index * 1000L / Fps;
-            var best = taken.MinBy(t => Math.Abs(t.At - at));
+            var best = taken.MinBy(value => Math.Abs(value.At - at));
             File.WriteAllBytes(Path.Combine(folder, $"frame{index:D4}.png"), best.Png);
         }
-        using var poster = SKBitmap.Decode(taken.MinBy(t => Math.Abs(t.At - posterAt)).Png);
+        using var poster = SKBitmap.Decode(taken.MinBy(value => Math.Abs(value.At - posterAt)).Png);
         File.WriteAllBytes(Path.Combine(folder, "poster.webp"), WebP(poster));
     }
 }

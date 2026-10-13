@@ -136,7 +136,7 @@ public sealed class FakeAudioHardware : IAudioHardware
         {
             lock (captures)
             lock (outputs)
-                return (captures.Count, captures.Count(c => !c.Capture.IsDisposed), outputs.Count, outputs.Count(o => !o.Output.Disposed));
+                return (captures.Count, captures.Count(capture => !capture.Capture.IsDisposed), outputs.Count, outputs.Count(output => !output.Output.Disposed));
         }
     }
 
@@ -152,7 +152,7 @@ public sealed class FakeAudioHardware : IAudioHardware
         {
             lock (captures)
             lock (outputs)
-                return (captures.SingleOrDefault(c => !c.Capture.IsDisposed).Device, outputs.SingleOrDefault(o => !o.Output.Disposed).Device);
+                return (captures.SingleOrDefault(capture => !capture.Capture.IsDisposed).Device, outputs.SingleOrDefault(output => !output.Output.Disposed).Device);
         }
     }
 

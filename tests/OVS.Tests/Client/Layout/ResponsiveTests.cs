@@ -63,8 +63,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     /// click by coordinate lands where the layout says.
     /// </summary>
     static bool AtRest(Control control, Control root) =>
-        control.TranslatePoint(default, root) is { } drawn && LayoutAssert.X(control, root) is { } x && LayoutAssert.Y(control, root) is { } y
-        && Math.Abs(drawn.X - x) < 0.5 && Math.Abs(drawn.Y - y) < 0.5
+        control.TranslatePoint(default, root) is { } drawn && LayoutAssert.X(control, root) is { } left && LayoutAssert.Y(control, root) is { } top
+        && Math.Abs(drawn.X - left) < 0.5 && Math.Abs(drawn.Y - top) < 0.5
         && !root.GetVisualDescendants().OfType<Control>().Any(otherControl => otherControl.Classes.Contains("entering"));
 
     static ColumnDefinition SidebarColumn(MainWindow main) => ((Grid)Sidebar(main).Parent!).ColumnDefinitions[0];
@@ -377,8 +377,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             var button = page.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Content as string == text
                 || otherButton.Content is Panel panel && panel.Children.OfType<TextBlock>().Any(textBlock => textBlock.Text == text));
             Assert.True(button.IsEffectivelyVisible);
-            var y = button.TranslatePoint(default, main)!.Value.Y;
-            Assert.True(y >= 0 && y + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {y}");
+            var top = button.TranslatePoint(default, main)!.Value.Y;
+            Assert.True(top >= 0 && top + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {top}");
         }
         main.Close();
         return 0;
@@ -393,8 +393,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
 
     static (double Top, double Bottom) Vertical(Control control, Visual root)
     {
-        var y = control.TranslatePoint(default, root)!.Value.Y;
-        return (y, y + control.Bounds.Height);
+        var top = control.TranslatePoint(default, root)!.Value.Y;
+        return (top, top + control.Bounds.Height);
     }
 
     [AvaloniaTheory]
@@ -527,20 +527,20 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             SelectTab(page, index);
             // the chosen tab is in view of the (scrolling) tab strip
             var header = (TabItem)tabs.ContainerFromIndex(index)!;
-            var x = header.TranslatePoint(default, strip)!.Value.X;
-            Assert.True(x >= -1 && x + header.Bounds.Width <= strip.Viewport.Width + 1, $"Tab {header.Header} at {x}, strip {strip.Viewport.Width}");
+            var left = header.TranslatePoint(default, strip)!.Value.X;
+            Assert.True(left >= -1 && left + header.Bounds.Width <= strip.Viewport.Width + 1, $"Tab {header.Header} at {left}, strip {strip.Viewport.Width}");
 
             var content = tabs.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Single(contentPresenter => contentPresenter.Name == "PART_SelectedContentHost");
             var matrix = content.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(scrollViewer => scrollViewer.Name == "LinkCells");
             // scroll every scrolling list through, so the lower cards are checked too
             foreach (var scroller in content.GetVisualDescendants().OfType<ScrollViewer>().Where(scrollViewer => scrollViewer != matrix && scrollViewer.Viewport.Height > 0).ToList())
             {
-                for (var y = 0.0; ; y += scroller.Viewport.Height)
+                for (var scrolled = 0.0; ; scrolled += scroller.Viewport.Height)
                 {
-                    scroller.Offset = new Vector(0, y);
+                    scroller.Offset = new Vector(0, scrolled);
                     Dispatcher.UIThread.RunJobs();
                     LayoutAssert.FitsHorizontally(page, matrix);
-                    if (y + scroller.Viewport.Height >= scroller.Extent.Height) break;
+                    if (scrolled + scroller.Viewport.Height >= scroller.Extent.Height) break;
                 }
             }
             LayoutAssert.FitsHorizontally(main, matrix);
@@ -700,8 +700,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         cells.Offset = new Vector(cells.Extent.Width, 0);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(before, title.TranslatePoint(default, main)!.Value);
-        var x = lastCell.TranslatePoint(default, cells)!.Value.X;
-        Assert.True(x >= 0 && x + lastCell.Bounds.Width <= cells.Viewport.Width + 1, $"letzte Zelle bei {x}");
+        var left = lastCell.TranslatePoint(default, cells)!.Value.X;
+        Assert.True(left >= 0 && left + lastCell.Bounds.Width <= cells.Viewport.Width + 1, $"letzte Zelle bei {left}");
         // title and cells of one row stay on one line
         Assert.Equal(Vertical(title, main).Top + title.Bounds.Height / 2,
             Vertical(page.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("linkCell")), main).Top + 16, tolerance: 2);
@@ -920,8 +920,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         viewModel.Chat.Selected = viewModel.Chat.Tabs[^1];
         Dispatcher.UIThread.RunJobs();
         var last = tabs[^1];
-        var x = last.TranslatePoint(default, scroller)!.Value.X;
-        Assert.True(x >= -1 && x + last.Bounds.Width <= scroller.Viewport.Width + 1, $"letzter Tab bei {x}");
+        var left = last.TranslatePoint(default, scroller)!.Value.X;
+        Assert.True(left >= -1 && left + last.Bounds.Width <= scroller.Viewport.Width + 1, $"letzter Tab bei {left}");
         viewModel.Chat.Selected = viewModel.Chat.Tabs[0];
         Dispatcher.UIThread.RunJobs();
         Assert.True(tabs[0].TranslatePoint(default, scroller)!.Value.X >= -1, $"erster Tab bei {tabs[0].TranslatePoint(default, scroller)!.Value.X}");

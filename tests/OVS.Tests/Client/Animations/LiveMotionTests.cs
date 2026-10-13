@@ -147,7 +147,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         var glows = MotionWait.Record(ring, visual => GlowAlpha((Border)visual));
         server.Tree.SetSelfTransmitting(null);
         MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (MotionWait.Scale(ring.Child!), GlowAlpha(ring)))); // the loop stops with the speaking
-        Assert.True(glows.Any(a => a is > 0 and < 0x99), "the glow fades out");
+        Assert.True(glows.Any(glow => glow is > 0 and < 0x99), "the glow fades out");
 
         server.Tree.SetSelfTransmitting(OVS.Shared.Voice.VoiceHeader.TargetLinked);
         MotionWait.Eventually(() =>
@@ -190,7 +190,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
         MotionWait.Until(() => copies.Count > 0 && !Ghosts(main).Any());
         Assert.False(serverMuted.IsVisible);
-        Assert.True(copies.Any(c => c.Opacity.Any(o => o < 0.9) && c.Scale.Any(s => s < 0.95)), "a copy pops out where the icon was");
+        Assert.True(copies.Any(copy => copy.Opacity.Any(value => value < 0.9) && copy.Scale.Any(value => value < 0.95)), "a copy pops out where the icon was");
         Assert.Empty(Ghosts(main));
 
         var fades = MotionWait.Record(serverMuted, visual => visual.Opacity);
@@ -198,7 +198,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         server.Apply(new UserUpdated(Anna(serverMuted: true)));
         MotionWait.Eventually(() =>
         {
-            Assert.True(fades.Any(o => o < 0.9) && scales.Any(s => s < 0.95), $"the icon pops in ({fades.DefaultIfEmpty(1).Min()}, {scales.DefaultIfEmpty(1).Min()})");
+            Assert.True(fades.Any(fade => fade < 0.9) && scales.Any(scale => scale < 0.95), $"the icon pops in ({fades.DefaultIfEmpty(1).Min()}, {scales.DefaultIfEmpty(1).Min()})");
             Assert.Equal((1d, 1d), (serverMuted.Opacity, MotionWait.Scale(serverMuted)));
         });
 
@@ -210,7 +210,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Eventually(() =>
         {
             Assert.True(micOff.IsVisible);
-            Assert.True(turns.Any(t => t > 0.1), $"the icon turns in ({turns.DefaultIfEmpty(0).Max()})");
+            Assert.True(turns.Any(turn => turn > 0.1), $"the icon turns in ({turns.DefaultIfEmpty(0).Max()})");
             Assert.Equal((0d, 1d), (Turned(micOff), micOff.Opacity), new ToleranceComparer());
         });
 
@@ -220,7 +220,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Eventually(() =>
         {
             Assert.True(deafened.IsVisible);
-            Assert.True(turns.Any(t => t > 0.1), $"the deafen icon turns in too ({turns.DefaultIfEmpty(0).Max()})");
+            Assert.True(turns.Any(turn => turn > 0.1), $"the deafen icon turns in too ({turns.DefaultIfEmpty(0).Max()})");
             Assert.Equal((0d, 1d), (Turned(deafened), deafened.Opacity), new ToleranceComparer());
         });
         main.Close();
@@ -270,9 +270,9 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         var pulses = MotionWait.Record(counter, MotionWait.Scale);
         bool Still() => (MotionWait.OffsetY(counter), MotionWait.Scale(counter), counter.Opacity) == (0d, 1d, 1d);
         server.Apply(new UserJoined(new UserInfo(3, "fp3", "bob", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
-        MotionWait.Until(() => rises.Any(y => y > 1) && Still(), atLeast: 400);
+        MotionWait.Until(() => rises.Any(rise => rise > 1) && Still(), atLeast: 400);
         Assert.Equal("2/3", counter.Text);
-        Assert.True(rises.Any(y => y > 1), $"a higher number comes up from below ({rises.DefaultIfEmpty(0).Max()})");
+        Assert.True(rises.Any(rise => rise > 1), $"a higher number comes up from below ({rises.DefaultIfEmpty(0).Max()})");
         Assert.Equal(1, pulses.DefaultIfEmpty(1).Max(), 3); // not full yet: no pulse
 
         pulses.Clear();
@@ -280,7 +280,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Eventually(() =>
         {
             Assert.Equal("3/3", counter.Text);
-            Assert.True(pulses.Any(s => s > 1.1), $"a full channel pulses its counter ({pulses.DefaultIfEmpty(1).Max()})");
+            Assert.True(pulses.Any(pulse => pulse > 1.1), $"a full channel pulses its counter ({pulses.DefaultIfEmpty(1).Max()})");
             Assert.Equal((0d, 1d, 1d), (MotionWait.OffsetY(counter), MotionWait.Scale(counter), counter.Opacity));
         });
 
@@ -381,7 +381,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Eventually(() =>
         {
             Assert.DoesNotContain(BusySpinner.BusyClass, button.Classes);
-            Assert.True(backs.Any(o => o < 1), "the content fades back");
+            Assert.True(backs.Any(back => back < 1), "the content fades back");
             Assert.Null(presenter.OpacityMask); // the shimmer ends with the busy state
             Assert.Equal(1, presenter.Child!.Opacity);
         });
@@ -498,7 +498,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
 
     sealed class ToleranceComparer : IEqualityComparer<(double, double)>
     {
-        public bool Equals((double, double) x, (double, double) y) => Math.Abs(x.Item1 - y.Item1) < 0.001 && Math.Abs(x.Item2 - y.Item2) < 0.001;
+        public bool Equals((double, double) first, (double, double) second) => Math.Abs(first.Item1 - second.Item1) < 0.001 && Math.Abs(first.Item2 - second.Item2) < 0.001;
         public int GetHashCode((double, double) obj) => 0;
     }
 }

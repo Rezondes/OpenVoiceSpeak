@@ -7,7 +7,7 @@ namespace OVS.Tests.Server.Rules;
 
 public class ChannelLinkRuleTests
 {
-    static readonly Guid A = Guid.NewGuid(), B = Guid.NewGuid(), C = Guid.NewGuid();
+    static readonly Guid ChannelA = Guid.NewGuid(), ChannelB = Guid.NewGuid(), ChannelC = Guid.NewGuid();
 
     [Theory]
     [InlineData(false, ChannelKind.Voice, ChannelKind.Voice, null)]
@@ -18,14 +18,14 @@ public class ChannelLinkRuleTests
     [InlineData(false, ChannelKind.Separator, ChannelKind.Voice, ReasonCodes.InvalidLink)]
     [InlineData(false, ChannelKind.Voice, ChannelKind.Separator, ReasonCodes.InvalidLink)]
     public void Check_ChannelsAndKinds_OnlyTwoVoiceChannels(bool same, ChannelKind? kindA, ChannelKind? kindB, string? code) =>
-        Assert.Equal(code is null ? null : new Refusal(code), ChannelLinkRule.Check(A, same ? A : B, kindA, kindB));
+        Assert.Equal(code is null ? null : new Refusal(code), ChannelLinkRule.Check(ChannelA, same ? ChannelA : ChannelB, kindA, kindB));
 
     [Fact]
     public void CheckChanges_OneLinkSetAndRemoved_Refused() =>
         Assert.Equal(new Refusal(ReasonCodes.InvalidValue, "A link cannot be set and removed at once."),
-            ChannelLinkRule.CheckChanges([ChannelLinkRecord.Of(A, B)], [ChannelLinkRecord.Of(C, A), ChannelLinkRecord.Of(B, A)]));
+            ChannelLinkRule.CheckChanges([ChannelLinkRecord.Of(ChannelA, ChannelB)], [ChannelLinkRecord.Of(ChannelC, ChannelA), ChannelLinkRecord.Of(ChannelB, ChannelA)]));
 
     [Fact]
     public void CheckChanges_Disjoint_Allowed() =>
-        Assert.Null(ChannelLinkRule.CheckChanges([ChannelLinkRecord.Of(A, B)], [ChannelLinkRecord.Of(A, C)]));
+        Assert.Null(ChannelLinkRule.CheckChanges([ChannelLinkRecord.Of(ChannelA, ChannelB)], [ChannelLinkRecord.Of(ChannelA, ChannelC)]));
 }

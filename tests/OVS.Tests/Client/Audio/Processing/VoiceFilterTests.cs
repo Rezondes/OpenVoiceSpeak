@@ -50,7 +50,7 @@ public class VoiceFilterTests
     sealed class PinkNoise(int seed)
     {
         readonly Random random = new(seed);
-        readonly float[] b = new float[7];
+        readonly float[] buffer = new float[7];
 
         public float[] Next(float rmsDb)
         {
@@ -58,14 +58,14 @@ public class VoiceFilterTests
             for (int index = 0; index < frame.Length; index++)
             {
                 float white = 2 * random.NextSingle() - 1;
-                b[0] = 0.99886f * b[0] + white * 0.0555179f;
-                b[1] = 0.99332f * b[1] + white * 0.0750759f;
-                b[2] = 0.96900f * b[2] + white * 0.1538520f;
-                b[3] = 0.86650f * b[3] + white * 0.3104856f;
-                b[4] = 0.55000f * b[4] + white * 0.5329522f;
-                b[5] = -0.7616f * b[5] - white * 0.0168980f;
-                frame[index] = b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + white * 0.5362f;
-                b[6] = white * 0.115926f;
+                buffer[0] = 0.99886f * buffer[0] + white * 0.0555179f;
+                buffer[1] = 0.99332f * buffer[1] + white * 0.0750759f;
+                buffer[2] = 0.96900f * buffer[2] + white * 0.1538520f;
+                buffer[3] = 0.86650f * buffer[3] + white * 0.3104856f;
+                buffer[4] = 0.55000f * buffer[4] + white * 0.5329522f;
+                buffer[5] = -0.7616f * buffer[5] - white * 0.0168980f;
+                frame[index] = buffer[0] + buffer[1] + buffer[2] + buffer[3] + buffer[4] + buffer[5] + buffer[6] + white * 0.5362f;
+                buffer[6] = white * 0.115926f;
             }
             float scale = MathF.Pow(10, rmsDb / 20) / MathF.Pow(10, VoiceActivityDetector.LevelDb(frame) / 20);
             for (int index = 0; index < frame.Length; index++) frame[index] *= scale;
@@ -93,20 +93,20 @@ public class VoiceFilterTests
     {
         var off = RunNoise(noiseSuppression: false);
         Assert.Equal(150, off.Count);
-        Assert.All(off, f => Assert.InRange(f.Level, -35.1f, -34.9f)); // untouched
+        Assert.All(off, value => Assert.InRange(value.Level, -35.1f, -34.9f)); // untouched
 
         var on = RunNoise(noiseSuppression: true);
-        float settled = on.Skip(50).Average(f => f.Level);
+        float settled = on.Skip(50).Average(value => value.Level);
         Assert.True(settled <= -45, $"noise after suppression: {settled:0.0} dBFS");
     }
 
     [Fact]
     public void NoiseSuppression_VadStaysClosedOnNoise()
     {
-        Assert.All(RunNoise(noiseSuppression: false), f => Assert.True(f.Voice)); // the noise alone opens it (default -40 dBFS)
+        Assert.All(RunNoise(noiseSuppression: false), value => Assert.True(value.Voice)); // the noise alone opens it (default -40 dBFS)
         Assert.Equal(-40f, new VoiceActivityDetector().ThresholdDb);
         var on = RunNoise(noiseSuppression: true);
-        Assert.All(on.Skip(25), f => Assert.False(f.Voice)); // after half a second (RNNoise settling plus the hangover)
+        Assert.All(on.Skip(25), value => Assert.False(value.Voice)); // after half a second (RNNoise settling plus the hangover)
     }
 
     [Fact]
@@ -177,17 +177,17 @@ public class VoiceFilterTests
         double phase = 0;
         for (int index = 0; index < samples.Length; index++)
         {
-            double t = (double)index / AudioFormat.SampleRate;
-            phase += 2 * Math.PI * (pitch + 40 * Math.Sin(2 * Math.PI * 0.7 * t)) / AudioFormat.SampleRate;
+            double seconds = (double)index / AudioFormat.SampleRate;
+            phase += 2 * Math.PI * (pitch + 40 * Math.Sin(2 * Math.PI * 0.7 * seconds)) / AudioFormat.SampleRate;
             double sum = 0;
             for (int thirdIndex = 1; thirdIndex <= 8; thirdIndex++) sum += Math.Sin(thirdIndex * phase) / thirdIndex;
-            double inSyllable = (t + offset) % 0.25; // 200 ms syllable, 50 ms gap
+            double inSyllable = (seconds + offset) % 0.25; // 200 ms syllable, 50 ms gap
             double envelope = inSyllable >= 0.2 ? 0 : Math.Min(1, Math.Min(inSyllable, 0.2 - inSyllable) / 0.05);
             samples[index] = (float)(sum * envelope);
         }
         var result = samples.Chunk(Frame).ToArray();
-        var voiced = result.Where(f => VoiceActivityDetector.LevelDb(f) > -100).ToArray();
-        double rms = Math.Sqrt(voiced.Average(f => f.Average(s => (double)s * s)));
+        var voiced = result.Where(value => VoiceActivityDetector.LevelDb(value) > -100).ToArray();
+        double rms = Math.Sqrt(voiced.Average(value => value.Average(item => (double)item * item)));
         float scale = MathF.Pow(10, rmsDb / 20) / (float)rms;
         foreach (var frame in result)
             for (int index = 0; index < frame.Length; index++) frame[index] *= scale;
@@ -214,7 +214,7 @@ public class VoiceFilterTests
     {
         var last = levels.TakeLast(50).ToList();
         float loudest = last.Max();
-        return last.Where(l => l > loudest - 10).Average();
+        return last.Where(value => value > loudest - 10).Average();
     }
 
     /// <summary>
@@ -382,7 +382,7 @@ public class VoiceFilterTests
         var near = (float[])far.Clone();
         canceller.Render(far);
         canceller.Process(near);
-        Assert.All(near, s => Assert.True(float.IsFinite(s)));
+        Assert.All(near, value => Assert.True(float.IsFinite(value)));
         canceller.Dispose();
         canceller.Render(far); // after Dispose (a late playback frame): nothing happens
         var late = (float[])far.Clone();
@@ -430,9 +430,9 @@ public class VoiceFilterTests
                 pipeline.Canceller!.Render(far[index]); // played now (the playback thread)
                 var mic = new float[Frame];
                 if (index >= delayFrames)
-                    for (int s = 0; s < Frame; s++) mic[s] = 0.5f * far[index - delayFrames][s]; // -6 dB, 60 ms later
+                    for (int sample = 0; sample < Frame; sample++) mic[sample] = 0.5f * far[index - delayFrames][sample]; // -6 dB, 60 ms later
                 if (index >= adapt + echoOnly)
-                    for (int s = 0; s < Frame; s++) mic[s] += near[index][s];
+                    for (int sample = 0; sample < Frame; sample++) mic[sample] += near[index][sample];
                 pipeline.Feed(mic, AudioFormat.SampleRate);
             }
         }

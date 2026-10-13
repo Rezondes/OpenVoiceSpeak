@@ -278,7 +278,7 @@ public sealed class MotionCoverageTests
 
     /// <summary>A shown control of the administration (the selected tab's content).</summary>
     static T Shown<T>(Walk walk, Func<T, bool> which) where T : Control =>
-        AdminPage(walk).GetVisualDescendants().OfType<T>().First(c => c.IsEffectivelyVisible && c.IsEffectivelyEnabled && which(c));
+        AdminPage(walk).GetVisualDescendants().OfType<T>().First(value => value.IsEffectivelyVisible && value.IsEffectivelyEnabled && which(value));
 
     static Button CommandButton(Walk walk, System.Windows.Input.ICommand command) => Shown<Button>(walk, button => button.Command == command);
 
@@ -427,7 +427,7 @@ public sealed class MotionCoverageTests
             walk.Server.Post = action => Dispatcher.UIThread.Post(action); // as the main view model does: leaving rows go on the UI thread
             MainViewModelSetup.ShowServer(walk.Vm, walk.Server);
         });
-        foreach (var step in Menu("a channel's menu", walk => Row(walk, d => d is ChannelViewModel { Name: "Lobby" }))) yield return step;
+        foreach (var step in Menu("a channel's menu", walk => Row(walk, value => value is ChannelViewModel { Name: "Lobby" }))) yield return step;
         yield return new("join a channel", walk => walk.Server.Apply(new UserUpdated(Me(FakeServers.Raid))));
         yield return new("switch the channel", walk => walk.Server.Apply(new UserUpdated(Me(FakeServers.Lobby))));
         foreach (var step in Dialog("create channel", walk => _ = Channel(walk, "Lobby").CreateCommand.ExecuteAsync(null))) yield return step;
@@ -446,7 +446,7 @@ public sealed class MotionCoverageTests
 
         // ---- connected: users ----
         yield return new("someone joins", walk => walk.Server.Apply(new UserJoined(Bert(FakeServers.Lobby))));
-        foreach (var step in Menu("a user's menu", walk => Row(walk, d => d is UserViewModel { Nickname: "bert" }))) yield return step;
+        foreach (var step in Menu("a user's menu", walk => Row(walk, value => value is UserViewModel { Nickname: "bert" }))) yield return step;
         yield return new("move a user", walk => walk.Server.Apply(new UserUpdated(Bert(FakeServers.Raid))));
         yield return new("mute a user", walk =>
         {
@@ -613,8 +613,8 @@ public sealed class MotionCoverageTests
         Assert.True(idle.Started == 0 && !idle.Moved, $"nothing moves by itself ({idle.Started} started, moved: {idle.Movers})");
         var still = animated.Where(result => result.Name != Idle && result.Started == 0 && !result.Moved).Select(result => result.Name).ToList();
         Assert.True(still.Count == 0, "nothing moves for:\n" + string.Join("\n", still));
-        var different = animated.Zip(simplified).Where(p => p.First.State != p.Second.State)
-            .Select(p => $"{p.First.Name}:\n{p.First.State}--- simplified:\n{p.Second.State}").ToList();
+        var different = animated.Zip(simplified).Where(value => value.First.State != value.Second.State)
+            .Select(value => $"{value.First.Name}:\n{value.First.State}--- simplified:\n{value.Second.State}").ToList();
         Assert.True(different.Count == 0, "another end state:\n" + string.Join("\n", different));
     }
 

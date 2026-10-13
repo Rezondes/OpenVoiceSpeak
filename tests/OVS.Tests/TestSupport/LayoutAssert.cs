@@ -29,9 +29,9 @@ public static class LayoutAssert
             if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0) continue;
             if (except is not null && except.IsVisualAncestorOf(control)) continue;
             var container = control.FindAncestorOfType<ScrollViewer>() is { } scroller ? (Visual)scroller : top;
-            if (Horizontal(container, top) is not var (left, right) || Horizontal(control, top) is not var (x, end)) continue;
-            if (x < left - Tolerance || end > right + Tolerance)
-                offenders.Add($"{control.GetType().Name} {Describe(control)} at {x:0.#}..{end:0.#}, visible {left:0.#}..{right:0.#}");
+            if (Horizontal(container, top) is not var (left, right) || Horizontal(control, top) is not var (start, end)) continue;
+            if (start < left - Tolerance || end > right + Tolerance)
+                offenders.Add($"{control.GetType().Name} {Describe(control)} at {start:0.#}..{end:0.#}, visible {left:0.#}..{right:0.#}");
             // Text wider than its own box is cut off without "..." (trimmed text is fine)
             else if (control is TextBlock { TextTrimming: var trimming } text && trimming == TextTrimming.None
                      && Needed(text) > text.Bounds.Width - text.Padding.Left - text.Padding.Right + Tolerance)
@@ -51,25 +51,25 @@ public static class LayoutAssert
     static (double Left, double Right)? Horizontal(Visual visual, Visual top)
     {
         var width = visual is ScrollViewer { Viewport.Width: > 0 } scrollViewer ? scrollViewer.Viewport.Width : visual.Bounds.Width;
-        return X(visual, top) is { } x ? (x, x + width) : null;
+        return X(visual, top) is { } left ? (left, left + width) : null;
     }
 
     /// <summary>Package 105: the top edge from the layout, relative to an ancestor (null when it is none).</summary>
     public static double? Y(Visual visual, Visual ancestor)
     {
-        double y = 0;
+        double top = 0;
         Visual? at = visual;
-        for (; at is not null && at != ancestor; at = at.GetVisualParent()) y += at.Bounds.Y;
-        return at == ancestor ? y : null;
+        for (; at is not null && at != ancestor; at = at.GetVisualParent()) top += at.Bounds.Y;
+        return at == ancestor ? top : null;
     }
 
     /// <summary>Package 104: the left edge from the layout, relative to an ancestor (null when it is none).</summary>
     public static double? X(Visual visual, Visual ancestor)
     {
-        double x = 0;
+        double left = 0;
         Visual? at = visual;
-        for (; at is not null && at != ancestor; at = at.GetVisualParent()) x += at.Bounds.X;
-        return at == ancestor ? x : null;
+        for (; at is not null && at != ancestor; at = at.GetVisualParent()) left += at.Bounds.X;
+        return at == ancestor ? left : null;
     }
 
     static string Describe(Control control)

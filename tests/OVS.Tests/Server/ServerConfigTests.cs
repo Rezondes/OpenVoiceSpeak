@@ -16,7 +16,7 @@ public sealed class ServerConfigTests : IDisposable
 
     Func<string, string?> Env(params (string Key, string Value)[] vars)
     {
-        var map = vars.ToDictionary(v => v.Key, v => v.Value);
+        var map = vars.ToDictionary(value => value.Key, value => value.Value);
         map["OVS_DATA_DIR"] = dir;
         return key => map.GetValueOrDefault(key);
     }

@@ -340,8 +340,8 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
             : route == (Action<Message>)page.Logs.Apply ? "logs"
             : route.Method.DeclaringType?.DeclaringType == typeof(AdminTransfer) ? "transfer" // a request's own closure in the transfer
             : "other";
-        var owners = routes.GroupBy(r => r.Request.GetType().Name)
-            .ToDictionary(grouping => grouping.Key, grouping => string.Join(", ", grouping.Select(r => OwnerOf(r.Route)).Distinct()));
+        var owners = routes.GroupBy(route => route.Request.GetType().Name)
+            .ToDictionary(grouping => grouping.Key, grouping => string.Join(", ", grouping.Select(value => OwnerOf(value.Route)).Distinct()));
         var expected = Owners.Concat(RequestsNotRouted.Keys.Select(name => KeyValuePair.Create(name, "none"))).ToDictionary();
         Assert.Equal(expected.OrderBy(pair => pair.Key, StringComparer.Ordinal), owners.OrderBy(pair => pair.Key, StringComparer.Ordinal));
     }

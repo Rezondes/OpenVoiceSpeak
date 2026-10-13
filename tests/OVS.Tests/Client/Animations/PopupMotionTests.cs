@@ -49,8 +49,8 @@ public sealed class PopupMotionTests
             int running = AnimationCounter.Running;
             popup.IsOpen = true;
             MotionWait.Until(() => AnimationCounter.Running <= running); // the fade has ended
-            Assert.True(fades.Any(o => o < 1), "fades in");
-            Assert.True(slides.Any(y => y > 0), $"comes up from below into its place ({string.Join(" ", slides)})");
+            Assert.True(fades.Any(fade => fade < 1), "fades in");
+            Assert.True(slides.Any(slide => slide > 0), $"comes up from below into its place ({string.Join(" ", slides)})");
             Assert.InRange(slides.Max(), 0, 4.001);
             Assert.Equal(1, content.Opacity, 2);
             Assert.Equal(0, MotionWait.OffsetY(content), 2);

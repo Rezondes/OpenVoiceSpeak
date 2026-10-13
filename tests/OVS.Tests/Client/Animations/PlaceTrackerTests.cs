@@ -25,7 +25,7 @@ public sealed class PlaceTrackerTests
             var offsets = MotionWait.Record(KeyedList.Container(list, "c"), MotionWait.OffsetY); // a moved entry gets a new row at once
             KeyedList.Still(list, running);
             Assert.Equal(started + 3, AnimationCounter.Started);
-            Assert.True(offsets.Any(y => y > 30), $"c starts below, where it was ({string.Join(" ", offsets.Distinct())})");
+            Assert.True(offsets.Any(offset => offset > 30), $"c starts below, where it was ({string.Join(" ", offsets.Distinct())})");
             MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetY(KeyedList.Container(list, "c")), 2));
         }
         finally

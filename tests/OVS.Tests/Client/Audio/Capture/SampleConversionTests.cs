@@ -14,7 +14,7 @@ public class SampleConversionTests
         return bytes;
     }
 
-    static bool Near(float a, float b) => Math.Abs(a - b) < 1e-6f;
+    static bool Near(float actual, float expected) => Math.Abs(actual - expected) < 1e-6f;
 
     static float[] ReadMono(float[] interleaved, int channels)
     {

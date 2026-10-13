@@ -63,7 +63,7 @@ public sealed class SlotCounterTests
             int running = AnimationCounter.Running;
             LiveMotion.SetSlots(counter, new ChannelSlots(newUsers, 3));
             MotionWait.Until(() => AnimationCounter.Running <= running && AtRest(counter)); // the tick has ended
-            Assert.True(fromBelow ? offsets.Any(y => y > 1) : offsets.Any(y => y < -1), $"offsets {string.Join(" ", offsets.Distinct())}");
+            Assert.True(fromBelow ? offsets.Any(offset => offset > 1) : offsets.Any(offset => offset < -1), $"offsets {string.Join(" ", offsets.Distinct())}");
         }
         finally
         {

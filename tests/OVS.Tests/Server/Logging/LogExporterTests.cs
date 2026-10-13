@@ -153,7 +153,7 @@ public sealed class LogExporterTests : TempDirectoryTest
 
         var (export, _) = exporter.Export(DownloadId, [RaidLog, GoneLog], new Dictionary<Guid, string> { [Raid] = "Raid" });
 
-        Assert.Contains($"channels/Weg_{Gone}/2025-03-01_00-00-00.log", Entries(export!.Path).Select(e => e.Name));
+        Assert.Contains($"channels/Weg_{Gone}/2025-03-01_00-00-00.log", Entries(export!.Path).Select(value => value.Name));
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public sealed class LogExporterTests : TempDirectoryTest
 
         var (export, _) = exporter.Export(DownloadId, [ServerLog, RaidLog], new Dictionary<Guid, string> { [Raid] = name });
 
-        Assert.Contains($"channels/{folder}_{Raid}/2025-02-01_00-00-00.log", Entries(export!.Path).Select(e => e.Name));
+        Assert.Contains($"channels/{folder}_{Raid}/2025-02-01_00-00-00.log", Entries(export!.Path).Select(value => value.Name));
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public sealed class LogExporterTests : TempDirectoryTest
         var (export, _) = exporter.Export(DownloadId, [GoneLog, ServerLog], new Dictionary<Guid, string>());
 
         Assert.Equal([GoneLog, ServerLog], hooked);
-        Assert.All(Entries(export!.Path), e => Assert.EndsWith("added by the hook\n", e.Text));
+        Assert.All(Entries(export!.Path), value => Assert.EndsWith("added by the hook\n", value.Text));
     }
 
     [Fact]

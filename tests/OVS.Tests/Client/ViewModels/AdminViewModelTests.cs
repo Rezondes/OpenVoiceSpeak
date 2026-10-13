@@ -310,12 +310,12 @@ public class AdminViewModelTests
         Assert.Equal((false, "ohne Grund", "keine"), (otherBan.HasIp, otherBan.ReasonText, otherBan.AttemptsText));
         Assert.Equal((BanStatus.Active, Local(now.AddDays(2))), (otherBan.Status, otherBan.EndText));
 
-        var l = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Lisa");
-        Assert.Equal((BanStatus.Lifted, $"aufgehoben von admin am {Local(now.AddHours(-2))}"), (l.Status, l.StatusText));
-        Assert.Equal(("dauerhaft", "dauerhaft", false), (l.DurationText, l.EndText, l.HasRemaining));
+        var lisa = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Lisa");
+        Assert.Equal((BanStatus.Lifted, $"aufgehoben von admin am {Local(now.AddHours(-2))}"), (lisa.Status, lisa.StatusText));
+        Assert.Equal(("dauerhaft", "dauerhaft", false), (lisa.DurationText, lisa.EndText, lisa.HasRemaining));
 
-        var e = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Emil");
-        Assert.Equal((BanStatus.Expired, "abgelaufen", "1 h", false), (e.Status, e.StatusText, e.DurationText, e.HasRemaining));
+        var emil = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Emil");
+        Assert.Equal((BanStatus.Expired, "abgelaufen", "1 h", false), (emil.Status, emil.StatusText, emil.DurationText, emil.HasRemaining));
     }
 
     [Theory]

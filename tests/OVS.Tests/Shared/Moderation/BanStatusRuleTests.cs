@@ -23,5 +23,5 @@ public class BanStatusRuleTests
     public void Evaluate_LiftedAndEnd_GivesStatus(int? liftedHours, int? endHours, BanStatus expected) =>
         Assert.Equal(expected, BanStatusRule.Evaluate(At(liftedHours), At(endHours), Now));
 
-    static DateTimeOffset? At(int? hours) => hours is { } h ? Now.AddHours(h) : null;
+    static DateTimeOffset? At(int? hours) => hours is { } hourCount ? Now.AddHours(hourCount) : null;
 }

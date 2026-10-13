@@ -19,7 +19,7 @@ public class ReceivePathTests
         Enumerable.Range(phaseOffset, AudioFormat.FrameSamples)
             .Select(index => amplitude * MathF.Sin(2 * MathF.PI * 440 * index / AudioFormat.SampleRate)).ToArray();
 
-    static float Rms(float[] samples) => MathF.Sqrt(samples.Sum(v => v * v) / samples.Length);
+    static float Rms(float[] samples) => MathF.Sqrt(samples.Sum(sample => sample * sample) / samples.Length);
 
     /// <summary>Distinct, recognisable frames: frame n is a sine with amplitude 0.1 * (n+1).</summary>
     static byte[] Frame(uint number) => new VoiceEncoder().Encode(Sine(0.1f * (number % 8 + 1)));
@@ -102,7 +102,7 @@ public class ReceivePathTests
             concealed = count < 5 ? plc.Decode(packets[count]) : plc.Decode([]);
         }
 
-        float Error(float[] samples) => Rms(samples.Zip(expected, (a, b) => a - b).ToArray());
+        float Error(float[] samples) => Rms(samples.Zip(expected, (actualSample, expectedSample) => actualSample - expectedSample).ToArray());
         Assert.True(Error(played[5]) < Error(concealed), $"fec {Error(played[5])} vs plc {Error(concealed)}");
     }
 
@@ -227,7 +227,7 @@ public class ReceivePathTests
         double now = 0;
         void Tick(uint? uInt32)
         {
-            if (uInt32 is { } f) jb.Push(f, Frames[f % 8], false, now);
+            if (uInt32 is { } frameNumber) jb.Push(frameNumber, Frames[frameNumber % 8], false, now);
             jb.Pull();
             now += 20;
         }
@@ -248,7 +248,7 @@ public class ReceivePathTests
         double now = 0;
         void Tick(uint? uInt32)
         {
-            if (uInt32 is { } f) jb.Push(f, Frames[f % 8], false, now);
+            if (uInt32 is { } frameNumber) jb.Push(frameNumber, Frames[frameNumber % 8], false, now);
             jb.Pull();
             now += 20;
         }
@@ -273,7 +273,7 @@ public class ReceivePathTests
         Action<int, float[]?>? onTick = null)
     {
         var arrivals = Enumerable.Range(0, count).Select(index => (Seq: first + (uint)index, At: start + 20.0 * index + late(index)))
-            .OrderBy(f => f.At).ToList();
+            .OrderBy(value => value.At).ToList();
         int thirdIndex = 0, tick = 0;
         double now = start;
         for (; now < start + 20.0 * count + 500; now += 20, tick++)
@@ -423,7 +423,7 @@ public class ReceivePathTests
     {
         var mixer = new VoiceMixer();
         var (silence, active) = mixer.Tick();
-        Assert.All(silence, s => Assert.Equal(0f, s));
+        Assert.All(silence, value => Assert.Equal(0f, value));
         Assert.Empty(active);
 
         // Feed identical steady frames to two speakers and compare with one speaker; quiet enough to stay below the limiter.
@@ -452,7 +452,7 @@ public class ReceivePathTests
         for (uint number = 0; number < 3; number++) mixer.Push(1, number, Encoder.Encode(Sine(0.8f)), false);
         var (frame, _) = mixer.Tick();
         // the loudest sample lands on the threshold, give or take float rounding
-        Assert.All(frame, s => Assert.InRange(s, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
+        Assert.All(frame, value => Assert.InRange(value, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
     }
 
     /// <summary>The first frames a mixer plays for one speaker, next to the same frames decoded directly.</summary>
@@ -473,7 +473,7 @@ public class ReceivePathTests
         return ([.. mixed], reference);
     }
 
-    static double Db(float[] samples, float[] b) => 20 * Math.Log10(Rms(samples) / Rms(b));
+    static double Db(float[] samples, float[] reference) => 20 * Math.Log10(Rms(samples) / Rms(reference));
 
     /// <summary>Package 50: others arrived much too quietly; every voice now gets twice the amplitude (+6 dB).</summary>
     [Fact]
@@ -502,7 +502,7 @@ public class ReceivePathTests
         var (normal, _) = MixedAndDirect(0.1f, 1f);
         Assert.InRange(Db(loud, normal), 11.5, 12.5);
         var (limited, _) = MixedAndDirect(0.6f, 2f);
-        Assert.All(limited, v => Assert.InRange(v, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
+        Assert.All(limited, value => Assert.InRange(value, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
     }
 
     /// <summary>Package 51: the volume of one person changes only that person's voice.</summary>
@@ -555,9 +555,9 @@ public class ReceivePathTests
         for (int tick = 0; tick < 4; tick++)
         {
             var samples = loud.Tick().Frame;
-            var b = normal.Tick().Frame;
+            var normalFrame = normal.Tick().Frame;
             Assert.True(samples.Max(MathF.Abs) < SoftLimiter.Threshold);
-            for (int index = 0; index < samples.Length; index++) Assert.Equal(4 * b[index], samples[index], 3);
+            for (int index = 0; index < samples.Length; index++) Assert.Equal(4 * normalFrame[index], samples[index], 3);
         }
     }
 
@@ -569,8 +569,8 @@ public class ReceivePathTests
         {
             var frame = Sine(1.6f, count * AudioFormat.FrameSamples);
             limiter.Process(frame);
-            Assert.All(frame, s => Assert.InRange(s, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
-            int atLimit = frame.Count(s => MathF.Abs(s) > SoftLimiter.Threshold - 0.001f);
+            Assert.All(frame, value => Assert.InRange(value, -SoftLimiter.Threshold - 1e-6f, SoftLimiter.Threshold + 1e-6f));
+            int atLimit = frame.Count(value => MathF.Abs(value) > SoftLimiter.Threshold - 0.001f);
             Assert.True(atLimit <= frame.Length / 20, $"{atLimit} samples flattened at the limit"); // hard clipping: about 40 %
             Assert.True(Rms(frame) > 0.6f, "the loud part stays loud");
         }
@@ -702,7 +702,7 @@ public class ReceivePathTests
         var with = Run(true);
 
         int doubles = Enumerable.Range(1, packets.Count - 1).Count(count => lost[count - 1] && lost[count]);
-        int lostCount = lost.Count(l => l);
+        int lostCount = lost.Count(value => value);
         Assert.InRange(lostCount, 35, 65);
         Assert.Equal(lostCount, without.Lost);
         Assert.Equal(0, without.Recovered);

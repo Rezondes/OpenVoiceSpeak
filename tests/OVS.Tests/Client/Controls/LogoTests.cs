@@ -62,19 +62,19 @@ public class LogoTests
     public void SmallFrames_ShowSeparateCrispBars(int size, int barWidth)
     {
         using var bitmap = SKBitmap.Decode(IcoFrames()[size]);
-        int y = (int)(168f * size / 256);
-        var row = Enumerable.Range(0, size).Select(x => bitmap.GetPixel(x, y)).ToList();
+        int barRow = (int)(168f * size / 256);
+        var row = Enumerable.Range(0, size).Select(value => bitmap.GetPixel(value, barRow)).ToList();
         var runs = new List<(int Start, int Width)>();
-        for (int x = 0; x < size; x++)
+        for (int column = 0; column < size; column++)
         {
-            if (row[x] != SKColors.White) continue;
-            if (runs.Count > 0 && runs[^1].Start + runs[^1].Width == x) runs[^1] = (runs[^1].Start, runs[^1].Width + 1);
-            else runs.Add((x, 1));
+            if (row[column] != SKColors.White) continue;
+            if (runs.Count > 0 && runs[^1].Start + runs[^1].Width == column) runs[^1] = (runs[^1].Start, runs[^1].Width + 1);
+            else runs.Add((column, 1));
         }
         Assert.Equal(5, runs.Count);
-        Assert.All(runs.Skip(1).Take(3), r => Assert.Equal(barWidth, r.Width));
-        for (int x = runs[0].Start; x < runs[^1].Start + runs[^1].Width; x++)
-            Assert.True(row[x] == SKColors.White || row[x] == new SKColor(0x2F, 0x6F, 0xEB), $"{size} px, x {x}: {row[x]}");
+        Assert.All(runs.Skip(1).Take(3), value => Assert.Equal(barWidth, value.Width));
+        for (int column = runs[0].Start; column < runs[^1].Start + runs[^1].Width; column++)
+            Assert.True(row[column] == SKColors.White || row[column] == new SKColor(0x2F, 0x6F, 0xEB), $"{size} px, x {column}: {row[column]}");
     }
 
     /// <summary>The checked-in small frames are exactly what the tool draws from its small artwork.</summary>
@@ -97,12 +97,12 @@ public class LogoTests
 
         using var expected = SKBitmap.Decode(rendered);
         using var actual = SKBitmap.Decode(IcoFrames()[64]);
-        for (int y = 0; y < 64; y++)
-        for (int x = 0; x < 64; x++)
+        for (int row = 0; row < 64; row++)
+        for (int column = 0; column < 64; column++)
         {
-            SKColor skColor = expected.GetPixel(x, y), otherSkColor = actual.GetPixel(x, y);
+            SKColor skColor = expected.GetPixel(column, row), otherSkColor = actual.GetPixel(column, row);
             var diff = Math.Max(Math.Max(Math.Abs(skColor.Red - otherSkColor.Red), Math.Abs(skColor.Green - otherSkColor.Green)), Math.Max(Math.Abs(skColor.Blue - otherSkColor.Blue), Math.Abs(skColor.Alpha - otherSkColor.Alpha)));
-            Assert.True(diff <= 8, $"({x},{y}): {skColor} vs {otherSkColor}");
+            Assert.True(diff <= 8, $"({column},{row}): {skColor} vs {otherSkColor}");
         }
     }
 

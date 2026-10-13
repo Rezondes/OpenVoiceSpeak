@@ -62,13 +62,13 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
             Assert.False(PageGhostShown(main));
             Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
         });
-        Assert.True(slides.Any(x => x > 0) && fades.Any(o => o < 1), "the settings come in from the right");
+        Assert.True(slides.Any(slide => slide > 0) && fades.Any(fade => fade < 1), "the settings come in from the right");
 
         slides.Clear();
         viewModel.PageFlow.ClosePage();
         MotionWait.Eventually(() =>
         {
-            Assert.True(slides.Any(x => x < 0), "going back comes in from the left");
+            Assert.True(slides.Any(slide => slide < 0), "going back comes in from the left");
             Assert.False(PageGhostShown(main));
             Assert.Equal(0, OffsetX(Host(main)));
         });
@@ -138,7 +138,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         Assert.Equal(1, marks);
         MotionWait.Eventually(() =>
         {
-            Assert.True(fades.Any(o => o < 1) && slides.Any(x => x > 0), "the content comes in from the side of the new tab");
+            Assert.True(fades.Any(fade => fade < 1) && slides.Any(slide => slide > 0), "the content comes in from the side of the new tab");
             Assert.Empty(Ghosts(main, PageMotion.PipeGhostClass));
             Assert.Equal((1d, 1d), (content.Opacity, pipe.Opacity));
         });
@@ -155,7 +155,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         Assert.Equal(1, marks);
         MotionWait.Eventually(() =>
         {
-            Assert.True(fades.Any(o => o < 1), "the chat history fades in");
+            Assert.True(fades.Any(fade => fade < 1), "the chat history fades in");
             Assert.Equal(1, history.Opacity);
         });
         main.Close();
@@ -222,7 +222,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         var fades = MotionWait.Record(sections[^1], visual => visual.Opacity); // as it happens: under load one frame can outlast the fade
         scroll.Offset = new Vector(0, scroll.Extent.Height);
         MotionWait.Eventually(() => Assert.Equal(1, sections[^1].Opacity));
-        Assert.True(fades.Any(o => o < 1), "it fades up as it comes into view");
+        Assert.True(fades.Any(fade => fade < 1), "it fades up as it comes into view");
 
         scroll.Offset = default;
         MotionWait.Settle(100);
@@ -320,7 +320,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         await viewModel.PageFlow.OpenAdminAsync(); // closes the settings, then opens the administration: one switch
         Assert.Equal([(Page.Settings, true)], seen);
         Switched(main);
-        Assert.True(slides.Any(x => x > 0), "forward: the administration comes in from the right");
+        Assert.True(slides.Any(slide => slide > 0), "forward: the administration comes in from the right");
         Assert.False(PageGhostShown(main));
         main.Close();
     }

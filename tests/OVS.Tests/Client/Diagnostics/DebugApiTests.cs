@@ -36,7 +36,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     {
         readonly TestDispatcher ui = new();
         readonly string dir = Directory.CreateTempSubdirectory("ovs-debug-").FullName;
-        MainViewModel vm = null!;
+        MainViewModel viewModel = null!;
         DebugApi api = null!;
         public HttpClient Http { get; private set; } = null!;
         public int Port { get; private set; }
@@ -44,13 +44,13 @@ public sealed class DebugApiTests : IAsyncLifetime
         public static async Task<Instance> StartAsync()
         {
             var instance = new Instance();
-            instance.vm = await instance.ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(instance.dir, instance.ui.Post)));
+            instance.viewModel = await instance.ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(instance.dir, instance.ui.Post)));
             var probe = new TcpListener(IPAddress.Loopback, 0);
             probe.Start();
             instance.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
             probe.Stop();
             // the debug API lists the system's devices while the view model runs without any, as with --no-audio
-            instance.api = new DebugApi(instance.vm, instance.vm.Keys, instance.vm.Audio, instance.Port, work => instance.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
+            instance.api = new DebugApi(instance.viewModel, instance.viewModel.Keys, instance.viewModel.Audio, instance.Port, work => instance.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
             instance.Http = new HttpClient { BaseAddress = new Uri($"http://localhost:{instance.Port}/") };
             instance.Http.DefaultRequestHeaders.Add(DebugApi.Header, "1");
             return instance;
@@ -66,7 +66,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
         public Task OnUi(Action<MainViewModel> work) => ui.InvokeAsync<object?>(() =>
         {
-            work(vm);
+            work(viewModel);
             return Task.FromResult<object?>(null);
         });
 
@@ -93,7 +93,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             Http.Dispose();
             await ui.InvokeAsync<object?>(async () =>
             {
-                await vm.DisposeAsync();
+                await viewModel.DisposeAsync();
                 return null;
             });
             ui.Dispose();
@@ -252,7 +252,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         await anna.Post("redeem", new { token = server.State.PendingAdminToken });
         await anna.Until(otherElement => otherElement.GetProperty("server").GetProperty("isAdmin").GetBoolean());
         await anna.Post("create-channel", new { name = "Raid" });
-        await anna.Until(otherElement => Channels(otherElement).Any(c => c.GetProperty("name").GetString() == "Raid"));
+        await anna.Until(otherElement => Channels(otherElement).Any(value => value.GetProperty("name").GetString() == "Raid"));
         await bert.Post("join", new { channel = "Raid" });
         await bert.Until(otherElement => Channel(otherElement, "Raid").GetProperty("isCurrent").GetBoolean());
 
@@ -276,7 +276,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
         // ... but link PTT reaches Raid, marked as link transmission
         await anna.Post("linkptt", new { down = true });
-        var b = await bert.Until(otherElement => FramesFrom(otherElement, annaId) > 10 && User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
+        var bertView = await bert.Until(otherElement => FramesFrom(otherElement, annaId) > 10 && User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
         Assert.Contains("Links", (await anna.State()).GetProperty("transmitText").GetString());
         // The indicator must stay on while anna keeps talking (it used to go dark for good after 300 ms).
         // Polled, because a starved test machine may drop it for a moment; gone for good still fails.
@@ -285,7 +285,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         await anna.Post("linkptt", new { down = false });
 
         // bert is a guest without SpeakLinked: his link PTT stays in Raid and he gets a hint
-        var bertId = SelfId(b);
+        var bertId = SelfId(bertView);
         await bert.Post("tone", new { hz = 330 });
         await bert.Post("linkptt", new { down = true });
         var bertState = await bert.Until(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);

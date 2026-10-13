@@ -34,19 +34,19 @@ public sealed class MainViewModelTests : IAsyncLifetime
     readonly string dir = Directory.CreateTempSubdirectory("ovs-mvm-").FullName;
     readonly FakeKeys keys = new(); // Package 125: a real key pressed while the tests run does not count
     TestServer server = null!;
-    MainViewModel vm = null!;
+    MainViewModel viewModel = null!;
 
     public async Task InitializeAsync()
     {
         server = await TestServer.StartAsync(serverData => serverData.Settings.WelcomeText = "Willkommen auf dem Testserver!");
-        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true)));
+        viewModel = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true)));
     }
 
     public async Task DisposeAsync()
     {
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.DisposeAsync();
+            await viewModel.DisposeAsync();
             return null;
         });
         ui.Dispose();
@@ -61,13 +61,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// </summary>
     async Task RunOnAsync(TimeProvider time)
     {
-        var dialogs = vm.Dialogs;
+        var dialogs = viewModel.Dialogs;
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.DisposeAsync();
+            await viewModel.DisposeAsync();
             return null;
         });
-        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, dialogs: dialogs, trustServers: true, time: time)));
+        viewModel = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, dialogs: dialogs, trustServers: true, time: time)));
     }
 
     Task<T> OnUiUntil<T>(Func<T> read, Func<T, bool> done) => ui.ReadUntilAsync(read, done);
@@ -75,14 +75,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// <summary>Presses "Abbrechen" of a running reconnect series.</summary>
     Task CancelReconnectAsync() => OnUi(() =>
     {
-        vm.Connection.CancelReconnectCommand.Execute(null);
+        viewModel.Connection.CancelReconnectCommand.Execute(null);
         return 0;
     });
 
     Task ConnectAsync(bool saveBookmark) =>
         ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, saveBookmark));
+            await viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, saveBookmark));
             return null;
         });
 
@@ -90,7 +90,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     async Task ConnectThroughRelayAsync(LossyUdpRelay relay, TimeProvider time)
     {
         await RunOnAsync(time);
-        await OnUi(() => vm.Connection.VoiceRelay = relay.EndPoint);
+        await OnUi(() => viewModel.Connection.VoiceRelay = relay.EndPoint);
         await ConnectAsync(saveBookmark: false);
     }
 
@@ -100,7 +100,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ConnectAsync(saveBookmark: false);
 
-        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.True(await OnUi(() => viewModel.IsConnected));
         Assert.True(File.Exists(Path.Combine(dir, "identity.key")));
         Assert.True(File.Exists(Path.Combine(dir, "known_servers.json")));
     }
@@ -111,11 +111,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var connectedWhenShown = new List<bool>();
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.PropertyChanged += (_, args) =>
+            viewModel.PropertyChanged += (_, args) =>
             {
-                if (args.PropertyName == nameof(MainViewModel.Server)) connectedWhenShown.Add(EngineProbe.ReadEngineSwitches(vm.Audio).Connected);
+                if (args.PropertyName == nameof(MainViewModel.Server)) connectedWhenShown.Add(EngineProbe.ReadEngineSwitches(viewModel.Audio).Connected);
             };
-            await vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
+            await viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
             return null;
         });
 
@@ -127,23 +127,23 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ConnectAsync(saveBookmark: false);
 
-        await OnUi(() => vm.Connection.DisconnectAsync());
+        await OnUi(() => viewModel.Connection.DisconnectAsync());
 
-        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => viewModel.Audio.Sounds.Recent));
     }
 
     [Fact]
     public async Task ConnectAsync_AnotherUserTalks_EngineHearsTheirFrame()
     {
         await ConnectAsync(saveBookmark: false);
-        await OnUiUntil(() => vm.Connection.VoiceLink.Reachable, reachable => reachable == true);
+        await OnUiUntil(() => viewModel.Connection.VoiceLink.Reachable, reachable => reachable == true);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
         using var bertVoice = new TestVoice(bert, server.VoiceEndPoint);
         await bertVoice.HelloAsync();
 
         await bertVoice.SendAsync(PacketType.Voice, EngineProbe.SilentFrame());
 
-        Assert.Contains(bert.Id, await OnUiUntil(() => vm.Audio.FramesReceived.Keys.ToList(), speakers => speakers.Contains(bert.Id)));
+        Assert.Contains(bert.Id, await OnUiUntil(() => viewModel.Audio.FramesReceived.Keys.ToList(), speakers => speakers.Contains(bert.Id)));
     }
 
     [Fact]
@@ -151,10 +151,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ConnectAsync(saveBookmark: false);
 
-        await OnUi(() => vm.Connection.DisconnectAsync());
+        await OnUi(() => viewModel.Connection.DisconnectAsync());
 
-        Assert.Null(await OnUi(() => vm.Audio.Send));
-        Assert.Null(await OnUi(() => vm.Connection.VoiceLink.Client));
+        Assert.Null(await OnUi(() => viewModel.Audio.Send));
+        Assert.Null(await OnUi(() => viewModel.Connection.VoiceLink.Client));
     }
 
     /// <summary>Package 34: in a muted channel the client warns and does not send.</summary>
@@ -163,19 +163,19 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var (hint, muted) = await OnUi(() =>
         {
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
-            vm.Tick();
-            return (vm.VoiceHint, vm.Audio.ChannelMuted);
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            viewModel.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
+            viewModel.Tick();
+            return (viewModel.VoiceHint, viewModel.Audio.ChannelMuted);
         });
         Assert.Equal("Stummer Channel: niemand hört dich.", hint);
         Assert.True(muted);
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Connection.DisconnectAsync();
+            await viewModel.Connection.DisconnectAsync();
             return null;
         });
-        Assert.False(await OnUi(() => vm.Audio.ChannelMuted));
+        Assert.False(await OnUi(() => viewModel.Audio.ChannelMuted));
     }
 
     /// <summary>Package 132 (A141): the encoder's bitrate is the own channel's: on join, move and when that channel is edited.</summary>
@@ -185,24 +185,24 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var steps = await OnUi(() =>
         {
             var seen = new List<int>();
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            seen.Add(vm.Audio.ChannelBitrate); // the Lobby at its default
-            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 96)));
-            seen.Add(vm.Audio.ChannelBitrate); // another channel: nothing changes
-            vm.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            seen.Add(viewModel.Audio.ChannelBitrate); // the Lobby at its default
+            viewModel.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 96)));
+            seen.Add(viewModel.Audio.ChannelBitrate); // another channel: nothing changes
+            viewModel.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
                 OVS.Shared.Permissions.Permission.All, [OVS.Shared.Permissions.WellKnownGroups.Admin])));
-            seen.Add(vm.Audio.ChannelBitrate); // moved into it
-            vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 24)));
-            seen.Add(vm.Audio.ChannelBitrate); // the own channel edited
+            seen.Add(viewModel.Audio.ChannelBitrate); // moved into it
+            viewModel.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1, Bitrate: 24)));
+            seen.Add(viewModel.Audio.ChannelBitrate); // the own channel edited
             return seen;
         });
         Assert.Equal([64, 64, 96, 24], steps);
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Connection.DisconnectAsync();
+            await viewModel.Connection.DisconnectAsync();
             return null;
         });
-        Assert.Equal(64, await OnUi(() => vm.Audio.ChannelBitrate));
+        Assert.Equal(64, await OnUi(() => viewModel.Audio.ChannelBitrate));
     }
 
     /// <summary>
@@ -216,15 +216,15 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             var seen = new List<int>();
             var time = new ManualTimeProvider();
-            vm.Audio.Loss = new LossAdapter(time, 64);
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin()); // in the Lobby at 64
-            EngineProbe.LowerByLoss(vm.Audio.Loss, time); // 6 s above 10 %
-            seen.Add(vm.Audio.EncoderBitrate);
-            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1)));
-            seen.Add(vm.Audio.EncoderBitrate); // another channel edited: no move
-            vm.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
+            viewModel.Audio.Loss = new LossAdapter(time, 64);
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin()); // in the Lobby at 64
+            EngineProbe.LowerByLoss(viewModel.Audio.Loss, time); // 6 s above 10 %
+            seen.Add(viewModel.Audio.EncoderBitrate);
+            viewModel.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1)));
+            seen.Add(viewModel.Audio.EncoderBitrate); // another channel edited: no move
+            viewModel.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
                 OVS.Shared.Permissions.Permission.All, [OVS.Shared.Permissions.WellKnownGroups.Admin])));
-            seen.Add(vm.Audio.EncoderBitrate); // moved into a channel at 64 too
+            seen.Add(viewModel.Audio.EncoderBitrate); // moved into a channel at 64 too
             return seen;
         });
         Assert.Equal([32, 32, 64], steps);
@@ -237,19 +237,19 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// <summary>Holds or lets go of an action's key and ticks until the client has seen it; returns the hint then.</summary>
     async Task<string> HoldKey(KeyAction action, bool down)
     {
-        vm.Keys.Simulate(action, down);
-        await OnUiUntil(() => vm.Keys.IsDown(action), d => d == down);
+        viewModel.Keys.Simulate(action, down);
+        await OnUiUntil(() => viewModel.Keys.IsDown(action), value => value == down);
         return await OnUi(() =>
         {
-            vm.Tick();
-            return vm.VoiceHint;
+            viewModel.Tick();
+            return viewModel.VoiceHint;
         });
     }
 
     Task<string> TickHint() => OnUi(() =>
     {
-        vm.Tick();
-        return vm.VoiceHint;
+        viewModel.Tick();
+        return viewModel.VoiceHint;
     });
 
     [Fact]
@@ -259,8 +259,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await RunOnAsync(time);
         await OnUi(() =>
         {
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            return vm.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            return viewModel.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
         Assert.Equal(SelfMutedHint, await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
@@ -275,9 +275,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            if (state == "deafened") return vm.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: true));
-            vm.Server!.Apply(new UserUpdated(vm.Server.Mirror.Self! with { ServerMuted = true }));
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            if (state == "deafened") return viewModel.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: true));
+            viewModel.Server!.Apply(new UserUpdated(viewModel.Server.Mirror.Self! with { ServerMuted = true }));
             return Task.CompletedTask;
         });
         Assert.Equal("", await TickHint());
@@ -290,31 +290,31 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            return vm.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            return viewModel.Server!.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
-        vm.Audio.ChooseTarget(true); // the voice gate hears voice, the capture thread asks
+        viewModel.Audio.ChooseTarget(true); // the voice gate hears voice, the capture thread asks
         Assert.Equal("", await TickHint()); // push-to-talk mode: voice alone is no attempt to talk
         await OnUi(() =>
         {
-            vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
-            return vm.Audio.ChooseTarget(false);
+            viewModel.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
+            return viewModel.Audio.ChooseTarget(false);
         });
         Assert.Equal("", await TickHint());
-        vm.Audio.ChooseTarget(true);
+        viewModel.Audio.ChooseTarget(true);
         Assert.Equal(SelfMutedHint, await TickHint());
     }
 
     [Fact]
     public async Task NotMuted_NoHint()
     {
-        await OnUi(() => MainViewModelSetup.ShowServer(vm, FakeServers.Admin()));
+        await OnUi(() => MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin()));
         Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
 
         // Package 125: push-to-mute is muting on purpose, so no hint
-        vm.Keys.Simulate(KeyAction.PushToMute, true);
-        Assert.True(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m));
+        viewModel.Keys.Simulate(KeyAction.PushToMute, true);
+        Assert.True(await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => value));
         Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
         await HoldKey(KeyAction.PushToTalk, false);
         await HoldKey(KeyAction.PushToMute, false);
@@ -326,9 +326,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
-            return vm.Server.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            viewModel.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 0, IsMuted: true)));
+            return viewModel.Server.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
 
         Assert.Equal(Strings.VoiceHint_MutedChannel, await HoldKey(KeyAction.PushToTalk, true));
@@ -359,7 +359,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            var shown = MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+            var shown = MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
             shown!.Apply(new UserUpdated(shown.Mirror.Self! with { ChannelId = Guid.Empty }));
             return shown.SelfState.SetSelfStateAsync(new SelfState(Muted: true, Deafened: false));
         });
@@ -370,12 +370,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     Task<ServerViewModel?> ShowServerWithoutLinkRight() => OnUi(() =>
     {
-        var shown = MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+        var shown = MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         FakeServers.SetOwnRightsAndGroups(shown!, Permission.Speak, [WellKnownGroups.Guest]);
         return shown;
     });
 
-    string ClientLogText() => MainViewModelSetup.ReadLogText(vm, dir);
+    string ClientLogText() => MainViewModelSetup.ReadLogText(viewModel, dir);
 
     /// <summary>Package 39: a wrong password is never stored, the right one only when asked for, and never logged.</summary>
     [Fact]
@@ -384,16 +384,16 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await using var locked = await TestServer.StartAsync(password: "richtig-geheim");
         Task Connect(string password, bool save) => ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", locked.Port, "anna", password, SaveBookmark: true, SavePassword: save));
+            await viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", locked.Port, "anna", password, SaveBookmark: true, SavePassword: save));
             return null;
         });
 
         await Connect("falsch-geheim", save: true);
-        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.False(await OnUi(() => viewModel.IsConnected));
         Assert.False(ClientSettings.Load(dir, out _).Bookmarks.Single().HasSavedPassword);
 
         await Connect("richtig-geheim", save: true);
-        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.True(await OnUi(() => viewModel.IsConnected));
         Assert.Equal("richtig-geheim", ClientSettings.Load(dir, out _).Bookmarks.Single().SavedPassword());
 
         await Connect("richtig-geheim", save: false); // unticked: the stored one goes away
@@ -411,8 +411,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// <summary>Like a click in the sidebar: the bookmark is one of the saved ones.</summary>
     Task ConnectBookmark(Bookmark bookmark) => ui.InvokeAsync<object?>(async () =>
     {
-        vm.Settings.Bookmarks.Add(bookmark);
-        await vm.Connection.ConnectBookmarkAsync(bookmark);
+        viewModel.Settings.Bookmarks.Add(bookmark);
+        await viewModel.Connection.ConnectBookmarkAsync(bookmark);
         return null;
     });
 
@@ -421,9 +421,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await using var locked = await LockedServerAsync();
         int asked = 0;
-        vm.Dialogs = new DialogCallbacks { AskPassword = _ => { asked++; return Task.FromResult<PasswordAnswer?>(null); } };
+        viewModel.Dialogs = new DialogCallbacks { AskPassword = _ => { asked++; return Task.FromResult<PasswordAnswer?>(null); } };
         await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna", PasswordProtector.Protect("richtig")));
-        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.True(await OnUi(() => viewModel.IsConnected));
         Assert.Equal(0, asked);
     }
 
@@ -432,10 +432,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await using var locked = await LockedServerAsync();
         var answers = new Queue<PasswordAnswer?>([new PasswordAnswer("auch falsch", true), new PasswordAnswer("richtig", true)]);
-        vm.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult(answers.Dequeue()) };
+        viewModel.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult(answers.Dequeue()) };
         await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna", PasswordProtector.Protect("veraltet")));
 
-        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.True(await OnUi(() => viewModel.IsConnected));
         Assert.Empty(answers); // asked twice: the second answer fitted
         var saved = ClientSettings.Load(dir, out _).Bookmarks.Single();
         Assert.Equal(("Gilde", "richtig"), (saved.Name, saved.SavedPassword()));
@@ -445,9 +445,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task Bookmark_AskPassword_Cancel_StaysDisconnected()
     {
         await using var locked = await LockedServerAsync();
-        vm.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult<PasswordAnswer?>(null) };
+        viewModel.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult<PasswordAnswer?>(null) };
         await ConnectBookmark(new Bookmark("Gilde", "127.0.0.1", locked.Port, "anna"));
-        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.False(await OnUi(() => viewModel.IsConnected));
     }
 
     [Fact]
@@ -456,17 +456,17 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var original = new Bookmark("Alt", "alt.example.org", 7000, "anna");
         await OnUi(() =>
         {
-            vm.Settings.Bookmarks.Add(original);
-            vm.Settings.Save(dir);
+            viewModel.Settings.Bookmarks.Add(original);
+            viewModel.Settings.Save(dir);
             return 0;
         });
-        vm.Dialogs = new DialogCallbacks
+        viewModel.Dialogs = new DialogCallbacks
         {
             BookmarkList = new() { EditBookmark = _ => Task.FromResult<BookmarkEdit?>(new BookmarkEdit("Neu", "neu.example.org", 7100, "berta", "pw", SavePassword: true)) },
         };
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Bookmarks.EditAsync(original);
+            await viewModel.Bookmarks.EditAsync(original);
             return null;
         });
         Assert.Equal("Neu", ClientSettings.Load(dir, out _).Bookmarks.Single().Name); // wiring only: the list, dialogs and save reach the profile folder; the fields are in BookmarkListTests
@@ -482,7 +482,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var asked = new List<string>();
         Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>> editor = (_, _) => Task.FromResult<KeyBinding?>(null);
-        vm.Dialogs = new DialogCallbacks
+        viewModel.Dialogs = new DialogCallbacks
         {
             BookmarkList = new() { Confirm = question => { asked.Add(question); return Task.FromResult(false); } },
             PageFlow = new() { EditKeyBinding = editor },
@@ -491,10 +491,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         var editorOfPage = await ui.InvokeAsync(async () =>
         {
-            vm.Settings.Bookmarks.Add(bookmark);
-            await vm.Bookmarks.DeleteAsync(bookmark);
-            vm.PageFlow.OpenSettings();
-            return vm.PageFlow.SettingsPage!.EditKeyBinding;
+            viewModel.Settings.Bookmarks.Add(bookmark);
+            await viewModel.Bookmarks.DeleteAsync(bookmark);
+            viewModel.PageFlow.OpenSettings();
+            return viewModel.PageFlow.SettingsPage!.EditKeyBinding;
         });
 
         Assert.Single(asked);
@@ -522,14 +522,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
         await OnUi(() =>
         {
-            vm.Update.Use(new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running),
+            viewModel.Update.Use(new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running),
                 new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "gibt-es-nicht.exe"), _ => offered.Add("neu gestartet")));
-            vm.Dialogs = new DialogCallbacks { OfferUpdate = offer => { offered.Add(offer.Version); return Task.FromResult(false); } };
+            viewModel.Dialogs = new DialogCallbacks { OfferUpdate = offer => { offered.Add(offer.Version); return Task.FromResult(false); } };
             return 0;
         });
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Update.CheckAtStartAsync();
+            await viewModel.Update.CheckAtStartAsync();
             return null;
         });
         Assert.Equal(["280926.0b2c"], offered);
@@ -537,14 +537,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await OnUi(() =>
         {
-            var clientSettings = vm.Settings;
+            var clientSettings = viewModel.Settings;
             clientSettings.CheckForUpdates = false;
-            vm.ApplySettings(clientSettings);
+            viewModel.ApplySettings(clientSettings);
             return 0;
         });
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Update.CheckAtStartAsync();
+            await viewModel.Update.CheckAtStartAsync();
             return null;
         });
         Assert.Single(http.Requests);
@@ -574,24 +574,24 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await OnUi(() =>
         {
             File.WriteAllText(Path.Combine(dir, "OVS.Client.exe"), "alt");
-            vm.Update.Use(new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running),
+            viewModel.Update.Use(new OVS.Client.Net.Updates.UpdateChecker(new HttpClient(http), running),
                 new OVS.Client.Net.Updates.UpdateInstaller(new HttpClient(http), Path.Combine(dir, "OVS.Client.exe"), _ => { }));
-            vm.Dialogs = new DialogCallbacks { OfferUpdate = _ => Task.FromResult(true) };
-            vm.Update.PropertyChanged += (_, args) =>
+            viewModel.Dialogs = new DialogCallbacks { OfferUpdate = _ => Task.FromResult(true) };
+            viewModel.Update.PropertyChanged += (_, args) =>
             {
-                if (args.PropertyName == nameof(UpdateFlow.Progress)) seen.Add(vm.Update.Progress);
+                if (args.PropertyName == nameof(UpdateFlow.Progress)) seen.Add(viewModel.Update.Progress);
             };
             return 0;
         });
-        var result = await ui.InvokeAsync(() => vm.Update.CheckAsync());
+        var result = await ui.InvokeAsync(() => viewModel.Update.CheckAsync());
 
         Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, result);
         Assert.Contains(seen, updateProgress => updateProgress is { Phase: OVS.Client.Net.Updates.UpdatePhase.Downloading, Bytes: 200_000, Total: 200_000 });
         Assert.All(seen.OfType<OVS.Client.Net.Updates.UpdateProgress>(), updateProgress => Assert.Equal("280926.0b2c", updateProgress.Version));
         Assert.Null(seen[^1]);
-        Assert.False(await OnUi(() => vm.Update.IsUpdating));
-        Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, await OnUi(() => vm.Status));
-        var notice = Assert.Single(await OnUi(() => vm.Notices.ToList())); // the download status is no notice
+        Assert.False(await OnUi(() => viewModel.Update.IsUpdating));
+        Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, await OnUi(() => viewModel.Status));
+        var notice = Assert.Single(await OnUi(() => viewModel.Notices.ToList())); // the download status is no notice
         Assert.Equal(NoticeKind.Warning, notice.Kind);
         Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, notice.Text);
     }
@@ -602,11 +602,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
+            viewModel.PageFlow.OpenSettings();
             return 0;
         });
 
-        var answer = await ui.InvokeAsync(() => vm.PageFlow.SettingsPage!.CheckNow!());
+        var answer = await ui.InvokeAsync(() => viewModel.PageFlow.SettingsPage!.CheckNow!());
 
         Assert.Equal(OVS.Client.Localization.Strings.Update_LocalBuild, answer);
     }
@@ -618,15 +618,15 @@ public sealed class MainViewModelTests : IAsyncLifetime
         string missingLine = $"Sound-Datei {missingFile} für {SoundEvent.UserJoined} fehlt";
         await OnUi(() =>
         {
-            vm.ApplySettings(new ClientSettings { Sounds = { [SoundEvent.UserJoined] = new SoundSetting(File: missingFile) } });
-            vm.PageFlow.OpenSettings();
+            viewModel.ApplySettings(new ClientSettings { Sounds = { [SoundEvent.UserJoined] = new SoundSetting(File: missingFile) } });
+            viewModel.PageFlow.OpenSettings();
             return 0;
         });
         Assert.DoesNotContain(missingLine, ClientLogText());
 
         await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.SoundRows.Single(row => row.Event == SoundEvent.UserJoined).PlayCommand.Execute(null);
+            viewModel.PageFlow.SettingsPage!.SoundRows.Single(row => row.Event == SoundEvent.UserJoined).PlayCommand.Execute(null);
             return 0;
         });
 
@@ -642,8 +642,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         string? imported = await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
-            var row = vm.PageFlow.SettingsPage!.SoundRows.Single(candidate => candidate.Event == SoundEvent.UserJoined);
+            viewModel.PageFlow.OpenSettings();
+            var row = viewModel.PageFlow.SettingsPage!.SoundRows.Single(candidate => candidate.Event == SoundEvent.UserJoined);
             row.Import(source);
             return row.File;
         });
@@ -656,7 +656,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task Connect_SavesBookmark_ToSettingsFile()
     {
         await ConnectAsync(saveBookmark: true);
-        Assert.True(await OnUi(() => vm.IsConnected));
+        Assert.True(await OnUi(() => viewModel.IsConnected));
 
         var saved = ClientSettings.Load(dir, out _);
         var bookmark = Assert.Single(saved.Bookmarks);
@@ -669,7 +669,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// </summary>
     async Task PressUntil(KeyAction action, Func<bool> done)
     {
-        vm.Keys.Simulate(action, true);
+        viewModel.Keys.Simulate(action, true);
         try
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -677,7 +677,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }
         finally
         {
-            vm.Keys.Simulate(action, false);
+            viewModel.Keys.Simulate(action, false);
         }
     }
 
@@ -687,14 +687,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
-        var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
+        var annaId = await OnUi(() => viewModel.Server!.Mirror.SelfId);
 
-        await PressUntil(KeyAction.ToggleMute, () => vm.Server!.SelfState.SelfMuted);
+        await PressUntil(KeyAction.ToggleMute, () => viewModel.Server!.SelfState.SelfMuted);
         var muted = await bert.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == annaId && userUpdated.User.SelfMuted);
         Assert.False(muted.User.SelfDeafened);
-        Assert.True(await OnUi(() => vm.Server!.SelfState.SelfMuted));
+        Assert.True(await OnUi(() => viewModel.Server!.SelfState.SelfMuted));
 
-        await PressUntil(KeyAction.ToggleDeafen, () => vm.Server!.SelfState.SelfDeafened);
+        await PressUntil(KeyAction.ToggleDeafen, () => viewModel.Server!.SelfState.SelfDeafened);
         await bert.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == annaId && userUpdated.User.SelfDeafened);
     }
 
@@ -703,31 +703,31 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() => // an existing profile without keys (a new one gets a PTT key, Package 59)
         {
-            var clientSettings = vm.Settings;
+            var clientSettings = viewModel.Settings;
             clientSettings.KeyBindings = [];
-            vm.ApplySettings(clientSettings);
+            viewModel.ApplySettings(clientSettings);
             return 0;
         });
-        Assert.True(await OnUi(() => vm.HasNoPttBinding));
-        Assert.Equal("Keine PTT-Taste belegt", await OnUi(() => vm.TalkHint));
+        Assert.True(await OnUi(() => viewModel.HasNoPttBinding));
+        Assert.Equal("Keine PTT-Taste belegt", await OnUi(() => viewModel.TalkHint));
         await OnUi(() =>
         {
-            var clientSettings = vm.Settings;
+            var clientSettings = viewModel.Settings;
             clientSettings.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1))];
-            vm.ApplySettings(clientSettings);
+            viewModel.ApplySettings(clientSettings);
             return 0;
         });
-        Assert.False(await OnUi(() => vm.HasNoPttBinding));
-        Assert.Equal("PTT: Maustaste 4", await OnUi(() => vm.TalkHint));
+        Assert.False(await OnUi(() => viewModel.HasNoPttBinding));
+        Assert.Equal("PTT: Maustaste 4", await OnUi(() => viewModel.TalkHint));
 
         await OnUi(() => // Package 41: several PTT keys are all listed
         {
-            var clientSettings = vm.Settings;
+            var clientSettings = viewModel.Settings;
             clientSettings.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1)), new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton2))];
-            vm.ApplySettings(clientSettings);
+            viewModel.ApplySettings(clientSettings);
             return 0;
         });
-        Assert.Equal("PTT: Maustaste 4, Maustaste 5", await OnUi(() => vm.TalkHint));
+        Assert.Equal("PTT: Maustaste 4, Maustaste 5", await OnUi(() => viewModel.TalkHint));
     }
 
     /// <summary>Package 30: the logo is downloaded once, then taken from the cache; the bookmark tile shows it.</summary>
@@ -740,17 +740,17 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await using var logoServer = await TestServer.StartAsync(dataDir: data);
         Task Connect() => ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", logoServer.Port, "anna", null, SaveBookmark: true));
+            await viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", logoServer.Port, "anna", null, SaveBookmark: true));
             return null;
         });
 
         await Connect();
-        var shown = await OnUiUntil(() => vm.Server?.IconPng, bytes => bytes is not null);
+        var shown = await OnUiUntil(() => viewModel.Server?.IconPng, bytes => bytes is not null);
         Assert.Equal(png, shown);
 
         await Connect(); // second time straight from the cache
-        Assert.Equal(png, await OnUi(() => vm.Server!.IconPng));
-        Assert.Equal(png, (await OnUi(() => vm.Bookmarks.Items)).Single().Icon);
+        Assert.Equal(png, await OnUi(() => viewModel.Server!.IconPng));
+        Assert.Equal(png, (await OnUi(() => viewModel.Bookmarks.Items)).Single().Icon);
 
         var log = ClientLogText();
         Assert.Equal(1, log.Split(Environment.NewLine).Count(line => line.Contains("Request server logo")));
@@ -760,12 +760,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task Connect_ShowsWelcomeText_AndPing()
     {
         await ConnectAsync(saveBookmark: false);
-        Assert.Contains(await OnUi(() => vm.Notices.ToList()), notice => notice.Kind == NoticeKind.Welcome && notice.Text == "Willkommen auf dem Testserver!");
+        Assert.Contains(await OnUi(() => viewModel.Notices.ToList()), notice => notice.Kind == NoticeKind.Welcome && notice.Text == "Willkommen auf dem Testserver!");
 
         var ping = await OnUiUntil(() =>
         {
-            vm.Tick();
-            return vm.Connection.PingText;
+            viewModel.Tick();
+            return viewModel.Connection.PingText;
         }, path => path.Length > 0);
         Assert.StartsWith("Ping ", ping);
     }
@@ -779,7 +779,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await ConnectThroughRelayAsync(relay, time);
         string Logged()
         {
-            vm.Tick();
+            viewModel.Tick();
             return ClientLogText();
         }
         Assert.Contains("UDP now reachable", await OnUiUntil(Logged, line => line.Contains("UDP now reachable")));
@@ -811,7 +811,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider(); // the voice client's and the refresh's clock
         ConnectionStatsViewModel? shown = null;
-        vm.Dialogs = new DialogCallbacks
+        viewModel.Dialogs = new DialogCallbacks
         {
             ConnectionDetails = card =>
             {
@@ -820,32 +820,32 @@ public sealed class MainViewModelTests : IAsyncLifetime
             },
         };
         await ConnectThroughRelayAsync(relay, time);
-        await OnUi(() => vm.Audio.Loss = new LossAdapter(time, 64)); // Package 135: on the same clock
-        Assert.Equal((0, false), await OnUi(() => (vm.Stats.Bars, vm.Stats.Unreachable)));
+        await OnUi(() => viewModel.Audio.Loss = new LossAdapter(time, 64)); // Package 135: on the same clock
+        Assert.Equal((0, false), await OnUi(() => (viewModel.Stats.Bars, viewModel.Stats.Unreachable)));
 
         // the answer to the Hello: 0 ms on the manual clock, as good as the baseline
         Assert.Equal(4, await OnUiUntil(() =>
         {
             time.Advance(TimeSpan.FromSeconds(2));
-            vm.Tick();
-            return vm.Stats.Bars;
-        }, b => b == 4));
-        var stats = await OnUi(() => vm.Stats);
+            viewModel.Tick();
+            return viewModel.Stats.Bars;
+        }, value => value == 4));
+        var stats = await OnUi(() => viewModel.Stats);
         Assert.Equal((SignalRating.Good, false), (stats.Rating, stats.Unreachable));
         Assert.Contains("0 ms", stats.RoundTripText);
         Assert.Equal("64 kbps", stats.BitrateText);
         foreach (var text in new[] { stats.UplinkText, stats.DownlinkText, stats.JitterText, stats.DelayText, stats.ConcealedText })
             Assert.False(string.IsNullOrEmpty(text));
 
-        await OnUi(() => vm.ShowConnectionDetailsCommand.ExecuteAsync(null));
+        await OnUi(() => viewModel.ShowConnectionDetailsCommand.ExecuteAsync(null));
         Assert.Same(stats, shown);
 
         // refreshed after 2 s on the view model's clock (the interval's edges are in ConnectionStatsViewModelTests)
         Assert.Equal("96 kbps", await OnUi(() =>
         {
-            vm.Audio.ChannelBitrate = 96;
+            viewModel.Audio.ChannelBitrate = 96;
             time.Advance(ConnectionStatsViewModel.RefreshInterval);
-            vm.Tick();
+            viewModel.Tick();
             return stats.BitrateText;
         }));
 
@@ -858,7 +858,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             serverTime.Advance(AudioFormat.FrameDuration); // its voice rate limit (60/s, burst 10) refills
             await OnUi(() =>
             {
-                vm.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
+                viewModel.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
                 return 0;
             });
             await Task.Delay(5); // lets the server take each frame before the next advance, so they do not drain the bucket at once
@@ -869,20 +869,20 @@ public sealed class MainViewModelTests : IAsyncLifetime
             int answers = await OnUi(() =>
             {
                 time.Advance(TimeSpan.FromSeconds(2)); // the ping goes out
-                return vm.Connection.VoiceLink.Client!.RoundTripSample.Count;
+                return viewModel.Connection.VoiceLink.Client!.RoundTripSample.Count;
             });
-            await OnUiUntil(() => vm.Connection.VoiceLink.Client!.RoundTripSample.Count, c => c > answers);
+            await OnUiUntil(() => viewModel.Connection.VoiceLink.Client!.RoundTripSample.Count, value => value > answers);
             await OnUi(() =>
             {
-                vm.Tick();
+                viewModel.Tick();
                 return 0;
             });
         }
         // the halving lands in the last loop tick only (StepDownAfter 5 s, 2 s steps), so this pin needs the feed before the card's refresh in Tick
-        var (hint, adapted, shownBitrate) = await OnUi(() => (vm.Audio.Loss.LossHint, vm.Audio.EncoderBitrate, stats.BitrateText));
+        var (hint, adapted, shownBitrate) = await OnUi(() => (viewModel.Audio.Loss.LossHint, viewModel.Audio.EncoderBitrate, stats.BitrateText));
         Assert.True(hint > 10, $"loss hint {hint}");
         Assert.Equal(48, adapted);
-        Assert.Equal(96, await OnUi(() => vm.Audio.ChannelBitrate));
+        Assert.Equal(96, await OnUi(() => viewModel.Audio.ChannelBitrate));
         Assert.Equal("48 kbps", shownBitrate);
         relay.DropUpVoicePercent = 0;
 
@@ -894,7 +894,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             for (int index = 0; index < 32; index++)
             {
                 time.Advance(TimeSpan.FromMilliseconds(500));
-                vm.Tick();
+                viewModel.Tick();
             }
             return (stats.Unreachable, stats.Bars, stats.Samples);
         });
@@ -904,11 +904,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(await OnUiUntil(() =>
         {
             time.Advance(TimeSpan.FromMilliseconds(500));
-            vm.Tick();
+            viewModel.Tick();
             return stats.Unreachable;
-        }, u => !u));
+        }, value => !value));
 
-        await OnUi(() => vm.Connection.DisconnectAsync());
+        await OnUi(() => viewModel.Connection.DisconnectAsync());
         Assert.Equal((0, false, "-"), await OnUi(() => (stats.Bars, stats.Unreachable, stats.RoundTripText)));
     }
 
@@ -922,12 +922,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
         await ConnectThroughRelayAsync(relay, time);
-        await OnUi(() => vm.Audio.Loss = new LossAdapter(time, 64));
+        await OnUi(() => viewModel.Audio.Loss = new LossAdapter(time, 64));
         await OnUiUntil(() =>
         {
             time.Advance(TimeSpan.FromSeconds(2));
-            vm.Tick();
-            return vm.Stats.Bars;
+            viewModel.Tick();
+            return viewModel.Stats.Bars;
         }, bars => bars == 4); // the answer to the Hello is taken, the card has refreshed
         relay.DropUpVoicePercent = 20;
         var frame = new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]);
@@ -936,7 +936,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             serverTime.Advance(AudioFormat.FrameDuration);
             await OnUi(() =>
             {
-                vm.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
+                viewModel.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
                 return 0;
             });
         }
@@ -945,17 +945,17 @@ public sealed class MainViewModelTests : IAsyncLifetime
         int answers = await OnUi(() =>
         {
             time.Advance(TimeSpan.FromSeconds(2)); // the ping goes out
-            vm.Tick(); // the card refreshes here, before the answer is back
-            return vm.Connection.VoiceLink.Client!.RoundTripSample.Count;
+            viewModel.Tick(); // the card refreshes here, before the answer is back
+            return viewModel.Connection.VoiceLink.Client!.RoundTripSample.Count;
         });
-        await OnUiUntil(() => vm.Connection.VoiceLink.Client!.RoundTripSample.Count, count => count > answers);
-        Assert.Equal(LossAdapter.InitialHint, await OnUi(() => vm.Audio.Loss.LossHint)); // nobody has fed the answer yet
+        await OnUiUntil(() => viewModel.Connection.VoiceLink.Client!.RoundTripSample.Count, count => count > answers);
+        Assert.Equal(LossAdapter.InitialHint, await OnUi(() => viewModel.Audio.Loss.LossHint)); // nobody has fed the answer yet
 
         int hint = await OnUi(() =>
         {
             time.Advance(TimeSpan.FromMilliseconds(100)); // far from the next 2 s refresh
-            vm.Tick();
-            return vm.Audio.Loss.LossHint;
+            viewModel.Tick();
+            return viewModel.Audio.Loss.LossHint;
         });
 
         Assert.True(hint > LossAdapter.InitialHint, $"loss hint {hint}");
@@ -970,16 +970,16 @@ public sealed class MainViewModelTests : IAsyncLifetime
             var frame = EngineProbe.SilentFrame();
             for (uint number = 0; number < 6; number++)
             {
-                vm.Audio.Mixer.Push(1, number, frame, viaLink: false, arrivalMs: 20.0 * number + (number == 3 ? 15 : 0));
-                vm.Audio.Mixer.Tick();
+                viewModel.Audio.Mixer.Push(1, number, frame, viaLink: false, arrivalMs: 20.0 * number + (number == 3 ? 15 : 0));
+                viewModel.Audio.Mixer.Tick();
             }
-            return vm.Audio.Mixer.Stats().JitterMs;
+            return viewModel.Audio.Mixer.Stats().JitterMs;
         });
 
         var shown = await OnUi(() =>
         {
-            vm.Tick();
-            return vm.Stats.JitterText;
+            viewModel.Tick();
+            return viewModel.Stats.JitterText;
         });
 
         Assert.True(measured > 0);
@@ -992,19 +992,19 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
-        Assert.Equal(["Allgemein", "Lobby"], await OnUi(() => vm.Chat!.Tabs.Select(chatTab => chatTab.Title).ToList()));
-        Assert.Contains(await OnUi(() => vm.Chat!.General.Entries.ToList()), chatEntry => chatEntry.IsWelcome && chatEntry.Text == "Willkommen auf dem Testserver!");
+        Assert.Equal(["Allgemein", "Lobby"], await OnUi(() => viewModel.Chat!.Tabs.Select(chatTab => chatTab.Title).ToList()));
+        Assert.Contains(await OnUi(() => viewModel.Chat!.General.Entries.ToList()), chatEntry => chatEntry.IsWelcome && chatEntry.Text == "Willkommen auf dem Testserver!");
 
         await bert.SendAsync(new SendChat(ChatTarget.Channel, null, "hallo anna"));
-        var received = await OnUiUntil(() => vm.Chat!.ChannelTab.Entries.FirstOrDefault(chatEntry => chatEntry.IsMessage), chatEntry => chatEntry is not null);
+        var received = await OnUiUntil(() => viewModel.Chat!.ChannelTab.Entries.FirstOrDefault(chatEntry => chatEntry.IsMessage), chatEntry => chatEntry is not null);
         Assert.Equal(("bert", "hallo anna", false), (received?.From, received?.Text, received?.IsOwn));
-        Assert.Equal(1, await OnUi(() => vm.Chat!.ChannelTab.Unread));
+        Assert.Equal(1, await OnUi(() => viewModel.Chat!.ChannelTab.Unread));
 
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.Chat!.Selected = vm.Chat.ChannelTab;
-            vm.Chat.Draft = "hallo bert";
-            await vm.Chat.SendCommand.ExecuteAsync(null);
+            viewModel.Chat!.Selected = viewModel.Chat.ChannelTab;
+            viewModel.Chat.Draft = "hallo bert";
+            await viewModel.Chat.SendCommand.ExecuteAsync(null);
             return null;
         });
         var echo = await bert.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "hallo bert");
@@ -1018,21 +1018,21 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
         await using var carla = await TestClient.ConnectAsync(server, "carla");
-        var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
+        var annaId = await OnUi(() => viewModel.Server!.Mirror.SelfId);
 
         await bert.SendAsync(new SendChat(ChatTarget.Private, annaId, "psst"));
-        var tab = await OnUiUntil(() => vm.Chat!.Tabs.FirstOrDefault(chatTab => chatTab.IsPrivate), chatTab => chatTab is not null);
+        var tab = await OnUiUntil(() => viewModel.Chat!.Tabs.FirstOrDefault(chatTab => chatTab.IsPrivate), chatTab => chatTab is not null);
         Assert.Equal(("@bert", 1), (tab?.Title, tab?.Unread));
-        Assert.True(await OnUi(() => vm.Chat!.Selected.IsGeneral)); // in the background
+        Assert.True(await OnUi(() => viewModel.Chat!.Selected.IsGeneral)); // in the background
 
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "bert").MessageCommand.Execute(null);
-            vm.Chat!.Draft = "psst zurück";
-            await vm.Chat.SendCommand.ExecuteAsync(null);
+            viewModel.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "bert").MessageCommand.Execute(null);
+            viewModel.Chat!.Draft = "psst zurück";
+            await viewModel.Chat.SendCommand.ExecuteAsync(null);
             return null;
         });
-        Assert.Same(tab, await OnUi(() => vm.Chat!.Selected));
+        Assert.Same(tab, await OnUi(() => viewModel.Chat!.Selected));
         var reply = await bert.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "psst zurück");
         Assert.Equal(ChatTarget.Private, reply.Target);
         await carla.AssertNoMessageAsync<ChatMessage>();
@@ -1044,17 +1044,17 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await ConnectAsync(saveBookmark: false);
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Server!.SendAsync(new CreateChannel("Raid", "")); // a guest may not
+            await viewModel.Server!.SendAsync(new CreateChannel("Raid", "")); // a guest may not
             return null;
         });
-        var error = await OnUiUntil(() => vm.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Error), notice => notice is not null);
+        var error = await OnUiUntil(() => viewModel.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Error), notice => notice is not null);
         Assert.Equal("Dafür fehlt dir das Recht.", error?.Text);
 
         await server.Control.StopAsync();
         // Package 139: a shutdown first starts reconnecting; "Abbrechen" ends it with the disconnected notice
-        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        Assert.True(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => value));
         await CancelReconnectAsync();
-        var bye = await OnUiUntil(() => vm.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Warning), notice => notice is not null);
+        var bye = await OnUiUntil(() => viewModel.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Warning), notice => notice is not null);
         Assert.StartsWith("Getrennt: ", bye?.Text);
         Assert.Matches(@"^\d{2}:\d{2}:\d{2}  Getrennt: ", bye!.ToString()); // the debug API keeps its "time  text" form
     }
@@ -1062,23 +1062,23 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task StartScreen_BookmarksAndConnectingState()
     {
-        Assert.False(await OnUi(() => vm.Bookmarks.HasAny));
-        Assert.Equal($"PTT: {DefaultPushToTalk.Choose(DefaultPushToTalk.CountMouseButtons()).Name}", await OnUi(() => vm.TalkHint)); // Package 59: new profiles get a PTT key
+        Assert.False(await OnUi(() => viewModel.Bookmarks.HasAny));
+        Assert.Equal($"PTT: {DefaultPushToTalk.Choose(DefaultPushToTalk.CountMouseButtons()).Name}", await OnUi(() => viewModel.TalkHint)); // Package 59: new profiles get a PTT key
         var changed = new List<string?>();
         var changedBookmarks = new List<string?>();
         await OnUi(() =>
         {
-            vm.Connection.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
-            vm.Bookmarks.PropertyChanged += (_, args) => changedBookmarks.Add(args.PropertyName);
+            viewModel.Connection.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+            viewModel.Bookmarks.PropertyChanged += (_, args) => changedBookmarks.Add(args.PropertyName);
             return 0;
         });
 
         await ConnectAsync(saveBookmark: true);
-        Assert.True(await OnUi(() => vm.Bookmarks.HasAny));
-        Assert.Equal("anna", (await OnUi(() => vm.Bookmarks.Items)).Single().Nickname);
+        Assert.True(await OnUi(() => viewModel.Bookmarks.HasAny));
+        Assert.Equal("anna", (await OnUi(() => viewModel.Bookmarks.Items)).Single().Nickname);
         Assert.Contains(nameof(BookmarkList.Items), changedBookmarks);
         Assert.Contains(nameof(ConnectionViewModel.IsConnecting), changed);
-        Assert.False(await OnUi(() => vm.Connection.IsConnecting));
+        Assert.False(await OnUi(() => viewModel.Connection.IsConnecting));
     }
 
     /// <summary>A20: settings and administration are pages of the main window, not windows.</summary>
@@ -1087,39 +1087,39 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.PageFlow.OpenSettings();
-            Assert.Equal(Page.Settings, vm.PageFlow.Page);
-            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
-            Assert.Equal(Page.Home, vm.PageFlow.Page);
-            Assert.Null(vm.PageFlow.SettingsPage);
+            viewModel.PageFlow.OpenSettings();
+            Assert.Equal(Page.Settings, viewModel.PageFlow.Page);
+            viewModel.PageFlow.SettingsPage!.CancelCommand.Execute(null);
+            Assert.Equal(Page.Home, viewModel.PageFlow.Page);
+            Assert.Null(viewModel.PageFlow.SettingsPage);
 
-            await vm.PageFlow.OpenAdminAsync(); // not connected: nothing to administer
-            Assert.Equal(Page.Home, vm.PageFlow.Page);
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            await vm.PageFlow.OpenAdminAsync();
-            Assert.Equal(Page.Admin, vm.PageFlow.Page);
-            await vm.Connection.DisconnectAsync(); // the administration needs a server
-            Assert.Equal(Page.Home, vm.PageFlow.Page);
-            Assert.Null(vm.PageFlow.AdminPage);
+            await viewModel.PageFlow.OpenAdminAsync(); // not connected: nothing to administer
+            Assert.Equal(Page.Home, viewModel.PageFlow.Page);
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            await viewModel.PageFlow.OpenAdminAsync();
+            Assert.Equal(Page.Admin, viewModel.PageFlow.Page);
+            await viewModel.Connection.DisconnectAsync(); // the administration needs a server
+            Assert.Equal(Page.Home, viewModel.PageFlow.Page);
+            Assert.Null(viewModel.PageFlow.AdminPage);
             return null;
         });
 
         await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
-            vm.Audio.DeviceLifecycle.SetTone(440);
+            viewModel.PageFlow.OpenSettings();
+            viewModel.Audio.DeviceLifecycle.SetTone(440);
             return 0;
         });
-        var level = await OnUiUntil(() => vm.PageFlow.SettingsPage!.InputLevelDb, l => l >= -30);
+        var level = await OnUiUntil(() => viewModel.PageFlow.SettingsPage!.InputLevelDb, value => value >= -30);
         Assert.InRange(level, -15, -12); // 0.3 amplitude sine: -13.5 dBFS
 
         await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.SelectedTheme = SettingsViewModel.Themes.Single(choice => choice.Value == AppTheme.Dark);
-            vm.PageFlow.SettingsPage.SaveCommand.Execute(null);
+            viewModel.PageFlow.SettingsPage!.SelectedTheme = SettingsViewModel.Themes.Single(choice => choice.Value == AppTheme.Dark);
+            viewModel.PageFlow.SettingsPage.SaveCommand.Execute(null);
             return 0;
         });
-        Assert.Equal(Page.Home, await OnUi(() => vm.PageFlow.Page));
+        Assert.Equal(Page.Home, await OnUi(() => viewModel.PageFlow.Page));
         Assert.Equal(AppTheme.Dark, ClientSettings.Load(dir, out _).Theme);
     }
 
@@ -1185,26 +1185,26 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task Appearance_LivePreview_DiscardRestores_SaveKeeps()
     {
-        Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() => vm.Appearance));
+        Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() => viewModel.Appearance));
         var live = await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
-            vm.PageFlow.SettingsPage!.BackgroundOpacityPercent = 30;
-            vm.PageFlow.SettingsPage.BlurBackground = true;
-            return vm.Appearance;
+            viewModel.PageFlow.OpenSettings();
+            viewModel.PageFlow.SettingsPage!.BackgroundOpacityPercent = 30;
+            viewModel.PageFlow.SettingsPage.BlurBackground = true;
+            return viewModel.Appearance;
         });
         Assert.Equal(new BackgroundAppearance(0.3f, true), live with { Opacity = MathF.Round(live.Opacity, 3) });
         Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
-            return vm.Appearance;
+            viewModel.PageFlow.SettingsPage!.CancelCommand.Execute(null);
+            return viewModel.Appearance;
         }));
         var saved = await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
-            vm.PageFlow.SettingsPage!.BackgroundOpacityPercent = 60;
-            vm.PageFlow.SettingsPage.SaveCommand.Execute(null);
-            return (vm.Appearance.Opacity, vm.Settings.BackgroundOpacity);
+            viewModel.PageFlow.OpenSettings();
+            viewModel.PageFlow.SettingsPage!.BackgroundOpacityPercent = 60;
+            viewModel.PageFlow.SettingsPage.SaveCommand.Execute(null);
+            return (viewModel.Appearance.Opacity, viewModel.Settings.BackgroundOpacity);
         });
         Assert.Equal((0.6f, 0.6f), (MathF.Round(saved.Item1, 3), MathF.Round(saved.Item2, 3)));
         Assert.Equal(0.6f, ClientSettings.Load(dir, out _).BackgroundOpacity, 3);
@@ -1215,24 +1215,24 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task Display_LivePreviewAndCancelRevert()
     {
         var simplified = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
-        Assert.Equal(DisplayMode.Animated, await OnUi(() => vm.Appearance.Display));
+        Assert.Equal(DisplayMode.Animated, await OnUi(() => viewModel.Appearance.Display));
         Assert.Equal(DisplayMode.Simplified, await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
-            vm.PageFlow.SettingsPage!.SelectedDisplay = simplified;
-            return vm.Appearance.Display;
+            viewModel.PageFlow.OpenSettings();
+            viewModel.PageFlow.SettingsPage!.SelectedDisplay = simplified;
+            return viewModel.Appearance.Display;
         }));
         Assert.Equal(DisplayMode.Animated, await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
-            return vm.Appearance.Display;
+            viewModel.PageFlow.SettingsPage!.CancelCommand.Execute(null);
+            return viewModel.Appearance.Display;
         }));
         Assert.Equal(DisplayMode.Simplified, await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
-            vm.PageFlow.SettingsPage!.SelectedDisplay = simplified;
-            vm.PageFlow.SettingsPage.SaveCommand.Execute(null);
-            return vm.Appearance.Display;
+            viewModel.PageFlow.OpenSettings();
+            viewModel.PageFlow.SettingsPage!.SelectedDisplay = simplified;
+            viewModel.PageFlow.SettingsPage.SaveCommand.Execute(null);
+            return viewModel.Appearance.Display;
         }));
         Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
     }
@@ -1245,13 +1245,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Task<KeyChord?>? captured = null;
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.PageFlow.OpenSettings();
-            vm.PageFlow.SettingsPage!.EditKeyBinding = (_, capture) =>
+            viewModel.PageFlow.OpenSettings();
+            viewModel.PageFlow.SettingsPage!.EditKeyBinding = (_, capture) =>
             {
                 captured = capture(KeyAction.ToggleMute);
                 return Task.FromResult<KeyBinding?>(null);
             };
-            await vm.PageFlow.SettingsPage.AddKeyBindingCommand.ExecuteAsync(null);
+            await viewModel.PageFlow.SettingsPage.AddKeyBindingCommand.ExecuteAsync(null);
             return null;
         });
         await keys.NextSweep(); // the first sweep of a capture only records what is already down
@@ -1278,46 +1278,46 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             await ui.InvokeAsync<object?>(async () =>
             {
-                vm.PageFlow.OpenSettings();
-                vm.PageFlow.SettingsPage!.IsPushToTalk = true;
-                vm.PageFlow.SettingsPage.EditKeyBinding = (_, _) => Task.FromResult<KeyBinding?>(key);
-                await vm.PageFlow.SettingsPage.SetPttKeyCommand.ExecuteAsync(null);
+                viewModel.PageFlow.OpenSettings();
+                viewModel.PageFlow.SettingsPage!.IsPushToTalk = true;
+                viewModel.PageFlow.SettingsPage.EditKeyBinding = (_, _) => Task.FromResult<KeyBinding?>(key);
+                await viewModel.PageFlow.SettingsPage.SetPttKeyCommand.ExecuteAsync(null);
                 return null;
             });
-            return await OnUi(() => vm.Keys.Bindings);
+            return await OnUi(() => viewModel.Keys.Bindings);
         }
 
         await OnUi(() =>
         {
-            vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
+            viewModel.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
             return 0;
         });
-        Assert.Empty(await OnUi(() => vm.Keys.Bindings));
+        Assert.Empty(await OnUi(() => viewModel.Keys.Bindings));
 
         Assert.Equal([key], await SetKeyOnPage());
         Assert.Empty(await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
-            return vm.Keys.Bindings;
+            viewModel.PageFlow.SettingsPage!.CancelCommand.Execute(null);
+            return viewModel.Keys.Bindings;
         }));
 
         Assert.Equal([key], await SetKeyOnPage());
         Assert.Empty(await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.KeyBindings[0].RemoveCommand.Execute(null);
-            return vm.Keys.Bindings;
+            viewModel.PageFlow.SettingsPage!.KeyBindings[0].RemoveCommand.Execute(null);
+            return viewModel.Keys.Bindings;
         }));
         Assert.Empty(await OnUi(() =>
         {
-            vm.PageFlow.ClosePage(); // what Esc does
-            return vm.Keys.Bindings;
+            viewModel.PageFlow.ClosePage(); // what Esc does
+            return viewModel.Keys.Bindings;
         }));
 
         Assert.Equal([key], await SetKeyOnPage());
         Assert.Equal([key], await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.SaveCommand.Execute(null);
-            return vm.Keys.Bindings;
+            viewModel.PageFlow.SettingsPage!.SaveCommand.Execute(null);
+            return viewModel.Keys.Bindings;
         }));
         Assert.Equal([key], ClientSettings.Load(dir, out _).KeyBindings);
     }
@@ -1328,11 +1328,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var after = await OnUi(() =>
         {
-            vm.PageFlow.OpenSettings();
-            vm.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
-            vm.PageFlow.SettingsPage.BlurBackground = true;
-            vm.PageFlow.ClosePage(); // what Esc does
-            return vm.Appearance;
+            viewModel.PageFlow.OpenSettings();
+            viewModel.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
+            viewModel.PageFlow.SettingsPage.BlurBackground = true;
+            viewModel.PageFlow.ClosePage(); // what Esc does
+            return viewModel.Appearance;
         });
         Assert.Equal(new BackgroundAppearance(1f, false, DisplayMode.Animated), after);
         Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
@@ -1345,29 +1345,29 @@ public sealed class MainViewModelTests : IAsyncLifetime
         await ConnectAsync(saveBookmark: false);
         async Task<(bool Muted, bool Deafened)> SeenByServer(bool deafened)
         {
-            await OnUiUntil(() => vm.Server!.Self!.IsDeafened, d => d == deafened);
-            return await OnUi(() => (vm.Server!.Self!.StatusText.Length > 0, vm.Server.Self.IsDeafened));
+            await OnUiUntil(() => viewModel.Server!.Self!.IsDeafened, value => value == deafened);
+            return await OnUi(() => (viewModel.Server!.Self!.StatusText.Length > 0, viewModel.Server.Self.IsDeafened));
         }
         Assert.Equal((false, false), await SeenByServer(false));
 
         // closing the settings ends it (the rules and the page's button are in SelfTestTests and SelfTestWiringTests); a slider moved meanwhile goes back on "Verwerfen"
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.PageFlow.OpenSettings();
-            await vm.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
-            vm.PageFlow.SettingsPage.OutputVolumePercent = 50;
+            viewModel.PageFlow.OpenSettings();
+            await viewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
+            viewModel.PageFlow.SettingsPage.OutputVolumePercent = 50;
             return null;
         });
-        Assert.Equal(0.5f, await OnUi(() => vm.Audio.Mixer.Volume));
+        Assert.Equal(0.5f, await OnUi(() => viewModel.Audio.Mixer.Volume));
         Assert.Equal((true, true), await SeenByServer(true));
         await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.CancelCommand.Execute(null);
+            viewModel.PageFlow.SettingsPage!.CancelCommand.Execute(null);
             return 0;
         });
         Assert.Equal((false, false), await SeenByServer(false));
-        Assert.False(await OnUi(() => vm.Audio.SelfTest));
-        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.Volume));
+        Assert.False(await OnUi(() => viewModel.Audio.SelfTest));
+        Assert.Equal(1f, await OnUi(() => viewModel.Audio.Mixer.Volume));
     }
 
     /// <summary>Package 51: the slider acts on the mixer at once, is kept by fingerprint and follows a new session.</summary>
@@ -1376,33 +1376,33 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var settingsBefore = await OnUi(() =>
         {
-            var before = vm.Settings;
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "anna").VolumePercent = 200;
+            var before = viewModel.Settings;
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+            viewModel.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "anna").VolumePercent = 200;
             return before;
         });
-        Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
-        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(1)));
-        Assert.Same(settingsBefore, await OnUi(() => vm.Settings)); // no ApplySettings: the audio devices keep running
+        Assert.Equal(2f, await OnUi(() => viewModel.Audio.Mixer.SpeakerGain(2)));
+        Assert.Equal(1f, await OnUi(() => viewModel.Audio.Mixer.SpeakerGain(1)));
+        Assert.Same(settingsBefore, await OnUi(() => viewModel.Settings)); // no ApplySettings: the audio devices keep running
         Assert.Equal(2f, ClientSettings.Load(dir, out _).VolumeFor("fp2"));
 
         // anna reconnects with a new session id: her volume comes along
         await OnUi(() =>
         {
-            vm.Server!.Apply(new UserLeft(2));
-            vm.Server.Apply(new UserJoined(new UserInfo(9, "fp2", "anna", FakeServers.Lobby, false, false, false, OVS.Shared.Permissions.Permission.Speak, [])));
+            viewModel.Server!.Apply(new UserLeft(2));
+            viewModel.Server.Apply(new UserJoined(new UserInfo(9, "fp2", "anna", FakeServers.Lobby, false, false, false, OVS.Shared.Permissions.Permission.Speak, [])));
             return 0;
         });
-        Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));
-        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
-        Assert.Equal(200, await OnUi(() => vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == 9).VolumePercent));
+        Assert.Equal(2f, await OnUi(() => viewModel.Audio.Mixer.SpeakerGain(9)));
+        Assert.Equal(1f, await OnUi(() => viewModel.Audio.Mixer.SpeakerGain(2)));
+        Assert.Equal(200, await OnUi(() => viewModel.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == 9).VolumePercent));
 
         await OnUi(() =>
         {
-            vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == 9).ResetVolumeCommand.Execute(null);
+            viewModel.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == 9).ResetVolumeCommand.Execute(null);
             return 0;
         });
-        Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));
+        Assert.Equal(1f, await OnUi(() => viewModel.Audio.Mixer.SpeakerGain(9)));
         Assert.DoesNotContain("fp2", File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)));
     }
 
@@ -1425,13 +1425,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            vm.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
-            vm.PageFlow.OpenSettings();
-            vm.Audio.DeviceLifecycle.SetTone(440);
+            viewModel.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
+            viewModel.PageFlow.OpenSettings();
+            viewModel.Audio.DeviceLifecycle.SetTone(440);
             return 0;
         });
-        Assert.Equal(-28, await OnUiUntil(() => vm.PageFlow.SettingsPage!.ThresholdInUseDb, t => t == -28));
-        Assert.Equal(-28, await OnUi(() => vm.PageFlow.SettingsPage!.MeterThresholdDb));
+        Assert.Equal(-28, await OnUiUntil(() => viewModel.PageFlow.SettingsPage!.ThresholdInUseDb, value => value == -28));
+        Assert.Equal(-28, await OnUi(() => viewModel.PageFlow.SettingsPage!.MeterThresholdDb));
     }
 
     [Fact]
@@ -1452,10 +1452,10 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var tiles = await OnUi(() =>
         {
-            var settings = vm.Settings;
+            var settings = viewModel.Settings;
             settings.Bookmarks.Add(new Bookmark("A", "a.example.org", 7000, "ich"));
-            vm.ApplySettings(settings);
-            return vm.Bookmarks.Items.Select(tile => tile.Name).ToList();
+            viewModel.ApplySettings(settings);
+            return viewModel.Bookmarks.Items.Select(tile => tile.Name).ToList();
         });
         Assert.Equal(["A"], tiles);
     }
@@ -1487,7 +1487,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var heard = new List<SoundEvent>();
         await OnUi(() =>
         {
-            vm.ApplySettings(new ClientSettings
+            viewModel.ApplySettings(new ClientSettings
             {
                 KeyBindings =
                 [
@@ -1495,8 +1495,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
                     new(KeyAction.PushToTalk, new KeyChord(TalkKey)),
                 ],
             });
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent));
-            vm.Server!.SoundRequested += heard.Add;
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin(sent));
+            viewModel.Server!.SoundRequested += heard.Add;
             return 0;
         });
         return (sent, heard);
@@ -1508,7 +1508,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     async Task HoldMuteKey(bool down)
     {
         keys.Set(down, MuteKey);
-        Assert.Equal(down, await OnUiUntil(() => vm.Keys.MuteHeld, h => h == down));
+        Assert.Equal(down, await OnUiUntil(() => viewModel.Keys.MuteHeld, value => value == down));
     }
 
     /// <summary>
@@ -1517,9 +1517,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// </summary>
     async Task PressDeafenKey()
     {
-        bool before = await OnUi(() => vm.Server!.SelfState.SelfDeafened);
+        bool before = await OnUi(() => viewModel.Server!.SelfState.SelfDeafened);
         keys.Set(true, DeafenKey);
-        Assert.NotEqual(before, await OnUiUntil(() => vm.Server!.SelfState.SelfDeafened, d => d != before));
+        Assert.NotEqual(before, await OnUiUntil(() => viewModel.Server!.SelfState.SelfDeafened, value => value != before));
         keys.Set(false, DeafenKey);
     }
 
@@ -1533,12 +1533,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var (sent, heard) = await WithPushToMute();
 
         await HoldMuteKey(true);
-        Assert.True(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m));
+        Assert.True(await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => value));
         Assert.Equal([new SelfState(true, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
         Assert.Equal([SoundEvent.MicOff], await OnUi(() => heard.ToList()));
 
         await HoldMuteKey(false);
-        Assert.False(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => !m));
+        Assert.False(await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => !value));
         Assert.Equal([new SelfState(true, false), new SelfState(false, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
         Assert.Equal([SoundEvent.MicOff, SoundEvent.MicOn], await OnUi(() => heard.ToList()));
     }
@@ -1551,8 +1551,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         Assert.True(await OnUi(() =>
         {
-            vm.Server!.SelfState.ToggleMuteCommand.Execute(null);
-            return vm.Audio.SelfMuted;
+            viewModel.Server!.SelfState.ToggleMuteCommand.Execute(null);
+            return viewModel.Audio.SelfMuted;
         }));
     }
 
@@ -1565,7 +1565,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var (sent, heard) = await WithPushToMute();
         await OnUi(() =>
         {
-            (deafened ? vm.Server!.SelfState.ToggleDeafenCommand : vm.Server!.SelfState.ToggleMuteCommand).Execute(null);
+            (deafened ? viewModel.Server!.SelfState.ToggleDeafenCommand : viewModel.Server!.SelfState.ToggleMuteCommand).Execute(null);
             sent.Clear();
             heard.Clear();
             return 0;
@@ -1586,11 +1586,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var (sent, _) = await WithPushToMute();
         await HoldMuteKey(true);
-        await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m);
+        await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => value);
         Assert.False(await OnUi(() =>
         {
-            vm.Server!.SelfState.ToggleMuteCommand.Execute(null);
-            return vm.Server.SelfState.SelfMuted;
+            viewModel.Server!.SelfState.ToggleMuteCommand.Execute(null);
+            return viewModel.Server.SelfState.SelfMuted;
         }));
 
         await HoldMuteKey(false);
@@ -1604,17 +1604,17 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var (sent, _) = await WithPushToMute();
         await HoldMuteKey(true);
-        await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m);
+        await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => value);
         await OnUi(() =>
         {
-            vm.Server!.SelfState.ToggleMuteCommand.Execute(null);
+            viewModel.Server!.SelfState.ToggleMuteCommand.Execute(null);
             return 0;
         });
 
         keys.Set(true, TalkKey);
-        await OnUiUntil(() => vm.Keys.PttDown, d => d);
+        await OnUiUntil(() => viewModel.Keys.PttDown, value => value);
         keys.Set(false, TalkKey);
-        await OnUiUntil(() => vm.Keys.PttDown, d => !d);
+        await OnUiUntil(() => viewModel.Keys.PttDown, value => !value);
         await HoldMuteKey(false);
         await PressDeafenKey();
         Assert.Equal([new SelfState(true, false), new SelfState(false, false), new SelfState(true, true)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
@@ -1626,18 +1626,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() =>
         {
-            vm.ApplySettings(new ClientSettings { KeyBindings = [new(KeyAction.PushToMute, new KeyChord(MuteKey))] });
+            viewModel.ApplySettings(new ClientSettings { KeyBindings = [new(KeyAction.PushToMute, new KeyChord(MuteKey))] });
             return 0;
         });
         await HoldMuteKey(true);
         var sent = new List<Request>();
         Assert.True(await OnUi(() =>
         {
-            MainViewModelSetup.ShowServer(vm, FakeServers.Admin(sent));
-            return vm.Server!.SelfState.SelfMuted;
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin(sent));
+            return viewModel.Server!.SelfState.SelfMuted;
         }));
         await HoldMuteKey(false);
-        Assert.False(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => !m));
+        Assert.False(await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => !value));
         Assert.Equal([new SelfState(true, false), new SelfState(false, false)], await OnUi(() => MainViewModelSetup.ReadSelfStatesSent(sent)));
     }
 
@@ -1647,25 +1647,25 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.ApplySettings(new ClientSettings
+            viewModel.ApplySettings(new ClientSettings
             {
                 Mode = TransmitMode.VoiceActivation,
                 VadThresholdDb = -50,
                 KeyBindings = [new(KeyAction.PushToMute, new KeyChord(MuteKey))],
             });
-            vm.Audio.DeviceLifecycle.SetTone(440); // -13.5 dBFS: well above the threshold
-            await vm.SelfTest.SetAsync(true);
+            viewModel.Audio.DeviceLifecycle.SetTone(440); // -13.5 dBFS: well above the threshold
+            await viewModel.SelfTest.SetAsync(true);
             return null;
         });
-        Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l > -20) > -20);
+        Assert.True(await OnUiUntil(() => viewModel.Audio.LastOutputLevelDb, value => value > -20) > -20);
 
         await HoldMuteKey(true);
-        Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l < -100) < -100); // the loopback speaker times out
+        Assert.True(await OnUiUntil(() => viewModel.Audio.LastOutputLevelDb, value => value < -100) < -100); // the loopback speaker times out
 
         await HoldMuteKey(false);
-        Assert.True(await OnUiUntil(() => vm.Audio.LastOutputLevelDb, l => l > -20) > -20);
-        Assert.Null(await OnUi(() => vm.Server));
-        Assert.Empty(await OnUi(() => vm.Notices.ToList()));
+        Assert.True(await OnUiUntil(() => viewModel.Audio.LastOutputLevelDb, value => value > -20) > -20);
+        Assert.Null(await OnUi(() => viewModel.Server));
+        Assert.Empty(await OnUi(() => viewModel.Notices.ToList()));
     }
 
     // ---- Package 124: low CPU and RAM while idle ----

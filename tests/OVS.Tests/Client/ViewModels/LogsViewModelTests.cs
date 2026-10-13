@@ -54,11 +54,11 @@ public class LogsViewModelTests
 
     static LogPage Page(ReadLog read)
     {
-        int page = read.Page is { } p && p <= 3 ? p : 3;
+        int page = read.Page is { } asked && asked <= 3 ? asked : 3;
         int first = (page - 1) * 1000 + 1;
         int count = page == 3 ? 500 : 1000;
         return new LogPage(read.RequestId, read.FileId, page, 3, first,
-            Enumerable.Range(first, count).Select(n => n % 7 == 0 ? $"Zeile {n} FEHLER beim Senden" : $"Zeile {n} ok").ToList());
+            Enumerable.Range(first, count).Select(value => value % 7 == 0 ? $"Zeile {value} FEHLER beim Senden" : $"Zeile {value} ok").ToList());
     }
 
     [Fact]

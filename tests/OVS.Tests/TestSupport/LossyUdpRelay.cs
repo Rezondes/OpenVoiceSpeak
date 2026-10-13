@@ -14,7 +14,7 @@ public sealed class LossyUdpRelay : IDisposable
     readonly UdpClient front = new(new IPEndPoint(IPAddress.Loopback, 0));
     readonly UdpClient back;
     readonly TimeProvider time;
-    readonly CancellationTokenSource cts = new();
+    readonly CancellationTokenSource stopping = new();
     readonly List<PacketType> sent = [];
     readonly Task frontLoop, backLoop;
     volatile IPEndPoint? client;
@@ -78,8 +78,8 @@ public sealed class LossyUdpRelay : IDisposable
     /// <summary>Package 133: the n-th voice packet goes when the share dropped so far would fall below the percentage.</summary>
     static bool DropVoice(ref int count, int percent)
     {
-        int n = Interlocked.Increment(ref count);
-        return n * percent / 100 > (n - 1) * percent / 100;
+        int packetNumber = Interlocked.Increment(ref count);
+        return packetNumber * percent / 100 > (packetNumber - 1) * percent / 100;
     }
 
     async Task FrontLoopAsync()
@@ -120,7 +120,7 @@ public sealed class LossyUdpRelay : IDisposable
     {
         if (Delay <= TimeSpan.Zero) return SendAsync(send);
         Interlocked.Increment(ref held);
-        _ = Task.Delay(Delay, time, cts.Token).ContinueWith(_ => SendAsync(send), TaskContinuationOptions.OnlyOnRanToCompletion);
+        _ = Task.Delay(Delay, time, stopping.Token).ContinueWith(_ => SendAsync(send), TaskContinuationOptions.OnlyOnRanToCompletion);
         return Task.CompletedTask;
     }
 
@@ -135,7 +135,7 @@ public sealed class LossyUdpRelay : IDisposable
         {
             try
             {
-                return await udp.ReceiveAsync(cts.Token);
+                return await udp.ReceiveAsync(stopping.Token);
             }
             catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException)
             {
@@ -161,10 +161,10 @@ public sealed class LossyUdpRelay : IDisposable
 
     public void Dispose()
     {
-        cts.Cancel();
+        stopping.Cancel();
         front.Dispose();
         back.Dispose();
         Task.WaitAll([frontLoop, backLoop], TimeSpan.FromSeconds(1));
-        cts.Dispose();
+        stopping.Dispose();
     }
 }

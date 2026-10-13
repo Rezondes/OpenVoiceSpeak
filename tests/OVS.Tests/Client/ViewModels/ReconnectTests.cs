@@ -26,7 +26,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     readonly ManualTimeProvider reconnectTime = new();
     TestServer server = null!;
     ConnectSeam seam = null!;
-    MainViewModel vm = null!;
+    MainViewModel viewModel = null!;
 
     static string Retrying(int seconds) => string.Format(Strings.Status_Reconnecting, seconds);
 
@@ -38,13 +38,13 @@ public sealed class ReconnectTests : IAsyncLifetime
         // the welcome text is there so that "one notice after a reconnect" shows that a reconnect brings no welcome text again
         server = await TestServer.StartAsync(serverData => serverData.Settings.WelcomeText = "Willkommen auf dem Testserver!");
         seam = new ConnectSeam(dir, reconnectTime);
-        vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true, time: reconnectTime,
+        viewModel = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true, time: reconnectTime,
             connect: seam.Connect)));
     }
 
     public async Task DisposeAsync()
     {
-        await ui.RunAsync(() => vm.DisposeAsync().AsTask());
+        await ui.RunAsync(() => viewModel.DisposeAsync().AsTask());
         ui.Dispose();
         await server.DisposeAsync();
         Directory.Delete(dir, true);
@@ -54,45 +54,45 @@ public sealed class ReconnectTests : IAsyncLifetime
 
     Task<T> OnUiUntil<T>(Func<T> read, Func<T, bool> done) => ui.ReadUntilAsync(read, done);
 
-    string ClientLogText() => MainViewModelSetup.ReadLogText(vm, dir);
+    string ClientLogText() => MainViewModelSetup.ReadLogText(viewModel, dir);
 
     /// <summary>Connects anna on the manual reconnect clock, through <see cref="seam"/>.</summary>
     async Task ConnectTo(TestServer to, string? password = null)
     {
-        await ui.RunAsync(() => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", to.Port, "anna", password, SaveBookmark: false)));
-        Assert.True(await OnUi(() => vm.IsConnected));
+        await ui.RunAsync(() => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", to.Port, "anna", password, SaveBookmark: false)));
+        Assert.True(await OnUi(() => viewModel.IsConnected));
     }
 
     /// <summary>The server drops anna's connection without a word, like a broken network.</summary>
     async Task DropAsync(TestServer on)
     {
-        var id = await OnUi(() => vm.Server!.Mirror.SelfId);
+        var id = await OnUi(() => viewModel.Server!.Mirror.SelfId);
         on.State.FindSession(id)!.Outbox.Abort("Test");
-        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        Assert.True(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => value));
     }
 
     Task<string> TickStatus() => OnUi(() =>
     {
-        vm.Tick();
-        return vm.Status;
+        viewModel.Tick();
+        return viewModel.Status;
     });
 
     /// <summary>Ticks and reads the status until <paramref name="done"/> accepts it; returns the last one.</summary>
     Task<string> TickStatusUntil(Func<string, bool> done) => OnUiUntil(() =>
     {
-        vm.Tick();
-        return vm.Status;
+        viewModel.Tick();
+        return viewModel.Status;
     }, done);
 
     /// <summary>Presses "Abbrechen" of a running series.</summary>
     Task CancelReconnectAsync() => OnUi(() =>
     {
-        vm.Connection.CancelReconnectCommand.Execute(null);
+        viewModel.Connection.CancelReconnectCommand.Execute(null);
         return 0;
     });
 
     /// <summary>The notices added since <paramref name="before"/> of them were there, oldest first.</summary>
-    Task<List<string>> NoticesSince(int before) => OnUi(() => vm.Notices.Take(vm.Notices.Count - before).Reverse().Select(notice => notice.Text).ToList());
+    Task<List<string>> NoticesSince(int before) => OnUi(() => viewModel.Notices.Take(viewModel.Notices.Count - before).Reverse().Select(notice => notice.Text).ToList());
 
     static Action<OVS.Server.Data.Records.ServerData> SecretChannel(Guid id) => serverData => serverData.Channels.Add(new OVS.Server.Data.Records.ChannelRecord
     {
@@ -106,19 +106,19 @@ public sealed class ReconnectTests : IAsyncLifetime
         var secret = Guid.NewGuid();
         await using var own = await TestServer.StartAsync(SecretChannel(secret));
         int asked = 0;
-        vm.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } } };
+        viewModel.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } } };
         await ConnectTo(own);
-        await OnUi(() => vm.Server!.JoinAsync(secret));
-        Assert.Equal(secret, await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, id => id == secret));
-        await OnUi(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
-        var before = await OnUi(() => (vm.Server!.Mirror.SelfId, vm.Notices.Count));
+        await OnUi(() => viewModel.Server!.JoinAsync(secret));
+        Assert.Equal(secret, await OnUiUntil(() => viewModel.Server!.Mirror.Self!.ChannelId, id => id == secret));
+        await OnUi(() => viewModel.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
+        var before = await OnUi(() => (viewModel.Server!.Mirror.SelfId, viewModel.Notices.Count));
 
         await DropAsync(own);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.Server?.Mirror.Self is { SelfDeafened: true } self && self.ChannelId == secret, ok => ok));
+        Assert.True(await OnUiUntil(() => viewModel.Server?.Mirror.Self is { SelfDeafened: true } self && self.ChannelId == secret, ok => ok));
 
         var (session, muted, deafened, reconnecting, status) = await OnUi(() =>
-            (vm.Server!.Mirror.SelfId, vm.Server.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened, vm.Connection.IsReconnecting, vm.Status));
+            (viewModel.Server!.Mirror.SelfId, viewModel.Server.SelfState.SelfMuted, viewModel.Server.SelfState.SelfDeafened, viewModel.Connection.IsReconnecting, viewModel.Status));
         Assert.NotEqual(before.SelfId, session); // a new session
         Assert.True(muted && deafened);
         Assert.False(reconnecting);
@@ -133,17 +133,17 @@ public sealed class ReconnectTests : IAsyncLifetime
     /// <summary>Drops the connection and lets the first attempt bring a new session.</summary>
     async Task ReconnectAsync(TestServer on)
     {
-        var before = await OnUi(() => vm.Server!.Mirror.SelfId);
+        var before = await OnUi(() => viewModel.Server!.Mirror.SelfId);
         await DropAsync(on);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.Server is { } server && server.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => viewModel.Server is { } server && server.Mirror.SelfId != before && !viewModel.Connection.IsReconnecting, ok => ok));
     }
 
     [Fact]
     public async Task Reconnect_AfterALostConnection_TheOldServerAsksForNoLogo()
     {
         await ConnectTo(server);
-        var oldServer = (await OnUi(() => vm.Server))!;
+        var oldServer = (await OnUi(() => viewModel.Server))!;
         await ReconnectAsync(server);
         int requestsBefore = await OnUi(() => CountLogoRequests());
 
@@ -156,7 +156,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         Assert.Equal(requestsBefore, await OnUi(() => CountLogoRequests()));
     }
 
-    int CountLogoRequests() => MainViewModelSetup.ReadLogText(vm, dir).Split("Request server logo").Length - 1;
+    int CountLogoRequests() => MainViewModelSetup.ReadLogText(viewModel, dir).Split("Request server logo").Length - 1;
 
     /// <summary>Review: muted, then deafened, stays muted when undeafening after a reconnect; muted alone stays muted.</summary>
     [Theory]
@@ -166,14 +166,14 @@ public sealed class ReconnectTests : IAsyncLifetime
     {
         bool deafen = state.Contains("deafened");
         await ConnectTo(server);
-        await OnUiDo(() => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
-        if (deafen) await OnUiDo(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
+        await OnUiDo(() => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
+        if (deafen) await OnUiDo(() => viewModel.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
 
         await ReconnectAsync(server);
-        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
-        if (deafen) await OnUiDo(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null)); // sound on again
-        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened)));
-        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: false }, ok => ok)); // the server too
+        Assert.True(await OnUiUntil(() => viewModel.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
+        if (deafen) await OnUiDo(() => viewModel.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null)); // sound on again
+        Assert.Equal((true, false), await OnUi(() => (viewModel.Server!.SelfState.SelfMuted, viewModel.Server.SelfState.SelfDeafened)));
+        Assert.True(await OnUiUntil(() => viewModel.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: false }, ok => ok)); // the server too
     }
 
     /// <summary>Review: the mute of a held push-to-mute key is not kept; let go during the outage or after it, the microphone is on again.</summary>
@@ -183,24 +183,24 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_PushToMuteHeld_NotKept(bool heldThrough)
     {
         await ConnectTo(server);
-        vm.Keys.Simulate(KeyAction.PushToMute, true);
-        Assert.True(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => m));
-        var before = await OnUi(() => vm.Server!.Mirror.SelfId);
+        viewModel.Keys.Simulate(KeyAction.PushToMute, true);
+        Assert.True(await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => value));
+        var before = await OnUi(() => viewModel.Server!.Mirror.SelfId);
         await DropAsync(server);
         if (!heldThrough)
         {
-            vm.Keys.Simulate(KeyAction.PushToMute, false);
-            await OnUiUntil(() => vm.Keys.MuteHeld, h => !h);
+            viewModel.Keys.Simulate(KeyAction.PushToMute, false);
+            await OnUiUntil(() => viewModel.Keys.MuteHeld, value => !value);
         }
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.Server is { } server && server.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => viewModel.Server is { } server && server.Mirror.SelfId != before && !viewModel.Connection.IsReconnecting, ok => ok));
         if (heldThrough)
         {
-            Assert.True(await OnUi(() => vm.Server!.SelfState.SelfMuted)); // still held: muted
-            vm.Keys.Simulate(KeyAction.PushToMute, false);
+            Assert.True(await OnUi(() => viewModel.Server!.SelfState.SelfMuted)); // still held: muted
+            viewModel.Keys.Simulate(KeyAction.PushToMute, false);
         }
-        Assert.False(await OnUiUntil(() => vm.Server!.SelfState.SelfMuted, m => !m));
-        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: false }, ok => ok));
+        Assert.False(await OnUiUntil(() => viewModel.Server!.SelfState.SelfMuted, value => !value));
+        Assert.True(await OnUiUntil(() => viewModel.Server!.Mirror.Self is { SelfMuted: false }, ok => ok));
     }
 
     /// <summary>The self test mutes and deafens at the server; a reconnect brings back the state from before it, not the test's.</summary>
@@ -208,13 +208,13 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_SelfTestRunningOnAMutedUser_BringsBackTheMuteFromBeforeIt()
     {
         await ConnectTo(server);
-        await OnUiDo(() => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
-        await OnUiDo(() => vm.SelfTest.SetAsync(true));
-        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: true }, ok => ok));
+        await OnUiDo(() => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
+        await OnUiDo(() => viewModel.SelfTest.SetAsync(true));
+        Assert.True(await OnUiUntil(() => viewModel.Server!.Mirror.Self is { SelfMuted: true, SelfDeafened: true }, ok => ok));
 
         await ReconnectAsync(server);
 
-        Assert.Equal((true, false), await OnUi(() => (vm.Server!.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened)));
+        Assert.Equal((true, false), await OnUi(() => (viewModel.Server!.SelfState.SelfMuted, viewModel.Server.SelfState.SelfDeafened)));
     }
 
     /// <summary>The self test feeds the mixer without a connection; frames of it during the wait do not count for the new connection.</summary>
@@ -222,28 +222,28 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_SelfTestFramesDuringTheWait_StatsCountFromTheNewConnection()
     {
         await ConnectTo(server);
-        var before = await OnUi(() => vm.Server!.Mirror.SelfId);
+        var before = await OnUi(() => viewModel.Server!.Mirror.SelfId);
         await DropAsync(server);
         var fed = await OnUi(() =>
         {
             var frame = EngineProbe.SilentFrame();
             foreach (uint number in new uint[] { 0, 1, 2, 5, 6, 7, 8, 9 })
             {
-                vm.Audio.Mixer.Push(AudioEngine.SelfTestSpeaker, number, frame, viaLink: false, arrivalMs: 20.0 * number);
-                vm.Audio.Mixer.Tick();
+                viewModel.Audio.Mixer.Push(AudioEngine.SelfTestSpeaker, number, frame, viaLink: false, arrivalMs: 20.0 * number);
+                viewModel.Audio.Mixer.Tick();
             }
-            for (int tick = 0; tick < 20; tick++) vm.Audio.Mixer.Tick();
-            var counts = vm.Audio.Mixer.Stats();
+            for (int tick = 0; tick < 20; tick++) viewModel.Audio.Mixer.Tick();
+            var counts = viewModel.Audio.Mixer.Stats();
             return counts.Concealed + counts.Rebuilt + counts.Recovered;
         });
         Assert.True(fed > 0);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.Server is { } server && server.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => viewModel.Server is { } server && server.Mirror.SelfId != before && !viewModel.Connection.IsReconnecting, ok => ok));
 
         var shown = await OnUi(() =>
         {
-            vm.Tick();
-            return vm.Stats.ConcealedText;
+            viewModel.Tick();
+            return viewModel.Stats.ConcealedText;
         });
 
         Assert.Equal(string.Format(Strings.ConnDetails_ConcealedValue, 0, 0, 0), shown);
@@ -256,17 +256,17 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_ChosenMute_HeldKeyReleased_StaysMuted(bool deafen)
     {
         await ConnectTo(server);
-        await OnUiDo(() => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
-        if (deafen) await OnUiDo(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
-        vm.Keys.Simulate(KeyAction.PushToMute, true);
-        await OnUiUntil(() => vm.Keys.MuteHeld, h => h);
+        await OnUiDo(() => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
+        if (deafen) await OnUiDo(() => viewModel.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
+        viewModel.Keys.Simulate(KeyAction.PushToMute, true);
+        await OnUiUntil(() => viewModel.Keys.MuteHeld, value => value);
 
         await ReconnectAsync(server);
-        vm.Keys.Simulate(KeyAction.PushToMute, false);
-        await OnUiUntil(() => vm.Keys.MuteHeld, h => !h);
+        viewModel.Keys.Simulate(KeyAction.PushToMute, false);
+        await OnUiUntil(() => viewModel.Keys.MuteHeld, value => !value);
         await Task.Delay(200); // the release reaches the view model through the UI queue
-        Assert.Equal((true, deafen), await OnUi(() => (vm.Server!.SelfState.SelfMuted, vm.Server.SelfState.SelfDeafened)));
-        Assert.True(await OnUiUntil(() => vm.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
+        Assert.Equal((true, deafen), await OnUi(() => (viewModel.Server!.SelfState.SelfMuted, viewModel.Server.SelfState.SelfDeafened)));
+        Assert.True(await OnUiUntil(() => viewModel.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
     }
 
     /// <summary>A reconnect brings no welcome text again: the server has one and the only notice is the reconnected one.</summary>
@@ -274,7 +274,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_ServerHasWelcomeText_AddsOnlyTheReconnectedNotice()
     {
         await ConnectTo(server);
-        int before = await OnUi(() => vm.Notices.Count);
+        int before = await OnUi(() => viewModel.Notices.Count);
 
         await ReconnectAsync(server);
 
@@ -288,10 +288,10 @@ public sealed class ReconnectTests : IAsyncLifetime
         var own = await TestServer.StartAsync();
         await ConnectTo(own);
         await own.Control.StopAsync(restart: true);
-        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        Assert.True(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => value));
         await using var back = await own.RestartAsync(samePort: true);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.IsConnected && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => viewModel.IsConnected && !viewModel.Connection.IsReconnecting, ok => ok));
     }
 
     /// <summary>Review: an unexpected exception in an attempt counts as a failed attempt; the series goes on.</summary>
@@ -303,12 +303,12 @@ public sealed class ReconnectTests : IAsyncLifetime
         await ConnectTo(first);
         seam.FailNext(new InvalidOperationException("Testfehler"));
         await first.DisposeAsync();
-        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        Assert.True(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => value));
         await using var back = await TestServer.StartAsync(port: port);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
         Assert.Equal(Retrying(2), await TickStatusUntil(status => status.EndsWith(" 2 s")));
         reconnectTime.Advance(TimeSpan.FromSeconds(2));
-        Assert.True(await OnUiUntil(() => vm.IsConnected && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => viewModel.IsConnected && !viewModel.Connection.IsReconnecting, ok => ok));
         Assert.Contains("Testfehler", ClientLogText());
     }
 
@@ -329,31 +329,31 @@ public sealed class ReconnectTests : IAsyncLifetime
             await ConnectTo(locked, "alt");
             seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
             await locked.DisposeAsync();
-            Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r)); // ServerShutdown retries
+            Assert.True(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => value)); // ServerShutdown retries
             reconnectTime.Advance(TimeSpan.FromSeconds(1));
-            Assert.StartsWith("Abgelehnt", await OnUiUntil(() => vm.Status, text => text.StartsWith("Abgelehnt")));
-            Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent)); // review: the series ended, so the tone
+            Assert.StartsWith("Abgelehnt", await OnUiUntil(() => viewModel.Status, text => text.StartsWith("Abgelehnt")));
+            Assert.Contains(SoundEvent.Disconnected, await OnUi(() => viewModel.Audio.Sounds.Recent)); // review: the series ended, so the tone
         }
         else
         {
             await ConnectTo(server);
             if (reason == "own")
-                await ui.RunAsync(vm.Connection.DisconnectAsync);
+                await ui.RunAsync(viewModel.Connection.DisconnectAsync);
             else
             {
-                var id = await OnUi(() => vm.Server!.Mirror.SelfId);
+                var id = await OnUi(() => viewModel.Server!.Mirror.SelfId);
                 server.State.FindSession(id)!.Outbox.Close(new Disconnected(reason));
             }
-            Assert.False(await OnUiUntil(() => vm.IsConnected, c => !c));
+            Assert.False(await OnUiUntil(() => viewModel.IsConnected, value => !value));
         }
 
-        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        Assert.False(await OnUi(() => viewModel.Connection.IsReconnecting));
         int attemptsBefore = seam.Attempts.Count;
         reconnectTime.Advance(TimeSpan.FromSeconds(60));
         await OnUi(() => 0); // what the clock posted has run
         Assert.Equal(attemptsBefore, seam.Attempts.Count);
-        Assert.False(await OnUi(() => vm.IsConnected));
-        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        Assert.False(await OnUi(() => viewModel.IsConnected));
+        Assert.False(await OnUi(() => viewModel.Connection.IsReconnecting));
         if (locked is null) Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
     }
 
@@ -364,13 +364,13 @@ public sealed class ReconnectTests : IAsyncLifetime
         await ConnectTo(server);
         await DropAsync(server);
         await CancelReconnectAsync();
-        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        Assert.False(await OnUi(() => viewModel.Connection.IsReconnecting));
         Assert.StartsWith("Getrennt", await TickStatus());
         int attemptsBefore = seam.Attempts.Count;
         reconnectTime.Advance(TimeSpan.FromSeconds(60));
         await OnUi(() => 0); // what the clock posted has run
         Assert.Equal(attemptsBefore, seam.Attempts.Count);
-        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.False(await OnUi(() => viewModel.IsConnected));
         Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
 
         // an attempt is held while the server is back
@@ -379,18 +379,18 @@ public sealed class ReconnectTests : IAsyncLifetime
         await ConnectTo(first);
         var oldAttempt = seam.HoldNext();
         await first.DisposeAsync();
-        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
+        Assert.True(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => value));
         await using var back = await TestServer.StartAsync(serverData => serverData.Settings.Name = "Zurück", port: port);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
         var held = await HangGuard.Bound(oldAttempt.Reached);
         Assert.Equal(seam.Attempts.Count, held.Number);
 
         await ConnectTo(server); // meanwhile the user connects elsewhere
-        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        Assert.False(await OnUi(() => viewModel.Connection.IsReconnecting));
         oldAttempt.Release(); // the old attempt ends late
         Assert.Contains(OutdatedAttemptLine, await OnUiUntil(ClientLogText, log => log.Contains(OutdatedAttemptLine)));
         Assert.Equal(0, await OnUiUntil(() => back.State.SessionCount, count => count == 0));
-        var (name, connected) = await OnUi(() => (vm.Server?.ServerName, vm.IsConnected));
+        var (name, connected) = await OnUi(() => (viewModel.Server?.ServerName, viewModel.IsConnected));
         Assert.True(connected);
         Assert.Equal("Testserver", name);
     }
@@ -406,16 +406,16 @@ public sealed class ReconnectTests : IAsyncLifetime
         await using var own = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"));
         await ConnectTo(own);
         seam.FailEvery(ConnectSeam.CreateClosedPortError); // every attempt is refused at once, no real connect to wait for
-        await OnUi(() => vm.PageFlow.OpenAdminAsync());
-        Assert.True(await OnUi(() => vm.PageFlow.IsAdminPage));
-        var before = await OnUi(() => vm.Notices.Count);
-        Assert.Contains(SoundEvent.Connected, await OnUi(() => vm.Audio.Sounds.Recent)); // the tones are counted at all
+        await OnUi(() => viewModel.PageFlow.OpenAdminAsync());
+        Assert.True(await OnUi(() => viewModel.PageFlow.IsAdminPage));
+        var before = await OnUi(() => viewModel.Notices.Count);
+        Assert.Contains(SoundEvent.Connected, await OnUi(() => viewModel.Audio.Sounds.Recent)); // the tones are counted at all
 
         await own.DisposeAsync(); // ServerShutdown, and nobody answers any more
-        Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
-        Assert.True(await OnUi(() => vm.PageFlow.IsHomePage && vm.PageFlow.AdminPage is null));
+        Assert.True(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => value));
+        Assert.True(await OnUi(() => viewModel.PageFlow.IsHomePage && viewModel.PageFlow.AdminPage is null));
         Assert.Equal(Retrying(1), await TickStatus());
-        Assert.Equal("", await OnUi(() => vm.Connection.PingText));
+        Assert.Equal("", await OnUi(() => viewModel.Connection.PingText));
         reconnectTime.Advance(TimeSpan.FromMilliseconds(400));
         Assert.Equal(Retrying(1), await TickStatus());
 
@@ -427,14 +427,14 @@ public sealed class ReconnectTests : IAsyncLifetime
             reconnectTime.Advance(TimeSpan.FromSeconds(next) - TimeSpan.FromMilliseconds(600));
             Assert.Equal(Retrying(1), await TickStatus());
         }
-        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => viewModel.Audio.Sounds.Recent));
         Assert.Empty(await NoticesSince(before));
 
         reconnectTime.Advance(TimeSpan.FromMilliseconds(600)); // the fifth attempt fails too
-        Assert.False(await OnUiUntil(() => vm.Connection.IsReconnecting, r => !r));
+        Assert.False(await OnUiUntil(() => viewModel.Connection.IsReconnecting, value => !value));
         Assert.Equal("Getrennt: Der Server wurde heruntergefahren.", await TickStatus());
         Assert.Equal(["Getrennt: Der Server wurde heruntergefahren."], await NoticesSince(before));
-        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => viewModel.Audio.Sounds.Recent));
     }
 
     /// <summary>Review: a refusal that says "not now" (shutdown, restart, rate limit) is a failed attempt; the series goes on.</summary>
@@ -451,7 +451,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
 
         Assert.Equal(Retrying(2), await TickStatusUntil(status => status.EndsWith(" 2 s")));
-        Assert.True(await OnUi(() => vm.Connection.IsReconnecting));
+        Assert.True(await OnUi(() => viewModel.Connection.IsReconnecting));
     }
 
     /// <summary>Review: a certificate the user turns down ends the series at once, with its status, the disconnected notice and the tone.</summary>
@@ -460,16 +460,16 @@ public sealed class ReconnectTests : IAsyncLifetime
     {
         await ConnectTo(server);
         seam.FailNext(new TofuRejectedException());
-        int noticesBefore = await OnUi(() => vm.Notices.Count);
+        int noticesBefore = await OnUi(() => viewModel.Notices.Count);
         await DropAsync(server);
 
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
 
-        Assert.Equal(Strings.Status_TofuRejected, await OnUiUntil(() => vm.Status, status => status == Strings.Status_TofuRejected));
-        Assert.False(await OnUi(() => vm.Connection.IsReconnecting));
+        Assert.Equal(Strings.Status_TofuRejected, await OnUiUntil(() => viewModel.Status, status => status == Strings.Status_TofuRejected));
+        Assert.False(await OnUi(() => viewModel.Connection.IsReconnecting));
         var notices = await NoticesSince(noticesBefore);
         Assert.StartsWith("Getrennt", Assert.Single(notices));
-        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+        Assert.Contains(SoundEvent.Disconnected, await OnUi(() => viewModel.Audio.Sounds.Recent));
     }
 
     /// <summary>An attempt that gets in after "Abbrechen" is dropped and its connection closed.</summary>
@@ -488,7 +488,7 @@ public sealed class ReconnectTests : IAsyncLifetime
 
         Assert.Contains(OutdatedAttemptLine, await OnUiUntil(ClientLogText, log => log.Contains(OutdatedAttemptLine)));
         Assert.Equal(0, await OnUiUntil(() => server.State.SessionCount, count => count == 0));
-        Assert.False(await OnUi(() => vm.IsConnected));
+        Assert.False(await OnUi(() => viewModel.IsConnected));
     }
 
     /// <summary>An attempt that fails after "Abbrechen" is only logged: the status, the notices and the tones stay as the cancel left them.</summary>
@@ -501,15 +501,15 @@ public sealed class ReconnectTests : IAsyncLifetime
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
         await HangGuard.Bound(oldAttempt.Reached);
         await CancelReconnectAsync();
-        var statusAfterCancel = await OnUi(() => vm.Status);
-        int noticesAfterCancel = await OnUi(() => vm.Notices.Count);
+        var statusAfterCancel = await OnUi(() => viewModel.Status);
+        int noticesAfterCancel = await OnUi(() => viewModel.Notices.Count);
 
         oldAttempt.Release();
 
         Assert.Contains(OutdatedAttemptLine + " (", await OnUiUntil(ClientLogText, log => log.Contains(OutdatedAttemptLine + " (")));
-        Assert.Equal(statusAfterCancel, await OnUi(() => vm.Status));
+        Assert.Equal(statusAfterCancel, await OnUi(() => viewModel.Status));
         Assert.Empty(await NoticesSince(noticesAfterCancel));
-        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent));
+        Assert.DoesNotContain(SoundEvent.Disconnected, await OnUi(() => viewModel.Audio.Sounds.Recent));
     }
 
     /// <summary>An attempt asks the seam for the server, nickname and password of the connect, and never for a cancellation.</summary>
@@ -541,11 +541,11 @@ public sealed class ReconnectTests : IAsyncLifetime
             TestServer.Grant(adminId, "Admin")(serverData);
         });
         await using var admin = await TestClient.ConnectAsync(own, "admin", adminId);
-        vm.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => Task.FromResult<string?>("pw") } };
+        viewModel.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => Task.FromResult<string?>("pw") } };
         await ConnectTo(own);
-        await OnUi(() => vm.Server!.JoinAsync(secret));
-        await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, id => id == secret);
-        var before = await OnUi(() => vm.Notices.Count);
+        await OnUi(() => viewModel.Server!.JoinAsync(secret));
+        await OnUiUntil(() => viewModel.Server!.Mirror.Self!.ChannelId, id => id == secret);
+        var before = await OnUi(() => viewModel.Notices.Count);
 
         await DropAsync(own);
         if (change == "deleted")
@@ -559,11 +559,11 @@ public sealed class ReconnectTests : IAsyncLifetime
             await admin.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == secret);
         }
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        var notices = await OnUiUntil(() => vm.Notices.Take(vm.Notices.Count - before).Select(notice => notice.Text).ToList(), list => list.Count >= 2);
+        var notices = await OnUiUntil(() => viewModel.Notices.Take(viewModel.Notices.Count - before).Select(notice => notice.Text).ToList(), list => list.Count >= 2);
         await Task.Delay(300); // nothing else follows
         notices = await NoticesSince(before);
 
-        var (channel, defaultChannel) = await OnUi(() => (vm.Server!.Mirror.Self!.ChannelId, vm.Server.Mirror.DefaultChannelId));
+        var (channel, defaultChannel) = await OnUi(() => (viewModel.Server!.Mirror.Self!.ChannelId, viewModel.Server.Mirror.DefaultChannelId));
         Assert.Equal(defaultChannel, channel);
         Assert.Equal(2, notices.Count);
         Assert.Contains(Reconnected, notices);

@@ -69,7 +69,7 @@ public class ServerViewModelTests
         var volumes = new Dictionary<string, float> { ["fp2"] = 1.5f, ["fp3"] = 0f };
         var changed = new List<(string, float)>();
         fixture.Vm.VolumeOf = fp => volumes.GetValueOrDefault(fp, 1f);
-        fixture.Vm.VolumeChanged += (fp, v) => changed.Add((fp, v));
+        fixture.Vm.VolumeChanged += (fp, volume) => changed.Add((fp, volume));
         fixture.Vm.Apply(new UserUpdated(User(4, "carla", Lobby, P.Speak))); // rebuild with the volumes known
 
         var (anna, bert, carla, me) = (fixture.User(2), fixture.User(3), fixture.User(4), fixture.User(1));
@@ -580,7 +580,7 @@ public class ServerViewModelTests
         var heard = Sounds(fixture.Vm);
         void Talk(int milliseconds)
         {
-            for (int t = 0; t < milliseconds; t += 20)
+            for (int elapsed = 0; elapsed < milliseconds; elapsed += 20)
             {
                 fixture.Vm.Tree.OnSpeakers([new ActiveSpeaker(2, ViaLink: true)]);
                 fixture.Time.Advance(TimeSpan.FromMilliseconds(20));

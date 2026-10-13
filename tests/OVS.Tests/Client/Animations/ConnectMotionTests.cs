@@ -59,8 +59,8 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         var fades = MotionWait.Record(status, visual => visual.Opacity);
         viewModel.Status = "Verbindung fehlgeschlagen";
         viewModel.Connection.IsConnecting = false; // failed: no server
-        MotionWait.Until(() => swings.Any(x => Math.Abs(x) > 2) && (OffsetX(card), status.Opacity) == (0d, 1d), atLeast: 450);
-        double shook = swings.Select(x => Math.Abs(x)).DefaultIfEmpty(0).Max(), faded = fades.DefaultIfEmpty(1).Min();
+        MotionWait.Until(() => swings.Any(swing => Math.Abs(swing) > 2) && (OffsetX(card), status.Opacity) == (0d, 1d), atLeast: 450);
+        double shook = swings.Select(swing => Math.Abs(swing)).DefaultIfEmpty(0).Max(), faded = fades.DefaultIfEmpty(1).Min();
         Assert.True(shook > 2, $"the start card shakes ({shook})");
         Assert.DoesNotContain("connecting", logo.Classes);
         Assert.Equal(1, logo.RenderTransform?.Value.M11 ?? 1, 3); // the breathing stops with the connecting
@@ -80,7 +80,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         Named<Border>(main, "PageGhost").PropertyChanged += (_, args) => pageLeft |= args.Property == Visual.IsVisibleProperty && args.NewValue is true;
         Named<Border>(main, "TreeGhost").PropertyChanged += (_, args) => bookmarksLeft |= args.Property == Visual.IsVisibleProperty && args.NewValue is true;
         Named<Panel>(main, "PageHost").PropertyChanged += (_, args) => chatCameUp |= OffsetY(Named<Panel>(main, "PageHost")) > 0;
-        Named<Border>(main, "ServerHeader").PropertyChanged += (_, args) => nameFaded |= args.Property == Visual.OpacityProperty && args.NewValue is double o && o < 1;
+        Named<Border>(main, "ServerHeader").PropertyChanged += (_, args) => nameFaded |= args.Property == Visual.OpacityProperty && args.NewValue is double opacity && opacity < 1;
         var entered = new HashSet<Control>(); // every row that came in entering
         tree.ContainerPrepared += (_, args) =>
         {
@@ -139,7 +139,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
             Assert.False(Named<Border>(main, "PageGhost").IsVisible);
             Assert.True(Named<TextBlock>(main, "StatusText").IsEffectivelyVisible);
         });
-        Assert.True(drops.Any(y => y > 0), "it goes down");
+        Assert.True(drops.Any(drop => drop > 0), "it goes down");
         Assert.Equal("Verbindung verloren", Named<TextBlock>(main, "StatusText").Text);
         main.Close();
     }

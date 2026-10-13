@@ -387,8 +387,8 @@ public class AdminCommandTests
         await client.WaitForAsync<ServerSettingsChanged>();
         Assert.Equal(3, server.State.SessionCount);
 
-        await using var d = await TestClient.OpenAsync(server.Port);
-        Assert.Equal(ReasonCodes.ServerFull, Assert.IsType<Rejected>(await d.HandshakeAsync("vierter")).Code);
+        await using var other = await TestClient.OpenAsync(server.Port);
+        Assert.Equal(ReasonCodes.ServerFull, Assert.IsType<Rejected>(await other.HandshakeAsync("vierter")).Code);
         Assert.Equal(3, server.State.SessionCount);
     }
 

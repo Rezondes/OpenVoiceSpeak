@@ -167,7 +167,7 @@ public sealed class IdentityFloodTests
             {
                 var id = Guid.NewGuid().ToString("N");
                 await client.SendAsync(ask(all.Count) with { RequestId = id });
-                var (_, offset, total, items) = read(await client.WaitForAsync<TList>(l => read(l).Id == id, slow));
+                var (_, offset, total, items) = read(await client.WaitForAsync<TList>(value => read(value).Id == id, slow));
                 Assert.Equal(all.Count, offset);
                 Assert.InRange(items.Count, 1, ServerTuning.ListPageSize);
                 all.AddRange(items);
@@ -175,11 +175,11 @@ public sealed class IdentityFloodTests
             }
         }
 
-        var users = await FetchAll<KnownUserInfo, UserList>(o => new ListUsers(o), userList => (userList.RequestId, userList.Offset, userList.Total, userList.Users));
+        var users = await FetchAll<KnownUserInfo, UserList>(value => new ListUsers(value), userList => (userList.RequestId, userList.Offset, userList.Total, userList.Users));
         Assert.Equal(5001, users.Select(knownUser => knownUser.Fingerprint).Distinct().Count());
-        var bans = await FetchAll<BanInfo, BanList>(o => new ListBans(o), banList => (banList.RequestId, banList.Offset, banList.Total, banList.Bans));
+        var bans = await FetchAll<BanInfo, BanList>(value => new ListBans(value), banList => (banList.RequestId, banList.Offset, banList.Total, banList.Bans));
         Assert.Equal(2000, bans.Count);
-        var logs = await FetchAll<LogFileInfo, LogList>(o => new ListLogs(o), logList => (logList.RequestId, logList.Offset, logList.Total, logList.Files));
+        var logs = await FetchAll<LogFileInfo, LogList>(value => new ListLogs(value), logList => (logList.RequestId, logList.Offset, logList.Total, logList.Files));
         Assert.True(logs.Count >= 2000);
         Assert.Equal(logs.Count, logs.Select(logFile => logFile.Id).Distinct().Count());
 

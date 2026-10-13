@@ -62,7 +62,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var answer = ConfirmDialog.ShowAsync(overlay, "Weg damit?");
         MotionWait.Eventually(() =>
         {
-            Assert.Contains(cards, o => o < 1); // it has begun
+            Assert.Contains(cards, value => value < 1); // it has begun
             Assert.Equal((1d, 1d), (Card(overlay).Opacity, Scrim(overlay).Opacity));
             Assert.Equal(1, Scale(Card(overlay)), 2);
         });
@@ -134,8 +134,8 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var swings = MotionWait.Record(Card(overlay), OffsetX); // every swing as it happens: under load one frame can outlast the shake
         main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
         // a shake swings through 0, and ends there
-        MotionWait.Until(() => swings.Any(x => Math.Abs(x) > 2) && Math.Abs(OffsetX(Card(overlay))) < 0.01, atLeast: 450);
-        double swing = swings.Select(x => Math.Abs(x)).DefaultIfEmpty(0).Max();
+        MotionWait.Until(() => swings.Any(value => Math.Abs(value) > 2) && Math.Abs(OffsetX(Card(overlay))) < 0.01, atLeast: 450);
+        double swing = swings.Select(value => Math.Abs(value)).DefaultIfEmpty(0).Max();
         Assert.True(swing > 2, $"the card shakes ({swing})");
         Assert.True(overlay.IsOpen); // still asking
         Assert.Equal(0, OffsetX(Card(overlay)), 2);
@@ -160,10 +160,10 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         combo.IsDropDownOpen = true;
         MotionWait.Eventually(() =>
         {
-            Assert.True(fades.Any(o => o < 1), "fades in");
+            Assert.True(fades.Any(fade => fade < 1), "fades in");
             Assert.Equal(1, child.Opacity, 2);
         });
-        Assert.True(slides.Any(y => y < 0), "slides down out of the box");
+        Assert.True(slides.Any(slide => slide < 0), "slides down out of the box");
 
         // Package 109: closed at once, a picture of it fades where it was. Looked at the moment it is put in the overlay
         // (it is gone, and its picture let go, a frame later under load)
@@ -193,7 +193,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         Assert.Equal(1, pictures);
         Assert.True(shown > all / 4, "a picture of the list, not an empty frame");
         MotionWait.Until(() => ghost!.Parent is null);
-        Assert.True(faded!.Any(o => o < 0.9), $"it fades ({string.Join(" ", faded!)})");
+        Assert.True(faded!.Any(value => value < 0.9), $"it fades ({string.Join(" ", faded!)})");
         Assert.Empty(overlay.Children.OfType<Image>()); // and goes
 
         Motion.Apply(window, DisplayMode.Simplified);
@@ -241,7 +241,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         Assert.True(sidebar.IsEffectivelyVisible);
         MotionWait.Eventually(() =>
         {
-            Assert.True(slides.Any(x => x < 0) && fades.Any(o => o < 1), "it slides in from the left with its scrim");
+            Assert.True(slides.Any(slide => slide < 0) && fades.Any(fade => fade < 1), "it slides in from the left with its scrim");
             Assert.Equal((0d, 1d), (OffsetX(sidebar), scrim.Opacity));
         });
 
@@ -251,7 +251,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         Assert.False(sidebar.IsHitTestVisible); // closed at once for clicks
         Assert.True(sidebar.IsEffectivelyVisible, "it slides out");
         MotionWait.Eventually(() => Assert.False(sidebar.IsEffectivelyVisible));
-        Assert.True(slides.Any(x => x < 0), "it slides out to the left");
+        Assert.True(slides.Any(slide => slide < 0), "it slides out to the left");
         main.Close();
     }
 

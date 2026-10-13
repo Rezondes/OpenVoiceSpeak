@@ -162,7 +162,7 @@ public sealed class ChatTests
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                 return (Path: path, Text: new StreamReader(stream).ReadToEnd());
             }).ToList();
-        Assert.Contains(files, f => f.Path.Contains(raid.ToString()) && f.Text.Contains("[Raid] weit: im Raid"));
-        Assert.DoesNotContain(files, f => f.Text.Contains("geheimer Inhalt"));
+        Assert.Contains(files, value => value.Path.Contains(raid.ToString()) && value.Text.Contains("[Raid] weit: im Raid"));
+        Assert.DoesNotContain(files, value => value.Text.Contains("geheimer Inhalt"));
     }
 }

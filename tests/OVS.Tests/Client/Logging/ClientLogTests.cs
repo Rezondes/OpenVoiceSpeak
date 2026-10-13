@@ -200,7 +200,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             // The rate comes from a real one-second timer: on a busy runner a single second may be stretched,
             // so wait (at most 15 s) for a full second of PTT instead of sampling a fixed one.
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            while (!Rates(LogText()).Any(r => r is >= 45 and <= 55) && watch.ElapsedMilliseconds < 15_000) await Task.Delay(100);
+            while (!Rates(LogText()).Any(value => value is >= 45 and <= 55) && watch.ElapsedMilliseconds < 15_000) await Task.Delay(100);
             keys.Simulate(ptt: false);
             await Eventually(null, "Audio-Debug: PTT losgelassen");
         }
@@ -208,7 +208,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         Assert.Contains("Audio-Debug: PTT gedrückt", log);
         Assert.Contains("Audio-Debug: PTT losgelassen", log);
         // one full second of PTT at 20 ms per frame
-        Assert.Contains(Rates(log), r => r is >= 45 and <= 55);
+        Assert.Contains(Rates(log), value => value is >= 45 and <= 55);
         Assert.Empty(Directory.GetFiles(dir, "audio-debug.log", SearchOption.AllDirectories));
     }
 

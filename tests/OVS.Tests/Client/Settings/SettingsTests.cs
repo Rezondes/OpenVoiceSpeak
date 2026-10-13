@@ -702,15 +702,15 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
             .Where(checkBox => checkBox.Content as string is { } text && (text == Strings.Ui_NoiseSuppression || text == Strings.Ui_AutoGain || text == Strings.Ui_EchoCancellation)).ToList();
         Assert.Equal(3, filters.Count);
         Assert.True(voice.IsChecked);
-        Assert.All(filters, f => Assert.True(f.IsEffectivelyEnabled));
+        Assert.All(filters, value => Assert.True(value.IsEffectivelyEnabled));
 
         music.IsChecked = true; // clicked
         Dispatcher.UIThread.RunJobs();
         Assert.True(settings.IsMusic);
         Assert.Equal(AudioContent.Music, live[^1].AudioContent);
         Assert.True(settings.HasChanges);
-        Assert.All(filters, f => Assert.False(f.IsEffectivelyEnabled));
-        Assert.All(filters, f => Assert.True(f.IsChecked)); // still on for speech
+        Assert.All(filters, value => Assert.False(value.IsEffectivelyEnabled));
+        Assert.All(filters, value => Assert.True(value.IsChecked)); // still on for speech
         window.Close();
         settings.ToSettings(old).Save(dir);
         Assert.Equal(AudioContent.Music, ClientSettings.Load(dir, out _).AudioContent);

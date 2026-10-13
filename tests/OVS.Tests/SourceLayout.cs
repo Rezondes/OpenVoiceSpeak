@@ -60,8 +60,8 @@ static class SourceLayout
             }
         }
 
-        var typeNames = files.GroupBy(f => f.Project)
-            .ToDictionary(grouping => grouping.Key, grouping => grouping.SelectMany(f => f.Types).Select(t => t.Name).ToHashSet(StringComparer.Ordinal));
+        var typeNames = files.GroupBy(value => value.Project)
+            .ToDictionary(grouping => grouping.Key, grouping => grouping.SelectMany(value => value.Types).Select(value => value.Name).ToHashSet(StringComparer.Ordinal));
         var problems = new List<string>();
         foreach (var (path, project, namespaces, types) in files)
         {
@@ -74,7 +74,7 @@ static class SourceLayout
             var name = file.EndsWith(".axaml.cs", StringComparison.Ordinal) ? file[..^".axaml.cs".Length]
                 : file.EndsWith(".cs", StringComparison.Ordinal) ? file[..^".cs".Length]
                 : file[..^".axaml".Length];
-            var topLevel = types.Where(t => t.TopLevel).Select(t => t.Name).ToList();
+            var topLevel = types.Where(value => value.TopLevel).Select(value => value.Name).ToList();
 
             foreach (var segment in folders)
             {
@@ -101,7 +101,7 @@ static class SourceLayout
             if (topLevel.Count > 0 && namespaces.Count == 0) Problem("namespace = folder", $"no namespace, expected {expected}");
             foreach (var ns in namespaces.Where(ns => ns != expected)) Problem("namespace = folder", $"{ns}, expected {expected}");
 
-            foreach (var (nested, _, access) in types.Where(t => !t.TopLevel && t.Access is not ("" or "private")))
+            foreach (var (nested, _, access) in types.Where(value => !value.TopLevel && value.Access is not ("" or "private")))
                 Problem("nested types only private", $"{nested} is {access}");
 
             if (parts[0] == "src")

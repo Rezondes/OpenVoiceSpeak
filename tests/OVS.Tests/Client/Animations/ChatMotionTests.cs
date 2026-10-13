@@ -96,14 +96,14 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         var (main, viewModel, server, chat) = Open();
         server.Apply(From("anna", 2, "Hallo zusammen"));
         Frame();
-        var (opacity, x) = Arrival(() => Row(chat, "Hallo zusammen"));
-        Assert.True(opacity < 1 && x < 0, $"someone else's message comes from the left ({opacity}, {x})");
+        var (opacity, offsetX) = Arrival(() => Row(chat, "Hallo zusammen"));
+        Assert.True(opacity < 1 && offsetX < 0, $"someone else's message comes from the left ({opacity}, {offsetX})");
 
         viewModel.Chat!.Draft = "Hallo anna";
         viewModel.Chat.SendCommand.Execute(null);
         Frame();
-        (opacity, x) = Arrival(() => Row(chat, "Hallo anna"));
-        Assert.True(opacity < 1 && x > 0, $"one's own comes from the composer side ({opacity}, {x})");
+        (opacity, offsetX) = Arrival(() => Row(chat, "Hallo anna"));
+        Assert.True(opacity < 1 && offsetX > 0, $"one's own comes from the composer side ({opacity}, {offsetX})");
         MotionWait.Eventually(() => Assert.Equal(0, OffsetX(Row(chat, "Hallo anna"))));
         main.Close();
     }
@@ -182,8 +182,8 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         var card = Row(chat, "Etwas ging schief").GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("card"));
         var glow = MotionWait.Record(card, visual => Glow((Border)visual));
         glow.Add(Glow(card));
-        MotionWait.Until(() => glow.Any(g => g > 0));
-        Assert.True(glow.Any(g => g > 0), "its left edge glows");
+        MotionWait.Until(() => glow.Any(value => value > 0));
+        Assert.True(glow.Any(value => value > 0), "its left edge glows");
         MotionWait.Eventually(() => Assert.True(card.BoxShadow.Count == 0 || card.BoxShadow[0].OffsetX < 0.5));
         main.Close();
     }
@@ -250,8 +250,8 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         var card = Row(chat, "Achtung").GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("card"));
         var glow = MotionWait.Record(card, visual => Glow((Border)visual)); // as it happens: under load one frame can outlast it
         glow.Add(Glow(card));
-        MotionWait.Until(() => glow.Any(g => g > 0));
-        Assert.True(glow.Any(g => g > 0), "a warning's edge glows as well");
+        MotionWait.Until(() => glow.Any(value => value > 0));
+        Assert.True(glow.Any(value => value > 0), "a warning's edge glows as well");
 
         viewModel.Chat.Selected = viewModel.Chat.Tabs[1];
         MotionWait.Settle(400);
@@ -276,8 +276,8 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         MotionWait.Settle(400);
         server.Apply(From("anna", 2, "Wieder da"));
         Frame();
-        var (opacity, x) = Arrival(() => Row(chat, "Wieder da"));
-        Assert.True(opacity < 1 && x < 0, $"({opacity}, {x})");
+        var (opacity, offsetX) = Arrival(() => Row(chat, "Wieder da"));
+        Assert.True(opacity < 1 && offsetX < 0, $"({opacity}, {offsetX})");
         main.Close();
     }
 
@@ -311,8 +311,8 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         Frame();
         var notSent = Row(chat, "Geht nicht").GetVisualDescendants().OfType<WrapPanel>().First(wrapPanel => wrapPanel.Name == "NotSent");
         var swings = MotionWait.Record(notSent, OffsetX); // every swing as it happens: under load one frame can outlast the shake
-        MotionWait.Until(() => swings.Any(x => Math.Abs(x) > 2) && OffsetX(notSent) == 0); // a shake swings through 0, and ends there
-        double swing = swings.Select(x => Math.Abs(x)).DefaultIfEmpty(0).Max();
+        MotionWait.Until(() => swings.Any(value => Math.Abs(value) > 2) && OffsetX(notSent) == 0); // a shake swings through 0, and ends there
+        double swing = swings.Select(value => Math.Abs(value)).DefaultIfEmpty(0).Max();
         Assert.True(notSent.IsVisible);
         Assert.True(swing > 2, $"\"nicht gesendet\" shakes ({swing})");
         main.Close();

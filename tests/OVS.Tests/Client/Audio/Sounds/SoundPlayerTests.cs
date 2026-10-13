@@ -87,7 +87,7 @@ public class SoundPlayerTests
 
         player.Play(SoundEvent.MicOn);
 
-        AssertSamples(SoundSynth.Render(SoundEvent.MicOn).Take(100).Select(s => s * 0.5f), MixLeftSide(100));
+        AssertSamples(SoundSynth.Render(SoundEvent.MicOn).Take(100).Select(value => value * 0.5f), MixLeftSide(100));
     }
 
     /// <summary>The settings are read once per sound, so its gain and its samples never come from two different saves.</summary>

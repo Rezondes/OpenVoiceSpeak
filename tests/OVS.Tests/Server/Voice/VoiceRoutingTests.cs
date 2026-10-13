@@ -10,11 +10,11 @@ namespace OVS.Tests.Server.Voice;
 
 public class VoiceRoutingTests
 {
-    // Channels L, A, B, C with links A-B and B-C.
-    static readonly Guid L = Guid.NewGuid(), A = Guid.NewGuid(), B = Guid.NewGuid(), C = Guid.NewGuid();
+    // Channels Lobby, ChannelA, ChannelB, ChannelC with links A-B and B-C.
+    static readonly Guid Lobby = Guid.NewGuid(), ChannelA = Guid.NewGuid(), ChannelB = Guid.NewGuid(), ChannelC = Guid.NewGuid();
 
     static IReadOnlySet<Guid> Linked(Guid ch) =>
-        ch == A ? new HashSet<Guid> { B } : ch == B ? new HashSet<Guid> { A, C } : ch == C ? new HashSet<Guid> { B } : new HashSet<Guid>();
+        ch == ChannelA ? new HashSet<Guid> { ChannelB } : ch == ChannelB ? new HashSet<Guid> { ChannelA, ChannelC } : ch == ChannelC ? new HashSet<Guid> { ChannelB } : new HashSet<Guid>();
 
     const Permission Talk = Permission.Speak | Permission.SpeakLinked;
 
@@ -40,8 +40,8 @@ public class VoiceRoutingTests
     [InlineData(VoiceHeader.TargetLinked)]
     public void Recipients_MutedChannel_NobodyHearsSender(byte target)
     {
-        var admin = S(1, A, Permission.All);
-        var heard = VoiceRouting.Recipients([admin, S(2, A), S(3, B)], admin, target, Linked, ch => ch == A);
+        var admin = S(1, ChannelA, Permission.All);
+        var heard = VoiceRouting.Recipients([admin, S(2, ChannelA), S(3, ChannelB)], admin, target, Linked, ch => ch == ChannelA);
         Assert.Empty(heard);
     }
 
@@ -50,8 +50,8 @@ public class VoiceRoutingTests
     [InlineData(true)]
     public void Recipients_LinkIntoMutedChannel_Heard(bool tcp)
     {
-        var sender = S(1, B, tcp: tcp);
-        var heard = VoiceRouting.Recipients([sender, S(2, A, tcp: tcp), S(3, B, tcp: tcp)], sender, VoiceHeader.TargetLinked, Linked, ch => ch == A);
+        var sender = S(1, ChannelB, tcp: tcp);
+        var heard = VoiceRouting.Recipients([sender, S(2, ChannelA, tcp: tcp), S(3, ChannelB, tcp: tcp)], sender, VoiceHeader.TargetLinked, Linked, ch => ch == ChannelA);
         Assert.Equal([2u, 3u], heard.Select(session => session.Id).Order());
     }
 
@@ -60,8 +60,8 @@ public class VoiceRoutingTests
     [InlineData(true)]
     public void Target0_LinkedChannel_OnlyOwnChannel(bool tcp)
     {
-        var sender = S(1, A, tcp: tcp);
-        Assert.Equal([2u], Route(sender, VoiceHeader.TargetChannel, S(2, A, tcp: tcp), S(3, B, tcp: tcp), S(4, L, tcp: tcp)));
+        var sender = S(1, ChannelA, tcp: tcp);
+        Assert.Equal([2u], Route(sender, VoiceHeader.TargetChannel, S(2, ChannelA, tcp: tcp), S(3, ChannelB, tcp: tcp), S(4, Lobby, tcp: tcp)));
     }
 
     [Theory]
@@ -69,8 +69,8 @@ public class VoiceRoutingTests
     [InlineData(true)]
     public void Target1_WithSpeakLinked_OwnPlusDirectLinks_NotTransitive(bool tcp)
     {
-        var sender = S(1, A, tcp: tcp);
-        Assert.Equal([2u, 3u], Route(sender, VoiceHeader.TargetLinked, S(2, A, tcp: tcp), S(3, B, tcp: !tcp), S(4, C, tcp: tcp), S(5, L, tcp: tcp)));
+        var sender = S(1, ChannelA, tcp: tcp);
+        Assert.Equal([2u, 3u], Route(sender, VoiceHeader.TargetLinked, S(2, ChannelA, tcp: tcp), S(3, ChannelB, tcp: !tcp), S(4, ChannelC, tcp: tcp), S(5, Lobby, tcp: tcp)));
     }
 
     [Theory]
@@ -78,8 +78,8 @@ public class VoiceRoutingTests
     [InlineData(true)]
     public void Target1_WithoutSpeakLinked_OwnChannelOnly(bool tcp)
     {
-        var sender = S(1, A, Permission.Speak, tcp: tcp);
-        Assert.Equal([2u], Route(sender, VoiceHeader.TargetLinked, S(2, A, tcp: tcp), S(3, B, tcp: tcp)));
+        var sender = S(1, ChannelA, Permission.Speak, tcp: tcp);
+        Assert.Equal([2u], Route(sender, VoiceHeader.TargetLinked, S(2, ChannelA, tcp: tcp), S(3, ChannelB, tcp: tcp)));
         Assert.Equal(VoiceHeader.TargetChannel, VoiceRouting.EffectiveTarget(sender, VoiceHeader.TargetLinked));
     }
 
@@ -92,10 +92,10 @@ public class VoiceRoutingTests
     [InlineData("selfMuted", true)]
     public void SenderCannotSpeak_NoRecipients(string reason, bool tcp)
     {
-        var sender = S(1, A, reason == "noSpeak" ? Permission.SpeakLinked : Talk, tcp: tcp);
+        var sender = S(1, ChannelA, reason == "noSpeak" ? Permission.SpeakLinked : Talk, tcp: tcp);
         sender.ServerMuted = reason == "serverMuted";
         sender.SelfMuted = reason == "selfMuted";
-        Assert.Empty(Route(sender, VoiceHeader.TargetLinked, S(2, A, tcp: tcp), S(3, B, tcp: tcp)));
+        Assert.Empty(Route(sender, VoiceHeader.TargetLinked, S(2, ChannelA, tcp: tcp), S(3, ChannelB, tcp: tcp)));
     }
 
     [Theory]
@@ -103,18 +103,18 @@ public class VoiceRoutingTests
     [InlineData(true)]
     public void DeafenedAndSender_Excluded(bool tcp)
     {
-        var sender = S(1, A, tcp: tcp);
-        var deaf = S(2, A, tcp: tcp);
+        var sender = S(1, ChannelA, tcp: tcp);
+        var deaf = S(2, ChannelA, tcp: tcp);
         deaf.SelfDeafened = true;
-        Assert.Equal([3u], Route(sender, VoiceHeader.TargetChannel, deaf, S(3, A, tcp: tcp)));
+        Assert.Equal([3u], Route(sender, VoiceHeader.TargetChannel, deaf, S(3, ChannelA, tcp: tcp)));
     }
 
     /// <summary>Package 141: a session neither bound on UDP nor on voice over TCP gets nothing.</summary>
     [Fact]
     public void UnboundEndpoint_Excluded()
     {
-        Assert.Empty(Route(S(1, A), VoiceHeader.TargetChannel, S(2, A, bound: false)));
-        Assert.Equal([3u], Route(S(1, A), VoiceHeader.TargetChannel, S(2, A, bound: false), S(3, A, tcp: true)));
+        Assert.Empty(Route(S(1, ChannelA), VoiceHeader.TargetChannel, S(2, ChannelA, bound: false)));
+        Assert.Equal([3u], Route(S(1, ChannelA), VoiceHeader.TargetChannel, S(2, ChannelA, bound: false), S(3, ChannelA, tcp: true)));
     }
 
     [Fact]

@@ -35,10 +35,10 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
         var root = RepoPaths.Root;
         var (references, ignored) = PlanReference.Parse(File.ReadAllText(Path.Combine(root, "PLAN.md")));
         var tests = FindTestMethods(typeof(PlanReferenceTests).Assembly);
-        output.WriteLine($"{references.Count} references, ignored spans: " + string.Join(", ", ignored.Select(s => $"{s.Line} `{s.Span}`")));
+        output.WriteLine($"{references.Count} references, ignored spans: " + string.Join(", ", ignored.Select(value => $"{value.Line} `{value.Span}`")));
 
         Assert.True(references.Count > 900, $"only {references.Count} references: did the package or Tests headings change?");
-        Assert.Equal(NoTest.Keys.Order(), ignored.Select(s => s.Span).Distinct().Order());
+        Assert.Equal(NoTest.Keys.Order(), ignored.Select(value => value.Span).Distinct().Order());
         var problems = FindProblems(references, Uncovered, planReference => Resolves(planReference, tests, root));
         Assert.True(problems.Count == 0, $"{problems.Count} PLAN.md reference problems:\n" + string.Join("\n", problems));
     }

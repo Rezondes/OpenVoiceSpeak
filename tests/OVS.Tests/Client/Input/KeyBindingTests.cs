@@ -7,7 +7,7 @@ namespace OVS.Tests.Client.Input;
 /// <summary>Package 29: which actions a set of pressed keys triggers.</summary>
 public class KeyBindingTests
 {
-    const int F1 = 0x70, M = 0x4D;
+    const int F1 = 0x70, KeyM = 0x4D;
 
     static KeyBinding Bind(KeyAction action, int key, ChordModifiers modifiers = None) => new(action, new KeyChord(key, modifiers));
 
@@ -54,9 +54,9 @@ public class KeyBindingTests
     [Fact]
     public void Resolve_RequiresAllModifiers_ExtraOnesDoNotHurt()
     {
-        KeyBinding[] bindings = [Bind(KeyAction.ToggleDeafen, M, Ctrl | Shift), Bind(KeyAction.PushToTalk, VirtualKeys.XButton1)];
-        Assert.Empty(Resolve(bindings, [M], Ctrl));
-        Assert.Equal([KeyAction.ToggleDeafen], Resolve(bindings, [M], Ctrl | Shift));
+        KeyBinding[] bindings = [Bind(KeyAction.ToggleDeafen, KeyM, Ctrl | Shift), Bind(KeyAction.PushToTalk, VirtualKeys.XButton1)];
+        Assert.Empty(Resolve(bindings, [KeyM], Ctrl));
+        Assert.Equal([KeyAction.ToggleDeafen], Resolve(bindings, [KeyM], Ctrl | Shift));
         // Shift held while running in a game: the plain PTT key still works.
         Assert.Equal([KeyAction.PushToTalk], Resolve(bindings, [VirtualKeys.XButton1], Shift));
         Assert.Empty(Resolve(bindings, [], Ctrl | Shift | Alt));
@@ -139,7 +139,7 @@ public class KeyBindingTests
     [Fact]
     public void ChordName_IsReadable()
     {
-        Assert.Equal("Strg+Umschalt+M", new KeyChord(M, Ctrl | Shift).Name);
+        Assert.Equal("Strg+Umschalt+M", new KeyChord(KeyM, Ctrl | Shift).Name);
         Assert.Equal("Maustaste 4", new KeyChord(VirtualKeys.XButton1).Name);
     }
 }

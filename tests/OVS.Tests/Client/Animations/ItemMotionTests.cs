@@ -67,7 +67,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
                 if (transform is Avalonia.Media.TranslateTransform translate) seen.Add((row.DataContext, translate.Y)); // set before it came
                 transform.PropertyChanged += (_, args) =>
                 {
-                    if (args.Property == Avalonia.Media.TranslateTransform.YProperty && args.NewValue is double y) seen.Add((row.DataContext, y));
+                    if (args.Property == Avalonia.Media.TranslateTransform.YProperty && args.NewValue is double offsetY) seen.Add((row.DataContext, offsetY));
                 };
             }
             if (row.RenderTransform is AvaloniaObject now) Track(now);
@@ -82,10 +82,10 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     static double Most(List<(object? Item, double Y)> seen, Func<object?, bool> item) =>
-        seen.Where(s => item(s.Item)).Select(s => s.Y).DefaultIfEmpty(0).Max();
+        seen.Where(value => item(value.Item)).Select(value => value.Y).DefaultIfEmpty(0).Max();
 
     static double Least(List<(object? Item, double Y)> seen, Func<object?, bool> item) =>
-        seen.Where(s => item(s.Item)).Select(s => s.Y).DefaultIfEmpty(0).Min();
+        seen.Where(value => item(value.Item)).Select(value => value.Y).DefaultIfEmpty(0).Min();
 
     [AvaloniaFact]
     public void AdminRowAdded_SlidesIn()
@@ -355,10 +355,10 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var tops = new List<double>(); // c's place after every layout pass, whichever container shows it
         list.LayoutUpdated += (_, _) =>
         {
-            if (list.GetRealizedContainers().FirstOrDefault(otherControl => list.ItemFromContainer(otherControl) is KeyedRow { Key: "c" }) is { } c)
-                tops.Add(c.TranslatePoint(default, window)!.Value.Y);
+            if (list.GetRealizedContainers().FirstOrDefault(otherControl => list.ItemFromContainer(otherControl) is KeyedRow { Key: "c" }) is { } rowC)
+                tops.Add(rowC.TranslatePoint(default, window)!.Value.Y);
         };
-        bool Folds() => faint.Any(o => o < 1) && drift.Any(x => x < 0);
+        bool Folds() => faint.Any(value => value < 1) && drift.Any(value => value < 0);
         CollectionSync.Sync(rows, [new KeyedRow("a", 1), new KeyedRow("c", 1)], leave);
         MotionWait.Until(() => (Folds() && tops.Any(top => top < before)) || !rows.Any(keyedRow => keyedRow.Key == "b"));
         Assert.True(Folds(), "fades and drifts to the left");
@@ -465,7 +465,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         Assert.Equal(1, pictures);
         Assert.True(waiting == 0, $"the new row waits for its picture ({waiting})");
         double landed = LastTop(ghost!, out _);
-        Assert.True(start is { } s && Math.Abs(s - oldTop) < 1, $"starts on the old row: {start} vs {oldTop}");
+        Assert.True(start is { } startTop && Math.Abs(startTop - oldTop) < 1, $"starts on the old row: {start} vs {oldTop}");
         Assert.Empty(Ghosts(main, FlyGhost.GhostClass));
         Assert.Equal(1, Arrived(main, nickname).Opacity, 2); // shown in the frame the picture went: no gap
         Assert.DoesNotContain("fresh", Arrived(main, nickname).Classes); // and no flash, the flight showed where it went
@@ -559,7 +559,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         rows.Move(3, 2); // c and d swap, b stays where it is
         for (int index = 0; index < 5; index++) Frame();
         Assert.True(Most(seen, item => item is KeyedRow { Key: "d" }) > 15, "d glides up from below");
-        Assert.Equal(0, seen.Where(s => s.Item is KeyedRow { Key: "b" }).Select(s => Math.Abs(s.Y)).DefaultIfEmpty(0).Max(), 1);
+        Assert.Equal(0, seen.Where(value => value.Item is KeyedRow { Key: "b" }).Select(value => Math.Abs(value.Y)).DefaultIfEmpty(0).Max(), 1);
         MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetY(KeyedList.Container(list, "d")), 2));
     }
 

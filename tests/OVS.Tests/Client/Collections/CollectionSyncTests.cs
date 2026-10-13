@@ -48,8 +48,8 @@ public class CollectionSyncTests
     {
         var clock = new ManualTimeProvider();
         var leave = new LeaveTimer(clock) { Delay = TimeSpan.FromMilliseconds(220) };
-        object a = new(), b = new();
-        var list = new ObservableCollection<object> { a, b };
+        object first = new(), second = new();
+        var list = new ObservableCollection<object> { first, second };
         var events = new List<(object Item, bool Leaving)>();
         void Seen(object source, object item, bool leaving)
         {
@@ -58,14 +58,14 @@ public class CollectionSyncTests
         CollectionSync.LeavingChanged += Seen;
         try
         {
-            CollectionSync.Sync(list, [a], leave);
-            CollectionSync.Sync(list, [a, b], leave);
-            Assert.Equal([a, b], list); // no second row
-            Assert.Same(b, list[1]);
-            Assert.False(CollectionSync.IsLeaving(list, b));
-            Assert.Equal([(b, true), (b, false)], events);
+            CollectionSync.Sync(list, [first], leave);
+            CollectionSync.Sync(list, [first, second], leave);
+            Assert.Equal([first, second], list); // no second row
+            Assert.Same(second, list[1]);
+            Assert.False(CollectionSync.IsLeaving(list, second));
+            Assert.Equal([(second, true), (second, false)], events);
             Pass(clock, TimeSpan.FromSeconds(1));
-            Assert.Equal([a, b], list); // the old removal does not take it away
+            Assert.Equal([first, second], list); // the old removal does not take it away
         }
         finally
         {

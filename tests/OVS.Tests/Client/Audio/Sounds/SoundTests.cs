@@ -31,7 +31,7 @@ public class SoundTests
         foreach (var group in shared) Assert.All(group, soundEvent => Assert.Equal(tones[group[0]], tones[soundEvent]));
         bool SameGroup(SoundEvent soundEvent, SoundEvent otherSoundEvent) => shared.Any(soundEvents => soundEvents.Contains(soundEvent) && soundEvents.Contains(otherSoundEvent));
         foreach (var pair in tones)
-            foreach (var entry in tones.Where(b => b.Key > pair.Key && !SameGroup(pair.Key, b.Key)))
+            foreach (var entry in tones.Where(tone => tone.Key > pair.Key && !SameGroup(pair.Key, tone.Key)))
                 Assert.False(pair.Value.SequenceEqual(entry.Value), $"{pair.Key} = {entry.Key}");
         Assert.Same(tones[SoundEvent.MicOn], SoundSynth.Render(SoundEvent.MicOn)); // rendered once
         // Package 57: the link tone plays over speech, so it is short and softer than the others
@@ -47,7 +47,7 @@ public class SoundTests
         queue.Add([0.9f, 0.9f], gain: 1f);
         var frame = new float[] { 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f }; // Package 142: interleaved stereo
         queue.MixInto(frame);
-        Assert.Equal([1f, 1f, 1f, 1f, 0.35f, 0.35f, 0.1f, 0.1f], frame.Select(v => MathF.Round(v, 3))); // voice kept, sum clamped to 1
+        Assert.Equal([1f, 1f, 1f, 1f, 0.35f, 0.35f, 0.1f, 0.1f], frame.Select(value => MathF.Round(value, 3))); // voice kept, sum clamped to 1
         Assert.Equal(0, queue.Count); // both finished
 
         queue.Add(new float[1000], gain: 0f); // silent: not even queued

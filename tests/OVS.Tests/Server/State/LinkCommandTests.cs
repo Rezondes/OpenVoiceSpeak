@@ -13,8 +13,8 @@ public sealed class LinkCommandTests : IAsyncLifetime
     readonly ClientIdentity adminId = ClientIdentity.Create();
     readonly ClientIdentity modId = ClientIdentity.Create();
     TestServer server = null!;
-    TestClient a = null!, m = null!, g = null!;
-    Guid lobby, x, y;
+    TestClient admin = null!, moderator = null!, guest = null!;
+    Guid lobby, channelX, channelY;
 
     public async Task InitializeAsync()
     {
@@ -23,24 +23,24 @@ public sealed class LinkCommandTests : IAsyncLifetime
             TestServer.Grant(adminId, "Admin")(serverData);
             TestServer.Grant(modId, "Moderator")(serverData);
         });
-        a = await TestClient.ConnectAsync(server, "admin", adminId);
-        m = await TestClient.ConnectAsync(server, "mod", modId);
-        g = await TestClient.ConnectAsync(server, "gast");
-        lobby = a.Welcome.Snapshot.DefaultChannelId;
-        x = await CreateAsync("X");
-        y = await CreateAsync("Y");
+        admin = await TestClient.ConnectAsync(server, "admin", adminId);
+        moderator = await TestClient.ConnectAsync(server, "mod", modId);
+        guest = await TestClient.ConnectAsync(server, "gast");
+        lobby = admin.Welcome.Snapshot.DefaultChannelId;
+        channelX = await CreateAsync("X");
+        channelY = await CreateAsync("Y");
     }
 
     public async Task DisposeAsync()
     {
-        foreach (var client in new[] { a, m, g }) await client.DisposeAsync();
+        foreach (var client in new[] { admin, moderator, guest }) await client.DisposeAsync();
         await server.DisposeAsync();
     }
 
     async Task<Guid> CreateAsync(string name)
     {
-        await a.SendAsync(new CreateChannel(name, ""));
-        return (await a.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == name)).Channel.Id;
+        await admin.SendAsync(new CreateChannel(name, ""));
+        return (await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == name)).Channel.Id;
     }
 
     static (Guid, Guid) Norm(Guid id, Guid otherId) => id.CompareTo(otherId) < 0 ? (id, otherId) : (otherId, id);
@@ -59,77 +59,77 @@ public sealed class LinkCommandTests : IAsyncLifetime
     [Fact]
     public async Task Link_AsModerator_BroadcastsAndPersists()
     {
-        await m.SendAsync(new LinkChannels(x, y));
-        var linked = await g.WaitForAsync<ChannelsLinked>();
-        Assert.Equal(Norm(x, y), (linked.A, linked.B));
-        Assert.Equal(y, Assert.Single(server.State.LinkedChannels(x)));
+        await moderator.SendAsync(new LinkChannels(channelX, channelY));
+        var linked = await guest.WaitForAsync<ChannelsLinked>();
+        Assert.Equal(Norm(channelX, channelY), (linked.A, linked.B));
+        Assert.Equal(channelY, Assert.Single(server.State.LinkedChannels(channelX)));
     }
 
     /// <summary>Package 111: nothing is spoken in a separator, so it has no links, alone or in the link matrix.</summary>
     [Fact]
     public async Task LinkToSeparator_InvalidLink()
     {
-        await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
-        var separator = (await a.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Kind == ChannelKind.Separator)).Channel.Id;
-        await m.SendAsync(new LinkChannels(x, separator) { RequestId = "l" });
-        Assert.Equal(ReasonCodes.InvalidLink, (await m.ErrorAsync("l")).Code);
-        await m.SendAsync(new SetChannelLinks([new LinkInfo(separator, y)], []) { RequestId = "s" });
-        Assert.Equal(ReasonCodes.InvalidLink, (await m.ErrorAsync("s")).Code);
+        await admin.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
+        var separator = (await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Kind == ChannelKind.Separator)).Channel.Id;
+        await moderator.SendAsync(new LinkChannels(channelX, separator) { RequestId = "l" });
+        Assert.Equal(ReasonCodes.InvalidLink, (await moderator.ErrorAsync("l")).Code);
+        await moderator.SendAsync(new SetChannelLinks([new LinkInfo(separator, channelY)], []) { RequestId = "s" });
+        Assert.Equal(ReasonCodes.InvalidLink, (await moderator.ErrorAsync("s")).Code);
         Assert.Empty(server.State.LinkedChannels(separator));
     }
 
     [Fact]
     public async Task Link_SameChannel_InvalidLink()
     {
-        await m.SendAsync(new LinkChannels(x, x) { RequestId = "l" });
-        Assert.Equal(ReasonCodes.InvalidLink, (await m.ErrorAsync("l")).Code);
+        await moderator.SendAsync(new LinkChannels(channelX, channelX) { RequestId = "l" });
+        Assert.Equal(ReasonCodes.InvalidLink, (await moderator.ErrorAsync("l")).Code);
     }
 
     [Fact]
     public async Task Link_UnknownChannel_NotFound()
     {
-        await m.SendAsync(new LinkChannels(x, Guid.NewGuid()) { RequestId = "l" });
-        Assert.Equal(ReasonCodes.NotFound, (await m.ErrorAsync("l")).Code);
+        await moderator.SendAsync(new LinkChannels(channelX, Guid.NewGuid()) { RequestId = "l" });
+        Assert.Equal(ReasonCodes.NotFound, (await moderator.ErrorAsync("l")).Code);
     }
 
     [Fact]
     public async Task Link_ExistingReversed_NoOp()
     {
-        await m.SendAsync(new LinkChannels(x, y));
-        await g.WaitForAsync<ChannelsLinked>();
-        await m.WaitForAsync<ChannelsLinked>(); // m's own copy of the real link, so the probe only sees what the no-op sends
-        await m.SendAsync(new LinkChannels(y, x) { RequestId = "l" });
-        await ProbeAsync(m, message => message is ChannelsLinked or Error);
-        await g.AssertNoMessageAsync<ChannelsLinked>();
+        await moderator.SendAsync(new LinkChannels(channelX, channelY));
+        await guest.WaitForAsync<ChannelsLinked>();
+        await moderator.WaitForAsync<ChannelsLinked>(); // m's own copy of the real link, so the probe only sees what the no-op sends
+        await moderator.SendAsync(new LinkChannels(channelY, channelX) { RequestId = "l" });
+        await ProbeAsync(moderator, message => message is ChannelsLinked or Error);
+        await guest.AssertNoMessageAsync<ChannelsLinked>();
     }
 
     [Fact]
     public async Task Unlink_Broadcasts_MissingIsNoOp()
     {
-        await m.SendAsync(new LinkChannels(x, y));
-        await g.WaitForAsync<ChannelsLinked>();
-        await m.SendAsync(new UnlinkChannels(y, x));
-        Assert.Equal(Norm(x, y), await g.WaitForAsync<ChannelsUnlinked>() is var channelsUnlinked ? (channelsUnlinked.A, channelsUnlinked.B) : default);
-        await m.WaitForAsync<ChannelsUnlinked>(); // m's own copy of the real unlink, so the probe only sees what the no-op sends
+        await moderator.SendAsync(new LinkChannels(channelX, channelY));
+        await guest.WaitForAsync<ChannelsLinked>();
+        await moderator.SendAsync(new UnlinkChannels(channelY, channelX));
+        Assert.Equal(Norm(channelX, channelY), await guest.WaitForAsync<ChannelsUnlinked>() is var channelsUnlinked ? (channelsUnlinked.A, channelsUnlinked.B) : default);
+        await moderator.WaitForAsync<ChannelsUnlinked>(); // m's own copy of the real unlink, so the probe only sees what the no-op sends
 
-        await m.SendAsync(new UnlinkChannels(y, x));
-        await ProbeAsync(m, message => message is ChannelsUnlinked or Error);
-        await g.AssertNoMessageAsync<ChannelsUnlinked>();
+        await moderator.SendAsync(new UnlinkChannels(channelY, channelX));
+        await ProbeAsync(moderator, message => message is ChannelsUnlinked or Error);
+        await guest.AssertNoMessageAsync<ChannelsUnlinked>();
     }
 
     [Fact]
     public async Task DeleteChannel_UnlinksBeforeRemove()
     {
-        await m.SendAsync(new LinkChannels(x, y));
-        await m.SendAsync(new LinkChannels(x, lobby));
-        await g.WaitForAsync<ChannelsLinked>();
-        await g.WaitForAsync<ChannelsLinked>();
+        await moderator.SendAsync(new LinkChannels(channelX, channelY));
+        await moderator.SendAsync(new LinkChannels(channelX, lobby));
+        await guest.WaitForAsync<ChannelsLinked>();
+        await guest.WaitForAsync<ChannelsLinked>();
 
-        await a.SendAsync(new DeleteChannel(x));
+        await admin.SendAsync(new DeleteChannel(channelX));
         var order = new List<Message>();
-        while (order.LastOrDefault() is not ChannelRemoved) order.Add((await g.NextAsync())!);
+        while (order.LastOrDefault() is not ChannelRemoved) order.Add((await guest.NextAsync())!);
         Assert.Equal(2, order.OfType<ChannelsUnlinked>().Count());
-        Assert.Empty(server.State.LinkedChannels(y));
+        Assert.Empty(server.State.LinkedChannels(channelY));
         Assert.Empty(server.State.LinkedChannels(lobby));
     }
 
@@ -137,38 +137,38 @@ public sealed class LinkCommandTests : IAsyncLifetime
     public async Task LinkedChannels_OnlyDirectNeighbours()
     {
         // lobby - x - y
-        await m.SendAsync(new LinkChannels(lobby, x));
-        await m.SendAsync(new LinkChannels(x, y));
-        await g.WaitForAsync<ChannelsLinked>();
-        await g.WaitForAsync<ChannelsLinked>();
+        await moderator.SendAsync(new LinkChannels(lobby, channelX));
+        await moderator.SendAsync(new LinkChannels(channelX, channelY));
+        await guest.WaitForAsync<ChannelsLinked>();
+        await guest.WaitForAsync<ChannelsLinked>();
 
-        Assert.Equal(x, Assert.Single(server.State.LinkedChannels(lobby)));
-        Assert.Equal(new HashSet<Guid> { lobby, y }, server.State.LinkedChannels(x));
+        Assert.Equal(channelX, Assert.Single(server.State.LinkedChannels(lobby)));
+        Assert.Equal(new HashSet<Guid> { lobby, channelY }, server.State.LinkedChannels(channelX));
         Assert.Empty(server.State.LinkedChannels(Guid.NewGuid()));
     }
 
     [Fact]
     public async Task Snapshot_ContainsLinks_AfterRestart()
     {
-        await m.SendAsync(new LinkChannels(x, y));
-        await g.WaitForAsync<ChannelsLinked>();
-        foreach (var client in new[] { a, m, g }) await client.DisposeAsync();
+        await moderator.SendAsync(new LinkChannels(channelX, channelY));
+        await guest.WaitForAsync<ChannelsLinked>();
+        foreach (var client in new[] { admin, moderator, guest }) await client.DisposeAsync();
 
         server = await server.RestartAsync();
-        a = await TestClient.ConnectAsync(server, "admin", adminId);
-        m = await TestClient.ConnectAsync(server, "mod", modId);
-        g = await TestClient.ConnectAsync(server, "gast", g.Identity); // Package 83: the stored name belongs to this identity
-        var link = Assert.Single(g.Welcome.Snapshot.Links);
-        Assert.Equal(Norm(x, y), (link.A, link.B));
+        admin = await TestClient.ConnectAsync(server, "admin", adminId);
+        moderator = await TestClient.ConnectAsync(server, "mod", modId);
+        guest = await TestClient.ConnectAsync(server, "gast", guest.Identity); // Package 83: the stored name belongs to this identity
+        var link = Assert.Single(guest.Welcome.Snapshot.Links);
+        Assert.Equal(Norm(channelX, channelY), (link.A, link.B));
     }
 
     [Fact]
     public async Task Link_AsGuest_PermissionDenied()
     {
-        await g.SendAsync(new LinkChannels(x, y) { RequestId = "l" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("l")).Code);
-        await g.SendAsync(new UnlinkChannels(x, y) { RequestId = "u" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("u")).Code);
+        await guest.SendAsync(new LinkChannels(channelX, channelY) { RequestId = "l" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("l")).Code);
+        await guest.SendAsync(new UnlinkChannels(channelX, channelY) { RequestId = "u" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("u")).Code);
     }
 
     // ---- Package 38: link matrix ----
@@ -176,17 +176,17 @@ public sealed class LinkCommandTests : IAsyncLifetime
     [Fact]
     public async Task SetLinks_AddAndRemove_OneSaveAllBroadcasts()
     {
-        await a.SendAsync(new LinkChannels(lobby, x));
-        await g.WaitForAsync<ChannelsLinked>();
+        await admin.SendAsync(new LinkChannels(lobby, channelX));
+        await guest.WaitForAsync<ChannelsLinked>();
 
-        await m.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(y, lobby), new LinkInfo(lobby, x)], [new LinkInfo(x, lobby)]) { RequestId = "beides" });
-        Assert.Equal(ReasonCodes.InvalidValue, (await m.ErrorAsync("beides")).Code); // the same link set and removed
+        await moderator.SendAsync(new SetChannelLinks([new LinkInfo(channelX, channelY), new LinkInfo(channelY, lobby), new LinkInfo(lobby, channelX)], [new LinkInfo(channelX, lobby)]) { RequestId = "beides" });
+        Assert.Equal(ReasonCodes.InvalidValue, (await moderator.ErrorAsync("beides")).Code); // the same link set and removed
 
-        await m.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(y, lobby)], [new LinkInfo(x, lobby)]));
-        var linked = new[] { await g.WaitForAsync<ChannelsLinked>(), await g.WaitForAsync<ChannelsLinked>() };
-        Assert.Equal(new[] { Norm(x, y), Norm(y, lobby) }.Order(), linked.Select(channelsLinked => Norm(channelsLinked.A, channelsLinked.B)).Order());
-        var unlinked = await g.WaitForAsync<ChannelsUnlinked>();
-        Assert.Equal(Norm(lobby, x), Norm(unlinked.A, unlinked.B));
+        await moderator.SendAsync(new SetChannelLinks([new LinkInfo(channelX, channelY), new LinkInfo(channelY, lobby)], [new LinkInfo(channelX, lobby)]));
+        var linked = new[] { await guest.WaitForAsync<ChannelsLinked>(), await guest.WaitForAsync<ChannelsLinked>() };
+        Assert.Equal(new[] { Norm(channelX, channelY), Norm(channelY, lobby) }.Order(), linked.Select(channelsLinked => Norm(channelsLinked.A, channelsLinked.B)).Order());
+        var unlinked = await guest.WaitForAsync<ChannelsUnlinked>();
+        Assert.Equal(Norm(lobby, channelX), Norm(unlinked.A, unlinked.B));
         Assert.Contains(server.Log, line => line.Contains("Links geändert von mod: 2 gesetzt, 1 entfernt"));
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
@@ -196,17 +196,17 @@ public sealed class LinkCommandTests : IAsyncLifetime
     [Fact]
     public async Task SetLinks_UnknownOrSelf_NothingChanged()
     {
-        await a.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(x, Guid.NewGuid())], []) { RequestId = "fremd" });
-        Assert.Equal(ReasonCodes.NotFound, (await a.ErrorAsync("fremd")).Code);
-        await a.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(y, y)], []) { RequestId = "selbst" });
-        Assert.Equal(ReasonCodes.InvalidLink, (await a.ErrorAsync("selbst")).Code);
-        await g.AssertNoMessageAsync<ChannelsLinked>();
+        await admin.SendAsync(new SetChannelLinks([new LinkInfo(channelX, channelY), new LinkInfo(channelX, Guid.NewGuid())], []) { RequestId = "fremd" });
+        Assert.Equal(ReasonCodes.NotFound, (await admin.ErrorAsync("fremd")).Code);
+        await admin.SendAsync(new SetChannelLinks([new LinkInfo(channelX, channelY), new LinkInfo(channelY, channelY)], []) { RequestId = "selbst" });
+        Assert.Equal(ReasonCodes.InvalidLink, (await admin.ErrorAsync("selbst")).Code);
+        await guest.AssertNoMessageAsync<ChannelsLinked>();
     }
 
     [Fact]
     public async Task SetLinks_WithoutRight_Denied()
     {
-        await g.SendAsync(new SetChannelLinks([new LinkInfo(x, y)], []) { RequestId = "r" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("r")).Code);
+        await guest.SendAsync(new SetChannelLinks([new LinkInfo(channelX, channelY)], []) { RequestId = "r" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("r")).Code);
     }
 }

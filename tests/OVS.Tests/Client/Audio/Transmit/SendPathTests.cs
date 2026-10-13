@@ -204,7 +204,7 @@ public class SendPathTests
         Assert.Equal(15, rig.FramesUntilSilent()); // 300 ms
         Assert.False(rig.Keys.PttDown);
         Assert.Equal(0, rig.Frames(20));
-        Assert.All(rig.Sent, t => Assert.Equal(Ch, t));
+        Assert.All(rig.Sent, value => Assert.Equal(Ch, value));
 
         rig.Engine.ApplyLive(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0 }); // no delay: stops at once
         await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
@@ -238,7 +238,7 @@ public class SendPathTests
         await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
         Assert.True(rig.Keys.LinkPttDown);
         Assert.Equal(15, rig.FramesUntilSilent());
-        Assert.All(rig.Sent, t => Assert.Equal(Link, t));
+        Assert.All(rig.Sent, value => Assert.Equal(Link, value));
 
         await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
         rig.Frames(1);
@@ -298,7 +298,7 @@ public class SendPathTests
         int linkStart = rig.Sent.Count;
         await rig.Key(TalkRig.LinkPtt, true, KeyAction.LinkPushToTalk);
         Assert.InRange(rig.Kbps(), 32 * 0.85, 32 * 1.15);
-        Assert.All(rig.Sent.Skip(linkStart), t => Assert.Equal(Link, t));
+        Assert.All(rig.Sent.Skip(linkStart), value => Assert.Equal(Link, value));
         await rig.Key(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
 
         rig.Engine.SelfTest = true; // the own ears hear what a 64 kbps channel sends
@@ -597,8 +597,8 @@ public class SendPathTests
         {
             double position = (double)otherIndex * rate / AudioFormat.SampleRate;
             int index = (int)position;
-            float a = input[index], b = input[Math.Min(index + 1, input.Length - 1)];
-            output[otherIndex] = a + (b - a) * (float)(position - index);
+            float current = input[index], next = input[Math.Min(index + 1, input.Length - 1)];
+            output[otherIndex] = current + (next - current) * (float)(position - index);
         }
         return output;
     }
@@ -613,9 +613,9 @@ public class SendPathTests
         double re = 0, im = 0;
         for (int count = 0; count < steady.Length; count++)
         {
-            double w = 2 * Math.PI * 1000 * count / AudioFormat.SampleRate;
-            re += steady[count] * Math.Cos(w);
-            im += steady[count] * Math.Sin(w);
+            double angularStep = 2 * Math.PI * 1000 * count / AudioFormat.SampleRate;
+            re += steady[count] * Math.Cos(angularStep);
+            im += steady[count] * Math.Sin(angularStep);
         }
         double amplitude = 2 * Math.Sqrt(re * re + im * im) / steady.Length, phase = Math.Atan2(re, im);
         Assert.InRange(20 * Math.Log10(amplitude / 0.5), -0.5, 0.5);
@@ -635,18 +635,18 @@ public class SendPathTests
         var windowed = new double[count];
         for (int index = 0; index < count; index++)
         {
-            double x = 2 * Math.PI * index / (count - 1);
-            windowed[index] = samples[index] * (0.35875 - 0.48829 * Math.Cos(x) + 0.14128 * Math.Cos(2 * x) - 0.01168 * Math.Cos(3 * x));
+            double angle = 2 * Math.PI * index / (count - 1);
+            windowed[index] = samples[index] * (0.35875 - 0.48829 * Math.Cos(angle) + 0.14128 * Math.Cos(2 * angle) - 0.01168 * Math.Cos(3 * angle));
         }
         double energy = 0;
-        for (double f = 0; f < below; f += (double)AudioFormat.SampleRate / count)
+        for (double frequency = 0; frequency < below; frequency += (double)AudioFormat.SampleRate / count)
         {
             double re = 0, im = 0;
             for (int index = 0; index < count; index++)
             {
-                double w = 2 * Math.PI * f * index / AudioFormat.SampleRate;
-                re += windowed[index] * Math.Cos(w);
-                im += windowed[index] * Math.Sin(w);
+                double phase = 2 * Math.PI * frequency * index / AudioFormat.SampleRate;
+                re += windowed[index] * Math.Cos(phase);
+                im += windowed[index] * Math.Sin(phase);
             }
             energy += re * re + im * im;
         }
@@ -706,11 +706,11 @@ public class SendPathTests
         void Chunk() => resampler.Process(input.AsSpan(0, sizes[next++ % sizes.Length]));
         for (int index = 0; index < 200; index++) Chunk();
         var windows = new long[3];
-        for (int w = 0; w < windows.Length; w++)
+        for (int window = 0; window < windows.Length; window++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
             for (int index = 0; index < 100; index++) Chunk();
-            windows[w] = GC.GetAllocatedBytesForCurrentThread() - before;
+            windows[window] = GC.GetAllocatedBytesForCurrentThread() - before;
         }
         Assert.Equal(0, windows.Min()); // one clean window: the runtime may allocate now and then (IdleCostTests)
     }
@@ -727,7 +727,7 @@ public class SendPathTests
     static async Task<float> LoudestOutput(AudioEngine engine, int milliseconds)
     {
         float loudest = -120;
-        for (int t = 0; t < milliseconds; t += 20)
+        for (int elapsed = 0; elapsed < milliseconds; elapsed += 20)
         {
             await Task.Delay(20);
             loudest = Math.Max(loudest, engine.LastOutputLevelDb);
@@ -849,7 +849,7 @@ public class SendPathTests
     {
         var frame = new float[AudioFormat.FrameSamples];
         for (int index = 0; index < frame.Length; index++) frame[index] = 0.8f * MathF.Sin(2 * MathF.PI * 220 * index / AudioFormat.SampleRate);
-        var raised = frame.Select(s => s * 2).ToArray();
+        var raised = frame.Select(value => value * 2).ToArray();
         CapturePipeline.ApplyGain(frame, 2f);
         for (int index = 0; index < frame.Length; index++)
         {
@@ -1122,9 +1122,9 @@ public class SendPathTests
         var frame = new float[AudioFormat.StereoFrameSamples];
         for (int index = 0; index < AudioFormat.FrameSamples; index++)
         {
-            double t = (double)(count * AudioFormat.FrameSamples + index) / AudioFormat.SampleRate;
-            frame[2 * index] = left > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * left * t) : 0;
-            frame[2 * index + 1] = right > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * right * t) : 0;
+            double seconds = (double)(count * AudioFormat.FrameSamples + index) / AudioFormat.SampleRate;
+            frame[2 * index] = left > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * left * seconds) : 0;
+            frame[2 * index + 1] = right > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * right * seconds) : 0;
         }
         return frame;
     }
@@ -1134,11 +1134,11 @@ public class SendPathTests
     {
         double re = 0, im = 0;
         int count = stereo.Count / 2;
-        for (int n = 0; n < count; n++)
+        for (int sample = 0; sample < count; sample++)
         {
-            double w = 2 * Math.PI * hz * n / AudioFormat.SampleRate;
-            re += stereo[2 * n + side] * Math.Cos(w);
-            im += stereo[2 * n + side] * Math.Sin(w);
+            double phase = 2 * Math.PI * hz * sample / AudioFormat.SampleRate;
+            re += stereo[2 * sample + side] * Math.Cos(phase);
+            im += stereo[2 * sample + side] * Math.Sin(phase);
         }
         return 2 * Math.Sqrt(re * re + im * im) / count;
     }
@@ -1221,8 +1221,8 @@ public class SendPathTests
             var input = new float[2 * 441];
             for (int index = 0; index < 441; index++)
             {
-                double t = (chunk * 441 + index) / 44_100.0;
-                (input[2 * index], input[2 * index + 1]) = ((float)(0.3 * Math.Sin(2 * Math.PI * 440 * t)), (float)(0.3 * Math.Sin(2 * Math.PI * 1000 * t)));
+                double seconds = (chunk * 441 + index) / 44_100.0;
+                (input[2 * index], input[2 * index + 1]) = ((float)(0.3 * Math.Sin(2 * Math.PI * 440 * seconds)), (float)(0.3 * Math.Sin(2 * Math.PI * 1000 * seconds)));
             }
             resampled.AddRange(resampler.Process(input).ToArray());
         }
@@ -1331,11 +1331,11 @@ public class SendPathTests
         Assert.Same(encoder, rig.Pipeline.MusicEncoder);
         var across = rig.Heard.Skip(before).ToList();
         Assert.Equal(40 * AudioFormat.StereoFrameSamples, across.Count);
-        for (int f = 0; f < 40; f++)
+        for (int frameIndex = 0; frameIndex < 40; frameIndex++)
         {
-            var frame = across.Skip(f * AudioFormat.StereoFrameSamples).Take(AudioFormat.StereoFrameSamples).ToArray();
+            var frame = across.Skip(frameIndex * AudioFormat.StereoFrameSamples).Take(AudioFormat.StereoFrameSamples).ToArray();
             float db = VoiceActivityDetector.LevelDb(frame, 2);
-            Assert.True(db is > -14 and < -5, $"frame {f} after the first switch: {db:0.0} dBFS");
+            Assert.True(db is > -14 and < -5, $"frame {frameIndex} after the first switch: {db:0.0} dBFS");
         }
 
         var mono = new MusicRig { Kbps = 128 };
@@ -1381,7 +1381,7 @@ public class SendPathTests
             pipeline.Canceller.Render(far[index]);
             var mic = new float[AudioFormat.FrameSamples];
             if (index >= delay)
-                for (int s = 0; s < mic.Length; s++) mic[s] = 0.5f * far[index - delay][s];
+                for (int sample = 0; sample < mic.Length; sample++) mic[sample] = 0.5f * far[index - delay][sample];
             heard.Add(VoiceActivityDetector.LevelDb(mic));
             pipeline.Feed(mic, AudioFormat.SampleRate);
         }
@@ -1420,8 +1420,8 @@ public class SendPathTests
         rig.Pipeline.Music = true; // as ApplyLive and StartCapture set it on the engine's capture
         var packets = new List<byte[]>();
         rig.Pipeline.FrameEncoded += (opus, _) => packets.Add(opus);
-        int n = 0;
-        rig.Signal = () => StereoTones(n++);
+        int calls = 0;
+        rig.Signal = () => StereoTones(calls++);
         void Feed(int count)
         {
             for (int index = 0; index < count; index++) rig.Pipeline.Feed(rig.Signal(), AudioFormat.SampleRate, 2);

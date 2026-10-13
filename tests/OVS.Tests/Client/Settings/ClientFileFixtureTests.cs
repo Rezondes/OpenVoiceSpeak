@@ -49,7 +49,7 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
         Assert.Equal(WithLf(original), WithLf(File.ReadAllBytes(Path.Combine(dir, ClientSettings.FileName))));
     }
 
-    static byte[] WithLf(byte[] text) => [.. text.Where((b, index) => !(b == '\r' && index + 1 < text.Length && text[index + 1] == '\n'))];
+    static byte[] WithLf(byte[] text) => [.. text.Where((character, index) => !(character == '\r' && index + 1 < text.Length && text[index + 1] == '\n'))];
 
     [Theory]
     [MemberData(nameof(PersistedFixtures.Versions), MemberType = typeof(PersistedFixtures))]

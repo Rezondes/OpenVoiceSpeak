@@ -153,7 +153,7 @@ public sealed class TestClient : IAsyncDisposable
                 throw new TimeoutException($"No {typeof(T).Name} within {timeoutMs} ms");
             }
             if (message is null) throw new EndOfStreamException($"Closed while waiting for {typeof(T).Name}");
-            if (message is T t && (match?.Invoke(t) ?? true)) return t;
+            if (message is T matching && (match?.Invoke(matching) ?? true)) return matching;
         }
     }
 

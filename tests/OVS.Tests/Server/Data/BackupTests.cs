@@ -320,7 +320,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             await client.SendAsync(new UploadBackupChunk(uploadId, offset, Convert.ToBase64String(bytes, offset, size), last) { RequestId = id });
             var answer = await client.WaitForAsync<Message>(message => message is UploadBackupAck { RequestId: var text } && text == id
                                                                  || message is BackupUploaded { RequestId: var value } && value == id
-                                                                 || message is Error { RequestId: var e } && e == id);
+                                                                 || message is Error { RequestId: var errorId } && errorId == id);
             if (answer is UploadBackupAck ack) Assert.Equal(offset + size, ack.Received);
             if (last || answer is not UploadBackupAck) return answer;
         }

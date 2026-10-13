@@ -20,11 +20,11 @@ public class IdleCostTests
     {
         for (int index = 0; index < WarmUp; index++) work();
         var windows = new long[Windows];
-        for (int w = 0; w < Windows; w++)
+        for (int window = 0; window < Windows; window++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
             for (int index = 0; index < Runs; index++) work();
-            windows[w] = GC.GetAllocatedBytesForCurrentThread() - before;
+            windows[window] = GC.GetAllocatedBytesForCurrentThread() - before;
         }
         return windows;
     }
@@ -106,7 +106,7 @@ public class IdleCostTests
         }
         // at most: two decoders of their own sometimes came out a few hundred bytes below twice the one beside them, the
         // runtime's own allocations landing on the bare one (seen once in a few runs after other audio tests)
-        Assert.Contains(true, Enumerable.Range(0, Windows).Select(w => ticks[w] <= 2 * beside[w]));
+        Assert.Contains(true, Enumerable.Range(0, Windows).Select(value => ticks[value] <= 2 * beside[value]));
 
         var decoder = new VoiceDecoder();
         var bareTurns = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
@@ -121,7 +121,7 @@ public class IdleCostTests
             bareDecodes[(index - WarmUp) / Runs] += between - before;
             decodes[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
         }
-        Assert.Contains(true, Enumerable.Range(0, Windows).Select(w => decodes[w] == bareDecodes[w]));
+        Assert.Contains(true, Enumerable.Range(0, Windows).Select(value => decodes[value] == bareDecodes[value]));
 
         // Package 142 (AC7): music mode captures in stereo, through the stereo resampler and chunker, also without allocating
         var music = CapturePipeline.Manual();
@@ -158,7 +158,7 @@ public class IdleCostTests
             encodes[(index - WarmUp) / Runs] += between - before;
             sends[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
         }
-        Assert.Contains(true, Enumerable.Range(0, Windows).Select(w => sends[w] == encodes[w]));
+        Assert.Contains(true, Enumerable.Range(0, Windows).Select(value => sends[value] == encodes[value]));
 
         // a key poll: resolving the bindings and telling presses from holds
         KeyBinding[] bindings =
