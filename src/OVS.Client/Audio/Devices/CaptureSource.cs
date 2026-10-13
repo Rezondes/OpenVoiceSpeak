@@ -29,7 +29,7 @@ public sealed class CaptureSource
     }
 
     /// <summary>The open capture, or null; the playback thread reads it per frame for the echo canceller's far end.</summary>
-    internal CapturePipeline? Capture => capture;
+    internal CapturePipeline? Capture => Volatile.Read(ref capture);
 
     /// <summary>
     /// Test tone frequency replacing the microphone, or null for the real microphone; set by
@@ -51,10 +51,18 @@ public sealed class CaptureSource
     {
         Debug.Assert(Monitor.IsEntered(gate));
         Debug.Assert(capture is null);
-        capture = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(inputId, opened);
-        if (capture is null) return;
-        configure(capture);
-        capture.Start();
+        var opening = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(inputId, opened);
+        if (opening is null) return;
+        try
+        {
+            configure(opening);
+        }
+        finally
+        {
+            // published only once set up: the playback thread reads it outside the gate; a failed set-up is left to Close
+            Volatile.Write(ref capture, opening);
+        }
+        opening.Start();
     }
 
     /// <summary>Under gate.</summary>

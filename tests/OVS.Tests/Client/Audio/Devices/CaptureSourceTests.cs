@@ -19,11 +19,13 @@ public sealed class CaptureSourceTests : IDisposable
     readonly CaptureSource source;
     Exception? configureFails;
     int levels; // frames the configured captures delivered once started
+    CapturePipeline? publishedWhileConfiguring;
 
     public CaptureSourceTests() => source = new CaptureSource(gate, hardware, Configure);
 
     void Configure(CapturePipeline capture)
     {
+        publishedWhileConfiguring = source.Capture; // what a reader outside the gate (the playback thread) would see
         configured.Add(capture);
         capture.Level += _ => Interlocked.Increment(ref levels);
         if (configureFails is { } error) throw error;
@@ -45,6 +47,16 @@ public sealed class CaptureSourceTests : IDisposable
         Assert.Equal(("headset", 1), (hardware.Open.Mic, hardware.Counts.MicsOpen));
         Assert.Same(Assert.Single(configured), source.Capture);
         Assert.Empty(opened);
+    }
+
+    /// <summary>Step 30 (25b re-review): a reader outside the gate never sees a capture the engine has not set up yet.</summary>
+    [Fact]
+    public void Open_WhileConfiguring_PublishesNoCaptureYet()
+    {
+        lock (gate) source.Open(null, []);
+
+        Assert.Null(publishedWhileConfiguring);
+        Assert.Same(Assert.Single(configured), source.Capture);
     }
 
     [Fact]
